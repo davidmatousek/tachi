@@ -1,11 +1,11 @@
 # Commands
 
-<!-- Rule file for {{PROJECT_NAME}} -->
+<!-- Rule file for tachi -->
 <!-- This file is referenced from CLAUDE.md using @-syntax -->
 
 ## Overview
 
-{{PROJECT_NAME}} provides the **Triad Commands** with automatic governance, PM/Architect/Team-Lead sign-offs, and full SDLC workflow support.
+tachi provides the **Triad Commands** with automatic governance, PM/Architect/Team-Lead sign-offs, and full SDLC workflow support.
 
 ---
 

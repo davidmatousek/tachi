@@ -646,7 +646,7 @@ Template variables enable customization for different tech stacks while maintain
 | `{{FRONTEND_FRAMEWORK}}` | React, Vue, Angular | Frontend agent tech references |
 | `{{BACKEND_FRAMEWORK}}` | FastAPI, Express, Django | Backend agent tech references |
 | `{{DATABASE}}` | PostgreSQL, MongoDB, MySQL | Data layer references |
-| `{{CLOUD_PROVIDER}}` | GCP, AWS, Azure | Infrastructure references |
+| `local-filesystem` | GCP, AWS, Azure | Infrastructure references |
 | `{{TEST_FRAMEWORK}}` | pytest, Jest, Vitest | Testing references |
 | `{{CI_PLATFORM}}` | GitHub Actions, GitLab CI | DevOps references |
 
@@ -655,7 +655,7 @@ Template variables enable customization for different tech stacks while maintain
 **Correct usage**:
 ```markdown
 # Technology (use variable)
-Deploy to {{CLOUD_PROVIDER}} using the configured CI/CD pipeline.
+Deploy to local-filesystem using the configured CI/CD pipeline.
 Use {{FRONTEND_FRAMEWORK}} component patterns.
 
 # Methodology (use concrete)

@@ -55,7 +55,7 @@ triad:
   pm_signoff: null  # Populated after review
 ---
 
-# {{PROJECT_NAME}} Roadmap — {YYYY-QN}
+# tachi Roadmap — {YYYY-QN}
 
 **Quarter**: {QN} {YYYY}
 **Status**: Draft

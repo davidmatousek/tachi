@@ -27,7 +27,7 @@ graph TB
 
     subgraph UPSTREAM["agentic-oriented-development-kit (Public Template)"]
         direction TB
-        TEMPLATE["Template files with<br/>{{PROJECT_NAME}}<br/>{{PROJECT_DESCRIPTION}}<br/>placeholders"]
+        TEMPLATE["Template files with<br/>tachi<br/>Automated threat modeling toolkit extending STRIDE with AI-specific threat agents for agentic applications<br/>placeholders"]
         SYNC_SCRIPT["scripts/sync-upstream.sh<br/>setup · check · merge · validate"]
     end
 

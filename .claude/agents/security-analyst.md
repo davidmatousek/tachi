@@ -57,7 +57,7 @@ Identify security vulnerabilities before they become exploits, embedding securit
 - Application security (OWASP Top 10)
 - Threat modeling (STRIDE methodology)
 - Dependency scanning and CVE analysis
-- Cloud security ({{CLOUD_PROVIDER}}, GCP)
+- Cloud security (local-filesystem, GCP)
 - Authentication/authorization patterns
 
 **Collaboration**:

@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "{{PROJECT_NAME}}-mcp": {
+    "tachi-mcp": {
       "command": "node",
       "args": [
         "{{PROJECT_PATH}}/path/to/mcp-server.js"
@@ -12,9 +12,9 @@
     }
   },
   "comments": {
-    "description": "MCP (Model Context Protocol) Configuration for {{PROJECT_NAME}}",
+    "description": "MCP (Model Context Protocol) Configuration for tachi",
     "usage": [
-      "Replace {{PROJECT_NAME}} with your actual project name",
+      "Replace tachi with your actual project name",
       "Replace {{PROJECT_PATH}} with the absolute path to your project root",
       "Update the path to your MCP server implementation",
       "Add environment variables as needed for your MCP server"

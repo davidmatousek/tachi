@@ -1,0 +1,139 @@
+# Finding Intermediate Representation (IR) Schema
+#
+# The atomic unit of threat analysis output. Every threat agent
+# (6 STRIDE + 5 AI) produces findings conforming to this schema.
+# Every output template and export format consumes findings from
+# this schema.
+#
+# Producers: agents/stride/*.md, agents/ai/*.md
+# Consumers: templates/threats.md, SARIF export (F-006), narrative report (F-007)
+#
+# Version: 1.0
+
+schema_version: "1.0"
+
+finding:
+  id:
+    type: string
+    pattern: "^(S|T|R|I|D|E|AG|LLM)-\\d+$"
+    description: >
+      Unique finding identifier within a threat model.
+      Prefix indicates category, suffix is a sequential number.
+    examples:
+      - "S-1"
+      - "T-3"
+      - "AG-2"
+      - "LLM-1"
+
+  category:
+    type: string
+    enum:
+      - spoofing
+      - tampering
+      - repudiation
+      - info-disclosure
+      - denial-of-service
+      - privilege-escalation
+      - agentic
+      - llm
+    description: >
+      Threat category. Maps 1:1 to the agent type that produced
+      this finding.
+
+  component:
+    type: string
+    description: >
+      Target component name from the architecture input.
+    examples:
+      - "API Gateway"
+      - "User Database"
+      - "LLM Agent"
+
+  threat:
+    type: string
+    description: >
+      Description of the identified threat.
+    examples:
+      - "Attacker could spoof authentication tokens to impersonate legitimate users"
+
+  likelihood:
+    type: string
+    enum:
+      - LOW
+      - MEDIUM
+      - HIGH
+    description: >
+      Assessed probability of exploitation using OWASP likelihood
+      factors (skill level, motive, opportunity, size, ease of
+      discovery, ease of exploit, awareness, intrusion detection).
+
+  impact:
+    type: string
+    enum:
+      - LOW
+      - MEDIUM
+      - HIGH
+    description: >
+      Assessed severity of exploitation using OWASP impact factors
+      (loss of confidentiality, integrity, availability, accountability,
+      financial damage, reputation damage, non-compliance, privacy violation).
+
+  risk_level:
+    type: string
+    enum:
+      - Critical
+      - High
+      - Medium
+      - Low
+      - Note
+    description: >
+      Computed from the OWASP 3x3 risk matrix (likelihood x impact).
+      See risk_matrix below for the mapping.
+
+  mitigation:
+    type: string
+    description: >
+      Recommended countermeasure for the identified threat.
+    examples:
+      - "Implement JWT token validation with RS256 signing"
+
+  references:
+    type: list[string]
+    description: >
+      OWASP IDs, CVE IDs, or framework citations supporting
+      the finding. Required for AI categories (agentic, llm).
+    examples:
+      - "OWASP LLM01:2025"
+      - "ASI-01"
+      - "MCP-03"
+      - "CWE-287"
+
+  dfd_element_type:
+    type: string
+    enum:
+      - External Entity
+      - Process
+      - Data Store
+      - Data Flow
+    description: >
+      DFD classification of the target component.
+
+# Validation Rules
+#
+# 1. id prefix must match category:
+#    S-* → spoofing, T-* → tampering, R-* → repudiation,
+#    I-* → info-disclosure, D-* → denial-of-service,
+#    E-* → privilege-escalation, AG-* → agentic, LLM-* → llm
+#
+# 2. risk_level must match OWASP 3x3 computation from
+#    likelihood and impact (see risk_matrix below)
+#
+# 3. references must contain at least one entry for AI
+#    categories (agentic, llm)
+
+# OWASP 3x3 Risk Matrix
+#
+#              LOW Likelihood   MEDIUM Likelihood   HIGH Likelihood
+# HIGH Impact      Medium            High              Critical
+# MEDIUM Impact    Low               Medium            High
+# LOW Impact       Note              Low               Medium

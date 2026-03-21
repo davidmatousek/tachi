@@ -3,13 +3,13 @@
 **Document Type:** Core Principle Guide
 **Category:** Development Workflow, Version Control
 **Last Updated:** 2025-11-19
-**Applies To:** All {{PROJECT_NAME}} development work
+**Applies To:** All tachi development work
 
 ---
 
 ## Overview
 
-This document defines the git workflow standards for {{PROJECT_NAME}} development. These practices ensure safe collaboration, maintain code quality, and support multi-agent development workflows.
+This document defines the git workflow standards for tachi development. These practices ensure safe collaboration, maintain code quality, and support multi-agent development workflows.
 
 **Constitutional Reference:** Principle IX - Git Workflow & Feature Branching (NON-NEGOTIABLE)
 
@@ -174,7 +174,7 @@ refactor(api): changes
 4. **Issue References**: Use `Closes #123`, `Fixes #456`, or `Refs #789`
 5. **Co-authorship**: Include agent/reviewer contributions
    ```
-   Co-Authored-By: architect <agent@{{PROJECT_NAME}}>
+   Co-Authored-By: architect <agent@tachi>
    ```
 
 ---
@@ -377,7 +377,7 @@ Configure in GitHub repository settings:
 Create `.github/CODEOWNERS` to enforce architecture reviews:
 
 ```
-# {{PROJECT_NAME}} CODEOWNERS
+# tachi CODEOWNERS
 
 # Core API
 /backend/api/ @architect @code-reviewer
@@ -664,7 +664,7 @@ Body: Explain "why" not "what"
 - Any important context?
 
 Closes #123
-Co-Authored-By: Agent <agent@{{PROJECT_NAME}}>
+Co-Authored-By: Agent <agent@tachi>
 ```
 
 ---
@@ -679,4 +679,4 @@ Co-Authored-By: Agent <agent@{{PROJECT_NAME}}>
 
 ---
 
-*This workflow guide is part of the {{PROJECT_NAME}} core principles. All development work must adhere to these standards.*
+*This workflow guide is part of the tachi core principles. All development work must adhere to these standards.*

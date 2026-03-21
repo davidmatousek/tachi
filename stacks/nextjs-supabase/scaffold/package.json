@@ -1,5 +1,5 @@
 {
-  "name": "{{PROJECT_NAME}}",
+  "name": "tachi",
   "version": "0.1.0",
   "private": true,
   "scripts": {

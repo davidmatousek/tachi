@@ -1,4 +1,4 @@
-# ADR-009: Expanding {{PROJECT_NAME}} Template Variable to All User-Facing Template Files
+# ADR-009: Expanding tachi Template Variable to All User-Facing Template Files
 
 **Status**: Accepted
 **Date**: 2026-03-03
@@ -9,7 +9,7 @@
 
 ## Context
 
-`{{PROJECT_NAME}}` is a template variable that `scripts/init.sh` replaces with the adopter's actual project name at `make init` time via `sed`. Before Feature 061, this variable was used only in `.aod/memory/constitution.md`.
+`tachi` is a template variable that `scripts/init.sh` replaces with the adopter's actual project name at `make init` time via `sed`. Before Feature 061, this variable was used only in `.aod/memory/constitution.md`.
 
 Eleven additional files contained the hardcoded string "Agentic Oriented Development Kit" (or its abbreviation), which caused two problems:
 
@@ -22,7 +22,7 @@ The affected files were all user-facing template files: `CLAUDE.md`, `README.md`
 
 ## Decision
 
-We will expand `{{PROJECT_NAME}}` placeholder usage from `constitution.md` alone to all 11 user-facing template files. The `scripts/init.sh` personalization loop already processes these files; no new infrastructure was needed -- only the placeholder was added to each file's content.
+We will expand `tachi` placeholder usage from `constitution.md` alone to all 11 user-facing template files. The `scripts/init.sh` personalization loop already processes these files; no new infrastructure was needed -- only the placeholder was added to each file's content.
 
 No new code was written. No new dependencies were introduced. No infrastructure was changed.
 
@@ -30,13 +30,13 @@ No new code was written. No new dependencies were introduced. No infrastructure 
 
 ## Rationale
 
-1. **Consistency**: `constitution.md` already established `{{PROJECT_NAME}}` as the project name placeholder. Extending to all template files follows the same convention rather than introducing a second approach.
+1. **Consistency**: `constitution.md` already established `tachi` as the project name placeholder. Extending to all template files follows the same convention rather than introducing a second approach.
 
-2. **Zero implementation cost**: `init.sh` already iterates template files for other substitutions. Adding `{{PROJECT_NAME}}` to file content required only editing the files themselves.
+2. **Zero implementation cost**: `init.sh` already iterates template files for other substitutions. Adding `tachi` to file content required only editing the files themselves.
 
 3. **Adopter experience**: A template that still shows "Agentic Oriented Development Kit" after `make init` is confusing. Personalization should be thorough, not partial.
 
-4. **Minimal blast radius**: `{{PROJECT_NAME}}` is a safe placeholder -- it has no meaning outside the kit's init workflow and will never appear in adopter output after `make init` runs.
+4. **Minimal blast radius**: `tachi` is a safe placeholder -- it has no meaning outside the kit's init workflow and will never appear in adopter output after `make init` runs.
 
 ---
 
@@ -59,7 +59,7 @@ No new code was written. No new dependencies were introduced. No infrastructure 
 - More readable to humans inspecting template files before init
 
 **Cons**:
-- Inconsistent with the established `{{VARIABLE}}` double-brace convention already used in `constitution.md` and other template variables (`{{CURRENT_DATE}}`, `{{TEMPLATE_VARIABLES}}`)
+- Inconsistent with the established `{{VARIABLE}}` double-brace convention already used in `constitution.md` and other template variables (`2026-03-21`, `{{TEMPLATE_VARIABLES}}`)
 - Would require a second sed pattern in `init.sh`
 
 **Why Not Chosen**: Consistency with the existing convention is more important than readability of pre-init files.
@@ -81,15 +81,15 @@ No new code was written. No new dependencies were introduced. No infrastructure 
 
 ### Positive
 - After `make init`, all 11 template files display the adopter's project name instead of "Agentic Oriented Development Kit"
-- Consistent `{{PROJECT_NAME}}` convention across all template files
+- Consistent `tachi` convention across all template files
 - No adopter-visible regressions -- the change only affects pre-init file content
 
 ### Negative
-- Contributors reading template files before init must understand that `{{PROJECT_NAME}}` is a placeholder, not a missing value
-- Any future template file added to the kit must remember to use `{{PROJECT_NAME}}` instead of the kit name
+- Contributors reading template files before init must understand that `tachi` is a placeholder, not a missing value
+- Any future template file added to the kit must remember to use `tachi` instead of the kit name
 
 ### Mitigation
-- `docs/architecture/00_Tech_Stack/README.md` documents `{{PROJECT_NAME}}` as a first-class template variable
+- `docs/architecture/00_Tech_Stack/README.md` documents `tachi` as a first-class template variable
 - The [Template Variable Expansion pattern](../03_patterns/README.md#pattern-template-variable-expansion) documents when and how to use placeholders in new template files
 
 ---

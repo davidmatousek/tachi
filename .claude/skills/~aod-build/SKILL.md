@@ -167,7 +167,7 @@ Parse tasks.md and extract metrics.
 
 **Usage**:
 ```bash
-python scripts/analyze_tasks.py specs/001-{{PROJECT_NAME}}/tasks.md
+python scripts/analyze_tasks.py specs/001-tachi/tasks.md
 ```
 
 **Output Format**:
@@ -246,8 +246,8 @@ Template for creating the checkpoints index file (first-time use).
 
 ```bash
 $ python scripts/generate_checkpoint.py \
-    --tasks-file specs/001-{{PROJECT_NAME}}/tasks.md \
-    --output-dir specs/001-{{PROJECT_NAME}} \
+    --tasks-file specs/001-tachi/tasks.md \
+    --output-dir specs/001-tachi \
     --description "Phase1-2-Complete"
 
 Analyzing tasks.md...
@@ -275,8 +275,8 @@ Next: Resume with /aod.build --resume
 
 ```bash
 $ python scripts/generate_checkpoint.py \
-    --tasks-file specs/001-{{PROJECT_NAME}}/tasks.md \
-    --output-dir specs/001-{{PROJECT_NAME}} \
+    --tasks-file specs/001-tachi/tasks.md \
+    --output-dir specs/001-tachi \
     --description "US1-Complete"
 
 ✓ Checkpoint #02: US1-Complete (T001-T039)

@@ -77,21 +77,21 @@ Successfully set up the complete agent orchestration infrastructure for the Agen
 All agents include 7 template variables for project customization:
 
 ```
-{{PROJECT_NAME}}          - Project identifier
+tachi          - Project identifier
 {{BACKEND_FRAMEWORK}}     - Backend tech (Fastify → Express/NestJS/etc)
 {{FRONTEND_FRAMEWORK}}    - Frontend tech (React → Vue/Svelte/etc)
 {{DATABASE}}              - Database system (PostgreSQL → MySQL/MongoDB/etc)
 {{DATABASE_PROVIDER}}     - DB provider (Neon → Supabase/AWS RDS/etc)
-{{CLOUD_PROVIDER}}        - Cloud platform (Vercel → AWS/Railway/etc)
+local-filesystem        - Cloud platform (Vercel → AWS/Railway/etc)
 {{BACKEND_PATH}}          - Backend source path (backend/src → server/src/etc)
 {{FRONTEND_PATH}}         - Frontend source path (frontend/src → client/src/etc)
 ```
 
 **Example Replacements in senior-backend-engineer.md**:
 - "Fastify" → `{{BACKEND_FRAMEWORK}}`
-- "Vercel" → `{{CLOUD_PROVIDER}}`
+- "Vercel" → `local-filesystem`
 - "PostgreSQL" → `{{DATABASE}}`
-- project name → `{{PROJECT_NAME}}`
+- project name → `tachi`
 - "/backend/src/" → "/{{BACKEND_PATH}}/"
 
 **Total Changes**: ~1,431 bytes of templatization across all agents
@@ -144,7 +144,7 @@ All agents include 7 template variables for project customization:
    - Git workflow automation (commits, PRs, branches)
    - Creating commits, managing branches
 
-**Templatization**: Minimal - only `{{PROJECT_NAME}}` substitution in example paths
+**Templatization**: Minimal - only `tachi` substitution in example paths
 
 ---
 
@@ -246,12 +246,12 @@ All agents include 7 template variables for project customization:
 
 | Variable | Original Value | Purpose |
 |----------|---------------|---------|
-| `{{PROJECT_NAME}}` | (user's project name) | Project identifier |
+| `tachi` | (user's project name) | Project identifier |
 | `{{BACKEND_FRAMEWORK}}` | Fastify | Backend framework choice |
 | `{{FRONTEND_FRAMEWORK}}` | React | Frontend framework choice |
 | `{{DATABASE}}` | PostgreSQL | Database system |
 | `{{DATABASE_PROVIDER}}` | Neon | Database hosting provider |
-| `{{CLOUD_PROVIDER}}` | Vercel | Cloud deployment platform |
+| `local-filesystem` | Vercel | Cloud deployment platform |
 | `{{BACKEND_PATH}}` | backend/src | Backend source directory |
 | `{{FRONTEND_PATH}}` | frontend/src | Frontend source directory |
 
@@ -297,7 +297,7 @@ All agents include 7 template variables for project customization:
 1. **Replace Template Variables**:
    ```bash
    cd .claude/agents
-   sed -i 's/{{PROJECT_NAME}}/my-project/g' *.md
+   sed -i 's/tachi/my-project/g' *.md
    sed -i 's/{{BACKEND_FRAMEWORK}}/Express/g' *.md
    sed -i 's/{{FRONTEND_FRAMEWORK}}/Vue/g' *.md
    # ... etc for all 7 variables
@@ -324,8 +324,8 @@ All agents include 7 template variables for project customization:
 sed -i 's/{{BACKEND_FRAMEWORK}}/Express/g' .claude/agents/*.md .claude/commands/*.md
 sed -i 's/{{FRONTEND_FRAMEWORK}}/Svelte/g' .claude/agents/*.md .claude/commands/*.md
 sed -i 's/{{DATABASE}}/MySQL/g' .claude/agents/*.md .claude/commands/*.md
-sed -i 's/{{CLOUD_PROVIDER}}/Railway/g' .claude/agents/*.md .claude/commands/*.md
-sed -i 's/{{PROJECT_NAME}}/my-app/g' .claude/agents/*.md .claude/skills/**/*.md .claude/commands/*.md
+sed -i 's/local-filesystem/Railway/g' .claude/agents/*.md .claude/commands/*.md
+sed -i 's/tachi/my-app/g' .claude/agents/*.md .claude/skills/**/*.md .claude/commands/*.md
 ```
 
 **Example 2: NestJS + Next.js + MongoDB on AWS**
@@ -334,8 +334,8 @@ sed -i 's/{{BACKEND_FRAMEWORK}}/NestJS/g' .claude/agents/*.md .claude/commands/*
 sed -i 's/{{FRONTEND_FRAMEWORK}}/Next.js/g' .claude/agents/*.md .claude/commands/*.md
 sed -i 's/{{DATABASE}}/MongoDB/g' .claude/agents/*.md .claude/commands/*.md
 sed -i 's/{{DATABASE_PROVIDER}}/Atlas/g' .claude/agents/*.md .claude/commands/*.md
-sed -i 's/{{CLOUD_PROVIDER}}/AWS/g' .claude/agents/*.md .claude/commands/*.md
-sed -i 's/{{PROJECT_NAME}}/enterprise-app/g' .claude/agents/*.md .claude/skills/**/*.md .claude/commands/*.md
+sed -i 's/local-filesystem/AWS/g' .claude/agents/*.md .claude/commands/*.md
+sed -i 's/tachi/enterprise-app/g' .claude/agents/*.md .claude/skills/**/*.md .claude/commands/*.md
 ```
 
 ---

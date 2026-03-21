@@ -1,6 +1,6 @@
-# Local Development Environment - {{PROJECT_NAME}}
+# Local Development Environment - tachi
 
-**Last Updated**: {{CURRENT_DATE}}
+**Last Updated**: 2026-03-21
 **Owner**: DevOps Agent
 
 ---
@@ -20,7 +20,7 @@
 
 ### make init Personalization
 
-`make init` personalizes the following template files by replacing `{{PROJECT_NAME}}` and other template variables with your project values at setup time:
+`make init` personalizes the following template files by replacing `tachi` and other template variables with your project values at setup time:
 
 - `CLAUDE.md`
 - `README.md`
@@ -43,7 +43,7 @@ No manual edits to these files are needed before running `make init`. After init
 ```bash
 # Clone repository
 git clone {{REPOSITORY_URL}}
-cd {{PROJECT_NAME}}
+cd tachi
 
 # Install dependencies
 npm install
@@ -90,7 +90,7 @@ cp .env.example .env
 
 **Required Variables**:
 ```
-DATABASE_URL=postgresql://localhost:{{DATABASE_PORT}}/{{PROJECT_NAME}}_dev
+DATABASE_URL=postgresql://localhost:{{DATABASE_PORT}}/tachi_dev
 API_URL=http://localhost:{{BACKEND_PORT}}
 FRONTEND_URL=http://localhost:{{FRONTEND_PORT}}
 ```

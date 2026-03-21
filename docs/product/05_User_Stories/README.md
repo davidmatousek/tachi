@@ -1,6 +1,6 @@
-# User Stories - {{PROJECT_NAME}}
+# User Stories - tachi
 
-**Last Updated**: {{CURRENT_DATE}}
+**Last Updated**: 2026-03-21
 **Owner**: Product Manager (product-manager)
 **Status**: Template - Complete after MVP launch
 
@@ -114,7 +114,7 @@ Each PRD should include relevant user stories:
 - **US-089-2** (P0): Delivery File Change Validation - Validate that documentation agents produce actual file changes during `/aod.deliver`
 - **US-089-3** (P1): User Story Export During Delivery - Extract validated user stories from GitHub Issues and append to `05_User_Stories/README.md`
 - **US-089-4** (P1): Vision Placeholder Guard in Define - Warn on unresolved template placeholders in vision files during `/aod.define`
-- **US-089-5** (P1): Template Placeholder Resolution in Scaffold - Auto-resolve `{{PROJECT_NAME}}` and `{{CURRENT_DATE}}` in `docs/` after `/aod.stack scaffold`
+- **US-089-5** (P1): Template Placeholder Resolution in Scaffold - Auto-resolve `tachi` and `2026-03-21` in `docs/` after `/aod.stack scaffold`
 - **US-089-6** (P1): Closure Summary Relocation - Write closure summaries to `.aod/closures/` instead of `docs/architecture/`
 - **US-089-7** (P2): Quarterly Planning Scaffolds - New `/aod.roadmap` and `/aod.okrs` commands for planning document scaffolding
 

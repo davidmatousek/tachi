@@ -1,6 +1,6 @@
 # Claude Agent Infrastructure
 
-This directory contains the complete agent orchestration infrastructure for {{PROJECT_NAME}}, including 13 specialized agents, 14 automation skills, and 14 slash commands for streamlined feature development.
+This directory contains the complete agent orchestration infrastructure for tachi, including 13 specialized agents, 14 automation skills, and 14 slash commands for streamlined feature development.
 
 ## Overview
 
@@ -42,12 +42,12 @@ The infrastructure is organized into three main components:
 All agents are **templatized** with the following variables for project-specific customization:
 
 ```
-{{PROJECT_NAME}}          - Your project name (e.g., "my-saas-app")
+tachi          - Your project name (e.g., "my-saas-app")
 {{BACKEND_FRAMEWORK}}     - Backend framework (e.g., "Express", "Fastify", "NestJS")
 {{FRONTEND_FRAMEWORK}}    - Frontend framework (e.g., "React", "Vue", "Svelte")
 {{DATABASE}}              - Database system (e.g., "PostgreSQL", "MySQL", "MongoDB")
 {{DATABASE_PROVIDER}}     - Database provider (e.g., "Supabase", "Neon", "AWS RDS")
-{{CLOUD_PROVIDER}}        - Cloud platform (e.g., "Vercel", "AWS", "Railway")
+local-filesystem        - Cloud platform (e.g., "Vercel", "AWS", "Railway")
 {{BACKEND_PATH}}          - Backend source path (e.g., "backend/src", "server/src")
 {{FRONTEND_PATH}}         - Frontend source path (e.g., "frontend/src", "client/src")
 ```
@@ -111,7 +111,7 @@ Skills are reusable automation capabilities that agents can invoke to perform sp
 |-------|---------|-------------|
 | **aod-lens** | Apply structured thinking methodologies | Systematic analysis, risk assessment, decision-making |
 
-**Skills are domain-agnostic** and require minimal customization beyond `{{PROJECT_NAME}}` substitution.
+**Skills are domain-agnostic** and require minimal customization beyond `tachi` substitution.
 
 ---
 
@@ -208,8 +208,8 @@ Search and replace in all `.claude/agents/*.md` files:
 sed -i 's/{{BACKEND_FRAMEWORK}}/Express/g' .claude/agents/*.md
 sed -i 's/{{FRONTEND_FRAMEWORK}}/Vue/g' .claude/agents/*.md
 sed -i 's/{{DATABASE}}/MySQL/g' .claude/agents/*.md
-sed -i 's/{{CLOUD_PROVIDER}}/AWS/g' .claude/agents/*.md
-sed -i 's/{{PROJECT_NAME}}/my-project/g' .claude/agents/*.md .claude/skills/**/*.md .claude/commands/*.md
+sed -i 's/local-filesystem/AWS/g' .claude/agents/*.md
+sed -i 's/tachi/my-project/g' .claude/agents/*.md .claude/skills/**/*.md .claude/commands/*.md
 ```
 
 ### 2. Adjust File Paths

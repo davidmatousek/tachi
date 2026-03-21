@@ -1,6 +1,6 @@
-# OKRs (Objectives and Key Results) - {{PROJECT_NAME}}
+# OKRs (Objectives and Key Results) - tachi
 
-**Last Updated**: {{CURRENT_DATE}}
+**Last Updated**: 2026-03-21
 **Owner**: Product Manager (product-manager)
 **Status**: Template - Complete after MVP launch
 
@@ -39,7 +39,7 @@ OKRs align the team around measurable goals. They answer:
 ## OKR Template
 
 ```markdown
-# {{PROJECT_NAME}} OKRs - YYYY-QN
+# tachi OKRs - YYYY-QN
 
 **Quarter**: [Q1/Q2/Q3/Q4] YYYY
 **Status**: [Planning | In Progress | Complete]

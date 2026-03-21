@@ -99,7 +99,7 @@ Q5: How will you measure success? (1-2 key metrics)
 4. Proceed to Step 1
 
 **If vision docs exist and NO `[To be refined]` markers**:
-1. **Placeholder Guard**: Scan all files in `docs/product/01_Product_Vision/` for unresolved template placeholders: `{{PROJECT_NAME}}`, `{{CURRENT_DATE}}`, `{{TEMPLATE_VARIABLES}}`
+1. **Placeholder Guard**: Scan all files in `docs/product/01_Product_Vision/` for unresolved template placeholders: `tachi`, `2026-03-21`, `{{TEMPLATE_VARIABLES}}`
    - If any placeholders found: Display a non-blocking warning:
      ```
      Template placeholders detected in vision files:

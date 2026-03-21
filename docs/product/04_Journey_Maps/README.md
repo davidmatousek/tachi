@@ -1,6 +1,6 @@
-# Customer Journey Maps - {{PROJECT_NAME}}
+# Customer Journey Maps - tachi
 
-**Last Updated**: {{CURRENT_DATE}}
+**Last Updated**: 2026-03-21
 **Owner**: Product Manager (product-manager)
 **Status**: Template - Complete after MVP launch
 
@@ -27,7 +27,7 @@ Before MVP:
 
 ## Overview
 
-Customer journey maps visualize the end-to-end experience of users interacting with {{PROJECT_NAME}}. They help identify pain points, opportunities, and moments that matter.
+Customer journey maps visualize the end-to-end experience of users interacting with tachi. They help identify pain points, opportunities, and moments that matter.
 
 ---
 
@@ -38,7 +38,7 @@ Customer journey maps visualize the end-to-end experience of users interacting w
 
 **Persona**: [Name from target-users.md]
 **Scenario**: [What is the user trying to accomplish?]
-**Last Updated**: {{CURRENT_DATE}}
+**Last Updated**: 2026-03-21
 
 ## Journey Stages
 
@@ -47,7 +47,7 @@ Customer journey maps visualize the end-to-end experience of users interacting w
 **Thoughts**: [What they're thinking]
 **Feelings**: [Emotional state: 😀😐😞]
 **Pain Points**: [Frustrations]
-**Opportunities**: [How {{PROJECT_NAME}} can help]
+**Opportunities**: [How tachi can help]
 
 ### 2. Evaluation
 [Same structure]

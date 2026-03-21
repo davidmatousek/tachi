@@ -1,6 +1,6 @@
-# Architecture Documentation - {{PROJECT_NAME}}
+# Architecture Documentation - tachi
 
-**Last Updated**: {{CURRENT_DATE}}
+**Last Updated**: 2026-03-21
 **Owner**: Architect
 **Status**: Template
 
@@ -8,7 +8,7 @@
 
 ## Overview
 
-This directory contains all technical architecture documentation for {{PROJECT_NAME}}.
+This directory contains all technical architecture documentation for tachi.
 
 ---
 
@@ -34,7 +34,7 @@ Significant technical decisions with context and trade-offs
 - `ADR-006-non-fatal-observability-operations.md` - Non-fatal error handling for observability and circuit-breaker functions (Feature 054)
 - `ADR-007-stack-pack-dual-surface-injection.md` - Dual-surface injection pattern for stack pack context loading (Feature 058)
 - `ADR-008-opt-out-flag-for-default-quality-gates.md` - Opt-out flag (`--no-simplify`) for default-on quality gate steps in commands (Feature 065)
-- `ADR-009-template-variable-expansion-scope.md` - Expanding `{{PROJECT_NAME}}` placeholder to all user-facing template files (Feature 061)
+- `ADR-009-template-variable-expansion-scope.md` - Expanding `tachi` placeholder to all user-facing template files (Feature 061)
 - `ADR-010-minimal-return-architecture.md` - Minimal return architecture for subagent→main token efficiency (Feature 073)
 - `ADR-011-multi-flag-opt-out-and-step-insertion-pattern.md` - Multi-flag opt-out pattern and step insertion convention for `/aod.build` (Feature 080)
 - `ADR-NNN-decision-title.md` - Individual ADRs

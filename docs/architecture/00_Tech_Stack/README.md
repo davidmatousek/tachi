@@ -1,13 +1,13 @@
-# Technology Stack - {{PROJECT_NAME}}
+# Technology Stack - tachi
 
-**Last Updated**: {{CURRENT_DATE}}
+**Last Updated**: 2026-03-21
 **Owner**: Architect
 
 ---
 
 ## Overview
 
-This document defines the technology stack for {{PROJECT_NAME}}.
+This document defines the technology stack for tachi.
 
 ---
 
@@ -124,12 +124,12 @@ These are tools used by the AOD Kit itself (not the adopter's application stack)
 
 | Placeholder | Replaced With | Scope |
 |-------------|---------------|-------|
-| `{{PROJECT_NAME}}` | Adopter's project name (entered at `make init` prompt) | 12 template files (Feature 061) |
-| `{{CURRENT_DATE}}` | Current date at init time | Select files |
+| `tachi` | Adopter's project name (entered at `make init` prompt) | 12 template files (Feature 061) |
+| `2026-03-21` | Current date at init time | Select files |
 
-**`{{PROJECT_NAME}}` is a first-class template variable** (Feature 061). All user-facing template files in `.claude/`, `docs/`, `CLAUDE.md`, and `README.md` use this placeholder rather than hardcoding "Agentic Oriented Development Kit". After `make init`, adopters see their own project name throughout.
+**`tachi` is a first-class template variable** (Feature 061). All user-facing template files in `.claude/`, `docs/`, `CLAUDE.md`, and `README.md` use this placeholder rather than hardcoding "Agentic Oriented Development Kit". After `make init`, adopters see their own project name throughout.
 
-When adding a new user-facing template file to the kit, use `{{PROJECT_NAME}}` wherever the project name should appear and confirm the file is included in the `scripts/init.sh` substitution loop. See [ADR-009](../02_ADRs/ADR-009-template-variable-expansion-scope.md) and the [Template Variable Expansion pattern](../03_patterns/README.md#pattern-template-variable-expansion).
+When adding a new user-facing template file to the kit, use `tachi` wherever the project name should appear and confirm the file is included in the `scripts/init.sh` substitution loop. See [ADR-009](../02_ADRs/ADR-009-template-variable-expansion-scope.md) and the [Template Variable Expansion pattern](../03_patterns/README.md#pattern-template-variable-expansion).
 
 ---
 

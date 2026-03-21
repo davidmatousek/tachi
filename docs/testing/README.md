@@ -1,6 +1,6 @@
-# Testing Strategy - {{PROJECT_NAME}}
+# Testing Strategy - tachi
 
-**Last Updated**: {{CURRENT_DATE}}
+**Last Updated**: 2026-03-21
 **Owner**: Architect + Team Lead
 **Status**: Template
 
@@ -8,7 +8,7 @@
 
 ## Overview
 
-This document provides guidance on testing strategy for {{PROJECT_NAME}}. It does NOT scaffold specific test files (project-specific), but provides recommendations and patterns.
+This document provides guidance on testing strategy for tachi. It does NOT scaffold specific test files (project-specific), but provides recommendations and patterns.
 
 ---
 

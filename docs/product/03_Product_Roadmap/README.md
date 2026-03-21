@@ -1,6 +1,6 @@
-# Product Roadmap - {{PROJECT_NAME}}
+# Product Roadmap - tachi
 
-**Last Updated**: {{CURRENT_DATE}}
+**Last Updated**: 2026-03-21
 **Owner**: Product Manager (product-manager)
 **Status**: Template - Complete after MVP launch
 
@@ -28,7 +28,7 @@ Before MVP, you don't have enough information:
 
 ## Overview
 
-This directory contains the product roadmap for {{PROJECT_NAME}}, organized by phases or quarters. The roadmap shows **When** features will be delivered and **Why** they're prioritized in that order.
+This directory contains the product roadmap for tachi, organized by phases or quarters. The roadmap shows **When** features will be delivered and **Why** they're prioritized in that order.
 
 ---
 
@@ -90,7 +90,7 @@ docs/product/03_Product_Roadmap/
 
 ### Quarter-Based Template
 ```markdown
-# {{PROJECT_NAME}} Roadmap - YYYY-QN
+# tachi Roadmap - YYYY-QN
 
 **Quarter**: [Q1/Q2/Q3/Q4] YYYY
 **Theme**: [One word theme for the quarter]

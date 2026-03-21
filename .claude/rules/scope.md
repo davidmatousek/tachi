@@ -1,18 +1,18 @@
 # Scope
 
-<!-- Rule file for {{PROJECT_NAME}} -->
+<!-- Rule file for tachi -->
 <!-- This file is referenced from CLAUDE.md using @-syntax -->
 
 ## Overview
 
-This file defines what {{PROJECT_NAME}} is (and isn't) to set clear expectations for template adopters.
+This file defines what tachi is (and isn't) to set clear expectations for template adopters.
 
 ---
 
 ## What This Is
 
-**{{PROJECT_NAME}} is:**
-- {{PROJECT_DESCRIPTION}}
+**tachi is:**
+- Automated threat modeling toolkit extending STRIDE with AI-specific threat agents for agentic applications
 - Agentic-oriented development with clear governance workflows
 - Works with any agent workflow or framework (not Claude Code-specific)
 - Methodology and governance template (not application code)
@@ -28,7 +28,7 @@ This file defines what {{PROJECT_NAME}} is (and isn't) to set clear expectations
 
 ## What This Isn't
 
-**{{PROJECT_NAME}} is NOT:**
+**tachi is NOT:**
 - NOT a quick prototype tool (we follow proper process)
 - NOT limited to a single AI agent (supports multi-agent workflows)
 - NOT skipping governance for speed (governance is built into every command)

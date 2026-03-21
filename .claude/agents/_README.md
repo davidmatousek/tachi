@@ -3,7 +3,7 @@
 <!-- Reference: Feature 003 - Agent Refactoring -->
 <!-- Version: 2.0.0 | Created: 2026-01-31 -->
 
-Quick reference for all agents in {{PROJECT_NAME}}.
+Quick reference for all agents in tachi.
 
 ---
 

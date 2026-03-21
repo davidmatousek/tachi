@@ -1,6 +1,6 @@
-# Product Vision - {{PROJECT_NAME}}
+# Product Vision - tachi
 
-**Last Updated**: {{CURRENT_DATE}}
+**Last Updated**: 2026-03-21
 **Owner**: Product Manager (product-manager)
 **Status**: Template - Customize for your project
 
@@ -8,7 +8,7 @@
 
 ## Overview
 
-This directory contains the strategic product vision documents for {{PROJECT_NAME}}. These documents answer:
+This directory contains the strategic product vision documents for tachi. These documents answer:
 - **What** are we building?
 - **Why** are we building it?
 - **Who** are we building it for?
@@ -19,7 +19,7 @@ This directory contains the strategic product vision documents for {{PROJECT_NAM
 ## Documents in This Directory
 
 ### 1. product-vision.md (Required)
-**Purpose**: Defines the long-term vision and mission of {{PROJECT_NAME}}
+**Purpose**: Defines the long-term vision and mission of tachi
 
 **Template Structure**:
 ```markdown
@@ -32,7 +32,7 @@ This directory contains the strategic product vision documents for {{PROJECT_NAM
 [2-3 sentences: Where will the product be in 3-5 years?]
 
 ## Core Value Proposition
-[What makes {{PROJECT_NAME}} valuable and unique?]
+[What makes tachi valuable and unique?]
 
 ## Success Metrics
 [How will you measure if the vision is being achieved?]
@@ -49,7 +49,7 @@ This directory contains the strategic product vision documents for {{PROJECT_NAM
 - **Who**: [Demographics, role, context]
 - **Pain Points**: [What problems do they face?]
 - **Goals**: [What are they trying to achieve?]
-- **How {{PROJECT_NAME}} Helps**: [Your solution]
+- **How tachi Helps**: [Your solution]
 
 ## Secondary Persona: [Name]
 [Same structure as primary]
@@ -74,7 +74,7 @@ This directory contains the strategic product vision documents for {{PROJECT_NAM
 [Products that solve similar problems differently]
 
 ## Our Unique Positioning
-[What makes {{PROJECT_NAME}} different and better?]
+[What makes tachi different and better?]
 ```
 
 ---
@@ -83,7 +83,7 @@ This directory contains the strategic product vision documents for {{PROJECT_NAM
 
 ### Step 1: Start with Mission and Vision
 1. Copy `product-vision-template.md` to `product-vision.md`
-2. Replace `{{PROJECT_NAME}}` with your project name
+2. Replace `tachi` with your project name
 3. Fill in mission statement (one sentence maximum)
 4. Write vision statement (2-3 sentences about 3-5 year future)
 5. Define core value proposition (why users should care)
@@ -95,7 +95,7 @@ This directory contains the strategic product vision documents for {{PROJECT_NAM
    - Demographics and context
    - Pain points (problems they face)
    - Goals (what they want to achieve)
-   - How {{PROJECT_NAME}} solves their problems
+   - How tachi solves their problems
 4. Define anti-personas (who you're NOT building for)
 
 ### Step 3: Map Competitive Landscape
@@ -125,7 +125,7 @@ When creating `spec.md` with `/aod.spec`:
 Quarterly OKRs in `docs/product/06_OKRs/` must:
 - Support progress toward vision
 - Solve pain points for target personas
-- Differentiate {{PROJECT_NAME}} from competitors
+- Differentiate tachi from competitors
 
 ---
 
@@ -211,7 +211,7 @@ docs/product/01_Product_Vision/
 
 ---
 
-**Template Instructions**: Delete this section after customization. Replace all `{{TEMPLATE_VARIABLES}}` throughout this directory. The vision you define here will guide all product decisions for {{PROJECT_NAME}}.
+**Template Instructions**: Delete this section after customization. Replace all `{{TEMPLATE_VARIABLES}}` throughout this directory. The vision you define here will guide all product decisions for tachi.
 
-**Last Updated**: {{CURRENT_DATE}}
+**Last Updated**: 2026-03-21
 **Maintained By**: Product Manager (product-manager)

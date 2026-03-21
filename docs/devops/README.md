@@ -1,6 +1,6 @@
-# DevOps Documentation - {{PROJECT_NAME}}
+# DevOps Documentation - tachi
 
-**Last Updated**: {{CURRENT_DATE}}
+**Last Updated**: 2026-03-21
 **Owner**: DevOps Agent
 **Status**: Template
 
@@ -8,7 +8,7 @@
 
 ## Overview
 
-This directory contains deployment and infrastructure documentation for {{PROJECT_NAME}}.
+This directory contains deployment and infrastructure documentation for tachi.
 
 ---
 

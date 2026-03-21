@@ -1,7 +1,7 @@
 # ADR-000: Template for Architecture Decision Records
 
 **Status**: Accepted
-**Date**: {{CURRENT_DATE}}
+**Date**: 2026-03-21
 **Deciders**: Architect, {{TEAM_MEMBERS}}
 
 ---

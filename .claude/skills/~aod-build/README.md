@@ -55,8 +55,8 @@ The script will:
 
 ```bash
 $ python scripts/generate_checkpoint.py \
-    --tasks-file ../../specs/001-{{PROJECT_NAME}}/tasks.md \
-    --output-dir ../../specs/001-{{PROJECT_NAME}} \
+    --tasks-file ../../specs/001-tachi/tasks.md \
+    --output-dir ../../specs/001-tachi \
     --description "Phase1-2-Complete"
 
 Analyzing tasks.md...
@@ -88,7 +88,7 @@ Title:
 
 Generating checkpoint report...
 ✓ Generated: CHECKPOINT-01_Phase1-2-Complete_T001-T030.md
-✓ Location: specs/001-{{PROJECT_NAME}}/CHECKPOINT-01_Phase1-2-Complete_T001-T030.md
+✓ Location: specs/001-tachi/CHECKPOINT-01_Phase1-2-Complete_T001-T030.md
 
 Updating CHECKPOINTS_README.md...
 ✓ Updated: CHECKPOINTS_README.md
@@ -122,7 +122,7 @@ Next: Resume with /aod.build --resume
 
 **Usage**:
 ```bash
-python scripts/analyze_tasks.py specs/001-{{PROJECT_NAME}}/tasks.md
+python scripts/analyze_tasks.py specs/001-tachi/tasks.md
 ```
 
 **Output**: JSON with task counts, progress, phase breakdown
@@ -130,7 +130,7 @@ python scripts/analyze_tasks.py specs/001-{{PROJECT_NAME}}/tasks.md
 **Example Output**:
 ```json
 {
-  "feature_id": "001-{{PROJECT_NAME}}",
+  "feature_id": "001-tachi",
   "total_tasks": 120,
   "completed_tasks": 31,
   "progress_percentage": 25.83,
@@ -231,7 +231,7 @@ Documents all metric calculations:
 ```bash
 # Test analyze script
 cd .claude/skills/~aod-build
-python scripts/analyze_tasks.py ../../specs/001-{{PROJECT_NAME}}/tasks.md
+python scripts/analyze_tasks.py ../../specs/001-tachi/tasks.md
 
 # Should output JSON with 120 tasks, 8 phases
 ```
@@ -308,7 +308,7 @@ Post-MVP features to consider:
 
 ## License
 
-Part of the {{PROJECT_NAME}} project.
+Part of the tachi project.
 
 ## Maintainer
 
@@ -322,4 +322,4 @@ Team Lead Agent
 
 ---
 
-**Generated with [AOD Kit](https://github.com/{{PROJECT_NAME}})**
+**Generated with [AOD Kit](https://github.com/tachi)**

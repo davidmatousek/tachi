@@ -322,13 +322,13 @@ root:
 
 After scaffold files are copied, automatically resolve template placeholders in `docs/` files.
 
-1. **Baseline grep** (per KB #22): Run `grep -r '{{PROJECT_NAME}}\|{{CURRENT_DATE}}' docs/` to map all placeholder occurrences before replacement. Record the count for the summary.
+1. **Baseline grep** (per KB #22): Run `grep -r 'tachi\|2026-03-21' docs/` to map all placeholder occurrences before replacement. Record the count for the summary.
 2. **Source project name**:
    a. Read `.aod/memory/constitution.md` and extract the project name from its heading or body
    b. If not found or file does not exist: fallback to git repo basename via `basename $(git rev-parse --show-toplevel)`
 3. **Replace placeholders** in `docs/` files only:
-   - Replace all `{{PROJECT_NAME}}` occurrences with the resolved project name
-   - Replace all `{{CURRENT_DATE}}` occurrences with the current date in `YYYY-MM-DD` format
+   - Replace all `tachi` occurrences with the resolved project name
+   - Replace all `2026-03-21` occurrences with the current date in `YYYY-MM-DD` format
    - **Scope boundary**: Do NOT modify files outside the `docs/` directory
 4. **Idempotent**: If a file contains no placeholders (already resolved), it remains unchanged
 5. **Display summary**:
@@ -336,8 +336,8 @@ After scaffold files are copied, automatically resolve template placeholders in 
    Placeholder resolution:
      Files modified: {count}
      Placeholders resolved: {total_count}
-       - {{PROJECT_NAME}}: {count} → {resolved_name}
-       - {{CURRENT_DATE}}: {count} → {resolved_date}
+       - tachi: {count} → {resolved_name}
+       - 2026-03-21: {count} → {resolved_date}
    ```
    If zero placeholders found, display: "Placeholder resolution: no placeholders found in docs/ files"
 

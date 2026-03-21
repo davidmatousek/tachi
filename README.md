@@ -7,6 +7,34 @@
 
 ---
 
+## tachi — Automated Threat Modeling
+
+tachi is an automated threat modeling toolkit that extends STRIDE with AI-specific threat agents for agentic applications. It provides a structured approach to threat analysis with machine-readable schemas, consistent output templates, and support for 5 architecture input formats.
+
+### Integration Quickstart
+
+| What | Where | Purpose |
+|------|-------|---------|
+| **Interface Contract** | [`docs/INTERFACE-CONTRACT.md`](docs/INTERFACE-CONTRACT.md) | Single document covering input formats, invocation protocol, output structure, and side effects |
+| **Output Template** | [`templates/threats.md`](templates/threats.md) | Canonical output structure with all 7 required sections and example values |
+| **Schemas** | [`schemas/`](schemas/) | Machine-readable contracts: [`finding.yaml`](schemas/finding.yaml) (IR schema), [`input.yaml`](schemas/input.yaml) (input validation), [`output.yaml`](schemas/output.yaml) (output structure) |
+| **Examples** | [`examples/`](examples/) | Sample inputs and expected outputs: [ASCII web API](examples/ascii-web-api/), [Mermaid agentic app](examples/mermaid-agentic-app/), [free-text microservice](examples/free-text-microservice/) |
+| **Threat Agents** | [`agents/stride/`](agents/stride/) (6 STRIDE) + [`agents/ai/`](agents/ai/) (5 AI) | Agent prompt definitions for threat detection |
+
+### Supported Input Formats
+
+| Priority | Format | Example |
+|----------|--------|---------|
+| 1 | ASCII | Box-drawing diagrams with `+--+`, `\|`, `[...]` |
+| 2 | Free-text | Prose architecture descriptions |
+| 3 | Mermaid | `flowchart`, `graph`, `sequenceDiagram` |
+| 4 | PlantUML | `@startuml` / `@enduml` blocks |
+| 5 | C4 | `Person`, `System`, `Container` declarations |
+
+See the [Interface Contract](docs/INTERFACE-CONTRACT.md) for full format details, recognition patterns, and invocation protocol.
+
+---
+
 ## What is AOD Kit?
 
 The Agentic Oriented Development Kit (AOD Kit) is a governance template that brings structured software development lifecycle (SDLC) practices to AI agent-assisted workflows. It uses the **AOD Triad** -- a three-role governance methodology involving a Product Manager, Architect, and Team Lead -- to enforce sign-offs and quality gates at every phase of development. AOD Kit works with any AI coding agent and provides the scaffolding for turning product ideas into well-governed implementations. Whether you are a solo developer or a team, the Triad ensures nothing ships without proper review.

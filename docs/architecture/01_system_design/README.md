@@ -70,3 +70,94 @@ Steps 1-8 (retrospective data collection)
          ▼
    Command Step 12: Verify delivery.md exists (no longer generates closure file)
 ```
+
+---
+
+### Feature 001: Project Skeleton & Interface Contract
+
+## Components
+
+### Component 1: Agent Prompt Files (Hub)
+
+**Location**: `agents/`
+**Type**: New files (11 agent prompts + 1 placeholder)
+**Purpose**: Immutable threat agent definitions — the content hub that all outputs derive from.
+
+- `agents/stride/` — 6 STRIDE agents (spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation)
+- `agents/ai/` — 5 AI agents (prompt-injection, tool-abuse, data-poisoning, model-theft, agent-autonomy)
+- `agents/ai/README.md` — 5-agent-to-2-table mapping: AG (agent-autonomy, tool-abuse) and LLM (prompt-injection, data-poisoning, model-theft)
+- `agents/orchestrator.md` — Placeholder for F-002
+
+### Component 2: Machine-Readable Schemas
+
+**Location**: `schemas/`
+**Type**: New directory with 3 YAML schema files
+**Purpose**: Data contracts between agents, templates, and downstream features.
+
+- `schemas/finding.yaml` — IR schema (id, category, component, threat, likelihood, impact, risk_level, mitigation, references, dfd_element_type)
+- `schemas/input.yaml` — Input validation (5 formats: ASCII, free-text, Mermaid, PlantUML, C4)
+- `schemas/output.yaml` — Output structure (7 sections matching threats.md template)
+
+### Component 3: Interface Contract
+
+**Location**: `docs/INTERFACE-CONTRACT.md`
+**Type**: New file
+**Purpose**: Single document specifying input formats, STRIDE-per-Element normalization, AI dispatch rules, invocation protocol, and side-effect guarantees.
+
+### Component 4: Output Template
+
+**Location**: `templates/threats.md`
+**Type**: New file
+**Purpose**: Canonical template for threat model output with 7 sections: System Overview, Trust Boundaries, STRIDE Tables (6), AI Threat Tables (2), Coverage Matrix, Risk Summary, Recommended Actions.
+
+## Data Flow
+
+```
+Architecture Input (5 formats)
+        │
+        ▼
+┌─────────────────────┐
+│  Input Validation    │ ◄── schemas/input.yaml
+│  (format detection)  │
+└────────┬────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│  STRIDE-per-Element  │ ◄── INTERFACE-CONTRACT.md
+│  Normalization       │     (normalization table)
+│  + AI Dispatch       │
+└────────┬────────────┘
+         │
+    ┌────┴─────────┐
+    ▼              ▼
+┌────────┐   ┌──────────┐
+│ STRIDE  │   │ AI Threat │
+│ Agents  │   │ Agents    │
+│ (6)     │   │ (5)       │
+└────┬───┘   └────┬─────┘
+     │             │
+     ▼             ▼
+┌─────────────────────┐
+│  Intermediate        │ ◄── schemas/finding.yaml
+│  Representation (IR) │     (agent output contract)
+│  [Finding objects]   │
+└────────┬────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│  Template Engine     │ ◄── templates/threats.md
+│  (IR → Output)       │     schemas/output.yaml
+└────────┬────────────┘
+         │
+         ▼
+   Threat Model Output
+   (threats.md)
+```
+
+## Tech Stack
+
+| Technology | Purpose |
+|-----------|---------|
+| Markdown + YAML | Content format — platform-agnostic, no runtime dependencies |
+| OWASP 3x3 Matrix | Risk rating standard — human-interpretable |
+| STRIDE-per-Element | Threat methodology — DFD element mapping, O(n) scaling |

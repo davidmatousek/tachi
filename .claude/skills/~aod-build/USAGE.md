@@ -6,8 +6,8 @@
 cd .claude/skills/~aod-build
 
 python scripts/generate_checkpoint.py \
-  --tasks-file ../../specs/001-{{PROJECT_NAME}}/tasks.md \
-  --output-dir ../../specs/001-{{PROJECT_NAME}} \
+  --tasks-file ../../specs/001-tachi/tasks.md \
+  --output-dir ../../specs/001-tachi \
   --description "Phase1-2-Complete"
 ```
 
@@ -120,7 +120,7 @@ Time saved (e.g., '30 minutes', '2 hours'):
 The script will output:
 ```
 ✓ Generated: CHECKPOINT-01_Phase1-2-Complete_T001-T030.md
-✓ Location: specs/001-{{PROJECT_NAME}}/CHECKPOINT-01_Phase1-2-Complete_T001-T030.md
+✓ Location: specs/001-tachi/CHECKPOINT-01_Phase1-2-Complete_T001-T030.md
 ✓ Updated: CHECKPOINTS_README.md
 
 Next: Resume with /aod.build --resume
@@ -142,7 +142,7 @@ Open the generated checkpoint file and replace `_TODO:` placeholders with actual
 - `{RECOMMENDATIONS}` - Guidance for next session
 - `{SUCCESS_CRITERIA}` - Status from spec
 
-**Tip**: Look at existing [CHECKPOINT-01](../../../specs/001-{{PROJECT_NAME}}/CHECKPOINT-01_Phase1-2-Complete_T001-T030.md) for reference.
+**Tip**: Look at existing [CHECKPOINT-01](../../../specs/001-tachi/CHECKPOINT-01_Phase1-2-Complete_T001-T030.md) for reference.
 
 ### Step 7: Commit Checkpoint
 
@@ -162,8 +162,8 @@ By default, the script auto-detects the next checkpoint number. To override:
 
 ```bash
 python scripts/generate_checkpoint.py \
-  --tasks-file ../../specs/001-{{PROJECT_NAME}}/tasks.md \
-  --output-dir ../../specs/001-{{PROJECT_NAME}} \
+  --tasks-file ../../specs/001-tachi/tasks.md \
+  --output-dir ../../specs/001-tachi \
   --description "Phase1-2-Complete" \
   --checkpoint-num 05
 ```
@@ -173,7 +173,7 @@ python scripts/generate_checkpoint.py \
 To see metrics without generating a checkpoint:
 
 ```bash
-python scripts/analyze_tasks.py ../../specs/001-{{PROJECT_NAME}}/tasks.md
+python scripts/analyze_tasks.py ../../specs/001-tachi/tasks.md
 ```
 
 Output:
@@ -193,7 +193,7 @@ If you need to update CHECKPOINTS_README.md separately:
 
 ```bash
 python scripts/update_index.py \
-  --checkpoints-readme ../../specs/001-{{PROJECT_NAME}}/CHECKPOINTS_README.md \
+  --checkpoints-readme ../../specs/001-tachi/CHECKPOINTS_README.md \
   --checkpoint-file CHECKPOINT-02_US1-Complete_T001-T039.md \
   --checkpoint-num 02 \
   --progress 33
@@ -224,8 +224,8 @@ python scripts/generate_checkpoint.py \
 ```bash
 # Standard workflow
 python scripts/generate_checkpoint.py \
-  --tasks-file ../../specs/001-{{PROJECT_NAME}}/tasks.md \
-  --output-dir ../../specs/001-{{PROJECT_NAME}} \
+  --tasks-file ../../specs/001-tachi/tasks.md \
+  --output-dir ../../specs/001-tachi \
   --description "US2-Complete"
 
 # Answer prompts, review output, fill TODOs, commit
@@ -235,8 +235,8 @@ python scripts/generate_checkpoint.py \
 
 ```bash
 python scripts/generate_checkpoint.py \
-  --tasks-file ../../specs/001-{{PROJECT_NAME}}/tasks.md \
-  --output-dir ../../specs/001-{{PROJECT_NAME}} \
+  --tasks-file ../../specs/001-tachi/tasks.md \
+  --output-dir ../../specs/001-tachi \
   --description "ProductionReady"
 
 # This should show 100% progress if all tasks complete
@@ -255,8 +255,8 @@ python scripts/generate_checkpoint.py \
 ```bash
 # From skill directory
 python scripts/generate_checkpoint.py \
-  --tasks-file /Users/david/Documents/GitHub/{{PROJECT_NAME}}/specs/001-{{PROJECT_NAME}}/tasks.md \
-  --output-dir /Users/david/Documents/GitHub/{{PROJECT_NAME}}/specs/001-{{PROJECT_NAME}} \
+  --tasks-file /Users/david/Documents/GitHub/tachi/specs/001-tachi/tasks.md \
+  --output-dir /Users/david/Documents/GitHub/tachi/specs/001-tachi \
   --description "Phase1-2-Complete"
 ```
 
@@ -299,7 +299,7 @@ python scripts/generate_checkpoint.py \
 **Solution**: Create from template first
 
 ```bash
-cp assets/CHECKPOINTS_README_template.md ../../specs/001-{{PROJECT_NAME}}/CHECKPOINTS_README.md
+cp assets/CHECKPOINTS_README_template.md ../../specs/001-tachi/CHECKPOINTS_README.md
 ```
 
 ---

@@ -1,13 +1,13 @@
-# Design Patterns - {{PROJECT_NAME}}
+# Design Patterns - tachi
 
-**Last Updated**: {{CURRENT_DATE}}
+**Last Updated**: 2026-03-21
 **Owner**: Architect
 
 ---
 
 ## Overview
 
-This directory documents reusable design patterns for {{PROJECT_NAME}}.
+This directory documents reusable design patterns for tachi.
 
 ---
 
@@ -889,9 +889,9 @@ any files modified during this build session.
 Template files shipped with the kit contain the kit's own name ("Agentic Oriented Development Kit") as hardcoded text. When an adopter runs `make init`, these files are not personalized, so all user-facing documentation still shows the kit name instead of the adopter's project name. This causes confusion and requires manual find-and-replace by adopters.
 
 #### Solution
-Use the `{{PROJECT_NAME}}` double-brace placeholder wherever the project name should appear in a template file. `scripts/init.sh` already performs a `sed` substitution pass over template files during `make init`, replacing `{{PROJECT_NAME}}` with the adopter's actual project name. No new code or infrastructure is needed -- add the placeholder to the file content and the init script handles the rest.
+Use the `tachi` double-brace placeholder wherever the project name should appear in a template file. `scripts/init.sh` already performs a `sed` substitution pass over template files during `make init`, replacing `tachi` with the adopter's actual project name. No new code or infrastructure is needed -- add the placeholder to the file content and the init script handles the rest.
 
-The convention aligns with other template variables in the kit (`{{CURRENT_DATE}}`, `{{TEMPLATE_VARIABLES}}`, etc.) and is consistent with the pre-existing usage in `.aod/memory/constitution.md`.
+The convention aligns with other template variables in the kit (`2026-03-21`, `{{TEMPLATE_VARIABLES}}`, etc.) and is consistent with the pre-existing usage in `.aod/memory/constitution.md`.
 
 #### Files Using This Pattern
 | File | Placeholder Locations |
@@ -922,7 +922,7 @@ The convention aligns with other template variables in the kit (`{{CURRENT_DATE}
 #### Checklist for New Template Files
 When adding a new user-facing template file to the kit:
 1. Identify every occurrence of "Agentic Oriented Development Kit" or its abbreviation
-2. Replace with `{{PROJECT_NAME}}`
+2. Replace with `tachi`
 3. Verify the file is included in the `scripts/init.sh` substitution loop
 4. Test with `make init` on a fresh clone to confirm replacement occurs
 

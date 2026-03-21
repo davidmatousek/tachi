@@ -1,7 +1,7 @@
 # PRD-000: Example Feature Template
 
 **Status**: Example
-**Created**: {{CURRENT_DATE}}
+**Created**: 2026-03-21
 **PM**: product-manager
 **Related Spec**: N/A
 
@@ -122,7 +122,7 @@
 
 ## Sign-Off
 
-**PM Approval**: ✅ Approved on {{CURRENT_DATE}}
+**PM Approval**: ✅ Approved on 2026-03-21
 
 **Next Step**: Create spec with `/triad.specify`
 

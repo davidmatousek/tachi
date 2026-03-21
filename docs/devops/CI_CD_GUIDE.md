@@ -1,13 +1,13 @@
-# CI/CD Setup Guide - {{PROJECT_NAME}}
+# CI/CD Setup Guide - tachi
 
-**Last Updated**: {{CURRENT_DATE}}
+**Last Updated**: 2026-03-21
 **Owner**: DevOps Agent
 
 ---
 
 ## Overview
 
-This guide provides instructions for setting up CI/CD pipelines for {{PROJECT_NAME}}. Choose your platform based on your hosting provider.
+This guide provides instructions for setting up CI/CD pipelines for tachi. Choose your platform based on your hosting provider.
 
 ---
 

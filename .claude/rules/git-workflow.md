@@ -1,6 +1,6 @@
 # Git Workflow
 
-<!-- Rule file for {{PROJECT_NAME}} -->
+<!-- Rule file for tachi -->
 <!-- This file is referenced from CLAUDE.md using @-syntax -->
 
 ## Overview

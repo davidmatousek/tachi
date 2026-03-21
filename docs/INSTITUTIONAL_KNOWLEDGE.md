@@ -1,19 +1,19 @@
-# Institutional Knowledge - {{PROJECT_NAME}}
+# Institutional Knowledge - tachi
 
-**Project**: {{PROJECT_NAME}} - {{PROJECT_DESCRIPTION}}
+**Project**: tachi - Automated threat modeling toolkit extending STRIDE with AI-specific threat agents for agentic applications
 **Purpose**: Capture learnings, patterns, and solutions to prevent repeated mistakes
 **Created**: {{PROJECT_START_DATE}}
-**Last Updated**: {{CURRENT_DATE}}
+**Last Updated**: 2026-03-21
 
 **Entry Count**: 0 / 20 (KB System Upgrade triggers at 20 — schedule review)
-**Last Review**: {{CURRENT_DATE}}
+**Last Review**: 2026-03-21
 **Status**: ✅ Manual mode (file-based)
 
 ---
 
 ## Overview
 
-This file stores institutional knowledge for {{PROJECT_NAME}} development. It's used by:
+This file stores institutional knowledge for tachi development. It's used by:
 - `kb-create` skill - Add new learnings
 - `kb-query` skill - Search existing patterns
 - `root-cause-analyzer` skill - Document root causes

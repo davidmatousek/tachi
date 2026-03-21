@@ -1,13 +1,13 @@
-# Deployment Environments - {{PROJECT_NAME}}
+# Deployment Environments - tachi
 
-**Last Updated**: {{CURRENT_DATE}}
+**Last Updated**: 2026-03-21
 **Owner**: Architect + DevOps
 
 ---
 
 ## Overview
 
-This directory documents all deployment environments for {{PROJECT_NAME}}.
+This directory documents all deployment environments for tachi.
 
 ---
 
@@ -47,7 +47,7 @@ This directory documents all deployment environments for {{PROJECT_NAME}}.
 
 ```bash
 # Development (.env.local - gitignored)
-DATABASE_URL=postgresql://localhost:5432/{{PROJECT_NAME}}_dev
+DATABASE_URL=postgresql://localhost:5432/tachi_dev
 API_URL=http://localhost:3001
 
 # Staging (Platform environment variables)

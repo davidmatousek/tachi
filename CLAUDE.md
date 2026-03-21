@@ -1,4 +1,4 @@
-# CLAUDE.md - {{PROJECT_NAME}}
+# CLAUDE.md - tachi
 
 <!-- Context Budget: Target <100 lines (justified: 10-line return policy saves 9K-36K tokens/session) -->
 
@@ -17,7 +17,7 @@
 
 ## Project Structure
 ```
-{{PROJECT_NAME}}/
+tachi/
 ├── .claude/           → Agents, skills, commands
 ├── .aod/              → Active feature workspace (spec.md, plan.md, tasks.md)
 ├── specs/             → Archived feature artifacts (per-feature history)

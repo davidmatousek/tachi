@@ -1,11 +1,11 @@
 # Governance
 
-<!-- Rule file for {{PROJECT_NAME}} -->
+<!-- Rule file for tachi -->
 <!-- This file is referenced from CLAUDE.md using @-syntax -->
 
 ## Overview
 
-This file defines mandatory governance workflows for {{PROJECT_NAME}}. All agents must follow these sign-off requirements when creating specs, plans, and tasks.
+This file defines mandatory governance workflows for tachi. All agents must follow these sign-off requirements when creating specs, plans, and tasks.
 
 **CRITICAL**: After creating specs/plans/tasks, you MUST auto-trigger reviews. Do not wait for user request.
 

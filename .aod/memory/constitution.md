@@ -1,30 +1,13 @@
-<!--
-  Template Instructions
-  =====================
-  This constitution template is part of the Agentic Oriented Development Kit (AOD Kit).
 
-  To customize for your project:
-  1. Replace all {{PROJECT_NAME}} with your project name
-  2. Replace {{PROJECT_DESCRIPTION}} with your project description
-  3. Replace {{TECH_STACK_*}} placeholders with your technology choices
-  4. Review and customize System Architecture Constraints section
-  5. Update versioning to 1.0.0 when first deploying
-
-  DO NOT modify:
-  - Core Principles (I-XI) - These are universal governance rules
-  - Triad Collaboration framework - This is the core workflow
-  - Amendment Process - This ensures constitution stability
--->
-
-# {{PROJECT_NAME}} Constitution
+# tachi Constitution
 
 ## Core Principles
 
 ### I. General-Purpose Architecture
 
-{{PROJECT_NAME}} MUST be domain-agnostic and work with any agent-based development workflow. The platform SHALL NOT contain security-specific, domain-specific, or use-case-specific logic in core components.
+tachi MUST be domain-agnostic and work with any agent-based development workflow. The platform SHALL NOT contain security-specific, domain-specific, or use-case-specific logic in core components.
 
-**Rationale**: As a standalone SaaS platform, {{PROJECT_NAME}} must serve diverse projects across industries. Domain-specific features limit adoption and create maintenance burden.
+**Rationale**: As a standalone SaaS platform, tachi must serve diverse projects across industries. Domain-specific features limit adoption and create maintenance burden.
 
 **Requirements**:
 - Core API endpoints are use-case neutral (tasks, knowledge, strategy)
@@ -89,7 +72,7 @@ Project data MUST be isolated per user/organization with strict access controls.
 
 ### VI. Testing Excellence
 
-Testing is MANDATORY for {{PROJECT_NAME}}. All features MUST have corresponding test coverage before being marked as complete.
+Testing is MANDATORY for tachi. All features MUST have corresponding test coverage before being marked as complete.
 
 **Rationale**: As a SaaS platform managing critical development workflows, reliability and correctness are non-negotiable. Comprehensive testing builds user trust and prevents regressions.
 
@@ -181,7 +164,7 @@ ALL development work MUST use feature branches. Direct commits to main branch ar
   - Scopes: `api`, `mcp`, `database`, `auth`, `ui`, `infra`, `test`
 - Include descriptive commit body explaining "why" not "what"
 - Reference related issues: `Closes #123` or `Fixes #456`
-- Include agent co-authorship: `Co-Authored-By: Agent <agent@{{PROJECT_NAME}}>`
+- Include agent co-authorship: `Co-Authored-By: Agent <agent@tachi>`
 - Run `git status` before and after commits to verify changes
 
 **Pull Request Requirements**:
@@ -619,11 +602,11 @@ The tier is configured **per project**, not per feature. The default tier is `st
 
 ### Backend Requirements
 
-- **Database**: {{TECH_STACK_DATABASE}} (e.g., PostgreSQL, MySQL)
-- **Vector Search**: {{TECH_STACK_VECTOR}} (e.g., pgvector, Pinecone, Qdrant)
+- **Database**: Markdown+YAML (e.g., PostgreSQL, MySQL)
+- **Vector Search**: N/A (e.g., pgvector, Pinecone, Qdrant)
 - **API Response Time**: <500ms for 95% of requests (excluding RAG search operations)
 - **Horizontal Scalability**: Stateless design with no session affinity required
-- **Authentication**: {{TECH_STACK_AUTH}} (e.g., JWT, OAuth2)
+- **Authentication**: N/A (e.g., JWT, OAuth2)
 
 ### Frontend Requirements
 
@@ -710,45 +693,7 @@ The tier is configured **per project**, not per feature. The default tier is `st
 
 This constitution is a living document that evolves with the project. When principles conflict with practical needs, the constitution should be amended rather than ignored.
 
-**Version**: 1.0.0 | **Ratified**: {{RATIFICATION_DATE}} | **Last Amended**: {{RATIFICATION_DATE}}
+**Version**: 1.0.0 | **Ratified**: 2026-03-21 | **Last Amended**: 2026-03-21
 
 ---
 
-## Template Instructions
-
-### How to Customize This Constitution
-
-**Step 1: Replace Project Identifiers**
-- `{{PROJECT_NAME}}`: Your project name (e.g., "my-saas-platform")
-- `{{PROJECT_DESCRIPTION}}`: Brief description of what your project does
-
-**Step 2: Replace Technology Stack**
-- `{{TECH_STACK_DATABASE}}`: Your database choice (PostgreSQL, MySQL, MongoDB, etc.)
-- `{{TECH_STACK_VECTOR}}`: Your vector search solution (pgvector, Pinecone, Qdrant, etc.)
-- `{{TECH_STACK_AUTH}}`: Your authentication approach (JWT, OAuth2, Auth0, etc.)
-
-**Step 3: Replace Dates**
-- `{{RATIFICATION_DATE}}`: Date you deploy this constitution (YYYY-MM-DD format)
-
-**Step 4: Review System Architecture Constraints**
-- Adjust performance targets based on your requirements
-- Modify backend/frontend requirements if needed
-- Update MCP interface requirements if not using MCP
-
-**Step 5: Remove This Section**
-- Delete this "Template Instructions" section after customization
-- Keep all Core Principles (I-XI) - they are universal governance rules
-- Keep Triad Collaboration framework - it's the core workflow
-
-**What NOT to Change**:
-- Core Principles (I-XI) - These are universal and project-agnostic
-- SDLC Triad Collaboration framework - This is the governance model
-- Amendment Process - This ensures constitution stability
-- Versioning Policy - Standard semantic versioning
-
-**First Deployment**:
-1. Customize all `{{PLACEHOLDERS}}`
-2. Set version to 1.0.0
-3. Set ratification date to deployment date
-4. Delete this "Template Instructions" section
-5. Commit to repository: `git add .aod/memory/constitution.md && git commit -m "feat(governance): deploy project constitution v1.0.0"`
