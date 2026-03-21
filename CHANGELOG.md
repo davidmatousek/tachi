@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Feature 001 — Project Skeleton & Interface Contract
+
+**Added**
+- Project skeleton with STRIDE + AI threat agent prompts, machine-readable schemas, output template, interface contract, and 3 example inputs (`b398249`)
+
+**Changed**
+- Closed Feature 001 — updated product docs, archived specs, regenerated backlog (`d706b89`, `edd9f43`)
+
+---
+
 ## [4.0.0] - 2026-02-08
 
 ### BREAKING CHANGES
