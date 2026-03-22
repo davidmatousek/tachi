@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 003 — Orchestrator Agent
+
+**Added**
+- Orchestrator agent prompt for STRIDE + AI threat modeling with 4-phase OWASP workflow, 5-format input parsing, 11-agent dispatch, and structured output assembly (`5f18934`)
+
+**Changed**
+- Closed Feature 003 — updated product docs, archived specs, regenerated backlog (`ddd7699`, `d7acf41`)
+
 ### Feature 001 — Project Skeleton & Interface Contract
 
 **Added**
