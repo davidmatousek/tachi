@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 007 — AI Threat Agents
+
+**Added**
+- AI threat agent prompts for 5 agentic threat categories: prompt injection, data poisoning, tool abuse, model theft, agent autonomy (`eaa0439`)
+
+**Changed**
+- Closed Feature 007 — updated product docs, archived specs, regenerated backlog (`2ca4a19`, `71206e8`)
+
 ### Feature 003 — Orchestrator Agent
 
 **Added**
