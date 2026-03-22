@@ -161,3 +161,67 @@ Architecture Input (5 formats)
 | Markdown + YAML | Content format — platform-agnostic, no runtime dependencies |
 | OWASP 3x3 Matrix | Risk rating standard — human-interpretable |
 | STRIDE-per-Element | Threat methodology — DFD element mapping, O(n) scaling |
+
+---
+
+### Feature 003: Orchestrator Agent
+
+## Components
+
+### Component 1: Orchestrator Prompt File
+
+**File**: `agents/orchestrator.md`
+**Type**: Replace placeholder
+**Purpose**: Central prompt implementing OWASP 4-step threat modeling workflow — parse, classify, dispatch, assemble.
+
+**Internal Structure** (prompt sections):
+
+| Section | OWASP Phase | Responsibility |
+|---------|-------------|----------------|
+| Frontmatter | — | Agent metadata (agent_name, category, status, version) |
+| Role & Purpose | — | Establish orchestrator identity and output constraints |
+| Input Sanitization Boundary | — | Mark architecture input as data, not instructions |
+| Phase 1: Scope | Scope | Format detection, component extraction, DFD classification, trust boundary identification, System Overview assembly |
+| Phase 2: Determine Threats | Determine Threats | STRIDE-per-Element normalization table, AI keyword dispatch rules, agent invocation protocol (parallel + sequential) |
+| Phase 3: Determine Countermeasures | Determine Countermeasures | Agent finding collection, risk_level validation (OWASP 3x3), STRIDE table assembly (6), AI table assembly (2 via 5-to-2 mapping) |
+| Phase 4: Assess | Assess | Coverage matrix generation, risk summary computation, recommended actions list (sorted by risk descending) |
+| Error Handling | — | UNSUPPORTED_FORMAT, NO_COMPONENTS, INVALID_FORMAT_VALUE responses |
+| Output Validation | — | Structural integrity check (7 sections, frontmatter, finding ID patterns) |
+
+## Data Flow
+
+```mermaid
+flowchart TD
+    A[Architecture Input] --> B{Format Detection}
+    B -->|auto| C[Heuristic Priority: ASCII, Free-text, Mermaid, PlantUML, C4]
+    B -->|explicit| D[Use Declared Format]
+    C --> E[Component Extraction and DFD Classification]
+    D --> E
+    E --> F[Trust Boundary Identification]
+    F --> G[System Overview Assembly]
+    G --> H{STRIDE-per-Element Dispatch}
+    H --> I[External Entity: S, R]
+    H --> J[Process: S, T, R, I, D, E]
+    H --> K[Data Store: T, I, D]
+    H --> L[Data Flow: T, I, D]
+    I & J & K & L --> M{AI Keyword Dispatch}
+    M -->|LLM keywords| N[+ prompt-injection, data-poisoning, model-theft]
+    M -->|AG keywords| O[+ agent-autonomy, tool-abuse]
+    M -->|Both| P[Dual-dispatch: LLM + AG]
+    M -->|None| Q[STRIDE only]
+    N & O & P & Q --> R[Agent Invocation with Full Context]
+    R --> S[Finding Collection and Risk Validation]
+    S --> T[STRIDE Tables x6 + AI Tables x2]
+    T --> U[Coverage Matrix]
+    U --> V[Risk Summary]
+    V --> W[Recommended Actions]
+    W --> X[threats.md Output]
+```
+
+## Tech Stack
+
+| Technology | Purpose |
+|-----------|---------|
+| Markdown prompt file | Platform-agnostic deliverable — works with any LLM |
+| OWASP 4-step process | Industry-standard threat modeling methodology |
+| STRIDE-per-Element + AI keywords | Deterministic dispatch rules embedded in prompt |
