@@ -3,7 +3,7 @@ agent_name: model-theft
 category: llm
 threat_class: LLM
 dfd_targets: [Data Store, Process]
-owasp_references: [OWASP LLM10:2025]
+owasp_references: [OWASP LLM10:2025, OWASP LLM03:2025]
 output_schema: schemas/finding.yaml
 ---
 
@@ -70,6 +70,24 @@ This agent activates when a DFD element name or description matches any of the f
    - Fine-tuned model sharing between teams without tracking or authorization
    - Model export functionality that allows downloading fine-tuned weights
    - Absence of model asset inventory (unknown models cannot be protected)
+
+6. **Unbounded Inference Consumption**: Attackers exploit unrestricted access to model inference endpoints to consume excessive compute resources, effectively stealing model value through unconstrained usage. Look for:
+   - Model inference APIs without per-user or per-API-key usage quotas
+   - Absence of cost controls or budget caps on inference compute
+   - No monitoring of inference volume anomalies or consumption spikes per tenant
+   - Free-tier or unauthenticated access to model endpoints that enables unlimited querying
+   - Missing billing attribution that allows inference costs to be shifted to the model owner
+
+7. **Model Supply Chain Compromise**: Tampering with model artifacts, dependencies, or serving infrastructure within the supply chain to inject backdoors or replace legitimate models. Look for:
+   - Base models or pretrained checkpoints downloaded from public registries without cryptographic signature verification
+   - Model serving frameworks or inference libraries sourced from unverified package repositories
+   - CI/CD pipelines for model deployment that lack artifact integrity checks between build and deploy stages
+   - Model conversion tools (ONNX export, quantization) sourced from untrusted origins
+   - Absence of a software bill of materials (SBOM) for model inference dependencies
+
+### Empty Results Guidance
+
+When the architecture input contains no LLM, language model, model serving, or model storage components (i.e., no DFD elements match any trigger keyword in the Detection Scope), this agent MUST produce zero findings. Do not generate speculative or hypothetical model theft findings for architectures that do not include model hosting or model inference components.
 
 ## Finding Template
 
@@ -138,10 +156,22 @@ references:
 dfd_element_type: "Process"
 ```
 
+### Risk Level Computation
+
+Apply the OWASP 3x3 matrix to determine `risk_level` from `likelihood` and `impact`:
+
+|  | LOW Likelihood | MEDIUM Likelihood | HIGH Likelihood |
+|---|---|---|---|
+| **HIGH Impact** | Medium | High | Critical |
+| **MEDIUM Impact** | Low | Medium | High |
+| **LOW Impact** | Note | Low | Medium |
+
 ## References
 
 - **OWASP LLM10:2025 - Model Theft**: https://genai.owasp.org/llmrisk/llm10-model-theft/
+- **OWASP LLM03:2025 - Supply Chain Vulnerabilities**: https://genai.owasp.org/llmrisk/llm03-supply-chain-vulnerabilities/
 - **MITRE ATLAS - ML Model Access**: Tactic TA0044, Technique AML.T0044
 - **Tramer et al., 2016**: "Stealing Machine Learning Models via Prediction APIs" — foundational work on API-based model extraction
+- **CWE-200 - Exposure of Sensitive Information to an Unauthorized Actor**: Parent category covering model weight exfiltration, API-based extraction, and metadata leakage
 - **CWE-209 - Generation of Error Message Containing Sensitive Information**: Applicable to model metadata leakage through error responses
 - **CWE-522 - Insufficiently Protected Credentials**: Analogous to insufficiently protected model artifacts

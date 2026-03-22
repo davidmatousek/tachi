@@ -359,3 +359,99 @@ Architecture Input (any format)
 | Schema | YAML | Machine-readable validation contract |
 | Reference frameworks | OWASP Top 10 2021, OWASP API Security 2023, CWE, MITRE ATT&CK | Industry-standard cross-references for threat findings |
 | Validation | Manual review + orchestrator integration run | No automated test framework needed for prompt files |
+
+---
+
+### Feature 007: AI Threat Agents
+
+## Components
+
+### Agent Validation Framework
+
+The validation approach follows the three-layer framework proven in F-005 (STRIDE agents):
+
+**Layer 1: Structural Audit** (per agent)
+- Frontmatter fields present and correct (`agent_name`, `category`, `threat_class`, `dfd_targets`, `owasp_references`, `output_schema`)
+- Section structure matches canonical organization (purpose, detection scope, patterns, finding template, risk computation, references)
+- `dfd_targets` matches interface contract AI extension dispatch rules
+
+**Layer 2: Content Quality** (per agent)
+- Detection patterns cover all attack subcategories from PRD FR-8
+- Finding template examples demonstrate component-specific threats (not generic)
+- Mitigation examples are actionable with specific technology references
+- Framework references include OWASP AI framework IDs (LLM0x:2025, ASI-xx, MCP-xx:2025)
+
+**Layer 3: Integration Validation** (all agents together)
+- Run orchestrator against `examples/mermaid-agentic-app/input.md`
+- Verify AG and LLM tables have findings in assembled `threats.md`
+- Verify two-layer keyword dispatch and dual-dispatch behavior
+- Verify 100% component specificity (zero generic findings)
+
+### AI Agent DFD Targeting Matrix
+
+| Agent | category | threat_class | dfd_targets | OWASP Framework |
+|-------|----------|-------------|-------------|-----------------|
+| prompt-injection.md | llm | LLM | [Process] | LLM Top 10 v2025 (LLM01) |
+| data-poisoning.md | llm | LLM | [Data Store, Data Flow] | LLM Top 10 v2025 (LLM03, LLM04) |
+| model-theft.md | llm | LLM | [Data Store, Process] | LLM Top 10 v2025 (LLM10) |
+| agent-autonomy.md | agentic | AG | [Process] | Agentic Top 10 (ASI01, ASI06, ASI08, ASI09, ASI10) |
+| tool-abuse.md | agentic | AG | [Process] | Agentic Top 10 (ASI02, ASI04), MCP Top 10 (MCP03) |
+
+## Data Flow
+
+```
+Architecture Input (any format)
+         │
+         ▼
+┌─────────────────────────────┐
+│ Orchestrator (F-003)        │
+│  Phase 1: Scope             │
+│  - Format detection         │
+│  - Component classification │
+│  - DFD element assignment   │
+└─────────┬───────────────────┘
+          │ dispatch per STRIDE-per-Element
+          │ + AI keyword dispatch (Layer 1)
+          ▼
+┌──────────────────┐    ┌──────────────────┐
+│ 6 STRIDE Agents  │    │ 5 AI Agents      │
+│ (F-005 validated)│    │ (F-007 — this)   │
+│                  │    │                  │
+│ Each agent:      │    │ Each agent:      │
+│ 1. Receives arch │    │ 1. Receives arch │
+│ 2. Filters by    │    │ 2. Filters by    │
+│    dfd_targets   │    │    dfd_targets   │
+│ 3. Applies       │    │ 3. Applies Layer │
+│    patterns      │    │    2 keywords    │
+│ 4. Produces      │    │ 4. Applies       │
+│    findings (IR) │    │    patterns      │
+│                  │    │ 5. Produces      │
+│                  │    │    findings (IR) │
+└────────┬─────────┘    └────────┬─────────┘
+         │                       │
+         └───────────┬───────────┘
+                     │ all findings per schemas/finding.yaml
+                     ▼
+┌─────────────────────────────┐
+│ Orchestrator (F-003)        │
+│  Phase 3-4: Assemble        │
+│  - Build 6 STRIDE tables    │
+│  - Build 2 AI tables        │
+│    (AG table + LLM table)   │
+│  - Generate coverage matrix │
+│  - Compute risk summary     │
+└─────────┬───────────────────┘
+          │
+          ▼
+    threats.md output
+    (8 threat tables total)
+```
+
+## Tech Stack
+
+| Component | Technology | Justification |
+|-----------|-----------|---------------|
+| Agent files | Markdown with YAML frontmatter | Platform-neutral, LLM-agnostic prompt format; matches F-005 STRIDE pattern |
+| Schema | YAML (`schemas/finding.yaml` v1.0) | Machine-readable validation contract; read-only for this feature |
+| OWASP references | LLM Top 10 v2025, Agentic Top 10 2026, MCP Top 10 2025 | Three complementary AI security frameworks |
+| Validation | Manual review + orchestrator integration run | No automated test framework needed for prompt files |

@@ -3,7 +3,7 @@ agent_name: prompt-injection
 category: llm
 threat_class: LLM
 dfd_targets: [Process]
-owasp_references: [OWASP LLM01:2025]
+owasp_references: [OWASP LLM01:2025, OWASP LLM07:2025]
 output_schema: schemas/finding.yaml
 ---
 
@@ -58,6 +58,17 @@ This agent activates when a DFD element name or description matches any of the f
    - System prompts containing sensitive business logic, API keys, or internal URLs
    - No output filtering for content that resembles system prompt leakage
    - Absence of prompt-level guardrails that refuse meta-instruction queries
+
+5. **Cross-Plugin Injection**: Adversarial prompts that exploit multi-plugin or multi-tool LLM architectures to pivot between plugins, escalate privileges, or exfiltrate data across trust boundaries. Look for:
+   - LLM orchestrators that invoke multiple plugins/tools where one plugin's output feeds another plugin's input without sanitization
+   - Absence of trust boundary enforcement between plugins operating at different privilege levels
+   - Plugin architectures where a compromised or attacker-controlled plugin can influence the prompts sent to other plugins
+   - Missing input validation on cross-plugin data flows (e.g., Plugin A returns text that is interpolated into Plugin B's prompt)
+   - No isolation between plugin execution contexts, allowing shared state manipulation
+
+### Empty Results Guidance
+
+When the architecture input contains no LLM, language model, or generative AI components (i.e., no DFD elements match any trigger keyword in the Detection Scope), this agent MUST produce zero findings. Do not generate speculative or hypothetical prompt injection findings for architectures that do not include LLM-integrated components.
 
 ## Finding Template
 
@@ -126,9 +137,20 @@ references:
 dfd_element_type: "Process"
 ```
 
+### Risk Level Computation
+
+Apply the OWASP 3x3 matrix to determine `risk_level` from `likelihood` and `impact`:
+
+|  | LOW Likelihood | MEDIUM Likelihood | HIGH Likelihood |
+|---|---|---|---|
+| **HIGH Impact** | Medium | High | Critical |
+| **MEDIUM Impact** | Low | Medium | High |
+| **LOW Impact** | Note | Low | Medium |
+
 ## References
 
 - **OWASP LLM01:2025 - Prompt Injection**: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+- **OWASP LLM07:2025 - System Prompt Leakage**: https://genai.owasp.org/llmrisk/llm07-system-prompt-leakage/
 - **MITRE ATLAS - LLM Prompt Injection**: Tactic TA0043, Technique AML.T0051
 - **CWE-77 - Improper Neutralization of Special Elements used in a Command**: Conceptual analog for prompt injection in LLM contexts
 - **Greshake et al., 2023**: "Not what you've signed up for: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection"

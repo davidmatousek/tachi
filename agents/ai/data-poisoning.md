@@ -3,7 +3,7 @@ agent_name: data-poisoning
 category: llm
 threat_class: LLM
 dfd_targets: [Data Store, Data Flow]
-owasp_references: [OWASP LLM03:2025]
+owasp_references: [OWASP LLM03:2025, OWASP LLM04:2025, OWASP LLM08:2025]
 output_schema: schemas/finding.yaml
 ---
 
@@ -68,6 +68,10 @@ This agent activates when a DFD element name or description matches any of the f
    - Dynamic few-shot selection from user-modifiable example databases
    - System prompt templates that interpolate content from external data sources at runtime
    - Absence of input validation on data flows entering the context window
+
+### Empty Results Guidance
+
+When the architecture input contains no LLM, language model, training pipeline, RAG system, knowledge base, or vector store components (i.e., no DFD elements match any trigger keyword in the Detection Scope), this agent MUST produce zero findings. Do not generate speculative or hypothetical data poisoning findings for architectures that do not include LLM data pipelines or model training infrastructure.
 
 ## Finding Template
 
@@ -135,9 +139,22 @@ references:
 dfd_element_type: "Data Store"
 ```
 
+### Risk Level Computation
+
+Apply the OWASP 3x3 matrix to determine `risk_level` from `likelihood` and `impact`:
+
+|  | LOW Likelihood | MEDIUM Likelihood | HIGH Likelihood |
+|---|---|---|---|
+| **HIGH Impact** | Medium | High | Critical |
+| **MEDIUM Impact** | Low | Medium | High |
+| **LOW Impact** | Note | Low | Medium |
+
 ## References
 
-- **OWASP LLM03:2025 - Training Data Poisoning**: https://genai.owasp.org/llmrisk/llm03-training-data-poisoning/
+- **OWASP LLM03:2025 - Supply Chain Vulnerabilities**: https://genai.owasp.org/llmrisk/llm03-supply-chain-vulnerabilities/
+- **OWASP LLM04:2025 - Data and Model Poisoning**: https://genai.owasp.org/llmrisk/llm04-data-and-model-poisoning/
+- **OWASP LLM08:2025 - Vector and Embedding Weaknesses**: https://genai.owasp.org/llmrisk/llm08-vector-and-embedding-weaknesses/
 - **MITRE ATLAS - Poisoning AI Training Data**: Tactic TA0040, Technique AML.T0020
+- **CWE-345 - Insufficient Verification of Data Authenticity**: Applicable to training data manipulation and RAG index poisoning where data integrity is not verified before consumption
 - **CWE-1395 - Dependency on Vulnerable Third-Party Component**: Applicable to model supply chain attacks
 - **Carlini et al., 2023**: "Poisoning Web-Scale Training Datasets is Practical" — demonstrates feasibility of training data poisoning at scale
