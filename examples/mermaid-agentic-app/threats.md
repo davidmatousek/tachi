@@ -142,11 +142,11 @@ Parsed summary of the Mermaid flowchart architecture input for an agentic AI app
 
 | Component | S | T | R | I | D | E | AG | LLM | Total |
 |-----------|---|---|---|---|---|---|----|-----|-------|
-| User | 1 | - | 1 | - | - | - | - | - | 2 |
+| User | 1 |  | 1 |  |  |  |  |  | 2 |
 | LLM Agent Orchestrator | - | 1 | 1 | 1 | 1 | 1 | 2 | 3 | 10 |
-| MCP Tool Server | - | - | - | - | - | - | 2 | - | 2 |
-| Knowledge Base | - | 1 | - | 1 | 1 | - | - | 1 | 4 |
-| External API | 1 | - | - | - | - | - | - | - | 1 |
+| MCP Tool Server | - | - | - | - | - | - | 2 |  | 2 |
+| Knowledge Base |  | 1 |  | 1 | 1 |  |  | 1 | 4 |
+| External API | 1 |  | - |  |  |  |  |  | 1 |
 | **Total** | **2** | **2** | **2** | **2** | **2** | **1** | **4** | **4** | **19** |
 
 ---

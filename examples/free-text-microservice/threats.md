@@ -168,13 +168,13 @@ No agentic or LLM components detected in the architecture. The system uses no la
 
 | Component | S | T | R | I | D | E | AG | LLM | Total |
 |-----------|---|---|---|---|---|---|----|-----|-------|
-| External Clients | - | - | - | - | - | - | - | - | 0 |
-| API Gateway | 1 | - | - | - | 1 | 1 | - | - | 3 |
-| Order Service | 1 | - | 1 | - | - | 1 | - | - | 3 |
-| Payment Service | 1 | 1 | 1 | - | - | - | - | - | 3 |
-| Inventory Database | - | 1 | - | 1 | 1 | - | - | - | 3 |
-| Message Queue | - | 1 | - | 1 | 1 | - | - | - | 3 |
-| External Payment Provider | - | - | - | - | - | - | - | - | 0 |
+| External Clients | - |  | - |  |  |  |  |  | 0 |
+| API Gateway | 1 | - | - | - | 1 | 1 |  |  | 3 |
+| Order Service | 1 | - | 1 | - | - | 1 |  |  | 3 |
+| Payment Service | 1 | 1 | 1 | - | - | - |  |  | 3 |
+| Inventory Database |  | 1 |  | 1 | 1 |  |  |  | 3 |
+| Message Queue |  | 1 |  | 1 | 1 |  |  |  | 3 |
+| External Payment Provider | - |  | - |  |  |  |  |  | 0 |
 | **Total** | **3** | **3** | **2** | **2** | **3** | **2** | **0** | **0** | **15** |
 
 ---

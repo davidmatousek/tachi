@@ -226,3 +226,87 @@ flowchart TD
 | Markdown prompt file | Platform-agnostic deliverable — works with any LLM |
 | OWASP 4-step process | Industry-standard threat modeling methodology |
 | STRIDE-per-Element + AI keywords | Deterministic dispatch rules embedded in prompt |
+
+---
+
+### Feature 005: STRIDE Threat Agents
+
+## Components
+
+### Agent Validation Framework
+
+The validation approach has three layers:
+
+**Layer 1: Structural Audit** (per agent)
+- Frontmatter fields present and correct (`agent_name`, `category`, `threat_class`, `dfd_targets`, `owasp_references`, `output_schema`)
+- Section structure matches canonical organization (purpose, detection scope, patterns, finding template, risk computation, references)
+- `dfd_targets` matches STRIDE-per-Element matrix row for this category
+
+**Layer 2: Content Quality** (per agent)
+- Detection patterns cover all attack subcategories from PRD FR-7
+- Finding template examples demonstrate component-specific threats (not generic)
+- Mitigation examples are actionable with specific technology references
+- Framework references include OWASP, CWE, and MITRE ATT&CK identifiers
+
+**Layer 3: Integration Validation** (all agents together)
+- Run orchestrator against `examples/mermaid-agentic-app/input.md`
+- Verify all 6 STRIDE tables have findings in assembled `threats.md`
+- Verify coverage matrix shows correct STRIDE-per-Element targeting
+- Verify 100% component specificity (zero generic findings)
+
+### STRIDE-per-Element Validation Matrix
+
+| DFD Element | S | T | R | I | D | E |
+|-------------|---|---|---|---|---|---|
+| **Processes** | X | X | X | X | X | X |
+| **Data Flows** | | X | | X | X | |
+| **Data Stores** | | X | | X | X | |
+| **External Entities** | X | | X | | | |
+
+## Data Flow
+
+```
+Architecture Input (any format)
+         │
+         ▼
+┌─────────────────────────────┐
+│ Orchestrator (F-003)        │
+│  Phase 1: Scope             │
+│  - Format detection         │
+│  - Component classification │
+│  - DFD element assignment   │
+└─────────┬───────────────────┘
+          │ dispatch per STRIDE-per-Element
+          ▼
+┌─────────────────────────────┐
+│ 6 STRIDE Agents (F-005)     │
+│  Each agent:                │
+│  1. Receives full arch      │
+│  2. Filters by dfd_targets  │
+│  3. Applies detection       │
+│     patterns                │
+│  4. Produces findings       │
+│     (IR schema)             │
+└─────────┬───────────────────┘
+          │ findings per schemas/finding.yaml
+          ▼
+┌─────────────────────────────┐
+│ Orchestrator (F-003)        │
+│  Phase 3-4: Assemble        │
+│  - Validate risk_level      │
+│  - Build STRIDE tables      │
+│  - Generate coverage matrix │
+│  - Compute risk summary     │
+└─────────┬───────────────────┘
+          │
+          ▼
+    threats.md output
+```
+
+## Tech Stack
+
+| Component | Technology | Justification |
+|-----------|-----------|---------------|
+| Agent files | Markdown with YAML frontmatter | Platform-neutral, LLM-agnostic prompt format |
+| Schema | YAML | Machine-readable validation contract |
+| Validation | Manual review + orchestrator integration run | No automated test framework needed for prompt files |

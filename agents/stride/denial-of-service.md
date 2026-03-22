@@ -5,6 +5,7 @@ threat_class: D
 dfd_targets: [Process, Data Store, Data Flow]
 owasp_references:
   - "OWASP Application Denial of Service Cheat Sheet"
+  - "OWASP API Security 2023 API4 — Unrestricted Resource Consumption"
   - "CWE-400: Uncontrolled Resource Consumption"
   - "CWE-770: Allocation of Resources Without Limits or Throttling"
   - "CWE-502: Deserialization of Untrusted Data"
@@ -64,6 +65,20 @@ Detects threats where an attacker degrades or eliminates system availability —
 - Missing fallback behavior when optional dependencies are unavailable
 - Health check endpoints that call downstream services (creating cascading failures)
 
+**Application-Layer Attacks**
+- HTTP flood attacks targeting computationally expensive endpoints (search, report generation, export)
+- Slowloris-style attacks holding connections open with partial HTTP requests
+- API abuse through high-frequency polling of expensive queries without caching
+- GraphQL complexity attacks using deeply nested or aliased queries to amplify server workload
+- Multipart upload abuse sending many small concurrent uploads to exhaust file descriptor limits
+
+**Infrastructure-Layer Attacks**
+- DNS amplification targeting service discovery endpoints
+- SYN flood attacks exhausting TCP connection tables on load balancers
+- TLS renegotiation attacks consuming CPU on TLS termination endpoints
+- Missing DDoS protection at CDN or API gateway layer for public-facing services
+- UDP/ICMP flood attacks saturating network bandwidth before reaching application layer
+
 **Flooding and Abuse**
 - Missing rate limiting on public-facing endpoints
 - Missing rate limiting differentiation between authenticated and anonymous traffic
@@ -79,13 +94,13 @@ Each finding produced by this agent conforms to `schemas/finding.yaml` with the 
 |-------|-------------|---------|
 | `id` | Sequential identifier with D prefix | `D-1` |
 | `category` | Always `denial-of-service` | `denial-of-service` |
-| `component` | Name of the Process, Data Store, or Data Flow under analysis | `File Upload Endpoint` |
-| `threat` | Specific availability threat description — what resource is exhausted, how, and what service impact results | `Attacker uploads arbitrarily large files to the document processing endpoint because no file size limit is enforced, exhausting disk storage and memory in the processing worker pool` |
+| `component` | Name of the Process, Data Store, or Data Flow under analysis | `LLM Agent Orchestrator` |
+| `threat` | Specific availability threat description — what resource is exhausted, how, and what service impact results | `Attacker sends concurrent requests with maximum-length prompts to the LLM Agent Orchestrator because no per-client rate limit or request size cap is enforced, exhausting memory and compute budget and blocking legitimate orchestration requests` |
 | `likelihood` | Assessed using OWASP factors: ease of exploit (often low-skill), attacker tooling availability, exposure surface | `HIGH` |
 | `impact` | Assessed using OWASP factors: availability loss duration, blast radius (single service vs system-wide), data loss potential | `HIGH` |
 | `risk_level` | Computed from OWASP 3x3 matrix (likelihood x impact) | `Critical` |
-| `mitigation` | Actionable countermeasure — specific limit, timeout, circuit breaker, or scaling mechanism | `Enforce 10MB file size limit at the API gateway; validate Content-Length header before streaming; configure processing worker memory limits at 512MB with OOM-kill restart policy` |
-| `references` | OWASP, CWE, MITRE ATT&CK, or CVE identifiers supporting the finding | `["CWE-400", "CWE-770"]` |
+| `mitigation` | Actionable countermeasure — specific limit, timeout, circuit breaker, or scaling mechanism | `Enforce per-client rate limit of 10 requests/minute on the orchestrator endpoint; cap prompt input at 4096 tokens; configure request timeout at 30 seconds with circuit breaker after 5 consecutive failures; set memory limit at 1GB per worker with OOM-kill restart policy` |
+| `references` | OWASP, CWE, MITRE ATT&CK, or CVE identifiers supporting the finding | `["CWE-400", "ATT&CK T1499"]` |
 | `dfd_element_type` | DFD classification of the target component | `Process`, `Data Store`, or `Data Flow` |
 
 ### Risk Level Computation
@@ -101,6 +116,7 @@ Apply the OWASP 3x3 matrix to determine `risk_level` from `likelihood` and `impa
 ## References
 
 - OWASP Application Denial of Service Cheat Sheet
+- OWASP API Security Top 10 2023 — API4: Unrestricted Resource Consumption
 - OWASP Rate Limiting Cheat Sheet
 - CWE-400: Uncontrolled Resource Consumption
 - CWE-770: Allocation of Resources Without Limits or Throttling

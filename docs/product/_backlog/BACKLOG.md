@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-03-22T02:33:57Z.
+> Auto-generated from GitHub Issues on 2026-03-22T04:42:04Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -40,5 +40,6 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #5 | STRIDE Threat Agents | OPEN | 2026-03-22 |
 | #3 | Orchestrator Agent | CLOSED | 2026-03-22 |
 | #1 | Project Skeleton & Interface Contract | CLOSED | 2026-03-21 |

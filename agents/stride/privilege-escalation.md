@@ -5,6 +5,8 @@ threat_class: E
 dfd_targets: [Process]
 owasp_references:
   - "OWASP Top 10 2021 A01:2021 — Broken Access Control"
+  - "OWASP API Security 2023 API1 — Broken Object Level Authorization"
+  - "OWASP API Security 2023 API5 — Broken Function Level Authorization"
   - "CWE-269: Improper Privilege Management"
   - "CWE-285: Improper Authorization"
   - "CWE-639: Authorization Bypass Through User-Controlled Key"
@@ -62,6 +64,13 @@ Detects threats where an attacker gains higher privileges than authorized — pe
 - Tenant context derived from user-controllable headers instead of authenticated session
 - Missing tenant boundary enforcement on administrative APIs
 
+**Lateral Movement**
+- Compromised service credentials used to access adjacent services in the same trust zone
+- Shared database credentials across microservices enabling cross-service data access
+- Internal APIs without authentication enabling pivot from one compromised service to others
+- Overly broad network policies allowing unrestricted east-west traffic between services
+- Service mesh configurations missing per-service authorization policies enabling unauthorized inter-service calls
+
 **Privilege Persistence**
 - Compromised sessions not invalidated after password change or role revocation
 - Cached authorization decisions not refreshed after permission changes
@@ -77,13 +86,13 @@ Each finding produced by this agent conforms to `schemas/finding.yaml` with the 
 |-------|-------------|---------|
 | `id` | Sequential identifier with E prefix | `E-1` |
 | `category` | Always `privilege-escalation` | `privilege-escalation` |
-| `component` | Name of the Process under analysis | `User Management API` |
-| `threat` | Specific privilege escalation threat description — what privilege is gained, how, and what boundary is violated | `Standard user can promote their own account to administrator by including a role field in the profile update request body because the endpoint does not filter writable fields by current role` |
+| `component` | Name of the Process under analysis | `MCP Tool Server` |
+| `threat` | Specific privilege escalation threat description — what privilege is gained, how, and what boundary is violated | `Authenticated user invokes administrative tool endpoints on the MCP Tool Server by manipulating the tool_name parameter because the server does not enforce role-based access control on tool dispatch, allowing standard users to execute privileged operations such as configuration changes and data exports` |
 | `likelihood` | Assessed using OWASP factors: attacker skill level (often low for IDOR), tool availability, access surface | `HIGH` |
 | `impact` | Assessed using OWASP factors: scope of unauthorized access gained, data sensitivity exposed, system control obtained | `HIGH` |
 | `risk_level` | Computed from OWASP 3x3 matrix (likelihood x impact) | `Critical` |
-| `mitigation` | Actionable countermeasure — specific access control enforcement, authorization pattern, or boundary check | `Implement allowlist of writable fields per role on the profile update endpoint; reject requests containing role, permissions, or tenantId fields from non-admin callers; log rejected escalation attempts` |
-| `references` | OWASP, CWE, MITRE ATT&CK, or CVE identifiers supporting the finding | `["CWE-269", "CWE-639", "OWASP A01:2021"]` |
+| `mitigation` | Actionable countermeasure — specific access control enforcement, authorization pattern, or boundary check | `Implement RBAC policy on the MCP Tool Server that maps each tool endpoint to a required permission set; validate caller role against the tool permission manifest before dispatch; reject unauthorized tool invocations with 403 and log the attempt with caller identity and requested tool` |
+| `references` | OWASP, CWE, MITRE ATT&CK, or CVE identifiers supporting the finding | `["CWE-269", "OWASP A01:2021", "ATT&CK T1548"]` |
 | `dfd_element_type` | DFD classification of the target component | `Process` |
 
 ### Risk Level Computation
@@ -99,6 +108,8 @@ Apply the OWASP 3x3 matrix to determine `risk_level` from `likelihood` and `impa
 ## References
 
 - OWASP Top 10 2021 — A01: Broken Access Control
+- OWASP API Security Top 10 2023 — API1: Broken Object Level Authorization
+- OWASP API Security Top 10 2023 — API5: Broken Function Level Authorization
 - OWASP Authorization Cheat Sheet
 - OWASP Access Control Cheat Sheet
 - OWASP Insecure Direct Object Reference Prevention Cheat Sheet

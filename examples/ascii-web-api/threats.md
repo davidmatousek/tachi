@@ -162,10 +162,10 @@ No LLM components detected in this architecture. The system does not incorporate
 
 | Component | S | T | R | I | D | E | AG | LLM | Total |
 |-----------|---|---|---|---|---|---|----|-----|-------|
-| External User | 1 | - | - | - | - | - | - | - | 1 |
-| API Gateway | 1 | - | 1 | - | 1 | - | - | - | 3 |
-| Auth Service | - | 1 | 1 | 1 | - | 1 | - | - | 4 |
-| User Database | - | 1 | - | 1 | 1 | - | - | - | 3 |
+| External User | 1 |  | - |  |  |  |  |  | 1 |
+| API Gateway | 1 | - | 1 | - | 1 | - |  |  | 3 |
+| Auth Service | - | 1 | 1 | 1 | - | 1 |  |  | 4 |
+| User Database |  | 1 |  | 1 | 1 |  |  |  | 3 |
 | **Total** | **2** | **2** | **2** | **2** | **2** | **1** | **0** | **0** | **11** |
 
 ---

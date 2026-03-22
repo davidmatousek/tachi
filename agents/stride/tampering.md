@@ -6,6 +6,7 @@ dfd_targets: [Process, Data Store, Data Flow]
 owasp_references:
   - "OWASP Top 10 2021 A03:2021 — Injection"
   - "OWASP Top 10 2021 A08:2021 — Software and Data Integrity Failures"
+  - "OWASP API Security 2023 API3 — Broken Object Property Level Authorization"
   - "CWE-345: Insufficient Verification of Data Authenticity"
   - "CWE-352: Cross-Site Request Forgery"
   - "CWE-494: Download of Code Without Integrity Check"
@@ -57,6 +58,13 @@ Detects threats where an attacker modifies data, code, or configuration without 
 - Environment variable injection through unvalidated sources
 - Dependency confusion or supply chain substitution attacks
 
+**API Parameter Manipulation**
+- Mass assignment or object injection via unfiltered request body fields
+- Type coercion attacks (string to integer, array to object) bypassing validation
+- Hidden or undocumented API parameters accepted without allowlist enforcement
+- Parameter pollution (duplicate keys with conflicting values) exploiting parser differences
+- Price, quantity, or privilege fields modifiable by client-side request tampering
+
 **Cross-Site Request Forgery**
 - State-changing operations accepting requests without CSRF tokens
 - Missing SameSite cookie attributes on session cookies
@@ -70,13 +78,13 @@ Each finding produced by this agent conforms to `schemas/finding.yaml` with the 
 |-------|-------------|---------|
 | `id` | Sequential identifier with T prefix | `T-1` |
 | `category` | Always `tampering` | `tampering` |
-| `component` | Name of the Process, Data Store, or Data Flow under analysis | `Order Processing Service` |
-| `threat` | Specific tampering threat description — what data is modified, how, and what integrity assumption is violated | `Attacker modifies order total via parameter tampering in the checkout API because server-side price validation is not enforced after client submission` |
+| `component` | Name of the Process, Data Store, or Data Flow under analysis | `Knowledge Base` |
+| `threat` | Specific tampering threat description — what data is modified, how, and what integrity assumption is violated | `Attacker injects malicious content into the Knowledge Base via the LLM Agent Orchestrator's write path, because input sanitization is not enforced before persisting user-supplied or agent-generated data to the data store` |
 | `likelihood` | Assessed using OWASP factors: attacker skill level, availability of injection tools, input validation coverage | `HIGH` |
 | `impact` | Assessed using OWASP factors: data integrity loss, financial impact, downstream system corruption | `HIGH` |
 | `risk_level` | Computed from OWASP 3x3 matrix (likelihood x impact) | `Critical` |
-| `mitigation` | Actionable countermeasure — specific validation, signing, or integrity mechanism | `Enforce server-side price calculation from catalog data at checkout; reject client-provided totals; log discrepancies for fraud review` |
-| `references` | OWASP, CWE, MITRE ATT&CK, or CVE identifiers supporting the finding | `["CWE-345", "OWASP A08:2021"]` |
+| `mitigation` | Actionable countermeasure — specific validation, signing, or integrity mechanism | `Implement input validation with allowlist-based content filtering on all write operations to the Knowledge Base; enforce integrity checksums (SHA-256) on stored records; apply write-audit logging with immutable append-only storage for change history` |
+| `references` | OWASP, CWE, MITRE ATT&CK, or CVE identifiers supporting the finding | `["CWE-20", "OWASP A03:2021", "ATT&CK T1565"]` |
 | `dfd_element_type` | DFD classification of the target component | `Process`, `Data Store`, or `Data Flow` |
 
 ### Risk Level Computation
@@ -93,6 +101,7 @@ Apply the OWASP 3x3 matrix to determine `risk_level` from `likelihood` and `impa
 
 - OWASP Top 10 2021 — A03: Injection
 - OWASP Top 10 2021 — A08: Software and Data Integrity Failures
+- OWASP API Security Top 10 2023 — API3: Broken Object Property Level Authorization
 - OWASP Input Validation Cheat Sheet
 - OWASP SQL Injection Prevention Cheat Sheet
 - OWASP Cross-Site Request Forgery Prevention Cheat Sheet

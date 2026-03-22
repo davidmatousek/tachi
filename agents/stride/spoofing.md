@@ -5,6 +5,7 @@ threat_class: S
 dfd_targets: [External Entity, Process]
 owasp_references:
   - "OWASP Top 10 2021 A07:2021 — Identification and Authentication Failures"
+  - "OWASP API Security 2023 API2 — Broken Authentication"
   - "CWE-287: Improper Authentication"
   - "CWE-290: Authentication Bypass by Spoofing"
   - "CWE-384: Session Fixation"
@@ -66,13 +67,13 @@ Each finding produced by this agent conforms to `schemas/finding.yaml` with the 
 |-------|-------------|---------|
 | `id` | Sequential identifier with S prefix | `S-1` |
 | `category` | Always `spoofing` | `spoofing` |
-| `component` | Name of the External Entity or Process under analysis | `OAuth Login Service` |
-| `threat` | Specific spoofing threat description — what the attacker does and what trust assumption they violate | `Attacker replays expired JWT tokens to the API Gateway because token revocation checks are not performed on each request` |
+| `component` | Name of the External Entity or Process under analysis | `LLM Agent Orchestrator` |
+| `threat` | Specific spoofing threat description — what the attacker does and what trust assumption they violate | `Attacker forges service identity tokens to impersonate the MCP Tool Server when communicating with the LLM Agent Orchestrator, because mutual authentication is not enforced on the inter-service channel` |
 | `likelihood` | Assessed using OWASP factors: attacker skill level, availability of tools, opportunity window, detection difficulty | `HIGH` |
 | `impact` | Assessed using OWASP factors: loss of confidentiality, integrity, accountability; financial and reputation damage | `HIGH` |
 | `risk_level` | Computed from OWASP 3x3 matrix (likelihood x impact) | `Critical` |
-| `mitigation` | Actionable countermeasure — specific technology or configuration, not generic advice | `Implement JWT validation with RS256 signature verification, audience claim checks, and token revocation via a deny-list checked on every request` |
-| `references` | OWASP, CWE, MITRE ATT&CK, or CVE identifiers supporting the finding | `["CWE-287", "OWASP A07:2021"]` |
+| `mitigation` | Actionable countermeasure — specific technology or configuration, not generic advice | `Enforce mutual TLS (mTLS) with certificate pinning between the LLM Agent Orchestrator and MCP Tool Server; validate service identity claims using signed JWTs with RS256 and audience restriction` |
+| `references` | OWASP, CWE, MITRE ATT&CK, or CVE identifiers supporting the finding | `["CWE-287", "OWASP A07:2021", "ATT&CK T1078"]` |
 | `dfd_element_type` | DFD classification of the target component | `External Entity` or `Process` |
 
 ### Risk Level Computation
@@ -88,6 +89,7 @@ Apply the OWASP 3x3 matrix to determine `risk_level` from `likelihood` and `impa
 ## References
 
 - OWASP Top 10 2021 — A07: Identification and Authentication Failures
+- OWASP API Security Top 10 2023 — API2: Broken Authentication
 - OWASP Authentication Cheat Sheet
 - OWASP Session Management Cheat Sheet
 - CWE-287: Improper Authentication

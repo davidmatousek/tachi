@@ -6,6 +6,7 @@ dfd_targets: [Process, Data Store, Data Flow]
 owasp_references:
   - "OWASP Top 10 2021 A01:2021 — Broken Access Control"
   - "OWASP Top 10 2021 A02:2021 — Cryptographic Failures"
+  - "OWASP API Security 2023 API3 — Broken Object Property Level Authorization"
   - "CWE-200: Exposure of Sensitive Information to an Unauthorized Actor"
   - "CWE-209: Generation of Error Message Containing Sensitive Information"
   - "CWE-532: Insertion of Sensitive Information into Log File"
@@ -79,13 +80,13 @@ Each finding produced by this agent conforms to `schemas/finding.yaml` with the 
 |-------|-------------|---------|
 | `id` | Sequential identifier with I prefix | `I-1` |
 | `category` | Always `info-disclosure` | `info-disclosure` |
-| `component` | Name of the Process, Data Store, or Data Flow under analysis | `User Profile API` |
-| `threat` | Specific information disclosure threat description — what data is exposed, to whom, and through what mechanism | `API error responses include full stack traces in production, exposing internal class names, database connection strings, and framework version to unauthenticated callers` |
+| `component` | Name of the Process, Data Store, or Data Flow under analysis | `Knowledge Base` |
+| `threat` | Specific information disclosure threat description — what data is exposed, to whom, and through what mechanism | `Knowledge Base returns full document contents including internal metadata and embedding vectors in query responses to the LLM Agent Orchestrator without field-level filtering — an attacker with prompt injection access can extract sensitive training data, internal document classifications, and storage schema details through crafted queries` |
 | `likelihood` | Assessed using OWASP factors: ease of discovery, ease of exploit, attacker awareness, intrusion detection capability | `HIGH` |
 | `impact` | Assessed using OWASP factors: confidentiality loss scope, data sensitivity classification, secondary attack enablement | `MEDIUM` |
 | `risk_level` | Computed from OWASP 3x3 matrix (likelihood x impact) | `High` |
-| `mitigation` | Actionable countermeasure — specific configuration, filtering, or encryption mechanism | `Configure production error handler to return generic error codes with correlation IDs; log full stack traces server-side only; strip Server and X-Powered-By headers` |
-| `references` | OWASP, CWE, MITRE ATT&CK, or CVE identifiers supporting the finding | `["CWE-209", "OWASP A02:2021"]` |
+| `mitigation` | Actionable countermeasure — specific configuration, filtering, or encryption mechanism | `Implement field-level projection on Knowledge Base query responses to return only content fields required by the orchestrator; strip internal metadata, embedding vectors, and storage identifiers; enforce query-scoped access controls matching the requesting user's authorization level` |
+| `references` | OWASP, CWE, MITRE ATT&CK, or CVE identifiers supporting the finding | `["CWE-200", "OWASP A02:2021", "ATT&CK T1005"]` |
 | `dfd_element_type` | DFD classification of the target component | `Process`, `Data Store`, or `Data Flow` |
 
 ### Risk Level Computation
@@ -102,6 +103,7 @@ Apply the OWASP 3x3 matrix to determine `risk_level` from `likelihood` and `impa
 
 - OWASP Top 10 2021 — A01: Broken Access Control
 - OWASP Top 10 2021 — A02: Cryptographic Failures
+- OWASP API Security Top 10 2023 — API3: Broken Object Property Level Authorization
 - OWASP Error Handling Cheat Sheet
 - OWASP Information Disclosure Prevention Cheat Sheet
 - CWE-200: Exposure of Sensitive Information to an Unauthorized Actor
