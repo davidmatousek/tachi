@@ -3,7 +3,7 @@
 <!--
   Canonical output template for tachi threat model reports.
 
-  Schema version : 1.0
+  Schema version : 1.1
   Schema file    : schemas/output.yaml
   Contract       : specs/001-project-skeleton-interface/contracts/output-schema.md
 
@@ -11,14 +11,14 @@
   Consumers      : Integrators, SARIF export (F-006), downstream features
 
   Every generated threat model output MUST conform to this structure.
-  All 7 sections are required. Sections must appear in the order listed.
+  All 7 sections plus Section 4a are required. Sections must appear in the order listed.
 -->
 
 ---
 
 ```yaml
 ---
-schema_version: "1.0"
+schema_version: "1.1"
 date: "YYYY-MM-DD"
 input_format: "{detected or declared format}"
 classification: "confidential"
@@ -29,7 +29,7 @@ classification: "confidential"
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `schema_version` | string | Output schema version. Always `"1.0"` for this release. |
+| `schema_version` | string | Output schema version. Always `"1.1"` for this release. |
 | `date` | string | ISO 8601 date when the threat model was generated. Format: `YYYY-MM-DD`. |
 | `input_format` | string | Architecture input format that was analyzed. One of: `ascii`, `free-text`, `mermaid`, `plantuml`, `c4`. |
 | `classification` | string | Data classification label for the report. Default: `confidential`. |
@@ -38,7 +38,7 @@ classification: "confidential"
 
 ```yaml
 ---
-schema_version: "1.0"
+schema_version: "1.1"
 date: "2026-03-21"
 input_format: "mermaid"
 classification: "confidential"
@@ -294,23 +294,52 @@ Threats targeting the LLM itself, including prompt injection, training data pois
 
 ---
 
+## 4a. Correlated Findings
+
+Cross-agent correlation groups linking findings from different agent categories that target the same component for related threats. Each group represents a single underlying issue identified from multiple security perspectives. Original findings remain unchanged in their respective tables (Sections 3 and 4) — correlation groups are additive, not replacements.
+
+| Group | Findings | Component | Threat Summary | Risk Level |
+|-------|----------|-----------|----------------|------------|
+| _{CG-N}_ | _{comma-separated finding IDs}_ | _{target component}_ | _{each agent perspective prefixed by category name}_ | _{highest risk among members}_ |
+
+**Example** (multiple rules match on same component — merged into single group per algorithm):
+
+| Group | Findings | Component | Threat Summary | Risk Level |
+|-------|----------|-----------|----------------|------------|
+| CG-1 | T-2, E-1, LLM-1, AG-1 | LLM Agent Orchestrator | Tampering: unauthorized modification of agent orchestration data; Privilege-Escalation: agent gains admin-level access through role manipulation; Data-Poisoning: manipulation of training data used by the orchestration layer; Agent-Autonomy: agent performs privileged operations without human approval | Critical |
+
+**When zero correlations are detected:**
+
+> No cross-agent correlations detected.
+
+| Group | Findings | Component | Threat Summary | Risk Level |
+|-------|----------|-----------|----------------|------------|
+
+---
+
 ## 5. Coverage Matrix
 
-Cross-reference matrix showing which components were analyzed for which threat categories. Each cell contains the count of findings identified for that component-category pair. A dash (`-`) indicates no findings were identified (the component was analyzed but no threats were found for that category).
+Cross-reference matrix showing which components were analyzed for which threat categories. Each cell uses a three-state model:
+
+- **Integer**: Deduplicated finding count for that component-category pair. When findings belong to a correlation group (Section 4a), the group contributes 1 to the count collectively rather than individually.
+- **`—`** (em dash): The component was analyzed for that category but no threats were found (analyzed but clean).
+- **`n/a`**: The category does not apply to this component — it was not dispatched for analysis.
 
 | Component | S | T | R | I | D | E | AG | LLM | Total |
 |-----------|---|---|---|---|---|---|----|-----|-------|
-| _{component}_ | _{count}_ | _{count}_ | _{count}_ | _{count}_ | _{count}_ | _{count}_ | _{count}_ | _{count}_ | _{total}_ |
+| _{component}_ | _{count \| — \| n/a}_ | _{count \| — \| n/a}_ | _{count \| — \| n/a}_ | _{count \| — \| n/a}_ | _{count \| — \| n/a}_ | _{count \| — \| n/a}_ | _{count \| — \| n/a}_ | _{count \| — \| n/a}_ | _{total}_ |
 
-**Example:**
+**Example** (with correlation — T-2, E-1, LLM-1, AG-1 correlated on LLM Agent Orchestrator as CG-1; 4 findings merged into 1 group):
 
 | Component | S | T | R | I | D | E | AG | LLM | Total |
 |-----------|---|---|---|---|---|---|----|-----|-------|
-| API Gateway | 1 | - | - | - | 1 | - | - | - | 2 |
-| User Database | - | 1 | - | 1 | - | - | - | - | 2 |
-| Auth Service | - | - | 1 | - | - | 1 | - | - | 2 |
-| LLM Agent | - | - | - | - | - | - | 1 | 1 | 2 |
-| **Total** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **1** | **8** |
+| API Gateway | 1 | — | — | — | 1 | — | n/a | n/a | 2 |
+| User Database | — | 1 | — | 1 | — | — | n/a | n/a | 2 |
+| Auth Service | — | — | 1 | — | — | 1 | n/a | n/a | 2 |
+| LLM Agent Orchestrator | — | 1 | — | — | — | 1 | 1 | 1 | 4 |
+| **Total** | **1** | **2** | **1** | **1** | **1** | **2** | **1** | **1** | **10** |
+
+Counts reflect deduplicated findings. 1 correlation group merged 4 individual findings.
 
 ---
 
@@ -318,7 +347,9 @@ Cross-reference matrix showing which components were analyzed for which threat c
 
 Aggregate counts of findings by risk level, computed using the OWASP 3x3 matrix (likelihood x impact). Provides a quick posture assessment.
 
-**OWASP 3x3 risk matrix reference:**
+### Risk Calibration Matrix
+
+The following OWASP 3×3 risk matrix documents how risk levels are computed for every finding in this threat model. Impact (rows) and Likelihood (columns) determine the Risk Level at each intersection. All agents use this same matrix, ensuring consistent risk ratings across STRIDE and AI threat categories.
 
 | | LOW Likelihood | MEDIUM Likelihood | HIGH Likelihood |
 |---|---|---|---|
@@ -326,25 +357,29 @@ Aggregate counts of findings by risk level, computed using the OWASP 3x3 matrix 
 | **MEDIUM Impact** | Low | Medium | High |
 | **LOW Impact** | Note | Low | Medium |
 
-| Risk Level | Count | Percentage |
-|------------|-------|------------|
-| Critical | _{count}_ | _{count / total * 100}%_ |
-| High | _{count}_ | _{count / total * 100}%_ |
-| Medium | _{count}_ | _{count / total * 100}%_ |
-| Low | _{count}_ | _{count / total * 100}%_ |
-| Note | _{count}_ | _{count / total * 100}%_ |
-| **Total** | _{total}_ | **100%** |
-
-**Example:**
+Risk summary counts below reflect deduplicated findings. When correlation groups exist, correlated findings count as one unique threat per group rather than individually.
 
 | Risk Level | Count | Percentage |
 |------------|-------|------------|
-| Critical | 2 | 25% |
-| High | 4 | 50% |
-| Medium | 1 | 12.5% |
-| Low | 1 | 12.5% |
-| Note | 0 | 0% |
-| **Total** | **8** | **100%** |
+| Critical | _{dedup count}_ | _{dedup count / dedup total * 100}%_ |
+| High | _{dedup count}_ | _{dedup count / dedup total * 100}%_ |
+| Medium | _{dedup count}_ | _{dedup count / dedup total * 100}%_ |
+| Low | _{dedup count}_ | _{dedup count / dedup total * 100}%_ |
+| Note | _{dedup count}_ | _{dedup count / dedup total * 100}%_ |
+| **Total** | _{dedup total}_ | **100%** |
+
+When correlation groups exist and the deduplicated total differs from the raw finding count, display the count with a parenthetical raw count: e.g., `"5 (7 raw)"`. When no correlations exist, display the count alone.
+
+**Example** (same scenario as Coverage Matrix: 10 raw findings, 1 correlation group merging 4 findings into 1 group — dedup total 7):
+
+| Risk Level | Count | Percentage |
+|------------|-------|------------|
+| Critical | 1 (2 raw) | 14.3% |
+| High | 3 (5 raw) | 42.8% |
+| Medium | 2 | 28.6% |
+| Low | 1 | 14.3% |
+| Note | 0 | 0.0% |
+| **Total** | **7 (10 raw)** | **100%** |
 
 ---
 

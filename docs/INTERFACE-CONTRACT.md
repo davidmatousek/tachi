@@ -1,6 +1,6 @@
 # Interface Contract
 
-**Version**: 1.0
+**Version**: 1.1
 **Status**: Stable
 **Classification**: `confidential` (outputs contain security-sensitive architectural details)
 
@@ -261,7 +261,17 @@ When an element matches keywords from both the LLM and Agentic categories, both 
 - "agent" -> AG agents dispatched (agent-autonomy, tool-abuse)
 - "orchestrator" -> AG agents dispatched (already included, no duplicate dispatch)
 
-**Deduplication**: Duplicate findings from overlapping dispatches are resolved at the coverage matrix level, not at dispatch time. Each agent produces findings independently; the coverage matrix then aggregates unique findings per component per category.
+**Cross-Agent Correlation**: When agents from both STRIDE and AI categories produce findings on the same component, the orchestrator detects correlated threats using 5 deterministic correlation rules:
+
+| Rule | STRIDE Category | AI Category | Correlation Basis |
+|------|----------------|-------------|-------------------|
+| CR-1 | Tampering (T) | Data-Poisoning (LLM) | Data integrity |
+| CR-2 | Privilege-Escalation (E) | Agent-Autonomy (AG) | Excessive permissions |
+| CR-3 | Info-Disclosure (I) | Prompt-Injection (LLM) | Information leakage |
+| CR-4 | Repudiation (R) | Agent-Autonomy (AG) | Accountability gaps |
+| CR-5 | Denial-of-Service (D) | Tool-Abuse (AG) | Resource exhaustion |
+
+The detection algorithm groups all findings by target component, checks cross-category pairs against these rules, and merges matching findings into correlation groups (CG-N). Each finding belongs to at most one group. Multiple rule matches on the same component merge into a single group. Original findings remain unchanged in their STRIDE/AI tables — correlation groups appear in a separate Section 4a. The coverage matrix and risk summary then use deduplicated counts where each correlation group contributes 1 instead of its individual member count.
 
 ### Agent-to-Table Mapping
 
@@ -282,17 +292,17 @@ Every invocation produces a single structured threat model document following th
 
 - **Structure template**: `templates/threats.md` -- defines all sections, field descriptions, and example values
 - **Machine-readable schema**: `schemas/output.yaml` -- validates output structure programmatically
-- **Schema version**: `1.0`
+- **Schema version**: `1.1`
 
 ### Output Structure
 
-The output contains YAML frontmatter followed by 7 required sections.
+The output contains YAML frontmatter followed by 7 required sections plus Section 4a.
 
 **Frontmatter**:
 
 ```yaml
 ---
-schema_version: "1.0"
+schema_version: "1.1"
 date: "YYYY-MM-DD"
 input_format: ascii | free-text | mermaid | plantuml | c4
 classification: confidential
@@ -307,9 +317,10 @@ classification: confidential
 | 2 | Trust Boundaries     | Zone names and boundary crossings                        |
 | 3 | STRIDE Tables (6)    | One table per STRIDE category with finding rows          |
 | 4 | AI Threat Tables (2) | AG and LLM tables with finding rows                      |
-| 5 | Coverage Matrix      | Components (rows) x categories (columns) with counts     |
-| 6 | Risk Summary         | Counts per risk level: Critical, High, Medium, Low, Note |
-| 7 | Recommended Actions  | Findings sorted by risk level descending                 |
+| 4a | Correlated Findings | Cross-agent correlation groups linking related findings from different categories on the same component. Always present (shows "No cross-agent correlations detected" when none exist). |
+| 5 | Coverage Matrix      | Components (rows) x categories (columns) with deduplicated counts. Three-state cells: integer (findings), `—` (analyzed, clean), `n/a` (not applicable). Footnote when correlations exist. |
+| 6 | Risk Summary         | Risk Calibration Matrix (OWASP 3×3) followed by deduplicated counts per risk level with parenthetical raw counts when different |
+| 7 | Recommended Actions  | All individual findings sorted by risk level descending (raw count, not deduplicated) |
 
 ### Finding Row Fields
 
@@ -431,7 +442,7 @@ Every threat agent must include system-level prompt boundaries that:
 The output template (`templates/threats.md`) and output schema (`schemas/output.yaml`) serve as structural validators. Any generated output must conform to:
 
 - YAML frontmatter with required fields (`schema_version`, `date`, `input_format`, `classification`)
-- All 7 required sections present
+- All 7 required sections plus Section 4a present
 - Finding IDs matching the pattern `{CATEGORY_PREFIX}-{N}`
 - Risk levels matching OWASP 3x3 matrix computation from likelihood and impact
 

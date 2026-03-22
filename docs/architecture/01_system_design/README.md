@@ -457,3 +457,101 @@ Architecture Input (any format)
 | Schema | YAML (`schemas/finding.yaml` v1.0) | Machine-readable validation contract; read-only for this feature |
 | OWASP references | LLM Top 10 v2025, Agentic Top 10 2026, MCP Top 10 2025 | Three complementary AI security frameworks |
 | Validation | Manual review + orchestrator integration run | No automated test framework needed for prompt files |
+
+---
+
+### Feature 010: Deduplication & Risk Rating
+
+## Components
+
+### Component 1: Orchestrator Prompt — Correlation Detection Phase
+
+**File**: `agents/orchestrator.md`
+**Type**: Extend existing Phase 3 (Determine Countermeasures)
+**Purpose**: Add correlation detection logic after all agent findings are collected and risk-validated, before coverage matrix generation.
+
+Five deterministic correlation rules map STRIDE-to-AI category pairs:
+
+| Rule | STRIDE Category | AI Category | Correlation Basis |
+|------|----------------|-------------|-------------------|
+| CR-1 | Tampering (T) | Data-Poisoning (LLM) | Data integrity |
+| CR-2 | Privilege-Escalation (E) | Agent-Autonomy (AG) | Excessive permissions |
+| CR-3 | Info-Disclosure (I) | Prompt-Injection (LLM) | Information leakage |
+| CR-4 | Repudiation (R) | Agent-Autonomy (AG) | Accountability gaps |
+| CR-5 | Denial-of-Service (D) | Tool-Abuse (AG) | Resource exhaustion |
+
+### Component 2: Output Template — Correlated Findings Section (4a)
+
+**File**: `templates/threats.md`
+**Type**: New Section 4a between AI Threat Tables and Coverage Matrix
+
+### Component 3: Output Template — Enhanced Coverage Matrix
+
+**File**: `templates/threats.md` (Section 5)
+**Type**: Modify existing — deduplicated counts, "—" for gaps, "n/a" for not-applicable
+
+### Component 4: Output Template — Risk Calibration Matrix + Deduplicated Risk Summary
+
+**File**: `templates/threats.md` (Section 6)
+**Type**: Add subsection + modify existing counts
+
+### Component 5: Output Schema Update
+
+**File**: `schemas/output.yaml`
+**Type**: Add Correlated Findings section schema
+
+### Component 6: Interface Contract Update
+
+**File**: `docs/INTERFACE-CONTRACT.md`
+**Type**: Formalize deduplication in Sections 3 + 4
+
+## Data Flow
+
+```
+Architecture Input
+        │
+        ▼
+┌─────────────────────────────┐
+│ Orchestrator Phase 1-2      │
+│ (unchanged)                 │
+└────────┬────────────────────┘
+         │
+    ┌────┴────────┐
+    ▼             ▼
+┌─────────┐  ┌──────────┐
+│ STRIDE   │  │ AI       │
+│ Agents   │  │ Agents   │
+│ (6)      │  │ (5)      │
+└────┬────┘  └────┬─────┘
+     └─────┬──────┘
+           │ all findings (IR schema)
+           ▼
+┌─────────────────────────────┐
+│ Phase 3 (extended)          │
+│ 1. Collect + validate       │
+│ 2. Assemble tables          │
+│ 3. NEW: Correlation detect  │
+│ 4. NEW: Assemble Section 4a │
+└────────┬────────────────────┘
+         ▼
+┌─────────────────────────────┐
+│ Phase 4 (modified)          │
+│ 1. Coverage matrix (dedup)  │
+│ 2. Risk Calibration Matrix  │
+│ 3. Risk summary (dedup)     │
+│ 4. Recommended actions      │
+│ 5. Structural validation    │
+└────────┬────────────────────┘
+         ▼
+   threats.md output
+   (7 sections + Section 4a)
+```
+
+## Tech Stack
+
+| Technology | Purpose |
+|-----------|---------|
+| Markdown prompt | Orchestrator prompt extension — platform-agnostic |
+| YAML schema | Output validation contract update |
+| Markdown template | Output format specification |
+| OWASP 3×3 Matrix | Risk calibration documentation (already implemented) |

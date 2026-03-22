@@ -7,9 +7,9 @@
 # Producers: Template engine (applying IR findings to output template)
 # Consumers: Integrators, SARIF export (F-006), downstream features
 #
-# Version: 1.0
+# Version: 1.1
 
-schema_version: "1.0"
+schema_version: "1.1"
 
 output:
   frontmatter:
@@ -17,7 +17,7 @@ output:
     fields:
       schema_version:
         type: string
-        value: "1.0"
+        value: "1.1"
       date:
         type: string
         format: "YYYY-MM-DD"
@@ -94,12 +94,31 @@ output:
         - risk_level
         - mitigation
 
+    - name: Correlated Findings
+      required: true
+      description: >
+        Cross-agent correlation groups where findings from different
+        categories target the same component for related threats.
+        Appears as Section 4a between AI Threat Tables and Coverage Matrix.
+      row_fields:
+        - group_id
+        - findings
+        - component
+        - threat_summary
+        - risk_level
+
     - name: Coverage Matrix
       required: true
       description: >
         Cross-reference matrix showing which components
         were analyzed for which threat categories.
-      structure: "rows=components, columns=S/T/R/I/D/E/AG/LLM, cells=finding_count"
+        Cell values use deduplicated counts where correlation
+        groups count as 1 finding per component-category pair.
+      structure: "rows=components, columns=S/T/R/I/D/E/AG/LLM, cells=deduplicated_finding_count; three-state model: integer (deduplicated count), '—' (analyzed-but-clean), 'n/a' (not-applicable)"
+      dedup_note: >
+        When correlation groups exist, the coverage matrix appends
+        a footnote: "Counts reflect deduplicated findings. N correlation
+        groups merged M individual findings."
 
     - name: Risk Summary
       required: true
