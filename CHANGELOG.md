@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 012 — SARIF Output Generation
+
+**Added**
+- SARIF 2.1.0 output generation with STRIDE+AI rule mapping, CVSS severity alignment, correlated findings, dual locations, deterministic fingerprints, and optional OWASP/CWE taxonomies (`9f84fad`)
+
+**Changed**
+- Closed Feature 012 — updated product docs, architecture docs (ADR-013), tech stack, KB entry PAT-004 (`64cb30a`)
+- Regenerated BACKLOG.md after issue closure (`bbaabb3`)
+
 ### Feature 010 — Deduplication & Risk Rating
 
 **Added**
