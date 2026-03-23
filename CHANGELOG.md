@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 015 — Threat Report Agent & Attack Trees
+
+**Added**
+- Threat report agent with STRIDE+AI attack trees, report schema, 7-section template, 12 Mermaid attack tree examples, and orchestrator Phase 5 integration (`f59783f`)
+
+**Changed**
+- Closed Feature 015 — updated product docs (INDEX, User Stories), architecture docs (Tech Stack, System Design) (`16fd4f1`)
+- Regenerated BACKLOG.md after issue closure (`60780c6`)
+
 ### Feature 012 — SARIF Output Generation
 
 **Added**
