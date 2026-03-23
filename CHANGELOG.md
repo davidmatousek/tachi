@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 021 — Platform Adapters
+
+**Added**
+- Platform adapters for 5 targets: Claude Code (`.claude/agents/`), Generic (numbered prompts), Cursor (`.mdc` rules), Copilot (`.agent.md` with size-split), GitHub Actions (workflow YAML with SARIF upload); VERSION script for drift detection (`c4331f4`)
+
+**Changed**
+- Closed Feature 021 — updated product docs (INDEX, BACKLOG, User Stories), architecture docs (Tech Stack, System Design, ADR-015), DevOps docs (README, Local, CI/CD Guide) (`71f22b8`)
+- Regenerated BACKLOG.md after issue closure (`4b5c244`)
+
 ### Feature 018 — Threat Infographic Agent
 
 **Added**
