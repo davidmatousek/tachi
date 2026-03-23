@@ -557,3 +557,77 @@ Architecture Input
 | YAML schema | Output validation contract update |
 | Markdown template | Output format specification |
 | OWASP 3×3 Matrix | Risk calibration documentation (already implemented) |
+
+---
+
+### Feature 012: SARIF Output Generation
+
+## Components
+
+### Component 1: Orchestrator Phase 4 Extension
+
+**File**: `agents/orchestrator.md`
+**Type**: Extend existing Phase 4 (Assess)
+**Purpose**: Add SARIF generation instructions after Output Structural Validation. The orchestrator produces `threats.sarif` alongside `threats.md` using the same finding data collected in Phase 3.
+
+10 sub-sections added:
+1. SARIF Generation Instructions
+2. Finding IR → SARIF Result Mapping Table (FR-003)
+3. Category → Rule ID Mapping Table (FR-004, resolves `info-disclosure` → `information-disclosure`)
+4. Severity Mapping Table (FR-005, Note-level fix: `note`/`"0.1"`)
+5. SARIF Tool Metadata Template (FR-006)
+6. Rule Definition Templates (8 categories with shortDescription, fullDescription, help.text, help.markdown, tags)
+7. Correlated Finding Instructions (FR-007, `relatedLocations[]`)
+8. Fingerprint Computation (FR-008, SHA-256 of ruleId + component_name)
+9. Dual-Location Instructions (FR-011, physicalLocation + logicalLocations)
+10. JSON Structural Self-Check (FR-010)
+
+### Component 2: Output Schema Note-Level Fix
+
+**File**: `schemas/output.yaml`
+**Type**: Modify existing SARIF Severity Mapping comment block
+**Purpose**: Fix Note-level mapping from `none`/`0.0` to `note`/`0.1` per Architect review.
+
+### Component 3: SARIF Reference Template
+
+**File**: `templates/threats.sarif`
+**Type**: New file
+**Purpose**: Complete SARIF 2.1.0 reference structure with placeholder values for documentation and structural reference.
+
+## Data Flow
+
+```
+Architecture Input (5 formats)
+        ↓
+Phase 1: Scope (extract components, trust boundaries)
+        ↓
+Phase 2: Determine Threats (dispatch to STRIDE + AI agents)
+        ↓
+Phase 3: Countermeasures (collect findings, validate, correlate)
+        ↓
+Phase 4: Assess
+  ├── Coverage Matrix (Section 5)
+  ├── Risk Summary (Section 6)
+  ├── Recommended Actions (Section 7)
+  ├── Output Structural Validation
+  └── *** SARIF Generation (NEW) ***
+        ├── Map findings → SARIF results
+        ├── Map categories → SARIF rules
+        ├── Map severity → SARIF levels
+        ├── Populate tool metadata
+        ├── Map correlations → relatedLocations
+        ├── Compute partialFingerprints
+        ├── Add dual locations
+        └── Run JSON structural self-check
+        ↓
+Output: threats.md + threats.sarif (same directory)
+```
+
+## Tech Stack
+
+| Technology | Purpose |
+|-----------|---------|
+| Markdown prompt | Orchestrator prompt extension — SARIF generation instructions |
+| YAML schema | Output validation contract — Note-level severity fix |
+| JSON reference | SARIF 2.1.0 template for structural documentation |
+| SARIF 2.1.0 | OASIS standard for static analysis results interchange |

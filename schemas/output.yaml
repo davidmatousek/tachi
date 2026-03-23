@@ -161,4 +161,4 @@ output:
 # | High      | error         | 7.0-8.9         |
 # | Medium    | warning       | 4.0-6.9         |
 # | Low       | note          | 0.1-3.9         |
-# | Note      | none          | 0.0             |
+# | Note      | note          | 0.1             |
