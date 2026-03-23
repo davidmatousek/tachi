@@ -633,3 +633,63 @@ Output: threats.md + threats.sarif (same directory)
 | YAML schema | Output validation contract — Note-level severity fix |
 | JSON reference | SARIF 2.1.0 template for structural documentation |
 | SARIF 2.1.0 | OASIS standard for static analysis results interchange |
+
+---
+
+### Feature 015: Threat Report Agent & Attack Trees
+
+## Components
+
+### Component 1: Report Agent Prompt (`agents/threat-report.md`)
+
+**Type**: New file
+**Purpose**: Markdown prompt file defining the report agent's analysis methodology, output structure, and quality requirements. Transforms `threats.md` into a narrative report with Mermaid attack trees and remediation roadmap.
+
+**YAML Frontmatter**: `agent_name: threat-report`, `category: report`, `input_schema: schemas/output.yaml`, `output_schema: schemas/report.yaml`
+
+**8-Section Structure**: Core Mission → Input Contract → Report Generation Methodology → Attack Tree Construction Rules → Mermaid Conventions → Executive Summary Template → Correlation Group Handling → Quality Standards / Validation Checklist
+
+### Component 2: Report Output Schema (`schemas/report.yaml`)
+
+**Type**: New file
+**Purpose**: Structural validation contract for `threat-report.md`. Defines 7 required sections, finding reference completeness rules, and attack tree file naming conventions.
+
+### Component 3: Report Template (`templates/threat-report.md`)
+
+**Type**: New file
+**Purpose**: Canonical template for report output with section headings, field placeholders, and structural guidance.
+
+### Component 4: Orchestrator Phase 5 Integration
+
+**File**: `agents/orchestrator.md`
+**Type**: Extend existing — add Phase 5 (Report) dispatch
+**Purpose**: After Phase 4 (Assess) completes, dispatch report agent with `threats.md` as input in fresh context. Default-on with opt-out configuration.
+
+## Data Flow
+
+```mermaid
+flowchart TD
+    TM["threats.md<br/>(Phase 4 Output)"] --> RA["Report Agent<br/>(agents/threat-report.md)"]
+    RA --> TR["threat-report.md<br/>(7 Sections)"]
+    RA --> AT["attack-trees/<br/>(Standalone Files)"]
+
+    subgraph Report Agent Processing
+        Parse["Parse threats.md<br/>Sections 1-7 + 4a"] --> Exec["Executive Summary<br/>(~500 words)"]
+        Parse --> Narr["Threat Analysis<br/>(Agent-by-Agent)"]
+        Parse --> Cross["Cross-Cutting<br/>Theme Detection"]
+        Parse --> Trees["Attack Tree<br/>Generation"]
+        Parse --> Road["Remediation<br/>Roadmap"]
+        Parse --> App["Appendix:<br/>Finding Reference"]
+    end
+
+    RA --> Val["Validation<br/>(schemas/report.yaml)"]
+```
+
+## Tech Stack
+
+| Component | Technology | Rationale |
+|-----------|-----------|-----------|
+| Report Agent | Markdown prompt file | Consistent with tachi agent architecture |
+| Output Schema | YAML | Matches existing schema patterns |
+| Attack Trees | Mermaid `flowchart TD` | Standard, GitHub-renderable |
+| Template | Markdown | Same format as `templates/threats.md` |

@@ -1,0 +1,123 @@
+# Report Output Schema
+#
+# Defines the complete structure of a threat report output
+# (threat-report.md). Validates that generated reports contain
+# all required sections with correct structure.
+#
+# Producers: Report agent (agents/threat-report.md)
+# Consumers: Validation phase, downstream integrations
+#
+# Version: 1.0
+
+schema_version: "1.0"
+
+report:
+  output_file: threat-report.md
+
+  frontmatter:
+    required: true
+    fields:
+      schema_version:
+        type: string
+        value: "1.0"
+      date:
+        type: string
+        format: "YYYY-MM-DD"
+      source_file:
+        type: string
+        description: >
+          Path to input threats.md used as the basis for
+          this report.
+      finding_count:
+        type: integer
+        description: >
+          Total findings from input threats.md (sum across
+          all STRIDE and AI agent categories).
+      risk_distribution:
+        type: object
+        description: >
+          Counts by risk level, computed from input findings.
+        fields:
+          Critical:
+            type: integer
+          High:
+            type: integer
+          Medium:
+            type: integer
+          Low:
+            type: integer
+      attack_tree_count:
+        type: integer
+        description: >
+          Number of generated attack trees (one per
+          Critical/High finding).
+
+  required_sections:
+    - name: "Executive Summary"
+      heading: "## 1. Executive Summary"
+      max_words: 500
+      required_elements:
+        - risk_posture
+        - top_threats
+        - recommendations
+        - compliance
+        - timeline
+
+    - name: "Architecture Overview"
+      heading: "## 2. Architecture Overview"
+      description: >
+        System context and trust boundary summary derived
+        from threats.md Sections 1-2.
+
+    - name: "Threat Analysis"
+      heading: "## 3. Threat Analysis"
+      requirement: >
+        Every finding ID from input must appear in
+        agent-by-agent narrative.
+
+    - name: "Cross-Cutting Themes"
+      heading: "## 4. Cross-Cutting Themes"
+      description: >
+        Pattern descriptions with contributing finding IDs.
+
+    - name: "Attack Trees"
+      heading: "## 5. Attack Trees"
+      requirement: >
+        One Mermaid flowchart TD tree per Critical/High
+        finding.
+
+    - name: "Remediation Roadmap"
+      heading: "## 6. Remediation Roadmap"
+      required_fields:
+        - finding_id
+        - component
+        - mitigation
+        - effort
+        - dependencies
+
+    - name: "Appendix: Finding Reference"
+      heading: "## 7. Appendix: Finding Reference"
+      requirement: >
+        Complete mapping — zero finding loss.
+
+  attack_tree_files:
+    directory: "attack-trees/"
+    naming: "{finding-id}-attack-tree.md"
+    severity_filter:
+      - Critical
+      - High
+    standalone_format:
+      required_header_fields:
+        - finding_id
+        - component
+        - risk_level
+        - threat_summary
+
+  # Completeness Rule
+  #
+  # Every finding ID in threats.md Sections 3 (STRIDE Tables),
+  # 4 (AI Threat Tables), and 4a (Correlated Findings) must
+  # appear in the Appendix: Finding Reference section.
+  completeness_rule: >
+    Every finding ID in threats.md Sections 3, 4, 4a
+    must appear in Appendix.
