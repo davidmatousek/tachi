@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 018 — Threat Infographic Agent
+
+**Added**
+- Threat infographic agent with 6-section visual risk spec, Gemini API image generation, output schema, orchestrator Phase 6 integration, and sample output (`24ba12b`)
+
+**Changed**
+- Closed Feature 018 — updated product docs (INDEX, User Stories, OKRs), architecture docs (Tech Stack, System Design, ADR-014), DevOps docs, KB entry PAT-005 (`a9cffc8`)
+- Regenerated BACKLOG.md after issue closure (`25329b4`)
+
 ### Feature 015 — Threat Report Agent & Attack Trees
 
 **Added**
