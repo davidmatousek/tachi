@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-03-23T16:07:14Z.
+> Auto-generated from GitHub Issues on 2026-03-23T19:52:41Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -40,6 +40,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #21 | Feature 009: Platform Adapters | OPEN | 2026-03-23 |
 | #18 | Feature: Threat Infographic Agent | CLOSED | 2026-03-23 |
 | #15 | Feature 007: Threat Report Agent & Attack Trees | CLOSED | 2026-03-23 |
 | #12 | Feature 006: SARIF Output Generation | CLOSED | 2026-03-23 |

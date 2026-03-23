@@ -1,0 +1,45 @@
+source_version: 1550ddb
+generated_date: 2026-03-23
+agent_manifest:
+  - file: agent-autonomy.mdc
+    source: agents/ai/agent-autonomy.md
+    sha256: cb8e7ff44f70dbf8aa0a641c5905f586e72a3a6479e2b828322000ab82465c54
+  - file: data-poisoning.mdc
+    source: agents/ai/data-poisoning.md
+    sha256: 750d936d481ca6d9c97ae54191b629fe470d235224eab4965c708f4c32eacbaa
+  - file: denial-of-service.mdc
+    source: agents/stride/denial-of-service.md
+    sha256: c1bd6bd70dbf2412e324a09b93053a59d9744eaa99c418cee5c1aea4c9ce8aa9
+  - file: info-disclosure.mdc
+    source: agents/stride/info-disclosure.md
+    sha256: 739db7da960da0371c9cba1426a5b25fd7a689b7a0d643ac5fe3e4a244eab533
+  - file: model-theft.mdc
+    source: agents/ai/model-theft.md
+    sha256: 98f810627f41cc5179d2d81f15f1dabbaff9417b347df3e00e514a637151528e
+  - file: orchestrator.mdc
+    source: agents/orchestrator.md
+    sha256: 83d1d75df24de052aff5247d9baa514884322b6133890b50bdb0ba3fd5992adf
+  - file: privilege-escalation.mdc
+    source: agents/stride/privilege-escalation.md
+    sha256: eca349d0e718b7d0f3708fe529f3f0e5afd34936f8cf448a200cb55a6d88d49d
+  - file: prompt-injection.mdc
+    source: agents/ai/prompt-injection.md
+    sha256: 4caef8405bd12074c72357f42ea38f56830f9acc64005a2bb3faa45ac8d66fdb
+  - file: repudiation.mdc
+    source: agents/stride/repudiation.md
+    sha256: ed346e2dbad2955a3669c61a4c27ca54f82bf859b737416e21e604d058c15565
+  - file: spoofing.mdc
+    source: agents/stride/spoofing.md
+    sha256: 540f9ff604e7963acd93a00a181aa60f50eb0d5e6ff6035a6de1cb7ba16c918e
+  - file: tampering.mdc
+    source: agents/stride/tampering.md
+    sha256: 0712397a2f18d3b82ad5ae989e4da733158401d9de06fd8f31904ea49801de18
+  - file: threat-infographic.mdc
+    source: agents/threat-infographic.md
+    sha256: ed89e9a067f6d713b34a90559a87e98b60a3d413dbbd5c57ce8b86481b683c30
+  - file: threat-report.mdc
+    source: agents/threat-report.md
+    sha256: 7fea892f9df3d37572530f140a24b6278225622da65a60aa1f24171670291242
+  - file: tool-abuse.mdc
+    source: agents/ai/tool-abuse.md
+    sha256: 740251bc50b1b7a5784fcea319f91bf07d6e9610242da03220e2415f007e525a

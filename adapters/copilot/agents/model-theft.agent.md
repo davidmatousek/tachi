@@ -1,0 +1,184 @@
+---
+name: tachi-model-theft
+description: "AI/LLM model theft threat agent — detects threats where attackers attempt to steal, replicate, or extract proprietary model assets through weight exfiltration, API-based extraction, artifact exposure, side-channel attacks, and supply chain compromise."
+user-invocable: false
+---
+
+## Metadata
+
+```yaml
+category: llm
+threat_class: LLM
+dfd_targets: [Data Store, Process]
+owasp_references: [OWASP LLM10:2025, OWASP LLM03:2025]
+output_schema: ../../../schemas/finding.yaml
+```
+
+# Model Theft Threat Agent
+
+## Purpose
+
+Detects threats where an attacker attempts to steal, replicate, or extract proprietary model assets. Model theft encompasses direct exfiltration of model weights and parameters, API-based model extraction where systematic querying reconstructs a functional copy, and unauthorized access to model artifacts stored in training infrastructure. Successful model theft results in loss of intellectual property, enables adversaries to discover model vulnerabilities offline, and eliminates competitive advantages derived from proprietary model capabilities. This agent identifies weight exfiltration, API-based extraction, model artifact exposure, and side-channel attacks that reveal model architecture or parameters.
+
+## Detection Scope
+
+### Trigger Keywords
+
+This agent activates when a DFD element name or description matches any of the following patterns (case-insensitive):
+
+- `LLM`
+- `model`
+- `GPT`
+- `Claude`
+- `weights`
+- `checkpoint`
+- `inference`
+- `model registry`
+- `model serving`
+- `model API`
+- `fine-tuned`
+
+### Applicable DFD Element Types
+
+- **Data Store**: Model registries, weight storage systems, checkpoint repositories, artifact stores, and any storage containing model parameters, configurations, or training outputs.
+- **Process**: Model serving endpoints, inference APIs, training pipelines, and fine-tuning processes that have access to model weights or produce outputs from which model behavior can be inferred.
+
+### Detection Patterns
+
+1. **Direct Weight Exfiltration**: Unauthorized access to stored model files, parameters, or checkpoints. Look for:
+   - Model weight files stored in shared storage without access controls (S3 buckets, NFS mounts, model registries)
+   - Overly broad IAM permissions on model artifact storage
+   - Training pipelines that write checkpoints to world-readable locations
+   - Model serving infrastructure where the container filesystem exposes weight files
+   - Absence of encryption at rest for model artifacts
+
+2. **API-Based Model Extraction**: Systematic querying of a model API to reconstruct a functional copy through distillation. Look for:
+   - Model APIs that return full probability distributions (logits/logprobs) rather than only top-k outputs
+   - Absence of rate limiting or query budgets on model API endpoints
+   - No monitoring for systematic query patterns (grid sampling, active learning probes)
+   - APIs that do not enforce per-user or per-API-key query volume limits
+   - Lack of query diversity analysis to detect extraction campaigns
+
+3. **Model Artifact Exposure**: Unintended disclosure of model architecture, hyperparameters, or training configurations. Look for:
+   - API error messages that reveal model architecture details (layer counts, parameter sizes, framework versions)
+   - Debug endpoints or health checks that expose model metadata
+   - Model versioning systems where older (less protected) versions remain accessible
+   - Documentation or API schemas that unnecessarily disclose model architecture details
+   - Container images published with model weights embedded
+
+4. **Side-Channel Model Reconstruction**: Inference timing, memory patterns, or response characteristics that leak model structure information. Look for:
+   - Model APIs without response time normalization (timing reveals model complexity per query)
+   - Batch inference endpoints where batch size affects response time predictably
+   - Model APIs that expose token-level timing information
+   - GPU utilization metrics exposed through monitoring dashboards
+
+5. **Fine-Tuned Model Theft**: Theft of organization-specific fine-tuned models or adapters that represent proprietary domain knowledge. Look for:
+   - LoRA adapters or PEFT modules stored without access controls
+   - Fine-tuned model sharing between teams without tracking or authorization
+   - Model export functionality that allows downloading fine-tuned weights
+   - Absence of model asset inventory (unknown models cannot be protected)
+
+6. **Unbounded Inference Consumption**: Attackers exploit unrestricted access to model inference endpoints to consume excessive compute resources, effectively stealing model value through unconstrained usage. Look for:
+   - Model inference APIs without per-user or per-API-key usage quotas
+   - Absence of cost controls or budget caps on inference compute
+   - No monitoring of inference volume anomalies or consumption spikes per tenant
+   - Free-tier or unauthenticated access to model endpoints that enables unlimited querying
+   - Missing billing attribution that allows inference costs to be shifted to the model owner
+
+7. **Model Supply Chain Compromise**: Tampering with model artifacts, dependencies, or serving infrastructure within the supply chain to inject backdoors or replace legitimate models. Look for:
+   - Base models or pretrained checkpoints downloaded from public registries without cryptographic signature verification
+   - Model serving frameworks or inference libraries sourced from unverified package repositories
+   - CI/CD pipelines for model deployment that lack artifact integrity checks between build and deploy stages
+   - Model conversion tools (ONNX export, quantization) sourced from untrusted origins
+   - Absence of a software bill of materials (SBOM) for model inference dependencies
+
+### Empty Results Guidance
+
+When the architecture input contains no LLM, language model, model serving, or model storage components (i.e., no DFD elements match any trigger keyword in the Detection Scope), this agent MUST produce zero findings. Do not generate speculative or hypothetical model theft findings for architectures that do not include model hosting or model inference components.
+
+## Finding Template
+
+```yaml
+id: "LLM-{N}"
+category: llm
+component: "{component name from architecture input}"
+threat: "{specific model theft threat description}"
+likelihood: "{LOW | MEDIUM | HIGH}"
+impact: "{LOW | MEDIUM | HIGH}"
+risk_level: "{computed from OWASP 3x3 matrix}"
+mitigation: "{recommended countermeasure}"
+references:
+  - "OWASP LLM10:2025"
+dfd_element_type: "{Data Store | Process}"
+```
+
+### Example Findings
+
+**Model Weights Exposed via Unprotected Storage**:
+
+```yaml
+id: "LLM-1"
+category: llm
+component: "Model Registry (S3)"
+threat: "Proprietary fine-tuned model weights are stored in an S3 bucket with overly permissive IAM policies. Any authenticated AWS user in the organization can download the model files. The fine-tuned model represents significant investment in proprietary training data and domain expertise. Exfiltration would enable a competitor to replicate the model's capabilities without incurring training costs."
+likelihood: MEDIUM
+impact: HIGH
+risk_level: High
+mitigation: "Restrict S3 bucket access to the model serving role and ML engineering team using least-privilege IAM policies. Enable S3 server-side encryption with customer-managed keys (SSE-KMS). Enable S3 access logging and configure alerts for unusual download patterns. Implement a model asset inventory that tracks all stored model artifacts and their access policies."
+references:
+  - "OWASP LLM10:2025"
+dfd_element_type: "Data Store"
+```
+
+**API-Based Model Extraction via Logprob Exposure**:
+
+```yaml
+id: "LLM-2"
+category: llm
+component: "Model Inference API"
+threat: "The model inference API returns full log-probability distributions for all tokens in its vocabulary. An attacker can systematically query the API with crafted inputs and use the logprob outputs to train a distilled copy of the model. The API lacks per-user query volume limits, enabling an extraction campaign to run undetected over days or weeks."
+likelihood: MEDIUM
+impact: HIGH
+risk_level: High
+mitigation: "Restrict API output to top-k predictions only (k <= 5) rather than full vocabulary logprobs. Implement per-API-key query budgets with alerts at threshold crossings. Deploy query pattern analysis that detects systematic probing (uniform input distributions, grid sampling patterns). Add watermarking to model outputs to enable downstream detection of extracted copies."
+references:
+  - "OWASP LLM10:2025"
+dfd_element_type: "Process"
+```
+
+**Model Architecture Leakage via Error Messages**:
+
+```yaml
+id: "LLM-3"
+category: llm
+component: "Model Serving Gateway"
+threat: "The model serving gateway returns detailed error messages that include model framework version, layer configuration, and parameter count when inference fails (e.g., input exceeds maximum sequence length). This metadata enables an attacker to narrow the search space for model extraction by identifying the exact architecture, reducing the computational cost of a successful extraction attack."
+likelihood: HIGH
+impact: LOW
+risk_level: Medium
+mitigation: "Implement generic error responses that do not expose model architecture details. Return standardized error codes (e.g., 'input too long', 'service unavailable') without framework-specific information. Route detailed error logging to internal monitoring systems only. Audit all API response schemas for unintended metadata disclosure."
+references:
+  - "OWASP LLM10:2025"
+  - "CWE-209"
+dfd_element_type: "Process"
+```
+
+### Risk Level Computation
+
+Apply the OWASP 3x3 matrix to determine `risk_level` from `likelihood` and `impact`:
+
+|  | LOW Likelihood | MEDIUM Likelihood | HIGH Likelihood |
+|---|---|---|---|
+| **HIGH Impact** | Medium | High | Critical |
+| **MEDIUM Impact** | Low | Medium | High |
+| **LOW Impact** | Note | Low | Medium |
+
+## References
+
+- **OWASP LLM10:2025 - Model Theft**: https://genai.owasp.org/llmrisk/llm10-model-theft/
+- **OWASP LLM03:2025 - Supply Chain Vulnerabilities**: https://genai.owasp.org/llmrisk/llm03-supply-chain-vulnerabilities/
+- **MITRE ATLAS - ML Model Access**: Tactic TA0044, Technique AML.T0044
+- **Tramer et al., 2016**: "Stealing Machine Learning Models via Prediction APIs" — foundational work on API-based model extraction
+- **CWE-200 - Exposure of Sensitive Information to an Unauthorized Actor**: Parent category covering model weight exfiltration, API-based extraction, and metadata leakage
+- **CWE-209 - Generation of Error Message Containing Sensitive Information**: Applicable to model metadata leakage through error responses
+- **CWE-522 - Insufficiently Protected Credentials**: Analogous to insufficiently protected model artifacts

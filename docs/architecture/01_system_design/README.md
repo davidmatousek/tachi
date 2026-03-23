@@ -748,3 +748,82 @@ flowchart TD
 | Output Schema | YAML | Matches existing schema patterns |
 | Image Generation | Google Gemini API (`gemini-3-pro-image-preview`) | Best-in-class text rendering for data-dense infographics |
 | Specification Format | Markdown (6 sections) | Human-readable, designer-consumable, Gemini-promptable |
+
+---
+
+### Feature 021: Platform Adapters
+
+## Components
+
+### Component 1: Adapter Directory Structure
+
+**Location**: `adapters/{platform-name}/` (5 subdirectories under existing `adapters/`)
+**Type**: New subdirectories
+**Purpose**: Platform-specific transformations of core agents into native formats for Claude Code, Cursor, Copilot, GitHub Actions, and generic LLM usage.
+
+Each adapter contains: platform-specific agent files, installation README, VERSION manifest.
+
+### Component 2: Claude Code Adapter (P0)
+
+**Location**: `adapters/claude-code/`
+**Purpose**: Maps 14 agents into `.claude/agents/tachi/` format with Claude Code frontmatter (`name`, `description`). Tachi metadata relocated to `## Metadata` body section. Supports parallel dispatch via Agent tool. Single `cp -r` installation.
+
+### Component 3: Generic Adapter (P0)
+
+**Location**: `adapters/generic/`
+**Purpose**: Self-contained numbered prompt files (`00-orchestrator.md` through `13-threat-infographic.md`). Frontmatter stripped, `{{ARCHITECTURE_INPUT}}` placeholders added. Orchestrator converted to sequential workflow guide (justified FR-002 exception). Two usage modes: chat UI copy-paste and programmatic API invocation.
+
+### Component 4: Cursor Adapter (P1)
+
+**Location**: `adapters/cursor/`
+**Purpose**: Maps agents to `.cursor/rules/tachi/` as `.mdc` rule files. Orchestrator is `alwaysApply: true`; threat agents are Agent Requested. Behavioral difference: passive context injection, not active dispatch.
+
+### Component 5: Copilot Adapter (P1)
+
+**Location**: `adapters/copilot/`
+**Purpose**: Maps agents to `.github/agents/tachi/` as `.agent.md` files. Size constraint handling: orchestrator (120K chars) and threat-report (43K chars) split into compact agent + `.github/instructions/` file. All other agents (5-13K) fit within 30K limit.
+
+### Component 6: GitHub Actions Adapter (P1)
+
+**Location**: `adapters/github-actions/`
+**Purpose**: CI workflow (`tachi-threat-model.yml`) triggering on architecture file changes. Invokes orchestrator via LLM API, generates `threats.md` + `threats.sarif`, uploads SARIF to GitHub Code Scanning. Architecturally distinct from file-transformation adapters.
+
+### Component 7: VERSION File
+
+**Location**: `adapters/{platform}/VERSION`
+**Purpose**: Drift detection manifest with source commit SHA, generation date, and per-agent SHA-256 checksums.
+
+## Data Flow
+
+```mermaid
+graph LR
+    subgraph "Source of Truth (Hub)"
+        A[agents/] --> |14 agents| T[Transformation Layer]
+        S[schemas/] --> |5 schemas| T
+        TM[templates/] --> |4 templates| T
+    end
+
+    subgraph "File-Transformation Adapters (Spokes)"
+        T --> CC[adapters/claude-code/]
+        T --> GN[adapters/generic/]
+        T --> CU[adapters/cursor/]
+        T --> CP[adapters/copilot/]
+    end
+
+    subgraph "CI Integration Adapter"
+        A --> |Runtime invocation| GA[adapters/github-actions/]
+        GA --> |LLM API| LLM[LLM Provider]
+        LLM --> |findings| SARIF[threats.sarif]
+        LLM --> |findings| MD[threats.md]
+    end
+```
+
+## Tech Stack
+
+| Technology | Purpose | Justification |
+|------------|---------|---------------|
+| Markdown | Agent prompt files | Native format for all target platforms |
+| YAML | Frontmatter metadata, VERSION manifest | Standard for config in all target platforms |
+| Bash | VERSION file generation script | Lightweight, no runtime dependencies |
+| GitHub Actions YAML | CI workflow definition | Standard for GitHub CI/CD |
+| `codeql/upload-sarif@v3` | SARIF upload to Code Scanning | GitHub's official SARIF upload action |

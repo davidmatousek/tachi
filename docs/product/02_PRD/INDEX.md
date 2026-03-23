@@ -5,6 +5,7 @@
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 021 | [Platform Adapters](021-platform-adapters-2026-03-23.md) | ✓ | ✓ | ✓ | Building | 2026-03-23 |
 | 018 | [Threat Infographic Agent](018-threat-infographic-agent-2026-03-23.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-23 |
 | 015 | [Threat Report Agent & Attack Trees](015-threat-report-agent-attack-trees-2026-03-23.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-23 |
 | 012 | [SARIF Output Generation](012-sarif-output-generation-2026-03-22.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-22 |

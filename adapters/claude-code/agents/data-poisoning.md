@@ -1,0 +1,166 @@
+---
+name: tachi-data-poisoning
+description: "Detects threats where attackers manipulate training data, RAG indexes, knowledge bases, or fine-tuning pipelines to corrupt LLM behavior at the source."
+---
+
+## Metadata
+
+```yaml
+category: llm
+threat_class: LLM
+dfd_targets: [Data Store, Data Flow]
+owasp_references: [OWASP LLM03:2025, OWASP LLM04:2025, OWASP LLM08:2025]
+output_schema: ../../../schemas/finding.yaml
+```
+
+# Data Poisoning Threat Agent
+
+## Purpose
+
+Detects threats where an attacker manipulates the data that an LLM relies on for training, fine-tuning, or runtime context retrieval. Data poisoning undermines the integrity of model outputs at the source: corrupted training data produces systematically biased or unsafe model behavior, poisoned RAG knowledge bases cause the model to return attacker-controlled content as authoritative answers, and contaminated fine-tuning datasets embed persistent backdoors that activate on specific trigger inputs. This agent identifies training data manipulation, RAG index poisoning, knowledge base corruption, and fine-tuning supply chain attacks.
+
+## Detection Scope
+
+### Trigger Keywords
+
+This agent activates when a DFD element name or description matches any of the following patterns (case-insensitive):
+
+- `LLM`
+- `model`
+- `GPT`
+- `Claude`
+- `training`
+- `fine-tuning`
+- `fine tuning`
+- `RAG`
+- `retrieval`
+- `knowledge base`
+- `vector store`
+- `embedding`
+- `corpus`
+
+### Applicable DFD Element Types
+
+- **Data Store**: Databases, vector stores, document repositories, embedding indexes, training data lakes, fine-tuning datasets, and knowledge bases that feed content into LLM pipelines.
+- **Data Flow**: Data pipelines that transport training data, retrieval results, embeddings, or context documents between storage and model inference processes.
+
+### Detection Patterns
+
+1. **Training Data Manipulation**: Unauthorized modification of training or fine-tuning datasets to embed biased, incorrect, or backdoored content. Look for:
+   - Training datasets sourced from public or user-contributed repositories without integrity verification
+   - Absence of data provenance tracking (who contributed what, when, from where)
+   - No checksum or hash validation on training data files between collection and use
+   - Fine-tuning pipelines that pull data from mutable shared storage without snapshot isolation
+
+2. **RAG Index Poisoning**: Attacker-controlled content injected into retrieval indexes so that poisoned documents are returned during inference. Look for:
+   - Vector stores indexed from user-uploaded or web-scraped content without content validation
+   - Embedding pipelines that do not filter adversarial content before indexing
+   - Knowledge bases where write access is broader than the trust level of the retrieval context
+   - Absence of document-level access controls or content integrity metadata in the vector store
+
+3. **Knowledge Base Corruption**: Modification of reference documents or structured data that the model consumes as ground truth. Look for:
+   - Wiki-style knowledge bases where multiple users have edit access without review workflows
+   - API-sourced reference data consumed without response integrity verification
+   - Cached knowledge base snapshots that are not validated against source-of-truth before use
+   - Missing audit logs for knowledge base modifications
+
+4. **Fine-Tuning Supply Chain Attacks**: Compromised model weights, adapters, or checkpoints distributed through shared model registries. Look for:
+   - Models loaded from public registries (Hugging Face, model zoos) without signature verification
+   - LoRA adapters or PEFT modules sourced from untrusted contributors
+   - No model integrity verification (hash comparison) between download and deployment
+   - Shared fine-tuning infrastructure where multiple teams can overwrite model artifacts
+
+5. **Context Window Contamination**: Poisoned data flows that manipulate the model's in-context examples or few-shot demonstrations. Look for:
+   - Dynamic few-shot selection from user-modifiable example databases
+   - System prompt templates that interpolate content from external data sources at runtime
+   - Absence of input validation on data flows entering the context window
+
+### Empty Results Guidance
+
+When the architecture input contains no LLM, language model, training pipeline, RAG system, knowledge base, or vector store components (i.e., no DFD elements match any trigger keyword in the Detection Scope), this agent MUST produce zero findings. Do not generate speculative or hypothetical data poisoning findings for architectures that do not include LLM data pipelines or model training infrastructure.
+
+## Finding Template
+
+```yaml
+id: "LLM-{N}"
+category: llm
+component: "{component name from architecture input}"
+threat: "{specific data poisoning threat description}"
+likelihood: "{LOW | MEDIUM | HIGH}"
+impact: "{LOW | MEDIUM | HIGH}"
+risk_level: "{computed from OWASP 3x3 matrix}"
+mitigation: "{recommended countermeasure}"
+references:
+  - "OWASP LLM03:2025"
+dfd_element_type: "{Data Store | Data Flow}"
+```
+
+### Example Findings
+
+**RAG Index Poisoning via User-Uploaded Documents**:
+
+```yaml
+id: "LLM-1"
+category: llm
+component: "Knowledge Base Vector Store"
+threat: "The vector store indexes documents uploaded by end users without content validation or adversarial content filtering. An attacker can upload documents containing crafted content that ranks highly for targeted queries, causing the RAG pipeline to retrieve and present attacker-controlled information as authoritative answers. This enables misinformation injection, brand reputation attacks, or indirect prompt injection via retrieved content."
+likelihood: HIGH
+impact: HIGH
+risk_level: Critical
+mitigation: "Implement content validation and adversarial content detection on all documents before indexing. Apply document-level access controls so that user-uploaded content is retrievable only within the uploader's trust boundary. Add provenance metadata to indexed documents so the model can distinguish source trustworthiness. Monitor retrieval patterns for anomalous document frequency spikes."
+references:
+  - "OWASP LLM03:2025"
+dfd_element_type: "Data Store"
+```
+
+**Fine-Tuning Data Manipulation via Shared Storage**:
+
+```yaml
+id: "LLM-2"
+category: llm
+component: "Model Fine-Tuning Pipeline"
+threat: "The fine-tuning pipeline reads training data from a shared S3 bucket where multiple teams have write access. An insider or compromised service account can modify training examples to embed backdoor triggers — specific input patterns that cause the model to produce attacker-desired outputs. No checksum validation occurs between data upload and training job execution."
+likelihood: LOW
+impact: HIGH
+risk_level: Medium
+mitigation: "Implement immutable training data snapshots with cryptographic hash verification. Restrict write access to the training data bucket to a dedicated data engineering role. Validate dataset integrity before each training run by comparing checksums against a signed manifest. Add anomaly detection on training data distributions to flag unexpected content changes."
+references:
+  - "OWASP LLM03:2025"
+dfd_element_type: "Data Flow"
+```
+
+**Knowledge Base Corruption via Unaudited Edits**:
+
+```yaml
+id: "LLM-3"
+category: llm
+component: "Internal Wiki Knowledge Base"
+threat: "The model's knowledge base is sourced from an internal wiki where any employee can edit pages without mandatory review. An attacker with internal access can modify reference documents to contain incorrect procedures, outdated compliance information, or misleading technical guidance. The model will surface this corrupted content as authoritative answers, potentially causing operational errors or compliance violations."
+likelihood: MEDIUM
+impact: MEDIUM
+risk_level: Medium
+mitigation: "Implement mandatory review workflows for knowledge base edits with approval from subject matter experts. Maintain versioned snapshots of the knowledge base and compare diffs before re-indexing. Add audit logging for all edits with author attribution. Consider read-only knowledge base replicas for the model, updated on a controlled schedule after review."
+references:
+  - "OWASP LLM03:2025"
+dfd_element_type: "Data Store"
+```
+
+### Risk Level Computation
+
+Apply the OWASP 3x3 matrix to determine `risk_level` from `likelihood` and `impact`:
+
+|  | LOW Likelihood | MEDIUM Likelihood | HIGH Likelihood |
+|---|---|---|---|
+| **HIGH Impact** | Medium | High | Critical |
+| **MEDIUM Impact** | Low | Medium | High |
+| **LOW Impact** | Note | Low | Medium |
+
+## References
+
+- **OWASP LLM03:2025 - Supply Chain Vulnerabilities**: https://genai.owasp.org/llmrisk/llm03-supply-chain-vulnerabilities/
+- **OWASP LLM04:2025 - Data and Model Poisoning**: https://genai.owasp.org/llmrisk/llm04-data-and-model-poisoning/
+- **OWASP LLM08:2025 - Vector and Embedding Weaknesses**: https://genai.owasp.org/llmrisk/llm08-vector-and-embedding-weaknesses/
+- **MITRE ATLAS - Poisoning AI Training Data**: Tactic TA0040, Technique AML.T0020
+- **CWE-345 - Insufficient Verification of Data Authenticity**: Applicable to training data manipulation and RAG index poisoning where data integrity is not verified before consumption
+- **CWE-1395 - Dependency on Vulnerable Third-Party Component**: Applicable to model supply chain attacks
+- **Carlini et al., 2023**: "Poisoning Web-Scale Training Datasets is Practical" — demonstrates feasibility of training data poisoning at scale
