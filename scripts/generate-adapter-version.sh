@@ -28,7 +28,9 @@ set -euo pipefail
 
 # --- Configuration -----------------------------------------------------------
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/../.aod/scripts/bash/common.sh"
+REPO_ROOT="$(get_repo_root)"
 
 # All 14 agent base names in canonical order
 ALL_AGENTS="orchestrator spoofing tampering repudiation info-disclosure denial-of-service privilege-escalation prompt-injection data-poisoning model-theft agent-autonomy tool-abuse threat-report threat-infographic"
@@ -75,12 +77,8 @@ resolve_source() {
 #   - Cursor:   "orchestrator.mdc"         -> "orchestrator"
 #   - Copilot:  "orchestrator.agent.md"    -> "orchestrator"
 extract_base_name() {
-  local filename="$1"
+  local filename="${1##*/}"
 
-  # Strip directory path, keep only the file name
-  filename="$(basename "$filename")"
-
-  # Strip .agent.md extension (Copilot) before other extensions
   case "$filename" in
     *.agent.md) filename="${filename%.agent.md}" ;;
     *.md)       filename="${filename%.md}" ;;
@@ -90,15 +88,17 @@ extract_base_name() {
   esac
 
   # Strip leading numeric prefix with dash (generic adapter: "00-", "01-", etc.)
-  filename="$(echo "$filename" | sed 's/^[0-9][0-9]*-//')"
+  if [[ "$filename" =~ ^[0-9]+-(.+)$ ]]; then
+    filename="${BASH_REMATCH[1]}"
+  fi
 
   echo "$filename"
 }
 
-# Compute SHA-256 checksum of a file (macOS compatible via shasum).
 compute_sha256() {
-  local filepath="$1"
-  shasum -a 256 "$filepath" | awk '{print $1}'
+  local output
+  output="$(shasum -a 256 "$1")"
+  echo "${output%% *}"
 }
 
 # Detect the agent content subdirectory within an adapter directory.
@@ -115,16 +115,30 @@ detect_content_dir() {
     fi
   done
 
-  # GitHub Actions adapter has no agent subdirectory; use the adapter root
   echo "$adapter_dir"
 }
 
-# Write a single manifest entry to stdout.
-write_manifest_entry() {
+# Resolve source path, verify it exists, compute checksum, and emit manifest YAML.
+# Used by both github-actions and file-transformation adapter paths.
+process_agent() {
   local adapter_filename="$1"
-  local source_path="$2"
-  local sha256="$3"
+  local base_name="$2"
 
+  local source_path
+  source_path="$(resolve_source "$base_name")"
+  if [ -z "$source_path" ]; then
+    echo "Warning: No source mapping for '$adapter_filename' (base name: '$base_name')" >&2
+    return 1
+  fi
+
+  local source_fullpath="${REPO_ROOT}/${source_path}"
+  if [ ! -f "$source_fullpath" ]; then
+    echo "Warning: Source file not found: $source_path" >&2
+    return 1
+  fi
+
+  local sha256
+  sha256="$(compute_sha256 "$source_fullpath")"
   echo "  - file: ${adapter_filename}"
   echo "    source: ${source_path}"
   echo "    sha256: ${sha256}"
@@ -138,90 +152,47 @@ fi
 
 ADAPTER_DIR="$1"
 
-# Validate adapter directory exists
 if [ ! -d "$ADAPTER_DIR" ]; then
   echo "Error: Adapter directory not found: $ADAPTER_DIR" >&2
   exit 1
 fi
 
-# Compute Git commit SHA
 SOURCE_VERSION="$(git rev-parse --short HEAD)"
-
-# Current date
 GENERATED_DATE="$(date +%Y-%m-%d)"
-
-# Detect the content directory (agents/, prompts/, rules/, or adapter root)
 CONTENT_DIR="$(detect_content_dir "$ADAPTER_DIR")"
-
-# Temporary file to collect manifest entries
-MANIFEST_TMP="$(mktemp)"
-trap 'rm -f "$MANIFEST_TMP"' EXIT
-
+ADAPTER_NAME="${ADAPTER_DIR##*/}"
 AGENT_COUNT=0
-
-# Determine adapter type
-ADAPTER_NAME="$(basename "$ADAPTER_DIR")"
-
-if [ "$ADAPTER_NAME" = "github-actions" ]; then
-  # GitHub Actions adapter references all source agents at runtime via LLM API.
-  # Generate manifest from the full canonical agent list.
-  for base_name in $ALL_AGENTS; do
-    source_path="$(resolve_source "$base_name")"
-    source_fullpath="${REPO_ROOT}/${source_path}"
-
-    if [ ! -f "$source_fullpath" ]; then
-      echo "Warning: Source file not found: $source_path" >&2
-      continue
-    fi
-
-    sha256="$(compute_sha256 "$source_fullpath")"
-    write_manifest_entry "${base_name}.md" "$source_path" "$sha256" >> "$MANIFEST_TMP"
-    AGENT_COUNT=$((AGENT_COUNT + 1))
-  done
-else
-  # File-transformation adapters: scan the content directory for agent files.
-  for filepath in "$CONTENT_DIR"/*; do
-    [ -f "$filepath" ] || continue
-
-    filename="$(basename "$filepath")"
-
-    # Skip non-agent files
-    case "$filename" in
-      README.md|VERSION|*.yaml|*.yml) continue ;;
-    esac
-
-    # Extract the base agent name
-    base_name="$(extract_base_name "$filename")"
-
-    # Look up the source path
-    source_path="$(resolve_source "$base_name")"
-    if [ -z "$source_path" ]; then
-      echo "Warning: No source mapping for adapter file '$filename' (base name: '$base_name')" >&2
-      continue
-    fi
-
-    # Verify source file exists
-    source_fullpath="${REPO_ROOT}/${source_path}"
-    if [ ! -f "$source_fullpath" ]; then
-      echo "Warning: Source file not found: $source_path" >&2
-      continue
-    fi
-
-    # Compute checksum of the SOURCE file (not the adapter file)
-    sha256="$(compute_sha256 "$source_fullpath")"
-    write_manifest_entry "$filename" "$source_path" "$sha256" >> "$MANIFEST_TMP"
-    AGENT_COUNT=$((AGENT_COUNT + 1))
-  done
-fi
-
-# Write VERSION file
 VERSION_FILE="${ADAPTER_DIR}/VERSION"
 
 {
   echo "source_version: ${SOURCE_VERSION}"
   echo "generated_date: ${GENERATED_DATE}"
   echo "agent_manifest:"
-  cat "$MANIFEST_TMP"
+
+  if [ "$ADAPTER_NAME" = "github-actions" ]; then
+    # GitHub Actions references all source agents at runtime via LLM API
+    for base_name in $ALL_AGENTS; do
+      if process_agent "${base_name}.md" "$base_name"; then
+        AGENT_COUNT=$((AGENT_COUNT + 1))
+      fi
+    done
+  else
+    for filepath in "$CONTENT_DIR"/*; do
+      [ -f "$filepath" ] || continue
+
+      filename="${filepath##*/}"
+
+      case "$filename" in
+        README.md|VERSION|*.yaml|*.yml|.gitkeep) continue ;;
+      esac
+
+      base_name="$(extract_base_name "$filename")"
+
+      if process_agent "$filename" "$base_name"; then
+        AGENT_COUNT=$((AGENT_COUNT + 1))
+      fi
+    done
+  fi
 } > "$VERSION_FILE"
 
 echo "Generated ${VERSION_FILE}"
