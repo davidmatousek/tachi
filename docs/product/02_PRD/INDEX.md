@@ -5,6 +5,7 @@
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 018 | [Threat Infographic Agent](018-threat-infographic-agent-2026-03-23.md) | ✓ | ⚠ | ⚠ | Approved | 2026-03-23 |
 | 015 | [Threat Report Agent & Attack Trees](015-threat-report-agent-attack-trees-2026-03-23.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-23 |
 | 012 | [SARIF Output Generation](012-sarif-output-generation-2026-03-22.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-22 |
 | 010 | [Deduplication & Risk Rating](010-deduplication-risk-rating-2026-03-22.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-22 |

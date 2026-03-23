@@ -1,0 +1,125 @@
+# Infographic Output Schema
+#
+# Defines the complete structure of a threat infographic specification
+# (threat-infographic-spec.md). Validates that generated specifications
+# contain all required sections with correct structure.
+#
+# Producers: Infographic agent (agents/threat-infographic.md)
+# Consumers: Validation phase, orchestrator output checks, designers
+#
+# Version: 1.0
+
+schema_version: "1.0"
+
+infographic:
+  output_file: threat-infographic-spec.md
+  optional_output_file: threat-infographic.jpg
+
+  frontmatter:
+    required: true
+    fields:
+      schema_version:
+        type: string
+        value: "1.0"
+      date:
+        type: string
+        format: "YYYY-MM-DD"
+      source_file:
+        type: string
+        description: >
+          Path to input threats.md used as the basis for
+          this infographic specification.
+      finding_count:
+        type: integer
+        description: >
+          Total findings from input threats.md (sum across
+          all STRIDE and AI agent categories).
+      image_generated:
+        type: boolean
+        description: >
+          Whether threat-infographic.jpg was successfully
+          produced via Gemini API.
+
+  required_sections:
+    - name: "Metadata"
+      heading: "## 1. Metadata"
+      required_fields:
+        - project_name
+        - scan_date
+        - agent_count
+        - finding_count
+        - risk_posture
+
+    - name: "Risk Distribution"
+      heading: "## 2. Risk Distribution"
+      required_fields:
+        - severity_counts
+        - percentages
+        - chart_format
+      accuracy_rule: >
+        Counts must match threats.md Section 6 exactly —
+        zero discrepancy.
+
+    - name: "Coverage Heat Map"
+      heading: "## 3. Coverage Heat Map"
+      required_fields:
+        - component_severity_matrix
+        - row_ordering
+      max_rows: 8
+      overflow_rule: >
+        Aggregate remaining components as "Other" row
+        with combined counts.
+
+    - name: "Top Critical Findings"
+      heading: "## 4. Top Critical Findings"
+      required_fields:
+        - finding_id
+        - component
+        - threat_summary
+        - risk_level
+      max_entries: 5
+      selection_rule: "Critical first, then High"
+
+    - name: "Architecture Threat Overlay"
+      heading: "## 5. Architecture Threat Overlay"
+      required_fields:
+        - component_risk_annotations
+        - visual_weight_guidance
+
+    - name: "Visual Design Directives"
+      heading: "## 6. Visual Design Directives"
+      required_fields:
+        - color_palette
+        - layout_structure
+        - aspect_ratio
+        - font_hierarchy
+
+  color_palette:
+    critical: "#DC2626"
+    high: "#F97316"
+    medium: "#EAB308"
+    low: "#4169E1"
+    info: "#6B7280"
+
+  layout:
+    aspect_ratio: "16:9"
+    orientation: landscape
+    zones:
+      - header
+      - distribution
+      - findings
+
+  attack_tree_naming:
+    description: >
+      Attack tree references in Top Critical Findings use
+      the finding ID format from schemas/finding.yaml
+      (e.g., "AG-1", "S-3").
+
+  # Completeness Rule
+  #
+  # Risk distribution counts in the specification must exactly
+  # match the aggregate counts in threats.md Section 6 (Risk
+  # Summary). Component names must match threats.md verbatim.
+  completeness_rule: >
+    Risk distribution counts must match threats.md Section 6.
+    Component names must match threats.md exactly.

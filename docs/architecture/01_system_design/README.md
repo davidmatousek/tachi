@@ -695,3 +695,54 @@ flowchart TD
 | Output Schema | YAML | Matches existing schema patterns |
 | Attack Trees | Mermaid `flowchart TD` | Standard, GitHub-renderable |
 | Template | Markdown | Same format as `templates/threats.md` |
+
+---
+
+### Feature 018: Threat Infographic Agent
+
+## Components
+
+### Component 1: Infographic Agent Prompt (`agents/threat-infographic.md`)
+
+**Purpose**: Markdown prompt file that defines the infographic agent's data extraction methodology, specification format, Gemini API prompt construction, and graceful fallback behavior. When invoked by the orchestrator or standalone, the LLM follows these instructions to transform `threats.md` into a visual risk specification.
+
+**Follows Existing Pattern**: 8-section YAML+Markdown structure matching `agents/threat-report.md` (F-015).
+
+### Component 2: Infographic Output Schema (`schemas/infographic.yaml`)
+
+**Purpose**: Defines the structural validation contract for `threat-infographic-spec.md`, enabling automated completeness checks. Covers 6 required sections: Metadata, Risk Distribution, Coverage Heat Map, Top Critical Findings, Architecture Threat Overlay, and Visual Design Directives.
+
+### Component 3: Orchestrator Integration
+
+**Purpose**: Update `agents/orchestrator.md` to dispatch Phase 6 (Infographic) after Phase 5 (Report) completes. Follows identical structural pattern to Phase 5: optional default-on, fresh-context invocation with only `threats.md`, pipeline isolation (Phase 6 failures never block Phases 1-5).
+
+## Data Flow
+
+```mermaid
+flowchart TD
+    TM["threats.md<br/>(Phase 4 Output)"] --> IA["Infographic Agent<br/>(agents/threat-infographic.md)"]
+    IA --> IS["threat-infographic-spec.md<br/>(6 Sections)"]
+    IA -->|"GEMINI_API_KEY set"| IMG["threat-infographic.jpg<br/>(Optional)"]
+    IA -->|"No API key or error"| SKIP["Spec saved as<br/>standalone deliverable"]
+
+    subgraph Infographic Agent Processing
+        Parse["Parse threats.md<br/>Sections 1-7 + 4a"] --> Meta["1. Metadata<br/>(Project, Date, Counts)"]
+        Parse --> Risk["2. Risk Distribution<br/>(Severity Counts + %)"]
+        Parse --> Heat["3. Coverage Heat Map<br/>(Component × Severity)"]
+        Parse --> Top["4. Top Critical Findings<br/>(Up to 5)"]
+        Parse --> Arch["5. Architecture<br/>Threat Overlay"]
+        Meta & Risk & Heat & Top & Arch --> Design["6. Visual Design<br/>Directives"]
+        Design --> Prompt["Gemini API<br/>Prompt Construction"]
+    end
+
+    IA --> Val["Validation<br/>(schemas/infographic.yaml)"]
+```
+
+## Tech Stack
+
+| Component | Technology | Rationale |
+|-----------|-----------|-----------|
+| Infographic Agent | Markdown prompt file | Consistent with tachi agent architecture |
+| Output Schema | YAML | Matches existing schema patterns |
+| Image Generation | Google Gemini API (`gemini-3-pro-image-preview`) | Best-in-class text rendering for data-dense infographics |
+| Specification Format | Markdown (6 sections) | Human-readable, designer-consumable, Gemini-promptable |
