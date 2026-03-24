@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 024 — Example Threat Models
+
+**Added**
+- Three end-to-end example threat models: web-app (STRIDE + OWASP Web 2025), agentic-app (STRIDE + AI agents + OWASP Agentic/MCP), microservices (cross-service STRIDE); each with Mermaid architecture diagram and schema v1.1 compliant threat model output (`f411944`)
+
+**Changed**
+- Closed Feature 024 — updated product docs (PRD INDEX, OKRs, User Stories), architecture docs (CLAUDE.md, Tech Stack), delivery report (`68c9e47`)
+- Exported user stories from GitHub Issue #24 to aggregated reference (`38db6fc`)
+
 ### Feature 021 — Platform Adapters
 
 **Added**
