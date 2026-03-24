@@ -18,7 +18,7 @@ tachi is an automated threat modeling toolkit that extends STRIDE with AI-specif
 | **Interface Contract** | [`docs/INTERFACE-CONTRACT.md`](docs/INTERFACE-CONTRACT.md) | Single document covering input formats, invocation protocol, output structure, and side effects |
 | **Output Template** | [`templates/threats.md`](templates/threats.md) | Canonical output structure with all 7 required sections and example values |
 | **Schemas** | [`schemas/`](schemas/) | Machine-readable contracts: [`finding.yaml`](schemas/finding.yaml) (IR schema), [`input.yaml`](schemas/input.yaml) (input validation), [`output.yaml`](schemas/output.yaml) (output structure) |
-| **Examples** | [`examples/`](examples/) | Sample inputs and expected outputs: [ASCII web API](examples/ascii-web-api/), [Mermaid agentic app](examples/mermaid-agentic-app/), [free-text microservice](examples/free-text-microservice/) |
+| **Examples** | [`examples/`](examples/) | Standardized threat models: [Web App](examples/web-app/) (STRIDE), [Agentic App](examples/agentic-app/) (STRIDE + AI), [Microservices](examples/microservices/) (cross-service). Plus format test fixtures: [ASCII](examples/ascii-web-api/), [Mermaid](examples/mermaid-agentic-app/), [Free-text](examples/free-text-microservice/) |
 | **Threat Agents** | [`agents/stride/`](agents/stride/) (6 STRIDE) + [`agents/ai/`](agents/ai/) (5 AI) | Agent prompt definitions for threat detection |
 
 ### Supported Input Formats
