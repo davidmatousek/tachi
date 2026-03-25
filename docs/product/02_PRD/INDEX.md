@@ -1,10 +1,11 @@
 # PRD Index
 
-**Last Updated**: 2026-03-23
+**Last Updated**: 2026-03-25
 
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 029 | [Agent Refactoring: Right-Size](029-agent-refactoring-right-size-2026-03-25.md) | ✓ | ⚠ | ⚠ | Approved | 2026-03-25 |
 | 024 | [Example Threat Models](024-example-threat-models-2026-03-23.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-23 |
 | 021 | [Platform Adapters](021-platform-adapters-2026-03-23.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-23 |
 | 018 | [Threat Infographic Agent](018-threat-infographic-agent-2026-03-23.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-23 |

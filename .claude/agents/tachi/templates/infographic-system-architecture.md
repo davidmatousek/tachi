@@ -1,0 +1,304 @@
+# Threat Infographic Design Template: System Architecture
+
+> **Purpose**: Annotated architecture diagram with threat findings overlaid on system components.
+> Shows trust zones, data flows, and attack surface badges. The infographic agent
+> MUST follow this layout. Only data values change between runs — structure stays fixed.
+
+---
+
+## Layout: Zone-Stacked Architecture Diagram, 16:9 Landscape
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  HEADER                                                                 │
+│  Title: "{project_name} — Threat Model"                                 │
+│  Subtitle: "Architecture with attack surface annotations"               │
+│  Date: {date}  [CONFIDENTIAL badge]   Findings: {total_findings}        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐  │
+│  │  ZONE 1: {zone_name} (Untrusted / External)                     │  │
+│  │                                                                   │  │
+│  │  ┌──────────┐   ┌──────────┐   ┌──────────┐                     │  │
+│  │  │Component │   │Component │   │Component │   ...                │  │
+│  │  │ S-1,R-2  │   │          │   │ LLM-1    │                     │  │
+│  │  │ [3 High] │   │ [clean]  │   │ [1 Crit] │                     │  │
+│  │  └────┬─────┘   └────┬─────┘   └────┬─────┘                     │  │
+│  └ ─ ─ ─│─ ─ ─ ─ ─ ─ ─ │─ ─ ─ ─ ─ ─ ─│─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘  │
+│          │  TB-1         │              │                             │
+│  ┌ ─ ─ ─▼─ ─ ─ ─ ─ ─ ─ ▼─ ─ ─ ─ ─ ─ ─▼─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐  │
+│  │  ZONE 2: {zone_name} (Application / Semi-Trusted)               │  │
+│  │                                                                   │  │
+│  │  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐     │  │
+│  │  │Component │   │Component │   │Component │   │Component │     │  │
+│  │  │ T-1,E-1  │   │ AG-1     │   │ D-1,I-2  │   │          │     │  │
+│  │  │ [2 Crit] │   │ [1 High] │   │ [1 Crit] │   │ [1 Med]  │     │  │
+│  │  └────┬─────┘   └────┬─────┘   └────┬─────┘   └──────────┘     │  │
+│  └ ─ ─ ─│─ ─ ─ ─ ─ ─ ─ │─ ─ ─ ─ ─ ─ ─│─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘  │
+│          │  TB-2         │              │                             │
+│  ┌ ─ ─ ─▼─ ─ ─ ─ ─ ─ ─ ▼─ ─ ─ ─ ─ ─ ─▼─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐  │
+│  │  ZONE 3: {zone_name} (Data / Platform / Trusted)                │  │
+│  │                                                                   │  │
+│  │  ┌──────────┐   ┌──────────┐   ┌──────────┐                     │  │
+│  │  │Component │   │Component │   │Component │                     │  │
+│  │  │ T-2,I-3  │   │          │   │ LLM-2    │                     │  │
+│  │  │ [1 High] │   │ [clean]  │   │ [1 Crit] │                     │  │
+│  │  └──────────┘   └──────────┘   └──────────┘                     │  │
+│  └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘  │
+│                                                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│  FOOTER                                                                 │
+│  "Generated by Tachi Threat Modeling Framework — OWASP STRIDE +        │
+│   AI Threat Analysis"                                                   │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Style
+
+| Property | Value |
+|----------|-------|
+| Background | White (#FFFFFF) |
+| Aspect Ratio | 16:9 landscape (1920x1080 minimum) |
+| Font Family | Sans-serif (system default) |
+| Color Palette | Tailwind CSS |
+| Aesthetic | Premium, polished, consultancy-grade architecture poster |
+| Card Radius | 8px rounded corners on all component boxes |
+| Card Shadow | 0 2px 8px rgba(0,0,0,0.1) subtle drop shadow |
+| Spacing | 16px minimum between components, 24px between zones |
+
+---
+
+## Color Palette
+
+| Element | Hex | Tailwind | Usage |
+|---------|-----|----------|-------|
+| Background | #FFFFFF | White | Main diagram background |
+| Critical | #DC2626 | Red-600 | Component border, flow arrow, badge background |
+| High | #EA580C | Orange-600 | Component border, flow arrow, badge background |
+| Medium | #CA8A04 | Yellow-600 | Component border, flow arrow, badge background |
+| Low | #2563EB | Blue-600 | Component border, flow arrow, badge background |
+| Clean | #10B981 | Emerald-500 | Component border (analyzed, no findings) |
+| Zone untrusted | #FEF2F2 | Red-50 | Untrusted zone subtle background tint |
+| Zone application | #F8FAFC | Slate-50 | Application/semi-trusted zone background |
+| Zone trusted | #F0FDF4 | Green-50 | Trusted zone subtle background tint |
+| Zone border | #CBD5E1 | Slate-300 | Trust zone dashed border |
+| Trust boundary | #94A3B8 | Slate-400 | Dashed line between zones, label text |
+| Card fill | #FFFFFF | White | Component card background |
+| Card shadow | rgba(0,0,0,0.1) | — | Subtle drop shadow on component cards |
+| Text primary | #111827 | Gray-900 | Component names, zone labels |
+| Text secondary | #6B7280 | Gray-500 | Finding IDs, flow labels, legend |
+| Arrow default | #374151 | Gray-700 | Data flow arrows without findings |
+| CONFIDENTIAL badge | #DC2626 bg, #FFFFFF text | Red-600 | Header badge |
+
+---
+
+## Typography
+
+| Element | Size | Weight | Color |
+|---------|------|--------|-------|
+| Title | 28px | Bold | #111827 |
+| Subtitle | 14px | Regular | #6B7280 |
+| Zone label | 18px | Semibold | #374151 |
+| Zone trust level | 14px | Regular italic | #6B7280 |
+| Component name | 13px | Medium | #111827 |
+| Finding IDs | 11px | Monospace | Severity color |
+| Badge text | 11px | Bold | #FFFFFF on severity background |
+| Flow label | 10px | Regular | #6B7280 |
+| Trust boundary label | 12px | Regular | #94A3B8 |
+| Footer | 12px | Regular | #6B7280 |
+
+---
+
+## Layout Algorithm
+
+### Zone Arrangement
+
+Parse trust zones from `threats.md` Section 2 (Trust Boundaries → Trust Zones table).
+Arrange zones top-to-bottom by trust level:
+
+1. **Top**: Untrusted / External zones (e.g., "External Zone", "Public Internet", "User Zone")
+2. **Middle**: Semi-trusted / Application zones (e.g., "Application Layer", "DMZ", "Service Zone")
+3. **Bottom**: Trusted / Internal zones (e.g., "Data Zone", "Platform Zone", "Internal Network")
+
+If only 2 zones exist, use top + bottom. If 4+ zones, stack in trust order.
+
+### Component Placement Within Zones
+
+Components per zone threshold (configurable):
+
+```yaml
+components_per_row: 5     # Maximum components before wrapping to next row
+max_named_components: 15  # Above this, aggregate smallest-finding-count into "Other"
+```
+
+- **1-5 components**: Single row, left-to-right, evenly spaced
+- **6-10 components**: Two rows
+- **11-15 components**: Three rows
+- **16+ components**: Show top 15 by finding count, aggregate rest into "Other ({n} components)"
+
+Sort components within each row by finding count descending (highest-risk on the left).
+
+### Component Box Design
+
+Each component renders as a labeled box:
+
+```
+┌──────────────────┐
+│  {Component Name}│
+│  S-1, T-2, AG-1  │  ← Finding IDs (severity-colored, monospace)
+│  [3 High]         │  ← Badge: count + highest severity
+└──────────────────┘
+     Border color = highest severity finding
+```
+
+- **Border**: 3px solid, colored by highest severity finding on this component
+- **Finding IDs**: Comma-separated below component name, colored by their individual severity
+- **Badge**: Bottom-right corner, pill shape, severity-colored background with white text
+  - Format: "{count} {Severity}" (e.g., "3 High", "1 Critical")
+- **Clean components** (analyzed, no findings): emerald (#10B981) border, no badge, label "clean"
+
+### Data Flow Arrows
+
+Parse data flows from `threats.md` Section 1 (Data Flows table).
+
+- Draw arrows from source component to destination component
+- Arrow color = severity of the highest-severity finding that involves BOTH the source and destination
+- If no finding maps to a specific flow, use default gray (#374151)
+- Label key arrows with protocol/data type (e.g., "HTTPS", "JSON-RPC", "SQL")
+- Limit flow labels to the 5-8 most important flows to avoid clutter
+
+### Trust Boundary Lines
+
+Parse boundary crossings from `threats.md` Section 2 (Boundary Crossings table).
+
+- Dashed horizontal line between adjacent zones
+- Label: "TB-{N}: {crossing_name}" in slate (#94A3B8)
+- Annotate with finding IDs that relate to the boundary crossing
+- Finding IDs colored by severity
+
+---
+
+## Spec Section 5 Format: Spatial
+
+The System Architecture template uses a **spatial** Section 5 format (not the tabular format
+used by Baseball Card). The infographic agent produces this format when generating the
+System Architecture spec.
+
+```markdown
+## 5. Architecture Layout
+
+### Zones (top-to-bottom)
+
+| Zone | Trust Level | Position | Components |
+|------|-------------|----------|------------|
+| {zone_name} | Untrusted | Top | {component_1}, {component_2}, ... |
+| {zone_name} | Semi-Trusted | Middle | {component_3}, {component_4}, ... |
+| {zone_name} | Trusted | Bottom | {component_5}, {component_6}, ... |
+
+### Component Placement
+
+| Component | Zone | Row | Position | Border Color | Finding IDs | Badge |
+|-----------|------|-----|----------|--------------|-------------|-------|
+| {name} | {zone} | 1 | 1 | #DC2626 | S-1, T-2 | 2 Critical |
+| {name} | {zone} | 1 | 2 | #EA580C | AG-1 | 1 High |
+| {name} | {zone} | 1 | 3 | #10B981 | — | clean |
+| ... | | | | | | |
+
+### Data Flows
+
+| Source | Destination | Label | Arrow Color | Related Findings |
+|--------|-------------|-------|-------------|-----------------|
+| {component} | {component} | HTTPS | #DC2626 | S-1, I-2 |
+| {component} | {component} | SQL | #EA580C | T-3 |
+| ... | | | | |
+
+### Trust Boundary Crossings
+
+| Boundary | Between Zones | Label | Finding IDs |
+|----------|---------------|-------|-------------|
+| TB-1 | {zone_1} → {zone_2} | {crossing_name} | S-1, D-1 |
+| ... | | | |
+```
+
+---
+
+## Gemini Prompt Template
+
+The infographic agent MUST construct the Gemini prompt using this template.
+Replace all `{placeholders}` with actual data from the spec sections.
+
+```
+Create a premium, professionally designed system architecture diagram showing security threat analysis findings. This should look like an architecture poster from a top-tier security consultancy — clean, authoritative, and visually sophisticated. The feel should be modern and polished, like a Figma or Miro design artifact.
+
+Use a clean white background (#FFFFFF) for maximum contrast with the colored trust zones. All component boxes should have rounded corners (8px), subtle drop shadows (0 2px 8px rgba(0,0,0,0.1)), and professional spacing (16px minimum between components). The layout is 16:9 landscape.
+
+Color reference — severity colors: Critical #DC2626, High #EA580C, Medium #CA8A04, Low #2563EB, Clean #10B981. Trust zone backgrounds use soft, elegant tints — not flat gray boxes.
+
+HEADER: Title "{project_name} — Threat Model" in bold dark text (#111827). Subtitle "Architecture with attack surface annotations" in lighter gray. Date "{date}", a red "CONFIDENTIAL" pill badge, and "{total_findings} Findings Across {category_count} Threat Categories" as an accent badge with rounded corners.
+
+The diagram shows {zone_count} trust zones stacked vertically from untrusted (top) to trusted (bottom):
+
+{zone_descriptions}
+
+TRUST ZONES: Each zone is an elegantly styled region with a subtle background tint — use soft warm tones for untrusted zones (e.g., #FEF2F2 light red tint), neutral for application zones (#F8FAFC slate tint), and cool for trusted zones (#F0FDF4 light green tint). Zone borders are soft dashed lines (#CBD5E1). Zone labels are semibold with trust level in italic below. Zones should feel like distinct, well-designed regions — not plain boxes.
+
+COMPONENT BOXES: Each component is a design-system-style card — rounded corners (8px), subtle drop shadow, clean white fill with a colored left border (4px) indicating highest severity. Component name in medium-weight dark text, finding IDs (e.g., "S-1, T-2") in small monospace severity-colored text below, and a severity badge pill (e.g., "3 High") in the corner with severity-colored background and white text. Clean components have an emerald (#10B981) accent and "clean" label. Components arranged left-to-right within zones, sorted by finding count descending.
+
+DATA FLOW ARROWS: Smooth, curved arrows between components — not harsh straight lines. Arrow color matches the highest severity finding on that flow path: {flow_descriptions}. Key arrows labeled with protocol in small rounded label pills (e.g., "HTTPS", "JSON-RPC", "SQL"). Arrows should feel elegant and intentional.
+
+TRUST BOUNDARIES: Subtle dashed horizontal lines between zones labeled "TB-{{N}}" in slate (#94A3B8) text with finding IDs annotated in severity colors: {boundary_descriptions}.
+
+FOOTER: "Generated by Tachi Threat Modeling Framework — OWASP STRIDE + AI Threat Analysis" in small gray text, centered.
+
+The overall impression should be a polished, authoritative architecture diagram — the kind you'd see in a professional security audit deliverable. Prioritize readability — component names and finding IDs must be legible. Every element should feel intentionally designed.
+```
+
+### Zone Description Construction
+
+For each zone, construct a paragraph:
+
+```
+ZONE {N} (TOP/MIDDLE/BOTTOM): "{zone_name}" ({trust_level}). Contains {component_count} components: {component_list_with_badges}. This zone has {finding_count} findings, highest severity {highest_severity}.
+```
+
+For each component in the zone list:
+
+```
+{component_name} ({severity_color} border, findings: {finding_ids}, badge: "{count} {severity}")
+```
+
+### Text Label Budget
+
+25-35 labels total:
+- Title + subtitle + date (3 labels)
+- Zone names with trust levels (2-4 labels, 2 per zone)
+- Component names (5-15 labels)
+- Finding ID groups (3-10 labels)
+- Flow protocol labels (3-5 labels, most important flows only)
+- Trust boundary labels (1-3 labels)
+- Footer (1 label)
+- Legend (1 label)
+
+---
+
+## Gemini API Configuration
+
+```yaml
+model: "gemini-3-pro-image-preview"
+fallback_model: "gemini-3.1-flash-image-preview"
+response_modalities: ["TEXT", "IMAGE"]
+aspect_ratio: "16:9"
+image_size: "2K"
+```
+
+---
+
+## Accessibility
+
+- All severity levels distinguishable by label AND color (not color alone)
+- Component badges include text severity label alongside color
+- Clean components labeled "clean" (not just green border)
+- Minimum contrast ratio 4.5:1 for text on backgrounds
+- Trust boundary lines use both dashing and labels for distinction

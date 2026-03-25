@@ -27,7 +27,14 @@
       "Bash(source .aod/scripts/bash/*)",
       "Bash(.aod/scripts/bash/*)",
       "Edit",
-      "Write"
+      "Write",
+      "Bash(cp adapters/claude-code/agents/templates/infographic-baseball-card.md .claude/agents/tachi/templates/)",
+      "Bash(cp adapters/claude-code/agents/templates/infographic-system-architecture.md .claude/agents/tachi/templates/)",
+      "Bash(wc -l /Users/david/Projects/tachi/adapters/claude-code/agents/templates/*.md)"
+    ],
+    "additionalDirectories": [
+      "/Users/david/Projects/tachi/.claude/agents/tachi",
+      "/Users/david/Projects/tachi/.claude/commands"
     ]
   },
   "hooks": {

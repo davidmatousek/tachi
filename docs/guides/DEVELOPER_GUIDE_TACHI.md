@@ -31,7 +31,7 @@ cd ~/Projects/tachi && git pull
 From your project root, copy the agents and command into your project's Claude Code directories:
 
 ```bash
-# Copy the 14 agent files
+# Copy agents + infographic templates
 cp -r ~/Projects/tachi/adapters/claude-code/agents/ .claude/agents/tachi/
 
 # Copy the /threat-model command
@@ -44,8 +44,9 @@ Run this for each new codebase you want to add threat modeling to. Repeat it aft
 ## Step 3: Verify
 
 ```bash
-ls .claude/agents/tachi/    # Should show 14 .md files
-ls .claude/commands/         # Should show threat-model.md
+ls .claude/agents/tachi/              # Should show 14 .md files + templates/ directory
+ls .claude/agents/tachi/templates/    # Should show infographic-baseball-card.md, infographic-system-architecture.md
+ls .claude/commands/                   # Should show threat-model.md
 ```
 
 ## Step 4: Create Your Architecture File
@@ -116,8 +117,10 @@ Tachi writes these files to `docs/security/` (or your custom output directory):
 | `threats.sarif` | Machine-readable findings for GitHub Code Scanning and CI/CD tools |
 | `threat-report.md` | Narrative report with executive summary and remediation roadmap |
 | `attack-trees/` | One Mermaid diagram per Critical/High finding showing attack paths |
-| `threat-infographic-spec.md` | Structured data for visual risk rendering |
-| `threat-infographic.jpg` | Presentation-ready infographic (requires `GEMINI_API_KEY`) |
+| `threat-baseball-card-spec.md` | Baseball Card risk summary specification |
+| `threat-baseball-card.jpg` | Baseball Card infographic (requires `GEMINI_API_KEY`) |
+| `threat-system-architecture-spec.md` | System Architecture diagram specification |
+| `threat-system-architecture.jpg` | System Architecture infographic (requires `GEMINI_API_KEY`) |
 
 **Where to start**: Open `threats.md` and scroll to **Section 7 -- Recommended Actions**. This is your prioritized list of findings sorted by risk level. Start with Critical, then High.
 
@@ -802,14 +805,15 @@ From your project root:
 # Clone tachi (one-time setup)
 git clone https://github.com/davidmatousek/tachi.git ~/Projects/tachi
 
-# Copy agents and command into your project
+# Copy agents, templates, and command into your project
 cp -r ~/Projects/tachi/adapters/claude-code/agents/ .claude/agents/tachi/
 mkdir -p .claude/commands
 cp ~/Projects/tachi/adapters/claude-code/commands/threat-model.md .claude/commands/
 
 # Verify
-ls .claude/agents/tachi/    # 14 .md files
-ls .claude/commands/         # threat-model.md
+ls .claude/agents/tachi/              # 14 .md files + templates/
+ls .claude/agents/tachi/templates/    # infographic-baseball-card.md, infographic-system-architecture.md
+ls .claude/commands/                   # threat-model.md
 ```
 
 **Updating**: When tachi releases new agent versions, pull and re-copy:
@@ -860,8 +864,10 @@ docs/security/
 │   ├── threats.sarif
 │   ├── threat-report.md
 │   ├── attack-trees/
-│   ├── threat-infographic-spec.md
-│   └── threat-infographic.jpg
+│   ├── threat-baseball-card-spec.md
+│   ├── threat-baseball-card.jpg
+│   ├── threat-system-architecture-spec.md
+│   └── threat-system-architecture.jpg
 ├── v1.0.0/                <- /threat-model --version v1.0.0
 │   └── ...
 └── v1.1.0/
@@ -985,8 +991,10 @@ specs/025-user-auth/
     ├── threats.sarif
     ├── threat-report.md
     ├── attack-trees/
-    ├── threat-infographic-spec.md
-    └── threat-infographic.jpg
+    ├── threat-baseball-card-spec.md
+    ├── threat-baseball-card.jpg
+    ├── threat-system-architecture-spec.md
+    └── threat-system-architecture.jpg
 ```
 
 Each feature retains a permanent threat model record. This is valuable for compliance audits and for understanding the security decisions made at design time.
@@ -1112,24 +1120,52 @@ jobs:
 
 ### Generating Infographics with Gemini API
 
-Tachi can generate a presentation-ready infographic image (`threat-infographic.jpg`) using the Google Gemini API. This requires a Gemini API key.
+Tachi generates two infographic images by default using the Google Gemini API: a **Baseball Card** (risk summary dashboard) and a **System Architecture** diagram (annotated architecture with attack surface badges). This requires a Gemini API key.
 
 **Secure key storage**:
 
 ```bash
-# Option 1: Environment variable (recommended for local development)
-export GEMINI_API_KEY="your-key-here"
-
-# Option 2: .env file (ensure .env is in .gitignore)
+# Option 1: .env file in your project root (recommended)
 echo "GEMINI_API_KEY=your-key-here" >> .env
 echo ".env" >> .gitignore
+
+# Option 2: Shell profile (always available across all projects)
+echo 'export GEMINI_API_KEY="your-key-here"' >> ~/.zshrc
+source ~/.zshrc
 
 # Option 3: CI/CD secrets (for automated pipelines)
 # GitHub Actions: Settings -> Secrets -> GEMINI_API_KEY
 # The key is injected as an environment variable during the workflow run
 ```
 
-Never hardcode API keys in files. Never commit API keys to version control. If the key is not set, Tachi skips image generation and produces all other outputs normally.
+**After adding to `.env`**: Restart VS Code for it to pick up the new environment variable. VS Code loads `.env` into its integrated terminal on startup.
+
+Never hardcode API keys in source files. Never commit API keys to version control. If the key is not set, Tachi skips image generation and produces all other outputs normally.
+
+### Infographic Templates
+
+Tachi generates two infographic types by default, each using a design template:
+
+- **`baseball-card`** -- Compact risk summary dashboard: donut chart, STRIDE+AI coverage heat map, critical finding cards, architecture overlay strip
+- **`system-architecture`** -- Annotated architecture diagram: trust zones stacked by trust level, components with attack surface badges, data flow arrows colored by severity
+
+Both are generated on every run. To generate only one:
+
+```bash
+/threat-model docs/security/architecture.md --infographic-template baseball-card
+/threat-model docs/security/architecture.md --infographic-template system-architecture
+```
+
+**Creating a custom template**:
+
+```bash
+cp .claude/agents/tachi/templates/infographic-baseball-card.md \
+   .claude/agents/tachi/templates/infographic-my-design.md
+```
+
+Edit the new file to change the layout, color palette, typography, and Gemini prompt template. The file name must follow the pattern `infographic-{name}.md`. See the default templates for the required sections.
+
+Custom templates survive tachi updates -- the `cp -r` command merges without deleting your additions.
 
 ### Different Architecture Types
 
@@ -1283,16 +1319,16 @@ Each attack tree is a standalone `.md` file in `attack-trees/` containing:
   - Green leaf nodes (atomic attack steps)
   - Gray sub-goal nodes (intermediate objectives)
 
-### `threat-infographic-spec.md` Sections
+### Infographic Spec Sections (Both Templates)
 
-| Section | Contents |
-|---------|----------|
-| 1. Metadata | Project name, scan date, analysis agents, total findings, risk posture |
-| 2. Risk Distribution | Severity counts and percentages with color codes |
-| 3. Coverage Heat Map | Component x severity matrix |
-| 4. Top Critical Findings | Top 5 findings with IDs, components, threats |
-| 5. Architecture Threat Overlay | Component risk weights and annotations |
-| 6. Visual Design Directives | Color palette (CVSS mapping), 16:9 layout, typography |
+| Section | Baseball Card | System Architecture |
+|---------|--------------|---------------------|
+| 1. Metadata | Project name, scan date, total findings, risk posture | Same |
+| 2. Risk Distribution | Severity counts/percentages, donut chart data | Same |
+| 3. Coverage Heat Map | Component x STRIDE+AI category matrix | Same |
+| 4. Top Critical Findings | Finding cards with IDs, components, threats | Same |
+| 5. Architecture Overlay | Tabular: component risk weights | Spatial: zone layout, component placement, data flows, boundary crossings |
+| 6. Visual Design Directives | 4-zone dashboard layout | Zone-stacked architecture diagram layout |
 
 ---
 

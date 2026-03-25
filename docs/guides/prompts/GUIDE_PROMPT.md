@@ -193,10 +193,10 @@ Structured data for infographic rendering with 6 sections:
 
 Generated via Google Gemini API. Presentation-ready infographic image.
 
-**Gemini API key requirement**: The developer must have a Gemini API key to generate the infographic image. The guide must cover secure key storage:
-- Store the key in an environment variable (`GEMINI_API_KEY`), never hardcoded in files
-- Add `.env` to `.gitignore` if using a `.env` file
-- Never commit API keys to version control
+**Gemini API key requirement**: The developer must have a Gemini API key. The guide must cover:
+- Store the key in a `.env` file in the project root, add `.env` to `.gitignore`
+- Restart VS Code after adding or changing the key (VS Code loads `.env` on startup)
+- Never hardcode keys in source files, never commit keys to version control
 - For CI/CD, use the platform's secrets management (GitHub Actions secrets, etc.)
 
 ---
@@ -223,7 +223,7 @@ From the user's project root:
 # Clone tachi as a sibling project (one-time, reuse across projects)
 git clone https://github.com/davidmatousek/tachi.git ~/Projects/tachi
 
-# Copy the 14 agent files into your project's Claude Code agents directory
+# Copy agents + templates into your project's Claude Code agents directory
 cp -r ~/Projects/tachi/adapters/claude-code/agents/ .claude/agents/tachi/
 
 # Copy the /threat-model command for single-command invocation
@@ -231,23 +231,35 @@ mkdir -p .claude/commands
 cp ~/Projects/tachi/adapters/claude-code/commands/threat-model.md .claude/commands/
 
 # Verify installation
-ls .claude/agents/tachi/    # Should show 14 .md files
-ls .claude/commands/         # Should show threat-model.md
+ls .claude/agents/tachi/              # Should show 14 .md files + templates/ directory
+ls .claude/agents/tachi/templates/    # Should show infographic-corporate-white.md
+ls .claude/commands/                   # Should show threat-model.md
 ```
 
-This installs two things:
+This installs three things:
 1. **14 agent files** in `.claude/agents/tachi/` — Claude Code auto-discovers these as dispatchable agents
-2. **`/threat-model` command** in `.claude/commands/` — gives you a single slash command to run analysis
+2. **Infographic templates** in `.claude/agents/tachi/templates/` — design templates for Gemini image generation (default: `corporate-white`)
+3. **`/threat-model` command** in `.claude/commands/` — single slash command to run analysis
 
 **Additional setup for infographic image generation:**
-```bash
-# Store your Gemini API key as an environment variable — NEVER hardcode in files
-export GEMINI_API_KEY="your-key-here"
 
-# Or add to .env file (ensure .env is in .gitignore)
+You need a Google Gemini API key. There are two ways to configure it:
+
+```bash
+# Option 1 (recommended): Add to your shell profile
+# This makes the key available to all tools, all sessions, permanently.
+echo 'export GEMINI_API_KEY="your-key-here"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+```bash
+# Option 2: Add to a project .env file
+# Keeps the key scoped to this project. Requires the /threat-model command.
 echo "GEMINI_API_KEY=your-key-here" >> .env
 echo ".env" >> .gitignore
 ```
+
+**After adding to `.env`**: Restart VS Code for it to pick up the new environment variable. VS Code loads `.env` into its integrated terminal on startup, so a restart is required after adding or changing keys.
 
 No npm install or other dependencies required beyond Claude Code and the Gemini API key.
 
@@ -257,6 +269,8 @@ cd ~/Projects/tachi && git pull
 cp -r adapters/claude-code/agents/ ~/Projects/my-app/.claude/agents/tachi/
 cp adapters/claude-code/commands/threat-model.md ~/Projects/my-app/.claude/commands/
 ```
+
+**Custom infographic templates are preserved** — the `cp -r` overwrites the default template but won't delete custom templates you've added to `.claude/agents/tachi/templates/`.
 
 Tachi serves multiple projects — clone once, copy adapters into each project that needs threat modeling.
 

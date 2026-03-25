@@ -1,0 +1,1024 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Tachi",
+          "semanticVersion": "1.1",
+          "informationUri": "https://github.com/tachi-org/tachi",
+          "supportedTaxonomies": [
+            { "name": "OWASP", "index": 0 },
+            { "name": "CWE", "index": 1 }
+          ],
+          "rules": [
+            {
+              "id": "tachi/stride/spoofing",
+              "shortDescription": { "text": "Identity spoofing threats" },
+              "fullDescription": { "text": "Threats where an attacker assumes the identity of another entity — user, service, or system component — undermining authentication guarantees and enabling unauthorized actions under a trusted identity." },
+              "help": {
+                "text": "Review authentication mechanisms, credential storage, session management, and service-to-service identity verification for spoofing vulnerabilities.",
+                "markdown": "## Detection Guidance\n\nReview the following for spoofing vulnerabilities:\n- Authentication mechanisms at entry points (MFA, password policies)\n- Session token management (lifetime, binding, rotation)\n- Service-to-service authentication (mTLS, signed JWTs)\n- Federated identity configuration (OAuth/OIDC state parameters)\n\n## Framework References\n- [OWASP A07:2021 — Identification and Authentication Failures](https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/)\n- [CWE-287: Improper Authentication](https://cwe.mitre.org/data/definitions/287.html)\n- MITRE ATT&CK T1078: Valid Accounts"
+              },
+              "properties": {
+                "tags": ["security", "stride", "spoofing", "authentication", "owasp", "cwe"],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                {
+                  "target": { "id": "A07", "toolComponent": { "name": "OWASP" } },
+                  "kinds": ["relevant"]
+                },
+                {
+                  "target": { "id": "CWE-287", "toolComponent": { "name": "CWE" } },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/tampering",
+              "shortDescription": { "text": "Data tampering threats" },
+              "fullDescription": { "text": "Threats where an attacker modifies data, code, or configuration without authorization, violating integrity guarantees and causing systems to operate on corrupted inputs or persist falsified records." },
+              "help": {
+                "text": "Review input validation, message integrity, data flow encryption, configuration management, and write-path access controls for tampering vulnerabilities.",
+                "markdown": "## Detection Guidance\n\nReview the following for tampering vulnerabilities:\n- Input validation and sanitization on all write paths\n- Message integrity protection (HMAC, digital signatures) on inter-service communication\n- Configuration integrity verification (checksums, drift detection)\n- Data store access controls and audit trails\n\n## Framework References\n- [OWASP A08:2021 — Software and Data Integrity Failures](https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/)\n- [CWE-345: Insufficient Verification of Data Authenticity](https://cwe.mitre.org/data/definitions/345.html)\n- MITRE ATT&CK T1565: Data Manipulation"
+              },
+              "properties": {
+                "tags": ["security", "stride", "tampering", "integrity", "owasp", "cwe"],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                {
+                  "target": { "id": "A08", "toolComponent": { "name": "OWASP" } },
+                  "kinds": ["relevant"]
+                },
+                {
+                  "target": { "id": "CWE-345", "toolComponent": { "name": "CWE" } },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/repudiation",
+              "shortDescription": { "text": "Repudiation threats" },
+              "fullDescription": { "text": "Threats where a user or system can deny having performed an action and the system lacks sufficient evidence to prove otherwise, undermining accountability, forensic investigation, and compliance obligations." },
+              "help": {
+                "text": "Review audit logging coverage, log integrity protection, non-repudiation controls, and timestamp management for repudiation vulnerabilities.",
+                "markdown": "## Detection Guidance\n\nReview the following for repudiation vulnerabilities:\n- Audit log coverage for security-sensitive operations\n- Log detail sufficiency (actor identity, timestamp, before/after state)\n- Log integrity protection (append-only storage, cryptographic chaining)\n- Non-repudiation mechanisms (digital signatures, TLS client certificates)\n\n## Framework References\n- [OWASP A09:2021 — Security Logging and Monitoring Failures](https://owasp.org/Top10/A09_2021-Security_Logging_and_Monitoring_Failures/)\n- [CWE-778: Insufficient Logging](https://cwe.mitre.org/data/definitions/778.html)\n- MITRE ATT&CK T1070: Indicator Removal"
+              },
+              "properties": {
+                "tags": ["security", "stride", "repudiation", "logging", "accountability", "owasp", "cwe"],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                {
+                  "target": { "id": "A09", "toolComponent": { "name": "OWASP" } },
+                  "kinds": ["relevant"]
+                },
+                {
+                  "target": { "id": "CWE-778", "toolComponent": { "name": "CWE" } },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/information-disclosure",
+              "shortDescription": { "text": "Information disclosure threats" },
+              "fullDescription": { "text": "Threats where sensitive information is exposed to unauthorized parties through direct data leaks, verbose error messages, side-channel observations, or insufficient access controls on stored data." },
+              "help": {
+                "text": "Review error handling, API response filtering, data-at-rest encryption, data-in-transit protection, and access controls for information disclosure vulnerabilities.",
+                "markdown": "## Detection Guidance\n\nReview the following for information disclosure vulnerabilities:\n- Error message content (stack traces, connection strings, file paths)\n- API response filtering (excessive data, internal metadata)\n- Data-at-rest encryption and access controls\n- Data-in-transit encryption (TLS on all channels)\n\n## Framework References\n- [OWASP A01:2021 — Broken Access Control](https://owasp.org/Top10/A01_2021-Broken_Access_Control/)\n- [CWE-200: Exposure of Sensitive Information](https://cwe.mitre.org/data/definitions/200.html)\n- MITRE ATT&CK T1005: Data from Local System"
+              },
+              "properties": {
+                "tags": ["security", "stride", "information-disclosure", "data-exposure", "confidentiality", "owasp", "cwe"],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                {
+                  "target": { "id": "A01", "toolComponent": { "name": "OWASP" } },
+                  "kinds": ["relevant"]
+                },
+                {
+                  "target": { "id": "CWE-200", "toolComponent": { "name": "CWE" } },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/denial-of-service",
+              "shortDescription": { "text": "Denial of service threats" },
+              "fullDescription": { "text": "Threats where an attacker degrades or eliminates system availability through resource exhaustion, flooding, algorithmic complexity exploitation, or cascading dependency failures." },
+              "help": {
+                "text": "Review rate limiting, resource caps, connection pool management, timeout configuration, and circuit breaker patterns for denial of service vulnerabilities.",
+                "markdown": "## Detection Guidance\n\nReview the following for denial of service vulnerabilities:\n- Rate limiting on public-facing endpoints\n- Request size and complexity limits\n- Connection pool and timeout configuration\n- Circuit breaker patterns for external dependencies\n\n## Framework References\n- [OWASP A05:2021 — Security Misconfiguration](https://owasp.org/Top10/A05_2021-Security_Misconfiguration/)\n- [CWE-400: Uncontrolled Resource Consumption](https://cwe.mitre.org/data/definitions/400.html)\n- MITRE ATT&CK T1499: Endpoint Denial of Service"
+              },
+              "properties": {
+                "tags": ["security", "stride", "denial-of-service", "availability", "rate-limiting", "owasp", "cwe"],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                {
+                  "target": { "id": "A05", "toolComponent": { "name": "OWASP" } },
+                  "kinds": ["relevant"]
+                },
+                {
+                  "target": { "id": "CWE-400", "toolComponent": { "name": "CWE" } },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/elevation-of-privilege",
+              "shortDescription": { "text": "Privilege escalation threats" },
+              "fullDescription": { "text": "Threats where an attacker gains higher privileges than authorized, performing actions reserved for administrators, accessing other users' resources, or bypassing access control boundaries." },
+              "help": {
+                "text": "Review authorization mechanisms, role-based access controls, privilege boundaries, and function-level access controls for elevation of privilege vulnerabilities.",
+                "markdown": "## Detection Guidance\n\nReview the following for privilege escalation vulnerabilities:\n- Authorization checks on all API endpoints\n- Role-based access control enforcement\n- Function-level access control on administrative operations\n- Least privilege enforcement on service accounts\n\n## Framework References\n- [OWASP A01:2021 — Broken Access Control](https://owasp.org/Top10/A01_2021-Broken_Access_Control/)\n- [CWE-269: Improper Privilege Management](https://cwe.mitre.org/data/definitions/269.html)\n- MITRE ATT&CK T1548: Abuse Elevation Control Mechanism"
+              },
+              "properties": {
+                "tags": ["security", "stride", "elevation-of-privilege", "authorization", "access-control", "owasp", "cwe"],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                {
+                  "target": { "id": "A01", "toolComponent": { "name": "OWASP" } },
+                  "kinds": ["relevant"]
+                },
+                {
+                  "target": { "id": "CWE-269", "toolComponent": { "name": "CWE" } },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/ai/agentic-threats",
+              "shortDescription": { "text": "AI agent autonomy and misuse threats" },
+              "fullDescription": { "text": "Threats from autonomous agent systems operating with insufficient constraints on decision-making, action scope, or operational boundaries, including unauthorized tool invocation, capability escalation, and tool poisoning attacks." },
+              "help": {
+                "text": "Review agent autonomy constraints, tool access controls, human-in-the-loop gates, and tool chain policies for agentic threat vulnerabilities.",
+                "markdown": "## Detection Guidance\n\nReview the following for agentic threat vulnerabilities:\n- Agent termination constraints (iteration limits, timeouts, cost caps)\n- Tool access controls and per-agent capability scoping\n- Human-in-the-loop approval gates for consequential actions\n- Tool chain policies evaluating composite effects\n\n## Framework References\n- [OWASP Agentic Security Initiative (ASI)](https://owasp.org/www-project-agentic-security-initiative/)\n- MITRE ATLAS: Abuse of AI Agent Capabilities\n- [CWE-693: Protection Mechanism Failure](https://cwe.mitre.org/data/definitions/693.html)"
+              },
+              "properties": {
+                "tags": ["security", "ai", "agentic", "autonomy", "tool-use", "mcp", "owasp"],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                {
+                  "target": { "id": "CWE-693", "toolComponent": { "name": "CWE" } },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/ai/llm-threats",
+              "shortDescription": { "text": "LLM-specific threats" },
+              "fullDescription": { "text": "Threats specific to Large Language Model integrations including prompt injection, data poisoning of RAG pipelines, model theft through systematic querying, and system prompt extraction attacks." },
+              "help": {
+                "text": "Review prompt handling, RAG pipeline integrity, output filtering, and model API access controls for LLM-specific vulnerabilities.",
+                "markdown": "## Detection Guidance\n\nReview the following for LLM-specific vulnerabilities:\n- Prompt boundary enforcement (system vs user content separation)\n- Input classification for adversarial prompt patterns\n- RAG pipeline content validation and provenance tracking\n- Output filtering for system prompt leakage\n- Model API rate limiting and query budget controls\n\n## Framework References\n- [OWASP LLM Top 10 v2025](https://genai.owasp.org/)\n- OWASP LLM01:2025 — Prompt Injection\n- OWASP LLM03:2025 — Supply Chain Vulnerabilities\n- OWASP LLM10:2025 — Model Theft\n- [CWE-74: Improper Neutralization of Special Elements in Output](https://cwe.mitre.org/data/definitions/74.html)"
+              },
+              "properties": {
+                "tags": ["security", "ai", "llm", "prompt-injection", "data-poisoning", "model-theft", "owasp"],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                {
+                  "target": { "id": "CWE-74", "toolComponent": { "name": "CWE" } },
+                  "kinds": ["relevant"]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "taxonomies": [
+        {
+          "name": "OWASP",
+          "version": "2021",
+          "informationUri": "https://owasp.org/Top10/",
+          "organization": "OWASP Foundation",
+          "shortDescription": { "text": "OWASP Top 10 Web Application Security Risks" }
+        },
+        {
+          "name": "CWE",
+          "version": "4.13",
+          "informationUri": "https://cwe.mitre.org/",
+          "organization": "MITRE",
+          "shortDescription": { "text": "Common Weakness Enumeration" }
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "An attacker may impersonate a legitimate user by stealing or forging authentication credentials because the architecture does not specify authentication mechanisms at the User-to-Guardrails entry point.",
+            "markdown": "Implement multi-factor authentication (MFA) at the user entry point. Issue short-lived session tokens (15-minute expiry) with HTTPS-only, Secure, SameSite=Strict cookie attributes. Enforce token binding via DPoP."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "User", "fullyQualifiedName": "User Zone/User", "kind": "external-entity" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "cf294989f8e17183",
+            "findingId/v1": "S-1"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "An attacker may bypass the Guardrails Service by directly addressing the LLM Agent Orchestrator endpoint because no mutual authentication exists between the two services.",
+            "markdown": "Enforce mutual TLS (mTLS) between the Guardrails Service and LLM Agent Orchestrator. The Orchestrator must reject all inbound prompt traffic not originating from a verified Guardrails Service certificate."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "Guardrails Service", "fullyQualifiedName": "Application Zone/Guardrails Service", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "3bab618930c304c5",
+            "findingId/v1": "S-2"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "An attacker may forge service identity tokens to impersonate the LLM Agent Orchestrator when communicating with the MCP Tool Server because inter-service authentication is not specified.",
+            "markdown": "Enforce mutual TLS (mTLS) with certificate pinning between the LLM Agent Orchestrator and MCP Tool Server. Validate service identity claims using signed JWTs with RS256 and audience restriction."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "86044d702033aaaa",
+            "findingId/v1": "S-3"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "An attacker may spoof the MCP Tool Server's identity when returning tool results because response authenticity is not verified, enabling injection of fabricated tool results.",
+            "markdown": "Implement response signing on all MCP Tool Server responses using HMAC-SHA256. The Orchestrator must validate response signatures before processing tool results."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "MCP Tool Server", "fullyQualifiedName": "Application Zone/MCP Tool Server", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "a5e9eb30090af448",
+            "findingId/v1": "S-4"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "An attacker may perform DNS spoofing or MITM attack to redirect the MCP Tool Server's HTTPS requests to a malicious endpoint impersonating the External API.",
+            "markdown": "Implement certificate pinning for the External API's TLS certificate. Enforce strict hostname verification. Use DNS-over-HTTPS resolver to mitigate DNS spoofing."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "External API", "fullyQualifiedName": "External Services/External API", "kind": "external-entity" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "4044726f9698e37e",
+            "findingId/v1": "S-5"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "An attacker may tamper with the Guardrails Service's validation rules or filtering configuration to disable prompt screening.",
+            "markdown": "Store validation rules in an immutable configuration store with cryptographic integrity verification (SHA-256 checksums). Implement configuration drift detection."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "Guardrails Service", "fullyQualifiedName": "Application Zone/Guardrails Service", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "e6bc538cbd3fe085",
+            "findingId/v1": "T-1"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "An attacker may tamper with the prompt in transit between the Guardrails Service and the Orchestrator because the internal data flow does not specify integrity protection.",
+            "markdown": "Implement message-level integrity protection (HMAC-SHA256) on prompts forwarded from the Guardrails Service to the Orchestrator."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "b622281d4ca868aa",
+            "findingId/v1": "T-2"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "An attacker may modify tool call parameters in transit between the Orchestrator and MCP Tool Server over JSON-RPC because message-level integrity is not verified.",
+            "markdown": "Sign all JSON-RPC messages between the Orchestrator and MCP Tool Server using HMAC-SHA256. Enforce strict parameter schema validation at the Tool Server."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "MCP Tool Server", "fullyQualifiedName": "Application Zone/MCP Tool Server", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "e4c35caf60102681",
+            "findingId/v1": "T-3"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "An attacker may inject malicious content into the Knowledge Base through the Orchestrator's write path because input sanitization is not enforced before persisting data to the vector store.",
+            "markdown": "Implement content validation with allowlist-based filtering on all write operations. Enforce integrity checksums (SHA-256) on stored records. Apply write-audit logging with immutable append-only storage."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "Knowledge Base", "fullyQualifiedName": "Application Zone/Knowledge Base", "kind": "data-store" }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": { "text": "LLM-4: Knowledge Base content poisoning corrupting RAG responses via unvalidated document indexing" },
+              "logicalLocations": [
+                { "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "4f934bf44aadfb00",
+            "findingId/v1": "T-4",
+            "correlationGroup": "CG-1"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "An attacker may tamper with audit log entries to cover tracks after a security incident because log integrity protection and access controls are not specified.",
+            "markdown": "Store audit logs in append-only immutable storage. Forward logs to an external SIEM within 60 seconds. Implement cryptographic log chaining (hash chain) to detect tampering."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "Audit Logger", "fullyQualifiedName": "Application Zone/Audit Logger", "kind": "data-store" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "dc56897bffa6a276",
+            "findingId/v1": "T-5"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "A user may deny having submitted a specific prompt because the system does not bind user identity to prompt submissions with sufficient non-repudiation evidence.",
+            "markdown": "Bind each prompt submission to the authenticated user identity with a server-side timestamp and session correlation ID. Store immutable audit records."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "User", "fullyQualifiedName": "User Zone/User", "kind": "external-entity" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "5a808890b239b615",
+            "findingId/v1": "R-1"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "The Guardrails Service may fail to log prompt rejection decisions with sufficient detail, allowing disputed claims about filtering decisions.",
+            "markdown": "Emit structured audit events for every filtering decision including full input prompt, rule matched, decision, rejection reason, user ID, and UTC timestamp."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "Guardrails Service", "fullyQualifiedName": "Application Zone/Guardrails Service", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "ada85cea3b936bf4",
+            "findingId/v1": "R-2"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "The LLM Agent Orchestrator may execute tool calls without logging the originating user request, selected tool, parameters, or response, enabling an operator to deny having triggered a destructive action.",
+            "markdown": "Emit structured audit events for every tool dispatch recording authenticated user ID, tool name, input parameters, response summary, and UTC timestamp. Forward to append-only SIEM."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": { "text": "AG-2: Orchestrator makes consequential decisions without human review or approval gates" },
+              "logicalLocations": [
+                { "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "1bad83b9f1d04f2f",
+            "findingId/v1": "R-3",
+            "correlationGroup": "CG-4"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "The MCP Tool Server may execute tool operations without logging the complete execution context, enabling denial of responsibility for actions taken on behalf of the orchestrator.",
+            "markdown": "Log every tool execution with the full request chain: originating user ID, tool name, parameters, API endpoint, response status, duration, and UTC timestamp."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "MCP Tool Server", "fullyQualifiedName": "Application Zone/MCP Tool Server", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "c3bdb0ccc5a46449",
+            "findingId/v1": "R-4"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "The External API may deny having received or processed a request because no mutual logging or signed receipts exist between the two systems.",
+            "markdown": "Implement request/response logging on the MCP Tool Server side for all External API interactions. Request signed receipts or correlation IDs from the External API where supported."
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "External API", "fullyQualifiedName": "External Services/External API", "kind": "external-entity" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "af01fd610f22994d",
+            "findingId/v1": "R-5"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "The Guardrails Service may return detailed rejection reasons that reveal internal filtering rules, enabling an attacker to iteratively refine prompts to bypass the filter.",
+            "markdown": "Return generic rejection messages to users. Log detailed rejection reasons to the Audit Logger for internal review only. Implement rate limiting on rejection responses."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "Guardrails Service", "fullyQualifiedName": "Application Zone/Guardrails Service", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "2b7cc5858485093d",
+            "findingId/v1": "I-1"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "The LLM Agent Orchestrator may leak sensitive internal context (system prompts, tool descriptions, Knowledge Base metadata) in responses to users because output filtering does not strip internal system information.",
+            "markdown": "Implement output filtering that strips system prompt fragments, tool descriptions, internal URLs, API keys, and Knowledge Base metadata. Apply a response classifier for internal information detection."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": { "text": "LLM-1: Direct prompt injection overriding system prompt and safety constraints to exfiltrate data" },
+              "logicalLocations": [
+                { "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "cda734dd6fbe58e9",
+            "findingId/v1": "I-2",
+            "correlationGroup": "CG-3"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "The MCP Tool Server may include verbose error messages in tool results revealing internal stack traces, database connection strings, or file paths.",
+            "markdown": "Implement generic error responses at the MCP Tool Server level. Return standardized error codes. Route detailed diagnostics to the Audit Logger only."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "MCP Tool Server", "fullyQualifiedName": "Application Zone/MCP Tool Server", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "6c078f5b90987fc2",
+            "findingId/v1": "I-3"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "The Knowledge Base may return full document contents including internal metadata and embedding vectors in query responses, enabling extraction of sensitive information.",
+            "markdown": "Implement field-level projection on query responses returning only required content fields. Strip internal metadata, embedding vectors, and storage identifiers."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "Knowledge Base", "fullyQualifiedName": "Application Zone/Knowledge Base", "kind": "data-store" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "8a5dd9d4db40eaaf",
+            "findingId/v1": "I-4"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "The Audit Logger may store sensitive data (credentials, PII, full prompts) accessible to operations staff with overly broad access.",
+            "markdown": "Implement data classification and redaction on log entries. Apply role-based access controls. Encrypt log data at rest using AES-256."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "Audit Logger", "fullyQualifiedName": "Application Zone/Audit Logger", "kind": "data-store" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "bc274bb03ddf8fb7",
+            "findingId/v1": "I-5"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Audit log data flows from multiple components to the Audit Logger over internal channels without encryption, enabling interception of sensitive operational data.",
+            "markdown": "Encrypt all internal data flows to the Audit Logger using TLS 1.3. Implement mutual TLS between logging clients and the Audit Logger."
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "Audit Logger", "fullyQualifiedName": "Application Zone/Audit Logger", "kind": "data-store" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "bc274bb03ddf8fb7",
+            "findingId/v1": "I-6"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "An attacker may flood the Guardrails Service with high-volume prompt submissions, exhausting compute resources and blocking legitimate users.",
+            "markdown": "Implement per-client rate limiting (10 req/min unauthenticated, 60 req/min authenticated). Deploy request size limits (4096 tokens max). Add WAF/DDoS protection upstream."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "Guardrails Service", "fullyQualifiedName": "Application Zone/Guardrails Service", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "15c3f25289888c15",
+            "findingId/v1": "D-1"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "An attacker may submit maximum-length prompts triggering expensive LLM inference and multiple retrieval cycles, exhausting memory, compute, and API token budgets.",
+            "markdown": "Enforce per-request resource caps: max prompt length (4096 tokens), inference timeout (30s), max tool calls per request (5), max retrievals per request (3). Per-client rate limiting."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "76996bc32d9e361b",
+            "findingId/v1": "D-2"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "An attacker may cause the MCP Tool Server to make excessive outbound API requests, exhausting connection pools and incurring financial costs.",
+            "markdown": "Implement per-client tool invocation rate limits (10 calls/min). Configure connection pool limits and timeouts. Implement circuit breaker after 5 consecutive failures."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "MCP Tool Server", "fullyQualifiedName": "Application Zone/MCP Tool Server", "kind": "process" }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": { "text": "AG-4: Tool chaining escalates individually authorized operations beyond intended permissions" },
+              "logicalLocations": [
+                { "name": "MCP Tool Server", "fullyQualifiedName": "Application Zone/MCP Tool Server", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "ea4650776a79cded",
+            "findingId/v1": "D-3",
+            "correlationGroup": "CG-5"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "An attacker may trigger resource-intensive vector search queries that cause full-index scans or excessively large result sets, degrading performance.",
+            "markdown": "Implement query complexity limits: max result set size (10 docs), query timeout (5s), minimum similarity threshold. Apply per-client query rate limiting."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "Knowledge Base", "fullyQualifiedName": "Application Zone/Knowledge Base", "kind": "data-store" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "0de917a8d1f81eec",
+            "findingId/v1": "D-4"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "An attacker may trigger a flood of log entries filling the Audit Logger's storage capacity, causing log loss or system degradation.",
+            "markdown": "Implement log volume rate limiting per source (1000 entries/min). Configure automatic rotation and retention (90-day). Set storage capacity alerts at 80%."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "Audit Logger", "fullyQualifiedName": "Application Zone/Audit Logger", "kind": "data-store" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "53dcc0228ab127cd",
+            "findingId/v1": "D-5"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "An attacker may exploit a bypass in the Guardrails Service to escalate from a filtered to unfiltered user context, submitting prompts that should be blocked.",
+            "markdown": "Implement role-based prompt filtering policies. Validate user role claims server-side. Ensure the Orchestrator independently verifies authorization level."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "Guardrails Service", "fullyQualifiedName": "Application Zone/Guardrails Service", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "985d7f3b74246327",
+            "findingId/v1": "E-1"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "An attacker may achieve privilege escalation through the LLM Agent Orchestrator by manipulating the model into requesting elevated tool permissions because least-privilege constraints are not enforced.",
+            "markdown": "Implement a permission boundary layer mapping each user's authorization level to an allowlist of permitted tools. Forward authenticated user role with every tool call request."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": { "text": "AG-1: Orchestrator operates with excessive autonomy executing tool calls without constraints on iterations, timeouts, or costs" },
+              "logicalLocations": [
+                { "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "59650eea6f521b03",
+            "findingId/v1": "E-2",
+            "correlationGroup": "CG-2"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "An authenticated user may invoke administrative tool endpoints on the MCP Tool Server by manipulating tool_name or parameters because RBAC is not enforced on tool dispatch.",
+            "markdown": "Implement RBAC policy mapping each tool to a required permission set. Validate caller role before dispatch. Classify tools into tiers (read-only, write, administrative)."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "MCP Tool Server", "fullyQualifiedName": "Application Zone/MCP Tool Server", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "0e2d607fa0b581c8",
+            "findingId/v1": "E-3"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "The MCP Tool Server may expose all registered tools to the Orchestrator without per-agent or per-user capability scoping, enabling unauthorized tool invocation by attackers who achieve prompt injection.",
+            "markdown": "Implement per-caller tool allowlists at the MCP Tool Server. Each connection should declare authorization scope. Log all tool invocations with caller identity."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "MCP Tool Server", "fullyQualifiedName": "Application Zone/MCP Tool Server", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "720c1c38843a2fe5",
+            "findingId/v1": "AG-3"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "The RAG pipeline may retrieve documents containing adversarial instructions from the Knowledge Base that override system behavior when injected into the LLM context window.",
+            "markdown": "Sanitize retrieved document content before injection into the prompt context. Implement provenance tracking. Apply content integrity checks and structural delimiters."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "bc8145867ba52dd5",
+            "findingId/v1": "LLM-2"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "An attacker may systematically probe the model API through iterative prompt variations to extract the system prompt, tool descriptions, or Knowledge Base schema.",
+            "markdown": "Implement rate limiting per session. Deploy a prompt classifier for known extraction patterns. Log prompts for post-hoc analysis. Add output classifiers for system prompt fragments."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "bc8145867ba52dd5",
+            "findingId/v1": "LLM-3"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "An attacker may systematically query the model API to extract behavior patterns, reconstruct proprietary fine-tuning data, or distill a functional copy of the model.",
+            "markdown": "Restrict API output to top-k predictions only. Implement per-API-key query budgets. Deploy query pattern analysis for systematic probing detection. Add output watermarking."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "examples/agentic-app/test-output/2026-03-25T12-53-57/threats.md" },
+                "region": { "startLine": 1 }
+              },
+              "logicalLocations": [
+                { "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "bc8145867ba52dd5",
+            "findingId/v1": "LLM-5"
+          }
+        }
+      ]
+    }
+  ]
+}
