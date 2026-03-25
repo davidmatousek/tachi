@@ -4,58 +4,57 @@ date: "2026-03-25"
 source_file: "threats.md"
 finding_count: 38
 risk_distribution:
-  critical: 11
-  high: 16
-  medium: 9
-  low: 2
+  critical: 7
+  high: 19
+  medium: 10
+  low: 1
   note: 0
-attack_tree_count: 27
+attack_tree_count: 26
 ---
 
 # Threat Report: Agentic AI Application
 
 ## 1. Executive Summary
 
-This threat model assesses the security posture of an agentic AI application comprising 7 components across 3 trust zones. The analysis identified **38 findings** using the STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege) methodology augmented with AI-specific threat agents for Agentic (AG) and Large Language Model (LLM) categories.
-
-**Risk Posture**: The system exhibits an **elevated risk profile** with 11 Critical and 16 High severity findings concentrated on the LLM Agent Orchestrator and MCP Tool Server. These two components form the application's decision-making and action-execution core, and their current architecture lacks fundamental security controls including authentication, authorization, rate limiting, and output filtering. Five cross-agent correlation groups reveal compound threats where STRIDE and AI vulnerabilities reinforce each other on the same components.
+This threat model assesses an agentic AI application comprising seven components organized across three trust zones. The analysis identified **38 findings** across STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege) and AI-specific threat categories (Agentic and LLM threats). The risk posture is **elevated**: 7 findings rated Critical and 19 rated High, accounting for 68.4% of all identified threats. The system's two central components — the LLM Agent Orchestrator and the MCP Tool Server — concentrate the majority of risk, collectively representing 21 of 38 findings.
 
 ### Top Threats by Business Impact
 
-1. **Prompt Injection Enabling Data Exfiltration (LLM-1, Critical)**: The LLM Agent Orchestrator lacks structural separation between system instructions and user content, enabling direct prompt injection that could exfiltrate sensitive data, execute unauthorized tool calls, or bypass safety constraints. This represents the highest business risk because it can be exploited remotely by any user.
+1. **Unrestricted Agent Autonomy (AG-1, Critical)**: The LLM Agent Orchestrator operates without iteration limits, execution timeouts, or cost caps. An adversary can trigger infinite agent loops that consume API credits, generate unintended tool calls, and block legitimate users. This represents the highest business risk due to direct financial impact and service disruption.
 
-2. **Unbounded Agent Autonomy (AG-1, Critical)**: The Orchestrator operates without iteration limits, timeouts, or cost caps. A single ambiguous prompt can trigger an infinite loop of tool invocations, consuming API credits and producing cascading side effects. Financial exposure is unbounded.
+2. **Direct Prompt Injection (LLM-1, Critical)**: User-supplied prompts are concatenated into the LLM context window without structural boundary enforcement. An attacker can override system instructions to exfiltrate data, bypass safety constraints, or produce harmful outputs — threatening both data confidentiality and organizational reputation.
 
-3. **Missing Tool Access Controls (AG-3, E-3, Critical)**: The MCP Tool Server exposes all registered tools without per-user capability scoping or role-based access control. Any user who achieves prompt injection gains access to every tool the server offers, including administrative operations.
+3. **Missing Access Control on Tool Execution (E-2, AG-3, Critical)**: The MCP Tool Server exposes all registered tools to all users without role-based access control. Standard users can execute privileged operations including configuration changes and data exports, creating a direct path to unauthorized data access.
 
-4. **Knowledge Base Data Integrity (T-4, LLM-4, Critical)**: The Knowledge Base lacks content validation on its write path, enabling poisoning of the RAG pipeline. Corrupted retrieval context produces systematically incorrect model responses, potentially affecting every user query.
+4. **Service Identity Spoofing (S-3, Critical)**: Inter-service authentication between the orchestrator and downstream services is unspecified, enabling an attacker to impersonate the orchestrator and issue unauthorized tool calls or context retrievals.
 
-5. **Missing Authentication at Entry Point (S-1, Critical)**: The architecture does not specify authentication mechanisms at the user-to-system boundary, allowing credential theft or forgery to enable unauthorized access to all downstream capabilities.
+5. **Resource Exhaustion via Prompt Flooding (D-1, Critical)**: No per-client rate limiting or request size limits protect the orchestrator's LLM inference endpoint, enabling denial-of-service through concurrent maximum-length prompts.
 
 ### Key Recommendations
 
-1. **Implement defense-in-depth authentication**: Deploy MFA at the user entry point, mutual TLS between all internal services, and propagate authenticated user identity through the entire request chain.
-2. **Enforce least-privilege tool access**: Implement per-user tool allowlists, role-based access control on the MCP Tool Server, and a tool chain policy engine that evaluates composite effects of sequential tool calls.
-3. **Deploy prompt boundary enforcement**: Implement structured prompt templates with explicit delimiters, input classifiers for adversarial patterns, and output filters for system information leakage.
-4. **Add operational constraints**: Configure iteration limits, execution timeouts, cost caps, and human-in-the-loop approval gates on the LLM Agent Orchestrator.
-5. **Establish immutable audit infrastructure**: Deploy append-only log storage with cryptographic chaining, structured audit events for every tool dispatch, and end-to-end request correlation IDs.
+1. **Implement agent runtime constraints immediately**: Add maximum iteration counts, execution timeouts, and per-request cost caps to the LLM Agent Orchestrator before deployment.
+2. **Deploy role-based access control across all tool endpoints**: Enforce per-user tool allowlists at the MCP Tool Server and propagate user authorization context from the orchestrator.
+3. **Establish inter-service authentication**: Implement mutual TLS (mTLS) with certificate pinning between all application zone components.
+4. **Add prompt boundary enforcement**: Implement structured prompt templates with explicit delimiters between system instructions and user input, plus input classifiers for adversarial patterns.
+5. **Deploy rate limiting at the system entry point**: Add per-client rate limits, request size caps, and backpressure mechanisms at the Guardrails Service and orchestrator endpoints.
 
 ### Compliance Relevance
 
-- **SOC2 CC6.1 (Access Controls)**: Findings S-1, E-2, E-3, AG-3 indicate missing access controls on critical system boundaries.
-- **SOC2 CC7.2 (System Monitoring)**: Findings R-3, R-4 indicate insufficient audit logging for security-relevant operations.
-- **ISO 27001 A.9 (Access Control)**: Findings E-1, E-2, E-3 indicate missing role-based access control enforcement.
-- **OWASP A07:2021**: Findings S-1 through S-5 map to Identification and Authentication Failures.
-- **OWASP LLM01:2025**: Findings LLM-1, LLM-2 map to Prompt Injection.
-- **CWE-287 (Improper Authentication)**: S-1, S-2, S-3.
-- **CWE-269 (Improper Privilege Management)**: E-2, E-3.
+- **SOC2 CC6.1 (Access Controls)**: Findings E-1, E-2, AG-3 identify missing access control enforcement on the orchestrator and tool server — directly relevant to logical access controls over information assets.
+- **SOC2 CC7.2 (System Monitoring)**: Findings R-2, R-4 identify gaps in decision chain logging — directly relevant to monitoring system components for anomalies.
+- **ISO 27001 A.9 (Access Control)**: Findings E-1, E-2, E-4 map to access control policy requirements for information systems.
+- **OWASP A01:2021**: Findings E-1, E-2, I-3, I-4 correspond to Broken Access Control (CWE-269, CWE-200).
+- **OWASP A07:2021**: Findings S-1, S-2, S-3, S-4 correspond to Identification and Authentication Failures (CWE-287).
+- **OWASP LLM01:2025**: Findings LLM-1, LLM-2 correspond to Prompt Injection.
 
 ### Remediation Timeline
 
-- **Immediate** (before next deployment): S-1, T-4, R-3, I-2, D-1, D-2, E-2, E-3, AG-1, AG-3, LLM-1 (11 Critical findings)
-- **Short-term** (current development cycle): S-2, S-3, S-4, T-1, T-2, T-3, T-5, R-1, I-1, I-4, I-5, E-1, AG-2, AG-4, LLM-2, LLM-4 (16 High findings)
-- **Medium-term** (next planning cycle): S-5, R-2, R-4, I-3, D-3, D-4, D-5, LLM-3, LLM-5 (9 Medium findings)
-- **Backlog** (future consideration): R-5, I-6 (2 Low findings)
+| Priority | Tier | Findings | Action |
+|----------|------|----------|--------|
+| Immediate | Critical | S-3, D-1, E-1, E-2, AG-1, AG-3, LLM-1 | Address before next deployment |
+| Short-term | High | S-1, S-2, S-4, T-1, T-2, T-3, T-4, T-5, R-2, R-4, I-2, I-3, I-4, D-2, D-4, AG-2, LLM-2, LLM-3, E-4 | Address within current development cycle |
+| Medium-term | Medium | S-5, T-6, R-1, R-3, I-1, I-5, D-3, D-5, E-3, AG-4, LLM-4 | Schedule for next planning cycle |
+| Backlog | Low | R-5 | Track for future consideration |
 
 ---
 
@@ -63,680 +62,511 @@ This threat model assesses the security posture of an agentic AI application com
 
 ### System Context
 
-The Agentic AI Application is a retrieval-augmented generation (RAG) system built around a central LLM Agent Orchestrator that processes user prompts, retrieves contextual documents from a vector-search-enabled Knowledge Base, and executes actions through an MCP (Model Context Protocol) Tool Server. The system comprises seven components organized into three functional tiers:
+The agentic AI application is a multi-component system designed to process user prompts through an LLM-powered pipeline with tool execution capabilities. The system consists of seven components organized into three functional groups:
 
-**User-facing services**: The Guardrails Service acts as the entry point, receiving user prompts over HTTPS and performing input validation and filtering before forwarding validated prompts to the LLM Agent Orchestrator. Rejected prompts are returned to the user with a rejection reason.
+**User-facing services**: The **User** (external entity) submits prompts and queries over HTTPS to the **Guardrails Service**, which validates and filters input before forwarding approved prompts to the core processing layer. Rejected prompts are returned to the user with a reason.
 
-**Core processing**: The LLM Agent Orchestrator is the central coordination hub. It receives validated prompts, retrieves context from the Knowledge Base using vector search, dispatches tool calls to the MCP Tool Server over JSON-RPC, and returns responses to users over HTTPS. The MCP Tool Server executes tool operations and communicates with external APIs over HTTPS.
+**Core processing layer**: The **LLM Agent Orchestrator** serves as the central coordination hub, receiving validated prompts from the Guardrails Service, performing context retrieval via vector search against the **Knowledge Base** (a vector database storing documents for semantic search), executing tool calls via JSON-RPC against the **MCP Tool Server**, and returning responses to the user over HTTPS. The MCP Tool Server interfaces with the **External API** (a third-party service) over HTTPS.
 
-**Data and logging**: The Knowledge Base stores documents for RAG retrieval. The Audit Logger receives decision logs from the Orchestrator, tool execution logs from the MCP Tool Server, and filtering event logs from the Guardrails Service.
+**Supporting infrastructure**: The **Audit Logger** receives decision log entries from the orchestrator, tool execution logs from the MCP Tool Server, and filtering event logs from the Guardrails Service, serving as the centralized audit trail.
 
-**External integration**: The External API is a third-party service consumed by the MCP Tool Server for tool execution that requires external data or actions.
-
-The technology stack includes HTTPS for external communication, JSON-RPC for Orchestrator-to-Tool-Server communication, and vector search for Knowledge Base retrieval. The system uses the Model Context Protocol (MCP) for tool invocation.
+**Technology stack**: The system uses HTTPS for external communication, JSON-RPC for orchestrator-to-tool-server communication, vector search for context retrieval, and the Model Context Protocol (MCP) for tool invocation.
 
 ### Trust Boundary Summary
 
-Three trust zones are defined:
+Three trust zones are defined in the architecture:
 
-- **User Zone (Untrusted)**: Contains the User component. All input from this zone must be treated as potentially adversarial.
-- **Application Zone (Semi-Trusted)**: Contains the Guardrails Service, LLM Agent Orchestrator, MCP Tool Server, Knowledge Base, and Audit Logger. Components within this zone communicate over internal channels.
-- **External Services (Untrusted)**: Contains the External API. This zone is external to the organization and treated as untrusted.
+- **User Zone** (Untrusted): Contains the User. All input from this zone must be treated as potentially malicious.
+- **Application Zone** (Trusted): Contains the Guardrails Service, LLM Agent Orchestrator, MCP Tool Server, Knowledge Base, and Audit Logger. Components within this zone communicate over internal channels.
+- **External Services** (Semi-Trusted): Contains the External API. Responses from this zone should be validated before processing.
 
-Three boundary crossings are identified:
-1. **User to Application**: Protected by the Guardrails Service's input validation and filtering.
-2. **Application to External**: Protected by HTTPS transport encryption.
-3. **Application Response to User**: Protected by HTTPS transport encryption.
+**Boundary crossings**:
+- **User-to-Application**: User prompts cross from the untrusted zone to the application zone via HTTPS, with Guardrails input validation as the security control.
+- **Application-to-External**: Tool server requests cross from the trusted zone to the semi-trusted zone via HTTPS.
+- **Application-to-User**: Orchestrator responses and Guardrails rejections cross back to the untrusted zone.
 
-Notably, no authentication or authorization controls are specified on the User-to-Application boundary beyond input filtering. The internal Application Zone lacks specified inter-service authentication, creating implicit trust between components that should not be assumed.
+A notable concern is that internal communication within the Application Zone (Guardrails-to-Orchestrator, Orchestrator-to-ToolServer, all-to-AuditLogger) lacks specified authentication or integrity protection mechanisms, despite containing sensitive data.
 
 ---
 
 ## 3. Threat Analysis
 
-### 3.1 Spoofing (S-1 through S-5)
+### 3.1 Spoofing (S)
 
-Spoofing threats target identity assumptions across the system's trust boundaries. The analysis identified 5 spoofing findings covering the complete authentication chain from user entry to external service consumption.
+Spoofing threats target the system's identity verification mechanisms, enabling attackers to impersonate legitimate users or services. Five spoofing findings were identified.
 
-**S-1** (Critical, User): The most severe spoofing finding targets the system entry point. The architecture does not specify authentication mechanisms at the User-to-Guardrails boundary. An attacker who steals or forges session tokens gains full access to the system under a legitimate identity. The HIGH likelihood reflects the well-understood nature of credential attacks and the widespread availability of attack tooling.
+**S-1** (User, High): An attacker may steal or forge user authentication credentials to impersonate a legitimate user. Without multi-factor authentication or token-binding mechanisms, session tokens alone provide insufficient identity assurance at the system entry point. This is particularly concerning given the consequential actions available through the agentic pipeline — tool execution, data retrieval, and external API calls.
 
-**S-2** (High, Guardrails Service): Without mutual authentication between the Guardrails Service and LLM Agent Orchestrator, an attacker can bypass input filtering entirely by addressing the Orchestrator directly. This undermines the Guardrails Service's value as a security control.
+**S-2** (Guardrails Service, High): The Guardrails Service can be bypassed entirely if an attacker spoofs inter-service identity to directly access the orchestrator. Without mutual authentication between internal services, the guardrails filtering layer becomes an optional control rather than an enforced gate.
 
-**S-3** (High, LLM Agent Orchestrator): The JSON-RPC channel between the Orchestrator and MCP Tool Server lacks service-to-service authentication. An attacker who can forge the Orchestrator's identity can invoke tools directly, bypassing all upstream controls.
+**S-3** (LLM Agent Orchestrator, Critical): This is the highest-severity spoofing finding. The orchestrator communicates with the MCP Tool Server and Knowledge Base without specified inter-service authentication. An attacker who forges the orchestrator's identity gains the ability to issue arbitrary tool calls and context retrievals — effectively assuming full control of the agentic pipeline.
 
-**S-4** (High, MCP Tool Server): Response authenticity from the Tool Server to the Orchestrator is not verified. An attacker can inject fabricated tool results that the Orchestrator treats as legitimate, potentially influencing downstream model decisions and user-facing responses.
+**S-4** (MCP Tool Server, High): Similar to S-3 but targeting the tool server's identity. An attacker who spoofs the MCP Tool Server can intercept tool call requests or return malicious tool results to the orchestrator.
 
-**S-5** (Medium, External API): DNS spoofing or MITM attacks could redirect the MCP Tool Server's HTTPS requests to a malicious endpoint. The LOW likelihood reflects the difficulty of DNS-level attacks, but the HIGH impact of receiving attacker-controlled API responses elevates this to Medium risk.
+**S-5** (External API, Medium): DNS spoofing or man-in-the-middle attacks could redirect outbound API requests to attacker-controlled endpoints. While HTTPS provides transport encryption, certificate validation and pinning are not specified.
 
-### 3.2 Tampering (T-1 through T-5)
+### 3.2 Tampering (T)
 
-Tampering threats target data integrity across processes, data stores, and data flows. Five findings were identified covering configuration, in-transit, and at-rest data integrity.
+Tampering threats target data integrity across the system's data flows and storage. Six tampering findings were identified.
 
-**T-4** (Critical, Knowledge Base): The most severe tampering finding. The Knowledge Base lacks input sanitization on its write path. An attacker who can inject content into the vector store corrupts the RAG pipeline's retrieval context, systematically affecting model responses. This finding is correlated with LLM-4 (data poisoning) as part of correlation group **CG-1** — both exploit the same data integrity gap from different threat perspectives.
+**T-1** (Guardrails Service, High): If an attacker tampers with the Guardrails validation rules, they can weaken or disable input screening, allowing malicious prompts to pass through. This undermines the entire input filtering defense layer.
 
-**T-1** (High, Guardrails Service): Tampering with the Guardrails Service's validation rules would disable prompt screening. Configuration integrity verification is not specified.
+**T-2** (LLM Agent Orchestrator, High): The data flow between the Guardrails Service and orchestrator lacks integrity protection. An attacker positioned on the internal network could modify validated prompts after filtering but before processing — effectively bypassing guardrails while maintaining the appearance of filtered input. This finding is correlated with LLM-3 (data poisoning) as part of **CG-1**, as both exploit data integrity weaknesses in the orchestrator's input chain.
 
-**T-2** (High, LLM Agent Orchestrator): Prompts in transit between the Guardrails Service and Orchestrator lack message-level integrity protection. An internal attacker could modify validated prompts.
+**T-3** (MCP Tool Server, High): JSON-RPC messages between the orchestrator and tool server can be tampered with to alter tool parameters or inject malicious payloads, potentially causing the tool server to execute unintended operations against the External API.
 
-**T-3** (High, MCP Tool Server): Tool call parameters in the JSON-RPC channel lack integrity verification, enabling parameter injection that changes tool behavior.
+**T-4** (Knowledge Base, High): Document injection or modification in the Knowledge Base corrupts the entire context retrieval pipeline. Since the orchestrator trusts retrieved documents as authoritative context, poisoned documents directly influence LLM output quality.
 
-**T-5** (High, Audit Logger): Audit log entries can be tampered with or deleted because log integrity protection is not specified. This undermines the entire audit infrastructure's trustworthiness.
+**T-5** (Audit Logger, High): Log tampering is a critical concern because the Audit Logger is the system's sole source of forensic evidence. If logs can be modified or deleted, an attacker can conceal all traces of malicious activity.
 
-### 3.3 Repudiation (R-1 through R-5)
+**T-6** (Knowledge Base, Medium): A lower-severity variant of T-4 focusing on adversarial content that modifies vector embeddings to bias retrieval results rather than directly corrupting document content.
 
-Repudiation threats target accountability and audit trail completeness. Five findings were identified across the request chain.
+### 3.3 Repudiation (R)
 
-**R-3** (Critical, LLM Agent Orchestrator): The Orchestrator executes tool calls without logging the originating user request, selected tool, parameters, or response. This is critical for an agentic system where autonomous tool invocations can have real-world consequences. This finding is correlated with AG-2 (missing human-in-the-loop) as part of correlation group **CG-4** — both exploit accountability gaps in autonomous operations.
+Repudiation threats target the system's ability to attribute actions to specific actors. Five repudiation findings were identified.
 
-**R-1** (High, User): User prompts are not bound to authenticated identities with sufficient non-repudiation evidence. Users can deny submitting harmful prompts.
+**R-1** (User, Medium): Users can deny submitting specific prompts that triggered consequential actions, because user-level action attribution may be insufficient for forensic reconstruction.
 
-**R-2** (Medium, Guardrails Service): Filtering event logs may lack sufficient detail for dispute resolution.
+**R-2** (LLM Agent Orchestrator, High): The orchestrator's decision chain — from user prompt through model reasoning to tool selection and execution — is not comprehensively logged. Without end-to-end decision logging, it is impossible to reconstruct why the orchestrator made a specific tool call or produced a specific response.
 
-**R-4** (Medium, MCP Tool Server): Tool execution logs may lack the originating user identity and full request chain.
+**R-3** (Guardrails Service, Medium): Rejection decisions lack sufficient detail to determine which rule triggered a rejection or whether the rejection was correct.
 
-**R-5** (Low, External API): No mutual logging exists between the MCP Tool Server and External API for dispute resolution.
+**R-4** (MCP Tool Server, High): Tool execution lacks complete audit context — which agent requested the call, what parameters were sent, and what response was received. This finding is correlated with AG-3 (unscoped tool access) as part of **CG-4**: the combination of unaccountable tool execution with unscoped tool access means privileged operations can be executed and denied without evidence.
 
-### 3.4 Information Disclosure (I-1 through I-6)
+**R-5** (External API, Low): Actions performed against the External API cannot be attributed to the originating user because the request chain does not propagate user identity context.
 
-Information disclosure threats target confidentiality across the system. Six findings were identified, the highest concentration of any STRIDE category.
+### 3.4 Information Disclosure (I)
 
-**I-2** (Critical, LLM Agent Orchestrator): The Orchestrator may leak system prompts, tool descriptions, Knowledge Base metadata, or internal API endpoints in responses to users. This finding is correlated with LLM-1 (prompt injection) as part of correlation group **CG-3** — prompt injection enables targeted extraction of internal information.
+Information disclosure threats target data confidentiality. Five findings were identified.
 
-**I-1** (High, Guardrails Service): Detailed rejection reasons reveal internal filtering rules, enabling attackers to iteratively refine prompts to bypass the filter.
+**I-1** (LLM Agent Orchestrator, Medium): Verbose error messages may expose internal system state. This finding is correlated with LLM-1 (prompt injection) as part of **CG-3**: an attacker can use prompt injection to deliberately trigger error conditions and extract the disclosed information, amplifying both threats.
 
-**I-4** (High, Knowledge Base): Full document contents including internal metadata and embedding vectors are returned in query responses without field-level filtering.
+**I-2** (MCP Tool Server, High): The tool server forwards External API responses to the orchestrator without filtering sensitive fields, potentially exposing API keys, internal identifiers, or PII that then enters the LLM context and may surface in user-facing responses.
 
-**I-5** (High, Audit Logger): Sensitive data in logs is accessible to operations staff with overly broad access.
+**I-3** (Knowledge Base, High): Query responses return full document contents including metadata, embedding vectors, and storage identifiers without field-level filtering — exposing internal data structures to the orchestrator and potentially to users via prompt injection.
 
-**I-3** (Medium, MCP Tool Server): Verbose error messages may reveal internal stack traces and connection strings.
+**I-4** (Audit Logger, High): Log entries contain sensitive data (prompts, PII, credentials, tool parameters) that could be exposed through unauthorized access to log storage.
 
-**I-6** (Low, Audit Logger): Internal log data flows lack encryption, enabling network-level interception.
+**I-5** (Guardrails Service, Medium): Rejection responses reveal which validation rule was triggered, enabling iterative prompt refinement to bypass filtering.
 
-### 3.5 Denial of Service (D-1 through D-5)
+### 3.5 Denial of Service (D)
 
-Denial of service threats target availability. Five findings were identified covering the request processing chain.
+Denial of service threats target system availability. Five findings were identified.
 
-**D-1** (Critical, Guardrails Service): The entry point lacks rate limiting and request throttling. An attacker can flood the system, blocking legitimate users.
+**D-1** (LLM Agent Orchestrator, Critical): The most severe availability threat. Without rate limiting or request size caps, the orchestrator's LLM inference endpoint is vulnerable to resource exhaustion from concurrent maximum-length prompts. LLM inference is compute-intensive, making this a high-leverage attack.
 
-**D-2** (Critical, LLM Agent Orchestrator): Maximum-length prompts can exhaust memory, compute, and API token budgets because no per-request resource caps are specified.
+**D-2** (MCP Tool Server, High): Excessive tool calls can exhaust the tool server's connection pool and compute resources. This finding is correlated with AG-4 (tool call depth limits) as part of **CG-5**: the combination of no rate limiting with no depth limits enables cascading resource exhaustion.
 
-**D-3** (Medium, MCP Tool Server): Excessive outbound API requests can exhaust connection pools. This finding is correlated with AG-4 (tool chain abuse) as part of correlation group **CG-5** — tool chain manipulation amplifies the denial of service effect.
+**D-3** (Knowledge Base, Medium): Expensive vector similarity searches can be triggered to exhaust database resources.
 
-**D-4** (Medium, Knowledge Base): Resource-intensive vector search queries can degrade performance.
+**D-4** (Guardrails Service, High): The system entry point lacks edge rate limiting, enabling prompt flood attacks that block legitimate users.
 
-**D-5** (Medium, Audit Logger): Log flooding can fill storage capacity.
+**D-5** (Audit Logger, Medium): High-volume logging events can flood the Audit Logger, exhausting storage.
 
-### 3.6 Elevation of Privilege (E-1 through E-3)
+### 3.6 Elevation of Privilege (E)
 
-Elevation of privilege threats target authorization boundaries. Three findings were identified, all Critical or High, reflecting the severity of authorization failures in an agentic system.
+Elevation of privilege threats target authorization boundaries. Four findings were identified.
 
-**E-2** (Critical, LLM Agent Orchestrator): The Orchestrator does not enforce least-privilege constraints on tool dispatch based on the originating user's authorization level. This finding is correlated with AG-1 (excessive autonomy) as part of correlation group **CG-2** — unconstrained autonomy combined with missing privilege boundaries creates a compound escalation path.
+**E-1** (LLM Agent Orchestrator, Critical): The orchestrator does not enforce RBAC on which tools or Knowledge Base operations are available per user role. An attacker can manipulate prompt content to trigger privileged operations. This finding is correlated with AG-1 (unbounded autonomy) as part of **CG-2**: combined excessive permissions and unconstrained autonomy create a path to unrestricted system control.
 
-**E-3** (Critical, MCP Tool Server): The Tool Server does not enforce RBAC on tool dispatch. Standard users can invoke administrative tool endpoints by manipulating parameters.
+**E-2** (MCP Tool Server, Critical): The tool server lacks per-tool authorization. Standard users can execute privileged operations (configuration changes, data exports, system commands) through the tool interface.
 
-**E-1** (High, Guardrails Service): A bypass vulnerability could escalate from a filtered to unfiltered user context.
+**E-3** (Guardrails Service, Medium): Administrative endpoints on the Guardrails Service could be exploited to modify validation rules.
 
-### 3.7 Agentic Threats (AG-1 through AG-4)
+**E-4** (MCP Tool Server, High): Lateral movement from the tool server to other application zone components is possible through overly broad network policies and shared credentials.
 
-Agentic threats target the autonomous agent capabilities. Four findings were identified across the Orchestrator and MCP Tool Server.
+### 3.7 Agentic Threats (AG)
 
-**AG-1** (Critical, LLM Agent Orchestrator): The Orchestrator lacks termination constraints — no maximum iteration count, execution timeout, or cost cap. An ambiguous prompt can trigger unbounded resource consumption. This finding is part of correlation group **CG-2** alongside E-2 (see Section 4).
+Four agentic threat findings were identified targeting the LLM Agent Orchestrator and MCP Tool Server.
 
-**AG-3** (Critical, MCP Tool Server): All registered tools are exposed without per-user capability scoping. An attacker who achieves prompt injection gains access to every available tool.
+**AG-1** (LLM Agent Orchestrator, Critical): The orchestrator operates as an unbounded agent loop — no maximum iteration count, no execution timeout, no cost cap. This is the foundation of the most dangerous attack scenarios: combined with the missing RBAC (E-1) in correlation group **CG-2**, it enables unrestricted, indefinite privileged operations.
 
-**AG-2** (High, LLM Agent Orchestrator): The Orchestrator makes consequential decisions without human review. No distinction exists between low-stakes and high-stakes actions. This finding is part of correlation group **CG-4** alongside R-3.
+**AG-2** (LLM Agent Orchestrator, High): The system does not distinguish between reversible and irreversible operations, executing consequential actions (data modifications, external API calls) without human approval gates.
 
-**AG-4** (High, MCP Tool Server): Tool call chaining can escalate individually authorized operations beyond intended permissions. No cross-tool authorization policy evaluates composite effects. This finding is part of correlation group **CG-5** alongside D-3.
+**AG-3** (MCP Tool Server, Critical): All registered tools are exposed to all users without per-agent or per-user capability scoping. Combined with insufficient audit context (R-4) in correlation group **CG-4**, this means any user can execute any tool without attribution.
 
-### 3.8 LLM Threats (LLM-1 through LLM-5)
+**AG-4** (MCP Tool Server, Medium): No tool call depth or recursion limits exist, enabling cascading tool invocations. Combined with connection pool exhaustion (D-2) in correlation group **CG-5**, this amplifies denial-of-service impact.
 
-LLM threats target the language model integration. Five findings were identified, all targeting the LLM Agent Orchestrator.
+### 3.8 LLM Threats (LLM)
 
-**LLM-1** (Critical, LLM Agent Orchestrator): Direct prompt injection is the highest-impact LLM threat. User prompts are concatenated into the model's context window without structural separation, enabling adversarial instructions that override the system prompt. This finding is part of correlation group **CG-3** alongside I-2.
+Four LLM-specific findings were identified, all targeting the LLM Agent Orchestrator.
 
-**LLM-2** (High, LLM Agent Orchestrator): Indirect prompt injection via the RAG pipeline. Documents retrieved from the Knowledge Base may contain embedded adversarial instructions.
+**LLM-1** (LLM Agent Orchestrator, Critical): Direct prompt injection — user prompts are concatenated into the context window without boundary enforcement. The most impactful LLM threat, enabling attackers to override system behavior. Correlated with I-1 (information disclosure) in **CG-3**, enabling targeted extraction of system internals.
 
-**LLM-4** (High, LLM Agent Orchestrator): Knowledge Base content poisoning corrupts RAG responses. This finding is part of correlation group **CG-1** alongside T-4.
+**LLM-2** (LLM Agent Orchestrator, High): Indirect prompt injection via RAG pipeline — poisoned documents retrieved from the Knowledge Base inject adversarial instructions into the context window.
 
-**LLM-3** (Medium, LLM Agent Orchestrator): System prompt extraction through iterative probing.
+**LLM-3** (LLM Agent Orchestrator, High): Data poisoning of the Knowledge Base — deliberately incorrect or misleading content is indexed and returned as authoritative context. Correlated with T-2 (data flow tampering) in **CG-1**, as both exploit the orchestrator's data integrity weaknesses.
 
-**LLM-5** (Medium, LLM Agent Orchestrator): Model theft through systematic API querying.
+**LLM-4** (LLM Agent Orchestrator, Medium): Systematic querying of the LLM endpoint to extract model behavior patterns or reconstruct capabilities through distillation.
 
 ---
 
 ## 4. Cross-Cutting Themes
 
-### Theme 1: Concentrated Risk in the LLM Agent Orchestrator
+### Theme 1: Concentrated Risk in LLM Agent Orchestrator
 
-The LLM Agent Orchestrator is the highest-risk component in the system, with 10 findings across all 8 threat categories. It serves as the convergence point for authentication (S-3), data flow integrity (T-2), accountability (R-3), confidentiality (I-2), availability (D-2), authorization (E-2), agent autonomy (AG-1, AG-2), and LLM-specific threats (LLM-1 through LLM-5).
+The LLM Agent Orchestrator is the highest-risk component in the system, with 12 findings including 3 Critical-severity threats. As the central coordination hub, it processes all user input, manages the LLM context window, dispatches tool calls, and produces user-facing responses. Every major attack vector — prompt injection, privilege escalation, resource exhaustion, and inter-service spoofing — converges on this component.
 
-**Contributing findings**: S-3, T-2, R-3, I-2, D-2, E-2, AG-1, AG-2, LLM-1, LLM-2, LLM-3, LLM-4, LLM-5
+**Contributing findings**: S-3, T-2, R-2, I-1, D-1, E-1, AG-1, AG-2, LLM-1, LLM-2, LLM-3, LLM-4
 
-**Synthesized recommendation**: The LLM Agent Orchestrator requires a comprehensive security hardening effort covering authentication (mTLS), authorization (permission boundary layer), input/output filtering, resource constraints (iteration limits, timeouts, cost caps), and audit infrastructure (structured events with correlation IDs). These controls should be implemented as a coordinated effort, not as isolated fixes.
+**Synthesized recommendation**: Prioritize the orchestrator for defense-in-depth: implement agent runtime constraints (iteration limits, timeouts, cost caps), add RBAC for tool and KB access, enforce prompt boundary separation, deploy rate limiting, and establish comprehensive decision logging.
 
-### Theme 2: Authentication and Identity Propagation Gap
+### Theme 2: Absent Inter-Service Authentication
 
-Multiple findings across different categories recommend implementing authentication mechanisms and propagating authenticated user identity through the request chain. The absence of authentication at the entry point (S-1) cascades into authorization failures (E-2, E-3), accountability gaps (R-1, R-3), and tool access control weaknesses (AG-3).
+Multiple findings across Spoofing, Tampering, and Information Disclosure categories identify the absence of mutual authentication and message integrity protection between application zone components. Without mTLS and message signing, internal data flows are vulnerable to interception and modification despite being within the "trusted" zone.
 
-**Contributing findings**: S-1, S-2, S-3, R-1, R-3, E-2, E-3, AG-3
+**Contributing findings**: S-2, S-3, S-4, T-2, T-3
 
-**Synthesized recommendation**: Implement an end-to-end identity propagation framework: MFA at the user entry point, mTLS between all internal services, and authenticated user identity forwarded with every request through the Guardrails Service, Orchestrator, and MCP Tool Server. The MCP Tool Server must validate the user's authorization level before dispatching any tool.
+**Synthesized recommendation**: Deploy mTLS with certificate pinning between all application zone components (Guardrails-Orchestrator, Orchestrator-ToolServer, Orchestrator-KB). Add HMAC message signing on all internal data flows. Treat the application zone as zero-trust, not implicitly trusted.
 
-### Theme 3: Data Integrity Throughout the RAG Pipeline
+### Theme 3: Missing Access Control Enforcement
 
-The Knowledge Base's write path is unprotected, creating a data integrity vulnerability that manifests in both STRIDE tampering (T-4) and AI-specific data poisoning (LLM-4) categories. This is reinforced by the correlation group CG-1, which identifies these as the same underlying vulnerability viewed from different threat perspectives.
+The system lacks role-based access control at multiple layers — the orchestrator does not scope tool access by user role, the tool server exposes all tools to all callers, and administrative endpoints are not segmented from user-facing interfaces.
 
-**Contributing findings**: T-4, LLM-4, I-4, LLM-2
+**Contributing findings**: E-1, E-2, E-3, E-4, AG-1, AG-3
 
-**Synthesized recommendation**: Implement content validation, integrity checksums, provenance tracking, and access controls on the Knowledge Base write path. Treat the Knowledge Base as a critical security boundary — any content that enters the vector store eventually influences model responses for all users.
+**Synthesized recommendation**: Implement end-to-end authorization: authenticate users at the Guardrails Service, propagate user role context through the orchestrator to the tool server, enforce per-tool RBAC at the MCP Tool Server, and segment administrative interfaces.
 
-### Theme 4: Missing Operational Constraints on Autonomous Actions
+### Theme 4: Incomplete Audit Trail
 
-The agentic components (Orchestrator and MCP Tool Server) lack operational constraints — no iteration limits, no cost caps, no human-in-the-loop gates, and no tool chain policies. This creates compounding risk where unbounded autonomy (AG-1) combines with missing authorization (E-2) and missing accountability (R-3).
+Multiple repudiation and information disclosure findings reveal that the system's audit trail has gaps in coverage and insufficient protection. Decision chain logging is incomplete, tool execution context is missing, and the Audit Logger itself is vulnerable to tampering and information exposure.
 
-**Contributing findings**: AG-1, AG-2, AG-4, E-2, R-3, D-2, D-3
+**Contributing findings**: R-1, R-2, R-3, R-4, R-5, T-5, I-4
 
-**Synthesized recommendation**: Implement a layered constraint framework: resource limits (iteration count, timeout, cost cap) at the Orchestrator level, tool access controls and chain policies at the MCP Tool Server level, and human-in-the-loop approval gates for high-stakes actions that cross reversibility thresholds.
+**Synthesized recommendation**: Implement end-to-end structured audit logging with correlation IDs linking user prompts through orchestrator decisions to tool executions and external API calls. Store logs in append-only immutable storage with cryptographic integrity. Encrypt sensitive log fields.
 
 ---
 
 ## 5. Attack Trees
 
-Attack trees are generated for all 27 Critical and High severity findings. Each tree decomposes the attacker's goal into sub-goals and atomic actions following Bruce Schneier's attack tree methodology. Standalone Mermaid files are available in the `attack-trees/` directory.
+Attack trees are provided for all Critical and High findings. Each tree decomposes the attack goal into prerequisite conditions, attack vectors, and exploitation paths using AND/OR gate logic.
 
-### S-1: User Identity Spoofing at Entry Point
+### S-3: Service Identity Spoofing on LLM Agent Orchestrator (Critical)
 
 ```mermaid
 flowchart TD
-    S1_root["Impersonate legitimate user\nat system entry point"]
-    S1_or1{{"OR"}}
-    S1_sub1["Steal valid credentials"]
-    S1_sub2["Forge authentication tokens"]
-    S1_sub3["Hijack active session"]
-    S1_and1{{"AND"}}
-    S1_leaf1["Phish user credentials\nvia social engineering"]
-    S1_leaf2["Intercept credentials\non unprotected channel"]
-    S1_leaf3["Craft forged session token\nexploiting weak token generation"]
-    S1_leaf4["Predict session ID\nvia sequential generation"]
-    S1_leaf5["Steal session cookie\nvia XSS or network interception"]
-    S1_leaf6["Replay stolen session token\nbefore expiry"]
-    S1_root --> S1_or1
-    S1_or1 --> S1_sub1
-    S1_or1 --> S1_sub2
-    S1_or1 --> S1_sub3
-    S1_sub1 --> S1_and1
-    S1_and1 --> S1_leaf1
-    S1_and1 --> S1_leaf2
-    S1_sub2 --> S1_leaf3
-    S1_sub2 --> S1_leaf4
-    S1_sub3 --> S1_leaf5
-    S1_sub3 --> S1_leaf6
-    classDef goal fill:#DC2626,stroke:#991B1B,color:#FFFFFF
-    classDef andGate fill:#EA580C,stroke:#C2410C,color:#FFFFFF
-    classDef orGate fill:#0D9488,stroke:#0F766E,color:#FFFFFF
-    classDef leaf fill:#16A34A,stroke:#15803D,color:#FFFFFF
-    classDef sub fill:#CA8A04,stroke:#A16207,color:#FFFFFF
-    class S1_root goal
-    class S1_or1 orGate
-    class S1_and1 andGate
-    class S1_sub1,S1_sub2,S1_sub3 sub
-    class S1_leaf1,S1_leaf2,S1_leaf3,S1_leaf4,S1_leaf5,S1_leaf6 leaf
+    S3_root["S-3: Forge orchestrator identity to issue unauthorized tool calls"]
+    S3_or1{"OR: Obtain service credentials"}
+    S3_leaf1["Intercept unencrypted inter-service traffic to extract credentials"]
+    S3_leaf2["Exploit misconfigured service account with default credentials"]
+    S3_leaf3["Compromise deployment pipeline to inject attacker certificate"]
+    S3_and1{"AND: Execute impersonation"}
+    S3_leaf4["Forge service identity token or certificate"]
+    S3_leaf5["Route requests to MCP Tool Server as orchestrator"]
+    S3_leaf6["Issue arbitrary tool calls with orchestrator privileges"]
+
+    S3_root --> S3_or1
+    S3_root --> S3_and1
+    S3_or1 --> S3_leaf1
+    S3_or1 --> S3_leaf2
+    S3_or1 --> S3_leaf3
+    S3_and1 --> S3_leaf4
+    S3_and1 --> S3_leaf5
+    S3_and1 --> S3_leaf6
+
+    classDef goal fill:#DC2626,color:#fff,stroke:#991B1B
+    classDef andGate fill:#EA580C,color:#fff,stroke:#C2410C
+    classDef orGate fill:#0D9488,color:#fff,stroke:#0F766E
+    classDef leaf fill:#16A34A,color:#fff,stroke:#15803D
+    class S3_root goal
+    class S3_and1 andGate
+    class S3_or1 orGate
+    class S3_leaf1,S3_leaf2,S3_leaf3,S3_leaf4,S3_leaf5,S3_leaf6 leaf
 ```
 
-### T-4: Knowledge Base Content Injection
-
-This finding is part of correlation group CG-1. See also: LLM-4.
+### D-1: Resource Exhaustion on LLM Agent Orchestrator (Critical)
 
 ```mermaid
 flowchart TD
-    T4_root["Inject malicious content\ninto Knowledge Base"]
-    T4_or1{{"OR"}}
-    T4_sub1["Exploit write path\nvia Orchestrator"]
-    T4_sub2["Direct database\naccess exploitation"]
-    T4_leaf1["Craft adversarial content\nthat passes minimal validation"]
-    T4_leaf2["Submit content through\nagent-generated write operations"]
-    T4_leaf3["Exploit unprotected\ndatabase connection"]
-    T4_leaf4["Modify existing documents\nwithout audit detection"]
-    T4_root --> T4_or1
-    T4_or1 --> T4_sub1
-    T4_or1 --> T4_sub2
-    T4_sub1 --> T4_leaf1
-    T4_sub1 --> T4_leaf2
-    T4_sub2 --> T4_leaf3
-    T4_sub2 --> T4_leaf4
-    classDef goal fill:#DC2626,stroke:#991B1B,color:#FFFFFF
-    classDef orGate fill:#0D9488,stroke:#0F766E,color:#FFFFFF
-    classDef leaf fill:#16A34A,stroke:#15803D,color:#FFFFFF
-    classDef sub fill:#CA8A04,stroke:#A16207,color:#FFFFFF
-    class T4_root goal
-    class T4_or1 orGate
-    class T4_sub1,T4_sub2 sub
-    class T4_leaf1,T4_leaf2,T4_leaf3,T4_leaf4 leaf
-```
+    D1_root["D-1: Exhaust orchestrator compute via prompt flooding"]
+    D1_or1{"OR: Bypass rate controls"}
+    D1_leaf1["No rate limiting exists on orchestrator endpoint"]
+    D1_leaf2["Distribute attack across multiple source IPs"]
+    D1_leaf3["Use authenticated sessions to exceed anonymous limits"]
+    D1_and1{"AND: Execute resource exhaustion"}
+    D1_leaf4["Submit maximum-length prompts concurrently"]
+    D1_leaf5["Trigger compute-intensive LLM inference on each request"]
+    D1_leaf6["Exhaust memory and CPU, blocking legitimate requests"]
 
-### R-3: Tool Dispatch Without Audit Trail
-
-This finding is part of correlation group CG-4. See also: AG-2.
-
-```mermaid
-flowchart TD
-    R3_root["Execute tool calls\nwithout attributable audit trail"]
-    R3_or1{{"OR"}}
-    R3_sub1["Exploit missing\nlog instrumentation"]
-    R3_sub2["Tamper with existing\nlog entries post-execution"]
-    R3_leaf1["Invoke destructive tool\nvia prompt manipulation"]
-    R3_leaf2["Deny authorship\nof triggering prompt"]
-    R3_leaf3["Delete or modify\naudit log entries"]
-    R3_root --> R3_or1
-    R3_or1 --> R3_sub1
-    R3_or1 --> R3_sub2
-    R3_sub1 --> R3_leaf1
-    R3_sub1 --> R3_leaf2
-    R3_sub2 --> R3_leaf3
-    classDef goal fill:#DC2626,stroke:#991B1B,color:#FFFFFF
-    classDef orGate fill:#0D9488,stroke:#0F766E,color:#FFFFFF
-    classDef leaf fill:#16A34A,stroke:#15803D,color:#FFFFFF
-    classDef sub fill:#CA8A04,stroke:#A16207,color:#FFFFFF
-    class R3_root goal
-    class R3_or1 orGate
-    class R3_sub1,R3_sub2 sub
-    class R3_leaf1,R3_leaf2,R3_leaf3 leaf
-```
-
-### I-2: Internal Context Leakage via Orchestrator Responses
-
-This finding is part of correlation group CG-3. See also: LLM-1.
-
-```mermaid
-flowchart TD
-    I2_root["Extract sensitive internal context\nfrom Orchestrator responses"]
-    I2_or1{{"OR"}}
-    I2_sub1["Trigger system prompt\nleakage in response"]
-    I2_sub2["Extract tool descriptions\nand API endpoints"]
-    I2_sub3["Obtain Knowledge Base\nmetadata and schema"]
-    I2_leaf1["Submit meta-instruction\nquery prompts"]
-    I2_leaf2["Use role-play injection\nto bypass safety constraints"]
-    I2_leaf3["Request tool listing\nvia crafted prompt"]
-    I2_leaf4["Query for internal URL\npatterns in responses"]
-    I2_leaf5["Craft retrieval queries\ntargeting schema metadata"]
-    I2_root --> I2_or1
-    I2_or1 --> I2_sub1
-    I2_or1 --> I2_sub2
-    I2_or1 --> I2_sub3
-    I2_sub1 --> I2_leaf1
-    I2_sub1 --> I2_leaf2
-    I2_sub2 --> I2_leaf3
-    I2_sub2 --> I2_leaf4
-    I2_sub3 --> I2_leaf5
-    classDef goal fill:#DC2626,stroke:#991B1B,color:#FFFFFF
-    classDef orGate fill:#0D9488,stroke:#0F766E,color:#FFFFFF
-    classDef leaf fill:#16A34A,stroke:#15803D,color:#FFFFFF
-    classDef sub fill:#CA8A04,stroke:#A16207,color:#FFFFFF
-    class I2_root goal
-    class I2_or1 orGate
-    class I2_sub1,I2_sub2,I2_sub3 sub
-    class I2_leaf1,I2_leaf2,I2_leaf3,I2_leaf4,I2_leaf5 leaf
-```
-
-### D-1: Entry Point Flooding
-
-```mermaid
-flowchart TD
-    D1_root["Exhaust Guardrails Service\ncompute resources"]
-    D1_or1{{"OR"}}
-    D1_sub1["Volumetric flooding\nfrom distributed sources"]
-    D1_sub2["Application-layer attack\nwith complex prompts"]
-    D1_leaf1["Launch distributed request\nflood from botnet"]
-    D1_leaf2["Send maximum-length prompts\nrequiring expensive validation"]
-    D1_leaf3["Hold connections open\nvia slowloris-style attack"]
     D1_root --> D1_or1
-    D1_or1 --> D1_sub1
-    D1_or1 --> D1_sub2
-    D1_sub1 --> D1_leaf1
-    D1_sub2 --> D1_leaf2
-    D1_sub2 --> D1_leaf3
-    classDef goal fill:#DC2626,stroke:#991B1B,color:#FFFFFF
-    classDef orGate fill:#0D9488,stroke:#0F766E,color:#FFFFFF
-    classDef leaf fill:#16A34A,stroke:#15803D,color:#FFFFFF
-    classDef sub fill:#CA8A04,stroke:#A16207,color:#FFFFFF
+    D1_root --> D1_and1
+    D1_or1 --> D1_leaf1
+    D1_or1 --> D1_leaf2
+    D1_or1 --> D1_leaf3
+    D1_and1 --> D1_leaf4
+    D1_and1 --> D1_leaf5
+    D1_and1 --> D1_leaf6
+
+    classDef goal fill:#DC2626,color:#fff,stroke:#991B1B
+    classDef andGate fill:#EA580C,color:#fff,stroke:#C2410C
+    classDef orGate fill:#0D9488,color:#fff,stroke:#0F766E
+    classDef leaf fill:#16A34A,color:#fff,stroke:#15803D
     class D1_root goal
+    class D1_and1 andGate
     class D1_or1 orGate
-    class D1_sub1,D1_sub2 sub
-    class D1_leaf1,D1_leaf2,D1_leaf3 leaf
+    class D1_leaf1,D1_leaf2,D1_leaf3,D1_leaf4,D1_leaf5,D1_leaf6 leaf
 ```
 
-### D-2: LLM Resource Exhaustion
+### E-1: Privilege Escalation via Orchestrator (Critical)
 
 ```mermaid
 flowchart TD
-    D2_root["Exhaust Orchestrator\nmemory, compute, and API budget"]
-    D2_or1{{"OR"}}
-    D2_leaf1["Submit maximum-length prompts\ntriggering expensive inference"]
-    D2_leaf2["Trigger multiple concurrent\nKB retrieval cycles"]
-    D2_leaf3["Chain tool calls to amplify\nresource consumption"]
-    D2_root --> D2_or1
-    D2_or1 --> D2_leaf1
-    D2_or1 --> D2_leaf2
-    D2_or1 --> D2_leaf3
-    classDef goal fill:#DC2626,stroke:#991B1B,color:#FFFFFF
-    classDef orGate fill:#0D9488,stroke:#0F766E,color:#FFFFFF
-    classDef leaf fill:#16A34A,stroke:#15803D,color:#FFFFFF
-    class D2_root goal
-    class D2_or1 orGate
-    class D2_leaf1,D2_leaf2,D2_leaf3 leaf
+    E1_root["E-1: Gain admin privileges through orchestrator prompt manipulation"]
+    E1_or1{"OR: Escalation vector"}
+    E1_leaf1["Craft prompt requesting admin-only tool execution"]
+    E1_leaf2["Inject system prompt override to elevate role context"]
+    E1_leaf3["Manipulate tool selection to invoke privileged endpoints"]
+    E1_and1{"AND: Exploit missing RBAC"}
+    E1_leaf4["Orchestrator accepts tool request without role validation"]
+    E1_leaf5["MCP Tool Server executes tool without permission check"]
+    E1_leaf6["Privileged operation completes with standard user token"]
+
+    E1_root --> E1_or1
+    E1_root --> E1_and1
+    E1_or1 --> E1_leaf1
+    E1_or1 --> E1_leaf2
+    E1_or1 --> E1_leaf3
+    E1_and1 --> E1_leaf4
+    E1_and1 --> E1_leaf5
+    E1_and1 --> E1_leaf6
+
+    classDef goal fill:#DC2626,color:#fff,stroke:#991B1B
+    classDef andGate fill:#EA580C,color:#fff,stroke:#C2410C
+    classDef orGate fill:#0D9488,color:#fff,stroke:#0F766E
+    classDef leaf fill:#16A34A,color:#fff,stroke:#15803D
+    class E1_root goal
+    class E1_and1 andGate
+    class E1_or1 orGate
+    class E1_leaf1,E1_leaf2,E1_leaf3,E1_leaf4,E1_leaf5,E1_leaf6 leaf
 ```
 
-### E-2: Tool Permission Escalation via Model Manipulation
-
-This finding is part of correlation group CG-2. See also: AG-1.
+### E-2: Privilege Escalation via MCP Tool Server (Critical)
 
 ```mermaid
 flowchart TD
-    E2_root["Escalate to elevated tool permissions\nvia model manipulation"]
-    E2_or1{{"OR"}}
-    E2_sub1["Manipulate model reasoning\nto request admin tools"]
-    E2_sub2["Exploit missing permission\nboundary validation"]
-    E2_leaf1["Inject prompt requesting\nelevated tool access"]
-    E2_leaf2["Use indirect injection\nvia poisoned KB documents"]
-    E2_leaf3["Call admin tool endpoint\ndirectly without role check"]
-    E2_leaf4["Manipulate tool parameters\nto access restricted resources"]
+    E2_root["E-2: Execute privileged tool operations as standard user"]
+    E2_or1{"OR: Access privileged tools"}
+    E2_leaf1["Enumerate available tools via tool discovery endpoint"]
+    E2_leaf2["Craft tool call request with admin tool name"]
+    E2_leaf3["Manipulate orchestrator prompt to select privileged tool"]
+    E2_and1{"AND: Complete execution"}
+    E2_leaf4["Tool server accepts request without role check"]
+    E2_leaf5["Execute configuration change or data export"]
+    E2_leaf6["Results returned through orchestrator to attacker"]
+
     E2_root --> E2_or1
-    E2_or1 --> E2_sub1
-    E2_or1 --> E2_sub2
-    E2_sub1 --> E2_leaf1
-    E2_sub1 --> E2_leaf2
-    E2_sub2 --> E2_leaf3
-    E2_sub2 --> E2_leaf4
-    classDef goal fill:#DC2626,stroke:#991B1B,color:#FFFFFF
-    classDef orGate fill:#0D9488,stroke:#0F766E,color:#FFFFFF
-    classDef leaf fill:#16A34A,stroke:#15803D,color:#FFFFFF
-    classDef sub fill:#CA8A04,stroke:#A16207,color:#FFFFFF
+    E2_root --> E2_and1
+    E2_or1 --> E2_leaf1
+    E2_or1 --> E2_leaf2
+    E2_or1 --> E2_leaf3
+    E2_and1 --> E2_leaf4
+    E2_and1 --> E2_leaf5
+    E2_and1 --> E2_leaf6
+
+    classDef goal fill:#DC2626,color:#fff,stroke:#991B1B
+    classDef andGate fill:#EA580C,color:#fff,stroke:#C2410C
+    classDef orGate fill:#0D9488,color:#fff,stroke:#0F766E
+    classDef leaf fill:#16A34A,color:#fff,stroke:#15803D
     class E2_root goal
+    class E2_and1 andGate
     class E2_or1 orGate
-    class E2_sub1,E2_sub2 sub
-    class E2_leaf1,E2_leaf2,E2_leaf3,E2_leaf4 leaf
+    class E2_leaf1,E2_leaf2,E2_leaf3,E2_leaf4,E2_leaf5,E2_leaf6 leaf
 ```
 
-### E-3: Administrative Tool Invocation by Standard Users
+### AG-1: Unbounded Agent Loop (Critical)
 
 ```mermaid
 flowchart TD
-    E3_root["Invoke administrative tool endpoints\nas standard user"]
-    E3_or1{{"OR"}}
-    E3_sub1["Manipulate tool_name\nparameter"]
-    E3_sub2["Exploit missing\nRBAC enforcement"]
-    E3_leaf1["Enumerate available tools\nvia tool listing"]
-    E3_leaf2["Submit tool call with\nadmin tool_name value"]
-    E3_leaf3["Modify tool parameters\nto target admin resources"]
-    E3_root --> E3_or1
-    E3_or1 --> E3_sub1
-    E3_or1 --> E3_sub2
-    E3_sub1 --> E3_leaf1
-    E3_sub1 --> E3_leaf2
-    E3_sub2 --> E3_leaf3
-    classDef goal fill:#DC2626,stroke:#991B1B,color:#FFFFFF
-    classDef orGate fill:#0D9488,stroke:#0F766E,color:#FFFFFF
-    classDef leaf fill:#16A34A,stroke:#15803D,color:#FFFFFF
-    classDef sub fill:#CA8A04,stroke:#A16207,color:#FFFFFF
-    class E3_root goal
-    class E3_or1 orGate
-    class E3_sub1,E3_sub2 sub
-    class E3_leaf1,E3_leaf2,E3_leaf3 leaf
-```
+    AG1_root["AG-1: Trigger infinite agent loop consuming resources"]
+    AG1_or1{"OR: Trigger mechanism"}
+    AG1_leaf1["Submit ambiguous prompt with unclear success criteria"]
+    AG1_leaf2["Craft prompt that produces contradictory tool results"]
+    AG1_leaf3["Exploit prompt injection to override termination logic"]
+    AG1_and1{"AND: Sustain loop"}
+    AG1_leaf4["No max iteration count enforced"]
+    AG1_leaf5["No execution timeout enforced"]
+    AG1_leaf6["No cost cap or resource budget enforced"]
+    AG1_leaf7["Each iteration generates tool calls and API consumption"]
 
-### AG-1: Unbounded Agent Loop
-
-This finding is part of correlation group CG-2. See also: E-2.
-
-```mermaid
-flowchart TD
-    AG1_root["Trigger unbounded agent loop\nconsuming resources indefinitely"]
-    AG1_and1{{"AND"}}
-    AG1_sub1["Submit ambiguous prompt\nwith unclear success criteria"]
-    AG1_sub2["Orchestrator enters\niterative execution loop"]
-    AG1_leaf1["Craft prompt with\nno clear termination condition"]
-    AG1_leaf2["Agent repeats tool calls\nwithout convergence"]
-    AG1_leaf3["API credits consumed\nwithout limit enforcement"]
-    AG1_leaf4["Cascading side effects\nfrom repeated tool invocations"]
+    AG1_root --> AG1_or1
     AG1_root --> AG1_and1
-    AG1_and1 --> AG1_sub1
-    AG1_and1 --> AG1_sub2
-    AG1_sub1 --> AG1_leaf1
-    AG1_sub2 --> AG1_leaf2
-    AG1_sub2 --> AG1_leaf3
-    AG1_sub2 --> AG1_leaf4
-    classDef goal fill:#DC2626,stroke:#991B1B,color:#FFFFFF
-    classDef andGate fill:#EA580C,stroke:#C2410C,color:#FFFFFF
-    classDef leaf fill:#16A34A,stroke:#15803D,color:#FFFFFF
-    classDef sub fill:#CA8A04,stroke:#A16207,color:#FFFFFF
+    AG1_or1 --> AG1_leaf1
+    AG1_or1 --> AG1_leaf2
+    AG1_or1 --> AG1_leaf3
+    AG1_and1 --> AG1_leaf4
+    AG1_and1 --> AG1_leaf5
+    AG1_and1 --> AG1_leaf6
+    AG1_and1 --> AG1_leaf7
+
+    classDef goal fill:#DC2626,color:#fff,stroke:#991B1B
+    classDef andGate fill:#EA580C,color:#fff,stroke:#C2410C
+    classDef orGate fill:#0D9488,color:#fff,stroke:#0F766E
+    classDef leaf fill:#16A34A,color:#fff,stroke:#15803D
     class AG1_root goal
     class AG1_and1 andGate
-    class AG1_sub1,AG1_sub2 sub
-    class AG1_leaf1,AG1_leaf2,AG1_leaf3,AG1_leaf4 leaf
+    class AG1_or1 orGate
+    class AG1_leaf1,AG1_leaf2,AG1_leaf3,AG1_leaf4,AG1_leaf5,AG1_leaf6,AG1_leaf7 leaf
 ```
 
-### AG-3: Unrestricted Tool Access via Unscoped MCP Server
+### AG-3: Unscoped Tool Access on MCP Tool Server (Critical)
 
 ```mermaid
 flowchart TD
-    AG3_root["Access all MCP tools\nwithout authorization"]
-    AG3_and1{{"AND"}}
-    AG3_sub1["Achieve prompt injection\non Orchestrator"]
-    AG3_sub2["Invoke privileged tools\nvia unscoped server"]
-    AG3_leaf1["Inject adversarial prompt\noverriding tool selection"]
-    AG3_leaf2["Enumerate all available\ntools on MCP server"]
-    AG3_leaf3["Invoke administrative tools\nwithout capability check"]
+    AG3_root["AG-3: Access all tools without capability scoping"]
+    AG3_or1{"OR: Discover tools"}
+    AG3_leaf1["Enumerate tool registry through discovery endpoint"]
+    AG3_leaf2["Craft prompts probing for tool names"]
+    AG3_leaf3["Observe tool names in error messages or logs"]
+    AG3_and1{"AND: Invoke unauthorized tool"}
+    AG3_leaf4["No per-user tool allowlist enforced"]
+    AG3_leaf5["Tool server accepts any valid tool name from any caller"]
+    AG3_leaf6["Execute privileged tool with standard user context"]
+
+    AG3_root --> AG3_or1
     AG3_root --> AG3_and1
-    AG3_and1 --> AG3_sub1
-    AG3_and1 --> AG3_sub2
-    AG3_sub1 --> AG3_leaf1
-    AG3_sub2 --> AG3_leaf2
-    AG3_sub2 --> AG3_leaf3
-    classDef goal fill:#DC2626,stroke:#991B1B,color:#FFFFFF
-    classDef andGate fill:#EA580C,stroke:#C2410C,color:#FFFFFF
-    classDef leaf fill:#16A34A,stroke:#15803D,color:#FFFFFF
-    classDef sub fill:#CA8A04,stroke:#A16207,color:#FFFFFF
+    AG3_or1 --> AG3_leaf1
+    AG3_or1 --> AG3_leaf2
+    AG3_or1 --> AG3_leaf3
+    AG3_and1 --> AG3_leaf4
+    AG3_and1 --> AG3_leaf5
+    AG3_and1 --> AG3_leaf6
+
+    classDef goal fill:#DC2626,color:#fff,stroke:#991B1B
+    classDef andGate fill:#EA580C,color:#fff,stroke:#C2410C
+    classDef orGate fill:#0D9488,color:#fff,stroke:#0F766E
+    classDef leaf fill:#16A34A,color:#fff,stroke:#15803D
     class AG3_root goal
     class AG3_and1 andGate
-    class AG3_sub1,AG3_sub2 sub
-    class AG3_leaf1,AG3_leaf2,AG3_leaf3 leaf
+    class AG3_or1 orGate
+    class AG3_leaf1,AG3_leaf2,AG3_leaf3,AG3_leaf4,AG3_leaf5,AG3_leaf6 leaf
 ```
 
-### LLM-1: Direct Prompt Injection
-
-This finding is part of correlation group CG-3. See also: I-2.
+### LLM-1: Direct Prompt Injection (Critical)
 
 ```mermaid
 flowchart TD
-    LLM1_root["Override system prompt\nvia direct prompt injection"]
-    LLM1_or1{{"OR"}}
-    LLM1_sub1["Instruction override\nattack"]
-    LLM1_sub2["Role-play injection\nattack"]
-    LLM1_sub3["Few-shot override\nattack"]
-    LLM1_leaf1["Embed 'ignore previous instructions'\ndirective in user prompt"]
-    LLM1_leaf2["Use persona-switching technique\nto bypass safety alignment"]
-    LLM1_leaf3["Provide adversarial few-shot examples\nthat establish new behavior pattern"]
-    LLM1_leaf4["Craft prompt that triggers\nunauthorized tool calls"]
-    LLM1_leaf5["Extract system prompt\nvia reflection technique"]
+    LLM1_root["LLM-1: Override system instructions via prompt injection"]
+    LLM1_or1{"OR: Injection vector"}
+    LLM1_leaf1["Embed adversarial instructions in user prompt"]
+    LLM1_leaf2["Use role-play or persona-switching attack"]
+    LLM1_leaf3["Inject few-shot override examples"]
+    LLM1_and1{"AND: Exploit missing boundaries"}
+    LLM1_leaf4["No delimiter between system and user content"]
+    LLM1_leaf5["No input classifier for adversarial patterns"]
+    LLM1_leaf6["No output filter for policy violations"]
+    LLM1_or2{"OR: Impact"}
+    LLM1_leaf7["Exfiltrate data through tool calls"]
+    LLM1_leaf8["Generate harmful or policy-violating content"]
+    LLM1_leaf9["Extract system prompt or internal instructions"]
+
     LLM1_root --> LLM1_or1
-    LLM1_or1 --> LLM1_sub1
-    LLM1_or1 --> LLM1_sub2
-    LLM1_or1 --> LLM1_sub3
-    LLM1_sub1 --> LLM1_leaf1
-    LLM1_sub1 --> LLM1_leaf4
-    LLM1_sub2 --> LLM1_leaf2
-    LLM1_sub2 --> LLM1_leaf5
-    LLM1_sub3 --> LLM1_leaf3
-    classDef goal fill:#DC2626,stroke:#991B1B,color:#FFFFFF
-    classDef orGate fill:#0D9488,stroke:#0F766E,color:#FFFFFF
-    classDef leaf fill:#16A34A,stroke:#15803D,color:#FFFFFF
-    classDef sub fill:#CA8A04,stroke:#A16207,color:#FFFFFF
+    LLM1_root --> LLM1_and1
+    LLM1_root --> LLM1_or2
+    LLM1_or1 --> LLM1_leaf1
+    LLM1_or1 --> LLM1_leaf2
+    LLM1_or1 --> LLM1_leaf3
+    LLM1_and1 --> LLM1_leaf4
+    LLM1_and1 --> LLM1_leaf5
+    LLM1_and1 --> LLM1_leaf6
+    LLM1_or2 --> LLM1_leaf7
+    LLM1_or2 --> LLM1_leaf8
+    LLM1_or2 --> LLM1_leaf9
+
+    classDef goal fill:#DC2626,color:#fff,stroke:#991B1B
+    classDef andGate fill:#EA580C,color:#fff,stroke:#C2410C
+    classDef orGate fill:#0D9488,color:#fff,stroke:#0F766E
+    classDef leaf fill:#16A34A,color:#fff,stroke:#15803D
     class LLM1_root goal
-    class LLM1_or1 orGate
-    class LLM1_sub1,LLM1_sub2,LLM1_sub3 sub
-    class LLM1_leaf1,LLM1_leaf2,LLM1_leaf3,LLM1_leaf4,LLM1_leaf5 leaf
+    class LLM1_and1 andGate
+    class LLM1_or1,LLM1_or2 orGate
+    class LLM1_leaf1,LLM1_leaf2,LLM1_leaf3,LLM1_leaf4,LLM1_leaf5,LLM1_leaf6,LLM1_leaf7,LLM1_leaf8,LLM1_leaf9 leaf
 ```
 
-> **Note**: Attack trees for the remaining High findings (S-2, S-3, S-4, T-1, T-2, T-3, T-5, R-1, I-1, I-4, I-5, E-1, AG-2, AG-4, LLM-2, LLM-4) are provided as standalone files in the `attack-trees/` directory.
+*Attack trees for High findings (S-1, S-2, S-4, T-1, T-2, T-3, T-4, T-5, R-2, R-4, I-2, I-3, I-4, D-2, D-4, AG-2, LLM-2, LLM-3, E-4) are provided as standalone files in the `attack-trees/` directory.*
 
 ---
 
 ## 6. Remediation Roadmap
 
-| Priority | Finding ID | Component | Mitigation | Effort | Correlation |
-|----------|-----------|-----------|------------|--------|-------------|
-| Immediate | S-1 | User | Implement MFA, short-lived session tokens with DPoP binding, HTTPS-only Secure SameSite=Strict cookies | High | — |
-| Immediate | T-4 | Knowledge Base | Content validation with allowlist filtering, SHA-256 integrity checksums, write-audit logging, restricted write access with review workflows | High | CG-1 (with LLM-4) |
-| Immediate | R-3 | LLM Agent Orchestrator | Structured audit events for every tool dispatch with user ID, tool name, parameters, response, reasoning, UTC timestamp; append-only SIEM forwarding | High | CG-4 (with AG-2) |
-| Immediate | I-2 | LLM Agent Orchestrator | Output filtering to strip system prompt fragments, tool descriptions, internal URLs, API keys; response classifier to block outputs containing system information | High | CG-3 (with LLM-1) |
-| Immediate | D-1 | Guardrails Service | Per-client rate limiting, request size limits, WAF/DDoS protection upstream, circuit breaker with auto-recovery | Medium | — |
-| Immediate | D-2 | LLM Agent Orchestrator | Per-request resource caps (prompt length, inference timeout, tool call limit, retrieval limit), per-client rate limiting, memory limits with OOM-kill restart | Medium | — |
-| Immediate | E-2 | LLM Agent Orchestrator | Permission boundary layer mapping user authorization to tool allowlists; user role forwarded with tool calls; MCP Tool Server validates against permitted tool set | High | CG-2 (with AG-1) |
-| Immediate | E-3 | MCP Tool Server | RBAC policy on Tool Server mapping tools to permission sets; caller role validation; tool tier classification (read-only, write, administrative) | High | — |
-| Immediate | AG-1 | LLM Agent Orchestrator | Maximum iteration count (25), execution timeout (120s), cost cap ($5/request), circuit breaker on repeated action patterns, human-in-the-loop for >10 tool calls | Medium | CG-2 (with E-2) |
-| Immediate | AG-3 | MCP Tool Server | Per-caller tool allowlists, user authorization scope declaration, tool capability validation against permission set, audit logging | High | — |
-| Immediate | LLM-1 | LLM Agent Orchestrator | Structured prompt templates with delimiter tokens, input classifier for adversarial patterns, output filtering, jailbreak taxonomy monitoring | High | CG-3 (with I-2) |
-| Short-term | S-2 | Guardrails Service | Mutual TLS between Guardrails and Orchestrator; allowlist of trusted service identities at Orchestrator ingress | Medium | — |
-| Short-term | S-3 | LLM Agent Orchestrator | mTLS with certificate pinning, signed JWTs with RS256 and audience restriction | Medium | — |
-| Short-term | S-4 | MCP Tool Server | Response signing (HMAC-SHA256) on all Tool Server responses; Orchestrator validates signatures before processing | Medium | — |
-| Short-term | T-1 | Guardrails Service | Immutable configuration store with SHA-256 checksums, drift detection, least-privilege access controls | Medium | — |
-| Short-term | T-2 | LLM Agent Orchestrator | Message-level HMAC-SHA256 integrity protection on forwarded prompts | Low | — |
-| Short-term | T-3 | MCP Tool Server | JSON-RPC message signing (HMAC-SHA256), strict parameter schema validation | Low | — |
-| Short-term | T-5 | Audit Logger | Append-only immutable storage, external SIEM forwarding, cryptographic log chaining, read-only access restriction | Medium | — |
-| Short-term | R-1 | User | Server-side identity binding with timestamp and session correlation ID; immutable audit records | Low | — |
-| Short-term | I-1 | Guardrails Service | Generic rejection messages to users; detailed reasons logged internally only; rate limiting on rejections | Low | — |
-| Short-term | I-4 | Knowledge Base | Field-level projection on query responses; strip metadata, vectors, classifications; query-scoped access controls | Medium | — |
-| Short-term | I-5 | Audit Logger | Data classification and redaction on log entries; RBAC on log store; AES-256 encryption at rest | Medium | — |
-| Short-term | E-1 | Guardrails Service | Role-based prompt filtering policies; server-side role validation; independent Orchestrator authorization check | Medium | — |
-| Short-term | AG-2 | LLM Agent Orchestrator | Action reversibility tiers, pre-execution review for write/delete operations, approval decision logging | Medium | CG-4 (with R-3) |
-| Short-term | AG-4 | MCP Tool Server | Tool chain policy engine evaluating composite effects; forbidden combination definitions; human approval for cross-boundary chains | High | CG-5 (with D-3) |
-| Short-term | LLM-2 | LLM Agent Orchestrator | Sanitize retrieved content, provenance tracking, content integrity checks, structural delimiters in prompt template | Medium | — |
-| Short-term | LLM-4 | LLM Agent Orchestrator | Content validation and adversarial detection before indexing, document-level access controls, provenance metadata, integrity audits | Medium | CG-1 (with T-4) |
-| Medium-term | S-5 | External API | Certificate pinning, strict hostname verification, DNS-over-HTTPS resolver, certificate change monitoring | Low | — |
-| Medium-term | R-2 | Guardrails Service | Structured audit events with full prompt, rule matched, decision, reason, user ID, timestamp | Low | — |
-| Medium-term | R-4 | MCP Tool Server | Complete request chain logging with originating user ID, tool details, API response, correlation ID | Low | — |
-| Medium-term | I-3 | MCP Tool Server | Generic error responses; standardized error codes; detailed diagnostics routed to Audit Logger only | Low | — |
-| Medium-term | D-3 | MCP Tool Server | Per-client tool invocation rate limits, connection pool limits and timeouts, circuit breaker, usage budget caps | Low | CG-5 (with AG-4) |
-| Medium-term | D-4 | Knowledge Base | Query complexity limits, result set size caps, query timeout, per-client rate limiting, latency monitoring | Low | — |
-| Medium-term | D-5 | Audit Logger | Log volume rate limiting per source, automatic rotation and retention, storage capacity alerts, log sampling | Low | — |
-| Medium-term | LLM-3 | LLM Agent Orchestrator | Rate limiting per session, prompt classifier for extraction patterns, post-hoc prompt analysis, output classifiers for system prompt fragments | Low | — |
-| Medium-term | LLM-5 | LLM Agent Orchestrator | Restrict to top-k output, per-API-key query budgets, query pattern analysis, output watermarking | Low | — |
-| Backlog | R-5 | External API | Request/response logging on MCP Tool Server side, signed receipts where supported, immutable Audit Logger records | Low | — |
-| Backlog | I-6 | Audit Logger | TLS 1.3 encryption on all internal log flows, mutual TLS between logging clients and Audit Logger | Low | — |
+The remediation roadmap preserves mitigation text verbatim from the threat model findings and organizes actions by priority tier.
+
+### Immediate (Critical — Before Next Deployment)
+
+| Finding | Component | Mitigation | Effort |
+|---------|-----------|------------|--------|
+| S-3 | LLM Agent Orchestrator | Implement mTLS with certificate pinning between the LLM Agent Orchestrator and all downstream services (MCP Tool Server, Knowledge Base); use signed JWTs with RS256 and audience restriction for service-to-service authentication | High |
+| D-1 | LLM Agent Orchestrator | Enforce per-client rate limiting (10 requests/minute); cap prompt input at 4,096 tokens; configure request timeout at 30 seconds; set memory limit per worker with OOM-kill restart policy; implement circuit breaker after 5 consecutive failures | Medium |
+| E-1 | LLM Agent Orchestrator | Implement RBAC policy on the orchestrator that maps each user role to permitted tool categories and Knowledge Base access scopes; validate caller role before dispatching any tool call or context retrieval; reject unauthorized operations with 403 and log the attempt | High |
+| E-2 | MCP Tool Server | Implement per-tool RBAC policy on the MCP Tool Server that maps each tool endpoint to required permissions; validate the calling agent's authorization context (propagated from the authenticated user) before tool execution; maintain a tool permission manifest defining access tiers | High |
+| AG-1 | LLM Agent Orchestrator | Implement mandatory termination constraints: maximum iteration count (25 iterations), execution timeout (5 minutes), and cumulative cost cap per request; add circuit breaker that halts execution if the agent repeats the same action pattern for 3 consecutive iterations | Medium |
+| AG-3 | MCP Tool Server | Implement per-user tool allowlists at the MCP Tool Server; scope available tools based on the authenticated user's role propagated from the orchestrator; log all tool invocations with user identity and tool name for audit | Medium |
+| LLM-1 | LLM Agent Orchestrator | Implement structured prompt templates with explicit delimiter tokens between system instructions and user input; add an input classifier that detects adversarial prompt patterns before forwarding to the model; apply output filtering to detect responses that violate behavior boundaries | High |
+
+### Short-term (High — Current Development Cycle)
+
+| Finding | Component | Mitigation | Effort |
+|---------|-----------|------------|--------|
+| S-1 | User | Implement multi-factor authentication for user sessions; bind session tokens to client fingerprints (IP, TLS certificate, device ID) using DPoP or certificate-bound tokens; enforce token expiration with sliding window of 15 minutes | Medium |
+| S-2 | Guardrails Service | Enforce mutual TLS (mTLS) between the Guardrails Service and LLM Agent Orchestrator; validate service identity certificates on every request; reject any request to the orchestrator that does not originate from the authenticated Guardrails Service | Medium |
+| S-4 | MCP Tool Server | Implement service identity verification using mTLS certificates for the MCP Tool Server; pin the server certificate in the orchestrator's configuration; validate server identity on every JSON-RPC connection | Medium |
+| T-1 | Guardrails Service | Store Guardrails configuration in immutable, version-controlled storage with cryptographic integrity checks (SHA-256 checksums); implement change detection with alerts on any configuration modification; require multi-party approval for rule changes | Medium |
+| T-2 | LLM Agent Orchestrator | Sign validated prompts with HMAC-SHA256 at the Guardrails Service; verify signature at the LLM Agent Orchestrator before processing; reject any request with an invalid or missing signature | Low |
+| T-3 | MCP Tool Server | Implement message-level integrity protection (HMAC signatures) on all JSON-RPC messages between the orchestrator and tool server; validate message integrity before processing; enforce strict JSON schema validation on tool call parameters | Low |
+| T-4 | Knowledge Base | Implement write access controls restricting Knowledge Base modifications to authorized administrative roles only; enforce integrity checksums (SHA-256) on all stored documents; maintain an immutable audit trail of all document changes with author attribution | Medium |
+| T-5 | Audit Logger | Store audit logs in append-only, immutable storage (write-once-read-many); implement cryptographic log chaining (hash chain) where each entry includes the hash of the previous entry; forward logs to an external SIEM within 60 seconds for independent verification | Medium |
+| R-2 | LLM Agent Orchestrator | Implement structured decision logging in the orchestrator that records: authenticated user ID, input prompt hash, model reasoning summary, tool selection rationale, tool call parameters, tool response summary, and final output; forward all decision logs to the Audit Logger within 60 seconds | Medium |
+| R-4 | MCP Tool Server | Implement comprehensive tool execution logging that records: requesting agent identity, tool name, full parameter payload, external API endpoint, response status code, response body hash, execution duration, and UTC timestamp; forward to Audit Logger with correlation ID linking to the originating orchestrator decision | Medium |
+| I-2 | MCP Tool Server | Implement response filtering at the MCP Tool Server that strips sensitive fields (credentials, internal identifiers, PII patterns) from External API responses before returning tool results to the orchestrator; define an allowlist of permitted response fields per tool | Medium |
+| I-3 | Knowledge Base | Implement field-level projection on Knowledge Base query responses to return only content fields required by the orchestrator; strip internal metadata, embedding vectors, and storage identifiers from all query responses | Low |
+| I-4 | Audit Logger | Encrypt audit log entries at rest using AES-256; implement field-level encryption for sensitive data within log entries (prompt content, user PII, credentials); enforce role-based access control on log storage with principle of least privilege; mask sensitive fields in log viewing interfaces | Medium |
+| D-2 | MCP Tool Server | Implement per-request tool call limits (maximum 10 tool calls per orchestrator request); enforce tool server connection pool limits with timeouts; implement backpressure signaling from tool server to orchestrator when capacity threshold is reached | Low |
+| D-4 | Guardrails Service | Deploy rate limiting at the network edge before the Guardrails Service (API gateway or WAF); implement per-IP and per-session rate limits; add request size limits; deploy horizontal scaling with auto-scale triggers based on queue depth | Medium |
+| AG-2 | LLM Agent Orchestrator | Classify tool operations into tiers: Tier 1 (read-only, auto-approve), Tier 2 (reversible writes, require confirmation), Tier 3 (irreversible actions, require human approval with mandatory wait period); implement pre-execution review for Tier 2 and Tier 3 actions | High |
+| LLM-2 | LLM Agent Orchestrator | Sanitize retrieved document content before injection into the prompt context; implement provenance tracking so the model can distinguish system instructions from retrieved content; apply content integrity checks on uploaded documents and monitor for embedded instruction patterns | Medium |
+| LLM-3 | LLM Agent Orchestrator | Implement content validation and adversarial content detection on all documents before indexing in the Knowledge Base; apply document-level access controls; add provenance metadata for source trustworthiness scoring; monitor retrieval patterns for anomalous document frequency | Medium |
+| E-4 | MCP Tool Server | Implement network segmentation with per-service firewall rules limiting the MCP Tool Server's outbound connections to only the External API and Audit Logger; use unique service credentials per component; enforce zero-trust network policies within the application zone | Medium |
 
 ---
 
 ## 7. Appendix: Finding Reference
 
-| Finding ID | Report Section | Heading Reference |
-|------------|---------------|-------------------|
-| S-1 | 3.1 Spoofing | Section 3 |
-| S-1 | 5. Attack Trees | Section 5 |
-| S-1 | 6. Remediation Roadmap | Section 6 |
-| S-2 | 3.1 Spoofing | Section 3 |
-| S-2 | 5. Attack Trees | Section 5 (standalone) |
-| S-2 | 6. Remediation Roadmap | Section 6 |
-| S-3 | 3.1 Spoofing | Section 3 |
-| S-3 | 5. Attack Trees | Section 5 (standalone) |
-| S-3 | 6. Remediation Roadmap | Section 6 |
-| S-4 | 3.1 Spoofing | Section 3 |
-| S-4 | 5. Attack Trees | Section 5 (standalone) |
-| S-4 | 6. Remediation Roadmap | Section 6 |
-| S-5 | 3.1 Spoofing | Section 3 |
-| S-5 | 6. Remediation Roadmap | Section 6 |
-| T-1 | 3.2 Tampering | Section 3 |
-| T-1 | 5. Attack Trees | Section 5 (standalone) |
-| T-1 | 6. Remediation Roadmap | Section 6 |
-| T-2 | 3.2 Tampering | Section 3 |
-| T-2 | 5. Attack Trees | Section 5 (standalone) |
-| T-2 | 6. Remediation Roadmap | Section 6 |
-| T-3 | 3.2 Tampering | Section 3 |
-| T-3 | 5. Attack Trees | Section 5 (standalone) |
-| T-3 | 6. Remediation Roadmap | Section 6 |
-| T-4 | 3.2 Tampering | Section 3 |
-| T-4 | 4. Cross-Cutting Themes | Section 4 (Theme 3) |
-| T-4 | 5. Attack Trees | Section 5 |
-| T-4 | 6. Remediation Roadmap | Section 6 |
-| T-5 | 3.2 Tampering | Section 3 |
-| T-5 | 5. Attack Trees | Section 5 (standalone) |
-| T-5 | 6. Remediation Roadmap | Section 6 |
-| R-1 | 3.3 Repudiation | Section 3 |
-| R-1 | 5. Attack Trees | Section 5 (standalone) |
-| R-1 | 6. Remediation Roadmap | Section 6 |
-| R-2 | 3.3 Repudiation | Section 3 |
-| R-2 | 6. Remediation Roadmap | Section 6 |
-| R-3 | 3.3 Repudiation | Section 3 |
-| R-3 | 4. Cross-Cutting Themes | Section 4 (Theme 4) |
-| R-3 | 5. Attack Trees | Section 5 |
-| R-3 | 6. Remediation Roadmap | Section 6 |
-| R-4 | 3.3 Repudiation | Section 3 |
-| R-4 | 6. Remediation Roadmap | Section 6 |
-| R-5 | 3.3 Repudiation | Section 3 |
-| R-5 | 6. Remediation Roadmap | Section 6 |
-| I-1 | 3.4 Information Disclosure | Section 3 |
-| I-1 | 5. Attack Trees | Section 5 (standalone) |
-| I-1 | 6. Remediation Roadmap | Section 6 |
-| I-2 | 3.4 Information Disclosure | Section 3 |
-| I-2 | 4. Cross-Cutting Themes | Section 4 (Theme 1) |
-| I-2 | 5. Attack Trees | Section 5 |
-| I-2 | 6. Remediation Roadmap | Section 6 |
-| I-3 | 3.4 Information Disclosure | Section 3 |
-| I-3 | 6. Remediation Roadmap | Section 6 |
-| I-4 | 3.4 Information Disclosure | Section 3 |
-| I-4 | 5. Attack Trees | Section 5 (standalone) |
-| I-4 | 6. Remediation Roadmap | Section 6 |
-| I-5 | 3.4 Information Disclosure | Section 3 |
-| I-5 | 5. Attack Trees | Section 5 (standalone) |
-| I-5 | 6. Remediation Roadmap | Section 6 |
-| I-6 | 3.4 Information Disclosure | Section 3 |
-| I-6 | 6. Remediation Roadmap | Section 6 |
-| D-1 | 3.5 Denial of Service | Section 3 |
-| D-1 | 5. Attack Trees | Section 5 |
-| D-1 | 6. Remediation Roadmap | Section 6 |
-| D-2 | 3.5 Denial of Service | Section 3 |
-| D-2 | 5. Attack Trees | Section 5 |
-| D-2 | 6. Remediation Roadmap | Section 6 |
-| D-3 | 3.5 Denial of Service | Section 3 |
-| D-3 | 6. Remediation Roadmap | Section 6 |
-| D-4 | 3.5 Denial of Service | Section 3 |
-| D-4 | 6. Remediation Roadmap | Section 6 |
-| D-5 | 3.5 Denial of Service | Section 3 |
-| D-5 | 6. Remediation Roadmap | Section 6 |
-| E-1 | 3.6 Elevation of Privilege | Section 3 |
-| E-1 | 5. Attack Trees | Section 5 (standalone) |
-| E-1 | 6. Remediation Roadmap | Section 6 |
-| E-2 | 3.6 Elevation of Privilege | Section 3 |
-| E-2 | 4. Cross-Cutting Themes | Section 4 (Theme 4) |
-| E-2 | 5. Attack Trees | Section 5 |
-| E-2 | 6. Remediation Roadmap | Section 6 |
-| E-3 | 3.6 Elevation of Privilege | Section 3 |
-| E-3 | 5. Attack Trees | Section 5 |
-| E-3 | 6. Remediation Roadmap | Section 6 |
-| AG-1 | 3.7 Agentic Threats | Section 3 |
-| AG-1 | 4. Cross-Cutting Themes | Section 4 (Theme 4) |
-| AG-1 | 5. Attack Trees | Section 5 |
-| AG-1 | 6. Remediation Roadmap | Section 6 |
-| AG-2 | 3.7 Agentic Threats | Section 3 |
-| AG-2 | 5. Attack Trees | Section 5 (standalone) |
-| AG-2 | 6. Remediation Roadmap | Section 6 |
-| AG-3 | 3.7 Agentic Threats | Section 3 |
-| AG-3 | 5. Attack Trees | Section 5 |
-| AG-3 | 6. Remediation Roadmap | Section 6 |
-| AG-4 | 3.7 Agentic Threats | Section 3 |
-| AG-4 | 5. Attack Trees | Section 5 (standalone) |
-| AG-4 | 6. Remediation Roadmap | Section 6 |
-| LLM-1 | 3.8 LLM Threats | Section 3 |
-| LLM-1 | 4. Cross-Cutting Themes | Section 4 (Theme 1) |
-| LLM-1 | 5. Attack Trees | Section 5 |
-| LLM-1 | 6. Remediation Roadmap | Section 6 |
-| LLM-2 | 3.8 LLM Threats | Section 3 |
-| LLM-2 | 5. Attack Trees | Section 5 (standalone) |
-| LLM-2 | 6. Remediation Roadmap | Section 6 |
-| LLM-3 | 3.8 LLM Threats | Section 3 |
-| LLM-3 | 6. Remediation Roadmap | Section 6 |
-| LLM-4 | 3.8 LLM Threats | Section 3 |
-| LLM-4 | 4. Cross-Cutting Themes | Section 4 (Theme 3) |
-| LLM-4 | 5. Attack Trees | Section 5 (standalone) |
-| LLM-4 | 6. Remediation Roadmap | Section 6 |
-| LLM-5 | 3.8 LLM Threats | Section 3 |
-| LLM-5 | 6. Remediation Roadmap | Section 6 |
+| Finding ID | Category | Component | Risk Level |
+|------------|----------|-----------|------------|
+| S-1 | Spoofing | User | High |
+| S-2 | Spoofing | Guardrails Service | High |
+| S-3 | Spoofing | LLM Agent Orchestrator | Critical |
+| S-4 | Spoofing | MCP Tool Server | High |
+| S-5 | Spoofing | External API | Medium |
+| T-1 | Tampering | Guardrails Service | High |
+| T-2 | Tampering | LLM Agent Orchestrator | High |
+| T-3 | Tampering | MCP Tool Server | High |
+| T-4 | Tampering | Knowledge Base | High |
+| T-5 | Tampering | Audit Logger | High |
+| T-6 | Tampering | Knowledge Base | Medium |
+| R-1 | Repudiation | User | Medium |
+| R-2 | Repudiation | LLM Agent Orchestrator | High |
+| R-3 | Repudiation | Guardrails Service | Medium |
+| R-4 | Repudiation | MCP Tool Server | High |
+| R-5 | Repudiation | External API | Low |
+| I-1 | Information Disclosure | LLM Agent Orchestrator | Medium |
+| I-2 | Information Disclosure | MCP Tool Server | High |
+| I-3 | Information Disclosure | Knowledge Base | High |
+| I-4 | Information Disclosure | Audit Logger | High |
+| I-5 | Information Disclosure | Guardrails Service | Medium |
+| D-1 | Denial of Service | LLM Agent Orchestrator | Critical |
+| D-2 | Denial of Service | MCP Tool Server | High |
+| D-3 | Denial of Service | Knowledge Base | Medium |
+| D-4 | Denial of Service | Guardrails Service | High |
+| D-5 | Denial of Service | Audit Logger | Medium |
+| E-1 | Elevation of Privilege | LLM Agent Orchestrator | Critical |
+| E-2 | Elevation of Privilege | MCP Tool Server | Critical |
+| E-3 | Elevation of Privilege | Guardrails Service | Medium |
+| E-4 | Elevation of Privilege | MCP Tool Server | High |
+| AG-1 | Agentic | LLM Agent Orchestrator | Critical |
+| AG-2 | Agentic | LLM Agent Orchestrator | High |
+| AG-3 | Agentic | MCP Tool Server | Critical |
+| AG-4 | Agentic | MCP Tool Server | Medium |
+| LLM-1 | LLM | LLM Agent Orchestrator | Critical |
+| LLM-2 | LLM | LLM Agent Orchestrator | High |
+| LLM-3 | LLM | LLM Agent Orchestrator | High |
+| LLM-4 | LLM | LLM Agent Orchestrator | Medium |
