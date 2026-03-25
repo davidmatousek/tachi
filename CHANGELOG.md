@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 029 — Agent Refactoring Right-Size
+
+**Added**
+- Right-sized 3 threat agents via reference-extraction pattern: orchestrator (2,085→1,273 lines, -39%), report (801→472, -41%), infographic (592→414, -30%); 6 reference docs in `adapters/claude-code/agents/references/`; portable `.claude/agents/tachi/` agent set for non-Claude-Code adapters (`cde4cc8`)
+
+**Changed**
+- Closed Feature 029 — updated product docs (PRD INDEX, User Stories), architecture docs (Tech Stack, Patterns, README) (`5a8a127`)
+- Regenerated BACKLOG.md after issue closure (`64e5e4a`)
+
 ### Feature 024 — Example Threat Models
 
 **Added**
