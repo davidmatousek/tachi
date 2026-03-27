@@ -186,5 +186,8 @@ _site/
 # ============================================================================
 # Add your project-specific ignores here after template instantiation
 
+# Local threat model runs (sample report lives in examples/)
+docs/security/
+
 # Subagent result artifacts (ephemeral, session-scoped)
 .aod/results/

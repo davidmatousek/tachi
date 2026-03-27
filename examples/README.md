@@ -52,6 +52,27 @@ graph TD
 
 Open any example's `architecture.md` to see the input diagram and `threats.md` to see the complete threat model output. GitHub renders Mermaid diagrams automatically.
 
+### Sample Report
+
+The [`agentic-app/sample-report/`](agentic-app/sample-report/) directory contains the complete output from running tachi against the agentic-app architecture. This shows every artifact the pipeline produces:
+
+| File | Description |
+|------|-------------|
+| `threats.md` | Structured threat model with findings, coverage matrix, and risk summary |
+| `threats.sarif` | SARIF 2.1.0 for GitHub Code Scanning integration |
+| `threat-report.md` | Narrative report with executive summary and remediation roadmap |
+| `attack-trees/` | 27 Mermaid attack trees for Critical and High findings |
+| `threat-baseball-card.jpg` | Risk summary dashboard infographic |
+| `threat-system-architecture.jpg` | Annotated architecture diagram with attack surface badges |
+
+**Risk Summary Dashboard:**
+
+![Threat Baseball Card](agentic-app/sample-report/threat-baseball-card.jpg)
+
+**Annotated Architecture:**
+
+![System Architecture](agentic-app/sample-report/threat-system-architecture.jpg)
+
 ### Compare with Your Own Results
 
 Run tachi against an example's `architecture.md` and compare the output with the reference `threats.md`:

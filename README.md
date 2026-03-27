@@ -158,6 +158,12 @@ The [`examples/`](examples/) directory contains complete threat models you can r
 | [Agentic App](examples/agentic-app/) | LLM orchestrator + MCP tools | STRIDE + AI |
 | [Microservices](examples/microservices/) | Cross-service architecture | STRIDE |
 
+The agentic-app example includes a [complete sample report](examples/agentic-app/sample-report/) showing every artifact the pipeline produces -- structured findings, SARIF, narrative report, attack trees, and infographics:
+
+![Threat Baseball Card](examples/agentic-app/sample-report/threat-baseball-card.jpg)
+
+![System Architecture](examples/agentic-app/sample-report/threat-system-architecture.jpg)
+
 ---
 
 ## Integration Reference
