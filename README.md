@@ -19,6 +19,8 @@ tachi is a threat modeling sidecar that you add to any project. It dispatches 14
 
 tachi is built with the [Agentic Oriented Development Kit (AOD Kit)](https://github.com/davidmatousek/agentic-oriented-development-kit), a governance framework for AI agent-assisted development.
 
+![Threat Baseball Card](examples/agentic-app/sample-report/threat-baseball-card.jpg)
+
 ---
 
 ## Quick Start
