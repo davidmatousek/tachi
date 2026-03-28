@@ -1074,7 +1074,250 @@ classified_threats:
 
 Produce the dual-format output files. `compensating-controls.md` follows the template structure from `templates/compensating-controls.md` and contains an executive summary, per-threat control assessment table, control evidence details, residual risk analysis, and prioritized recommendations. `compensating-controls.sarif` follows the template structure from `templates/compensating-controls.sarif` and contains the same controlled findings in SARIF 2.1.0 format with extended property bags for control status, evidence, residual scores, and recommendations.
 
-<!-- Phase 6 detailed content will be added by tasks T014-T015 -->
+### 6a. Coverage Matrix Generation
+
+Before generating output files, assemble the coverage matrix — a unified view of all classified threats with their inherent and residual risk data. The coverage matrix is the primary data structure consumed by both the markdown and SARIF output generators.
+
+#### Matrix Structure
+
+Build a list of rows, one per classified threat, with these columns:
+
+| Column | Source | Description |
+|--------|--------|-------------|
+| Threat ID | Phase 1 finding `id` | Finding identifier (e.g., "S-1", "D-3") |
+| Component | Phase 1 finding `component` | Target component name |
+| Threat | Phase 1 finding `description` | Threat description (truncate to 80 chars in table, full in details) |
+| Inherent Score | Phase 1 finding `composite_score` | Original composite score from risk-scores |
+| Inherent Severity | Phase 1 finding `severity_band` | Original severity band |
+| Control Status | Phase 4 classification `control_status` | "Control Found" / "Partial Control" / "No Control Found" |
+| Control Category | Phase 4 classification `control_category` | Primary control category matched |
+| Residual Score | Phase 5 calculation `residual_score` | Calculated residual risk score |
+| Residual Severity | Phase 5 calculation `residual_severity_band` | Residual severity band |
+
+#### Sorting and Grouping
+
+1. **Primary group**: Residual severity band (Critical first, then High, Medium, Low)
+2. **Secondary sort within group**: Residual score descending (highest risk first within each band)
+3. **Tertiary sort**: Threat ID ascending (stable ordering for ties)
+
+#### Display Formatting for Control Status
+
+Map internal values to human-readable labels in the coverage matrix:
+
+| Internal Value | Display Label |
+|---------------|---------------|
+| `found` | Control Found |
+| `partial` | Partial Control |
+| `missing` | No Control Found |
+
+#### Summary Statistics
+
+Calculate these aggregate statistics from the coverage matrix:
+
+1. **Coverage counts**:
+   - `found_count`: Number of threats with `control_status = found`
+   - `partial_count`: Number of threats with `control_status = partial`
+   - `missing_count`: Number of threats with `control_status = missing`
+   - `total_count`: Total number of classified threats (must equal Phase 1 finding count)
+
+2. **Coverage percentages** (round to nearest integer):
+   - `found_pct = round(found_count / total_count * 100)`
+   - `partial_pct = round(partial_count / total_count * 100)`
+   - `missing_pct = round(missing_count / total_count * 100)`
+   - Adjust rounding so percentages sum to exactly 100% (add/subtract 1% from the largest category if needed)
+
+3. **Residual severity counts**:
+   - Count of threats per residual severity band (Critical, High, Medium, Low)
+   - Percentages per band (same rounding rules)
+
+4. **Highest-risk unmitigated finding**: The finding with `control_status = missing` that has the highest `composite_score`. Report its ID, component, score, and severity. If no findings are missing, report "None — all threats have controls."
+
+**Validation**: `found_count + partial_count + missing_count` MUST equal `total_count`. If not, halt with: **"Coverage matrix count mismatch: {found} + {partial} + {missing} = {sum} but total is {total_count}"**
+
+### 6b. Markdown Output Generation
+
+Generate `compensating-controls.md` following the template structure in `templates/compensating-controls.md`. Load the template on demand (see Reference File Loading) and populate all placeholder fields with data from the analysis pipeline.
+
+#### Output File Structure
+
+The markdown output MUST contain these sections in this exact order:
+
+1. **Frontmatter** (YAML code block)
+2. **Section 1: Executive Summary**
+3. **Section 2: Coverage Matrix**
+4. **Section 3: Control Details**
+5. **Section 4: Recommendations**
+6. **Section 5: Residual Risk Summary**
+7. **Section 6: Methodology**
+
+#### Section Generation Rules
+
+**Frontmatter**:
+- `schema_version`: Always `"1.0"`
+- `date`: Current date in ISO 8601 format (`YYYY-MM-DD`)
+- `source_file`: Path to the risk score input file that was analyzed
+- `target_path`: The `--target` codebase path provided as input
+- `classification`: Always `"security"`
+
+**Section 1 — Executive Summary**:
+- Lead with the one-line coverage stat: `**{total}** threats analyzed | **{found_count}** Control Found | **{partial_count}** Partial Control | **{missing_count}** No Control Found`
+- Coverage percentages line
+- Risk reduction line: `{total_inherent} inherent → {total_residual} residual (**{reduction_pct}%** reduction)`
+- Highest-risk unmitigated finding callout
+- Metadata table (date, source file, target path, schema version)
+- Coverage distribution table
+- Any analysis warnings (file budget exceeded, truncated files, skipped components)
+
+**Section 2 — Coverage Matrix**:
+- Render the coverage matrix from 6a, grouped by residual severity band
+- Each severity band gets its own subsection header and table
+- Omit severity band subsections with zero threats (e.g., skip "Critical Residual Severity" if no threats have Critical residual)
+- Threat descriptions truncated to 80 characters in the table (readers can find full descriptions in Section 3)
+- Summary statistics table at the bottom
+
+**Section 3 — Control Details**:
+- One subsection per detected control, grouped by control category
+- For each detected control: category, status, effectiveness (P0: derived from status — found=strong, partial=moderate, missing=none), evidence file:line, code snippet, list of threats mitigated by this control
+- **P0 effectiveness note**: In P0, `control_effectiveness` is derived from `control_status` (found → "strong", partial → "moderate", missing → "none"). The full 4-dimension effectiveness assessment (Coverage, Configuration, Currency, Completeness) is a P1 feature. In P0, display the effectiveness rating but omit the dimension breakdown table — replace with: *"Detailed effectiveness assessment available in P1 (User Story 6)."*
+- Skip controls with `detected: false` in all components (nothing to detail for undetected categories)
+
+**Section 4 — Recommendations**:
+- Render all recommendations from Phase 5a, grouped by inherent severity band (Critical/High first, then Medium, then Low)
+- Each recommendation block: threat ID, component, composite score, current control status, what to implement/harden, where, reference patterns, effort estimate
+- Partial control recommendations emphasize hardening (what's missing, how to extend existing control)
+
+**Section 5 — Residual Risk Summary**:
+- Aggregate risk reduction table (total inherent, total residual, delta, reduction %)
+- Per-severity-band shift table (how many threats moved bands)
+- Severity distribution comparison table (inherent vs residual counts per band)
+- Reduction factor reference table (Control Found=0.50, Partial=0.25, Missing=0.00)
+- P1 note about effectiveness-aware factors
+
+**Section 6 — Methodology**:
+- Reproduce the methodology section from the template, filling in any placeholders with actual values from this analysis run
+
+#### Writing the File
+
+Write the complete `compensating-controls.md` to `{output_directory}/compensating-controls.md`. If a file already exists at that path, overwrite it entirely.
+
+### 6c. SARIF Output Generation
+
+Generate `compensating-controls.sarif` following the template structure in `templates/compensating-controls.sarif`. Load the template and SARIF generation reference (`adapters/claude-code/agents/references/sarif-generation.md`) on demand. Produce a valid SARIF 2.1.0 JSON document.
+
+#### SARIF Structure
+
+The output MUST contain:
+
+1. **`$schema`**: Link to the SARIF 2.1.0 JSON schema
+2. **`version`**: `"2.1.0"`
+3. **`runs[0].tool.driver`**: Tool metadata for `tachi-control-analyzer`
+4. **`runs[0].taxonomies`**: OWASP and CWE taxonomy declarations
+5. **`runs[0].results`**: One result per classified threat
+
+#### Tool Driver Configuration
+
+```json
+{
+  "name": "tachi-control-analyzer",
+  "version": "1.0",
+  "semanticVersion": "1.0",
+  "informationUri": "https://github.com/owner/tachi"
+}
+```
+
+**Rules**: 8 rules (one per STRIDE category + 2 AI categories), matching the rule IDs in the template. For each rule, set `properties.security-severity` to the **maximum residual score** among all findings for that rule. If a rule has no findings, omit the rule from the output.
+
+#### Per-Result Generation
+
+For each classified threat, generate a SARIF result:
+
+**`ruleId`**: Map the threat's `category` to the corresponding rule ID:
+| Category | Rule ID |
+|----------|---------|
+| spoofing | `tachi/stride/spoofing` |
+| tampering | `tachi/stride/tampering` |
+| repudiation | `tachi/stride/repudiation` |
+| info-disclosure | `tachi/stride/information-disclosure` |
+| denial-of-service | `tachi/stride/denial-of-service` |
+| privilege-escalation | `tachi/stride/elevation-of-privilege` |
+| agentic | `tachi/ai/agentic-threats` |
+| llm | `tachi/ai/llm-threats` |
+
+**`message.text`**: `"{threat_description} [Control: {control_status}]"`
+
+**`level`**: Map from `residual_severity_band`:
+| Residual Severity | SARIF Level |
+|-------------------|-------------|
+| Critical | `"error"` |
+| High | `"error"` |
+| Medium | `"warning"` |
+| Low | `"note"` |
+
+**`locations`**: Preserve the location structure from the upstream `risk-scores.sarif`. If input was `risk-scores.md` (no SARIF locations available), construct a location using the architecture file path (or the target path as fallback) with `logicalLocations` identifying the component.
+
+**`relatedLocations`**: Map control evidence entries to SARIF `relatedLocations`:
+- For each `control_evidence` item: create a `relatedLocations` entry with:
+  - `id`: Sequential integer starting at 0
+  - `message.text`: `"Control evidence: {control_category} detected in {file_path}"`
+  - `physicalLocation.artifactLocation.uri`: Evidence file path (relative to target root)
+  - `physicalLocation.region.startLine`: Evidence line number
+- For findings with correlated peers (from upstream risk-scores.sarif `correlationGroup`): append peer references after control evidence entries using `logicalLocations` (as shown in template Example 5)
+- For `missing` threats with no evidence: omit `relatedLocations` entirely (do not include an empty array)
+
+**`partialFingerprints`**: Preserve ALL fingerprint fields from the upstream risk-scores input:
+- `findingId/v1`: The threat ID — MUST match the upstream `risk-scores.sarif` fingerprint exactly
+- `primaryLocationLineHash`: Preserve from upstream if available
+- `correlationGroup`: Preserve from upstream if present
+
+**Fingerprint preservation rule**: The `partialFingerprints` object for each result MUST be identical to the corresponding result in `risk-scores.sarif`. Do not recompute, modify, or add fingerprint fields. This ensures GitHub Code Scanning treats compensating-controls.sarif as an update to existing alerts, not new alerts.
+
+**`properties`** (result property bag):
+| Property | Type | Value |
+|----------|------|-------|
+| `security-severity` | string | `residual_score` as a numeric string (e.g., `"3.9"`) |
+| `control-status` | string | `"found"`, `"partial"`, or `"missing"` |
+| `control-evidence` | array | Array of `{file, line, snippet}` objects from Phase 3 evidence. Empty array `[]` for missing. |
+| `control-effectiveness` | string | P0: `"strong"` (found), `"moderate"` (partial), `"none"` (missing) |
+| `inherent-risk` | string | `composite_score` as a numeric string (e.g., `"7.8"`) |
+| `residual-risk` | string | `residual_score` as a numeric string (e.g., `"3.9"`) |
+| `recommendation` | string | Recommendation text from Phase 5a. Empty string `""` for found threats. |
+| `effort-estimate` | string | `"Low"`, `"Medium"`, or `"High"`. Empty string `""` for found threats. |
+
+#### Result Ordering
+
+Sort results by `residual_score` descending (highest residual risk first). Within ties, sort by `findingId/v1` ascending.
+
+#### Rule-Level Security Severity
+
+After generating all results, compute rule-level `security-severity` for each rule:
+- For each rule ID that has at least one result: set `properties.security-severity` to the **maximum** `residual_score` (as a numeric string) among that rule's results
+- Rules with no results: exclude from the output `rules` array
+
+#### SARIF Validation
+
+Before writing the file, verify:
+1. All results have a valid `ruleId` that exists in the `rules` array
+2. All `partialFingerprints` contain at least `findingId/v1`
+3. All `properties.security-severity` values are valid numeric strings in [0.0, 10.0]
+4. `relatedLocations` entries for `found` and `partial` threats have at least one entry with `physicalLocation`
+5. Result count matches the total finding count from Phase 1
+
+If any validation fails, halt with a diagnostic message identifying the failing result and field.
+
+#### Writing the File
+
+Write the complete JSON document to `{output_directory}/compensating-controls.sarif`. If a file already exists at that path, overwrite it entirely. Use 2-space indentation for readability.
+
+### 6d. Output Consistency Verification
+
+After generating both files, perform a cross-format consistency check:
+
+1. **Finding count**: The number of threat entries in `compensating-controls.md` Coverage Matrix MUST equal the number of results in `compensating-controls.sarif`
+2. **Control status**: For each finding, `control_status` MUST be identical between formats
+3. **Residual score**: For each finding, `residual_score` MUST be identical between formats
+4. **Fingerprints**: Every `findingId/v1` in the SARIF results MUST correspond to a Threat ID in the markdown Coverage Matrix
+
+If any inconsistency is detected, halt with: **"Output consistency check failed: {description of mismatch for finding {id}}"**
 
 ---
 
