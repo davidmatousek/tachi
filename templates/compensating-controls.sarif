@@ -456,7 +456,7 @@
           }
         },
         {
-          "_comment": "Example 4: AI agentic threat with control found. Demonstrates AI-category rule with CWE-only taxonomy relationship. relatedLocations contains control evidence. Fingerprint preserved from upstream risk-scores.sarif.",
+          "_comment": "Example 4: AI agentic threat with control found. Demonstrates AI-category rule with CWE-only taxonomy relationship. relatedLocations contains control evidence. Fingerprint preserved from upstream risk-scores.sarif. P0: control-effectiveness is deterministic from control-status (found=strong).",
           "ruleId": "tachi/ai/agentic-threats",
           "message": {
             "text": "<threat-description-from-source-finding> [Control: found]"
@@ -511,7 +511,7 @@
                 "snippet": "<code-snippet>"
               }
             ],
-            "control-effectiveness": "moderate",
+            "control-effectiveness": "strong",
             "inherent-risk": "<original-composite-score-from-risk-scores>",
             "residual-risk": "<calculated-residual-score>",
             "recommendation": "",
@@ -590,7 +590,7 @@
                 "snippet": "<code-snippet>"
               }
             ],
-            "control-effectiveness": "weak",
+            "control-effectiveness": "moderate",
             "inherent-risk": "<original-composite-score-from-risk-scores>",
             "residual-risk": "<calculated-residual-score>",
             "recommendation": "<hardening-guidance-for-partial-control>",
