@@ -5,6 +5,7 @@
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 039 | [Standalone /infographic Command](039-standalone-infographic-command-2026-03-28.md) | ✓ | ⚠ | ⚠ | Approved | 2026-03-28 |
 | 036 | [Compensating Controls](036-compensating-controls-2026-03-27.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-28 |
 | 035 | [Quantitative Risk Scoring](035-quantitative-risk-scoring-2026-03-27.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-27 |
 | 029 | [Agent Refactoring: Right-Size](029-agent-refactoring-right-size-2026-03-25.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-25 |

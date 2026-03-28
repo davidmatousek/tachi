@@ -1,5 +1,5 @@
 ---
-description: Run tachi threat analysis on an architecture description — produces threats.md, SARIF, narrative report, attack trees, and infographics
+description: Run tachi threat analysis on an architecture description — produces threats.md, SARIF, narrative report, and attack trees
 ---
 
 ## User Input
@@ -23,17 +23,10 @@ Consider user input before proceeding (if not empty).
    - Strip `--version <tag>` from `$ARGUMENTS` (trim extra whitespace)
 4. Default: `version_tag = none` (outputs go directly to `output_dir`)
 
-5. If `$ARGUMENTS` contains `--infographic-template <name>`:
-   - Set `infographic_template` to the specified name
-   - Valid values: `all`, `baseball-card`, `system-architecture`, `corporate-white`
-   - If `corporate-white`: map to `baseball-card` (backward compatibility alias)
-   - Strip `--infographic-template <name>` from `$ARGUMENTS` (trim extra whitespace)
-6. Default: `infographic_template = all`
+5. Remaining `$ARGUMENTS` is treated as the architecture file path.
+6. Default architecture path: `docs/security/architecture.md`
 
-7. Remaining `$ARGUMENTS` is treated as the architecture file path.
-8. Default architecture path: `docs/security/architecture.md`
-
-9. Generate a unique run folder:
+7. Generate a unique run folder:
    - Compute timestamp: `YYYY-MM-DDTHH-MM-SS` (e.g., `2026-03-25T14-30-22`)
    - Append to output_dir: `{output_dir}/{timestamp}/`
    - This ensures each run produces output in a unique subfolder
@@ -50,12 +43,6 @@ Single-command entry point for tachi threat modeling. Validates prerequisites, i
 - `threats.sarif` — SARIF 2.1.0 for CI/CD integration
 - `threat-report.md` — narrative report with executive summary and remediation roadmap
 - `attack-trees/` — Mermaid attack tree per Critical/High finding
-- `threat-baseball-card-spec.md` — Baseball Card risk summary specification
-- `threat-baseball-card.jpg` — Baseball Card infographic (requires `GEMINI_API_KEY`)
-- `threat-system-architecture-spec.md` — System Architecture diagram specification
-- `threat-system-architecture.jpg` — System Architecture infographic (requires `GEMINI_API_KEY`)
-
-When `--infographic-template` is set to a specific template, only that template's spec + image are produced.
 
 ## Step 1: Validate Prerequisites
 
@@ -88,25 +75,6 @@ When `--infographic-template` is set to a specific template, only that template'
      ```
    - Proceed.
 
-4. **Load and check Gemini API key** (informational, not blocking):
-   - First, check if `GEMINI_API_KEY` is already set in the shell environment
-   - If not set, check for a `.env` file in the project root and source it:
-     ```bash
-     if [ -z "$GEMINI_API_KEY" ] && [ -f .env ]; then
-       export $(grep -v '^#' .env | grep GEMINI_API_KEY | xargs)
-     fi
-     ```
-   - If still not set after both checks, display:
-     ```
-     NOTE: GEMINI_API_KEY not found. Infographic images will be skipped.
-     All other outputs will be generated normally.
-
-     To enable image generation, set GEMINI_API_KEY by either:
-       1. Add to your shell profile:  echo 'export GEMINI_API_KEY="your-key"' >> ~/.zshrc
-       2. Add to project .env file:   echo 'GEMINI_API_KEY=your-key' >> .env
-     ```
-   - Proceed regardless.
-
 ## Step 2: Run Threat Analysis
 
 1. Read the architecture file at `{architecture_path}`.
@@ -115,20 +83,14 @@ When `--infographic-template` is set to a specific template, only that template'
 
    ```
    Analyze the following architecture for security threats. Follow your complete
-   6-phase methodology (Scope, Determine Threats, Determine Countermeasures,
-   Assess, Report, Infographic).
+   5-phase methodology (Scope, Determine Threats, Determine Countermeasures,
+   Assess, Report).
 
    Write all output files to: {output_dir}
    - threats.md
    - threats.sarif
    - threat-report.md
    - attack-trees/ (one file per Critical/High finding)
-
-   Infographic template: {infographic_template}
-   Generate infographics using the tachi-threat-infographic agent with template "{infographic_template}".
-   Template files are at .claude/agents/tachi/templates/infographic-{name}.md.
-   If template is "all", generate both baseball-card and system-architecture templates.
-   Output files use the pattern: threat-{template-name}-spec.md and threat-{template-name}.jpg.
 
    Architecture input:
 
@@ -137,7 +99,7 @@ When `--infographic-template` is set to a specific template, only that template'
    </architecture-input>
    ```
 
-3. Wait for the orchestrator to complete all 6 phases.
+3. Wait for the orchestrator to complete all 5 phases.
 
 ## Step 3: Report Results
 
@@ -148,17 +110,12 @@ THREAT MODEL COMPLETE
 Architecture: {architecture_path}
 Output: {output_dir}  ← includes timestamped subfolder
 Version: {version_tag or "unversioned"}
-Infographic: {infographic_template}
 
 Files generated:
   threats.md                          — Primary threat model
   threats.sarif                       — SARIF 2.1.0 (CI/CD integration)
   threat-report.md                    — Narrative report
   attack-trees/                       — Mermaid attack trees ({count} files)
-  threat-baseball-card-spec.md        — Baseball Card specification {generated | skipped}
-  threat-baseball-card.jpg            — Baseball Card image {generated | skipped}
-  threat-system-architecture-spec.md  — System Architecture specification {generated | skipped}
-  threat-system-architecture.jpg      — System Architecture image {generated | skipped}
 
 Risk Summary:
   Critical: {count}    High: {count}    Medium: {count}    Low: {count}
@@ -167,12 +124,13 @@ Next steps:
   1. Review Critical/High findings in {output_dir}/threats.md Section 7
   2. Upload threats.sarif to GitHub Code Scanning
   3. Share threat-report.md with stakeholders
+  4. Run '/infographic' to generate visual risk diagrams from your threat analysis
 ```
 
 ## Usage Examples
 
 ```bash
-# Minimal — uses defaults (both infographics generated)
+# Minimal — uses defaults
 /threat-model
 
 # Specify architecture file
@@ -183,15 +141,6 @@ Next steps:
 
 # Custom output directory
 /threat-model docs/security/architecture.md --output-dir reports/security/q1-2026/
-
-# Only generate the Baseball Card infographic
-/threat-model docs/security/architecture.md --infographic-template baseball-card
-
-# Only generate the System Architecture infographic
-/threat-model docs/security/architecture.md --infographic-template system-architecture
-
-# Full example: versioned output with specific template
-/threat-model docs/security/architecture.md --version v1.0.0 --infographic-template baseball-card
 ```
 
 ## Quality Checklist
@@ -199,11 +148,9 @@ Next steps:
 - [ ] Tachi agents installed in `.claude/agents/tachi/` (14 files + templates/)
 - [ ] Architecture file exists and contains identifiable components + data flows
 - [ ] Output directory created and writable
-- [ ] All output files generated (5 core + 2 specs + 2 conditional images when template=all)
+- [ ] All output files generated (threats.md, threats.sarif, threat-report.md, attack-trees/)
 - [ ] Finding IDs follow format: S-N, T-N, R-N, I-N, D-N, E-N, AG-N, LLM-N
 - [ ] Coverage matrix includes all components from architecture input
 - [ ] Risk levels follow OWASP 3x3 matrix (Critical, High, Medium, Low, Note)
 - [ ] SARIF output validates against SARIF 2.1.0 schema
 - [ ] Attack trees generated for every Critical and High finding
-- [ ] Baseball Card risk distribution counts match threats.md Section 6
-- [ ] System Architecture includes all components from threats.md Section 1

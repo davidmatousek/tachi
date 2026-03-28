@@ -134,7 +134,7 @@ The orchestrator implements the OWASP four-step threat modeling methodology, ext
 
 5. **Phase 5 — Report** (default-on): Generate a narrative threat report with executive summary, per-agent analysis, Mermaid attack trees for Critical/High findings, and a prioritized remediation roadmap.
 
-6. **Phase 6 — Infographic** (default-on): Generate a visual risk specification with 6 sections (executive summary, risk gauge, control effectiveness, attack surface map, remediation priority, compliance alignment).
+**Post-pipeline commands**: After the 5-phase pipeline completes, run `/risk-score` for quantitative scoring, `/compensating-controls` for control analysis, and `/infographic` for visual risk diagrams (auto-detects richest data source).
 
 ---
 

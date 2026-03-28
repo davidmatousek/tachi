@@ -16,8 +16,6 @@ Every invocation produces two output files in the same output directory, with tw
 2. **`threats.sarif`** -- Machine-readable SARIF 2.1.0 JSON file containing the same findings mapped to the SARIF standard for integration with GitHub Code Scanning, VS Code SARIF Viewer, Azure DevOps, and other SARIF-compatible tools.
 3. **`threat-report.md`** -- (Phase 5, default-on) Narrative threat report with executive summary, attack trees, and prioritized remediation roadmap.
 4. **`attack-trees/`** -- (Phase 5, default-on) Directory of standalone Mermaid attack tree files, one per Critical and High finding.
-5. **`threat-infographic-spec.md`** -- (Phase 6, default-on) Visual risk specification containing 6 sections of structured data for infographic rendering.
-6. **`threat-infographic.jpg`** -- (Phase 6, conditional) Presentation-ready infographic image generated via Google Gemini API. Only produced when `GEMINI_API_KEY` is set and the API call succeeds.
 
 Both files use the same finding data collected in Phase 3. The `threats.md` sections must appear in the order listed below. The `threats.sarif` generation instructions appear in the "SARIF Output Generation" section after the Output Structural Validation Checklist.
 
@@ -1128,15 +1126,7 @@ Before finalizing the output document, run the following validation checklist ag
 - [ ] Finding count in `threat-report.md` frontmatter matches the finding count in `threats.md`
 - [ ] Appendix: Finding Reference in `threat-report.md` contains every finding ID from `threats.md`
 
-#### Phase 6 Outputs (when Phase 6 is enabled)
-
-- [ ] `threat-infographic-spec.md` exists in the output directory
-- [ ] `threat-infographic-spec.md` contains all 6 required sections (Metadata, Risk Distribution, Coverage Heat Map, Top Critical Findings, Architecture Threat Overlay, Visual Design Directives)
-- [ ] Risk distribution counts in `threat-infographic-spec.md` match `threats.md` Section 6 (Risk Summary)
-- [ ] If `GEMINI_API_KEY` is set: `threat-infographic.jpg` exists in the output directory and is a valid JPEG file
-- [ ] If `GEMINI_API_KEY` is not set: informational message logged ("Gemini API key not configured -- infographic image generation skipped. Specification saved."), no image file expected
-
-If all checks pass, the `threats.md` output document is structurally valid, the `threats.sarif` file is consistent with it, (when Phase 5 is enabled) the `threat-report.md` and `attack-trees/` are complete, and (when Phase 6 is enabled) the `threat-infographic-spec.md` and optional `threat-infographic.jpg` are valid. Produce the final outputs.
+If all checks pass, the `threats.md` output document is structurally valid, the `threats.sarif` file is consistent with it, and (when Phase 5 is enabled) the `threat-report.md` and `attack-trees/` are complete. Produce the final outputs.
 
 ---
 
@@ -1698,78 +1688,6 @@ When Phase 5 is skipped:
 - The Output Structural Validation Checklist Phase 5 checks are skipped (they only apply when Phase 5 runs)
 
 This preserves full backward compatibility with Phase 1-4 behavior.
-
----
-
-## Phase 6: Infographic -- "Visualize the risk landscape"
-
-This phase transforms the structured threat model output from Phase 4 into a visual risk specification and optional presentation-ready infographic image. Phase 6 is optional (default-on) and runs after Phase 5 (Report) completes (or after Phase 4 if Phase 5 is skipped).
-
-Phase objectives:
-
-1. Invoke the infographic agent (`threat-infographic.agent.md`) with the completed `threats.md` as sole input.
-2. Generate `threat-infographic-spec.md` containing 6 required sections: Metadata, Risk Distribution, Coverage Heat Map, Top Critical Findings, Architecture Threat Overlay, and Visual Design Directives.
-3. When `GEMINI_API_KEY` is available, generate `threat-infographic.jpg` -- a presentation-ready infographic image via Google Gemini API.
-4. Place all Phase 6 outputs in the same output directory as `threats.md` and `threats.sarif`.
-
-**Pipeline isolation**: Phase 6 failures MUST NOT block or invalidate Phases 1-5 outputs. If the infographic agent encounters any error -- API failure, content policy rejection, schema validation failure, or unexpected exception -- the pipeline completes successfully with all Phase 1-5 outputs intact. Phase 6 errors are logged but never propagated as pipeline failures.
-
----
-
-### Phase 6 Dispatch
-
-After Phase 5 completes (or after Phase 4 if Phase 5 is skipped) and `threats.md` is written to the output directory:
-
-1. **Check opt-out**: If the `--skip-infographic` flag is set, or the `TACHI_SKIP_INFOGRAPHIC=true` environment variable is set, or the `infographic` configuration is set to `false` (see Opt-Out Configuration below), skip Phase 6 entirely. The pipeline completes with no change to existing Phase 1-5 behavior.
-
-2. **Fresh-context invocation**: Invoke the infographic agent (`threat-infographic.agent.md`) in a fresh context. The invocation MUST:
-   - Pass ONLY the `threats.md` file path as input
-   - NOT pass accumulated pipeline state from Phases 1-5
-   - NOT pass `threat-report.md`, `attack-trees/`, or any other Phase 5 outputs
-   - NOT pass intermediate component inventories, agent dispatch logs, or correlation detection state
-   - The infographic agent reads `threats.md` and operates independently using only what that file contains
-
-3. **Context isolation boundary**: The following content boundary applies to Phase 6:
-   ```
-   <infographic-input>
-   {path to threats.md}
-   </infographic-input>
-   ```
-   The infographic agent treats `threats.md` as its complete input. It does not access or require any other pipeline artifacts. This prevents context window pressure from accumulated pipeline state and ensures the infographic agent operates on the validated, final output.
-
-4. **Output placement**: The infographic agent writes its outputs to the same directory as `threats.md`:
-   ```
-   {output-directory}/
-   ├── threats.md                    (Phase 4 -- existing, unchanged)
-   ├── threats.sarif                  (Phase 4 -- existing, unchanged)
-   ├── threat-report.md               (Phase 5 -- existing, unchanged)
-   ├── attack-trees/                  (Phase 5 -- existing, unchanged)
-   ├── threat-infographic-spec.md     (Phase 6 -- new)
-   └── threat-infographic.jpg         (Phase 6 -- new, conditional on GEMINI_API_KEY)
-   ```
-
-5. **Completion**: Phase 6 is complete when `threat-infographic-spec.md` is written. The `threat-infographic.jpg` is a conditional output -- its absence (due to missing API key or API error) does not constitute a Phase 6 failure. The pipeline then proceeds to the validation checklist.
-
----
-
-### Opt-Out Configuration
-
-Phase 6 (Infographic) is default-on. It can be skipped using any of the following mechanisms:
-
-1. **Flag**: `--skip-infographic` -- When the orchestrator is invoked with this flag, Phase 6 is skipped entirely. The pipeline completes after Phase 5 (or Phase 4 if Phase 5 is also skipped) with no change to existing behavior.
-
-2. **Environment variable**: `TACHI_SKIP_INFOGRAPHIC=true` -- When this environment variable is set to `true`, Phase 6 is skipped. This enables CI/CD pipelines to disable infographic generation without modifying invocation flags.
-
-3. **Configuration**: If the orchestrator's invocation context includes a configuration parameter `infographic: false`, Phase 6 is skipped.
-
-When any opt-out mechanism is active (flag, environment variable, or configuration -- any one is sufficient):
-- The pipeline completes as if Phase 6 does not exist
-- No `threat-infographic-spec.md` or `threat-infographic.jpg` files are generated
-- No warning or informational message is logged about the skip
-- `threats.md`, `threats.sarif`, `threat-report.md`, and `attack-trees/` are unaffected
-- The Output Structural Validation Checklist Phase 6 checks are skipped (they only apply when Phase 6 runs)
-
-This preserves full backward compatibility with Phase 1-5 behavior.
 
 ---
 

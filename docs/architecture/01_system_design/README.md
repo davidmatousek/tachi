@@ -714,9 +714,9 @@ flowchart TD
 
 **Purpose**: Defines the structural validation contract for `threat-infographic-spec.md`, enabling automated completeness checks. Covers 6 required sections: Metadata, Risk Distribution, Coverage Heat Map, Top Critical Findings, Architecture Threat Overlay, and Visual Design Directives.
 
-### Component 3: Orchestrator Integration
+### Component 3: Standalone `/infographic` Command (Feature 039)
 
-**Purpose**: Update `agents/orchestrator.md` to dispatch Phase 6 (Infographic) after Phase 5 (Report) completes. Follows identical structural pattern to Phase 5: optional default-on, fresh-context invocation with only `threats.md`, pipeline isolation (Phase 6 failures never block Phases 1-5).
+**Purpose**: Infographic generation extracted from the orchestrator pipeline into a standalone `/infographic` command (Feature 039). The command auto-detects the richest available data source (`risk-scores.md` preferred over `threats.md`), supports explicit file override, and template selection. The orchestrator pipeline now runs 5 phases only (Phases 1-5). See Feature 039 section below for the standalone command architecture.
 
 ## Data Flow
 
@@ -932,3 +932,61 @@ risk-scores.md/sarif → Parse → Group by Component → Detect Controls (per-c
 | Markdown | Command and agent prompt files | Follows `/risk-score` pattern |
 | YAML | Control finding schema | Extends `risk-scoring.yaml` |
 | SARIF 2.1.0 JSON | Machine-readable control analysis | Supersedes `risk-scores.sarif` in alert chain |
+
+---
+
+### Feature 039: Standalone Infographic Command
+
+## Components
+
+### Component 1: `/infographic` Command (NEW)
+
+**File**: `.claude/commands/infographic.md`
+**Pattern**: Follows `/risk-score` command structure (Step 0 → Step 1 → Step 2 → Step 3)
+
+Steps: Parse flags (`--template`, `--output-dir`) → Detect richest data source (`risk-scores.md` > `threats.md`) → Invoke infographic agent in fresh context → Report results.
+
+### Component 2: Infographic Agent Enhancement (MODIFY)
+
+**File**: `.claude/agents/tachi/threat-infographic.md`
+**Change**: Dual-path data extraction — when `risk-scores.md` is primary, parse Section 1 for aggregate distribution, Section 2 for per-finding composite scores, and read co-located `threats.md` for structural/spatial data.
+
+### Component 3: /threat-model Pipeline Cleanup (MODIFY)
+
+**File**: `.claude/commands/threat-model.md`
+**Change**: Remove Phase 6 (infographic generation), associated flags (`--infographic-template`, `--skip-infographic`), and `TACHI_SKIP_INFOGRAPHIC` env var. Add post-pipeline hint directing users to `/infographic`.
+
+### Component 4: Orchestrator Phase 6 Removal (MODIFY)
+
+**File**: `.claude/agents/tachi/orchestrator.md`
+**Change**: Remove Phase 6 dispatch section, update pipeline phase count from 6 to 5.
+
+### Component 5: Platform Adapter Updates (MODIFY)
+
+Update all adapter variants (Claude Code, Copilot, Cursor, Generic) for orchestrator, threat-model command, and infographic agent to reflect 5-phase pipeline and dual-path extraction.
+
+## Data Flow
+
+```
+User → /infographic → Parse flags → Detect data source
+         │
+    ┌────┴─────┐
+    ▼          ▼
+threats.md   risk-scores.md + co-located threats.md
+    │          │
+    └────┬─────┘
+         ▼
+  Infographic Agent (fresh context)
+  → Extract data → Apply template → Generate spec → Attempt Gemini image
+         │
+         ▼
+  threat-{name}-spec.md + threat-{name}.jpg (optional)
+```
+
+#### Tech Stack
+
+| Technology | Purpose | Justification |
+|------------|---------|---------------|
+| Markdown | Command and agent prompt files | Follows `/risk-score` command pattern |
+| YAML | Infographic schema | Existing `schemas/infographic.yaml` unchanged |
+| Gemini API | Optional image generation | Existing integration preserved (ADR-014) |
