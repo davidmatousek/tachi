@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 035 — Quantitative Risk Scoring
+
+**Added**
+- `/risk-score` command + risk-scorer agent with four-dimensional quantitative scoring (CVSS 3.1, exploitability, scalability, reachability), weighted composite scores, governance fields, and dual-format output (risk-scores.md + risk-scores.sarif) (`4afbe77`)
+
+**Changed**
+- Closed Feature 035 — updated product docs (PRD INDEX, User Stories), architecture docs (Tech Stack), KB entry PAT-006 (`a71337a`)
+- Exported user stories from GitHub Issue #35 (`939d17f`)
+
 ### Feature 029 — Agent Refactoring Right-Size
 
 **Added**
