@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 036 — Compensating Controls Analysis
+
+**Added**
+- `/compensating-controls` command + control-analyzer agent with 6-phase pipeline, 8 STRIDE + 2 AI control categories, effectiveness classification, recommendations with effort estimates, residual risk calculation, coverage matrix, and dual-format output (compensating-controls.md + compensating-controls.sarif) (`9a84115`)
+
+**Changed**
+- Closed Feature 036 — updated product docs (PRD INDEX), architecture docs (Tech Stack), KB entry PAT-007 (`d7370e8`)
+- Exported user stories from GitHub Issue #36 (`5069c9f`)
+
 ### Feature 035 — Quantitative Risk Scoring
 
 **Added**
