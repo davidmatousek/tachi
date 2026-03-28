@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-03-28T00:26:16Z.
+> Auto-generated from GitHub Issues on 2026-03-28T02:17:48Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -8,7 +8,7 @@
 
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
-| — | *No items in this stage* | | |
+| #39 | Standalone /infographic command — decouple visualization from analysis pipeline | Impact: 9, Confidence: 6, Effort: 9 = **24** | Team Observation: Noticed during development — adding com... | 2026-03-28 |
 
 ## Define
 
@@ -40,7 +40,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
-| #36 | Feature: Compensating Controls — Detection, Recommendations, and Residual Risk | OPEN | 2026-03-27 |
+| #36 | Feature: Compensating Controls — Detection, Recommendations, and Residual Risk | OPEN | 2026-03-28 |
 | #27 | Developer Guide: Automated Threat Modeling for Your Architecture | CLOSED | 2026-03-24 |
 | #18 | Feature: Threat Infographic Agent | CLOSED | 2026-03-23 |
 | #15 | Feature 007: Threat Report Agent & Attack Trees | CLOSED | 2026-03-23 |

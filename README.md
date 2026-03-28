@@ -10,11 +10,11 @@
 
 ## What is tachi?
 
-tachi is a threat modeling sidecar that you add to any project. It dispatches 14 specialized AI agents against your architecture description and produces a complete threat model in one command.
+tachi is a threat modeling sidecar that you add to any project. It dispatches 14 specialized AI agents against your architecture description and produces a complete threat model in one command. Then `/risk-score` enriches findings with quantitative scores for data-driven prioritization.
 
 - **11 threat categories**: 6 STRIDE + 3 LLM-specific + 2 Agentic
 - **5 input formats**: Mermaid, free-text, ASCII, PlantUML, C4
-- **8 output artifacts**: structured findings, SARIF, narrative report, attack trees, infographics
+- **10 output artifacts**: structured findings, SARIF, narrative report, attack trees, infographics, quantitative risk scores
 - **Works with any stack**: tachi analyzes architecture, not code
 
 tachi is built with the [Agentic Oriented Development Kit (AOD Kit)](https://github.com/davidmatousek/agentic-oriented-development-kit), a governance framework for AI agent-assisted development.
@@ -39,9 +39,10 @@ From your project root:
 # Copy agents + infographic templates
 cp -r ~/Projects/tachi/adapters/claude-code/agents/ .claude/agents/tachi/
 
-# Copy the /threat-model command
+# Copy commands
 mkdir -p .claude/commands
 cp ~/Projects/tachi/adapters/claude-code/commands/threat-model.md .claude/commands/
+cp ~/Projects/tachi/adapters/claude-code/commands/risk-score.md .claude/commands/
 ```
 
 ### 3. Restart Claude Code
@@ -82,12 +83,16 @@ That's it. One command. tachi validates the setup, reads your architecture, disp
 | `threat-baseball-card.jpg` | Baseball Card infographic (requires `GEMINI_API_KEY`) |
 | `threat-system-architecture-spec.md` | Annotated architecture diagram specification |
 | `threat-system-architecture.jpg` | Architecture infographic with finding legend (requires `GEMINI_API_KEY`) |
+| `risk-scores.md` | Quantitative risk scores with CVSS, exploitability, scalability, reachability, governance fields |
+| `risk-scores.sarif` | SARIF 2.1.0 with composite scores as `security-severity` per finding |
 
-Start with `threats.md` Section 7 -- Recommended Actions. Work through Critical findings first, then High.
+Start with `threats.md` Section 7 -- Recommended Actions. Then run `/risk-score` to get quantitative prioritization. Work through Critical findings first, then High.
 
 ---
 
 ## Command Options
+
+### /threat-model
 
 ```bash
 # Default -- uses docs/security/architecture.md
@@ -104,6 +109,21 @@ Start with `threats.md` Section 7 -- Recommended Actions. Work through Critical 
 
 # Only generate one infographic template
 /threat-model docs/security/architecture.md --infographic-template baseball-card
+```
+
+### /risk-score
+
+Enriches threat model output with four-dimensional quantitative risk scores (CVSS 3.1, exploitability, scalability, reachability) and governance fields (owner, SLA, disposition, review date). Produces `risk-scores.md` and `risk-scores.sarif`.
+
+```bash
+# Score threats in the default location
+/risk-score
+
+# Score threats in a specific directory
+/risk-score docs/security/2026-03-27/
+
+# Custom output directory
+/risk-score docs/security/2026-03-27/ --output-dir reports/risk/
 ```
 
 ---
@@ -173,8 +193,8 @@ The agentic-app example includes a [complete sample report](examples/agentic-app
 | Resource | Location | Purpose |
 |----------|----------|---------|
 | Interface Contract | [`docs/INTERFACE-CONTRACT.md`](docs/INTERFACE-CONTRACT.md) | Input formats, invocation protocol, output structure |
-| Output Template | [`templates/threats.md`](templates/threats.md) | Canonical output structure with all 7 sections |
-| Schemas | [`schemas/`](schemas/) | Machine-readable contracts ([finding.yaml](schemas/finding.yaml), [input.yaml](schemas/input.yaml), [output.yaml](schemas/output.yaml)) |
+| Output Templates | [`templates/`](templates/) | Canonical output structures ([threats.md](templates/threats.md), [risk-scores.md](templates/risk-scores.md), [risk-scores.sarif](templates/risk-scores.sarif)) |
+| Schemas | [`schemas/`](schemas/) | Machine-readable contracts ([finding.yaml](schemas/finding.yaml), [input.yaml](schemas/input.yaml), [output.yaml](schemas/output.yaml), [risk-scoring.yaml](schemas/risk-scoring.yaml)) |
 | Threat Agents | [`agents/stride/`](agents/stride/) + [`agents/ai/`](agents/ai/) | Agent prompt definitions |
 | Developer Guide | [`docs/guides/DEVELOPER_GUIDE_TACHI.md`](docs/guides/DEVELOPER_GUIDE_TACHI.md) | Full walkthrough with worked examples |
 

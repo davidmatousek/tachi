@@ -901,3 +901,34 @@ Pipeline: Parse threats → Extract trust zones → Score 4 dimensions per findi
 | YAML | Scoring schema, category defaults, weights | Consistent with `finding.yaml`/`output.yaml` |
 | SARIF 2.1.0 JSON | Machine-readable scored output | Extends existing `threats.sarif` with scoring properties |
 | CVSS 3.1 | Base scoring standard | Industry standard, NVD/GitHub Advisory Database compatible |
+
+---
+
+### Feature 036: Compensating Controls Analysis
+
+**Source**: `specs/036-compensating-controls/plan.md` (approved 2026-03-27)
+
+#### Components
+
+| Artifact | Path | Purpose |
+|----------|------|---------|
+| Command | `.claude/commands/compensating-controls.md` | User-facing command orchestrator |
+| Agent | `.claude/agents/tachi/control-analyzer.md` | 6-phase analysis agent |
+| Schema | `schemas/compensating-controls.yaml` | Control finding IR extension |
+| MD Template | `templates/compensating-controls.md` | Markdown output structure |
+| SARIF Template | `templates/compensating-controls.sarif` | SARIF 2.1.0 output structure |
+
+#### Data Flow
+
+```
+risk-scores.md/sarif → Parse → Group by Component → Detect Controls (per-component batch)
+     → Map & Classify → Recommend + Residual Risk → Output (MD + SARIF)
+```
+
+#### Tech Stack
+
+| Technology | Purpose | Justification |
+|------------|---------|---------------|
+| Markdown | Command and agent prompt files | Follows `/risk-score` pattern |
+| YAML | Control finding schema | Extends `risk-scoring.yaml` |
+| SARIF 2.1.0 JSON | Machine-readable control analysis | Supersedes `risk-scores.sarif` in alert chain |
