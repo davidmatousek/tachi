@@ -84,7 +84,7 @@ triad:
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] Write agent Phase 5 recommendation logic in `.claude/agents/tachi/control-analyzer.md`: for each threat classified as "No Control Found" — generate recommendation with: specific control to implement, suggested implementation location (file/module), reference patterns or libraries, effort estimate (Low=config change, Medium=new middleware/function, High=architectural change). For "Partial Control" — focus recommendation on hardening existing control (what's missing, how to extend). Sort all recommendations by composite_score descending.
+- [X] T011 [US2] Write agent Phase 5 recommendation logic in `.claude/agents/tachi/control-analyzer.md`: for each threat classified as "No Control Found" — generate recommendation with: specific control to implement, suggested implementation location (file/module), reference patterns or libraries, effort estimate (Low=config change, Medium=new middleware/function, High=architectural change). For "Partial Control" — focus recommendation on hardening existing control (what's missing, how to extend). Sort all recommendations by composite_score descending.
 
 **Checkpoint**: Agent generates prioritized remediation roadmap for all gaps.
 
@@ -98,7 +98,7 @@ triad:
 
 ### Implementation for User Story 3
 
-- [ ] T012 [US3] Write agent Phase 5 residual risk calculation in `.claude/agents/tachi/control-analyzer.md`: apply P0 binary reduction factors (Found=0.50, Partial=0.25, Missing=0.00), calculate per-threat residual_score = composite_score * (1 - reduction_factor), clamp to [0.0, 10.0], map to residual_severity_band using same thresholds as inherent (Critical>=9.0, High 7.0-8.9, Medium 4.0-6.9, Low <4.0), compute summary: total inherent risk, total residual risk, delta, overall reduction percentage
+- [X] T012 [US3] Write agent Phase 5 residual risk calculation in `.claude/agents/tachi/control-analyzer.md`: apply P0 binary reduction factors (Found=0.50, Partial=0.25, Missing=0.00), calculate per-threat residual_score = composite_score * (1 - reduction_factor), clamp to [0.0, 10.0], map to residual_severity_band using same thresholds as inherent (Critical>=9.0, High 7.0-8.9, Medium 4.0-6.9, Low <4.0), compute summary: total inherent risk, total residual risk, delta, overall reduction percentage
 
 **Checkpoint**: Agent calculates accurate residual risk for all threats.
 
