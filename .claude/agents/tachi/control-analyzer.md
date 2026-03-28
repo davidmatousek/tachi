@@ -355,8 +355,414 @@ This canonical mapping determines which control categories to search for when an
 
 **Agentic category special handling**: The "Agentic" AI category maps to all 8 control categories because agentic threats (tool abuse, excessive autonomy, cascading failures) can be mitigated by any combination of security controls. For Agentic threats, use the highest-effectiveness single control found across all categories — do not require all 8 categories to have controls.
 
-<!-- Phase 3 detection patterns will be added by task T008 -->
-<!-- Phase 4 classification logic will be added by task T009 -->
+### 3a. Two-Phase Detection Strategy
+
+Control detection uses a two-phase approach to balance speed with accuracy. Phase A is cheap (string matching on already-loaded file content from Phase 2). Phase B uses contextual understanding to filter false positives. Both phases operate on the same file content loaded during Phase 2 -- no additional file reads are performed.
+
+**Phase A: Pattern Scan**
+
+For each component's mapped files, perform keyword and pattern matching against the detection patterns defined in section 3b. This phase identifies candidate locations -- lines and blocks of code that contain security-relevant keywords, library imports, function names, or configuration patterns.
+
+- Scan each file line-by-line for pattern indicators listed under each control category
+- Record every match as a candidate: `{file, line_number, matched_pattern, surrounding_context (5 lines)}`
+- A single file may produce candidates for multiple control categories
+- This phase is intentionally permissive -- it over-matches to avoid missing controls. False positive filtering happens in Phase B.
+
+**Phase B: Semantic Analysis**
+
+For each candidate location from Phase A, apply contextual reasoning to determine whether the pattern represents an actual compensating control:
+
+1. **Context check**: Read the surrounding code block (function, class, or configuration section containing the candidate line). Determine whether the code is:
+   - Active production code (KEEP as candidate)
+   - Test code or test helper (REJECT -- test mocks of auth do not constitute a control)
+   - Commented-out code (REJECT)
+   - Type definition or interface without implementation (REJECT)
+   - Dead code or unreachable branch (REJECT)
+
+2. **Enforcement check**: Determine whether the control is actually enforced:
+   - Middleware or guard that is registered/mounted on routes or the application (KEEP)
+   - Middleware defined but never imported or registered (REJECT)
+   - Validation schema defined but never applied to an endpoint (REJECT)
+   - Library imported but no usage of its functions in the file (REJECT)
+
+3. **Strength assessment**: For candidates that pass context and enforcement checks, note whether the control is:
+   - Comprehensive (covers all relevant routes/inputs) -- feeds into High confidence
+   - Partial (covers some routes, or has permissive configuration) -- feeds into Medium confidence
+   - Ambiguous (cannot determine coverage scope from available code) -- feeds into Low confidence
+
+After Phase B, each surviving candidate becomes a detected control with an associated confidence level.
+
+### 3b. Detection Patterns by Control Category
+
+For each of the 8 control categories, the following defines the pattern indicators to search for in Phase A, the evidence criteria for Phase B semantic analysis, and snippet guidance for evidence collection.
+
+#### Category 1: Authentication (`authentication`)
+
+Verifies caller identity before granting access to protected resources.
+
+**Pattern indicators**:
+- Auth middleware: `authMiddleware`, `requireAuth`, `isAuthenticated`, `ensureAuth`, `authenticate`, `passport.authenticate`
+- JWT verification: `jwt.verify`, `jsonwebtoken`, `jose`, `jwtVerify`, `decodeJwt`, `verifyToken`, `validateToken`
+- OAuth/SSO providers: `auth0`, `cognito`, `firebase-admin/auth`, `passport-oauth`, `openid-connect`, `saml`
+- Session management: `express-session`, `cookie-session`, `session.userId`, `req.session`, `session_store`
+- Password hashing: `bcrypt`, `argon2`, `scrypt`, `pbkdf2`, `hashPassword`, `verifyPassword`, `comparePassword`
+- API key verification: `x-api-key`, `apiKeyAuth`, `verifyApiKey`, `api_key_required`
+- Bearer tokens: `Bearer `, `authorization?.split`, `extractBearerToken`, `getTokenFromHeader`
+
+**Evidence criteria** (Phase B):
+- KEEP: Middleware function that checks credentials and calls `next()` or returns 401/403
+- KEEP: Route guard or decorator applied to endpoint definitions (`@Authenticated`, `@UseGuards(AuthGuard)`)
+- KEEP: Token validation logic that extracts, decodes, and verifies a token before proceeding
+- REJECT: Auth-related imports with no corresponding verification logic in the file
+- REJECT: Type definitions for auth tokens or user sessions without enforcement
+- REJECT: Test files that mock `req.user` or stub auth middleware
+- REJECT: Commented-out authentication checks
+
+**Common libraries/frameworks**: `jsonwebtoken`, `jose`, `passport`, `express-jwt`, `@nestjs/passport`, `auth0`, `firebase-admin`, `next-auth`, `django.contrib.auth`, `flask-login`, `spring-security`, `gorilla/sessions`
+
+**Snippet guidance**: Capture the middleware function signature through the verification logic (e.g., token extraction + `jwt.verify` call + `next()` or error response). Prefer the function that enforces auth, not the route that applies it.
+
+#### Category 2: Input Validation (`input-validation`)
+
+Validates, sanitizes, or constrains user-supplied input before processing.
+
+**Pattern indicators**:
+- Schema validation: `joi.object`, `z.object`, `yup.object`, `class-validator`, `@IsString`, `@IsEmail`, `validate()`, `validateSync`, `safeParse`
+- Python validation: `pydantic.BaseModel`, `marshmallow.Schema`, `cerberus`, `voluptuous`, `@validator`, `field_validator`
+- Sanitization: `DOMPurify.sanitize`, `sanitize-html`, `bleach.clean`, `xss()`, `escape()`, `stripTags`
+- Parameterized queries: `$1`, `?` placeholders in SQL, `prepare()`, `parameterize`, ORM query builders (`prisma`, `sequelize`, `sqlalchemy`, `knex`)
+- Content-type enforcement: `content-type`, `accepts()`, `type: 'json'` in body parser config
+- Request validation middleware: `celebrate`, `express-validator`, `body()`, `param()`, `query()`, `validationResult`
+
+**Evidence criteria** (Phase B):
+- KEEP: Validation schema applied to request body, params, query, or headers at an endpoint
+- KEEP: Sanitization function called on user input before storage or rendering
+- KEEP: Parameterized query or ORM usage that prevents SQL injection
+- KEEP: Middleware that rejects requests failing validation (returns 400/422)
+- REJECT: Internal data transformation or type coercion not at an input boundary
+- REJECT: Schema definitions in isolation (not wired to an endpoint or middleware chain)
+- REJECT: Test assertions that validate response shapes
+- REJECT: Validation only in client-side code (not a server-side control)
+
+**Common libraries/frameworks**: `joi`, `zod`, `yup`, `class-validator`, `express-validator`, `celebrate`, `pydantic`, `marshmallow`, `cerberus`, `FluentValidation`, `Bean Validation` (JSR 380), `go-playground/validator`
+
+**Snippet guidance**: Capture the schema definition and its application point (e.g., `const schema = z.object({...}); app.post('/api', validate(schema), handler)`). If schema and application are in separate files, prefer the application/middleware registration.
+
+#### Category 3: Rate Limiting (`rate-limiting`)
+
+Constrains request throughput to prevent resource exhaustion and abuse.
+
+**Pattern indicators**:
+- Rate limiter middleware: `rateLimit`, `express-rate-limit`, `rate_limit`, `@throttle`, `@Throttle`, `RateLimiter`, `slowDown`
+- Throttling libraries: `bottleneck`, `p-throttle`, `limiter`, `token-bucket`, `sliding-window`
+- Circuit breakers: `opossum`, `cockatiel`, `CircuitBreaker`, `circuitBreaker`, `@CircuitBreaker`
+- API gateway policies: `x-ratelimit`, `X-RateLimit-Limit`, `retry-after`, `429`, `Too Many Requests`
+- Request quotas: `windowMs`, `max:`, `limit:`, `points:`, `duration:`, `keyGenerator`
+- Python rate limiting: `flask-limiter`, `django-ratelimit`, `slowapi`, `limits`
+
+**Evidence criteria** (Phase B):
+- KEEP: Rate limiter middleware with configured thresholds (window, max requests) applied to routes or the application
+- KEEP: Circuit breaker wrapping outgoing service calls with failure thresholds
+- KEEP: API response headers setting rate limit values
+- KEEP: Decorator or annotation applying rate limits to specific endpoints
+- REJECT: Client-side retry logic or exponential backoff on outgoing requests (resilience pattern, not a server-side control)
+- REJECT: Rate limiter imported but not mounted on any route or application
+- REJECT: Rate limit configuration in comments or documentation only
+- REJECT: Test files simulating rate limit responses
+
+**Common libraries/frameworks**: `express-rate-limit`, `rate-limiter-flexible`, `bottleneck`, `opossum`, `cockatiel`, `flask-limiter`, `django-ratelimit`, `slowapi`, `resilience4j`, `go-rate`, `throttled`
+
+**Snippet guidance**: Capture the rate limiter instantiation with its configuration (window, max, key generator) and the middleware registration line. Show the configured thresholds, not just the import.
+
+#### Category 4: Encryption (`encryption`)
+
+Protects data confidentiality through encryption at rest, in transit, or via hashing of sensitive values.
+
+**Pattern indicators**:
+- TLS/SSL: `https.createServer`, `ssl_context`, `certfile`, `keyfile`, `tls.connect`, `HTTPS`, `force_ssl`, `ssl: true`
+- HTTPS enforcement: `redirect_to_https`, `requireHTTPS`, `hsts`, `Strict-Transport-Security`
+- Crypto operations: `crypto.createCipher`, `crypto.createHash`, `encrypt()`, `decrypt()`, `AES`, `RSA`, `createCipheriv`
+- Password/token hashing: `bcrypt.hash`, `argon2.hash`, `scrypt`, `pbkdf2`, `hashSync`, `SHA-256`, `SHA-512` (with salt)
+- Key management: `KMS`, `keyVault`, `secretManager`, `ENCRYPTION_KEY`, `process.env.*_KEY`, `getSecret`
+- At-rest encryption: `encryptedField`, `@Encrypted`, `encrypt: true`, `columnEncrypt`, `pgcrypto`, `aes_encrypt`
+- Secure random: `crypto.randomBytes`, `crypto.randomUUID`, `secrets.token_urlsafe`, `SecureRandom`
+
+**Evidence criteria** (Phase B):
+- KEEP: Encryption applied to sensitive data fields (passwords, tokens, PII, secrets) before storage or transmission
+- KEEP: TLS/SSL configuration in production server setup
+- KEEP: HTTPS enforcement middleware or redirect logic
+- KEEP: Key management integration loading encryption keys from secure stores
+- REJECT: Hash functions used for non-security purposes (ETags, cache keys, content deduplication, checksum verification)
+- REJECT: TLS configuration in development-only files or local environment setup
+- REJECT: Crypto imports with no corresponding encrypt/decrypt/hash calls
+- REJECT: Encryption in test fixtures or mock data generators
+
+**Common libraries/frameworks**: `crypto` (Node.js built-in), `bcrypt`, `argon2`, `tweetnacl`, `sodium-native`, `cryptography` (Python), `PyCryptodome`, `Bouncy Castle`, `Tink`, `golang.org/x/crypto`, `ring` (Rust)
+
+**Snippet guidance**: Capture the encryption or hashing call with its algorithm and the data it protects (e.g., `bcrypt.hash(password, saltRounds)` or `crypto.createCipheriv('aes-256-gcm', key, iv)`). Show what data is being protected, not just that crypto exists.
+
+#### Category 5: Logging/Audit (`logging-audit`)
+
+Records security-relevant events for accountability, forensics, and compliance.
+
+**Pattern indicators**:
+- Structured logging: `winston`, `pino`, `bunyan`, `log4j`, `logback`, `slog`, `loguru`, `structlog`, `zerolog`
+- Audit-specific: `auditLog`, `audit_trail`, `logSecurityEvent`, `recordActivity`, `trackAction`, `auditEntry`
+- Security event logging: `loginAttempt`, `authFailure`, `accessDenied`, `permissionDenied`, `unauthorizedAccess`, `dataAccess`
+- Request logging middleware: `morgan`, `express-winston`, `requestLogger`, `accessLog`, `httpLogger`
+- Compliance logging: `gdpr`, `hipaa`, `sox`, `complianceLog`, `dataRetention`
+- Event tracking: `eventEmitter.emit('security'`, `securityEvent`, `incidentLog`
+
+**Evidence criteria** (Phase B):
+- KEEP: Logging of authentication attempts (success and failure) with user identifiers
+- KEEP: Logging of authorization decisions (permission grants and denials)
+- KEEP: Logging of data access events (who accessed what, when)
+- KEEP: Logging of configuration or permission changes
+- KEEP: Structured logging middleware capturing request metadata (IP, user agent, path, status code)
+- REJECT: Generic `console.log` or `print` statements without security context
+- REJECT: Debug-level logging that does not capture security-relevant events
+- REJECT: Logging in test files or test utilities
+- REJECT: Log configuration without actual log invocations in security-relevant code paths
+
+**Common libraries/frameworks**: `winston`, `pino`, `bunyan`, `morgan`, `log4j2`, `logback`, `SLF4J`, `slog`, `zerolog`, `loguru`, `structlog`, `Serilog`, `NLog`, `tracing` (Rust)
+
+**Snippet guidance**: Capture the log call that records a security event, showing the event type and the data being logged (e.g., `logger.info({ event: 'auth_failure', userId, ip }, 'Login failed')`). Prefer security event logging over generic request logging.
+
+#### Category 6: CSRF Protection (`csrf-protection`)
+
+Prevents cross-site request forgery by validating request origin or embedding anti-forgery tokens.
+
+**Pattern indicators**:
+- CSRF middleware: `csurf`, `csrf-csrf`, `csrfProtection`, `@csrf_protect`, `CsrfViewMiddleware`, `csrf_exempt`
+- Token patterns: `csrfToken`, `_csrf`, `antiForgery`, `__RequestVerificationToken`, `authenticity_token`
+- Cookie attributes: `SameSite=Strict`, `SameSite=Lax`, `sameSite: 'strict'`, `sameSite: 'lax'`
+- Origin validation: `origin`, `referer`, `allowedOrigins`, `checkOrigin`, `validateOrigin`
+- Double-submit: `doubleCsrf`, `double-submit`, `csrfCookie`
+- Custom header requirements: `X-Requested-With`, `X-CSRF-Token`, `x-xsrf-token`
+- Framework built-ins: `@csrf_protect` (Django), `protect_from_forgery` (Rails), `@EnableCsrf` (Spring)
+
+**Evidence criteria** (Phase B):
+- KEEP: CSRF middleware applied to state-changing routes (POST, PUT, DELETE, PATCH)
+- KEEP: Anti-forgery token generation AND validation both present
+- KEEP: SameSite cookie attribute set to `Strict` or `Lax` on session cookies
+- KEEP: Origin or referer header validation on state-changing endpoints
+- REJECT: `SameSite=None` (weakens protection rather than providing it)
+- REJECT: CSRF middleware imported but explicitly disabled (`csrf: false`, `csrf_exempt` on all routes)
+- REJECT: Token generation without corresponding validation logic
+- REJECT: CSRF protection only in test or development configuration
+
+**Common libraries/frameworks**: `csurf`, `csrf-csrf`, `lusca`, `Django CSRF middleware`, `Rails CSRF protection`, `Spring Security CSRF`, `gorilla/csrf`, `Antiforgery` (.NET)
+
+**Snippet guidance**: Capture the CSRF middleware registration on the application or router, showing it applied to state-changing endpoints. If token validation is the primary mechanism, show the validation check.
+
+#### Category 7: CSP/Security Headers (`csp-security-headers`)
+
+Applies HTTP security headers to responses, reducing the attack surface for client-side vulnerabilities.
+
+**Pattern indicators**:
+- Header middleware: `helmet`, `helmet()`, `secure_headers`, `SecurityHeaders`, `@secure_headers`
+- Content-Security-Policy: `Content-Security-Policy`, `contentSecurityPolicy`, `csp`, `CSP`, `script-src`, `style-src`, `default-src`
+- Frame protection: `X-Frame-Options`, `frameguard`, `DENY`, `SAMEORIGIN`, `frame-ancestors`
+- Content type: `X-Content-Type-Options`, `nosniff`, `noSniff`
+- Transport security: `Strict-Transport-Security`, `hsts`, `max-age`, `includeSubDomains`
+- Referrer policy: `Referrer-Policy`, `referrerPolicy`, `no-referrer`, `strict-origin`
+- Permissions: `Permissions-Policy`, `permissionsPolicy`, `Feature-Policy`, `geolocation`, `camera`, `microphone`
+- XSS filter: `X-XSS-Protection`, `xssFilter`
+
+**Evidence criteria** (Phase B):
+- KEEP: Security header middleware registered on the application (e.g., `app.use(helmet())`)
+- KEEP: Individual security headers set on HTTP responses via middleware or response configuration
+- KEEP: CSP directives that restrict script sources, style sources, or default sources
+- KEEP: HSTS header with reasonable `max-age` (>= 31536000 recommended)
+- REJECT: Security header constants defined but never applied to responses
+- REJECT: Commented-out helmet or security header middleware
+- REJECT: Headers set only in development or test configuration
+- REJECT: Overly permissive CSP that effectively disables protection (`default-src *`, `script-src 'unsafe-inline' 'unsafe-eval' *`)
+
+**Common libraries/frameworks**: `helmet`, `lusca`, `django-csp`, `secure` (Python), `Spring Security headers`, `Rack::Headers`, `gorilla/handlers`
+
+**Snippet guidance**: Capture the middleware registration showing the header configuration (e.g., `app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'self'"] } } }))`). Show the directive values, not just that the middleware is used.
+
+#### Category 8: Access Control (`access-control`)
+
+Enforces authorization rules to ensure users can only access resources and perform actions they are permitted to.
+
+**Pattern indicators**:
+- RBAC/ABAC: `rbac`, `abac`, `hasRole`, `hasPermission`, `checkPermission`, `requireRole`, `@Roles`, `@Permissions`
+- Authorization middleware: `authorize`, `can()`, `ability`, `policy`, `guard`, `@UseGuards`, `@PreAuthorize`
+- Libraries: `casl`, `casbin`, `oso`, `accesscontrol`, `node-casbin`
+- ACL patterns: `acl`, `accessControlList`, `allowedRoles`, `permittedActions`
+- Resource ownership: `req.user.id === resource.ownerId`, `isOwner`, `belongsTo`, `checkOwnership`
+- Tenant isolation: `tenantId`, `organizationId`, `req.tenant`, `scope: 'tenant'`, `@TenantGuard`
+- Scope checks: `scope`, `scopes`, `requiredScopes`, `hasScope`, `@Scopes`
+- Framework decorators: `@Authorize`, `@PermissionRequired`, `@permission_required`, `@login_required`
+
+**Evidence criteria** (Phase B):
+- KEEP: Permission check executed before resource access (middleware, guard, or inline check)
+- KEEP: Role-based guard or decorator applied to route or controller
+- KEEP: Resource ownership validation comparing requesting user to resource owner
+- KEEP: Tenant isolation logic filtering queries by tenant context
+- KEEP: ABAC policy evaluation against user attributes and resource properties
+- REJECT: Role enum or permission constant definitions without enforcement logic
+- REJECT: User model with a `role` field but no guard that checks it
+- REJECT: Authorization library imported but no policy or ability defined
+- REJECT: Test mocks that stub authorization responses
+- REJECT: Frontend-only route guards without corresponding server-side enforcement
+
+**Common libraries/frameworks**: `casl`, `casbin`, `oso`, `accesscontrol`, `@nestjs/passport` (guards), `Spring Security`, `django-guardian`, `pundit`, `cancancan`, `go-casbin`
+
+**Snippet guidance**: Capture the authorization check showing the permission or role being verified and the protected resource (e.g., `if (!user.hasPermission('documents:write')) return res.status(403)` or `@UseGuards(RolesGuard) @Roles('admin')`). Show the enforcement, not just the role definition.
+
+### 3c. Evidence Collection
+
+For each candidate that survives Phase B semantic analysis, collect a `control_evidence` entry conforming to the `control_evidence` item schema in `schemas/compensating-controls.yaml`:
+
+```yaml
+control_evidence:
+  - file: "src/middleware/auth.ts"        # Relative path from target root
+    line: 42                               # Line number of the control
+    snippet: |                             # Max 5 lines showing the control
+      const authMiddleware = (req, res, next) => {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token) return res.status(401).json({ error: 'Unauthorized' });
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
+```
+
+**Snippet selection rules**:
+
+1. **Length**: Maximum 5 lines of code. Never capture entire files or entire functions.
+2. **Representativeness**: Select the lines that most clearly demonstrate the control mechanism in action. Prefer:
+   - The function/block declaration line + core implementation logic
+   - Middleware registration if it appears within 5 lines of the implementation
+   - The verification/enforcement call, not just the setup or configuration
+3. **Self-contained**: The snippet should be understandable without additional context. Include enough surrounding code to show what the control does and what it protects.
+4. **Deduplication**: If the same control implementation is applied to multiple routes (e.g., the same auth middleware on 10 endpoints), collect evidence from the middleware definition only -- do not duplicate evidence for each route.
+5. **Multiple controls per category**: If a component has multiple distinct controls in the same category (e.g., JWT auth for API routes AND session auth for web routes), collect separate evidence entries for each.
+
+**File path format**: Always use forward slashes and paths relative to the target codebase root (the path provided as input). Never use absolute paths in evidence.
+
+**Line number accuracy**: The `line` field must reference the first line of the captured snippet within the original file. When a file was truncated during Phase 2 large file handling, map the truncated position back to the original file line number.
+
+### 3d. Confidence Levels
+
+Assign a detection confidence to each detected control based on the strength of evidence from Phase A and Phase B:
+
+| Confidence | Criteria | Example |
+|------------|----------|---------|
+| **High** | Explicit security library or framework usage confirmed with clear middleware registration or guard application. Both Phase A pattern match and Phase B semantic analysis confirm the control is active and enforced. | `app.use(helmet())` registered at application level; `jwt.verify()` inside a middleware that is applied to protected routes. |
+| **Medium** | Security-relevant code patterns detected without standard library usage, OR a recognized library is imported and used but its registration or wiring to routes cannot be confirmed within the scanned file set. Phase A matches, Phase B confirms implementation exists but cannot verify full enforcement scope. | Custom token validation function that checks headers manually; `bcrypt.hash` used in a user service but the calling route is outside the scanned files. |
+| **Low** | Heuristic match only -- code uses security-adjacent keywords and the surrounding context suggests possible control intent, but implementation details are ambiguous or the code may be a false positive that Phase B could not definitively resolve. | A function named `checkAccess` that reads a role field but the enforcement path (returning 403 vs. logging) is unclear from the available code. |
+
+**Confidence assignment rules**:
+
+- When the same control category has multiple evidence entries with different confidence levels, use the **highest** confidence entry as the representative control for that category.
+- Report the confidence level alongside each evidence entry in the internal detection results. Confidence feeds into Phase 4 classification decisions.
+- A **High** confidence control in any mapped category is sufficient to classify a threat as having a found control. A **Low** confidence control alone warrants a **partial** classification unless corroborated by additional evidence.
+
+### 3e. Detection Output
+
+The output of Phase 3 is a per-component detection map listing all detected controls with their evidence and confidence:
+
+```yaml
+detected_controls:
+  "API Gateway":
+    authentication:
+      detected: true
+      confidence: high
+      evidence:
+        - file: "src/middleware/auth.ts"
+          line: 12
+          snippet: |
+            export const authMiddleware = (req, res, next) => {
+              const token = req.headers.authorization?.split(' ')[1];
+              if (!token) return res.status(401).json({ error: 'Unauthorized' });
+              const decoded = jwt.verify(token, process.env.JWT_SECRET);
+              req.user = decoded;
+    input-validation:
+      detected: true
+      confidence: medium
+      evidence:
+        - file: "src/routes/api.ts"
+          line: 28
+          snippet: |
+            const schema = z.object({
+              name: z.string().min(1).max(100),
+              email: z.string().email(),
+            });
+            app.post('/users', validate(schema), createUser);
+    rate-limiting:
+      detected: false
+      confidence: null
+      evidence: []
+    encryption:
+      detected: true
+      confidence: high
+      evidence:
+        - file: "src/config/server.ts"
+          line: 5
+          snippet: |
+            const server = https.createServer({
+              key: fs.readFileSync(process.env.TLS_KEY_PATH),
+              cert: fs.readFileSync(process.env.TLS_CERT_PATH),
+            }, app);
+    logging-audit:
+      detected: false
+      confidence: null
+      evidence: []
+    csrf-protection:
+      detected: false
+      confidence: null
+      evidence: []
+    csp-security-headers:
+      detected: true
+      confidence: high
+      evidence:
+        - file: "src/middleware/security.ts"
+          line: 3
+          snippet: |
+            app.use(helmet({
+              contentSecurityPolicy: {
+                directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'"] }
+              },
+            }));
+    access-control:
+      detected: true
+      confidence: medium
+      evidence:
+        - file: "src/guards/roles.ts"
+          line: 8
+          snippet: |
+            export const requireRole = (...roles) => (req, res, next) => {
+              if (!roles.includes(req.user.role))
+                return res.status(403).json({ error: 'Forbidden' });
+              next();
+            };
+```
+
+**Undetected categories**: For control categories where no evidence was found, record `detected: false`, `confidence: null`, and an empty `evidence` list. These feed into Phase 4 as "missing" controls.
+
+**Unmapped components**: Components with no mapped files (from Phase 2) skip Phase 3 entirely. All 8 control categories are recorded as `detected: false` for unmapped components.
+
+### 3f. Component-Based Batching
+
+Process threats in component-based batches to maximize file I/O efficiency:
+
+**Batching strategy**:
+1. **Group threats by component**: From the Phase 1 finding set, group all threats that target the same component.
+2. **Analyze per component**: For each component batch, read the component's files once (from Phase 2 mapping), then scan for all 8 control categories simultaneously. All threats targeting this component share the same control detection results.
+3. **Context window budget**: Allocate approximately 50,000 tokens of codebase content per component batch. This leaves room for agent instructions, schema references, and output generation within the ~80K total context budget.
+
+**Sub-batch splitting** (when component exceeds budget):
+1. If a component's file content exceeds ~50K tokens after truncation, split the analysis:
+   - **Split by file priority**: Process security-priority files first (middleware/, auth/, security/), then remaining files
+   - **Merge results**: Combine control detections from sub-batches, keeping the highest-confidence evidence per category
+2. If splitting still exceeds budget, warn: **"Component '{name}' exceeds context budget even after splitting. Analysis may be incomplete — {skipped_file_count} lower-priority files not analyzed."**
+
+**Partial result emission**:
+- If a component batch fails mid-analysis, emit all controls detected before the failure
+- Record the failure: **"Partial analysis for component '{name}': {detected_count}/8 categories scanned before failure"**
+- Continue to the next component batch — never halt the entire pipeline for a single batch failure
 
 ---
 
@@ -364,7 +770,99 @@ This canonical mapping determines which control categories to search for when an
 
 Map each detected control to the specific threats it addresses using the STRIDE-to-control-category mapping from `schemas/compensating-controls.yaml`. Assign a `control_status` (found, partial, missing) and determine the `reduction_factor` for each threat-control pair. When a threat has multiple applicable controls, select the control with the highest reduction factor.
 
-<!-- Phase 4 detailed content will be added by tasks T010-T011 -->
+### 4a. Threat-to-Control Mapping
+
+For each scored threat in the finding set:
+
+1. **Identify relevant control categories**: Using the STRIDE-to-Control-Category Mapping table (Phase 3), look up which control categories are relevant for this threat's `category`.
+2. **Retrieve detection results**: From the Phase 3 detection output for this threat's `component`, check each relevant control category's detection status.
+3. **Match controls to threat**: A control is "matching" if it was detected in a category that maps to this threat's STRIDE category.
+
+### 4b. Classification Rules
+
+Assign `control_status` for each threat based on the detection results:
+
+**Control Found** (`found`):
+- At least one relevant control category has `detected: true` with `confidence: High` or `confidence: Medium`
+- The detected control directly addresses the threat's attack vector
+- Reduction factor: **0.50** (P0 binary)
+
+**Partial Control** (`partial`):
+- One or more relevant control categories have `detected: true` but:
+  - The detected control has `confidence: Low` only, OR
+  - The threat maps to multiple control categories and only some have detections (e.g., Spoofing maps to Authentication + Access Control, but only Authentication is detected), OR
+  - The detected control covers some but not all paths/endpoints for the component (evidence suggests incomplete coverage)
+- Reduction factor: **0.25** (P0 binary)
+
+**No Control Found** (`missing`):
+- No relevant control categories have any detections for this component
+- Or the component was unmapped (no files found in Phase 2)
+- Reduction factor: **0.00**
+
+### 4c. Multi-Control Resolution
+
+When a threat maps to multiple control categories (e.g., Spoofing → Authentication + Access Control):
+
+1. **Evaluate each mapped category independently**: Check detection status and confidence for each.
+2. **Classification priority**:
+   - If ALL mapped categories have High/Medium confidence detections → `found`
+   - If SOME but not all mapped categories have detections → `partial`
+   - If NONE of the mapped categories have detections → `missing`
+3. **Best evidence selection**: Select the evidence from the category with the highest confidence detection. If tied, prefer the category that is more directly aligned with the threat (e.g., for Spoofing, prefer Authentication evidence over Access Control evidence).
+
+### 4d. Cross-Component Controls
+
+Some controls are global — they apply across all components (e.g., a CORS middleware registered at the application root, a global rate limiter, a security headers middleware). Handle cross-component controls as follows:
+
+1. **Detection during Phase 3**: Global controls are detected when scanning root-level or middleware-level files. They appear in the detection results for the component that contains the global middleware.
+2. **Application to other components**: When a global control is detected for one component, it MAY apply to other components' threats if:
+   - The control is registered at the application/server level (not route-specific)
+   - The control category is relevant to the other component's threats
+3. **Evidence inheritance**: When applying a global control to a different component's threat, the evidence references the global middleware file but the classification applies to the threat's component.
+4. **Conservative approach**: When uncertain whether a global control applies to a specific component, classify as `partial` rather than `found`.
+
+### 4e. Classification Output
+
+The output of Phase 4 is a per-threat classification:
+
+```yaml
+classified_threats:
+  - id: "S-1"
+    component: "API Gateway"
+    category: "spoofing"
+    threat: "JWT token forgery..."
+    composite_score: 7.8
+    severity_band: "High"
+    control_status: "found"
+    control_category: "authentication"
+    control_evidence:
+      - file: "src/middleware/auth.ts"
+        line: 42
+        snippet: "const decoded = jwt.verify(token, ...);"
+    confidence: "High"
+    reduction_factor: 0.50
+    # ... all other finding fields preserved from Phase 1
+  - id: "D-3"
+    component: "LLM Service"
+    category: "denial-of-service"
+    threat: "Unbounded request processing..."
+    composite_score: 6.5
+    severity_band: "Medium"
+    control_status: "missing"
+    control_category: "rate-limiting"
+    control_evidence: []
+    confidence: null
+    reduction_factor: 0.00
+
+# Summary counts
+classification_summary:
+  found: 12
+  partial: 8
+  missing: 14
+  total: 34
+```
+
+**Exhaustive classification**: Every finding in the Phase 1 finding set MUST receive exactly one classification. After Phase 4, the count of classified threats MUST equal the count of parsed findings. If any finding is missing a classification, halt with: **"Classification incomplete: {missing_count} findings unclassified. IDs: {id_list}"**
 
 ---
 
