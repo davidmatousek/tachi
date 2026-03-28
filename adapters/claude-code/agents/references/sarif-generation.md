@@ -497,3 +497,87 @@ Before writing the `threats.sarif` file, run the following validation checklist.
 If any check fails, correct the error before proceeding. Do not produce a `threats.sarif` file that fails any of these structural checks.
 
 After the self-check passes, write the `threats.sarif` file to the output directory alongside `threats.md`.
+
+---
+
+### Risk Scoring SARIF Extension
+
+When the `/risk-score` command processes `threats.sarif` (or `threats.md`) into `risk-scores.sarif`, the scored SARIF output extends the base `threats.sarif` structure with quantitative risk scoring properties. This section documents the differences between the two SARIF files.
+
+#### Semantic Shift: `security-severity`
+
+The meaning of `security-severity` differs between the two SARIF files:
+
+| Property | `threats.sarif` | `risk-scores.sarif` |
+|----------|----------------|---------------------|
+| **Rule-level** `security-severity` | Static category-level value from the Severity Mapping Table (e.g., `"8.0"` for all High findings in a category) | **MAX composite score** among that rule's findings (e.g., `"8.4"` if the highest-scored spoofing finding has composite 8.4) |
+| **Result-level** `security-severity` | Not present (severity lives only on the rule) | **Per-finding composite score** as a numeric string (e.g., `"7.8"`) — each finding gets its own calculated value |
+
+This shift enables GitHub Code Scanning to display granular, per-finding severity rather than flat category-level severity, allowing differentiation between findings that previously shared the same rating.
+
+#### Extended Property Bag Schema
+
+Each result in `risk-scores.sarif` includes these additional properties in its `properties` object:
+
+```json
+{
+  "properties": {
+    "security-severity": "<composite-score-as-numeric-string>",
+    "cvss-base-score": "<0.0-10.0 as string>",
+    "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N",
+    "exploitability": "<0.0-10.0 as string>",
+    "scalability": "<0.0-10.0 as string>",
+    "reachability": "<0.0-10.0 as string>",
+    "composite-weights": "0.35/0.30/0.15/0.20",
+    "severity-band": "<Critical|High|Medium|Low>",
+    "risk-owner": "Unassigned",
+    "remediation-sla": "<24h|7d|30d|90d>",
+    "risk-disposition": "<Mitigate|Review>",
+    "review-date": "<YYYY-MM-DD>"
+  }
+}
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `security-severity` | numeric string | Composite risk score (weighted sum of four dimensions). Replaces the static category value from `threats.sarif`. |
+| `cvss-base-score` | numeric string | CVSS 3.1 base score (0.0-10.0) |
+| `cvss-vector` | string | Full CVSS 3.1 vector string for auditability |
+| `exploitability` | numeric string | Exploitability assessment (0.0-10.0) |
+| `scalability` | numeric string | Scalability assessment (0.0-10.0) |
+| `reachability` | numeric string | Reachability assessment (0.0-10.0), derived from trust zone placement |
+| `composite-weights` | string | Weight allocation used: `"cvss/exploitability/scalability/reachability"` |
+| `severity-band` | string | Severity classification mapped from composite: Critical (9.0-10.0), High (7.0-8.9), Medium (4.0-6.9), Low (0.0-3.9) |
+| `risk-owner` | string | Assigned remediation owner. Default: `"Unassigned"` |
+| `remediation-sla` | string | Severity-driven deadline: Critical=24h, High=7d, Medium=30d, Low=90d |
+| `risk-disposition` | string | Risk treatment decision: Critical/High=Mitigate, Medium/Low=Review |
+| `review-date` | string | ISO 8601 date: scoring date + SLA duration |
+
+#### Fingerprint Preservation Rules
+
+`risk-scores.sarif` MUST preserve all fingerprint values from the source `threats.sarif`:
+
+- `partialFingerprints["findingId/v1"]` — finding ID (e.g., `"S-1"`) preserved for cross-reference continuity between `threats.md`, `threats.sarif`, and `risk-scores.sarif`
+- `partialFingerprints["primaryLocationLineHash"]` — deterministic hash preserved for GitHub Code Scanning alert tracking. Using the same hash enables `risk-scores.sarif` to supersede `threats.sarif` without creating duplicate alerts.
+- `partialFingerprints["correlationGroup"]` — correlation group ID preserved on primary findings
+
+#### Taxonomy Preservation
+
+`risk-scores.sarif` MUST preserve all taxonomy declarations from the source `threats.sarif`:
+
+- `run.taxonomies[]` — OWASP and CWE taxonomy framework declarations
+- `tool.driver.supportedTaxonomies[]` — supported taxonomy references
+- Rule `relationships[]` — per-rule taxonomy mappings (OWASP Top 10, CWE entries)
+
+Taxonomies are passed through unchanged. The risk-scorer does not modify, add, or remove taxonomy data.
+
+#### Tool Metadata Differences
+
+| Field | `threats.sarif` | `risk-scores.sarif` |
+|-------|----------------|---------------------|
+| `tool.driver.name` | `"Tachi"` | `"tachi-risk-scorer"` |
+| `tool.driver.version` | Schema version from `output.yaml` | `"1.0"` (risk-scoring schema version) |
+
+#### SARIF Supersession
+
+`risk-scores.sarif` is designed to supersede `threats.sarif` for GitHub Code Scanning uploads. Because fingerprints are preserved, uploading `risk-scores.sarif` will update existing alerts with quantitative scores rather than creating duplicate alert sets. The `security-severity` shift from static category values to per-finding composite scores enables more granular severity display in the GitHub Security tab.

@@ -137,3 +137,23 @@ finding:
 # HIGH Impact      Medium            High              Critical
 # MEDIUM Impact    Low               Medium            High
 # LOW Impact       Note              Low               Medium
+
+# Scored Finding Extension (Optional)
+#
+# When quantitative risk scoring is applied via /risk-score,
+# findings are extended with additional scoring and governance
+# fields defined in schemas/risk-scoring.yaml.
+#
+# The scored_finding schema extends this finding schema with:
+#   - cvss_base (0.0-10.0): CVSS 3.1 base score
+#   - cvss_vector: Full CVSS 3.1 vector string
+#   - exploitability (0.0-10.0): Exploitability assessment
+#   - scalability (0.0-10.0): Scalability assessment
+#   - reachability (0.0-10.0): Reachability assessment
+#   - composite_score (0.0-10.0): Weighted composite
+#   - severity_band: Critical/High/Medium/Low
+#   - risk_owner, remediation_sla, risk_disposition, review_date
+#
+# See: schemas/risk-scoring.yaml for full field definitions
+# Producer: agents/tachi/risk-scorer.md
+# Output: templates/risk-scores.md, templates/risk-scores.sarif

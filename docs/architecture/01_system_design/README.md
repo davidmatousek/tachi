@@ -843,3 +843,61 @@ graph LR
 | Bash | VERSION file generation script | Lightweight, no runtime dependencies |
 | GitHub Actions YAML | CI workflow definition | Standard for GitHub CI/CD |
 | `codeql/upload-sarif@v3` | SARIF upload to Code Scanning | GitHub's official SARIF upload action |
+
+---
+
+### Feature 035: Quantitative Risk Scoring
+
+## Components
+
+### Component 1: Risk Score Command
+
+**File**: `.claude/commands/risk-score.md`
+**Type**: New file
+**Purpose**: `/risk-score` command definition — flag parsing, input validation, agent invocation, output summary. Follows the `/threat-model` command pattern.
+
+### Component 2: Risk Scorer Agent
+
+**File**: `.claude/agents/tachi/risk-scorer.md`
+**Type**: New file
+**Purpose**: Core scoring agent — parses threat findings, assesses 4 dimensions (CVSS 3.1, exploitability, scalability, reachability), calculates weighted composite, attaches governance fields, generates dual output.
+
+### Component 3: Risk Scoring Schema
+
+**File**: `schemas/risk-scoring.yaml`
+**Type**: New file
+**Purpose**: Scored finding schema extending `finding.yaml` with scoring dimensions, composite weights, category-level CVSS defaults, and severity band definitions aligned with `output.yaml`.
+
+### Component 4: Output Templates
+
+**Files**: `templates/risk-scores.md`, `templates/risk-scores.sarif`
+**Type**: New files
+**Purpose**: Markdown template (executive summary, scored threat table, methodology section) and SARIF template (extended property bag with per-finding composite scores and governance fields).
+
+### Component 5: Adapter Distribution
+
+**Files**: `adapters/claude-code/commands/risk-score.md`, `adapters/claude-code/agents/risk-scorer.md`
+**Type**: New files
+**Purpose**: Adapter copies for Claude Code distribution, following existing adapter pattern.
+
+## Data Flow
+
+```mermaid
+graph LR
+    A["/threat-model output<br>threats.md + threats.sarif"] --> B["/risk-score command"]
+    C["architecture.md<br>(optional)"] --> B
+    B --> D["risk-scorer agent"]
+    D --> E["risk-scores.md"]
+    D --> F["risk-scores.sarif"]
+```
+
+Pipeline: Parse threats → Extract trust zones → Score 4 dimensions per finding → Calculate composite + governance → Generate dual output. Input precedence: `threats.md` canonical, `threats.sarif` fallback.
+
+## Tech Stack
+
+| Technology | Purpose | Justification |
+|------------|---------|---------------|
+| Markdown | Command and agent prompt files | Follows existing tachi agent pattern |
+| YAML | Scoring schema, category defaults, weights | Consistent with `finding.yaml`/`output.yaml` |
+| SARIF 2.1.0 JSON | Machine-readable scored output | Extends existing `threats.sarif` with scoring properties |
+| CVSS 3.1 | Base scoring standard | Industry standard, NVD/GitHub Advisory Database compatible |
