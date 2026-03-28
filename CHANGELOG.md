@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 039 — Standalone /infographic Command
+
+**Added**
+- Standalone `/infographic` command with auto-detection of richest data source, dual-path extraction, template selection, and explicit file override; Phase 6 removed from `/threat-model` pipeline (5-phase only); all platform adapters updated (`45ba448`)
+
+**Changed**
+- Closed Feature 039 — updated product docs (PRD INDEX, User Stories, OKRs), architecture docs (System Design, ADR-014 addendum, ADR-016), KB entry PAT-008 (`9ba6f07`)
+- Delivery retrospective and backlog sync (`c291b42`)
+
 ### Feature 036 — Compensating Controls Analysis
 
 **Added**
