@@ -1,6 +1,6 @@
 # DevOps Documentation - tachi
 
-**Last Updated**: 2026-03-23
+**Last Updated**: 2026-03-28
 **Owner**: DevOps Agent
 **Status**: Active
 
@@ -44,13 +44,15 @@ CI/CD setup instructions for common platforms
 
 ## Platform Adapters (Feature 021)
 
-Feature 021 introduced platform adapters that package tachi's 14 threat agents for use across AI coding platforms and CI pipelines. These live in the `adapters/` directory at the repository root.
+Feature 021 introduced platform adapters that package tachi's 14 threat agents for use across AI coding platforms and CI pipelines. These live in the `adapters/` directory at the repository root. Features 035, 036, and 039 extended the Claude Code adapter with command files for tachi's four product commands: `/threat-model`, `/risk-score`, `/compensating-controls`, and `/infographic`.
 
 ### Adapter Directory Structure
 
 ```
 adapters/
   claude-code/     # .md agents with name/description frontmatter
+    agents/        #   14 threat agents + risk-scorer
+    commands/      #   /threat-model, /risk-score, /infographic
   copilot/         # .agent.md + .instructions.md files
   cursor/          # .mdc rule files
   generic/         # Numbered .md prompt files (any LLM)

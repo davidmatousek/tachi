@@ -207,7 +207,7 @@ For each remaining feature (F-002 through F-010), copy the feature block from th
 1. **STRIDE Analysis**: 6 specialized agents analyzing architecture through Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, and Elevation of Privilege lenses
 2. **AI Threat Analysis**: 2 agents covering OWASP Top 10 for Agentic Applications + OWASP MCP Top 10 (2025) and OWASP Top 10 for LLM Applications
 3. **Parallel Orchestration**: Orchestrator parses input, dispatches to 8 agents in parallel, collects findings, deduplicates, correlates, and rates risks
-4. **Multi-Format Output**: threats.md (structured), threats.sarif (CI/CD), threat-report.md (narrative + attack trees), threat-infographic.jpg (visual)
+4. **Multi-Format Output**: threats.md (structured), threats.sarif (CI/CD), threat-report.md (narrative + attack trees), risk-scores.md/sarif (quantitative scoring via `/risk-score`), compensating-controls.md/sarif (control analysis via `/compensating-controls`), infographics (visual, via `/infographic`)
 5. **Platform Portability**: Adapters for Claude Code, Cursor, Copilot, GitHub Actions, and generic prompt format
 
 ---

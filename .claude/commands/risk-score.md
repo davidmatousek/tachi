@@ -100,7 +100,7 @@ Single-command entry point for tachi quantitative risk scoring. Validates prereq
    </architecture-input>
    ```
 
-4. Wait for the risk-scorer agent to complete all 6 pipeline phases.
+4. Wait for the risk-scorer agent to complete all 6 of its internal analysis phases.
 
 ## Step 3: Report Results
 

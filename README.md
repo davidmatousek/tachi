@@ -10,11 +10,11 @@
 
 ## What is tachi?
 
-tachi is a threat modeling sidecar that you add to any project. It dispatches 14 specialized AI agents against your architecture description and produces a complete threat model in one command. Then `/risk-score` enriches findings with quantitative scores for data-driven prioritization.
+tachi is a threat modeling sidecar that you add to any project. It dispatches 14 specialized AI agents against your architecture description and produces a complete threat model in one command. Then three post-pipeline commands enrich your results: `/risk-score` for quantitative scoring, `/compensating-controls` for codebase control analysis, and `/infographic` for visual risk diagrams.
 
 - **11 threat categories**: 6 STRIDE + 3 LLM-specific + 2 Agentic
 - **5 input formats**: Mermaid, free-text, ASCII, PlantUML, C4
-- **10 output artifacts**: structured findings, SARIF, narrative report, attack trees, infographics, quantitative risk scores
+- **12+ output artifacts**: structured findings, SARIF, narrative report, attack trees, quantitative risk scores, compensating controls analysis, visual infographics
 - **Works with any stack**: tachi analyzes architecture, not code
 
 tachi is built with the [Agentic Oriented Development Kit (AOD Kit)](https://github.com/davidmatousek/agentic-oriented-development-kit), a governance framework for AI agent-assisted development.
@@ -43,11 +43,13 @@ cp -r ~/Projects/tachi/adapters/claude-code/agents/ .claude/agents/tachi/
 mkdir -p .claude/commands
 cp ~/Projects/tachi/adapters/claude-code/commands/threat-model.md .claude/commands/
 cp ~/Projects/tachi/adapters/claude-code/commands/risk-score.md .claude/commands/
+cp ~/Projects/tachi/.claude/commands/compensating-controls.md .claude/commands/
+cp ~/Projects/tachi/adapters/claude-code/commands/infographic.md .claude/commands/
 ```
 
 ### 3. Restart Claude Code
 
-After copying the files, **restart Claude Code** (close and reopen the VS Code window, or start a new CLI session) so it picks up the new agents and `/threat-model` command.
+After copying the files, **restart Claude Code** (close and reopen the VS Code window, or start a new CLI session) so it picks up the new agents and commands.
 
 If you want infographic images (`.jpg`), set the `GEMINI_API_KEY` environment variable with a key from [Google AI Studio](https://aistudio.google.com/apikey). This is optional — all text-based outputs work without it.
 
@@ -73,26 +75,30 @@ That's it. One command. tachi validates the setup, reads your architecture, disp
 
 ### 6. Review your results
 
-| File | What It Contains |
-|------|-----------------|
-| `threats.md` | Primary threat model -- findings, coverage matrix, risk summary, mitigations |
-| `threats.sarif` | SARIF 2.1.0 for GitHub Code Scanning and CI/CD integration |
-| `threat-report.md` | Narrative report with executive summary and remediation roadmap |
-| `attack-trees/` | One Mermaid attack tree per Critical/High finding |
-| `threat-baseball-card-spec.md` | Baseball Card risk dashboard specification |
-| `threat-baseball-card.jpg` | Baseball Card infographic (requires `GEMINI_API_KEY`) |
-| `threat-system-architecture-spec.md` | Annotated architecture diagram specification |
-| `threat-system-architecture.jpg` | Architecture infographic with finding legend (requires `GEMINI_API_KEY`) |
-| `risk-scores.md` | Quantitative risk scores with CVSS, exploitability, scalability, reachability, governance fields |
-| `risk-scores.sarif` | SARIF 2.1.0 with composite scores as `security-severity` per finding |
+| File | Source | What It Contains |
+|------|--------|-----------------|
+| `threats.md` | `/threat-model` | Primary threat model -- findings, coverage matrix, risk summary, mitigations |
+| `threats.sarif` | `/threat-model` | SARIF 2.1.0 for GitHub Code Scanning and CI/CD integration |
+| `threat-report.md` | `/threat-model` | Narrative report with executive summary and remediation roadmap |
+| `attack-trees/` | `/threat-model` | One Mermaid attack tree per Critical/High finding |
+| `risk-scores.md` | `/risk-score` | Quantitative risk scores with CVSS, exploitability, scalability, reachability |
+| `risk-scores.sarif` | `/risk-score` | SARIF 2.1.0 with composite scores as `security-severity` per finding |
+| `compensating-controls.md` | `/compensating-controls` | Detected codebase controls, residual risk, missing control recommendations |
+| `compensating-controls.sarif` | `/compensating-controls` | SARIF 2.1.0 with residual risk as `security-severity` per finding |
+| `threat-baseball-card-spec.md` | `/infographic` | Baseball Card risk dashboard specification |
+| `threat-baseball-card.jpg` | `/infographic` | Baseball Card infographic (requires `GEMINI_API_KEY`) |
+| `threat-system-architecture-spec.md` | `/infographic` | Annotated architecture diagram specification |
+| `threat-system-architecture.jpg` | `/infographic` | Architecture infographic with finding legend (requires `GEMINI_API_KEY`) |
 
-Start with `threats.md` Section 7 -- Recommended Actions. Then run `/risk-score` to get quantitative prioritization. Work through Critical findings first, then High.
+Start with `threats.md` Section 7 -- Recommended Actions. Then run `/risk-score` for quantitative prioritization, `/compensating-controls` to detect existing defenses, and `/infographic` for visual risk diagrams. Work through Critical findings first, then High.
 
 ---
 
 ## Command Options
 
 ### /threat-model
+
+Runs the 5-phase threat modeling pipeline: scope, determine threats, determine countermeasures, assess, and report. Produces `threats.md`, `threats.sarif`, `threat-report.md`, and `attack-trees/`.
 
 ```bash
 # Default -- uses docs/security/architecture.md
@@ -106,9 +112,6 @@ Start with `threats.md` Section 7 -- Recommended Actions. Then run `/risk-score`
 
 # Version-tagged output for a release
 /threat-model docs/security/architecture.md --version v1.0.0
-
-# Only generate one infographic template
-/threat-model docs/security/architecture.md --infographic-template baseball-card
 ```
 
 ### /risk-score
@@ -124,6 +127,45 @@ Enriches threat model output with four-dimensional quantitative risk scores (CVS
 
 # Custom output directory
 /risk-score docs/security/2026-03-27/ --output-dir reports/risk/
+```
+
+### /compensating-controls
+
+Scans a target codebase against scored threats to detect existing security controls, calculate residual risk, and recommend missing controls. Requires `/risk-score` output as input. Produces `compensating-controls.md` and `compensating-controls.sarif`.
+
+```bash
+# Scan current project against risk scores in the default location
+/compensating-controls
+
+# Scan against risk scores in a specific directory
+/compensating-controls docs/security/2026-03-27/
+
+# Scan a different codebase
+/compensating-controls docs/security/2026-03-27/ --target ~/Projects/my-app/
+
+# Custom output directory
+/compensating-controls docs/security/2026-03-27/ --output-dir reports/controls/
+```
+
+### /infographic
+
+Generates visual threat infographic specifications and presentation-ready images. Auto-detects the richest data source in the output directory (prefers `risk-scores.md` over `threats.md`). Produces spec markdown and `.jpg` images (images require `GEMINI_API_KEY`).
+
+```bash
+# Generate all infographic templates from the default location
+/infographic
+
+# Generate from a specific directory
+/infographic docs/security/2026-03-27/
+
+# Generate only the baseball card template
+/infographic docs/security/2026-03-27/ --template baseball-card
+
+# Generate only the system architecture template
+/infographic docs/security/2026-03-27/ --template system-architecture
+
+# Custom output directory
+/infographic docs/security/2026-03-27/ --output-dir reports/visuals/
 ```
 
 ---
@@ -193,7 +235,7 @@ The agentic-app example includes a [complete sample report](examples/agentic-app
 | Resource | Location | Purpose |
 |----------|----------|---------|
 | Interface Contract | [`docs/INTERFACE-CONTRACT.md`](docs/INTERFACE-CONTRACT.md) | Input formats, invocation protocol, output structure |
-| Output Templates | [`templates/`](templates/) | Canonical output structures ([threats.md](templates/threats.md), [risk-scores.md](templates/risk-scores.md), [risk-scores.sarif](templates/risk-scores.sarif)) |
+| Output Templates | [`templates/`](templates/) | Canonical output structures ([threats.md](templates/threats.md), [risk-scores.md](templates/risk-scores.md), [risk-scores.sarif](templates/risk-scores.sarif), [compensating-controls.md](templates/compensating-controls.md), [compensating-controls.sarif](templates/compensating-controls.sarif)) |
 | Schemas | [`schemas/`](schemas/) | Machine-readable contracts ([finding.yaml](schemas/finding.yaml), [input.yaml](schemas/input.yaml), [output.yaml](schemas/output.yaml), [risk-scoring.yaml](schemas/risk-scoring.yaml)) |
 | Threat Agents | [`agents/stride/`](agents/stride/) + [`agents/ai/`](agents/ai/) | Agent prompt definitions |
 | Developer Guide | [`docs/guides/DEVELOPER_GUIDE_TACHI.md`](docs/guides/DEVELOPER_GUIDE_TACHI.md) | Full walkthrough with worked examples |

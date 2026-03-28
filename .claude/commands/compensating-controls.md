@@ -97,7 +97,8 @@ Single-command entry point for tachi compensating controls analysis — the thir
    ```
    Analyze the following scored threat findings against the target codebase to detect
    existing security controls, classify each threat, recommend remediation for gaps,
-   and calculate residual risk. Execute the complete 6-phase pipeline:
+   and calculate residual risk. Execute your complete 6-phase analysis pipeline
+   (internal to the control-analyzer agent, not the threat-model command pipeline):
    Phase 1 (Parse Input) → Phase 2 (Discover Codebase) → Phase 3 (Detect Controls) →
    Phase 4 (Map & Classify) → Phase 5 (Recommend & Calculate Residual Risk) →
    Phase 6 (Generate Output).

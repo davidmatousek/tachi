@@ -120,9 +120,9 @@ Tachi uses 14 markdown-based agents, coordinated by a central orchestrator:
 
 ---
 
-## Orchestrator Flow (6 Phases)
+## Orchestrator Flow (5 Phases)
 
-The orchestrator implements the OWASP four-step threat modeling methodology, extended with two reporting phases:
+The orchestrator implements the OWASP four-step threat modeling methodology, extended with one reporting phase:
 
 1. **Phase 1 — Scope**: Parse architecture input, auto-detect format, extract components, classify each as a DFD element type (External Entity, Process, Data Store, Data Flow), identify trust boundaries and boundary crossings.
 
@@ -226,20 +226,23 @@ git clone https://github.com/davidmatousek/tachi.git ~/Projects/tachi
 # Copy agents + templates into your project's Claude Code agents directory
 cp -r ~/Projects/tachi/adapters/claude-code/agents/ .claude/agents/tachi/
 
-# Copy the /threat-model command for single-command invocation
+# Copy commands (threat-model + post-pipeline commands)
 mkdir -p .claude/commands
 cp ~/Projects/tachi/adapters/claude-code/commands/threat-model.md .claude/commands/
+cp ~/Projects/tachi/adapters/claude-code/commands/risk-score.md .claude/commands/
+cp ~/Projects/tachi/.claude/commands/compensating-controls.md .claude/commands/
+cp ~/Projects/tachi/adapters/claude-code/commands/infographic.md .claude/commands/
 
 # Verify installation
 ls .claude/agents/tachi/              # Should show 14 .md files + templates/ directory
 ls .claude/agents/tachi/templates/    # Should show infographic-corporate-white.md
-ls .claude/commands/                   # Should show threat-model.md
+ls .claude/commands/                   # Should show threat-model.md, risk-score.md, compensating-controls.md, infographic.md
 ```
 
 This installs three things:
 1. **14 agent files** in `.claude/agents/tachi/` — Claude Code auto-discovers these as dispatchable agents
 2. **Infographic templates** in `.claude/agents/tachi/templates/` — design templates for Gemini image generation (default: `corporate-white`)
-3. **`/threat-model` command** in `.claude/commands/` — single slash command to run analysis
+3. **4 command files** in `.claude/commands/` — `/threat-model`, `/risk-score`, `/compensating-controls`, `/infographic`
 
 **Additional setup for infographic image generation:**
 
@@ -268,6 +271,9 @@ No npm install or other dependencies required beyond Claude Code and the Gemini 
 cd ~/Projects/tachi && git pull
 cp -r adapters/claude-code/agents/ ~/Projects/my-app/.claude/agents/tachi/
 cp adapters/claude-code/commands/threat-model.md ~/Projects/my-app/.claude/commands/
+cp adapters/claude-code/commands/risk-score.md ~/Projects/my-app/.claude/commands/
+cp .claude/commands/compensating-controls.md ~/Projects/my-app/.claude/commands/
+cp adapters/claude-code/commands/infographic.md ~/Projects/my-app/.claude/commands/
 ```
 
 **Custom infographic templates are preserved** — the `cp -r` overwrites the default template but won't delete custom templates you've added to `.claude/agents/tachi/templates/`.
@@ -494,8 +500,8 @@ Get a developer from zero to their first threat model in 5 steps. No theory — 
 
 **Structure:**
 1. **Prerequisites**: Claude Code installed, a Gemini API key stored as `GEMINI_API_KEY` environment variable (for infographic generation), a project with architecture docs (or create a simple one)
-2. **Install Tachi**: Clone tachi, copy agents + command (`cp` commands from installation section)
-3. **Verify**: `ls .claude/agents/tachi/` shows 14 files, `ls .claude/commands/` shows `threat-model.md`
+2. **Install Tachi**: Clone tachi, copy agents + commands (`cp` commands from installation section)
+3. **Verify**: `ls .claude/agents/tachi/` shows 14 files, `ls .claude/commands/` shows 4 command files (threat-model.md, risk-score.md, compensating-controls.md, infographic.md)
 4. **Create Your Architecture File**: Create `docs/security/architecture.md` with a simple 3-component architecture as the minimal example (e.g., a React frontend, a Node.js API, and a PostgreSQL database — show the Mermaid diagram)
 5. **Run Your First Analysis**: `/threat-model` — that's it, one command
 6. **Read Your Results**: Where to find `threats.md`, what the key sections mean, what to do first (look at Critical/High findings in Section 7)
