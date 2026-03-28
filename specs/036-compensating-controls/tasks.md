@@ -128,11 +128,11 @@ triad:
 
 **Purpose**: Validate against example codebase, generate example outputs, ensure SARIF compliance.
 
-- [ ] T017 [P] Run `/compensating-controls` against `examples/agentic-app/sample-report/` with `--target examples/agentic-app/` and write example output to `examples/agentic-app/sample-report/compensating-controls.md`
-- [ ] T018 [P] Validate `examples/agentic-app/sample-report/compensating-controls.sarif` against SARIF 2.1.0 schema — verify tool metadata, fingerprint preservation from risk-scores.sarif, property bag completeness, relatedLocations for control evidence
-- [ ] T019 Verify SARIF supersession chain: confirm compensating-controls.sarif findingId/v1 fingerprints match risk-scores.sarif fingerprints for every corresponding finding
-- [ ] T020 Review example output against spec acceptance criteria: every threat classified (SC-001), file:line evidence present for detected controls (FR-005), recommendations sorted by score (FR-010), residual risk calculations correct (FR-011/FR-012), coverage statistics accurate (SC-007)
-- [ ] T021 Run quickstart.md validation: execute each usage example from `specs/036-compensating-controls/quickstart.md` and verify expected behavior
+- [X] T017 [P] Run `/compensating-controls` against `examples/agentic-app/sample-report/` with `--target examples/agentic-app/` and write example output to `examples/agentic-app/sample-report/compensating-controls.md`
+- [X] T018 [P] Validate `examples/agentic-app/sample-report/compensating-controls.sarif` against SARIF 2.1.0 schema — verify tool metadata, fingerprint preservation from risk-scores.sarif, property bag completeness, relatedLocations for control evidence
+- [X] T019 Verify SARIF supersession chain: confirm compensating-controls.sarif findingId/v1 fingerprints match risk-scores.sarif fingerprints for every corresponding finding
+- [X] T020 Review example output against spec acceptance criteria: every threat classified (SC-001), file:line evidence present for detected controls (FR-005), recommendations sorted by score (FR-010), residual risk calculations correct (FR-011/FR-012), coverage statistics accurate (SC-007)
+- [X] T021 Run quickstart.md validation: execute each usage example from `specs/036-compensating-controls/quickstart.md` and verify expected behavior
 
 **Checkpoint**: All P0 user stories validated. Feature ready for delivery.
 
