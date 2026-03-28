@@ -5,6 +5,7 @@
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 048 | [Infographic Tiered Detection & Residual Risk](048-infographic-tiered-detection-residual-risk-2026-03-28.md) | ✓ | ✓ | ⚠ | Approved | 2026-03-28 |
 | 045 | [Instruction Manual](045-instruction-manual-2026-03-28.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-28 |
 | 039 | [Standalone /infographic Command](039-standalone-infographic-command-2026-03-28.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-28 |
 | 036 | [Compensating Controls](036-compensating-controls-2026-03-27.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-28 |

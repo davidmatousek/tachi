@@ -1,5 +1,5 @@
 ---
-description: Generate visual threat infographic specifications and images from threat model output — supports auto-detection of richest data source (risk-scores.md preferred over threats.md), explicit file override, and template selection
+description: Generate visual threat infographic specifications and images from threat model output — supports three-tier auto-detection of richest data source (compensating-controls.md > risk-scores.md > threats.md), explicit file override, and template selection
 ---
 
 ## User Input
@@ -63,16 +63,18 @@ Single-command entry point for tachi threat infographic generation — the visua
    - If not found, display:
      ```
      DATA SOURCE NOT FOUND: {data_source_path}
-     Provide a valid path to a threats.md or risk-scores.md file.
+     Provide a valid path to a compensating-controls.md, risk-scores.md, or threats.md file.
      ```
    - Halt if not found.
    - Read the file content and detect type from structure:
+     - Contains `## 2. Coverage Matrix` AND the first table beneath it has a `Residual Score` column -> type is `compensating-controls`
      - Contains `## 2. Scored Threat Table` AND the first table beneath it has a `Composite` column header -> type is `risk-scores`
      - Contains `## 6. Risk Summary` with severity count labels (Critical, High, Medium, Low) -> type is `threats`
-     - Neither indicator found -> display:
+     - No indicator found -> display:
        ```
        UNABLE TO DETECT DATA SOURCE TYPE: {data_source_path}
-       Expected risk-scores.md (Section 2: Scored Threat Table with Composite column)
+       Expected compensating-controls.md (Section 2: Coverage Matrix with Residual Score column)
+       or risk-scores.md (Section 2: Scored Threat Table with Composite column)
        or threats.md (Section 6: Risk Summary with severity counts).
        ```
      - Halt if undetectable.
@@ -80,33 +82,38 @@ Single-command entry point for tachi threat infographic generation — the visua
    - Set `data_source_dir` to the directory containing the file
 
    **If no explicit path** (auto-detect):
-   - Scan current working directory for `risk-scores.md`
+   - Scan current working directory for `compensating-controls.md`
+     - If found: set `primary_file = compensating-controls.md`, type is `compensating-controls`
+   - If `compensating-controls.md` not found, scan for `risk-scores.md`
      - If found: set `primary_file = risk-scores.md`, type is `risk-scores`
    - If `risk-scores.md` not found, scan for `threats.md`
      - If found: set `primary_file = threats.md`, type is `threats`
-   - If neither found, display:
+   - If none found, display:
      ```
      NO DATA SOURCE FILES FOUND
      Expected one of:
-       - risk-scores.md (preferred — quantitative composite scores)
+       - compensating-controls.md (preferred — residual risk after control analysis)
+       - risk-scores.md (quantitative composite scores)
        - threats.md (fallback — qualitative severity counts)
      Run /threat-model first to generate threat model output.
+     Then optionally: /risk-score → /compensating-controls for richer data.
      ```
-   - Halt if neither found.
+   - Halt if none found.
    - Set `data_source_dir` to current working directory
 
-3. **Co-located threats.md check** (when type is `risk-scores`):
+3. **Co-located threats.md check** (when type is `risk-scores` or `compensating-controls`):
    - Verify `threats.md` exists in `data_source_dir`
    - If missing, display:
      ```
      CO-LOCATED threats.md NOT FOUND
-     When using risk-scores.md as primary data source, a co-located threats.md
-     is required in the same directory for structural data (project metadata,
-     trust zones, data flows).
+     When using risk-scores.md or compensating-controls.md as primary data source,
+     a co-located threats.md is required in the same directory for structural data
+     (project metadata, trust zones, data flows).
      Expected at: {data_source_dir}/threats.md
      ```
    - Halt if missing.
    - Set `secondary_file` to `{data_source_dir}/threats.md`
+   - Note: `risk-scores.md` is NOT required when `compensating-controls.md` is primary.
 
 4. **Resolve output directory**:
    - If `--output-dir` was specified in Step 0: use that path
@@ -115,17 +122,22 @@ Single-command entry point for tachi threat infographic generation — the visua
 
 5. **Display detection summary**:
    ```
-   Data source: {primary_file} ({type})
-   {if type is risk-scores: "Co-located: {secondary_file}"}
+   Data source: {primary_file} ({type_label})
+   {if type is risk-scores or compensating-controls: "Co-located: {secondary_file}"}
    Template: {template}
    Output: {output_dir}
    ```
+
+   Where `{type_label}` is:
+   - when type is `compensating-controls`: `residual risk (compensating-controls.md)`
+   - when type is `risk-scores`: `quantitative (risk-scores.md)`
+   - when type is `threats`: `qualitative (threats.md)`
 
 ## Step 2: Run Infographic Agent
 
 1. Read the primary data source file at `{primary_file}`.
 
-2. If type is `risk-scores`, also read the co-located threats.md at `{secondary_file}`.
+2. If type is `risk-scores` or `compensating-controls`, also read the co-located threats.md at `{secondary_file}`.
 
 3. Invoke the `tachi-threat-infographic` agent with the following prompt:
 
@@ -146,7 +158,7 @@ Single-command entry point for tachi threat infographic generation — the visua
    {contents of primary_file}
    </data-source>
 
-   {if type is risk-scores:}
+   {if type is risk-scores or compensating-controls:}
    <co-located-threats>
    {contents of secondary_file}
    </co-located-threats>
@@ -171,14 +183,23 @@ Templates generated:
     Image: {output_dir}/threat-{template-name}.jpg — {image_status}
 {end for}
 
-{if type is "threats" (no risk-scores.md was available):}
-Tip: Run /risk-score first to enrich your threat analysis with quantitative
-composite scores, then re-run /infographic for score-based visualizations.
+{if type is "threats" AND no explicit data_source_path:}
+💡 Tip: Run /risk-score to add quantitative risk scores to your infographic.
+{end if}
+
+{if type is "risk-scores" AND no explicit data_source_path:}
+💡 Tip: Run /compensating-controls to visualize residual risk (actual exposure after defenses).
+{end if}
+
+{if type is "compensating-controls" AND no explicit data_source_path:}
+✅ Full pipeline — visualizing residual risk (richest data available).
 {end if}
 ```
 
+**Tip suppression**: When an explicit `data_source_path` was provided (from Step 0), skip enhancement tip display entirely. Rationale: explicit path = intentional choice, no second-guessing.
+
 Where:
-- `{type_label}` is `quantitative (risk-scores.md)` when type is `risk-scores`, or `qualitative (threats.md)` when type is `threats`
+- `{type_label}` is `residual risk (compensating-controls.md)` when type is `compensating-controls`, `quantitative (risk-scores.md)` when type is `risk-scores`, or `qualitative (threats.md)` when type is `threats`
 - `{image_status}` is one of:
   - `generated` — Gemini API call succeeded, image file written
   - `skipped (no GEMINI_API_KEY)` — environment variable not set
@@ -210,7 +231,7 @@ Where:
 
 ## Quality Checklist
 
-- [ ] Data source detection correct (risk-scores.md preferred over threats.md)
+- [ ] Data source detection correct (compensating-controls.md > risk-scores.md > threats.md)
 - [ ] Risk distribution counts match source file exactly (zero discrepancy)
 - [ ] All requested templates generated (per --template flag)
 - [ ] Spec files written to output directory

@@ -2,19 +2,31 @@
 
 ---
 
-## Complete Pipeline Overview
+## Tachi Risk Lifecycle
 
 ```
 Prerequisite: Architecture description (Mermaid, prose, YAML, JSON, or C4 DSL)
 
-Step 1               Step 2               Step 3                      Step 4
-/threat-model    →   /risk-score      →   /compensating-controls  →   /infographic
-     │                    │                       │                        │
-     ▼                    ▼                       ▼                        ▼
-threats.md           risk-scores.md       compensating-controls.md   baseball-card.jpg
-threats.sarif        risk-scores.sarif    compensating-controls.sarif system-arch.jpg
-threat-report.md                          + residual risk scores     + spec files
-attack-trees/
+ ┌─── THREATS ───┐  ┌── INHERENT RISK ──┐  ┌── RESIDUAL RISK ──┐  ┌── VISUALIZE ──┐
+ │                │  │                    │  │                    │  │                │
+ │  Step 1        │  │  Step 2            │  │  Step 3            │  │  Step 4        │
+ │  /threat-model │→ │  /risk-score       │→ │  /compensating-    │→ │  /infographic  │
+ │       │        │  │       │            │  │   controls         │  │       │        │
+ │       ▼        │  │       ▼            │  │       │            │  │       ▼        │
+ │  threats.md    │  │  risk-scores.md    │  │       ▼            │  │  baseball-     │
+ │  threats.sarif │  │  risk-scores.sarif │  │  compensating-     │  │   card.jpg     │
+ │  threat-       │  │                    │  │   controls.md      │  │  system-       │
+ │   report.md    │  │  Scores each       │  │  compensating-     │  │   arch.jpg     │
+ │  attack-trees/ │  │  threat before     │  │   controls.sarif   │  │  + spec files  │
+ │                │  │  controls applied  │  │                    │  │                │
+ │  Identifies    │  │                    │  │  Detects existing  │  │  Generates     │
+ │  threats via   │  │                    │  │  controls, adjusts │  │  visual risk   │
+ │  STRIDE + AI   │  │                    │  │  risk scores down  │  │  dashboards    │
+ │  threat agents │  │                    │  │                    │  │                │
+ └────────────────┘  └────────────────────┘  └────────────────────┘  └────────────────┘
+
+ Threats            →  Inherent Risk        →  Residual Risk         →  Reporting
+ (what can go wrong)   (unmitigated score)     (after controls)        (communicate)
 ```
 
 Each step enriches the previous step's output. Steps 2-4 are optional and independently useful.
