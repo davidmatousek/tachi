@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 048 — Infographic Tiered Pipeline Auto-Detection & Residual Risk
+
+**Added**
+- Three-tier data source auto-detection for `/infographic` (compensating-controls.md > risk-scores.md > threats.md), residual risk extraction from Coverage Matrix, enhancement tips at each pipeline tier, risk label distinction (Residual Risk / Inherent Risk / Severity) across both templates (`e67de32`)
+
+**Changed**
+- Closed Feature 048 — updated product docs (PRD INDEX, User Stories, OKRs), architecture docs (Tech Stack, System Design), developer guide, KB-010 (`8e8cab9`)
+- Regenerated BACKLOG.md after issue closure (`a2d4ac9`)
+
+### Feature 045 — End-to-End tachi Instruction Manual
+
+**Added**
+- Comprehensive developer guide covering tachi's 4-command threat modeling pipeline with step-by-step walkthrough, pipeline diagram, and command reference (`33db77b`)
+
+**Changed**
+- Closed Feature 045 — updated product docs, architecture docs, lifecycle overview diagram (`372ff26`)
+- Replaced lifecycle overview with tachi pipeline diagram (`d631522`)
+
 ### Feature 039 — Standalone /infographic Command
 
 **Added**
