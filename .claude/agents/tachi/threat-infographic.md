@@ -455,6 +455,7 @@ For each finding in Sections 3, 4, and 4a:
 4. Compute row totals
 5. Sort rows by total finding count descending
 6. If more than 8 components: keep top 8, aggregate remaining into "Other" row with summed counts
+7. **Build cell-level STRIDE grid**: For each component (same row ordering), determine the highest severity finding per STRIDE+AI category. Use finding ID prefixes to map categories: S-* → S (Spoofing), T-* → T (Tampering), R-* → R (Repudiation), I-* → I (Information Disclosure), D-* → D (Denial of Service), E-* → E (Elevation of Privilege), AG-* → AG (Agent Autonomy), LLM-* → LLM. Cell value = highest severity label (Critical/High/Medium/Low) or "—" if no findings for that component+category pair. This grid is used in Section 3 and passed to the Gemini prompt to eliminate inference errors.
 
 Component names must match `threats.md` exactly — no renaming, abbreviation, or normalization.
 
@@ -561,12 +562,20 @@ image_generated: {true|false}
 | {component_2} | {N} | {N} | {N} | {N} | {N} |
 | ... | | | | | |
 | Other | {N} | {N} | {N} | {N} | {N} |
+
+### Cell-Level Grid
+
+| Component | S | T | R | I | D | E | AG | LLM |
+|-----------|---|---|---|---|---|---|----|-----|
+| {component_1} | {severity or —} | {severity or —} | ... | ... | ... | ... | ... | ... |
+| {component_2} | {severity or —} | {severity or —} | ... | ... | ... | ... | ... | ... |
 ```
 
 - Rows ordered by Total descending
 - Maximum 8 named component rows + optional "Other" aggregation row
 - Component names match `threats.md` exactly
-- Cell values are integer counts
+- Aggregate table: cell values are integer counts
+- Cell-Level Grid: each cell is the highest severity label (Critical/High/Medium/Low) for that component+category pair, or "—" if no findings. This grid is passed directly to the Gemini prompt to prevent severity label hallucination in the rendered image.
 
 ### Section 4: Top Critical Findings
 
@@ -686,6 +695,8 @@ Before finalizing the specification, run the following checklist. Every check mu
 - [ ] Component names in Coverage Heat Map match `threats.md` exactly — no renaming, abbreviation, or normalization
 - [ ] Heat map rows ordered by total finding count descending
 - [ ] If more than 8 components: top 8 shown with "Other" aggregation row
+- [ ] Cell-Level Grid severity labels match finding ID prefix → category mapping with zero discrepancy
+- [ ] Gemini prompt `{heat_map_cell_grid}` placeholder populated from Cell-Level Grid (not inferred from aggregate counts)
 
 #### Finding Selection
 
@@ -718,6 +729,8 @@ After generating the specification (`threat-{template-name}-spec.md`), construct
 
 Load `.claude/agents/tachi/templates/infographic-{name}.md` and use its **Gemini Prompt Template** section. Replace all `{placeholders}` with actual data from the infographic spec. This ensures every infographic follows the same layout.
 
+**`{heat_map_cell_grid}` placeholder**: Populate from the Cell-Level Grid in Section 3. Format as a plain-text grid listing each component row with its per-category severity, e.g.: `MCP Server: S=High, T=High, R=—, I=Medium, D=—, E=High, AG=—, LLM=—`. One line per component. This explicit enumeration prevents Gemini from inferring incorrect severity labels.
+
 If the design template is unavailable, construct the prompt following the fallback rules below.
 
 ### Prompt Framing
@@ -743,7 +756,9 @@ TOP SECTION: Title "Threat Model: {project_name}" with date "{date}" and "CONFID
 
 LEFT PANEL: Donut chart showing risk distribution: {critical_count} Critical (red #DC2626), {high_count} High (orange #EA580C), {medium_count} Medium (amber #CA8A04), {low_count} Low (blue #2563EB). Center text "{total_findings} findings". Below the donut: severity legend with counts and percentages. Below that: "RISK POSTURE: {risk_posture}" in {posture_color}, with "{critical_high_pct}% of findings rated High or Critical".
 
-CENTER PANEL: Heat map grid titled "Coverage Heat Map" with {component_count} components as rows and 8 threat categories as columns (S, T, R, I, D, E, AG, LLM). Cells colored by severity: red #DC2626 for Critical, orange #EA580C for High, amber #CA8A04 for Medium, blue #2563EB for Low, light gray #F3F4F6 for analyzed with no findings, white for not applicable. Components sorted by finding count descending. Show finding count or severity letter in each cell.
+CENTER PANEL: Heat map grid titled "Coverage Heat Map" with {component_count} components as rows and 8 threat categories as columns (S, T, R, I, D, E, AG, LLM). Each cell MUST use the exact severity from this grid — do not infer or guess cell values:
+{heat_map_cell_grid}
+Color each cell by its severity: red #DC2626 for Critical, orange #EA580C for High, amber #CA8A04 for Medium, blue #2563EB for Low, light gray #F3F4F6 for analyzed with no findings ("—"), white for not applicable. Components sorted by finding count descending. Show finding count or severity letter in each cell.
 
 RIGHT PANEL: {critical_count} critical finding cards in a vertical stack. Each card has: a {severity_color} left border accent, finding ID in monospace (e.g., "S-1"), component name in bold, and a one-line threat description. Cards: {finding_cards_text}.
 

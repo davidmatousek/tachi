@@ -43,6 +43,18 @@ Note: 5 findings (14.7%) have risk level Note or are excluded from the visual di
 | User | 0 | 1 | 1 | 0 | 2 |
 | External API | 0 | 0 | 0 | 1 | 1 |
 
+### Cell-Level Grid
+
+| Component | S | T | R | I | D | E | AG | LLM |
+|-----------|---|---|---|---|---|---|----|-----|
+| LLM Agent Orchestrator | Critical | — | — | — | Critical | Critical | Critical | Critical |
+| MCP Tool Server | — | Critical | — | — | — | Critical | High | — |
+| Guardrails Service | — | High | — | High | Critical | High | — | — |
+| Knowledge Base | — | High | — | High | — | — | — | High |
+| Audit Logger | — | High | — | High | High | — | — | — |
+| User | High | — | Medium | — | — | — | — | — |
+| External API | — | — | Low | — | — | — | — | — |
+
 ## 4. Top Critical Findings
 
 | # | Finding ID | Component | Threat | Risk Level |

@@ -64,11 +64,17 @@ infographic:
       heading: "## 3. Coverage Heat Map"
       required_fields:
         - component_severity_matrix
+        - cell_level_grid
         - row_ordering
       max_rows: 8
       overflow_rule: >
         Aggregate remaining components as "Other" row
         with combined counts.
+      cell_level_grid_rule: >
+        Cell-Level Grid sub-section maps each component x STRIDE+AI
+        category to its highest severity label. Used to populate
+        {heat_map_cell_grid} in Gemini prompt. Finding ID prefixes
+        determine category mapping (S-*→S, T-*→T, etc.).
 
     - name: "Top Critical Findings"
       heading: "## 4. Top Critical Findings"
