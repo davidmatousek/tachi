@@ -48,19 +48,22 @@ From your project root, copy the agents and command into your project's Claude C
 # Copy agents + infographic templates
 cp -r ~/Projects/tachi/adapters/claude-code/agents/ .claude/agents/tachi/
 
-# Copy the /threat-model command
+# Copy the 4 command files
 mkdir -p .claude/commands
 cp ~/Projects/tachi/adapters/claude-code/commands/threat-model.md .claude/commands/
+cp ~/Projects/tachi/adapters/claude-code/commands/risk-score.md .claude/commands/
+cp ~/Projects/tachi/.claude/commands/compensating-controls.md .claude/commands/
+cp ~/Projects/tachi/adapters/claude-code/commands/infographic.md .claude/commands/
 ```
 
-Run this for each new codebase you want to add threat modeling to. Repeat it after pulling tachi updates to get the latest agents.
+Run this for each new codebase you want to add threat modeling to. Repeat it after pulling tachi updates to get the latest agents and commands.
 
 ## Step 3: Verify
 
 ```bash
-ls .claude/agents/tachi/              # Should show 14 .md files + templates/ directory
+ls .claude/agents/tachi/              # Should show 15 .md files + templates/ directory
 ls .claude/agents/tachi/templates/    # Should show infographic-baseball-card.md, infographic-system-architecture.md
-ls .claude/commands/                   # Should show threat-model.md
+ls .claude/commands/                   # Should show threat-model.md, risk-score.md, compensating-controls.md, infographic.md
 ```
 
 ## Step 4: Create Your Architecture File
@@ -113,7 +116,7 @@ In Claude Code, type:
 /threat-model
 ```
 
-That is it. One command. Tachi validates the setup, reads your architecture, dispatches its 14 specialized agents, and writes the full output suite.
+That is it. One command. Tachi validates the setup, reads your architecture, dispatches its 15 specialized agents, and writes the full output suite.
 
 To use a different architecture file or output location:
 
@@ -143,6 +146,18 @@ Each finding includes:
 - Which component is affected
 - The risk level (Critical, High, Medium, Low, Note)
 - A specific mitigation you can implement
+
+### What's Next: The Full Pipeline
+
+Your threat model is just the beginning. Three additional commands enrich your results:
+
+| Command | What It Adds | Section |
+|---------|--------------|---------|
+| `/risk-score` | Quantitative 0-10 composite scores for every finding, plus governance fields (owner, SLA, disposition) | [Section 9](#section-9----running-risk-score) |
+| `/compensating-controls` | Detects existing security controls in your codebase, calculates residual risk, recommends missing controls | [Section 10](#section-10----running-compensating-controls) |
+| `/infographic` | Visual risk summary images for presentations and stakeholder reports | [Section 11](#section-11----running-infographic-standalone) |
+
+Each command is optional and independently useful. See [Section 8](#section-8----post-pipeline-enrichment) for the full pipeline overview.
 
 ---
 
@@ -805,6 +820,66 @@ flowchart TD
 
 Attack trees are useful in security review meetings because they make abstract threats concrete and visual. They answer "how would an attacker actually do this?" in a format anyone can follow.
 
+### Step 11: Running `/risk-score` on OpenClaw Threats
+
+Now enrich the qualitative findings with quantitative scores:
+
+```bash
+/risk-score docs/security/
+```
+
+The command reads `threats.md` and scores every finding on 4 dimensions. Here is an excerpt from the scored output for OpenClaw's most critical findings:
+
+| ID | Component | Threat | CVSS | Exploit. | Scalab. | Reach. | Composite | Severity |
+|----|-----------|--------|------|----------|---------|--------|-----------|----------|
+| AG-2 | Skill Runner | Auto-install of community skills from ClawhHub without verification | 9.0 | 9.5 | 8.0 | 7.5 | 8.78 | High |
+| E-1 | Skill Runner | Community plugins execute with core agent permissions | 8.5 | 8.0 | 7.5 | 7.0 | 7.93 | High |
+| LLM-1 | Prompt Builder | Malicious tool descriptions injected into system prompt | 8.0 | 7.0 | 6.5 | 8.5 | 7.58 | High |
+| AG-1 | Orchestrator | Autonomous device actions without human approval | 9.0 | 6.0 | 5.0 | 9.0 | 7.35 | High |
+
+**Reading the scores**: AG-2 has the highest composite (8.78) because it is both easy to exploit (anyone can publish a skill to ClawhHub) and highly scalable (affects all installations that auto-discover skills). AG-1 has a lower composite despite a Critical qualitative rating because its exploitability is lower (requires a specific prompt sequence).
+
+The governance fields in the output help track remediation:
+- AG-2: Owner = Unassigned, SLA = 7d, Disposition = Mitigate
+- AG-1: Owner = Unassigned, SLA = 7d, Disposition = Mitigate
+
+### Step 12: Running `/compensating-controls`
+
+Now check what security controls OpenClaw already has:
+
+```bash
+/compensating-controls --target ./openclaw docs/security/
+```
+
+The command scans the OpenClaw codebase against the scored findings. Here is an excerpt from the coverage matrix:
+
+| ID | Finding | Status | Evidence | Residual Risk |
+|----|---------|--------|----------|---------------|
+| AG-2 | Community skill auto-install | No Control Found | — | 8.78 |
+| E-1 | Plugin permission escalation | Partial Control | `src/skills/sandbox.ts:23` — basic sandbox wrapper | 5.95 |
+| LLM-1 | Prompt injection via tool descriptions | No Control Found | — | 7.58 |
+| AG-1 | Autonomous device actions | Partial Control | `src/nodes/mobile.ts:87` — TCC permission check | 5.51 |
+
+**Reading the results**: E-1 has a Partial Control — OpenClaw has a basic sandbox for skill execution (`sandbox.ts:23`), which reduces the residual risk from 7.93 to 5.95. But AG-2 has No Control Found — there is no verification step before installing community skills, so the residual risk equals the inherent risk (8.78).
+
+The recommendations section prioritizes by residual risk: AG-2 (8.78) is the top priority because it has the highest risk with no existing controls. LLM-1 (7.58) is next, followed by E-1 (5.95) and AG-1 (5.51).
+
+### Step 13: Running `/infographic`
+
+Generate visual reports for stakeholders:
+
+```bash
+/infographic docs/security/ --template all
+```
+
+The command auto-detects `risk-scores.md` (the richest data source) and generates both templates:
+
+- **`threat-baseball-card-spec.md` + `threat-baseball-card.jpg`**: A compact risk summary dashboard showing the donut chart (4 Critical, 14 High, 12 Medium, 3 Low), a STRIDE+AI coverage heat map highlighting the Skill Runner and Orchestrator as highest-risk components, and critical finding cards for AG-2, E-1, LLM-1, and AG-1.
+
+- **`threat-system-architecture-spec.md` + `threat-system-architecture.jpg`**: An annotated architecture diagram with OpenClaw's 5 trust zones stacked by trust level. Components show attack surface badges (Skill Runner: 4 findings, Orchestrator: 3 findings). Data flow arrows are colored by the highest severity finding on that flow.
+
+Use the baseball card for executive briefings and the system architecture diagram for technical architecture reviews.
+
 ---
 
 ## Section 5 -- Integration Path A: Standalone (Any Project)
@@ -819,15 +894,18 @@ From your project root:
 # Clone tachi (one-time setup)
 git clone https://github.com/davidmatousek/tachi.git ~/Projects/tachi
 
-# Copy agents, templates, and command into your project
+# Copy agents, templates, and commands into your project
 cp -r ~/Projects/tachi/adapters/claude-code/agents/ .claude/agents/tachi/
 mkdir -p .claude/commands
 cp ~/Projects/tachi/adapters/claude-code/commands/threat-model.md .claude/commands/
+cp ~/Projects/tachi/adapters/claude-code/commands/risk-score.md .claude/commands/
+cp ~/Projects/tachi/.claude/commands/compensating-controls.md .claude/commands/
+cp ~/Projects/tachi/adapters/claude-code/commands/infographic.md .claude/commands/
 
 # Verify
-ls .claude/agents/tachi/              # 14 .md files + templates/
+ls .claude/agents/tachi/              # 15 .md files + templates/
 ls .claude/agents/tachi/templates/    # infographic-baseball-card.md, infographic-system-architecture.md
-ls .claude/commands/                   # threat-model.md
+ls .claude/commands/                   # threat-model.md, risk-score.md, compensating-controls.md, infographic.md
 ```
 
 **Updating**: When tachi releases new agent versions, pull and re-copy:
@@ -1072,7 +1150,268 @@ Document your decisions. Future you (or an auditor) will want to know why specif
 
 ---
 
-## Section 8 -- Advanced Topics
+## Section 8 -- Post-Pipeline Enrichment
+
+Running `/threat-model` gives you a complete threat assessment. Three additional commands enrich those results with quantitative scores, control analysis, and visual reports. Each command consumes the previous command's output:
+
+```
+/threat-model (architecture.md)
+    ├── threats.md, threats.sarif, threat-report.md, attack-trees/
+    ▼
+/risk-score (threats.md)
+    ├── risk-scores.md, risk-scores.sarif
+    ▼
+/compensating-controls (risk-scores.md + target codebase)
+    ├── compensating-controls.md, compensating-controls.sarif
+    ▼
+/infographic (auto-detects richest: risk-scores.md > threats.md)
+    ├── threat-{template}-spec.md, threat-{template}.jpg
+```
+
+### When to Run Each Command
+
+| Command | When to Run | What It Adds |
+|---------|-------------|--------------|
+| `/risk-score` | **Recommended** after every `/threat-model` run | Replaces qualitative severity with composite risk scores (0-10). Enables governance fields (owner, SLA, disposition). |
+| `/compensating-controls` | **Recommended** when you have a codebase to scan | Detects existing security controls, calculates residual risk, recommends missing controls. Most valuable for established projects. |
+| `/infographic` | **Optional** for visual reporting | Produces presentation-ready images for stakeholders. Requires a Gemini API key for image generation; produces spec files without it. |
+
+You do not need to run all three. Each command is independently useful:
+- Run `/risk-score` alone to get quantitative scores for prioritization.
+- Run `/compensating-controls` alone to understand your current security posture against scored threats.
+- Run `/infographic` at any point to generate visuals from whatever data is available.
+
+The following three sections walk through each command in detail.
+
+---
+
+## Section 9 -- Running `/risk-score`
+
+### What It Does
+
+Adds quantitative risk scoring to every finding in your threat model. Each finding is scored on 4 dimensions and receives a composite risk score on a 0-10 scale, replacing the qualitative Critical/High/Medium/Low ratings with precise numerical values.
+
+### Prerequisites
+
+- `threats.md` must exist (produced by `/threat-model`). The command also accepts `threats.sarif` as a fallback.
+- Optional: `architecture.md` in the same directory or its parent improves reachability scoring.
+
+### Running the Command
+
+```bash
+# Minimal — score threats in current directory
+/risk-score
+
+# Specify input directory
+/risk-score docs/security/
+
+# Custom output directory
+/risk-score docs/security/ --output-dir reports/risk/
+```
+
+### Understanding the Output
+
+The command produces two files:
+
+| File | What It Contains |
+|------|-----------------|
+| `risk-scores.md` | Scored threat table, executive summary, severity distribution, dimensional analysis, governance fields, methodology |
+| `risk-scores.sarif` | SARIF 2.1.0 with per-finding composite scores in `security-severity` and scoring properties in result property bags |
+
+### The 4 Scoring Dimensions
+
+Each finding is scored on 4 independent dimensions, each rated 0 to 10:
+
+| Dimension | What It Measures | High Score (8-10) Means | Low Score (0-3) Means |
+|-----------|-----------------|-------------------------|----------------------|
+| **CVSS** | Technical severity using CVSS 3.1 base metrics | High confidentiality/integrity/availability impact with network attack vector | Low impact, requires physical access |
+| **Exploitability** | How easy the vulnerability is to exploit | Widely known technique, public tools available, low skill required | Novel attack, no public tools, requires expert knowledge |
+| **Scalability** | How many targets a single exploit reaches | One exploit compromises many users, tenants, or systems | Single target, no lateral movement |
+| **Reachability** | How exposed the component is to attackers | Internet-facing, crosses trust boundaries, in critical data path | Internal-only, no boundary crossings, isolated network |
+
+### Composite Score
+
+The composite score combines all 4 dimensions using a weighted formula:
+
+```
+Composite = (CVSS x 0.35) + (Exploitability x 0.30) + (Scalability x 0.15) + (Reachability x 0.20)
+```
+
+The composite maps to severity bands:
+
+| Composite Score | Severity |
+|-----------------|----------|
+| >= 9.0 | Critical |
+| 7.0 -- 8.9 | High |
+| 4.0 -- 6.9 | Medium |
+| < 4.0 | Low |
+
+**Example**: A finding with CVSS 8.0, Exploitability 7.5, Scalability 6.0, Reachability 9.0 has a composite of `(8.0 x 0.35) + (7.5 x 0.30) + (6.0 x 0.15) + (9.0 x 0.20) = 2.80 + 2.25 + 0.90 + 1.80 = 7.75` — rated **High**.
+
+### Governance Fields
+
+Each scored finding includes governance fields for tracking remediation:
+
+| Field | Purpose |
+|-------|---------|
+| Owner | Person or team responsible for remediation (default: Unassigned) |
+| SLA | Target remediation duration based on severity — Critical: 24h, High: 7d, Medium: 30d, Low: 90d |
+| Disposition | Initial recommended action: Mitigate (Critical/High), Review (Medium/Low). Human overrides: Accept, Transfer |
+| Review Date | Scoring date + SLA duration (calculated automatically) |
+
+### What to Do Next
+
+Run `/compensating-controls` to detect which threats already have security controls in your codebase and calculate residual risk.
+
+---
+
+## Section 10 -- Running `/compensating-controls`
+
+### What It Does
+
+Scans your codebase against scored threat findings to detect existing security controls, classify their effectiveness, calculate residual risk, and recommend missing controls. This tells you what you have already built and where the gaps are.
+
+### Prerequisites
+
+- `risk-scores.md` must exist (produced by `/risk-score`). The command also accepts `risk-scores.sarif` as a fallback.
+- A target codebase directory with source files to scan.
+- Optional: `architecture.md` for architecture-aware component-to-file mapping.
+
+### Running the Command
+
+```bash
+# Minimal — analyze codebase in current directory against local risk scores
+/compensating-controls
+
+# Specify target codebase
+/compensating-controls --target ./my-app
+
+# Specify both target and output
+/compensating-controls --target ./my-app --output-dir ./reports/
+
+# Analyze with input from a specific directory
+/compensating-controls --target ./my-app path/to/risk-scores/
+```
+
+### Understanding the Output
+
+The command produces two files:
+
+| File | What It Contains |
+|------|-----------------|
+| `compensating-controls.md` | Coverage matrix, control details with file:line evidence, recommendations sorted by risk, residual risk summary |
+| `compensating-controls.sarif` | SARIF 2.1.0 with per-finding residual scores, control properties, and preserved fingerprints |
+
+### Control Classification
+
+For each threat finding, the analyzer classifies the existing control status:
+
+| Status | What It Means | Reduction Factor |
+|--------|--------------|------------------|
+| Control Found | A security control addressing this threat exists in the codebase with file:line evidence | 0.50 (50% risk reduction) |
+| Partial Control | Some mitigation exists but does not fully address the threat | 0.25 (25% risk reduction) |
+| No Control Found | No existing control detected — a gap requiring remediation | 0.00 (no risk reduction) |
+
+### Evidence Format
+
+All detected controls include `file:line` references pointing to the exact location in the codebase where the control was found. For example:
+
+- `src/middleware/auth.ts:42` — JWT validation middleware
+- `src/config/rate-limiter.ts:15` — Rate limiting configuration
+- `src/utils/sanitize.ts:8` — Input sanitization function
+
+This lets you verify the control exists and assess whether it fully addresses the threat.
+
+### Residual Risk Calculation
+
+Residual risk accounts for existing controls:
+
+```
+Residual Risk = Composite Score x (1 - Reduction Factor)
+```
+
+**Example**: A finding with composite score 8.5:
+- **Control Found** (reduction 0.50): `8.5 x (1 - 0.50) = 4.25` — residual risk drops from High to Medium
+- **Partial Control** (reduction 0.25): `8.5 x (1 - 0.25) = 6.38` — residual risk drops within Medium
+- **No Control Found** (reduction 0.00): `8.5 x (1 - 0.00) = 8.50` — residual risk equals inherent risk
+
+The maximum reduction factor is 0.50 — even a fully detected control cannot reduce risk to zero, because no single control is perfect.
+
+### Recommendations
+
+The output includes a recommendations section sorted by composite score descending. Each recommendation identifies:
+- The threat finding and its current control status
+- What additional controls are needed
+- The expected residual risk after implementing the recommendation
+
+### What to Do Next
+
+Run `/infographic` to generate visual risk summary images for stakeholders, or begin implementing the recommended controls starting with the highest residual risk findings.
+
+---
+
+## Section 11 -- Running `/infographic` Standalone
+
+### What It Does
+
+Generates visual threat infographic specifications and presentation-ready images. The command auto-detects the richest available data source, preferring `risk-scores.md` (quantitative composite scores) over `threats.md` (qualitative severity counts).
+
+### Prerequisites
+
+- At least one data source must exist: `risk-scores.md` (preferred) or `threats.md` (fallback).
+- When using `risk-scores.md`, the command requires a co-located `threats.md` in the same directory for structural data (project metadata, trust zones, data flows).
+- A **Gemini API key** is required for image generation. Without it, the command produces specification files but skips image generation. See [Setting Up GEMINI_API_KEY](#setting-up-gemini_api_key) in the Quick Start.
+
+### Auto-Detection Behavior
+
+When you run `/infographic` without specifying a data source:
+1. The command scans the working directory for `risk-scores.md` — if found, uses it as the primary source (quantitative composite scores give richer infographics).
+2. Falls back to `threats.md` if `risk-scores.md` is absent (qualitative severity counts).
+3. If neither file is found, the command halts with an error.
+
+### Running the Command
+
+```bash
+# Auto-detect data source in current directory (recommended)
+/infographic
+
+# Use a specific file
+/infographic path/to/risk-scores.md
+
+# Select a specific template
+/infographic --template baseball-card
+/infographic --template system-architecture
+
+# All templates (default)
+/infographic --template all
+
+# Custom output directory
+/infographic --output-dir reports/infographics/
+```
+
+### Template Options
+
+| Template | Best For | What It Shows |
+|----------|----------|---------------|
+| `baseball-card` | Executive summaries, quick risk overview | Compact risk summary dashboard: donut chart, STRIDE+AI coverage heat map, critical finding cards, architecture overlay strip |
+| `system-architecture` | Technical reviews, architecture meetings | Annotated architecture diagram: trust zones stacked by trust level, components with attack surface badges, data flow arrows colored by severity |
+| `all` | Complete reporting (default) | Generates both templates |
+| `corporate-white` | Legacy alias | Resolves to `baseball-card` |
+
+### Understanding the Output
+
+For each template, the command produces:
+
+| File | What It Contains |
+|------|-----------------|
+| `threat-{template-name}-spec.md` | Structured infographic specification with 6 sections per the infographic schema |
+| `threat-{template-name}.jpg` | Presentation-ready image generated via Google Gemini API |
+
+**Without a Gemini API key**: The specification files are still produced — these are structured markdown documents that fully describe the infographic. Only the `.jpg` image generation is skipped. You can use the spec files as input for other image generation tools or manual design.
+
+---
+
+## Section 12 -- Advanced Topics
 
 ### Customizing Input for Better Findings
 
@@ -1163,11 +1502,11 @@ Tachi generates two infographic types by default, each using a design template:
 - **`baseball-card`** -- Compact risk summary dashboard: donut chart, STRIDE+AI coverage heat map, critical finding cards, architecture overlay strip
 - **`system-architecture`** -- Annotated architecture diagram: trust zones stacked by trust level, components with attack surface badges, data flow arrows colored by severity
 
-Both are generated on every run. To generate only one:
+Both are generated on every run. To generate only one template, use the standalone `/infographic` command after your analysis:
 
 ```bash
-/threat-model docs/security/architecture.md --infographic-template baseball-card
-/threat-model docs/security/architecture.md --infographic-template system-architecture
+/infographic --template baseball-card
+/infographic --template system-architecture
 ```
 
 **Creating a custom template**:
@@ -1193,7 +1532,7 @@ Start with what you have. If your architecture description does not mention AI c
 
 ---
 
-## Section 9 -- Troubleshooting and FAQ
+## Section 13 -- Troubleshooting and FAQ
 
 **"I got no AI findings."**
 Your architecture description does not contain AI-related keywords. Tachi looks for terms like "LLM", "agent", "model", "orchestrator", "prompt", "RAG", "knowledge base", "MCP server", "tool server", "plugin", and "function calling". Add component descriptions that mention these terms if your system includes AI capabilities.
@@ -1286,7 +1625,7 @@ Tachi's Tool Abuse findings (AG-*) reference MCP-03.
 | Section 6 | Risk Summary: Aggregate severity counts |
 | Section 7 | Recommended Actions: All findings sorted by risk level descending |
 
-### Finding IR Schema (11 Fields)
+### Finding IR Schema (10 Fields)
 
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
@@ -1333,6 +1672,52 @@ Each attack tree is a standalone `.md` file in `attack-trees/` containing:
   - Green leaf nodes (atomic attack steps)
   - Gray sub-goal nodes (intermediate objectives)
 
+### `risk-scores.md` Structure
+
+| Section | Contents |
+|---------|----------|
+| Frontmatter | `schema_version`, `date`, `source_file`, `scoring_methodology` |
+| 1. Executive Summary | Total findings, severity distribution, highest-risk component, overall risk posture |
+| 2. Scored Threat Table | All findings with 4 dimension scores (CVSS, Exploitability, Scalability, Reachability), composite score, severity band, and governance fields (Owner, SLA, Disposition, Review Date) |
+| 3. Risk Distribution | Severity band counts and percentages |
+| 4. Dimensional Analysis | Breakdowns per dimension — which findings score highest on each |
+| 5. Methodology | Composite formula, dimension weights (0.35/0.30/0.15/0.20), severity band thresholds |
+| 6. Governance | SLA definitions by severity (Critical: 24h, High: 7d, Medium: 30d, Low: 90d), disposition values (Mitigate, Review, Accept, Transfer) |
+
+### `risk-scores.sarif` Schema
+
+SARIF 2.1.0 JSON file extending `threats.sarif` with scoring properties. Each finding adds:
+- `properties.security-severity`: Composite score (0-10) as string
+- `properties.cvss_score`: CVSS dimension score
+- `properties.exploitability_score`: Exploitability dimension score
+- `properties.scalability_score`: Scalability dimension score
+- `properties.reachability_score`: Reachability dimension score
+- `properties.composite_score`: Weighted composite score
+- `properties.severity_band`: Mapped severity (Critical/High/Medium/Low)
+- `properties.owner`: Assigned owner (default: Unassigned)
+- `properties.sla`: Remediation target duration
+- `properties.disposition`: Recommended action
+
+### `compensating-controls.md` Structure
+
+| Section | Contents |
+|---------|----------|
+| Frontmatter | `schema_version`, `date`, `source_file`, `target_path` |
+| 1. Coverage Matrix | Per-finding control status (Control Found / Partial Control / No Control Found) with evidence file:line references |
+| 2. Findings Table | Detailed per-finding analysis: threat description, control status, evidence location, reduction factor, residual risk score, gap description |
+| 3. Recommendations | All findings with No Control Found or Partial Control, sorted by composite score descending, with recommended controls |
+| 4. Residual Risk Summary | Side-by-side comparison of inherent (composite) vs. residual risk per finding, aggregate residual risk posture |
+
+### `compensating-controls.sarif` Schema
+
+SARIF 2.1.0 JSON file extending `risk-scores.sarif` with control analysis. Each finding adds:
+- `properties.control_status`: `Control Found`, `Partial Control`, or `No Control Found`
+- `properties.evidence_location`: File:line reference (if control found)
+- `properties.reduction_factor`: 0.50 (found), 0.25 (partial), 0.00 (none)
+- `properties.residual_risk`: Composite x (1 - reduction factor)
+- `properties.recommendation`: Suggested control (if gap exists)
+- Preserves all fingerprints from source `risk-scores.sarif` for traceability
+
 ### Infographic Spec Sections (Both Templates)
 
 | Section | Baseball Card | System Architecture |
@@ -1353,14 +1738,20 @@ Each attack tree is a standalone `.md` file in `attack-trees/` containing:
 | **Attack Tree** | A diagram showing the hierarchical decomposition of an attacker's goal into sub-goals and atomic attack steps |
 | **C4 Model** | A software architecture modeling approach using four levels: Context, Container, Component, Code |
 | **CVE** | Common Vulnerabilities and Exposures -- a public catalog of known security vulnerabilities, each with a unique identifier |
+| **Compensating Control** | An existing security mechanism in a codebase that mitigates a threat finding, detected by `/compensating-controls` and classified as Control Found, Partial Control, or No Control Found |
+| **Composite Score** | A weighted numerical score (0-10) combining CVSS, Exploitability, Scalability, and Reachability dimensions to produce a single risk rating per finding |
 | **CVSS** | Common Vulnerability Scoring System -- a standardized framework for rating the severity of security vulnerabilities on a 0-10 scale |
 | **CWE** | Common Weakness Enumeration -- a catalog of software and hardware weakness types that can lead to vulnerabilities |
 | **DFD** | Data Flow Diagram -- a visual representation of how data moves through a system, using four element types: External Entity, Process, Data Store, Data Flow |
+| **Exploitability** | A risk scoring dimension (0-10) measuring how easy a vulnerability is to exploit, considering public tool availability and attacker skill requirements |
 | **Finding IR** | Finding Intermediate Representation -- Tachi's internal schema for threat findings, ensuring consistent structure across all 11 threat agents |
 | **MCP** | Model Context Protocol -- a standard for tool-calling between LLMs and external services |
 | **OWASP** | Open Worldwide Application Security Project -- a nonprofit foundation producing security standards, guides, and tools |
 | **RAG** | Retrieval-Augmented Generation -- an architecture pattern where an LLM retrieves relevant documents from a knowledge base before generating a response |
+| **Reachability** | A risk scoring dimension (0-10) measuring how exposed a component is to attackers, based on internet exposure, trust boundary crossings, and data path criticality |
+| **Residual Risk** | The remaining risk after accounting for existing compensating controls, calculated as Composite Score x (1 - Reduction Factor) |
 | **Risk Matrix** | A grid that maps Likelihood (LOW/MEDIUM/HIGH) against Impact (LOW/MEDIUM/HIGH) to compute a Risk Level (Note/Low/Medium/High/Critical) |
 | **SARIF** | Static Analysis Results Interchange Format -- a JSON-based standard for representing the output of static analysis tools, supported by GitHub, Azure DevOps, and VS Code |
+| **Scalability** | A risk scoring dimension (0-10) measuring how many targets a single exploit can reach, from single-target to system-wide compromise |
 | **STRIDE** | A threat classification framework using six categories: Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege |
 | **Trust Boundary** | A line in an architecture diagram separating components with different trust levels; data crossing a trust boundary requires security controls |

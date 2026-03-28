@@ -76,10 +76,10 @@ triad:
 
 **Note**: US1 (pipeline guide) and US2 (output interpretation) are combined because interpretation content is embedded within each command section. Splitting them would require editing the same sections twice.
 
-- [ ] T016 [US1] Insert post-pipeline enrichment workflow section in `docs/guides/DEVELOPER_GUIDE_TACHI.md` after Section 7 (Reading and Acting) — include pipeline overview diagram (ASCII showing all 4 commands with inputs/outputs/dependencies), explanation of when each enrichment command is optional vs. recommended, time estimates per command
-- [ ] T017 [US1] [US2] Insert `/risk-score` section in `docs/guides/DEVELOPER_GUIDE_TACHI.md` following per-command template (Prerequisites → Invocation → Outputs → Interpretation → Next Step) — include copy-pasteable invocation (minimal + flagged), output artifact descriptions, interpretation of 4 scoring dimensions (what it measures, range 0-10, what high/low means), composite score explanation, governance fields overview
-- [ ] T018 [US1] [US2] Insert `/compensating-controls` section in `docs/guides/DEVELOPER_GUIDE_TACHI.md` following same template — include copy-pasteable invocation (minimal + --target + --output-dir), output artifact descriptions, interpretation of coverage matrix, control classification (Found/Partial/None), evidence format (file:line references), residual risk calculation explanation, recommendations section
-- [ ] T019 [US1] [US2] Insert standalone `/infographic` section in `docs/guides/DEVELOPER_GUIDE_TACHI.md` following same template — include auto-detection behavior explanation, copy-pasteable invocation (--template variants), template descriptions (baseball-card vs. system-architecture), Gemini API key requirement and fallback behavior, output artifact descriptions (spec + .jpg)
+- [X] T016 [US1] Insert post-pipeline enrichment workflow section in `docs/guides/DEVELOPER_GUIDE_TACHI.md` after Section 7 (Reading and Acting) — include pipeline overview diagram (ASCII showing all 4 commands with inputs/outputs/dependencies), explanation of when each enrichment command is optional vs. recommended, time estimates per command
+- [X] T017 [US1] [US2] Insert `/risk-score` section in `docs/guides/DEVELOPER_GUIDE_TACHI.md` following per-command template (Prerequisites → Invocation → Outputs → Interpretation → Next Step) — include copy-pasteable invocation (minimal + flagged), output artifact descriptions, interpretation of 4 scoring dimensions (what it measures, range 0-10, what high/low means), composite score explanation, governance fields overview
+- [X] T018 [US1] [US2] Insert `/compensating-controls` section in `docs/guides/DEVELOPER_GUIDE_TACHI.md` following same template — include copy-pasteable invocation (minimal + --target + --output-dir), output artifact descriptions, interpretation of coverage matrix, control classification (Found/Partial/None), evidence format (file:line references), residual risk calculation explanation, recommendations section
+- [X] T019 [US1] [US2] Insert standalone `/infographic` section in `docs/guides/DEVELOPER_GUIDE_TACHI.md` following same template — include auto-detection behavior explanation, copy-pasteable invocation (--template variants), template descriptions (baseball-card vs. system-architecture), Gemini API key requirement and fallback behavior, output artifact descriptions (spec + .jpg)
 
 **Checkpoint**: All 4 commands documented in the guide with invocation and interpretation.
 
@@ -91,7 +91,7 @@ triad:
 
 **Independent Test**: A new user following the Quick Start knows the full pipeline exists and where to find detailed guidance for each enrichment command.
 
-- [ ] T020 [US3] Add "What's Next: The Full Pipeline" callout after Step 6 in Quick Start section of `docs/guides/DEVELOPER_GUIDE_TACHI.md` — mention `/risk-score`, `/compensating-controls`, `/infographic` with one-line descriptions and cross-references to their dedicated sections in the comprehensive guide
+- [X] T020 [US3] Add "What's Next: The Full Pipeline" callout after Step 6 in Quick Start section of `docs/guides/DEVELOPER_GUIDE_TACHI.md` — mention `/risk-score`, `/compensating-controls`, `/infographic` with one-line descriptions and cross-references to their dedicated sections in the comprehensive guide
 
 **Checkpoint**: Quick Start enhanced. Users know about all 4 commands from the start.
 
@@ -103,9 +103,9 @@ triad:
 
 **Independent Test**: The OpenClaw example shows output from all 4 commands with annotated examples.
 
-- [ ] T021 [US5] Extend OpenClaw worked example in `docs/guides/DEVELOPER_GUIDE_TACHI.md` — add Step 11: Run `/risk-score` on OpenClaw threats with sample invocation, sample scored output table excerpt, and interpretation notes
-- [ ] T022 [US5] Continue OpenClaw extension — add Step 12: Run `/compensating-controls` with sample invocation, sample coverage matrix excerpt, residual risk comparison, and interpretation notes
-- [ ] T023 [US5] Continue OpenClaw extension — add Step 13: Run `/infographic` with template selection guidance, sample invocation, description of generated spec and image files
+- [X] T021 [US5] Extend OpenClaw worked example in `docs/guides/DEVELOPER_GUIDE_TACHI.md` — add Step 11: Run `/risk-score` on OpenClaw threats with sample invocation, sample scored output table excerpt, and interpretation notes
+- [X] T022 [US5] Continue OpenClaw extension — add Step 12: Run `/compensating-controls` with sample invocation, sample coverage matrix excerpt, residual risk comparison, and interpretation notes
+- [X] T023 [US5] Continue OpenClaw extension — add Step 13: Run `/infographic` with template selection guidance, sample invocation, description of generated spec and image files
 
 **Checkpoint**: OpenClaw example now walks through the full pipeline end-to-end.
 
@@ -117,9 +117,9 @@ triad:
 
 **Independent Test**: A user looking up any output file structure can find it in Appendix B, and all new terms are in Appendix C.
 
-- [ ] T024 [P] [US6] Expand Appendix B in `docs/guides/DEVELOPER_GUIDE_TACHI.md` — add `risk-scores.md` structure (sections: metadata, scored threat table, risk distribution, dimensional analysis, methodology, governance), add `risk-scores.sarif` schema details (per-finding composite scores and scoring properties)
-- [ ] T025 [P] [US6] Continue Appendix B expansion — add `compensating-controls.md` structure (sections: coverage matrix, findings table with status/evidence/recommendations, recommendations sorted by risk, residual risk summary), add `compensating-controls.sarif` schema details (residual scores, control properties)
-- [ ] T026 [US6] Add glossary terms to Appendix C in `docs/guides/DEVELOPER_GUIDE_TACHI.md` — add: Composite Score, Compensating Control, Residual Risk, Exploitability, Scalability, Reachability
+- [X] T024 [P] [US6] Expand Appendix B in `docs/guides/DEVELOPER_GUIDE_TACHI.md` — add `risk-scores.md` structure (sections: metadata, scored threat table, risk distribution, dimensional analysis, methodology, governance), add `risk-scores.sarif` schema details (per-finding composite scores and scoring properties)
+- [X] T025 [P] [US6] Continue Appendix B expansion — add `compensating-controls.md` structure (sections: coverage matrix, findings table with status/evidence/recommendations, recommendations sorted by risk, residual risk summary), add `compensating-controls.sarif` schema details (residual scores, control properties)
+- [X] T026 [US6] Add glossary terms to Appendix C in `docs/guides/DEVELOPER_GUIDE_TACHI.md` — add: Composite Score, Compensating Control, Residual Risk, Exploitability, Scalability, Reachability
 
 **Checkpoint**: All appendices updated. Guide is now a complete reference.
 
@@ -129,11 +129,11 @@ triad:
 
 **Purpose**: Cross-cutting validation across all updated files
 
-- [ ] T027 Verify all internal file path references in `docs/guides/DEVELOPER_GUIDE_TACHI.md` resolve correctly (no broken section links, no stale file paths)
-- [ ] T028 [P] Verify all command invocations in the guide match actual command specs in `adapters/claude-code/commands/` and `.claude/commands/`
-- [ ] T029 [P] Verify prompt spec at `docs/guides/prompts/developer-guide-prompt.md` covers the same pipeline as the guide (spec-guide parity check)
-- [ ] T030 Verify README.md link to `docs/guides/DEVELOPER_GUIDE_TACHI.md` resolves correctly
-- [ ] T031 Review full guide for consistency: section numbering sequential, per-command template consistent across all 4 commands, acronyms defined on first use, no stale template names
+- [X] T027 Verify all internal file path references in `docs/guides/DEVELOPER_GUIDE_TACHI.md` resolve correctly (no broken section links, no stale file paths)
+- [X] T028 [P] Verify all command invocations in the guide match actual command specs in `adapters/claude-code/commands/` and `.claude/commands/`
+- [X] T029 [P] Verify prompt spec at `docs/guides/prompts/developer-guide-prompt.md` covers the same pipeline as the guide (spec-guide parity check)
+- [X] T030 Verify README.md link to `docs/guides/DEVELOPER_GUIDE_TACHI.md` resolves correctly
+- [X] T031 Review full guide for consistency: section numbering sequential, per-command template consistent across all 4 commands, acronyms defined on first use, no stale template names
 
 ---
 

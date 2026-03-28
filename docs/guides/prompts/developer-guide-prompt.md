@@ -524,8 +524,10 @@ docs/security/
 │   ├── threats.sarif
 │   ├── threat-report.md
 │   ├── attack-trees/
-│   ├── threat-infographic-spec.md
-│   └── threat-infographic.jpg
+│   ├── threat-baseball-card-spec.md
+│   ├── threat-baseball-card.jpg
+│   ├── threat-system-architecture-spec.md
+│   └── threat-system-architecture.jpg
 ├── v1.0.0/                ← /threat-model --version v1.0.0
 │   └── ...
 └── v1.1.0/
