@@ -14,12 +14,12 @@ Consider user input before proceeding (if not empty).
 
 1. If `$ARGUMENTS` contains `--template <value>`:
    - Set `template` to the specified value
-   - Valid values: `baseball-card`, `system-architecture`, `all`, `corporate-white`
+   - Valid values: `baseball-card`, `system-architecture`, `risk-funnel`, `all`, `corporate-white`
    - If value is `corporate-white`: resolve alias to `baseball-card`
    - If value is not in the valid list, display:
      ```
      INVALID TEMPLATE: {value}
-     Valid templates: baseball-card, system-architecture, all
+     Valid templates: baseball-card, system-architecture, risk-funnel, all
      Alias: corporate-white → baseball-card
      ```
    - Halt if invalid.

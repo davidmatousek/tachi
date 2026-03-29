@@ -1,6 +1,6 @@
 ---
 name: tachi-threat-infographic
-description: "Transforms structured threat model output into visual infographic specifications and images via Gemini API. Supports multiple templates: Baseball Card (risk summary dashboard) and System Architecture (annotated architecture diagram with attack surface badges)."
+description: "Transforms structured threat model output into visual infographic specifications and images via Gemini API. Supports multiple templates: Baseball Card (risk summary dashboard), System Architecture (annotated architecture diagram with attack surface badges), and Risk Funnel (4-tier vertical funnel showing progressive risk reduction)."
 ---
 
 ## Metadata
@@ -25,6 +25,7 @@ data_source_types:
 templates:
   baseball-card: .claude/agents/tachi/templates/infographic-baseball-card.md
   system-architecture: .claude/agents/tachi/templates/infographic-system-architecture.md
+  risk-funnel: .claude/agents/tachi/templates/infographic-risk-funnel.md
 aliases:
   corporate-white: baseball-card
 output_files:
@@ -59,11 +60,12 @@ You must not require any other input — you run in a fresh context with only th
 |----------|-------------|---------|
 | `baseball-card` | `threat-baseball-card-spec.md` + `threat-baseball-card.jpg` | Compact risk summary dashboard: donut chart, STRIDE+AI heat map, critical finding cards, architecture overlay strip |
 | `system-architecture` | `threat-system-architecture-spec.md` + `threat-system-architecture.jpg` | Annotated architecture diagram: trust zones, components with attack surface badges, data flow arrows colored by severity, finding IDs overlaid |
-| `all` | Both sets of files | Generate both templates (default) |
+| `risk-funnel` | `threat-risk-funnel-spec.md` + `threat-risk-funnel.jpg` | 4-tier vertical funnel showing progressive risk reduction: threats identified, inherent risk scored, controls applied, residual risk |
+| `all` | All three sets of files | Generate all three templates (default) |
 
 **Alias**: `corporate-white` maps to `baseball-card`.
 
-When template is `all`, produce both templates sequentially — first Baseball Card, then System Architecture. Each produces its own spec + image.
+When template is `all`, produce all three templates sequentially — first Baseball Card, then System Architecture, then Risk Funnel. Each produces its own spec + image.
 
 ### Output
 
@@ -608,6 +610,53 @@ Section 5 format depends on the active template:
 **For `system-architecture` template** — use **spatial** format (zone-grouped layout with component placement, data flows, and boundary crossings). See the System Architecture template file for the full spatial Section 5 schema. This format is produced from Step 5b data extraction.
 
 **When data source is `compensating-controls`** (system-architecture template): Component box border colors use residual severity (highest `residual_score` determines color via severity band mapping). Badges show residual finding count and residual severity band. Data flow arrow colors use the highest `residual_score` among findings involving both source and destination. The finding legend groups findings by residual severity band. Header label reads "Residual Risk" per the risk label mapping.
+
+**For `risk-funnel` template** — use **funnel-tier** format (vertical tier table with progressive risk reduction):
+
+```markdown
+## 5. Architecture Threat Overlay
+
+### Funnel Tiers
+
+| Tier | Label | Width (%) | Severity Counts | Render State |
+|------|-------|-----------|-----------------|--------------|
+| 1 | Threats Identified | 100 | {critical}C / {high}H / {medium}M / {low}L | solid |
+| 2 | Inherent Risk Scored | {width_2} | {critical}C / {high}H / {medium}M / {low}L | solid |
+| 3 | Controls Applied | {width_3} | {coverage}% coverage, {mitigated}/{total} mitigated | solid |
+| 4 | Residual Risk | {width_4} | {critical}C / {high}H / {medium}M / {low}L | solid |
+
+### Tier Width Calculation
+
+Tier widths are proportional to finding count or risk volume at each stage:
+- Tier 1: Always 100% (baseline — total threats identified)
+- Tier 2-4: actual_width = (tier_volume / tier_1_volume) * 100
+- Minimum 10% narrowing per tier enforced
+- Absolute floor: 10% width
+
+### Sidebar Metrics
+
+| Metric | Value |
+|--------|-------|
+| Total Findings | {total_findings} |
+| Risk Reduction | {risk_reduction_pct}% |
+| Control Coverage | {control_coverage_pct}% |
+```
+
+**When data source is `compensating-controls`** (risk-funnel template — 4-tier mode): All 4 tiers rendered as solid. Tier 1 data from co-located threats.md Section 6 (Risk Summary): total finding count and qualitative severity distribution. Tier 2 data from co-located risk-scores.md Section 2 if present, otherwise recalculate from compensating-controls.md inherent scores. Tier 3 data from compensating-controls.md Section 1 (Executive Summary): control coverage percentage, findings with controls count. Tier 4 data from compensating-controls.md Section 2 (Coverage Matrix): residual severity distribution. Risk reduction percentage = delta between average inherent score and average residual score. Sidebar shows full metrics.
+
+**When data source is `risk-scores`** (risk-funnel template — 3-tier mode): Tiers 1-3 solid, Tier 4 ghost. Tier 1 data from co-located threats.md Section 6. Tier 2 data from risk-scores.md Section 2 (Scored Threat Table): composite score distribution. Tier 3 label changes to "Unmitigated Risk" using Tier 2 severity data (no control reduction applied). Tier 4 rendered as ghost with CTA: "Run /compensating-controls to complete the funnel". Enhancement tip in spec: "Run `/compensating-controls` to unlock the full 4-tier risk reduction funnel". Sidebar shows total findings, severity distribution, "Risk Reduction: N/A — run /compensating-controls".
+
+**When data source is `threats`** (risk-funnel template — 1-tier mode): Tier 1 solid, Tiers 2-4 ghost. Tier 1 data from threats.md Section 6: total count and severity distribution. Tier 2 ghost CTA: "Run /risk-score". Tier 3 ghost CTA: "Run /compensating-controls". Tier 4 ghost CTA: "Complete the pipeline". Enhancement tip in spec: "Run `/risk-score` to begin quantifying your risk reduction funnel". Sidebar shows total findings and qualitative severity counts only.
+
+### Risk Funnel Edge Cases
+
+**Empty threats.md (zero findings)**: Render a single tier labeled "0 Threats Identified" with the message "No threats found — threat model may need review". All other tiers ghost. Sidebar shows "Total Findings: 0". This applies regardless of data source — if the upstream threats.md contains no findings, the funnel cannot populate any tier with real data.
+
+**All findings same severity**: All tiers use uniform coloring (the single severity color from the color palette). Minimum 10% narrowing per tier still enforced to maintain funnel shape. The tier width calculation proceeds normally — uniform severity does not collapse tiers to equal width; volume reduction across pipeline stages still drives narrowing.
+
+**Large finding count (100+ findings)**: Tier labels show aggregate counts only (e.g., "142 findings — 23C / 45H / 52M / 22L"). Individual finding details omitted from tier visuals — detail is in the spec sections. This prevents visual clutter and keeps the funnel readable at standard 16:9 resolution.
+
+**Zero risk reduction (all controls missing or none effective)**: Tier 4 width equals Tier 2 width (no narrowing for controls/residual tiers). Tier 1 to Tier 2 still narrows to maintain funnel shape. Sidebar note: "0% risk reduction — no effective controls detected". This occurs when compensating-controls.md reports zero coverage or all controls have no impact on residual scores.
 
 **Visual Guidance**: Components with `High` risk weight should be rendered with the largest visual emphasis (bold borders, larger icons, red highlight). `Medium` components receive moderate emphasis (orange highlight). `Low` components receive minimal emphasis (standard rendering).
 

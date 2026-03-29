@@ -1055,3 +1055,72 @@ User → /infographic [--template] [--output-dir] [explicit-path]
 |------------|---------|---------------|
 | Markdown | Command and agent prompt files | No new technologies; extends existing prompt files |
 | Content-based detection | Three-tier hierarchy with header/column markers | Enables explicit path type detection without filename dependency |
+
+---
+
+### Feature 053: Risk Reduction Funnel
+
+## Components
+
+### Component 1: Design Template (`infographic-risk-funnel.md`)
+
+**File**: `.claude/agents/tachi/templates/infographic-risk-funnel.md`
+**Type**: New file
+**Purpose**: Complete visual specification for 4-tier risk reduction funnel — layout, colors, typography, zone specs, Gemini prompt.
+
+Follows the established 9-section template pattern:
+1. Frontmatter comment with purpose statement
+2. ASCII layout diagram (16:9 landscape, header + funnel zone + metrics sidebar + footer)
+3. Style table (dark theme #1E293B, consistent with baseball-card)
+4. Color palette (standard severity colors + ghost tier styling)
+5. Typography table
+6. Zone specifications (Header, Funnel with 4 tiers, Metrics Sidebar, Footer)
+7. Gemini Prompt Template (photorealistic 3D funnel, aesthetic-first)
+8. Gemini API Configuration
+9. Accessibility section
+
+### Component 2: Agent Registry Update
+
+**File**: `.claude/agents/tachi/threat-infographic.md`
+**Type**: Update
+**Purpose**: Register risk-funnel template and add funnel-specific data extraction instructions.
+
+Changes: template registry entry, description update, Available Templates table row, `all` behavior (2→3 templates), Section 5 funnel-tier format, graceful degradation logic.
+
+### Component 3: Command Registry Update
+
+**File**: `.claude/commands/infographic.md`
+**Type**: Update
+**Purpose**: Add `risk-funnel` as valid `--template` value.
+
+Changes: valid template list, invalid template error message, `all` description.
+
+## Data Flow
+
+```mermaid
+graph TD
+    A["/infographic --template risk-funnel"] --> B[Command: Parse Args]
+    B --> C[Auto-detect Data Source]
+    C --> D{Data Source Type?}
+    D -->|compensating-controls.md| E[4-tier mode]
+    D -->|risk-scores.md| F[3-tier mode]
+    D -->|threats.md| G[1-tier mode]
+    E --> H[Agent: Load risk-funnel template]
+    F --> H
+    G --> H
+    H --> I[Extract tier data per source]
+    I --> J[Generate 6-section spec]
+    J --> K{GEMINI_API_KEY?}
+    K -->|Yes| L[Generate 3D funnel image]
+    K -->|No| M[Spec only]
+    L --> N[Output: threat-risk-funnel-spec.md + .jpg]
+    M --> O[Output: threat-risk-funnel-spec.md]
+```
+
+## Tech Stack
+
+| Technology | Purpose | Justification |
+|------------|---------|---------------|
+| Markdown | Design template, agent prompt, command prompt | Extends existing markdown-based template system |
+| YAML | Schema validation, API configuration | Consistent with infographic.yaml v1.0 |
+| Gemini API | Photorealistic 3D funnel image rendering | Same pipeline as existing templates (best-effort) |
