@@ -176,26 +176,39 @@
 The infographic agent MUST construct the Gemini prompt using this template.
 Replace all `{placeholders}` with actual data from the infographic spec sections.
 
+**CRITICAL — Prompt Hygiene Rules**:
+- When populating `{finding_cards_text}`, `{flow_annotations}`, and `{correlation_annotations}` placeholders, use ONLY natural language and numbers. Never include hex color codes, Tailwind class names, pixel sizes, or CSS values in data text.
+- Strip the `Color` column from Section 2 data before building data text.
+- Use severity names only: "Critical", "High", "Medium", "Low" — not their hex codes.
+
 ```
 Create a premium, professional security risk dashboard with a polished, modern dark-theme aesthetic. This should look like a professionally designed Figma dashboard — not a data table or spreadsheet. The overall feel should be confident, sophisticated, and visually impressive — a formal security report artifact, not a presentation slide or boardroom scene. Render ONLY the dashboard itself as a flat document — no perspective, no 3D effects, no room or table context, no environmental background. The image should be the report, not a photo of the report.
 
-Use a dark navy background (#1E293B) throughout with white and light-colored text for maximum visual depth and executive presentation impact. All cards and panels should have rounded corners (12px), subtle drop shadows, and generous whitespace between elements. The layout is 16:9 landscape.
+IMPORTANT: The styling directives below are for your interpretation only. Do NOT render any hex color codes, pixel values, font sizes, or technical CSS specifications as visible text in the image. Only render the data labels, numbers, and natural-language text specified in the DATA CONTENT sections.
 
-Color reference — severity colors: Critical #DC2626, High #EA580C, Medium #CA8A04, Low #2563EB. Use these as accents against the dark background with soft glows where they appear.
+STYLING DIRECTIVES (interpret these, do not display them):
+- Background: dark navy
+- Severity color mapping: Critical = red, High = orange, Medium = amber/yellow, Low = blue
+- All text on dark background: white or light gray
+- Cards and panels: rounded corners, subtle drop shadows, generous whitespace
+- Layout: 16:9 landscape
+- Empty heat map cells: subtle dark gray
 
-TOP SECTION: Title "Threat Model: {project_name}" in large white bold text. Date "{date}" and a "CONFIDENTIAL" pill badge in red (#DC2626) with white text, right-aligned. Subtitle below in light gray: "{total_findings} Findings Across {category_count} Threat Categories".
+DATA CONTENT (render this as visible text):
+
+TOP SECTION: Title "Threat Model: {project_name}" in large white bold text. Date "{date}" and a "CONFIDENTIAL" pill badge in red with white text, right-aligned. Subtitle below in light gray: "{total_findings} Findings Across {category_count} Threat Categories".
 
 LEFT PANEL: A clean, elegant donut chart showing risk distribution — {critical_count} Critical, {high_count} High, {medium_count} Medium, {low_count} Low. The donut should have smooth, anti-aliased segments with the severity colors glowing subtly against the dark background. Center text: "{total_findings}" in large white bold with "findings" in smaller light gray beneath. Below the donut: a clean severity legend with colored dots, counts, and percentages. Below that: a "RISK POSTURE: {risk_posture}" badge in {posture_color} with "{critical_high_pct}% of findings rated High or Critical" in light text.
 
-CENTER PANEL: A coverage heat map titled "Coverage Heat Map" with {component_count} component rows and 8 threat category columns (S, T, R, I, D, E, AG, LLM). Cells are rounded rectangles filled with severity colors — the colors should pop against the dark background. Empty cells use a subtle dark gray (#334155). Component names in white text on the left. Column headers in light gray. Show finding count or severity letter in each colored cell.
+CENTER PANEL: A coverage heat map titled "Coverage Heat Map" with {component_count} component rows and 8 threat category columns (S, T, R, I, D, E, AG, LLM). Cells are rounded rectangles filled with severity colors — the colors should pop against the dark background. Component names in white text on the left. Column headers in light gray. Show finding count or severity letter in each colored cell.
 
-RIGHT PANEL: {critical_count} critical finding cards stacked vertically with 12px gaps. Each card is a rounded dark card (#334155 background) with a 4px left border accent in the severity color, a subtle shadow, finding ID in monospace severity-colored text, component name in white bold, and a one-line threat description in light gray. Cards: {finding_cards_text}.
+RIGHT PANEL: {critical_count} critical finding cards stacked vertically. Each card is a rounded dark card with a left border accent in the severity color, a subtle shadow, finding ID in monospace severity-colored text, component name in white bold, and a one-line threat description in light gray. Cards: {finding_cards_text}.
 
 BOTTOM STRIP: A simplified architecture diagram showing {zone_count} trust zones ({zone_names}) as rounded, subtly bordered boxes on the dark background. Components placed inside their zones as smaller cards. Data flow arrows between zones use smooth curves (not harsh straight lines) colored by highest severity: {flow_annotations}. Trust boundary crossings annotated with finding IDs. Correlation callouts: {correlation_annotations}.
 
 FOOTER: "Generated by Tachi Threat Modeling Framework — STRIDE + AI Threat Analysis" in small light gray text, centered.
 
-The overall impression should be a polished professional report — confident, clear, and visually sophisticated. Render the dashboard as a flat, full-bleed graphic filling the entire 16:9 frame. No perspective, no 3D, no boardroom, no table, no environmental context.
+The overall impression should be a polished professional report — confident, clear, and visually sophisticated. No hex codes, color values, or technical specifications should appear as visible text. Render the dashboard as a flat, full-bleed graphic filling the entire 16:9 frame. No perspective, no 3D, no boardroom, no table, no environmental context.
 ```
 
 ---

@@ -1203,3 +1203,53 @@ graph LR
 | Typst 0.11.x-0.12.x | PDF compilation from templates | No browser dependency, reproducible, portable, native image embedding |
 | Markdown | Command and agent specifications | Extends existing tachi command/agent pattern |
 | YAML | Page assembly schema | Consistent with existing schemas (output.yaml, infographic.yaml) |
+
+---
+
+### Feature 060: Professional PDF Security Assessment Report with tachi Branding
+
+## Components
+
+### Component 1: Theme Token System
+- `theme.typ` — new file centralizing 7 brand colors, 2 logo paths, 3 font stacks
+- `shared.typ` — refactored to import theme.typ; retains color aliases (`color-header-bg` → `brand-primary`)
+- Severity colors remain as functional constants in shared.typ (not brand tokens)
+
+### Component 2: Heading Migration
+- All section titles migrated from `text()` to `heading()` elements across 9 templates
+- Enables Typst `outline()` for auto-generated TOC
+- Full-bleed pages use `hide(heading(...))` for phantom TOC entries
+
+### Component 3: New Page Templates
+- `disclaimer.typ` — legal disclaimer with 4 standard notice sections
+- `toc.typ` — auto-generated table of contents via Typst `outline()`
+- `methodology.typ` — STRIDE + AI threat categories, visual probability x impact matrix, conditional 4D scoring
+- `scope.typ` — component inventory, data flows, trust boundaries from threats.md Sections 1-2
+
+### Component 4: Report Assembler Updates
+- New parsing: threats.md Section 1 (components, data flows) and Section 2 (trust boundaries)
+- Brand asset detection: `brand/final/*.png` logo files
+- Config generation: `report-config.typ` with user overrides
+- New report-data.typ variables: scope data arrays, logo paths, visibility flags
+
+### Component 5: Schema Update
+- `security-report.yaml` v1.0 → v1.1
+- New page types, scope data contract, theme token contract, config variables
+
+## Data Flow
+
+```
+threats.md + brand/*.png + optional artifacts
+    → Report Assembler (parses + detects)
+    → report-data.typ + report-config.typ
+    → Typst compile (main.typ orchestrates 12 page types)
+    → security-report.pdf
+```
+
+## Tech Stack
+
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Typst | 0.11+ | PDF rendering with `outline()`, `image()`, `hide()` |
+| PNG | N/A | Brand logo assets (Typst auto-detects PNG vs JPEG from headers) |
+| YAML | N/A | Schema definitions (security-report.yaml v1.1) |

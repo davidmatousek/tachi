@@ -10,9 +10,9 @@
 # Consumers: security-report command (commands/security-report.md),
 #            Typst master orchestrator (templates/security-report/main.typ)
 #
-# Version: 1.0
+# Version: 1.1
 
-schema_version: "1.0"
+schema_version: "1.1"
 
 security_report:
   output_file: security-report.pdf
@@ -51,6 +51,10 @@ security_report:
       required: false
       enables: [system-architecture]
 
+    - pattern: "brand/final/tachi-logo-*.png"
+      required: false
+      enables: [cover-branded, headers-branded]
+
   # Page Sequence
   #
   # Defines the fixed ordering, layout orientation, and page size
@@ -59,6 +63,24 @@ security_report:
   # present.
   page_sequence:
     - type: cover
+      layout: portrait
+      size: us-letter
+
+    - type: disclaimer
+      layout: portrait
+      size: us-letter
+      conditional: show-disclaimer
+
+    - type: toc
+      layout: portrait
+      size: us-letter
+
+    - type: methodology
+      layout: portrait
+      size: us-letter
+      conditional: show-methodology
+
+    - type: scope
       layout: portrait
       size: us-letter
 
@@ -114,3 +136,43 @@ security_report:
       width: "11in"
       height: "6.1875in"
       margins: { top: "0in", bottom: "0in", left: "0in", right: "0in" }
+
+  # Theme Tokens
+  #
+  # Brand color contract defined in templates/security-report/theme.typ.
+  # Page templates consume these via shared.typ aliases.
+  theme_tokens:
+    colors:
+      brand-primary: "#1B2A4A"    # Tachi Indigo
+      brand-secondary: "#2D4A6F"  # Steel Blue
+      brand-accent: "#C93A40"     # Vermillion
+      brand-highlight: "#B8963E"  # Muted Gold
+      brand-dark: "#0D0D0D"       # Lacquer Black
+      brand-light: "#F5F2EB"      # Washi White
+      brand-muted: "#64748B"      # Ash Gray
+    logos:
+      primary: "brand/final/tachi-logo-primary.png"
+      horizontal: "brand/final/tachi-logo-horizontal.png"
+    fonts:
+      heading: ["Helvetica Neue", "Helvetica", "Arial", "New Computer Modern"]
+      body: ["New Computer Modern", "Charter", "Georgia", "Times New Roman"]
+      mono: ["Menlo", "Courier New", "Courier"]
+
+  # Scope Data Contract
+  #
+  # Variables extracted from threats.md Sections 1-2 for the
+  # Assessment Scope page.
+  scope_data:
+    components: { fields: [name, type, description] }
+    data_flows: { fields: [source, destination, data, protocol] }
+    trust_boundaries: { fields: [zone, trust-level, components] }
+    boundary_crossings: { fields: [crossing, from-zone, to-zone, components, controls] }
+
+  # Configuration
+  #
+  # Optional report-config.typ overrides.
+  config:
+    show-disclaimer: { type: boolean, default: true }
+    show-methodology: { type: boolean, default: true }
+    custom-disclaimer-text: { type: string, default: null }
+    custom-footer-text: { type: string, default: null }

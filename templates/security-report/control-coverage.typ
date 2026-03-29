@@ -107,6 +107,7 @@
         font: font-heading,
         size: 12pt,
         weight: "bold",
+        fill: brand-primary,
       )[Control Status by STRIDE Category]
       v(0.5em)
 
@@ -196,6 +197,7 @@
         font: font-heading,
         size: 12pt,
         weight: "bold",
+        fill: brand-primary,
       )[Detailed Control Assessment]
       v(0.3em)
 
@@ -273,6 +275,7 @@
         font: font-heading,
         size: 12pt,
         weight: "bold",
+        fill: brand-primary,
       )[Coverage Summary]
       v(0.5em)
 
@@ -406,14 +409,8 @@
     ),
     footer: report-footer(),
   )[
-    // Page heading.
-    #v(0.1in)
-    #text(
-      font: font-heading,
-      size: 18pt,
-      weight: "bold",
-    )[Control Coverage Analysis]
-    #v(0.2in)
+    // Page heading — uses heading element for TOC outline() discovery.
+    #heading(level: 1)[Control Coverage]
 
     // Section 1: Status matrix — STRIDE category breakdown.
     #_status-matrix(coverage-matrix)

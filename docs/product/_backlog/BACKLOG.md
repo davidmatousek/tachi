@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-03-29T02:53:12Z.
+> Auto-generated from GitHub Issues on 2026-03-29T16:53:13Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -40,6 +40,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #60 | Professional PDF Security Assessment Report with tachi Branding | OPEN | 2026-03-29 |
 | #51 | fix: Gemini heat map renders incorrect severity labels for medium-risk components | OPEN | 2026-03-28 |
 | #46 | Sync upstream AOD Kit — merge new skills, commands, rules, and guides | OPEN | 2026-03-28 |
 | #27 | Developer Guide: Automated Threat Modeling for Your Architecture | CLOSED | 2026-03-24 |

@@ -279,46 +279,61 @@ ALL findings grouped by severity tier. Every finding ID on the diagram has an en
 The infographic agent MUST construct the Gemini prompt using this template.
 Replace all `{placeholders}` with actual data from the spec sections.
 
+**CRITICAL — Prompt Hygiene Rules**:
+- When populating `{zone_descriptions}`, `{flow_descriptions}`, `{boundary_descriptions}`, and `{finding_legend_entries}` placeholders, use ONLY natural language and numbers. Never include hex color codes, Tailwind class names, pixel sizes, or CSS values in data text.
+- Strip the `Color` column from Section 2 data before building data text.
+- Use severity names only: "Critical", "High", "Medium", "Low" — not their hex codes.
+- Finding legend entries should contain: finding ID, component name, and short description only.
+
 ```
 Create a premium, professionally designed system architecture diagram showing security threat analysis findings. This should look like an architecture poster from a top-tier security consultancy — clean, authoritative, and visually sophisticated. The feel should be modern and polished, like a Figma or Miro design artifact.
 
-Use a clean white background (#FFFFFF) for maximum contrast with the colored trust zones. All component boxes should have rounded corners (8px), subtle drop shadows (0 2px 8px rgba(0,0,0,0.1)), and professional spacing (16px minimum between components). The layout is 16:9 landscape.
+IMPORTANT: The styling directives below are for your interpretation only. Do NOT render any hex color codes, pixel values, font sizes, or technical CSS specifications as visible text in the image. Only render the data labels, component names, finding IDs, and natural-language text specified in the DATA CONTENT sections.
 
-Color reference — severity colors: Critical #DC2626, High #EA580C, Medium #CA8A04, Low #2563EB, Clean #10B981. Trust zone backgrounds use soft, elegant tints — not flat gray boxes.
+STYLING DIRECTIVES (interpret these, do not display them):
+- Background: clean white
+- Severity color mapping: Critical = red, High = orange, Medium = amber/yellow, Low = blue, Clean = emerald green
+- Trust zone tints: untrusted = soft warm red tint, application = neutral slate tint, trusted = cool green tint
+- Component boxes: rounded corners, subtle drop shadow, white fill, full colored border matching highest severity
+- Finding IDs: rendered as individual pill badges with severity-colored background and white text
+- Data flow arrows: smooth curved arrows, colored by highest severity on that path
+- Layout: 16:9 landscape, professional spacing between components
 
-HEADER: Title "{project_name} — Threat Model" in bold dark text (#111827). Subtitle "Architecture with attack surface annotations" in lighter gray. Date "{date}", a red "CONFIDENTIAL" pill badge, and "{total_findings} Findings Across {category_count} Threat Categories" as an accent badge with rounded corners.
+DATA CONTENT (render this as visible text):
+
+HEADER: Title "{project_name} — Threat Model" in bold dark text. Subtitle "Architecture with attack surface annotations" in lighter gray. Date "{date}", a red "CONFIDENTIAL" pill badge, and "{total_findings} Findings Across {category_count} Threat Categories" as an accent badge with rounded corners.
 
 The diagram shows {zone_count} trust zones stacked vertically from untrusted (top) to trusted (bottom):
 
 {zone_descriptions}
 
-TRUST ZONES: Each zone is an elegantly styled region with a subtle background tint — use soft warm tones for untrusted zones (e.g., #FEF2F2 light red tint), neutral for application zones (#F8FAFC slate tint), and cool for trusted zones (#F0FDF4 light green tint). Zone borders are soft dashed lines (#CBD5E1). Each zone label shows ONLY the zone name in semibold (e.g., "Application Zone") with the trust level in italic below (e.g., "Semi-Trusted"). Do NOT show positional labels like "TOP ZONE", "MIDDLE ZONE", "BOTTOM ZONE" — these are internal layout instructions, not visible labels. The zone's position on the diagram already conveys its placement. Zones should feel like distinct, well-designed regions — not plain boxes.
+TRUST ZONES: Each zone is an elegantly styled region with a subtle background tint. Zone borders are soft dashed lines. Each zone label shows ONLY the zone name in semibold (e.g., "Application Zone") with the trust level in italic below (e.g., "Semi-Trusted"). Do NOT show positional labels like "TOP ZONE", "MIDDLE ZONE", "BOTTOM ZONE" — these are internal layout instructions, not visible labels. The zone's position on the diagram already conveys its placement. Zones should feel like distinct, well-designed regions — not plain boxes.
 
-COMPONENT BOXES: Each component is a design-system-style card — rounded corners (8px), subtle drop shadow, clean white fill with a FULL colored border (3px solid) indicating highest severity. The entire border must be the severity color — not just a left accent. Component name in medium-weight dark text inside the card. Below the component name, finding IDs (e.g., "S-1, T-2") rendered as INDIVIDUAL PILL BADGES — each finding ID in its own small rounded pill with a severity-colored background and white text (not floating text). The severity summary badge (e.g., "3 High") is a larger pill in the bottom-right corner with severity-colored background and white bold text. CRITICAL: Finding IDs must NEVER be rendered as plain floating text — they must always be inside bordered pill badges or tags so they stand out clearly from the background. Clean components have an emerald (#10B981) full border and "clean" label. Components arranged left-to-right within zones, sorted by finding count descending.
+COMPONENT BOXES: Each component is a design-system-style card with a full colored border indicating highest severity. Component name in medium-weight dark text inside the card. Below the component name, finding IDs (e.g., "S-1, T-2") rendered as INDIVIDUAL PILL BADGES — each finding ID in its own small rounded pill with a severity-colored background and white text (not floating text). The severity summary badge (e.g., "3 High") is a larger pill in the bottom-right corner. CRITICAL: Finding IDs must NEVER be rendered as plain floating text — they must always be inside bordered pill badges or tags. Clean components have an emerald full border and "clean" label. Components arranged left-to-right within zones, sorted by finding count descending.
 
-DATA FLOW ARROWS: Smooth, curved arrows between components — not harsh straight lines. Arrow color matches the highest severity finding on that flow path: {flow_descriptions}. Key arrows labeled with protocol in small rounded label pills (e.g., "HTTPS", "JSON-RPC", "SQL") with a semi-opaque white background (#FFFFFFCC) and a thin border so labels don't bleed into the diagram. Arrows should feel elegant and intentional.
+DATA FLOW ARROWS: Smooth, curved arrows between components — not harsh straight lines. Arrow color matches the highest severity finding on that flow path: {flow_descriptions}. Key arrows labeled with protocol in small rounded label pills (e.g., "HTTPS", "JSON-RPC", "SQL"). Arrows should feel elegant and intentional.
 
-TRUST BOUNDARIES: Subtle dashed horizontal lines between zones labeled "TB-{{N}}" in a small rounded slate pill badge (#94A3B8 background, white text). Finding IDs along the boundary rendered as individual small pill badges in their severity colors (not plain text): {boundary_descriptions}. Every text annotation on the diagram must have visual containment — a background fill, border, or pill shape. No text should float directly on the white background without a container.
+TRUST BOUNDARIES: Subtle dashed horizontal lines between zones labeled "TB-N" in a small rounded slate pill badge. Finding IDs along the boundary rendered as individual small pill badges in their severity colors (not plain text): {boundary_descriptions}. Every text annotation on the diagram must have visual containment — a background fill, border, or pill shape. No text should float directly on the background without a container.
 
-FINDING LEGEND: Below the architecture diagram and above the footer, include a "Finding Legend" reference panel. This panel maps EVERY finding ID shown in the diagram to a short threat description so the reader can understand what each pill badge means. The legend panel has a subtle light gray background (#F9FAFB) with a thin border (#E5E7EB) to visually separate it from the architecture diagram above.
+FINDING LEGEND: Below the architecture diagram and above the footer, include a "Finding Legend" reference panel. This panel maps EVERY finding ID shown in the diagram to a short threat description so the reader can understand what each pill badge means. The legend panel has a subtle light gray background to visually separate it from the architecture diagram above.
 
-Organize the legend into SEVERITY TIERS — each tier is a visually distinct horizontal band with a colored left accent bar (4px, severity color) and a severity header label:
+Organize the legend into SEVERITY TIERS — each tier is a visually distinct horizontal band with a colored left accent bar and a severity header label:
 
-TIER 1 — CRITICAL (red #DC2626 accent): List all Critical findings in a compact multi-column row. Each entry: severity-colored pill badge with finding ID, then "Component — short threat" in small dark text. Use 2-4 columns depending on count. Text size 10px.
+TIER 1 — CRITICAL (red accent): List all Critical findings in a compact multi-column row. Each entry: severity-colored pill badge with finding ID, then "Component — short threat" in small dark text. Use 2-4 columns depending on count.
 
-TIER 2 — HIGH (orange #EA580C accent): Same format, all High findings.
+TIER 2 — HIGH (orange accent): Same format, all High findings.
 
-TIER 3 — MEDIUM (yellow #CA8A04 accent): Same format, all Medium findings.
+TIER 3 — MEDIUM (yellow accent): Same format, all Medium findings.
 
-TIER 4 — LOW (blue #2563EB accent): Same format, all Low findings. If only 1-2 entries, render inline on a single row.
+TIER 4 — LOW (blue accent): Same format, all Low findings. If only 1-2 entries, render inline on a single row.
 
 Scaling rules for the legend:
-- 1-20 findings: 2 columns per tier, generous spacing, 10-11px text
-- 21-40 findings: 3 columns per tier, tighter spacing, 10px text
-- 41-60 findings: 4 columns per tier, compact spacing, 9-10px text
-- 60+ findings: 4 columns, 9px text, abbreviate descriptions to ~4 words max
+- 1-20 findings: 2 columns per tier, generous spacing
+- 21-40 findings: 3 columns per tier, tighter spacing
+- 41-60 findings: 4 columns per tier, compact spacing
+- 60+ findings: 4 columns, abbreviate descriptions to ~4 words max
 
-Each tier band should be visually scannable — a reader should be able to quickly find "what is S-3?" by scanning the tier that matches the pill color they see on the diagram. The colored accent bars make it easy to jump to the right severity section.
+Each tier band should be visually scannable — a reader should be able to quickly find "what is S-3?" by scanning the tier that matches the pill color they see on the diagram.
 
 This legend is CRITICAL — without it, the finding ID pills on the diagram are meaningless to the reader. Every finding ID that appears anywhere in the diagram MUST have an entry in the legend.
 
@@ -326,7 +341,7 @@ This legend is CRITICAL — without it, the finding ID pills on the diagram are 
 
 FOOTER: "Generated by Tachi Threat Modeling Framework — STRIDE + AI Threat Analysis" in small gray text, centered.
 
-The overall impression should be a polished, authoritative architecture diagram with a complete reference legend — the kind you'd see in a professional security audit deliverable. Prioritize readability — component names, finding IDs, and legend entries must be legible. Every element should feel intentionally designed.
+The overall impression should be a polished, authoritative architecture diagram with a complete reference legend — the kind you'd see in a professional security audit deliverable. Prioritize readability — component names, finding IDs, and legend entries must be legible. No hex codes, color values, or technical specifications should appear as visible text. Every element should feel intentionally designed.
 ```
 
 ### Zone Description Construction

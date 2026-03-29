@@ -227,14 +227,8 @@
     ),
     footer: report-footer(),
   )[
-    // Page heading.
-    #v(0.1in)
-    #text(
-      font: font-heading,
-      size: 18pt,
-      weight: "bold",
-    )[Remediation Roadmap]
-    #v(0.15in)
+    // Page heading — uses heading element for TOC outline() discovery.
+    #heading(level: 1)[Remediation Roadmap]
 
     // ---------------------------------------------------------------------
     // Empty state
@@ -247,18 +241,18 @@
           inset: 1.2em,
           radius: 4pt,
           stroke: 0.5pt + color-rule,
-          fill: rgb("#F8FAFC"),
+          fill: brand-light,
           {
             text(
               font: font-heading,
               size: 12pt,
               weight: "semibold",
-              fill: color-footer-text,
+              fill: brand-secondary,
             )[No remediation actions identified]
             v(0.4em)
             text(
               size: 10pt,
-              fill: color-footer-text,
+              fill: brand-muted,
             )[All findings have been addressed or no recommendations were generated.]
           },
         ),

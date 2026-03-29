@@ -1,5 +1,5 @@
 ---
-description: Generate a professional PDF security assessment booklet from tachi pipeline artifacts — auto-detects threats.md (required), threat-report.md, risk-scores.md, compensating-controls.md, and infographic JPEG images, assembles them into a sequenced multi-page PDF using Typst with full-bleed infographic pages and 3-tier data source detection
+description: Generate a professional PDF security assessment booklet from tachi pipeline artifacts — auto-detects threats.md (required), threat-report.md, risk-scores.md, compensating-controls.md, and infographic JPEG images, assembles them into a sequenced multi-page PDF using Typst with branded cover, disclaimer, TOC, risk methodology, assessment scope, full-bleed infographic pages, and 3-tier data source detection
 ---
 
 ## User Input
@@ -66,6 +66,7 @@ Single-command entry point for tachi security assessment PDF generation — the 
    | Risk Funnel Infographic | `threat-risk-funnel.jpg` | optional | Risk Funnel page (full-bleed) |
    | Baseball Card Infographic | `threat-baseball-card.jpg` | optional | Baseball Card page (full-bleed) |
    | System Architecture Infographic | `threat-system-architecture.jpg` | optional | System Architecture page (full-bleed) |
+   | Brand Assets | `brand/final/tachi-logo-*.png` | optional | Cover (branded), Headers (branded) |
 
 3. **Require `threats.md` minimum**:
    - If `threats.md` is not found in `target_dir`, display:
@@ -106,12 +107,17 @@ Single-command entry point for tachi security assessment PDF generation — the 
      threat-risk-funnel.jpg ..... {FOUND | not found}
      threat-baseball-card.jpg ... {FOUND | not found}
      threat-system-architecture.jpg {FOUND | not found}
+     brand/final/*.png .............. {FOUND (N files) | not found}
 
    Data source tier: {Tier 1 — residual risk | Tier 2 — quantitative | Tier 3 — qualitative}
 
    Pages to generate:
      1. Cover ..................... portrait (US Letter)
-     2. Executive Summary ......... portrait (US Letter)
+     2. Disclaimer ............... portrait (US Letter)
+     3. Table of Contents ........ portrait (US Letter)
+     4. Risk Methodology ......... portrait (US Letter)
+     5. Assessment Scope ......... portrait (US Letter)
+     6. Executive Summary ......... portrait (US Letter)
      {if risk-funnel found:  "N. Risk Funnel .............. landscape (full-bleed 16:9)"}
      {if baseball-card found: "N. Baseball Card ............ landscape (full-bleed 16:9)"}
      {if architecture found:  "N. System Architecture ...... landscape (full-bleed 16:9)"}
@@ -170,7 +176,11 @@ Display the generation results to the user.
 
    Page sequence:
      1. Cover ..................... portrait
-     2. Executive Summary ......... portrait
+     2. Disclaimer ............... portrait
+     3. Table of Contents ........ portrait
+     4. Risk Methodology ......... portrait
+     5. Assessment Scope ......... portrait
+     6. Executive Summary ......... portrait
      {conditional pages with dynamic numbering}
      N. Findings Detail .......... portrait ({tier_label})
      {conditional pages}
@@ -184,7 +194,7 @@ Display the generation results to the user.
    - Tier 3: "Severity (threats.md)"
 
 2. **Page type list** — comma-separated list of included page types:
-   - Always: "cover, executive-summary, findings-detail"
+   - Always: "cover, disclaimer, toc, methodology, scope, executive-summary, findings-detail"
    - Conditional: "risk-funnel", "baseball-card", "system-architecture", "control-coverage", "remediation-roadmap"
 
 3. **Next steps suggestion**:

@@ -769,6 +769,26 @@ Load `.claude/agents/tachi/templates/infographic-{name}.md` and use its **Gemini
 
 If the design template is unavailable, construct the prompt following the fallback rules below.
 
+### Prompt Hygiene (Mandatory)
+
+When constructing the Gemini prompt from specification data, follow these rules to prevent technical metadata from appearing as visible text in the generated image:
+
+1. **Strip hex color codes**: Never include `#RRGGBB` values in data placeholder text. Use severity names only: "Critical", "High", "Medium", "Low". The template's STYLING DIRECTIVES block already tells Gemini which colors to use — repeating hex codes in data text causes Gemini to render them as visible characters.
+2. **Strip CSS values**: Never include pixel sizes (`12px`, `32px`), opacity values (`20% opacity`), Tailwind class names (`Slate-600`), or shadow specs in data placeholder text.
+3. **Strip the Color column**: When extracting data from Section 2 (Risk Distribution) tables, exclude the `Color` column entirely. Only use Severity, Count, and Percentage columns.
+4. **Strip the Hex/Tailwind columns**: When extracting from Section 6 (Visual Design Directives) color palette tables, do NOT copy these values into data placeholders. The template already encodes the color mapping.
+5. **Data placeholders are for content only**: `{tier_N_data}`, `{sidebar_metrics}`, `{finding_cards_text}`, `{flow_annotations}`, `{zone_descriptions}`, `{finding_legend_entries}` — these should contain ONLY labels, numbers, percentages, finding IDs, component names, and natural-language descriptions.
+
+**Example** — correct tier data placeholder:
+```
+Tier 1 (widest, 100% width): "Threats Identified" — 39 findings: 8 Critical, 10 High, 13 Medium, 3 Low. Dominant color: yellow (Medium is highest count).
+```
+
+**Example** — WRONG tier data placeholder (hex codes leak into image):
+```
+Tier 1 (widest, 100% width): "Threats Identified" — 39 findings — 8C #DC2626 / 10H #EA580C / 13M #CA8A04 / 3L #2563EB. Dominant Color: #CA8A04 (Yellow-600).
+```
+
 ### Prompt Framing
 
 Frame the entire prompt as a business document visualization request. Use language such as "risk assessment summary," "security posture overview," and "organizational risk dashboard." Do NOT use attack-specific terminology (e.g., "exploit," "vulnerability chain," "attack vector," "privilege escalation") in the image prompt — this minimizes content policy rejection risk from the Gemini API.
@@ -781,38 +801,51 @@ Every Gemini prompt MUST lead with the visual quality target before any data. Th
 
 Never send a data-only prompt. Gemini interprets dense technical specifications literally, producing flat, spreadsheet-like output. Leading with aesthetic language primes the model for visual quality.
 
-### Prompt Structure (from design template)
+### Prompt Structure (fallback when design template unavailable)
 
-The prompt MUST follow this structure — populate with data from the spec sections:
+This fallback is used ONLY if the design template file cannot be loaded. It follows the same hygiene rules — no hex codes in data content.
 
 ```
 Create a professional security threat infographic for "{project_name}" with the following layout:
 
+IMPORTANT: The styling directives below are for your interpretation only. Do NOT render any hex color codes, pixel values, or technical specifications as visible text in the image.
+
+STYLING DIRECTIVES (interpret these, do not display them):
+- Background: clean white
+- Severity color mapping: Critical = red, High = orange, Medium = amber/yellow, Low = blue
+- Layout: 16:9 landscape, modern corporate aesthetic
+
+DATA CONTENT (render this as visible text):
+
 TOP SECTION: Title "Threat Model: {project_name}" with date "{date}" and "CONFIDENTIAL" badge. Subtitle: "{description} — {total_findings} Findings Across {category_count} Threat Categories".
 
-LEFT PANEL: Donut chart showing risk distribution: {critical_count} Critical (red #DC2626), {high_count} High (orange #EA580C), {medium_count} Medium (amber #CA8A04), {low_count} Low (blue #2563EB). Center text "{total_findings} findings". Below the donut: severity legend with counts and percentages. Below that: "RISK POSTURE: {risk_posture}" in {posture_color}, with "{critical_high_pct}% of findings rated High or Critical".
+LEFT PANEL: Donut chart showing risk distribution: {critical_count} Critical (red), {high_count} High (orange), {medium_count} Medium (amber), {low_count} Low (blue). Center text "{total_findings} findings". Below the donut: severity legend with counts and percentages. Below that: "RISK POSTURE: {risk_posture}" in {posture_color}, with "{critical_high_pct}% of findings rated High or Critical".
 
-CENTER PANEL: Heat map grid titled "Coverage Heat Map" with {component_count} components as rows and 8 threat categories as columns (S, T, R, I, D, E, AG, LLM). Cells colored by severity: red #DC2626 for Critical, orange #EA580C for High, amber #CA8A04 for Medium, blue #2563EB for Low, light gray #F3F4F6 for analyzed with no findings, white for not applicable. Components sorted by finding count descending. Show finding count or severity letter in each cell.
+CENTER PANEL: Heat map grid titled "Coverage Heat Map" with {component_count} components as rows and 8 threat categories as columns (S, T, R, I, D, E, AG, LLM). Cells colored by severity: red for Critical, orange for High, amber for Medium, blue for Low, light gray for analyzed with no findings, white for not applicable. Components sorted by finding count descending. Show finding count or severity letter in each cell.
 
-RIGHT PANEL: {critical_count} critical finding cards in a vertical stack. Each card has: a {severity_color} left border accent, finding ID in monospace (e.g., "S-1"), component name in bold, and a one-line threat description. Cards: {finding_cards_text}.
+RIGHT PANEL: {critical_count} critical finding cards in a vertical stack. Each card has: a severity-colored left border accent, finding ID in monospace (e.g., "S-1"), component name in bold, and a one-line threat description. Cards: {finding_cards_text}.
 
 BOTTOM STRIP: Simplified architecture diagram showing {zone_count} trust zones ({zone_names}) as labeled boxes. Components placed inside their zones. Data flow arrows between zones colored by highest severity: {flow_annotations}. Trust boundary crossings annotated with finding IDs. Correlation callouts where cross-category threats overlap: {correlation_annotations}.
 
 FOOTER: "Generated by Tachi Threat Modeling Framework — OWASP STRIDE + AI Threat Analysis"
 
-Style: Clean, modern, corporate security report aesthetic. White background (#FFFFFF), Tailwind CSS color palette, sans-serif typography. 16:9 landscape aspect ratio.
+No hex codes, color values, or technical specifications should appear as visible text.
 ```
 
 ### Color Specification
 
-Include hex codes directly in the prompt text — do not rely on the image model interpreting color names consistently:
-- Critical severity: `#DC2626` (red)
-- High severity: `#EA580C` (orange)
-- Medium severity: `#EAB308` (yellow)
-- Low severity: `#4169E1` (blue)
-- Informational/neutral: `#6B7280` (gray)
-- Background: `#1E293B` (dark navy) for dark theme
-- Text: `#FFFFFF` (white) on dark background
+Hex codes belong ONLY in the template's STYLING DIRECTIVES block — never in data content placeholders. The design templates already encode the severity-to-color mapping in their styling preamble. When the template includes a STYLING DIRECTIVES section, that section handles all color communication to Gemini.
+
+**Reference palette** (for template STYLING DIRECTIVES only — never in data text):
+- Critical severity: red (`#DC2626`)
+- High severity: orange (`#EA580C`)
+- Medium severity: yellow (`#EAB308`)
+- Low severity: blue (`#4169E1`)
+- Informational/neutral: gray (`#6B7280`)
+- Background: dark navy (`#1E293B`) for dark theme
+- Text: white (`#FFFFFF`) on dark background
+
+**In data content**: Use natural language color names: "red", "orange", "yellow", "blue". Gemini reliably interprets these when the STYLING DIRECTIVES block has already established the mapping.
 
 ---
 

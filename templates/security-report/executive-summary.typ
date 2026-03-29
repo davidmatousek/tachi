@@ -105,11 +105,12 @@
         font: font-heading,
         size: 11pt,
         weight: "bold",
+        fill: brand-primary,
       )[Severity Distribution]
       h(1fr)
       text(
         size: 10pt,
-        fill: color-footer-text,
+        fill: brand-secondary,
       )[#total findings total]
       v(0.5em)
       _severity-row("Critical", critical, total, severity-critical)
@@ -148,6 +149,7 @@
         font: font-heading,
         size: 11pt,
         weight: "bold",
+        fill: brand-primary,
       )[Component Distribution]
       v(0.5em)
 
@@ -196,6 +198,7 @@
         font: font-heading,
         size: 11pt,
         weight: "bold",
+        fill: brand-primary,
       )[Assessment Summary]
       v(0.5em)
       text(size: 10pt)[#narrative]
@@ -246,14 +249,8 @@
     ),
     footer: report-footer(),
   )[
-    // Page heading.
-    #v(0.1in)
-    #text(
-      font: font-heading,
-      size: 18pt,
-      weight: "bold",
-    )[Executive Summary]
-    #v(0.2in)
+    // Page heading — uses heading element for TOC outline() discovery.
+    #heading(level: 1)[Executive Summary]
 
     // -----------------------------------------------------------------------
     // Rich mode: 2-column layout (metrics left, narrative right)

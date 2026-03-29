@@ -1,6 +1,6 @@
 ---
 name: tachi-report-assembler
-description: "Assembles a professional PDF security assessment booklet from tachi pipeline artifacts using Typst. Auto-detects available artifacts (threats.md, threat-report.md, risk-scores.md, compensating-controls.md, infographic JPEGs), extracts structured data, generates a Typst data file (report-data.typ), and invokes Typst compilation to produce a sequenced multi-page PDF with full-bleed infographic pages, severity-colored tables, and conditional page inclusion."
+description: "Assembles a professional PDF security assessment booklet from tachi pipeline artifacts using Typst. Auto-detects available artifacts (threats.md, threat-report.md, risk-scores.md, compensating-controls.md, infographic JPEGs), extracts structured data including scope data (components, data flows, trust boundaries) and brand assets, generates a Typst data file (report-data.typ), and invokes Typst compilation to produce a sequenced multi-page PDF with cover, disclaimer, table of contents, executive summary, risk methodology, assessment scope, full-bleed infographic pages, severity-colored tables, and conditional page inclusion."
 ---
 
 ## Metadata
@@ -281,6 +281,68 @@ If `schema_version` from threats.md is `"1.0"`:
 - All other sections parse identically
 - Do NOT abort; log: `"Schema v1.0 detected — correlated findings omitted from executive summary"`
 
+### 2h. Extract Scope Data from threats.md
+
+Parse threats.md Section 1 (System Overview / Architecture Description) and Section 2 (Trust Boundaries) to extract scope data for the Assessment Scope page.
+
+**Section 1 — Components and Data Flows**:
+
+1. Find the components table in Section 1 (headers: Component, Type, Description or similar). For each row, extract:
+   ```
+   { name: "API Gateway", type: "Process", description: "Routes API requests" }
+   ```
+
+2. Find the data flows table in Section 1 (headers typically include: Source, Destination, Data/Description, Protocol or similar). For each row, extract:
+   ```
+   { source: "Client", destination: "API Gateway", data: "API Requests", protocol: "HTTPS" }
+   ```
+
+**Section 2 — Trust Boundaries**:
+
+3. Find the trust zones table (headers: Zone/Boundary, Trust Level, Components). For each row, extract:
+   ```
+   { zone: "Public Internet", trust-level: "Untrusted", components: "Client App" }
+   ```
+
+4. Find the boundary crossings table (headers: Crossing, From Zone, To Zone, Components, Controls). For each row, extract:
+   ```
+   { crossing: "Internet → DMZ", from-zone: "Public", to-zone: "DMZ", components: "API Gateway", controls: "WAF, TLS" }
+   ```
+
+5. Count totals for each category.
+
+**Graceful degradation**: If Section 1 or 2 cannot be parsed (missing, malformed, or schema v1.0 without expected headers), set arrays to empty `()` and counts to `0`. Log warning: `"Scope data not found in threats.md — scope page will show limited documentation notice"`.
+
+### 2i. Detect Brand Assets
+
+Check for tachi brand logo files:
+
+1. Check if `brand/final/tachi-logo-primary.png` exists and is non-zero size
+2. Check if `brand/final/tachi-logo-horizontal.png` exists and is non-zero size
+3. If found: set `has-logo-primary = true` / `has-logo-horizontal = true` and compute relative paths using the `../../brand/final/` pattern (same relative path strategy as infographic images — relative from `templates/security-report/`)
+4. If not found: set flags to `false`, paths to `none`. Log info: `"Brand assets not found — report will use text-only branding"`
+
+**Note**: Brand asset files have `.png` extensions but may contain JPEG-encoded data. The Typst templates handle format detection via `logo-format` token in `theme.typ`.
+
+### 2j. Handle Report Configuration
+
+Check for a user-provided `report-config.typ` in the target directory:
+
+1. If `{target_dir}/report-config.typ` exists:
+   - Copy it to `templates/security-report/report-config.typ`, overwriting the default
+   - Log: `"Using custom report-config.typ from {target_dir}"`
+2. If not present:
+   - Ensure the default `templates/security-report/report-config.typ` exists (it ships with the templates)
+   - Log: `"Using default report configuration"`
+
+The default `report-config.typ` defines:
+- `show-disclaimer = true`
+- `show-methodology = true`
+- `custom-disclaimer-text = none`
+- `custom-footer-text = none`
+
+**Note**: The user's config file is imported by `main.typ` and takes precedence for page visibility and custom text. The `show-disclaimer` and `show-methodology` values in `report-data.typ` (Step 3p) serve as fallback defaults when the config file uses `true`.
+
 ---
 
 ## Step 3: Typst Data Generation
@@ -465,7 +527,58 @@ If no remediation data is available from either source, set to `none`.
 2. Else if `threat-report.md` has a remediation timeline: use that
 3. Else: set `remediation-actions = none`
 
-### 3n. Write the File
+### 3n. Scope Data Variables
+
+```typst
+// --- Scope Data (from threats.md Sections 1-2) ------------------------------
+#let scope-components = (
+  (name: "API Gateway", type: "Process", description: "Routes API requests"),
+  // ... one entry per component
+)
+
+#let scope-data-flows = (
+  (source: "Client", destination: "API Gateway", data: "API Requests", protocol: "HTTPS"),
+  // ... one entry per data flow
+)
+
+#let scope-trust-boundaries = (
+  (zone: "Public Internet", trust-level: "Untrusted", components: "Client App"),
+  // ... one entry per trust zone
+)
+
+#let scope-boundary-crossings = (
+  (crossing: "Internet → DMZ", from-zone: "Public", to-zone: "DMZ", components: "API Gateway", controls: "WAF, TLS"),
+  // ... one entry per boundary crossing
+)
+
+#let scope-component-count = {N}
+#let scope-data-flow-count = {N}
+#let scope-trust-boundary-count = {N}
+```
+
+If no scope data was extracted, set arrays to empty `()` and counts to `0`.
+
+### 3o. Brand Asset Variables
+
+```typst
+// --- Brand Assets -----------------------------------------------------------
+#let has-logo-primary = {true/false}
+#let has-logo-horizontal = {true/false}
+#let logo-primary-path = {path_or_none}
+#let logo-horizontal-path = {path_or_none}
+```
+
+Where paths use the `../../brand/final/` relative path pattern, or `none` if not found.
+
+### 3p. Page Visibility Flags
+
+```typst
+// --- Page Visibility (defaults, overridden by report-config.typ) ------------
+#let show-disclaimer = true
+#let show-methodology = true
+```
+
+### 3q. Write the File
 
 Write the complete `report-data.typ` to `templates/security-report/report-data.typ`.
 
@@ -537,7 +650,11 @@ Tier: {data_source_tier}
 
 Count pages by summing:
 - Cover (always): 1
+- Disclaimer (if show-disclaimer): 1
+- Table of Contents (always): 1
 - Executive Summary (always): 1
+- Risk Methodology (if show-methodology): 1
+- Assessment Scope (always): 1
 - Risk Funnel (if has_funnel_image): 1
 - Baseball Card (if has_baseball_image): 1
 - System Architecture (if has_architecture_image): 1

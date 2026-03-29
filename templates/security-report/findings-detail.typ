@@ -30,6 +30,7 @@
 #let tier-config(tier) = {
   if tier == 1 {
     (
+      tier-num: 1,
       title: "Findings Detail — Residual Risk",
       headers: ("ID", "Component", "Threat", "Residual Score", "Residual Severity", "Control Status", "Recommendation"),
       keys: ("id", "component", "threat", "residual_score", "residual_severity", "control_status", "recommendation"),
@@ -38,6 +39,7 @@
     )
   } else if tier == 2 {
     (
+      tier-num: 2,
       title: "Findings Detail — Inherent Risk",
       headers: ("ID", "Component", "Threat", "Composite Score", "Severity", "CVSS", "Exploitability"),
       keys: ("id", "component", "threat", "composite_score", "severity", "cvss", "exploitability"),
@@ -47,6 +49,7 @@
   } else {
     // Tier 3 (default / fallback)
     (
+      tier-num: 3,
       title: "Findings Detail — Severity",
       headers: ("ID", "Component", "Threat", "Likelihood", "Impact", "Risk Level", "Mitigation"),
       keys: ("id", "component", "threat", "likelihood", "impact", "risk_level", "mitigation"),
@@ -74,7 +77,95 @@
 
 
 // ---------------------------------------------------------------------------
-// 3. Main Export: findings-detail-page
+// 3. Finding Card Rendering
+// ---------------------------------------------------------------------------
+// Renders a single finding as a styled card with severity badge, threat ID,
+// component, description, and recommendation/mitigation. For Tier 1, includes
+// residual risk score and control status. For Tier 2, includes CVSS and
+// composite score.
+
+#let _finding-card(row, config) = {
+  let sev-value = str(row.at(config.severity-key, default: ""))
+  let sev-fill = severity-color(sev-value)
+  let id = str(row.at("id", default: "—"))
+  let component = str(row.at("component", default: "—"))
+  let threat = str(row.at("threat", default: "—"))
+
+  // Determine recommendation/mitigation text based on available keys.
+  let rec-text = str(row.at("recommendation", default: row.at("mitigation", default: "—")))
+
+  block(
+    width: 100%,
+    breakable: false,
+    inset: 0.6em,
+    radius: 4pt,
+    fill: brand-light,
+    stroke: 0.5pt + brand-primary,
+    {
+      // -- Header: severity badge + ID + component --------------------------
+      grid(
+        columns: (auto, auto, 1fr),
+        column-gutter: 0.5em,
+        align: (left + horizon, left + horizon, right + horizon),
+        box(
+          fill: sev-fill,
+          radius: 3pt,
+          inset: (x: 0.5em, y: 0.2em),
+          text(fill: white, size: 7pt, weight: "bold", tracking: 0.05em)[#upper(sev-value)],
+        ),
+        text(font: font-mono, size: 9pt, weight: "bold", fill: brand-primary)[#id],
+        text(size: 9pt, fill: brand-muted)[#component],
+      )
+
+      v(0.4em)
+
+      // -- Threat description -----------------------------------------------
+      text(size: 10pt)[#threat]
+
+      v(0.3em)
+
+      // -- Recommendation/mitigation ----------------------------------------
+      block(
+        width: 100%,
+        inset: (left: 0.4em),
+        stroke: (left: 2pt + brand-secondary),
+        text(size: 9pt, fill: brand-secondary)[#rec-text],
+      )
+
+      // -- Tier-specific metadata -------------------------------------------
+      v(0.3em)
+      {
+        let meta-items = ()
+        if config.at("tier-num", default: 3) == 1 {
+          meta-items.push("Residual: " + str(row.at("residual_score", default: "—")))
+          meta-items.push("Control: " + str(row.at("control_status", default: "—")))
+        } else if config.at("tier-num", default: 3) == 2 {
+          meta-items.push("CVSS: " + str(row.at("cvss", default: "—")))
+          meta-items.push("Composite: " + str(row.at("composite_score", default: "—")))
+          meta-items.push("Exploit.: " + str(row.at("exploitability", default: "—")))
+        } else {
+          let lk = str(row.at("likelihood", default: "—"))
+          let im = str(row.at("impact", default: "—"))
+          if lk != "—" or im != "—" {
+            meta-items.push("Likelihood: " + lk)
+            meta-items.push("Impact: " + im)
+          }
+        }
+        if meta-items.len() > 0 {
+          text(
+            font: font-mono,
+            size: 8pt,
+            fill: brand-muted,
+          )[#meta-items.join("  |  ")]
+        }
+      }
+    },
+  )
+}
+
+
+// ---------------------------------------------------------------------------
+// 4. Main Export: findings-detail-page
 // ---------------------------------------------------------------------------
 // Parameters:
 //   classification (string or none) — text for the classification header bar
@@ -93,7 +184,9 @@
 
   // -- Page header and footer -------------------------------------------------
   report-header(classification: classification, title: config.title)
-  v(0.2in)
+
+  // Page heading — uses heading element for TOC outline() discovery.
+  heading(level: 1, config.title)
 
   // -- Empty state ------------------------------------------------------------
   if findings.len() == 0 {
@@ -102,7 +195,7 @@
       text(
         font: font-heading,
         size: 14pt,
-        fill: rgb("#64748B"),
+        fill: brand-muted,
         weight: "semibold",
       )[No findings to display.],
     )
@@ -115,83 +208,21 @@
     severity-rank(sev-value)
   })
 
-  // -- Build header cells -----------------------------------------------------
-  let header-cells = config.headers.map(h =>
-    table.cell(
-      fill: color-header-bg,
-      text(
-        font: font-heading,
-        size: 8pt,
-        fill: color-header-text,
-        weight: "bold",
-      )[#h],
-    )
-  )
-
-  // -- Build data rows --------------------------------------------------------
-  let data-cells = ()
+  // -- Render finding cards ---------------------------------------------------
   for row in sorted-findings {
-    for (col-idx, key) in config.keys.enumerate() {
-      let value = str(row.at(key, default: "—"))
-
-      if key == config.severity-key {
-        // Severity/risk column: colored background with white text
-        let sev-fill = severity-color(value)
-        data-cells.push(
-          table.cell(
-            fill: sev-fill,
-            text(
-              font: font-mono,
-              size: 8pt,
-              fill: white,
-              weight: "bold",
-            )[#value],
-          )
-        )
-      } else {
-        // Standard data column: monospace
-        data-cells.push(
-          table.cell(
-            text(
-              font: font-mono,
-              size: 8pt,
-            )[#value],
-          )
-        )
-      }
-    }
+    _finding-card(row, config)
+    v(0.25em)
   }
-
-  // -- Render table -----------------------------------------------------------
-  table(
-    columns: config.widths,
-    align: (col, _row) => {
-      // Left-align text-heavy columns (Threat, Recommendation/Mitigation),
-      // center narrow columns (ID, scores, status).
-      if col == 0 { center }          // ID
-      else if col == 2 { left }       // Threat (long text)
-      else if col == 6 { left }       // Last column (Recommendation/Mitigation/Exploitability)
-      else { center }                 // Score, Severity, Status columns
-    },
-    inset: (x: 0.3em, y: 0.4em),
-    stroke: 0.5pt + color-rule,
-    table.header(
-      repeat: true,
-      ..header-cells,
-    ),
-    ..data-cells,
-  )
 
   v(0.15in)
 
-  // -- Table legend -----------------------------------------------------------
+  // -- Card legend ------------------------------------------------------------
   align(right,
     text(
       font: font-body,
       size: 7pt,
       fill: color-footer-text,
     )[
-      #config.headers.len() columns |
       #sorted-findings.len() finding#if sorted-findings.len() != 1 [s] |
       Sorted by #if tier == 1 [residual severity] else if tier == 2 [severity] else [risk level] (critical first)
     ],

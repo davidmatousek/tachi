@@ -1,10 +1,11 @@
 # PRD Index
 
-**Last Updated**: 2026-03-28
+**Last Updated**: 2026-03-29
 
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 060 | [Professional PDF Security Report Branding](060-professional-pdf-security-report-branding-2026-03-29.md) | ✓ | ⚠ | ⚠ | Approved | 2026-03-29 |
 | 054 | [Security Assessment PDF Booklet](054-security-assessment-pdf-booklet-2026-03-28.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-28 |
 | 053 | [Risk Reduction Funnel](053-risk-reduction-funnel-2026-03-28.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-28 |
 | 048 | [Infographic Tiered Detection & Residual Risk](048-infographic-tiered-detection-residual-risk-2026-03-28.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-28 |
