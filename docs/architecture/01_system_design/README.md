@@ -1124,3 +1124,82 @@ graph TD
 | Markdown | Design template, agent prompt, command prompt | Extends existing markdown-based template system |
 | YAML | Schema validation, API configuration | Consistent with infographic.yaml v1.0 |
 | Gemini API | Photorealistic 3D funnel image rendering | Same pipeline as existing templates (best-effort) |
+
+---
+
+### Feature 054: Security Assessment PDF Booklet
+
+## Components
+
+### Component 1: Command File (`security-report.md`)
+
+User-facing entry point following the 4-step command pattern (parse → validate → generate → report). Handles `--output-dir` and `--title` flags, validates Typst installation, auto-detects 7 artifact types in target directory, and invokes the report-assembler agent.
+
+### Component 2: Agent File (`report-assembler.md`)
+
+Parses markdown artifacts (YAML frontmatter, markdown tables, section content), applies 3-tier data source preference for Findings Detail, generates Typst data file (`report-data.typ`), and invokes `typst compile` to produce `security-report.pdf`.
+
+### Component 3: Schema File (`security-report.yaml`)
+
+Declarative page assembly rules defining artifact detection patterns, page sequence, page dimensions (US Letter portrait + custom 16:9 landscape), data source tiers with tier-specific columns, and conditional inclusion rules.
+
+### Component 4: Typst Templates (`templates/security-report/`)
+
+Modular rendering templates: `main.typ` (orchestrator with conditional page inclusion), `shared.typ` (severity colors, typography, headers/footers), and per-page modules (`cover.typ`, `executive-summary.typ`, `full-bleed.typ`, `findings-detail.typ`, `control-coverage.typ`, `remediation-roadmap.typ`).
+
+## Data Flow
+
+```mermaid
+graph LR
+    subgraph Input Artifacts
+        T[threats.md]
+        TR[threat-report.md]
+        RS[risk-scores.md]
+        CC[compensating-controls.md]
+        I1[threat-risk-funnel.jpg]
+        I2[threat-baseball-card.jpg]
+        I3[threat-system-architecture.jpg]
+    end
+
+    subgraph Command
+        CMD[/security-report]
+    end
+
+    subgraph Agent
+        DET[Artifact Detection]
+        PARSE[Markdown Parsing]
+        DATA[report-data.typ]
+    end
+
+    subgraph Typst
+        MAIN[main.typ]
+        PAGES[Page Templates]
+        PDF[security-report.pdf]
+    end
+
+    T --> CMD
+    TR --> CMD
+    RS --> CMD
+    CC --> CMD
+    I1 --> CMD
+    I2 --> CMD
+    I3 --> CMD
+
+    CMD --> DET
+    DET --> PARSE
+    PARSE --> DATA
+    DATA --> MAIN
+    MAIN --> PAGES
+    PAGES --> PDF
+    I1 --> MAIN
+    I2 --> MAIN
+    I3 --> MAIN
+```
+
+## Tech Stack
+
+| Technology | Purpose | Justification |
+|------------|---------|---------------|
+| Typst 0.11.x-0.12.x | PDF compilation from templates | No browser dependency, reproducible, portable, native image embedding |
+| Markdown | Command and agent specifications | Extends existing tachi command/agent pattern |
+| YAML | Page assembly schema | Consistent with existing schemas (output.yaml, infographic.yaml) |
