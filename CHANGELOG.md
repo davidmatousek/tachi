@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 054 — Security Assessment PDF Booklet
+
+**Added**
+- `/security-report` command + report-assembler agent for generating professional multi-page PDF security assessment booklets from tachi pipeline artifacts; 7 Typst templates (cover, executive summary, findings detail, remediation roadmap, control coverage, full-bleed infographic, main orchestrator), `schemas/security-report.yaml` validation schema, graceful degradation for partial pipelines, full-bleed landscape infographic pages (`053eba9`)
+
+**Changed**
+- Closed Feature 054 — updated product docs (PRD INDEX), devops docs (Typst dependency), KB entry PAT-012 (`ed481a1`)
+- Exported user stories from GitHub Issue #54, regenerated BACKLOG.md (`678da2f`)
+
 ### Feature 053 — Risk Reduction Funnel
 
 **Added**
