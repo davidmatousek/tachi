@@ -1,6 +1,6 @@
 # User Stories - tachi
 
-**Last Updated**: 2026-03-28
+**Last Updated**: 2026-03-29
 **Owner**: Product Manager (product-manager)
 **Status**: Template - Complete after MVP launch
 
@@ -306,3 +306,15 @@ Each PRD should include relevant user stories:
 - **US-054-2** (P0): Structured Audit Evidence - As a compliance officer, a structured security assessment report with cover page, executive summary, and detailed findings, so I can include it in audit evidence packages
 - **US-054-3** (P1): Professional Client Deliverable - As a security consultant, generate a professional, branded PDF deliverable from tachi's output, so I can deliver polished reports to clients
 - **US-054-4** (P1): Auto-Assembly from Available Artifacts - As a developer, the PDF auto-assembles from whatever artifacts exist in my security output directory, so I don't need to manually curate pages
+
+### Feature 060: Professional PDF Security Assessment Report with tachi Branding
+
+**PRD**: [060-professional-pdf-security-report-branding](../02_PRD/060-professional-pdf-security-report-branding-2026-03-29.md)
+**Delivered**: 2026-03-29 | **PR**: #61 | **Tasks**: 45/45 complete | **Stories**: 6/6 passing
+
+- **US-060-1** (P0): Branded Cover Page and Running Headers - As a security consultant, the tachi logo appears on the cover page and consistent branded headers on every text page, conveying professional quality without post-generation reformatting
+- **US-060-2** (P0): Disclaimer and Table of Contents - As a compliance officer, a legal disclaimer on page 2 sets expectations about automated assessment methodology, followed by a table of contents enabling quick navigation to any section
+- **US-060-3** (P0): Risk Methodology and Assessment Scope Pages - As a CISO, the methodology page explains how threats were identified and scored, and the scope page shows exactly which components, data flows, and trust boundaries were assessed
+- **US-060-4** (P1): Modular Theme Architecture - As a developer extending tachi, a single `theme.typ` file change for colors and logo path propagates to every page automatically via centralized token system
+- **US-060-5** (P1): Enhanced Findings Detail with Severity Visualization - As a security engineer, individual finding cards with severity color-coding, component badges, and structured recommendation sections replace flat table rows
+- **US-060-6** (P2): Remediation Roadmap with Effort Estimates - As a project manager, the remediation roadmap groups recommendations by effort tier (Quick Wins, Medium, High) with estimated implementation effort for sprint planning

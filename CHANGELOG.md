@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 060 — Professional PDF Security Assessment Report with tachi Branding
+
+**Added**
+- Professional branded PDF security report with modular Typst template system: 6 new pages (disclaimer, TOC, methodology, scope, theme, report-config), 6 updated templates, `brand/` asset directory with 8 logo variants, centralized theme tokens and shared utilities, extended `security-report.yaml` schema v1.1, updated report-assembler agent with brand-aware compilation (`c3cc8cf`)
+
+**Changed**
+- Closed Feature 060 — updated product docs (PRD INDEX), architecture docs (Tech Stack — Typst CLI), KB entry PAT-013, delivery report (`3f36ca5`)
+- Exported user stories, regenerated BACKLOG.md (`331d6e2`)
+
 ### Feature 054 — Security Assessment PDF Booklet
 
 **Added**

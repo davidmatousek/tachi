@@ -51,6 +51,7 @@ This directory documents reusable design patterns for tachi.
 
 ### Template Patterns (AOD Kit)
 - [Template Variable Expansion](#pattern-template-variable-expansion)
+- [Hub-First Typst Template Modularity](#pattern-hub-first-typst-template-modularity)
 
 ### Skill Patterns (AOD Kit)
 - [On-Demand Reference File Segmentation](#pattern-on-demand-reference-file-segmentation)
@@ -958,6 +959,43 @@ When adding a new user-facing template file to the kit:
 
 #### Related Patterns
 - None -- this is a content convention, not a runtime pattern
+
+---
+
+### Pattern: Hub-First Typst Template Modularity
+
+**Added**: Feature 060 (Professional PDF Security Assessment Report)
+**KB Reference**: [PAT-013](../../INSTITUTIONAL_KNOWLEDGE.md) — Typst Template Modularity Requires Hub-First Architecture
+
+#### Problem
+Multi-file Typst template systems with shared theming suffer from inconsistent token usage and repeated rework when page templates are authored before the theme layer is stabilized. Developers change a color or font in one file and must hunt through all others to propagate it.
+
+#### Solution
+Establish a hub-first architecture with a strict import chain: `main.typ` → `theme.typ` → `shared.typ` → individual page templates. The theme file centralizes all brand tokens (colors, fonts, logo paths), and shared utilities consume them via imports. Individual pages never define their own colors or font stacks — they reference theme tokens exclusively.
+
+Freeze the theme token API and shared utility layer in a dedicated foundation phase before any page-level work begins.
+
+#### Files Using This Pattern
+| File | Role |
+|------|------|
+| `templates/security-report/theme.typ` | Hub — brand colors, fonts, logo paths |
+| `templates/security-report/shared.typ` | Utilities — imports theme, provides layout functions |
+| `templates/security-report/report-config.typ` | Configuration — page visibility toggles, metadata |
+| `templates/security-report/main.typ` | Orchestrator — imports all, assembles pages |
+| `templates/security-report/*.typ` (pages) | Spokes — import shared, use theme tokens |
+
+#### When to Use
+- Multi-file Typst template systems with 5+ page templates
+- Projects requiring brand customization (logo, colors, fonts)
+- Any template system where visual consistency across pages is critical
+
+#### When NOT to Use
+- Single-file Typst documents that don't need theming
+- Prototype/throwaway reports where consistency doesn't matter
+
+#### Related Patterns
+- [Template Variable Expansion](#pattern-template-variable-expansion) — content-level personalization
+- PAT-012: Docs-Only Template Features Complete Faster Than Estimated (KB)
 
 ---
 
