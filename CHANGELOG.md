@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 067 — Deterministic Report Data Extraction
+
+**Added**
+- Deterministic Python parsing script (`scripts/extract-report-data.py`) replacing LLM-based markdown extraction for security report generation; 3-tier severity source selection (compensating-controls.md > risk-scores.md > threats.md), internal consistency validation (severity sums, duplicate IDs), scope data extraction (components, data flows, trust zones, boundary crossings), executive narrative and remediation action parsing; Python 3.9+ stdlib only, zero external dependencies (`7dc8b1c`)
+- Tier 1 test fixture (`examples/agentic-app/sample-report/compensating-controls.md`) for validating full-pipeline Tier 1 output (`7dc8b1c`)
+
+**Changed**
+- Updated report-assembler agent to invoke Python script instead of inline LLM parsing; Steps 2-3 replaced with single script invocation step with exit code handling (`7dc8b1c`)
+- Closed Feature 067 — updated product docs (PRD INDEX, User Stories, OKRs), architecture docs (Tech Stack — Python 3.9+, System Design), devops docs (local prerequisites), KB entry PAT-014 (`851ad2e`)
+
 ### Feature 060 — Professional PDF Security Assessment Report with tachi Branding
 
 **Added**
