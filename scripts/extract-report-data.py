@@ -333,10 +333,6 @@ def parse_threats_severity(content: str) -> dict:
     Handles "N (M raw)" format in Total row — uses raw count.
     Note: Section 6 may contain a calibration matrix before the severity table.
     """
-    severity = {
-        "critical": 0, "high": 0, "medium": 0, "low": 0, "note": 0, "total": 0,
-    }
-
     rows = parse_markdown_table(content, "## 6. Risk Summary")
     # Section 6 may have a calibration matrix before the severity table.
     # Check if the found table has "Risk Level" column; if not, find the right one.
@@ -348,30 +344,9 @@ def parse_threats_severity(content: str) -> dict:
         rows = []
     if not rows:
         print("Warning: could not find Risk Summary table in threats.md", file=sys.stderr)
-        return severity
+        return _empty_severity()
 
-    for row in rows:
-        level = row.get("Risk Level", "").strip()
-        count_str = row.get("Count", "").strip()
-
-        if level.lower() == "total" or level.startswith("Total"):
-            # Handle "30 (34 raw)" format
-            total_match = re.match(r"(\d+)(?:\s*\((\d+)\s*raw\))?", count_str)
-            if total_match:
-                raw = total_match.group(2)
-                severity["total"] = int(raw) if raw else int(total_match.group(1))
-        elif level == "Critical":
-            severity["critical"] = _parse_int(count_str)
-        elif level == "High":
-            severity["high"] = _parse_int(count_str)
-        elif level == "Medium":
-            severity["medium"] = _parse_int(count_str)
-        elif level == "Low":
-            severity["low"] = _parse_int(count_str)
-        elif level == "Note":
-            severity["note"] = _parse_int(count_str)
-
-    return severity
+    return _accumulate_severity_rows(rows, "Risk Level")
 
 
 def parse_risk_scores_severity(content: str) -> dict:
@@ -379,19 +354,33 @@ def parse_risk_scores_severity(content: str) -> dict:
 
     Preferred over threats.md when Tier 2.
     """
-    severity = {
-        "critical": 0, "high": 0, "medium": 0, "low": 0, "note": 0, "total": 0,
-    }
-
     rows = parse_markdown_table(content, "Severity Distribution")
     if not rows:
         rows = parse_markdown_table(content, "## 1. Executive Summary")
     if not rows:
         print("Warning: could not find severity distribution in risk-scores.md", file=sys.stderr)
-        return severity
+        return _empty_severity()
 
+    return _accumulate_severity_rows(rows, "Severity")
+
+
+def _empty_severity() -> dict:
+    """Create a zeroed severity dict derived from SEVERITY_ORDER."""
+    sev = {s.lower(): 0 for s in SEVERITY_ORDER}
+    sev["total"] = 0
+    return sev
+
+
+def _accumulate_severity_rows(rows: list, level_column: str) -> dict:
+    """Accumulate severity counts from parsed table rows.
+
+    Args:
+        rows: List of row dicts from parse_markdown_table().
+        level_column: Column name containing severity level (e.g., "Risk Level", "Severity").
+    """
+    severity = _empty_severity()
     for row in rows:
-        level = row.get("Severity", "").strip()
+        level = row.get(level_column, "").strip()
         count_str = row.get("Count", "").strip()
 
         if level.lower() == "total" or level.startswith("Total"):
@@ -399,17 +388,10 @@ def parse_risk_scores_severity(content: str) -> dict:
             if total_match:
                 raw = total_match.group(2)
                 severity["total"] = int(raw) if raw else int(total_match.group(1))
-        elif level == "Critical":
-            severity["critical"] = _parse_int(count_str)
-        elif level == "High":
-            severity["high"] = _parse_int(count_str)
-        elif level == "Medium":
-            severity["medium"] = _parse_int(count_str)
-        elif level == "Low":
-            severity["low"] = _parse_int(count_str)
-        elif level == "Note":
-            severity["note"] = _parse_int(count_str)
-
+        else:
+            key = level.lower()
+            if key in severity:
+                severity[key] = _parse_int(count_str)
     return severity
 
 
@@ -840,8 +822,9 @@ def parse_compensating_controls_md(content: str) -> dict:
                         k = j + 1
                         while k < sec3_end and not lines[k].strip().startswith("|"):
                             k += 1
-                        # Skip header + separator
-                        k += 2
+                        # Skip header + separator (with bounds check)
+                        if k + 2 < sec3_end:
+                            k += 2
                         if k < sec3_end and lines[k].strip().startswith("|"):
                             cells = [c.strip() for c in lines[k].split("|")[1:-1]]
                             if len(cells) >= 2:
@@ -946,23 +929,8 @@ def validate(data: dict) -> list:
             errors.append(f"Duplicate finding ID: {fid}")
         seen.add(fid)
 
-    # Check scope counts
-    scope_comp_count = len(data["scope_components"])
-    scope_df_count = len(data["scope_data_flows"])
-    scope_tb_count = len(data["scope_trust_boundaries"])
-
-    # These are self-consistent by construction (count == len), but
-    # we validate for future-proofing if counts are set independently
-    if "scope_component_count" in data and data["scope_component_count"] != scope_comp_count:
-        errors.append(
-            f"Scope component count mismatch: count={data['scope_component_count']}, "
-            f"actual={scope_comp_count}"
-        )
-    if "scope_data_flow_count" in data and data["scope_data_flow_count"] != scope_df_count:
-        errors.append(
-            f"Scope data flow count mismatch: count={data['scope_data_flow_count']}, "
-            f"actual={scope_df_count}"
-        )
+    # Scope counts are derived from len() at generation time, so they are
+    # self-consistent by construction. No separate validation needed.
 
     return errors
 
@@ -1349,6 +1317,11 @@ def main():
         "template_dir": str(template_dir),
     }
 
+    # Defaults for non-Tier-1 scenarios (Tier 1 overwrites these)
+    data["coverage_matrix"] = []
+    data["controls"] = []
+    data["coverage_summary"] = {"total-found": 0, "total-partial": 0, "total-missing": 0}
+
     # Parse severity counts and findings based on tier
     cc_data = None
     if tier == 1:
@@ -1363,32 +1336,18 @@ def main():
         rs_content = (target_dir / "risk-scores.md").read_text(encoding="utf-8")
         data["severity"] = parse_risk_scores_severity(rs_content)
         data["findings"] = parse_risk_scores_findings(rs_content)
-        data["coverage_matrix"] = []
-        data["controls"] = []
-        data["coverage_summary"] = {"total-found": 0, "total-partial": 0, "total-missing": 0}
     else:  # tier == 3
         data["findings"] = parse_threats_findings(threats_content)
         # Derive severity counts from findings array for consistency.
         # Section 6 Risk Summary uses deduplication (correlation groups) which
         # causes counts to diverge from the raw findings in Section 7.
-        sev = {"critical": 0, "high": 0, "medium": 0, "low": 0, "note": 0, "total": 0}
+        sev = _empty_severity()
         for f in data["findings"]:
-            level = f.get("risk_level", "")
-            if level == "Critical":
-                sev["critical"] += 1
-            elif level == "High":
-                sev["high"] += 1
-            elif level == "Medium":
-                sev["medium"] += 1
-            elif level == "Low":
-                sev["low"] += 1
-            elif level == "Note":
-                sev["note"] += 1
+            key = f.get("risk_level", "").lower()
+            if key in sev:
+                sev[key] += 1
         sev["total"] = len(data["findings"])
         data["severity"] = sev
-        data["coverage_matrix"] = []
-        data["controls"] = []
-        data["coverage_summary"] = {"total-found": 0, "total-partial": 0, "total-missing": 0}
 
     # Component distribution (from whichever findings source is active)
     data["component_distribution"] = parse_component_distribution(data["findings"])
