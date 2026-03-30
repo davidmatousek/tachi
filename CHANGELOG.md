@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 071 — Deterministic Infographic Data Extraction
+
+**Added**
+- Shared parser module (`scripts/tachi_parsers.py`) extracted from `extract-report-data.py` — generic table parsers, frontmatter/metadata parsers, severity parsers, findings/scope parsers; enables cross-output consistency between security reports and infographics (`61df3d4`)
+- Deterministic infographic extraction script (`scripts/extract-infographic-data.py`) — reads tachi pipeline markdown artifacts and outputs structured JSON for baseball-card, system-architecture, and risk-funnel templates; Largest Remainder Method for percentage rounding, deterministic tie-breaking (score desc, threat ID asc), component heat map cross-tabulation, 4-tier risk funnel computation; Python 3.9+ stdlib only (`61df3d4`)
+- ADR-017 documenting deterministic extraction approach, shared parser module extraction, and Largest Remainder Method selection (`93a39c6`)
+
+**Changed**
+- Refactored `extract-report-data.py` to import shared parsers from `tachi_parsers.py` — zero behavior change, byte-identical output verified (`61df3d4`)
+- Updated threat-infographic agent to invoke deterministic extraction script instead of LLM-based parsing (`61df3d4`)
+- Updated `schemas/infographic.yaml` and baseball card template for structured data support (`61df3d4`)
+- Closed Feature 071 — updated product docs (PRD INDEX, User Stories, OKRs), architecture docs (Tech Stack, System Design, Patterns, ADR-017), devops docs, KB entry PAT-015 (`93a39c6`, `faa2fb2`)
+
 ### Feature 067 — Deterministic Report Data Extraction
 
 **Added**
