@@ -194,3 +194,9 @@ docs/planning/
 
 # Subagent result artifacts (ephemeral, session-scoped)
 .aod/results/
+
+# Runtime-generated Typst data file (produced by extract-report-data.py)
+templates/tachi/security-report/report-data.typ
+
+# Test output artifacts (generated during local testing)
+examples/*/test-output/

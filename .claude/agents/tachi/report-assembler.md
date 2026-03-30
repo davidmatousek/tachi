@@ -101,67 +101,103 @@ Generating report-data.typ...
 
 ---
 
-## Step 2: Data Extraction
+## Step 2: Data Extraction and Typst Generation
 
-Parse each detected artifact to extract the structured data needed by the Typst templates. Handle parsing errors gracefully — if an optional artifact fails to parse, log a warning and proceed without it (set its flag to false).
+Invoke the deterministic Python extraction script to parse all artifacts and generate `report-data.typ`. The script handles artifact parsing, tier selection, severity counting, scope extraction, validation, and Typst output generation — replacing the previous LLM-based Steps 2-3.
 
-### 2a. Parse threats.md (always)
+### 2a. Handle Report Configuration
 
-**YAML Frontmatter** — extract from the YAML block between `---` markers at the top of the file:
+Check for a user-provided `report-config.typ` in the target directory:
 
-| Field | Typst Variable | Default if Missing |
-|-------|---------------|-------------------|
-| `date` | `assessment-date` | `"Unknown"` |
-| `classification` | `classification` | `none` |
-| `schema_version` | (used for v1.0 compat check) | `"1.0"` |
+1. If `{target_dir}/report-config.typ` exists:
+   - Copy it to `templates/tachi/security-report/report-config.typ`, overwriting the default
+   - Log: `"Using custom report-config.typ from {target_dir}"`
+2. If not present:
+   - Ensure the default `templates/tachi/security-report/report-config.typ` exists (it ships with the templates)
+   - Log: `"Using default report configuration"`
 
-**Project Name** — extract from the first `# Threat Model: {name}` heading. If `title_override` was provided by the command, use that instead.
+### 2b. Invoke Extraction Script
 
-**Section 6: Risk Summary** — parse the severity count table:
+Run the deterministic extraction script:
 
-Look for the table under `## 6. Risk Summary` with columns `| Risk Level | Count | Percentage |`. Extract:
-
-| Row | Typst Variable |
-|-----|---------------|
-| Critical | `critical-count` (integer) |
-| High | `high-count` (integer) |
-| Medium | `medium-count` (integer) |
-| Low | `low-count` (integer) |
-| Total (from **Total** row) | `total-findings` (integer — use the raw count if format is "30 (34 raw)", extract the raw number) |
-
-**Note on total**: The Total row may contain text like `**30 (34 raw)**`. Extract the first number as the deduplicated count. If a parenthesized raw count exists, use the raw count as `total-findings` since it represents all individual findings that appear in the findings table.
-
-**Component Distribution** — parse Section 7 `## 7. Recommended Actions` table to count findings per component:
-
-Read the table with columns `| Finding ID | Component | Threat | Risk Level | Mitigation |`. Count occurrences of each unique Component value. Produce an array of `(component_name, count)` tuples sorted by count descending.
-
-### 2b. Parse threats.md Section 7 for Tier 3 Findings (if Tier 3)
-
-If `data_source_tier == 3`, extract findings rows from Section 7:
-
-For each row in the `## 7. Recommended Actions` table, extract:
-
-```
-{
-  id: "S-3",
-  component: "LLM Agent Orchestrator",
-  threat: "Attacker forges tool call requests...",
-  likelihood: (derive from Risk Level — see note below),
-  impact: (derive from Risk Level — see note below),
-  risk_level: "Critical",
-  mitigation: "Implement mutual TLS..."
-}
+```bash
+python3 scripts/extract-report-data.py \
+  --target-dir {target_dir} \
+  --output templates/tachi/security-report/report-data.typ \
+  --template-dir templates/tachi/security-report/ \
+  [--title "{title_override}"]
 ```
 
-**Note**: The Section 7 table has `Risk Level` but not separate `Likelihood` and `Impact` columns. For Tier 3, set `likelihood` and `impact` both to `"—"` (em dash) since these granular values are not available in the recommended actions table. The `risk_level` column serves as the severity indicator.
+Include `--title` only if the command provided a title override.
 
-### 2c. Parse risk-scores.md for Tier 2 Findings (if Tier 2)
+### 2c. Handle Exit Codes
 
-If `data_source_tier == 2`, parse `risk-scores.md` Section 2: Scored Threat Table.
+| Exit Code | Meaning | Agent Action |
+|-----------|---------|-------------|
+| 0 | Success | Proceed to Step 3 (Compilation) |
+| 1 | Missing required artifact | Display stderr message and abort: `"Error: {message}"` |
+| 2 | Validation failure | Display stderr details and abort: `"Validation error: {details}"` |
 
-Look for the table under `## 2. Scored Threat Table` with columns `| ID | Component | Threat | CVSS | Exploit. | Scale. | Reach. | Composite | Severity | SLA | Disposition |`.
+If the script exits with code 1 or 2, do NOT proceed to compilation. Display the error and return failure to the command.
 
-For each row, extract:
+### 2d. Report Results
+
+Display: `"report-data.typ generated — proceeding to compilation"`
+
+---
+
+**Legacy reference**: The previous Steps 2-3 performed LLM-based markdown parsing and Typst generation inline. The Python script (`scripts/extract-report-data.py`) replaces this with deterministic regex-based extraction. The Typst variable contract is identical — all variable names, types, and structure match the templates. For the full variable specification, see `specs/067-deterministic-report-data/data-model.md`.
+
+---
+
+## Step 3: Compilation
+
+### 3a. Invoke Typst Compiler
+
+Run the Typst compiler with the `--root` flag pointing to the project root:
+
+```bash
+typst compile templates/tachi/security-report/main.typ "{output_path}/security-report.pdf" --root .
+```
+
+Where `{output_path}` is the resolved output directory from the command. Run from the **project root directory**.
+
+### 3b. Handle Compilation Errors
+
+If `typst compile` exits with a non-zero status:
+
+1. Capture stderr
+2. Display: `"TYPST COMPILATION ERROR: {stderr}. report-data.typ preserved for debugging."`
+3. Do NOT delete `report-data.typ` — leave it for debugging
+4. Return failure to the command
+
+### 3c. Verify Output
+
+1. Verify `{output_path}/security-report.pdf` exists and is non-zero size
+2. If missing: `"Compilation succeeded but output file is missing or empty"`
+
+### 3d. Clean Up
+
+Delete `templates/tachi/security-report/report-data.typ` after successful verification.
+
+### 3e. Report Results
+
+```
+PDF generated successfully.
+Path: {output_path}/security-report.pdf
+Tier: {data_source_tier}
+```
+
+---
+
+**REMOVED (replaced by script)**: The following legacy sections documented the previous LLM-based parsing and Typst generation steps. They are retained here for historical reference only — the extraction script at `scripts/extract-report-data.py` now handles all data extraction and Typst generation deterministically. For the complete variable specification, see `specs/067-deterministic-report-data/data-model.md`.
+
+<details>
+<summary>Legacy Steps 2-3 Reference (click to expand)</summary>
+
+#### Former Step 2: LLM-based Data Extraction
+
+The previous implementation had the agent parse each markdown artifact inline:
 
 ```
 {
@@ -589,83 +625,9 @@ Display: `"report-data.typ generated ({N} findings, Tier {tier}, {M} pages enabl
 
 ---
 
-## Step 4: Compilation
+</details>
 
-### 4a. Invoke Typst Compiler
-
-Run the Typst compiler with the `--root` flag pointing to the project root so that absolute image paths resolve correctly:
-
-```bash
-typst compile templates/tachi/security-report/main.typ "{output_path}/security-report.pdf" --root .
-```
-
-Where `{output_path}` is the resolved output directory from the command.
-
-**Important**: Run this command from the **project root directory** (where `templates/` is a direct child). The `--root .` flag tells Typst to resolve all paths relative to the current working directory.
-
-### 4b. Handle Compilation Errors
-
-If `typst compile` exits with a non-zero status:
-
-1. Capture the stderr output
-2. Display the error:
-   ```
-   TYPST COMPILATION ERROR
-
-   {stderr output}
-
-   The report-data.typ file has been preserved for debugging at:
-     templates/tachi/security-report/report-data.typ
-
-   Common causes:
-   - Unescaped special characters in finding text
-   - Missing closing quotes in string values
-   - Image file path that doesn't exist
-   ```
-3. Do NOT delete `report-data.typ` — leave it for debugging
-4. Return failure to the command
-
-### 4c. Verify Output
-
-After successful compilation:
-
-1. Verify the output PDF exists at `{output_path}/security-report.pdf`
-2. Verify the file is non-zero size
-3. If verification fails, report: `"Compilation succeeded but output file is missing or empty at: {path}"`
-
-### 4d. Clean Up Intermediate File
-
-After successful verification:
-
-1. Delete `templates/tachi/security-report/report-data.typ`
-2. This file is intermediate and should not be committed to version control
-
-### 4e. Report Results
-
-Return to the command with:
-
-```
-PDF generated successfully.
-Path: {output_path}/security-report.pdf
-Pages: {count based on enabled flags}
-Tier: {data_source_tier}
-```
-
-Count pages by summing:
-- Cover (always): 1
-- Disclaimer (if show-disclaimer): 1
-- Table of Contents (always): 1
-- Executive Summary (always): 1
-- Risk Methodology (if show-methodology): 1
-- Assessment Scope (always): 1
-- Risk Funnel (if has_funnel_image): 1
-- Baseball Card (if has_baseball_image): 1
-- System Architecture (if has_architecture_image): 1
-- Findings Detail (always): 1+ (may span multiple pages for large finding sets)
-- Control Coverage (if has_compensating_controls): 1
-- Remediation Roadmap (if has_compensating_controls or has_threat_report with remediation): 1
-
-Report the minimum page count (counting findings detail as 1 page). The actual page count may be higher if tables overflow.
+---
 
 ---
 
