@@ -105,7 +105,7 @@ def parse_markdown_table(content: str, section_header: str) -> list:
     # Parse header row for column names
     header_line = lines[table_header_idx].strip()
     columns = [strip_bold(c.strip()) for c in header_line.split("|")[1:-1]]
-    columns = [c for c in columns if c]  # Remove empty entries
+    columns = [c for c in columns if c]
 
     if not columns:
         return []

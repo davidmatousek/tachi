@@ -17,12 +17,10 @@ Exit codes:
 import argparse
 import json
 import math
-import os
 import re
 import sys
 from pathlib import Path
 
-# Ensure tachi_parsers is importable from the same directory as this script
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from tachi_parsers import (
@@ -30,9 +28,6 @@ from tachi_parsers import (
     EXIT_MISSING_ARTIFACT,
     EXIT_VALIDATION_FAILURE,
     SEVERITY_ORDER,
-    STRIDE_PREFIXES,
-    parse_markdown_table,
-    _find_table_with_column,
     parse_frontmatter,
     parse_project_name,
     detect_artifacts,
@@ -40,8 +35,6 @@ from tachi_parsers import (
     parse_threats_severity,
     parse_risk_scores_severity,
     _empty_severity,
-    _accumulate_severity_rows,
-    _parse_int,
     parse_threats_findings,
     parse_risk_scores_findings,
     parse_component_distribution,
@@ -113,14 +106,14 @@ def largest_remainder(percentages_map, target=100):
 # T010: Severity Extraction Pipeline
 # =============================================================================
 
-def extract_severity(target_dir, tier, threats_content, artifacts):
+def extract_severity(tier, threats_content, rs_content=None, cc_content=None):
     """Extract severity counts, findings, and compensating controls data based on tier.
 
     Args:
-        target_dir: Path to directory containing pipeline artifacts.
         tier: Data source tier (1, 2, or 3).
         threats_content: Full text content of threats.md.
-        artifacts: Dict of detected artifact booleans.
+        rs_content: Pre-read content of risk-scores.md (required for tier 2).
+        cc_content: Pre-read content of compensating-controls.md (required for tier 1).
 
     Returns:
         Tuple of (severity_dict, findings_list, cc_data_or_None).
@@ -131,12 +124,10 @@ def extract_severity(target_dir, tier, threats_content, artifacts):
     cc_data = None
 
     if tier == 1:
-        cc_content = (target_dir / "compensating-controls.md").read_text(encoding="utf-8")
         cc_data = parse_compensating_controls_md(cc_content)
         severity = cc_data["severity"]
         findings = cc_data["findings"]
     elif tier == 2:
-        rs_content = (target_dir / "risk-scores.md").read_text(encoding="utf-8")
         severity = parse_risk_scores_severity(rs_content)
         findings = parse_risk_scores_findings(rs_content)
     else:  # tier == 3
@@ -760,7 +751,8 @@ def _component_severity_color(comp_severity, component_name):
 # T029-T031: Risk Funnel Computation
 # =============================================================================
 
-def compute_risk_funnel(target_dir, tier, severity, threats_content, artifacts):
+def compute_risk_funnel(tier, severity, threats_content, artifacts,
+                        rs_content=None, cc_data=None):
     """Compute 4-tier risk funnel data with reduction percentages and missing enrichments.
 
     Tier 0: Total threats from threats.md Section 6 Risk Summary.
@@ -770,11 +762,12 @@ def compute_risk_funnel(target_dir, tier, severity, threats_content, artifacts):
              from compensating-controls.md (null if absent).
 
     Args:
-        target_dir: Path to directory containing pipeline artifacts.
         tier: Data source tier (1, 2, or 3).
         severity: Current severity dict (from extract_severity, used for Tier 3 residual).
         threats_content: Full text content of threats.md.
         artifacts: Dict of detected artifact booleans.
+        rs_content: Pre-read content of risk-scores.md (avoids duplicate file read).
+        cc_data: Pre-parsed compensating controls data (avoids duplicate file read/parse).
 
     Returns:
         Dict with funnel_tiers, reduction_percentages, and missing_enrichments.
@@ -791,8 +784,7 @@ def compute_risk_funnel(target_dir, tier, severity, threats_content, artifacts):
 
     # --- Tier 1: Inherent Risk Scored (risk-scores.md) ---
     tier1 = None
-    if artifacts["risk_scores_md"]:
-        rs_content = (target_dir / "risk-scores.md").read_text(encoding="utf-8")
+    if artifacts["risk_scores_md"] and rs_content:
         rs_severity = parse_risk_scores_severity(rs_content)
         tier1 = {
             "tier": 1,
@@ -803,9 +795,7 @@ def compute_risk_funnel(target_dir, tier, severity, threats_content, artifacts):
 
     # --- Tier 2: Controls Applied (compensating-controls.md) ---
     tier2 = None
-    if artifacts["compensating_controls_md"]:
-        cc_content = (target_dir / "compensating-controls.md").read_text(encoding="utf-8")
-        cc_data = parse_compensating_controls_md(cc_content)
+    if artifacts["compensating_controls_md"] and cc_data:
         tier2 = {
             "tier": 2,
             "label": "Controls Applied",
@@ -815,9 +805,7 @@ def compute_risk_funnel(target_dir, tier, severity, threats_content, artifacts):
 
     # --- Tier 3: Residual Risk (compensating-controls.md residual severity) ---
     tier3 = None
-    if artifacts["compensating_controls_md"]:
-        # Residual risk = sum of Critical+High+Medium+Low (excluding Note)
-        # Use cc_data already parsed for Tier 2
+    if artifacts["compensating_controls_md"] and cc_data:
         cc_sev = cc_data["severity"]
         residual_count = cc_sev["critical"] + cc_sev["high"] + cc_sev["medium"] + cc_sev["low"]
         tier3 = {
@@ -966,8 +954,14 @@ def main():
     # Determine tier
     tier = determine_tier(artifacts)
 
-    # Read threats.md content
+    # Pre-read artifact contents (each file read at most once)
     threats_content = (target_dir / "threats.md").read_text(encoding="utf-8")
+    rs_content = None
+    if artifacts["risk_scores_md"]:
+        rs_content = (target_dir / "risk-scores.md").read_text(encoding="utf-8")
+    cc_content = None
+    if artifacts["compensating_controls_md"]:
+        cc_content = (target_dir / "compensating-controls.md").read_text(encoding="utf-8")
 
     # Parse frontmatter and project name
     frontmatter = parse_frontmatter(threats_content)
@@ -979,7 +973,7 @@ def main():
     # --- Core pipeline ---
 
     # Extract severity, findings, and cc_data
-    severity, findings, cc_data = extract_severity(target_dir, tier, threats_content, artifacts)
+    severity, findings, cc_data = extract_severity(tier, threats_content, rs_content, cc_content)
 
     # Compute severity percentages
     severity_distribution = compute_severity_percentages(severity)
@@ -993,10 +987,7 @@ def main():
     # Compute component risk weights
     risk_weights = compute_component_risk_weights(heat_map)
 
-    # Deduplicate findings for ID validation
-    dedup = deduplicate_findings(threats_content)
-
-    # Build findings ID set for validation (from actual parsed findings)
+    # Build findings ID set for validation
     findings_ids = {f.get("id", "") for f in findings}
 
     # Compute metadata
@@ -1017,7 +1008,8 @@ def main():
             "boundary_crossings": arch_overlay["boundary_crossings"],
         }
     elif args.template == "risk-funnel":
-        funnel = compute_risk_funnel(target_dir, tier, severity, threats_content, artifacts)
+        funnel = compute_risk_funnel(tier, severity, threats_content, artifacts,
+                                     rs_content=rs_content, cc_data=cc_data)
         template_data = {
             "risk_weights": risk_weights,
             "funnel_tiers": funnel["funnel_tiers"],

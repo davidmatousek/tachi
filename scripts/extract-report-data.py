@@ -21,13 +21,7 @@ from tachi_parsers import (
     EXIT_SUCCESS,
     EXIT_MISSING_ARTIFACT,
     EXIT_VALIDATION_FAILURE,
-    SEVERITY_ORDER,
-    STRIDE_PREFIXES,
     escape_typst_string,
-    strip_bold,
-    _parse_int,
-    parse_markdown_table,
-    _find_table_with_column,
     parse_frontmatter,
     parse_project_name,
     detect_artifacts,
@@ -35,7 +29,6 @@ from tachi_parsers import (
     parse_threats_severity,
     parse_risk_scores_severity,
     _empty_severity,
-    _accumulate_severity_rows,
     parse_threats_findings,
     parse_risk_scores_findings,
     parse_component_distribution,
@@ -488,7 +481,7 @@ def _typst_str_or_none(value) -> str:
 
 def _format_finding(f: dict, tier: int) -> str:
     """Format a single finding dict as a Typst dictionary literal."""
-    esc = escape_typst_string  # shorthand
+    esc = escape_typst_string
 
     def _v(key, default=""):
         return esc(f.get(key, default))
