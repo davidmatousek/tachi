@@ -135,18 +135,16 @@ Single-command entry point for tachi threat infographic generation — the visua
 
 ## Step 2: Run Infographic Agent
 
-1. Read the primary data source file at `{primary_file}`.
-
-2. If type is `risk-scores` or `compensating-controls`, also read the co-located threats.md at `{secondary_file}`.
-
-3. Invoke the `tachi-threat-infographic` agent with the following prompt:
+1. Invoke the `tachi-threat-infographic` agent with the following prompt:
 
    ```
-   Generate threat infographic specification(s) from the provided data source.
-   Follow your complete methodology: Data Source Detection, Data Extraction,
-   Specification Generation, and Image Generation (if API key available).
+   Generate threat infographic specification(s) using the deterministic extraction script.
 
-   Data source type: {type}
+   CRITICAL: You MUST run the extraction script for data extraction. Do NOT parse
+   markdown files manually or extract severity counts via LLM. The script ensures
+   cross-output consistency with the security report (Feature 067/071).
+
+   Target directory: {data_source_dir}
    Template: {template}
    Write all output files to: {output_dir}
 
@@ -154,17 +152,20 @@ Single-command entry point for tachi threat infographic generation — the visua
    - threat-{template-name}-spec.md (always)
    - threat-{template-name}.jpg (when GEMINI_API_KEY available)
 
-   <data-source>
-   {contents of primary_file}
-   </data-source>
+   Step 1: Run the extraction script (once per template, or 3x if template is "all"):
+     python3 scripts/extract-infographic-data.py \
+       --target-dir {data_source_dir} \
+       --template {template_name} \
+       --output /tmp/infographic-{template_name}.json
 
-   {if type is risk-scores or compensating-controls:}
-   <co-located-threats>
-   {contents of secondary_file}
-   </co-located-threats>
+   Step 2: Read the JSON output and generate the spec file per your methodology.
+   Step 3: Generate images via Gemini if GEMINI_API_KEY is available.
    ```
 
-4. Wait for the infographic agent to complete specification generation and image generation attempt.
+2. Do NOT read or pass data source file contents to the agent. The agent reads
+   files via the extraction script, which ensures deterministic, validated output.
+
+3. Wait for the infographic agent to complete specification generation and image generation attempt.
 
 ## Step 3: Report Results
 

@@ -629,12 +629,10 @@ The Gemini API configuration is defined here in the agent prompt, not in the out
 gemini_config:
   default_model: "gemini-3-pro-image-preview"
   resolution: "2K"
-  fallback_model: "gemini-3.1-flash-image-preview"
 ```
 
-- **default_model**: The primary Gemini model for image generation. Configurable — do not hardcode. If the default model is unavailable, fall back to `fallback_model`.
+- **default_model**: The primary Gemini model for image generation. Configurable — do not hardcode.
 - **resolution**: Target output resolution. "2K" produces images at approximately 1920x1080 for 16:9 aspect ratio.
-- **fallback_model**: Secondary model to attempt if the default model returns a model-not-found error.
 
 ### API Key Check
 
@@ -699,10 +697,6 @@ Parse the API response to extract the generated image:
 7. Set `image_generated: true` in the specification frontmatter.
 
 If no `inline_data` part with an image MIME type is found in the response, treat this as an API error (see Error Handling below).
-
-### Fallback Model Attempt
-
-If the default model returns an HTTP error indicating model unavailability (404 or model-specific error), attempt one retry with the `fallback_model` (`gemini-3.1-flash-image-preview`). If the fallback also fails, proceed to error handling.
 
 ---
 

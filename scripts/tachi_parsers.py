@@ -244,7 +244,11 @@ def parse_frontmatter(content: str) -> dict:
 # =============================================================================
 
 def parse_project_name(content: str, title_override: str = None) -> str:
-    """Extract project name from # Threat Model: {name} heading.
+    """Extract project name from threats.md H1 heading.
+
+    Supports two heading formats:
+      - "# {Name} Threat Model" (orchestrator output format)
+      - "# Threat Model: {Name}" (legacy format)
 
     Args:
         content: threats.md content.
@@ -256,6 +260,12 @@ def parse_project_name(content: str, title_override: str = None) -> str:
     if title_override:
         return title_override
 
+    # Format 1: "# {Name} Threat Model" (orchestrator output)
+    match = re.search(r"^#\s+(.+?)\s+Threat Model\s*$", content, re.MULTILINE)
+    if match:
+        return match.group(1).strip()
+
+    # Format 2: "# Threat Model: {Name}" (legacy)
     match = re.search(r"^#\s+Threat Model:\s*(.+)$", content, re.MULTILINE)
     if match:
         return match.group(1).strip()
@@ -583,20 +593,62 @@ def parse_compensating_controls_md(content: str) -> dict:
                 current_threat_id = None
 
     # ---- Section 2: Coverage Matrix findings ----
+    # Severity band thresholds for score-based classification
+    _BAND_THRESHOLDS = [(9.0, "Critical"), (7.0, "High"), (4.0, "Medium")]
+
+    def _score_to_band(score_str):
+        """Map a residual score string to its severity band, or None if unparseable."""
+        try:
+            score = float(score_str)
+        except (ValueError, TypeError):
+            return None
+        for threshold, band in _BAND_THRESHOLDS:
+            if score >= threshold:
+                return band
+        return "Low"
+
+    misclassified_count = 0
     for severity_label in ["Critical", "High", "Medium", "Low"]:
         header = f"### {severity_label} Residual Severity"
         rows = parse_markdown_table(content, header)
         for row in rows:
             threat_id = row.get("Threat ID", "").strip()
+            residual_score = row.get("Residual Score", "").strip()
+
+            # Score-derived band is authoritative; column/section are fallbacks
+            score_band = _score_to_band(residual_score)
+            row_severity = row.get("Residual Severity", "").strip()
+
+            if score_band:
+                if score_band != severity_label:
+                    misclassified_count += 1
+                    print(
+                        f"Warning: {threat_id} in '### {severity_label} Residual Severity' "
+                        f"section but residual score {residual_score} maps to {score_band}. "
+                        f"Using score-derived band.",
+                        file=sys.stderr,
+                    )
+                row_severity = score_band
+            elif not row_severity:
+                # No parseable score and no column value — fall back to section
+                row_severity = severity_label
+
             result["findings"].append({
                 "id": threat_id,
                 "component": row.get("Component", "").strip(),
                 "threat": row.get("Threat", "").strip(),
-                "residual_score": row.get("Residual Score", "").strip(),
-                "residual_severity": row.get("Residual Severity", severity_label).strip(),
+                "residual_score": residual_score,
+                "residual_severity": row_severity,
                 "control_status": row.get("Control Status", "").strip(),
                 "recommendation": recommendations.get(threat_id, ""),
             })
+
+    if misclassified_count > 0:
+        print(
+            f"Warning: {misclassified_count} findings in wrong severity sections "
+            f"(corrected using score-derived bands)",
+            file=sys.stderr,
+        )
 
     # ---- Compute Tier 1 severity counts from residual severity ----
     for f in result["findings"]:

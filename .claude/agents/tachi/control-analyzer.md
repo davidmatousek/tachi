@@ -1174,6 +1174,7 @@ The markdown output MUST contain these sections in this exact order:
 - Omit severity band subsections with zero threats (e.g., skip "Critical Residual Severity" if no threats have Critical residual)
 - Threat descriptions truncated to 80 characters in the table (readers can find full descriptions in Section 3)
 - Summary statistics table at the bottom
+- **Section grouping validation (MANDATORY)**: After generating Section 2, verify that every row's `Residual Severity` column value matches the section header it is placed under. Use the severity band thresholds (Critical >= 9.0, High 7.0-8.9, Medium 4.0-6.9, Low < 4.0) to classify each row's `Residual Score`. If any row's computed band does not match its section header, move it to the correct section before writing. This is critical — downstream consumers (infographic specs, security reports) depend on section-to-row consistency.
 
 **Section 3 — Control Details**:
 - One subsection per detected control, grouped by control category
