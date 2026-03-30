@@ -200,7 +200,9 @@ TOP SECTION: Title "Threat Model: {project_name}" in large white bold text. Date
 
 LEFT PANEL: A clean, elegant donut chart showing risk distribution — {critical_count} Critical, {high_count} High, {medium_count} Medium, {low_count} Low. The donut should have smooth, anti-aliased segments with the severity colors glowing subtly against the dark background. Center text: "{total_findings}" in large white bold with "findings" in smaller light gray beneath. Below the donut: a clean severity legend with colored dots, counts, and percentages. Below that: a "RISK POSTURE: {risk_posture}" badge in {posture_color} with "{critical_high_pct}% of findings rated High or Critical" in light text.
 
-CENTER PANEL: A coverage heat map titled "Coverage Heat Map" with {component_count} component rows and 8 threat category columns (S, T, R, I, D, E, AG, LLM). Cells are rounded rectangles filled with severity colors — the colors should pop against the dark background. Component names in white text on the left. Column headers in light gray. Show finding count or severity letter in each colored cell.
+CENTER PANEL: A coverage heat map titled "Coverage Heat Map" with {component_count} component rows and 8 threat category columns (S, T, R, I, D, E, AG, LLM). Each cell MUST use the exact severity from this grid — do not infer or guess cell values:
+{heat_map_cell_grid}
+Cells are rounded rectangles filled with severity colors — the colors should pop against the dark background. Color each cell strictly by its specified severity: Critical = red #DC2626, High = orange #EA580C, Medium = amber #CA8A04, Low = blue #2563EB, "—" = subtle dark gray (#334155). Component names in white text on the left. Column headers in light gray. Show severity letter (C/H/M/L) in each colored cell.
 
 RIGHT PANEL: {critical_count} critical finding cards stacked vertically. Each card is a rounded dark card with a left border accent in the severity color, a subtle shadow, finding ID in monospace severity-colored text, component name in white bold, and a one-line threat description in light gray. Cards: {finding_cards_text}.
 

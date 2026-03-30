@@ -117,56 +117,120 @@ Each finding in the STRIDE and AI tables provides these fields (from `../../../s
 
 ### Input Validation
 
-Before generating the specification, validate:
-1. `threats.md` contains YAML frontmatter with `schema_version` field
-2. At least Sections 3 or 4 are present with findings
-3. If Section 6 (Risk Summary) is missing, compute severity counts directly from individual findings in Sections 3 and 4
+Input validation is performed by the deterministic extraction script (`scripts/extract-infographic-data.py`). The script checks:
+1. `threats.md` exists in the target directory (exit code 1 if missing)
+2. YAML frontmatter with `schema_version` field is present
+3. Findings exist in Sections 3, 4, or 4a
+4. Severity counts are internally consistent (exit code 2 on mismatch)
+
+If Section 6 (Risk Summary) is missing, the script computes severity counts directly from individual findings with deduplication.
 
 ---
 
-## Data Source Detection
+## Deterministic Data Extraction
 
-Before extracting data, determine which data source type has been provided. The input may be a `threats.md` file (qualitative path) or a `risk-scores.md` file (quantitative path). Detection is based on content structure, not filename.
+Data extraction is performed by a deterministic Python script that replaces the previous LLM-based extraction methodology. The script handles data source detection, tier detection, severity parsing, heat map computation, top findings selection, risk weights, architecture overlay, and risk funnel computation — producing identical output on every run for the same input.
 
-### Detection Rules
+### Script Invocation
 
-Inspect the content of the provided file for structural indicators:
+Run the extraction script before generating the specification:
 
-| Indicator | Data Source Type | Action |
-|-----------|-----------------|--------|
-| Contains `## 2. Coverage Matrix` with a `Residual Score` column in its table header | `compensating-controls` | Use residual risk extraction path. Read co-located `threats.md` for structural data. |
-| Contains `## 2. Scored Threat Table` with a `Composite` column in its table header | `risk-scores` | Use quantitative extraction path. Read co-located `threats.md` for structural data. |
-| Contains `## 6. Risk Summary` with severity counts (Critical/High/Medium/Low) | `threats` | Use qualitative extraction path (existing methodology). |
-| No indicator found | Unknown | Exit with error: "Unable to detect data source type. Expected compensating-controls.md (Section 2: Coverage Matrix with Residual Score column), risk-scores.md (Section 2: Scored Threat Table with Composite column), or threats.md (Section 6: Risk Summary with severity counts)." |
+```bash
+python scripts/extract-infographic-data.py \
+  --target-dir {target_directory} \
+  --template {template_name} \
+  --output /tmp/infographic-data.json
+```
 
-### Detection Procedure
+**Parameters**:
+- `--target-dir`: Directory containing threat model artifacts (threats.md, and optionally risk-scores.md, compensating-controls.md)
+- `--template`: Template name (`baseball-card`, `system-architecture`, or `risk-funnel`)
+- `--output`: Path for the JSON output file (default: stdout)
 
-1. Read the input file content.
-2. Search for the heading `## 2. Coverage Matrix`. If found, check whether the first table row beneath it contains a `Residual Score` column header. If both conditions are true: data source type is `compensating-controls`.
-3. If step 2 did not match, search for the heading `## 2. Scored Threat Table`. If found, check whether the first table row beneath it contains a `Composite` column header.
-   - If both conditions are true: data source type is `risk-scores`.
-4. If step 3 did not match, search for the heading `## 6. Risk Summary`. If found, check whether the section contains severity count labels (Critical, High, Medium, Low).
-   - If both conditions are true: data source type is `threats`.
-5. If none of steps 2, 3, or 4 matched, exit with error: "Unable to detect data source type. Expected compensating-controls.md (Section 2: Coverage Matrix with Residual Score column), risk-scores.md (Section 2: Scored Threat Table with Composite column), or threats.md (Section 6: Risk Summary with severity counts)."
+The script automatically detects the richest data source available (compensating-controls.md > risk-scores.md > threats.md) and extracts all data needed for the specification. No manual data source detection is required.
 
-### Co-Located File Requirement
+When template is `all`, run the script three times — once per template (`baseball-card`, `system-architecture`, `risk-funnel`) — producing a separate JSON file for each.
 
-When `risk-scores` or `compensating-controls` is detected as the data source type:
-1. Determine the directory containing the primary data source file.
-2. Check for a `threats.md` file in the same directory.
-3. If `threats.md` is not found, exit with error: "Co-located threats.md required for structural data when using {primary_file} as primary data source. Expected at: {directory}/threats.md"
-4. If `threats.md` is found, read it as a secondary input for structural and spatial data (system overview, trust boundaries, data flows).
+### Exit Code Handling
 
-### Routing
+| Exit Code | Meaning | Action |
+|-----------|---------|--------|
+| `0` | Success | Read the JSON output file and proceed to specification generation |
+| `1` | Missing required artifact (`threats.md` not found in target directory) | Display the error message from stderr and halt. Do not generate specification. |
+| `2` | Validation failure (severity sum mismatch, top finding ID not in source, heat map total inconsistency) | Display the error message from stderr and halt. Do not generate specification. |
 
-After detection, route to the appropriate extraction methodology:
-- **`threats` data source**: Proceed to "Data Extraction Methodology" (qualitative path) below.
-- **`risk-scores` data source**: Proceed to "Data Extraction Methodology: risk-scores.md" (quantitative path) below.
-- **`compensating-controls` data source**: Proceed to "Data Extraction Methodology: compensating-controls.md" (residual risk path) below.
+**Critical**: If the script exits with code 1 or 2, do NOT attempt manual LLM-based extraction as a fallback. The script's validation catches data integrity issues that manual extraction would silently propagate. Report the error to the user and stop.
+
+### JSON Output Structure
+
+The script outputs a JSON file with this top-level structure:
+
+```json
+{
+  "metadata": {
+    "project_name": "string",
+    "scan_date": "YYYY-MM-DD",
+    "tier": 1,
+    "template": "baseball-card",
+    "data_source_type": "compensating-controls",
+    "total_findings": 34,
+    "note_count": 0,
+    "agent_count": 10,
+    "risk_posture": "string",
+    "schema_version": "1.1"
+  },
+  "severity_distribution": [
+    { "label": "Critical", "count": 5, "percentage": 15, "color": "#DC2626" }
+  ],
+  "heat_map": [
+    { "component": "API Gateway", "critical": 2, "high": 5, "medium": 3, "low": 1, "total": 11 }
+  ],
+  "top_findings": [
+    { "id": "S-001", "component": "API Gateway", "threat": "...", "risk_level": "Critical", "score": 9.2 }
+  ],
+  "template_data": { }
+}
+```
+
+The complete JSON schema is defined in `specs/071-deterministic-infographic-extraction/data-model.md`. The `template_data` object varies by template — see the data model for `baseball-card`, `system-architecture`, and `risk-funnel` schemas.
+
+### JSON to Specification Section Mapping
+
+Read the JSON output file and map fields to infographic specification sections:
+
+| JSON Field | Spec Section | Usage |
+|------------|-------------|-------|
+| `metadata.project_name` | Section 1 (Metadata) | Project Name row |
+| `metadata.scan_date` | Section 1 + Frontmatter | Scan Date row, `date` field |
+| `metadata.agent_count` | Section 1 (Metadata) | Analysis Agents row |
+| `metadata.total_findings` | Section 1 + Frontmatter | Total Findings row, `finding_count` field |
+| `metadata.risk_posture` | Section 1 (Metadata) | Risk Posture row (use verbatim) |
+| `metadata.data_source_type` | Frontmatter | `data_source_type` field; determines `source_file` (see table below) |
+| `metadata.schema_version` | Frontmatter | `schema_version` field |
+| `severity_distribution[]` | Section 2 (Risk Distribution) | One table row per entry: label, count, percentage, color |
+| `heat_map[]` | Section 3 (Coverage Heat Map) | One table row per component: component name + per-severity counts + total |
+| `top_findings[]` | Section 4 (Top Critical Findings) | Up to 5 rows: finding ID, component, threat summary, risk level |
+| `template_data.risk_weights[]` | Section 5 (Architecture Overlay) | Component risk weight, score, and annotation |
+| `template_data.trust_zones[]` | Section 5 (system-architecture) | Trust zone groupings for spatial layout |
+| `template_data.data_flows[]` | Section 5 (system-architecture) | Data flow arrows with severity coloring |
+| `template_data.boundary_crossings[]` | Section 5 (system-architecture) | Trust boundary crossing annotations |
+| `template_data.funnel_tiers[]` | Section 5 (risk-funnel) | 4-tier funnel counts and labels |
+| `template_data.reduction_percentages[]` | Section 5 (risk-funnel) | Percentage reduction between adjacent tiers |
+| `template_data.missing_enrichments[]` | Section 5 (risk-funnel) | Commands to run for missing pipeline stages |
+
+### Frontmatter Source File Mapping
+
+Set the spec frontmatter `source_file` based on `metadata.data_source_type`:
+
+| `data_source_type` | `source_file` |
+|---------------------|---------------|
+| `compensating-controls` | `compensating-controls.md` |
+| `risk-scores` | `risk-scores.md` |
+| `threats` | `threats.md` |
 
 ### Risk Label Mapping
 
-The following labels are applied to risk values in the infographic specification based on the detected data source type:
+Apply these labels in specification text based on `metadata.data_source_type`:
 
 | Data Source Type | Risk Label | Usage Context |
 |------------------|-----------|---------------|
@@ -180,323 +244,15 @@ The risk label appears in:
 - **Section 4 (Top Critical Findings)**: Finding card risk level header
 - **Section 6 (Visual Design Directives)**: Header text for the risk summary zone
 
----
-
-## Data Extraction Methodology: risk-scores.md
-
-When the detected data source type is `risk-scores`, extract data from `risk-scores.md` (primary) and the co-located `threats.md` (secondary) in 5 steps. Each step feeds one or more specification sections. The co-located `threats.md` provides structural and spatial data that `risk-scores.md` does not contain.
-
-### Step 1: Parse risk-scores.md Section 1 (Executive Summary) for Metadata
-
-Extract from `risk-scores.md` Section 1 (Executive Summary):
-- Total finding count
-- Aggregate severity distribution: count of findings per severity band (Critical, High, Medium, Low) based on composite score ranges
-- Scan date (from frontmatter or executive summary)
-- Schema version (from frontmatter)
-
-Extract from co-located `threats.md` Section 1 (System Overview):
-- Project name from section narrative or first component context
-- Count of unique components (agent_count proxy)
-
-### Step 2: Parse risk-scores.md Section 2 (Scored Threat Table) for Per-Finding Quantitative Data
-
-Section 2 contains the Scored Threat Table with one row per finding. For each finding row, extract:
-
-| Field | Column | Infographic Usage |
-|-------|--------|-------------------|
-| `id` | Finding ID | Top Critical Findings entry reference |
-| `component` | Component | Heat Map rows, Architecture Overlay annotations |
-| `threat` | Threat description | Top Critical Findings one-sentence summary |
-| `composite_score` | Composite | Risk Distribution bands, component risk weighting, finding ranking |
-| `severity_band` | Severity | Severity band label mapped from composite score |
-| `exploitability` | Exploitability | Supplementary score for finding detail (not used in core infographic layout) |
-| `scalability` | Scalability | Supplementary score for finding detail (not used in core infographic layout) |
-| `reachability` | Reachability | Supplementary score for finding detail (not used in core infographic layout) |
-
-**Severity band mapping** (from `../../../schemas/risk-scoring.yaml`):
-- Critical: composite_score 9.0 - 10.0
-- High: composite_score 7.0 - 8.9
-- Medium: composite_score 4.0 - 6.9
-- Low: composite_score 0.0 - 3.9
-
-### Step 3: Read Co-Located threats.md Section 1 for Project Metadata and Component List
-
-From the co-located `threats.md`, extract:
-- **Section 1 (System Overview)**: Project name, component list, technology stack, data flow descriptions
-- **Component count**: Number of unique components listed in the system overview
-
-This data is required for:
-- Metadata (Section 1 of spec): project name, agent count
-- Architecture Threat Overlay (Section 5): component list and descriptions
-
-### Step 4: Read Co-Located threats.md Section 2 for Trust Boundaries and Spatial Data
-
-From the co-located `threats.md`, extract:
-- **Section 2 (Trust Boundaries)**: Trust zone names, trust levels, component-to-zone membership
-- **Boundary Crossings**: Data flows that cross trust boundaries, associated finding IDs
-- **Data Flows**: Source-destination component pairs from Section 1 Data Flows table
-
-This data is required for:
-- Architecture Threat Overlay (Section 5): trust zone layout, component placement within zones
-- Step 5b (Spatial Layout Extraction) for the system-architecture template
-
-### Step 5: Compute Risk Distribution from Composite Scores
-
-Using the per-finding data from Step 2:
-
-1. **Risk Distribution**: Group findings by severity band (derived from composite score ranges). Count findings per band. Compute percentages: `(count / total) * 100`, rounded to one decimal place.
-
-2. **Component Risk Heat Map**: For each unique component, count findings per severity band. Build the component x severity matrix identical to the qualitative path but using severity bands derived from composite scores.
-
-3. **Top 5 Findings**: Rank all findings by composite score descending. Select the top 5. For each selected finding, extract: id, component, threat (condensed to one sentence), severity band, and composite score.
-
-4. **Architecture Overlay**: For each unique component:
-   - Compute average composite score across all findings for that component
-   - Classify component risk weight:
-     - `high`: average composite >= 7.0 OR any finding with composite >= 9.0
-     - `medium`: average composite >= 4.0
-     - `low`: average composite < 4.0
-   - Write annotation describing the component's quantitative risk profile
-
-5. **Spatial Layout** (system-architecture template only): Use trust zone and data flow data from Step 4. Map finding composite scores to components for border color (highest composite score determines the color using the severity band mapping). Data flow arrow colors use the highest composite score among findings involving both source and destination components.
-
----
-
-## Data Extraction Methodology: compensating-controls.md
-
-When the detected data source type is `compensating-controls`, extract data from `compensating-controls.md` (primary) and the co-located `threats.md` (secondary) in 5 steps. Each step feeds one or more specification sections. The co-located `threats.md` provides structural and spatial data that `compensating-controls.md` does not contain.
-
-### Step 1: Parse compensating-controls.md Section 1 (Executive Summary) for Metadata
-
-Extract from `compensating-controls.md` Section 1 (Executive Summary):
-- Total threats analyzed count
-- Coverage distribution: Control Found count/percentage, Partial Control count/percentage, No Control Found count/percentage
-- Risk reduction percentage from the "Risk Reduction" line: `{total_inherent_risk} inherent -> {total_residual_risk} residual ({risk_reduction_pct}% reduction)`
-- Scan date (from frontmatter `date` field)
-- Schema version (from frontmatter `schema_version` field)
-
-### Step 2: Parse compensating-controls.md Section 2 (Coverage Matrix) for Per-Finding Residual Data
-
-Section 2 contains the Coverage Matrix with 4 sub-tables grouped by residual severity band (Critical, High, Medium, Low). Iterate across ALL 4 sub-tables. For each finding row, extract:
-
-| Field | Column | Infographic Usage |
-|-------|--------|-------------------|
-| `id` | Threat ID | Top Critical Findings entry reference, STRIDE category derivation |
-| `component` | Component | Heat Map rows, Architecture Overlay annotations |
-| `threat` | Threat | Top Critical Findings one-sentence summary |
-| `residual_score` | Residual Score | Risk Distribution bands, component risk weighting, finding ranking |
-| `residual_severity_band` | Residual Severity | Severity band label (determined by sub-table grouping) |
-| `control_status` | Control Status | Supplementary data for finding detail |
-
-**STRIDE category derivation**: The finding ID prefix determines the STRIDE category for cross-tabulation (e.g., `S-` = Spoofing, `T-` = Tampering, `R-` = Repudiation, `I-` = Information Disclosure, `D-` = Denial of Service, `E-` = Elevation of Privilege, `AG-` = Agentic, `LLM-` = LLM).
-
-**Accuracy invariant**: Residual severity distribution counts MUST exactly match the sub-table groupings in the Coverage Matrix — zero discrepancy. The sub-table a finding appears in is authoritative for its residual severity band.
-
-### Step 3: Read Co-Located threats.md Section 1 for Project Metadata and Component List
-
-From the co-located `threats.md`, extract:
-- **Section 1 (System Overview)**: Project name, component list, technology stack, data flow descriptions
-- **Component count**: Number of unique components listed in the system overview
-
-This data is required for:
-- Metadata (Section 1 of spec): project name, agent count
-- Architecture Threat Overlay (Section 5): component list and descriptions
-
-### Step 4: Read Co-Located threats.md Section 2 for Trust Boundaries and Spatial Data
-
-From the co-located `threats.md`, extract:
-- **Section 2 (Trust Zones)**: Trust zone names, trust levels, component-to-zone membership
-- **Boundary Crossings**: Data flows that cross trust boundaries, associated finding IDs
-- **Data Flows**: Source-destination component pairs from Section 1 Data Flows table
-
-This data is required for:
-- Architecture Threat Overlay (Section 5): trust zone layout, component placement within zones
-- Step 5b (Spatial Layout Extraction) for the system-architecture template
-
-### Step 5: Compute Risk Distribution from Residual Scores
-
-Using the per-finding data from Step 2:
-
-1. **Residual Risk Distribution**: Group findings by residual severity band (determined by sub-table grouping in the Coverage Matrix). Count findings per band. Compute percentages: `(count / total) * 100`, rounded to one decimal place.
-
-2. **Component Risk Heat Map**: For each unique component, count findings per residual severity band. Build the component x severity matrix using residual severity bands (not inherent).
-
-3. **Top 5 Findings**: Rank all findings by `residual_score` descending. Select the top 5. For each selected finding, extract: id, component, threat (condensed to one sentence), residual severity band, and residual score.
-
-4. **Architecture Overlay**: For each unique component:
-   - Compute average `residual_score` across all findings for that component
-   - Classify component risk weight:
-     - `high`: average residual_score >= 7.0 OR any finding with residual_score >= 9.0
-     - `medium`: average residual_score >= 4.0
-     - `low`: average residual_score < 4.0
-   - Write annotation describing the component's residual risk profile and dominant threat categories
-
-5. **Spatial Layout** (system-architecture template only): Use trust zone and data flow data from Step 4. Map finding residual scores to components for border color (highest residual_score determines the color using the severity band mapping). Data flow arrow colors use the highest residual_score among findings involving both source and destination components.
-
-6. **Cross-tabulate component x STRIDE category**: Use finding ID prefixes to determine STRIDE categories. Build component x category matrix using residual scores for heat map data.
-
-### Error Handling: compensating-controls.md
-
-Two distinct failure levels apply to compensating-controls detection and extraction:
-
-1. **Detection-level failure**: The file exists but lacks the `## 2. Coverage Matrix` heading or the first table does not contain a `Residual Score` column. This means the file is not a valid compensating-controls output.
-   - **Action**: Fall through to the next tier in the detection hierarchy (check for `risk-scores` indicators).
-   - **Rationale**: Graceful degradation — the file may be some other format.
-
-2. **Extraction-level failure**: Detection succeeds (Coverage Matrix heading and Residual Score column found) but the sub-tables contain malformed, empty, or unparseable rows during extraction.
-   - **Action**: Halt with a warning message: "compensating-controls.md detected but extraction failed: {specific error}. Data integrity cannot be guaranteed. Fix the source file or use an explicit path to a different data source."
-   - **Do NOT** silently fall through to risk-scores or threats. Falling through after partial extraction could produce an infographic with misrepresented risk values.
-
----
-
-## Data Merge Instructions: Quantitative Scores Replace Qualitative Severity
-
-When the data source type is `risk-scores`, quantitative composite scores from `risk-scores.md` replace qualitative severity data in each of the 5 infographic specification sections. The output format (6 sections with YAML frontmatter) remains identical. The data source changes what values populate the specification, not the specification structure.
-
-### Merge Rules by Extraction Step
-
-| Extraction Step | Qualitative Path (threats.md) | Quantitative Path (risk-scores.md) | What Changes |
-|----------------|------------------------------|-----------------------------------|--------------|
-| Risk Distribution (Step 2/5) | Section 6 severity counts (Critical/High/Medium/Low) | Composite score distribution bands from Scored Threat Table | Counts are derived from composite score ranges instead of qualitative risk_level |
-| Component Risk (Step 3/Heat Map) | Finding count per component, weighted: C=4, H=3, M=2, L=1 | Weighted composite score per component (average composite across findings) | Risk weight uses numeric composite scores instead of ordinal severity weighting |
-| Top Findings (Step 4/Critical Findings) | Rank by severity level (Critical first, then High) | Rank by highest composite score descending | Selection is continuous numeric ranking instead of categorical priority |
-| Architecture Overlay (Step 5) | Component + severity mapping (any Critical OR weighted >= 10 = high) | Component + quantitative risk weight (average composite >= 7.0 OR any >= 9.0 = high) | Thresholds use composite score ranges instead of weighted severity sums |
-| Project Metadata + Trust Zones (Step 1/3/4) | threats.md Section 1 and Section 2 | **Always from co-located threats.md** Section 1 and Section 2 | **Unchanged** -- structural data always comes from threats.md |
-
-### Merge Rules: compensating-controls.md (Residual Path)
-
-When the data source type is `compensating-controls`, residual risk scores from `compensating-controls.md` replace both qualitative severity and quantitative composite scores in each specification section. The output format (6 sections with YAML frontmatter) remains identical.
-
-| Extraction Step | Quantitative Path (risk-scores.md) | Residual Path (compensating-controls.md) | What Changes |
-|----------------|-----------------------------------|------------------------------------------|--------------|
-| Risk Distribution (Step 2/5) | Composite score distribution bands | Residual severity sub-table groupings | Counts from sub-table membership, not score band calculation |
-| Component Risk (Heat Map) | Average composite score per component | Average residual_score per component | Uses residual scores, same thresholds |
-| Top Findings (Critical Findings) | Rank by composite score descending | Rank by residual_score descending | Residual exposure after controls, not inherent risk |
-| Architecture Overlay | Component quantitative risk weight | Component residual risk weight | Same thresholds (>=7.0 high, >=4.0 medium), different score source |
-| Project Metadata + Trust Zones | Always from co-located threats.md | Always from co-located threats.md | **Unchanged** |
-| Risk Reduction | N/A | Risk reduction percentage from Executive Summary | **New data point** — only available in compensating-controls path |
-
-### Specification Frontmatter Differences
-
-When `risk-scores` is the data source:
-
-```yaml
----
-schema_version: "1.0"
-template: "{template-name}"
-date: "{YYYY-MM-DD from risk-scores.md}"
-source_file: "risk-scores.md"
-data_source_type: "risk-scores"
-finding_count: {total from risk-scores.md Section 1}
-image_generated: {true|false}
----
-```
-
-The `source_file` field reflects the primary data source (`risk-scores.md` instead of `threats.md`). The `data_source_type` field is added to distinguish the extraction path used.
-
-When `compensating-controls` is the data source:
-
-```yaml
----
-schema_version: "1.0"
-template: "{template-name}"
-date: "{YYYY-MM-DD from compensating-controls.md}"
-source_file: "compensating-controls.md"
-data_source_type: "compensating-controls"
-finding_count: {total from compensating-controls.md Section 1}
-image_generated: {true|false}
----
-```
-
-The `source_file` field reflects the primary data source (`compensating-controls.md`). The `data_source_type` field distinguishes the residual risk extraction path.
-
-### Accuracy Invariant
-
-Regardless of data source type, the accuracy rule remains absolute: severity counts in Section 2 (Risk Distribution) MUST exactly match the source data. When using `risk-scores.md`, this means the composite score band distribution MUST match the Scored Threat Table counts -- zero discrepancy.
-
----
-
-## Data Extraction Methodology
-
-Extract data from `threats.md` in 5 steps. Each step feeds one or more specification sections.
-
-### Step 1: Parse Frontmatter for Metadata
-
-Extract from YAML frontmatter:
-- `date` → scan_date in Metadata
-- `schema_version` → referenced in spec frontmatter
-- `classification` → referenced in Metadata
-
-Extract from Section 1 (System Overview):
-- Count of unique components → agent_count proxy (number of analysis agents = number of STRIDE categories + AI categories that produced findings)
-- Project name from section narrative or first component context
-
-### Step 2: Extract Section 6 for Risk Distribution
-
-Section 6 (Risk Summary) is the **authoritative source** for aggregate severity counts.
-
-Extract:
-- Critical count
-- High count
-- Medium count
-- Low count
-- Total finding count
-
-Compute percentages: `(count / total) * 100`, rounded to one decimal place.
-
-**Note severity**: Findings with `risk_level` = Note are informational observations, not actionable threats. They are excluded from the visual risk distribution and heat map to maintain executive clarity. If Section 6 includes a Note count, it is omitted from the infographic severity breakdown. The total finding count in Metadata reflects all findings including Notes, but the Risk Distribution table shows only Critical, High, Medium, and Low.
-
-**Fallback**: If Section 6 is absent, iterate all finding tables in Sections 3, 4, and 4a. Count unique finding IDs per `risk_level`. Do not double-count findings that appear in both individual tables and correlation groups (Section 4a).
-
-### Step 3: Cross-Tabulate Component x Risk Level for Heat Map
-
-For each finding in Sections 3, 4, and 4a:
-1. Extract `component` and `risk_level`
-2. Build a matrix: rows = unique components, columns = Critical, High, Medium, Low
-3. For each cell: count of findings matching that component + severity
-4. Compute row totals
-5. Sort rows by total finding count descending
-6. If more than 8 components: keep top 8, aggregate remaining into "Other" row with summed counts
-
-Component names must match `threats.md` exactly — no renaming, abbreviation, or normalization.
-
-### Step 4: Select Top 5 Findings for Critical Findings Section
-
-From Section 7 (Recommended Actions) or individual finding tables:
-1. Filter findings with `risk_level` = Critical
-2. If fewer than 5 Critical, supplement with High findings
-3. For each selected finding, extract:
-   - `id` (finding ID)
-   - `component`
-   - `threat` (condense to one sentence if needed)
-   - `risk_level`
-4. Cap at 5 entries total
-
-**Edge case**: If no Critical or High findings exist, select top 5 Medium findings and note "No Critical or High findings identified" in the section.
-
-### Step 5: Aggregate Per-Component Risk for Architecture Overlay
-
-For each unique component:
-1. Sum weighted risk: Critical=4, High=3, Medium=2, Low=1
-2. Compute total weighted score
-3. Classify component risk weight:
-   - `high`: any Critical finding OR weighted score >= 10
-   - `medium`: weighted score >= 5
-   - `low`: weighted score < 5
-4. Write annotation describing the component's risk profile and dominant threat categories
-
-### Step 5b: Spatial Layout Extraction (System Architecture template only)
-
-When the active template is `system-architecture`, extract spatial layout data for the annotated architecture diagram:
-
-1. **Parse trust zones** from `threats.md` Section 2 (Trust Zones table). Extract zone name, trust level, and component membership.
-2. **Order zones** top-to-bottom by trust level: Untrusted → Semi-Trusted → Trusted.
-3. **Place components within zones**: Sort by finding count descending. Apply the template's `components_per_row` threshold (default: 5) to determine row wrapping.
-4. **Map findings to components**: For each component, collect all finding IDs and determine the highest severity (for border color) and total count (for badge).
-5. **Map data flows**: Parse Section 1 Data Flows table. For each flow, determine the highest severity finding involving both the source and destination components. This sets the arrow color.
-6. **Map boundary crossings**: Parse Section 2 Boundary Crossings table. Associate finding IDs with each crossing.
-
-This data feeds into the spatial Section 5 format defined in the System Architecture template.
+### Accuracy Guarantee
+
+The script enforces data integrity through internal validation (exit code 2 on failure):
+- Severity counts sum to `total_findings - note_count`
+- Percentage values sum to exactly 100 (via Largest Remainder Method)
+- Top finding IDs exist in the source data
+- Heat map row totals match per-severity sums
+
+When the script exits successfully (code 0), the JSON data is guaranteed accurate. The agent does not need to cross-validate counts against source files.
 
 ---
 
@@ -525,7 +281,7 @@ image_generated: {true|false}
 
 | Field | Value |
 |-------|-------|
-| Project Name | {extracted from threats.md} |
+| Project Name | {from JSON: metadata.project_name} |
 | Scan Date | {date from frontmatter} |
 | Analysis Agents | {count of agent categories with findings} |
 | Total Findings | {total from Section 6} |
@@ -563,12 +319,20 @@ image_generated: {true|false}
 | {component_2} | {N} | {N} | {N} | {N} | {N} |
 | ... | | | | | |
 | Other | {N} | {N} | {N} | {N} | {N} |
+
+### Cell-Level Grid
+
+| Component | S | T | R | I | D | E | AG | LLM |
+|-----------|---|---|---|---|---|---|----|-----|
+| {component_1} | {severity or —} | {severity or —} | ... | ... | ... | ... | ... | ... |
+| {component_2} | {severity or —} | {severity or —} | ... | ... | ... | ... | ... | ... |
 ```
 
 - Rows ordered by Total descending
 - Maximum 8 named component rows + optional "Other" aggregation row
 - Component names match `threats.md` exactly
-- Cell values are integer counts
+- Aggregate table: cell values are integer counts
+- Cell-Level Grid: each cell is the highest severity label (Critical/High/Medium/Low) for that component+category pair, or "—" if no findings. This grid is passed directly to the Gemini prompt to prevent severity label hallucination in the rendered image.
 
 ### Section 4: Top Critical Findings
 
@@ -607,7 +371,7 @@ Section 5 format depends on the active template:
 
 **When data source is `compensating-controls`** (baseball-card template): The Architecture Overlay includes an additional summary line in the table: "**Risk Reduction: {risk_reduction_pct}%**" showing overall control effectiveness from the Executive Summary. Component risk weights use residual scores (average `residual_score` per component, same thresholds as risk-scores path).
 
-**For `system-architecture` template** — use **spatial** format (zone-grouped layout with component placement, data flows, and boundary crossings). See the System Architecture template file for the full spatial Section 5 schema. This format is produced from Step 5b data extraction.
+**For `system-architecture` template** — use **spatial** format (zone-grouped layout with component placement, data flows, and boundary crossings). See the System Architecture template file for the full spatial Section 5 schema. This format is produced from the `template_data.trust_zones`, `template_data.data_flows`, and `template_data.boundary_crossings` fields in the JSON output.
 
 **When data source is `compensating-controls`** (system-architecture template): Component box border colors use residual severity (highest `residual_score` determines color via severity band mapping). Badges show residual finding count and residual severity band. Data flow arrow colors use the highest `residual_score` among findings involving both source and destination. The finding legend groups findings by residual severity band. Header label reads "Residual Risk" per the risk label mapping.
 
@@ -735,6 +499,8 @@ Before finalizing the specification, run the following checklist. Every check mu
 - [ ] Component names in Coverage Heat Map match `threats.md` exactly — no renaming, abbreviation, or normalization
 - [ ] Heat map rows ordered by total finding count descending
 - [ ] If more than 8 components: top 8 shown with "Other" aggregation row
+- [ ] Cell-Level Grid severity labels match finding ID prefix → category mapping with zero discrepancy
+- [ ] Gemini prompt `{heat_map_cell_grid}` placeholder populated from Cell-Level Grid (not inferred from aggregate counts)
 
 #### Finding Selection
 
@@ -766,6 +532,8 @@ After generating the specification (`threat-{template-name}-spec.md`), construct
 ### Design Template (Required)
 
 Load `templates/tachi/infographics/infographic-{name}.md` and use its **Gemini Prompt Template** section. Replace all `{placeholders}` with actual data from the infographic spec. This ensures every infographic follows the same layout.
+
+**`{heat_map_cell_grid}` placeholder**: Populate from the Cell-Level Grid in Section 3. Format as a plain-text grid listing each component row with its per-category severity, e.g.: `MCP Server: S=High, T=High, R=—, I=Medium, D=—, E=High, AG=—, LLM=—`. One line per component. This explicit enumeration prevents Gemini from inferring incorrect severity labels.
 
 If the design template is unavailable, construct the prompt following the fallback rules below.
 
@@ -821,7 +589,9 @@ TOP SECTION: Title "Threat Model: {project_name}" with date "{date}" and "CONFID
 
 LEFT PANEL: Donut chart showing risk distribution: {critical_count} Critical (red), {high_count} High (orange), {medium_count} Medium (amber), {low_count} Low (blue). Center text "{total_findings} findings". Below the donut: severity legend with counts and percentages. Below that: "RISK POSTURE: {risk_posture}" in {posture_color}, with "{critical_high_pct}% of findings rated High or Critical".
 
-CENTER PANEL: Heat map grid titled "Coverage Heat Map" with {component_count} components as rows and 8 threat categories as columns (S, T, R, I, D, E, AG, LLM). Cells colored by severity: red for Critical, orange for High, amber for Medium, blue for Low, light gray for analyzed with no findings, white for not applicable. Components sorted by finding count descending. Show finding count or severity letter in each cell.
+CENTER PANEL: Heat map grid titled "Coverage Heat Map" with {component_count} components as rows and 8 threat categories as columns (S, T, R, I, D, E, AG, LLM). Each cell MUST use the exact severity from this grid — do not infer or guess cell values:
+{heat_map_cell_grid}
+Color each cell by its severity: red for Critical, orange for High, amber for Medium, blue for Low, light gray for analyzed with no findings ("—"), white for not applicable. Components sorted by finding count descending. Show finding count or severity letter in each cell.
 
 RIGHT PANEL: {critical_count} critical finding cards in a vertical stack. Each card has: a severity-colored left border accent, finding ID in monospace (e.g., "S-1"), component name in bold, and a one-line threat description. Cards: {finding_cards_text}.
 
@@ -969,14 +739,13 @@ The infographic agent handles six specific error conditions. In every case, the 
 ### Condition 5: Missing Section 6 in threats.md
 
 - **Trigger**: `threats.md` does not contain a Section 6 (Risk Summary) with aggregate severity counts.
-- **Action**: Compute severity counts directly from individual findings in Sections 3, 4, and 4a using the fallback methodology defined in Data Extraction Methodology (Step 2). Log an informational message: "Section 6 (Risk Summary) not found in threats.md. Severity counts computed from individual findings."
-- **Result**: Specification generated with computed counts. Data accuracy is maintained through direct finding enumeration. Add a note to the specification Metadata: "Risk counts derived from individual findings (Section 6 absent in source)."
-- **Cross-reference**: See Data Extraction Methodology, Step 2, "Fallback" for the deduplication procedure that prevents double-counting findings appearing in both individual tables and correlation groups (Section 4a).
+- **Action**: The extraction script handles this automatically — it computes severity counts directly from individual findings in Sections 3, 4, and 4a with deduplication. The script logs: "Section 6 (Risk Summary) not found in threats.md. Severity counts computed from individual findings."
+- **Result**: The JSON output contains correct computed counts. Proceed with specification generation normally. Add a note to the specification Metadata: "Risk counts derived from individual findings (Section 6 absent in source)."
 
 ### Condition 6: Empty Threat Model (Zero Findings)
 
 - **Trigger**: `threats.md` contains no findings in Sections 3, 4, or 4a (all tables empty or absent).
-- **Action**: Produce a complete specification with zero-count values across all sections.
+- **Action**: The extraction script produces a valid JSON file with zero-count values. Use these values to produce a complete specification.
 - **Result**: Specification contains:
   - Metadata: `Total Findings: 0`, Risk Posture: "No threats identified in this threat model."
   - Risk Distribution: All severity counts = 0, all percentages = 0%.
@@ -985,6 +754,12 @@ The infographic agent handles six specific error conditions. In every case, the 
   - Architecture Threat Overlay: Components listed with `Low` risk weight and annotation "No findings identified."
   - Visual Design Directives: Standard directives (unchanged — layout is data-independent).
   - `image_generated: false` — no Gemini API call attempted for empty threat models.
+
+### Condition 7: Extraction Script Failure (Exit Code 1 or 2)
+
+- **Trigger**: The extraction script exits with code 1 (missing artifact) or code 2 (validation failure).
+- **Action**: Display the error message from stderr to the user. Do NOT attempt manual extraction as a fallback.
+- **Result**: No specification generated. Pipeline halted for this template. Log the error and suggest the user verify their input artifacts.
 
 ### Degradation Summary
 
@@ -996,3 +771,5 @@ The infographic agent handles six specific error conditions. In every case, the 
 | Content policy rejection | Yes | No | No | Warning |
 | Missing Section 6 | Yes (computed) | Attempted | No | Info |
 | Empty threat model | Yes (zero-count) | No | No | Info |
+| Script exit code 1 | No | No | Yes | Error |
+| Script exit code 2 | No | No | Yes | Error |
