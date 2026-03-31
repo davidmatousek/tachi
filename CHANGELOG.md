@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 075 — Tachi Agent Best Practices
+
+**Added**
+- Shared best practices document (`_TACHI_AGENT_BEST_PRACTICES.md`) with tier caps (Leaf ≤300, Report ≤800, Methodology ≤1,000), 8-criterion quality checklist, and compliance table for all 17 tachi agents; 3 domain knowledge skills (`tachi-orchestration`, `tachi-risk-scoring`, `tachi-control-analysis`) extracted from methodology agents with tiered on-demand loading (SKILL.md + references/) per ADR-002 (`cdf91e7`)
+
+**Changed**
+- Refactored orchestrator (2,000→769 lines), risk-scorer (1,419→994 lines), and control-analyzer (1,367→935 lines) by extracting domain knowledge into dedicated skills; all methodology agents now under 1,000-line cap (`cdf91e7`)
+- Claude 4.6 tone audit across all 17 tachi agents — softened non-critical emphasis patterns, added tool restrictions to frontmatter, improved description fields for delegation routing, enforced data-top ordering (`cdf91e7`)
+- Trimmed threat-report agent to ≤800-line Report tier cap (`cdf91e7`)
+- Closed Feature 075 — updated product docs (PRD INDEX, User Stories, OKRs), architecture docs (Tech Stack, Patterns), KB entry PAT-016 (`e713251`, `e89a640`)
+
 ### Feature 071 — Deterministic Infographic Data Extraction
 
 **Added**
