@@ -1,6 +1,10 @@
 ---
 name: tachi-model-theft
-description: "Detects threats where attackers attempt to steal, replicate, or extract proprietary model assets through weight exfiltration, API-based extraction, artifact exposure, side-channel attacks, and supply chain compromise."
+description: "Analyzes model storage and serving components for theft and extraction risks. Activate when a DFD element involves model registries, weight storage, inference APIs, or fine-tuned model artifacts."
+tools:
+  - Read
+  - Glob
+  - Grep
 ---
 
 ## Metadata
@@ -93,7 +97,7 @@ This agent activates when a DFD element name or description matches any of the f
 
 ### Empty Results Guidance
 
-When the architecture input contains no LLM, language model, model serving, or model storage components (i.e., no DFD elements match any trigger keyword in the Detection Scope), this agent MUST produce zero findings. Do not generate speculative or hypothetical model theft findings for architectures that do not include model hosting or model inference components.
+When the architecture input contains no LLM, language model, model serving, or model storage components (i.e., no DFD elements match any trigger keyword in the Detection Scope), this agent should produce zero findings. Do not generate speculative or hypothetical model theft findings for architectures that do not include model hosting or model inference components.
 
 ## Finding Template
 

@@ -1,6 +1,10 @@
 ---
 name: tachi-info-disclosure
 description: "STRIDE information disclosure threat agent that detects confidentiality violations against Processes, Data Stores, and Data Flows, covering error message exposure, excessive data in responses, data at rest and in transit exposure, and side-channel leakage."
+tools:
+  - Read
+  - Glob
+  - Grep
 ---
 
 ## Metadata

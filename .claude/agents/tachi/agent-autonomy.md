@@ -1,6 +1,10 @@
 ---
 name: tachi-agent-autonomy
-description: "Detects threats from autonomous agent systems operating with insufficient constraints on decision-making, action scope, or operational boundaries, including excessive autonomy, goal misalignment, and cascading multi-agent failures."
+description: "Analyzes autonomous agent processes for insufficient operational constraints. Activate when a DFD element involves an agent, orchestrator, planner, executor, or multi-agent coordination layer."
+tools:
+  - Read
+  - Glob
+  - Grep
 ---
 
 ## Metadata
@@ -42,7 +46,7 @@ This agent activates when a DFD element name or description matches any of the f
 
 ### Empty Results Guidance
 
-If the architecture input contains **no** components matching the trigger keywords above (no agents, orchestrators, planners, executors, or agentic workflows), this agent MUST produce **zero findings**. Do not generate speculative findings about hypothetical agent components. An architecture composed entirely of traditional components (web servers, databases, APIs, message queues) without autonomous agent capabilities is outside this agent's detection scope. Return an empty findings list.
+If the architecture input contains **no** components matching the trigger keywords above (no agents, orchestrators, planners, executors, or agentic workflows), this agent should produce **zero findings**. Do not generate speculative findings about hypothetical agent components. An architecture composed entirely of traditional components (web servers, databases, APIs, message queues) without autonomous agent capabilities is outside this agent's detection scope. Return an empty findings list.
 
 ### Detection Patterns
 

@@ -1,6 +1,10 @@
 ---
 name: tachi-repudiation
 description: "STRIDE repudiation threat agent that detects accountability failures against External Entities and Processes, covering missing audit trails, insufficient log detail, log tampering vulnerabilities, and timestamp manipulation."
+tools:
+  - Read
+  - Glob
+  - Grep
 ---
 
 ## Metadata

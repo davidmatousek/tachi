@@ -14,6 +14,7 @@ Canonical list of files and directories that must be copied when installing tach
 | `templates/tachi/security-report/` | Typst PDF report templates | report-assembler |
 | `adapters/claude-code/agents/references/` | SARIF generation and validation guides | risk-scorer, control-analyzer |
 | `brand/` | Logo assets for branded PDF reports | report-assembler |
+| `docs/guides/DEVELOPER_GUIDE_TACHI.md` | Full walkthrough with worked examples | User reference |
 
 ## Command Files
 

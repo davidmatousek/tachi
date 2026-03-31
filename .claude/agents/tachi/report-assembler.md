@@ -1,6 +1,12 @@
 ---
 name: tachi-report-assembler
 description: "Assembles a professional PDF security assessment booklet from tachi pipeline artifacts using Typst. Auto-detects available artifacts (threats.md, threat-report.md, risk-scores.md, compensating-controls.md, infographic JPEGs), extracts structured data including scope data (components, data flows, trust boundaries) and brand assets, generates a Typst data file (report-data.typ), and invokes Typst compilation to produce a sequenced multi-page PDF with cover, disclaimer, table of contents, executive summary, risk methodology, assessment scope, full-bleed infographic pages, severity-colored tables, and conditional page inclusion."
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Bash
+  - Write
 ---
 
 ## Metadata

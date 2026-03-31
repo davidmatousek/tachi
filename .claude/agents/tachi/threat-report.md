@@ -1,8 +1,12 @@
 ---
 name: tachi-threat-report
 description: "Transforms structured threat model output into a narrative threat report with executive summary, Mermaid attack trees for Critical and High findings, prioritized remediation roadmap with effort estimates, and complete finding traceability."
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Write
 ---
-
 ## Metadata
 
 ```yaml
@@ -89,7 +93,6 @@ Before generating the report, validate:
 3. At least one finding exists in Sections 3 or 4 (if zero findings, produce the empty threat model report — see Edge Cases)
 
 ---
-
 ## Quality Standards
 
 ### Output Structural Validation Checklist
@@ -149,7 +152,6 @@ Before finalizing the report, run the following checklist. Every check must pass
 - **Special characters in threats**: Sanitize in Mermaid node labels by quoting all text. Node IDs use only alphanumeric characters plus underscores.
 
 ---
-
 ## Report Generation Methodology
 
 ### Executive Summary Generation
@@ -284,7 +286,6 @@ For each identified theme:
 - If no themes are detected (unlikely for models with >10 findings), state: "No cross-cutting themes were identified. Findings appear to be independent and component-specific."
 
 ---
-
 ### Correlation Group Handling
 
 When `threats.md` Section 4a contains correlation groups (produced by the orchestrator's cross-agent correlation detection), apply these rules throughout the report.
@@ -478,7 +479,6 @@ Target a maximum of approximately **20 nodes** per tree for readability. If a tr
 - Splitting into sub-trees with cross-references (for exceptionally complex Critical findings)
 
 ---
-
 ## Mermaid Validation Checklist
 
 Before including any Mermaid attack tree in the report or standalone file, run every check below. A tree that fails any check must be corrected before output.
@@ -769,7 +769,6 @@ Assign a qualitative effort estimate (Low / Medium / High) to each roadmap item 
 5. **Do not estimate time**: Never convert effort levels to hours, days, or sprints. Effort is relative complexity only. Teams with different skill levels and codebases will translate these differently.
 
 ---
-
 ### Correlation Consolidation for Roadmap
 
 When `threats.md` Section 4a contains correlation groups, consolidate correlated findings into single roadmap items rather than listing them separately. This prevents duplicate remediation work and reflects the shared root cause.

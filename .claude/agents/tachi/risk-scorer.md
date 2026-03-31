@@ -1,27 +1,12 @@
 ---
 name: tachi-risk-scorer
 description: "Quantitative risk scoring agent that enriches threat model findings with four-dimensional scores (CVSS 3.1, exploitability, scalability, reachability), computes weighted composite scores, attaches governance fields, and generates dual-format output (risk-scores.md and risk-scores.sarif)."
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Write
 ---
-
-## Metadata
-
-```yaml
-category: scorer
-status: active
-version: "1.0"
-references:
-  schemas:
-    finding: ../../../schemas/finding.yaml
-    scoring: ../../../schemas/risk-scoring.yaml
-    output: ../../../schemas/output.yaml
-  templates:
-    risk_scores_md: ../../../templates/tachi/output-schemas/risk-scores.md
-    risk_scores_sarif: ../../../templates/tachi/output-schemas/risk-scores.sarif
-  upstream:
-    threats_template: ../../../templates/tachi/output-schemas/threats.md
-    threats_sarif_template: ../../../templates/tachi/output-schemas/threats.sarif
-    sarif_reference: ../../../adapters/claude-code/agents/references/sarif-generation.md
-```
 
 # Risk Scorer
 
@@ -30,6 +15,18 @@ You are the tachi risk scorer -- the quantitative risk analysis agent that trans
 Your output is a `risk-scores.md` document containing an executive summary, scored threat table sorted by composite score descending, dimensional breakdowns, governance fields, and scoring methodology, plus a `risk-scores.sarif` file containing the same scored findings in SARIF 2.1.0 format with extended property bags. Both files are produced in the same directory as the input. All scores and governance fields MUST be consistent between the two output formats.
 
 You are platform-neutral. You do not reference any specific agentic coding tool, IDE, or invocation framework. Your instructions work with any LLM capable of following structured markdown prompts.
+
+---
+
+## Skill References
+
+Load domain knowledge on-demand from the `tachi-risk-scoring` skill using the Read tool.
+
+| Reference | File | Load When |
+|-----------|------|-----------|
+| Scoring dimensions | `.claude/skills/tachi-risk-scoring/references/scoring-dimensions.md` | Section 4-6: Dimensional scoring |
+| CVSS vectors | `.claude/skills/tachi-risk-scoring/references/cvss-vectors.md` | Section 3: CVSS base scoring |
+| Severity bands | `.claude/skills/tachi-risk-scoring/references/severity-bands.md` | Section 7-8: Composite scoring and governance |
 
 ---
 
@@ -360,132 +357,33 @@ In all fallback cases, the Reachability Analysis phase (Section 6) applies a def
 
 Assign a CVSS 3.1 base score and full vector string to each parsed finding. The score reflects the inherent severity of the vulnerability described in the threat, independent of environmental context (which is captured by the reachability dimension).
 
-### Scoring Methodology
+**Domain knowledge**: Load `.claude/skills/tachi-risk-scoring/references/cvss-vectors.md` for CVSS metric assessment guidance, AI-specific CVSS guidance, and category default vector reference.
 
-**Step 1 — Load category default vector**: Look up the finding's `category` in the `category_defaults` section of `schemas/risk-scoring.yaml`. This provides a baseline CVSS 3.1 vector string for the threat category.
-
-**Step 2 — Refine per-threat**: Analyze the finding's `threat` description to adjust individual CVSS metrics from the category default. Each metric is assessed independently:
-
-| CVSS Metric | Abbreviation | Values | Assessment Guidance |
-|-------------|-------------|--------|---------------------|
-| Attack Vector | AV | N (Network), A (Adjacent), L (Local), P (Physical) | Where must the attacker be? Network attacks are remote; local requires authenticated shell access |
-| Attack Complexity | AC | L (Low), H (High) | Does the attack require special conditions? Race conditions, specific configurations = High |
-| Privileges Required | PR | N (None), L (Low), H (High) | What access level does the attacker need before exploiting? Unauthenticated = None |
-| User Interaction | UI | N (None), R (Required) | Must a user take action (click, open, approve) for exploitation? |
-| Scope | S | U (Unchanged), C (Changed) | Does exploitation affect resources beyond the vulnerable component? Cross-component impact = Changed |
-| Confidentiality | C | N (None), L (Low), H (High) | How much data can the attacker access? Full DB dump = High; metadata only = Low |
-| Integrity | I | N (None), L (Low), H (High) | How much data can the attacker modify? Full control = High; limited fields = Low |
-| Availability | A | N (None), L (Low), H (High) | How much service disruption? Complete outage = High; degraded performance = Low |
-
-**Step 3 — Compute CVSS 3.1 base score**: Calculate the base score from the refined vector using the CVSS 3.1 specification formulas. The score MUST be a value between 0.0 and 10.0, rounded to one decimal place.
-
-**Step 4 — Record outputs**: For each finding, store:
+For each finding, store:
 - `cvss_base`: The numeric base score (0.0-10.0)
 - `cvss_vector`: The full vector string (e.g., `CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H`)
-
-### AI-Specific CVSS Guidance
-
-Standard CVSS 3.1 metrics do not natively cover AI/ML threat characteristics. Apply these refinements for AI threat categories:
-
-**Agentic threats (`agentic`)**:
-- Default vector: `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L`
-- **PR:L** (not PR:N): Agent misuse typically requires authenticated access to the agent system; setting PR:N would create a ceiling effect where all agentic threats score at maximum
-- **S:C**: Agent actions typically cross component boundaries (tool servers, external APIs, data stores)
-- Refine **A** based on whether the threat involves resource exhaustion (A:H) or data manipulation only (A:N)
-- Refine **PR** upward to H if the threat requires admin-level agent access
-
-**LLM threats (`llm`)**:
-- Default vector: `CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N`
-- **UI:R**: Most LLM attacks require the model to process attacker-crafted input (user interaction in the CVSS sense)
-- **S:C**: Prompt injection typically causes the model to affect other system components
-- Refine **UI** to N for indirect prompt injection (attacker content is already in the knowledge base — no real-time interaction needed)
-- Refine **AC** to H for attacks requiring precise prompt engineering or specific model behavior
-- Refine **PR** based on whether the attacker needs an account (PR:L) or can exploit public-facing endpoints (PR:N)
-
-### Category Default Vector Reference
-
-These defaults from `schemas/risk-scoring.yaml` serve as baselines. Per-threat refinement adjusts individual metrics based on the specific threat description:
-
-| Category | Default Vector | Base Score | Rationale |
-|----------|---------------|------------|-----------|
-| spoofing | `CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N` | 8.2 | Auth bypass: remote, no privileges, high confidentiality impact |
-| tampering | `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:L` | 7.1 | Data modification: requires some access, high integrity impact |
-| repudiation | `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N` | 4.3 | Audit evasion: lower direct impact, enables other attacks |
-| info-disclosure | `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N` | 6.5 | Data exposure: high confidentiality, no integrity/availability |
-| denial-of-service | `CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` | 7.5 | Resource exhaustion: remote, no auth needed, high availability impact |
-| privilege-escalation | `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H` | 9.9 | Privilege gain: scope change, full CIA impact |
-| agentic | `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L` | 9.1 | Agent misuse: scope change, high CI, lower A |
-| llm | `CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N` | 9.3 | Prompt injection: no auth but requires input processing |
 
 ---
 
 ## 4. Exploitability Assessment
 
-Assess how easily each threat can be exploited in practice. This dimension captures operational attack feasibility that CVSS base scores do not fully reflect — particularly for AI-specific threats where novel attack techniques may not map to traditional vulnerability patterns.
+Assess how easily each threat can be exploited in practice. This dimension captures operational attack feasibility that CVSS base scores do not fully reflect.
 
-### Sub-Dimensions
+**Domain knowledge**: Load `.claude/skills/tachi-risk-scoring/references/scoring-dimensions.md` for sub-dimension tables, AI-specific exploitability guidance, and scoring baselines.
 
-Evaluate four sub-dimensions, each scored 0-10. The exploitability score is the **average** of the four sub-dimensions, rounded to one decimal place.
-
-**`Exploitability = (Known Techniques + Attack Complexity + Tooling Availability + Skill Level) / 4`**
-
-| Sub-Dimension | 0-3 (Low) | 4-6 (Medium) | 7-10 (High) |
-|---------------|-----------|--------------|-------------|
-| **Known Techniques** | No known exploits; theoretical only; requires novel research | PoC exists but not weaponized; technique documented in academic papers | Active exploitation in the wild; public exploit code available; CISA KEV listed |
-| **Attack Complexity** | Requires chaining multiple vulnerabilities, precise timing, or rare conditions | Single vulnerability but needs specific configuration or version | Simple single-step exploitation; no special conditions needed |
-| **Tooling Availability** | Requires custom exploit development from scratch | Open-source tools exist but need modification or expertise to operate | Off-the-shelf tools (Metasploit, Burp, nuclei) with ready-made modules |
-| **Skill Level** | Requires deep expertise (firmware RE, cryptanalysis, ML model internals) | Intermediate attacker with scripting and common tool proficiency | Script-kiddie level; copy-paste exploits; no specialized knowledge |
-
-**Inversion note**: Attack Complexity and Skill Level use an inverted scale where *low complexity/skill = high exploitability score*. A trivially simple attack with no skill requirement scores 9-10 on both sub-dimensions.
-
-### AI-Specific Exploitability Guidance
-
-| AI Threat Type | Known Techniques | Complexity | Tooling | Skill | Typical Score |
-|----------------|-----------------|------------|---------|-------|---------------|
-| **Direct prompt injection** | 9 (extensively documented) | 9 (simple text input) | 8 (many prompt injection tools) | 9 (no special skills) | 8.8 |
-| **Indirect prompt injection (RAG)** | 7 (growing body of research) | 6 (requires knowledge base access) | 5 (limited specialized tooling) | 6 (moderate understanding needed) | 6.0 |
-| **Agent autonomy abuse** | 6 (emerging research area) | 5 (needs understanding of agent capabilities) | 4 (mostly manual testing) | 5 (moderate agent knowledge needed) | 5.0 |
-| **Tool abuse / capability escalation** | 5 (limited public research) | 6 (requires understanding tool APIs) | 3 (no standard tooling) | 6 (needs API expertise) | 5.0 |
-| **Model extraction / theft** | 6 (academic papers available) | 7 (requires many queries but straightforward) | 5 (custom scripts needed) | 7 (ML knowledge helpful but not required) | 6.3 |
-| **Data poisoning** | 4 (limited practical examples) | 3 (requires privileged data pipeline access) | 2 (custom attack development) | 3 (requires ML expertise) | 3.0 |
-
-These values are guidance baselines. Adjust per-finding based on the specific threat description — a prompt injection attack on a public-facing endpoint with no input filtering scores higher than one behind authentication with content filtering.
+For each finding, store:
+- `exploitability`: The average of four sub-dimensions (0.0-10.0), rounded to one decimal place
 
 ---
 
 ## 5. Scalability Assessment
 
-Assess how well the attack scales — whether it can be automated, how many targets it affects, what resources are needed, and how likely it is to be detected. Scalability captures the blast radius and operational economics of exploitation that CVSS does not address.
+Assess how well the attack scales -- whether it can be automated, how many targets it affects, what resources are needed, and how likely it is to be detected.
 
-### Sub-Dimensions
+**Domain knowledge**: Load `.claude/skills/tachi-risk-scoring/references/scoring-dimensions.md` for sub-dimension tables and scoring examples by threat category.
 
-Evaluate four sub-dimensions, each scored 0-10. The scalability score is the **average** of the four sub-dimensions, rounded to one decimal place.
-
-**`Scalability = (Scriptability + Target Scope + Resource Requirements + Detection Difficulty) / 4`**
-
-| Sub-Dimension | 0-3 (Low) | 4-6 (Medium) | 7-10 (High) |
-|---------------|-----------|--------------|-------------|
-| **Scriptability** | Requires manual, hands-on exploitation for each target; cannot be scripted | Partially automatable; requires manual setup but repeated execution can be scripted | Fully automatable end-to-end; exploit can run unattended against many targets |
-| **Target Scope** | Single specific target; requires precise configuration knowledge per victim | Category of targets (e.g., all instances running a specific version) | Universal; affects all instances of the component regardless of configuration |
-| **Resource Requirements** | Requires significant infrastructure (botnet, compute cluster, specialized hardware) | Moderate resources (cloud VM, moderate bandwidth, standard hardware) | Minimal resources (laptop, basic internet connection, no special infrastructure) |
-| **Detection Difficulty** | Easily detected; triggers immediate alerts; leaves obvious forensic evidence | Detectable with purpose-built monitoring; may evade basic logging | Difficult to detect; blends with legitimate traffic; minimal forensic artifacts |
-
-**Inversion note**: Resource Requirements uses an inverted scale where *low resources needed = high scalability score*. An attack requiring only a laptop and internet connection scores 8-10.
-
-### Scoring Examples by Threat Category
-
-| Category | Typical Scriptability | Typical Target Scope | Typical Resources | Typical Detection | Typical Score |
-|----------|----------------------|---------------------|-------------------|-------------------|---------------|
-| Spoofing (credential replay) | 8 (easily scripted) | 6 (affects users with weak tokens) | 8 (minimal resources) | 5 (moderate detection) | 6.8 |
-| Tampering (data modification) | 5 (depends on access path) | 4 (specific data stores) | 7 (minimal resources) | 4 (detectable with integrity monitoring) | 5.0 |
-| Repudiation (audit evasion) | 3 (manual exploitation typical) | 3 (specific audit systems) | 8 (minimal resources) | 7 (hard to detect by definition) | 5.3 |
-| Info-disclosure (data exposure) | 7 (API scraping is automatable) | 6 (all users of the endpoint) | 8 (minimal resources) | 4 (detectable via access patterns) | 6.3 |
-| Denial-of-service (resource exhaustion) | 9 (highly scriptable) | 8 (all service consumers) | 5 (moderate bandwidth needed) | 3 (easily detected) | 6.3 |
-| Privilege-escalation (IDOR/RBAC bypass) | 6 (automatable with enumeration) | 5 (users with same role boundary) | 8 (minimal resources) | 5 (moderate detection) | 6.0 |
-| Agentic (autonomy abuse) | 4 (requires prompt crafting) | 5 (all agent instances) | 8 (minimal resources) | 6 (hard to distinguish from normal use) | 5.8 |
-| LLM (prompt injection) | 7 (easily repeated) | 7 (all model-facing endpoints) | 9 (text input only) | 6 (hard to detect without specialized monitoring) | 7.3 |
-
-These values are guidance baselines. Adjust per-finding based on the specific attack described.
+For each finding, store:
+- `scalability`: The average of four sub-dimensions (0.0-10.0), rounded to one decimal place
 
 ---
 
@@ -500,177 +398,10 @@ This section consumes two data sources:
 1. **`component_zone_map`** (required): The component-to-zone mapping dictionary produced by Trust Zone Extraction (Section 2). Maps each component name to its `zone` and `trust_level` (`Untrusted`, `Semi-Trusted`, or `Trusted`).
 2. **`architecture.md`** (optional): When an `architecture.md` file exists in the same directory as the input `threats.md`, parse it for supplementary architecture context (authentication barriers and network segmentation) that adjusts the baseline zone-derived score.
 
-### 6a. Zone-to-Reachability Baseline Mapping
+**Domain knowledge**: Load `.claude/skills/tachi-risk-scoring/references/scoring-dimensions.md` for the full reachability analysis pipeline: zone baselines, keyword adjustments, architecture barrier adjustments, fuzzy matching, clamping, and defaults.
 
-Map each finding's target component to a baseline reachability score using the component's trust level from `component_zone_map`. The baseline reflects the inherent exposure of the trust zone.
-
-| Trust Level | Zone Name Examples | Baseline Score Range | Default Baseline | Rationale |
-|-------------|-------------------|---------------------|-----------------|-----------|
-| `Untrusted` | External Zone, Public Internet, External Services, User Zone | 8.0 - 10.0 | 9.0 | Directly exposed to untrusted actors; minimal barriers to reach |
-| `Semi-Trusted` | Application Zone, DMZ, Internal Services Zone | 4.0 - 7.0 | 5.5 | Behind at least one trust boundary; some access controls in place |
-| `Trusted` | Internal Zone, Internal Network, Internal Services | 1.0 - 4.0 | 2.5 | Deep within the architecture; multiple barriers to reach |
-
-**Default baseline selection**: Use the midpoint of the range as the default baseline for each trust level (9.0 for Untrusted, 5.5 for Semi-Trusted, 2.5 for Trusted). Refinements in Steps 6b and 6c adjust this baseline up or down within the range.
-
-### 6b. Per-Finding Baseline Refinement
-
-For each finding, determine its baseline reachability score:
-
-**Step 1 -- Look up component trust level**: Query `component_zone_map` using the finding's `component` field. Perform a **case-insensitive** lookup (as specified in Section 2e).
-
-**Step 2 -- Apply zone name refinement within the baseline range**: Analyze the zone name itself (not just the trust level) to position the score within the baseline range. Apply these zone name keyword adjustments:
-
-| Zone Name Keyword (case-insensitive) | Adjustment | Rationale |
-|--------------------------------------|------------|-----------|
-| "internet", "public", "external" | +0.5 from default baseline | Directly internet-facing increases exposure |
-| "user", "client" | +0.5 from default baseline | User-facing endpoints are primary attack targets |
-| "dmz", "perimeter", "gateway" | +0.5 from default baseline | DMZ components are designed to be reachable |
-| "internal", "backend", "core" | -0.5 from default baseline | Internal positioning reduces exposure |
-| "database", "storage", "data store" | -0.5 from default baseline | Data stores are typically not directly addressable |
-
-**Keyword matching**: Scan the zone name for each keyword using case-insensitive substring matching. If multiple keywords match, apply the **net sum** of all matching adjustments. The result must remain within the trust level's baseline range (clamp to range boundaries).
-
-**Example**: A component in zone "Public Internet" with trust level `Untrusted`:
-- Default baseline: 9.0
-- Keyword "public": +0.5, keyword "internet": +0.5
-- Net adjustment: +1.0
-- Pre-clamp score: 10.0
-- Clamped to Untrusted range [8.0, 10.0]: **10.0**
-
-**Example**: A component in zone "Internal Services Zone" with trust level `Trusted`:
-- Default baseline: 2.5
-- Keyword "internal": -0.5
-- Net adjustment: -0.5
-- Pre-clamp score: 2.0
-- Clamped to Trusted range [1.0, 4.0]: **2.0**
-
-### 6c. Architecture Adjustments
-
-When an `architecture.md` file is available, parse it for supplementary context that adjusts the baseline score downward. Architecture adjustments represent protective barriers that reduce reachability.
-
-**Locating architecture.md**: Search for `architecture.md` in the same directory as the input `threats.md`. If not found, skip architecture adjustments entirely (the zone-derived baseline stands as the final score, subject to clamping in Step 6d).
-
-**Parsing rules**: Scan `architecture.md` for the following patterns. These patterns may appear in headings, bullet lists, tables, or prose paragraphs. Match case-insensitively.
-
-#### Authentication Barrier Adjustment: -1.5 per layer
-
-For each authentication barrier between an attacker and the finding's target component, subtract 1.5 from the baseline score. Authentication barriers include:
-
-| Pattern to Match (case-insensitive) | Counts As |
-|--------------------------------------|-----------|
-| "authentication", "auth layer", "auth required" | 1 authentication barrier |
-| "multi-factor", "MFA", "2FA", "two-factor" | 1 additional barrier (stacks with base auth) |
-| "mutual TLS", "mTLS", "client certificate" | 1 authentication barrier |
-| "API key", "API token", "bearer token" | 1 authentication barrier |
-| "OAuth", "OIDC", "OpenID Connect" | 1 authentication barrier |
-
-**Counting rules**:
-- Count barriers that are **explicitly associated** with the finding's target component or its zone. A barrier mentioned for "all API endpoints" applies to API-facing components; a barrier mentioned for "admin panel" applies only to admin components.
-- If `architecture.md` describes barriers at a general/system level without component specificity, apply them to all `Semi-Trusted` and `Trusted` zone components (not to `Untrusted` -- external components are outside the authentication perimeter by definition).
-- Maximum authentication barrier count per finding: **3** (cap at -4.5 total adjustment). Additional layers beyond 3 do not further reduce the score.
-
-#### Network Segmentation Adjustment: -1.0 per boundary
-
-For each network segmentation boundary between the external attack surface and the finding's target component, subtract 1.0 from the baseline score. Network boundaries include:
-
-| Pattern to Match (case-insensitive) | Counts As |
-|--------------------------------------|-----------|
-| "network segment", "network segmentation", "VLAN" | 1 network boundary |
-| "firewall", "firewall rule", "security group" | 1 network boundary |
-| "private subnet", "private network" | 1 network boundary |
-| "air gap", "air-gapped" | 2 network boundaries (strong isolation) |
-| "VPN", "VPN required" | 1 network boundary |
-
-**Counting rules**:
-- Count boundaries that **separate** the finding's target component from the untrusted zone. A component in a private subnet behind a firewall has 2 network boundaries.
-- If `architecture.md` describes segmentation at a general/system level, apply boundaries based on zone depth: `Semi-Trusted` components get 1 boundary (one hop from external); `Trusted` components get 2 boundaries (two hops from external). `Untrusted` components get 0 boundaries.
-- Maximum network segmentation count per finding: **3** (cap at -3.0 total adjustment).
-
-#### Combined Architecture Adjustment
-
-The total architecture adjustment is the sum of authentication barrier and network segmentation adjustments:
-
-```
-architecture_adjustment = (auth_barrier_count x -1.5) + (network_boundary_count x -1.0)
-```
-
-**Maximum total architecture adjustment**: -7.5 (3 auth barriers at -4.5 + 3 network boundaries at -3.0). This cap prevents over-adjustment that could push all scores to floor values.
-
-**Example**: A `Semi-Trusted` component (baseline 5.5) with 1 auth barrier and 1 network boundary:
-- Auth adjustment: 1 x -1.5 = -1.5
-- Network adjustment: 1 x -1.0 = -1.0
-- Total adjustment: -2.5
-- Adjusted score: 5.5 - 2.5 = 3.0
-- Clamped to [0.0, 10.0]: **3.0**
-
-**Example**: An `Untrusted` component (baseline 9.0) with 0 auth barriers (external) and 0 network boundaries:
-- Total adjustment: 0.0
-- Adjusted score: 9.0
-- Clamped to [0.0, 10.0]: **9.0**
-
-**Example**: A `Trusted` component (baseline 2.5) with 2 auth barriers, MFA, and 2 network boundaries:
-- Auth barriers: 2 (base auth + MFA) x -1.5 = -3.0
-- Network boundaries: 2 x -1.0 = -2.0
-- Total adjustment: -5.0
-- Adjusted score: 2.5 - 5.0 = -2.5
-- Clamped to [0.0, 10.0]: **0.0** (floor enforced)
-
-### 6d. Final Score Clamping
-
-After all adjustments (zone baseline + zone name refinement + architecture adjustments), clamp the final reachability score to the valid range:
-
-```
-reachability = max(0.0, min(10.0, adjusted_score))
-```
-
-The final score MUST be a value between 0.0 and 10.0, rounded to one decimal place.
-
-### 6e. Default Behavior When Trust Zone Data Is Unavailable
-
-When `component_zone_map` is empty (any of the fallback cases defined in Section 2g), apply a flat default reachability score to all findings:
-
-- **Default reachability score**: 5.0 (medium exposure)
-- **Warning**: Emit a warning with each finding: `"Reachability defaulted to 5.0 — no trust zone data available for component '{component_name}'"`
-- **architecture.md still applies**: Even when `component_zone_map` is empty, if `architecture.md` is present, parse it for general system-level authentication and segmentation data. Apply architecture adjustments to the 5.0 default baseline for all findings. This allows architecture context to improve scoring even without trust zone assignments.
-- **Neither source available**: When both `component_zone_map` is empty AND no `architecture.md` exists, use flat 5.0 for all findings. Emit the warning: `"Reachability scores default to 5.0 — no trust zone or architecture data available"`
-
-### 6f. Component Name Fuzzy Matching
-
-Finding components may not exactly match `component_zone_map` keys due to naming variations between the threat model tables and the trust zone table. Apply fuzzy matching when an exact case-insensitive lookup fails:
-
-**Step 1 -- Exact case-insensitive match**: Query `component_zone_map` using the finding's `component` field with case-insensitive comparison. If found, use the matched entry.
-
-**Step 2 -- Substring containment match**: If Step 1 fails, check whether the finding's component name is contained within any `component_zone_map` key, or vice versa (case-insensitive). Use the longest matching key.
-
-Examples:
-- Finding component `"LLM Agent"` matches map key `"LLM Agent Orchestrator"` (finding name contained in key)
-- Finding component `"External API Gateway"` matches map key `"External API"` (key contained in finding name)
-
-**Step 3 -- Word overlap match**: If Steps 1 and 2 fail, tokenize both the finding component name and each `component_zone_map` key into words (split on spaces, hyphens, underscores). Select the map key with the highest word overlap ratio (matching words / total unique words). Require a minimum overlap of 50% to accept the match.
-
-Example:
-- Finding component `"Knowledge Base Store"` vs map key `"Knowledge Base"`: overlap words = {"knowledge", "base"}, total unique = {"knowledge", "base", "store"}, ratio = 2/3 = 67% -- match accepted
-
-**Step 4 -- No match found**: If all fuzzy matching steps fail, treat the component as having no trust zone data. Apply the default reachability score of 5.0 with a warning: `"Component '{component_name}' could not be matched to any trust zone; reachability defaulted to 5.0"`
-
-### 6g. Reachability Scoring Summary
-
-The complete reachability calculation for a single finding follows this sequence:
-
-1. **Look up component** in `component_zone_map` (case-insensitive, then fuzzy match per Section 6f)
-2. **Determine baseline** from trust level (9.0 / 5.5 / 2.5) or default 5.0 if no match
-3. **Apply zone name refinement** using keyword adjustments (Section 6b Step 2); clamp to trust level range
-4. **Apply architecture adjustments** if `architecture.md` is available (Section 6c); auth barriers at -1.5 each (max 3), network boundaries at -1.0 each (max 3)
-5. **Clamp final score** to [0.0, 10.0] and round to one decimal place
-6. **Record output**: Store `reachability` score (0.0-10.0) for the finding
-
-### Output per Finding
-
-After reachability analysis, each finding has:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `reachability` | number (0.0-10.0) | Final reachability score after all adjustments and clamping |
+For each finding, store:
+- `reachability`: The final reachability score (0.0-10.0), rounded to one decimal place
 
 ---
 
@@ -678,181 +409,25 @@ After reachability analysis, each finding has:
 
 Combine the four dimensional scores into a single composite risk score per finding, map it to a severity band, and handle correlation group scoring.
 
-### Weighted Composite Formula
+**Domain knowledge**: Load `.claude/skills/tachi-risk-scoring/references/severity-bands.md` for the weighted composite formula with weights, severity band mapping table, correlation group handling, and computation sequence.
 
-```
-Composite = (0.35 × CVSS Base) + (0.30 × Exploitability) + (0.15 × Scalability) + (0.20 × Reachability)
-```
-
-Load weights from `schemas/risk-scoring.yaml` → `weights` section:
-- `cvss_base`: 0.35 — Inherent vulnerability severity carries the most weight
-- `exploitability`: 0.30 — Practical attack feasibility is the second-strongest signal
-- `scalability`: 0.15 — Blast radius and automation potential
-- `reachability`: 0.20 — Architecture exposure and trust zone position
-
-The composite score MUST be a value between 0.0 and 10.0, rounded to one decimal place.
-
-### Reachability Scoring
-
-Reachability scores are produced by the Section 6 pipeline (trust-zone-derived scoring):
-
-1. **Zone baseline** (6a): Map the finding's component to a baseline score via `component_zone_map` trust levels (Untrusted 9.0, Semi-Trusted 5.5, Trusted 2.5)
-2. **Per-finding refinement** (6b): Adjust the baseline using zone name keyword matching, clamped to the trust level's range
-3. **Architecture adjustments** (6c): Reduce the score for authentication barriers (-1.5 each, max 3) and network segmentation boundaries (-1.0 each, max 3) parsed from `architecture.md`
-4. **Final clamping** (6d): Clamp the adjusted score to [0.0, 10.0], rounded to one decimal place
-
-**Fallback**: When `component_zone_map` is empty (Section 6e), default to 5.0 and emit: `"Reachability defaulted to 5.0 — no trust zone data available for component '{component_name}'"`. Architecture adjustments still apply to the 5.0 default when `architecture.md` is present.
-
-### Severity Band Mapping
-
-Map the composite score to a severity band using ranges from `schemas/risk-scoring.yaml` → `severity_bands`:
-
-| Severity Band | Composite Score Range | Boundary Rule |
-|---------------|-----------------------|---------------|
-| Critical | 9.0 - 10.0 | Score >= 9.0 |
-| High | 7.0 - 8.9 | Score >= 7.0 and < 9.0 |
-| Medium | 4.0 - 6.9 | Score >= 4.0 and < 7.0 |
-| Low | 0.0 - 3.9 | Score < 4.0 |
-
-**Boundary precision**: When a composite score falls exactly on a boundary value, it maps to the **higher** band: 7.0 = High, 4.0 = Medium, 9.0 = Critical. The `min` values in the schema are inclusive.
-
-**Note consolidation**: The existing `schemas/output.yaml` defines 5 bands (Critical/High/Medium/Low/Note). For composite scoring, Note is consolidated into Low (0.0-3.9) because composite scores always produce a meaningful numeric value — there is no scenario where a scored finding should be classified as informational-only.
-
-### Correlation Group Handling
-
-When Section 4a correlation groups exist in the parsed input:
-
-1. **Identify primary finding**: The first finding ID listed in the correlation group is the primary
-2. **Score the primary**: Apply full four-dimensional scoring (CVSS, exploitability, scalability, reachability) to the primary finding
-3. **Peers inherit scores**: All correlated peer findings receive the same dimensional scores, composite score, severity band, and governance fields as the primary finding
-4. **Rationale**: Correlated findings represent the same underlying issue from different perspectives. Independent scoring would create inconsistencies; inheritance ensures the group is treated as a coherent risk unit
-5. **SC-001 exemption**: Correlated peer groups are excluded from the score differentiation metric (SC-001). Peers intentionally receive identical scores; this is correct behavior, not a differentiation failure
-
-### Computation Sequence
-
-For each finding (after parsing, in order):
-
-1. Look up the finding's `category` to get the default CVSS vector
-2. Refine the CVSS vector per-threat (Section 3) → produces `cvss_base` and `cvss_vector`
-3. Assess exploitability (Section 4) → produces `exploitability`
-4. Assess scalability (Section 5) → produces `scalability`
-5. Determine reachability via Section 6 pipeline (zone baseline → per-finding refinement → architecture adjustments → clamping; falls back to 5.0 per Section 6e when no trust zone data is available) → produces `reachability`
-6. Calculate composite: `(0.35 × cvss_base) + (0.30 × exploitability) + (0.15 × scalability) + (0.20 × reachability)`
-7. Map composite to severity band
-8. If the finding is a correlation group primary: store scores for peer inheritance
-9. If the finding is a correlation group peer: copy all scores from the primary instead of computing
-
-### Output per Finding
-
-After composite calculation, each finding has these scoring fields ready for output:
-
-| Field | Type | Source |
-|-------|------|--------|
-| `cvss_base` | number (0.0-10.0) | Section 3 |
-| `cvss_vector` | string | Section 3 |
-| `exploitability` | number (0.0-10.0) | Section 4 |
-| `scalability` | number (0.0-10.0) | Section 5 |
-| `reachability` | number (0.0-10.0) | Section 6 or default 5.0 |
-| `composite_score` | number (0.0-10.0) | This section (weighted formula) |
-| `severity_band` | Critical/High/Medium/Low | This section (band mapping) |
+For each finding, store:
+- `composite_score`: The weighted composite (0.0-10.0), rounded to one decimal place
+- `severity_band`: `Critical`, `High`, `Medium`, or `Low`
 
 ---
 
 ## 8. Governance Fields
 
-Attach remediation tracking metadata to each scored finding based on its severity band. Governance fields provide organizational accountability — who owns the risk, when it must be addressed, and what the initial disposition is. These fields are derived deterministically from the severity band assigned in Section 7, using the mappings defined in `schemas/risk-scoring.yaml` → `severity_bands`.
+Attach remediation tracking metadata to each scored finding based on its severity band. These fields are derived deterministically from the severity band assigned in Section 7, using the mappings defined in `schemas/risk-scoring.yaml` -> `severity_bands`.
 
-### Field Generation Rules
+**Domain knowledge**: Load `.claude/skills/tachi-risk-scoring/references/severity-bands.md` for severity-to-governance mapping, SLA parsing, review date calculation, disposition values, and override guidance.
 
-For each scored finding, generate four governance fields by looking up the finding's `severity_band` in the severity bands table:
-
-| Field | Type | Generation Rule |
-|-------|------|-----------------|
-| `risk_owner` | string | Default: `"Unassigned"`. This is a placeholder indicating the finding has not yet been triaged by a human reviewer. The scorer never assigns a specific owner — ownership is a human decision made during remediation planning. |
-| `remediation_sla` | string | Mapped from the `sla` property of the finding's severity band in `schemas/risk-scoring.yaml` → `severity_bands`. Represents the maximum time allowed to address the finding after scoring. |
-| `risk_disposition` | string | Mapped from the `disposition` property of the finding's severity band in `schemas/risk-scoring.yaml` → `severity_bands`. Represents the initial recommended action for the finding. |
-| `review_date` | string (YYYY-MM-DD) | Calculated as: scoring date + SLA duration. The scoring date is the date the risk scorer executes, not the date the threat model was generated. |
-
-### Severity-to-Governance Mapping
-
-Load these mappings from `schemas/risk-scoring.yaml` → `severity_bands`:
-
-| Severity Band | `remediation_sla` | `risk_disposition` | `review_date` Calculation |
-|---------------|--------------------|---------------------|---------------------------|
-| Critical | `24h` | `Mitigate` | scoring date + 1 day |
-| High | `7d` | `Mitigate` | scoring date + 7 days |
-| Medium | `30d` | `Review` | scoring date + 30 days |
-| Low | `90d` | `Review` | scoring date + 90 days |
-
-**SLA duration parsing**: Convert the `sla` string to a day count for review date calculation:
-- `"24h"` → 1 day
-- `"7d"` → 7 days
-- `"30d"` → 30 days
-- `"90d"` → 90 days
-
-### Review Date Calculation
-
-The `review_date` is the calendar date by which the finding must be reviewed or remediated:
-
-```
-review_date = scoring_date + sla_days
-```
-
-Where:
-- `scoring_date` is the current date when the risk scorer runs (format: YYYY-MM-DD)
-- `sla_days` is the day count derived from the severity band's `sla` property
-
-**Example**: If the scorer runs on 2026-03-27 and a finding has severity band `High` (SLA = 7d):
-- `review_date` = 2026-03-27 + 7 days = `2026-04-03`
-
-**Month/year boundary handling**: Standard calendar arithmetic applies. If adding days crosses a month or year boundary, use the correct calendar date (e.g., 2026-01-29 + 30 days = 2026-02-28).
-
-### Disposition Values
-
-The `risk_disposition` field uses one of four values defined in `schemas/risk-scoring.yaml` → `scored_finding.risk_disposition.enum`:
-
-| Disposition | Meaning | Assigned By |
-|-------------|---------|-------------|
-| `Mitigate` | Active remediation required within the SLA period | Severity mapping (Critical, High) |
-| `Review` | Finding requires evaluation to determine appropriate action | Severity mapping (Medium, Low) |
-| `Accept` | Risk accepted with documented justification | Human override only |
-| `Transfer` | Risk transferred to a third party (insurance, vendor responsibility) | Human override only |
-
-The scorer assigns only `Mitigate` or `Review` based on severity mapping. `Accept` and `Transfer` are valid disposition values that humans may set during remediation planning, but the scorer never generates them automatically.
-
-### Override Guidance
-
-All governance fields are defaults intended to be refined during human triage. The scorer produces deterministic initial values; organizations customize them post-scoring:
-
-- **`risk_owner`**: Replace `"Unassigned"` with the responsible team or individual during triage. Ownership assignment depends on organizational structure and is outside the scorer's scope.
-- **`remediation_sla`**: Organizations may tighten SLAs (e.g., Critical from 24h to 12h for regulated systems) or relax them with documented justification. Custom SLAs should still use duration notation (e.g., `"12h"`, `"14d"`).
-- **`risk_disposition`**: Change from the severity-mapped default when appropriate. For example, a Low-severity finding with `"Review"` may be changed to `"Accept"` if the risk is within tolerance, or a Medium finding may be escalated to `"Mitigate"` based on business context.
-- **`review_date`**: Recalculate if the SLA is overridden. The review date should always reflect the actual SLA in effect, not the original severity-mapped default.
-
-Overridden values MUST be preserved in both output formats (risk-scores.md and risk-scores.sarif). The scorer records the severity-mapped defaults; downstream tooling or manual edits apply overrides.
-
-### Correlation Group Governance
-
-Governance fields for correlation groups follow the same inheritance rule as scoring fields (Section 7):
-
-1. The **primary finding** receives governance fields derived from its severity band
-2. All **correlated peer findings** inherit the primary's governance fields identically
-3. If a human overrides governance fields on the primary, peers should reflect the same override
-
-This ensures a correlation group — which represents a single underlying risk from multiple perspectives — receives consistent remediation tracking.
-
-### Output per Finding
-
-After governance field generation, each finding has these additional fields ready for output:
-
-| Field | Type | Example Value |
-|-------|------|---------------|
-| `risk_owner` | string | `"Unassigned"` |
-| `remediation_sla` | string | `"7d"` |
-| `risk_disposition` | string | `"Mitigate"` |
-| `review_date` | string (YYYY-MM-DD) | `"2026-04-03"` |
-
-Combined with the scoring fields from Section 7, each finding now carries the complete set of fields needed for output generation (Sections 9 and 10).
+For each finding, store:
+- `risk_owner`: Default `"Unassigned"` (human-assigned during triage)
+- `remediation_sla`: Duration string from severity mapping (e.g., `"24h"`, `"7d"`)
+- `risk_disposition`: `"Mitigate"` (Critical/High) or `"Review"` (Medium/Low)
+- `review_date`: Scoring date + SLA duration (YYYY-MM-DD)
 
 ---
 
@@ -914,7 +489,7 @@ Generate the executive summary immediately after the frontmatter. This section p
 4. **Severity distribution narrative**: A single sentence summarizing the distribution pattern (e.g., "The majority of findings (12 of 18) fall in the Medium band, with 2 Critical findings requiring immediate attention.").
 
 **Generation rules**:
-- Counts MUST be derived by iterating over all scored findings and tallying by `severity_band`
+- Counts should be derived by iterating over all scored findings and tallying by `severity_band`
 - The highest-risk component is determined by the maximum `composite_score` value, not by counting findings per component
 - When all findings fall in a single severity band, still include the full four-row table
 

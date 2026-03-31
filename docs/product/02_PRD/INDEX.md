@@ -1,10 +1,11 @@
 # PRD Index
 
-**Last Updated**: 2026-03-30
+**Last Updated**: 2026-03-31
 
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 075 | [Tachi Agent Best Practices](075-tachi-agent-best-practices-2026-03-31.md) | ✓ | ⚠ | ⚠ | Approved | 2026-03-31 |
 | 071 | [Deterministic Infographic Extraction](071-deterministic-infographic-extraction-2026-03-30.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-30 |
 | 067 | [Deterministic Report Data Extraction](067-deterministic-report-data-extraction-2026-03-30.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-30 |
 | 060 | [Professional PDF Security Report Branding](060-professional-pdf-security-report-branding-2026-03-29.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-29 |

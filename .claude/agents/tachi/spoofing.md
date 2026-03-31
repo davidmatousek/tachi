@@ -1,6 +1,10 @@
 ---
 name: tachi-spoofing
 description: "STRIDE spoofing threat agent that detects identity impersonation threats against External Entities and Processes, covering authentication bypass, credential theft, session hijacking, and federated identity attacks."
+tools:
+  - Read
+  - Glob
+  - Grep
 ---
 
 ## Metadata

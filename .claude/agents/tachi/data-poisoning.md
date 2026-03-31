@@ -1,6 +1,10 @@
 ---
 name: tachi-data-poisoning
-description: "Detects threats where attackers manipulate training data, RAG indexes, knowledge bases, or fine-tuning pipelines to corrupt LLM behavior at the source."
+description: "Analyzes data stores and data flows feeding LLM pipelines for poisoning risks. Activate when a DFD element involves training datasets, RAG vector stores, knowledge bases, fine-tuning pipelines, or embedding indexes."
+tools:
+  - Read
+  - Glob
+  - Grep
 ---
 
 ## Metadata
@@ -77,7 +81,7 @@ This agent activates when a DFD element name or description matches any of the f
 
 ### Empty Results Guidance
 
-When the architecture input contains no LLM, language model, training pipeline, RAG system, knowledge base, or vector store components (i.e., no DFD elements match any trigger keyword in the Detection Scope), this agent MUST produce zero findings. Do not generate speculative or hypothetical data poisoning findings for architectures that do not include LLM data pipelines or model training infrastructure.
+When the architecture input contains no LLM, language model, training pipeline, RAG system, knowledge base, or vector store components (i.e., no DFD elements match any trigger keyword in the Detection Scope), this agent should produce zero findings. Do not generate speculative or hypothetical data poisoning findings for architectures that do not include LLM data pipelines or model training infrastructure.
 
 ## Finding Template
 

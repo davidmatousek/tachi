@@ -1,6 +1,10 @@
 ---
 name: tachi-denial-of-service
 description: "STRIDE denial of service threat agent that detects availability degradation threats against Processes, Data Stores, and Data Flows, covering resource exhaustion, algorithmic complexity attacks, connection pool exhaustion, and cascading dependency failures."
+tools:
+  - Read
+  - Glob
+  - Grep
 ---
 
 ## Metadata

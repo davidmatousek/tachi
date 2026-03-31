@@ -1,6 +1,10 @@
 ---
 name: tachi-tool-abuse
-description: "Detects threats from agentic systems invoking external tools, MCP servers, plugins, or APIs, including unauthorized tool invocation, capability escalation through tool composition, parameter injection, and tool poisoning attacks."
+description: "Analyzes tool-augmented agent processes for unauthorized invocation, capability escalation, and tool poisoning risks. Activate when a DFD element involves MCP servers, plugin hosts, function-calling middleware, or agentic tool dispatch."
+tools:
+  - Read
+  - Glob
+  - Grep
 ---
 
 ## Metadata
@@ -41,7 +45,7 @@ This agent activates when a DFD element name or description matches any of the f
 
 ### Empty Results Guidance
 
-If the architecture input contains **no** components matching the trigger keywords above (no agents, MCP servers, tool servers, plugins, function-calling layers, or tool chains), this agent MUST produce **zero findings**. Do not generate speculative findings about hypothetical tool-use components. An architecture without tool servers, MCP integrations, plugin systems, or agentic tool invocation is outside this agent's detection scope. Return an empty findings list.
+If the architecture input contains **no** components matching the trigger keywords above (no agents, MCP servers, tool servers, plugins, function-calling layers, or tool chains), this agent should produce **zero findings**. Do not generate speculative findings about hypothetical tool-use components. An architecture without tool servers, MCP integrations, plugin systems, or agentic tool invocation is outside this agent's detection scope. Return an empty findings list.
 
 ### Detection Patterns
 

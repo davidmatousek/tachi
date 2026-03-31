@@ -1,6 +1,10 @@
 ---
 name: tachi-prompt-injection
-description: "Detects prompt injection vulnerabilities in LLM-integrated components, including direct injection, indirect injection via RAG pipelines, jailbreaking, system prompt extraction, and cross-plugin injection attacks."
+description: "Analyzes LLM-integrated components for prompt injection vulnerabilities. Activate when a DFD element involves an LLM process that accepts user input, retrieves external context (RAG), or orchestrates multi-plugin tool calls."
+tools:
+  - Read
+  - Glob
+  - Grep
 ---
 
 ## Metadata
@@ -74,7 +78,7 @@ This agent activates when a DFD element name or description matches any of the f
 
 ### Empty Results Guidance
 
-When the architecture input contains no LLM, language model, or generative AI components (i.e., no DFD elements match any trigger keyword in the Detection Scope), this agent MUST produce zero findings. Do not generate speculative or hypothetical prompt injection findings for architectures that do not include LLM-integrated components.
+When the architecture input contains no LLM, language model, or generative AI components (i.e., no DFD elements match any trigger keyword in the Detection Scope), this agent should produce zero findings. Do not generate speculative or hypothetical prompt injection findings for architectures that do not include LLM-integrated components.
 
 ## Finding Template
 

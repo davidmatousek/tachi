@@ -1,6 +1,10 @@
 ---
 name: tachi-tampering
 description: "STRIDE tampering threat agent that detects unauthorized data modification threats against Processes, Data Stores, and Data Flows, covering input injection, data flow manipulation, persistent data corruption, and supply chain attacks."
+tools:
+  - Read
+  - Glob
+  - Grep
 ---
 
 ## Metadata

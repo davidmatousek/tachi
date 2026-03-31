@@ -53,6 +53,10 @@ cp -r ~/Projects/tachi/templates/ templates/
 mkdir -p adapters/claude-code/agents
 cp -r ~/Projects/tachi/adapters/claude-code/agents/references/ adapters/claude-code/agents/references/
 cp -r ~/Projects/tachi/brand/ brand/
+
+# Developer guide
+mkdir -p docs/guides
+cp ~/Projects/tachi/docs/guides/DEVELOPER_GUIDE_TACHI.md docs/guides/
 ```
 
 See [`INSTALL_MANIFEST.md`](INSTALL_MANIFEST.md) for the full list of distributable files.

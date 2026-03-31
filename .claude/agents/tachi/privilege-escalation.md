@@ -1,6 +1,10 @@
 ---
 name: tachi-privilege-escalation
 description: "STRIDE elevation of privilege threat agent that detects unauthorized privilege gain against Processes, covering broken access control, insecure direct object references, role escalation, multi-tenancy boundary violations, and lateral movement."
+tools:
+  - Read
+  - Glob
+  - Grep
 ---
 
 ## Metadata

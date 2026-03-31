@@ -1,6 +1,12 @@
 ---
 name: tachi-threat-infographic
 description: "Transforms structured threat model output into visual infographic specifications and images via Gemini API. Supports multiple templates: Baseball Card (risk summary dashboard), System Architecture (annotated architecture diagram with attack surface badges), and Risk Funnel (4-tier vertical funnel showing progressive risk reduction)."
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Bash
+  - Write
 ---
 
 ## Metadata
@@ -87,7 +93,7 @@ You consume one of three data source types:
 2. **`risk-scores.md`** (with co-located `threats.md`) — Quantitative risk scoring output produced by the risk scorer agent. Structure defined by `../../../schemas/risk-scoring.yaml` (v1.0). When this is the primary data source, the co-located `threats.md` in the same directory is **required** for structural and spatial data (system overview, trust boundaries, data flows).
 3. **`compensating-controls.md`** (with co-located `threats.md`) — Compensating controls analysis output produced by the control analyzer agent. Structure defined by `../../../schemas/compensating-controls.yaml` (v1.0). Contains residual risk scores after accounting for detected security controls. When this is the primary data source, the co-located `threats.md` in the same directory is **required** for structural and spatial data (system overview, trust boundaries, data flows). The co-located `risk-scores.md` is NOT required — residual scores are self-contained in the compensating controls output.
 
-**Critical constraint**: You do NOT consume `threat-report.md` or any other pipeline output. You run in a fresh context with only the data source file(s) as input (context isolation per ADR-002, ADR-010).
+**Input boundary**: You do not consume `threat-report.md` or any other pipeline output. You run in a fresh context with only the data source file(s) as input (context isolation per ADR-002, ADR-010).
 
 **Dual-file requirement**: When `data_source_type` is `risk-scores`, both `risk-scores.md` and the co-located `threats.md` must be present. If `threats.md` is missing from the same directory as `risk-scores.md`, exit with an error: "Co-located threats.md required for structural data when using risk-scores.md as primary data source."
 
@@ -159,7 +165,7 @@ When template is `all`, run the script three times — once per template (`baseb
 | `1` | Missing required artifact (`threats.md` not found in target directory) | Display the error message from stderr and halt. Do not generate specification. |
 | `2` | Validation failure (severity sum mismatch, top finding ID not in source, heat map total inconsistency) | Display the error message from stderr and halt. Do not generate specification. |
 
-**Critical**: If the script exits with code 1 or 2, do NOT attempt manual LLM-based extraction as a fallback. The script's validation catches data integrity issues that manual extraction would silently propagate. Report the error to the user and stop.
+If the script exits with code 1 or 2, do not attempt manual LLM-based extraction as a fallback. The script's validation catches data integrity issues that manual extraction would silently propagate. Report the error to the user and stop.
 
 ### JSON Output Structure
 
@@ -426,7 +432,7 @@ Tier widths are proportional to finding count or risk volume at each stage:
 
 ### Section 6: Visual Design Directives
 
-**IMPORTANT**: Load the design template for the active template. Template files are located at `templates/tachi/infographics/infographic-{name}.md`.
+Load the design template for the active template. Template files are located at `templates/tachi/infographics/infographic-{name}.md`.
 
 - Load `templates/tachi/infographics/infographic-{template-name}.md`
 - If template is `corporate-white`, map to `baseball-card`
@@ -563,7 +569,7 @@ Frame the entire prompt as a business document visualization request. Use langua
 
 ### Design Philosophy
 
-Every Gemini prompt MUST lead with the visual quality target before any data. The prompt communicates two things:
+Every Gemini prompt should lead with the visual quality target before any data. The prompt communicates two things:
 1. **Aesthetic intent** (first paragraph): How the final image should FEEL — polished, premium, boardroom-ready
 2. **Data content** (remaining paragraphs): What data to include and where
 

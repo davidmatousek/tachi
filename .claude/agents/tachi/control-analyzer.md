@@ -1,6 +1,11 @@
 ---
 name: tachi-control-analyzer
 description: "Compensating controls analysis agent that scans a target codebase against scored threat findings to detect existing security controls, map them to threats, classify effectiveness, calculate residual risk, recommend missing controls, and generate dual-format output (compensating-controls.md and compensating-controls.sarif)."
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Write
 ---
 
 ## Metadata
@@ -71,6 +76,18 @@ Before entering the analysis pipeline, validate all inputs:
 2. **Target codebase path**: Must be an existing directory with at least one readable file. If the directory does not exist or is empty, halt with: **"Target codebase path does not exist or contains no files: '{path}'"**
 3. **Output directory path**: Must be an existing, writable directory. If it does not exist, halt with: **"Output directory does not exist: '{path}'"**
 4. **Architecture document content**: No validation required when null. When provided, should contain identifiable component names; emit a warning if no components can be extracted: **"Architecture document provided but no components could be identified; falling back to heuristic discovery"**
+
+---
+
+## Skill References
+
+Load domain knowledge on-demand from the `tachi-control-analysis` skill using the Read tool.
+
+| Reference | File | Load When |
+|-----------|------|-----------|
+| Control categories | `.claude/skills/tachi-control-analysis/references/control-categories.md` | Phase 3: Control detection |
+| Evidence criteria | `.claude/skills/tachi-control-analysis/references/evidence-criteria.md` | Phase 4: Evidence classification |
+| Residual risk | `.claude/skills/tachi-control-analysis/references/residual-risk.md` | Phase 5: Risk calculation |
 
 ---
 
@@ -338,22 +355,7 @@ Scan the mapped codebase files for each component, searching for evidence of the
 
 ### STRIDE-to-Control-Category Mapping
 
-This canonical mapping determines which control categories to search for when analyzing threats in each STRIDE/AI category. When a threat of a given category is being analyzed, search the component's files for controls in ALL mapped categories.
-
-| STRIDE Category | Control Categories to Search | Rationale |
-|----------------|----------------------------|-----------|
-| **Spoofing** | Authentication, Access Control | Identity verification and access restriction prevent impersonation |
-| **Tampering** | Input Validation | Schema enforcement, sanitization, and parameterized queries prevent unauthorized modification |
-| **Repudiation** | Logging/Audit | Structured logging and audit trails provide accountability evidence |
-| **Information Disclosure** | Encryption | TLS/SSL, at-rest encryption, and hashing prevent unauthorized data exposure |
-| **Denial of Service** | Rate Limiting | Rate limiters, throttling, and circuit breakers prevent resource exhaustion |
-| **Elevation of Privilege** | Access Control | RBAC/ABAC, permission checks, and role guards prevent unauthorized access escalation |
-| **Agentic** (AI) | All 8 categories | Agentic threats span tool abuse, autonomy, and orchestration — check all control types |
-| **LLM** (AI) | Input Validation, Logging/Audit | Prompt injection requires input sanitization; model behavior requires audit trails |
-
-**Multi-category mapping**: When a STRIDE category maps to multiple control categories (e.g., Spoofing → Authentication + Access Control), search for controls in ALL mapped categories. A threat is classified as "Control Found" when at least one mapped category has a detected control. It is "Partial Control" when some but not all relevant categories have controls. It is "No Control Found" only when no mapped categories have any detected controls.
-
-**Agentic category special handling**: The "Agentic" AI category maps to all 8 control categories because agentic threats (tool abuse, excessive autonomy, cascading failures) can be mitigated by any combination of security controls. For Agentic threats, use the highest-effectiveness single control found across all categories — do not require all 8 categories to have controls.
+Load `.claude/skills/tachi-control-analysis/references/control-categories.md` for the canonical STRIDE-to-control-category mapping table, multi-category mapping rules, and Agentic special handling.
 
 ### 3a. Two-Phase Detection Strategy
 
@@ -394,273 +396,15 @@ After Phase B, each surviving candidate becomes a detected control with an assoc
 
 ### 3b. Detection Patterns by Control Category
 
-For each of the 8 control categories, the following defines the pattern indicators to search for in Phase A, the evidence criteria for Phase B semantic analysis, and snippet guidance for evidence collection.
+Load `.claude/skills/tachi-control-analysis/references/control-categories.md` for all 8 control category definitions including pattern indicators, evidence criteria, common libraries, and snippet guidance.
 
-#### Category 1: Authentication (`authentication`)
+### 3c. Evidence Collection and Confidence
 
-Verifies caller identity before granting access to protected resources.
+For each candidate that survives Phase B semantic analysis, collect evidence and assign confidence levels.
 
-**Pattern indicators**:
-- Auth middleware: `authMiddleware`, `requireAuth`, `isAuthenticated`, `ensureAuth`, `authenticate`, `passport.authenticate`
-- JWT verification: `jwt.verify`, `jsonwebtoken`, `jose`, `jwtVerify`, `decodeJwt`, `verifyToken`, `validateToken`
-- OAuth/SSO providers: `auth0`, `cognito`, `firebase-admin/auth`, `passport-oauth`, `openid-connect`, `saml`
-- Session management: `express-session`, `cookie-session`, `session.userId`, `req.session`, `session_store`
-- Password hashing: `bcrypt`, `argon2`, `scrypt`, `pbkdf2`, `hashPassword`, `verifyPassword`, `comparePassword`
-- API key verification: `x-api-key`, `apiKeyAuth`, `verifyApiKey`, `api_key_required`
-- Bearer tokens: `Bearer `, `authorization?.split`, `extractBearerToken`, `getTokenFromHeader`
+Load `.claude/skills/tachi-control-analysis/references/evidence-criteria.md` for the evidence collection schema, snippet selection rules, confidence level definitions (High/Medium/Low), and confidence assignment rules.
 
-**Evidence criteria** (Phase B):
-- KEEP: Middleware function that checks credentials and calls `next()` or returns 401/403
-- KEEP: Route guard or decorator applied to endpoint definitions (`@Authenticated`, `@UseGuards(AuthGuard)`)
-- KEEP: Token validation logic that extracts, decodes, and verifies a token before proceeding
-- REJECT: Auth-related imports with no corresponding verification logic in the file
-- REJECT: Type definitions for auth tokens or user sessions without enforcement
-- REJECT: Test files that mock `req.user` or stub auth middleware
-- REJECT: Commented-out authentication checks
-
-**Common libraries/frameworks**: `jsonwebtoken`, `jose`, `passport`, `express-jwt`, `@nestjs/passport`, `auth0`, `firebase-admin`, `next-auth`, `django.contrib.auth`, `flask-login`, `spring-security`, `gorilla/sessions`
-
-**Snippet guidance**: Capture the middleware function signature through the verification logic (e.g., token extraction + `jwt.verify` call + `next()` or error response). Prefer the function that enforces auth, not the route that applies it.
-
-#### Category 2: Input Validation (`input-validation`)
-
-Validates, sanitizes, or constrains user-supplied input before processing.
-
-**Pattern indicators**:
-- Schema validation: `joi.object`, `z.object`, `yup.object`, `class-validator`, `@IsString`, `@IsEmail`, `validate()`, `validateSync`, `safeParse`
-- Python validation: `pydantic.BaseModel`, `marshmallow.Schema`, `cerberus`, `voluptuous`, `@validator`, `field_validator`
-- Sanitization: `DOMPurify.sanitize`, `sanitize-html`, `bleach.clean`, `xss()`, `escape()`, `stripTags`
-- Parameterized queries: `$1`, `?` placeholders in SQL, `prepare()`, `parameterize`, ORM query builders (`prisma`, `sequelize`, `sqlalchemy`, `knex`)
-- Content-type enforcement: `content-type`, `accepts()`, `type: 'json'` in body parser config
-- Request validation middleware: `celebrate`, `express-validator`, `body()`, `param()`, `query()`, `validationResult`
-
-**Evidence criteria** (Phase B):
-- KEEP: Validation schema applied to request body, params, query, or headers at an endpoint
-- KEEP: Sanitization function called on user input before storage or rendering
-- KEEP: Parameterized query or ORM usage that prevents SQL injection
-- KEEP: Middleware that rejects requests failing validation (returns 400/422)
-- REJECT: Internal data transformation or type coercion not at an input boundary
-- REJECT: Schema definitions in isolation (not wired to an endpoint or middleware chain)
-- REJECT: Test assertions that validate response shapes
-- REJECT: Validation only in client-side code (not a server-side control)
-
-**Common libraries/frameworks**: `joi`, `zod`, `yup`, `class-validator`, `express-validator`, `celebrate`, `pydantic`, `marshmallow`, `cerberus`, `FluentValidation`, `Bean Validation` (JSR 380), `go-playground/validator`
-
-**Snippet guidance**: Capture the schema definition and its application point (e.g., `const schema = z.object({...}); app.post('/api', validate(schema), handler)`). If schema and application are in separate files, prefer the application/middleware registration.
-
-#### Category 3: Rate Limiting (`rate-limiting`)
-
-Constrains request throughput to prevent resource exhaustion and abuse.
-
-**Pattern indicators**:
-- Rate limiter middleware: `rateLimit`, `express-rate-limit`, `rate_limit`, `@throttle`, `@Throttle`, `RateLimiter`, `slowDown`
-- Throttling libraries: `bottleneck`, `p-throttle`, `limiter`, `token-bucket`, `sliding-window`
-- Circuit breakers: `opossum`, `cockatiel`, `CircuitBreaker`, `circuitBreaker`, `@CircuitBreaker`
-- API gateway policies: `x-ratelimit`, `X-RateLimit-Limit`, `retry-after`, `429`, `Too Many Requests`
-- Request quotas: `windowMs`, `max:`, `limit:`, `points:`, `duration:`, `keyGenerator`
-- Python rate limiting: `flask-limiter`, `django-ratelimit`, `slowapi`, `limits`
-
-**Evidence criteria** (Phase B):
-- KEEP: Rate limiter middleware with configured thresholds (window, max requests) applied to routes or the application
-- KEEP: Circuit breaker wrapping outgoing service calls with failure thresholds
-- KEEP: API response headers setting rate limit values
-- KEEP: Decorator or annotation applying rate limits to specific endpoints
-- REJECT: Client-side retry logic or exponential backoff on outgoing requests (resilience pattern, not a server-side control)
-- REJECT: Rate limiter imported but not mounted on any route or application
-- REJECT: Rate limit configuration in comments or documentation only
-- REJECT: Test files simulating rate limit responses
-
-**Common libraries/frameworks**: `express-rate-limit`, `rate-limiter-flexible`, `bottleneck`, `opossum`, `cockatiel`, `flask-limiter`, `django-ratelimit`, `slowapi`, `resilience4j`, `go-rate`, `throttled`
-
-**Snippet guidance**: Capture the rate limiter instantiation with its configuration (window, max, key generator) and the middleware registration line. Show the configured thresholds, not just the import.
-
-#### Category 4: Encryption (`encryption`)
-
-Protects data confidentiality through encryption at rest, in transit, or via hashing of sensitive values.
-
-**Pattern indicators**:
-- TLS/SSL: `https.createServer`, `ssl_context`, `certfile`, `keyfile`, `tls.connect`, `HTTPS`, `force_ssl`, `ssl: true`
-- HTTPS enforcement: `redirect_to_https`, `requireHTTPS`, `hsts`, `Strict-Transport-Security`
-- Crypto operations: `crypto.createCipher`, `crypto.createHash`, `encrypt()`, `decrypt()`, `AES`, `RSA`, `createCipheriv`
-- Password/token hashing: `bcrypt.hash`, `argon2.hash`, `scrypt`, `pbkdf2`, `hashSync`, `SHA-256`, `SHA-512` (with salt)
-- Key management: `KMS`, `keyVault`, `secretManager`, `ENCRYPTION_KEY`, `process.env.*_KEY`, `getSecret`
-- At-rest encryption: `encryptedField`, `@Encrypted`, `encrypt: true`, `columnEncrypt`, `pgcrypto`, `aes_encrypt`
-- Secure random: `crypto.randomBytes`, `crypto.randomUUID`, `secrets.token_urlsafe`, `SecureRandom`
-
-**Evidence criteria** (Phase B):
-- KEEP: Encryption applied to sensitive data fields (passwords, tokens, PII, secrets) before storage or transmission
-- KEEP: TLS/SSL configuration in production server setup
-- KEEP: HTTPS enforcement middleware or redirect logic
-- KEEP: Key management integration loading encryption keys from secure stores
-- REJECT: Hash functions used for non-security purposes (ETags, cache keys, content deduplication, checksum verification)
-- REJECT: TLS configuration in development-only files or local environment setup
-- REJECT: Crypto imports with no corresponding encrypt/decrypt/hash calls
-- REJECT: Encryption in test fixtures or mock data generators
-
-**Common libraries/frameworks**: `crypto` (Node.js built-in), `bcrypt`, `argon2`, `tweetnacl`, `sodium-native`, `cryptography` (Python), `PyCryptodome`, `Bouncy Castle`, `Tink`, `golang.org/x/crypto`, `ring` (Rust)
-
-**Snippet guidance**: Capture the encryption or hashing call with its algorithm and the data it protects (e.g., `bcrypt.hash(password, saltRounds)` or `crypto.createCipheriv('aes-256-gcm', key, iv)`). Show what data is being protected, not just that crypto exists.
-
-#### Category 5: Logging/Audit (`logging-audit`)
-
-Records security-relevant events for accountability, forensics, and compliance.
-
-**Pattern indicators**:
-- Structured logging: `winston`, `pino`, `bunyan`, `log4j`, `logback`, `slog`, `loguru`, `structlog`, `zerolog`
-- Audit-specific: `auditLog`, `audit_trail`, `logSecurityEvent`, `recordActivity`, `trackAction`, `auditEntry`
-- Security event logging: `loginAttempt`, `authFailure`, `accessDenied`, `permissionDenied`, `unauthorizedAccess`, `dataAccess`
-- Request logging middleware: `morgan`, `express-winston`, `requestLogger`, `accessLog`, `httpLogger`
-- Compliance logging: `gdpr`, `hipaa`, `sox`, `complianceLog`, `dataRetention`
-- Event tracking: `eventEmitter.emit('security'`, `securityEvent`, `incidentLog`
-
-**Evidence criteria** (Phase B):
-- KEEP: Logging of authentication attempts (success and failure) with user identifiers
-- KEEP: Logging of authorization decisions (permission grants and denials)
-- KEEP: Logging of data access events (who accessed what, when)
-- KEEP: Logging of configuration or permission changes
-- KEEP: Structured logging middleware capturing request metadata (IP, user agent, path, status code)
-- REJECT: Generic `console.log` or `print` statements without security context
-- REJECT: Debug-level logging that does not capture security-relevant events
-- REJECT: Logging in test files or test utilities
-- REJECT: Log configuration without actual log invocations in security-relevant code paths
-
-**Common libraries/frameworks**: `winston`, `pino`, `bunyan`, `morgan`, `log4j2`, `logback`, `SLF4J`, `slog`, `zerolog`, `loguru`, `structlog`, `Serilog`, `NLog`, `tracing` (Rust)
-
-**Snippet guidance**: Capture the log call that records a security event, showing the event type and the data being logged (e.g., `logger.info({ event: 'auth_failure', userId, ip }, 'Login failed')`). Prefer security event logging over generic request logging.
-
-#### Category 6: CSRF Protection (`csrf-protection`)
-
-Prevents cross-site request forgery by validating request origin or embedding anti-forgery tokens.
-
-**Pattern indicators**:
-- CSRF middleware: `csurf`, `csrf-csrf`, `csrfProtection`, `@csrf_protect`, `CsrfViewMiddleware`, `csrf_exempt`
-- Token patterns: `csrfToken`, `_csrf`, `antiForgery`, `__RequestVerificationToken`, `authenticity_token`
-- Cookie attributes: `SameSite=Strict`, `SameSite=Lax`, `sameSite: 'strict'`, `sameSite: 'lax'`
-- Origin validation: `origin`, `referer`, `allowedOrigins`, `checkOrigin`, `validateOrigin`
-- Double-submit: `doubleCsrf`, `double-submit`, `csrfCookie`
-- Custom header requirements: `X-Requested-With`, `X-CSRF-Token`, `x-xsrf-token`
-- Framework built-ins: `@csrf_protect` (Django), `protect_from_forgery` (Rails), `@EnableCsrf` (Spring)
-
-**Evidence criteria** (Phase B):
-- KEEP: CSRF middleware applied to state-changing routes (POST, PUT, DELETE, PATCH)
-- KEEP: Anti-forgery token generation AND validation both present
-- KEEP: SameSite cookie attribute set to `Strict` or `Lax` on session cookies
-- KEEP: Origin or referer header validation on state-changing endpoints
-- REJECT: `SameSite=None` (weakens protection rather than providing it)
-- REJECT: CSRF middleware imported but explicitly disabled (`csrf: false`, `csrf_exempt` on all routes)
-- REJECT: Token generation without corresponding validation logic
-- REJECT: CSRF protection only in test or development configuration
-
-**Common libraries/frameworks**: `csurf`, `csrf-csrf`, `lusca`, `Django CSRF middleware`, `Rails CSRF protection`, `Spring Security CSRF`, `gorilla/csrf`, `Antiforgery` (.NET)
-
-**Snippet guidance**: Capture the CSRF middleware registration on the application or router, showing it applied to state-changing endpoints. If token validation is the primary mechanism, show the validation check.
-
-#### Category 7: CSP/Security Headers (`csp-security-headers`)
-
-Applies HTTP security headers to responses, reducing the attack surface for client-side vulnerabilities.
-
-**Pattern indicators**:
-- Header middleware: `helmet`, `helmet()`, `secure_headers`, `SecurityHeaders`, `@secure_headers`
-- Content-Security-Policy: `Content-Security-Policy`, `contentSecurityPolicy`, `csp`, `CSP`, `script-src`, `style-src`, `default-src`
-- Frame protection: `X-Frame-Options`, `frameguard`, `DENY`, `SAMEORIGIN`, `frame-ancestors`
-- Content type: `X-Content-Type-Options`, `nosniff`, `noSniff`
-- Transport security: `Strict-Transport-Security`, `hsts`, `max-age`, `includeSubDomains`
-- Referrer policy: `Referrer-Policy`, `referrerPolicy`, `no-referrer`, `strict-origin`
-- Permissions: `Permissions-Policy`, `permissionsPolicy`, `Feature-Policy`, `geolocation`, `camera`, `microphone`
-- XSS filter: `X-XSS-Protection`, `xssFilter`
-
-**Evidence criteria** (Phase B):
-- KEEP: Security header middleware registered on the application (e.g., `app.use(helmet())`)
-- KEEP: Individual security headers set on HTTP responses via middleware or response configuration
-- KEEP: CSP directives that restrict script sources, style sources, or default sources
-- KEEP: HSTS header with reasonable `max-age` (>= 31536000 recommended)
-- REJECT: Security header constants defined but never applied to responses
-- REJECT: Commented-out helmet or security header middleware
-- REJECT: Headers set only in development or test configuration
-- REJECT: Overly permissive CSP that effectively disables protection (`default-src *`, `script-src 'unsafe-inline' 'unsafe-eval' *`)
-
-**Common libraries/frameworks**: `helmet`, `lusca`, `django-csp`, `secure` (Python), `Spring Security headers`, `Rack::Headers`, `gorilla/handlers`
-
-**Snippet guidance**: Capture the middleware registration showing the header configuration (e.g., `app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'self'"] } } }))`). Show the directive values, not just that the middleware is used.
-
-#### Category 8: Access Control (`access-control`)
-
-Enforces authorization rules to ensure users can only access resources and perform actions they are permitted to.
-
-**Pattern indicators**:
-- RBAC/ABAC: `rbac`, `abac`, `hasRole`, `hasPermission`, `checkPermission`, `requireRole`, `@Roles`, `@Permissions`
-- Authorization middleware: `authorize`, `can()`, `ability`, `policy`, `guard`, `@UseGuards`, `@PreAuthorize`
-- Libraries: `casl`, `casbin`, `oso`, `accesscontrol`, `node-casbin`
-- ACL patterns: `acl`, `accessControlList`, `allowedRoles`, `permittedActions`
-- Resource ownership: `req.user.id === resource.ownerId`, `isOwner`, `belongsTo`, `checkOwnership`
-- Tenant isolation: `tenantId`, `organizationId`, `req.tenant`, `scope: 'tenant'`, `@TenantGuard`
-- Scope checks: `scope`, `scopes`, `requiredScopes`, `hasScope`, `@Scopes`
-- Framework decorators: `@Authorize`, `@PermissionRequired`, `@permission_required`, `@login_required`
-
-**Evidence criteria** (Phase B):
-- KEEP: Permission check executed before resource access (middleware, guard, or inline check)
-- KEEP: Role-based guard or decorator applied to route or controller
-- KEEP: Resource ownership validation comparing requesting user to resource owner
-- KEEP: Tenant isolation logic filtering queries by tenant context
-- KEEP: ABAC policy evaluation against user attributes and resource properties
-- REJECT: Role enum or permission constant definitions without enforcement logic
-- REJECT: User model with a `role` field but no guard that checks it
-- REJECT: Authorization library imported but no policy or ability defined
-- REJECT: Test mocks that stub authorization responses
-- REJECT: Frontend-only route guards without corresponding server-side enforcement
-
-**Common libraries/frameworks**: `casl`, `casbin`, `oso`, `accesscontrol`, `@nestjs/passport` (guards), `Spring Security`, `django-guardian`, `pundit`, `cancancan`, `go-casbin`
-
-**Snippet guidance**: Capture the authorization check showing the permission or role being verified and the protected resource (e.g., `if (!user.hasPermission('documents:write')) return res.status(403)` or `@UseGuards(RolesGuard) @Roles('admin')`). Show the enforcement, not just the role definition.
-
-### 3c. Evidence Collection
-
-For each candidate that survives Phase B semantic analysis, collect a `control_evidence` entry conforming to the `control_evidence` item schema in `schemas/compensating-controls.yaml`:
-
-```yaml
-control_evidence:
-  - file: "src/middleware/auth.ts"        # Relative path from target root
-    line: 42                               # Line number of the control
-    snippet: |                             # Max 5 lines showing the control
-      const authMiddleware = (req, res, next) => {
-        const token = req.headers.authorization?.split(' ')[1];
-        if (!token) return res.status(401).json({ error: 'Unauthorized' });
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded;
-```
-
-**Snippet selection rules**:
-
-1. **Length**: Maximum 5 lines of code. Never capture entire files or entire functions.
-2. **Representativeness**: Select the lines that most clearly demonstrate the control mechanism in action. Prefer:
-   - The function/block declaration line + core implementation logic
-   - Middleware registration if it appears within 5 lines of the implementation
-   - The verification/enforcement call, not just the setup or configuration
-3. **Self-contained**: The snippet should be understandable without additional context. Include enough surrounding code to show what the control does and what it protects.
-4. **Deduplication**: If the same control implementation is applied to multiple routes (e.g., the same auth middleware on 10 endpoints), collect evidence from the middleware definition only -- do not duplicate evidence for each route.
-5. **Multiple controls per category**: If a component has multiple distinct controls in the same category (e.g., JWT auth for API routes AND session auth for web routes), collect separate evidence entries for each.
-
-**File path format**: Always use forward slashes and paths relative to the target codebase root (the path provided as input). Never use absolute paths in evidence.
-
-**Line number accuracy**: The `line` field must reference the first line of the captured snippet within the original file. When a file was truncated during Phase 2 large file handling, map the truncated position back to the original file line number.
-
-### 3d. Confidence Levels
-
-Assign a detection confidence to each detected control based on the strength of evidence from Phase A and Phase B:
-
-| Confidence | Criteria | Example |
-|------------|----------|---------|
-| **High** | Explicit security library or framework usage confirmed with clear middleware registration or guard application. Both Phase A pattern match and Phase B semantic analysis confirm the control is active and enforced. | `app.use(helmet())` registered at application level; `jwt.verify()` inside a middleware that is applied to protected routes. |
-| **Medium** | Security-relevant code patterns detected without standard library usage, OR a recognized library is imported and used but its registration or wiring to routes cannot be confirmed within the scanned file set. Phase A matches, Phase B confirms implementation exists but cannot verify full enforcement scope. | Custom token validation function that checks headers manually; `bcrypt.hash` used in a user service but the calling route is outside the scanned files. |
-| **Low** | Heuristic match only -- code uses security-adjacent keywords and the surrounding context suggests possible control intent, but implementation details are ambiguous or the code may be a false positive that Phase B could not definitively resolve. | A function named `checkAccess` that reads a role field but the enforcement path (returning 403 vs. logging) is unclear from the available code. |
-
-**Confidence assignment rules**:
-
-- When the same control category has multiple evidence entries with different confidence levels, use the **highest** confidence entry as the representative control for that category.
-- Report the confidence level alongside each evidence entry in the internal detection results. Confidence feeds into Phase 4 classification decisions.
-- A **High** confidence control in any mapped category is sufficient to classify a threat as having a found control. A **Low** confidence control alone warrants a **partial** classification unless corroborated by additional evidence.
-
-### 3e. Detection Output
+### 3d. Detection Output
 
 The output of Phase 3 is a per-component detection map listing all detected controls with their evidence and confidence:
 
@@ -744,7 +488,7 @@ detected_controls:
 
 **Unmapped components**: Components with no mapped files (from Phase 2) skip Phase 3 entirely. All 8 control categories are recorded as `detected: false` for unmapped components.
 
-### 3f. Component-Based Batching
+### 3e. Component-Based Batching
 
 Process threats in component-based batches to maximize file I/O efficiency:
 
@@ -770,58 +514,18 @@ Process threats in component-based batches to maximize file I/O efficiency:
 
 Map each detected control to the specific threats it addresses using the STRIDE-to-control-category mapping from `schemas/compensating-controls.yaml`. Assign a `control_status` (found, partial, missing) and determine the `reduction_factor` for each threat-control pair. When a threat has multiple applicable controls, select the control with the highest reduction factor.
 
-### 4a. Threat-to-Control Mapping
+### 4a. Classification Process
+
+Load `.claude/skills/tachi-control-analysis/references/evidence-criteria.md` for classification status rules (found/partial/missing), multi-control resolution, cross-component controls handling, and the P0 effectiveness derivation.
 
 For each scored threat in the finding set:
 
-1. **Identify relevant control categories**: Using the STRIDE-to-Control-Category Mapping table (Phase 3), look up which control categories are relevant for this threat's `category`.
+1. **Identify relevant control categories**: Using the STRIDE-to-Control-Category Mapping (from control-categories reference), look up which control categories are relevant for this threat's `category`.
 2. **Retrieve detection results**: From the Phase 3 detection output for this threat's `component`, check each relevant control category's detection status.
 3. **Match controls to threat**: A control is "matching" if it was detected in a category that maps to this threat's STRIDE category.
+4. **Assign classification**: Apply the classification status rules from the evidence-criteria reference to assign `control_status` (found/partial/missing) and `reduction_factor`.
 
-### 4b. Classification Rules
-
-Assign `control_status` for each threat based on the detection results:
-
-**Control Found** (`found`):
-- At least one relevant control category has `detected: true` with `confidence: High` or `confidence: Medium`
-- The detected control directly addresses the threat's attack vector
-- Reduction factor: **0.50** (P0 binary)
-
-**Partial Control** (`partial`):
-- One or more relevant control categories have `detected: true` but:
-  - The detected control has `confidence: Low` only, OR
-  - The threat maps to multiple control categories and only some have detections (e.g., Spoofing maps to Authentication + Access Control, but only Authentication is detected), OR
-  - The detected control covers some but not all paths/endpoints for the component (evidence suggests incomplete coverage)
-- Reduction factor: **0.25** (P0 binary)
-
-**No Control Found** (`missing`):
-- No relevant control categories have any detections for this component
-- Or the component was unmapped (no files found in Phase 2)
-- Reduction factor: **0.00**
-
-### 4c. Multi-Control Resolution
-
-When a threat maps to multiple control categories (e.g., Spoofing → Authentication + Access Control):
-
-1. **Evaluate each mapped category independently**: Check detection status and confidence for each.
-2. **Classification priority**:
-   - If ALL mapped categories have High/Medium confidence detections → `found`
-   - If SOME but not all mapped categories have detections → `partial`
-   - If NONE of the mapped categories have detections → `missing`
-3. **Best evidence selection**: Select the evidence from the category with the highest confidence detection. If tied, prefer the category that is more directly aligned with the threat (e.g., for Spoofing, prefer Authentication evidence over Access Control evidence).
-
-### 4d. Cross-Component Controls
-
-Some controls are global — they apply across all components (e.g., a CORS middleware registered at the application root, a global rate limiter, a security headers middleware). Handle cross-component controls as follows:
-
-1. **Detection during Phase 3**: Global controls are detected when scanning root-level or middleware-level files. They appear in the detection results for the component that contains the global middleware.
-2. **Application to other components**: When a global control is detected for one component, it MAY apply to other components' threats if:
-   - The control is registered at the application/server level (not route-specific)
-   - The control category is relevant to the other component's threats
-3. **Evidence inheritance**: When applying a global control to a different component's threat, the evidence references the global middleware file but the classification applies to the threat's component.
-4. **Conservative approach**: When uncertain whether a global control applies to a specific component, classify as `partial` rather than `found`.
-
-### 4e. Classification Output
+### 4b. Classification Output
 
 The output of Phase 4 is a per-threat classification:
 
@@ -872,63 +576,11 @@ For threats with `partial` or `missing` control status, generate actionable reme
 
 ### 5a. Recommendation Generation
 
-For each threat in the classified finding set with `control_status` of `partial` or `missing`, generate a remediation recommendation. Threats with `control_status` of `found` do not receive recommendations — set `recommendation: null` and `effort_estimate: null` for these.
+For each threat with `control_status` of `partial` or `missing`, generate a remediation recommendation. Threats with `control_status` of `found` do not receive recommendations -- set `recommendation: null` and `effort_estimate: null` for these.
+
+Load `.claude/skills/tachi-control-analysis/references/residual-risk.md` for recommendation rules by control status, text templates, effort estimate calibration, and completeness check rules.
 
 **Processing order**: Sort all `partial` and `missing` threats by `composite_score` descending (highest risk first). Generate recommendations in this order so the output is already priority-sorted.
-
-#### Recommendation Structure
-
-Each recommendation must contain four components:
-
-1. **What to implement** — The specific control mechanism to add or harden
-2. **Where to implement** — The suggested file, module, or architectural location
-3. **Reference patterns** — Common libraries, frameworks, or implementation patterns
-4. **Effort estimate** — The expected implementation effort level
-
-#### Recommendation Rules by Control Status
-
-**For `missing` threats** (no control detected):
-
-Generate a full implementation recommendation:
-
-- **What**: Describe the specific control type to implement based on the threat's STRIDE category and the missing control category from Phase 4. Be specific: "Add JWT-based authentication middleware" not "Add authentication."
-- **Where**: Suggest an implementation location based on Phase 2 codebase discovery. If the component has an identifiable middleware directory, suggest placing the control there. If no obvious location exists, suggest the most architecturally appropriate location (e.g., "Create `src/middleware/rate-limiter.ts`" or "Add validation to `src/routes/api.ts`").
-- **Reference patterns**: List 1-3 commonly used libraries or patterns for this control category. Draw from the library lists in the Phase 3 category definitions. Prefer libraries that match the target codebase's technology stack (e.g., if the codebase uses Express, recommend `express-rate-limit` not `flask-limiter`).
-- **Effort**: Assign based on implementation complexity:
-  - **Low**: Configuration change or enabling an existing feature (e.g., adding `SameSite=Strict` to cookie config, enabling HSTS header)
-  - **Medium**: New middleware, function, or module (e.g., adding rate limiting middleware, implementing input validation schemas, adding structured logging)
-  - **High**: Architectural change or cross-cutting concern (e.g., implementing RBAC across all endpoints, adding end-to-end encryption, redesigning authentication flow)
-
-**For `partial` threats** (control exists but incomplete):
-
-Generate a hardening recommendation that focuses on extending the existing control:
-
-- **What**: Describe what is missing from the existing control. Reference the specific gap identified during Phase 4 classification (e.g., "Extend input validation to cover the `/admin` and `/webhook` endpoints currently lacking schema validation" or "Add rate limiting to the WebSocket handler — HTTP endpoints are protected but WebSocket connections are not").
-- **Where**: Point to the existing control's location (from Phase 3 evidence) and the locations that need coverage extension.
-- **Reference patterns**: If the existing control uses a specific library, recommend extending with the same library. If the gap requires a different approach, explain why.
-- **Effort**: Typically **Low** or **Medium** since the foundational control exists. Only assign **High** if the gap requires significant rearchitecting of the existing control.
-
-#### Recommendation Text Format
-
-Write each recommendation as a single paragraph of actionable guidance. The recommendation should be self-contained — a developer should be able to read it and begin implementation without referring back to other sections.
-
-**Template for missing controls**:
-```
-Implement {control_type} for {component}. {What to build and why it addresses the threat}. Suggested location: `{file_path}`. Reference implementations: {library_1}, {library_2}. This control would address {threat_description_brief}.
-```
-
-**Template for partial controls**:
-```
-Harden existing {control_type} in `{existing_file}:{line}`. {What is missing and how to extend}. {Specific files or endpoints needing coverage}. The current implementation covers {covered_scope} but leaves {uncovered_scope} unprotected.
-```
-
-#### Effort Estimate Calibration
-
-| Effort | Typical Scope | Examples |
-|--------|--------------|---------|
-| **Low** | Configuration change, single-line addition, enabling a built-in feature | Add `SameSite=Strict` to session cookie; enable `helmet()` HSTS; add `--require-auth` flag to existing CLI |
-| **Medium** | New file, new middleware, new validation schema, new logging integration | Create rate limiter middleware; add Zod schemas for API endpoints; integrate structured logging library; add CSRF token middleware |
-| **High** | Cross-cutting architectural change, new subsystem, redesign of existing flow | Implement RBAC/ABAC authorization system; add field-level encryption across data layer; redesign authentication from session-based to JWT; add comprehensive audit trail system |
 
 #### Recommendation Output
 
@@ -948,97 +600,13 @@ classified_threats:
     effort_estimate: null
 ```
 
-**Completeness check**: After recommendation generation, verify that every threat with `control_status` of `partial` or `missing` has a non-null `recommendation` and `effort_estimate`. Every threat with `control_status` of `found` has null values for both. If any violation is found, halt with: **"Recommendation completeness check failed: {count} threats have inconsistent recommendation/status pairing. IDs: {id_list}"**
-
 ### 5b. Residual Risk Calculation
 
 For every threat in the classified finding set (regardless of `control_status`), calculate the residual risk score that reflects the risk remaining after accounting for detected compensating controls.
 
-#### Reduction Factor Assignment
+Load `.claude/skills/tachi-control-analysis/references/residual-risk.md` for reduction factor tables, residual score formula with worked examples, severity band mapping, and summary statistics definitions.
 
-The `reduction_factor` is determined by `control_status` and was already assigned during Phase 4 classification. Verify the assignment is consistent with the P0 binary reduction model:
-
-| `control_status` | `reduction_factor` | Interpretation |
-|------------------|-------------------|----------------|
-| `found` | 0.50 | Control detected with High/Medium confidence; risk reduced by 50% |
-| `partial` | 0.25 | Control detected with gaps or Low confidence; risk reduced by 25% |
-| `missing` | 0.00 | No control detected; risk unchanged |
-
-**Validation**: If any threat's `reduction_factor` does not match its `control_status` per the table above, correct it and emit a warning: **"Reduction factor corrected for {id}: was {old_value}, expected {expected_value} for status '{control_status}'"**
-
-#### Residual Score Computation
-
-For each threat, calculate:
-
-```
-residual_score = composite_score × (1 - reduction_factor)
-```
-
-**Clamping**: Clamp the result to the range [0.0, 10.0]:
-- If `residual_score` < 0.0, set to 0.0
-- If `residual_score` > 10.0, set to 10.0
-
-**Precision**: Round `residual_score` to one decimal place (matching the precision of `composite_score` from the upstream risk scorer).
-
-**Worked examples**:
-
-| Threat | composite_score | control_status | reduction_factor | Calculation | residual_score |
-|--------|----------------|----------------|-----------------|-------------|---------------|
-| S-1 | 7.8 | found | 0.50 | 7.8 × (1 - 0.50) = 3.9 | 3.9 |
-| T-2 | 6.5 | partial | 0.25 | 6.5 × (1 - 0.25) = 4.875 | 4.9 |
-| D-3 | 8.2 | missing | 0.00 | 8.2 × (1 - 0.00) = 8.2 | 8.2 |
-| I-4 | 9.1 | found | 0.50 | 9.1 × (1 - 0.50) = 4.55 | 4.6 |
-
-#### Residual Severity Band Mapping
-
-Map each `residual_score` to a `residual_severity_band` using the same thresholds as the upstream risk scorer (from `schemas/risk-scoring.yaml`):
-
-| Severity Band | Score Range |
-|--------------|-------------|
-| **Critical** | >= 9.0 |
-| **High** | 7.0 – 8.9 |
-| **Medium** | 4.0 – 6.9 |
-| **Low** | < 4.0 |
-
-**Severity shift tracking**: When `residual_severity_band` differs from the original `severity_band` (inherent), this represents a severity downgrade due to compensating controls. Track these shifts for the summary statistics.
-
-#### Summary Statistics
-
-After computing residual risk for all threats, calculate aggregate statistics:
-
-1. **Total inherent risk**: Sum of all `composite_score` values across all threats
-2. **Total residual risk**: Sum of all `residual_score` values across all threats
-3. **Risk delta**: `total_inherent_risk - total_residual_risk`
-4. **Overall reduction percentage**: `(risk_delta / total_inherent_risk) × 100`, rounded to one decimal place
-5. **Severity distribution (inherent)**: Count of threats per severity band before controls
-6. **Severity distribution (residual)**: Count of threats per severity band after controls
-7. **Severity shifts**: Count of threats that moved to a lower severity band due to controls
-
-```yaml
-residual_risk_summary:
-  total_inherent_risk: 234.5
-  total_residual_risk: 178.2
-  risk_delta: 56.3
-  overall_reduction_percentage: 24.0
-  inherent_distribution:
-    critical: 3
-    high: 12
-    medium: 15
-    low: 4
-  residual_distribution:
-    critical: 1
-    high: 8
-    medium: 17
-    low: 8
-  severity_shifts:
-    critical_to_high: 2
-    critical_to_medium: 0
-    critical_to_low: 0
-    high_to_medium: 4
-    high_to_low: 2
-    medium_to_low: 3
-    total_shifts: 11
-```
+Apply the formula: `residual_score = composite_score * (1 - reduction_factor)`, clamped to [0.0, 10.0], rounded to one decimal place.
 
 #### Residual Risk Output
 

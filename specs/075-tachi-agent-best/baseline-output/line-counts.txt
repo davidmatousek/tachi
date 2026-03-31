@@ -1,0 +1,30 @@
+# Baseline Line Counts — Pre-Extraction (2026-03-31)
+# Generated for Feature 075 regression testing
+
+## Leaf Agents (cap: 300)
+spoofing.md           108
+repudiation.md        119
+tampering.md          121
+info-disclosure.md    123
+privilege-escalation.md 131
+denial-of-service.md  136
+prompt-injection.md   162
+data-poisoning.md     166
+tool-abuse.md         180
+model-theft.md        183
+agent-autonomy.md     196
+
+## Report Agents (cap: 800)
+report-assembler.md   648
+threat-infographic.md 769
+threat-report.md      801
+
+## Methodology Agents (cap: 1,000)
+control-analyzer.md   1367
+risk-scorer.md        1419
+orchestrator.md       2000
+
+## Summary
+Total (18 agents):    8629
+Best practices doc:   245
+Grand total:          8874
