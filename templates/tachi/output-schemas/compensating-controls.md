@@ -23,6 +23,8 @@ date: "YYYY-MM-DD"
 source_file: "{path to input risk-scores.md or risk-scores.sarif}"
 target_path: "{--target codebase path}"
 classification: "security"
+rescan_scope: "{full or incremental}"
+carry_forward_count: "{number of carried-forward control results or null}"
 ---
 ```
 
@@ -35,6 +37,8 @@ classification: "security"
 | `source_file` | string | Path to the input risk score file that was analyzed. |
 | `target_path` | string | Path to the target codebase scanned for controls (`--target` flag value). |
 | `classification` | string | Data classification label. Always `"security"` for compensating controls reports. |
+| `rescan_scope` | string | `full` (first run or all findings changed) or `incremental` (only NEW/UPDATED findings re-scanned, UNCHANGED carried forward). |
+| `carry_forward_count` | integer, nullable | Number of findings with carried-forward control results from baseline. Null when no baseline. |
 
 ---
 
@@ -74,27 +78,27 @@ Threats grouped by residual severity (Critical first, then High, Medium, Low). W
 
 ### Critical Residual Severity
 
-| Threat ID | Component | Threat | Inherent Score | Inherent Severity | Control Status | Residual Score | Residual Severity |
-|-----------|-----------|--------|----------------|-------------------|----------------|----------------|-------------------|
-| {id} | {component} | {threat} | {inherent_score} | {inherent_severity} | {control_status} | {residual_score} | Critical |
+| Threat ID | CF | Component | Threat | Inherent Score | Inherent Severity | Control Status | Residual Score | Residual Severity |
+|-----------|-----|-----------|--------|----------------|-------------------|----------------|----------------|-------------------|
+| {id} | {cf} | {component} | {threat} | {inherent_score} | {inherent_severity} | {control_status} | {residual_score} | Critical |
 
 ### High Residual Severity
 
-| Threat ID | Component | Threat | Inherent Score | Inherent Severity | Control Status | Residual Score | Residual Severity |
-|-----------|-----------|--------|----------------|-------------------|----------------|----------------|-------------------|
-| {id} | {component} | {threat} | {inherent_score} | {inherent_severity} | {control_status} | {residual_score} | High |
+| Threat ID | CF | Component | Threat | Inherent Score | Inherent Severity | Control Status | Residual Score | Residual Severity |
+|-----------|-----|-----------|--------|----------------|-------------------|----------------|----------------|-------------------|
+| {id} | {cf} | {component} | {threat} | {inherent_score} | {inherent_severity} | {control_status} | {residual_score} | High |
 
 ### Medium Residual Severity
 
-| Threat ID | Component | Threat | Inherent Score | Inherent Severity | Control Status | Residual Score | Residual Severity |
-|-----------|-----------|--------|----------------|-------------------|----------------|----------------|-------------------|
-| {id} | {component} | {threat} | {inherent_score} | {inherent_severity} | {control_status} | {residual_score} | Medium |
+| Threat ID | CF | Component | Threat | Inherent Score | Inherent Severity | Control Status | Residual Score | Residual Severity |
+|-----------|-----|-----------|--------|----------------|-------------------|----------------|----------------|-------------------|
+| {id} | {cf} | {component} | {threat} | {inherent_score} | {inherent_severity} | {control_status} | {residual_score} | Medium |
 
 ### Low Residual Severity
 
-| Threat ID | Component | Threat | Inherent Score | Inherent Severity | Control Status | Residual Score | Residual Severity |
-|-----------|-----------|--------|----------------|-------------------|----------------|----------------|-------------------|
-| {id} | {component} | {threat} | {inherent_score} | {inherent_severity} | {control_status} | {residual_score} | Low |
+| Threat ID | CF | Component | Threat | Inherent Score | Inherent Severity | Control Status | Residual Score | Residual Severity |
+|-----------|-----|-----------|--------|----------------|-------------------|----------------|----------------|-------------------|
+| {id} | {cf} | {component} | {threat} | {inherent_score} | {inherent_severity} | {control_status} | {residual_score} | Low |
 
 ### Summary Statistics
 

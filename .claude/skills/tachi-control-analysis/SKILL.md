@@ -17,6 +17,52 @@ The control analysis domain covers three areas:
 
 3. **Residual Risk Calculation and Recommendations** -- Recommendation generation rules for missing and partial controls (templates, effort calibration), residual score computation formula with the P0 binary reduction model (reduction factors by control status), severity band mapping for residual scores, and summary statistics calculations.
 
+## Baseline-Aware Control Analysis Rules
+
+### Carry-Forward Conditions
+
+Control status is carried forward from baseline when ALL of the following are true:
+
+1. Finding `delta_status` is `UNCHANGED`
+2. Baseline `compensating-controls.md` exists and is parseable
+3. Finding ID matches a baseline controlled finding (exact `findingId/v1` match)
+
+### Carry-Forward Fields
+
+For UNCHANGED findings, copy these fields verbatim from baseline:
+
+| Field | Treatment |
+|-------|-----------|
+| `control_status` | Copy (found/partial/missing) |
+| `control_evidence` | Copy all evidence entries |
+| `control_category` | Copy |
+| `control_effectiveness` | Copy |
+| `reduction_factor` | Copy |
+| `residual_score` | Copy |
+| `residual_severity_band` | Copy |
+| `recommendation` | Copy (if any) |
+| `effort_estimate` | Copy (if any) |
+
+Set `control_carry_forward: true` and `rescan_scope: "incremental"`.
+
+### Incremental Re-Scan Scope
+
+When baseline controls are available:
+
+| Scenario | Re-Scan Scope | Rationale |
+|----------|---------------|-----------|
+| All findings UNCHANGED | `incremental` (nothing to scan) | Full inheritance |
+| Mix of UNCHANGED + NEW/UPDATED | `incremental` (scan only changed) | Partial inheritance |
+| All findings NEW (first run or no baseline controls) | `full` | No inheritance possible |
+
+### Evidence Preservation
+
+Carried-forward evidence entries retain their original file paths, line numbers, and snippets from the baseline run. These represent the control state as of the baseline — they are **not** re-validated against the current codebase for UNCHANGED findings.
+
+### First Run Behavior
+
+When no baseline `compensating-controls.md` exists, all findings are scanned with `rescan_scope: "full"` and `control_carry_forward: false`. No behavioral change from pre-baseline pipeline.
+
 ## Reference Loading Table
 
 Load reference files on-demand using the Read tool at the workflow phase where they are needed. Do not load all references at pipeline start.

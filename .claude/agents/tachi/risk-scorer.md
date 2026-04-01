@@ -41,6 +41,46 @@ The scoring pipeline processes threat findings through six sequential phases:
 5. **Governance Fields** -- Attach remediation tracking metadata based on severity
 6. **Output Generation** -- Produce risk-scores.md and risk-scores.sarif
 
+### Baseline-Aware Scoring
+
+When findings include `delta_status` fields (from a baseline-aware pipeline run), the scoring pipeline applies different treatment based on the finding's lifecycle status:
+
+| Delta Status | Scoring Treatment | Score Source |
+|-------------|-------------------|-------------|
+| `UNCHANGED` | **Inherit all scores verbatim** from baseline — skip dimensional scoring entirely | `inherited` |
+| `UPDATED` | **Re-score fresh** using full 4-dimensional model | `fresh` |
+| `NEW` | **Score fresh** using full 4-dimensional model | `fresh` |
+| `RESOLVED` | **Retain last-known scores** from baseline — no scoring needed | `inherited` |
+
+#### Score Inheritance for UNCHANGED Findings
+
+For findings with `delta_status: UNCHANGED`, copy the following fields verbatim from the baseline:
+
+- `cvss_base` — CVSS 3.1 base score
+- `cvss_vector` — Full CVSS 3.1 vector string
+- `exploitability` — Exploitability assessment score
+- `scalability` — Scalability assessment score
+- `reachability` — Reachability assessment score
+- `composite_score` — Weighted composite score
+- `severity_band` — Severity classification
+
+Set `score_source` to `"inherited"` to indicate scores were not freshly computed.
+
+**Zero drift guarantee**: Inherited scores are byte-identical to the baseline. No rounding, no recalculation, no adjustment. This ensures SC-002 (zero score drift for unchanged findings).
+
+#### Score Source Field
+
+Every scored finding includes a `score_source` field per `schemas/risk-scoring.yaml`:
+
+- `"inherited"` — Scores copied from baseline (UNCHANGED and RESOLVED findings)
+- `"fresh"` — Scores computed in this run (NEW and UPDATED findings)
+
+When no baseline is present (first run), all findings receive `score_source: "fresh"`.
+
+#### Baseline Input Detection
+
+When the input `threats.md` includes baseline frontmatter (`baseline.source` is not null), check for a corresponding baseline `risk-scores.md` in the same directory. If found, parse baseline scores for UNCHANGED finding inheritance. If not found, score all findings fresh (no inheritance possible without baseline scores).
+
 ### Processing Capacity
 
 The scoring pipeline processes findings sequentially in a single pass. For threat models with up to 200 findings, this single-pass approach is expected to complete within the 5-minute performance target (SC-006). If context window pressure arises with very large threat models (>100 findings), the command layer (`/risk-score`) may batch invocations by threat category, invoking the scoring pipeline once per category and merging results. Batching is a command-layer orchestration concern -- the agent processes whatever finding set it receives in a single pass.
@@ -363,6 +403,36 @@ For each finding, store:
 - `cvss_base`: The numeric base score (0.0-10.0)
 - `cvss_vector`: The full vector string (e.g., `CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H`)
 
+### Bounded Scoring for NEW Findings (Baseline Mode)
+
+When a finding has `delta_status: NEW` (discovered in Phase 2 of a baseline-aware run), its CVSS base score must fall within ±1.0 of the category default CVSS base score defined in `schemas/risk-scoring.yaml` → `category_defaults`.
+
+**Bounding formula**:
+- `min_score = max(0.0, category_default - 1.0)`
+- `max_score = min(10.0, category_default + 1.0)`
+- If the assessed `cvss_base` falls outside `[min_score, max_score]`, clamp it to the nearest bound.
+
+**Category defaults** (reference — base scores derived from default CVSS vectors in `schemas/risk-scoring.yaml` → `category_defaults`):
+
+| Category | ID Prefix | Default CVSS | Bounded Range |
+|----------|-----------|-------------|---------------|
+| spoofing | S | 8.2 | 7.2 – 9.2 |
+| tampering | T | 7.1 | 6.1 – 8.1 |
+| repudiation | R | 4.3 | 3.3 – 5.3 |
+| info-disclosure | I | 6.5 | 5.5 – 7.5 |
+| denial-of-service | D | 7.5 | 6.5 – 8.5 |
+| privilege-escalation | E | 9.9 | 8.9 – 10.0 |
+| agentic | AG | 9.0 | 8.0 – 10.0 |
+| llm | LLM | 9.3 | 8.3 – 10.0 |
+
+**Category resolution**: Determine the category from the finding's ID prefix (S→spoofing, T→tampering, R→repudiation, I→info-disclosure, D→denial-of-service, E→privilege-escalation, AG→agentic, LLM→llm). The default CVSS base score is computed from the corresponding default vector in `schemas/risk-scoring.yaml`.
+
+**When bounding applies**: Only to `NEW` findings from Phase 2 isolated discovery. `UPDATED` findings are re-scored fresh without bounding (they have established context). `UNCHANGED` and `RESOLVED` findings inherit scores verbatim.
+
+**When no baseline is present**: Bounding does not apply. All findings are scored using the standard CVSS assessment without constraints.
+
+**Edge case at extremes**: If a category default is 9.5, the bounded range is 8.5–10.0 (capped at CVSS maximum). If a category default is 1.0, the bounded range is 0.0–2.0 (floored at CVSS minimum).
+
 ---
 
 ## 4. Exploitability Assessment
@@ -428,6 +498,35 @@ For each finding, store:
 - `remediation_sla`: Duration string from severity mapping (e.g., `"24h"`, `"7d"`)
 - `risk_disposition`: `"Mitigate"` (Critical/High) or `"Review"` (Medium/Low)
 - `review_date`: Scoring date + SLA duration (YYYY-MM-DD)
+
+### Governance Field Carry-Forward (Baseline Mode)
+
+When findings include `delta_status` fields from a baseline-aware pipeline run, governance field assignment differs by lifecycle status. The goal is to preserve human-assigned governance data (especially `risk_owner`) across pipeline runs, recalculating only when the severity band changes.
+
+#### Carry-Forward Rules by Delta Status
+
+| Delta Status | risk_owner | remediation_sla | risk_disposition | review_date |
+|-------------|-----------|-----------------|-----------------|-------------|
+| `UNCHANGED` | Carry forward verbatim | Carry forward verbatim | Carry forward verbatim | Carry forward verbatim |
+| `UPDATED` | Carry forward always (never auto-overwrite) | Carry forward UNLESS severity band changed | Carry forward UNLESS severity crosses Mitigate/Review threshold | Carry forward UNLESS SLA recalculated |
+| `NEW` | Assign fresh (`"Unassigned"`) | Assign fresh per severity | Assign fresh per severity | Assign fresh (today + SLA) |
+| `RESOLVED` | Retain from baseline | Retain from baseline | Retain from baseline | Retain from baseline |
+
+#### SLA Recalculation Trigger
+
+SLA recalculation occurs **only** when an `UPDATED` finding's severity band changes between the baseline and the current run:
+
+- **Same severity band** (e.g., High → High): Keep existing `remediation_sla` and `review_date` unchanged. The SLA clock continues from the original discovery date, not from this run.
+- **Severity band changed** (e.g., High → Critical): Recalculate `remediation_sla` per the new severity band mapping. Recalculate `review_date` as today's date + new SLA duration. Update `risk_disposition` if the change crosses the Mitigate/Review threshold (Critical/High → `"Mitigate"`, Medium/Low → `"Review"`).
+- **`risk_owner` is NEVER auto-overwritten**. It is a human-assigned field set during triage. Even when severity changes, the assigned owner persists. Only a human can change `risk_owner` — the pipeline preserves whatever value the baseline contains.
+
+#### Baseline Governance Detection
+
+To carry forward governance fields, the scoring pipeline must locate baseline governance data:
+
+1. When the input `threats.md` has baseline frontmatter (`baseline.source` is not null), check for a baseline `risk-scores.md` in the same directory as the input.
+2. If found, parse each finding's governance fields (`risk_owner`, `remediation_sla`, `risk_disposition`, `review_date`) by matching on finding ID.
+3. If the baseline `risk-scores.md` is not found, assign fresh governance fields for all findings — governance carry-forward requires baseline scores to be available. Log: `"Baseline risk-scores.md not found — assigning fresh governance fields for all findings"`.
 
 ---
 

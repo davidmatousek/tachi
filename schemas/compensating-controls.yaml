@@ -11,7 +11,7 @@
 #
 # Version: 1.0
 
-schema_version: "1.0"
+schema_version: "1.1"
 
 controlled_finding:
   extends: scored_finding  # All fields from finding.yaml + risk-scoring.yaml, plus:
@@ -90,6 +90,31 @@ controlled_finding:
     description: >
       Implementation effort for the recommendation.
       Null when control_status is "found".
+
+  # Baseline-Aware Fields (v1.1)
+
+  control_carry_forward:
+    type: boolean
+    required: true
+    default: false
+    description: >
+      True if control status was inherited from baseline.
+      True for UNCHANGED findings — control_status, control_evidence,
+      reduction_factor, and residual_score are copied from baseline.
+      False for NEW, UPDATED, and RESOLVED findings.
+
+  rescan_scope:
+    type: string
+    enum:
+      - full
+      - incremental
+    required: true
+    default: "full"
+    description: >
+      Determines the scope of control re-scanning.
+      full: first run or when all findings changed — scan entire codebase.
+      incremental: only NEW and UPDATED findings are re-scanned,
+      UNCHANGED findings inherit control status from baseline.
 
 # Reduction Factor Mapping — P0 (Binary)
 #

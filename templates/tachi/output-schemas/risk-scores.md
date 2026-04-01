@@ -27,6 +27,10 @@ scoring_weights:
   exploitability: 0.30
   scalability: 0.15
   reachability: 0.20
+baseline:
+  source: "{baseline risk-scores.md path or null}"
+  inherited_count: "{number of inherited scores or null}"
+  fresh_count: "{number of freshly scored findings or null}"
 ---
 ```
 
@@ -39,6 +43,9 @@ scoring_weights:
 | `source_file` | string | Path to the input threat model file that was scored. |
 | `classification` | string | Data classification label. Default: `confidential`. |
 | `scoring_weights` | object | Weights used for composite calculation. Documents the formula for reproducibility. |
+| `baseline.source` | string, nullable | Path to baseline risk-scores.md used for score inheritance. Null when no baseline. |
+| `baseline.inherited_count` | integer, nullable | Number of findings with inherited (not freshly computed) scores. Null when no baseline. |
+| `baseline.fresh_count` | integer, nullable | Number of findings scored fresh this run. Null when no baseline. |
 
 ---
 
@@ -72,15 +79,16 @@ scoring_weights:
 
 Findings sorted by Composite score descending (highest risk first). Boundary values map to the higher severity band (e.g., 7.0 = High, 9.0 = Critical).
 
-| ID | Component | Threat | CVSS | Exploit. | Scale. | Reach. | Composite | Severity | SLA | Disposition |
-|----|-----------|--------|------|----------|--------|--------|-----------|----------|-----|-------------|
-| {id} | {component} | {threat} | {cvss_base} | {exploitability} | {scalability} | {reachability} | {composite_score} | {severity_band} | {remediation_sla} | {risk_disposition} |
+| ID | Source | Component | Threat | CVSS | Exploit. | Scale. | Reach. | Composite | Severity | SLA | Disposition |
+|----|--------|-----------|--------|------|----------|--------|--------|-----------|----------|-----|-------------|
+| {id} | {score_source} | {component} | {threat} | {cvss_base} | {exploitability} | {scalability} | {reachability} | {composite_score} | {severity_band} | {remediation_sla} | {risk_disposition} |
 
 ### Column Definitions
 
 | Column | Description |
 |--------|-------------|
 | **ID** | Original finding identifier from the threat model (e.g., `S-1`, `T-2`, `AG-1`, `LLM-3`). Preserves the source finding ID without modification. |
+| **Source** | Score source: `inherited` (scores copied from baseline for UNCHANGED/RESOLVED findings) or `fresh` (scores computed this run for NEW/UPDATED findings). When no baseline is present, all findings show `fresh`. |
 | **Component** | Target component name as identified in the threat model. |
 | **Threat** | Threat description, truncated to fit table width. Full description available in the Dimensional Breakdown (Section 3). |
 | **CVSS** | CVSS 3.1 base score (0.0-10.0). Derived from attack vector, attack complexity, privileges required, user interaction, scope, and CIA impact. Full vector string shown in Section 3. |

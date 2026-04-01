@@ -91,6 +91,44 @@ Load domain knowledge on-demand from the `tachi-control-analysis` skill using th
 
 ---
 
+## Baseline-Aware Control Analysis
+
+When scored findings include `delta_status` and `control_carry_forward` fields (from a baseline-aware pipeline run), the control analysis pipeline applies differential scanning:
+
+| Delta Status | Control Treatment | Carry Forward |
+|-------------|-------------------|---------------|
+| `UNCHANGED` | **Inherit control status** from baseline — skip codebase scanning | `true` |
+| `UPDATED` | **Re-scan** codebase for controls — finding context changed | `false` |
+| `NEW` | **Full scan** — no baseline controls exist | `false` |
+| `RESOLVED` | **Skip** — finding no longer applicable | N/A |
+
+### Control Carry-Forward for UNCHANGED Findings
+
+For findings with `delta_status: UNCHANGED`, copy the following fields verbatim from the baseline `compensating-controls.md`:
+
+- `control_status` — found, partial, or missing
+- `control_evidence` — Evidence entries (file, line, snippet)
+- `control_category` — Which control category matched
+- `control_effectiveness` — Effectiveness rating
+- `reduction_factor` — Risk reduction multiplier
+- `residual_score` — Post-control risk score
+- `residual_severity_band` — Post-control severity
+
+Set `control_carry_forward` to `true` and `rescan_scope` to `"incremental"`.
+
+### Incremental Re-Scan
+
+When baseline controls are available:
+- **UNCHANGED findings**: Skip scanning entirely — inherit all control fields
+- **NEW and UPDATED findings**: Scan only the files associated with these findings
+- Set `rescan_scope` to `"incremental"` when any findings are inherited, `"full"` when all are fresh
+
+### Baseline Input Detection
+
+When the input `risk-scores.md` includes baseline metadata, check for a corresponding baseline `compensating-controls.md` in the same directory. If found, parse baseline controls for UNCHANGED finding inheritance. If not found, scan all findings (full scope).
+
+---
+
 ## Analysis Pipeline Overview
 
 The analysis pipeline processes scored threat findings through six sequential phases:

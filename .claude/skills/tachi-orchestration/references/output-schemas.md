@@ -202,10 +202,13 @@ Before finalizing the output document, run the following validation checklist ag
 - [ ] Section 3 (STRIDE Tables) is present and contains exactly 6 tables (S, T, R, I, D, E), each with a table header row even if no data rows exist.
 - [ ] Section 4 (AI Threat Tables) is present and contains exactly 2 tables (AG, LLM), each with a table header row even if no data rows exist.
 - [ ] Section 4a (Correlated Findings) is present and contains the correlation group table with correct columns (Group, Findings, Component, Threat Summary, Risk Level), or the "No cross-agent correlations detected" text with empty table header when zero correlations exist.
+- [ ] Section 4b (Resolved Findings) is present when a baseline was used. Contains resolved findings with columns: ID, Component, Threat, Last Risk Level, Resolution Reason. Omitted entirely when no baseline (first run).
 - [ ] Section 5 (Coverage Matrix) is present and contains one row per component plus a Total row. All cells use the three-state model: integer (deduplicated count), `---` (analyzed but clean), or `n/a` (not applicable).
 - [ ] Section 5 (Coverage Matrix) footnote is present when correlation groups exist, stating "Counts reflect deduplicated findings. N correlation groups merged M individual findings." Footnote is absent when zero correlation groups exist.
+- [ ] Section 5a (Coverage Gate Results) is present and contains the Coverage Requirements Matrix showing each component's determined type and required vs. evaluated categories. Gap Resolution Details table present when gaps were detected.
 - [ ] Section 6 (Risk Summary) is present and contains the Risk Calibration Matrix subsection followed by one row per risk level (Critical, High, Medium, Low, Note) plus a Total row.
 - [ ] Section 7 (Recommended Actions) is present and contains one row per finding.
+- [ ] Section 8 (Delta Summary) is present when a baseline was used. Contains baseline reference, status count table, and finding-level change lines grouped by delta status. Omitted when no baseline.
 
 ### Frontmatter Validation
 
@@ -213,6 +216,10 @@ Before finalizing the output document, run the following validation checklist ag
 - [ ] `date` is a valid ISO 8601 date in `YYYY-MM-DD` format.
 - [ ] `input_format` is one of: `ascii`, `free-text`, `mermaid`, `plantuml`, `c4`.
 - [ ] `classification` is `"confidential"`.
+- [ ] `run_id` is present in format `YYYY-MM-DDTHH-MM-SS`.
+- [ ] `baseline.source`, `baseline.date`, `baseline.finding_count`, `baseline.run_id` are present (null when no baseline, populated when baseline used).
+- [ ] `coverage_gate.status` is one of: `"pass"`, `"warn"`.
+- [ ] `coverage_gate.gaps` is a list (empty when no gaps; each entry has `component`, `missing_category`, `resolution`).
 
 ### Finding ID Validation
 
@@ -223,9 +230,10 @@ Before finalizing the output document, run the following validation checklist ag
 
 ### Field Completeness
 
-- [ ] Every finding row in the STRIDE tables has all 7 required fields populated: ID, Component, Threat, Likelihood, Impact, Risk Level, Mitigation.
-- [ ] Every finding row in the AI tables has all 8 required fields populated: ID, Component, Threat, OWASP Reference, Likelihood, Impact, Risk Level, Mitigation.
+- [ ] Every finding row in the STRIDE tables has all 8 required fields populated: ID, Status, Component, Threat, Likelihood, Impact, Risk Level, Mitigation. Status is one of: `NEW`, `UNCHANGED`, `UPDATED`.
+- [ ] Every finding row in the AI tables has all 9 required fields populated: ID, Status, Component, Threat, OWASP Reference, Likelihood, Impact, Risk Level, Mitigation. Status is one of: `NEW`, `UNCHANGED`, `UPDATED`.
 - [ ] No field contains an empty value or placeholder text.
+- [ ] Every finding has exactly one delta status annotation. When no baseline is present, all findings have Status `NEW`.
 
 ### Risk Level Consistency
 

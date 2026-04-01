@@ -102,7 +102,11 @@
           "partialFingerprints": {
             "primaryLocationLineHash": "a1b2c3d4e5f67890",
             "findingId/v1": "S-1",
-            "correlationGroup": "CG-1"
+            "correlationGroup": "CG-1",
+            "baselineRunId": "<baseline-run-id-or-empty-for-first-run>"
+          },
+          "properties": {
+            "baselineState": "<new|unchanged|updated|absent>"
           }
         },
         {
@@ -133,7 +137,11 @@
           ],
           "partialFingerprints": {
             "primaryLocationLineHash": "f0e9d8c7b6a54321",
-            "findingId/v1": "AG-1"
+            "findingId/v1": "AG-1",
+            "baselineRunId": "<baseline-run-id-or-empty-for-first-run>"
+          },
+          "properties": {
+            "baselineState": "<new|unchanged|updated|absent>"
           }
         }
       ]

@@ -22,6 +22,15 @@ schema_version: "1.1"
 date: "YYYY-MM-DD"
 input_format: "{detected or declared format}"
 classification: "confidential"
+run_id: "{YYYY-MM-DDTHH-MM-SS}"
+baseline:
+  source: "{baseline file path or null}"
+  date: "{ISO date of baseline run or null}"
+  finding_count: "{baseline finding count or null}"
+  run_id: "{baseline run identifier or null}"
+coverage_gate:
+  status: "{pass | warn}"
+  gaps: []
 ---
 ```
 
@@ -33,15 +42,73 @@ classification: "confidential"
 | `date` | string | ISO 8601 date when the threat model was generated. Format: `YYYY-MM-DD`. |
 | `input_format` | string | Architecture input format that was analyzed. One of: `ascii`, `free-text`, `mermaid`, `plantuml`, `c4`. |
 | `classification` | string | Data classification label for the report. Default: `confidential`. |
+| `run_id` | string | Unique identifier for this pipeline run. Format: `YYYY-MM-DDTHH-MM-SS`. Used as `baseline_run_id` in future runs. |
+| `baseline.source` | string, nullable | File path of the baseline used for this run. Null when no baseline (first run). |
+| `baseline.date` | string, nullable | ISO date of the baseline run. Null when no baseline. |
+| `baseline.finding_count` | integer, nullable | Total findings in the baseline. Null when no baseline. |
+| `baseline.run_id` | string, nullable | Run identifier of the baseline. Null when no baseline. |
+| `coverage_gate.status` | string | Coverage gate result. `"pass"` (all required categories covered or analyzed clean) or `"warn"` (unresolved gaps remain). |
+| `coverage_gate.gaps` | list | List of `{component, missing_category, resolution}` objects. Empty list when all required categories covered with no gaps. Resolution values: `"findings_produced"`, `"analyzed_clean"`, `"dispatch_failure"`. |
 
-**Example frontmatter:**
+**Example frontmatter (with baseline, coverage gate pass):**
 
 ```yaml
 ---
 schema_version: "1.1"
-date: "2026-03-21"
+date: "2026-03-31"
 input_format: "mermaid"
 classification: "confidential"
+run_id: "2026-03-31T14-22-05"
+baseline:
+  source: "threats.md"
+  date: "2026-03-25"
+  finding_count: 39
+  run_id: "2026-03-25T12-53-57"
+coverage_gate:
+  status: "pass"
+  gaps: []
+---
+```
+
+**Example frontmatter (with gaps resolved by re-analysis):**
+
+```yaml
+---
+schema_version: "1.1"
+date: "2026-03-31"
+input_format: "mermaid"
+classification: "confidential"
+run_id: "2026-03-31T14-22-05"
+baseline:
+  source: "threats.md"
+  date: "2026-03-25"
+  finding_count: 39
+  run_id: "2026-03-25T12-53-57"
+coverage_gate:
+  status: "pass"
+  gaps:
+    - { component: "LLM Agent", missing_category: "model-theft", resolution: "findings_produced" }
+    - { component: "API Gateway", missing_category: "repudiation", resolution: "analyzed_clean" }
+---
+```
+
+**Example frontmatter (first run — no baseline):**
+
+```yaml
+---
+schema_version: "1.1"
+date: "2026-03-31"
+input_format: "mermaid"
+classification: "confidential"
+run_id: "2026-03-31T14-22-05"
+baseline:
+  source: null
+  date: null
+  finding_count: null
+  run_id: null
+coverage_gate:
+  status: "pass"
+  gaps: []
 ---
 ```
 
@@ -159,6 +226,8 @@ One table per STRIDE category containing threat findings for each applicable com
 | D | Denial of Service |
 | E | Elevation of Privilege |
 
+**Status column** (baseline-aware mode only): Every finding includes a delta annotation showing its lifecycle status relative to the baseline: `NEW` (discovered this run), `UNCHANGED` (identical to baseline), `UPDATED` (component context changed). `RESOLVED` findings appear in Section 4b, not in these tables. When no baseline is present (first run), all findings show `NEW`.
+
 **Risk level computation (OWASP 3x3 matrix):**
 
 | | LOW Likelihood | MEDIUM Likelihood | HIGH Likelihood |
@@ -171,85 +240,85 @@ One table per STRIDE category containing threat findings for each applicable com
 
 Threats where an attacker pretends to be something or someone else.
 
-| ID | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------|--------|------------|------------|
-| _{S-N}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
+| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|--------|------------|--------|------------|------------|
+| _{S-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| ID | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------|--------|------------|------------|
-| S-1 | API Gateway | Attacker forges JWT tokens to impersonate authenticated users by exploiting weak signing algorithm | HIGH | HIGH | Critical | Enforce RS256 signing with key rotation every 90 days; reject HS256 tokens |
+| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|--------|------------|--------|------------|------------|
+| S-1 | UNCHANGED | API Gateway | Attacker forges JWT tokens to impersonate authenticated users by exploiting weak signing algorithm | HIGH | HIGH | Critical | Enforce RS256 signing with key rotation every 90 days; reject HS256 tokens |
 
 ### 3.2 Tampering (T)
 
 Threats where an attacker modifies data or code without authorization.
 
-| ID | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------|--------|------------|------------|
-| _{T-N}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
+| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|--------|------------|--------|------------|------------|
+| _{T-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| ID | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------|--------|------------|------------|
-| T-1 | User Database | Attacker performs SQL injection through unsanitized input fields to modify user records | MEDIUM | HIGH | High | Use parameterized queries exclusively; apply input validation at API Gateway layer |
+| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|--------|------------|--------|------------|------------|
+| T-1 | UPDATED | User Database | Attacker performs SQL injection through unsanitized input fields to modify user records | MEDIUM | HIGH | High | Use parameterized queries exclusively; apply input validation at API Gateway layer |
 
 ### 3.3 Repudiation (R)
 
 Threats where an attacker denies having performed an action without the system being able to prove otherwise.
 
-| ID | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------|--------|------------|------------|
-| _{R-N}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
+| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|--------|------------|--------|------------|------------|
+| _{R-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| ID | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------|--------|------------|------------|
-| R-1 | Auth Service | User denies performing privileged actions because audit logs do not capture sufficient session context | MEDIUM | MEDIUM | Medium | Implement immutable audit log with session ID, IP, user agent, and action timestamp for all privileged operations |
+| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|--------|------------|--------|------------|------------|
+| R-1 | UNCHANGED | Auth Service | User denies performing privileged actions because audit logs do not capture sufficient session context | MEDIUM | MEDIUM | Medium | Implement immutable audit log with session ID, IP, user agent, and action timestamp for all privileged operations |
 
 ### 3.4 Information Disclosure (I)
 
 Threats where sensitive data is exposed to unauthorized parties.
 
-| ID | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------|--------|------------|------------|
-| _{I-N}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
+| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|--------|------------|--------|------------|------------|
+| _{I-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| ID | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------|--------|------------|------------|
-| I-1 | User Database | Database connection string with credentials exposed in application error messages returned to client | MEDIUM | HIGH | High | Implement structured error handling that returns generic error codes to clients; log detailed errors server-side only |
+| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|--------|------------|--------|------------|------------|
+| I-1 | UNCHANGED | User Database | Database connection string with credentials exposed in application error messages returned to client | MEDIUM | HIGH | High | Implement structured error handling that returns generic error codes to clients; log detailed errors server-side only |
 
 ### 3.5 Denial of Service (D)
 
 Threats where an attacker degrades or prevents legitimate access to the system.
 
-| ID | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------|--------|------------|------------|
-| _{D-N}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
+| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|--------|------------|--------|------------|------------|
+| _{D-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| ID | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------|--------|------------|------------|
-| D-1 | API Gateway | Volumetric attack overwhelms the gateway with malformed requests, exhausting connection pool and blocking legitimate traffic | HIGH | MEDIUM | High | Enforce per-IP rate limiting (100 req/min); deploy upstream DDoS protection; implement circuit breaker pattern |
+| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|--------|------------|--------|------------|------------|
+| D-1 | UNCHANGED | API Gateway | Volumetric attack overwhelms the gateway with malformed requests, exhausting connection pool and blocking legitimate traffic | HIGH | MEDIUM | High | Enforce per-IP rate limiting (100 req/min); deploy upstream DDoS protection; implement circuit breaker pattern |
 
 ### 3.6 Elevation of Privilege (E)
 
 Threats where an attacker gains higher access rights than authorized.
 
-| ID | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------|--------|------------|------------|
-| _{E-N}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
+| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|--------|------------|--------|------------|------------|
+| _{E-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| ID | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------|--------|------------|------------|
-| E-1 | Auth Service | Attacker exploits insecure direct object reference (IDOR) to access admin endpoints by manipulating user role claims in JWT payload | MEDIUM | HIGH | High | Validate role claims server-side against authoritative user store on every request; never trust client-supplied role values |
+| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|--------|------------|--------|------------|------------|
+| E-1 | NEW | Auth Service | Attacker exploits insecure direct object reference (IDOR) to access admin endpoints by manipulating user role claims in JWT payload | MEDIUM | HIGH | High | Validate role claims server-side against authoritative user store on every request; never trust client-supplied role values |
 
 ---
 
@@ -268,29 +337,29 @@ Threat findings from AI-specific agents, grouped by agent category. These extend
 
 Threats arising from autonomous agent behavior, including uncontrolled tool use, excessive autonomy, and agent-to-agent trust violations.
 
-| ID | Component | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------------|------------|--------|------------|------------|
-| _{AG-N}_ | _{component}_ | _{threat description}_ | _{OWASP ID or framework citation}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
+| ID | Status | Component | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|--------|------------------|------------|--------|------------|------------|
+| _{AG-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{OWASP ID or framework citation}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| ID | Component | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------------|------------|--------|------------|------------|
-| AG-1 | LLM Agent | Agent autonomously invokes destructive shell commands without human approval, causing data loss or system compromise | ASI-01 | MEDIUM | HIGH | High | Implement mandatory human-in-the-loop approval for all destructive operations; enforce tool allowlists with per-tool permission scopes |
+| ID | Status | Component | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|--------|------------------|------------|--------|------------|------------|
+| AG-1 | UNCHANGED | LLM Agent | Agent autonomously invokes destructive shell commands without human approval, causing data loss or system compromise | ASI-01 | MEDIUM | HIGH | High | Implement mandatory human-in-the-loop approval for all destructive operations; enforce tool allowlists with per-tool permission scopes |
 
 ### 4.2 LLM Threats (LLM)
 
 Threats targeting the LLM itself, including prompt injection, training data poisoning, model theft, and insecure output handling.
 
-| ID | Component | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------------|------------|--------|------------|------------|
-| _{LLM-N}_ | _{component}_ | _{threat description}_ | _{OWASP ID or framework citation}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
+| ID | Status | Component | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|--------|------------------|------------|--------|------------|------------|
+| _{LLM-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{OWASP ID or framework citation}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| ID | Component | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------------|------------|--------|------------|------------|
-| LLM-1 | LLM Agent | Indirect prompt injection via user-supplied documents causes the agent to exfiltrate sensitive context data to an attacker-controlled endpoint | OWASP LLM01:2025 | HIGH | HIGH | Critical | Sanitize all user-supplied input before inclusion in LLM context; implement output filtering to block URLs and data patterns matching exfiltration; apply egress network controls |
+| ID | Status | Component | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|--------|------------------|------------|--------|------------|------------|
+| LLM-1 | NEW | LLM Agent | Indirect prompt injection via user-supplied documents causes the agent to exfiltrate sensitive context data to an attacker-controlled endpoint | OWASP LLM01:2025 | HIGH | HIGH | Critical | Sanitize all user-supplied input before inclusion in LLM context; implement output filtering to block URLs and data patterns matching exfiltration; apply egress network controls |
 
 ---
 
@@ -317,6 +386,37 @@ Cross-agent correlation groups linking findings from different agent categories 
 
 ---
 
+## 4b. Resolved Findings
+
+Findings from the baseline that are no longer applicable in the current architecture. These findings are retained for audit traceability — each preserves its original ID, description, and last-known risk level. This section is only present when a baseline was used for the current run.
+
+**When no baseline is present** (first run): Omit this section entirely. Do not include the header or an empty table.
+
+**When a baseline is present but no findings are resolved**: Include the section header with the note: "No baseline findings were resolved in this run." followed by an empty table header.
+
+| ID | Component | Threat | Last Risk Level | Resolution Reason |
+|----|-----------|--------|-----------------|-------------------|
+| _{original ID}_ | _{baseline component}_ | _{original threat description}_ | _{last-known risk level}_ | _{why the finding was resolved}_ |
+
+**Example:**
+
+| ID | Component | Threat | Last Risk Level | Resolution Reason |
+|----|-----------|--------|-----------------|-------------------|
+| T-2 | Legacy API | SQL injection through unvalidated query parameters in deprecated endpoint | High | Component 'Legacy API' removed from architecture |
+| LLM-3 | Chat Widget | Indirect prompt injection via user-uploaded documents | Medium | Threat category no longer applicable to 'Chat Widget' (reclassified as External Entity) |
+
+**Field definitions:**
+
+| Field | Source | Description |
+|-------|--------|-------------|
+| ID | Baseline finding ID | The original stable finding ID — never reassigned to new findings |
+| Component | Baseline component name | The component targeted by the finding at the time of its last assessment |
+| Threat | Baseline threat description | The full threat description from the last assessment |
+| Last Risk Level | Baseline risk level | The risk level at the time of the last active assessment (Critical/High/Medium/Low/Note) |
+| Resolution Reason | Carry-forward classification | Brief explanation of why the finding is resolved (component removed, category inapplicable, etc.) |
+
+---
+
 ## 5. Coverage Matrix
 
 Cross-reference matrix showing which components were analyzed for which threat categories. Each cell uses a three-state model:
@@ -340,6 +440,53 @@ Cross-reference matrix showing which components were analyzed for which threat c
 | **Total** | **1** | **2** | **1** | **1** | **1** | **2** | **1** | **1** | **10** |
 
 Counts reflect deduplicated findings. 1 correlation group merged 4 individual findings.
+
+---
+
+## 5a. Coverage Gate Results
+
+Coverage gate evaluation results showing whether all required threat categories were analyzed for each component based on its type. The gate loads `schemas/coverage-checklists.yaml` to determine required categories per component type (including AI subtype detection) and verifies the finding set covers all requirements.
+
+**When the coverage gate passes with no gaps**: Include the section header with: "Coverage gate passed — all required threat categories evaluated for every component." followed by the requirements matrix.
+
+**When gaps were detected and resolved**: Include the full results table showing each gap and its resolution.
+
+### Coverage Requirements Matrix
+
+Shows required vs. evaluated categories for each component based on its determined type.
+
+| Component | Determined Type | Required Categories | Evaluated | Gaps |
+|-----------|----------------|-----------------------|-----------|------|
+| _{component}_ | _{external_entity \| process \| data_store \| data_flow \| llm_process \| mcp_server}_ | _{comma-separated required categories}_ | _{count evaluated}_ / _{count required}_ | _{count gaps or "None"}_ |
+
+**Example (with one gap resolved by re-analysis):**
+
+| Component | Determined Type | Required Categories | Evaluated | Gaps |
+|-----------|----------------|-----------------------|-----------|------|
+| API Gateway | process | S, T, R, I, D, E | 6 / 6 | None |
+| User Database | data_store | T, I, D | 3 / 3 | None |
+| LLM Agent | llm_process | S, T, R, I, D, E, LLM | 7 / 7 | None |
+| Mobile Client | external_entity | S, R | 2 / 2 | None |
+
+### Gap Resolution Details
+
+**Present only when gaps were detected.** Shows each gap and its resolution after targeted re-analysis.
+
+| Component | Missing Category | Agent(s) Dispatched | Resolution | Findings Added |
+|-----------|-----------------|---------------------|------------|----------------|
+| _{component}_ | _{category}_ | _{agent name(s)}_ | _{findings_produced \| analyzed_clean \| dispatch_failure}_ | _{count or 0}_ |
+
+**Example:**
+
+| Component | Missing Category | Agent(s) Dispatched | Resolution | Findings Added |
+|-----------|-----------------|---------------------|------------|----------------|
+| LLM Agent | model-theft | tachi-model-theft | findings_produced | 1 |
+| API Gateway | repudiation | tachi-repudiation | analyzed_clean | 0 |
+
+**Resolution values:**
+- `findings_produced` — Re-analysis discovered new threats. Findings merged into the finding set with sequential IDs.
+- `analyzed_clean` — Re-analysis ran but found no threats for this component-category pair. The category was evaluated; no blind spot exists.
+- `dispatch_failure` — Agent dispatch failed. The gap remains unresolved. Reported as a warning.
 
 ---
 

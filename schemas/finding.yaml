@@ -10,7 +10,7 @@
 #
 # Version: 1.0
 
-schema_version: "1.0"
+schema_version: "1.1"
 
 finding:
   id:
@@ -117,6 +117,36 @@ finding:
       - Data Flow
     description: >
       DFD classification of the target component.
+
+  # Baseline-Aware Fields (v1.1)
+
+  delta_status:
+    type: string
+    enum:
+      - NEW
+      - UNCHANGED
+      - UPDATED
+      - RESOLVED
+    required_when: baseline_present
+    default: NEW
+    description: >
+      Lifecycle status relative to the baseline run.
+      NEW: first appearance (no baseline match).
+      UNCHANGED: identical to baseline (same component, threat, assessment).
+      UPDATED: same finding with changed description or context.
+      RESOLVED: baseline finding no longer applicable in current architecture.
+      Defaults to NEW when no baseline is provided.
+
+  baseline_run_id:
+    type: string
+    nullable: true
+    description: >
+      Run ID of the baseline that first discovered this finding.
+      Null for first-run findings or when no baseline is provided.
+      Format matches the run_id in baseline frontmatter (e.g., "2026-03-25T12-53-57").
+    examples:
+      - "2026-03-25T12-53-57"
+      - null
 
 # Validation Rules
 #

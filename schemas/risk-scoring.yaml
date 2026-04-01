@@ -10,7 +10,7 @@
 #
 # Version: 1.0
 
-schema_version: "1.0"
+schema_version: "1.1"
 
 scored_finding:
   extends: finding  # All fields from finding.yaml, plus:
@@ -75,6 +75,37 @@ scored_finding:
     type: string
     format: "YYYY-MM-DD"
     description: "Scoring date + SLA duration"
+
+  # Baseline-Aware Fields (v1.1)
+
+  score_source:
+    type: string
+    enum:
+      - inherited
+      - fresh
+    required: true
+    default: "fresh"
+    description: >
+      Indicates whether scores were inherited from baseline or freshly computed.
+      inherited: UNCHANGED findings — all scoring fields copied verbatim from baseline.
+      fresh: NEW and UPDATED findings — scored using full 4-dimensional model.
+
+  score_bounds:
+    type: object
+    nullable: true
+    description: >
+      CVSS base score bounds for NEW findings from Phase 2 discovery.
+      Enforces bounded scoring within +/-1.0 of category default.
+      Null for inherited scores and UPDATED findings (re-scored without bounds).
+    properties:
+      min:
+        type: number
+        range: [0.0, 10.0]
+        description: "Lower bound: max(0.0, category_default - 1.0)"
+      max:
+        type: number
+        range: [0.0, 10.0]
+        description: "Upper bound: min(10.0, category_default + 1.0)"
 
 # Default CVSS 3.1 Vectors per Threat Category
 category_defaults:

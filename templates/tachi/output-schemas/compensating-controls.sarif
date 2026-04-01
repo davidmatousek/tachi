@@ -344,6 +344,7 @@
                 "snippet": "<code-snippet-2>"
               }
             ],
+            "control-carry-forward": "<true|false>",
             "control-effectiveness": "strong",
             "inherent-risk": "<original-composite-score-from-risk-scores>",
             "residual-risk": "<calculated-residual-score>",
@@ -407,6 +408,7 @@
                 "snippet": "<code-snippet-showing-partial-control>"
               }
             ],
+            "control-carry-forward": "<true|false>",
             "control-effectiveness": "moderate",
             "inherent-risk": "<original-composite-score-from-risk-scores>",
             "residual-risk": "<calculated-residual-score>",
@@ -448,6 +450,7 @@
             "security-severity": "<residual-score-equals-inherent-score-as-numeric-string>",
             "control-status": "missing",
             "control-evidence": [],
+            "control-carry-forward": "<true|false>",
             "control-effectiveness": "none",
             "inherent-risk": "<original-composite-score-from-risk-scores>",
             "residual-risk": "<same-as-inherent-no-reduction>",
@@ -511,6 +514,7 @@
                 "snippet": "<code-snippet>"
               }
             ],
+            "control-carry-forward": "<true|false>",
             "control-effectiveness": "strong",
             "inherent-risk": "<original-composite-score-from-risk-scores>",
             "residual-risk": "<calculated-residual-score>",
@@ -590,6 +594,7 @@
                 "snippet": "<code-snippet>"
               }
             ],
+            "control-carry-forward": "<true|false>",
             "control-effectiveness": "moderate",
             "inherent-risk": "<original-composite-score-from-risk-scores>",
             "residual-risk": "<calculated-residual-score>",

@@ -321,6 +321,44 @@ Every SARIF result MUST include a `partialFingerprints` object with deterministi
 }
 ```
 
+**4. `baselineRunId`** (conditional — baseline-aware mode only):
+
+- Only present when the pipeline ran with a baseline (`baseline.present == true`).
+- Set to the `baseline.run_id` from the pipeline's Phase 0 metadata (e.g., `"2026-03-25T12-53-57"`).
+- For `NEW` findings (not in baseline): set to an empty string `""`.
+- For `UNCHANGED`, `UPDATED`, `RESOLVED` findings: set to the baseline run_id that originally discovered or last assessed this finding.
+- When no baseline is present (first run): omit this key entirely from `partialFingerprints`.
+
+**Baseline-aware result properties**:
+
+When the pipeline operates in baseline-aware mode, each SARIF result MUST include a `baselineState` property in its `properties` object:
+
+| `baselineState` Value | Maps From | SARIF Convention | Description |
+|----------------------|-----------|------------------|-------------|
+| `new` | `delta_status: NEW` | New finding | Discovered this run, not present in baseline |
+| `unchanged` | `delta_status: UNCHANGED` | Unchanged | Identical to baseline — same component, threat, context |
+| `updated` | `delta_status: UPDATED` | Updated | Same finding but context changed (re-scored) |
+| `absent` | `delta_status: RESOLVED` | Absent from current run | No longer applicable — component removed or threat eliminated |
+
+**Note on SARIF convention**: SARIF 2.1.0 uses `"absent"` where tachi uses `"RESOLVED"`. The mapping is: `RESOLVED` → `absent` in SARIF output. This aligns with the SARIF specification's `baselineState` enum values (`new`, `unchanged`, `updated`, `absent`).
+
+When no baseline is present, set `baselineState` to `"new"` for all findings.
+
+**Example — partialFingerprints with baseline fields (UNCHANGED finding)**:
+
+```json
+{
+  "partialFingerprints": {
+    "primaryLocationLineHash": "a1b2c3d4e5f67890",
+    "findingId/v1": "S-1",
+    "baselineRunId": "2026-03-25T12-53-57"
+  },
+  "properties": {
+    "baselineState": "unchanged"
+  }
+}
+```
+
 **Determinism note**: The `primaryLocationLineHash` is the primary mechanism GitHub Code Scanning uses to match alerts across runs. If the hash changes for the same finding, GitHub will close the old alert and open a new one, losing comment history and triage state. Treat hash stability as a correctness requirement.
 
 ## SARIF Taxonomies
