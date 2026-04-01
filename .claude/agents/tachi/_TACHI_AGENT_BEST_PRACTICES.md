@@ -1,6 +1,6 @@
 # Tachi Agent Best Practices
 
-<!-- Version: 1.0.0 | Created: 2026-03-31 -->
+<!-- Version: 1.1.0 | Updated: 2026-04-01 | Feature 078: Agent Context Optimization -->
 <!-- Aligned with Anthropic Claude 4.6 agent design recommendations -->
 
 Best practices for tachi threat analysis agents. These extend (not replace) the AOD `_AGENT_BEST_PRACTICES.md` with tachi-specific guidance, Anthropic alignment, and the skill extraction pattern for methodology-heavy agents.
@@ -24,9 +24,9 @@ Tachi agents are classified into three tiers based on their role in the pipeline
 
 | Tier | Role | Target | Hard Cap | Agents |
 |------|------|--------|----------|--------|
-| **Leaf** | Single-concern threat analysis | 100-200 | 300 | spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, prompt-injection, data-poisoning, model-theft, agent-autonomy, tool-abuse |
-| **Report** | Output generation, formatting | 400-600 | 800 | report-assembler, threat-report, threat-infographic |
-| **Methodology** | Multi-phase pipeline with domain schemas | 500-800 | 1,000 | orchestrator, risk-scorer, control-analyzer |
+| **Leaf** | Single-concern threat analysis | 100-150 | 200 | spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, prompt-injection, data-poisoning, model-theft, agent-autonomy, tool-abuse |
+| **Report** | Output generation, formatting | 200-250 | 300 | report-assembler, threat-report, threat-infographic |
+| **Methodology** | Multi-phase pipeline with domain schemas | 350-450 | 500 | orchestrator, risk-scorer, control-analyzer |
 
 **Why tiers differ from AOD agents:** AOD agents (PM, architect, team-lead) orchestrate governance workflows — their domain knowledge lives in the codebase they review. Tachi agents carry domain knowledge (STRIDE methodology, scoring dimensions, control detection patterns) that must be in the prompt for the agent to function. The tiered caps reflect this difference while still enforcing discipline.
 
@@ -34,15 +34,17 @@ Tachi agents are classified into three tiers based on their role in the pipeline
 
 ## 2. Hard Caps
 
-**1,000 lines is the absolute maximum for any tachi agent definition.**
+**500 lines is the absolute maximum for any tachi agent definition.**
 
-No exceptions. Agents exceeding 1,000 lines must extract content into skills using the [Skill Extraction Pattern](#4-skill-extraction-pattern).
+No exceptions. Agents exceeding 500 lines must extract content into skills using the [Skill Extraction Pattern](#4-skill-extraction-pattern).
 
-Why 1,000:
+Why 500:
 - Every line consumes context window space on every invocation
 - Anthropic research shows complex system prompts trigger excessive adaptive thinking in Claude 4.6
 - Large prompts dilute attention — the model loses focus on key instructions
 - Skills provide progressive disclosure without context cost until needed
+
+**Note on the 200-line limit**: The 200-line context limit cited in earlier research applies specifically to Claude Code's MEMORY.md index file, not to agent definition files. Agent definitions have tier-specific caps as defined above.
 
 ---
 
@@ -164,6 +166,10 @@ Load scoring dimensions and CVSS base vectors from the `tachi-risk-scoring` skil
 Apply the composite formula: (CVSS x 0.35) + (Exploitability x 0.30) + ...
 ```
 
+### Loading Strategy
+
+Use lazy loading (Read tool on-demand at workflow branch points) rather than eager loading (skills: frontmatter auto-load). Lazy loading was validated in Feature 075 with 78% context reduction per ADR-002. Each restructured agent includes a skill reference navigation table with load-when conditions that specify exactly when to Read each reference file.
+
 ### Extraction Checklist
 
 Before extracting, verify:
@@ -177,39 +183,39 @@ Before extracting, verify:
 
 ## 5. Current Compliance
 
-Status as of 2026-03-31. Updated post-Feature 075 refactoring (skill extraction + tone audit).
+Status as of 2026-04-01. Updated for Feature 078 (agent context optimization — new tier caps).
 
-### Leaf Agents (cap: 300)
-
-| Agent | Lines | Status | Notes |
-|-------|-------|--------|-------|
-| spoofing | 112 | Compliant | +4 (tools: frontmatter added) |
-| repudiation | 123 | Compliant | +4 (tools: frontmatter added) |
-| tampering | 125 | Compliant | +4 (tools: frontmatter added) |
-| info-disclosure | 127 | Compliant | +4 (tools: frontmatter added) |
-| privilege-escalation | 135 | Compliant | +4 (tools: frontmatter added) |
-| denial-of-service | 140 | Compliant | +4 (tools: frontmatter added) |
-| prompt-injection | 166 | Compliant | +4 (tools: frontmatter added) |
-| data-poisoning | 170 | Compliant | +4 (tools: frontmatter added) |
-| tool-abuse | 184 | Compliant | +4 (tools: frontmatter added) |
-| model-theft | 187 | Compliant | +4 (tools: frontmatter added) |
-| agent-autonomy | 200 | Compliant | +4 (tools: frontmatter added) |
-
-### Report Agents (cap: 800)
+### Leaf Agents (cap: 200)
 
 | Agent | Lines | Status | Notes |
 |-------|-------|--------|-------|
-| report-assembler | 654 | Compliant | +6 (tools: frontmatter added) |
-| threat-infographic | 775 | Compliant | +6 (tools: frontmatter added, tone softened) |
-| threat-report | 800 | Compliant | -1 trim + tools: added (net 0). At cap. |
+| spoofing | 113 | Compliant | +1 (model: field added) |
+| repudiation | 124 | Compliant | +1 (model: field added) |
+| tampering | 126 | Compliant | +1 (model: field added) |
+| info-disclosure | 128 | Compliant | +1 (model: field added) |
+| privilege-escalation | 136 | Compliant | +1 (model: field added) |
+| denial-of-service | 141 | Compliant | +1 (model: field added) |
+| prompt-injection | 167 | Compliant | +1 (model: field added) |
+| data-poisoning | 171 | Compliant | +1 (model: field added) |
+| tool-abuse | 185 | Compliant | +1 (model: field added) |
+| model-theft | 188 | Compliant | +1 (model: field added) |
+| agent-autonomy | 201 | At cap | +1 (model: field added). Leaf exception accepted per architect tolerance — extracting ~10 lines adds complexity without meaningful benefit |
 
-### Methodology Agents (cap: 1,000)
+### Report Agents (cap: 300)
 
 | Agent | Lines | Status | Notes |
 |-------|-------|--------|-------|
-| orchestrator | 769 | Compliant | -1,231 via `tachi-orchestration` skill extraction |
-| control-analyzer | 935 | Compliant | -432 via `tachi-control-analysis` skill extraction |
-| risk-scorer | 994 | Compliant | -425 via `tachi-risk-scoring` skill extraction |
+| report-assembler | 655 | EXCEEDS | Target: ≤300, pending restructure (Feature 078) |
+| threat-infographic | 776 | EXCEEDS | Target: ≤300, pending restructure (Feature 078) |
+| threat-report | 801 | EXCEEDS | Target: ≤300, pending restructure (Feature 078) |
+
+### Methodology Agents (cap: 500)
+
+| Agent | Lines | Status | Notes |
+|-------|-------|--------|-------|
+| orchestrator | 1,287 | EXCEEDS | Target: ≤500, pending restructure (Feature 078) |
+| risk-scorer | 1,094 | EXCEEDS | Target: ≤500, pending restructure (Feature 078) |
+| control-analyzer | 974 | EXCEEDS | Target: ≤500, pending restructure (Feature 078) |
 
 ### Extracted Skills
 

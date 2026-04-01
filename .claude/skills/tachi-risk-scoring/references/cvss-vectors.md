@@ -72,3 +72,35 @@ These defaults from `schemas/risk-scoring.yaml` serve as baselines. Per-threat r
 | privilege-escalation | `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H` | 9.9 | Privilege gain: scope change, full CIA impact |
 | agentic | `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L` | 9.1 | Agent misuse: scope change, high CI, lower A |
 | llm | `CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N` | 9.3 | Prompt injection: no auth but requires input processing |
+
+---
+
+## Bounded Scoring for NEW Findings (Baseline Mode)
+
+When a finding has `delta_status: NEW` (discovered in Phase 2 of a baseline-aware run), its CVSS base score must fall within ±1.0 of the category default CVSS base score defined in `schemas/risk-scoring.yaml` → `category_defaults`.
+
+**Bounding formula**:
+- `min_score = max(0.0, category_default - 1.0)`
+- `max_score = min(10.0, category_default + 1.0)`
+- If the assessed `cvss_base` falls outside `[min_score, max_score]`, clamp it to the nearest bound.
+
+**Category defaults with bounded ranges**:
+
+| Category | ID Prefix | Default CVSS | Bounded Range |
+|----------|-----------|-------------|---------------|
+| spoofing | S | 8.2 | 7.2 – 9.2 |
+| tampering | T | 7.1 | 6.1 – 8.1 |
+| repudiation | R | 4.3 | 3.3 – 5.3 |
+| info-disclosure | I | 6.5 | 5.5 – 7.5 |
+| denial-of-service | D | 7.5 | 6.5 – 8.5 |
+| privilege-escalation | E | 9.9 | 8.9 – 10.0 |
+| agentic | AG | 9.0 | 8.0 – 10.0 |
+| llm | LLM | 9.3 | 8.3 – 10.0 |
+
+**Category resolution**: Determine the category from the finding's ID prefix (S→spoofing, T→tampering, R→repudiation, I→info-disclosure, D→denial-of-service, E→privilege-escalation, AG→agentic, LLM→llm). The default CVSS base score is computed from the corresponding default vector in `schemas/risk-scoring.yaml`.
+
+**When bounding applies**: Only to `NEW` findings from Phase 2 isolated discovery. `UPDATED` findings are re-scored fresh without bounding (they have established context). `UNCHANGED` and `RESOLVED` findings inherit scores verbatim.
+
+**When no baseline is present**: Bounding does not apply. All findings are scored using the standard CVSS assessment without constraints.
+
+**Edge cases at extremes**: If a category default is 9.5, the bounded range is 8.5–10.0 (capped at CVSS maximum). If a category default is 1.0, the bounded range is 0.0–2.0 (floored at CVSS minimum).

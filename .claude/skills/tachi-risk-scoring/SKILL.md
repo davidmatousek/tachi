@@ -97,6 +97,9 @@ Reference files are loaded on-demand by the risk-scorer agent at specific workfl
 
 | Reference | File | Load When |
 |-----------|------|-----------|
-| Scoring Dimensions | `references/scoring-dimensions.md` | Entering exploitability, scalability, or reachability assessment phases (Sections 4-6) |
+| Scoring Dimensions | `references/scoring-dimensions.md` | Entering exploitability or scalability assessment phases (Sections 4-5) |
 | CVSS Vectors | `references/cvss-vectors.md` | Entering CVSS 3.1 base scoring phase (Section 3) |
 | Severity Bands | `references/severity-bands.md` | Entering composite calculation or governance field generation phases (Sections 7-8) |
+| Trust Zones | `references/trust-zones.md` | Entering trust zone extraction phase (Section 2) |
+| Reachability Analysis | `references/reachability-analysis.md` | Entering reachability assessment phase (Section 6) |
+| Output Formatting | `references/output-formatting.md` | Entering markdown output generation phase (Section 9) |

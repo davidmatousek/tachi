@@ -56,6 +56,22 @@ Map the composite score to a severity band using ranges from `schemas/risk-scori
 
 ---
 
+## OWASP 3x3 Risk Matrix
+
+The OWASP risk rating methodology uses likelihood and impact to derive a qualitative risk level. This matrix is used during threat model generation (threats.md) and provides the initial risk_level that the quantitative scorer refines.
+
+| | Low Impact | Medium Impact | High Impact |
+|---|---|---|---|
+| **High Likelihood** | Medium | High | Critical |
+| **Medium Likelihood** | Low | Medium | High |
+| **Low Likelihood** | Low | Low | Medium |
+
+**Relationship to composite scoring**: The qualitative risk_level from threats.md is an input signal, not a binding constraint. The four-dimensional composite score may produce a different severity band than the OWASP matrix suggests. When they diverge, the composite score takes precedence — it incorporates more dimensions of analysis (exploitability, scalability, reachability) that the simple likelihood×impact matrix does not capture.
+
+**Finding ID to OWASP mapping**: The initial risk_level field parsed from threats.md table rows uses this matrix. During scoring, the risk_level serves as a reasonableness check — if the composite score diverges by more than one severity band from the OWASP risk_level, the scorer should document the divergence rationale in the scoring notes.
+
+---
+
 ## Correlation Group Handling
 
 When Section 4a correlation groups exist in the parsed input:

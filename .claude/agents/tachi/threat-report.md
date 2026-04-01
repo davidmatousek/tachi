@@ -6,6 +6,7 @@ tools:
   - Glob
   - Grep
   - Write
+model: sonnet
 ---
 ## Metadata
 

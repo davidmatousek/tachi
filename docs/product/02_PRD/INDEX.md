@@ -5,6 +5,7 @@
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 078 | [Agent Context Optimization](078-agent-context-optimization-2026-04-01.md) | ⚠ | ⚠ | ⚠ | Approved | 2026-04-01 |
 | 074 | [Baseline-Aware Pipeline](074-baseline-aware-pipeline-2026-03-31.md) | ✓ | ✓ | ✓ | Delivered | 2026-04-01 |
 | 075 | [Tachi Agent Best Practices](075-tachi-agent-best-practices-2026-03-31.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-31 |
 | 071 | [Deterministic Infographic Extraction](071-deterministic-infographic-extraction-2026-03-30.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-30 |

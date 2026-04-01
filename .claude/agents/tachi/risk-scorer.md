@@ -6,6 +6,7 @@ tools:
   - Glob
   - Grep
   - Write
+model: sonnet
 ---
 
 # Risk Scorer
@@ -24,9 +25,12 @@ Load domain knowledge on-demand from the `tachi-risk-scoring` skill using the Re
 
 | Reference | File | Load When |
 |-----------|------|-----------|
-| Scoring dimensions | `.claude/skills/tachi-risk-scoring/references/scoring-dimensions.md` | Section 4-6: Dimensional scoring |
-| CVSS vectors | `.claude/skills/tachi-risk-scoring/references/cvss-vectors.md` | Section 3: CVSS base scoring |
-| Severity bands | `.claude/skills/tachi-risk-scoring/references/severity-bands.md` | Section 7-8: Composite scoring and governance |
+| Scoring dimensions | `.claude/skills/tachi-risk-scoring/references/scoring-dimensions.md` | Exploitability/scalability phases (Sections 4-5) |
+| CVSS vectors | `.claude/skills/tachi-risk-scoring/references/cvss-vectors.md` | CVSS base scoring (Section 3) |
+| Severity bands | `.claude/skills/tachi-risk-scoring/references/severity-bands.md` | Composite calculation, governance (Sections 7-8) |
+| Trust zones | `.claude/skills/tachi-risk-scoring/references/trust-zones.md` | Trust zone extraction (Section 2) |
+| Reachability | `.claude/skills/tachi-risk-scoring/references/reachability-analysis.md` | Reachability assessment (Section 6) |
+| Output formatting | `.claude/skills/tachi-risk-scoring/references/output-formatting.md` | Markdown output generation (Section 9) |
 
 ---
 
@@ -47,22 +51,22 @@ When findings include `delta_status` fields (from a baseline-aware pipeline run)
 
 | Delta Status | Scoring Treatment | Score Source |
 |-------------|-------------------|-------------|
-| `UNCHANGED` | **Inherit all scores verbatim** from baseline — skip dimensional scoring entirely | `inherited` |
+| `UNCHANGED` | **Inherit all scores verbatim** from baseline -- skip dimensional scoring entirely | `inherited` |
 | `UPDATED` | **Re-score fresh** using full 4-dimensional model | `fresh` |
 | `NEW` | **Score fresh** using full 4-dimensional model | `fresh` |
-| `RESOLVED` | **Retain last-known scores** from baseline — no scoring needed | `inherited` |
+| `RESOLVED` | **Retain last-known scores** from baseline -- no scoring needed | `inherited` |
 
 #### Score Inheritance for UNCHANGED Findings
 
 For findings with `delta_status: UNCHANGED`, copy the following fields verbatim from the baseline:
 
-- `cvss_base` — CVSS 3.1 base score
-- `cvss_vector` — Full CVSS 3.1 vector string
-- `exploitability` — Exploitability assessment score
-- `scalability` — Scalability assessment score
-- `reachability` — Reachability assessment score
-- `composite_score` — Weighted composite score
-- `severity_band` — Severity classification
+- `cvss_base` -- CVSS 3.1 base score
+- `cvss_vector` -- Full CVSS 3.1 vector string
+- `exploitability` -- Exploitability assessment score
+- `scalability` -- Scalability assessment score
+- `reachability` -- Reachability assessment score
+- `composite_score` -- Weighted composite score
+- `severity_band` -- Severity classification
 
 Set `score_source` to `"inherited"` to indicate scores were not freshly computed.
 
@@ -72,8 +76,8 @@ Set `score_source` to `"inherited"` to indicate scores were not freshly computed
 
 Every scored finding includes a `score_source` field per `schemas/risk-scoring.yaml`:
 
-- `"inherited"` — Scores copied from baseline (UNCHANGED and RESOLVED findings)
-- `"fresh"` — Scores computed in this run (NEW and UPDATED findings)
+- `"inherited"` -- Scores copied from baseline (UNCHANGED and RESOLVED findings)
+- `"fresh"` -- Scores computed in this run (NEW and UPDATED findings)
 
 When no baseline is present (first run), all findings receive `score_source: "fresh"`.
 
@@ -115,12 +119,12 @@ Parse each of the six STRIDE category tables. Each table row represents one find
 | Mitigation | `mitigation` | Recommended countermeasure |
 
 Derive the `category` field from the section heading:
-- Section 3.1 → `spoofing`
-- Section 3.2 → `tampering`
-- Section 3.3 → `repudiation`
-- Section 3.4 → `info-disclosure`
-- Section 3.5 → `denial-of-service`
-- Section 3.6 → `privilege-escalation`
+- Section 3.1 -> `spoofing`
+- Section 3.2 -> `tampering`
+- Section 3.3 -> `repudiation`
+- Section 3.4 -> `info-disclosure`
+- Section 3.5 -> `denial-of-service`
+- Section 3.6 -> `privilege-escalation`
 
 **AI Threat Tables (Sections 4.1-4.2)**:
 
@@ -138,8 +142,8 @@ Parse the two AI threat category tables. These include an additional OWASP Refer
 | Mitigation | `mitigation` | Recommended countermeasure |
 
 Derive category:
-- Section 4.1 → `agentic`
-- Section 4.2 → `llm`
+- Section 4.1 -> `agentic`
+- Section 4.2 -> `llm`
 
 **Correlated Findings (Section 4a)**:
 
@@ -158,10 +162,10 @@ Store correlation groups for use in the Composite Calculation phase: primary fin
 **Component-to-DFD Mapping**:
 
 Cross-reference each finding's `component` against the Components table in Section 1 (System Overview) to resolve the `dfd_element_type` field. Map the "Type" column value:
-- `External Entity` → `External Entity`
-- `Process` → `Process`
-- `Data Store` → `Data Store`
-- `Data Flow` → `Data Flow`
+- `External Entity` -> `External Entity`
+- `Process` -> `Process`
+- `Data Store` -> `Data Store`
+- `Data Flow` -> `Data Flow`
 
 **Error Handling**:
 - Skip malformed table rows (missing required columns) and report them as parsing errors
@@ -182,7 +186,7 @@ When `threats.md` is unavailable, extract findings from `threats.sarif` JSON:
 | `message.text` | `threat` | Threat description |
 | `message.markdown` | `mitigation` | Mitigation recommendation |
 | `level` | (derived) | Used to infer `risk_level` with `security-severity` |
-| `locations[0].logicalLocations[0].kind` | `dfd_element_type` | Reverse-map: `process` → `Process`, `data-store` → `Data Store`, etc. |
+| `locations[0].logicalLocations[0].kind` | `dfd_element_type` | Reverse-map: `process` -> `Process`, `data-store` -> `Data Store`, etc. |
 | `partialFingerprints["primaryLocationLineHash"]` | (preserve) | Carry through to scored SARIF output |
 | `partialFingerprints["correlationGroup"]` | (preserve) | Identifies correlation group primaries |
 
@@ -200,11 +204,11 @@ When `threats.md` is unavailable, extract findings from `threats.sarif` JSON:
 | `tachi/ai/llm-threats` | `llm` |
 
 **Risk Level from SARIF**: Infer `likelihood` and `impact` are not directly available in SARIF. Instead, use the rule-level `security-severity` property to derive `risk_level`:
-- `"9.0"` → `Critical`
-- `"8.0"` → `High`
-- `"5.0"` → `Medium`
-- `"2.0"` → `Low`
-- `"0.1"` → `Note`
+- `"9.0"` -> `Critical`
+- `"8.0"` -> `High`
+- `"5.0"` -> `Medium`
+- `"2.0"` -> `Low`
+- `"0.1"` -> `Note`
 
 Set `likelihood` and `impact` to `null` when parsing from SARIF (these qualitative values are not preserved in the SARIF format).
 
@@ -225,179 +229,17 @@ This gate ensures the agent exits cleanly when the input threat model contains n
 
 ## 2. Trust Zone Extraction
 
-Extract trust zone data from `threats.md` Section 2 to build a component-to-zone mapping dictionary. This mapping is consumed by the Reachability Analysis phase (Section 6) to derive architecture-aware reachability scores per finding.
+**MANDATORY**: Read `.claude/skills/tachi-risk-scoring/references/trust-zones.md` for the complete trust zone extraction specification including table location, row parsing, trust level normalization, zone name normalization, component-to-zone mapping dictionary construction, cross-referencing with Section 1 components, fallback behavior, and error handling.
 
-### Input Source
-
-Trust zone data lives in `threats.md` under the `## 2. Trust Boundaries` heading, within the `### Trust Zones` subsection. The canonical table structure is defined in `templates/tachi/output-schemas/threats.md`.
-
-### 2a. Locating the Trust Zone Table
-
-**Step 1 -- Find Section 2**: Scan for a markdown heading matching `## 2. Trust Boundaries` (case-insensitive). If no Section 2 heading is found, skip to the Fallback Behavior rules below.
-
-**Step 2 -- Find the Trust Zones subsection**: Within Section 2, locate the `### Trust Zones` subheading. The trust zone table immediately follows this subheading (after any optional descriptive paragraph).
-
-**Step 3 -- Identify the table**: The trust zone table has exactly three columns:
-
-| Column | Description |
-|--------|-------------|
-| Zone | Zone name (e.g., "External Zone", "User Zone", "DMZ", "Public Internet") |
-| Trust Level | Classification: `Untrusted`, `Semi-Trusted`, or `Trusted` |
-| Components | Comma-separated list of component names assigned to this zone |
-
-The table header row MUST contain "Zone", "Trust Level", and "Components" (case-insensitive match). If a table is found under Section 2 but does not match this three-column structure, treat it as a malformed table (see Error Handling below).
-
-### 2b. Parsing Table Rows
-
-For each data row (after the header and separator rows), extract:
-
-| Field | Extraction Rule |
-|-------|-----------------|
-| `zone_name` | Trim whitespace from the Zone column value |
-| `trust_level` | Normalize the Trust Level column value (see Trust Level Normalization below) |
-| `components` | Split the Components column on commas, trim whitespace from each component name |
-
-**Example input row**:
-
-```
-| Application Zone | Semi-Trusted | Guardrails Service, LLM Agent Orchestrator, MCP Tool Server |
-```
-
-**Extracted fields**:
-- `zone_name`: `Application Zone`
-- `trust_level`: `Semi-Trusted`
-- `components`: `["Guardrails Service", "LLM Agent Orchestrator", "MCP Tool Server"]`
-
-### 2c. Trust Level Normalization
-
-The Trust Level column value MUST be normalized to one of exactly three canonical values: `Untrusted`, `Semi-Trusted`, or `Trusted`. Real-world `threats.md` files exhibit capitalization and phrasing variations. Apply the following normalization rules in order:
-
-**Step 1 -- Case-insensitive match against canonical values**:
-- `untrusted` (any case) → `Untrusted`
-- `semi-trusted` or `semi trusted` (any case, with or without hyphen) → `Semi-Trusted`
-- `trusted` (any case, but NOT matching "untrusted" or "semi-trusted") → `Trusted`
-
-**Step 2 -- Keyword-based classification for non-standard phrasing**:
-
-If Step 1 does not produce a match, classify by scanning for keywords (case-insensitive):
-
-| Keywords Present | Normalized Trust Level |
-|------------------|----------------------|
-| "untrust", "external", "public", "internet", "unauth" | `Untrusted` |
-| "semi", "dmz", "perimeter", "gateway", "partial" | `Semi-Trusted` |
-| "trust", "internal", "private", "backend", "core" | `Trusted` |
-
-**Keyword precedence**: If multiple keywords match across categories, apply the most restrictive (lowest trust) level. "Semi" keywords take precedence over "Trusted" keywords; "Untrusted" keywords take precedence over all others.
-
-**Step 3 -- Unresolvable trust level**: If neither Step 1 nor Step 2 produces a classification, default to `Semi-Trusted` and emit a warning: `"Trust level '{original_value}' for zone '{zone_name}' could not be classified; defaulting to Semi-Trusted"`.
-
-### 2d. Zone Name Normalization
-
-Zone names are stored as-is from the table (preserving the original author's naming) but are matched case-insensitively when performing component lookups. No renaming or canonicalization is applied to zone names.
-
-**Observed zone name variations** (from the tachi example corpus):
-- `External Zone`, `User Zone`, `Public Internet`, `External Clients`, `External Services`
-- `DMZ`, `Application Zone`, `Internal Services Zone`
-- `Internal Zone`, `Internal Network`, `Internal Services`
-
-### 2e. Component-to-Zone Mapping Dictionary
-
-Build a dictionary mapping each component name to its zone and trust level. This is the primary output of the Trust Zone Extraction phase.
-
-**Dictionary structure**:
-
-```
-component_zone_map = {
-    "<component_name>": {
-        "zone": "<zone_name>",
-        "trust_level": "<Untrusted|Semi-Trusted|Trusted>"
-    },
-    ...
-}
-```
-
-**Construction rules**:
-
-1. For each parsed table row, iterate over the extracted `components` list
-2. For each component, add an entry to the dictionary with the component name as key (trimmed, preserving original case)
-3. Component lookup at scoring time is **case-insensitive** -- when the Reachability Analysis phase (Section 6) queries this dictionary, it compares component names using case-insensitive matching
-4. If a component appears in multiple zones (duplicate assignment), use the **first occurrence** and emit a warning: `"Component '{component_name}' appears in multiple zones; using first assignment: '{zone_name}' ({trust_level})"`
-
-**Example output** (from `examples/agentic-app/sample-report/threats.md`):
-
-```
-component_zone_map = {
-    "User": {
-        "zone": "User Zone",
-        "trust_level": "Untrusted"
-    },
-    "Guardrails Service": {
-        "zone": "Application Zone",
-        "trust_level": "Semi-Trusted"
-    },
-    "LLM Agent Orchestrator": {
-        "zone": "Application Zone",
-        "trust_level": "Semi-Trusted"
-    },
-    "MCP Tool Server": {
-        "zone": "Application Zone",
-        "trust_level": "Semi-Trusted"
-    },
-    "Knowledge Base": {
-        "zone": "Application Zone",
-        "trust_level": "Semi-Trusted"
-    },
-    "Audit Logger": {
-        "zone": "Application Zone",
-        "trust_level": "Semi-Trusted"
-    },
-    "External API": {
-        "zone": "External Services",
-        "trust_level": "Untrusted"
-    }
-}
-```
-
-### 2f. Cross-Reference with Section 1 Components
-
-After building the `component_zone_map`, cross-reference it against the Components table parsed from Section 1 (System Overview) during Threat Parsing (Section 1a):
-
-1. For each component in the Section 1 Components table, check whether it exists in `component_zone_map`
-2. If a Section 1 component is **not found** in any trust zone, assign it a default zone entry: `{ "zone": "Unassigned", "trust_level": "Semi-Trusted" }` and emit a warning: `"Component '{component_name}' from Section 1 has no trust zone assignment; defaulting to Semi-Trusted"`
-3. If a trust zone table component is **not found** in the Section 1 Components table, retain it in the mapping (trust zone assignments are authoritative for reachability scoring regardless of Section 1 coverage)
-
-This cross-reference ensures that every component referenced by a finding has a trust level available for reachability scoring, even when the trust zone table does not cover all components.
-
-### 2g. Fallback Behavior
-
-When no trust zone data is available, the Reachability Analysis phase (Section 6) cannot derive zone-based scores. The following fallback cascade applies:
-
-1. **No Section 2 heading**: If `threats.md` does not contain a `## 2. Trust Boundaries` heading, set `component_zone_map` to empty and emit a warning: `"No trust boundaries section found in threats.md; reachability will use default scores"`
-2. **Section 2 exists but no Trust Zones table**: If the heading exists but no valid three-column trust zone table is found beneath `### Trust Zones`, set `component_zone_map` to empty and emit a warning: `"Trust Boundaries section found but no valid trust zone table; reachability will use default scores"`
-3. **Empty trust zone table**: If the table exists but contains zero data rows (only header and separator), set `component_zone_map` to empty and emit a warning: `"Trust zone table is empty; reachability will use default scores"`
-4. **SARIF-only input**: When parsing from `threats.sarif` (no `threats.md` available), trust zone data is not available in the SARIF format. Set `component_zone_map` to empty. The warning is: `"Trust zone data not available in SARIF input; reachability will use default scores"`
-
-In all fallback cases, the Reachability Analysis phase (Section 6) applies a default reachability score of 5.0 (medium exposure) to all findings, with the corresponding warning propagated to the output.
-
-### 2h. Error Handling
-
-**Malformed table rows**: If a table row has fewer than three cells after splitting on pipe delimiters, skip the row and emit a warning: `"Skipping malformed trust zone row: '{raw_row_text}'"`. Continue processing remaining rows.
-
-**Empty component list**: If the Components column is empty or contains only whitespace for a row, skip the row and emit a warning: `"Trust zone '{zone_name}' has no components assigned; skipping"`.
-
-**Empty zone name**: If the Zone column is empty or contains only whitespace, skip the row and emit a warning: `"Trust zone row with empty zone name; skipping"`.
-
-**Duplicate zone names**: If two rows share the same zone name (case-insensitive), merge their component lists under the first occurrence's trust level. Emit a warning if the trust levels differ: `"Zone '{zone_name}' appears with conflicting trust levels ('{first_level}' and '{second_level}'); using '{first_level}'"`.
-
-**Non-table content in Section 2**: The `### Boundary Crossings` subsection also appears in Section 2 and contains a different table (5 columns: Crossing, From Zone, To Zone, Components, Controls). Do NOT parse the Boundary Crossings table as trust zone data. Only parse the table directly under the `### Trust Zones` subheading.
+Extract trust zone data from `threats.md` Section 2 to build a component-to-zone mapping dictionary. This mapping is consumed by the Reachability Analysis phase (Section 6) to derive architecture-aware reachability scores per finding. The reference file covers subsections 2a through 2h: locating the trust zone table, parsing rows, normalizing trust levels and zone names, building the component-to-zone map, cross-referencing against Section 1 components, fallback behavior when no trust data is available, and error handling for malformed rows.
 
 ---
 
 ## 3. CVSS 3.1 Base Scoring
 
-Assign a CVSS 3.1 base score and full vector string to each parsed finding. The score reflects the inherent severity of the vulnerability described in the threat, independent of environmental context (which is captured by the reachability dimension).
+**MANDATORY**: Read `.claude/skills/tachi-risk-scoring/references/cvss-vectors.md` for CVSS metric assessment guidance, AI-specific CVSS guidance, and category default vector reference.
 
-**Domain knowledge**: Load `.claude/skills/tachi-risk-scoring/references/cvss-vectors.md` for CVSS metric assessment guidance, AI-specific CVSS guidance, and category default vector reference.
+Assign a CVSS 3.1 base score and full vector string to each parsed finding. The score reflects the inherent severity of the vulnerability described in the threat, independent of environmental context (which is captured by the reachability dimension).
 
 For each finding, store:
 - `cvss_base`: The numeric base score (0.0-10.0)
@@ -405,41 +247,26 @@ For each finding, store:
 
 ### Bounded Scoring for NEW Findings (Baseline Mode)
 
-When a finding has `delta_status: NEW` (discovered in Phase 2 of a baseline-aware run), its CVSS base score must fall within ±1.0 of the category default CVSS base score defined in `schemas/risk-scoring.yaml` → `category_defaults`.
+When a finding has `delta_status: NEW` (discovered in Phase 2 of a baseline-aware run), its CVSS base score must fall within +/-1.0 of the category default CVSS base score defined in `schemas/risk-scoring.yaml` -> `category_defaults`.
 
 **Bounding formula**:
 - `min_score = max(0.0, category_default - 1.0)`
 - `max_score = min(10.0, category_default + 1.0)`
 - If the assessed `cvss_base` falls outside `[min_score, max_score]`, clamp it to the nearest bound.
 
-**Category defaults** (reference — base scores derived from default CVSS vectors in `schemas/risk-scoring.yaml` → `category_defaults`):
-
-| Category | ID Prefix | Default CVSS | Bounded Range |
-|----------|-----------|-------------|---------------|
-| spoofing | S | 8.2 | 7.2 – 9.2 |
-| tampering | T | 7.1 | 6.1 – 8.1 |
-| repudiation | R | 4.3 | 3.3 – 5.3 |
-| info-disclosure | I | 6.5 | 5.5 – 7.5 |
-| denial-of-service | D | 7.5 | 6.5 – 8.5 |
-| privilege-escalation | E | 9.9 | 8.9 – 10.0 |
-| agentic | AG | 9.0 | 8.0 – 10.0 |
-| llm | LLM | 9.3 | 8.3 – 10.0 |
-
-**Category resolution**: Determine the category from the finding's ID prefix (S→spoofing, T→tampering, R→repudiation, I→info-disclosure, D→denial-of-service, E→privilege-escalation, AG→agentic, LLM→llm). The default CVSS base score is computed from the corresponding default vector in `schemas/risk-scoring.yaml`.
+**Category resolution**: Determine the category from the finding's ID prefix (S->spoofing, T->tampering, R->repudiation, I->info-disclosure, D->denial-of-service, E->privilege-escalation, AG->agentic, LLM->llm). The default CVSS base score is computed from the corresponding default vector in `schemas/risk-scoring.yaml`. Refer to `cvss-vectors.md` for the category defaults table.
 
 **When bounding applies**: Only to `NEW` findings from Phase 2 isolated discovery. `UPDATED` findings are re-scored fresh without bounding (they have established context). `UNCHANGED` and `RESOLVED` findings inherit scores verbatim.
 
 **When no baseline is present**: Bounding does not apply. All findings are scored using the standard CVSS assessment without constraints.
 
-**Edge case at extremes**: If a category default is 9.5, the bounded range is 8.5–10.0 (capped at CVSS maximum). If a category default is 1.0, the bounded range is 0.0–2.0 (floored at CVSS minimum).
-
 ---
 
 ## 4. Exploitability Assessment
 
-Assess how easily each threat can be exploited in practice. This dimension captures operational attack feasibility that CVSS base scores do not fully reflect.
+**MANDATORY**: Read `.claude/skills/tachi-risk-scoring/references/scoring-dimensions.md` for sub-dimension tables, AI-specific exploitability guidance, and scoring baselines.
 
-**Domain knowledge**: Load `.claude/skills/tachi-risk-scoring/references/scoring-dimensions.md` for sub-dimension tables, AI-specific exploitability guidance, and scoring baselines.
+Assess how easily each threat can be exploited in practice. This dimension captures operational attack feasibility that CVSS base scores do not fully reflect.
 
 For each finding, store:
 - `exploitability`: The average of four sub-dimensions (0.0-10.0), rounded to one decimal place
@@ -448,9 +275,9 @@ For each finding, store:
 
 ## 5. Scalability Assessment
 
-Assess how well the attack scales -- whether it can be automated, how many targets it affects, what resources are needed, and how likely it is to be detected.
+**MANDATORY**: Read `.claude/skills/tachi-risk-scoring/references/scoring-dimensions.md` for sub-dimension tables and scoring examples by threat category.
 
-**Domain knowledge**: Load `.claude/skills/tachi-risk-scoring/references/scoring-dimensions.md` for sub-dimension tables and scoring examples by threat category.
+Assess how well the attack scales -- whether it can be automated, how many targets it affects, what resources are needed, and how likely it is to be detected.
 
 For each finding, store:
 - `scalability`: The average of four sub-dimensions (0.0-10.0), rounded to one decimal place
@@ -459,7 +286,9 @@ For each finding, store:
 
 ## 6. Reachability Analysis
 
-Assess how exposed each finding's target component is based on its position within the architecture's trust boundaries. Reachability captures the architecture-aware attack surface that other dimensions do not address -- a vulnerability in an internet-facing component poses a fundamentally different risk than the same vulnerability behind multiple authentication layers and network segmentation.
+**MANDATORY**: Read `.claude/skills/tachi-risk-scoring/references/reachability-analysis.md` for the full reachability analysis pipeline including zone baselines, keyword adjustments, architecture barrier adjustments, fuzzy matching, clamping, and defaults.
+
+Assess how exposed each finding's target component is based on its position within the architecture's trust boundaries. Reachability captures the architecture-aware attack surface that other dimensions do not address.
 
 ### Input Dependencies
 
@@ -468,8 +297,6 @@ This section consumes two data sources:
 1. **`component_zone_map`** (required): The component-to-zone mapping dictionary produced by Trust Zone Extraction (Section 2). Maps each component name to its `zone` and `trust_level` (`Untrusted`, `Semi-Trusted`, or `Trusted`).
 2. **`architecture.md`** (optional): When an `architecture.md` file exists in the same directory as the input `threats.md`, parse it for supplementary architecture context (authentication barriers and network segmentation) that adjusts the baseline zone-derived score.
 
-**Domain knowledge**: Load `.claude/skills/tachi-risk-scoring/references/scoring-dimensions.md` for the full reachability analysis pipeline: zone baselines, keyword adjustments, architecture barrier adjustments, fuzzy matching, clamping, and defaults.
-
 For each finding, store:
 - `reachability`: The final reachability score (0.0-10.0), rounded to one decimal place
 
@@ -477,9 +304,9 @@ For each finding, store:
 
 ## 7. Composite Calculation
 
-Combine the four dimensional scores into a single composite risk score per finding, map it to a severity band, and handle correlation group scoring.
+**MANDATORY**: Read `.claude/skills/tachi-risk-scoring/references/severity-bands.md` for the weighted composite formula with weights, severity band mapping table, correlation group handling, and computation sequence.
 
-**Domain knowledge**: Load `.claude/skills/tachi-risk-scoring/references/severity-bands.md` for the weighted composite formula with weights, severity band mapping table, correlation group handling, and computation sequence.
+Combine the four dimensional scores into a single composite risk score per finding, map it to a severity band, and handle correlation group scoring.
 
 For each finding, store:
 - `composite_score`: The weighted composite (0.0-10.0), rounded to one decimal place
@@ -489,9 +316,9 @@ For each finding, store:
 
 ## 8. Governance Fields
 
-Attach remediation tracking metadata to each scored finding based on its severity band. These fields are derived deterministically from the severity band assigned in Section 7, using the mappings defined in `schemas/risk-scoring.yaml` -> `severity_bands`.
+**MANDATORY**: Read `.claude/skills/tachi-risk-scoring/references/severity-bands.md` for severity-to-governance mapping, SLA parsing, review date calculation, disposition values, and override guidance.
 
-**Domain knowledge**: Load `.claude/skills/tachi-risk-scoring/references/severity-bands.md` for severity-to-governance mapping, SLA parsing, review date calculation, disposition values, and override guidance.
+Attach remediation tracking metadata to each scored finding based on its severity band. These fields are derived deterministically from the severity band assigned in Section 7, using the mappings defined in `schemas/risk-scoring.yaml` -> `severity_bands`.
 
 For each finding, store:
 - `risk_owner`: Default `"Unassigned"` (human-assigned during triage)
@@ -516,9 +343,9 @@ When findings include `delta_status` fields from a baseline-aware pipeline run, 
 
 SLA recalculation occurs **only** when an `UPDATED` finding's severity band changes between the baseline and the current run:
 
-- **Same severity band** (e.g., High → High): Keep existing `remediation_sla` and `review_date` unchanged. The SLA clock continues from the original discovery date, not from this run.
-- **Severity band changed** (e.g., High → Critical): Recalculate `remediation_sla` per the new severity band mapping. Recalculate `review_date` as today's date + new SLA duration. Update `risk_disposition` if the change crosses the Mitigate/Review threshold (Critical/High → `"Mitigate"`, Medium/Low → `"Review"`).
-- **`risk_owner` is NEVER auto-overwritten**. It is a human-assigned field set during triage. Even when severity changes, the assigned owner persists. Only a human can change `risk_owner` — the pipeline preserves whatever value the baseline contains.
+- **Same severity band** (e.g., High -> High): Keep existing `remediation_sla` and `review_date` unchanged. The SLA clock continues from the original discovery date, not from this run.
+- **Severity band changed** (e.g., High -> Critical): Recalculate `remediation_sla` per the new severity band mapping. Recalculate `review_date` as today's date + new SLA duration. Update `risk_disposition` if the change crosses the Mitigate/Review threshold (Critical/High -> `"Mitigate"`, Medium/Low -> `"Review"`).
+- **`risk_owner` is NEVER auto-overwritten**. It is a human-assigned field set during triage. Even when severity changes, the assigned owner persists. Only a human can change `risk_owner` -- the pipeline preserves whatever value the baseline contains.
 
 #### Baseline Governance Detection
 
@@ -526,11 +353,13 @@ To carry forward governance fields, the scoring pipeline must locate baseline go
 
 1. When the input `threats.md` has baseline frontmatter (`baseline.source` is not null), check for a baseline `risk-scores.md` in the same directory as the input.
 2. If found, parse each finding's governance fields (`risk_owner`, `remediation_sla`, `risk_disposition`, `review_date`) by matching on finding ID.
-3. If the baseline `risk-scores.md` is not found, assign fresh governance fields for all findings — governance carry-forward requires baseline scores to be available. Log: `"Baseline risk-scores.md not found — assigning fresh governance fields for all findings"`.
+3. If the baseline `risk-scores.md` is not found, assign fresh governance fields for all findings -- governance carry-forward requires baseline scores to be available. Log: `"Baseline risk-scores.md not found -- assigning fresh governance fields for all findings"`.
 
 ---
 
 ## 9. Output Generation: Markdown (risk-scores.md)
+
+**MANDATORY**: Read `.claude/skills/tachi-risk-scoring/references/output-formatting.md` for column definitions, truncation rules, category display name mappings, governance table format, and methodology section structure.
 
 Generate a `risk-scores.md` file in the same directory as the input threat model. The output MUST conform to the structure defined in `templates/tachi/output-schemas/risk-scores.md`. All sections are required and MUST appear in the order specified below. Findings are sorted by composite score descending throughout the document.
 
@@ -552,190 +381,27 @@ scoring_weights:
 ---
 ```
 
-**Field generation rules**:
-
-| Field | Rule |
-|-------|------|
-| `schema_version` | Always `"1.0"` for this release |
-| `date` | ISO 8601 date when scoring was performed (the current date, format `YYYY-MM-DD`) |
-| `source_file` | Relative path from the output directory to the input file that was scored (e.g., `threats.md` or `threats.sarif`) |
-| `classification` | Always `"confidential"` unless overridden by organizational policy |
-| `scoring_weights` | The four dimension weights used in the composite formula. These are fixed at the values shown and document the formula for reproducibility |
+Set `schema_version` to `"1.0"`, `date` to current ISO 8601 date, `source_file` to the relative path of the input file, `classification` to `"confidential"`, and `scoring_weights` to the fixed composite formula weights.
 
 ### 9b. Section 1: Executive Summary
 
-Generate the executive summary immediately after the frontmatter. This section provides a high-level risk posture snapshot for security managers who need to assess severity distribution without reading individual findings.
-
-**Content to generate**:
-
-1. **Total findings count**: The total number of scored findings (e.g., "**18 findings** scored across 8 threat categories").
-
-2. **Severity band distribution table**: A table showing the count of findings in each severity band:
-
-   ```markdown
-   | Severity | Count |
-   |----------|-------|
-   | Critical | N     |
-   | High     | N     |
-   | Medium   | N     |
-   | Low      | N     |
-   ```
-
-   Include all four severity bands even when a band has zero findings (display `0` for empty bands). Order is always Critical, High, Medium, Low (descending severity).
-
-3. **Highest-risk component identification**: Identify the component with the highest single composite score across all findings. Format as: "**Highest-risk component**: {component_name} (composite: {score}, severity: {band})". When multiple findings tie for the highest composite score, select the finding whose component appears first in alphabetical order.
-
-4. **Severity distribution narrative**: A single sentence summarizing the distribution pattern (e.g., "The majority of findings (12 of 18) fall in the Medium band, with 2 Critical findings requiring immediate attention.").
-
-**Generation rules**:
-- Counts should be derived by iterating over all scored findings and tallying by `severity_band`
-- The highest-risk component is determined by the maximum `composite_score` value, not by counting findings per component
-- When all findings fall in a single severity band, still include the full four-row table
+Generate the executive summary with: (1) total findings count across threat categories, (2) severity band distribution table (Critical/High/Medium/Low -- include all four bands even when zero), (3) highest-risk component by maximum `composite_score` (alphabetical tiebreaker), (4) single-sentence severity distribution narrative.
 
 ### 9c. Section 2: Scored Threat Table
 
-Generate a markdown table containing all scored findings. This is the primary reference table for security engineers triaging findings.
-
-**Column definitions**:
-
-| Column | Source Field | Format |
-|--------|-------------|--------|
-| ID | `id` | Finding ID as-is (e.g., `S-1`, `AG-3`) |
-| Component | `component` | Component name, truncated to 30 characters with `...` suffix if longer |
-| Threat | `threat` | Threat description, truncated to 60 characters with `...` suffix if longer |
-| CVSS | `cvss_base` | Decimal with one digit (e.g., `7.2`) |
-| Exploitability | `exploitability` | Decimal with one digit (e.g., `6.5`) |
-| Scalability | `scalability` | Decimal with one digit (e.g., `4.0`) |
-| Reachability | `reachability` | Decimal with one digit (e.g., `8.0`) |
-| Composite | `composite_score` | Decimal with one digit (e.g., `6.8`) |
-| Severity | `severity_band` | `Critical`, `High`, `Medium`, or `Low` |
-| SLA | `remediation_sla` | Duration string (e.g., `24h`, `7d`) |
-| Disposition | `risk_disposition` | `Mitigate` or `Review` |
-
-**Sort order**: Rows are sorted by `composite_score` descending (highest risk first). When two findings have equal composite scores, secondary sort by `id` in natural alphanumeric order (e.g., `S-1` before `S-2`, `AG-1` before `LLM-1`).
-
-**Truncation rules**:
-- Component names exceeding 30 characters: truncate to 27 characters and append `...` (e.g., `"LLM Agent Orchestrator Servi..."`)
-- Threat descriptions exceeding 60 characters: truncate to 57 characters and append `...` (e.g., `"Attacker injects malicious prompts to bypass guardrail..."`)
-- Truncation is applied only in the Scored Threat Table; the Dimensional Breakdown (Section 3) shows full untruncated text
-
-**Numeric formatting**: All dimension scores and composite scores are formatted with exactly one decimal place. Trailing zeros are preserved (e.g., `4.0` not `4`).
-
-**Correlation group display**: Correlated peer findings appear in the table with their own IDs but carry the primary's scores. No special notation is needed in the table -- peers are indistinguishable from independently scored findings.
+Refer to `output-formatting.md` for complete column definitions, truncation rules, numeric formatting, sort order, and correlation group display rules. Generate a markdown table containing all scored findings as the primary reference table for security engineers.
 
 ### 9d. Section 3: Dimensional Breakdown
 
-Generate a per-finding breakdown section that provides the full scoring rationale for each finding. This section is intended for security engineers who need to understand why a finding received its scores, not just what the scores are.
-
-**Structure**: One subsection per finding, ordered by `composite_score` descending (same order as the Scored Threat Table). Each subsection uses an H3 heading.
-
-**Per-finding subsection format**:
-
-```markdown
-### {id}: {threat_description}
-
-**Component**: {component}
-**Category**: {category}
-**Composite Score**: {composite_score} ({severity_band})
-
-| Dimension | Score | Weight | Weighted |
-|-----------|-------|--------|----------|
-| CVSS Base | {cvss_base} | 0.35 | {cvss_base * 0.35} |
-| Exploitability | {exploitability} | 0.30 | {exploitability * 0.30} |
-| Scalability | {scalability} | 0.15 | {scalability * 0.15} |
-| Reachability | {reachability} | 0.20 | {reachability * 0.20} |
-| **Composite** | | | **{composite_score}** |
-
-**CVSS Vector**: `{cvss_vector}`
-
-**Scoring Rationale**:
-- **CVSS**: {1-2 sentence justification for the CVSS base score}
-- **Exploitability**: {1-2 sentence justification}
-- **Scalability**: {1-2 sentence justification}
-- **Reachability**: {1-2 sentence justification referencing the trust zone if available}
-```
-
-**Field generation rules**:
-
-| Field | Rule |
-|-------|------|
-| `{id}` | Finding ID, untruncated |
-| `{threat_description}` | Full threat description text, untruncated (no 60-character limit here) |
-| `{component}` | Full component name, untruncated |
-| `{category}` | Human-readable category name: `Spoofing`, `Tampering`, `Repudiation`, `Information Disclosure`, `Denial of Service`, `Privilege Escalation`, `Agentic Threats`, or `LLM Threats` |
-| `{composite_score}` | Decimal with one digit |
-| `{severity_band}` | `Critical`, `High`, `Medium`, or `Low` |
-| Dimension scores | Decimal with one digit |
-| Weighted values | Decimal with two digits (e.g., `2.52`, `1.95`). Calculated as score multiplied by weight |
-| `{cvss_vector}` | Full CVSS 3.1 vector string from Section 3 scoring |
-| Scoring Rationale | Brief justification drawn from the assessment performed in Sections 3-6. Each rationale line explains the key factors that determined the score for that dimension |
-
-**Correlation group display**: Correlated peer findings each get their own subsection but include an additional line after the Category line: `**Correlation Group**: Scores inherited from primary finding {primary_id}`. The dimensional table and rationale reflect the primary's assessment.
-
-**Category display mapping**:
-
-| IR Category | Display Name |
-|-------------|-------------|
-| `spoofing` | Spoofing |
-| `tampering` | Tampering |
-| `repudiation` | Repudiation |
-| `info-disclosure` | Information Disclosure |
-| `denial-of-service` | Denial of Service |
-| `privilege-escalation` | Privilege Escalation |
-| `agentic` | Agentic Threats |
-| `llm` | LLM Threats |
+Refer to `output-formatting.md` for the per-finding subsection format, field generation rules, category display name mapping, and correlation group display. Generate one subsection per finding ordered by composite score descending with full scoring rationale.
 
 ### 9e. Section 4: Governance Fields
 
-Generate a governance tracking table that consolidates all governance metadata for remediation planning. This section provides a single-view reference for GRC teams and security managers assigning ownership and tracking remediation progress.
-
-**Table format**:
-
-```markdown
-| ID | Component | Severity | Owner | SLA | Disposition | Review Date |
-|----|-----------|----------|-------|-----|-------------|-------------|
-```
-
-**Column definitions**:
-
-| Column | Source Field | Format |
-|--------|-------------|--------|
-| ID | `id` | Finding ID as-is |
-| Component | `component` | Full component name, untruncated |
-| Severity | `severity_band` | `Critical`, `High`, `Medium`, or `Low` |
-| Owner | `risk_owner` | Default: `Unassigned` |
-| SLA | `remediation_sla` | Duration string (e.g., `24h`, `7d`, `30d`, `90d`) |
-| Disposition | `risk_disposition` | `Mitigate` or `Review` |
-| Review Date | `review_date` | ISO 8601 date (e.g., `2026-04-03`) |
-
-**Sort order**: Same as the Scored Threat Table -- `composite_score` descending, secondary sort by `id` in natural alphanumeric order.
-
-**Generation rules**:
-- Every scored finding MUST appear in this table (no findings omitted)
-- The `Owner` column always reads `Unassigned` in scorer-generated output -- ownership is a human decision made during triage (see Section 8 Override Guidance)
-- The `Review Date` is calculated per Section 8 rules: scoring date + SLA duration
-- Correlation group peers appear with their own IDs and inherit governance fields from the primary
+Refer to `output-formatting.md` for governance table column definitions, sort order, and generation rules. Generate a governance tracking table consolidating all governance metadata for remediation planning.
 
 ### 9f. Section 5: Scoring Methodology
 
-Generate the scoring methodology section that documents how scores in this report were calculated. This section ensures the report is self-contained and auditable without requiring access to the scorer agent definition.
-
-**Content to generate**:
-
-Reproduce the methodology content defined in `templates/tachi/output-schemas/risk-scores.md` Section 5, populated with the actual values used in this scoring run:
-
-1. **Scoring Dimensions**: Table listing the four dimensions (CVSS Base, Exploitability, Scalability, Reachability) with their weights and descriptions
-2. **Default Weights and Rationale**: Explanation of why each dimension receives its assigned weight
-3. **Composite Score Formula**: The weighted sum formula with the actual weights used
-4. **Severity Band Mapping**: Table mapping composite score ranges to severity bands with default SLAs and dispositions
-5. **Data Sources**: Description of inputs consumed (threat findings, trust zone data, architecture documentation, category default vectors)
-6. **Reproducibility**: Temperature 0 setting and +/- 0.5 tolerance per dimension
-
-**Generation rules**:
-- The methodology section content is static for a given schema version -- it does not vary between scoring runs
-- The weights in the formula and dimension table MUST match the `scoring_weights` values in the frontmatter
-- Severity band boundaries MUST match those defined in `schemas/risk-scoring.yaml` -> `severity_bands`
-- This section serves as an in-document reference; it does not replace the schema definitions
+Refer to `output-formatting.md` for the methodology section content structure. Generate the scoring methodology section documenting how scores were calculated, ensuring the report is self-contained and auditable.
 
 ### 9g. File Placement
 
@@ -747,321 +413,70 @@ Write the completed `risk-scores.md` to the same directory as the input file:
 
 ### 9h. Consistency Requirements
 
-The markdown output MUST be consistent with the SARIF output (Section 10) on all data points:
-
-- Every finding in `risk-scores.md` MUST appear in `risk-scores.sarif` and vice versa
-- All numeric scores (dimension scores, composite scores) MUST be identical between the two formats
-- Severity band assignments MUST be identical between the two formats
-- Governance field values (owner, SLA, disposition, review date) MUST be identical between the two formats
-- Sort order in the Scored Threat Table corresponds to the order of results in the SARIF `results[]` array
-
-If any inconsistency is detected during generation, treat it as a scoring pipeline error and halt output generation with a diagnostic message identifying the mismatched finding and field.
+The markdown and SARIF outputs MUST be consistent on all data points: finding count, numeric scores, severity bands, governance fields, and sort order. If any inconsistency is detected, halt output generation with a diagnostic message identifying the mismatched finding and field.
 
 ---
 
 ## 10. Output Generation: SARIF (risk-scores.sarif)
 
-Generate a `risk-scores.sarif` file in the same directory as the input threat model. The output MUST conform to SARIF 2.1.0 (`$schema: https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json`) and follow the structure defined in `templates/tachi/output-schemas/risk-scores.sarif`. All scored findings MUST appear in the SARIF output, and all numeric values MUST be identical to those in `risk-scores.md` (Section 9h consistency mandate).
+Generate a `risk-scores.sarif` file in the same directory as the input threat model. The output MUST conform to SARIF 2.1.0 and follow the structure defined in `templates/tachi/output-schemas/risk-scores.sarif`. All scored findings MUST appear in the SARIF output, and all numeric values MUST be identical to those in `risk-scores.md` (Section 9h consistency mandate).
 
-**Semantic shift from threats.sarif**: In `threats.sarif`, the rule-level `security-severity` is a static category value (e.g., `"9.0"` for Critical, `"5.0"` for Medium). In `risk-scores.sarif`, the result-level `security-severity` is the per-finding composite score and the rule-level `security-severity` is the MAX composite score among all findings for that rule. Task T023 documents this shift in the SARIF reference guide.
+**Semantic shift from threats.sarif**: In `threats.sarif`, the rule-level `security-severity` is a static category value. In `risk-scores.sarif`, the result-level `security-severity` is the per-finding composite score and the rule-level `security-severity` is the MAX composite score among all findings for that rule.
 
 ### 10a. Tool Driver Configuration
 
-Set the `tool.driver` object to identify the risk scorer as a distinct tool from the threat model generator:
-
-```json
-{
-  "tool": {
-    "driver": {
-      "name": "tachi-risk-scorer",
-      "version": "1.0",
-      "semanticVersion": "1.0",
-      "informationUri": "https://github.com/owner/tachi",
-      "supportedTaxonomies": [ ... ],
-      "rules": [ ... ]
-    }
-  }
-}
-```
-
-**Field generation rules**:
-
-| Field | Value | Notes |
-|-------|-------|-------|
-| `name` | `"tachi-risk-scorer"` | Distinguishes scored output from threat model output (`"tachi"` in threats.sarif) |
-| `version` | `"1.0"` | Matches `schemas/risk-scoring.yaml` → `schema_version` |
-| `semanticVersion` | `"1.0"` | Same as `version` |
-| `informationUri` | `"https://github.com/owner/tachi"` | Project repository URL |
-| `supportedTaxonomies` | Passthrough from source | See Section 10f (Taxonomy Passthrough) |
-| `rules` | One entry per threat category with findings | See Section 10b (Rule Definitions) |
+Set `tool.driver.name` to `"tachi-risk-scorer"` (distinguishes from `"tachi"` in threats.sarif), `version` and `semanticVersion` to `"1.0"`, `informationUri` to `"https://github.com/owner/tachi"`. Include `supportedTaxonomies` (Section 10f) and `rules` (Section 10b).
 
 ### 10b. Rule Definitions
 
-Populate `tool.driver.rules[]` with one entry per threat category that has at least one scored finding. Use the same rule IDs as `threats.sarif`. Each rule definition carries the MAX composite score among its findings.
+Populate `tool.driver.rules[]` with one entry per threat category that has at least one scored finding. Use the same rule IDs as `threats.sarif`.
 
-**Rule ID to category mapping** (same as Section 1b parsing):
+**Rule-level `security-severity` calculation**: Collect all scored findings for a rule, set the rule's `security-severity` to the MAX composite score (formatted as a numeric string with one decimal place). If a category has no findings, omit the rule entirely from `rules[]`.
 
-| Rule ID | Category |
-|---------|----------|
-| `tachi/stride/spoofing` | spoofing |
-| `tachi/stride/tampering` | tampering |
-| `tachi/stride/repudiation` | repudiation |
-| `tachi/stride/information-disclosure` | info-disclosure |
-| `tachi/stride/denial-of-service` | denial-of-service |
-| `tachi/stride/elevation-of-privilege` | privilege-escalation |
-| `tachi/ai/agentic-threats` | agentic |
-| `tachi/ai/llm-threats` | llm |
-
-**Per-rule structure**:
-
-```json
-{
-  "id": "tachi/stride/spoofing",
-  "shortDescription": { "text": "Identity spoofing threats" },
-  "fullDescription": { "text": "<category-level description>" },
-  "properties": {
-    "tags": ["security", "stride", "spoofing", ...],
-    "security-severity": "<max-composite-score-as-numeric-string>"
-  },
-  "relationships": [ ... ]
-}
-```
-
-**Rule-level `security-severity` calculation**:
-
-1. Collect all scored findings whose `ruleId` matches this rule
-2. Extract each finding's `composite_score`
-3. Set the rule's `security-severity` to the MAX composite score among those findings, formatted as a numeric string with one decimal place (e.g., `"8.3"`)
-4. If a category has exactly one finding, the rule-level value equals that finding's composite score
-5. If a category has no findings, omit the rule entirely from `rules[]`
-
-This is a semantic shift from `threats.sarif`, where rule-level `security-severity` is a static value representing the category's general severity class. In `risk-scores.sarif`, rule-level `security-severity` reflects the actual worst-case finding within that category.
-
-**Rule descriptions and tags**: Copy `shortDescription`, `fullDescription`, `properties.tags`, and `relationships[]` from the corresponding rule in `templates/tachi/output-schemas/risk-scores.sarif`. These are static per category and do not change between scoring runs.
+Rule IDs use the same mapping as Section 1b parsing (e.g., `tachi/stride/spoofing` -> `spoofing`). Copy `shortDescription`, `fullDescription`, `properties.tags`, and `relationships[]` from `templates/tachi/output-schemas/risk-scores.sarif`.
 
 ### 10c. Result Generation
 
-Generate one result object per scored finding in the `run.results[]` array. Results are ordered by `composite_score` descending (highest risk first), matching the sort order in `risk-scores.md` Section 2 (Scored Threat Table). When two findings have equal composite scores, secondary sort by finding `id` in natural alphanumeric order.
+Generate one result object per scored finding in `run.results[]`, ordered by `composite_score` descending (secondary sort by `id` alphanumerically). Each result includes: `ruleId` (mapped from category per Section 10b), `message.text` (threat description), `message.markdown` (mitigation), `level` (per Section 10d), `locations` (physical + logical), `partialFingerprints` (per Section 10e), and `properties` (per Section 10g).
 
-**Per-result structure**:
-
-```json
-{
-  "ruleId": "<rule-id-from-category>",
-  "message": {
-    "text": "<threat-description>",
-    "markdown": "<mitigation-recommendation>"
-  },
-  "level": "<sarif-level-from-severity-band>",
-  "locations": [ ... ],
-  "partialFingerprints": { ... },
-  "properties": { ... }
-}
-```
-
-**Field generation rules**:
-
-| Field | Source | Rule |
-|-------|--------|------|
-| `ruleId` | `category` | Map IR category to rule ID using the table in Section 10b |
-| `message.text` | `threat` | Full threat description text, untruncated |
-| `message.markdown` | `mitigation` | Full mitigation recommendation, untruncated |
-| `level` | `severity_band` | Map via SARIF Level Mapping (Section 10d) |
-| `locations` | Finding location data | See Location Generation below |
-| `partialFingerprints` | Source `threats.sarif` or derived | See Section 10e (Fingerprint Preservation) |
-| `properties` | Scoring and governance fields | See Property Bag Mapping (Section 10g) |
-
-**Location generation**:
-
-Each result MUST include a `locations[]` array with one entry containing both physical and logical location:
-
-```json
-{
-  "locations": [
-    {
-      "physicalLocation": {
-        "artifactLocation": {
-          "uri": "<input-architecture-file-path>"
-        },
-        "region": {
-          "startLine": 1
-        }
-      },
-      "logicalLocations": [
-        {
-          "name": "<component-name>",
-          "fullyQualifiedName": "<trust-zone>/<component-name>",
-          "kind": "process"
-        }
-      ]
-    }
-  ]
-}
-```
-
-| Location Field | Source | Rule |
-|----------------|--------|------|
-| `artifactLocation.uri` | Input file path | Relative path to the architecture document that was threat-modeled |
-| `region.startLine` | Fixed | Always `1` (threat findings are document-level, not line-level) |
-| `logicalLocations[0].name` | `component` | Component name from the scored finding |
-| `logicalLocations[0].fullyQualifiedName` | Trust zone + component | Format: `{trust_zone}/{component}`. If no trust zone is available, use the component name only |
-| `logicalLocations[0].kind` | `dfd_element_type` | Map from IR: `Process` -> `"process"`, `Data Store` -> `"data-store"`, `External Entity` -> `"external-entity"`. Default to `"process"` when DFD element type is unavailable |
+**Location generation**: Each result includes `locations[]` with one entry containing physical location (`artifactLocation.uri` = input architecture file, `region.startLine` = 1) and logical location (`name` = component, `fullyQualifiedName` = `{trust_zone}/{component}`, `kind` mapped from `dfd_element_type`).
 
 ### 10d. SARIF Level Mapping
 
-Map the scored finding's `severity_band` to the SARIF `level` field using the mapping defined in `schemas/output.yaml`:
-
-| Severity Band | SARIF `level` | Rationale |
-|---------------|---------------|-----------|
-| Critical | `"error"` | Requires immediate action; blocks release |
-| High | `"error"` | Significant risk; treated as error-level in tooling |
-| Medium | `"warning"` | Moderate risk; requires attention but not blocking |
-| Low | `"note"` | Informational; tracked for completeness |
-
-This mapping is identical to the one used in `threats.sarif` for consistency across tachi SARIF outputs. The `level` field controls how SARIF consumers (GitHub Code Scanning, VS Code SARIF Viewer, etc.) display and filter results.
+| Severity Band | SARIF `level` |
+|---------------|---------------|
+| Critical | `"error"` |
+| High | `"error"` |
+| Medium | `"warning"` |
+| Low | `"note"` |
 
 ### 10e. Fingerprint Preservation
 
-Fingerprints provide stable identifiers for alert tracking across scoring runs. Preserve all `partialFingerprints` from the source `threats.sarif` input, and derive fingerprints when parsing from `threats.md`.
+| Fingerprint Key | Rule |
+|-----------------|------|
+| `findingId/v1` | **Always present**. From SARIF input: copy directly. From threats.md: use finding ID. |
+| `primaryLocationLineHash` | **Preserve when available** from source SARIF. Omit when input is threats.md. |
+| `correlationGroup` | **Present on primaries only**. Copy from source or set from correlation group ID. |
 
-**Preservation rules**:
-
-| Fingerprint Key | Source | Rule |
-|-----------------|--------|------|
-| `findingId/v1` | Source finding | **Always present**. When input is `threats.sarif`, copy the value directly. When input is `threats.md`, use the finding ID (e.g., `"S-1"`, `"AG-3"`). This is the primary stable identifier for correlating findings across threat model and risk score outputs. |
-| `primaryLocationLineHash` | Source `threats.sarif` | **Preserve when available**. Copy directly from the source result's `partialFingerprints`. When input is `threats.md` (no source SARIF), omit this key entirely -- do not fabricate a hash. |
-| `correlationGroup` | Source finding | **Present on correlation group primaries only**. Copy from source `threats.sarif` if available. When input is `threats.md`, set to the correlation group identifier (e.g., `"CG-1"`) for primary findings that head a correlation group. Omit for non-correlated findings and for peer findings. |
-
-**Fingerprint integrity rule**: Never modify, regenerate, or re-hash fingerprint values that originate from `threats.sarif`. These values are used by downstream consumers (GitHub Code Scanning, alert deduplication pipelines) to track findings across runs. Altering them breaks alert continuity.
+**Fingerprint integrity rule**: Never modify, regenerate, or re-hash fingerprint values from `threats.sarif`. These are used by downstream consumers for alert tracking continuity.
 
 ### 10f. Taxonomy Passthrough
 
-Preserve all taxonomy declarations from the source input for downstream consumers that rely on OWASP and CWE classification.
+Preserve all taxonomy declarations from the source input. When input is `threats.sarif`, copy `run.taxonomies[]`, `tool.driver.supportedTaxonomies[]`, and rule `relationships[]` directly. When input is `threats.md`, use the default OWASP 2021 and CWE 4.13 taxonomy declarations from `templates/tachi/output-schemas/risk-scores.sarif`.
 
-**Taxonomy elements to preserve**:
-
-| Element | Location in SARIF | Rule |
-|---------|-------------------|------|
-| `run.taxonomies[]` | Top-level run property | Copy the entire `taxonomies` array from the source `threats.sarif`. When input is `threats.md`, use the default taxonomy declarations from `templates/tachi/output-schemas/risk-scores.sarif` (OWASP 2021 and CWE 4.13). |
-| `tool.driver.supportedTaxonomies[]` | Tool driver property | Copy from source `threats.sarif`. When input is `threats.md`, use the default declarations: `[{"name": "OWASP", "index": 0}, {"name": "CWE", "index": 1}]` |
-| Rule `relationships[]` | Per-rule in `tool.driver.rules[]` | Copy the `relationships` array from the corresponding rule in the source `threats.sarif`. When input is `threats.md`, use the default relationships from `templates/tachi/output-schemas/risk-scores.sarif` which map each STRIDE/AI category to its primary OWASP Top 10 and CWE entries. |
-
-**Default taxonomy declarations** (used when input is `threats.md`):
-
-```json
-{
-  "taxonomies": [
-    {
-      "name": "OWASP",
-      "version": "2021",
-      "informationUri": "https://owasp.org/Top10/",
-      "organization": "OWASP Foundation",
-      "shortDescription": { "text": "OWASP Top 10 Web Application Security Risks" }
-    },
-    {
-      "name": "CWE",
-      "version": "4.13",
-      "informationUri": "https://cwe.mitre.org/",
-      "organization": "MITRE",
-      "shortDescription": { "text": "Common Weakness Enumeration" }
-    }
-  ]
-}
-```
-
-**Passthrough integrity rule**: Do not modify taxonomy versions, URIs, or organization names during passthrough. The risk scorer does not assess or update taxonomy classifications -- it preserves them for downstream tools.
+**Passthrough integrity rule**: Do not modify taxonomy versions, URIs, or organization names during passthrough.
 
 ### 10g. Property Bag Field Mapping
 
-Each result's `properties` object carries the full scoring and governance payload. This is the primary extension point where `risk-scores.sarif` differs from `threats.sarif`.
+Each result's `properties` object carries scoring dimensions (`security-severity`, `cvss-base-score`, `cvss-vector`, `exploitability`, `scalability`, `reachability`), composite metadata (`composite-weights` = `"0.35/0.30/0.15/0.20"`, `severity-band`), and governance fields (`risk-owner`, `remediation-sla`, `risk-disposition`, `review-date`). Property keys use hyphen-case (e.g., `cvss-base-score`), mapping directly from IR fields (e.g., `cvss_base`).
 
-**Property bag structure**:
-
-```json
-{
-  "properties": {
-    "security-severity": "7.2",
-    "cvss-base-score": "8.1",
-    "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N",
-    "exploitability": "7.0",
-    "scalability": "5.5",
-    "reachability": "6.0",
-    "composite-weights": "0.35/0.30/0.15/0.20",
-    "severity-band": "High",
-    "risk-owner": "Unassigned",
-    "remediation-sla": "7d",
-    "risk-disposition": "Mitigate",
-    "review-date": "2026-04-03"
-  }
-}
-```
-
-**Field mapping table**:
-
-| Property Key | IR Source Field | Format | Description |
-|--------------|----------------|--------|-------------|
-| `security-severity` | `composite_score` | Numeric string, one decimal place (e.g., `"7.2"`) | The composite risk score for this specific finding. This is the primary sort/filter key for SARIF consumers. |
-| `cvss-base-score` | `cvss_base` | Numeric string, one decimal place (e.g., `"8.1"`) | CVSS 3.1 base score from Section 3 assessment |
-| `cvss-vector` | `cvss_vector` | Full CVSS 3.1 vector string (e.g., `"CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N"`) | Complete vector for auditability and independent verification |
-| `exploitability` | `exploitability` | Numeric string, one decimal place (e.g., `"7.0"`) | Exploitability assessment from Section 4 |
-| `scalability` | `scalability` | Numeric string, one decimal place (e.g., `"5.5"`) | Scalability assessment from Section 5 |
-| `reachability` | `reachability` | Numeric string, one decimal place (e.g., `"6.0"`) | Reachability assessment from Section 6 |
-| `composite-weights` | Fixed | `"0.35/0.30/0.15/0.20"` | Slash-delimited weight string (CVSS/Exploitability/Scalability/Reachability). Documents the formula used for reproducibility. Constant for schema version 1.0. |
-| `severity-band` | `severity_band` | One of: `"Critical"`, `"High"`, `"Medium"`, `"Low"` | Severity band derived from composite score per `schemas/risk-scoring.yaml` thresholds |
-| `risk-owner` | `risk_owner` | String | Default: `"Unassigned"`. Human-assigned during triage. |
-| `remediation-sla` | `remediation_sla` | Duration string: `"24h"`, `"7d"`, `"30d"`, or `"90d"` | Severity-driven SLA from `schemas/risk-scoring.yaml` -> `severity_bands` |
-| `risk-disposition` | `risk_disposition` | One of: `"Mitigate"`, `"Review"`, `"Accept"`, `"Transfer"` | Initial disposition from severity mapping. Default scoring produces `"Mitigate"` (Critical/High) or `"Review"` (Medium/Low). |
-| `review-date` | `review_date` | ISO 8601 date string (`"YYYY-MM-DD"`) | Scoring date + SLA duration, per Section 8 calculation rules |
-
-**Numeric string formatting rule**: All numeric properties (`security-severity`, `cvss-base-score`, `exploitability`, `scalability`, `reachability`) MUST be formatted as strings with exactly one decimal place. Trailing zeros are preserved (e.g., `"4.0"` not `"4"`). This matches the SARIF convention where `security-severity` is a string, and ensures consistency across all scoring properties.
+**Numeric string formatting**: All numeric properties MUST be formatted as strings with exactly one decimal place. Trailing zeros are preserved (e.g., `"4.0"` not `"4"`).
 
 ### 10h. Correlation Group Handling in SARIF
 
-Correlation groups receive special treatment in SARIF output. The primary finding appears as a top-level result with full scoring; peer findings do NOT appear as separate top-level results. Instead, peers are referenced via `relatedLocations` on the primary result.
+Primary findings appear as top-level results with full scoring. Peer findings do NOT appear as separate top-level results -- they are referenced via `relatedLocations[]` on the primary result, each containing the peer's ID, threat summary, and logical location.
 
-**Primary finding result**:
-
-The primary finding is emitted as a normal result (per Section 10c) with these additions:
-
-1. `partialFingerprints` includes the `correlationGroup` key (e.g., `"CG-1"`)
-2. `relatedLocations[]` contains one entry per correlated peer finding:
-
-```json
-{
-  "relatedLocations": [
-    {
-      "id": 0,
-      "message": {
-        "text": "<peer-finding-id>: <peer-threat-summary>"
-      },
-      "logicalLocations": [
-        {
-          "name": "<peer-component-name>",
-          "fullyQualifiedName": "<trust-zone>/<peer-component-name>",
-          "kind": "process"
-        }
-      ]
-    }
-  ]
-}
-```
-
-| Related Location Field | Source | Rule |
-|------------------------|--------|------|
-| `id` | Sequence | Zero-based index within the `relatedLocations` array |
-| `message.text` | Peer finding | Format: `"{peer_id}: {peer_threat_summary}"` (e.g., `"T-4: Data tampering via API gateway"`) |
-| `logicalLocations[0].name` | Peer `component` | Peer finding's component name |
-| `logicalLocations[0].fullyQualifiedName` | Peer trust zone + component | Format: `{trust_zone}/{component}`, same as primary location rules |
-| `logicalLocations[0].kind` | Peer `dfd_element_type` | Same mapping as primary location rules |
-
-**Peer finding handling**:
-
-- Peer findings do NOT appear as separate entries in `run.results[]`
-- All peer scores and governance fields are inherited from the primary (Section 7, Correlation Group Handling)
-- Peer finding IDs are visible only in the `relatedLocations[].message.text` of the primary result
-- The primary's `composite_score` (used as result-level `security-severity`) reflects the entire group's risk
-
-**Result count implication**: The total number of results in `run.results[]` equals the number of independently scored findings plus the number of correlation group primaries. It does NOT include peer findings. The `risk-scores.md` Scored Threat Table may show more rows than `run.results[]` has entries because the markdown format lists peers as separate rows.
+**Result count implication**: The total number of `run.results[]` entries equals independently scored findings plus correlation group primaries. It does NOT include peer findings. The markdown Scored Threat Table may show more rows than SARIF results because markdown lists peers as separate rows.
 
 ### 10i. File Placement
 
@@ -1075,19 +490,6 @@ The SARIF file MUST be valid JSON. Use 2-space indentation for human readability
 
 ### 10j. Consistency with Markdown Output
 
-The SARIF output MUST be consistent with the markdown output (Section 9) on all data points. This is a bidirectional requirement -- Section 9h mandates consistency from the markdown side, and this subsection mandates it from the SARIF side.
-
-**Consistency checks**:
-
-| Data Point | Markdown Location | SARIF Location | Rule |
-|------------|-------------------|----------------|------|
-| Finding count | Executive Summary total | `run.results[]` length + peer count | Every finding in `risk-scores.md` MUST be accounted for in `risk-scores.sarif` (primaries as results, peers in `relatedLocations`) |
-| Composite score | Scored Threat Table "Composite" column | `result.properties["security-severity"]` | Numeric values MUST be identical (e.g., markdown `6.8` equals SARIF `"6.8"`) |
-| Dimension scores | Dimensional Breakdown table | `result.properties["cvss-base-score"]`, `["exploitability"]`, `["scalability"]`, `["reachability"]` | All four dimension scores MUST match between formats |
-| Severity band | Scored Threat Table "Severity" column | `result.properties["severity-band"]` | Band assignment MUST be identical |
-| SARIF level | (not in markdown) | `result.level` | Must be derivable from the severity band using Section 10d mapping |
-| Governance fields | Governance Fields table | `result.properties["risk-owner"]`, `["remediation-sla"]`, `["risk-disposition"]`, `["review-date"]` | All governance values MUST be identical |
-| Sort order | Scored Threat Table row order | `run.results[]` array order | Results appear in the same composite-descending order |
-| Rule-level severity | (not in markdown) | `rule.properties["security-severity"]` | Must equal MAX of the composite scores from all findings mapped to that rule |
+The SARIF output MUST be consistent with the markdown output (Section 9h) on all data points: finding count, composite scores, dimension scores, severity bands, governance fields, and sort order. This is a bidirectional requirement.
 
 **Consistency failure handling**: If any inconsistency is detected during generation, treat it as a scoring pipeline error and halt output generation with a diagnostic message identifying the mismatched finding, field, and the values in each format. Do not write a partial or inconsistent SARIF file.

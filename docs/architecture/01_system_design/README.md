@@ -1507,3 +1507,56 @@ flowchart TD
 | Markdown + YAML | Agent definitions, skill domain knowledge, schema contracts, output templates -- no compiled code |
 | SARIF 2.1.0 `partialFingerprints` | Cross-run finding correlation via deterministic SHA-256 fingerprints |
 | YAML schema (`coverage-checklists.yaml`) | Static coverage gate configuration -- required categories per component type |
+
+---
+
+### Feature 078: Agent Context Optimization
+
+## Components
+
+### Agent Definitions (6 files restructured)
+Files in `.claude/agents/tachi/` containing orchestration logic only. Each agent retains: role identity (2-3 lines), workflow skeleton (phases, decision points), skill loading instructions (navigation table + MANDATORY Read at branch points), output format summary, constraints and error handling.
+
+### Skill Reference Files (15 new + 6 enhanced)
+Domain knowledge files in `.claude/skills/tachi-*/references/` loaded on-demand via Read tool. Categories: detection patterns, scoring schemas, output templates, format specifications, construction rules, visual design tokens.
+
+### Shared References (3 new files)
+Content used by multiple agents stored once in `tachi-shared/references/`. Consumers: orchestrator + risk-scorer + control-analyzer (severity bands), all STRIDE agents + orchestrator (STRIDE categories), all threat agents (finding format).
+
+## Data Flow
+
+```
+Architecture Description
+        |
+        v
+ Orchestrator Agent (<=500 lines)
+  -- Read --> tachi-orchestration/references/
+  -- Read --> tachi-shared/references/
+        |
+        v (dispatches)
+ 11 Leaf Agents (<=200 lines, unchanged behavior)
+        |
+        v (findings)
+ Risk-Scorer Agent (<=500 lines)
+  -- Read --> tachi-risk-scoring/references/
+        |
+        v (scored findings)
+ Control-Analyzer Agent (<=500 lines)
+  -- Read --> tachi-control-analysis/references/
+        |
+        v (controls + residual risk)
+ Report Agents x3 (<=300 lines each)
+  -- Read --> tachi-report-assembly/references/
+  -- Read --> tachi-threat-reporting/references/
+  -- Read --> tachi-infographics/references/
+```
+
+## Tech Stack
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| Agent definitions | Markdown + YAML frontmatter | Orchestration logic, workflow skeletons |
+| Skill references | Markdown | Domain knowledge, templates, patterns |
+| Data files | YAML | Static lookup tables (CVSS, severity, dispatch) |
+| Shared references | Markdown | Deduplicated cross-agent content |
+| Regression testing | Pipeline output comparison | Structural equivalence verification |

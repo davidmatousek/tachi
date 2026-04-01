@@ -8,6 +8,7 @@ tools:
   - Agent
   - Bash
   - Write
+model: sonnet
 ---
 
 ## Metadata

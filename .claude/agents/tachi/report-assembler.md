@@ -7,6 +7,7 @@ tools:
   - Grep
   - Bash
   - Write
+model: sonnet
 ---
 
 ## Metadata
