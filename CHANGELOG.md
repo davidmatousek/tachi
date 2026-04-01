@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 074 — Baseline-Aware Pipeline
+
+**Added**
+- Baseline-aware threat detection pipeline with 4-phase correlation (detect → carry-forward → discover → merge+dedup), coverage checklists per component type, delta annotations ([NEW], [UNCHANGED], [UPDATED], [RESOLVED]), and SARIF baselineState properties; new `coverage-checklists.yaml` schema; extended `finding.yaml`, `risk-scoring.yaml`, `compensating-controls.yaml` with baseline fields; updated all 6 output templates; domain knowledge skills extended with baseline-correlation reference (`856f35e`)
+
+**Changed**
+- Closed Feature 074 — updated product docs (PRD INDEX, User Stories, OKRs), architecture docs (Tech Stack, System Design, ADR-018), KB entry PAT-017, delivery report, BACKLOG regenerated (`a300915`)
+
 ### Feature 075 — Tachi Agent Best Practices
 
 **Added**
