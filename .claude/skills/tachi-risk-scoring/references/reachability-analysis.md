@@ -22,7 +22,7 @@ Map each finding's target component to a baseline reachability score using the c
 | Trust Level | Zone Name Examples | Baseline Score Range | Default Baseline | Rationale |
 |-------------|-------------------|---------------------|-----------------|-----------|
 | `Untrusted` | External Zone, Public Internet, External Services, User Zone | 8.0 - 10.0 | 9.0 | Directly exposed to untrusted actors; minimal barriers to reach |
-| `Semi-Trusted` | Application Zone, DMZ, Internal Services Zone | 4.0 - 7.0 | 5.5 | Behind at least one trust boundary; some access controls in place |
+| `Semi-Trusted` | DMZ, Partner Zone, Internal Services Zone | 4.0 - 7.0 | 5.5 | Behind at least one trust boundary; some access controls in place |
 | `Trusted` | Internal Zone, Internal Network, Internal Services | 1.0 - 4.0 | 2.5 | Deep within the architecture; multiple barriers to reach |
 
 **Default baseline selection**: Use the midpoint of the range as the default baseline for each trust level (9.0 for Untrusted, 5.5 for Semi-Trusted, 2.5 for Trusted). Refinements in Steps 6b and 6c adjust this baseline up or down within the range.
@@ -116,29 +116,36 @@ architecture_adjustment = (auth_barrier_count x -1.5) + (network_boundary_count 
 - Network adjustment: 1 x -1.0 = -1.0
 - Total adjustment: -2.5
 - Adjusted score: 5.5 - 2.5 = 3.0
-- Clamped to [0.0, 10.0]: **3.0**
+- Clamped to Semi-Trusted range [4.0, 7.0]: **4.0** (zone floor enforced)
 
 **Example**: An `Untrusted` component (baseline 9.0) with 0 auth barriers (external) and 0 network boundaries:
 - Total adjustment: 0.0
 - Adjusted score: 9.0
-- Clamped to [0.0, 10.0]: **9.0**
+- Clamped to Untrusted range [8.0, 10.0]: **9.0**
 
 **Example**: A `Trusted` component (baseline 2.5) with 2 auth barriers, MFA, and 2 network boundaries:
 - Auth barriers: 2 (base auth + MFA) x -1.5 = -3.0
 - Network boundaries: 2 x -1.0 = -2.0
 - Total adjustment: -5.0
 - Adjusted score: 2.5 - 5.0 = -2.5
-- Clamped to [0.0, 10.0]: **0.0** (floor enforced)
+- Clamped to Trusted range [1.0, 4.0]: **1.0** (zone floor enforced)
 
 ### Final Score Clamping
 
-After all adjustments (zone baseline + zone name refinement + architecture adjustments), clamp the final reachability score to the valid range:
+After all adjustments (zone baseline + zone name refinement + architecture adjustments), clamp the final reachability score to the **per-zone range** for the component's trust level. This ensures scores cannot fall below the zone floor — even the most protected component in a zone retains the minimum reachability inherent to that trust level.
+
+| Trust Level | Clamp Range |
+|-------------|------------|
+| `Untrusted` | [8.0, 10.0] |
+| `Semi-Trusted` | [4.0, 7.0] |
+| `Trusted` | [1.0, 4.0] |
+| Default (no zone data) | [0.0, 10.0] |
 
 ```
-reachability = max(0.0, min(10.0, adjusted_score))
+reachability = max(zone_floor, min(zone_ceiling, adjusted_score))
 ```
 
-The final score must be a value between 0.0 and 10.0, rounded to one decimal place.
+The final score must be rounded to one decimal place. The per-zone clamp prevents architecture adjustments from producing scores that contradict the trust level classification — a Trusted component cannot score below 1.0 regardless of how many barriers exist, because it is still reachable within its zone.
 
 ### Default Behavior When Trust Zone Data Is Unavailable
 
@@ -176,5 +183,5 @@ The complete reachability calculation for a single finding follows this sequence
 2. **Determine baseline** from trust level (9.0 / 5.5 / 2.5) or default 5.0 if no match
 3. **Apply zone name refinement** using keyword adjustments (Section 6b Step 2); clamp to trust level range
 4. **Apply architecture adjustments** if `architecture.md` is available (Section 6c); auth barriers at -1.5 each (max 3), network boundaries at -1.0 each (max 3)
-5. **Clamp final score** to [0.0, 10.0] and round to one decimal place
+5. **Clamp final score** to the per-zone range (Untrusted [8.0, 10.0], Semi-Trusted [4.0, 7.0], Trusted [1.0, 4.0], Default [0.0, 10.0]) and round to one decimal place
 6. **Record output**: Store `reachability` score (0.0-10.0) for the finding
