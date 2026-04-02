@@ -156,14 +156,14 @@ triad:
 
 **Purpose**: Full regression test, best practices finalization, compliance verification
 
-- [ ] T051 [US5] Run full pipeline on `examples/agentic-app/architecture.md`: `/threat-model` → compare threats.md + threats.sarif against baseline (finding count per category ±2, severity distribution ±1 per level, SARIF result count ±2, all 7 sections present, correlation group count ±1)
-- [ ] T052 [P] [US5] Run `/risk-score` and compare risk-scores.md + risk-scores.sarif against baseline
-- [ ] T053 [P] [US5] Run `/compensating-controls` and compare compensating-controls.md + compensating-controls.sarif against baseline
-- [ ] T054 [US5] Verify all 11 leaf agents are byte-identical (excluding `model:` field addition) by running `git diff` on each leaf agent file
-- [ ] T055 [US5] Verify line counts for all 6 restructured agents: orchestrator ≤500, risk-scorer ≤500, control-analyzer ≤500, report-assembler ≤300, threat-report ≤300, threat-infographic ≤300
-- [ ] T056 [US4] Finalize `.claude/agents/tachi/_TACHI_AGENT_BEST_PRACTICES.md` — update compliance table with actual `wc -l` counts for all 17 agents post-restructuring, annotate agent-autonomy 210-line leaf exception, verify all quality checklist items reflect new patterns
-- [ ] T057 [US5] Verify no domain data remains inline in any restructured agent — spot-check each agent for tables, schemas, detection patterns, output templates, scoring dimensions. Only orchestration logic (role, workflow, skill loading, constraints) should remain.
-- [ ] T058 Verify all extracted content is traceable — for each restructured agent, confirm every removed section has a corresponding skill reference, data file, or shared reference
+- [X] T051 [US5] Run full pipeline on `examples/agentic-app/architecture.md`: `/threat-model` → compare threats.md + threats.sarif against baseline (finding count per category ±2, severity distribution ±1 per level, SARIF result count ±2, all 7 sections present, correlation group count ±1)
+- [X] T052 [P] [US5] Run `/risk-score` and compare risk-scores.md + risk-scores.sarif against baseline
+- [X] T053 [P] [US5] Run `/compensating-controls` and compare compensating-controls.md + compensating-controls.sarif against baseline
+- [X] T054 [US5] Verify all 11 leaf agents are byte-identical (excluding `model:` field addition) by running `git diff` on each leaf agent file
+- [X] T055 [US5] Verify line counts for all 6 restructured agents: orchestrator ≤500, risk-scorer ≤500, control-analyzer ≤500, report-assembler ≤300, threat-report ≤300, threat-infographic ≤300
+- [X] T056 [US4] Finalize `.claude/agents/tachi/_TACHI_AGENT_BEST_PRACTICES.md` — update compliance table with actual `wc -l` counts for all 17 agents post-restructuring, annotate agent-autonomy 210-line leaf exception, verify all quality checklist items reflect new patterns
+- [X] T057 [US5] Verify no domain data remains inline in any restructured agent — spot-check each agent for tables, schemas, detection patterns, output templates, scoring dimensions. Only orchestration logic (role, workflow, skill loading, constraints) should remain.
+- [X] T058 Verify all extracted content is traceable — for each restructured agent, confirm every removed section has a corresponding skill reference, data file, or shared reference
 
 **Checkpoint**: All success criteria (SC-001 through SC-008) verified. Feature complete.
 

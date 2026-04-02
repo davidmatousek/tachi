@@ -27,7 +27,7 @@ This skill contains six categories of domain knowledge:
 
 | Reference File | Load Condition | Workflow Phase |
 |----------------|----------------|----------------|
-| `references/format-detection.md` | Entering Phase 0 (Format Identification) | Before determining architecture description format |
+| `references/format-detection.md` | Entering Phase 1 (Format Identification) | Before determining architecture description format |
 | `references/dfd-classification.md` | Entering Phase 1 (DFD Extraction) | Before classifying components into DFD element types |
 | `references/trust-boundaries.md` | Entering Phase 1 (Boundary Identification) | Before extracting trust boundary notation |
 | `references/dispatch-rules.md` | Entering Phase 2 (Determine Threats) | After Phase 1 component inventory is produced, before agent dispatch |
@@ -35,11 +35,11 @@ This skill contains six categories of domain knowledge:
 | `references/coverage-matrix-model.md` | Entering Phase 4 (Output Assembly) | Before building the coverage matrix in threats.md |
 | `references/output-schemas.md` | Entering Phase 1 (Scope) for output format awareness; Phase 3 for table assembly; Phase 4 for validation | Before assembling Section 1, and before running the structural validation checklist |
 | `references/sarif-specification.md` | Entering SARIF generation step in Phase 4 | After threats.md structural validation passes, before writing threats.sarif |
-| `references/baseline-correlation.md` | Entering Phase 0 (Baseline Detection) | Before parsing baseline file, before carry-forward logic |
+| `references/baseline-correlation.md` | Entering Phase 1a+ (Baseline Handling) | Before parsing baseline file, before carry-forward logic |
 
 ## Baseline-Aware Pipeline Domain Knowledge
 
-The orchestrator supports a baseline-aware mode that extends the standard OWASP pipeline with finding stability, delta annotations, and coverage assurance. This domain knowledge is loaded on-demand during Phase 0 (Baseline Detection) and subsequent carry-forward phases.
+The orchestrator supports a baseline-aware mode that extends the standard OWASP pipeline with finding stability, delta annotations, and coverage assurance. This domain knowledge is loaded on-demand during Phase 1a+ (Baseline Handling) and subsequent carry-forward phases.
 
 ### Baseline File Detection Rules
 

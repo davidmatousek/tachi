@@ -1,6 +1,12 @@
+---
+source_agent: orchestrator
+extracted_from: .claude/agents/tachi/orchestrator.md
+version: 1.0.0
+---
+
 # Baseline Correlation Reference
 
-Reference material for Phase 0 (Baseline Detection) and carry-forward logic in the baseline-aware pipeline. Loaded on-demand by the orchestrator when entering Phase 0.
+Reference material for baseline handling and carry-forward logic in the baseline-aware pipeline. Loaded on-demand by the orchestrator when entering Phase 1a+ (Baseline Handling).
 
 ## Baseline File Detection
 

@@ -1,3 +1,9 @@
+---
+source_agent: report-assembler
+extracted_from: .claude/agents/tachi/report-assembler.md
+version: 1.0.0
+---
+
 # Brand Asset Guidelines — Logo Detection and Resolution
 
 Domain reference for the tachi report-assembler agent. Covers brand logo file locations, format detection, dark variant handling, path resolution for Typst, and fallback rules.

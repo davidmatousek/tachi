@@ -1,6 +1,6 @@
 ---
 source_agent: risk-scorer
-extracted_from: .claude/skills/tachi-risk-scoring/references/scoring-dimensions.md
+extracted_from: .claude/agents/tachi/risk-scorer.md
 version: 1.0.0
 ---
 

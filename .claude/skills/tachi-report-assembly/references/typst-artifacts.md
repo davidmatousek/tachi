@@ -1,3 +1,9 @@
+---
+source_agent: report-assembler
+extracted_from: .claude/agents/tachi/report-assembler.md
+version: 1.0.0
+---
+
 # Typst Artifacts — Detection and Tier Selection
 
 Domain reference for the tachi report-assembler agent. Covers artifact file detection patterns, variable flag bindings, data source tier preference rules, and detection reporting.
