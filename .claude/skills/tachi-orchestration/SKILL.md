@@ -1,6 +1,6 @@
 ---
 name: tachi-orchestration
-description: "Domain knowledge for the tachi orchestrator agent: SARIF 2.1.0 generation specification, STRIDE-per-Element and AI keyword dispatch rules, cross-agent correlation matrices, output schema tables for threats.md, structural validation checklist, and error handling templates. Loaded on-demand by the orchestrator during specific pipeline phases."
+description: "Domain knowledge for the tachi orchestrator agent: input format detection, DFD classification, trust boundary notation, STRIDE-per-Element dispatch rules, coverage requirements per component type, coverage matrix model, SARIF 2.1.0 generation specification, output schema tables for threats.md, baseline correlation, structural validation checklist, and error handling templates. Loaded on-demand by the orchestrator during specific pipeline phases."
 ---
 
 # Tachi Orchestration Skill
@@ -9,20 +9,31 @@ Domain knowledge extracted from the tachi orchestrator agent to support the OWAS
 
 ## Domain Coverage
 
-This skill contains three categories of domain knowledge:
+This skill contains six categories of domain knowledge:
 
-1. **SARIF Specification** -- Complete SARIF 2.1.0 generation specification including category-to-rule mappings, severity mapping tables, tool metadata templates, finding-to-result transformation rules, correlated finding mapping, dual-location strategy, fingerprint computation, taxonomy declarations, schema compliance structure, and JSON structural self-check.
+1. **Format Detection** -- Input format recognition patterns for ASCII, Free-text, Mermaid, PlantUML, and C4 architecture descriptions with priority ordering and heuristic matching rules.
 
-2. **Dispatch Rules** -- STRIDE-per-Element normalization table mapping DFD element types to applicable threat categories, AI keyword dispatch rules with keyword-to-category mappings and matching semantics, dispatch table format specification, and the five correlation rules with detection algorithm and group assembly instructions.
+2. **DFD Classification** -- DFD element type classification signals for External Entity, Process, Data Store, and Data Flow with ambiguous-classification defaults and format-specific extraction guidance.
 
-3. **Output Schemas** -- Output format specification for threats.md (frontmatter fields, all 7 required sections plus Section 4a), structural validation checklist covering section completeness and cross-section consistency, error handling templates (UNSUPPORTED_FORMAT, NO_COMPONENTS, INVALID_FORMAT_VALUE), and edge-case handlers for ambiguous classification, non-conforming findings, and the three-state coverage matrix cell model.
+3. **Trust Boundaries** -- Format-specific boundary notation for Mermaid subgraph, ASCII dashes, PlantUML boundary, C4 boundaries, and Free-text prose markers.
+
+4. **Dispatch Rules** -- STRIDE-per-Element normalization table mapping DFD element types to applicable threat categories, AI keyword dispatch rules with keyword-to-category mappings and matching semantics, dispatch table format specification, and the five correlation rules with detection algorithm and group assembly instructions.
+
+5. **Coverage Requirements & Matrix** -- Required STRIDE+AI categories per component type (external-entity, process, data-store, data-flow, llm-process, mcp-server), category-to-agent mapping for targeted re-analysis, three-state coverage matrix cell model, deduplication rules, and footnote conventions.
+
+6. **Output & SARIF** -- Output format specification for threats.md (frontmatter fields, all 7 required sections plus Section 4a), SARIF 2.1.0 generation specification with fingerprint preservation and taxonomy passthrough rules, structural validation checklist, and error handling templates.
 
 ## Loading Table
 
 | Reference File | Load Condition | Workflow Phase |
 |----------------|----------------|----------------|
+| `references/format-detection.md` | Entering Phase 0 (Format Identification) | Before determining architecture description format |
+| `references/dfd-classification.md` | Entering Phase 1 (DFD Extraction) | Before classifying components into DFD element types |
+| `references/trust-boundaries.md` | Entering Phase 1 (Boundary Identification) | Before extracting trust boundary notation |
 | `references/dispatch-rules.md` | Entering Phase 2 (Determine Threats) | After Phase 1 component inventory is produced, before agent dispatch |
-| `references/output-schemas.md` | Entering Phase 1 (Scope) for output format awareness; Phase 3 (Determine Countermeasures) for table assembly; Phase 4 (Assess) for validation | Before assembling Section 1, and before running the structural validation checklist |
+| `references/coverage-requirements.md` | Entering Phase 3 (Coverage Gate) | Before evaluating coverage completeness per component |
+| `references/coverage-matrix-model.md` | Entering Phase 4 (Output Assembly) | Before building the coverage matrix in threats.md |
+| `references/output-schemas.md` | Entering Phase 1 (Scope) for output format awareness; Phase 3 for table assembly; Phase 4 for validation | Before assembling Section 1, and before running the structural validation checklist |
 | `references/sarif-specification.md` | Entering SARIF generation step in Phase 4 | After threats.md structural validation passes, before writing threats.sarif |
 | `references/baseline-correlation.md` | Entering Phase 0 (Baseline Detection) | Before parsing baseline file, before carry-forward logic |
 

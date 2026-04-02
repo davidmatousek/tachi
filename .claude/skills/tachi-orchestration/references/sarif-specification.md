@@ -534,3 +534,101 @@ Before writing the `threats.sarif` file, run the following validation checklist.
 If any check fails, correct the error before proceeding. Do not produce a `threats.sarif` file that fails any of these structural checks.
 
 After the self-check passes, write the `threats.sarif` file to the output directory alongside `threats.md`.
+
+---
+
+## Fingerprint Preservation Rules
+
+When the orchestrator generates SARIF output, fingerprint fields serve dual purposes: enabling SARIF consumers (GitHub Code Scanning) to track alerts across uploads, and enabling the orchestrator's own baseline correlation pipeline to match findings across runs. The fingerprint values written to SARIF MUST be consistent with the baseline fingerprint registry (Phase 0) so that a SARIF file from one run can serve as a correlation source for the next.
+
+### Field Roles
+
+| Fingerprint Field | SARIF Path | Role | Stability Requirement |
+|-------------------|------------|------|----------------------|
+| `findingId/v1` | `result.partialFingerprints["findingId/v1"]` | **Primary correlation key** for matching findings across runs | Must be preserved exactly as assigned in Phase 3 (e.g., "S-1", "AG-2"). Never regenerate or renumber during SARIF generation. |
+| `primaryLocationLineHash` | `result.partialFingerprints["primaryLocationLineHash"]` | **Validation signal** confirming correlation correctness | Must be computed identically to the Fingerprint Computation rules above. Same ruleId + component_name inputs must produce the same hash across all invocations. |
+| `correlationGroup` | `result.partialFingerprints["correlationGroup"]` | **Correlation group identifier** linking related findings | Must match the correlation group ID from the Correlation Detection phase (e.g., "CG-1"). Only present on the primary finding of each group. |
+
+### Preservation Rules
+
+1. **`findingId/v1` is authoritative**: The `findingId/v1` is the primary key the baseline pipeline uses to match findings between runs. If a finding's `findingId/v1` changes between runs (e.g., due to renumbering), the baseline pipeline will classify the old ID as RESOLVED and the new ID as NEW, losing correlation history. During SARIF generation, copy the finding ID exactly as it was assigned in Phase 3 -- do not reassign, renumber, or reformat.
+
+2. **`primaryLocationLineHash` is a validation signal, not a discriminator**: Two findings with the same `findingId/v1` but different `primaryLocationLineHash` values should be flagged for manual review but still correlated (per architect review). The hash confirms a match is correct but does not override `findingId/v1` as the primary key. This means:
+   - The hash MUST be computed deterministically using the same algorithm every time (SHA-256 of `"{ruleId}|{component_name}"`, truncated to 16 hex characters).
+   - If a component is renamed between runs, the hash will change. The baseline pipeline detects this via the rename/refactor detection rules in Phase 1a, not via hash comparison.
+   - If two findings share the same category and component (same hash), they are distinguished by `findingId/v1`.
+
+3. **`correlationGroup` is conditional and primary-only**: The `correlationGroup` field is only present on the primary finding of each correlation group. Correlated peers do not appear as top-level SARIF results (they are in `relatedLocations[]`), so they have no `correlationGroup` field. When reading a SARIF file as baseline input, the presence of `correlationGroup` indicates the result represents a group of related findings, and `relatedLocations[]` enumerates the peers.
+
+4. **`baselineRunId` bridges runs**: When the pipeline operates in baseline-aware mode, the `baselineRunId` field in `partialFingerprints` records which run originally discovered or last assessed each finding. This field enables downstream consumers to trace finding provenance across multiple runs. See the `baselineRunId` rules in the Fingerprint Computation section above for value assignment per delta status.
+
+### Cross-Run Consistency Guarantee
+
+Given the same architecture input and the same finding set, the orchestrator MUST produce identical fingerprint values in the SARIF output. This guarantee enables:
+
+- **GitHub Code Scanning**: Stable alert tracking across uploads. Changing fingerprints causes GitHub to close old alerts and open new ones, losing triage state and comments.
+- **Baseline correlation**: The next pipeline run reads the SARIF file (or the co-produced `threats.md`) and uses `findingId/v1` as the primary correlation key. Unstable IDs break the entire baseline-aware pipeline.
+- **Downstream scoring**: The risk-scorer and compensating-controls agents consume `threats.md` findings by ID. If SARIF and `threats.md` disagree on finding IDs, cross-format traceability is broken.
+
+---
+
+## Taxonomy Passthrough Rules
+
+When the orchestrator generates SARIF output, taxonomy references from the finding IR (OWASP, CWE, MITRE identifiers in the `references` field) must be passed through into the SARIF taxonomy structures. This ensures that findings carry their framework references into SARIF viewers that display taxonomy data (Azure DevOps, VS Code SARIF Viewer, SARIF Explorer).
+
+### Passthrough Pipeline
+
+```
+Finding IR `references` field
+    ↓
+Rule `help.markdown` (inline text references)
+    ↓
+Rule `properties.tags` (searchable tags)
+    ↓
+Rule `relationships[]` (structured taxonomy links)
+    ↓
+`run.taxonomies[]` (framework declarations)
+```
+
+Each finding's framework references flow through four SARIF structures. The orchestrator MUST ensure consistency across all four levels.
+
+### Rule 1: All referenced frameworks must be declared in `run.taxonomies[]`
+
+Every taxonomy framework referenced by any rule's `relationships[]` MUST have a corresponding entry in `run.taxonomies[]`. The two standard taxonomies (OWASP and CWE) are always declared. If a finding references an additional framework (e.g., MITRE ATLAS for agentic threats), it is referenced in `help.markdown` and `tags` but does NOT require a `run.taxonomies[]` entry unless a formal `relationships[]` link is created.
+
+### Rule 2: `relationships[]` entries must use the canonical mapping
+
+The SARIF Taxonomies section above defines the canonical mapping from each threat category to its OWASP and CWE taxonomy entries. When generating `relationships[]` for a rule:
+
+- Use the `target.id` values from the canonical mapping table (e.g., `"A07"` for Spoofing, `"CWE-287"` for Spoofing).
+- Do NOT substitute finding-specific OWASP or CWE references that differ from the canonical mapping. The canonical mapping represents the category-level relationship; finding-specific references belong in `help.markdown`.
+- For categories without an OWASP Top 10 mapping (Agentic Threats, LLM Threats), include only the CWE relationship entry. Reference the relevant OWASP initiative (e.g., OWASP Agentic Security Initiative, OWASP LLM Top 10) in `help.markdown` instead.
+
+### Rule 3: `help.markdown` carries finding-specific references
+
+The `help.markdown` field on each rule is the appropriate location for finding-specific framework references that go beyond the canonical category-level mapping. For example:
+
+- A specific spoofing finding might reference CWE-290 (Authentication Bypass by Spoofing) in addition to the canonical CWE-287. This specific reference belongs in `help.markdown`, not in `relationships[]`.
+- An LLM threat finding might reference OWASP LLM01:2025 (Prompt Injection). Since there is no formal OWASP Top 10 taxonomy entry for LLM threats, this reference belongs in `help.markdown`.
+
+### Rule 4: `properties.tags` must include framework identifiers
+
+Each rule's `tags` array must include searchable identifiers for all referenced frameworks. At minimum:
+
+- `"security"` (always first)
+- Category family: `"stride"` or `"ai"`
+- Category name: e.g., `"spoofing"`, `"tampering"`, `"agentic"`
+- Framework identifiers: `"owasp"`, `"cwe"`, and any additional identifiers relevant to the category (e.g., `"authentication"`, `"data-integrity"`)
+
+Tags enable SARIF viewers and security dashboards to filter findings by framework. Maximum 20 tags per rule.
+
+### Rule 5: Taxonomy index references must be stable
+
+The `target.toolComponent.name` in `relationships[]` references the taxonomy by name (e.g., `"OWASP"`, `"CWE"`). The `supportedTaxonomies[]` array in `tool.driver` references taxonomies by name and index position. The index positions MUST remain stable:
+
+| Index | Taxonomy Name |
+|-------|---------------|
+| 0 | OWASP |
+| 1 | CWE |
+
+If additional taxonomies are added in future versions, they MUST be appended (index 2, 3, etc.) -- never inserted before existing entries. Reordering would break `index` references in existing SARIF files used as baselines.

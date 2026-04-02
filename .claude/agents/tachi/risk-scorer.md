@@ -31,6 +31,8 @@ Load domain knowledge on-demand from the `tachi-risk-scoring` skill using the Re
 | Trust zones | `.claude/skills/tachi-risk-scoring/references/trust-zones.md` | Trust zone extraction (Section 2) |
 | Reachability | `.claude/skills/tachi-risk-scoring/references/reachability-analysis.md` | Reachability assessment (Section 6) |
 | Output formatting | `.claude/skills/tachi-risk-scoring/references/output-formatting.md` | Markdown output generation (Section 9) |
+| Severity bands (shared) | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | Composite scoring / severity assignment |
+| Finding format (shared) | `.claude/skills/tachi-shared/references/finding-format-shared.md` | Input parsing / output formatting |
 
 ---
 

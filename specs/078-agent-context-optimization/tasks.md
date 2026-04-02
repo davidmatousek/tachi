@@ -84,22 +84,22 @@ triad:
 
 ### Orchestrator Restructuring
 
-- [ ] T017 [P] [US1] Create `format-detection.md` in `.claude/skills/tachi-orchestration/references/` — extract 5 input format recognition patterns (ASCII, Free-text, Mermaid, PlantUML, C4), priority order, heuristic matching rules from `orchestrator.md`
-- [ ] T018 [P] [US1] Create `dfd-classification.md` in `.claude/skills/tachi-orchestration/references/` — extract DFD element type classification signals, ambiguous classification default-to-Process rule, format-specific extraction guidance
-- [ ] T019 [P] [US1] Create `trust-boundaries.md` in `.claude/skills/tachi-orchestration/references/` — extract format-specific boundary notation (Mermaid subgraph, ASCII dashes, PlantUML boundary, C4 boundaries, Free-text prose markers)
-- [ ] T020 [P] [US1] Create `coverage-requirements.md` in `.claude/skills/tachi-orchestration/references/` — extract required categories per component type (external-entity, process, data-store, data-flow, llm-process, mcp-server), category-to-agent mapping for targeted re-analysis
-- [ ] T021 [P] [US1] Create `coverage-matrix-model.md` in `.claude/skills/tachi-orchestration/references/` — extract three-state cell definition (finding count, em dash, n/a), deduplication rules for correlated findings, footnote rules
-- [ ] T022 [P] [US1] Enhance `sarif-specification.md` in `.claude/skills/tachi-orchestration/references/` — add scoring-specific fingerprint preservation rules (findingId/v1, primaryLocationLineHash, correlationGroup), taxonomy passthrough rules
-- [ ] T023 [US1] Restructure `.claude/agents/tachi/orchestrator.md` — remove all extracted domain data, add skill reference navigation table, add MANDATORY Read instructions at each workflow branch point. Target: ≤500 lines (accept ≤520 per architect tolerance) containing only orchestration logic (Phase 0-4 decision trees, agent invocation, baseline detection, coverage gate, error handling)
-- [ ] T024 [US1] Update SKILL.md in `.claude/skills/tachi-orchestration/` — add navigation entries for 5 new reference files
+- [X] T017 [P] [US1] Create `format-detection.md` in `.claude/skills/tachi-orchestration/references/` — extract 5 input format recognition patterns (ASCII, Free-text, Mermaid, PlantUML, C4), priority order, heuristic matching rules from `orchestrator.md`
+- [X] T018 [P] [US1] Create `dfd-classification.md` in `.claude/skills/tachi-orchestration/references/` — extract DFD element type classification signals, ambiguous classification default-to-Process rule, format-specific extraction guidance
+- [X] T019 [P] [US1] Create `trust-boundaries.md` in `.claude/skills/tachi-orchestration/references/` — extract format-specific boundary notation (Mermaid subgraph, ASCII dashes, PlantUML boundary, C4 boundaries, Free-text prose markers)
+- [X] T020 [P] [US1] Create `coverage-requirements.md` in `.claude/skills/tachi-orchestration/references/` — extract required categories per component type (external-entity, process, data-store, data-flow, llm-process, mcp-server), category-to-agent mapping for targeted re-analysis
+- [X] T021 [P] [US1] Create `coverage-matrix-model.md` in `.claude/skills/tachi-orchestration/references/` — extract three-state cell definition (finding count, em dash, n/a), deduplication rules for correlated findings, footnote rules
+- [X] T022 [P] [US1] Enhance `sarif-specification.md` in `.claude/skills/tachi-orchestration/references/` — add scoring-specific fingerprint preservation rules (findingId/v1, primaryLocationLineHash, correlationGroup), taxonomy passthrough rules
+- [X] T023 [US1] Restructure `.claude/agents/tachi/orchestrator.md` — remove all extracted domain data, add skill reference navigation table, add MANDATORY Read instructions at each workflow branch point. Target: ≤500 lines (accept ≤520 per architect tolerance) containing only orchestration logic (Phase 0-4 decision trees, agent invocation, baseline detection, coverage gate, error handling). **Result**: 1,287→438 lines.
+- [X] T024 [US1] Update SKILL.md in `.claude/skills/tachi-orchestration/` — add navigation entries for 5 new reference files
 
 ### Control-Analyzer Verification & Enhancement
 
-- [ ] T025 [P] [US1] Verify completeness of `.claude/skills/tachi-control-analysis/references/control-categories.md` — confirm all 8 categories covered (authentication, input-validation, rate-limiting, encryption, logging-audit, csrf-protection, csp-security-headers, access-control) with detection patterns and STRIDE mapping
-- [ ] T026 [P] [US1] Verify completeness of `.claude/skills/tachi-control-analysis/references/evidence-criteria.md` — confirm Phase B semantic analysis rules, context check, enforcement check, strength assessment, confidence assignment rules
-- [ ] T027 [P] [US1] Verify completeness of `.claude/skills/tachi-control-analysis/references/residual-risk.md` — confirm reduction factor tables per effectiveness level, severity band re-mapping for residual scores
-- [ ] T028 [US1] Restructure `.claude/agents/tachi/control-analyzer.md` — extract any remaining inline domain data to skill references, add/update skill reference navigation table, add MANDATORY Read instructions. Target: ≤500 lines containing only orchestration logic (input validation, two-phase detection, classification, recommendation generation, output assembly, carry-forward logic)
-- [ ] T029 [US1] Update SKILL.md in `.claude/skills/tachi-control-analysis/` — verify/update navigation entries for all reference files
+- [X] T025 [P] [US1] Verify completeness of `.claude/skills/tachi-control-analysis/references/control-categories.md` — confirm all 8 categories covered (authentication, input-validation, rate-limiting, encryption, logging-audit, csrf-protection, csp-security-headers, access-control) with detection patterns and STRIDE mapping
+- [X] T026 [P] [US1] Verify completeness of `.claude/skills/tachi-control-analysis/references/evidence-criteria.md` — confirm Phase B semantic analysis rules, context check, enforcement check, strength assessment, confidence assignment rules
+- [X] T027 [P] [US1] Verify completeness of `.claude/skills/tachi-control-analysis/references/residual-risk.md` — confirm reduction factor tables per effectiveness level, severity band re-mapping for residual scores
+- [X] T028 [US1] Restructure `.claude/agents/tachi/control-analyzer.md` — extract any remaining inline domain data to skill references, add/update skill reference navigation table, add MANDATORY Read instructions. Target: ≤500 lines containing only orchestration logic (input validation, two-phase detection, classification, recommendation generation, output assembly, carry-forward logic). **Result**: 975→422 lines.
+- [X] T029 [US1] Update SKILL.md in `.claude/skills/tachi-control-analysis/` — verify/update navigation entries for all reference files (verified: already complete, no changes needed)
 
 **Checkpoint**: All 3 methodology agents restructured to ≤500 lines. Verify line counts: `wc -l .claude/agents/tachi/{orchestrator,risk-scorer,control-analyzer}.md`
 
@@ -111,28 +111,28 @@ triad:
 
 ### Report-Assembler
 
-- [ ] T030 [P] [US2] Create skill directory `.claude/skills/tachi-report-assembly/` with SKILL.md containing navigation table
-- [ ] T031 [P] [US2] Create `typst-artifacts.md` in `.claude/skills/tachi-report-assembly/references/` — extract artifact detection table (patterns, variable bindings, tier preference rules) from `report-assembler.md`
-- [ ] T032 [P] [US2] Create `typst-template-contract.md` in `.claude/skills/tachi-report-assembly/references/` — extract Typst data variable contract (variable naming, data types, all `#let` variable bindings, image path resolution) from `report-assembler.md`
-- [ ] T033 [P] [US2] Create `brand-asset-guidelines.md` in `.claude/skills/tachi-report-assembly/references/` — extract brand asset handling (logo locations, format detection, dark variant paths, fallback rules) from `report-assembler.md`
-- [ ] T034 [US2] Restructure `.claude/agents/tachi/report-assembler.md` — remove extracted content, add skill reference navigation table and MANDATORY Read instructions. Target: ≤300 lines containing only orchestration logic (artifact detection, script invocation, Typst compilation, error handling)
+- [X] T030 [P] [US2] Create skill directory `.claude/skills/tachi-report-assembly/` with SKILL.md containing navigation table
+- [X] T031 [P] [US2] Create `typst-artifacts.md` in `.claude/skills/tachi-report-assembly/references/` — extract artifact detection table (patterns, variable bindings, tier preference rules) from `report-assembler.md`
+- [X] T032 [P] [US2] Create `typst-template-contract.md` in `.claude/skills/tachi-report-assembly/references/` — extract Typst data variable contract (variable naming, data types, all `#let` variable bindings, image path resolution) from `report-assembler.md`
+- [X] T033 [P] [US2] Create `brand-asset-guidelines.md` in `.claude/skills/tachi-report-assembly/references/` — extract brand asset handling (logo locations, format detection, dark variant paths, fallback rules) from `report-assembler.md`
+- [X] T034 [US2] Restructure `.claude/agents/tachi/report-assembler.md` — remove extracted content, add skill reference navigation table and MANDATORY Read instructions. Target: ≤300 lines. **Result**: 656→207 lines.
 
 ### Threat-Report
 
-- [ ] T035 [P] [US2] Create skill directory `.claude/skills/tachi-threat-reporting/` with SKILL.md containing navigation table
-- [ ] T036 [P] [US2] Create `narrative-templates.md` in `.claude/skills/tachi-threat-reporting/references/` — extract executive summary 5 elements, architecture overview structure, per-category subsection headers, per-finding narrative pattern, progressive depth rules, cross-cutting theme patterns, language rules from `threat-report.md`
-- [ ] T037 [P] [US2] Create `attack-tree-construction.md` in `.claude/skills/tachi-threat-reporting/references/` — extract tree structure rules, minimum depth requirements, Mermaid syntax conventions, color styling, validation checklist, decomposition stopping rules from `threat-report.md`
-- [ ] T038 [P] [US2] Create `attack-tree-examples.md` in `.claude/skills/tachi-threat-reporting/references/` — extract reference attack tree examples (Critical finding, High finding patterns) from `threat-report.md`
-- [ ] T039 [US2] Restructure `.claude/agents/tachi/threat-report.md` — remove extracted content, add skill reference navigation table and MANDATORY Read instructions. Target: ≤300 lines containing only orchestration logic (input validation, finding traceability, appendix assembly, edge case handling)
+- [X] T035 [P] [US2] Create skill directory `.claude/skills/tachi-threat-reporting/` with SKILL.md containing navigation table
+- [X] T036 [P] [US2] Create `narrative-templates.md` in `.claude/skills/tachi-threat-reporting/references/` — extract executive summary 5 elements, architecture overview structure, per-category subsection headers, per-finding narrative pattern, progressive depth rules, cross-cutting theme patterns, language rules from `threat-report.md`
+- [X] T037 [P] [US2] Create `attack-tree-construction.md` in `.claude/skills/tachi-threat-reporting/references/` — extract tree structure rules, minimum depth requirements, Mermaid syntax conventions, color styling, validation checklist, decomposition stopping rules from `threat-report.md`
+- [X] T038 [P] [US2] Create `attack-tree-examples.md` in `.claude/skills/tachi-threat-reporting/references/` — extract reference attack tree examples (Critical finding, High finding patterns) from `threat-report.md`
+- [X] T039 [US2] Restructure `.claude/agents/tachi/threat-report.md` — remove extracted content, add skill reference navigation table and MANDATORY Read instructions. Target: ≤300 lines. **Result**: 801→267 lines.
 
 ### Threat-Infographic
 
-- [ ] T040 [P] [US2] Create skill directory `.claude/skills/tachi-infographics/` with SKILL.md containing navigation table
-- [ ] T041 [P] [US2] Create `infographic-specifications.md` in `.claude/skills/tachi-infographics/references/` — extract section formats (metadata, risk distribution, coverage heat map, top findings), data accuracy rules, finding selection priority from `threat-infographic.md`
-- [ ] T042 [P] [US2] Create `template-specific-formats.md` in `.claude/skills/tachi-infographics/references/` — extract Baseball Card, System Architecture, Risk Funnel template-specific section 5 formats, tier width calculation, edge cases from `threat-infographic.md`
-- [ ] T043 [P] [US2] Create `gemini-prompt-construction.md` in `.claude/skills/tachi-infographics/references/` — extract prompt hygiene rules, placeholder mapping, design constraints, risk label mapping, image generation parameters from `threat-infographic.md`
-- [ ] T044 [P] [US2] Create `visual-design-system.md` in `.claude/skills/tachi-infographics/references/` — extract color palette, layout structure, typography specs, background/theme selection, template file references from `threat-infographic.md`
-- [ ] T045 [US2] Restructure `.claude/agents/tachi/threat-infographic.md` — remove extracted content, add skill reference navigation table and MANDATORY Read instructions. Target: ≤300 lines containing only orchestration logic (input contract, data source detection, script invocation, JSON parsing, edge case handling)
+- [X] T040 [P] [US2] Create skill directory `.claude/skills/tachi-infographics/` with SKILL.md containing navigation table
+- [X] T041 [P] [US2] Create `infographic-specifications.md` in `.claude/skills/tachi-infographics/references/` — extract section formats (metadata, risk distribution, coverage heat map, top findings), data accuracy rules, finding selection priority from `threat-infographic.md`
+- [X] T042 [P] [US2] Create `template-specific-formats.md` in `.claude/skills/tachi-infographics/references/` — extract Baseball Card, System Architecture, Risk Funnel template-specific section 5 formats, tier width calculation, edge cases from `threat-infographic.md`
+- [X] T043 [P] [US2] Create `gemini-prompt-construction.md` in `.claude/skills/tachi-infographics/references/` — extract prompt hygiene rules, placeholder mapping, design constraints, risk label mapping, image generation parameters from `threat-infographic.md`
+- [X] T044 [P] [US2] Create `visual-design-system.md` in `.claude/skills/tachi-infographics/references/` — extract color palette, layout structure, typography specs, background/theme selection, template file references from `threat-infographic.md`
+- [X] T045 [US2] Restructure `.claude/agents/tachi/threat-infographic.md` — remove extracted content, add skill reference navigation table and MANDATORY Read instructions. Target: ≤300 lines. **Result**: 776→287 lines.
 
 **Checkpoint**: All 3 report agents restructured to ≤300 lines. Verify line counts: `wc -l .claude/agents/tachi/{report-assembler,threat-report,threat-infographic}.md`
 
@@ -142,11 +142,11 @@ triad:
 
 **Purpose**: Create shared reference files for content duplicated across multiple agents
 
-- [ ] T046 [P] Create shared skill directory `.claude/skills/tachi-shared/` with SKILL.md containing navigation table and consumer list
-- [ ] T047 [P] Create `severity-bands-shared.md` in `.claude/skills/tachi-shared/references/` — consolidate severity band definitions (Critical≥8.0, High≥6.0, Medium≥4.0, Low<4.0), color codes, SLA mappings from all 6 restructured agents into single source of truth
-- [ ] T048 [P] Create `stride-categories-shared.md` in `.claude/skills/tachi-shared/references/` — consolidate STRIDE+AI category descriptions, element-to-category applicability matrix from orchestrator dispatch-rules and leaf agent descriptions
-- [ ] T049 [P] Create `finding-format-shared.md` in `.claude/skills/tachi-shared/references/` — consolidate finding format specification (required fields, optional fields, format conventions) used by threat agents and risk-scorer
-- [ ] T050 Update skill reference navigation tables in all 6 restructured agents to reference shared files from `.claude/skills/tachi-shared/references/` where applicable — replace agent-local severity band definitions with shared reference Read instructions
+- [X] T046 [P] Create shared skill directory `.claude/skills/tachi-shared/` with SKILL.md containing navigation table and consumer list
+- [X] T047 [P] Create `severity-bands-shared.md` in `.claude/skills/tachi-shared/references/` — consolidate severity band definitions, color codes, SLA mappings. **Note**: Used authoritative thresholds from `schemas/risk-scoring.yaml` (Critical≥9.0, High≥7.0, Medium≥4.0, Low<4.0)
+- [X] T048 [P] Create `stride-categories-shared.md` in `.claude/skills/tachi-shared/references/` — consolidate STRIDE+AI category descriptions, element-to-category applicability matrix from orchestrator dispatch-rules and leaf agent descriptions
+- [X] T049 [P] Create `finding-format-shared.md` in `.claude/skills/tachi-shared/references/` — consolidate finding format specification (required fields, optional fields, format conventions) used by threat agents and risk-scorer
+- [X] T050 Update skill reference navigation tables in all 6 restructured agents to reference shared files from `.claude/skills/tachi-shared/references/` — 9 entries added (3 orchestrator, 2 risk-scorer, 1 each for remaining 4)
 
 **Checkpoint**: Shared references created. No severity band, STRIDE category, or finding format definitions remain duplicated across agents.
 
