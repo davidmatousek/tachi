@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 078 — Agent Context Optimization
+
+**Added**
+- Restructured 6 tachi agents (orchestrator, risk-scorer, control-analyzer, report-assembler, threat-report, threat-infographic) from monolithic prompts to lean definitions with on-demand skill references; created 4 new skill directories (`tachi-orchestration`, `tachi-risk-scoring`, `tachi-report-assembly`, `tachi-shared`) with 25+ granular reference files; added explicit model fields to all 17 agents; shared severity bands, STRIDE+AI categories, finding format as single-source-of-truth; 40-60% prompt size reduction (`46fc7e6`)
+
+**Changed**
+- Closed Feature 078 — updated product docs (PRD INDEX, User Stories, OKRs), architecture docs (Tech Stack, System Design, Patterns, ADR-019, ADR-002), KB entry PAT-018, delivery report, BACKLOG regenerated (`7c47b0a`, `618b790`)
+
 ### Feature 074 — Baseline-Aware Pipeline
 
 **Added**
