@@ -1616,3 +1616,58 @@ Architecture Description
 | Skill references | Markdown | Domain knowledge, templates, patterns |
 | Shared references | Markdown | Deduplicated cross-agent definitions (severity, categories, format) |
 | Regression testing | Pipeline output comparison | Structural equivalence verification |
+
+---
+
+### Feature 066: Install Script and Version Tagging
+
+## Components
+
+### C1: Install Script (`scripts/install.sh`)
+
+Bash 3.2+ script (~200 lines) that copies all distributable files from a tachi source directory to the target project. Auto-detects source from script location using `${BASH_SOURCE[0]}` pattern (matching `generate-adapter-version.sh`). Supports `--source`, `--version`, and `--help` flags via manual `while/case` parsing.
+
+Key mechanisms:
+- Manifest parsing: extracts paths between `<!-- BEGIN MANIFEST -->` / `<!-- END MANIFEST -->` markers
+- Version checkout: dirty tree check → record branch → trap EXIT → checkout tag → copy → restore
+- File copy: `mkdir -p` + `cp -r` for each manifest path; additive only (never deletes)
+
+### C2: Machine-Parseable Manifest Section
+
+HTML comment-delimited section in `INSTALL_MANIFEST.md` with one distributable path per line. Directories end with `/`, individual files do not. Parsed by the install script instead of the human-readable markdown tables.
+
+### C3: README Quick Start Update
+
+Updated Step 2 with single install command as primary path. Manual `cp -r` commands preserved in collapsible `<details>` block.
+
+### C4: Developer Guide Update
+
+`docs/guides/DEVELOPER_GUIDE_TACHI.md` install section updated to match README.
+
+### C5: Version Tagging
+
+First annotated tag `v4.0.0` on main after PR merge. Enables `git describe --tags --always` for version reporting.
+
+## Data Flow
+
+```
+User runs install.sh from target project root
+  │
+  ├─ 1. Auto-detect SOURCE_DIR from BASH_SOURCE (or --source override)
+  ├─ 2. If --version: dirty tree check → record branch → trap EXIT → checkout tag
+  ├─ 3. Parse INSTALL_MANIFEST.md (machine-parseable section)
+  ├─ 4. For each path: mkdir -p + cp -r → target directory
+  ├─ 5. Report: version, file count, source path
+  └─ 6. If --version: trap restores original branch on EXIT
+```
+
+## Tech Stack
+
+| Layer | Technology | Justification |
+|-------|-----------|---------------|
+| Script | Bash 3.2+ | macOS default, matches existing tachi scripts |
+| File copy | `cp -r`, `mkdir -p` | Standard coreutils, no external deps |
+| Version detection | `git describe --tags --always` | Version string from nearest tag |
+| Dirty tree check | `git status --porcelain` | Machine-parseable, catches all change types |
+| Branch restore | `trap cleanup EXIT` | Guaranteed execution on all exit paths |
+| Manifest parsing | `sed`/`awk` between HTML comment markers | No external parser, Bash 3.2 compatible |

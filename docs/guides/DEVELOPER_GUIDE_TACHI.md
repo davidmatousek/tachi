@@ -80,7 +80,26 @@ cd ~/Projects/tachi && git pull
 
 ## Step 2: Add Tachi to Your Project (Per-Project Setup)
 
-From your project root, copy agents, commands, schemas, and templates into your project:
+From your project root, run the install script:
+
+```bash
+~/Projects/tachi/scripts/install.sh
+```
+
+To install a specific version:
+
+```bash
+~/Projects/tachi/scripts/install.sh --version v4.0.0
+```
+
+If tachi is cloned to a non-default location:
+
+```bash
+~/Projects/tachi/scripts/install.sh --source /path/to/tachi
+```
+
+<details>
+<summary>Manual install (alternative)</summary>
 
 ```bash
 # Agents (17 threat analysis agent definitions)
@@ -103,6 +122,8 @@ cp -r ~/Projects/tachi/brand/ brand/
 mkdir -p docs/guides
 cp ~/Projects/tachi/docs/guides/DEVELOPER_GUIDE_TACHI.md docs/guides/
 ```
+
+</details>
 
 Run this for each new codebase you want to add threat modeling to. Repeat it after pulling tachi updates to get the latest agents, commands, and templates. See [`INSTALL_MANIFEST.md`](../../INSTALL_MANIFEST.md) for the canonical list of distributable files.
 

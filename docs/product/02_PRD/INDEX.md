@@ -1,10 +1,11 @@
 # PRD Index
 
-**Last Updated**: 2026-04-02
+**Last Updated**: 2026-04-06
 
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 066 | [Install Script and Version Tagging](066-install-script-and-version-tagging-2026-04-06.md) | ✓ | ⚠ | ⚠ | Approved | 2026-04-06 |
 | 078 | [Agent Context Optimization](078-agent-context-optimization-2026-04-01.md) | ✓ | ✓ | ✓ | Delivered | 2026-04-02 |
 | 074 | [Baseline-Aware Pipeline](074-baseline-aware-pipeline-2026-03-31.md) | ✓ | ✓ | ✓ | Delivered | 2026-04-01 |
 | 075 | [Tachi Agent Best Practices](075-tachi-agent-best-practices-2026-03-31.md) | ✓ | ✓ | ✓ | Delivered | 2026-03-31 |

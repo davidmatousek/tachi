@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-04-02T11:56:20Z.
+> Auto-generated from GitHub Issues on 2026-04-06T22:54:32Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -8,16 +8,18 @@
 
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
+| #84 | MAESTRO layer mapping — CSA seven-layer taxonomy overlay for threat findings | — | — | 2026-04-04 |
 | #82 | Extend lean agent + skill references pattern to 11 STRIDE agents | — | — | 2026-04-02 |
 | #69 | Expand example datasets for broader test coverage | — | — | 2026-03-30 |
 | #62 | Custom brand presets — user-definable brand identity via config file | — | — | 2026-03-29 |
 | #55 | Feature: Security Progression Summary — multi-run trend comparison over time | | Dimension | Score | Rationale | | - Market research: no threat modeling tool provides multi... | 2026-03-28 |
+| #46 | Sync upstream AOD Kit — merge new skills, commands, rules, and guides | — | — | 2026-04-04 |
 
 ## Define
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| #66 | GitHub Releases distribution for simplified install and versioned updates | — | 2026-03-30 |
+| — | *No items in this stage* | | |
 
 ## Plan
 
@@ -43,8 +45,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
-| #51 | fix: Gemini heat map renders incorrect severity labels for medium-risk components | OPEN | 2026-03-28 |
-| #46 | Sync upstream AOD Kit — merge new skills, commands, rules, and guides | OPEN | 2026-03-28 |
+| #66 | Install script and version tagging | OPEN | 2026-04-06 |
 | #27 | Developer Guide: Automated Threat Modeling for Your Architecture | CLOSED | 2026-03-24 |
 | #18 | Feature: Threat Infographic Agent | CLOSED | 2026-03-23 |
 | #15 | Feature 007: Threat Report Agent & Attack Trees | CLOSED | 2026-03-23 |

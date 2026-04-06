@@ -38,6 +38,25 @@ git clone https://github.com/davidmatousek/tachi.git ~/Projects/tachi
 From your project root:
 
 ```bash
+~/Projects/tachi/scripts/install.sh
+```
+
+To install a specific version:
+
+```bash
+~/Projects/tachi/scripts/install.sh --version v4.0.0
+```
+
+If tachi is cloned to a non-default location:
+
+```bash
+~/Projects/tachi/scripts/install.sh --source /path/to/tachi
+```
+
+<details>
+<summary>Manual install (alternative)</summary>
+
+```bash
 # Agents (threat analysis engine)
 cp -r ~/Projects/tachi/.claude/agents/tachi/ .claude/agents/tachi/
 
@@ -58,6 +77,8 @@ cp -r ~/Projects/tachi/brand/ brand/
 mkdir -p docs/guides
 cp ~/Projects/tachi/docs/guides/DEVELOPER_GUIDE_TACHI.md docs/guides/
 ```
+
+</details>
 
 See [`INSTALL_MANIFEST.md`](INSTALL_MANIFEST.md) for the full list of distributable files.
 

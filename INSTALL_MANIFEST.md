@@ -65,6 +65,24 @@ Copy the entire `schemas/` directory. Current schemas:
 - `infographic.yaml` -- infographic specification structure
 - `security-report.yaml` -- PDF report configuration
 
+## Machine-Parseable Manifest
+
+The install script parses this section automatically. One path per line — directories end with `/`, files do not. Lines starting with `#` are comments and are skipped.
+
+<!-- BEGIN MANIFEST -->
+.claude/agents/tachi/
+.claude/commands/threat-model.md
+.claude/commands/risk-score.md
+.claude/commands/compensating-controls.md
+.claude/commands/infographic.md
+.claude/commands/security-report.md
+schemas/
+templates/tachi/
+adapters/claude-code/agents/references/
+brand/
+docs/guides/DEVELOPER_GUIDE_TACHI.md
+<!-- END MANIFEST -->
+
 ## Maintenance Checklist
 
 When adding a new feature, check whether it requires updates to:
@@ -77,3 +95,4 @@ When adding a new feature, check whether it requires updates to:
 - [ ] New report page templates in `templates/tachi/security-report/`
 - [ ] New reference docs in `adapters/claude-code/agents/references/`
 - [ ] Update install instructions in `README.md` and `docs/guides/DEVELOPER_GUIDE_TACHI.md`
+- [ ] Update the machine-parseable manifest section (`<!-- BEGIN MANIFEST -->` / `<!-- END MANIFEST -->`)
