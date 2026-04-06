@@ -49,16 +49,15 @@ usage() {
 
 # --- Variables ----------------------------------------------------------------
 
-SOURCE_DIR=""
 VERSION_TAG=""
 ORIGINAL_REF=""
 
-# --- Source auto-detection (T004) ---------------------------------------------
+# --- Source auto-detection ----------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# --- Argument parsing (T005) -------------------------------------------------
+# --- Argument parsing --------------------------------------------------------
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -81,19 +80,14 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-# --- Environment validation (T006) -------------------------------------------
+# --- Environment validation --------------------------------------------------
 
 [ -d "$SOURCE_DIR" ] || die "Source directory not found: $SOURCE_DIR"
 
 MANIFEST_FILE="${SOURCE_DIR}/INSTALL_MANIFEST.md"
 [ -f "$MANIFEST_FILE" ] || die "INSTALL_MANIFEST.md not found in: $SOURCE_DIR"
 
-HAS_GIT=false
-if command -v git >/dev/null 2>&1; then
-  HAS_GIT=true
-fi
-
-if [ -n "$VERSION_TAG" ] && [ "$HAS_GIT" = false ]; then
+if [ -n "$VERSION_TAG" ] && ! command -v git >/dev/null 2>&1; then
   die "--version requires git but git is not available on PATH"
 fi
 
@@ -102,21 +96,19 @@ if [ "$(cd "$SOURCE_DIR" && pwd)" = "$TARGET_DIR" ]; then
   die "Cannot install tachi into its own source directory. Run this from your target project root."
 fi
 
-# --- Version checkout (T011-T015) ---------------------------------------------
+# --- Version checkout --------------------------------------------------------
 
 if [ -n "$VERSION_TAG" ]; then
-  # T011: Dirty working tree check
   if [ -n "$(git -C "$SOURCE_DIR" status --porcelain)" ]; then
     die "Source repository has uncommitted changes. Commit or stash them before using --version."
   fi
 
-  # T012: Record current branch (with detached HEAD fallback)
   ORIGINAL_REF="$(git -C "$SOURCE_DIR" rev-parse --abbrev-ref HEAD)"
   if [ "$ORIGINAL_REF" = "HEAD" ]; then
     ORIGINAL_REF="$(git -C "$SOURCE_DIR" rev-parse HEAD)"
   fi
 
-  # T013: Trap cleanup EXIT handler (guard variable prevents restore if checkout never happened)
+  # Guard variable prevents restore if checkout never happened
   cleanup() {
     if [ -n "$ORIGINAL_REF" ]; then
       git -C "$SOURCE_DIR" checkout "$ORIGINAL_REF" --quiet 2>/dev/null || true
@@ -124,18 +116,16 @@ if [ -n "$VERSION_TAG" ]; then
   }
   trap cleanup EXIT
 
-  # T014: Tag validation
   if ! git -C "$SOURCE_DIR" rev-parse --verify "refs/tags/$VERSION_TAG" >/dev/null 2>&1; then
     echo "Tag '$VERSION_TAG' not found. Available version tags:"
     git -C "$SOURCE_DIR" tag -l 'v*' --sort=-v:refname
     die "Invalid version tag: $VERSION_TAG"
   fi
 
-  # T015: Checkout requested tag
   git -C "$SOURCE_DIR" checkout "$VERSION_TAG" --quiet
 fi
 
-# --- Manifest parsing (T007) -------------------------------------------------
+# --- Manifest parsing --------------------------------------------------------
 
 parse_manifest() {
   local manifest="$1"
@@ -160,7 +150,7 @@ parse_manifest() {
   done < "$manifest"
 }
 
-# --- File copy loop (T008) ---------------------------------------------------
+# --- File copy loop ----------------------------------------------------------
 
 COPY_SUCCESS=0
 COPY_FAIL=0
@@ -195,10 +185,10 @@ while IFS= read -r entry; do
   esac
 done < <(parse_manifest "$MANIFEST_FILE")
 
-# --- Summary output (T009) ---------------------------------------------------
+# --- Summary output ----------------------------------------------------------
 
 INSTALLED_VERSION="untagged"
-if [ "$HAS_GIT" = true ] && [ -d "${SOURCE_DIR}/.git" ]; then
+if command -v git >/dev/null 2>&1 && [ -d "${SOURCE_DIR}/.git" ]; then
   INSTALLED_VERSION="$(git -C "$SOURCE_DIR" describe --tags --always 2>/dev/null || echo "untagged")"
 fi
 
