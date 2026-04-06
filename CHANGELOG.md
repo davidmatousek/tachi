@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 066 — Install Script and Version Tagging
+
+**Added**
+- Single-command install script (`scripts/install.sh`) replacing 6+ manual `cp` commands; supports `--source` override, `--version` pinned installs with trap-based cleanup, auto-detection from script location; machine-parseable manifest section in `INSTALL_MANIFEST.md`; Bash 3.2+ compatible with no external dependencies beyond git (`9ed2a7f`)
+- First semantic version tag `v4.0.0` on main branch, enabling version-pinned installs and `git describe` version reporting
+
+**Changed**
+- README Quick Start Step 2 updated: scripted install as primary path, manual `cp -r` commands preserved in collapsible fallback section (`9ed2a7f`)
+- Developer Guide install section updated to match README with scripted install primary (`9ed2a7f`)
+- Closed Feature 066 — updated product docs (PRD INDEX, BACKLOG), architecture docs (Tech Stack, System Design, CLAUDE.md), KB entry PAT-019, delivery report (`65daf61`, `0dbf6ad`)
+
 ### Feature 078 — Agent Context Optimization
 
 **Added**
