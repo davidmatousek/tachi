@@ -83,6 +83,7 @@ Load domain knowledge on-demand from the `tachi-orchestration` skill using the R
 | Severity bands (shared) | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | Risk level validation / output assembly |
 | STRIDE categories (shared) | `.claude/skills/tachi-shared/references/stride-categories-shared.md` | Phase 2 dispatch / coverage gate |
 | Finding format (shared) | `.claude/skills/tachi-shared/references/finding-format-shared.md` | Phase 3 merge / output validation |
+| MAESTRO layers (shared) | `.claude/skills/tachi-shared/references/maestro-layers-shared.md` | Phase 1: MAESTRO layer classification |
 
 ---
 
@@ -167,6 +168,20 @@ Parse the architecture input using the detected format and extract all identifia
 
 ---
 
+### MAESTRO Layer Classification
+
+**MANDATORY**: Read `.claude/skills/tachi-shared/references/maestro-layers-shared.md` for the CSA MAESTRO seven-layer taxonomy, keyword-to-layer mapping table, and classification algorithm.
+
+After DFD classification completes, classify each component by its MAESTRO architectural layer. For each component in the inventory:
+
+1. Check the component's name, description, and DFD type against the keyword-to-layer mapping table, evaluating layers in order L1 through L7.
+2. Assign the first matching layer (first-match-wins). If no keywords match, assign `"Unclassified"`.
+3. Matching is case-insensitive and uses substring matching (same rules as AI keyword dispatch).
+
+The MAESTRO layer classification is metadata only -- it does NOT affect STRIDE-per-Element dispatch, AI keyword dispatch, or any agent invocation logic. Classification results are recorded in the Component Inventory and Dispatch Table intermediate outputs.
+
+---
+
 ### Trust Boundary Identification
 
 **MANDATORY**: Read `.claude/skills/tachi-orchestration/references/trust-boundaries.md` for the format-specific trust boundary notation for all five supported formats (Mermaid, ASCII, PlantUML, C4, Free-text).
@@ -183,7 +198,7 @@ Using the extracted components, data flows, trust boundaries, and any technology
 
 ### Component Inventory (Intermediate Output)
 
-Before proceeding to Phase 2, produce a visible intermediate artifact labeled `### Component Inventory (Intermediate)` containing: (1) detected format, (2) component table (Name, DFD Type, Description), (3) data flow count, (4) trust boundary summary.
+Before proceeding to Phase 2, produce a visible intermediate artifact labeled `### Component Inventory (Intermediate)` containing: (1) detected format, (2) component table (Name, DFD Type, MAESTRO Layer, Description), (3) data flow count, (4) trust boundary summary.
 
 **Self-Check**: Verify at least 1 component and 1 data flow have been identified. If either is missing, return `NO_COMPONENTS` error (see output schemas reference). Otherwise proceed to Phase 1a (if baseline present) or Phase 2.
 
@@ -332,7 +347,7 @@ Validate every finding's `risk_level` against the OWASP 3x3 matrix before includ
 
 Assemble 6 STRIDE tables for Section 3 of the output, one per STRIDE category in order: Spoofing (S), Tampering (T), Repudiation (R), Information Disclosure (I), Denial of Service (D), Elevation of Privilege (E).
 
-For each category: (1) collect all findings from the corresponding STRIDE agent across all dispatched components, (2) validate risk levels using the correction protocol, (3) assign sequential IDs (`{PREFIX}-{N}`, starting at 1), ordered by component appearance in the Phase 1 inventory then by finding order within each component, (4) populate rows. If a category has no findings, include the table header with no data rows.
+For each category: (1) collect all findings from the corresponding STRIDE agent across all dispatched components, (2) validate risk levels using the correction protocol, (3) assign sequential IDs (`{PREFIX}-{N}`, starting at 1), ordered by component appearance in the Phase 1 inventory then by finding order within each component, (4) **inherit MAESTRO layer** -- for each finding, look up its `component` in the Phase 1 component inventory and copy the component's MAESTRO layer value to the finding's `maestro_layer` field; if the component is not found in the inventory, default to `"Unclassified"`, (5) populate rows including the MAESTRO Layer column per the output schemas reference. If a category has no findings, include the table header with no data rows.
 
 ---
 
@@ -345,7 +360,7 @@ Assemble 2 AI threat tables for Section 4 of the output.
 | Agentic Threats (AG) | AG | agent-autonomy, tool-abuse |
 | LLM Threats (LLM) | LLM | prompt-injection, data-poisoning, model-theft |
 
-AI table rows include an additional OWASP Reference field compared to STRIDE tables. For each table: (1) collect findings from source agents, (2) validate risk levels, (3) assign sequential IDs ordered by agent then by component appearance, (4) populate rows. If no AI agents were dispatched, include both table headers with a note: "No AI-related components were identified in the architecture input."
+AI table rows include an additional OWASP Reference field compared to STRIDE tables. For each table: (1) collect findings from source agents, (2) validate risk levels, (3) assign sequential IDs ordered by agent then by component appearance, (4) **inherit MAESTRO layer** -- same inheritance logic as STRIDE tables: look up each finding's component in the Phase 1 inventory and copy the MAESTRO layer value, defaulting to `"Unclassified"` if not found, (5) populate rows including the MAESTRO Layer column per the output schemas reference. If no AI agents were dispatched, include both table headers with a note: "No AI-related components were identified in the architecture input."
 
 ---
 
@@ -382,7 +397,11 @@ Produce the coverage matrix for Section 5 of the output. This matrix cross-refer
 
 ### Risk Summary and Recommended Actions
 
-Produce Section 6 (Risk Summary) and Section 7 (Recommended Actions). Include the Risk Calibration Matrix subsection (always present) before the risk summary table. Compute deduplicated counts grouped by risk level (Critical, High, Medium, Low, Note) where each correlation group counts as 1. Percentages must sum to 100%. Recommended actions are sorted by risk level descending then table appearance order (S, T, R, I, D, E, AG, LLM). Every finding appears exactly once; total rows equal raw finding count.
+Produce Section 6 (Risk Summary) and Section 7 (Recommended Actions). Include the Risk Calibration Matrix subsection (always present) before the risk summary table. Compute deduplicated counts grouped by risk level (Critical, High, Medium, Low, Note) where each correlation group counts as 1. Percentages must sum to 100%.
+
+After the Risk Calibration Matrix, include a **Risk by MAESTRO Layer** subsection showing deduplicated finding counts and highest severity grouped by MAESTRO layer. Omit layers with zero findings. Order rows by highest severity descending, then finding count descending. See the output schemas reference for the table format.
+
+Recommended actions are sorted by risk level descending then table appearance order (S, T, R, I, D, E, AG, LLM). Every finding appears exactly once; total rows equal raw finding count.
 
 ---
 

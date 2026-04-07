@@ -66,7 +66,7 @@ triad:
 
 **Independent Test**: Run Phase 1 on the agentic-app example architecture and verify component inventory and dispatch table include MAESTRO Layer column with values derived from keyword matching.
 
-- [ ] T008 [US2] Update orchestrator agent at `.claude/agents/tachi/orchestrator.md` Phase 1 section — add MAESTRO shared reference to reference loading table (load: `.claude/skills/tachi-shared/references/maestro-layers-shared.md`, when: Phase 1 after DFD classification), add MAESTRO layer classification step after DFD classification (keyword matching against component name, description, and DFD type per shared reference algorithm), add MAESTRO Layer column to Component Inventory intermediate output table, add MAESTRO Layer column to Dispatch Table intermediate output table (between DFD Type and STRIDE Categories)
+- [X] T008 [US2] Update orchestrator agent at `.claude/agents/tachi/orchestrator.md` Phase 1 section — add MAESTRO shared reference to reference loading table (load: `.claude/skills/tachi-shared/references/maestro-layers-shared.md`, when: Phase 1 after DFD classification), add MAESTRO layer classification step after DFD classification (keyword matching against component name, description, and DFD type per shared reference algorithm), add MAESTRO Layer column to Component Inventory intermediate output table, add MAESTRO Layer column to Dispatch Table intermediate output table (between DFD Type and STRIDE Categories)
 
 **Checkpoint**: Phase 1 classification operational — components now have MAESTRO layer assignments
 
@@ -78,7 +78,7 @@ triad:
 
 **Independent Test**: Run full pipeline on agentic-app example and verify every finding row in threats.md STRIDE and AI tables includes a MAESTRO Layer value.
 
-- [ ] T009 [US1] Update orchestrator agent at `.claude/agents/tachi/orchestrator.md` Phase 3 and Phase 4 sections — add finding-to-component MAESTRO layer inheritance logic in Phase 3 (each finding inherits `maestro_layer` from its target component's Phase 1 classification; if component not found, default to "Unclassified"), add MAESTRO Layer column to STRIDE table output format in Phase 4 (6 tables, column after Component or after Status when baseline-aware), add MAESTRO Layer column to AI table output format in Phase 4 (2 tables, same column position)
+- [X] T009 [US1] Update orchestrator agent at `.claude/agents/tachi/orchestrator.md` Phase 3 and Phase 4 sections — add finding-to-component MAESTRO layer inheritance logic in Phase 3 (each finding inherits `maestro_layer` from its target component's Phase 1 classification; if component not found, default to "Unclassified"), add MAESTRO Layer column to STRIDE table output format in Phase 4 (6 tables, column after Component or after Status when baseline-aware), add MAESTRO Layer column to AI table output format in Phase 4 (2 tables, same column position)
 
 **Checkpoint**: Threat findings now carry MAESTRO layer tags in all 8 output tables
 
