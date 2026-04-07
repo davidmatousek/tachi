@@ -26,7 +26,7 @@ This skill contains three shared reference files:
 | `references/severity-bands-shared.md` | orchestrator, risk-scorer, control-analyzer, threat-report, threat-infographic, report-assembler | When severity classification, SLA computation, governance field derivation, or severity-based formatting is needed |
 | `references/stride-categories-shared.md` | orchestrator, spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, prompt-injection, data-poisoning, model-theft, agent-autonomy, tool-abuse | When category definitions, DFD applicability rules, or category-to-agent mapping is needed |
 | `references/finding-format-shared.md` | orchestrator, spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, prompt-injection, data-poisoning, model-theft, agent-autonomy, tool-abuse, risk-scorer | When producing or consuming finding records, validating finding structure, or assembling output tables |
-| `references/maestro-layers-shared.md` | orchestrator, risk-scorer, control-analyzer | When classifying components by MAESTRO layer (Phase 1), propagating layer tags through findings, or including layer metadata in output |
+| `references/maestro-layers-shared.md` | orchestrator, risk-scorer, control-analyzer, threat-report | When classifying components by MAESTRO layer (Phase 1), propagating layer tags through findings, or including layer metadata in output |
 
 ## Loading Mechanism
 

@@ -7,6 +7,7 @@ consumers:
   - orchestrator
   - risk-scorer
   - control-analyzer
+  - threat-report
 ---
 
 # MAESTRO Layers — Shared Reference

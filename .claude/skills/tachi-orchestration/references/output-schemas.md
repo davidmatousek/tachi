@@ -23,7 +23,7 @@ The output begins with YAML frontmatter containing exactly these fields:
 
 ```yaml
 ---
-schema_version: "1.1"
+schema_version: "1.2"
 date: "YYYY-MM-DD"
 input_format: "detected-or-declared-format"
 classification: "confidential"
@@ -32,7 +32,7 @@ classification: "confidential"
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `schema_version` | string | Always `"1.1"` for this release. |
+| `schema_version` | string | Always `"1.2"` for this release. |
 | `date` | string | ISO 8601 date when the threat model was generated. Format: `YYYY-MM-DD`. |
 | `input_format` | string | The architecture input format that was analyzed. One of: `ascii`, `free-text`, `mermaid`, `plantuml`, `c4`. Set to the detected format when `format: auto`, or the explicitly declared format value. |
 | `classification` | string | Always `"confidential"`. |
