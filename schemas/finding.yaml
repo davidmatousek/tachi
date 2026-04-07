@@ -10,7 +10,7 @@
 #
 # Version: 1.0
 
-schema_version: "1.1"
+schema_version: "1.2"
 
 finding:
   id:
@@ -117,6 +117,28 @@ finding:
       - Data Flow
     description: >
       DFD classification of the target component.
+
+  # MAESTRO Layer Classification (v1.2)
+
+  maestro_layer:
+    type: string
+    enum:
+      - "L1 — Foundation Model"
+      - "L2 — Data Operations"
+      - "L3 — Agent Framework"
+      - "L4 — Deployment Infrastructure"
+      - "L5 — Security"
+      - "L6 — Agent Ecosystem"
+      - "L7 — User Interface"
+      - "Unclassified"
+    default: "Unclassified"
+    description: >
+      CSA MAESTRO architectural layer classification for the
+      finding's target component. Assigned during Phase 1 based
+      on keyword matching against component name, description,
+      and DFD type. Propagated passively through all downstream
+      phases. Optional — defaults to "Unclassified" when not
+      present or when the component matches no layer keywords.
 
   # Baseline-Aware Fields (v1.1)
 

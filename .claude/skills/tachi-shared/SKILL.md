@@ -17,6 +17,8 @@ This skill contains three shared reference files:
 
 3. **Finding Format** -- The finding intermediate representation (IR) specification: required fields, optional fields, ID format conventions, validation rules, and table output format. Defines the contract between threat agents (producers) and downstream consumers.
 
+4. **MAESTRO Layers** -- CSA MAESTRO seven-layer taxonomy definitions for agentic AI architectures: layer identifiers (L1-L7), descriptions, keyword-to-layer mappings, and the classification algorithm (first-match-wins, "Unclassified" default). Used during Phase 1 to classify components by architectural layer.
+
 ## Loading Table
 
 | Reference File | Consumers | Load When |
@@ -24,6 +26,7 @@ This skill contains three shared reference files:
 | `references/severity-bands-shared.md` | orchestrator, risk-scorer, control-analyzer, threat-report, threat-infographic, report-assembler | When severity classification, SLA computation, governance field derivation, or severity-based formatting is needed |
 | `references/stride-categories-shared.md` | orchestrator, spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, prompt-injection, data-poisoning, model-theft, agent-autonomy, tool-abuse | When category definitions, DFD applicability rules, or category-to-agent mapping is needed |
 | `references/finding-format-shared.md` | orchestrator, spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, prompt-injection, data-poisoning, model-theft, agent-autonomy, tool-abuse, risk-scorer | When producing or consuming finding records, validating finding structure, or assembling output tables |
+| `references/maestro-layers-shared.md` | orchestrator, risk-scorer, control-analyzer | When classifying components by MAESTRO layer (Phase 1), propagating layer tags through findings, or including layer metadata in output |
 
 ## Loading Mechanism
 
