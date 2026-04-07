@@ -130,29 +130,32 @@ Label this section clearly:
 
 ### Table Format
 
-| Component | DFD Type | STRIDE Categories | AI Categories | Total Agents |
-|-----------|----------|-------------------|---------------|--------------|
+| Component | DFD Type | MAESTRO Layer | STRIDE Categories | AI Categories | Total Agents |
+|-----------|----------|---------------|-------------------|---------------|--------------|
 
 - **Component**: The component name from the Phase 1 inventory.
 - **DFD Type**: The DFD element type (External Entity, Process, Data Store, or Data Flow).
+- **MAESTRO Layer**: The CSA MAESTRO architectural layer classification assigned during Phase 1 (e.g., "L3 — Agent Framework"). Set to "Unclassified" if no layer keywords matched. See `.claude/skills/tachi-shared/references/maestro-layers-shared.md` for the layer taxonomy and classification algorithm.
 - **STRIDE Categories**: Comma-separated list of applicable STRIDE categories based on DFD type (e.g., "S, R" for External Entity).
 - **AI Categories**: Comma-separated list of applicable AI categories based on keyword matching (e.g., "LLM, AG" for dual-dispatch). Use "—" if no AI keywords matched.
 - **Total Agents**: The total count of individual agents to be dispatched for this component. Count each STRIDE category as 1 agent and each AI agent individually (AG = 2 agents: agent-autonomy + tool-abuse; LLM = 3 agents: prompt-injection + data-poisoning + model-theft).
 
 ### Example Rows
 
-| Component | DFD Type | STRIDE Categories | AI Categories | Total Agents |
-|-----------|----------|-------------------|---------------|--------------|
-| LLM Agent Orchestrator | Process | S, T, R, I, D, E | LLM, AG | 11 |
-| MCP Tool Server | Process | S, T, R, I, D, E | AG | 8 |
-| User | External Entity | S, R | — | 2 |
-| Knowledge Base | Data Store | T, I, D | — | 3 |
-| External API | External Entity | S, R | — | 2 |
+| Component | DFD Type | MAESTRO Layer | STRIDE Categories | AI Categories | Total Agents |
+|-----------|----------|---------------|-------------------|---------------|--------------|
+| LLM Agent Orchestrator | Process | L3 — Agent Framework | S, T, R, I, D, E | LLM, AG | 11 |
+| MCP Tool Server | Process | L3 — Agent Framework | S, T, R, I, D, E | AG | 8 |
+| User | External Entity | L7 — User Interface | S, R | — | 2 |
+| Knowledge Base | Data Store | L2 — Data Operations | T, I, D | — | 3 |
+| External API | External Entity | Unclassified | S, R | — | 2 |
 
 In this example:
-- "LLM Agent Orchestrator" is a Process (6 STRIDE agents) with dual-dispatch (3 LLM + 2 AG agents) = 11 total.
-- "MCP Tool Server" is a Process (6 STRIDE agents) with AG dispatch (2 AG agents) = 8 total.
-- "User" is an External Entity (2 STRIDE agents) with no AI match = 2 total.
+- "LLM Agent Orchestrator" is a Process (6 STRIDE agents) with dual-dispatch (3 LLM + 2 AG agents) = 11 total. Classified as L3 (Agent Framework) due to "orchestrator" keyword.
+- "MCP Tool Server" is a Process (6 STRIDE agents) with AG dispatch (2 AG agents) = 8 total. Classified as L3 due to "MCP server" keyword.
+- "User" is an External Entity (2 STRIDE agents) with no AI match = 2 total. Classified as L7 due to user-facing entity.
+- "Knowledge Base" is a Data Store (3 STRIDE agents) with no AI match = 3 total. Classified as L2 due to "knowledge base" keyword.
+- "External API" is an External Entity with no matching MAESTRO keywords = Unclassified.
 
 ### Summary
 
@@ -167,6 +170,7 @@ After the dispatch table, include a summary with:
 After producing the dispatch table, verify:
 
 - Every component from the Phase 1 inventory appears in the dispatch table.
+- Every component has a MAESTRO Layer value (one of L1-L7 or "Unclassified"). No empty cells in the MAESTRO Layer column.
 - Every component has at least 2 STRIDE categories (the minimum for any DFD element type — External Entity and Data Flow/Data Store each have at least 2-3 applicable categories).
 - AI categories are present only for components whose names or descriptions matched the keyword rules.
 - Total Agents count is arithmetically correct for each row.

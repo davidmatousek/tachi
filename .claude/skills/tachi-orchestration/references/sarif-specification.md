@@ -127,6 +127,11 @@ For each finding collected in Phase 3, create a SARIF `result` object using this
    - `primaryLocationLineHash`: Deterministic hash of `ruleId` + `component_name`
    - `findingId/v1`: The finding's `id` value (e.g., `"S-1"`, `"AG-2"`)
 
+7. **`properties` (MAESTRO layer)**: Add MAESTRO layer metadata to the result's `properties` object:
+   - Add `"maestro-layer:{layer-id}"` to the `properties.tags[]` array (e.g., `"maestro-layer:L3"`). Use the layer ID only (L1-L7) for tag brevity, or `"maestro-layer:Unclassified"` for unclassified findings.
+   - Add `"maestro-layer"` key to `properties` with the full layer name as value (e.g., `"L3 — Agent Framework"`). Set to `"Unclassified"` when the finding's component matched no layer keywords.
+   - These properties are **additive** — they occupy distinct keys from existing baseline properties (`delta_status`, `baselineState`) and existing tags (`security`, `stride`, `ai`). No conflict with any existing SARIF properties.
+
 **Complete field mapping reference**:
 
 | Finding IR Field | SARIF Object Path | Notes |
@@ -140,6 +145,7 @@ For each finding collected in Phase 3, create a SARIF `result` object using this
 | `risk_level` | `result.level` + rule `properties.security-severity` | Via Severity Mapping Table |
 | `dfd_element_type` | `result.locations[].logicalLocations[].kind` | Custom kinds: `external-entity`, `process`, `data-store`, `data-flow` |
 | `references` | Rule `help.markdown` + `properties.tags` | OWASP, CWE, MITRE framework identifiers |
+| `maestro_layer` | `result.properties.tags[]` + `result.properties["maestro-layer"]` | Tag: `"maestro-layer:{layer-id}"`, Property: full layer name |
 | Input file | `result.locations[].physicalLocation.artifactLocation.uri` | Architecture input file path |
 | (fixed) | `result.locations[].physicalLocation.region.startLine` | Always `1` |
 
@@ -529,6 +535,7 @@ Before writing the `threats.sarif` file, run the following validation checklist.
 - [ ] **Result completeness**: Every result has `ruleId`, `message.text`, `level`, `locations[]` (with both `physicalLocation` and `logicalLocations`), and `partialFingerprints`.
 - [ ] **Rule-result consistency**: Every `ruleId` referenced by a result has a corresponding entry in `tool.driver.rules[]`. No orphan rule IDs.
 - [ ] **Security-severity format**: Every `security-severity` value in `tool.driver.rules[].properties` is a numeric string (e.g., `"8.0"`) matching the Severity Mapping Table values.
+- [ ] **MAESTRO layer properties**: Every result has `"maestro-layer"` in `properties` (full layer name or "Unclassified") and a `"maestro-layer:{layer-id}"` entry in `properties.tags[]`.
 - [ ] **Result count**: The number of top-level results equals the expected deduplicated finding count. If the STRIDE and AI tables contain N findings after deduplication, the `results` array MUST contain exactly N entries.
 
 If any check fails, correct the error before proceeding. Do not produce a `threats.sarif` file that fails any of these structural checks.

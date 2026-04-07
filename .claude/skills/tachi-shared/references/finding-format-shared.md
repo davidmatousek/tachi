@@ -61,6 +61,7 @@ These fields are present in specific pipeline contexts but not required for ever
 | `dfd_element_type` | string (enum) | Threat agent output | DFD classification of the target component. One of: `External Entity`, `Process`, `Data Store`, `Data Flow`. |
 | `delta_status` | string (enum) | Baseline-aware runs | Lifecycle status: `NEW`, `UNCHANGED`, `UPDATED`, `RESOLVED`. Defaults to `NEW` when no baseline is present. |
 | `baseline_run_id` | string (nullable) | Baseline-aware runs | Run ID of the baseline that first discovered this finding. Null for first-run findings. |
+| `maestro_layer` | string (enum) | Phase 1 classification | CSA MAESTRO architectural layer classification for the finding's target component. One of: `L1 — Foundation Model`, `L2 — Data Operations`, `L3 — Agent Framework`, `L4 — Deployment Infrastructure`, `L5 — Security`, `L6 — Agent Ecosystem`, `L7 — User Interface`, `Unclassified`. Defaults to `"Unclassified"` when not present or when the component matched no layer keywords. Assigned during Phase 1 and inherited by findings in Phase 3. |
 | `correlation_group` | string | Correlated findings | Correlation group ID (e.g., `CG-1`). Present when the finding belongs to a cross-category correlation group. |
 | `fingerprints` | object | SARIF output | Partial fingerprints for cross-run correlation: `findingId/v1` (primary key) and `primaryLocationLineHash` (validation signal). |
 
@@ -96,13 +97,13 @@ Finding IDs follow the pattern `{PREFIX}-{N}` where PREFIX indicates the threat 
 
 Six tables, one per STRIDE category. Each row uses these columns:
 
-| ID | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------|--------|------------|------------|
+| ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|-----------|---------------|--------|------------|--------|------------|------------|
 
 When baseline-aware, an additional Status column is included after ID:
 
-| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------|--------|------------|------------|
+| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------|--------|------------|------------|
 
 Status values: `NEW`, `UNCHANGED`, `UPDATED`.
 
@@ -112,13 +113,13 @@ Status values: `NEW`, `UNCHANGED`, `UPDATED`.
 
 Two tables (AG and LLM). Each row includes an OWASP Reference field:
 
-| ID | Component | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------------|------------|--------|------------|------------|
+| ID | Component | MAESTRO Layer | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
+|----|-----------|---------------|--------|------------------|------------|--------|------------|------------|
 
 When baseline-aware, an additional Status column is included after ID:
 
-| ID | Status | Component | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------------|------------|--------|------------|------------|
+| ID | Status | Component | MAESTRO Layer | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------------|------------|--------|------------|------------|
 
 ---
 

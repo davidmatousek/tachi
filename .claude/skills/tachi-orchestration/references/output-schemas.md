@@ -94,11 +94,17 @@ Six tables, one per STRIDE category. Each table contains threat findings for app
 
 **Finding row fields** (same for all 6 STRIDE tables):
 
-| ID | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------|--------|------------|------------|
+| ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|-----------|---------------|--------|------------|--------|------------|------------|
+
+When baseline-aware, an additional Status column is included after ID:
+
+| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------|--------|------------|------------|
 
 - **ID**: Pattern `{S|T|R|I|D|E}-{N}` where N is a sequential integer starting at 1 within each category.
 - **Component**: The target component name from the architecture input.
+- **MAESTRO Layer**: The CSA MAESTRO architectural layer classification inherited from the component's Phase 1 classification (e.g., "L3 — Agent Framework"). Defaults to "Unclassified" if the component matched no layer keywords.
 - **Threat**: Description of the identified threat.
 - **Likelihood**: One of `LOW`, `MEDIUM`, `HIGH`.
 - **Impact**: One of `LOW`, `MEDIUM`, `HIGH`.
@@ -136,9 +142,15 @@ Two tables containing findings from AI-specific threat agents. Each finding row 
 
 **Finding row fields** (same for both AI tables):
 
-| ID | Component | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|--------|------------------|------------|--------|------------|------------|
+| ID | Component | MAESTRO Layer | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
+|----|-----------|---------------|--------|------------------|------------|--------|------------|------------|
 
+When baseline-aware, an additional Status column is included after ID:
+
+| ID | Status | Component | MAESTRO Layer | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------------|------------|--------|------------|------------|
+
+- **MAESTRO Layer**: The CSA MAESTRO architectural layer classification inherited from the component's Phase 1 classification. Same field as in STRIDE tables.
 - **OWASP Reference**: The applicable OWASP identifier (e.g., `ASI-01`, `MCP-03`, `OWASP LLM01:2025`).
 
 **5-agent-to-2-table mapping**:
@@ -180,6 +192,19 @@ Aggregate counts of findings by risk level. Counts reflect deduplicated findings
 
 Percentages are computed as `(deduplicated count / deduplicated total) * 100`, rounded to one decimal place.
 
+#### Risk by MAESTRO Layer
+
+A subsection within the Risk Summary showing finding counts and highest severity grouped by CSA MAESTRO architectural layer. This subsection appears after the Risk Calibration Matrix and before Section 7.
+
+| MAESTRO Layer | Finding Count | Highest Severity |
+|---------------|---------------|------------------|
+| _{layer name}_ | _{deduplicated count}_ | _{Critical\|High\|Medium\|Low\|Note}_ |
+
+- **Ordering**: Rows are ordered by highest severity descending (Critical first), then by finding count descending within the same severity.
+- **Omission**: Layers with zero findings are omitted from the table.
+- **Deduplication**: Finding counts use deduplicated values — correlation groups count as 1.
+- **"Unclassified" row**: If any findings have "Unclassified" as their MAESTRO layer, include an "Unclassified" row in the table. Do not omit it.
+
 ### Section 7: Recommended Actions
 
 Prioritized list of all findings sorted by risk level descending (Critical first, Note last). Within the same risk level, findings are listed in the order they appear in the STRIDE and AI tables.
@@ -206,13 +231,13 @@ Before finalizing the output document, run the following validation checklist ag
 - [ ] Section 5 (Coverage Matrix) is present and contains one row per component plus a Total row. All cells use the three-state model: integer (deduplicated count), `---` (analyzed but clean), or `n/a` (not applicable).
 - [ ] Section 5 (Coverage Matrix) footnote is present when correlation groups exist, stating "Counts reflect deduplicated findings. N correlation groups merged M individual findings." Footnote is absent when zero correlation groups exist.
 - [ ] Section 5a (Coverage Gate Results) is present and contains the Coverage Requirements Matrix showing each component's determined type and required vs. evaluated categories. Gap Resolution Details table present when gaps were detected.
-- [ ] Section 6 (Risk Summary) is present and contains the Risk Calibration Matrix subsection followed by one row per risk level (Critical, High, Medium, Low, Note) plus a Total row.
+- [ ] Section 6 (Risk Summary) is present and contains the Risk Calibration Matrix subsection, the "Risk by MAESTRO Layer" subsection, followed by one row per risk level (Critical, High, Medium, Low, Note) plus a Total row.
 - [ ] Section 7 (Recommended Actions) is present and contains one row per finding.
 - [ ] Section 8 (Delta Summary) is present when a baseline was used. Contains baseline reference, status count table, and finding-level change lines grouped by delta status. Omitted when no baseline.
 
 ### Frontmatter Validation
 
-- [ ] `schema_version` is `"1.1"`.
+- [ ] `schema_version` is `"1.2"`.
 - [ ] `date` is a valid ISO 8601 date in `YYYY-MM-DD` format.
 - [ ] `input_format` is one of: `ascii`, `free-text`, `mermaid`, `plantuml`, `c4`.
 - [ ] `classification` is `"confidential"`.
@@ -230,8 +255,8 @@ Before finalizing the output document, run the following validation checklist ag
 
 ### Field Completeness
 
-- [ ] Every finding row in the STRIDE tables has all 8 required fields populated: ID, Status, Component, Threat, Likelihood, Impact, Risk Level, Mitigation. Status is one of: `NEW`, `UNCHANGED`, `UPDATED`.
-- [ ] Every finding row in the AI tables has all 9 required fields populated: ID, Status, Component, Threat, OWASP Reference, Likelihood, Impact, Risk Level, Mitigation. Status is one of: `NEW`, `UNCHANGED`, `UPDATED`.
+- [ ] Every finding row in the STRIDE tables has all 9 required fields populated: ID, Status, Component, MAESTRO Layer, Threat, Likelihood, Impact, Risk Level, Mitigation. Status is one of: `NEW`, `UNCHANGED`, `UPDATED`. MAESTRO Layer is one of L1-L7 or "Unclassified".
+- [ ] Every finding row in the AI tables has all 10 required fields populated: ID, Status, Component, MAESTRO Layer, Threat, OWASP Reference, Likelihood, Impact, Risk Level, Mitigation. Status is one of: `NEW`, `UNCHANGED`, `UPDATED`. MAESTRO Layer is one of L1-L7 or "Unclassified".
 - [ ] No field contains an empty value or placeholder text.
 - [ ] Every finding has exactly one delta status annotation. When no baseline is present, all findings have Status `NEW`.
 
