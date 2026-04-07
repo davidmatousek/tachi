@@ -1671,3 +1671,70 @@ User runs install.sh from target project root
 | Dirty tree check | `git status --porcelain` | Machine-parseable, catches all change types |
 | Branch restore | `trap cleanup EXIT` | Guaranteed execution on all exit paths |
 | Manifest parsing | `sed`/`awk` between HTML comment markers | No external parser, Bash 3.2 compatible |
+
+---
+
+### Feature 086: Automated Release Tagging
+
+## Components
+
+### Component 1: GitHub Actions Workflow (`.github/workflows/release-please.yml`)
+
+**Purpose**: Triggers release-please on every push to `main` branch.
+
+**Configuration**:
+- Trigger: `on: push: branches: [main]`
+- Permissions: `contents: write`, `pull-requests: write`
+- Action: `googleapis/release-please-action@v4`
+- Release type: `simple`
+
+### Component 2: Release Configuration (`release-please-config.json`)
+
+**Purpose**: Controls release-please behavior — release type, CHANGELOG grouping, versioning.
+
+### Component 3: Version Manifest (`.release-please-manifest.json`)
+
+**Purpose**: Tracks current released version. Initial value: `{"." : "4.0.0"}`.
+
+## Data Flow
+
+```
+Developer merges PR to main
+         │
+         ▼
+GitHub Actions triggers release-please.yml
+         │
+         ▼
+release-please reads .release-please-manifest.json (current: 4.0.0)
+         │
+         ▼
+Analyzes conventional commits since v4.0.0
+         │
+         ├─ No releasable commits → Exit (no action)
+         │
+         └─ Releasable commits found
+              │
+              ▼
+         Creates/updates Release PR
+         (PR body = grouped CHANGELOG entries)
+              │
+              ├─ Maintainer does NOT merge → PR stays open, accumulates
+              │
+              └─ Maintainer merges Release PR
+                   │
+                   ▼
+              release-please creates:
+              1. Git tag (e.g., v4.1.0)
+              2. GitHub Release with notes
+              3. Updates CHANGELOG.md
+              4. Updates .release-please-manifest.json
+```
+
+## Tech Stack
+
+| Layer | Technology | Justification |
+|-------|-----------|---------------|
+| CI/CD | GitHub Actions | Already the platform; zero additional infrastructure |
+| Release Automation | release-please v4 | Industry standard (40k+ stars), maintained by Google |
+| Configuration | JSON | release-please's native config format |
+| Versioning | Semantic Versioning | Matches existing v4.0.0 convention |

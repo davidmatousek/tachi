@@ -1,6 +1,6 @@
 # Technology Stack - tachi
 
-**Last Updated**: 2026-04-01
+**Last Updated**: 2026-04-06
 **Owner**: Architect
 
 ---
@@ -69,8 +69,11 @@ This document defines the technology stack for tachi.
 **Container Runtime**: {{CONTAINER_RUNTIME}}
 - Examples: Docker, Kubernetes, None (serverless)
 
-**CI/CD**: {{CICD_PLATFORM}}
-- Examples: GitHub Actions, GitLab CI, CircleCI
+**CI/CD**: GitHub Actions
+- `release-please` (googleapis/release-please-action@v4): Automated version tagging and CHANGELOG generation on merge to main (Feature 086)
+- Configuration: `release-please-config.json` (changelog sections), `.release-please-manifest.json` (current version), `.github/workflows/release-please.yml` (workflow trigger)
+- Release type: `simple` (no package manager integration; version tracked in manifest)
+- Why: Convention-based release automation from Conventional Commits; eliminates manual `git tag` and CHANGELOG maintenance
 
 ---
 

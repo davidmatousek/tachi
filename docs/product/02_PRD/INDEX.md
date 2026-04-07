@@ -5,6 +5,7 @@
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 086 | [Automated Release Tagging via GitHub Actions](086-automated-release-tagging-via-github-actions-2026-04-06.md) | ✓ | ✓ | ✓ | Delivered | 2026-04-06 |
 | 066 | [Install Script and Version Tagging](066-install-script-and-version-tagging-2026-04-06.md) | ✓ | ✓ | ✓ | Delivered | 2026-04-06 |
 | 078 | [Agent Context Optimization](078-agent-context-optimization-2026-04-01.md) | ✓ | ✓ | ✓ | Delivered | 2026-04-02 |
 | 074 | [Baseline-Aware Pipeline](074-baseline-aware-pipeline-2026-03-31.md) | ✓ | ✓ | ✓ | Delivered | 2026-04-01 |

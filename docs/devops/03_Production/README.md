@@ -1,6 +1,6 @@
 # Production Environment - tachi
 
-**Last Updated**: 2026-03-21
+**Last Updated**: 2026-04-06
 **Owner**: DevOps Agent
 **Status**: Template
 **CRITICAL**: Read pre-deployment checklist before ANY production deployment
@@ -176,6 +176,9 @@ vercel rollback
 # Example for Git-based
 git revert <commit-sha>
 git push origin main
+# Note: Pushing a revert to main will trigger release-please, which may
+# open or update a release PR. This is expected behavior -- the revert
+# commit will appear in the next release's changelog under its commit type.
 ```
 
 **Post-Rollback**:

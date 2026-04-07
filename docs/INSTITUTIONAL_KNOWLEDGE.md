@@ -5,7 +5,7 @@
 **Created**: {{PROJECT_START_DATE}}
 **Last Updated**: 2026-04-06
 
-**Entry Count**: 19 / 20 (KB System Upgrade triggers at 20 — schedule review)
+**Entry Count**: 20 / 20 (KB System Upgrade triggers at 20 — schedule review)
 **Last Review**: 2026-03-30
 **Status**: ✅ Manual mode (file-based)
 
@@ -384,6 +384,29 @@ Captured during structured delivery retrospective. Smooth sailing — everything
 **Tags**: #retrospective #process #estimation #bash #manifest-driven #translation-not-design
 
 **Quality Score**: 8/10
+
+---
+
+### KB-020: Config-Only Features Map Cleanly to AOD Lifecycle
+
+**Date**: 2026-04-06
+**Category**: Process
+**Source**: Feature 086 retrospective
+**Severity**: Informational
+
+**Problem**: Uncertainty about whether the full AOD lifecycle (Discover → Define → Plan → Build → Deliver) is proportionate for features that produce only configuration files (no application code).
+
+**Root Cause**: The lifecycle stages are process-agnostic — they govern what/why/how decisions, not code volume. A 3-file CI/CD feature benefits from the same governance gates as a 50-file application feature.
+
+**Solution**: Feature 086 (3 YAML/JSON config files) completed the full lifecycle in a single session. Governance caught scope alignment (PRD 066 deferred this explicitly), verified install.sh compatibility, and produced a clean 3-wave build. The overhead was minimal and the traceability was valuable.
+
+**Result**: Full lifecycle completed in one session. All Triad gates passed on first attempt. The key insight is that "small scope" doesn't mean "skip governance" — it means governance is fast.
+
+**When to Apply**: Any feature where deliverables are configuration files, GitHub Actions workflows, or infrastructure-as-code with no application logic. The Plan stage may skip data-model.md and contracts/, but spec/plan/tasks still add value.
+
+**Tags**: #retrospective #process #cicd #configuration #governance
+
+**Quality Score**: 7/10
 
 ---
 

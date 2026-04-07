@@ -1,6 +1,6 @@
 # DevOps Documentation - tachi
 
-**Last Updated**: 2026-03-30
+**Last Updated**: 2026-04-06
 **Owner**: DevOps Agent
 **Status**: Active
 
@@ -136,6 +136,30 @@ No new environment variables, Docker services, CI/CD pipeline changes, staging c
 ### Relationship to Feature 067
 
 Feature 067 introduced `extract-report-data.py` for deterministic security report data extraction. Feature 071 extracted shared parsing logic into `tachi_parsers.py` so both `extract-report-data.py` and `extract-infographic-data.py` use identical parsers, ensuring cross-output consistency between security reports and infographics derived from the same pipeline artifacts.
+
+---
+
+## Automated Release Tagging (Feature 086)
+
+Feature 086 introduced automated version tagging and CHANGELOG generation via [release-please](https://github.com/googleapis/release-please). A GitHub Actions workflow (`.github/workflows/release-please.yml`) runs on every push to `main`, analyzes conventional commit messages, and manages release PRs that bump the version and update `CHANGELOG.md`.
+
+### Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `.github/workflows/release-please.yml` | GitHub Actions workflow (triggers on push to main) |
+| `release-please-config.json` | Release type (`simple`), changelog section mapping |
+| `.release-please-manifest.json` | Current version baseline (started at `4.0.0`) |
+
+### Infrastructure Impact
+
+No new environment variables, Docker services, staging configuration, or production deployment changes. The workflow uses the default `GITHUB_TOKEN` and runs entirely within GitHub Actions. It requires `contents: write` and `pull-requests: write` permissions, which are declared in the workflow file.
+
+### Relationship to Existing Workflows
+
+release-please complements the existing CI/CD pipeline -- it does not replace any existing workflow. The tachi-threat-model workflow (Feature 021) runs on PRs that modify architecture files; release-please runs on pushes to `main` after PRs are merged. Both workflows coexist without interaction.
+
+See [CI/CD Guide](CI_CD_GUIDE.md) for detailed configuration and changelog section mappings.
 
 ---
 

@@ -98,6 +98,9 @@ When invoked as a subagent (via Agent tool), return ONLY:
 - Review `agent-assignments.md` for workload distribution
 
 ## Recent Changes
+- **Feature 086**: Automated Release Tagging via GitHub Actions
+  - release-please workflow for version tagging and CHANGELOG generation on merge to main
+  - New files: `.github/workflows/release-please.yml`, `release-please-config.json`, `.release-please-manifest.json`
 - **v2.0.0**: Anthropic Claude Code v2.1.16 Integration
   - Parallel Triad reviews, context forking, version detection
   - See `docs/devops/MIGRATION.md` for upgrade guide

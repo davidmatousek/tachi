@@ -304,6 +304,14 @@ tachi is built with the [Agentic Oriented Development Kit (AOD Kit)](https://git
 
 ---
 
+## Releases
+
+Releases are automated via [release-please](https://github.com/googleapis/release-please). When conventional commits (`feat:`, `fix:`, `docs:`, etc.) are merged to `main`, release-please creates a **Release PR** with auto-generated CHANGELOG entries and the next semantic version. Merging the Release PR creates the git tag and GitHub Release.
+
+To install a specific version: `install.sh --version v4.1.0`
+
+---
+
 ## Contributing
 
 We welcome contributions. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.

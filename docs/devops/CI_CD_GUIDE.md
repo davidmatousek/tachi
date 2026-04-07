@@ -1,6 +1,6 @@
 # CI/CD Setup Guide - tachi
 
-**Last Updated**: 2026-03-23
+**Last Updated**: 2026-04-06
 **Owner**: DevOps Agent
 
 ---
@@ -192,6 +192,50 @@ Unlike linting or test workflows, this adapter invokes an LLM API at runtime. It
 **Error Handling**: The workflow handles missing API keys, authentication failures, rate limiting (with retry), timeouts, and empty responses with actionable error messages.
 
 **Full Documentation**: See `adapters/github-actions/README.md` for detailed configuration, permissions, SARIF deduplication, and verification steps.
+
+---
+
+### Automated Release Tagging (release-please)
+
+**Best For**: Automated version tagging, GitHub Release creation, and CHANGELOG generation from conventional commits
+
+Feature 086 introduced a release-please workflow that automates version management. When commits land on `main`, release-please analyzes conventional commit messages and either opens a release PR (bumping the version and updating CHANGELOG.md) or updates an existing release PR with new changes. Merging the release PR creates a GitHub Release with a Git tag.
+
+**Workflow File**: `.github/workflows/release-please.yml`
+
+**Trigger**: Push to `main` branch
+
+**Configuration Files**:
+| File | Purpose |
+|------|---------|
+| `release-please-config.json` | Release type (`simple`), changelog section mapping |
+| `.release-please-manifest.json` | Current version baseline (started at `4.0.0`) |
+
+**Changelog Sections** (mapped from conventional commit types):
+| Commit Type | Section |
+|-------------|---------|
+| `feat` | Features |
+| `fix` | Bug Fixes |
+| `docs` | Documentation |
+| `chore`, `refactor`, `perf`, `test`, `style` | Miscellaneous |
+
+**How It Works**:
+1. Developer merges a feature branch to `main` (via PR)
+2. release-please workflow runs automatically on push
+3. If releasable commits exist, release-please opens (or updates) a release PR titled `chore(main): release X.Y.Z`
+4. The release PR contains the updated `CHANGELOG.md` and version bump
+5. When the release PR is merged, release-please creates a GitHub Release with the corresponding Git tag
+
+**Required Permissions**:
+```yaml
+permissions:
+  contents: write        # Create tags and releases
+  pull-requests: write   # Open and update release PRs
+```
+
+**No Repository Secrets Required**: release-please uses the default `GITHUB_TOKEN` provided by GitHub Actions.
+
+**Infrastructure Impact**: No new environment variables, Docker services, or deployment changes. The workflow runs entirely within GitHub Actions.
 
 ---
 
