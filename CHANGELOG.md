@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 086 — Automated Release Tagging
+
+**Added**
+- Google's release-please GitHub Action for automated version tagging from conventional commits; workflow at `.github/workflows/release-please.yml`, config at `release-please-config.json`, manifest baseline v4.0.0 at `.release-please-manifest.json`; creates Release PRs with auto-generated CHANGELOG entries grouped by commit type; maintainer controls release timing via merge decision (`f1ad4ef`)
+- README "Releases" section documenting the automated release process (`f1ad4ef`)
+
+**Changed**
+- Closed Feature 086 — updated product docs (PRD INDEX, OKRs), architecture docs (Tech Stack, System Design, CLAUDE.md), devops docs (CI_CD_GUIDE, staging/production READMEs), KB entry KB-020, delivery report (`f1ad4ef`)
+
 ### Feature 066 — Install Script and Version Tagging
 
 **Added**
