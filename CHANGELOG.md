@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.1.0](https://github.com/davidmatousek/tachi/compare/v4.0.0...v4.1.0) (2026-04-07)
+
+
+### Features
+
+* **086:** automated release tagging via GitHub Actions ([#86](https://github.com/davidmatousek/tachi/issues/86)) ([#88](https://github.com/davidmatousek/tachi/issues/88)) ([f1ad4ef](https://github.com/davidmatousek/tachi/commit/f1ad4efef2df517f8739cfa6598dd4b5f1ac4132))
+
 ## [Unreleased]
 
 ### Feature 086 — Automated Release Tagging
