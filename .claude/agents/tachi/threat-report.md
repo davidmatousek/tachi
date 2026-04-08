@@ -74,7 +74,7 @@ You consume the complete `threats.md` file produced by the orchestrator. The str
 
 ### Finding IR Fields Consumed
 
-Each finding in the STRIDE and AI tables provides these fields (from `../../../schemas/finding.yaml` v1.0):
+Each finding in the STRIDE and AI tables provides these fields (from `../../../schemas/finding.yaml` v1.2):
 
 | Field | Type | Report Agent Usage |
 |-------|------|--------------------|

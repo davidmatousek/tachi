@@ -256,7 +256,7 @@ Threats where an attacker modifies data or code without authorization.
 
 | ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|--------|-----------|---------------|--------|------------|--------|------------|------------|
-| _{T-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
+| _{T-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{L1-L7 or Unclassified}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
@@ -270,7 +270,7 @@ Threats where an attacker denies having performed an action without the system b
 
 | ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|--------|-----------|---------------|--------|------------|--------|------------|------------|
-| _{R-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
+| _{R-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{L1-L7 or Unclassified}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
@@ -284,7 +284,7 @@ Threats where sensitive data is exposed to unauthorized parties.
 
 | ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|--------|-----------|---------------|--------|------------|--------|------------|------------|
-| _{I-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
+| _{I-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{L1-L7 or Unclassified}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
@@ -298,7 +298,7 @@ Threats where an attacker degrades or prevents legitimate access to the system.
 
 | ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|--------|-----------|---------------|--------|------------|--------|------------|------------|
-| _{D-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
+| _{D-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{L1-L7 or Unclassified}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
@@ -312,7 +312,7 @@ Threats where an attacker gains higher access rights than authorized.
 
 | ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|--------|-----------|---------------|--------|------------|--------|------------|------------|
-| _{E-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
+| _{E-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{L1-L7 or Unclassified}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 

@@ -9,7 +9,7 @@ Cross-cutting domain knowledge consumed by multiple tachi agents. These referenc
 
 ## Domain Coverage
 
-This skill contains three shared reference files:
+This skill contains four shared reference files:
 
 1. **Severity Bands** -- Composite score thresholds, severity band boundaries, color codes, SLA mappings, disposition defaults, and review date calculations. Used everywhere severity classification drives decisions.
 
