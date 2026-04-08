@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.3.3](https://github.com/davidmatousek/tachi/compare/v4.3.2...v4.3.3) (2026-04-08)
+
+
+### Bug Fixes
+
+* **074:** baseline auto-detection and downstream command context limits ([#102](https://github.com/davidmatousek/tachi/issues/102)) ([5aeb10b](https://github.com/davidmatousek/tachi/commit/5aeb10bf24ef9e002bed5d73b76c4989456bca23))
+
 ## [4.3.2](https://github.com/davidmatousek/tachi/compare/v4.3.1...v4.3.2) (2026-04-08)
 
 
