@@ -130,3 +130,69 @@ Tier 1 solid, Tiers 2-4 ghost:
 ### Visual Guidance
 
 Components with `High` risk weight should be rendered with the largest visual emphasis (bold borders, larger icons, red highlight). `Medium` components receive moderate emphasis (orange highlight). `Low` components receive minimal emphasis (standard rendering).
+
+---
+
+## MAESTRO Stack Template — Layer-Grouped Format
+
+The MAESTRO Stack template uses a **layer-grouped** format for Section 5, showing per-layer finding distribution:
+
+```markdown
+## 5. Architecture Threat Overlay
+
+| Layer | Name | Finding Count | Highest Severity | Top Findings |
+|-------|------|---------------|------------------|--------------|
+| L1 | Foundation Model | {N} | {severity} | {ID}: {summary}; {ID}: {summary} |
+| L2 | Data Operations | {N} | {severity} | {ID}: {summary} |
+```
+
+### MAESTRO Stack Data Source
+
+This format is produced from three `template_data` JSON fields:
+
+| JSON Field | Content |
+|------------|---------|
+| `template_data.maestro_layer_distribution[]` | Per-layer aggregate data |
+| `template_data.most_exposed_layer` | Layer with highest finding count |
+| `template_data.per_layer_summaries[]` | Layer details with top 2 findings each |
+
+### MAESTRO Stack Edge Cases
+
+**No MAESTRO data (pre-Feature 084)**: `has_maestro_data` is false. Spec renders empty state: "No MAESTRO layer data available. Run threat analysis with schema version 1.2+ to enable layer classification."
+
+**All findings in one layer**: One band fully highlighted, six muted. Sidebar shows "1 Layer with Findings, 6 Empty Layers".
+
+**Empty layers**: Layers with zero findings still appear in the stack but are visually muted (darker background, grayed text).
+
+---
+
+## MAESTRO Heatmap Template — Component-Layer Grid Format
+
+The MAESTRO Heatmap template uses a **component-layer grid** format for Section 5, showing intersection severity:
+
+```markdown
+## 5. Architecture Threat Overlay
+
+### Component-Layer Intersection Grid
+
+| Component | L1 | L2 | L3 | L4 | L5 | L6 | L7 |
+|-----------|----|----|----|----|----|----|-----|
+| {name} | {severity|—} | {severity|—} | ... | ... | ... | ... | ... |
+```
+
+### MAESTRO Heatmap Data Source
+
+This format is produced from two `template_data` JSON fields:
+
+| JSON Field | Content |
+|------------|---------|
+| `template_data.maestro_heatmap[]` | Component-layer intersection grid |
+| `template_data.maestro_layer_distribution[]` | Per-layer aggregate data for legend |
+
+### MAESTRO Heatmap Edge Cases
+
+**No MAESTRO data**: `has_maestro_data` is false. Spec renders empty state message.
+
+**Component name truncation**: Component names longer than 25 characters are truncated with "..." to maintain grid readability.
+
+**Single-column concentration**: If all findings map to one layer, only that column has colored cells; all other columns show "—".

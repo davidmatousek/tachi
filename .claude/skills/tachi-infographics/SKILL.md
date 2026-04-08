@@ -14,15 +14,27 @@ The infographic generation pipeline transforms structured threat model output in
 1. **Infographic Specification** (`threat-{template-name}-spec.md`) -- A 6-section structured document containing all data points, color coding, layout instructions, and text content needed to render a presentation-ready infographic. This is the primary deliverable.
 2. **Infographic Image** (`threat-{template-name}.jpg`) -- A JPEG image rendered from the specification via Gemini API. This is a best-effort deliverable, conditional on API key availability.
 
-The pipeline supports three templates:
+The pipeline supports five templates:
 
 | Template | Purpose | Audience |
 |----------|---------|----------|
 | Baseball Card | Compact risk summary dashboard with donut chart, heat map, and finding cards | Executive overview |
 | System Architecture | Annotated architecture diagram with trust zones, attack surface badges, and data flows | Security architects |
 | Risk Funnel | 4-tier vertical funnel showing progressive risk reduction through the pipeline | Risk management |
+| MAESTRO Stack | Vertical seven-layer stack diagram showing finding counts and highest severities per MAESTRO layer (L1-L7) | CISO / security management |
+| MAESTRO Heatmap | Component-by-layer grid with severity coloring at each intersection | Security engineers |
 
 Each template shares the same Sections 1-4 format (metadata, risk distribution, coverage heat map, top findings) but has a unique Section 5 (Architecture Threat Overlay) layout.
+
+### Template Shorthands
+
+| Shorthand | Expands To | Description |
+|-----------|-----------|-------------|
+| `all` | `baseball-card`, `system-architecture`, `risk-funnel` | Generate all three core templates |
+| `maestro` | `maestro-stack`, `maestro-heatmap` | Generate both MAESTRO templates sequentially |
+| `corporate-white` | `baseball-card` | Legacy alias |
+
+When the infographic command receives `maestro` as the template value, it expands to `["maestro-stack", "maestro-heatmap"]` and generates both sequentially. The MAESTRO templates require MAESTRO layer data in threats.md (Feature 084); when MAESTRO data is absent, a graceful empty state is rendered.
 
 ## Data Source Types
 

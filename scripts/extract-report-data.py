@@ -21,8 +21,10 @@ from tachi_parsers import (
     EXIT_SUCCESS,
     EXIT_MISSING_ARTIFACT,
     EXIT_VALIDATION_FAILURE,
+    SEVERITY_ORDER,
     escape_typst_string,
     parse_frontmatter,
+    parse_markdown_table,
     parse_project_name,
     detect_artifacts,
     determine_tier,
@@ -34,6 +36,7 @@ from tachi_parsers import (
     parse_component_distribution,
     parse_scope_data,
     parse_compensating_controls_md,
+    strip_bold,
 )
 
 # SLA mapping by severity for remediation actions
@@ -190,6 +193,211 @@ def build_remediation_actions(findings: list, tier: int,
 
 
 # =============================================================================
+# MAESTRO Data Parsing
+# =============================================================================
+
+# Canonical MAESTRO layer ordering
+_MAESTRO_LAYERS = ["L1", "L2", "L3", "L4", "L5", "L6", "L7"]
+
+# Severity ordinal for sorting (Critical highest)
+_SEVERITY_ORDINAL = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1, "Note": 0}
+
+
+def parse_maestro_data(threats_content):
+    """Parse MAESTRO layer data from threats.md for report-data.typ.
+
+    Extracts:
+    - Section 6 "Risk by MAESTRO Layer" table for per-layer aggregates
+    - Section 3/4 agent tables for per-finding MAESTRO layer assignment
+    - Groups findings by layer for the MAESTRO findings page
+
+    Returns dict with:
+      - has_maestro_data (bool)
+      - maestro_layer_distribution (list of dicts)
+      - most_exposed_layer (str)
+      - maestro_findings_by_layer (list of layer groups)
+    """
+    result = {
+        "has_maestro_data": False,
+        "maestro_layer_distribution": [],
+        "most_exposed_layer": "",
+        "maestro_findings_by_layer": [],
+    }
+
+    if not threats_content or not threats_content.strip():
+        return result
+
+    # --- Parse Section 6 layer distribution table ---
+    layer_dist = parse_markdown_table(threats_content, "#### Risk by MAESTRO Layer")
+    parsed_layers = []
+    for row in layer_dist:
+        layer_raw = row.get("MAESTRO Layer", "").strip()
+        if not layer_raw:
+            continue
+        parts = layer_raw.split("\u2014", 1)  # em-dash
+        if len(parts) == 2:
+            layer_id = parts[0].strip()
+            layer_name = parts[1].strip()
+        else:
+            layer_id = layer_raw
+            layer_name = ""
+
+        try:
+            finding_count = int(row.get("Finding Count", "0").strip())
+        except ValueError:
+            finding_count = 0
+
+        highest_severity = row.get("Highest Severity", "").strip()
+
+        parsed_layers.append({
+            "layer_id": layer_id,
+            "layer_name": layer_name,
+            "finding_count": finding_count,
+            "highest_severity": highest_severity,
+        })
+
+    result["maestro_layer_distribution"] = parsed_layers
+
+    # --- Parse Section 3/4 per-finding MAESTRO layer ---
+    lines = threats_content.split("\n")
+    per_finding = []
+
+    agent_sections = []
+    for i, line in enumerate(lines):
+        if re.match(r"^###\s+[34]\.\d+\s+", line):
+            agent_sections.append(i)
+
+    for sec_start in agent_sections:
+        header_cols = None
+        for i in range(sec_start + 1, len(lines)):
+            stripped = lines[i].strip()
+            if stripped.startswith("## ") or stripped.startswith("### "):
+                break
+            if not stripped.startswith("|"):
+                continue
+            # Parse header row
+            if header_cols is None:
+                cells = [strip_bold(c.strip()) for c in stripped.split("|")[1:-1]]
+                if cells and cells[0].lower() == "id":
+                    header_cols = cells
+                continue
+            # Skip separator row
+            if re.match(r"^\|[\s\-:|]+\|$", stripped):
+                continue
+            # Data row
+            cells = [strip_bold(c.strip()) for c in stripped.split("|")[1:-1]]
+            if not cells or not cells[0]:
+                continue
+            fid = cells[0]
+            if not fid or not re.match(r"^[A-Z]", fid):
+                continue
+
+            # Find column indices dynamically
+            maestro_idx = None
+            comp_idx = None
+            threat_idx = None
+            risk_idx = None
+            if header_cols:
+                for idx, col in enumerate(header_cols):
+                    if col == "MAESTRO Layer":
+                        maestro_idx = idx
+                    elif col == "Component":
+                        comp_idx = idx
+                    elif col == "Threat":
+                        threat_idx = idx
+                    elif col == "Risk Level":
+                        risk_idx = idx
+
+            maestro_layer = ""
+            if maestro_idx is not None and maestro_idx < len(cells):
+                maestro_layer = cells[maestro_idx].strip()
+
+            component = cells[comp_idx].strip() if comp_idx is not None and comp_idx < len(cells) else ""
+            threat = cells[threat_idx].strip() if threat_idx is not None and threat_idx < len(cells) else ""
+            risk_level = cells[risk_idx].strip() if risk_idx is not None and risk_idx < len(cells) else ""
+
+            per_finding.append({
+                "id": fid,
+                "component": component,
+                "maestro_layer": maestro_layer,
+                "severity": risk_level,
+                "threat": threat,
+            })
+
+    # --- Group findings by MAESTRO layer ---
+    # Build layer_id -> {layer_name, findings} mapping
+    layer_groups = {}
+
+    # Pre-populate from distribution table to preserve canonical ordering
+    for layer in parsed_layers:
+        lid = layer["layer_id"]
+        layer_groups[lid] = {
+            "layer_id": lid,
+            "layer_name": layer["layer_name"],
+            "findings": [],
+        }
+
+    # Assign findings to layer groups
+    for f in per_finding:
+        layer_raw = f.get("maestro_layer", "")
+        if not layer_raw:
+            lid = "Unclassified"
+            lname = "Unclassified"
+        else:
+            parts = layer_raw.split("\u2014", 1)
+            lid = parts[0].strip().split("\u2013")[0].strip()  # handle both em-dash and en-dash
+            lname = parts[1].strip() if len(parts) == 2 else lid
+
+        if lid not in layer_groups:
+            layer_groups[lid] = {
+                "layer_id": lid,
+                "layer_name": lname,
+                "findings": [],
+            }
+
+        layer_groups[lid]["findings"].append({
+            "id": f["id"],
+            "component": f["component"],
+            "severity": f["severity"],
+            "threat": f["threat"],
+        })
+
+    # Sort layers: L1-L7 in canonical order, then Unclassified, then any others
+    def layer_sort_key(lid):
+        if lid in _MAESTRO_LAYERS:
+            return (0, _MAESTRO_LAYERS.index(lid))
+        elif lid == "Unclassified":
+            return (1, 0)
+        else:
+            return (2, lid)
+
+    sorted_layer_ids = sorted(layer_groups.keys(), key=layer_sort_key)
+    findings_by_layer = [layer_groups[lid] for lid in sorted_layer_ids if layer_groups[lid]["findings"]]
+
+    result["maestro_findings_by_layer"] = findings_by_layer
+
+    # --- Compute most exposed layer ---
+    if parsed_layers:
+        best = max(
+            parsed_layers,
+            key=lambda l: (
+                l["finding_count"],
+                _SEVERITY_ORDINAL.get(l["highest_severity"], 0),
+            ),
+        )
+        if best["layer_name"]:
+            result["most_exposed_layer"] = f"{best['layer_id']} \u2014 {best['layer_name']}"
+        else:
+            result["most_exposed_layer"] = best["layer_id"]
+
+    # --- Determine if MAESTRO data is present ---
+    has_data = bool(parsed_layers) or any(f.get("maestro_layer") for f in per_finding)
+    result["has_maestro_data"] = has_data
+
+    return result
+
+
+# =============================================================================
 # Validation
 # =============================================================================
 
@@ -245,12 +453,16 @@ def detect_images(target_dir: Path, template_dir: Path) -> dict:
         "funnel_image_path": "",
         "baseball_image_path": "",
         "architecture_image_path": "",
+        "maestro_stack_image_path": "",
+        "maestro_heatmap_image_path": "",
     }
 
     image_files = {
         "funnel_image_path": "threat-risk-funnel.jpg",
         "baseball_image_path": "threat-baseball-card.jpg",
         "architecture_image_path": "threat-system-architecture.jpg",
+        "maestro_stack_image_path": "threat-maestro-stack.jpg",
+        "maestro_heatmap_image_path": "threat-maestro-heatmap.jpg",
     }
 
     for key, filename in image_files.items():
@@ -460,7 +672,45 @@ def generate_report_data_typ(data: dict) -> str:
     lines.append(f"#let logo-horizontal-path = {_typst_str_or_none(data['logo_horizontal_path'])}")
     lines.append("")
 
-    # 3p: Page Visibility
+    # 3p: MAESTRO Data
+    lines.append("// --- MAESTRO Data -----------------------------------------------------------")
+    lines.append(f"#let has-maestro-data = {_typst_bool(data.get('has_maestro_data', False))}")
+    if data.get("maestro_layer_distribution"):
+        lines.append("#let maestro-layer-distribution = (")
+        for layer in data["maestro_layer_distribution"]:
+            lines.append(
+                f'  (layer-id: "{escape_typst_string(layer["layer_id"])}", '
+                f'layer-name: "{escape_typst_string(layer["layer_name"])}", '
+                f'finding-count: {layer["finding_count"]}, '
+                f'highest-severity: "{escape_typst_string(layer["highest_severity"])}"),')
+        lines.append(")")
+    else:
+        lines.append("#let maestro-layer-distribution = ()")
+    lines.append(f'#let most-exposed-layer = "{escape_typst_string(data.get("most_exposed_layer", ""))}"')
+    if data.get("maestro_findings_by_layer"):
+        lines.append("#let maestro-findings-by-layer = (")
+        for group in data["maestro_findings_by_layer"]:
+            lines.append(
+                f'  (layer-id: "{escape_typst_string(group["layer_id"])}", '
+                f'layer-name: "{escape_typst_string(group["layer_name"])}", '
+                f'findings: (')
+            for f in group["findings"]:
+                lines.append(
+                    f'    (id: "{escape_typst_string(f["id"])}", '
+                    f'component: "{escape_typst_string(f["component"])}", '
+                    f'severity: "{escape_typst_string(f["severity"])}", '
+                    f'threat: "{escape_typst_string(f["threat"])}"),')
+            lines.append("  )),")
+        lines.append(")")
+    else:
+        lines.append("#let maestro-findings-by-layer = ()")
+    lines.append(f"#let has-maestro-stack-image = {_typst_bool(bool(data.get('maestro_stack_image_path', '')))}")
+    lines.append(f'#let maestro-stack-image-path = "{escape_typst_string(data.get("maestro_stack_image_path", ""))}"')
+    lines.append(f"#let has-maestro-heatmap-image = {_typst_bool(bool(data.get('maestro_heatmap_image_path', '')))}")
+    lines.append(f'#let maestro-heatmap-image-path = "{escape_typst_string(data.get("maestro_heatmap_image_path", ""))}"')
+    lines.append("")
+
+    # 3q: Page Visibility
     lines.append("// --- Page Visibility (defaults, overridden by report-config.typ) ------------")
     lines.append("#let show-disclaimer = true")
     lines.append("#let show-methodology = true")
@@ -668,6 +918,15 @@ def main():
     data["funnel_image_path"] = images["funnel_image_path"]
     data["baseball_image_path"] = images["baseball_image_path"]
     data["architecture_image_path"] = images["architecture_image_path"]
+    data["maestro_stack_image_path"] = images["maestro_stack_image_path"]
+    data["maestro_heatmap_image_path"] = images["maestro_heatmap_image_path"]
+
+    # MAESTRO data from threats.md
+    maestro = parse_maestro_data(threats_content)
+    data["has_maestro_data"] = maestro["has_maestro_data"]
+    data["maestro_layer_distribution"] = maestro["maestro_layer_distribution"]
+    data["most_exposed_layer"] = maestro["most_exposed_layer"]
+    data["maestro_findings_by_layer"] = maestro["maestro_findings_by_layer"]
 
     # Brand assets
     brand = detect_brand_assets(template_dir)

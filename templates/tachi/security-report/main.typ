@@ -40,6 +40,7 @@
 #import "executive-summary.typ": executive-summary-page
 #import "full-bleed.typ": infographic-page, full-bleed-page
 #import "findings-detail.typ": findings-detail-page
+#import "maestro-findings.typ": maestro-findings-page
 #import "control-coverage.typ": control-coverage-page
 #import "remediation-roadmap.typ": remediation-roadmap-page
 
@@ -81,6 +82,16 @@
 // Dark logo variant for cover page.
 // Imported from theme.typ via shared.typ wildcard import.
 // The report assembler may override this in report-data.typ with a resolved path.
+
+// MAESTRO data defaults (empty = graceful degradation).
+#let has-maestro-data = if has-maestro-data != none { has-maestro-data } else { false }
+#let maestro-findings-by-layer = if maestro-findings-by-layer != none { maestro-findings-by-layer } else { () }
+#let most-exposed-layer = if most-exposed-layer != none { most-exposed-layer } else { "" }
+#let has-maestro-stack-image = if has-maestro-stack-image != none { has-maestro-stack-image } else { false }
+#let maestro-stack-image-path = if maestro-stack-image-path != none { maestro-stack-image-path } else { "" }
+#let has-maestro-heatmap-image = if has-maestro-heatmap-image != none { has-maestro-heatmap-image } else { false }
+#let maestro-heatmap-image-path = if maestro-heatmap-image-path != none { maestro-heatmap-image-path } else { "" }
+#let maestro-layer-distribution = if maestro-layer-distribution != none { maestro-layer-distribution } else { () }
 
 // Page visibility — config overrides take precedence over report-data.typ defaults.
 #let show-disclaimer = cfg-show-disclaimer
@@ -220,6 +231,61 @@
       Threat badges on each component show the specific threat identifiers and their severity classifications. Data flow arrows illustrate the assessed communication paths between components, with trust boundary crossings highlighted as key attack surface areas where threats are most likely to be exploited. This spatial view complements the tabular findings detail by showing how threats cluster around specific architectural chokepoints.
     ],
   )
+}
+
+
+// --- MAESTRO Layer Risk Distribution (conditional) -----------------------
+// Portrait infographic with explanatory text. Only when maestro-stack image exists.
+#if has-maestro-stack-image {
+  infographic-page(
+    maestro-stack-image-path,
+    section-name: "MAESTRO Layer Risk Distribution",
+    classification: classification,
+    description: [
+      The MAESTRO Layer Risk Distribution diagram maps identified threats onto the seven-layer CSA MAESTRO framework for agentic AI systems. Each horizontal band represents an architectural layer from Foundation Model (L1) through User Interface (L7), showing the finding count and highest severity at each layer. The most-exposed layer is visually highlighted.
+
+      This view enables security leaders to quickly identify which architectural layers of the AI stack carry the most risk exposure and prioritize remediation efforts accordingly.
+    ],
+  )
+}
+
+
+// --- MAESTRO Component-Layer Heatmap (conditional) -----------------------
+// Portrait infographic with explanatory text. Only when maestro-heatmap image exists.
+#if has-maestro-heatmap-image {
+  infographic-page(
+    maestro-heatmap-image-path,
+    section-name: "MAESTRO Component-Layer Heatmap",
+    classification: classification,
+    description: [
+      The MAESTRO Component-Layer Heatmap provides a granular view of how threats intersect specific system components with MAESTRO architectural layers. Each cell represents the highest-severity finding at the intersection of a component (row) and a MAESTRO layer (column).
+
+      This cross-tabulation identifies specific component-layer hotspots that require targeted remediation, complementing the aggregate layer view in the MAESTRO Stack diagram.
+    ],
+  )
+}
+
+
+// --- MAESTRO Findings by Layer (conditional) -----------------------------
+// Findings regrouped by MAESTRO layer for architectural-layer-oriented review.
+#if has-maestro-data {
+  page(
+    width: page-width,
+    height: page-height,
+    margin: (
+      top: margin-top,
+      bottom: margin-bottom,
+      left: margin-left,
+      right: margin-right,
+    ),
+    footer: report-footer(),
+  )[
+    #maestro-findings-page(
+      classification: classification,
+      maestro-findings-by-layer: maestro-findings-by-layer,
+      has-maestro-data: has-maestro-data,
+    )
+  ]
 }
 
 

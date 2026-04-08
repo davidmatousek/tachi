@@ -14,13 +14,14 @@ Consider user input before proceeding (if not empty).
 
 1. If `$ARGUMENTS` contains `--template <value>`:
    - Set `template` to the specified value
-   - Valid values: `baseball-card`, `system-architecture`, `risk-funnel`, `all`, `corporate-white`
+   - Valid values: `baseball-card`, `system-architecture`, `risk-funnel`, `maestro-stack`, `maestro-heatmap`, `all`, `maestro`, `corporate-white`
    - If value is `corporate-white`: resolve alias to `baseball-card`
+   - If value is `maestro`: expand shorthand to `["maestro-stack", "maestro-heatmap"]` — generate both sequentially
    - If value is not in the valid list, display:
      ```
      INVALID TEMPLATE: {value}
-     Valid templates: baseball-card, system-architecture, risk-funnel, all
-     Alias: corporate-white → baseball-card
+     Valid templates: baseball-card, system-architecture, risk-funnel, maestro-stack, maestro-heatmap, all, maestro
+     Aliases: corporate-white → baseball-card, maestro → maestro-stack + maestro-heatmap
      ```
    - Halt if invalid.
    - Strip `--template <value>` from `$ARGUMENTS` (trim extra whitespace)
@@ -152,11 +153,16 @@ Single-command entry point for tachi threat infographic generation — the visua
    - threat-{template-name}-spec.md (always)
    - threat-{template-name}.jpg (when GEMINI_API_KEY available)
 
-   Step 1: Run the extraction script (once per template, or 3x if template is "all"):
+   Step 1: Run the extraction script (once per template, or 3x if template is "all", or 2x if template is "maestro"):
      python3 scripts/extract-infographic-data.py \
        --target-dir {data_source_dir} \
        --template {template_name} \
        --output /tmp/infographic-{template_name}.json
+
+   Template expansion:
+   - "all" expands to: baseball-card, system-architecture, risk-funnel (3 runs)
+   - "maestro" expands to: maestro-stack, maestro-heatmap (2 runs, sequential)
+   - Individual templates (baseball-card, system-architecture, risk-funnel, maestro-stack, maestro-heatmap): 1 run
 
    Step 2: Read the JSON output and generate the spec file per your methodology.
    Step 3: Generate images via Gemini if GEMINI_API_KEY is available.
@@ -223,6 +229,11 @@ Where:
 # Select a specific template
 /infographic --template baseball-card
 /infographic --template system-architecture
+
+# MAESTRO templates (require MAESTRO layer data from Feature 084)
+/infographic --template maestro-stack
+/infographic --template maestro-heatmap
+/infographic --template maestro          # shorthand: generates both maestro-stack + maestro-heatmap
 
 # Custom output directory
 /infographic --output-dir reports/infographics/

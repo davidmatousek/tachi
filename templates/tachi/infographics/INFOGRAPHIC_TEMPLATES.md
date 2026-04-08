@@ -4,7 +4,7 @@ Tachi supports multiple infographic design templates. Each template defines the 
 layout, color palette, typography, zone specifications, and Gemini prompt structure
 for infographic generation.
 
-By default, **both** built-in templates are generated on every run.
+By default, the three core templates (`baseball-card`, `system-architecture`, `risk-funnel`) are generated on every run.
 
 ## Available Templates
 
@@ -12,8 +12,14 @@ By default, **both** built-in templates are generated on every run.
 |----------|------|-------------|
 | baseball-card | `infographic-baseball-card.md` | Compact risk summary dashboard: donut chart, STRIDE+AI coverage heat map, critical finding cards, and architecture overlay strip. Stats at a glance. |
 | system-architecture | `infographic-system-architecture.md` | Annotated architecture diagram: trust zones stacked by trust level, components with attack surface badges, data flow arrows colored by severity, finding IDs overlaid. |
+| risk-funnel | `infographic-risk-funnel.md` | 4-tier vertical funnel showing progressive risk reduction through the pipeline stages. Risk management audience. |
+| maestro-stack | `infographic-maestro-stack.md` | Vertical seven-layer stack diagram showing finding counts and highest severities per MAESTRO layer (L1-L7). CISO / security management audience. |
+| maestro-heatmap | `infographic-maestro-heatmap.md` | Component-by-layer grid with severity coloring at each intersection. Identifies hotspot component-layer pairs for remediation prioritization. |
 
-**Alias**: `corporate-white` maps to `baseball-card` (backward compatibility).
+**Aliases and Shorthands**:
+- `corporate-white` maps to `baseball-card` (backward compatibility)
+- `all` generates `baseball-card`, `system-architecture`, `risk-funnel` (core templates)
+- `maestro` generates both `maestro-stack` and `maestro-heatmap` sequentially
 
 ## Output Files
 
@@ -21,13 +27,36 @@ By default, **both** built-in templates are generated on every run.
 |----------|-----------|------------|
 | baseball-card | `threat-baseball-card-spec.md` | `threat-baseball-card.jpg` |
 | system-architecture | `threat-system-architecture-spec.md` | `threat-system-architecture.jpg` |
+| risk-funnel | `threat-risk-funnel-spec.md` | `threat-risk-funnel.jpg` |
+| maestro-stack | `threat-maestro-stack-spec.md` | `threat-maestro-stack.jpg` |
+| maestro-heatmap | `threat-maestro-heatmap-spec.md` | `threat-maestro-heatmap.jpg` |
 
 ## Using Templates
+
+### Via `/infographic` command (standalone)
+
+```bash
+# Default — generates all 3 core templates
+/infographic
+
+# Single template
+/infographic --template baseball-card
+/infographic --template system-architecture
+/infographic --template risk-funnel
+
+# MAESTRO templates (require MAESTRO layer data from Feature 084)
+/infographic --template maestro-stack
+/infographic --template maestro-heatmap
+/infographic --template maestro          # shorthand: generates both MAESTRO templates
+
+# Custom output directory
+/infographic --output-dir reports/infographics/
+```
 
 ### Via `/threat-model` command
 
 ```bash
-# Default — generates BOTH templates
+# Default — generates all 3 core templates
 /threat-model docs/security/architecture.md
 
 # Only Baseball Card
@@ -36,7 +65,7 @@ By default, **both** built-in templates are generated on every run.
 # Only System Architecture
 /threat-model docs/security/architecture.md --infographic-template system-architecture
 
-# Explicit both (same as default)
+# Explicit all (same as default)
 /threat-model docs/security/architecture.md --infographic-template all
 ```
 
@@ -89,6 +118,9 @@ Run tachi threat analysis on my architecture. Generate only the baseball-card in
    | `{boundary_descriptions}` | Spec Section 5: trust boundary crossing descriptions |
    | `{correlation_annotations}` | Spec Section 5: correlation group descriptions |
    | `{description}` | Spec Section 1: input format or system description |
+   | `{maestro_layer_distribution}` | MAESTRO layer finding counts and highest severities (maestro-stack) |
+   | `{most_exposed_layer}` | Layer with highest finding count (maestro-stack) |
+   | `{maestro_heatmap}` | Component-layer intersection grid with severity coloring (maestro-heatmap) |
 
 ## Template Requirements
 

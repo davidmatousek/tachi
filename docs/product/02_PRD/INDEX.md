@@ -5,6 +5,7 @@
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 091 | [MAESTRO Infographic Templates and PDF Report Section](091-maestro-infographic-templates-and-pdf-report-section-2026-04-08.md) | ✓ | ⚠ | ⚠ | Approved | 2026-04-08 |
 | 084 | [MAESTRO Layer Mapping](084-maestro-layer-mapping-2026-04-07.md) | ✓ | ✓ | ✓ | Delivered | 2026-04-08 |
 | 086 | [Automated Release Tagging via GitHub Actions](086-automated-release-tagging-via-github-actions-2026-04-06.md) | ✓ | ✓ | ✓ | Delivered | 2026-04-06 |
 | 066 | [Install Script and Version Tagging](066-install-script-and-version-tagging-2026-04-06.md) | ✓ | ✓ | ✓ | Delivered | 2026-04-06 |

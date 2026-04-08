@@ -3,7 +3,8 @@
 
 Reads threats.md, risk-scores.md, and compensating-controls.md from a target
 directory and writes a JSON data file with all variable bindings needed by
-the infographic templates (baseball-card, system-architecture, risk-funnel).
+the infographic templates (baseball-card, system-architecture, risk-funnel,
+maestro-stack, maestro-heatmap).
 
 Imports shared parsers from tachi_parsers.py for cross-output consistency
 with extract-report-data.py.
@@ -29,6 +30,7 @@ from tachi_parsers import (
     EXIT_VALIDATION_FAILURE,
     SEVERITY_ORDER,
     parse_frontmatter,
+    parse_markdown_table,
     parse_project_name,
     detect_artifacts,
     determine_tier,
@@ -886,6 +888,257 @@ def _compute_missing_enrichments(artifacts):
 
 
 # =============================================================================
+# MAESTRO Layer Extraction (T003–T011)
+# =============================================================================
+
+# Canonical MAESTRO layer ordering
+_MAESTRO_LAYERS = ["L1", "L2", "L3", "L4", "L5", "L6", "L7"]
+
+
+def parse_maestro_layer_distribution(threats_content):
+    """Parse Section 6 "Risk by MAESTRO Layer" table.
+
+    Returns list of dicts: {layer_id, layer_name, finding_count, highest_severity}.
+    Returns empty list if the table is absent (pre-084 output).
+    """
+    rows = parse_markdown_table(threats_content, "#### Risk by MAESTRO Layer")
+    if not rows:
+        return []
+
+    result = []
+    for row in rows:
+        layer_raw = row.get("MAESTRO Layer", "").strip()
+        if not layer_raw:
+            continue
+        # Parse "L1 — Foundation Model" → layer_id="L1", layer_name="Foundation Model"
+        # Handle both em-dash (—) and en-dash (–) for robustness
+        parts = layer_raw.split("—", 1)
+        if len(parts) < 2:
+            parts = layer_raw.split("–", 1)
+        if len(parts) == 2:
+            layer_id = parts[0].strip()
+            layer_name = parts[1].strip()
+        else:
+            layer_id = layer_raw
+            layer_name = ""
+
+        try:
+            finding_count = int(row.get("Finding Count", "0").strip())
+        except ValueError:
+            finding_count = 0
+
+        highest_severity = row.get("Highest Severity", "").strip()
+
+        result.append({
+            "layer_id": layer_id,
+            "layer_name": layer_name,
+            "finding_count": finding_count,
+            "highest_severity": highest_severity,
+        })
+
+    return result
+
+
+def parse_component_layer_mapping(threats_content):
+    """Parse Section 1 Components table for MAESTRO Layer column.
+
+    Returns dict mapping component_name → layer_string (e.g., "L1 — Foundation Model").
+    Returns empty dict if no MAESTRO Layer column exists.
+    """
+    rows = parse_markdown_table(threats_content, "### Components")
+    mapping = {}
+    for row in rows:
+        comp = row.get("Component", "").strip()
+        layer = row.get("MAESTRO Layer", "").strip()
+        if comp and layer:
+            mapping[comp] = layer
+    return mapping
+
+
+def parse_per_finding_maestro(threats_content):
+    """Parse Section 3 and Section 4 agent tables for per-finding MAESTRO layer.
+
+    Returns list of dicts: {id, component, maestro_layer, risk_level, threat}.
+    Handles both 8-column STRIDE tables and 9-column AI tables.
+    Returns empty list if no MAESTRO data found.
+    """
+    lines = threats_content.split("\n")
+    findings = []
+
+    # Find all agent table subsections (### 3.X and ### 4.X, but not ### 4a)
+    agent_sections = []
+    for i, line in enumerate(lines):
+        if re.match(r"^###\s+[34]\.\d+\s+", line):
+            agent_sections.append(i)
+
+    for sec_start in agent_sections:
+        header_cols = None
+        for i in range(sec_start + 1, len(lines)):
+            stripped = lines[i].strip()
+            # Stop at next section header
+            if stripped.startswith("## ") or stripped.startswith("### "):
+                break
+            if not stripped.startswith("|"):
+                continue
+            # Parse header row
+            if header_cols is None:
+                cells = [c.strip() for c in stripped.split("|")[1:-1]]
+                if cells and cells[0].lower() == "id":
+                    header_cols = cells
+                continue
+            # Skip separator row
+            if re.match(r"^\|[\s\-:|]+\|$", stripped):
+                continue
+            # Data row
+            cells = [c.strip() for c in stripped.split("|")[1:-1]]
+            if not cells or not cells[0]:
+                continue
+            fid = strip_bold(cells[0])
+            if not fid or not re.match(r"^[A-Z]", fid):
+                continue
+
+            # Find MAESTRO Layer column index dynamically
+            maestro_idx = None
+            if header_cols:
+                for idx, col in enumerate(header_cols):
+                    if col == "MAESTRO Layer":
+                        maestro_idx = idx
+                        break
+
+            maestro_layer = ""
+            if maestro_idx is not None and maestro_idx < len(cells):
+                maestro_layer = cells[maestro_idx].strip()
+
+            # Determine other fields by header position
+            comp_idx = None
+            threat_idx = None
+            risk_idx = None
+            if header_cols:
+                for idx, col in enumerate(header_cols):
+                    if col == "Component":
+                        comp_idx = idx
+                    elif col == "Threat":
+                        threat_idx = idx
+                    elif col == "Risk Level":
+                        risk_idx = idx
+
+            component = cells[comp_idx].strip() if comp_idx is not None and comp_idx < len(cells) else ""
+            threat = cells[threat_idx].strip() if threat_idx is not None and threat_idx < len(cells) else ""
+            risk_level = cells[risk_idx].strip() if risk_idx is not None and risk_idx < len(cells) else ""
+
+            findings.append({
+                "id": fid,
+                "component": component,
+                "maestro_layer": maestro_layer,
+                "risk_level": risk_level,
+                "threat": threat,
+            })
+
+    return findings
+
+
+def compute_maestro_heatmap(per_finding_data, component_layer_map):
+    """Build component-layer intersection matrix.
+
+    Each cell = highest severity at that (component, layer) pair.
+    Components capped at top 10 by total finding count.
+
+    Returns list of dicts: {component, layers: {L1: severity|null, ...}}.
+    """
+    # Build intersection grid: (component, layer_id) → highest severity
+    grid = {}
+    comp_counts = {}
+
+    for f in per_finding_data:
+        comp = f.get("component", "")
+        layer_raw = f.get("maestro_layer", "")
+        risk_level = f.get("risk_level", "")
+        if not comp or not layer_raw:
+            continue
+
+        # Extract layer ID from "L1 — Foundation Model"
+        layer_id = layer_raw.split("—")[0].strip().split("–")[0].strip()
+        if layer_id not in _MAESTRO_LAYERS:
+            continue
+
+        comp_counts[comp] = comp_counts.get(comp, 0) + 1
+
+        key = (comp, layer_id)
+        existing = grid.get(key, "")
+        if not existing or _SEVERITY_ORDINAL.get(risk_level, 0) > _SEVERITY_ORDINAL.get(existing, 0):
+            grid[key] = risk_level
+
+    # Sort components by finding count descending, name ascending
+    sorted_comps = sorted(comp_counts.keys(), key=lambda c: (-comp_counts[c], c))
+
+    # Cap at 10 components
+    sorted_comps = sorted_comps[:10]
+
+    result = []
+    for comp in sorted_comps:
+        layers = {}
+        for lid in _MAESTRO_LAYERS:
+            layers[lid] = grid.get((comp, lid), None)
+        result.append({
+            "component": comp,
+            "layers": layers,
+        })
+
+    return result
+
+
+def compute_most_exposed_layer(layer_distribution):
+    """Determine the most-exposed MAESTRO layer.
+
+    Layer with highest finding_count. Ties broken by highest severity, then layer_id ascending.
+
+    Returns string like "L1 — Foundation Model" or "" if no data.
+    """
+    if not layer_distribution:
+        return ""
+
+    def sort_key(entry):
+        return (
+            -entry["finding_count"],
+            -_SEVERITY_ORDINAL.get(entry["highest_severity"], 0),
+            entry["layer_id"],
+        )
+
+    sorted_layers = sorted(layer_distribution, key=sort_key)
+    top = sorted_layers[0]
+    return f"{top['layer_id']} — {top['layer_name']}" if top["layer_name"] else top["layer_id"]
+
+
+def extract_maestro_data(threats_content):
+    """Extract all MAESTRO data from threats.md. Returns empty/null values when absent.
+
+    Returns dict with:
+      - maestro_layer_distribution: list of layer dicts
+      - most_exposed_layer: string
+      - component_layer_map: dict
+      - per_finding_maestro: list of finding dicts
+      - maestro_heatmap: list of component-layer intersection dicts
+      - has_maestro_data: bool
+    """
+    layer_dist = parse_maestro_layer_distribution(threats_content)
+    comp_layer_map = parse_component_layer_mapping(threats_content)
+    per_finding = parse_per_finding_maestro(threats_content)
+    heatmap = compute_maestro_heatmap(per_finding, comp_layer_map)
+    most_exposed = compute_most_exposed_layer(layer_dist)
+
+    has_data = bool(layer_dist) or any(f.get("maestro_layer") for f in per_finding)
+
+    return {
+        "maestro_layer_distribution": layer_dist,
+        "most_exposed_layer": most_exposed,
+        "component_layer_map": comp_layer_map,
+        "per_finding_maestro": per_finding,
+        "maestro_heatmap": heatmap,
+        "has_maestro_data": has_data,
+    }
+
+
+# =============================================================================
 # T018: Build JSON Output
 # =============================================================================
 
@@ -930,7 +1183,7 @@ def main():
     parser.add_argument(
         "--template",
         required=True,
-        choices=["baseball-card", "system-architecture", "risk-funnel"],
+        choices=["baseball-card", "system-architecture", "risk-funnel", "maestro-stack", "maestro-heatmap"],
         help="Infographic template to generate data for",
     )
     parser.add_argument(
@@ -995,6 +1248,9 @@ def main():
         threats_content, frontmatter, tier, severity, scope["components"], project_name
     )
 
+    # Extract MAESTRO data (used by maestro-stack and maestro-heatmap templates)
+    maestro = extract_maestro_data(threats_content)
+
     # Build template-specific data
     template_data = {}
     if args.template == "baseball-card":
@@ -1015,6 +1271,41 @@ def main():
             "funnel_tiers": funnel["funnel_tiers"],
             "reduction_percentages": funnel["reduction_percentages"],
             "missing_enrichments": funnel["missing_enrichments"],
+        }
+    elif args.template == "maestro-stack":
+        # Per-layer finding summaries: up to 2 top findings per layer
+        per_layer_summaries = []
+        for layer in maestro["maestro_layer_distribution"]:
+            lid = layer["layer_id"]
+            layer_findings = [
+                f for f in maestro["per_finding_maestro"]
+                if f.get("maestro_layer", "").startswith(lid)
+            ]
+            # Sort by severity descending, then ID ascending
+            layer_findings.sort(
+                key=lambda f: (-_SEVERITY_ORDINAL.get(f.get("risk_level", ""), 0), f.get("id", ""))
+            )
+            top_2 = layer_findings[:2]
+            per_layer_summaries.append({
+                "layer_id": lid,
+                "layer_name": layer["layer_name"],
+                "finding_count": layer["finding_count"],
+                "highest_severity": layer["highest_severity"],
+                "top_findings": [
+                    {"id": f["id"], "threat": f["threat"][:120]} for f in top_2
+                ],
+            })
+        template_data = {
+            "maestro_layer_distribution": maestro["maestro_layer_distribution"],
+            "most_exposed_layer": maestro["most_exposed_layer"],
+            "per_layer_summaries": per_layer_summaries,
+            "has_maestro_data": maestro["has_maestro_data"],
+        }
+    elif args.template == "maestro-heatmap":
+        template_data = {
+            "maestro_heatmap": maestro["maestro_heatmap"],
+            "maestro_layer_distribution": maestro["maestro_layer_distribution"],
+            "has_maestro_data": maestro["has_maestro_data"],
         }
 
     # Assemble data dict
