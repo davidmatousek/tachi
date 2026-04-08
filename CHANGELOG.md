@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.2.1](https://github.com/davidmatousek/tachi/compare/v4.2.0...v4.2.1) (2026-04-08)
+
+
+### Bug Fixes
+
+* **086:** add workflow_dispatch trigger to release-please ([c0231b6](https://github.com/davidmatousek/tachi/commit/c0231b653428204538525bf42950250a243e0022))
+
 ## [4.2.0](https://github.com/davidmatousek/tachi/compare/v4.1.0...v4.2.0) (2026-04-08)
 
 
