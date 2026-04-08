@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.2.0](https://github.com/davidmatousek/tachi/compare/v4.1.0...v4.2.0) (2026-04-08)
+
+
+### Features
+
+* **084:** add MAESTRO layer mapping to threat model pipeline ([#92](https://github.com/davidmatousek/tachi/issues/92)) ([ac2ca0e](https://github.com/davidmatousek/tachi/commit/ac2ca0e03ec6f2cda85b45ebb2829486099e0985))
+
 ## [4.1.0](https://github.com/davidmatousek/tachi/compare/v4.0.0...v4.1.0) (2026-04-07)
 
 
