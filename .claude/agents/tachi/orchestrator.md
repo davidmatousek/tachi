@@ -117,7 +117,7 @@ This optional phase detects whether a previous pipeline output exists and loads 
 
 ### Baseline Detection
 
-Locate a previous pipeline output using two methods in priority order: (1) **explicit flag** `--baseline <path>` pointing to a valid `threats.md`, (2) **auto-detection** of an existing `threats.md` in the output directory.
+Locate a previous pipeline output using two methods in priority order: (1) **explicit flag** `--baseline <path>` pointing to a valid `threats.md`, (2) **auto-detection** by scanning the output directory's **parent** for sibling directories containing a `threats.md`. Since each run creates a unique timestamped subfolder (e.g., `docs/security/2026-04-08T15-16-21/`), auto-detection lists all sibling directories in the parent (e.g., `docs/security/`), sorts them lexicographically descending (ISO timestamps sort naturally), skips the current run's directory, and uses the `threats.md` from the most recent previous directory.
 
 **If neither method finds a baseline**: Set `baseline_present = false` and proceed to Phase 1 in stateless mode. **If a baseline file is found**: Validate it is parseable with YAML frontmatter. If corrupted, log a warning and proceed in stateless mode. The pipeline must never block on a bad baseline.
 

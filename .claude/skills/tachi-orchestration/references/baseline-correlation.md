@@ -13,7 +13,7 @@ Reference material for baseline handling and carry-forward logic in the baseline
 ### Priority Order
 
 1. **Explicit `--baseline <path>`**: Use the specified file directly.
-2. **Auto-detection**: Check the output directory for an existing `threats.md`.
+2. **Auto-detection**: Scan the output directory's **parent** for the most recent sibling directory containing a `threats.md`. Since each run creates a timestamped subfolder (e.g., `docs/security/2026-04-08T15-16-21/`), list all sibling directories, sort lexicographically (ISO timestamps sort naturally), exclude the current run's directory, and use the `threats.md` from the most recent match.
 3. **No baseline found**: Operate in stateless mode (identical to pre-baseline behavior).
 
 ### Validation

@@ -72,35 +72,31 @@ Single-command entry point for tachi quantitative risk scoring. Validates prereq
 
 ## Step 2: Run Risk Scoring
 
-1. Read the input file at `{input_file}`.
+**IMPORTANT**: Do NOT read or embed the input files in the agent prompt. The risk-scorer agent has Read tool access and will load files on-demand to manage its own context window. Pass file **paths**, not file **contents**.
 
-2. If `architecture_path` is not null, read the architecture file.
-
-3. Invoke the `tachi-risk-scorer` agent with the following prompt:
+1. Invoke the `tachi-risk-scorer` agent with the following prompt:
 
    ```
-   Score the following threat model output using your complete scoring pipeline
+   Score the threat model output using your complete scoring pipeline
    (Threat Parsing → Trust Zone Extraction → Dimensional Scoring → Composite
    Calculation → Governance Fields → Output Generation).
 
-   Write all output files to: {output_dir}
-   - risk-scores.md
-   - risk-scores.sarif
-
+   Input file: {absolute path to input_file}
    Input format: {input_format}
+   Architecture file: {absolute path to architecture_path, or "none"}
+   Output directory: {output_dir}
    Scoring date: {current date YYYY-MM-DD}
 
-   <threat-model-input>
-   {contents of input file}
-   </threat-model-input>
+   Read the input file yourself using the Read tool. For large threat models,
+   read in sections: parse finding tables (Sections 3, 4, 4a) and trust zones
+   (Section 2) first. You do not need to load the full file at once.
 
-   {if architecture_path is not null:}
-   <architecture-input>
-   {contents of architecture file}
-   </architecture-input>
+   Write output files:
+   - risk-scores.md
+   - risk-scores.sarif
    ```
 
-4. Wait for the risk-scorer agent to complete all 6 of its internal analysis phases.
+2. Wait for the risk-scorer agent to complete all 6 of its internal analysis phases.
 
 ## Step 3: Report Results
 

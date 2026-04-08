@@ -28,9 +28,22 @@ Consider user input before proceeding (if not empty).
 
 7. Generate a unique run folder:
    - Compute timestamp: `YYYY-MM-DDTHH-MM-SS` (e.g., `2026-03-25T14-30-22`)
+   - Set `parent_dir` to the current `output_dir` value (before appending timestamp)
    - Append to output_dir: `{output_dir}/{timestamp}/`
    - This ensures each run produces output in a unique subfolder
    - Example: `examples/agentic-app/test-output/2026-03-25T14-30-22/`
+
+8. Auto-detect baseline from previous runs (unless `--baseline` was explicitly provided):
+   - List all subdirectories in `parent_dir`
+   - Exclude the current run's timestamp directory
+   - Sort remaining directories lexicographically descending (ISO timestamps sort naturally)
+   - Check each directory (most recent first) for a `threats.md` file
+   - If found: set `baseline_path` to that file
+   - If none found: `baseline_path = null` (first run — stateless mode)
+   - Display when detected:
+     ```
+     Baseline detected: {baseline_path}
+     ```
 
 ## Overview
 
@@ -92,6 +105,8 @@ Single-command entry point for tachi threat modeling. Validates prerequisites, i
    - threat-report.md
    - attack-trees/ (one file per Critical/High finding)
 
+   Baseline: {baseline_path or "none (first run — stateless mode)"}
+
    Architecture input:
 
    <architecture-input>
@@ -110,6 +125,7 @@ THREAT MODEL COMPLETE
 Architecture: {architecture_path}
 Output: {output_dir}  ← includes timestamped subfolder
 Version: {version_tag or "unversioned"}
+Baseline: {baseline_path or "none (first run)"}
 
 Files generated:
   threats.md                          — Primary threat model
@@ -119,6 +135,9 @@ Files generated:
 
 Risk Summary:
   Critical: {count}    High: {count}    Medium: {count}    Low: {count}
+
+Delta Summary (when baseline present):
+  New: {count}    Unchanged: {count}    Updated: {count}    Resolved: {count}
 
 Next steps:
   1. Review Critical/High findings in {output_dir}/threats.md Section 7

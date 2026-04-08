@@ -88,40 +88,34 @@ Single-command entry point for tachi compensating controls analysis — the thir
 
 ## Step 2: Run Control Analysis
 
-1. Read the risk score input file at `{input_file}`.
+**IMPORTANT**: Do NOT read or embed the input files in the agent prompt. The control-analyzer agent has Read tool access and will load files on-demand to manage its own context window. Pass file **paths**, not file **contents**.
 
-2. If `architecture_path` is not null, read the architecture file.
-
-3. Invoke the `tachi-control-analyzer` agent with the following prompt:
+1. Invoke the `tachi-control-analyzer` agent with the following prompt:
 
    ```
-   Analyze the following scored threat findings against the target codebase to detect
-   existing security controls, classify each threat, recommend remediation for gaps,
-   and calculate residual risk. Execute your complete 6-phase analysis pipeline
-   (internal to the control-analyzer agent, not the threat-model command pipeline):
+   Analyze scored threat findings against the target codebase to detect existing
+   security controls, classify each threat, recommend remediation for gaps, and
+   calculate residual risk. Execute your complete 6-phase analysis pipeline:
    Phase 1 (Parse Input) → Phase 2 (Discover Codebase) → Phase 3 (Detect Controls) →
    Phase 4 (Map & Classify) → Phase 5 (Recommend & Calculate Residual Risk) →
    Phase 6 (Generate Output).
 
-   Write all output files to: {output_dir}
+   Input file: {absolute path to input_file}
+   Input format: {input_format}
+   Architecture file: {absolute path to architecture_path, or "none"}
+   Target codebase: {target_path}
+   Output directory: {output_dir}
+   Analysis date: {current date YYYY-MM-DD}
+
+   Read the input file yourself using the Read tool. For large inputs,
+   read in sections to manage context.
+
+   Write output files:
    - compensating-controls.md
    - compensating-controls.sarif
-
-   Input format: {input_format}
-   Analysis date: {current date YYYY-MM-DD}
-   Target codebase: {target_path}
-
-   <risk-score-input>
-   {contents of input file}
-   </risk-score-input>
-
-   {if architecture_path is not null:}
-   <architecture-input>
-   {contents of architecture file}
-   </architecture-input>
    ```
 
-4. Wait for the control-analyzer agent to complete all 6 pipeline phases.
+2. Wait for the control-analyzer agent to complete all 6 pipeline phases.
 
 ## Step 3: Report Results
 
