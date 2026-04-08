@@ -92,6 +92,8 @@ Keywords are matched case-insensitively against component name, description, and
 | dataset |
 | corpus |
 | index |
+| database |
+| cache |
 
 ### L3 — Agent Framework
 
@@ -124,6 +126,8 @@ Keywords are matched case-insensitively against component name, description, and
 | docker |
 | serverless |
 | network |
+| queue |
+| registry |
 
 ### L5 — Security
 
@@ -170,6 +174,8 @@ Keywords are matched case-insensitively against component name, description, and
 | API endpoint |
 | REST API |
 | GraphQL |
+| client |
+| user |
 
 ---
 

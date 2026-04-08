@@ -126,14 +126,14 @@ triad:
 
 **Purpose**: Regenerate all example architecture outputs and validate success criteria
 
-- [ ] T015 [P] Regenerate `examples/agentic-app/threats.md` with MAESTRO layer classifications by running full pipeline on `examples/agentic-app/architecture.md`
-- [ ] T016 [P] Regenerate `examples/web-app/threats.md` with MAESTRO layer classifications by running full pipeline on `examples/web-app/architecture.md`
-- [ ] T017 [P] Regenerate `examples/microservices/threats.md` with MAESTRO layer classifications by running full pipeline on `examples/microservices/architecture.md`
-- [ ] T018 [P] Regenerate `examples/ascii-web-api/threats.md` with MAESTRO layer classifications by running full pipeline on `examples/ascii-web-api/architecture.md`
-- [ ] T019 [P] Regenerate `examples/free-text-microservice/threats.md` with MAESTRO layer classifications by running full pipeline on `examples/free-text-microservice/architecture.md`
-- [ ] T020 [P] Regenerate `examples/mermaid-agentic-app/threats.md` with MAESTRO layer classifications by running full pipeline on `examples/mermaid-agentic-app/architecture.md`
-- [ ] T021 Validate SC-001: verify >90% of components across all 6 example architectures receive a non-"Unclassified" MAESTRO layer assignment — count total components vs. classified components, report classification rate
-- [ ] T022 Validate SC-003: verify backward compatibility via diff-based regression — compare pre-change baseline outputs against post-change outputs excluding MAESTRO-specific additions (MAESTRO Layer columns, Risk by MAESTRO Layer subsection, SARIF maestro-layer properties), confirm zero differences in non-MAESTRO content
+- [X] T015 [P] Regenerate `examples/agentic-app/threats.md` with MAESTRO layer classifications by running full pipeline on `examples/agentic-app/architecture.md`
+- [X] T016 [P] Regenerate `examples/web-app/threats.md` with MAESTRO layer classifications by running full pipeline on `examples/web-app/architecture.md`
+- [X] T017 [P] Regenerate `examples/microservices/threats.md` with MAESTRO layer classifications by running full pipeline on `examples/microservices/architecture.md`
+- [X] T018 [P] Regenerate `examples/ascii-web-api/threats.md` with MAESTRO layer classifications by running full pipeline on `examples/ascii-web-api/architecture.md`
+- [X] T019 [P] Regenerate `examples/free-text-microservice/threats.md` with MAESTRO layer classifications by running full pipeline on `examples/free-text-microservice/architecture.md`
+- [X] T020 [P] Regenerate `examples/mermaid-agentic-app/threats.md` with MAESTRO layer classifications by running full pipeline on `examples/mermaid-agentic-app/architecture.md`
+- [X] T021 Validate SC-001: verify >90% of components across all 6 example architectures receive a non-"Unclassified" MAESTRO layer assignment — count total components vs. classified components, report classification rate
+- [X] T022 Validate SC-003: verify backward compatibility via diff-based regression — compare pre-change baseline outputs against post-change outputs excluding MAESTRO-specific additions (MAESTRO Layer columns, Risk by MAESTRO Layer subsection, SARIF maestro-layer properties), confirm zero differences in non-MAESTRO content
 
 ---
 

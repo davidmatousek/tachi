@@ -3,7 +3,7 @@
 <!--
   Canonical output template for tachi threat model reports.
 
-  Schema version : 1.1
+  Schema version : 1.2
   Schema file    : schemas/output.yaml
   Contract       : specs/001-project-skeleton-interface/contracts/output-schema.md
 
@@ -18,7 +18,7 @@
 
 ```yaml
 ---
-schema_version: "1.1"
+schema_version: "1.2"
 date: "YYYY-MM-DD"
 input_format: "{detected or declared format}"
 classification: "confidential"
@@ -38,7 +38,7 @@ coverage_gate:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `schema_version` | string | Output schema version. Always `"1.1"` for this release. |
+| `schema_version` | string | Output schema version. Always `"1.2"` for this release. |
 | `date` | string | ISO 8601 date when the threat model was generated. Format: `YYYY-MM-DD`. |
 | `input_format` | string | Architecture input format that was analyzed. One of: `ascii`, `free-text`, `mermaid`, `plantuml`, `c4`. |
 | `classification` | string | Data classification label for the report. Default: `confidential`. |
@@ -54,7 +54,7 @@ coverage_gate:
 
 ```yaml
 ---
-schema_version: "1.1"
+schema_version: "1.2"
 date: "2026-03-31"
 input_format: "mermaid"
 classification: "confidential"
@@ -74,7 +74,7 @@ coverage_gate:
 
 ```yaml
 ---
-schema_version: "1.1"
+schema_version: "1.2"
 date: "2026-03-31"
 input_format: "mermaid"
 classification: "confidential"
@@ -96,7 +96,7 @@ coverage_gate:
 
 ```yaml
 ---
-schema_version: "1.1"
+schema_version: "1.2"
 date: "2026-03-31"
 input_format: "mermaid"
 classification: "confidential"
@@ -122,19 +122,19 @@ Parsed summary of the architecture input including identified components, data f
 
 List every component identified in the architecture input. Each component becomes a row in the Coverage Matrix (Section 5) and a potential target in the STRIDE and AI threat tables.
 
-| Component | Type | Description |
-|-----------|------|-------------|
-| _{component name}_ | _{External Entity \| Process \| Data Store \| Data Flow}_ | _{brief description of the component's role}_ |
+| Component | Type | MAESTRO Layer | Description |
+|-----------|------|---------------|-------------|
+| _{component name}_ | _{External Entity \| Process \| Data Store \| Data Flow}_ | _{L1-L7 or Unclassified}_ | _{brief description of the component's role}_ |
 
 **Example:**
 
-| Component | Type | Description |
-|-----------|------|-------------|
-| API Gateway | Process | Routes incoming HTTP requests to backend services and enforces rate limits |
-| User Database | Data Store | PostgreSQL database storing user credentials and profile data |
-| Mobile Client | External Entity | iOS/Android application that authenticates users and displays content |
-| Auth Token Flow | Data Flow | JWT tokens passed from Auth Service to API Gateway on every request |
-| LLM Agent | Process | Autonomous agent that processes natural-language queries using an LLM backend |
+| Component | Type | MAESTRO Layer | Description |
+|-----------|------|---------------|-------------|
+| API Gateway | Process | L4 — Deployment Infrastructure | Routes incoming HTTP requests to backend services and enforces rate limits |
+| User Database | Data Store | L2 — Data Operations | PostgreSQL database storing user credentials and profile data |
+| Mobile Client | External Entity | L7 — User Interface | iOS/Android application that authenticates users and displays content |
+| Auth Token Flow | Data Flow | Unclassified | JWT tokens passed from Auth Service to API Gateway on every request |
+| LLM Agent | Process | L1 — Foundation Model | Autonomous agent that processes natural-language queries using an LLM backend |
 
 ### Data Flows
 
@@ -240,85 +240,85 @@ One table per STRIDE category containing threat findings for each applicable com
 
 Threats where an attacker pretends to be something or someone else.
 
-| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------|--------|------------|------------|
-| _{S-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
+| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------|--------|------------|------------|
+| _{S-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{L1-L7 or Unclassified}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------|--------|------------|------------|
-| S-1 | UNCHANGED | API Gateway | Attacker forges JWT tokens to impersonate authenticated users by exploiting weak signing algorithm | HIGH | HIGH | Critical | Enforce RS256 signing with key rotation every 90 days; reject HS256 tokens |
+| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------|--------|------------|------------|
+| S-1 | UNCHANGED | API Gateway | L4 — Deployment Infrastructure | Attacker forges JWT tokens to impersonate authenticated users by exploiting weak signing algorithm | HIGH | HIGH | Critical | Enforce RS256 signing with key rotation every 90 days; reject HS256 tokens |
 
 ### 3.2 Tampering (T)
 
 Threats where an attacker modifies data or code without authorization.
 
-| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------|--------|------------|------------|
+| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------|--------|------------|------------|
 | _{T-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------|--------|------------|------------|
-| T-1 | UPDATED | User Database | Attacker performs SQL injection through unsanitized input fields to modify user records | MEDIUM | HIGH | High | Use parameterized queries exclusively; apply input validation at API Gateway layer |
+| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------|--------|------------|------------|
+| T-1 | UPDATED | User Database | L2 — Data Operations | Attacker performs SQL injection through unsanitized input fields to modify user records | MEDIUM | HIGH | High | Use parameterized queries exclusively; apply input validation at API Gateway layer |
 
 ### 3.3 Repudiation (R)
 
 Threats where an attacker denies having performed an action without the system being able to prove otherwise.
 
-| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------|--------|------------|------------|
+| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------|--------|------------|------------|
 | _{R-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------|--------|------------|------------|
-| R-1 | UNCHANGED | Auth Service | User denies performing privileged actions because audit logs do not capture sufficient session context | MEDIUM | MEDIUM | Medium | Implement immutable audit log with session ID, IP, user agent, and action timestamp for all privileged operations |
+| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------|--------|------------|------------|
+| R-1 | UNCHANGED | Auth Service | L5 — Security | User denies performing privileged actions because audit logs do not capture sufficient session context | MEDIUM | MEDIUM | Medium | Implement immutable audit log with session ID, IP, user agent, and action timestamp for all privileged operations |
 
 ### 3.4 Information Disclosure (I)
 
 Threats where sensitive data is exposed to unauthorized parties.
 
-| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------|--------|------------|------------|
+| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------|--------|------------|------------|
 | _{I-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------|--------|------------|------------|
-| I-1 | UNCHANGED | User Database | Database connection string with credentials exposed in application error messages returned to client | MEDIUM | HIGH | High | Implement structured error handling that returns generic error codes to clients; log detailed errors server-side only |
+| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------|--------|------------|------------|
+| I-1 | UNCHANGED | User Database | L2 — Data Operations | Database connection string with credentials exposed in application error messages returned to client | MEDIUM | HIGH | High | Implement structured error handling that returns generic error codes to clients; log detailed errors server-side only |
 
 ### 3.5 Denial of Service (D)
 
 Threats where an attacker degrades or prevents legitimate access to the system.
 
-| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------|--------|------------|------------|
+| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------|--------|------------|------------|
 | _{D-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------|--------|------------|------------|
-| D-1 | UNCHANGED | API Gateway | Volumetric attack overwhelms the gateway with malformed requests, exhausting connection pool and blocking legitimate traffic | HIGH | MEDIUM | High | Enforce per-IP rate limiting (100 req/min); deploy upstream DDoS protection; implement circuit breaker pattern |
+| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------|--------|------------|------------|
+| D-1 | UNCHANGED | API Gateway | L4 — Deployment Infrastructure | Volumetric attack overwhelms the gateway with malformed requests, exhausting connection pool and blocking legitimate traffic | HIGH | MEDIUM | High | Enforce per-IP rate limiting (100 req/min); deploy upstream DDoS protection; implement circuit breaker pattern |
 
 ### 3.6 Elevation of Privilege (E)
 
 Threats where an attacker gains higher access rights than authorized.
 
-| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------|--------|------------|------------|
+| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------|--------|------------|------------|
 | _{E-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| ID | Status | Component | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------|--------|------------|------------|
-| E-1 | NEW | Auth Service | Attacker exploits insecure direct object reference (IDOR) to access admin endpoints by manipulating user role claims in JWT payload | MEDIUM | HIGH | High | Validate role claims server-side against authoritative user store on every request; never trust client-supplied role values |
+| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------|--------|------------|------------|
+| E-1 | NEW | Auth Service | L5 — Security | Attacker exploits insecure direct object reference (IDOR) to access admin endpoints by manipulating user role claims in JWT payload | MEDIUM | HIGH | High | Validate role claims server-side against authoritative user store on every request; never trust client-supplied role values |
 
 ---
 
@@ -337,29 +337,29 @@ Threat findings from AI-specific agents, grouped by agent category. These extend
 
 Threats arising from autonomous agent behavior, including uncontrolled tool use, excessive autonomy, and agent-to-agent trust violations.
 
-| ID | Status | Component | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------------|------------|--------|------------|------------|
-| _{AG-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{OWASP ID or framework citation}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
+| ID | Status | Component | MAESTRO Layer | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------------|------------|--------|------------|------------|
+| _{AG-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{L1-L7 or Unclassified}_ | _{threat description}_ | _{OWASP ID or framework citation}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| ID | Status | Component | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------------|------------|--------|------------|------------|
-| AG-1 | UNCHANGED | LLM Agent | Agent autonomously invokes destructive shell commands without human approval, causing data loss or system compromise | ASI-01 | MEDIUM | HIGH | High | Implement mandatory human-in-the-loop approval for all destructive operations; enforce tool allowlists with per-tool permission scopes |
+| ID | Status | Component | MAESTRO Layer | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------------|------------|--------|------------|------------|
+| AG-1 | UNCHANGED | LLM Agent | L1 — Foundation Model | Agent autonomously invokes destructive shell commands without human approval, causing data loss or system compromise | ASI-01 | MEDIUM | HIGH | High | Implement mandatory human-in-the-loop approval for all destructive operations; enforce tool allowlists with per-tool permission scopes |
 
 ### 4.2 LLM Threats (LLM)
 
 Threats targeting the LLM itself, including prompt injection, training data poisoning, model theft, and insecure output handling.
 
-| ID | Status | Component | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------------|------------|--------|------------|------------|
-| _{LLM-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat description}_ | _{OWASP ID or framework citation}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
+| ID | Status | Component | MAESTRO Layer | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------------|------------|--------|------------|------------|
+| _{LLM-N}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{L1-L7 or Unclassified}_ | _{threat description}_ | _{OWASP ID or framework citation}_ | _{LOW \| MEDIUM \| HIGH}_ | _{LOW \| MEDIUM \| HIGH}_ | _{risk from 3x3 matrix}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| ID | Status | Component | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|--------|------------------|------------|--------|------------|------------|
-| LLM-1 | NEW | LLM Agent | Indirect prompt injection via user-supplied documents causes the agent to exfiltrate sensitive context data to an attacker-controlled endpoint | OWASP LLM01:2025 | HIGH | HIGH | Critical | Sanitize all user-supplied input before inclusion in LLM context; implement output filtering to block URLs and data patterns matching exfiltration; apply egress network controls |
+| ID | Status | Component | MAESTRO Layer | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|--------|------------------|------------|--------|------------|------------|
+| LLM-1 | NEW | LLM Agent | L1 — Foundation Model | Indirect prompt injection via user-supplied documents causes the agent to exfiltrate sensitive context data to an attacker-controlled endpoint | OWASP LLM01:2025 | HIGH | HIGH | Critical | Sanitize all user-supplied input before inclusion in LLM context; implement output filtering to block URLs and data patterns matching exfiltration; apply egress network controls |
 
 ---
 
@@ -503,6 +503,23 @@ The following OWASP 3×3 risk matrix documents how risk levels are computed for 
 | **HIGH Impact** | Medium | High | Critical |
 | **MEDIUM Impact** | Low | Medium | High |
 | **LOW Impact** | Note | Low | Medium |
+
+#### Risk by MAESTRO Layer
+
+Finding counts and highest severity grouped by CSA MAESTRO architectural layer. Layers with zero findings are omitted. Rows ordered by highest severity descending, then finding count descending.
+
+| MAESTRO Layer | Finding Count | Highest Severity |
+|---------------|---------------|------------------|
+| _{layer name}_ | _{deduplicated count}_ | _{highest risk level}_ |
+
+**Example:**
+
+| MAESTRO Layer | Finding Count | Highest Severity |
+|---------------|---------------|------------------|
+| L4 — Deployment Infrastructure | 3 | Critical |
+| L2 — Data Operations | 2 | High |
+| L5 — Security | 2 | Medium |
+| L1 — Foundation Model | 2 | Critical |
 
 Risk summary counts below reflect deduplicated findings. When correlation groups exist, correlated findings count as one unique threat per group rather than individually.
 
