@@ -36,6 +36,12 @@ STRIDE_PREFIXES = {
     "LLM-": "LLM Threats",
 }
 
+# Severity ordinal for numeric comparison (Critical highest)
+SEVERITY_ORDINAL = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1, "Note": 0}
+
+# Canonical MAESTRO layer ordering (L1 through L7)
+MAESTRO_LAYERS = ["L1", "L2", "L3", "L4", "L5", "L6", "L7"]
+
 
 # =============================================================================
 # Utility Functions

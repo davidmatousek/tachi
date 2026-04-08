@@ -29,6 +29,8 @@ from tachi_parsers import (
     EXIT_MISSING_ARTIFACT,
     EXIT_VALIDATION_FAILURE,
     SEVERITY_ORDER,
+    SEVERITY_ORDINAL,
+    MAESTRO_LAYERS,
     parse_frontmatter,
     parse_markdown_table,
     parse_project_name,
@@ -57,8 +59,8 @@ SEVERITY_COLORS = {
     "Note": "#6B7280",
 }
 
-# Severity ordinal for Tier 3 scoring
-_SEVERITY_ORDINAL = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1, "Note": 0}
+# Alias for backward compatibility within this script
+_SEVERITY_ORDINAL = SEVERITY_ORDINAL
 
 
 # =============================================================================
@@ -891,8 +893,8 @@ def _compute_missing_enrichments(artifacts):
 # MAESTRO Layer Extraction (T003–T011)
 # =============================================================================
 
-# Canonical MAESTRO layer ordering
-_MAESTRO_LAYERS = ["L1", "L2", "L3", "L4", "L5", "L6", "L7"]
+# Alias for shared constant
+_MAESTRO_LAYERS = MAESTRO_LAYERS
 
 
 def parse_maestro_layer_distribution(threats_content):
@@ -1248,8 +1250,11 @@ def main():
         threats_content, frontmatter, tier, severity, scope["components"], project_name
     )
 
-    # Extract MAESTRO data (used by maestro-stack and maestro-heatmap templates)
-    maestro = extract_maestro_data(threats_content)
+    # Extract MAESTRO data only when needed (avoids unnecessary parsing for other templates)
+    if args.template in ("maestro-stack", "maestro-heatmap"):
+        maestro = extract_maestro_data(threats_content)
+    else:
+        maestro = {"has_maestro_data": False, "maestro_layer_distribution": [], "most_exposed_layer": "", "component_layer_map": {}, "per_finding_maestro": [], "maestro_heatmap": []}
 
     # Build template-specific data
     template_data = {}

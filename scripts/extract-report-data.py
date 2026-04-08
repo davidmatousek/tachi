@@ -22,6 +22,8 @@ from tachi_parsers import (
     EXIT_MISSING_ARTIFACT,
     EXIT_VALIDATION_FAILURE,
     SEVERITY_ORDER,
+    SEVERITY_ORDINAL,
+    MAESTRO_LAYERS,
     escape_typst_string,
     parse_frontmatter,
     parse_markdown_table,
@@ -196,11 +198,9 @@ def build_remediation_actions(findings: list, tier: int,
 # MAESTRO Data Parsing
 # =============================================================================
 
-# Canonical MAESTRO layer ordering
-_MAESTRO_LAYERS = ["L1", "L2", "L3", "L4", "L5", "L6", "L7"]
-
-# Severity ordinal for sorting (Critical highest)
-_SEVERITY_ORDINAL = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1, "Note": 0}
+# Aliases for shared constants
+_MAESTRO_LAYERS = MAESTRO_LAYERS
+_SEVERITY_ORDINAL = SEVERITY_ORDINAL
 
 
 def parse_maestro_data(threats_content):
@@ -234,7 +234,10 @@ def parse_maestro_data(threats_content):
         layer_raw = row.get("MAESTRO Layer", "").strip()
         if not layer_raw:
             continue
+        # Handle both em-dash (—) and en-dash (–) for robustness
         parts = layer_raw.split("\u2014", 1)  # em-dash
+        if len(parts) < 2:
+            parts = layer_raw.split("\u2013", 1)  # en-dash fallback
         if len(parts) == 2:
             layer_id = parts[0].strip()
             layer_name = parts[1].strip()
