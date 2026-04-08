@@ -242,6 +242,8 @@ After Phase 1a completes, proceed to Phase 2: Determine Threats.
 
 ## Phase 2: Determine Threats -- "What can go wrong?"
 
+**CRITICAL: Phase 2 is MANDATORY. NEVER skip Phase 2, even when a baseline is present and all findings are UNCHANGED.** Fresh discovery is the only mechanism to detect threats missed by the previous run or introduced by code changes not reflected in the architecture description. Carrying forward the baseline without running Phase 2 produces a stale echo, not a threat model. The coverage gate (Phase 3b) is NOT a substitute for Phase 2 -- it only checks category-level coverage, not finding-level completeness.
+
 This phase answers the second OWASP threat modeling question: **What can go wrong?**
 
 Phase 2 REQUIRES the component inventory produced by Phase 1 as input. Every component identified in Phase 1 is dispatched to the applicable threat agents based on two deterministic rule sets:
@@ -271,6 +273,8 @@ When invoking an agent: state the analysis scope, list target components with na
 ---
 
 ### Baseline-Aware Discovery (Phase 2 Isolation)
+
+**Phase 2 MUST execute the full dispatch table regardless of Phase 1a results.** Even if Phase 1a classified every baseline finding as UNCHANGED, Phase 2 dispatches all agents for all components. This is non-negotiable -- the baseline may have missed threats, and code changes may have introduced new attack surfaces not captured in the architecture description.
 
 When a baseline is present (`baseline.present == true`), Phase 2 operates in **isolated discovery mode** to prevent anchoring bias. The context payload includes target components, full architecture context, analysis scope, and the coverage summary from Phase 1a -- but **excludes** finding descriptions, risk scores, mitigation text, and finding IDs. Agents **SHOULD** focus on uncovered component-category pairs but **MAY** produce findings for already-covered pairs if genuinely different.
 
