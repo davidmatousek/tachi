@@ -1738,3 +1738,73 @@ Analyzes conventional commits since v4.0.0
 | Release Automation | release-please v4 | Industry standard (40k+ stars), maintained by Google |
 | Configuration | JSON | release-please's native config format |
 | Versioning | Semantic Versioning | Matches existing v4.0.0 convention |
+
+---
+
+### Feature 084: MAESTRO Layer Mapping
+
+## Components
+
+### Component 1: MAESTRO Shared Reference File
+**File**: `.claude/skills/tachi-shared/references/maestro-layers-shared.md`
+**Type**: New file
+**Purpose**: Shared reference defining the CSA MAESTRO seven-layer taxonomy with keyword-to-layer mappings for component classification during Phase 1.
+
+### Component 2: Finding IR Schema Extension
+**File**: `schemas/finding.yaml`
+**Type**: Modification
+**Purpose**: Add optional `maestro_layer` field (string enum L1-L7 or "Unclassified", default "Unclassified") to the finding intermediate representation.
+
+### Component 3: Orchestrator Phase 1 Extension
+**File**: `.claude/agents/tachi/orchestrator.md`
+**Type**: Modification
+**Purpose**: Add MAESTRO layer keyword classification after DFD classification in Phase 1. Add MAESTRO Layer column to Component Inventory and Dispatch Table. Add MAESTRO Layer column to STRIDE and AI output tables. Add "Risk by MAESTRO Layer" subsection in Section 6 (Risk Summary).
+
+### Component 4-7: Pipeline Reference Updates
+**Files**: `dispatch-rules.md`, `output-schemas.md`, `finding-format-shared.md`, `sarif-specification.md`
+**Type**: Modifications
+**Purpose**: Update dispatch table format, output table formats, finding IR documentation, and SARIF specification to include MAESTRO layer fields.
+
+### Component 8: Downstream Agent Propagation
+**Files**: `risk-scorer.md`, `control-analyzer.md`
+**Type**: Modifications
+**Purpose**: Add passive `maestro_layer` field propagation (read if present, include in output, default to "Unclassified" if absent).
+
+## Data Flow
+
+```
+Architecture Input
+       │
+       ▼
+  Phase 1: Scope
+  ├─ Extract components
+  ├─ Classify DFD types
+  ├─ Classify MAESTRO layers (NEW — keyword matching from shared reference)
+  ├─ Produce Component Inventory with MAESTRO Layer column (NEW)
+  └─ Produce Dispatch Table with MAESTRO Layer column (NEW)
+       │
+       ▼
+  Phase 2: Determine Threats (UNCHANGED)
+       │
+       ▼
+  Phase 3: Determine Countermeasures
+  ├─ Each finding inherits maestro_layer from its target component (NEW)
+  └─ Assemble tables with MAESTRO Layer column (NEW)
+       │
+       ▼
+  Phase 4: Assess & Output
+  ├─ Risk summary with "Risk by MAESTRO Layer" subsection (NEW)
+  └─ SARIF output with maestro-layer tags and properties (NEW)
+       │
+       ▼
+  Downstream: risk-scores.md, compensating-controls.md (passive propagation)
+```
+
+## Tech Stack
+
+| Layer | Technology | Justification |
+|-------|-----------|---------------|
+| Content format | Markdown | Consistent with all existing agent definitions and references |
+| Schema format | YAML | Consistent with existing finding.yaml |
+| Classification | Keyword matching | Reuses established AI dispatch pattern (case-insensitive substring) |
+| Reference framework | CSA MAESTRO | Industry-standard seven-layer taxonomy for agentic AI |
