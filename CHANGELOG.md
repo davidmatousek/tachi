@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.3.4](https://github.com/davidmatousek/tachi/compare/v4.3.3...v4.3.4) (2026-04-08)
+
+
+### Bug Fixes
+
+* **074:** enforce mandatory Phase 2 discovery even with baseline ([#105](https://github.com/davidmatousek/tachi/issues/105)) ([3174674](https://github.com/davidmatousek/tachi/commit/31746746ebabda9367831ec87eaf0773a5815d40))
+
 ## [4.3.3](https://github.com/davidmatousek/tachi/compare/v4.3.2...v4.3.3) (2026-04-08)
 
 
