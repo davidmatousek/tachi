@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.3.0](https://github.com/davidmatousek/tachi/compare/v4.2.1...v4.3.0) (2026-04-08)
+
+
+### Features
+
+* **091:** add MAESTRO infographic templates and PDF report section ([#96](https://github.com/davidmatousek/tachi/issues/96)) ([f0f0e9a](https://github.com/davidmatousek/tachi/commit/f0f0e9aae9eeaae6ecda726954dc3ffac95408f7))
+
 ## [4.2.1](https://github.com/davidmatousek/tachi/compare/v4.2.0...v4.2.1) (2026-04-08)
 
 
