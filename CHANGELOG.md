@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.3.2](https://github.com/davidmatousek/tachi/compare/v4.3.1...v4.3.2) (2026-04-08)
+
+
+### Bug Fixes
+
+* **086:** fetch tags before reporting installed version ([07f6873](https://github.com/davidmatousek/tachi/commit/07f687333133f886847af74ddfeba48e2a3ab6ae))
+* **086:** remove release-type input so config file is respected ([a07d0e2](https://github.com/davidmatousek/tachi/commit/a07d0e25c45c7003b5f70323435325936e2093c0))
+
+
+### Documentation
+
+* **086:** update version examples to v4.3.1 ([ad86215](https://github.com/davidmatousek/tachi/commit/ad8621546bc5be1cb967d4c8161873464ffd621c))
+
 ## [4.3.1](https://github.com/davidmatousek/tachi/compare/v4.3.0...v4.3.1) (2026-04-08)
 
 
