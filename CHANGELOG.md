@@ -30,6 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 091 — MAESTRO Infographic Templates and PDF Report Section
+
+**Added**
+- Two MAESTRO-aware infographic templates: maestro-stack (vertical seven-layer risk distribution) and maestro-heatmap (component-by-layer severity grid); MAESTRO Findings Typst page for PDF security report; `maestro` shorthand dispatch generating both templates in one invocation; MAESTRO data extraction in extract-infographic-data.py and extract-report-data.py with `has-maestro-data` gating for backward compatibility (`f0f0e9a`)
+
+**Changed**
+- Closed Feature 091 — updated product docs (PRD INDEX), architecture docs (CLAUDE.md, Tech Stack README), KB entry KB-022, delivery report, BACKLOG regenerated (`0696df7`)
+
 ### Feature 084 — MAESTRO Layer Mapping
 
 **Added**
