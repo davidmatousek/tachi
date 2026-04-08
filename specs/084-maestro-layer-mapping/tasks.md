@@ -90,7 +90,7 @@ triad:
 
 **Independent Test**: Run full pipeline, open SARIF output, verify each result has `maestro-layer:{layer}` in tags and `maestro-layer` property.
 
-- [ ] T010 [US3] Update orchestrator agent at `.claude/agents/tachi/orchestrator.md` Phase 4 SARIF generation section — add `"maestro-layer:{layer-name}"` entry to `result.properties.tags[]` array for each result, add `"maestro-layer": "{full-layer-name}"` key-value to `result.properties` for each result, ensure additive merge with existing baseline properties (delta_status, baselineRunId in partialFingerprints occupy distinct keys — no conflict per TD-4)
+- [X] T010 [US3] Update orchestrator agent at `.claude/agents/tachi/orchestrator.md` Phase 4 SARIF generation section — add `"maestro-layer:{layer-name}"` entry to `result.properties.tags[]` array for each result, add `"maestro-layer": "{full-layer-name}"` key-value to `result.properties` for each result, ensure additive merge with existing baseline properties (delta_status, baselineRunId in partialFingerprints occupy distinct keys — no conflict per TD-4)
 
 **Checkpoint**: SARIF output includes MAESTRO layer metadata — security tooling can filter by layer
 
@@ -102,7 +102,7 @@ triad:
 
 **Independent Test**: Run full pipeline on architecture with findings across multiple layers, verify risk summary includes layer breakdown table.
 
-- [ ] T011 [US4] Update orchestrator agent at `.claude/agents/tachi/orchestrator.md` Phase 4 Section 6 output — add "Risk by MAESTRO Layer" subsection within Section 6 (Risk Summary) after the existing Risk Calibration Matrix per TD-1, format as table with columns: MAESTRO Layer, Finding Count, Highest Severity, omit layers with zero findings, order rows by highest severity descending then finding count descending, use deduplicated finding counts (correlation groups count as 1)
+- [X] T011 [US4] Update orchestrator agent at `.claude/agents/tachi/orchestrator.md` Phase 4 Section 6 output — add "Risk by MAESTRO Layer" subsection within Section 6 (Risk Summary) after the existing Risk Calibration Matrix per TD-1, format as table with columns: MAESTRO Layer, Finding Count, Highest Severity, omit layers with zero findings, order rows by highest severity descending then finding count descending, use deduplicated finding counts (correlation groups count as 1)
 
 **Checkpoint**: Executive risk summary now includes architectural layer dimension
 
@@ -114,9 +114,9 @@ triad:
 
 **Independent Test**: Run full pipeline with risk scoring and controls analysis, verify MAESTRO layer field appears in downstream outputs.
 
-- [ ] T012 [P] [US5] Update risk-scorer agent at `.claude/agents/tachi/risk-scorer.md` — add passive `maestro_layer` field propagation: read field from input findings if present, include in risk-scores.md output tables and risk-scores.sarif output, default to "Unclassified" if field absent, no changes to CVSS scoring formulas, exploitability/scalability/reachability assessments, or composite score calculations
-- [ ] T013 [P] [US5] Update control-analyzer agent at `.claude/agents/tachi/control-analyzer.md` — add passive `maestro_layer` field propagation: read field from scored findings if present, include in compensating-controls.md output tables and compensating-controls.sarif output, default to "Unclassified" if field absent, no changes to control detection logic, effectiveness classification, or residual risk calculations
-- [ ] T014 [P] [US5] Update threat-report agent at `.claude/agents/tachi/threat-report.md` — add MAESTRO Layer column awareness for STRIDE/AI table references in narrative report, propagate layer tag in finding references without modifying narrative generation or attack tree construction logic
+- [X] T012 [P] [US5] Update risk-scorer agent at `.claude/agents/tachi/risk-scorer.md` — add passive `maestro_layer` field propagation: read field from input findings if present, include in risk-scores.md output tables and risk-scores.sarif output, default to "Unclassified" if field absent, no changes to CVSS scoring formulas, exploitability/scalability/reachability assessments, or composite score calculations
+- [X] T013 [P] [US5] Update control-analyzer agent at `.claude/agents/tachi/control-analyzer.md` — add passive `maestro_layer` field propagation: read field from scored findings if present, include in compensating-controls.md output tables and compensating-controls.sarif output, default to "Unclassified" if field absent, no changes to control detection logic, effectiveness classification, or residual risk calculations
+- [X] T014 [P] [US5] Update threat-report agent at `.claude/agents/tachi/threat-report.md` — add MAESTRO Layer column awareness for STRIDE/AI table references in narrative report, propagate layer tag in finding references without modifying narrative generation or attack tree construction logic
 
 **Checkpoint**: Full pipeline propagation complete — MAESTRO layer available in all output artifacts
 

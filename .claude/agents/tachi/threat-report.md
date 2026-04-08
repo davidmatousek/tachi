@@ -88,6 +88,7 @@ Each finding in the STRIDE and AI tables provides these fields (from `../../../s
 | `mitigation` | string | Remediation roadmap items -- preserve verbatim from input |
 | `references` | list[string] | Compliance relevance annotations (SOC2, ISO 27001, CWE, OWASP mapping) |
 | `dfd_element_type` | enum (4 values) | Architecture overview context |
+| `maestro_layer` | string (L1-L7 or "Unclassified") | Architectural layer context in finding narratives and appendix references; passive inclusion without modifying narrative generation or attack tree construction |
 
 ### Correlation Group Fields (Section 4a)
 
@@ -177,7 +178,7 @@ Generate the Architecture Overview deriving system context from `threats.md` Sec
 
 **MANDATORY**: Read `.claude/skills/tachi-threat-reporting/references/narrative-templates.md` for per-category subsection headers, per-finding narrative pattern, progressive depth rules, and large threat model handling.
 
-Generate the Threat Analysis with agent-by-agent narrative covering all 8 categories.
+Generate the Threat Analysis with agent-by-agent narrative covering all 8 categories. When findings include a `maestro_layer` field, reference the architectural layer in finding narratives for additional context (e.g., "This threat targets the Agent Framework layer (L3)"). MAESTRO layer references are informational -- they do not change narrative structure, severity assessments, or attack tree construction.
 
 ### Section 4: Cross-Cutting Themes
 

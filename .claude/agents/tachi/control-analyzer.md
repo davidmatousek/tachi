@@ -132,6 +132,10 @@ The analysis pipeline processes scored threat findings through six sequential ph
 
 The analysis pipeline processes findings sequentially in a single pass over the scored input, but performs parallel file reads during codebase discovery (Phase 2) and control detection (Phase 3). For threat models with up to 200 scored findings and codebases up to 500 files, this approach is expected to complete within reasonable time bounds. If context window pressure arises with very large codebases, the command layer (`/compensating-controls`) may constrain the file set via glob patterns or directory scoping. File scoping is a command-layer orchestration concern -- the agent processes whatever codebase scope it receives.
 
+### MAESTRO Layer Propagation
+
+The `maestro_layer` field (CSA MAESTRO architectural layer classification) is assigned by the orchestrator during Phase 1 and propagated passively through all downstream outputs. The control analyzer reads this field from scored findings if present and includes it in both `compensating-controls.md` output tables and `compensating-controls.sarif` output properties without modification. Default to `"Unclassified"` if the field is absent from input findings. MAESTRO layer classification does not affect control detection logic, effectiveness classification, or residual risk calculations.
+
 ---
 
 ## Phase 1: Parse Input
@@ -140,7 +144,7 @@ Read and validate the risk score input (either `risk-scores.md` or `risk-scores.
 
 ### 1a. Parsing risk-scores.md (Canonical)
 
-Extract findings from the Scored Threat Table (Section 2) of `risk-scores.md`. Each table row contains: ID, Component, Threat, CVSS, Exploitability, Scalability, Reachability, Composite, Severity, SLA, Disposition.
+Extract findings from the Scored Threat Table (Section 2) of `risk-scores.md`. Each table row contains: ID, Component, MAESTRO Layer (optional, defaults to "Unclassified" if column absent), Threat, CVSS, Exploitability, Scalability, Reachability, Composite, Severity, SLA, Disposition.
 
 Derive the `category` field from the finding ID prefix:
 - `S-N` -> `spoofing`, `T-N` -> `tampering`, `R-N` -> `repudiation`, `I-N` -> `info-disclosure`
@@ -150,13 +154,13 @@ Also extract: full threat descriptions from Section 3 (Dimensional Breakdown), g
 
 ### 1b. Parsing risk-scores.sarif (Fallback)
 
-When `risk-scores.md` is unavailable, extract findings from the SARIF JSON structure at `runs[0].results[]`. Map SARIF paths to IR fields: `partialFingerprints["findingId/v1"]` -> `id`, `ruleId` -> `category` (reverse-map), `locations[0].logicalLocations[0].name` -> `component`, `message.text` -> `threat`, `properties["security-severity"]` -> `composite_score`, dimensional scores from properties, governance fields from properties.
+When `risk-scores.md` is unavailable, extract findings from the SARIF JSON structure at `runs[0].results[]`. Map SARIF paths to IR fields: `partialFingerprints["findingId/v1"]` -> `id`, `ruleId` -> `category` (reverse-map), `locations[0].logicalLocations[0].name` -> `component`, `message.text` -> `threat`, `properties["security-severity"]` -> `composite_score`, dimensional scores from properties, governance fields from properties, `properties["maestro-layer"]` -> `maestro_layer` (defaults to "Unclassified" if absent).
 
 **Fingerprint Preservation**: Capture ALL `partialFingerprints` fields -- these MUST be preserved unchanged in the output `compensating-controls.sarif` to maintain alert tracking continuity across the SARIF supersession chain.
 
 ### 1c. Building the Finding Set
 
-After parsing, construct the internal finding set -- an ordered list of scored findings. Each entry contains: `id`, `component`, `category`, `threat`, `composite_score`, `severity_band`, dimensional scores (`cvss_base`, `exploitability`, `scalability`, `reachability`), governance fields (`remediation_sla`, `risk_disposition`, `risk_owner`, `review_date`), and `fingerprints` (when available from SARIF input).
+After parsing, construct the internal finding set -- an ordered list of scored findings. Each entry contains: `id`, `component`, `category`, `threat`, `composite_score`, `severity_band`, dimensional scores (`cvss_base`, `exploitability`, `scalability`, `reachability`), governance fields (`remediation_sla`, `risk_disposition`, `risk_owner`, `review_date`), `maestro_layer` (optional, default "Unclassified" -- CSA MAESTRO layer classification), and `fingerprints` (when available from SARIF input).
 
 **Sort order**: Preserve the composite score descending order from the input.
 
@@ -342,7 +346,7 @@ Produce the dual-format output files. Both files MUST be consistent on all data 
 
 ### 6a. Coverage Matrix Generation
 
-Before generating output files, assemble the coverage matrix -- one row per classified threat with: Threat ID, Component, Threat (truncated to 80 chars in table), Inherent Score, Inherent Severity, Control Status (display: "Control Found"/"Partial Control"/"No Control Found"), Control Category, Residual Score, Residual Severity.
+Before generating output files, assemble the coverage matrix -- one row per classified threat with: Threat ID, Component, MAESTRO Layer, Threat (truncated to 80 chars in table), Inherent Score, Inherent Severity, Control Status (display: "Control Found"/"Partial Control"/"No Control Found"), Control Category, Residual Score, Residual Severity.
 
 **Sorting**: Primary group by residual severity band (Critical first), secondary sort by residual score descending, tertiary by Threat ID ascending.
 
@@ -378,7 +382,7 @@ Generate `compensating-controls.sarif` following the template structure in `temp
 - **locations**: Preserve from upstream SARIF or construct from architecture file path with logicalLocations
 - **relatedLocations**: Map control evidence entries (id, message, physicalLocation with file URI and line). For correlation group peers, append peer references. For `missing` threats, omit entirely (no empty array).
 - **partialFingerprints**: Preserve ALL fingerprint fields from upstream (`findingId/v1`, `primaryLocationLineHash`, `correlationGroup`). **Never modify, regenerate, or re-hash fingerprint values** -- ensures GitHub Code Scanning alert tracking continuity.
-- **properties**: `security-severity` (residual score), `control-status`, `control-evidence` (array of {file, line, snippet}), `control-effectiveness` (P0: strong/moderate/none), `inherent-risk`, `residual-risk`, `recommendation`, `effort-estimate`. Numeric properties as strings with one decimal place.
+- **properties**: `security-severity` (residual score), `control-status`, `control-evidence` (array of {file, line, snippet}), `control-effectiveness` (P0: strong/moderate/none), `inherent-risk`, `residual-risk`, `maestro-layer` (full layer name or "Unclassified"), `recommendation`, `effort-estimate`. Numeric properties as strings with one decimal place.
 
 **Result ordering**: By `residual_score` descending, then `findingId/v1` ascending.
 

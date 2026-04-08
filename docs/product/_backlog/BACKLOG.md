@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-04-07T00:00:14Z.
+> Auto-generated from GitHub Issues on 2026-04-07T23:22:23Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -8,8 +8,8 @@
 
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
-| #84 | MAESTRO layer mapping — CSA seven-layer taxonomy overlay for threat findings | — | — | 2026-04-04 |
-| #82 | Extend lean agent + skill references pattern to 11 STRIDE agents | — | — | 2026-04-02 |
+| #91 | MAESTRO infographic templates and PDF report section | — | — | 2026-04-07 |
+| #82 | Enrich threat detection quality via skill-referenced domain knowledge for 11 threat agents | Impact: 9, Confidence: 9, Effort: 6 = **24** | - **Retro finding**: Identified during delivery retrospec... | 2026-04-07 |
 | #69 | Expand example datasets for broader test coverage | — | — | 2026-03-30 |
 | #62 | Custom brand presets — user-definable brand identity via config file | — | — | 2026-03-29 |
 | #55 | Feature: Security Progression Summary — multi-run trend comparison over time | | Dimension | Score | Rationale | | - Market research: no threat modeling tool provides multi... | 2026-03-28 |
@@ -45,7 +45,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
-| #86 | Automated release tagging via GitHub Actions (release-please) | OPEN | 2026-04-06 |
+| #84 | MAESTRO layer mapping — CSA seven-layer taxonomy overlay for threat findings | OPEN | 2026-04-07 |
 | #27 | Developer Guide: Automated Threat Modeling for Your Architecture | CLOSED | 2026-03-24 |
 | #18 | Feature: Threat Infographic Agent | CLOSED | 2026-03-23 |
 | #15 | Feature 007: Threat Report Agent & Attack Trees | CLOSED | 2026-03-23 |

@@ -417,6 +417,12 @@ After the `threats.md` output is structurally validated, produce a `threats.sari
 
 Phase 4 already has all finding data from Phase 3. The SARIF generation step transforms that data into a JSON file -- no additional analysis or agent invocation is needed. Follow the instructions in the SARIF specification reference to produce the `threats.sarif` file.
 
+For each finding result in the SARIF output, include MAESTRO layer metadata in the result's `properties` object:
+
+- Add `"maestro-layer:{layer-id}"` to `result.properties.tags[]` (e.g., `"maestro-layer:L3"`), using the layer ID for tag brevity. Use `"maestro-layer:Unclassified"` for findings with no layer classification.
+- Add `"maestro-layer"` key to `result.properties` with the full layer name as value (e.g., `"L3 — Agent Framework"`). Set to `"Unclassified"` when the finding's component matched no layer keywords.
+- MAESTRO layer properties merge additively with existing baseline properties (`delta_status` in `properties`, `baselineRunId` in `partialFingerprints`). MAESTRO uses distinct property keys -- no conflict per TD-4.
+
 ---
 
 ## Phase 5: Report -- "Communicate findings to stakeholders"

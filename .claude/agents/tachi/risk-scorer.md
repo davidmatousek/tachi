@@ -91,6 +91,10 @@ When the input `threats.md` includes baseline frontmatter (`baseline.source` is 
 
 The scoring pipeline processes findings sequentially in a single pass. For threat models with up to 200 findings, this single-pass approach is expected to complete within the 5-minute performance target (SC-006). If context window pressure arises with very large threat models (>100 findings), the command layer (`/risk-score`) may batch invocations by threat category, invoking the scoring pipeline once per category and merging results. Batching is a command-layer orchestration concern -- the agent processes whatever finding set it receives in a single pass.
 
+### MAESTRO Layer Propagation
+
+The `maestro_layer` field (CSA MAESTRO architectural layer classification) is assigned by the orchestrator during Phase 1 and propagated passively through all downstream outputs. The risk scorer reads this field from input findings if present and includes it in both `risk-scores.md` output tables and `risk-scores.sarif` output properties without modification. Default to `"Unclassified"` if the field is absent from input findings. MAESTRO layer classification does not affect CVSS scoring, exploitability, scalability, reachability assessments, or composite score calculations.
+
 ---
 
 ## 1. Threat Parsing
@@ -114,6 +118,7 @@ Parse each of the six STRIDE category tables. Each table row represents one find
 |--------|----------|-------|
 | ID | `id` | Pattern: `S-N`, `T-N`, `R-N`, `I-N`, `D-N`, `E-N` |
 | Component | `component` | Target component name |
+| MAESTRO Layer | `maestro_layer` | CSA MAESTRO layer (L1-L7 or "Unclassified"); optional, defaults to "Unclassified" if column absent |
 | Threat | `threat` | Threat description text |
 | Likelihood | `likelihood` | `LOW`, `MEDIUM`, or `HIGH` |
 | Impact | `impact` | `LOW`, `MEDIUM`, or `HIGH` |
@@ -136,6 +141,7 @@ Parse the two AI threat category tables. These include an additional OWASP Refer
 |--------|----------|-------|
 | ID | `id` | Pattern: `AG-N`, `LLM-N` |
 | Component | `component` | Target component name |
+| MAESTRO Layer | `maestro_layer` | CSA MAESTRO layer (L1-L7 or "Unclassified"); optional, defaults to "Unclassified" if column absent |
 | Threat | `threat` | Threat description text |
 | OWASP Reference | `references` | Store as list: `["OWASP LLM01:2025"]` |
 | Likelihood | `likelihood` | `LOW`, `MEDIUM`, or `HIGH` |
@@ -189,6 +195,7 @@ When `threats.md` is unavailable, extract findings from `threats.sarif` JSON:
 | `message.markdown` | `mitigation` | Mitigation recommendation |
 | `level` | (derived) | Used to infer `risk_level` with `security-severity` |
 | `locations[0].logicalLocations[0].kind` | `dfd_element_type` | Reverse-map: `process` -> `Process`, `data-store` -> `Data Store`, etc. |
+| `properties["maestro-layer"]` | `maestro_layer` | Full MAESTRO layer name; defaults to "Unclassified" if absent |
 | `partialFingerprints["primaryLocationLineHash"]` | (preserve) | Carry through to scored SARIF output |
 | `partialFingerprints["correlationGroup"]` | (preserve) | Identifies correlation group primaries |
 
@@ -470,7 +477,7 @@ Preserve all taxonomy declarations from the source input. When input is `threats
 
 ### 10g. Property Bag Field Mapping
 
-Each result's `properties` object carries scoring dimensions (`security-severity`, `cvss-base-score`, `cvss-vector`, `exploitability`, `scalability`, `reachability`), composite metadata (`composite-weights` = `"0.35/0.30/0.15/0.20"`, `severity-band`), and governance fields (`risk-owner`, `remediation-sla`, `risk-disposition`, `review-date`). Property keys use hyphen-case (e.g., `cvss-base-score`), mapping directly from IR fields (e.g., `cvss_base`).
+Each result's `properties` object carries scoring dimensions (`security-severity`, `cvss-base-score`, `cvss-vector`, `exploitability`, `scalability`, `reachability`), composite metadata (`composite-weights` = `"0.35/0.30/0.15/0.20"`, `severity-band`), governance fields (`risk-owner`, `remediation-sla`, `risk-disposition`, `review-date`), and MAESTRO layer (`maestro-layer` -- full layer name or "Unclassified"). Property keys use hyphen-case (e.g., `cvss-base-score`), mapping directly from IR fields (e.g., `cvss_base`).
 
 **Numeric string formatting**: All numeric properties MUST be formatted as strings with exactly one decimal place. Trailing zeros are preserved (e.g., `"4.0"` not `"4"`).
 
