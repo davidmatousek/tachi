@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Feature 084 — MAESTRO Layer Mapping
+
+**Added**
+- CSA MAESTRO seven-layer taxonomy classification for every threat finding in the tachi pipeline; new `maestro_layer` field in finding IR schema (v1.2), shared reference with keyword-to-layer mappings, Phase 1 orchestrator classification with finding inheritance, SARIF `maestro-layer` tags, downstream propagation through risk-scorer/control-analyzer/threat-report; all 6 example outputs regenerated with MAESTRO Layer columns (`ac2ca0e`)
+
+**Changed**
+- Closed Feature 084 — updated product docs (PRD INDEX, User Stories, OKRs), architecture docs (Tech Stack, System Design, ADR-020), KB entry KB-021, delivery report, BACKLOG regenerated (`cd9b71a`)
+
 ### Feature 086 — Automated Release Tagging
 
 **Added**
