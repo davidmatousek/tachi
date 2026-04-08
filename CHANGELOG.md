@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.3.1](https://github.com/davidmatousek/tachi/compare/v4.3.0...v4.3.1) (2026-04-08)
+
+
+### Bug Fixes
+
+* **086:** auto-bump version examples in README and install.sh ([dcc65b1](https://github.com/davidmatousek/tachi/commit/dcc65b1a86250b5e73828b2e0fef70ac029c8d6d))
+
 ## [4.3.0](https://github.com/davidmatousek/tachi/compare/v4.2.1...v4.3.0) (2026-04-08)
 
 
