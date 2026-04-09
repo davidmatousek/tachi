@@ -357,8 +357,7 @@ def detect_artifacts(target_dir: Path) -> dict:
     # Directory-based artifact: attack-trees/
     attack_trees_dir = target_dir / "attack-trees"
     if attack_trees_dir.is_dir():
-        tree_files = list(attack_trees_dir.glob("*-attack-tree.md"))
-        artifacts["has_attack_trees"] = bool(tree_files)
+        artifacts["has_attack_trees"] = any(attack_trees_dir.glob("*-attack-tree.md"))
     else:
         artifacts["has_attack_trees"] = False
 

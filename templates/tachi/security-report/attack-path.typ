@@ -66,7 +66,7 @@
     v(0.1in)
   }
 
-  // Diagram section (~60% page height).
+  // Diagram: image preferred, raw Mermaid fallback.
   let has-img = entry.at("has-image", default: false)
   let img-path = str(entry.at("image-path", default: ""))
   let mermaid-text = str(entry.at("mermaid-text", default: ""))

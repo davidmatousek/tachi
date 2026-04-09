@@ -14,6 +14,7 @@ Exit codes:
 import argparse
 import os
 import re
+import concurrent.futures
 import shutil
 import subprocess
 import sys
@@ -410,7 +411,7 @@ def parse_maestro_data(threats_content):
 # Attack Tree Parsing
 # =============================================================================
 
-def parse_attack_trees(target_dir: Path, findings: list) -> list:
+def parse_attack_trees(target_dir: Path, findings: list, tr_content: str = None) -> list:
     """Parse attack tree files and cross-reference with findings data.
 
     Scans {target_dir}/attack-trees/ for *-attack-tree.md files. Falls back
@@ -420,6 +421,7 @@ def parse_attack_trees(target_dir: Path, findings: list) -> list:
     Args:
         target_dir: Directory containing tachi pipeline artifacts.
         findings: Parsed findings list for cross-referencing severity/mitigation.
+        tr_content: Pre-loaded threat-report.md content (avoids redundant read).
 
     Returns:
         List of dicts with keys: id, component, severity, title, mermaid_code,
@@ -445,20 +447,19 @@ def parse_attack_trees(target_dir: Path, findings: list) -> list:
 
     # Fallback: inline trees from threat-report.md Section 5
     if not entries:
-        tr_path = target_dir / "threat-report.md"
-        if tr_path.exists():
-            tr_content = tr_path.read_text(encoding="utf-8")
+        if tr_content is None:
+            tr_path = target_dir / "threat-report.md"
+            if tr_path.exists():
+                tr_content = tr_path.read_text(encoding="utf-8")
+        if tr_content:
             entries = _parse_inline_attack_trees(tr_content, findings_by_id)
 
-    # Filter to Critical and High only
-    entries = [e for e in entries if e["severity"] in ("Critical", "High")]
+    # Filter to Critical and High only (ordinal >= 3)
+    _MIN_ATTACK_PATH_SEVERITY = 3
+    entries = [e for e in entries if SEVERITY_ORDINAL.get(e["severity"], 0) >= _MIN_ATTACK_PATH_SEVERITY]
 
-    # Sort: Critical first, then High; within same severity, by finding ID
-    def sort_key(e):
-        sev_rank = 0 if e["severity"] == "Critical" else 1
-        return (sev_rank, e["id"].lower())
-
-    entries.sort(key=sort_key)
+    # Sort: highest severity first, then by finding ID
+    entries.sort(key=lambda e: (-SEVERITY_ORDINAL.get(e["severity"], 0), e["id"].lower()))
 
     # Add narrative and remediation for each entry
     for entry in entries:
@@ -715,40 +716,42 @@ def render_mermaid_to_png(attack_trees: list, target_dir: Path, template_dir: Pa
     attack_trees_dir = target_dir / "attack-trees"
     attack_trees_dir.mkdir(exist_ok=True)
 
+    def _render_single(entry, tmp_path):
+        """Render one Mermaid entry to PNG. Returns (entry, success, dest_path)."""
+        fid = entry["id"]
+        mermaid_code = entry.get("mermaid_code", "")
+        if not mermaid_code:
+            return (entry, False, "")
+
+        mmd_file = tmp_path / f"{fid}.mmd"
+        png_file = tmp_path / f"{fid}.png"
+        mmd_file.write_text(mermaid_code, encoding="utf-8")
+
+        try:
+            subprocess.run(
+                ["mmdc", "-i", str(mmd_file), "-o", str(png_file), "-s", "2", "-b", "transparent"],
+                capture_output=True,
+                timeout=30,
+                check=True,
+            )
+            dest_png = attack_trees_dir / f"{fid}-attack-tree.png"
+            shutil.copy2(str(png_file), str(dest_png))
+            return (entry, True, rel_target + "/attack-trees/" + f"{fid}-attack-tree.png")
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+            stderr_msg = getattr(e, 'stderr', b'')
+            if isinstance(stderr_msg, bytes):
+                stderr_msg = stderr_msg.decode('utf-8', errors='replace')
+            print(f"Warning: mmdc failed for {fid}: {stderr_msg[:200]}", file=sys.stderr)
+            return (entry, False, "")
+
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
-        for entry in attack_trees:
-            fid = entry["id"]
-            mermaid_code = entry.get("mermaid_code", "")
-            if not mermaid_code:
-                entry["has_image"] = False
-                entry["image_path"] = ""
-                continue
-
-            mmd_file = tmp_path / f"{fid}.mmd"
-            png_file = tmp_path / f"{fid}.png"
-
-            mmd_file.write_text(mermaid_code, encoding="utf-8")
-
-            try:
-                subprocess.run(
-                    ["mmdc", "-i", str(mmd_file), "-o", str(png_file), "-s", "2", "-b", "transparent"],
-                    capture_output=True,
-                    timeout=30,
-                    check=True,
-                )
-                # Copy PNG to attack-trees directory
-                dest_png = attack_trees_dir / f"{fid}-attack-tree.png"
-                shutil.copy2(str(png_file), str(dest_png))
-                entry["has_image"] = True
-                entry["image_path"] = rel_target + "/attack-trees/" + f"{fid}-attack-tree.png"
-            except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-                stderr_msg = getattr(e, 'stderr', b'')
-                if isinstance(stderr_msg, bytes):
-                    stderr_msg = stderr_msg.decode('utf-8', errors='replace')
-                print(f"Warning: mmdc failed for {fid}: {stderr_msg[:200]}", file=sys.stderr)
-                entry["has_image"] = False
-                entry["image_path"] = ""
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+            futures = [pool.submit(_render_single, entry, tmp_path) for entry in attack_trees]
+            for future in concurrent.futures.as_completed(futures):
+                entry, success, img_path = future.result()
+                entry["has_image"] = success
+                entry["image_path"] = img_path
 
 
 # =============================================================================
@@ -1321,6 +1324,7 @@ def main():
 
     # Executive narrative from threat-report.md
     tr_data = None
+    tr_content = None
     if artifacts["threat_report_md"]:
         tr_content = (target_dir / "threat-report.md").read_text(encoding="utf-8")
         tr_data = parse_threat_report_md(tr_content)
@@ -1350,7 +1354,7 @@ def main():
 
     # Attack tree data — try standalone files first, fall back to inline in threat-report.md
     if artifacts.get("has_attack_trees") or artifacts.get("threat_report_md"):
-        attack_trees = parse_attack_trees(target_dir, data["findings"])
+        attack_trees = parse_attack_trees(target_dir, data["findings"], tr_content=tr_content)
         render_mermaid_to_png(attack_trees, target_dir, template_dir)
         data["has_attack_trees"] = len(attack_trees) > 0
         data["attack_trees"] = attack_trees
