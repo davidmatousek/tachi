@@ -192,7 +192,7 @@ Scan all findings for emergent patterns across categories that reveal systemic i
 
 **MANDATORY**: Read `.claude/skills/tachi-threat-reporting/references/attack-tree-examples.md` before generating the first tree -- load once as reference patterns.
 
-Generate Mermaid attack trees for every Critical and High finding following Bruce Schneier's attack tree methodology. **Skip findings with delta_status RESOLVED** -- resolved threats are no longer active and must not receive attack trees.
+Generate Mermaid attack trees for every Critical and High finding following Bruce Schneier's attack tree methodology. **Skip findings with delta_status RESOLVED** -- resolved threats are no longer active and must not receive attack trees. **ALWAYS generate fresh attack trees for UNCHANGED findings** -- do NOT produce placeholder text like "carried forward from baseline." An unchanged threat description does not mean the attack paths are static; adjacent components and techniques may have changed. Every active Critical/High finding gets a fully constructed Mermaid attack tree, regardless of delta_status.
 
 ### Section 6: Remediation Roadmap
 

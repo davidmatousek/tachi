@@ -160,7 +160,7 @@ Single-command entry point for tachi threat infographic generation — the visua
        --output /tmp/infographic-{template_name}.json
 
    Template expansion:
-   - "all" expands to: baseball-card, system-architecture, risk-funnel (3 runs)
+   - "all" expands to: baseball-card, system-architecture, risk-funnel. Then check if data source contains MAESTRO layer data (grep for "MAESTRO Layer" or "maestro_layer" in the data source file) — if present, also append maestro-stack and maestro-heatmap (up to 5 runs total).
    - "maestro" expands to: maestro-stack, maestro-heatmap (2 runs, sequential)
    - Individual templates (baseball-card, system-architecture, risk-funnel, maestro-stack, maestro-heatmap): 1 run
 

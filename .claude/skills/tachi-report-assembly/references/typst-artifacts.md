@@ -23,6 +23,8 @@ For each artifact reported as detected by the command, verify the file exists an
 | Risk Funnel Image | `threat-risk-funnel.jpg` | `has_funnel_image` | Optional -- full-bleed infographic page |
 | Baseball Card Image | `threat-baseball-card.jpg` | `has_baseball_image` | Optional -- full-bleed infographic page |
 | System Architecture Image | `threat-system-architecture.jpg` | `has_architecture_image` | Optional -- full-bleed infographic page |
+| MAESTRO Stack Image | `threat-maestro-stack.jpg` | `has_maestro_stack_image` | Optional -- full-bleed infographic page |
+| MAESTRO Heatmap Image | `threat-maestro-heatmap.jpg` | `has_maestro_heatmap_image` | Optional -- full-bleed infographic page |
 
 ### Image File Validation
 

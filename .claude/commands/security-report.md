@@ -66,6 +66,8 @@ Single-command entry point for tachi security assessment PDF generation — the 
    | Risk Funnel Infographic | `threat-risk-funnel.jpg` | optional | Risk Funnel page (full-bleed) |
    | Baseball Card Infographic | `threat-baseball-card.jpg` | optional | Baseball Card page (full-bleed) |
    | System Architecture Infographic | `threat-system-architecture.jpg` | optional | System Architecture page (full-bleed) |
+   | MAESTRO Stack Infographic | `threat-maestro-stack.jpg` | optional | MAESTRO Stack page (full-bleed) |
+   | MAESTRO Heatmap Infographic | `threat-maestro-heatmap.jpg` | optional | MAESTRO Heatmap page (full-bleed) |
    | Brand Assets | `brand/final/tachi-logo-*.png` | optional | Cover (branded), Headers (branded) |
 
 3. **Require `threats.md` minimum**:
@@ -107,6 +109,8 @@ Single-command entry point for tachi security assessment PDF generation — the 
      threat-risk-funnel.jpg ..... {FOUND | not found}
      threat-baseball-card.jpg ... {FOUND | not found}
      threat-system-architecture.jpg {FOUND | not found}
+     threat-maestro-stack.jpg ... {FOUND | not found}
+     threat-maestro-heatmap.jpg . {FOUND | not found}
      brand/final/*.png .............. {FOUND (N files) | not found}
 
    Data source tier: {Tier 1 — residual risk | Tier 2 — quantitative | Tier 3 — qualitative}

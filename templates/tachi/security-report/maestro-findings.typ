@@ -123,10 +123,25 @@
 
   v(0.15in)
 
+  // Canonical MAESTRO layer names — fallback when layer-name is empty.
+  let _maestro-names = (
+    "L1": "Foundation Model",
+    "L2": "Data Operations",
+    "L3": "Agent Framework",
+    "L4": "Deployment Infrastructure",
+    "L5": "Security",
+    "L6": "Integration Services",
+    "L7": "User Interface",
+  )
+
   // Iterate layers in provided order (expected L1-L7, then Unclassified).
   for layer-group in maestro-findings-by-layer {
     let layer-id = str(layer-group.at("layer-id", default: ""))
     let layer-name = str(layer-group.at("layer-name", default: ""))
+    // Fallback: resolve from canonical names if layer-name is empty.
+    if layer-name == "" {
+      layer-name = _maestro-names.at(layer-id, default: layer-id)
+    }
     let layer-findings = layer-group.at("findings", default: ())
     let count = layer-findings.len()
 
