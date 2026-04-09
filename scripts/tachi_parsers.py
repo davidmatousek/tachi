@@ -354,6 +354,14 @@ def detect_artifacts(target_dir: Path) -> dict:
             else:
                 print(f"Warning: skipping {filename}: file is empty (0 bytes)", file=sys.stderr)
 
+    # Directory-based artifact: attack-trees/
+    attack_trees_dir = target_dir / "attack-trees"
+    if attack_trees_dir.is_dir():
+        tree_files = list(attack_trees_dir.glob("*-attack-tree.md"))
+        artifacts["has_attack_trees"] = bool(tree_files)
+    else:
+        artifacts["has_attack_trees"] = False
+
     return artifacts
 
 

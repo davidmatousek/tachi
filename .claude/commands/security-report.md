@@ -68,6 +68,7 @@ Single-command entry point for tachi security assessment PDF generation — the 
    | System Architecture Infographic | `threat-system-architecture.jpg` | optional | System Architecture page (full-bleed) |
    | MAESTRO Stack Infographic | `threat-maestro-stack.jpg` | optional | MAESTRO Stack page (full-bleed) |
    | MAESTRO Heatmap Infographic | `threat-maestro-heatmap.jpg` | optional | MAESTRO Heatmap page (full-bleed) |
+   | Attack Trees | `attack-trees/*.md` | optional | Attack Path pages (portrait) |
    | Brand Assets | `brand/final/tachi-logo-*.png` | optional | Cover (branded), Headers (branded) |
 
 3. **Require `threats.md` minimum**:
@@ -111,6 +112,7 @@ Single-command entry point for tachi security assessment PDF generation — the 
      threat-system-architecture.jpg {FOUND | not found}
      threat-maestro-stack.jpg ... {FOUND | not found}
      threat-maestro-heatmap.jpg . {FOUND | not found}
+     attack-trees/ ................. {FOUND (N files) | not found}
      brand/final/*.png .............. {FOUND (N files) | not found}
 
    Data source tier: {Tier 1 — residual risk | Tier 2 — quantitative | Tier 3 — qualitative}
@@ -123,6 +125,7 @@ Single-command entry point for tachi security assessment PDF generation — the 
      4. Risk Methodology ......... portrait (US Letter)
      5. Assessment Scope ......... portrait (US Letter)
      6. Executive Summary ......... portrait (US Letter)
+     {if attack-trees found: "N. Attack Path Analysis ...... portrait (US Letter)"}
      {if risk-funnel found:  "N. Risk Funnel .............. landscape (full-bleed 16:9)"}
      {if baseball-card found: "N. Baseball Card ............ landscape (full-bleed 16:9)"}
      {if architecture found:  "N. System Architecture ...... landscape (full-bleed 16:9)"}

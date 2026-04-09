@@ -25,6 +25,7 @@ For each artifact reported as detected by the command, verify the file exists an
 | System Architecture Image | `threat-system-architecture.jpg` | `has_architecture_image` | Optional -- full-bleed infographic page |
 | MAESTRO Stack Image | `threat-maestro-stack.jpg` | `has_maestro_stack_image` | Optional -- full-bleed infographic page |
 | MAESTRO Heatmap Image | `threat-maestro-heatmap.jpg` | `has_maestro_heatmap_image` | Optional -- full-bleed infographic page |
+| Attack Trees | `attack-trees/*.md` | `has_attack_trees` | Optional -- attack path portrait pages. Directory-based detection: requires at least one `*-attack-tree.md` file. Falls back to inline trees in `threat-report.md` Section 5 |
 
 ### Image File Validation
 

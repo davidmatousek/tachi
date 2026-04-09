@@ -14,7 +14,10 @@ Exit codes:
 import argparse
 import os
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from tachi_parsers import (
@@ -404,6 +407,351 @@ def parse_maestro_data(threats_content):
 
 
 # =============================================================================
+# Attack Tree Parsing
+# =============================================================================
+
+def parse_attack_trees(target_dir: Path, findings: list) -> list:
+    """Parse attack tree files and cross-reference with findings data.
+
+    Scans {target_dir}/attack-trees/ for *-attack-tree.md files. Falls back
+    to inline trees in threat-report.md Section 5. Filters to Critical and
+    High severity only, sorted by severity (Critical first) then finding ID.
+
+    Args:
+        target_dir: Directory containing tachi pipeline artifacts.
+        findings: Parsed findings list for cross-referencing severity/mitigation.
+
+    Returns:
+        List of dicts with keys: id, component, severity, title, mermaid_code,
+        mitigation, narrative, remediation.
+    """
+    # Build a lookup from finding ID to finding data
+    findings_by_id = {}
+    for f in findings:
+        fid = f.get("id", "")
+        if fid:
+            findings_by_id[fid] = f
+
+    entries = []
+    attack_trees_dir = target_dir / "attack-trees"
+
+    # Primary source: standalone attack tree files
+    if attack_trees_dir.is_dir():
+        tree_files = sorted(attack_trees_dir.glob("*-attack-tree.md"))
+        for tree_file in tree_files:
+            entry = _parse_attack_tree_file(tree_file, findings_by_id)
+            if entry:
+                entries.append(entry)
+
+    # Fallback: inline trees from threat-report.md Section 5
+    if not entries:
+        tr_path = target_dir / "threat-report.md"
+        if tr_path.exists():
+            tr_content = tr_path.read_text(encoding="utf-8")
+            entries = _parse_inline_attack_trees(tr_content, findings_by_id)
+
+    # Filter to Critical and High only
+    entries = [e for e in entries if e["severity"] in ("Critical", "High")]
+
+    # Sort: Critical first, then High; within same severity, by finding ID
+    def sort_key(e):
+        sev_rank = 0 if e["severity"] == "Critical" else 1
+        return (sev_rank, e["id"].lower())
+
+    entries.sort(key=sort_key)
+
+    # Add narrative and remediation for each entry
+    for entry in entries:
+        entry["narrative"] = _build_narrative(entry)
+        entry["remediation"] = _build_remediation(entry.get("mitigation", ""))
+
+    return entries
+
+
+def _parse_attack_tree_file(filepath: Path, findings_by_id: dict) -> dict:
+    """Parse a single attack tree markdown file.
+
+    Expected format:
+      # Attack Tree: {ID} -- {Title}
+      | Field | Value |
+      |-------|-------|
+      | Finding ID | {ID} |
+      | Component | {component} |
+      | Risk Level | {severity} |
+      | Threat | {title} |
+      ```mermaid
+      ...
+      ```
+    """
+    content = filepath.read_text(encoding="utf-8")
+
+    # Parse metadata table
+    meta = {}
+    lines = content.split("\n")
+    in_table = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("| Field"):
+            in_table = True
+            continue
+        if in_table and stripped.startswith("|---"):
+            continue
+        if in_table and stripped.startswith("|"):
+            cells = [c.strip() for c in stripped.split("|")[1:-1]]
+            if len(cells) >= 2:
+                meta[cells[0]] = cells[1]
+        elif in_table and not stripped.startswith("|"):
+            in_table = False
+
+    finding_id = meta.get("Finding ID", "").strip()
+    if not finding_id:
+        return None
+
+    component = meta.get("Component", "").strip()
+    file_severity = meta.get("Risk Level", "").strip()
+    title = meta.get("Threat", "").strip()
+
+    # Extract Mermaid code block
+    mermaid_code = _extract_mermaid_block(content)
+    if not mermaid_code:
+        return None
+
+    # Cross-reference with findings for authoritative severity and mitigation
+    finding = findings_by_id.get(finding_id, {})
+    # Authoritative severity from findings data
+    severity = _get_finding_severity(finding) or file_severity
+    mitigation = _get_finding_mitigation(finding)
+
+    return {
+        "id": finding_id,
+        "component": component,
+        "severity": severity,
+        "title": title,
+        "mermaid_code": mermaid_code,
+        "mitigation": mitigation,
+    }
+
+
+def _parse_inline_attack_trees(content: str, findings_by_id: dict) -> list:
+    """Extract inline attack trees from threat-report.md Section 5."""
+    entries = []
+    lines = content.split("\n")
+
+    # Find Section 5 boundaries
+    sec5_start = None
+    sec5_end = len(lines)
+    for i, line in enumerate(lines):
+        if re.match(r"^##\s+5\.\s+Attack Tree", line):
+            sec5_start = i
+        elif sec5_start is not None and re.match(r"^##\s+\d+\.", line):
+            sec5_end = i
+            break
+
+    if sec5_start is None:
+        return entries
+
+    # Find each attack tree subsection: "## Attack Tree: {ID}" or "### {ID}"
+    current_id = None
+    current_start = None
+
+    for i in range(sec5_start, sec5_end):
+        line = lines[i].strip()
+        id_match = re.match(r"^###?\s+(?:Attack Tree:\s*)?(\S+)", line)
+        if id_match and i > sec5_start:
+            if current_id and current_start:
+                block = "\n".join(lines[current_start:i])
+                entry = _parse_inline_tree_block(current_id, block, findings_by_id)
+                if entry:
+                    entries.append(entry)
+            current_id = id_match.group(1)
+            current_start = i
+
+    # Handle last block
+    if current_id and current_start:
+        block = "\n".join(lines[current_start:sec5_end])
+        entry = _parse_inline_tree_block(current_id, block, findings_by_id)
+        if entry:
+            entries.append(entry)
+
+    return entries
+
+
+def _parse_inline_tree_block(finding_id: str, block: str, findings_by_id: dict) -> dict:
+    """Parse a single inline attack tree block from threat-report.md."""
+    mermaid_code = _extract_mermaid_block(block)
+    if not mermaid_code:
+        return None
+
+    finding = findings_by_id.get(finding_id, {})
+    severity = _get_finding_severity(finding)
+    component = finding.get("component", "")
+    title = finding.get("threat", "")
+    mitigation = _get_finding_mitigation(finding)
+
+    return {
+        "id": finding_id,
+        "component": component,
+        "severity": severity or "Unknown",
+        "title": title,
+        "mermaid_code": mermaid_code,
+        "mitigation": mitigation,
+    }
+
+
+def _extract_mermaid_block(content: str) -> str:
+    """Extract the first Mermaid code block from content."""
+    match = re.search(r"```mermaid\s*\n(.*?)```", content, re.DOTALL)
+    return match.group(1).strip() if match else ""
+
+
+def _get_finding_severity(finding: dict) -> str:
+    """Get authoritative severity from a finding dict (tier-aware)."""
+    # Tier 1: residual_severity, Tier 2: severity, Tier 3: risk_level
+    return (finding.get("residual_severity")
+            or finding.get("severity")
+            or finding.get("risk_level")
+            or "")
+
+
+def _get_finding_mitigation(finding: dict) -> str:
+    """Get mitigation text from a finding dict (tier-aware)."""
+    return (finding.get("recommendation")
+            or finding.get("mitigation")
+            or "")
+
+
+def _build_narrative(entry: dict) -> str:
+    """Construct a 2-4 sentence narrative from attack tree data."""
+    component = entry.get("component", "") or "the system"
+    title = entry.get("title", "") or "achieve unauthorized access"
+    mermaid = entry.get("mermaid_code", "")
+
+    # Parse root node label
+    root_label = title
+    root_match = re.search(r'\["([^"]+)"\]', mermaid)
+    if root_match:
+        root_label = root_match.group(1)
+
+    # Detect OR/AND gates
+    gates = re.findall(r'\{\{"(OR|AND)"\}\}', mermaid)
+
+    # Extract leaf node labels (nodes with no outgoing edges)
+    all_nodes = {}
+    for m in re.finditer(r'(\w+)\["([^"]+)"\]', mermaid):
+        all_nodes[m.group(1)] = m.group(2)
+    for m in re.finditer(r'(\w+)\{\{"[^"]*"\}\}', mermaid):
+        all_nodes.pop(m.group(1), None)
+
+    # Find source nodes (nodes that appear on left side of -->)
+    sources = set()
+    for m in re.finditer(r'(\w+)\s*-->', mermaid):
+        sources.add(m.group(1))
+
+    # Leaf nodes are those not in sources
+    leaf_labels = [label for nid, label in all_nodes.items() if nid not in sources]
+
+    narrative = f"An attacker targets {component} by attempting to {root_label.lower()}."
+
+    if gates:
+        gate_type = "any of" if "OR" in gates else "all of"
+        if "OR" in gates and "AND" in gates:
+            gate_type = "combinations of"
+        narrative += f" The attack proceeds through {gate_type} several attack paths."
+
+    if leaf_labels:
+        actions = leaf_labels[:3]
+        action_text = ", ".join(f'"{a}"' for a in actions)
+        if len(leaf_labels) > 3:
+            action_text += f", and {len(leaf_labels) - 3} additional actions"
+        narrative += f" Required attacker actions include {action_text}."
+
+    return narrative
+
+
+def _build_remediation(mitigation: str) -> list:
+    """Split mitigation text into a list of remediation steps."""
+    if not mitigation:
+        return ["Review and implement appropriate security controls."]
+
+    # Split at sentence boundaries or semicolons
+    parts = re.split(r'(?<=[.!])\s+|;\s*', mitigation)
+    steps = [p.strip() for p in parts if p.strip() and len(p.strip()) > 5]
+
+    return steps if steps else [mitigation.strip()]
+
+
+# =============================================================================
+# Mermaid Rendering
+# =============================================================================
+
+def render_mermaid_to_png(attack_trees: list, target_dir: Path, template_dir: Path):
+    """Render Mermaid code blocks to PNG images via mmdc.
+
+    Modifies attack_trees entries in-place, setting has_image and image_path.
+    If mmdc is unavailable, all entries get has_image=False (text fallback).
+
+    Args:
+        attack_trees: List of attack tree dicts (must have id, mermaid_code keys).
+        target_dir: Directory containing the attack-trees/ subdirectory.
+        template_dir: Typst template directory (for relative path calculation).
+    """
+    if not attack_trees:
+        return
+
+    # Check mmdc availability
+    if not shutil.which("mmdc"):
+        print("Warning: mmdc not found — attack path diagrams will use text fallback", file=sys.stderr)
+        for entry in attack_trees:
+            entry["has_image"] = False
+            entry["image_path"] = ""
+        return
+
+    # Compute relative path from template_dir to target_dir
+    try:
+        rel_target = os.path.relpath(str(target_dir), str(template_dir))
+    except ValueError:
+        rel_target = str(target_dir)
+
+    attack_trees_dir = target_dir / "attack-trees"
+    attack_trees_dir.mkdir(exist_ok=True)
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir)
+        for entry in attack_trees:
+            fid = entry["id"]
+            mermaid_code = entry.get("mermaid_code", "")
+            if not mermaid_code:
+                entry["has_image"] = False
+                entry["image_path"] = ""
+                continue
+
+            mmd_file = tmp_path / f"{fid}.mmd"
+            png_file = tmp_path / f"{fid}.png"
+
+            mmd_file.write_text(mermaid_code, encoding="utf-8")
+
+            try:
+                subprocess.run(
+                    ["mmdc", "-i", str(mmd_file), "-o", str(png_file), "-s", "2", "-b", "transparent"],
+                    capture_output=True,
+                    timeout=30,
+                    check=True,
+                )
+                # Copy PNG to attack-trees directory
+                dest_png = attack_trees_dir / f"{fid}-attack-tree.png"
+                shutil.copy2(str(png_file), str(dest_png))
+                entry["has_image"] = True
+                entry["image_path"] = rel_target + "/attack-trees/" + f"{fid}-attack-tree.png"
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+                stderr_msg = getattr(e, 'stderr', b'')
+                if isinstance(stderr_msg, bytes):
+                    stderr_msg = stderr_msg.decode('utf-8', errors='replace')
+                print(f"Warning: mmdc failed for {fid}: {stderr_msg[:200]}", file=sys.stderr)
+                entry["has_image"] = False
+                entry["image_path"] = ""
+
+
+# =============================================================================
 # Validation
 # =============================================================================
 
@@ -744,7 +1092,33 @@ def generate_report_data_typ(data: dict) -> str:
     lines.append(f'#let maestro-heatmap-image-path = "{escape_typst_string(data.get("maestro_heatmap_image_path", ""))}"')
     lines.append("")
 
-    # 3q: Page Visibility
+    # 3q: Attack Tree Data
+    lines.append("// --- Attack Tree Data --------------------------------------------------------")
+    lines.append(f"#let has-attack-trees = {_typst_bool(data.get('has_attack_trees', False))}")
+    attack_trees = data.get("attack_trees", [])
+    if attack_trees:
+        lines.append("#let attack-trees = (")
+        for at in attack_trees:
+            remediation_items = at.get("remediation", [])
+            rem_typst = ", ".join(f'"{escape_typst_string(r)}"' for r in remediation_items)
+            if rem_typst:
+                rem_typst += ","
+            lines.append(
+                f'  (id: "{escape_typst_string(at["id"])}", '
+                f'component: "{escape_typst_string(at.get("component", ""))}", '
+                f'severity: "{escape_typst_string(at.get("severity", ""))}", '
+                f'title: "{escape_typst_string(at.get("title", ""))}", '
+                f'image-path: "{escape_typst_string(at.get("image_path", ""))}", '
+                f'has-image: {_typst_bool(at.get("has_image", False))}, '
+                f'mermaid-text: "{escape_typst_string(at.get("mermaid_code", ""))}", '
+                f'narrative: "{escape_typst_string(at.get("narrative", ""))}", '
+                f'remediation: ({rem_typst})),')
+        lines.append(")")
+    else:
+        lines.append("#let attack-trees = ()")
+    lines.append("")
+
+    # 3r: Page Visibility
     lines.append("// --- Page Visibility (defaults, overridden by report-config.typ) ------------")
     lines.append("#let show-disclaimer = true")
     lines.append("#let show-methodology = true")
@@ -973,6 +1347,18 @@ def main():
     data["maestro_layer_distribution"] = maestro["maestro_layer_distribution"]
     data["most_exposed_layer"] = maestro["most_exposed_layer"]
     data["maestro_findings_by_layer"] = maestro["maestro_findings_by_layer"]
+
+    # Attack tree data — try standalone files first, fall back to inline in threat-report.md
+    if artifacts.get("has_attack_trees") or artifacts.get("threat_report_md"):
+        attack_trees = parse_attack_trees(target_dir, data["findings"])
+        render_mermaid_to_png(attack_trees, target_dir, template_dir)
+        data["has_attack_trees"] = len(attack_trees) > 0
+        data["attack_trees"] = attack_trees
+        if attack_trees:
+            print(f"Attack trees: {len(attack_trees)} Critical/High entries extracted", file=sys.stderr)
+    else:
+        data["has_attack_trees"] = False
+        data["attack_trees"] = []
 
     # Delta / baseline data
     data["has_baseline"] = has_baseline

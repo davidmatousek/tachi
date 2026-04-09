@@ -98,6 +98,14 @@ When invoked as a subagent (via Agent tool), return ONLY:
 - Review `agent-assignments.md` for workload distribution
 
 ## Recent Changes
+- **Feature 112**: Attack Path Pages in Security Report PDF
+  - New Typst page template `templates/tachi/security-report/attack-path.typ` for attack path visualization pages
+  - New functions in `scripts/extract-report-data.py`: `parse_attack_trees()`, `render_mermaid_to_png()`, narrative/remediation builders
+  - Updated `scripts/tachi_parsers.py`: `detect_artifacts()` now detects `attack-trees/` directory
+  - Updated `templates/tachi/security-report/main.typ`: import, defaults, conditional page sequencing after Executive Summary
+  - Updated `.claude/commands/security-report.md` and `.claude/agents/tachi/report-assembler.md`: artifact detection tables
+  - Conditional inclusion gated by `has-attack-trees` boolean; backward compatible with existing reports
+  - All 6 examples validated (2 with attack trees, 4 without)
 - **Feature 104**: Downstream Baseline Propagation
   - Propagates baseline severity and status fields from `threats.md` downstream through all pipeline stages
   - New parser functions in `scripts/tachi_parsers.py`: `parse_baseline_frontmatter`, `parse_resolved_findings`, updated `parse_threats_findings` with delta fields

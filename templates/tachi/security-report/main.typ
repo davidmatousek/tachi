@@ -43,6 +43,7 @@
 #import "maestro-findings.typ": maestro-findings-page
 #import "control-coverage.typ": control-coverage-page
 #import "remediation-roadmap.typ": remediation-roadmap-page
+#import "attack-path.typ": attack-path-page
 
 
 // ---------------------------------------------------------------------------
@@ -92,6 +93,10 @@
 #let has-maestro-heatmap-image = if has-maestro-heatmap-image != none { has-maestro-heatmap-image } else { false }
 #let maestro-heatmap-image-path = if maestro-heatmap-image-path != none { maestro-heatmap-image-path } else { "" }
 #let maestro-layer-distribution = if maestro-layer-distribution != none { maestro-layer-distribution } else { () }
+
+// Attack tree defaults (empty = no attack path pages).
+#let has-attack-trees = if has-attack-trees != none { has-attack-trees } else { false }
+#let attack-trees = if attack-trees != none { attack-trees } else { () }
 
 // Page visibility — config overrides take precedence over report-data.typ defaults.
 #let show-disclaimer = cfg-show-disclaimer
@@ -184,6 +189,29 @@
   executive-narrative: executive-narrative,
   component-distribution: component-distribution,
 )
+
+
+// --- Attack Path Analysis (conditional) -------------------------------------
+// One page per Critical/High finding with attack tree. Section divider +
+// individual pages, gated by has-attack-trees boolean.
+#if has-attack-trees and attack-trees.len() > 0 {
+  section-divider("Attack Path Analysis", classification: classification)
+  for entry in attack-trees {
+    page(
+      width: page-width,
+      height: page-height,
+      margin: (
+        top: margin-top,
+        bottom: margin-bottom,
+        left: margin-left,
+        right: margin-right,
+      ),
+      footer: report-footer(),
+    )[
+      #attack-path-page(entry: entry, classification: classification)
+    ]
+  }
+}
 
 
 // --- Page 7: Risk Reduction Funnel (conditional) ---------------------------

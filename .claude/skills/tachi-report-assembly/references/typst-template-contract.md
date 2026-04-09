@@ -303,6 +303,38 @@ These are fallback defaults. The user's `report-config.typ` takes precedence whe
 
 ---
 
+## Attack Tree Data Variables (Feature 112)
+
+Two new variables for attack path page generation. Gated by `has-attack-trees` boolean for backward compatibility.
+
+```typst
+// --- Attack Tree Data --------------------------------------------------------
+#let has-attack-trees = {true/false}
+#let attack-trees = (
+  (id: "E-3", component: "MCP Tool Server", severity: "Critical",
+   title: "Administrative Tool Access via Parameter Manipulation",
+   image-path: "../../{target_dir}/attack-trees/E-3-attack-tree.png",
+   has-image: true,
+   mermaid-text: "flowchart TD\n    ...",
+   narrative: "An attacker targets MCP Tool Server by...",
+   remediation: ("Implement RBAC validation.", "Add input sanitization.")),
+  // ... one entry per Critical/High finding with attack tree
+)
+```
+
+| Variable | Type | Source | Default | Description |
+|----------|------|--------|---------|-------------|
+| `has-attack-trees` | `boolean` | `attack-trees/` dir or `threat-report.md` Section 5 | `false` | Gates Attack Path Analysis section |
+| `attack-trees` | `array` of dicts | `attack-trees/*.md` files cross-referenced with findings | `()` | One entry per Critical/High finding |
+
+**Entry dict keys**: `id` (string), `component` (string), `severity` (string), `title` (string), `image-path` (string, relative path to PNG or empty), `has-image` (boolean), `mermaid-text` (string, escaped Mermaid source), `narrative` (string, 2-4 sentences), `remediation` (array of strings).
+
+**Image path resolution**: Same as existing image paths --- relative from `templates/tachi/security-report/` to `{target_dir}/attack-trees/{id}-attack-tree.png`. When `mmdc` is unavailable, `has-image` is `false` and the Typst template renders `mermaid-text` as preformatted fallback.
+
+**Backward compatibility**: `main.typ` provides fallback defaults. Older `report-data.typ` files without attack tree variables will have `has-attack-trees = false` and `attack-trees = ()`.
+
+---
+
 ## Report Configuration
 
 The `report-config.typ` file controls page visibility and custom text:

@@ -78,7 +78,7 @@ The Typst template system uses a data injection pattern:
 - `main.typ` -- master orchestrator that imports `report-data.typ` and conditionally includes page templates
 - `report-data.typ` -- runtime-generated data file containing all extracted variables as Typst `#let` bindings
 - `shared.typ` -- shared design tokens (colors, fonts, page geometry)
-- Page templates (`cover.typ`, `executive-summary.typ`, etc.) -- each renders one page type
+- Page templates (`cover.typ`, `executive-summary.typ`, `attack-path.typ`, etc.) -- each renders one page type
 
 Your job is to bridge the gap between markdown artifacts and the Typst template system by generating `report-data.typ`.
 
@@ -90,7 +90,7 @@ Your job is to bridge the gap between markdown artifacts and the Typst template 
 
 Using the detected artifacts list provided by the command, verify each artifact's presence and determine the data source tier. The reference file covers:
 
-1. **Artifact verification** -- file existence and non-zero size checks for all 7 artifact types
+1. **Artifact verification** -- file existence and non-zero size checks for all artifact types (including `attack-trees/` directory with `*-attack-tree.md` files)
 2. **Image validation** -- zero-byte detection with skip-and-warn behavior
 3. **Tier selection** -- 3-tier preference logic (compensating-controls > risk-scores > threats)
 4. **Schema version handling** -- v1.0 vs v1.1 compatibility rules
