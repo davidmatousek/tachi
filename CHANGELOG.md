@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.6.0](https://github.com/davidmatousek/tachi/compare/v4.5.0...v4.6.0) (2026-04-09)
+
+
+### Features
+
+* **119:** auto-polish release notes via Claude API after release ([a44127f](https://github.com/davidmatousek/tachi/commit/a44127fccd11aef959cc1939670158ac8dffabb6)), closes [#119](https://github.com/davidmatousek/tachi/issues/119)
+
+
+### Bug Fixes
+
+* **119:** move release notes polishing to local-only script ([0dd33fd](https://github.com/davidmatousek/tachi/commit/0dd33fd4c4fd686393207837485386afac16ad03))
+
 ## [4.5.0](https://github.com/davidmatousek/tachi/compare/v4.4.2...v4.5.0) (2026-04-09)
 
 
