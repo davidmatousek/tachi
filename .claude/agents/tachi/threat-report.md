@@ -131,7 +131,7 @@ Before finalizing the report, run the following checklist. Every check must pass
 
 - [ ] Every Critical finding has an attack tree with minimum 3 levels of decomposition
 - [ ] Every High finding has an attack tree with minimum 2 levels of decomposition
-- [ ] No attack trees generated for Medium, Low, or Note findings
+- [ ] No attack trees generated for Medium, Low, Note, or RESOLVED findings
 - [ ] Attack trees appear inline in Section 5 AND as standalone files in `attack-trees/`
 - [ ] Standalone file naming follows `{finding-id}-attack-tree.md` convention (lowercase, e.g., `ag-1-attack-tree.md`)
 
@@ -192,7 +192,7 @@ Scan all findings for emergent patterns across categories that reveal systemic i
 
 **MANDATORY**: Read `.claude/skills/tachi-threat-reporting/references/attack-tree-examples.md` before generating the first tree -- load once as reference patterns.
 
-Generate Mermaid attack trees for every Critical and High finding following Bruce Schneier's attack tree methodology.
+Generate Mermaid attack trees for every Critical and High finding following Bruce Schneier's attack tree methodology. **Skip findings with delta_status RESOLVED** -- resolved threats are no longer active and must not receive attack trees.
 
 ### Section 6: Remediation Roadmap
 
