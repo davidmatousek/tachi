@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-04-09T19:07:05Z.
+> Auto-generated from GitHub Issues on 2026-04-09T19:47:25Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -8,7 +8,6 @@
 
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
-| #120 | Architecture Lifecycle Command (/tachi.architecture) | Impact: 6, Confidence: 6, Effort: 6 = **18** | Team Observation: Noticed during development — old threat... | 2026-04-09 |
 | #98 | MAESTRO coverage matrix — show which layers have threat coverage | — | — | 2026-04-08 |
 | #82 | Enrich threat detection quality via skill-referenced domain knowledge for 11 threat agents | Impact: 9, Confidence: 9, Effort: 6 = **24** | - **Retro finding**: Identified during delivery retrospec... | 2026-04-07 |
 | #69 | Expand example datasets for broader test coverage | — | — | 2026-03-30 |
@@ -46,6 +45,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #120 | Architecture Lifecycle Command (/tachi.architecture) | OPEN | 2026-04-09 |
 | #27 | Developer Guide: Automated Threat Modeling for Your Architecture | CLOSED | 2026-03-24 |
 | #18 | Feature: Threat Infographic Agent | CLOSED | 2026-03-23 |
 | #15 | Feature 007: Threat Report Agent & Attack Trees | CLOSED | 2026-03-23 |

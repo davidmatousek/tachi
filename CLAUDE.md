@@ -98,6 +98,13 @@ When invoked as a subagent (via Agent tool), return ONLY:
 - Review `agent-assignments.md` for workload distribution
 
 ## Recent Changes
+- **Feature 120**: Architecture Lifecycle Command
+  - Version tracking: `/tachi.architecture` adds YAML frontmatter (version, date, description, checksum, previous_version) to generated architecture files
+  - Archive mechanism: previous versions archived to `{parent_dir}/.archive/v{N}/architecture.md` before updates; legacy files (no frontmatter) archived as v0
+  - Threat model snapshot: `/tachi.threat-model` copies architecture file verbatim into timestamped output folder (Step 1.4)
+  - Guided update mode: walks users through change categories (services, components, data flows, trust boundaries, external entities, AI capabilities)
+  - Two-pass checksum: SHA-256 computed on body content via `shasum -a 256` before frontmatter injection
+  - Backward compatible: example architecture files unchanged, downstream pipeline stages unaffected
 - **Feature 121**: Rename Tachi Commands to `tachi.*` Namespace
   - All 6 pipeline commands renamed: `/threat-model` to `/tachi.threat-model`, `/risk-score` to `/tachi.risk-score`, `/compensating-controls` to `/tachi.compensating-controls`, `/infographic` to `/tachi.infographic`, `/security-report` to `/tachi.security-report`
   - New `/tachi.architecture` command added for generating architecture descriptions

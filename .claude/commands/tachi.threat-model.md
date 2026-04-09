@@ -88,6 +88,19 @@ Single-command entry point for tachi threat modeling. Validates prerequisites, i
      ```
    - Proceed.
 
+## Step 1.4: Architecture Snapshot
+
+1. If the architecture file exists at `{architecture_path}`:
+   - Copy the file verbatim to `{output_dir}/{architecture_filename}` (e.g., `architecture.md`)
+   - Preserve ALL content including any YAML frontmatter — this is a verbatim file copy, no modifications
+   - Display:
+     ```
+     Architecture snapshot: {output_dir}/{architecture_filename}
+     ```
+2. If the architecture file does not exist: skip silently (Step 2 validation handles missing file errors).
+
+> **Note**: The snapshot is informational only — a record of the architecture input at the time of analysis. The orchestrator in Step 2 still receives architecture content via `<architecture-input>` tags as before.
+
 ## Step 2: Run Threat Analysis
 
 1. Read the architecture file at `{architecture_path}`.
@@ -128,6 +141,7 @@ Version: {version_tag or "unversioned"}
 Baseline: {baseline_path or "none (first run)"}
 
 Files generated:
+  architecture.md                     — Architecture snapshot (if source existed)
   threats.md                          — Primary threat model
   threats.sarif                       — SARIF 2.1.0 (CI/CD integration)
   threat-report.md                    — Narrative report

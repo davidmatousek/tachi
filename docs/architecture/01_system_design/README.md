@@ -2092,3 +2092,52 @@ Data flow unchanged — only command invocation names change from unprefixed to 
 | Templates | Typst (`.typ`) + Markdown | PDF report + output format |
 | Install script | Bash | File distribution to consumer projects |
 | Manifest | Markdown with HTML comments | Machine-parseable file list |
+
+---
+
+### Feature 120: Architecture Lifecycle Command
+
+## Components
+
+| Component | Type | Description |
+|-----------|------|-------------|
+| `/tachi.architecture` command | Markdown command file | Enhanced with lifecycle management: frontmatter generation, version archive, guided update mode |
+| `/tachi.threat-model` command | Markdown command file | Extended with architecture snapshot step (Step 1.4) |
+| Architecture File | Markdown + YAML frontmatter | Version-tracked architecture description with integrity checksum |
+| Archive Directory | Local filesystem | `.archive/vN/` structure preserving previous architecture versions |
+| Architecture Snapshot | File copy | Verbatim copy in threat model output folders for traceability |
+
+## Data Flow
+
+```mermaid
+flowchart TD
+    A[User runs /tachi.architecture] --> B{Existing file?}
+    B -->|No| C[Generate architecture v1]
+    B -->|Yes| D{Has frontmatter?}
+    D -->|No| E[Archive as v0]
+    D -->|Yes| F[Archive as vN]
+    E --> G[Guided update P1]
+    F --> G
+    G -->|Changes| H[Generate updated architecture]
+    G -->|No changes| Z[Abort — file untouched]
+    C --> I[Write body to file]
+    H --> I
+    I --> J[Compute SHA-256 checksum on file]
+    J --> K[Prepend frontmatter with checksum]
+    K --> L[Report]
+
+    M[User runs /tachi.threat-model] --> N[Create timestamped output dir]
+    N --> O[Step 1.4 NEW: Snapshot architecture]
+    O --> P[Step 2: Invoke orchestrator]
+    P --> Q[Output: threats.md + architecture.md snapshot]
+```
+
+## Tech Stack
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| Command files | Markdown (Claude Code) | Agent instruction format |
+| Archive copy | Bash `cp` via tool | File preservation |
+| Directory creation | Bash `mkdir -p` via tool | Archive/output folder setup |
+| Checksum | Bash `shasum -a 256` via tool | Content integrity hash |
+| Frontmatter | YAML | Version metadata format |
