@@ -220,24 +220,24 @@ The following OWASP 3x3 risk matrix documents how risk levels are computed for e
 
 All findings sorted by risk level descending. Critical and High findings should be addressed before deployment. Medium findings should be addressed within the current development cycle. Low findings should be tracked for future consideration.
 
-| Finding ID | Component | Threat | Risk Level | Mitigation |
-|------------|-----------|--------|------------|------------|
-| S-1 | Web Client | Credential stuffing using breached username/password pairs | Critical | Enforce multi-factor authentication; progressive login delays and account lockout after 5 failed attempts; credential breach detection |
-| D-1 | API Gateway | Volumetric HTTP flood exhausting connection pool | Critical | Per-IP and per-user rate limiting (100 req/min); upstream DDoS mitigation; connection timeouts and circuit breaker patterns |
-| S-2 | API Gateway | Forged or replayed JWT tokens via weak signing algorithm | High | Enforce RS256/ES256 signing with 90-day key rotation; reject HS256 tokens; validate issuer, audience, and expiration claims |
-| T-3 | User Database | SQL injection through unsanitized input fields | High | Parameterized queries exclusively; input validation at API Gateway; least-privilege database accounts; database audit logging |
-| I-1 | Auth Service | User enumeration via verbose authentication error messages | High | Single generic error message for all auth failures; consistent response timing; rate-limit login attempts per source IP |
-| I-2 | User Database | Database credentials and schema exposed in API error responses | High | Structured error handling with generic client responses; server-side detailed logging only; connection string encryption |
-| E-1 | Auth Service | IDOR exploiting user ID parameters for unauthorized account access | High | Server-side resource ownership validation; RBAC with least-privilege defaults; never trust client-supplied IDs |
-| S-3 | Auth Service | Session fixation injecting attacker-controlled token before authentication | Medium | Regenerate session tokens at login; bind sessions to client fingerprints; invalidate pre-auth tokens |
-| T-1 | Static CDN | Malicious JavaScript injection via compromised CDN edge nodes | Medium | Subresource Integrity (SRI) hashes; Content-Security-Policy headers; signed static assets; CDN access logging |
-| T-2 | Session Store | Session data tampering via unauthorized Redis access | Medium | Redis authentication with strong credentials; TLS encryption; network access restrictions; HMAC-signed session payloads |
-| R-1 | Web Client | Insufficient client-side action attribution for sensitive operations | Medium | Server-side append-only audit logging with user identity, session ID, IP, user agent, timestamp; request signing for critical operations |
-| R-2 | Auth Service | Insufficient authentication event logging for forensic attribution | Medium | Comprehensive authentication event logging with IP, geolocation, device fingerprint; centralized SIEM with tamper-proof storage |
-| I-3 | Session Store | Unencrypted session tokens exposed via Redis compromise | Medium | AES-256 encryption of session payloads at rest; Redis network restrictions; strong AUTH credentials; access log monitoring |
-| D-2 | User Database | Resource-exhaustive SQL queries consuming connection pool | Medium | Statement timeout; connection limits per role; query complexity analysis; mandatory pagination |
-| E-2 | API Gateway | Unprotected administrative endpoints exposed through gateway | Medium | Authentication on all endpoints including admin routes; network-level admin restrictions; regular endpoint inventory audits |
-| R-3 | API Gateway | Missing correlation IDs in access logs preventing request attribution | Low | Generate unique correlation IDs per request chain; include user identity and session ID in structured logs; centralized SIEM |
+| Finding ID | Status | Component | Threat | Risk Level | Mitigation |
+|------------|--------|-----------|--------|------------|------------|
+| S-1 | NEW | Web Client | Credential stuffing using breached username/password pairs | Critical | Enforce multi-factor authentication; progressive login delays and account lockout after 5 failed attempts; credential breach detection |
+| D-1 | NEW | API Gateway | Volumetric HTTP flood exhausting connection pool | Critical | Per-IP and per-user rate limiting (100 req/min); upstream DDoS mitigation; connection timeouts and circuit breaker patterns |
+| S-2 | NEW | API Gateway | Forged or replayed JWT tokens via weak signing algorithm | High | Enforce RS256/ES256 signing with 90-day key rotation; reject HS256 tokens; validate issuer, audience, and expiration claims |
+| T-3 | NEW | User Database | SQL injection through unsanitized input fields | High | Parameterized queries exclusively; input validation at API Gateway; least-privilege database accounts; database audit logging |
+| I-1 | NEW | Auth Service | User enumeration via verbose authentication error messages | High | Single generic error message for all auth failures; consistent response timing; rate-limit login attempts per source IP |
+| I-2 | NEW | User Database | Database credentials and schema exposed in API error responses | High | Structured error handling with generic client responses; server-side detailed logging only; connection string encryption |
+| E-1 | NEW | Auth Service | IDOR exploiting user ID parameters for unauthorized account access | High | Server-side resource ownership validation; RBAC with least-privilege defaults; never trust client-supplied IDs |
+| S-3 | NEW | Auth Service | Session fixation injecting attacker-controlled token before authentication | Medium | Regenerate session tokens at login; bind sessions to client fingerprints; invalidate pre-auth tokens |
+| T-1 | NEW | Static CDN | Malicious JavaScript injection via compromised CDN edge nodes | Medium | Subresource Integrity (SRI) hashes; Content-Security-Policy headers; signed static assets; CDN access logging |
+| T-2 | NEW | Session Store | Session data tampering via unauthorized Redis access | Medium | Redis authentication with strong credentials; TLS encryption; network access restrictions; HMAC-signed session payloads |
+| R-1 | NEW | Web Client | Insufficient client-side action attribution for sensitive operations | Medium | Server-side append-only audit logging with user identity, session ID, IP, user agent, timestamp; request signing for critical operations |
+| R-2 | NEW | Auth Service | Insufficient authentication event logging for forensic attribution | Medium | Comprehensive authentication event logging with IP, geolocation, device fingerprint; centralized SIEM with tamper-proof storage |
+| I-3 | NEW | Session Store | Unencrypted session tokens exposed via Redis compromise | Medium | AES-256 encryption of session payloads at rest; Redis network restrictions; strong AUTH credentials; access log monitoring |
+| D-2 | NEW | User Database | Resource-exhaustive SQL queries consuming connection pool | Medium | Statement timeout; connection limits per role; query complexity analysis; mandatory pagination |
+| E-2 | NEW | API Gateway | Unprotected administrative endpoints exposed through gateway | Medium | Authentication on all endpoints including admin routes; network-level admin restrictions; regular endpoint inventory audits |
+| R-3 | NEW | API Gateway | Missing correlation IDs in access logs preventing request attribution | Low | Generate unique correlation IDs per request chain; include user identity and session ID in structured logs; centralized SIEM |
 
 ---
 
@@ -247,19 +247,19 @@ Mapping of threat model findings to OWASP Top 10 Web Application Security Risks 
 
 | Finding ID | OWASP Category | Category Name | Notes |
 |------------|----------------|---------------|-------|
-| S-1 | A07:2025 | Authentication Failures | Credential stuffing exploits weak authentication controls |
-| S-2 | A07:2025 | Authentication Failures | JWT forgery bypasses token-based authentication |
-| S-3 | A07:2025 | Authentication Failures | Session fixation exploits session management weaknesses |
-| T-1 | A08:2025 | Software or Data Integrity Failures | CDN asset tampering compromises client-side code integrity |
-| T-2 | A02:2025 | Security Misconfiguration | Unsecured Redis instance allows session data modification |
-| T-3 | A05:2025 | Injection | SQL injection through unsanitized input parameters |
-| R-1 | A09:2025 | Security Logging and Alerting Failures | Insufficient audit logging prevents action attribution |
-| R-2 | A09:2025 | Security Logging and Alerting Failures | Missing authentication event context hinders forensics |
-| R-3 | A09:2025 | Security Logging and Alerting Failures | Missing correlation IDs prevent request chain attribution |
-| I-1 | A07:2025 | Authentication Failures | User enumeration via differential error responses |
-| I-2 | A02:2025 | Security Misconfiguration | Verbose error messages expose internal architecture details |
-| I-3 | A04:2025 | Cryptographic Failures | Unencrypted session tokens at rest enable mass hijacking |
-| D-1 | A10:2025 | Mishandling of Exceptional Conditions | Connection pool exhaustion under volumetric flood conditions |
-| D-2 | A10:2025 | Mishandling of Exceptional Conditions | Unbounded query execution consuming database resources |
-| E-1 | A01:2025 | Broken Access Control | IDOR bypasses authorization to access other users' resources |
-| E-2 | A01:2025 | Broken Access Control | Unprotected admin endpoints accessible without authentication |
+| S-1 | NEW | A07:2025 | Authentication Failures | Credential stuffing exploits weak authentication controls |
+| S-2 | NEW | A07:2025 | Authentication Failures | JWT forgery bypasses token-based authentication |
+| S-3 | NEW | A07:2025 | Authentication Failures | Session fixation exploits session management weaknesses |
+| T-1 | NEW | A08:2025 | Software or Data Integrity Failures | CDN asset tampering compromises client-side code integrity |
+| T-2 | NEW | A02:2025 | Security Misconfiguration | Unsecured Redis instance allows session data modification |
+| T-3 | NEW | A05:2025 | Injection | SQL injection through unsanitized input parameters |
+| R-1 | NEW | A09:2025 | Security Logging and Alerting Failures | Insufficient audit logging prevents action attribution |
+| R-2 | NEW | A09:2025 | Security Logging and Alerting Failures | Missing authentication event context hinders forensics |
+| R-3 | NEW | A09:2025 | Security Logging and Alerting Failures | Missing correlation IDs prevent request chain attribution |
+| I-1 | NEW | A07:2025 | Authentication Failures | User enumeration via differential error responses |
+| I-2 | NEW | A02:2025 | Security Misconfiguration | Verbose error messages expose internal architecture details |
+| I-3 | NEW | A04:2025 | Cryptographic Failures | Unencrypted session tokens at rest enable mass hijacking |
+| D-1 | NEW | A10:2025 | Mishandling of Exceptional Conditions | Connection pool exhaustion under volumetric flood conditions |
+| D-2 | NEW | A10:2025 | Mishandling of Exceptional Conditions | Unbounded query execution consuming database resources |
+| E-1 | NEW | A01:2025 | Broken Access Control | IDOR bypasses authorization to access other users' resources |
+| E-2 | NEW | A01:2025 | Broken Access Control | Unprotected admin endpoints accessible without authentication |

@@ -214,43 +214,43 @@ Risk summary counts below reflect deduplicated findings. When correlation groups
 
 ## 7. Recommended Actions
 
-| Finding ID | Component | Threat | Risk Level | Mitigation |
-|------------|-----------|--------|------------|------------|
-| S-3 | LLM Agent Orchestrator | Attacker forges service identity to impersonate the orchestrator in communication with downstream services | Critical | Implement mTLS with certificate pinning between the LLM Agent Orchestrator and all downstream services; use signed JWTs with RS256 and audience restriction |
-| D-1 | LLM Agent Orchestrator | Concurrent maximum-length prompts exhaust compute and memory resources | Critical | Enforce per-client rate limiting (10 req/min); cap prompt input at 4,096 tokens; configure 30s timeout; set memory limits with OOM-kill restart |
-| E-1 | LLM Agent Orchestrator | Prompt manipulation triggers privileged operations without RBAC enforcement | Critical | Implement RBAC mapping user roles to permitted tool categories and KB access scopes; validate caller role before dispatch |
-| E-2 | MCP Tool Server | Standard users execute privileged tool endpoints without access control | Critical | Implement per-tool RBAC policy; validate calling agent's authorization context; maintain tool permission manifest |
-| AG-1 | LLM Agent Orchestrator | Unbounded agent loop with no iteration limit, timeout, or cost cap | Critical | Implement max iteration count (25), execution timeout (5 min), cost cap per request; add circuit breaker for repeated actions |
-| AG-3 | MCP Tool Server | All tools exposed to all users without per-agent capability scoping | Critical | Implement per-user tool allowlists; scope tools by authenticated user role; log all invocations with identity |
-| LLM-1 | LLM Agent Orchestrator | Direct prompt injection via user prompts overrides system instructions | Critical | Implement structured prompt templates with delimiters; add input classifier for adversarial patterns; apply output filtering |
-| S-1 | User | Credential theft or forging enables user impersonation | High | Implement MFA; bind session tokens to client fingerprints using DPoP; enforce 15-minute sliding window expiration |
-| S-2 | Guardrails Service | Attacker bypasses Guardrails by spoofing inter-service identity | High | Enforce mTLS between Guardrails and Orchestrator; validate service identity certificates on every request |
-| S-4 | MCP Tool Server | Attacker spoofs MCP Tool Server identity to intercept tool calls | High | Implement mTLS certificates for Tool Server; pin server certificate in orchestrator config |
-| T-1 | Guardrails Service | Tampering with validation rules weakens input screening | High | Store config in immutable version-controlled storage with SHA-256 checksums; implement change detection with alerts |
-| T-2 | LLM Agent Orchestrator | Prompt modified in transit between Guardrails and Orchestrator | High | Sign validated prompts with HMAC-SHA256 at Guardrails; verify signature at Orchestrator |
-| T-3 | MCP Tool Server | JSON-RPC messages tampered to alter tool parameters | High | Implement HMAC message-level integrity on JSON-RPC; validate before processing; enforce strict schema validation |
-| T-4 | Knowledge Base | Document injection corrupts context retrieval pipeline | High | Implement write access controls; enforce SHA-256 checksums on stored documents; maintain immutable audit trail |
-| T-5 | Audit Logger | Log entries tampered to conceal malicious activity | High | Store logs in append-only immutable storage with cryptographic hash chaining; forward to external SIEM within 60 seconds |
-| R-2 | LLM Agent Orchestrator | Incomplete decision chain logging prevents action attribution | High | Implement structured decision logging recording user ID, prompt hash, reasoning, tool selection, parameters, response |
-| R-4 | MCP Tool Server | Tool execution lacks complete audit context for accountability | High | Implement comprehensive tool execution logging with agent identity, parameters, response, duration, correlation ID |
-| I-2 | MCP Tool Server | Sensitive External API data forwarded unfiltered to orchestrator | High | Implement response filtering stripping sensitive fields; define allowlist of permitted response fields per tool |
-| I-3 | Knowledge Base | Full document contents with metadata returned without filtering | High | Implement field-level projection returning only required content fields; strip metadata and embeddings |
-| I-4 | Audit Logger | Sensitive data in logs exposed through unauthorized access | High | Encrypt logs at rest (AES-256); field-level encryption for PII; RBAC on log storage; mask sensitive fields in viewers |
-| D-2 | MCP Tool Server | Excessive tool calls exhaust connection pool and compute | High | Implement per-request tool call limits (10 max); enforce connection pool limits with timeouts; implement backpressure |
-| D-4 | Guardrails Service | High-volume prompt flood blocks legitimate requests | High | Deploy edge rate limiting (API gateway/WAF); per-IP and per-session limits; request size limits; auto-scaling |
-| AG-2 | LLM Agent Orchestrator | Consequential actions executed without human approval gates | High | Classify tools into reversibility tiers; implement pre-execution review for irreversible actions |
-| LLM-2 | LLM Agent Orchestrator | Indirect prompt injection via poisoned Knowledge Base documents | High | Sanitize retrieved content; implement provenance tracking; apply content integrity checks before indexing |
-| LLM-3 | LLM Agent Orchestrator | Data poisoning corrupts context retrieval with misleading content | High | Implement content validation before indexing; document-level access controls; provenance metadata; retrieval monitoring |
-| E-4 | MCP Tool Server | Lateral movement from tool server to other internal services | High | Network segmentation with per-service firewall rules; unique credentials per component; zero-trust network policies |
-| S-5 | External API | DNS spoofing redirects API requests to attacker endpoint | Medium | Certificate pinning for External API; validate TLS certificate chain; monitor certificate transparency logs |
-| T-6 | Knowledge Base | Adversarial content injection modifies vector embeddings | Medium | Content validation and adversarial filtering on writes; sanitize before embedding; allowlist content types |
-| R-1 | User | User denies submitting a specific consequential prompt | Medium | Request-level audit logging with user identity, prompt hash, timestamp, source IP, session ID |
-| R-3 | Guardrails Service | Insufficient rejection logging prevents decision accountability | Medium | Log every filtering decision with prompt hash, rule ID, rejection reason, timestamp, session ID |
-| I-1 | LLM Agent Orchestrator | Verbose error messages expose internal system state | Medium | Standardized error responses with user-facing codes only; route details to internal logging |
-| I-5 | Guardrails Service | Rejection responses reveal validation rule details | Medium | Return generic rejection messages; log detailed information internally for security review only |
-| D-3 | Knowledge Base | Expensive vector searches exhaust database resources | Medium | Query complexity limits; per-client query rate limits; 5-second timeout; result caching |
-| D-5 | Audit Logger | Log flooding exhausts storage capacity | Medium | Log rate limiting with aggregation; 80% storage alerts; automatic rotation; buffered writes with backpressure |
-| E-3 | Guardrails Service | Administrative endpoint exploitation modifies validation rules | Medium | Restrict admin endpoints to management network; separate admin auth with MFA; change audit logging |
-| AG-4 | MCP Tool Server | No tool call depth limit enables cascading invocations | Medium | Max tool call chain depth (5); circuit breaker; per-request resource budgets; dead-letter handling |
-| LLM-4 | LLM Agent Orchestrator | Systematic querying extracts model behavior patterns | Medium | Per-user query volume limits; restrict response fields; query pattern analysis; output watermarking |
-| R-5 | External API | External API actions not attributable to originating user | Low | Include X-Request-ID correlation header in outbound requests; log correlation at both Tool Server and Audit Logger |
+| Finding ID | Status | Component | Threat | Risk Level | Mitigation |
+|------------|--------|-----------|--------|------------|------------|
+| S-3 | NEW | LLM Agent Orchestrator | Attacker forges service identity to impersonate the orchestrator in communication with downstream services | Critical | Implement mTLS with certificate pinning between the LLM Agent Orchestrator and all downstream services; use signed JWTs with RS256 and audience restriction |
+| D-1 | NEW | LLM Agent Orchestrator | Concurrent maximum-length prompts exhaust compute and memory resources | Critical | Enforce per-client rate limiting (10 req/min); cap prompt input at 4,096 tokens; configure 30s timeout; set memory limits with OOM-kill restart |
+| E-1 | NEW | LLM Agent Orchestrator | Prompt manipulation triggers privileged operations without RBAC enforcement | Critical | Implement RBAC mapping user roles to permitted tool categories and KB access scopes; validate caller role before dispatch |
+| E-2 | NEW | MCP Tool Server | Standard users execute privileged tool endpoints without access control | Critical | Implement per-tool RBAC policy; validate calling agent's authorization context; maintain tool permission manifest |
+| AG-1 | NEW | LLM Agent Orchestrator | Unbounded agent loop with no iteration limit, timeout, or cost cap | Critical | Implement max iteration count (25), execution timeout (5 min), cost cap per request; add circuit breaker for repeated actions |
+| AG-3 | NEW | MCP Tool Server | All tools exposed to all users without per-agent capability scoping | Critical | Implement per-user tool allowlists; scope tools by authenticated user role; log all invocations with identity |
+| LLM-1 | NEW | LLM Agent Orchestrator | Direct prompt injection via user prompts overrides system instructions | Critical | Implement structured prompt templates with delimiters; add input classifier for adversarial patterns; apply output filtering |
+| S-1 | NEW | User | Credential theft or forging enables user impersonation | High | Implement MFA; bind session tokens to client fingerprints using DPoP; enforce 15-minute sliding window expiration |
+| S-2 | NEW | Guardrails Service | Attacker bypasses Guardrails by spoofing inter-service identity | High | Enforce mTLS between Guardrails and Orchestrator; validate service identity certificates on every request |
+| S-4 | NEW | MCP Tool Server | Attacker spoofs MCP Tool Server identity to intercept tool calls | High | Implement mTLS certificates for Tool Server; pin server certificate in orchestrator config |
+| T-1 | NEW | Guardrails Service | Tampering with validation rules weakens input screening | High | Store config in immutable version-controlled storage with SHA-256 checksums; implement change detection with alerts |
+| T-2 | NEW | LLM Agent Orchestrator | Prompt modified in transit between Guardrails and Orchestrator | High | Sign validated prompts with HMAC-SHA256 at Guardrails; verify signature at Orchestrator |
+| T-3 | NEW | MCP Tool Server | JSON-RPC messages tampered to alter tool parameters | High | Implement HMAC message-level integrity on JSON-RPC; validate before processing; enforce strict schema validation |
+| T-4 | NEW | Knowledge Base | Document injection corrupts context retrieval pipeline | High | Implement write access controls; enforce SHA-256 checksums on stored documents; maintain immutable audit trail |
+| T-5 | NEW | Audit Logger | Log entries tampered to conceal malicious activity | High | Store logs in append-only immutable storage with cryptographic hash chaining; forward to external SIEM within 60 seconds |
+| R-2 | NEW | LLM Agent Orchestrator | Incomplete decision chain logging prevents action attribution | High | Implement structured decision logging recording user ID, prompt hash, reasoning, tool selection, parameters, response |
+| R-4 | NEW | MCP Tool Server | Tool execution lacks complete audit context for accountability | High | Implement comprehensive tool execution logging with agent identity, parameters, response, duration, correlation ID |
+| I-2 | NEW | MCP Tool Server | Sensitive External API data forwarded unfiltered to orchestrator | High | Implement response filtering stripping sensitive fields; define allowlist of permitted response fields per tool |
+| I-3 | NEW | Knowledge Base | Full document contents with metadata returned without filtering | High | Implement field-level projection returning only required content fields; strip metadata and embeddings |
+| I-4 | NEW | Audit Logger | Sensitive data in logs exposed through unauthorized access | High | Encrypt logs at rest (AES-256); field-level encryption for PII; RBAC on log storage; mask sensitive fields in viewers |
+| D-2 | NEW | MCP Tool Server | Excessive tool calls exhaust connection pool and compute | High | Implement per-request tool call limits (10 max); enforce connection pool limits with timeouts; implement backpressure |
+| D-4 | NEW | Guardrails Service | High-volume prompt flood blocks legitimate requests | High | Deploy edge rate limiting (API gateway/WAF); per-IP and per-session limits; request size limits; auto-scaling |
+| AG-2 | NEW | LLM Agent Orchestrator | Consequential actions executed without human approval gates | High | Classify tools into reversibility tiers; implement pre-execution review for irreversible actions |
+| LLM-2 | NEW | LLM Agent Orchestrator | Indirect prompt injection via poisoned Knowledge Base documents | High | Sanitize retrieved content; implement provenance tracking; apply content integrity checks before indexing |
+| LLM-3 | NEW | LLM Agent Orchestrator | Data poisoning corrupts context retrieval with misleading content | High | Implement content validation before indexing; document-level access controls; provenance metadata; retrieval monitoring |
+| E-4 | NEW | MCP Tool Server | Lateral movement from tool server to other internal services | High | Network segmentation with per-service firewall rules; unique credentials per component; zero-trust network policies |
+| S-5 | NEW | External API | DNS spoofing redirects API requests to attacker endpoint | Medium | Certificate pinning for External API; validate TLS certificate chain; monitor certificate transparency logs |
+| T-6 | NEW | Knowledge Base | Adversarial content injection modifies vector embeddings | Medium | Content validation and adversarial filtering on writes; sanitize before embedding; allowlist content types |
+| R-1 | NEW | User | User denies submitting a specific consequential prompt | Medium | Request-level audit logging with user identity, prompt hash, timestamp, source IP, session ID |
+| R-3 | NEW | Guardrails Service | Insufficient rejection logging prevents decision accountability | Medium | Log every filtering decision with prompt hash, rule ID, rejection reason, timestamp, session ID |
+| I-1 | NEW | LLM Agent Orchestrator | Verbose error messages expose internal system state | Medium | Standardized error responses with user-facing codes only; route details to internal logging |
+| I-5 | NEW | Guardrails Service | Rejection responses reveal validation rule details | Medium | Return generic rejection messages; log detailed information internally for security review only |
+| D-3 | NEW | Knowledge Base | Expensive vector searches exhaust database resources | Medium | Query complexity limits; per-client query rate limits; 5-second timeout; result caching |
+| D-5 | NEW | Audit Logger | Log flooding exhausts storage capacity | Medium | Log rate limiting with aggregation; 80% storage alerts; automatic rotation; buffered writes with backpressure |
+| E-3 | NEW | Guardrails Service | Administrative endpoint exploitation modifies validation rules | Medium | Restrict admin endpoints to management network; separate admin auth with MFA; change audit logging |
+| AG-4 | NEW | MCP Tool Server | No tool call depth limit enables cascading invocations | Medium | Max tool call chain depth (5); circuit breaker; per-request resource budgets; dead-letter handling |
+| LLM-4 | NEW | LLM Agent Orchestrator | Systematic querying extracts model behavior patterns | Medium | Per-user query volume limits; restrict response fields; query pattern analysis; output watermarking |
+| R-5 | NEW | External API | External API actions not attributable to originating user | Low | Include X-Request-ID correlation header in outbound requests; log correlation at both Tool Server and Audit Logger |

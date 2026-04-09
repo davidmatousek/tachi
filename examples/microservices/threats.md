@@ -252,31 +252,31 @@ No AI components are present in this architecture, so no STRIDE-to-AI correlatio
 
 All findings sorted by risk level descending. Critical and High findings should be addressed before deployment. Medium findings should be addressed within the current development cycle.
 
-| Finding ID | Component | Threat | Risk Level | Mitigation |
-|------------|-----------|--------|------------|------------|
-| S-2 | Payment Service | Service Registry poisoning redirecting payment traffic to attacker-controlled endpoint | Critical | Service identity verification via mTLS certificates; signed registry entries; health checks verifying service identity; registry change monitoring |
-| D-1 | API Gateway | Volumetric HTTP flood exhausting connection pool and TLS capacity | Critical | Upstream DDoS protection; per-IP and per-user rate limiting; connection timeouts; auto-scaling; circuit breaker patterns |
-| D-3 | Order Service | Cascade failure from Payment Service unavailability exhausting Order Service thread pool | Critical | Circuit breaker patterns with configurable timeout and failure threshold; bulkhead isolation for payment thread pools; fallback to async payment via Message Queue |
-| S-1 | Order Service | Rogue internal process impersonating API Gateway to bypass authentication | High | Enforce mTLS between all internal services; reject requests without valid client certificates; restrict network policies to gateway-only access |
-| S-3 | API Gateway | JWT token forgery or theft enabling user impersonation | High | Short-lived JWT (15 min); token revocation lists; issuer/audience validation; asymmetric signing with key rotation |
-| T-1 | Message Queue | Forged event injection causing false notifications and fabricated payment processing | High | Message-level HMAC signing; per-queue publish ACLs; network access restrictions to broker port |
-| T-2 | Order Service | REST payload tampering between API Gateway and Order Service over unencrypted internal HTTP | High | mTLS for all service-to-service communication; request payload signing; service mesh encryption |
-| T-4 | Payment Service | Replayed or modified webhook callbacks with altered payment statuses | High | Webhook signature verification; HTTPS-only endpoints with IP allowlisting; idempotency keys; cross-validation via provider API |
-| R-3 | Payment Service | Missing end-to-end payment audit trail preventing forensic reconstruction | High | Correlation IDs linking order ID, MQ message ID, provider charge ID; structured logging with shared trace ID across services |
-| I-1 | Order Database | Database credentials exposed in error responses propagated to external clients | High | Generic error codes for upstream callers; internal-only detailed logging; API Gateway stripping internal error details |
-| D-2 | Message Queue | Event flood consuming broker resources and halting all async processing | High | Per-queue message limits; publish rate limits; memory/disk watermarks; dead-letter exchanges; queue depth monitoring |
-| D-4 | Service Registry | Registry flooding causing API Gateway to lose all service endpoints | High | Authentication and rate limiting on registry APIs; cached last-known-good endpoints; cryptographic auth for registration; replicated cluster deployment |
-| E-2 | Order Service | Order status manipulation bypassing state machine to fulfill unpaid orders | High | Strict finite state machine validation; reject invalid transitions; log all state change attempts |
-| E-3 | Payment Service | Direct internal port access bypassing API Gateway for unauthorized refunds | High | Network policies restricting port access; service-level mTLS authorization; elevated approval for refund operations |
-| S-4 | External Payment Provider | DNS hijacking or certificate spoofing intercepting payment requests | Medium | Certificate pinning; TLS certificate validation; payment reconciliation against provider dashboard; certificate fingerprint change alerts |
-| T-3 | Inventory Database | Direct stock level manipulation via over-privileged shared database account | Medium | Least-privilege service accounts; separate read-only reporting accounts; pgaudit logging; alerts on non-application SQL patterns |
-| R-1 | Order Service | Insufficient audit trail for disputed order placement | Medium | Append-only audit logging with user ID, session ID, source IP, payload hash, timestamps; tamper-evident storage |
-| R-2 | Notification Service | Missing notification delivery proof preventing dispute resolution | Medium | Delivery logging with correlation IDs; integration with provider delivery receipts; retention for compliance period |
-| I-2 | Message Queue | Sensitive order data readable by any service with valid AMQP credentials | Medium | Application-layer envelope encryption; per-queue/topic ACLs; dedicated virtual host for payment messages |
-| I-3 | Inventory Database | Stock and pricing data accessible to all services via shared credentials | Medium | Per-service database credentials with schema-level access; encrypted sensitive columns; cross-schema query auditing |
-| I-4 | API Gateway | Verbose error responses exposing internal service topology to external clients | Medium | Standardized error responses with no internal details; server-side detailed logging; custom error pages hiding backend topology |
-| E-1 | API Gateway | Undocumented admin routes bypassing JWT validation exposed to external requests | Medium | Route allowlisting; authentication on all endpoints; regular gateway configuration reviews; automated route scanning in CI/CD |
-| E-4 | Notification Service | Deserialization exploit pivoting to Message Queue broker credentials | Medium | Least-privilege MQ credentials (consume-only, no publish); secrets manager for credentials; input validation on deserialized events; network segmentation with egress filtering |
+| Finding ID | Status | Component | Threat | Risk Level | Mitigation |
+|------------|--------|-----------|--------|------------|------------|
+| S-2 | NEW | Payment Service | Service Registry poisoning redirecting payment traffic to attacker-controlled endpoint | Critical | Service identity verification via mTLS certificates; signed registry entries; health checks verifying service identity; registry change monitoring |
+| D-1 | NEW | API Gateway | Volumetric HTTP flood exhausting connection pool and TLS capacity | Critical | Upstream DDoS protection; per-IP and per-user rate limiting; connection timeouts; auto-scaling; circuit breaker patterns |
+| D-3 | NEW | Order Service | Cascade failure from Payment Service unavailability exhausting Order Service thread pool | Critical | Circuit breaker patterns with configurable timeout and failure threshold; bulkhead isolation for payment thread pools; fallback to async payment via Message Queue |
+| S-1 | NEW | Order Service | Rogue internal process impersonating API Gateway to bypass authentication | High | Enforce mTLS between all internal services; reject requests without valid client certificates; restrict network policies to gateway-only access |
+| S-3 | NEW | API Gateway | JWT token forgery or theft enabling user impersonation | High | Short-lived JWT (15 min); token revocation lists; issuer/audience validation; asymmetric signing with key rotation |
+| T-1 | NEW | Message Queue | Forged event injection causing false notifications and fabricated payment processing | High | Message-level HMAC signing; per-queue publish ACLs; network access restrictions to broker port |
+| T-2 | NEW | Order Service | REST payload tampering between API Gateway and Order Service over unencrypted internal HTTP | High | mTLS for all service-to-service communication; request payload signing; service mesh encryption |
+| T-4 | NEW | Payment Service | Replayed or modified webhook callbacks with altered payment statuses | High | Webhook signature verification; HTTPS-only endpoints with IP allowlisting; idempotency keys; cross-validation via provider API |
+| R-3 | NEW | Payment Service | Missing end-to-end payment audit trail preventing forensic reconstruction | High | Correlation IDs linking order ID, MQ message ID, provider charge ID; structured logging with shared trace ID across services |
+| I-1 | NEW | Order Database | Database credentials exposed in error responses propagated to external clients | High | Generic error codes for upstream callers; internal-only detailed logging; API Gateway stripping internal error details |
+| D-2 | NEW | Message Queue | Event flood consuming broker resources and halting all async processing | High | Per-queue message limits; publish rate limits; memory/disk watermarks; dead-letter exchanges; queue depth monitoring |
+| D-4 | NEW | Service Registry | Registry flooding causing API Gateway to lose all service endpoints | High | Authentication and rate limiting on registry APIs; cached last-known-good endpoints; cryptographic auth for registration; replicated cluster deployment |
+| E-2 | NEW | Order Service | Order status manipulation bypassing state machine to fulfill unpaid orders | High | Strict finite state machine validation; reject invalid transitions; log all state change attempts |
+| E-3 | NEW | Payment Service | Direct internal port access bypassing API Gateway for unauthorized refunds | High | Network policies restricting port access; service-level mTLS authorization; elevated approval for refund operations |
+| S-4 | NEW | External Payment Provider | DNS hijacking or certificate spoofing intercepting payment requests | Medium | Certificate pinning; TLS certificate validation; payment reconciliation against provider dashboard; certificate fingerprint change alerts |
+| T-3 | NEW | Inventory Database | Direct stock level manipulation via over-privileged shared database account | Medium | Least-privilege service accounts; separate read-only reporting accounts; pgaudit logging; alerts on non-application SQL patterns |
+| R-1 | NEW | Order Service | Insufficient audit trail for disputed order placement | Medium | Append-only audit logging with user ID, session ID, source IP, payload hash, timestamps; tamper-evident storage |
+| R-2 | NEW | Notification Service | Missing notification delivery proof preventing dispute resolution | Medium | Delivery logging with correlation IDs; integration with provider delivery receipts; retention for compliance period |
+| I-2 | NEW | Message Queue | Sensitive order data readable by any service with valid AMQP credentials | Medium | Application-layer envelope encryption; per-queue/topic ACLs; dedicated virtual host for payment messages |
+| I-3 | NEW | Inventory Database | Stock and pricing data accessible to all services via shared credentials | Medium | Per-service database credentials with schema-level access; encrypted sensitive columns; cross-schema query auditing |
+| I-4 | NEW | API Gateway | Verbose error responses exposing internal service topology to external clients | Medium | Standardized error responses with no internal details; server-side detailed logging; custom error pages hiding backend topology |
+| E-1 | NEW | API Gateway | Undocumented admin routes bypassing JWT validation exposed to external requests | Medium | Route allowlisting; authentication on all endpoints; regular gateway configuration reviews; automated route scanning in CI/CD |
+| E-4 | NEW | Notification Service | Deserialization exploit pivoting to Message Queue broker credentials | Medium | Least-privilege MQ credentials (consume-only, no publish); secrets manager for credentials; input validation on deserialized events; network segmentation with egress filtering |
 
 ---
 
@@ -286,29 +286,29 @@ Mapping of findings to the OWASP Top 10 Web 2025 framework categories.
 
 | Finding ID | OWASP Category | Category Name | Notes |
 |------------|----------------|---------------|-------|
-| S-1 | A07:2025 | Authentication Failures | Internal service impersonation due to missing mutual authentication between services |
-| S-2 | A07:2025 | Authentication Failures | Service Registry poisoning exploiting lack of service identity verification |
-| S-3 | A07:2025 | Authentication Failures | JWT token forgery or theft bypassing gateway authentication |
-| S-4 | A04:2025 | Cryptographic Failures | DNS hijacking exploiting insufficient certificate validation for external payment traffic |
-| T-1 | A08:2025 | Software or Data Integrity Failures | Unsigned message queue events enabling forged event injection across services |
-| T-2 | A04:2025 | Cryptographic Failures | Unencrypted internal HTTP allowing payload tampering between gateway and services |
-| T-3 | A01:2025 | Broken Access Control | Over-privileged database account enabling direct inventory manipulation |
-| T-4 | A08:2025 | Software or Data Integrity Failures | Webhook replay or modification due to insufficient signature verification |
-| R-1 | A09:2025 | Security Logging and Alerting Failures | Missing immutable audit trail for order creation disputes |
-| R-2 | A09:2025 | Security Logging and Alerting Failures | Missing notification delivery logging preventing dispute resolution |
-| R-3 | A09:2025 | Security Logging and Alerting Failures | Missing cross-service correlation IDs preventing payment audit trail reconstruction |
-| I-1 | A02:2025 | Security Misconfiguration | Database error details propagated to external clients through misconfigured error handling |
-| I-2 | A01:2025 | Broken Access Control | Overly permissive AMQP ACLs exposing sensitive order data to unauthorized consumers |
-| I-3 | A01:2025 | Broken Access Control | Shared database credentials granting all services access to competitive pricing data |
-| I-4 | A02:2025 | Security Misconfiguration | Verbose gateway error responses revealing internal service topology |
-| D-1 | A10:2025 | Mishandling of Exceptional Conditions | Gateway connection pool exhaustion under volumetric flood without circuit breakers |
-| D-2 | A10:2025 | Mishandling of Exceptional Conditions | Message Queue resource exhaustion halting async processing without back-pressure controls |
-| D-3 | A06:2025 | Insecure Design | Synchronous service coupling without circuit breakers enabling cascade failure propagation |
-| D-4 | A02:2025 | Security Misconfiguration | Unauthenticated Service Registry management API enabling endpoint deregistration attacks |
-| E-1 | A01:2025 | Broken Access Control | Undocumented admin routes accessible without authentication due to missing route allowlisting |
-| E-2 | A01:2025 | Broken Access Control | Order state machine bypass enabling fulfillment of unpaid orders |
-| E-3 | A01:2025 | Broken Access Control | Direct internal port access bypassing gateway authorization for refund operations |
-| E-4 | A06:2025 | Insecure Design | Deserialization vulnerability enabling lateral movement to Message Queue broker via stored credentials |
+| S-1 | NEW | A07:2025 | Authentication Failures | Internal service impersonation due to missing mutual authentication between services |
+| S-2 | NEW | A07:2025 | Authentication Failures | Service Registry poisoning exploiting lack of service identity verification |
+| S-3 | NEW | A07:2025 | Authentication Failures | JWT token forgery or theft bypassing gateway authentication |
+| S-4 | NEW | A04:2025 | Cryptographic Failures | DNS hijacking exploiting insufficient certificate validation for external payment traffic |
+| T-1 | NEW | A08:2025 | Software or Data Integrity Failures | Unsigned message queue events enabling forged event injection across services |
+| T-2 | NEW | A04:2025 | Cryptographic Failures | Unencrypted internal HTTP allowing payload tampering between gateway and services |
+| T-3 | NEW | A01:2025 | Broken Access Control | Over-privileged database account enabling direct inventory manipulation |
+| T-4 | NEW | A08:2025 | Software or Data Integrity Failures | Webhook replay or modification due to insufficient signature verification |
+| R-1 | NEW | A09:2025 | Security Logging and Alerting Failures | Missing immutable audit trail for order creation disputes |
+| R-2 | NEW | A09:2025 | Security Logging and Alerting Failures | Missing notification delivery logging preventing dispute resolution |
+| R-3 | NEW | A09:2025 | Security Logging and Alerting Failures | Missing cross-service correlation IDs preventing payment audit trail reconstruction |
+| I-1 | NEW | A02:2025 | Security Misconfiguration | Database error details propagated to external clients through misconfigured error handling |
+| I-2 | NEW | A01:2025 | Broken Access Control | Overly permissive AMQP ACLs exposing sensitive order data to unauthorized consumers |
+| I-3 | NEW | A01:2025 | Broken Access Control | Shared database credentials granting all services access to competitive pricing data |
+| I-4 | NEW | A02:2025 | Security Misconfiguration | Verbose gateway error responses revealing internal service topology |
+| D-1 | NEW | A10:2025 | Mishandling of Exceptional Conditions | Gateway connection pool exhaustion under volumetric flood without circuit breakers |
+| D-2 | NEW | A10:2025 | Mishandling of Exceptional Conditions | Message Queue resource exhaustion halting async processing without back-pressure controls |
+| D-3 | NEW | A06:2025 | Insecure Design | Synchronous service coupling without circuit breakers enabling cascade failure propagation |
+| D-4 | NEW | A02:2025 | Security Misconfiguration | Unauthenticated Service Registry management API enabling endpoint deregistration attacks |
+| E-1 | NEW | A01:2025 | Broken Access Control | Undocumented admin routes accessible without authentication due to missing route allowlisting |
+| E-2 | NEW | A01:2025 | Broken Access Control | Order state machine bypass enabling fulfillment of unpaid orders |
+| E-3 | NEW | A01:2025 | Broken Access Control | Direct internal port access bypassing gateway authorization for refund operations |
+| E-4 | NEW | A06:2025 | Insecure Design | Deserialization vulnerability enabling lateral movement to Message Queue broker via stored credentials |
 
 **OWASP Top 10 Web 2025 coverage:** 8 of 10 categories referenced.
 

@@ -3,7 +3,7 @@
 <!--
   Canonical output template for tachi threat report generation.
 
-  Schema version : 1.0
+  Schema version : 1.1
   Schema file    : schemas/report.yaml
   Contract       : specs/015-threat-report-agent/spec.md
 
@@ -18,7 +18,7 @@
 
 ```yaml
 ---
-schema_version: "1.0"
+schema_version: "1.1"
 date: "YYYY-MM-DD"
 source_file: "{path to input threats.md}"
 finding_count: "{integer — total findings from threats.md Sections 3, 4, and 4a}"
@@ -28,6 +28,13 @@ risk_distribution:
   Medium: "{integer}"
   Low: "{integer}"
 attack_tree_count: "{integer — number of attack trees generated (Critical + High findings)}"
+baseline_source: "{baseline file path or null}"
+baseline_date: "{ISO date of baseline run or null}"
+delta_counts:
+  new: "{integer or null}"
+  unchanged: "{integer or null}"
+  updated: "{integer or null}"
+  resolved: "{integer or null}"
 ---
 ```
 
@@ -35,12 +42,19 @@ attack_tree_count: "{integer — number of attack trees generated (Critical + Hi
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `schema_version` | string | Report schema version. Always `"1.0"` for this release. |
+| `schema_version` | string | Report schema version. Always `"1.1"` for this release. |
 | `date` | string | ISO 8601 date when the report was generated. Format: `YYYY-MM-DD`. |
 | `source_file` | string | Relative path to the `threats.md` file used as input. |
 | `finding_count` | integer | Total number of findings from `threats.md` Sections 3, 4, and 4a. |
 | `risk_distribution` | object | Count of findings per risk level (Critical, High, Medium, Low). |
-| `attack_tree_count` | integer | Number of Mermaid attack trees generated (one per Critical and High finding). |
+| `attack_tree_count` | integer | Number of Mermaid attack trees with actual generated content. Counts Critical and High findings with delta_status NEW or UPDATED (fresh trees). UNCHANGED findings carried forward from baseline are excluded. When no baseline, equals total Critical + High findings. |
+| `baseline_source` | string, nullable | File path of the baseline used for this report's source threats.md. Null when no baseline (first run). |
+| `baseline_date` | string, nullable | ISO date of the baseline run. Null when no baseline. |
+| `delta_counts` | object, nullable | Lifecycle breakdown counts. All values null when no baseline. |
+| `delta_counts.new` | integer, nullable | Count of findings with delta_status NEW. |
+| `delta_counts.unchanged` | integer, nullable | Count of findings with delta_status UNCHANGED. |
+| `delta_counts.updated` | integer, nullable | Count of findings with delta_status UPDATED. |
+| `delta_counts.resolved` | integer, nullable | Count of findings with delta_status RESOLVED (from Section 4b). |
 
 ---
 
@@ -181,6 +195,13 @@ flowchart TD
 > **Depth requirements**: Critical findings require minimum 3 levels (root, intermediate, leaf). High findings require minimum 2 levels (root, leaf).
 >
 > **Correlated findings**: Each correlated finding receives its own individual tree with a cross-reference note to related finding IDs — not a single unified tree for the correlation group.
+>
+> **Baseline handling** (delta_status branching):
+> - **NEW**: Generate a fresh attack tree following all standard conventions above.
+> - **UPDATED**: Generate a fresh attack tree. Add a note below the tree: _"Context changed since baseline ({baseline_date}) — attack tree regenerated."_
+> - **UNCHANGED**: Do NOT generate an attack tree. Instead, note: _"Attack tree carried forward from baseline ({baseline_date}) — finding unchanged since last assessment."_
+> - **RESOLVED**: Not applicable — RESOLVED findings do not appear in Section 5. They appear only in Section 4b of the input threats.md.
+> - **No baseline**: When `baseline_source` is null in the input frontmatter, generate all attack trees fresh with no delta annotations. This is standard first-run behavior.
 
 _When no Critical or High findings exist:_
 
@@ -226,3 +247,38 @@ _Complete mapping table from report sections back to original finding IDs in thr
 | _{finding-id}_ | _{section number where finding is discussed}_ | _{heading text of the subsection containing the finding}_ |
 
 > **Completeness rule**: Cross-check this table against threats.md Sections 3 (STRIDE Tables), 4 (AI Threat Tables), and 4a (Correlated Findings). Every finding ID in the input must have a row in this table. Missing findings indicate a generation error that must be corrected before the report is considered complete.
+
+---
+
+## 8. Delta Summary
+
+_Present only when the input threats.md contains baseline data (i.e., `baseline.source` is non-null in frontmatter). Omit this entire section on first run (no baseline)._
+
+This section provides a narrative summary of how the threat landscape has evolved since the baseline assessment. It complements the per-finding delta annotations in Sections 3 and 5 with an aggregate view.
+
+### Finding Lifecycle Breakdown
+
+_Table summarizing finding counts by lifecycle status._
+
+| Status | Count | Description |
+|--------|-------|-------------|
+| NEW | _{count}_ | Findings discovered in this run with no baseline match |
+| UNCHANGED | _{count}_ | Findings identical to baseline (same component, threat, assessment) |
+| UPDATED | _{count}_ | Findings with changed context since baseline |
+| RESOLVED | _{count}_ | Baseline findings no longer applicable (from Section 4b) |
+| **Total** | _{total}_ | Sum of all findings (active + resolved) |
+
+### Remediation Progress
+
+_Narrative paragraph describing remediation progress since the baseline. Reference RESOLVED findings from Section 4b by ID and resolution reason. Quantify the reduction in active threats. Note any risk level changes in UPDATED findings. Written for a non-technical audience._
+
+### Baseline Reference
+
+| Field | Value |
+|-------|-------|
+| Source | _{baseline file path from frontmatter}_ |
+| Date | _{baseline date from frontmatter}_ |
+| Baseline Findings | _{baseline finding count from frontmatter}_ |
+| Run ID | _{baseline run ID from frontmatter}_ |
+
+> **Generation guidance**: Delta counts are computed from the input threats.md: count findings by `delta_status` in Sections 3 and 4, plus RESOLVED findings from Section 4b. The sum of NEW + UNCHANGED + UPDATED + RESOLVED must equal the total. When generating the remediation progress narrative, cite specific resolved findings and their resolution reasons to provide concrete remediation proof.

@@ -5,6 +5,7 @@
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 104 | [Downstream Baseline Propagation](104-downstream-baseline-propagation-2026-04-08.md) | ✓ | ⚠ | ⚠ | Approved | 2026-04-08 |
 | 091 | [MAESTRO Infographic Templates and PDF Report Section](091-maestro-infographic-templates-and-pdf-report-section-2026-04-08.md) | ✓ | ✓ | ✓ | Delivered | 2026-04-08 |
 | 084 | [MAESTRO Layer Mapping](084-maestro-layer-mapping-2026-04-07.md) | ✓ | ✓ | ✓ | Delivered | 2026-04-08 |
 | 086 | [Automated Release Tagging via GitHub Actions](086-automated-release-tagging-via-github-actions-2026-04-06.md) | ✓ | ✓ | ✓ | Delivered | 2026-04-06 |

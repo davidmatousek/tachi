@@ -245,6 +245,40 @@ def parse_frontmatter(content: str) -> dict:
     return result
 
 
+def parse_baseline_frontmatter(content: str) -> dict:
+    """Extract baseline metadata from threats.md frontmatter.
+
+    Parses the nested baseline: block. Returns dict with keys:
+    source, date, finding_count, run_id. All values are None
+    when no baseline is present.
+    """
+    result = {"source": None, "date": None, "finding_count": None, "run_id": None}
+    # Extract frontmatter text between --- delimiters (standard or code-fenced)
+    match = re.match(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
+    if not match:
+        match = re.search(r"```yaml\s*\n---\s*\n(.*?)\n---\s*\n```", content, re.DOTALL)
+    if not match:
+        return result
+    fm = match.group(1)
+    # Find baseline: block and parse nested keys
+    in_baseline = False
+    for line in fm.split("\n"):
+        if line.strip().startswith("baseline:"):
+            in_baseline = True
+            continue
+        if in_baseline:
+            if not line.startswith(" ") and not line.startswith("\t"):
+                break  # left the baseline block
+            kv = re.match(r'^\s+(\w[\w_]*)\s*:\s*"?([^"]*?)"?\s*$', line)
+            if kv:
+                key, val = kv.group(1), kv.group(2).strip()
+                if val.lower() in ("null", "~", ""):
+                    val = None
+                if key in result:
+                    result[key] = val
+    return result
+
+
 # =============================================================================
 # Project Name Parser
 # =============================================================================
@@ -416,6 +450,28 @@ def _accumulate_severity_rows(rows: list, level_column: str) -> dict:
 # Findings Parsers
 # =============================================================================
 
+def parse_resolved_findings(content: str) -> list:
+    """Parse Section 4b Resolved Findings table.
+
+    Returns list of resolved finding dicts with delta_status="RESOLVED" injected.
+    Returns empty list when Section 4b is absent (first run, no baseline).
+    """
+    rows = parse_markdown_table(content, "## 4b. Resolved Findings")
+    if not rows:
+        return []
+    findings = []
+    for row in rows:
+        findings.append({
+            "id": row.get("ID", "").strip(),
+            "component": row.get("Component", "").strip(),
+            "threat": row.get("Threat", "").strip(),
+            "risk_level": row.get("Last Risk Level", "").strip(),
+            "resolution_reason": row.get("Resolution Reason", "").strip(),
+            "delta_status": "RESOLVED",
+        })
+    return findings
+
+
 def parse_threats_findings(content: str) -> list:
     """Parse Section 7 Recommended Actions table for Tier 3 findings.
 
@@ -428,7 +484,7 @@ def parse_threats_findings(content: str) -> list:
 
     findings = []
     for row in rows:
-        findings.append({
+        finding = {
             "id": row.get("Finding ID", "").strip(),
             "component": row.get("Component", "").strip(),
             "threat": row.get("Threat", "").strip(),
@@ -436,7 +492,12 @@ def parse_threats_findings(content: str) -> list:
             "impact": "\u2014",
             "risk_level": row.get("Risk Level", "").strip(),
             "mitigation": row.get("Mitigation", "").strip(),
-        })
+        }
+        # Delta fields: include only when present (backward compatible)
+        status = row.get("Status", "").strip()
+        if status:
+            finding["delta_status"] = status
+        findings.append(finding)
     return findings
 
 

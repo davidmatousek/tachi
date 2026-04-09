@@ -165,6 +165,11 @@ Single-command entry point for tachi threat infographic generation — the visua
    - Individual templates (baseball-card, system-architecture, risk-funnel, maestro-stack, maestro-heatmap): 1 run
 
    Step 2: Read the JSON output and generate the spec file per your methodology.
+     - If the JSON contains a "delta" object (has_baseline: true), include delta context
+       in the spec: note delta_counts (new/unchanged/updated/resolved), emphasize NEW
+       findings in visual design, and note that severity distribution reflects active
+       findings only (RESOLVED excluded). Pass delta emphasis directives to Gemini prompts
+       when constructing image generation requests.
    Step 3: Generate images via Gemini if GEMINI_API_KEY is available.
    ```
 

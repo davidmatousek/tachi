@@ -236,30 +236,30 @@ Risk summary counts below reflect deduplicated findings. When correlation groups
 
 Prioritized list of all findings sorted by risk level descending, providing a remediation roadmap. Critical and High findings should be addressed before deployment. Medium findings should be addressed within the current development cycle.
 
-| Finding ID | Component | Threat | Risk Level | Mitigation |
-|------------|-----------|--------|------------|------------|
-| I-1 | LLM Agent Orchestrator | Context leakage exposing confidential documents or other users' data in responses | Critical | Implement output filtering to detect and redact sensitive data patterns; enforce per-user context isolation; apply retrieval access controls |
-| LLM-1 | LLM Agent Orchestrator | Indirect prompt injection via retrieved documents exfiltrating context or invoking unauthorized tools | Critical | Sanitize retrieved documents before LLM context inclusion; implement instruction-data separation; deploy output filtering and canary tokens |
-| S-1 | User | Spoofed user identity via stolen or replayed session tokens | High | Short-lived JWT tokens with refresh rotation; client fingerprint binding; MFA for sensitive operations |
-| T-1 | Knowledge Base | Poisoned document embeddings corrupting RAG retrieval results | High | Strict write access controls on vector store; embedding integrity checksums; write operation logging |
-| R-2 | LLM Agent Orchestrator | Autonomous multi-step decisions not attributable to specific user actions | High | Log complete decision chains with correlation IDs; capture triggering prompts, reasoning steps, and tool calls |
-| D-1 | Guardrails Service | Resource exhaustion via complex prompt flooding | High | Per-user and per-IP rate limiting; prompt length and complexity thresholds; request timeouts; horizontal scaling |
-| D-2 | MCP Tool Server | Recursive tool call chains exhausting resources and causing cascading timeouts | High | Maximum tool call depth and chain length limits; per-request resource budgets; circuit breakers |
-| E-1 | LLM Agent Orchestrator | Orchestrator escalates tool permissions beyond user authorization | High | Per-user permission scoping on tool calls; server-side authorization at tool server; least-privilege allowlists |
-| E-2 | Guardrails Service | Guardrails bypass via prompt obfuscation enabling access to restricted capabilities | High | Layered validation strategies; evolving bypass pattern database; defense-in-depth with secondary orchestrator validation |
-| AG-1 | LLM Agent Orchestrator | Autonomous privilege escalation through chained tool calls bypassing per-tool authorization | High | Cumulative permission budgets; human-in-the-loop for scope escalation; chain-level authorization checks |
-| AG-2 | MCP Tool Server | Unauthorized tool invocations executing file system, network, or data mutation operations | High | Strict tool allowlists; sandboxed execution; input schema validation on all tool call parameters |
-| AG-4 | MCP Tool Server | Excessive tool invocations exhausting API quotas and downstream capacity | High | Per-agent rate limits; resource budgets per request; circuit breakers on external API calls |
-| LLM-3 | LLM Agent Orchestrator | LLM-generated tool call parameters containing injection payloads targeting downstream systems | High | Validate and sanitize LLM-generated parameters; strict parameter schemas; parameterized interfaces; audit logging |
-| S-2 | LLM Agent Orchestrator | Spoofed tool call responses injecting fabricated results into orchestration pipeline | Medium | Mutual TLS between orchestrator and tool server; message signatures; request-response correlation IDs |
-| S-3 | External API | Spoofed external API returning malicious payloads | Medium | Response schema validation; certificate pinning; response integrity checksums |
-| T-2 | LLM Agent Orchestrator | Tampered orchestration configuration altering agent decision logic | Medium | Signed configuration at deployment; integrity validation at startup; runtime state checksums |
-| T-3 | Audit Logger | Modified or truncated audit log entries concealing malicious activity | Medium | Append-only storage with cryptographic hash chaining; immutable external replication; separate access controls |
-| R-1 | User | User repudiates harmful prompts due to insufficient session attribution | Medium | Log user identity, session ID, timestamp, and client IP for all prompt submissions |
-| I-2 | Knowledge Base | Unauthorized vector store access exposing reversible document embeddings | Medium | Encrypt embeddings at rest; role-based access controls; query auditing; rate-limit bulk retrieval |
-| I-3 | MCP Tool Server | API credentials and internal paths exposed in tool server error responses | Medium | Structured error handling with generic error codes; server-side diagnostic logging; error response scrubbing |
-| LLM-2 | LLM Agent Orchestrator | Knowledge base poisoning persistently corrupting LLM reasoning for specific queries | Medium | Document ingestion validation; provenance metadata; automated regression testing; ingestion batch rollback |
-| AG-3 | LLM Agent Orchestrator | Uncontrolled multi-step plan execution making irreversible changes without human review | Medium | Human approval for multi-step plans; inter-step checkpoints with rollback; maximum autonomous step count |
+| Finding ID | Status | Component | Threat | Risk Level | Mitigation |
+|------------|--------|-----------|--------|------------|------------|
+| I-1 | NEW | LLM Agent Orchestrator | Context leakage exposing confidential documents or other users' data in responses | Critical | Implement output filtering to detect and redact sensitive data patterns; enforce per-user context isolation; apply retrieval access controls |
+| LLM-1 | NEW | LLM Agent Orchestrator | Indirect prompt injection via retrieved documents exfiltrating context or invoking unauthorized tools | Critical | Sanitize retrieved documents before LLM context inclusion; implement instruction-data separation; deploy output filtering and canary tokens |
+| S-1 | NEW | User | Spoofed user identity via stolen or replayed session tokens | High | Short-lived JWT tokens with refresh rotation; client fingerprint binding; MFA for sensitive operations |
+| T-1 | NEW | Knowledge Base | Poisoned document embeddings corrupting RAG retrieval results | High | Strict write access controls on vector store; embedding integrity checksums; write operation logging |
+| R-2 | NEW | LLM Agent Orchestrator | Autonomous multi-step decisions not attributable to specific user actions | High | Log complete decision chains with correlation IDs; capture triggering prompts, reasoning steps, and tool calls |
+| D-1 | NEW | Guardrails Service | Resource exhaustion via complex prompt flooding | High | Per-user and per-IP rate limiting; prompt length and complexity thresholds; request timeouts; horizontal scaling |
+| D-2 | NEW | MCP Tool Server | Recursive tool call chains exhausting resources and causing cascading timeouts | High | Maximum tool call depth and chain length limits; per-request resource budgets; circuit breakers |
+| E-1 | NEW | LLM Agent Orchestrator | Orchestrator escalates tool permissions beyond user authorization | High | Per-user permission scoping on tool calls; server-side authorization at tool server; least-privilege allowlists |
+| E-2 | NEW | Guardrails Service | Guardrails bypass via prompt obfuscation enabling access to restricted capabilities | High | Layered validation strategies; evolving bypass pattern database; defense-in-depth with secondary orchestrator validation |
+| AG-1 | NEW | LLM Agent Orchestrator | Autonomous privilege escalation through chained tool calls bypassing per-tool authorization | High | Cumulative permission budgets; human-in-the-loop for scope escalation; chain-level authorization checks |
+| AG-2 | NEW | MCP Tool Server | Unauthorized tool invocations executing file system, network, or data mutation operations | High | Strict tool allowlists; sandboxed execution; input schema validation on all tool call parameters |
+| AG-4 | NEW | MCP Tool Server | Excessive tool invocations exhausting API quotas and downstream capacity | High | Per-agent rate limits; resource budgets per request; circuit breakers on external API calls |
+| LLM-3 | NEW | LLM Agent Orchestrator | LLM-generated tool call parameters containing injection payloads targeting downstream systems | High | Validate and sanitize LLM-generated parameters; strict parameter schemas; parameterized interfaces; audit logging |
+| S-2 | NEW | LLM Agent Orchestrator | Spoofed tool call responses injecting fabricated results into orchestration pipeline | Medium | Mutual TLS between orchestrator and tool server; message signatures; request-response correlation IDs |
+| S-3 | NEW | External API | Spoofed external API returning malicious payloads | Medium | Response schema validation; certificate pinning; response integrity checksums |
+| T-2 | NEW | LLM Agent Orchestrator | Tampered orchestration configuration altering agent decision logic | Medium | Signed configuration at deployment; integrity validation at startup; runtime state checksums |
+| T-3 | NEW | Audit Logger | Modified or truncated audit log entries concealing malicious activity | Medium | Append-only storage with cryptographic hash chaining; immutable external replication; separate access controls |
+| R-1 | NEW | User | User repudiates harmful prompts due to insufficient session attribution | Medium | Log user identity, session ID, timestamp, and client IP for all prompt submissions |
+| I-2 | NEW | Knowledge Base | Unauthorized vector store access exposing reversible document embeddings | Medium | Encrypt embeddings at rest; role-based access controls; query auditing; rate-limit bulk retrieval |
+| I-3 | NEW | MCP Tool Server | API credentials and internal paths exposed in tool server error responses | Medium | Structured error handling with generic error codes; server-side diagnostic logging; error response scrubbing |
+| LLM-2 | NEW | LLM Agent Orchestrator | Knowledge base poisoning persistently corrupting LLM reasoning for specific queries | Medium | Document ingestion validation; provenance metadata; automated regression testing; ingestion batch rollback |
+| AG-3 | NEW | LLM Agent Orchestrator | Uncontrolled multi-step plan execution making irreversible changes without human review | Medium | Human approval for multi-step plans; inter-step checkpoints with rollback; maximum autonomous step count |
 
 ---
 
@@ -269,25 +269,25 @@ This appendix maps each finding to applicable OWASP framework categories across 
 
 | Finding ID | OWASP Category | Category Name | Notes |
 |------------|----------------|---------------|-------|
-| S-1 | A07 | Authentication Failures | Stolen/replayed session tokens exploiting weak authentication controls |
-| S-2 | A08 | Software or Data Integrity Failures | Spoofed inter-service responses lacking integrity verification |
-| S-3 | A08 | Software or Data Integrity Failures | Unvalidated external API responses accepted without integrity checks |
-| T-1 | A08 | Software or Data Integrity Failures | Knowledge base write operations lacking integrity validation |
-| T-2 | A02 | Security Misconfiguration | Orchestration configuration vulnerable to unauthorized modification |
-| T-3 | A09 | Security Logging and Alerting Failures | Audit log integrity not protected with cryptographic controls |
-| R-1 | A09 | Security Logging and Alerting Failures | Insufficient session attribution in prompt submission logs |
-| R-2 | A09 | Security Logging and Alerting Failures | Incomplete decision chain logging for autonomous agent actions |
-| I-1 | A01 | Broken Access Control | Cross-user context leakage due to insufficient access controls on retrieval |
-| I-2 | A01 | Broken Access Control | Unauthorized access to vector store contents |
-| I-3 | A04 | Cryptographic Failures | Credentials and internal paths exposed in unencrypted error responses |
-| D-1 | A06 | Insecure Design | No resource consumption limits on prompt validation processing |
-| D-2 | A06 | Insecure Design | Unbounded recursive tool call chains by design |
-| E-1 | A01 | Broken Access Control | Dynamic privilege escalation bypassing user-level authorization |
-| E-2 | A05 | Injection | Prompt obfuscation bypassing input validation via encoding techniques |
-| AG-1 | ASI03 | Identity and Privilege Abuse | Agent chains tool calls to accumulate privileges beyond any single tool authorization |
-| AG-2 | ASI02 | Tool Misuse and Exploitation | Tool server executes unauthorized operations via manipulated tool call parameters |
-| AG-3 | ASI01 | Agent Goal Hijack | Agent executes multi-step plans without human oversight, deviating from intended goals |
-| AG-4 | ASI02 | Tool Misuse and Exploitation | Excessive tool invocations exhausting resources through uncontrolled agent behavior |
-| LLM-1 | MCP10 | Context Injection and Over-Sharing | Indirect prompt injection through retrieved documents injected into LLM context |
-| LLM-2 | MCP03 | Tool Poisoning | Adversarial content in knowledge base persistently corrupting tool-mediated LLM reasoning |
-| LLM-3 | MCP05 | Command Injection and Execution | LLM-generated tool parameters containing injection payloads targeting downstream execution |
+| S-1 | NEW | A07 | Authentication Failures | Stolen/replayed session tokens exploiting weak authentication controls |
+| S-2 | NEW | A08 | Software or Data Integrity Failures | Spoofed inter-service responses lacking integrity verification |
+| S-3 | NEW | A08 | Software or Data Integrity Failures | Unvalidated external API responses accepted without integrity checks |
+| T-1 | NEW | A08 | Software or Data Integrity Failures | Knowledge base write operations lacking integrity validation |
+| T-2 | NEW | A02 | Security Misconfiguration | Orchestration configuration vulnerable to unauthorized modification |
+| T-3 | NEW | A09 | Security Logging and Alerting Failures | Audit log integrity not protected with cryptographic controls |
+| R-1 | NEW | A09 | Security Logging and Alerting Failures | Insufficient session attribution in prompt submission logs |
+| R-2 | NEW | A09 | Security Logging and Alerting Failures | Incomplete decision chain logging for autonomous agent actions |
+| I-1 | NEW | A01 | Broken Access Control | Cross-user context leakage due to insufficient access controls on retrieval |
+| I-2 | NEW | A01 | Broken Access Control | Unauthorized access to vector store contents |
+| I-3 | NEW | A04 | Cryptographic Failures | Credentials and internal paths exposed in unencrypted error responses |
+| D-1 | NEW | A06 | Insecure Design | No resource consumption limits on prompt validation processing |
+| D-2 | NEW | A06 | Insecure Design | Unbounded recursive tool call chains by design |
+| E-1 | NEW | A01 | Broken Access Control | Dynamic privilege escalation bypassing user-level authorization |
+| E-2 | NEW | A05 | Injection | Prompt obfuscation bypassing input validation via encoding techniques |
+| AG-1 | NEW | ASI03 | Identity and Privilege Abuse | Agent chains tool calls to accumulate privileges beyond any single tool authorization |
+| AG-2 | NEW | ASI02 | Tool Misuse and Exploitation | Tool server executes unauthorized operations via manipulated tool call parameters |
+| AG-3 | NEW | ASI01 | Agent Goal Hijack | Agent executes multi-step plans without human oversight, deviating from intended goals |
+| AG-4 | NEW | ASI02 | Tool Misuse and Exploitation | Excessive tool invocations exhausting resources through uncontrolled agent behavior |
+| LLM-1 | NEW | MCP10 | Context Injection and Over-Sharing | Indirect prompt injection through retrieved documents injected into LLM context |
+| LLM-2 | NEW | MCP03 | Tool Poisoning | Adversarial content in knowledge base persistently corrupting tool-mediated LLM reasoning |
+| LLM-3 | NEW | MCP05 | Command Injection and Execution | LLM-generated tool parameters containing injection payloads targeting downstream execution |

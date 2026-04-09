@@ -551,19 +551,69 @@ When correlation groups exist and the deduplicated total differs from the raw fi
 
 Prioritized list of all findings sorted by risk level descending, providing a remediation roadmap. Critical and High findings should be addressed before deployment. Medium findings should be addressed within the current development cycle. Low and Note findings should be tracked for future consideration.
 
-| Finding ID | Component | Threat | Risk Level | Mitigation |
-|------------|-----------|--------|------------|------------|
-| _{finding ID}_ | _{component}_ | _{threat summary}_ | _{risk level}_ | _{recommended countermeasure}_ |
+**Status column** (baseline-aware mode only): Carries the `delta_status` lifecycle annotation for each finding. Values: `NEW` (discovered this run), `UNCHANGED` (identical to baseline), `UPDATED` (component context changed). RESOLVED findings do not appear in this table — they are listed in Section 4b. When no baseline is present (first run), all findings show `NEW`. The Status column enables downstream consumers (extraction scripts, report agents) to access delta information from a single parsed table.
+
+| Finding ID | Status | Component | Threat | Risk Level | Mitigation |
+|------------|--------|-----------|--------|------------|------------|
+| _{finding ID}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat summary}_ | _{risk level}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| Finding ID | Component | Threat | Risk Level | Mitigation |
-|------------|-----------|--------|------------|------------|
-| S-1 | API Gateway | Forged JWT tokens via weak signing algorithm | Critical | Enforce RS256 signing with key rotation every 90 days; reject HS256 tokens |
-| LLM-1 | LLM Agent | Indirect prompt injection exfiltrating context data | Critical | Sanitize user input before LLM context; implement output filtering and egress controls |
-| T-1 | User Database | SQL injection through unsanitized input | High | Use parameterized queries; apply input validation at API Gateway |
-| I-1 | User Database | Credentials exposed in error messages | High | Structured error handling with generic client responses; server-side detailed logging |
-| D-1 | API Gateway | Volumetric attack exhausting connection pool | High | Per-IP rate limiting; upstream DDoS protection; circuit breaker pattern |
-| E-1 | Auth Service | IDOR exploiting role claims in JWT payload | High | Server-side role validation against authoritative store on every request |
-| AG-1 | LLM Agent | Uncontrolled destructive command execution | High | Human-in-the-loop approval for destructive operations; tool allowlists |
-| R-1 | Auth Service | Insufficient audit logging for privileged actions | Medium | Immutable audit log with session ID, IP, user agent, and timestamp |
+| Finding ID | Status | Component | Threat | Risk Level | Mitigation |
+|------------|--------|-----------|--------|------------|------------|
+| S-1 | UNCHANGED | API Gateway | Forged JWT tokens via weak signing algorithm | Critical | Enforce RS256 signing with key rotation every 90 days; reject HS256 tokens |
+| LLM-1 | NEW | LLM Agent | Indirect prompt injection exfiltrating context data | Critical | Sanitize user input before LLM context; implement output filtering and egress controls |
+| T-1 | UPDATED | User Database | SQL injection through unsanitized input | High | Use parameterized queries; apply input validation at API Gateway |
+| I-1 | UNCHANGED | User Database | Credentials exposed in error messages | High | Structured error handling with generic client responses; server-side detailed logging |
+| D-1 | UNCHANGED | API Gateway | Volumetric attack exhausting connection pool | High | Per-IP rate limiting; upstream DDoS protection; circuit breaker pattern |
+| E-1 | NEW | Auth Service | IDOR exploiting role claims in JWT payload | High | Server-side role validation against authoritative store on every request |
+| AG-1 | UNCHANGED | LLM Agent | Uncontrolled destructive command execution | High | Human-in-the-loop approval for destructive operations; tool allowlists |
+| R-1 | UNCHANGED | Auth Service | Insufficient audit logging for privileged actions | Medium | Immutable audit log with session ID, IP, user agent, and timestamp |
+
+---
+
+## 8. Delta Summary
+
+_Present only when a baseline was used for the current run. Omit this entire section (header and content) on first run (no baseline)._
+
+This section provides an aggregate lifecycle breakdown of all findings relative to the baseline, remediation proof, and a reference back to the baseline used for comparison. Section 4b provides individual resolved finding details; this section provides the summary view.
+
+### Finding Lifecycle
+
+| Status | Count | Description |
+|--------|-------|-------------|
+| NEW | _{count}_ | Findings discovered in this run with no baseline match |
+| UNCHANGED | _{count}_ | Findings identical to baseline (same component, threat, assessment) |
+| UPDATED | _{count}_ | Findings with changed context since baseline |
+| RESOLVED | _{count}_ | Baseline findings no longer applicable (see Section 4b for details) |
+| **Total** | _{total}_ | Sum of all findings (active + resolved) |
+
+### Baseline Reference
+
+| Field | Value |
+|-------|-------|
+| Source | _{baseline file path}_ |
+| Date | _{baseline date}_ |
+| Baseline Findings | _{baseline finding count}_ |
+| Run ID | _{baseline run ID}_ |
+
+**Example:**
+
+### Finding Lifecycle
+
+| Status | Count | Description |
+|--------|-------|-------------|
+| NEW | 5 | Findings discovered in this run with no baseline match |
+| UNCHANGED | 12 | Findings identical to baseline (same component, threat, assessment) |
+| UPDATED | 2 | Findings with changed context since baseline |
+| RESOLVED | 3 | Baseline findings no longer applicable (see Section 4b for details) |
+| **Total** | **22** | Sum of all findings (active + resolved) |
+
+### Baseline Reference
+
+| Field | Value |
+|-------|-------|
+| Source | threats.md |
+| Date | 2026-03-25 |
+| Baseline Findings | 20 |
+| Run ID | 2026-03-25T12-53-57 |

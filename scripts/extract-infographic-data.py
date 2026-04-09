@@ -32,6 +32,8 @@ from tachi_parsers import (
     SEVERITY_ORDINAL,
     MAESTRO_LAYERS,
     parse_frontmatter,
+    parse_baseline_frontmatter,
+    parse_resolved_findings,
     parse_markdown_table,
     parse_project_name,
     detect_artifacts,
@@ -1162,6 +1164,10 @@ def build_json_output(data, template):
         "template_data": data.get("template_data", {}),
     }
 
+    # Add delta data when baseline present
+    if "delta" in data:
+        output["delta"] = data["delta"]
+
     # Add template to metadata
     output["metadata"]["template"] = template
 
@@ -1222,6 +1228,10 @@ def main():
     frontmatter = parse_frontmatter(threats_content)
     project_name = parse_project_name(threats_content)
 
+    # Parse baseline metadata for delta-aware output
+    baseline = parse_baseline_frontmatter(threats_content)
+    has_baseline = baseline["source"] is not None
+
     # Parse scope data
     scope = parse_scope_data(threats_content)
 
@@ -1238,6 +1248,15 @@ def main():
 
     # Select top findings
     top_findings = select_top_findings(findings, tier)
+
+    # Include delta_status in top findings when present
+    if has_baseline:
+        findings_by_id = {f.get("id", ""): f for f in findings}
+        for tf in top_findings:
+            source = findings_by_id.get(tf["id"], {})
+            ds = source.get("delta_status", "")
+            if ds:
+                tf["delta_status"] = ds
 
     # Compute component risk weights
     risk_weights = compute_component_risk_weights(heat_map)
@@ -1313,6 +1332,26 @@ def main():
             "has_maestro_data": maestro["has_maestro_data"],
         }
 
+    # Compute delta counts when baseline present
+    delta_data = None
+    if has_baseline:
+        resolved = parse_resolved_findings(threats_content)
+        delta_counts = {"new": 0, "unchanged": 0, "updated": 0, "resolved": len(resolved)}
+        for f in findings:
+            ds = f.get("delta_status", "").upper()
+            if ds == "NEW":
+                delta_counts["new"] += 1
+            elif ds == "UNCHANGED":
+                delta_counts["unchanged"] += 1
+            elif ds == "UPDATED":
+                delta_counts["updated"] += 1
+        delta_data = {
+            "has_baseline": True,
+            "baseline_source": baseline["source"],
+            "baseline_date": baseline["date"],
+            "delta_counts": delta_counts,
+        }
+
     # Assemble data dict
     data = {
         "metadata": metadata,
@@ -1322,6 +1361,8 @@ def main():
         "findings_ids": findings_ids,
         "template_data": template_data,
     }
+    if delta_data:
+        data["delta"] = delta_data
 
     # Validate
     errors = validate_infographic(data)

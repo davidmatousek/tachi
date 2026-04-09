@@ -1,5 +1,5 @@
 ---
-schema_version: "1.0"
+schema_version: "1.1"
 date: "2026-03-25"
 source_file: "threats.md"
 finding_count: 38

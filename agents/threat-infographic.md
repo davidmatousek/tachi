@@ -61,7 +61,7 @@ You consume the complete `threats.md` file produced by the orchestrator. The str
 
 ### Finding IR Fields Consumed
 
-Each finding in the STRIDE and AI tables provides these fields (from `schemas/finding.yaml` v1.0):
+Each finding in the STRIDE and AI tables provides these fields (from `schemas/finding.yaml` v1.2):
 
 | Field | Type | Infographic Usage |
 |-------|------|-------------------|
@@ -69,6 +69,21 @@ Each finding in the STRIDE and AI tables provides these fields (from `schemas/fi
 | `component` | string | Heat Map rows, Architecture Overlay annotations |
 | `threat` | string | Top Critical Findings one-sentence summary |
 | `risk_level` | enum (Critical/High/Medium/Low/Note) | Risk Distribution counts, Heat Map columns, finding selection |
+| `delta_status` | enum (NEW/UNCHANGED/UPDATED), optional | Delta emphasis in Top Findings when present. RESOLVED findings are excluded from severity distribution — they appear only in Section 4b of the input, not in STRIDE/AI tables. |
+
+### Baseline and Delta Context
+
+When the extraction pipeline provides delta data (via `infographic-data.json`), the following fields may be present:
+
+| Field | Type | Infographic Usage |
+|-------|------|-------------------|
+| `delta.has_baseline` | boolean | Gate for all delta-aware visual directives |
+| `delta.delta_counts.new` | integer | Delta breakdown display (if template supports it) |
+| `delta.delta_counts.resolved` | integer | Show remediation progress to stakeholders |
+
+**Key behavior**: When delta data is present, severity distribution counts reflect **active findings only** (RESOLVED findings from Section 4b are excluded). This ensures the infographic accurately represents the current threat posture without inflating counts with remediated threats.
+
+**Delta emphasis directives**: When delta data is present and a template supports it, emphasize NEW findings in the Top Findings section to draw attention to newly discovered attack surfaces. UNCHANGED findings may be noted as "stable from previous assessment."
 
 ### Input Validation
 

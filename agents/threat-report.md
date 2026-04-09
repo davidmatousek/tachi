@@ -2,7 +2,7 @@
 agent_name: threat-report
 category: report
 status: active
-version: "1.0"
+version: "1.1"
 description: >
   Transforms structured threat model output (threats.md) into a narrative
   threat report with executive summary, Mermaid attack trees for Critical
@@ -49,16 +49,29 @@ You consume the complete `threats.md` file produced by the orchestrator. The str
 |---------|---------|-------------------|
 | Section 1: System Overview | Components, data flows, technologies | Architecture Overview (Section 2 of report) |
 | Section 2: Trust Boundaries | Trust zones, boundary crossings, controls | Architecture Overview (Section 2 of report) |
-| Section 3: STRIDE Tables | 6 category tables with findings | Threat Analysis narrative (Section 3), Attack Trees (Section 5), Remediation Roadmap (Section 6), Appendix (Section 7) |
-| Section 4: AI Threat Tables | 2 category tables (AG, LLM) with findings | Threat Analysis narrative (Section 3), Attack Trees (Section 5), Remediation Roadmap (Section 6), Appendix (Section 7) |
+| Section 3: STRIDE Tables | 6 category tables with findings (with Status column) | Threat Analysis narrative (Section 3), Attack Trees (Section 5), Remediation Roadmap (Section 6), Appendix (Section 7) |
+| Section 4: AI Threat Tables | 2 category tables (AG, LLM) with findings (with Status column) | Threat Analysis narrative (Section 3), Attack Trees (Section 5), Remediation Roadmap (Section 6), Appendix (Section 7) |
 | Section 4a: Correlated Findings | Cross-agent correlation groups | Cross-Cutting Themes (Section 4), correlation handling in narrative, attack trees, and roadmap |
+| Section 4b: Resolved Findings | Baseline findings no longer applicable (columns: ID, Component, Threat, Last Risk Level, Resolution Reason) | Delta Summary (Section 8), remediation progress narrative. Only present when a baseline was used. |
 | Section 5: Coverage Matrix | Component x category analysis coverage | Executive Summary risk posture context |
 | Section 6: Risk Summary | Aggregate counts by risk level | Executive Summary risk posture, Remediation Roadmap priority ordering |
-| Section 7: Recommended Actions | Prioritized finding list with mitigations | Remediation Roadmap items (mitigation text preserved verbatim) |
+| Section 7: Recommended Actions | Prioritized finding list with mitigations and Status column | Remediation Roadmap items (mitigation text preserved verbatim) |
+| Section 8: Delta Summary | Finding lifecycle breakdown and baseline reference (only when baseline present) | Delta Summary (Section 8 of report) — pass through with narrative enrichment |
+
+### Frontmatter Baseline Fields
+
+The input `threats.md` frontmatter contains a nested `baseline:` block with these fields:
+
+| Field | Type | Report Agent Usage |
+|-------|------|--------------------|
+| `baseline.source` | string, nullable | **Primary gate for delta-aware behavior.** When non-null, enable all delta logic. When null (first run), skip Section 8 and all delta annotations. |
+| `baseline.date` | string, nullable | Referenced in attack tree carry-forward notes and Section 8 Baseline Reference. |
+| `baseline.finding_count` | integer, nullable | Section 8 Baseline Reference table. |
+| `baseline.run_id` | string, nullable | Section 8 Baseline Reference table. |
 
 ### Finding IR Fields Consumed
 
-Each finding in the STRIDE and AI tables provides these fields (from `schemas/finding.yaml` v1.0):
+Each finding in the STRIDE and AI tables provides these fields (from `schemas/finding.yaml` v1.2):
 
 | Field | Type | Report Agent Usage |
 |-------|------|--------------------|
@@ -72,6 +85,8 @@ Each finding in the STRIDE and AI tables provides these fields (from `schemas/fi
 | `mitigation` | string | Remediation roadmap items — preserve verbatim from input |
 | `references` | list[string] | Compliance relevance annotations (SOC2, ISO 27001, CWE, OWASP mapping) |
 | `dfd_element_type` | enum (4 values) | Architecture overview context |
+| `delta_status` | enum (NEW/UNCHANGED/UPDATED), optional | Delta annotations in Threat Analysis (Section 3), attack tree branching (Section 5), executive summary delta counts. Only present when baseline data exists in input. |
+| `baseline_run_id` | string, optional | Baseline reference in Section 8 and carry-forward notes. Only present when baseline data exists. |
 
 ### Correlation Group Fields (Section 4a)
 
@@ -100,9 +115,10 @@ Before finalizing the report, run the following checklist. Every check must pass
 
 #### Section Completeness
 
-- [ ] All 7 report sections are present with non-empty content
-- [ ] YAML frontmatter contains all 6 required fields (schema_version, date, source_file, finding_count, risk_distribution, attack_tree_count)
-- [ ] Section headings match `schemas/report.yaml` exactly (## 1. Executive Summary through ## 7. Appendix: Finding Reference)
+- [ ] All 7 core report sections are present with non-empty content (Sections 1-7)
+- [ ] Section 8 (Delta Summary) present when baseline data exists in input; absent when no baseline
+- [ ] YAML frontmatter contains all required fields: schema_version, date, source_file, finding_count, risk_distribution, attack_tree_count, baseline_source, baseline_date, delta_counts (null when no baseline)
+- [ ] Section headings match `schemas/report.yaml` exactly (## 1. Executive Summary through ## 7. Appendix: Finding Reference, plus ## 8. Delta Summary when applicable)
 
 #### Finding Traceability (Zero Loss Rule)
 
@@ -160,7 +176,7 @@ Generate the Executive Summary as Section 1 of the report. This section communic
 
 #### 5 Required Elements
 
-1. **Risk Posture** (1-2 sentences): Summarize the overall security health of the system. State the total finding count, risk distribution (Critical/High/Medium/Low), and an overall assessment. Acknowledge what is working well alongside concerns.
+1. **Risk Posture** (1-2 sentences): Summarize the overall security health of the system. State the total finding count, risk distribution (Critical/High/Medium/Low), and an overall assessment. Acknowledge what is working well alongside concerns. **When delta data is present** (baseline.source is non-null), include delta counts in the posture summary: e.g., "Of 22 findings, 5 are new discoveries, 12 are unchanged from the previous assessment, 2 have updated context, and 3 previously identified threats have been resolved." This gives stakeholders an immediate sense of how the threat landscape has evolved.
 
 2. **Top 3-5 Threats by Business Impact**: Select the most consequential threats from the findings. Rank by business impact (not just risk level) — a High finding on a payment system may matter more than a Critical finding on a non-production component. For each threat: state the component, the risk, and why it matters to the business in plain language.
 
@@ -233,10 +249,11 @@ For each category, include all findings from the corresponding STRIDE or AI tabl
 
 For each finding, provide:
 1. **Finding reference**: State the finding ID (e.g., "**S-1**") as a bold reference
-2. **Component annotation**: Name the affected component
-3. **Threat description**: Explain the threat in context — what could happen, how, and why it matters
-4. **Risk context**: State the likelihood, impact, and computed risk level
-5. **Mitigation summary**: Reference the recommended mitigation (the full mitigation text appears in the Remediation Roadmap)
+2. **Delta status annotation** (when baseline data present): Prefix the finding reference with a delta status tag. Format: `[NEW]`, `[UNCHANGED]`, or `[UPDATED]`. Example: "[NEW] **S-1**" or "[UNCHANGED — carried forward] **AG-2**". When no baseline data is present, omit the delta prefix entirely.
+3. **Component annotation**: Name the affected component
+4. **Threat description**: Explain the threat in context — what could happen, how, and why it matters
+5. **Risk context**: State the likelihood, impact, and computed risk level
+6. **Mitigation summary**: Reference the recommended mitigation (the full mitigation text appears in the Remediation Roadmap)
 
 #### Progressive Technical Depth
 
@@ -669,6 +686,17 @@ flowchart TD
 
 **Correlated findings**: If the finding is part of a correlation group (Section 4a), add a note after the finding header: "This finding is part of correlation group CG-{N}. See also: {peer finding IDs}."
 
+**Delta-aware attack tree generation** (when baseline.source is non-null in input frontmatter):
+
+Branch attack tree generation by `delta_status`:
+
+- **NEW**: Generate a fresh attack tree following all standard conventions. No delta annotation needed — new findings are the default behavior.
+- **UPDATED**: Generate a fresh attack tree. Add a note below the tree: _"Context changed since baseline ({baseline_date}) — attack tree regenerated with updated threat context."_
+- **UNCHANGED**: Do NOT generate an attack tree. Instead, include only the finding heading and a carry-forward note: _"Attack tree carried forward from baseline ({baseline_date}) — finding unchanged since last assessment. See baseline report for the original attack tree."_
+- **RESOLVED**: RESOLVED findings do not appear in Section 5. They exist only in Section 4b of the input threats.md.
+
+**No baseline** (baseline.source is null): Generate all attack trees fresh with no delta annotations. This is standard first-run behavior — identical to pre-delta behavior.
+
 ### Location 2: Standalone Files in attack-trees/
 
 Save each attack tree as an independent Markdown file in the `attack-trees/` directory within the output directory.
@@ -801,3 +829,53 @@ Given correlation group CG-1 containing AG-1 (Critical) and S-2 (Medium):
 #### No Correlation Groups
 
 If Section 4a contains "No cross-agent correlations detected" or is absent, skip consolidation. Each finding appears as its own roadmap item.
+
+---
+
+### Delta Summary Generation (Section 8)
+
+Generate the Delta Summary as Section 8 of the report. This section is **only present when the input threats.md contains baseline data** (i.e., `baseline.source` is non-null in frontmatter). When no baseline is present, omit Section 8 entirely — do not include the heading or any placeholder content.
+
+#### When to Generate
+
+Check the input `threats.md` frontmatter for `baseline.source`. If it is null, `~`, or absent, skip Section 8 completely.
+
+#### Section Structure
+
+Section 8 contains three sub-sections (use H3 headings matching the schema template):
+
+### Finding Lifecycle Breakdown
+
+A table summarizing finding counts by lifecycle status.
+
+| Status | Count | Description |
+|--------|-------|-------------|
+| NEW | _{count}_ | Findings discovered in this run with no baseline match |
+| UNCHANGED | _{count}_ | Findings identical to baseline |
+| UPDATED | _{count}_ | Findings with changed context since baseline |
+| RESOLVED | _{count}_ | Baseline findings no longer applicable (from Section 4b) |
+| **Total** | _{total}_ | Sum of all findings (active + resolved) |
+
+**How to compute counts**: Count findings by `delta_status` value in Sections 3 and 4 of the input threats.md. RESOLVED count comes from Section 4b row count. The total must equal NEW + UNCHANGED + UPDATED + RESOLVED.
+
+### Remediation Progress
+
+A narrative paragraph (2-4 sentences) describing remediation progress since the baseline. Reference specific resolved findings from Section 4b by ID and resolution reason. Quantify the change: "N findings have been resolved since the {baseline_date} assessment, reducing active threats from {baseline_finding_count} to {active_count}." Note any UPDATED findings where risk levels changed. Written for a non-technical audience.
+
+### Baseline Reference
+
+A table identifying the baseline used for comparison.
+
+| Field | Value |
+|-------|-------|
+| Source | _{baseline.source from frontmatter}_ |
+| Date | _{baseline.date from frontmatter}_ |
+| Baseline Findings | _{baseline.finding_count from frontmatter}_ |
+| Run ID | _{baseline.run_id from frontmatter}_ |
+
+#### Quality Rules for Section 8
+
+- Delta counts MUST be computed from the actual finding data, not from any summary table
+- The sum NEW + UNCHANGED + UPDATED + RESOLVED must equal the total finding count
+- Every resolved finding cited in the remediation progress narrative must exist in Section 4b of the input
+- Baseline reference fields must be copied verbatim from the input frontmatter

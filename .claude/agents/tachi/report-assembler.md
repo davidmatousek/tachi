@@ -205,4 +205,27 @@ Tier: {data_source_tier}
 
 - **v1.0**: No Section 4a -- skip correlated findings references, all else normal
 - **v1.1**: Full feature set -- parse all sections
+- **v1.2**: Full feature set plus delta/baseline data -- parse all sections including Section 4b (Resolved Findings) and Section 8 (Delta Summary)
 - **Unknown version**: Treat as v1.0 (conservative), log warning
+
+### Delta / Baseline Awareness
+
+When the extraction script detects baseline data in `threats.md` frontmatter, `report-data.typ` includes additional delta variables:
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `has-baseline` | boolean | Gate for delta-aware page sections |
+| `baseline-source` | string | Baseline file path |
+| `baseline-date` | string | Baseline assessment date |
+| `delta-new-count` | integer | Count of NEW findings |
+| `delta-unchanged-count` | integer | Count of UNCHANGED findings |
+| `delta-updated-count` | integer | Count of UPDATED findings |
+| `delta-resolved-count` | integer | Count of RESOLVED findings |
+| `resolved-findings` | array | RESOLVED finding objects (id, component, threat, risk-level, resolution-reason) |
+
+**Rendering rules** (for Typst templates that support delta):
+
+1. **Executive summary**: When `has-baseline` is true, include delta counts in the risk posture summary: "X new, Y unchanged, Z updated, W resolved."
+2. **Active findings table**: Annotate findings with `delta_status: "NEW"` using a visual indicator (e.g., bold or badge) to highlight newly discovered threats.
+3. **Resolved findings section**: When `resolved-findings` is non-empty, render a separate "Resolved Findings" section after the active findings table. This section lists remediated threats for audit trail.
+4. **No-baseline behavior**: When `has-baseline` is false, render findings as before (no separation, no annotations, no resolved section). All delta variables default to zero/empty.

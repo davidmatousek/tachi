@@ -175,24 +175,24 @@ Parsed summary of the Mermaid flowchart architecture input for an agentic AI app
 
 ## 7. Recommended Actions
 
-| Finding ID | Component | Threat | Risk Level | Mitigation |
-|------------|-----------|--------|------------|------------|
-| AG-1 | LLM Agent Orchestrator | Autonomous execution of consequential tool calls without human approval | Critical | Classify tool operations into risk tiers; require human approval for irreversible and external actions; add iteration limits and timeouts |
-| AG-2 | MCP Tool Server | Unrestricted tool access without per-session capability scoping | Critical | Implement per-session tool allowlists scoped to user role and task context; enforce per-call authorization checks |
-| LLM-1 | LLM Agent Orchestrator | Direct prompt injection causing data exfiltration via tool calls | Critical | Structured prompt templates with boundary delimiters; input classifier for adversarial patterns; output filtering for exfiltration indicators; egress controls |
-| S-1 | User | Authentication credential replay or forgery for user impersonation | High | Multi-factor authentication; session-bound tokens with short expiry |
-| T-2 | Knowledge Base | Unauthorized document modification corrupting RAG retrieval | High | Access controls; mandatory review workflows; versioned snapshots with integrity checksums |
-| I-1 | Knowledge Base | Sensitive document retrieval by unauthorized users | High | Document-level access controls; filter retrieved documents by user authorization before LLM context injection |
-| I-2 | LLM Agent Orchestrator | System prompt extraction via crafted meta-instruction queries | High | Avoid sensitive data in system prompts; output filtering for prompt leakage patterns |
-| D-1 | LLM Agent Orchestrator | Resource exhaustion via computationally expensive prompts | High | Per-user rate limiting; token budget caps; request timeouts; queue management |
-| E-1 | LLM Agent Orchestrator | Privilege escalation via prompt-manipulated tool calls | High | Role-based access controls on tool invocation; validate user authorization before each tool dispatch |
-| AG-3 | MCP Tool Server | Unsanitized tool call parameters forwarded to External API | High | Strict parameter schema validation; type and pattern checks; output classifier on LLM-generated tool calls |
-| LLM-2 | LLM Agent Orchestrator | Indirect prompt injection via poisoned RAG documents | High | Sanitize retrieved content; provenance tracking; content integrity checks; retrieval monitoring |
-| LLM-3 | Knowledge Base | Knowledge base poisoning with adversarial documents | High | Content validation before indexing; write-access restrictions; provenance metadata; document review workflow |
-| T-1 | LLM Agent Orchestrator | Tool call request tampering between orchestrator and tool server | Medium | Authenticated communication channels; signed tool call payloads |
-| S-2 | External API | DNS hijacking or certificate spoofing on external API connection | Medium | Certificate pinning; TLS certificate validation; mutual authentication |
-| R-1 | User | Repudiation of prompts that triggered costly tool executions | Medium | Immutable audit logging of all prompts with session context |
-| R-2 | LLM Agent Orchestrator | Missing decision audit trail for tool call chains | Medium | Log reasoning traces, tool selection rationale, and intermediate outputs with correlation IDs |
-| D-2 | Knowledge Base | Storage exhaustion via document flooding | Medium | Storage quotas; document size limits; write-access rate limiting |
-| AG-4 | LLM Agent Orchestrator | Unbounded reasoning-action loop consuming resources | Medium | Maximum iteration count; execution timeout; cost cap; circuit breaker for repeated action patterns |
-| LLM-4 | LLM Agent Orchestrator | Model configuration extraction via systematic querying | Medium | Restrict output content; per-user query budgets; query pattern analysis; generic error responses |
+| Finding ID | Status | Component | Threat | Risk Level | Mitigation |
+|------------|--------|-----------|--------|------------|------------|
+| AG-1 | NEW | LLM Agent Orchestrator | Autonomous execution of consequential tool calls without human approval | Critical | Classify tool operations into risk tiers; require human approval for irreversible and external actions; add iteration limits and timeouts |
+| AG-2 | NEW | MCP Tool Server | Unrestricted tool access without per-session capability scoping | Critical | Implement per-session tool allowlists scoped to user role and task context; enforce per-call authorization checks |
+| LLM-1 | NEW | LLM Agent Orchestrator | Direct prompt injection causing data exfiltration via tool calls | Critical | Structured prompt templates with boundary delimiters; input classifier for adversarial patterns; output filtering for exfiltration indicators; egress controls |
+| S-1 | NEW | User | Authentication credential replay or forgery for user impersonation | High | Multi-factor authentication; session-bound tokens with short expiry |
+| T-2 | NEW | Knowledge Base | Unauthorized document modification corrupting RAG retrieval | High | Access controls; mandatory review workflows; versioned snapshots with integrity checksums |
+| I-1 | NEW | Knowledge Base | Sensitive document retrieval by unauthorized users | High | Document-level access controls; filter retrieved documents by user authorization before LLM context injection |
+| I-2 | NEW | LLM Agent Orchestrator | System prompt extraction via crafted meta-instruction queries | High | Avoid sensitive data in system prompts; output filtering for prompt leakage patterns |
+| D-1 | NEW | LLM Agent Orchestrator | Resource exhaustion via computationally expensive prompts | High | Per-user rate limiting; token budget caps; request timeouts; queue management |
+| E-1 | NEW | LLM Agent Orchestrator | Privilege escalation via prompt-manipulated tool calls | High | Role-based access controls on tool invocation; validate user authorization before each tool dispatch |
+| AG-3 | NEW | MCP Tool Server | Unsanitized tool call parameters forwarded to External API | High | Strict parameter schema validation; type and pattern checks; output classifier on LLM-generated tool calls |
+| LLM-2 | NEW | LLM Agent Orchestrator | Indirect prompt injection via poisoned RAG documents | High | Sanitize retrieved content; provenance tracking; content integrity checks; retrieval monitoring |
+| LLM-3 | NEW | Knowledge Base | Knowledge base poisoning with adversarial documents | High | Content validation before indexing; write-access restrictions; provenance metadata; document review workflow |
+| T-1 | NEW | LLM Agent Orchestrator | Tool call request tampering between orchestrator and tool server | Medium | Authenticated communication channels; signed tool call payloads |
+| S-2 | NEW | External API | DNS hijacking or certificate spoofing on external API connection | Medium | Certificate pinning; TLS certificate validation; mutual authentication |
+| R-1 | NEW | User | Repudiation of prompts that triggered costly tool executions | Medium | Immutable audit logging of all prompts with session context |
+| R-2 | NEW | LLM Agent Orchestrator | Missing decision audit trail for tool call chains | Medium | Log reasoning traces, tool selection rationale, and intermediate outputs with correlation IDs |
+| D-2 | NEW | Knowledge Base | Storage exhaustion via document flooding | Medium | Storage quotas; document size limits; write-access rate limiting |
+| AG-4 | NEW | LLM Agent Orchestrator | Unbounded reasoning-action loop consuming resources | Medium | Maximum iteration count; execution timeout; cost cap; circuit breaker for repeated action patterns |
+| LLM-4 | NEW | LLM Agent Orchestrator | Model configuration extraction via systematic querying | Medium | Restrict output content; per-user query budgets; query pattern analysis; generic error responses |

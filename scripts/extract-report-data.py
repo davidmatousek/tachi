@@ -26,6 +26,8 @@ from tachi_parsers import (
     MAESTRO_LAYERS,
     escape_typst_string,
     parse_frontmatter,
+    parse_baseline_frontmatter,
+    parse_resolved_findings,
     parse_markdown_table,
     parse_project_name,
     detect_artifacts,
@@ -549,6 +551,34 @@ def generate_report_data_typ(data: dict) -> str:
     lines.append(f"#let total-findings = {sev['total']}")
     lines.append("")
 
+    # 3c2: Baseline / Delta Data
+    lines.append("// --- Baseline / Delta Data ---------------------------------------------------")
+    lines.append(f"#let has-baseline = {_typst_bool(data.get('has_baseline', False))}")
+    lines.append(f'#let baseline-source = "{escape_typst_string(data.get("baseline_source", ""))}"')
+    lines.append(f'#let baseline-date = "{escape_typst_string(data.get("baseline_date", ""))}"')
+    lines.append(f'#let baseline-finding-count = {data.get("baseline_finding_count", "0")}')
+    lines.append(f'#let baseline-run-id = "{escape_typst_string(data.get("baseline_run_id", ""))}"')
+    dc = data.get("delta_counts", {"new": 0, "unchanged": 0, "updated": 0, "resolved": 0})
+    lines.append(f"#let delta-new-count = {dc['new']}")
+    lines.append(f"#let delta-unchanged-count = {dc['unchanged']}")
+    lines.append(f"#let delta-updated-count = {dc['updated']}")
+    lines.append(f"#let delta-resolved-count = {dc['resolved']}")
+    # Resolved findings list
+    resolved = data.get("resolved_findings", [])
+    if resolved:
+        lines.append("#let resolved-findings = (")
+        for rf in resolved:
+            lines.append(
+                f'  (id: "{escape_typst_string(rf["id"])}", '
+                f'component: "{escape_typst_string(rf["component"])}", '
+                f'threat: "{escape_typst_string(rf["threat"])}", '
+                f'risk-level: "{escape_typst_string(rf["risk_level"])}", '
+                f'resolution-reason: "{escape_typst_string(rf["resolution_reason"])}"),')
+        lines.append(")")
+    else:
+        lines.append("#let resolved-findings = ()")
+    lines.append("")
+
     # 3d: Page Inclusion Flags
     art = data["artifacts"]
     lines.append("// --- Page Inclusion Flags ----------------------------------------------------")
@@ -761,7 +791,7 @@ def _format_finding(f: dict, tier: int) -> str:
         )
     else:  # tier == 3
         em_dash = "\u2014"
-        return (
+        base = (
             'id: "' + _v("id") + '", '
             'component: "' + _v("component") + '", '
             'threat: "' + _v("threat") + '", '
@@ -770,6 +800,11 @@ def _format_finding(f: dict, tier: int) -> str:
             'risk_level: "' + _v("risk_level") + '", '
             'mitigation: "' + _v("mitigation") + '"'
         )
+        # Include delta_status when present (backward compatible)
+        ds = f.get("delta_status", "")
+        if ds:
+            base += ', delta_status: "' + esc(ds) + '"'
+        return base
 
 
 def _append_scope_array(lines: list, var_name: str, items: list, keys: list):
@@ -844,6 +879,13 @@ def main():
 
     # Parse project name
     project_name = parse_project_name(threats_content, args.title)
+
+    # Parse baseline metadata for delta-aware output
+    baseline = parse_baseline_frontmatter(threats_content)
+    has_baseline = baseline["source"] is not None
+
+    # Parse resolved findings from Section 4b (empty when no baseline)
+    resolved_findings = parse_resolved_findings(threats_content)
 
     # Schema version check
     if frontmatter["schema_version"] == "1.0":
@@ -930,6 +972,29 @@ def main():
     data["maestro_layer_distribution"] = maestro["maestro_layer_distribution"]
     data["most_exposed_layer"] = maestro["most_exposed_layer"]
     data["maestro_findings_by_layer"] = maestro["maestro_findings_by_layer"]
+
+    # Delta / baseline data
+    data["has_baseline"] = has_baseline
+    data["baseline_source"] = baseline["source"] or ""
+    data["baseline_date"] = baseline["date"] or ""
+    data["baseline_finding_count"] = baseline["finding_count"] or "0"
+    data["baseline_run_id"] = baseline["run_id"] or ""
+    data["resolved_findings"] = resolved_findings
+
+    # Delta counts (computed from active findings + resolved)
+    if has_baseline:
+        delta_counts = {"new": 0, "unchanged": 0, "updated": 0, "resolved": len(resolved_findings)}
+        for f in data["findings"]:
+            ds = f.get("delta_status", "").upper()
+            if ds == "NEW":
+                delta_counts["new"] += 1
+            elif ds == "UNCHANGED":
+                delta_counts["unchanged"] += 1
+            elif ds == "UPDATED":
+                delta_counts["updated"] += 1
+        data["delta_counts"] = delta_counts
+    else:
+        data["delta_counts"] = {"new": 0, "unchanged": 0, "updated": 0, "resolved": 0}
 
     # Brand assets
     brand = detect_brand_assets(template_dir)

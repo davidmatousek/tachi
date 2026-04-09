@@ -110,6 +110,7 @@ Single-command entry point for tachi security assessment PDF generation — the 
      brand/final/*.png .............. {FOUND (N files) | not found}
 
    Data source tier: {Tier 1 — residual risk | Tier 2 — quantitative | Tier 3 — qualitative}
+   {if threats.md has baseline.source != null: "Baseline: {source} ({date}) — delta counts will appear in report"}
 
    Pages to generate:
      1. Cover ..................... portrait (US Letter)
@@ -148,9 +149,16 @@ Invoke the report-assembler agent to parse artifacts, generate Typst data, and c
 
    Execute Steps 1-4 of the agent instructions:
    1. Verify artifacts and confirm tier selection
-   2. Extract structured data from all detected markdown artifacts
+   2. Extract structured data from all detected markdown artifacts (the extraction script
+      now detects baseline data from threats.md frontmatter and includes delta variables:
+      has-baseline, delta counts, and resolved-findings in report-data.typ)
    3. Generate report-data.typ with all Typst variable bindings
    4. Compile main.typ to security-report.pdf using typst compile
+
+   Note: When baseline data is present in threats.md, the extraction script automatically
+   includes delta-aware variables (has-baseline, baseline-source, delta-*-count,
+   resolved-findings). Typst templates that support delta will render resolved findings
+   in a separate section and annotate NEW findings.
 
    Return: PDF path, page count, tier used, and any warnings.
    ```
