@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.4.0](https://github.com/davidmatousek/tachi/compare/v4.3.4...v4.4.0) (2026-04-09)
+
+
+### Features
+
+* **104:** add downstream baseline propagation for threat model output ([#107](https://github.com/davidmatousek/tachi/issues/107)) ([4589231](https://github.com/davidmatousek/tachi/commit/4589231e9fd7fdcd38a5e5abf848e1c3e80abacf))
+
+
+### Documentation
+
+* close Feature 104 - update all documentation ([f108036](https://github.com/davidmatousek/tachi/commit/f1080367d4aedf9e9b89c9a3d27cd6cdd8335b3b))
+
+
+### Miscellaneous
+
+* **104:** simplify code per /simplify review ([#109](https://github.com/davidmatousek/tachi/issues/109)) ([eaae097](https://github.com/davidmatousek/tachi/commit/eaae097df25a50a5927c56b903e59d6ade79796e))
+
 ## [4.3.4](https://github.com/davidmatousek/tachi/compare/v4.3.3...v4.3.4) (2026-04-08)
 
 
