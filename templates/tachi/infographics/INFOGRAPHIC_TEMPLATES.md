@@ -33,40 +33,40 @@ By default, the three core templates (`baseball-card`, `system-architecture`, `r
 
 ## Using Templates
 
-### Via `/infographic` command (standalone)
+### Via `/tachi.infographic` command (standalone)
 
 ```bash
 # Default — generates all 3 core templates
-/infographic
+/tachi.infographic
 
 # Single template
-/infographic --template baseball-card
-/infographic --template system-architecture
-/infographic --template risk-funnel
+/tachi.infographic --template baseball-card
+/tachi.infographic --template system-architecture
+/tachi.infographic --template risk-funnel
 
 # MAESTRO templates (require MAESTRO layer data from Feature 084)
-/infographic --template maestro-stack
-/infographic --template maestro-heatmap
-/infographic --template maestro          # shorthand: generates both MAESTRO templates
+/tachi.infographic --template maestro-stack
+/tachi.infographic --template maestro-heatmap
+/tachi.infographic --template maestro          # shorthand: generates both MAESTRO templates
 
 # Custom output directory
-/infographic --output-dir reports/infographics/
+/tachi.infographic --output-dir reports/infographics/
 ```
 
-### Via `/threat-model` command
+### Via `/tachi.threat-model` command
 
 ```bash
 # Default — generates all 3 core templates
-/threat-model docs/security/architecture.md
+/tachi.threat-model docs/security/architecture.md
 
 # Only Baseball Card
-/threat-model docs/security/architecture.md --infographic-template baseball-card
+/tachi.threat-model docs/security/architecture.md --infographic-template baseball-card
 
 # Only System Architecture
-/threat-model docs/security/architecture.md --infographic-template system-architecture
+/tachi.threat-model docs/security/architecture.md --infographic-template system-architecture
 
 # Explicit all (same as default)
-/threat-model docs/security/architecture.md --infographic-template all
+/tachi.threat-model docs/security/architecture.md --infographic-template all
 ```
 
 ### Via natural language

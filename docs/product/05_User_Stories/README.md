@@ -258,16 +258,16 @@ Each PRD should include relevant user stories:
 - **US-036-4** (P0): Residual Risk Calculation - As a security manager, residual risk calculated for each threat accounting for existing controls, with total inherent vs. total residual risk summary
 - **US-036-5** (P0): Control Effectiveness Assessment - As an architect, control effectiveness assessed beyond mere existence — evaluating whether controls are adequate or need hardening
 
-### Feature 039: Standalone /infographic Command
+### Feature 039: Standalone /tachi.infographic Command
 
 **PRD**: [039-standalone-infographic-command](../02_PRD/039-standalone-infographic-command-2026-03-28.md)
 **Delivered**: 2026-03-28 | **PR**: #42 | **Tasks**: 30/30 complete | **Stories**: 5/5 passing
 
-- **US-039-1** (P0): Auto-Select Richest Data Source - Run `/infographic` and have it automatically choose the best available data source (`risk-scores.md` preferred over `threats.md`) for the most accurate visual risk picture without remembering which file to pass
-- **US-039-2** (P0): Explicit Data Source Override - Pass an explicit file path to `/infographic` to control exactly which data is visualized, regardless of what files exist in the directory
+- **US-039-1** (P0): Auto-Select Richest Data Source - Run `/tachi.infographic` and have it automatically choose the best available data source (`risk-scores.md` preferred over `threats.md`) for the most accurate visual risk picture without remembering which file to pass
+- **US-039-2** (P0): Explicit Data Source Override - Pass an explicit file path to `/tachi.infographic` to control exactly which data is visualized, regardless of what files exist in the directory
 - **US-039-3** (P0): Template Selection - Select which template(s) to generate (`--template baseball-card|system-architecture|all`) to produce exactly the output needed
-- **US-039-4** (P1): Regenerate After Enrichment - Regenerate infographics after running `/compensating-controls` or `/risk-score` to reflect quantitative composite scores and residual risk rather than inherent risk
-- **US-039-5** (P0): Pipeline Cleanup - `/threat-model` pipeline produces phases 1-5 only (Phase 6 removed), with all platform adapter documentation updated to reflect the 5-phase pipeline
+- **US-039-4** (P1): Regenerate After Enrichment - Regenerate infographics after running `/tachi.compensating-controls` or `/tachi.risk-score` to reflect quantitative composite scores and residual risk rather than inherent risk
+- **US-039-5** (P0): Pipeline Cleanup - `/tachi.threat-model` pipeline produces phases 1-5 only (Phase 6 removed), with all platform adapter documentation updated to reflect the 5-phase pipeline
 
 ### Feature 048: Infographic Tiered Pipeline Auto-Detection & Residual Risk
 
@@ -283,7 +283,7 @@ Each PRD should include relevant user stories:
 **PRD**: [045-instruction-manual](../02_PRD/045-instruction-manual-2026-03-28.md)
 **Delivered**: 2026-03-28 | **PR**: #47 | **Tasks**: 31/31 complete | **Stories**: 3/3 passing
 
-- **US-045-1** (P0): Complete Workflow Guide - Step-by-step instruction manual walking users through the complete 4-command workflow (`/threat-model` -> `/risk-score` -> `/compensating-controls` -> `/infographic`) from architecture description to visual infographics, producing all 12+ output artifacts
+- **US-045-1** (P0): Complete Workflow Guide - Step-by-step instruction manual walking users through the complete 4-command workflow (`/tachi.threat-model` -> `/tachi.risk-score` -> `/tachi.compensating-controls` -> `/tachi.infographic`) from architecture description to visual infographics, producing all 12+ output artifacts
 - **US-045-2** (P0): Output Interpretation - Each command's output explained with annotated examples covering all 7 threats.md sections plus Section 4a, 4 risk scoring dimensions, residual risk calculation, and missing control recommendations
 - **US-045-3** (P0): Quick Start - Quick Start section at the top of the guide gets a new user from zero to first threat model in 5 steps under 5 minutes, with copy-pasteable commands and clear pointers to comprehensive guide sections
 
@@ -292,9 +292,9 @@ Each PRD should include relevant user stories:
 **PRD**: [053-risk-reduction-funnel](../02_PRD/053-risk-reduction-funnel-2026-03-28.md)
 **Delivered**: 2026-03-28 | **PR**: #56 | **Tasks**: 24/24 complete | **Stories**: 4/4 passing
 
-- **US-053-1** (P0): Full Pipeline Funnel (4 Tiers) - Run `/infographic --template risk-funnel` with `compensating-controls.md` as data source to render a 4-tier funnel showing threats identified, inherent risk scored, controls applied, and residual risk with progressively narrowing widths
-- **US-053-2** (P0): Partial Pipeline Funnel (3 Tiers) - Run `/infographic --template risk-funnel` with `risk-scores.md` to render 3 solid tiers plus a ghost tier with CTA to run `/compensating-controls` for the full funnel
-- **US-053-3** (P0): Minimal Pipeline Funnel (1 Tier) - Run `/infographic --template risk-funnel` with only `threats.md` to render a single wide tier with 3 grayed-out ghost tiers showing pipeline commands needed to unlock them
+- **US-053-1** (P0): Full Pipeline Funnel (4 Tiers) - Run `/tachi.infographic --template risk-funnel` with `compensating-controls.md` as data source to render a 4-tier funnel showing threats identified, inherent risk scored, controls applied, and residual risk with progressively narrowing widths
+- **US-053-2** (P0): Partial Pipeline Funnel (3 Tiers) - Run `/tachi.infographic --template risk-funnel` with `risk-scores.md` to render 3 solid tiers plus a ghost tier with CTA to run `/tachi.compensating-controls` for the full funnel
+- **US-053-3** (P0): Minimal Pipeline Funnel (1 Tier) - Run `/tachi.infographic --template risk-funnel` with only `threats.md` to render a single wide tier with 3 grayed-out ghost tiers showing pipeline commands needed to unlock them
 - **US-053-4** (P1): Funnel Metrics Sidebar - Key metrics (total threats, risk reduction %, control coverage %) displayed alongside the funnel, adapting to the available tier mode
 
 ### Feature 054: Security Assessment PDF Booklet
@@ -324,7 +324,7 @@ Each PRD should include relevant user stories:
 **PRD**: [067-deterministic-report-data-extraction](../02_PRD/067-deterministic-report-data-extraction-2026-03-30.md)
 **Delivered**: 2026-03-30 | **PR**: #68 | **Tasks**: 32/32 complete | **Stories**: 6/6 passing
 
-- **US-067-1** (P0): Reproducible Report Generation - Running `/security-report` on identical input artifacts produces byte-identical `report-data.typ` and PDF output every time, enabling compliance and executive communication use cases
+- **US-067-1** (P0): Reproducible Report Generation - Running `/tachi.security-report` on identical input artifacts produces byte-identical `report-data.typ` and PDF output every time, enabling compliance and executive communication use cases
 - **US-067-2** (P0): Validated Severity Counts - Parsing script validates internal consistency (critical + high + medium + low == total) across all three severity source tiers (compensating-controls.md, risk-scores.md, threats.md)
 - **US-067-3** (P0): Deterministic Scope Data Extraction - Script extracts exact component and data flow counts from threats.md Section 1, matching source file counts every time
 - **US-067-4** (P0): Agent Prompt Update - Report-assembler agent updated to invoke deterministic Python script instead of LLM-based inline parsing for Steps 2-3
@@ -336,9 +336,9 @@ Each PRD should include relevant user stories:
 **PRD**: [071-deterministic-infographic-extraction](../02_PRD/071-deterministic-infographic-extraction-2026-03-30.md)
 **Delivered**: 2026-03-30 | **PR**: #72 | **Tasks**: 46/46 complete | **Stories**: 4/4 passing
 
-- **US-071-1** (P0): Deterministic Baseball Card Specification - Running `/infographic --template baseball-card` on identical input produces byte-identical spec files with consistent severity counts, heat map values, and top findings
-- **US-071-2** (P0): Deterministic System Architecture Specification - Running `/infographic --template system-architecture` on identical input produces byte-identical spec files with consistent component annotations, data flow severity coloring, and finding overlays
-- **US-071-3** (P0): Deterministic Risk Funnel Specification - Running `/infographic --template risk-funnel` on identical input produces byte-identical spec files with consistent tier counts and reduction percentages
+- **US-071-1** (P0): Deterministic Baseball Card Specification - Running `/tachi.infographic --template baseball-card` on identical input produces byte-identical spec files with consistent severity counts, heat map values, and top findings
+- **US-071-2** (P0): Deterministic System Architecture Specification - Running `/tachi.infographic --template system-architecture` on identical input produces byte-identical spec files with consistent component annotations, data flow severity coloring, and finding overlays
+- **US-071-3** (P0): Deterministic Risk Funnel Specification - Running `/tachi.infographic --template risk-funnel` on identical input produces byte-identical spec files with consistent tier counts and reduction percentages
 - **US-071-4** (P0): Cross-Output Consistency - Security report and infographic severity counts match exactly when generated from the same threat model artifacts, enabling side-by-side use in briefings
 
 ### Feature 075: Tachi Agent Best Practices

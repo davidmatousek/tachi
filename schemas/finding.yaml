@@ -192,7 +192,7 @@ finding:
 
 # Scored Finding Extension (Optional)
 #
-# When quantitative risk scoring is applied via /risk-score,
+# When quantitative risk scoring is applied via /tachi.risk-score,
 # findings are extended with additional scoring and governance
 # fields defined in schemas/risk-scoring.yaml.
 #

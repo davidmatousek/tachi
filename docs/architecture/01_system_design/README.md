@@ -706,7 +706,7 @@ flowchart TD
 
 ### Component 1: Infographic Agent Prompt (`agents/threat-infographic.md`)
 
-**Purpose**: Markdown prompt file that defines the infographic agent's data extraction methodology, specification format, Gemini API prompt construction, and graceful fallback behavior. Invoked via the standalone `/infographic` command (Feature 039); no longer dispatched by the orchestrator pipeline. Supports three data source extraction paths (Feature 048): `compensating-controls.md` (residual risk from Coverage Matrix sub-tables + co-located `threats.md`), `risk-scores.md` (inherent risk composite scores + co-located `threats.md`), or `threats.md` standalone (qualitative severity counts). Risk labels adapt to source type: "Residual Risk", "Inherent Risk", or "Severity".
+**Purpose**: Markdown prompt file that defines the infographic agent's data extraction methodology, specification format, Gemini API prompt construction, and graceful fallback behavior. Invoked via the standalone `/tachi.infographic` command (Feature 039); no longer dispatched by the orchestrator pipeline. Supports three data source extraction paths (Feature 048): `compensating-controls.md` (residual risk from Coverage Matrix sub-tables + co-located `threats.md`), `risk-scores.md` (inherent risk composite scores + co-located `threats.md`), or `threats.md` standalone (qualitative severity counts). Risk labels adapt to source type: "Residual Risk", "Inherent Risk", or "Severity".
 
 **Follows Existing Pattern**: 8-section YAML+Markdown structure matching `agents/threat-report.md` (F-015).
 
@@ -714,9 +714,9 @@ flowchart TD
 
 **Purpose**: Defines the structural validation contract for `threat-infographic-spec.md`, enabling automated completeness checks. Covers 6 required sections: Metadata, Risk Distribution, Coverage Heat Map, Top Critical Findings, Architecture Threat Overlay, and Visual Design Directives.
 
-### Component 3: Standalone `/infographic` Command (Feature 039)
+### Component 3: Standalone `/tachi.infographic` Command (Feature 039)
 
-**Purpose**: Infographic generation extracted from the orchestrator pipeline into a standalone `/infographic` command (Feature 039). The command auto-detects the richest available data source using a three-tier hierarchy: `compensating-controls.md` > `risk-scores.md` > `threats.md` (Feature 048). Supports explicit file override with content-based type detection and template selection. Enhancement tips guide users toward richer pipeline tiers. The orchestrator pipeline now runs 5 phases only (Phases 1-5). See Feature 039 section below for the standalone command architecture.
+**Purpose**: Infographic generation extracted from the orchestrator pipeline into a standalone `/tachi.infographic` command (Feature 039). The command auto-detects the richest available data source using a three-tier hierarchy: `compensating-controls.md` > `risk-scores.md` > `threats.md` (Feature 048). Supports explicit file override with content-based type detection and template selection. Enhancement tips guide users toward richer pipeline tiers. The orchestrator pipeline now runs 5 phases only (Phases 1-5). See Feature 039 section below for the standalone command architecture.
 
 ## Data Flow
 
@@ -856,9 +856,9 @@ graph LR
 
 ### Component 1: Risk Score Command
 
-**File**: `.claude/commands/risk-score.md`
+**File**: `.claude/commands/tachi.risk-score.md`
 **Type**: New file
-**Purpose**: `/risk-score` command definition — flag parsing, input validation, agent invocation, output summary. Follows the `/threat-model` command pattern.
+**Purpose**: `/tachi.risk-score` command definition — flag parsing, input validation, agent invocation, output summary. Follows the `/tachi.threat-model` command pattern.
 
 ### Component 2: Risk Scorer Agent
 
@@ -880,7 +880,7 @@ graph LR
 
 ### Component 5: Adapter Distribution
 
-**Files**: `adapters/claude-code/commands/risk-score.md`, `adapters/claude-code/agents/risk-scorer.md`
+**Files**: `adapters/claude-code/commands/tachi.risk-score.md`, `adapters/claude-code/agents/risk-scorer.md`
 **Type**: New files
 **Purpose**: Adapter copies for Claude Code distribution, following existing adapter pattern.
 
@@ -888,7 +888,7 @@ graph LR
 
 ```mermaid
 graph LR
-    A["/threat-model output<br>threats.md + threats.sarif"] --> B["/risk-score command"]
+    A["/tachi.threat-model output<br>threats.md + threats.sarif"] --> B["/tachi.risk-score command"]
     C["architecture.md<br>(optional)"] --> B
     B --> D["risk-scorer agent"]
     D --> E["risk-scores.md"]
@@ -916,7 +916,7 @@ Pipeline: Parse threats → Extract trust zones → Score 4 dimensions per findi
 
 | Artifact | Path | Purpose |
 |----------|------|---------|
-| Command | `.claude/commands/compensating-controls.md` | User-facing command orchestrator |
+| Command | `.claude/commands/tachi.compensating-controls.md` | User-facing command orchestrator |
 | Agent | `.claude/agents/tachi/control-analyzer.md` | 6-phase analysis agent |
 | Schema | `schemas/compensating-controls.yaml` | Control finding IR extension |
 | MD Template | `templates/tachi/output-schemas/compensating-controls.md` | Markdown output structure |
@@ -933,7 +933,7 @@ risk-scores.md/sarif → Parse → Group by Component → Detect Controls (per-c
 
 | Technology | Purpose | Justification |
 |------------|---------|---------------|
-| Markdown | Command and agent prompt files | Follows `/risk-score` pattern |
+| Markdown | Command and agent prompt files | Follows `/tachi.risk-score` pattern |
 | YAML | Control finding schema | Extends `risk-scoring.yaml` |
 | SARIF 2.1.0 JSON | Machine-readable control analysis | Supersedes `risk-scores.sarif` in alert chain |
 
@@ -943,10 +943,10 @@ risk-scores.md/sarif → Parse → Group by Component → Detect Controls (per-c
 
 ## Components
 
-### Component 1: `/infographic` Command (NEW)
+### Component 1: `/tachi.infographic` Command (NEW)
 
-**File**: `.claude/commands/infographic.md`
-**Pattern**: Follows `/risk-score` command structure (Step 0 → Step 1 → Step 2 → Step 3)
+**File**: `.claude/commands/tachi.infographic.md`
+**Pattern**: Follows `/tachi.risk-score` command structure (Step 0 → Step 1 → Step 2 → Step 3)
 
 Steps: Parse flags (`--template`, `--output-dir`) → Detect richest data source via three-tier hierarchy (`compensating-controls.md` > `risk-scores.md` > `threats.md`) → Display enhancement tip for next tier → Invoke infographic agent in fresh context → Report results.
 
@@ -955,10 +955,10 @@ Steps: Parse flags (`--template`, `--output-dir`) → Detect richest data source
 **File**: `.claude/agents/tachi/threat-infographic.md`
 **Change**: Three-path data extraction (Feature 048) — supports `compensating-controls.md` (residual risk from Coverage Matrix sub-tables), `risk-scores.md` (inherent risk composite scores), or `threats.md` (qualitative severity). When `compensating-controls.md` or `risk-scores.md` is primary, reads co-located `threats.md` for structural/spatial data. Risk labels adapt to source type ("Residual Risk" / "Inherent Risk" / "Severity").
 
-### Component 3: /threat-model Pipeline Cleanup (MODIFY)
+### Component 3: /tachi.threat-model Pipeline Cleanup (MODIFY)
 
-**File**: `.claude/commands/threat-model.md`
-**Change**: Remove Phase 6 (infographic generation), associated flags (`--infographic-template`, `--skip-infographic`), and `TACHI_SKIP_INFOGRAPHIC` env var. Add post-pipeline hint directing users to `/infographic`.
+**File**: `.claude/commands/tachi.threat-model.md`
+**Change**: Remove Phase 6 (infographic generation), associated flags (`--infographic-template`, `--skip-infographic`), and `TACHI_SKIP_INFOGRAPHIC` env var. Add post-pipeline hint directing users to `/tachi.infographic`.
 
 ### Component 4: Orchestrator Phase 6 Removal (MODIFY)
 
@@ -972,7 +972,7 @@ Update all adapter variants (Claude Code, Copilot, Cursor, Generic) for orchestr
 ## Data Flow
 
 ```
-User → /infographic → Parse flags → Three-Tier Auto-Detection
+User → /tachi.infographic → Parse flags → Three-Tier Auto-Detection
          │
     ┌────┼────────────┐
     ▼    ▼            ▼
@@ -996,7 +996,7 @@ User → /infographic → Parse flags → Three-Tier Auto-Detection
 
 | Technology | Purpose | Justification |
 |------------|---------|---------------|
-| Markdown | Command and agent prompt files | Follows `/risk-score` command pattern |
+| Markdown | Command and agent prompt files | Follows `/tachi.risk-score` command pattern |
 | YAML | Infographic schema | Existing `schemas/infographic.yaml` unchanged |
 | Gemini API | Optional image generation | Existing integration preserved (ADR-014) |
 
@@ -1008,9 +1008,9 @@ User → /infographic → Parse flags → Three-Tier Auto-Detection
 
 ## Components
 
-### Component 1: `/infographic` Command — Three-Tier Detection (MODIFY)
+### Component 1: `/tachi.infographic` Command — Three-Tier Detection (MODIFY)
 
-**File**: `.claude/commands/infographic.md`
+**File**: `.claude/commands/tachi.infographic.md`
 **Change**: Extended two-tier auto-detection to three-tier hierarchy (`compensating-controls.md` > `risk-scores.md` > `threats.md`). Added content-based type detection for explicit paths (Coverage Matrix header + Residual Score column). Added tiered enhancement tips guiding users toward richer pipeline tiers. Updated error messages to list all three expected file formats. Extended co-location check to trigger for `compensating-controls.md` (same pattern as `risk-scores.md`). Detection-level failures fall through gracefully; extraction-level failures halt with warning.
 
 ### Component 2: Infographic Agent — Compensating Controls Extraction Path (MODIFY)
@@ -1021,7 +1021,7 @@ User → /infographic → Parse flags → Three-Tier Auto-Detection
 ## Data Flow
 
 ```
-User → /infographic [--template] [--output-dir] [explicit-path]
+User → /tachi.infographic [--template] [--output-dir] [explicit-path]
          │
          ▼
   Three-Tier Auto-Detection (or content-based detection for explicit paths)
@@ -1033,8 +1033,8 @@ User → /infographic [--template] [--output-dir] [explicit-path]
          │
          ▼
   Enhancement Tip (auto-detect only, suppressed for explicit paths)
-  - Tier 3 → "Run /risk-score for quantitative scores"
-  - Tier 2 → "Run /compensating-controls for residual risk"
+  - Tier 3 → "Run /tachi.risk-score for quantitative scores"
+  - Tier 2 → "Run /tachi.compensating-controls for residual risk"
   - Tier 1 → "Full pipeline detected — visualizing residual risk"
          │
          ▼
@@ -1089,7 +1089,7 @@ Changes: template registry entry, description update, Available Templates table 
 
 ### Component 3: Command Registry Update
 
-**File**: `.claude/commands/infographic.md`
+**File**: `.claude/commands/tachi.infographic.md`
 **Type**: Update
 **Purpose**: Add `risk-funnel` as valid `--template` value.
 
@@ -1099,7 +1099,7 @@ Changes: valid template list, invalid template error message, `all` description.
 
 ```mermaid
 graph TD
-    A["/infographic --template risk-funnel"] --> B[Command: Parse Args]
+    A["/tachi.infographic --template risk-funnel"] --> B[Command: Parse Args]
     B --> C[Auto-detect Data Source]
     C --> D{Data Source Type?}
     D -->|compensating-controls.md| E[4-tier mode]
@@ -1163,7 +1163,7 @@ graph LR
     end
 
     subgraph Command
-        CMD[/security-report]
+        CMD[/tachi.security-report]
     end
 
     subgraph Agent
@@ -1868,14 +1868,14 @@ Delta-aware narrative rules:
 
 ### Component 5: Command Updates
 
-**Files modified**: `.claude/commands/infographic.md`, `.claude/commands/security-report.md`
+**Files modified**: `.claude/commands/tachi.infographic.md`, `.claude/commands/tachi.security-report.md`
 **Type**: Extended existing commands with baseline data display
 **Purpose**: Surface baseline comparison data in infographic specifications and PDF security reports.
 
 | Command | Changes |
 |---------|---------|
-| `/infographic` | Baseline metadata passed to infographic templates for delta annotation display |
-| `/security-report` | Baseline data variables available for conditional page inclusion in Typst report |
+| `/tachi.infographic` | Baseline metadata passed to infographic templates for delta annotation display |
+| `/tachi.security-report` | Baseline data variables available for conditional page inclusion in Typst report |
 
 ### Component 6: Report Assembler Agent Enhancement
 
@@ -1911,7 +1911,7 @@ threats.md (with baseline data from Feature 074)
   (Typst variables)                 (JSON fields)
        │                                    │
        ▼                                    ▼
-  /security-report                  /infographic
+  /tachi.security-report                  /tachi.infographic
   (PDF with baseline data)          (spec with delta annotations)
        │
        ▼
@@ -1993,7 +1993,7 @@ Conditional inclusion:
 
 ### Component 5: Command and Agent Updates
 
-**Files modified**: `.claude/commands/security-report.md`, `.claude/agents/tachi/report-assembler.md`
+**Files modified**: `.claude/commands/tachi.security-report.md`, `.claude/agents/tachi/report-assembler.md`
 **Type**: Extended existing files
 **Purpose**: Add `attack-trees/` directory to artifact detection tables and attack path pages to page listing display.
 
@@ -2027,3 +2027,68 @@ threat-report.md ───┘                                                   
 | `mmdc` (Mermaid CLI, optional) | Mermaid-to-PNG rendering for diagram embedding | Standard tool for Mermaid rendering; graceful fallback to raw text when unavailable |
 | Typst | Attack path page template | Extends existing PDF report template system via hub-first architecture |
 | PNG @ 2x scale | Rendered diagram images | Consistent with existing infographic image handling in Typst report |
+
+---
+
+### Feature 121: Rename Tachi Commands to tachi.* Namespace
+
+## Components
+
+### Component 1: Command File Renames
+
+**Purpose**: Rename the 5 primary command files and create 1 new command
+**Files**: `.claude/commands/`
+
+| Current File | New File | Action |
+|-------------|----------|--------|
+| `threat-model.md` | `tachi.threat-model.md` | Rename (git mv) |
+| `risk-score.md` | `tachi.risk-score.md` | Rename (git mv) |
+| `compensating-controls.md` | `tachi.compensating-controls.md` | Rename (git mv) |
+| `infographic.md` | `tachi.infographic.md` | Rename (git mv) |
+| `security-report.md` | `tachi.security-report.md` | Rename (git mv) |
+| *(new)* | `tachi.architecture.md` | Create (Issue #120) |
+
+### Component 2: Adapter Renames
+
+| Directory | Current File | New File |
+|-----------|-------------|----------|
+| `adapters/claude-code/commands/` | `threat-model.md` | `tachi.threat-model.md` |
+| `adapters/claude-code/commands/` | `infographic.md` | `tachi.infographic.md` |
+| `adapters/claude-code/commands/` | `risk-score.md` | `tachi.risk-score.md` |
+| `adapters/github-actions/` | `tachi-threat-model.yml` | `tachi.threat-model.yml` |
+
+### Component 3: Cross-Reference Updates
+
+~344 files, ~2,207 references. Three-tier pattern strategy: Tier 1 (slash invocations), Tier 2 (path-qualified file refs), Tier 3 (manual review for bare filenames).
+
+### Component 4: Install Script Cleanup
+
+Deprecated-file removal in `scripts/install.sh` before manifest copy loop. Removes 5 old unprefixed command files from consumer projects on upgrade.
+
+### Component 5: Manifest Update
+
+`INSTALL_MANIFEST.md` updated with 6 `tachi.*` command filenames in both human-readable and machine-parseable sections.
+
+## Data Flow
+
+```
+User invokes /tachi.threat-model → threats.md
+User invokes /tachi.risk-score → risk-scores.md
+User invokes /tachi.compensating-controls → compensating-controls.md
+User invokes /tachi.infographic → infographic images
+User invokes /tachi.security-report → PDF security report
+User invokes /tachi.architecture → architecture.md (pipeline input)
+```
+
+Data flow unchanged — only command invocation names change from unprefixed to `tachi.*` prefixed.
+
+## Tech Stack
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| Command definitions | Markdown (`.md`) | Slash command behavior |
+| Agent definitions | Markdown (`.md`) | AI agent instructions |
+| Schemas | YAML (`.yaml`) | Input/output contracts |
+| Templates | Typst (`.typ`) + Markdown | PDF report + output format |
+| Install script | Bash | File distribution to consumer projects |
+| Manifest | Markdown with HTML comments | Machine-parseable file list |

@@ -89,7 +89,7 @@ When the input `threats.md` includes baseline frontmatter (`baseline.source` is 
 
 ### Processing Capacity
 
-The scoring pipeline processes findings sequentially in a single pass. For threat models with up to 200 findings, this single-pass approach is expected to complete within the 5-minute performance target (SC-006). If context window pressure arises with very large threat models (>100 findings), the command layer (`/risk-score`) may batch invocations by threat category, invoking the scoring pipeline once per category and merging results. Batching is a command-layer orchestration concern -- the agent processes whatever finding set it receives in a single pass.
+The scoring pipeline processes findings sequentially in a single pass. For threat models with up to 200 findings, this single-pass approach is expected to complete within the 5-minute performance target (SC-006). If context window pressure arises with very large threat models (>100 findings), the command layer (`/tachi.risk-score`) may batch invocations by threat category, invoking the scoring pipeline once per category and merging results. Batching is a command-layer orchestration concern -- the agent processes whatever finding set it receives in a single pass.
 
 ### MAESTRO Layer Propagation
 

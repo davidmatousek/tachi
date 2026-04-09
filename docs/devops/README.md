@@ -44,7 +44,7 @@ CI/CD setup instructions for common platforms
 
 ## Platform Adapters (Feature 021)
 
-Feature 021 introduced platform adapters that package tachi's 14 threat agents for use across AI coding platforms and CI pipelines. These live in the `adapters/` directory at the repository root. Features 035, 036, and 039 extended the Claude Code adapter with command files for tachi's four product commands: `/threat-model`, `/risk-score`, `/compensating-controls`, and `/infographic`. Feature 054 added the `/security-report` command for local PDF generation (see [Security Report PDF Generation](#security-report-pdf-generation-feature-054) below).
+Feature 021 introduced platform adapters that package tachi's 14 threat agents for use across AI coding platforms and CI pipelines. These live in the `adapters/` directory at the repository root. Features 035, 036, and 039 extended the Claude Code adapter with command files for tachi's four product commands: `/tachi.threat-model`, `/tachi.risk-score`, `/tachi.compensating-controls`, and `/tachi.infographic`. Feature 054 added the `/tachi.security-report` command for local PDF generation (see [Security Report PDF Generation](#security-report-pdf-generation-feature-054) below).
 
 ### Adapter Directory Structure
 
@@ -52,7 +52,7 @@ Feature 021 introduced platform adapters that package tachi's 14 threat agents f
 adapters/
   claude-code/     # .md agents with name/description frontmatter
     agents/        #   14 threat agents + risk-scorer
-    commands/      #   /threat-model, /risk-score, /infographic
+    commands/      #   /tachi.threat-model, /tachi.risk-score, /tachi.infographic
   copilot/         # .agent.md + .instructions.md files
   cursor/          # .mdc rule files
   generic/         # Numbered .md prompt files (any LLM)
@@ -94,11 +94,11 @@ VERSION files should be regenerated after any change to source agents in `agents
 
 ## Security Report PDF Generation (Feature 054)
 
-Feature 054 introduced the `/security-report` command, which assembles tachi pipeline artifacts into a professional multi-page PDF booklet using Typst. This is a local-only capability with no infrastructure, deployment, or CI/CD impact.
+Feature 054 introduced the `/tachi.security-report` command, which assembles tachi pipeline artifacts into a professional multi-page PDF booklet using Typst. This is a local-only capability with no infrastructure, deployment, or CI/CD impact.
 
 ### External Dependency
 
-The `/security-report` command requires the **Typst CLI** to be installed on the user's machine. Typst is not bundled with tachi -- users install it via their platform's package manager:
+The `/tachi.security-report` command requires the **Typst CLI** to be installed on the user's machine. Typst is not bundled with tachi -- users install it via their platform's package manager:
 
 - **macOS**: `brew install typst`
 - **Linux**: `cargo install typst-cli`
@@ -131,7 +131,7 @@ Both scripts use Python 3.9+ stdlib only -- zero external dependencies.
 
 ### Infrastructure Impact
 
-No new environment variables, Docker services, CI/CD pipeline changes, staging configuration, or production deployment changes. The scripts run locally as part of the `/infographic` command workflow, invoked by the threat-infographic agent.
+No new environment variables, Docker services, CI/CD pipeline changes, staging configuration, or production deployment changes. The scripts run locally as part of the `/tachi.infographic` command workflow, invoked by the threat-infographic agent.
 
 ### Relationship to Feature 067
 

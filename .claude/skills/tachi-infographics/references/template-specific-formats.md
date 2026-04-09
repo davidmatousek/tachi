@@ -102,19 +102,19 @@ Tiers 1-3 solid, Tier 4 ghost:
 - **Tier 1**: Data from co-located `threats.md` Section 6
 - **Tier 2**: Data from `risk-scores.md` Section 2 (Scored Threat Table): composite score distribution
 - **Tier 3**: Label changes to "Unmitigated Risk" using Tier 2 severity data (no control reduction applied)
-- **Tier 4**: Rendered as ghost with CTA: "Run /compensating-controls to complete the funnel"
-- **Enhancement tip in spec**: "Run `/compensating-controls` to unlock the full 4-tier risk reduction funnel"
-- **Sidebar**: Shows total findings, severity distribution, "Risk Reduction: N/A -- run /compensating-controls"
+- **Tier 4**: Rendered as ghost with CTA: "Run /tachi.compensating-controls to complete the funnel"
+- **Enhancement tip in spec**: "Run `/tachi.compensating-controls` to unlock the full 4-tier risk reduction funnel"
+- **Sidebar**: Shows total findings, severity distribution, "Risk Reduction: N/A -- run /tachi.compensating-controls"
 
 #### 1-Tier Mode (threats)
 
 Tier 1 solid, Tiers 2-4 ghost:
 
 - **Tier 1**: Data from `threats.md` Section 6: total count and severity distribution
-- **Tier 2**: Ghost CTA: "Run /risk-score"
-- **Tier 3**: Ghost CTA: "Run /compensating-controls"
+- **Tier 2**: Ghost CTA: "Run /tachi.risk-score"
+- **Tier 3**: Ghost CTA: "Run /tachi.compensating-controls"
 - **Tier 4**: Ghost CTA: "Complete the pipeline"
-- **Enhancement tip in spec**: "Run `/risk-score` to begin quantifying your risk reduction funnel"
+- **Enhancement tip in spec**: "Run `/tachi.risk-score` to begin quantifying your risk reduction funnel"
 - **Sidebar**: Shows total findings and qualitative severity counts only
 
 ### Risk Funnel Edge Cases

@@ -143,8 +143,8 @@ For each tier:
 - No data content — only the CTA label
 
 Ghost tier CTA labels by mode:
-- **3-tier mode** (risk-scores source): Tier 4 ghost CTA = "Run /compensating-controls to complete the funnel"
-- **1-tier mode** (threats source): Tier 2 ghost CTA = "Run /risk-score", Tier 3 ghost CTA = "Run /compensating-controls", Tier 4 ghost CTA = "Complete the pipeline"
+- **3-tier mode** (risk-scores source): Tier 4 ghost CTA = "Run /tachi.compensating-controls to complete the funnel"
+- **1-tier mode** (threats source): Tier 2 ghost CTA = "Run /tachi.risk-score", Tier 3 ghost CTA = "Run /tachi.compensating-controls", Tier 4 ghost CTA = "Complete the pipeline"
 
 ### METRICS SIDEBAR (~20% width, right-aligned)
 
@@ -162,7 +162,7 @@ Content varies by data source mode:
 **3-tier mode** (risk-scores source):
 - Total Findings: "{total_findings}"
 - Severity Distribution: per-severity counts with colored indicators
-- Risk Reduction: "N/A — run /compensating-controls"
+- Risk Reduction: "N/A — run /tachi.compensating-controls"
 
 **1-tier mode** (threats source):
 - Total Findings: "{total_findings}"

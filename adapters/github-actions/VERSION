@@ -4,5 +4,5 @@ adapter: github-actions
 format: ".yml (GitHub Actions workflow)"
 notes: "Workflow invokes source agents at runtime via LLM API; no file transformation"
 file_manifest:
-  - file: tachi-threat-model.yml
+  - file: tachi.threat-model.yml
     sha256: a4e26a39c573b4b6cc0d6aa9f1ad54b96afa74ed5d0108b3481744427d982779

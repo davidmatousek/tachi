@@ -13,12 +13,12 @@
 - **Git**: Version {{VERSION}}+
 
 ### Optional Software
-- **Python**: Version 3.9+ (stdlib only, no external packages). Required by the deterministic data extraction scripts in `scripts/`: `extract-report-data.py` (security report data for `/security-report`), `extract-infographic-data.py` (infographic template data for `/infographic`), and the shared `tachi_parsers.py` module. Most macOS and Linux systems include Python 3.9+ by default; verify with `python3 --version`
+- **Python**: Version 3.9+ (stdlib only, no external packages). Required by the deterministic data extraction scripts in `scripts/`: `extract-report-data.py` (security report data for `/tachi.security-report`), `extract-infographic-data.py` (infographic template data for `/tachi.infographic`), and the shared `tachi_parsers.py` module. Most macOS and Linux systems include Python 3.9+ by default; verify with `python3 --version`
 - **VS Code**: Recommended IDE
 - **Postman/Insomnia**: API testing
 - **jq**: JSON processor, required by `.aod/scripts/bash/run-state.sh` for the Full Lifecycle Orchestrator (`brew install jq` on macOS, `apt-get install jq` on Linux)
 - **GitHub CLI (`gh`)**: Used by `make init` to auto-create a GitHub Projects board for backlog tracking. Requires the `project` OAuth scope (`gh auth refresh -s project`). If not installed or not authenticated, init continues without creating the board. Install via `brew install gh` on macOS or see [cli.github.com](https://cli.github.com)
-- **Typst CLI**: Required by `/security-report` for PDF generation. Install via `brew install typst` on macOS, `cargo install typst-cli` on Linux, or `winget install typst` on Windows. If not installed, the `/security-report` command displays platform-specific install instructions and halts. See `templates/tachi/security-report/` for Typst template sources
+- **Typst CLI**: Required by `/tachi.security-report` for PDF generation. Install via `brew install typst` on macOS, `cargo install typst-cli` on Linux, or `winget install typst` on Windows. If not installed, the `/tachi.security-report` command displays platform-specific install instructions and halts. See `templates/tachi/security-report/` for Typst template sources
 - **Mermaid CLI (`mmdc`)**: Optional. Used by `scripts/extract-report-data.py` to render Mermaid attack tree diagrams to PNG for the Attack Path Pages section of the PDF security report (Feature 112). Requires Node.js. Install via `npm install -g @mermaid-js/mermaid-cli`. If not installed, the extraction script logs a warning and the attack path pages omit rendered diagram images while retaining narrative and remediation content. Only relevant when the scanned project contains an `attack-trees/` directory
 
 ### make init Personalization
@@ -106,7 +106,7 @@ GEMINI_API_KEY=your-gemini-api-key
 
 The `AOD_LOG_FILE` variable controls where the logging utility writes its output. If not specified, it defaults to `.aod/logs/aod.log`. You can override this to write logs to a different location.
 
-The `GEMINI_API_KEY` variable enables AI-generated threat infographic images via the Gemini API (`gemini-3-pro-image-preview` model). This is used by the threat infographic agent when invoked via the standalone `/infographic` command. If not set, the agent produces Mermaid-based visual specifications without rasterized image output. No local infrastructure is required -- the agent calls the external Gemini API directly.
+The `GEMINI_API_KEY` variable enables AI-generated threat infographic images via the Gemini API (`gemini-3-pro-image-preview` model). This is used by the threat infographic agent when invoked via the standalone `/tachi.infographic` command. If not set, the agent produces Mermaid-based visual specifications without rasterized image output. No local infrastructure is required -- the agent calls the external Gemini API directly.
 
 ---
 

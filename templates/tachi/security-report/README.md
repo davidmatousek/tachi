@@ -1,6 +1,6 @@
 # templates/tachi/security-report/
 
-Typst template system for the `/security-report` command. These templates are compiled by the Typst CLI to produce a professional multi-page PDF security assessment booklet with tachi branding.
+Typst template system for the `/tachi.security-report` command. These templates are compiled by the Typst CLI to produce a professional multi-page PDF security assessment booklet with tachi branding.
 
 ## Page Types
 

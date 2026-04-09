@@ -103,7 +103,7 @@ When invoked as a subagent (via Agent tool), return ONLY:
   - New functions in `scripts/extract-report-data.py`: `parse_attack_trees()`, `render_mermaid_to_png()`, narrative/remediation builders
   - Updated `scripts/tachi_parsers.py`: `detect_artifacts()` now detects `attack-trees/` directory
   - Updated `templates/tachi/security-report/main.typ`: import, defaults, conditional page sequencing after Executive Summary
-  - Updated `.claude/commands/security-report.md` and `.claude/agents/tachi/report-assembler.md`: artifact detection tables
+  - Updated `.claude/commands/tachi.security-report.md` and `.claude/agents/tachi/report-assembler.md`: artifact detection tables
   - Conditional inclusion gated by `has-attack-trees` boolean; backward compatible with existing reports
   - All 6 examples validated (2 with attack trees, 4 without)
 - **Feature 104**: Downstream Baseline Propagation
@@ -112,7 +112,7 @@ When invoked as a subagent (via Agent tool), return ONLY:
   - Updated output schemas: `threats.md` (Section 8 Delta Summary, Status column in Section 7), `threat-report.md` (schema_version 1.0 to 1.1, Section 8 Delta Summary, baseline frontmatter fields)
   - Updated agents: `threat-report` (delta-aware narrative), `threat-infographic` (delta-aware extraction), `report-assembler` (baseline data assembly)
   - Updated scripts: `extract-report-data.py`, `extract-infographic-data.py` (baseline field extraction)
-  - Updated commands: `infographic.md`, `security-report.md` (baseline data display)
+  - Updated commands: `tachi.infographic.md`, `tachi.security-report.md` (baseline data display)
   - All 6 example outputs regenerated with baseline columns
 - **Feature 084**: MAESTRO Layer Mapping (CSA seven-layer taxonomy for agentic AI)
   - New `maestro_layer` field in `schemas/finding.yaml` (schema_version 1.1 to 1.2)
@@ -124,7 +124,7 @@ When invoked as a subagent (via Agent tool), return ONLY:
   - Two new MAESTRO-aware infographic templates: `maestro-stack` (layered stack diagram) and `maestro-heatmap` (layer x severity heat map)
   - New Typst page `maestro-findings.typ` for MAESTRO Findings section in PDF security report
   - MAESTRO data extraction in `extract-infographic-data.py` and `extract-report-data.py`
-  - `maestro` shorthand dispatch in `/infographic` command; all gated by `has-maestro-data` for backward compatibility
+  - `maestro` shorthand dispatch in `/tachi.infographic` command; all gated by `has-maestro-data` for backward compatibility
 - **Feature 086**: Automated Release Tagging via GitHub Actions
   - release-please workflow for version tagging and CHANGELOG generation on merge to main
   - New files: `.github/workflows/release-please.yml`, `release-please-config.json`, `.release-please-manifest.json`

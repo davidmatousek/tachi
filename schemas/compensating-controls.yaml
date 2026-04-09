@@ -7,7 +7,7 @@
 # Producers: agents/tachi/control-analyzer.md
 # Consumers: templates/compensating-controls.md,
 #            templates/compensating-controls.sarif,
-#            /compensating-controls command output
+#            /tachi.compensating-controls command output
 #
 # Version: 1.0
 

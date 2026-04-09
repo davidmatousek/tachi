@@ -7,7 +7,7 @@
 # artifacts.
 #
 # Producers: report-assembler agent (agents/tachi/report-assembler.md)
-# Consumers: security-report command (commands/security-report.md),
+# Consumers: security-report command (commands/tachi.security-report.md),
 #            Typst master orchestrator (templates/tachi/security-report/main.typ)
 #
 # Version: 1.1

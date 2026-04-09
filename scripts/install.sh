@@ -125,6 +125,32 @@ if [ -n "$VERSION_TAG" ]; then
   git -C "$SOURCE_DIR" checkout "$VERSION_TAG" --quiet
 fi
 
+# --- Deprecated-file cleanup -------------------------------------------------
+# Remove old (pre-namespace) command files from the target directory.
+# Ensures upgrades from tachi <5.0 leave no stale unprefixed command files.
+
+DEPRECATED_COMMANDS=(
+  ".claude/commands/threat-model.md"
+  ".claude/commands/risk-score.md"
+  ".claude/commands/compensating-controls.md"
+  ".claude/commands/infographic.md"
+  ".claude/commands/security-report.md"
+)
+
+CLEANUP_COUNT=0
+for dep_file in "${DEPRECATED_COMMANDS[@]}"; do
+  target_path="${TARGET_DIR}/${dep_file}"
+  if [ -f "$target_path" ]; then
+    rm -f "$target_path"
+    printf '  Removed deprecated: %s\n' "$dep_file"
+    CLEANUP_COUNT=$((CLEANUP_COUNT + 1))
+  fi
+done
+
+if [ "$CLEANUP_COUNT" -gt 0 ]; then
+  printf '  Cleaned up %d deprecated command file(s)\n' "$CLEANUP_COUNT"
+fi
+
 # --- Manifest parsing --------------------------------------------------------
 
 parse_manifest() {

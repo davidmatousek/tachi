@@ -131,7 +131,7 @@ Captured during structured delivery retrospective. Smooth sailing — everything
 **Feature**: 035 — Quantitative Risk Scoring
 **Category**: Architecture / Pipeline Extension
 
-**Context**: Feature 035 needed to add quantitative risk scoring to the existing `/threat-model` pipeline without modifying the threat agents or their output. The scoring agent consumes threat model output (threats.md or threats.sarif) and produces enriched output (risk-scores.md and risk-scores.sarif).
+**Context**: Feature 035 needed to add quantitative risk scoring to the existing `/tachi.threat-model` pipeline without modifying the threat agents or their output. The scoring agent consumes threat model output (threats.md or threats.sarif) and produces enriched output (risk-scores.md and risk-scores.sarif).
 
 **Pattern**: Design post-pipeline enrichment as a separate command and agent that reads existing output and produces new artifacts. Use a dedicated schema (risk-scoring.yaml) to define scoring dimensions, weights, and severity bands — making the scoring methodology configurable and transparent. The enrichment agent references the existing finding schema via an optional extension block, preserving backward compatibility. SARIF fingerprints and taxonomies are preserved from source to enriched output for tracking continuity.
 
@@ -151,7 +151,7 @@ Captured during structured delivery retrospective. Smooth sailing — everything
 **Feature**: 036 — Compensating Controls Analysis
 **Category**: Architecture / Pipeline Extension
 
-**Context**: Feature 036 added the third stage to tachi's threat analysis pipeline (`/threat-model` → `/risk-score` → `/compensating-controls`). It consumes risk-scores output and produces compensating-controls output with control detection, effectiveness classification, recommendations, and residual risk — extending the same schema-driven enrichment approach from PAT-006.
+**Context**: Feature 036 added the third stage to tachi's threat analysis pipeline (`/tachi.threat-model` → `/tachi.risk-score` → `/tachi.compensating-controls`). It consumes risk-scores output and produces compensating-controls output with control detection, effectiveness classification, recommendations, and residual risk — extending the same schema-driven enrichment approach from PAT-006.
 
 **Pattern**: Successive pipeline stages can chain reliably when each stage follows the same contract: consume prior stage's dual output (MD + SARIF), extend via a dedicated schema (compensating-controls.yaml extending risk-scoring.yaml), and produce new dual output. The 6-phase agent design (parse → discover → detect → classify → recommend → output) decomposed cleanly because each phase has well-defined inputs and outputs. The 8 STRIDE + 2 AI control detection categories mapped directly to the existing threat taxonomy, requiring no upstream schema modifications.
 
@@ -168,10 +168,10 @@ Captured during structured delivery retrospective. Smooth sailing — everything
 ### PAT-008: Well-Structured Specs with Atomic Tasks Enable Same-Day Delivery
 
 **Date**: 2026-03-28
-**Feature**: 039 — Standalone /infographic Command
+**Feature**: 039 — Standalone /tachi.infographic Command
 **Category**: Process / Delivery Velocity
 
-**Context**: Feature 039 decoupled infographic generation from the `/threat-model` pipeline into a standalone `/infographic` command. The change touched 32 files across 5 platform adapters, required dual-path data extraction logic, and removed Phase 6 from the orchestrator — all delivered same-day with 30 tasks across 5 user stories.
+**Context**: Feature 039 decoupled infographic generation from the `/tachi.threat-model` pipeline into a standalone `/tachi.infographic` command. The change touched 32 files across 5 platform adapters, required dual-path data extraction logic, and removed Phase 6 from the orchestrator — all delivered same-day with 30 tasks across 5 user stories.
 
 **Pattern**: When specifications decompose cleanly into atomic, independently testable tasks with clear acceptance criteria, same-day delivery is achievable even for cross-cutting changes touching 30+ files. The key enablers are: (1) each task maps to a single file or a single logical change, (2) adapter mirror tasks (T017-T027) follow a repeatable pattern from the primary implementation, and (3) validation tasks (T028-T030) are defined upfront so testing is not an afterthought.
 
@@ -211,7 +211,7 @@ Captured during structured delivery retrospective. Smooth sailing — everything
 **Feature**: 048 — Infographic Tiered Pipeline Auto-Detection & Residual Risk
 **Category**: Process / Velocity
 
-**Context**: Feature 048 extended the `/infographic` command with three-tier data source detection and residual risk extraction. All 27 tasks edited markdown prompt files (`.claude/commands/infographic.md` and `.claude/agents/tachi/threat-infographic.md`) — zero application code. The feature was designed, planned, built, and delivered in a single session.
+**Context**: Feature 048 extended the `/tachi.infographic` command with three-tier data source detection and residual risk extraction. All 27 tasks edited markdown prompt files (`.claude/commands/tachi.infographic.md` and `.claude/agents/tachi/threat-infographic.md`) — zero application code. The feature was designed, planned, built, and delivered in a single session.
 
 **Pattern**: Features that modify only agent prompts and command files (no application code, no tests, no infrastructure) can complete the full AOD lifecycle in one session. The absence of build/test/deploy cycles eliminates the usual bottlenecks. Same-day delivery is achievable when: (1) all changes are markdown/YAML, (2) validation is manual walkthrough, and (3) the feature extends existing patterns rather than creating new ones.
 

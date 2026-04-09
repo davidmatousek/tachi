@@ -502,7 +502,7 @@ After the self-check passes, write the `threats.sarif` file to the output direct
 
 ### Risk Scoring SARIF Extension
 
-When the `/risk-score` command processes `threats.sarif` (or `threats.md`) into `risk-scores.sarif`, the scored SARIF output extends the base `threats.sarif` structure with quantitative risk scoring properties. This section documents the differences between the two SARIF files.
+When the `/tachi.risk-score` command processes `threats.sarif` (or `threats.md`) into `risk-scores.sarif`, the scored SARIF output extends the base `threats.sarif` structure with quantitative risk scoring properties. This section documents the differences between the two SARIF files.
 
 #### Semantic Shift: `security-severity`
 

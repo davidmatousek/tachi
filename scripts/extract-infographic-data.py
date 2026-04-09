@@ -882,13 +882,13 @@ def _compute_missing_enrichments(artifacts):
 
     Returns:
         List of command strings for absent artifacts, ordered:
-        /risk-score before /compensating-controls.
+        /tachi.risk-score before /tachi.compensating-controls.
     """
     missing = []
     if not artifacts["risk_scores_md"]:
-        missing.append("/risk-score")
+        missing.append("/tachi.risk-score")
     if not artifacts["compensating_controls_md"]:
-        missing.append("/compensating-controls")
+        missing.append("/tachi.compensating-controls")
     return missing
 
 

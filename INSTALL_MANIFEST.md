@@ -7,7 +7,7 @@ Canonical list of files and directories that must be copied when installing tach
 | Directory | Purpose | Required By |
 |-----------|---------|-------------|
 | `.claude/agents/tachi/` | 17 threat analysis agent definitions | All commands |
-| `.claude/commands/` (5 files) | Slash command definitions | User invocation |
+| `.claude/commands/` (6 files) | Slash command definitions | User invocation |
 | `schemas/` | YAML contracts (finding, input, output, scoring) | orchestrator, risk-scorer, control-analyzer |
 | `templates/tachi/output-schemas/` | Canonical output format templates | orchestrator, risk-scorer, control-analyzer, threat-report |
 | `templates/tachi/infographics/` | Infographic design templates | threat-infographic |
@@ -18,15 +18,16 @@ Canonical list of files and directories that must be copied when installing tach
 
 ## Command Files
 
-Copy these 5 files from `.claude/commands/` to the target project's `.claude/commands/`:
+Copy these 6 files from `.claude/commands/` to the target project's `.claude/commands/`:
 
 | File | Slash Command |
 |------|---------------|
-| `threat-model.md` | `/threat-model` |
-| `risk-score.md` | `/risk-score` |
-| `compensating-controls.md` | `/compensating-controls` |
-| `infographic.md` | `/infographic` |
-| `security-report.md` | `/security-report` |
+| `tachi.threat-model.md` | `/tachi.threat-model` |
+| `tachi.risk-score.md` | `/tachi.risk-score` |
+| `tachi.compensating-controls.md` | `/tachi.compensating-controls` |
+| `tachi.infographic.md` | `/tachi.infographic` |
+| `tachi.security-report.md` | `/tachi.security-report` |
+| `tachi.architecture.md` | `/tachi.architecture` |
 
 ## Agent Files
 
@@ -71,11 +72,12 @@ The install script parses this section automatically. One path per line — dire
 
 <!-- BEGIN MANIFEST -->
 .claude/agents/tachi/
-.claude/commands/threat-model.md
-.claude/commands/risk-score.md
-.claude/commands/compensating-controls.md
-.claude/commands/infographic.md
-.claude/commands/security-report.md
+.claude/commands/tachi.threat-model.md
+.claude/commands/tachi.risk-score.md
+.claude/commands/tachi.compensating-controls.md
+.claude/commands/tachi.infographic.md
+.claude/commands/tachi.security-report.md
+.claude/commands/tachi.architecture.md
 schemas/
 templates/tachi/
 adapters/claude-code/agents/references/

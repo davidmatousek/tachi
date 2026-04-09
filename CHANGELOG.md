@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- **Command Namespace Migration** (Feature 121) — All tachi pipeline commands renamed from unprefixed names to `tachi.*` namespace prefix. New `/tachi.architecture` command added. Install script now cleans up deprecated command files on upgrade. See migration table below.
+
+#### Command Name Migration
+
+| Old Command | New Command |
+|-------------|-------------|
+| `/threat-model` | `/tachi.threat-model` |
+| `/risk-score` | `/tachi.risk-score` |
+| `/compensating-controls` | `/tachi.compensating-controls` |
+| `/infographic` | `/tachi.infographic` |
+| `/security-report` | `/tachi.security-report` |
+| *(new)* | `/tachi.architecture` |
+
+Upgrading: Run `install.sh` — it automatically removes old unprefixed command files and installs the new `tachi.*` versions.
+
+---
+
 ## [4.5.0](https://github.com/davidmatousek/tachi/compare/v4.4.2...v4.5.0) (2026-04-09)
 
 ### Added

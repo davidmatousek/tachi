@@ -6,7 +6,7 @@
 #
 # Producers: agents/tachi/risk-scorer.md
 # Consumers: templates/risk-scores.md, templates/risk-scores.sarif,
-#            /risk-score command output
+#            /tachi.risk-score command output
 #
 # Version: 1.0
 
