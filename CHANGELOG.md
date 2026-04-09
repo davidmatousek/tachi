@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.7.0](https://github.com/davidmatousek/tachi/compare/v4.6.0...v4.7.0) (2026-04-09)
+
+
+### Features
+
+* **121:** rename tachi commands to tachi.* dot-namespace ([#122](https://github.com/davidmatousek/tachi/issues/122)) ([7d0f968](https://github.com/davidmatousek/tachi/commit/7d0f9684166a8fd6af10517fcca3f1aa85abad73))
+
 ## [Unreleased]
 
 ### Changed
