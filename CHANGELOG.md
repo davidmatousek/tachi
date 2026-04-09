@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Architecture Lifecycle Command** (Feature 120) — `/tachi.architecture` now tracks versions with YAML frontmatter (version, date, description, SHA-256 checksum), archives previous versions to `.archive/v{N}/`, and supports guided updates through change categories. `/tachi.threat-model` automatically snapshots the architecture file into each timestamped output folder for full traceability. Backward compatible with existing architecture files.
+
 ### Changed
 
 - **Command Namespace Migration** (Feature 121) — All tachi pipeline commands renamed from unprefixed names to `tachi.*` namespace prefix. New `/tachi.architecture` command added. Install script now cleans up deprecated command files on upgrade. See migration table below.
