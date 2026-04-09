@@ -28,6 +28,7 @@ from tachi_parsers import (
     parse_frontmatter,
     parse_baseline_frontmatter,
     parse_resolved_findings,
+    compute_delta_counts,
     parse_markdown_table,
     parse_project_name,
     detect_artifacts,
@@ -882,7 +883,7 @@ def main():
 
     # Parse baseline metadata for delta-aware output
     baseline = parse_baseline_frontmatter(threats_content)
-    has_baseline = baseline["source"] is not None
+    has_baseline = baseline["has_baseline"]
 
     # Parse resolved findings from Section 4b (empty when no baseline)
     resolved_findings = parse_resolved_findings(threats_content)
@@ -983,16 +984,7 @@ def main():
 
     # Delta counts (computed from active findings + resolved)
     if has_baseline:
-        delta_counts = {"new": 0, "unchanged": 0, "updated": 0, "resolved": len(resolved_findings)}
-        for f in data["findings"]:
-            ds = f.get("delta_status", "").upper()
-            if ds == "NEW":
-                delta_counts["new"] += 1
-            elif ds == "UNCHANGED":
-                delta_counts["unchanged"] += 1
-            elif ds == "UPDATED":
-                delta_counts["updated"] += 1
-        data["delta_counts"] = delta_counts
+        data["delta_counts"] = compute_delta_counts(data["findings"], resolved_findings)
     else:
         data["delta_counts"] = {"new": 0, "unchanged": 0, "updated": 0, "resolved": 0}
 

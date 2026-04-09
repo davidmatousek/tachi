@@ -207,6 +207,18 @@ def _find_table_with_column(content: str, section_header: str, required_column: 
 # Frontmatter Parser
 # =============================================================================
 
+def _extract_frontmatter_text(content: str):
+    """Extract raw frontmatter text between --- delimiters.
+
+    Handles both standard (--- ... ---) and code-fenced (```yaml ... ```) formats.
+    Returns the text between delimiters, or None if no frontmatter found.
+    """
+    match = re.match(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
+    if not match:
+        match = re.search(r"```yaml\s*\n---\s*\n(.*?)\n---\s*\n```", content, re.DOTALL)
+    return match.group(1) if match else None
+
+
 def parse_frontmatter(content: str) -> dict:
     """Extract key-value pairs from YAML frontmatter between --- delimiters.
 
@@ -215,16 +227,9 @@ def parse_frontmatter(content: str) -> dict:
     """
     result = {"date": "Unknown", "classification": None, "schema_version": "1.0"}
 
-    # Try standard frontmatter first (--- ... ---)
-    match = re.match(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
-    if not match:
-        # Try code-fenced frontmatter (```yaml\n---\n...\n---\n```)
-        match = re.search(r"```yaml\s*\n---\s*\n(.*?)\n---\s*\n```", content, re.DOTALL)
-
-    if not match:
+    frontmatter_text = _extract_frontmatter_text(content)
+    if not frontmatter_text:
         return result
-
-    frontmatter_text = match.group(1)
 
     # Extract top-level key: value pairs (skip nested keys by checking indentation)
     for line in frontmatter_text.split("\n"):
@@ -248,18 +253,15 @@ def parse_frontmatter(content: str) -> dict:
 def parse_baseline_frontmatter(content: str) -> dict:
     """Extract baseline metadata from threats.md frontmatter.
 
-    Parses the nested baseline: block. Returns dict with keys:
-    source, date, finding_count, run_id. All values are None
-    when no baseline is present.
+    Hand-parses the nested baseline: block to avoid PyYAML dependency
+    (stdlib-only policy per PAT-014). Returns dict with keys:
+    has_baseline, source, date, finding_count, run_id. All values are
+    None when no baseline is present; has_baseline is False.
     """
-    result = {"source": None, "date": None, "finding_count": None, "run_id": None}
-    # Extract frontmatter text between --- delimiters (standard or code-fenced)
-    match = re.match(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
-    if not match:
-        match = re.search(r"```yaml\s*\n---\s*\n(.*?)\n---\s*\n```", content, re.DOTALL)
-    if not match:
+    result = {"has_baseline": False, "source": None, "date": None, "finding_count": None, "run_id": None}
+    fm = _extract_frontmatter_text(content)
+    if not fm:
         return result
-    fm = match.group(1)
     # Find baseline: block and parse nested keys
     in_baseline = False
     for line in fm.split("\n"):
@@ -274,8 +276,9 @@ def parse_baseline_frontmatter(content: str) -> dict:
                 key, val = kv.group(1), kv.group(2).strip()
                 if val.lower() in ("null", "~", ""):
                     val = None
-                if key in result:
+                if key in result and key != "has_baseline":
                     result[key] = val
+    result["has_baseline"] = result["source"] is not None
     return result
 
 
@@ -449,6 +452,23 @@ def _accumulate_severity_rows(rows: list, level_column: str) -> dict:
 # =============================================================================
 # Findings Parsers
 # =============================================================================
+
+def compute_delta_counts(findings: list, resolved_findings: list) -> dict:
+    """Compute delta status counts from active and resolved findings.
+
+    Returns dict with keys: new, unchanged, updated, resolved.
+    """
+    counts = {"new": 0, "unchanged": 0, "updated": 0, "resolved": len(resolved_findings)}
+    for f in findings:
+        ds = f.get("delta_status", "").upper()
+        if ds == "NEW":
+            counts["new"] += 1
+        elif ds == "UNCHANGED":
+            counts["unchanged"] += 1
+        elif ds == "UPDATED":
+            counts["updated"] += 1
+    return counts
+
 
 def parse_resolved_findings(content: str) -> list:
     """Parse Section 4b Resolved Findings table.
