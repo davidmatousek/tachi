@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.8.0](https://github.com/davidmatousek/tachi/compare/v4.7.0...v4.8.0) (2026-04-09)
+
+
+### Features
+
+* **120:** add architecture lifecycle command ([#124](https://github.com/davidmatousek/tachi/issues/124)) ([f814c02](https://github.com/davidmatousek/tachi/commit/f814c027db03cf5424599b640bd99ac1aa8cd37e))
+
 ## [4.7.0](https://github.com/davidmatousek/tachi/compare/v4.6.0...v4.7.0) (2026-04-09)
 
 
