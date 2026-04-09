@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.4.1](https://github.com/davidmatousek/tachi/compare/v4.4.0...v4.4.1) (2026-04-09)
+
+
+### Bug Fixes
+
+* **104:** skip RESOLVED findings when generating attack trees ([#110](https://github.com/davidmatousek/tachi/issues/110)) ([7bd1779](https://github.com/davidmatousek/tachi/commit/7bd17795d3bcb2e3745b375fc2f57507ea0f9f86))
+
 ## [4.4.0](https://github.com/davidmatousek/tachi/compare/v4.3.4...v4.4.0) (2026-04-09)
 
 
