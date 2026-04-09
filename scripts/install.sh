@@ -10,13 +10,13 @@
 #
 # Options:
 #   --source <path>  Path to tachi source directory (auto-detected if omitted)
-#   --version <tag>  Install files from a specific tagged version (e.g., v4.4.1) # x-release-please-version
+#   --version <tag>  Install files from a specific tagged version (e.g., v4.4.2) # x-release-please-version
 #   --help           Show this usage information
 #
 # Examples:
 #   cd ~/Projects/my-app && ~/Projects/tachi/scripts/install.sh
 #   ./install.sh --source ~/Projects/tachi
-#   ./install.sh --version v4.4.1 # x-release-please-version
+#   ./install.sh --version v4.4.2 # x-release-please-version
 
 set -euo pipefail
 
@@ -40,7 +40,7 @@ usage() {
   echo ""
   echo "Options:"
   echo "  --source <path>  Path to tachi source directory (auto-detected if omitted)"
-  echo "  --version <tag>  Install files from a specific tagged version (e.g., v4.4.1)" # x-release-please-version
+  echo "  --version <tag>  Install files from a specific tagged version (e.g., v4.4.2)" # x-release-please-version
   echo "  --help           Show this usage information"
   echo ""
   echo "Run this script from the root of the project where you want tachi installed."

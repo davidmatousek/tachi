@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.4.2](https://github.com/davidmatousek/tachi/compare/v4.4.1...v4.4.2) (2026-04-09)
+
+
+### Bug Fixes
+
+* **091,104:** MAESTRO heading fallback, fresh attack trees, MAESTRO in all/PDF ([#113](https://github.com/davidmatousek/tachi/issues/113)) ([cefa1b1](https://github.com/davidmatousek/tachi/commit/cefa1b10218aa2e1bdae8076dd1e08ed963ffd2f))
+
 ## [4.4.1](https://github.com/davidmatousek/tachi/compare/v4.4.0...v4.4.1) (2026-04-09)
 
 
