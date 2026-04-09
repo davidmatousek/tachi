@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.5.0](https://github.com/davidmatousek/tachi/compare/v4.4.2...v4.5.0) (2026-04-09)
+
+
+### Features
+
+* **112:** add attack path pages to PDF security report ([#115](https://github.com/davidmatousek/tachi/issues/115)) ([febfa28](https://github.com/davidmatousek/tachi/commit/febfa28a6dcd92d9551dcb1ea7864ed2ad674bdb))
+
+
+### Documentation
+
+* close Feature 112 - update all documentation ([9e04f7a](https://github.com/davidmatousek/tachi/commit/9e04f7aafc569023f13ce9d9e52181628667f12a))
+
+
+### Miscellaneous
+
+* **112:** simplify code per /simplify review ([#117](https://github.com/davidmatousek/tachi/issues/117)) ([9a7402b](https://github.com/davidmatousek/tachi/commit/9a7402b915b97dfc1c7cad291c9331511482d078))
+
 ## [4.4.2](https://github.com/davidmatousek/tachi/compare/v4.4.1...v4.4.2) (2026-04-09)
 
 
