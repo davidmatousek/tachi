@@ -6,6 +6,7 @@
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 136 | [MAESTRO Canonical Layer Correctness Fix](136-maestro-canonical-layer-correctness-fix-2026-04-10.md) | ✓ | ⚠ | ⚠ | Approved | 2026-04-10 |
 | 128 | [Executive Threat Architecture Infographic](128-executive-threat-architecture-2026-04-09.md) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-10 |
 | 120 | [Architecture Lifecycle Command](120-architecture-lifecycle-command-2026-04-09.md) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-09 |
 | 121 | [Rename Tachi Commands to tachi.* Namespace](121-rename-tachi-commands-to-namespace-2026-04-09.md) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-09 |
