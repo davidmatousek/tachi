@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.9.0](https://github.com/davidmatousek/tachi/compare/v4.8.0...v4.9.0) (2026-04-10)
+
+
+### Features
+
+* **128:** add executive threat architecture infographic with early-page PDF positioning ([#131](https://github.com/davidmatousek/tachi/issues/131)) ([7b217fe](https://github.com/davidmatousek/tachi/commit/7b217fe2447ba758db770ec1be0ac428e23fa252))
+
 ## [4.8.0](https://github.com/davidmatousek/tachi/compare/v4.7.0...v4.8.0) (2026-04-09)
 
 
