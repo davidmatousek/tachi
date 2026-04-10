@@ -741,12 +741,13 @@ def render_mermaid_to_png(attack_trees: list, target_dir: Path, template_dir: Pa
     def _render_single(entry, tmp_path):
         """Render one Mermaid entry to PNG. Returns (entry, success, dest_path)."""
         fid = entry["id"]
+        fid_lower = fid.lower()
         mermaid_code = entry.get("mermaid_code", "")
         if not mermaid_code:
             return (entry, False, "")
 
-        mmd_file = tmp_path / f"{fid}.mmd"
-        png_file = tmp_path / f"{fid}.png"
+        mmd_file = tmp_path / f"{fid_lower}.mmd"
+        png_file = tmp_path / f"{fid_lower}.png"
         mmd_file.write_text(mermaid_code, encoding="utf-8")
 
         try:
@@ -756,9 +757,9 @@ def render_mermaid_to_png(attack_trees: list, target_dir: Path, template_dir: Pa
                 timeout=30,
                 check=True,
             )
-            dest_png = attack_trees_dir / f"{fid}-attack-tree.png"
+            dest_png = attack_trees_dir / f"{fid_lower}-attack-tree.png"
             shutil.copy2(str(png_file), str(dest_png))
-            return (entry, True, rel_target + "/attack-trees/" + f"{fid}-attack-tree.png")
+            return (entry, True, rel_target + "/attack-trees/" + f"{fid_lower}-attack-tree.png")
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
             stderr_msg = getattr(e, 'stderr', b'')
             if isinstance(stderr_msg, bytes):
