@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.9.2](https://github.com/davidmatousek/tachi/compare/v4.9.1...v4.9.2) (2026-04-10)
+
+
+### Bug Fixes
+
+* **138:** lowercase attack tree PNG filenames to match convention ([#139](https://github.com/davidmatousek/tachi/issues/139)) ([1400e47](https://github.com/davidmatousek/tachi/commit/1400e478ff58a9f1357f69d42c62ea0437e0d4c8)), closes [#138](https://github.com/davidmatousek/tachi/issues/138)
+
 ## [4.9.1](https://github.com/davidmatousek/tachi/compare/v4.9.0...v4.9.1) (2026-04-10)
 
 
