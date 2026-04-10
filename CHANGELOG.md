@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.9.1](https://github.com/davidmatousek/tachi/compare/v4.9.0...v4.9.1) (2026-04-10)
+
+
+### Bug Fixes
+
+* **134:** threat-report attack tree baseline, MAESTRO layer rendering, filename convention ([#135](https://github.com/davidmatousek/tachi/issues/135)) ([716df8e](https://github.com/davidmatousek/tachi/commit/716df8e9c98768eb5edf5d87be943833aab81ab1)), closes [#134](https://github.com/davidmatousek/tachi/issues/134)
+
 ## [4.9.0](https://github.com/davidmatousek/tachi/compare/v4.8.0...v4.9.0) (2026-04-10)
 
 
