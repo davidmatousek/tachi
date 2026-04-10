@@ -2143,3 +2143,98 @@ flowchart TD
 | Directory creation | Bash `mkdir -p` via tool | Archive/output folder setup |
 | Checksum | Bash `shasum -a 256` via tool | Content integrity hash |
 | Frontmatter | YAML | Version metadata format |
+
+---
+
+### Feature 128: Executive Threat Architecture Infographic
+
+## Components
+
+The feature touches the following logical components of the tachi pipeline:
+
+### Extraction Layer
+- **`extract-infographic-data.py`**: Receives `--template executive-architecture`; reads threats.md (with optional risk-scores or compensating-controls for tier upgrade); parses scope data via shared `tachi_parsers.parse_scope_data()`; groups components into architectural layers via existing `_compute_trust_zones()`; filters findings to Critical/High; selects one callout per layer (severity desc → composite score desc → finding ID asc); outputs JSON payload to stdout.
+- **`extract-report-data.py`**: Adds new entry in `detect_images()` for `threat-executive-architecture.jpg`; writes `has-executive-architecture` boolean and `executive-architecture-image-path` string into the generated `report-data.typ` file.
+
+### Spec Generation Layer
+- **`tachi-threat-infographic` agent (`.claude/agents/tachi/threat-infographic.md`)**: Receives the JSON payload from extraction; renders the six-section markdown spec; constructs the Gemini prompt with portrait orientation, layer ordering, pastel fills, red dashed-border callouts, warning icons, and ≤25-word plain-English narrative instructions.
+
+### Image Generation Layer
+- **Existing Gemini integration**: Reused as-is. The agent invokes Gemini with the constructed prompt; on success writes `threat-executive-architecture.jpg` to the output folder; on failure leaves the spec file in place (spec-first per ADR-014).
+
+### PDF Assembly Layer
+- **`main.typ`**: Imports `report-data.typ`; conditionally renders the executive architecture page using existing `infographic-page()` (already portrait), gated by `has-executive-architecture`, positioned immediately after Executive Summary and immediately before Attack Path Analysis.
+- **`report-assembler` agent**: Documentation update only — adds the new artifact to its detection table.
+
+### Schema and Command Layer
+- **`schemas/infographic.yaml`**: Adds `executive-architecture` to the template enumeration with section structure and visual directive constants.
+- **`.claude/commands/tachi.infographic.md`**: Adds new template to argparse choices, adds `exec` alias, includes in `all` expansion before MAESTRO additions.
+- **`.claude/skills/tachi-infographics/references/`**: New reference doc describing the template, its outputs, and expected behavior.
+
+## Data Flow
+
+```
+threats.md (+ optional risk-scores.md / compensating-controls.md)
+        │
+        ▼
+scripts/tachi_parsers.py
+   - parse_scope_data() → components, trust_boundaries, data_flows
+   - parse_threats_findings() → Critical/High findings with metadata
+        │
+        ▼
+scripts/extract-infographic-data.py (--template executive-architecture)
+   1. Detect tier (compensating > risk-scores > threats)
+   2. Group components into ArchitecturalLayers via _compute_trust_zones
+      OR fall back to DFD type grouping if no zones
+   3. Filter findings to Critical/High
+   4. Select one callout per layer (severity → score → ID)
+   5. Build ExecutiveArchitecturePayload JSON
+   6. Emit JSON to stdout
+        │
+        ▼
+.claude/agents/tachi/threat-infographic.md
+   1. Read JSON payload
+   2. Render threat-executive-architecture-spec.md (6 sections)
+   3. Construct Gemini prompt (portrait, layers, callouts, ≤25 words)
+   4. Invoke Gemini API
+   5. Write threat-executive-architecture.jpg (best-effort)
+        │
+        ▼
+Output folder contents:
+   - threat-executive-architecture-spec.md  (always)
+   - threat-executive-architecture.jpg      (if Gemini succeeds)
+        │
+        ▼
+scripts/extract-report-data.py
+   - detect_images() finds threat-executive-architecture.jpg
+   - Writes has-executive-architecture: true and image path
+     into report-data.typ
+        │
+        ▼
+Typst compilation (templates/tachi/security-report/main.typ)
+   - Imports report-data.typ
+   - On encountering `if has-executive-architecture { ... }` after the
+     Executive Summary block, calls infographic-page() (portrait)
+   - Otherwise skips the page entirely (backward compatibility)
+        │
+        ▼
+Final PDF: pages 1 (cover), 2 (TOC), 3 (Methodology),
+4 (Scope), 5 (Executive Summary),
+→ 6 (NEW: Executive Threat Architecture)
+→ 7+ (Attack Path Analysis, existing infographics, findings, etc.)
+```
+
+## Tech Stack
+
+| Layer | Technology | Version | Role in F-128 |
+|-------|------------|---------|---------------|
+| Extraction | Python | 3.11 | Modify `extract-infographic-data.py` and `extract-report-data.py` |
+| Parsing | `tachi_parsers.py` | existing | Reuse for scope data and finding parsing — NO modifications |
+| Schema | YAML | 1.2 | Modify `schemas/infographic.yaml` |
+| Agent | Markdown | n/a | Modify `.claude/agents/tachi/threat-infographic.md` and `report-assembler.md` |
+| Command | Markdown | n/a | Modify `.claude/commands/tachi.infographic.md` |
+| Image generation | Gemini API | existing integration | Reuse via agent — NO new API calls or dependencies |
+| PDF compilation | Typst | 0.11+ | Modify `main.typ`; reuse `infographic-page()` (no new template function) |
+| Testing | pytest | existing | Add unit tests in `tests/scripts/` |
+
+**No new dependencies introduced.**
