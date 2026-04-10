@@ -1,32 +1,9 @@
-"""US-2 unit tests for the executive-architecture image detection in extract-report-data.py.
+"""Unit tests for executive-architecture image detection in extract-report-data.py.
 
-These tests exercise the Phase 4 (US-2) implementation of F-128. They invoke
-`scripts/extract-report-data.py` as a subprocess via ``sys.executable`` and
-assert against the generated ``report-data.typ`` content. Direct helper-function
-access is exposed by the ``extract_report_data`` session-scoped fixture
-declared in ``tests/conftest.py``; this file uses subprocess invocation because
-the assertions target the final emitted Typst text rather than intermediate
-Python state.
-
-Note on the test-first gate (T017):
------------------------------------
-F-128 tasks T018/T019 add the `has-executive-architecture` and
-`executive-architecture-image-path` Typst variables. At the time T016 authors
-these tests, those lines do NOT yet exist in ``extract-report-data.py``. The
-expected failure pattern is:
-
-* ``test_has_executive_architecture_true_when_image_present``   — FAIL
-* ``test_has_executive_architecture_false_when_image_absent``   — may pre-pass
-  (the absence of any ``has-executive-architecture = false`` line is what the
-  assertion actually checks for; see inline rationale below)
-* ``test_has_executive_architecture_false_when_image_zero_size`` — FAIL
-* ``test_executive_architecture_image_path_relative_to_template_dir`` — FAIL
-* ``test_existing_image_flags_unchanged``                       — PASS
-  (backward-compat baseline; must stay green before and after T018/T019)
-
-The T017 gate runs ``make test`` (or ``pytest tests/scripts/test_extract_report_data.py -v``)
-and records the expected-failure set. Once T018/T019 land, all 5 tests must
-pass, including the parametrized ``test_existing_image_flags_unchanged``.
+Invokes ``scripts/extract-report-data.py`` as a subprocess and asserts against the
+generated ``report-data.typ`` content. Subprocess invocation is used instead of
+direct module access because the assertions target the emitted Typst text rather
+than intermediate Python state.
 """
 
 import os
@@ -38,8 +15,6 @@ from pathlib import Path
 import pytest
 
 
-# Repository root resolved from this file's location:
-# tests/scripts/test_extract_report_data.py -> parents[2] == repo root
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "extract-report-data.py"
 TEMPLATE_DIR = REPO_ROOT / "templates" / "tachi" / "security-report"
@@ -48,25 +23,8 @@ GOLDEN_EXISTING_FLAGS = FIXTURES_DIR / "golden_existing_image_flags.txt"
 AGENTIC_APP_SAMPLE = REPO_ROOT / "examples" / "agentic-app" / "sample-report"
 
 
-# -----------------------------------------------------------------------------
-# Subprocess helper
-# -----------------------------------------------------------------------------
-
 def run_extract(target_dir, template_dir=None):
-    """Run extract-report-data.py as a subprocess against a target folder.
-
-    Args:
-        target_dir: Path to the folder containing ``threats.md`` and optional
-            image files. The script writes ``report-data.typ`` into a temp
-            location; this helper returns the emitted content as a string.
-        template_dir: Optional override for ``--template-dir``. Defaults to
-            the real ``templates/tachi/security-report/`` directory so path
-            resolution matches production behavior.
-
-    Returns:
-        Tuple ``(returncode, stdout, stderr, typst_content_or_None)``. The
-        fourth element is ``None`` when the script fails to write output.
-    """
+    """Run extract-report-data.py and return (returncode, stdout, stderr, typst_content)."""
     if template_dir is None:
         template_dir = TEMPLATE_DIR
     with tempfile.NamedTemporaryFile(suffix=".typ", delete=False) as f:
@@ -95,18 +53,8 @@ def run_extract(target_dir, template_dir=None):
             pass
 
 
-# -----------------------------------------------------------------------------
-# US-2 Tests
-# -----------------------------------------------------------------------------
-
 def test_has_executive_architecture_true_when_image_present():
-    """Fixture folder with a non-zero threat-executive-architecture.jpg.
-
-    Contract: ``report-data.typ`` must contain the exact line
-    ``#let has-executive-architecture = true`` when the image file exists and
-    has non-zero size. Pre-F-128 the line is absent entirely; this test
-    therefore FAILS until T018/T019 ship.
-    """
+    """Emit ``#let has-executive-architecture = true`` when the image is present and non-zero."""
     returncode, _stdout, stderr, content = run_extract(FIXTURES_DIR / "image_present")
     assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
     assert content is not None, "Expected report-data.typ to be written"
@@ -117,18 +65,7 @@ def test_has_executive_architecture_true_when_image_present():
 
 
 def test_has_executive_architecture_false_when_image_absent():
-    """Fixture folder without the executive architecture image.
-
-    Contract: when the image file is missing, the emitted Typst file must
-    contain ``#let has-executive-architecture = false`` — i.e. the variable
-    is still declared with a false value, not omitted. This asserts the
-    variable is ALWAYS present (safe default), not that the absence of the
-    image makes the line implicitly absent.
-
-    This test will FAIL pre-F-128 because no ``has-executive-architecture``
-    line exists at all — including the ``= false`` form required by the
-    contract. It PASSES after T018/T019 ship the safe-default writer.
-    """
+    """When the image is missing, the variable must still be declared ``= false`` (safe default)."""
     returncode, _stdout, stderr, content = run_extract(FIXTURES_DIR / "image_absent")
     assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
     assert content is not None, "Expected report-data.typ to be written"
@@ -143,12 +80,7 @@ def test_has_executive_architecture_false_when_image_absent():
 
 
 def test_has_executive_architecture_false_when_image_zero_size():
-    """Fixture with an empty (zero-byte) threat-executive-architecture.jpg.
-
-    Contract: a zero-byte file is treated as absent (matches the existing
-    ``stat().st_size > 0`` convention in ``detect_images``). The emitted
-    line must be ``#let has-executive-architecture = false``.
-    """
+    """A zero-byte image file is treated as absent (matching the ``st_size > 0`` convention)."""
     returncode, _stdout, stderr, content = run_extract(FIXTURES_DIR / "image_zero_size")
     assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
     assert content is not None, "Expected report-data.typ to be written"
@@ -162,21 +94,11 @@ def test_has_executive_architecture_false_when_image_zero_size():
 
 
 def test_executive_architecture_image_path_relative_to_template_dir():
-    """When the image is present, the emitted path must be relative (not absolute).
+    """The emitted ``executive-architecture-image-path`` must be relative, not absolute.
 
-    Contract (``report-data-typst-contract.md``): the path is computed via
-    ``os.path.relpath(target_dir, template_dir)``, following the same
-    convention as the existing funnel/baseball/architecture paths. For the
-    ``image_present`` fixture living under ``tests/scripts/fixtures/report_data/``,
-    the relative path from ``templates/tachi/security-report/`` MUST begin
-    with ``..`` (parent traversal) because the fixture directory is outside
-    the template directory tree.
-
-    Additional assertions:
-
-    * The path must NOT start with ``/`` (no absolute paths).
-    * The path must end with ``threat-executive-architecture.jpg``.
-    * The line must be declared via ``#let executive-architecture-image-path =``.
+    Path is computed via ``os.path.relpath(target_dir, template_dir)`` matching the
+    existing funnel/baseball/architecture convention. The fixture lives outside the
+    template directory tree so the relative path must begin with ``..``.
     """
     returncode, _stdout, stderr, content = run_extract(FIXTURES_DIR / "image_present")
     assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
@@ -213,6 +135,33 @@ def test_executive_architecture_image_path_relative_to_template_dir():
     )
 
 
+@pytest.fixture(scope="module")
+def agentic_app_report_typst():
+    """Run extract-report-data.py once against the agentic-app sample and cache the output."""
+    returncode, _stdout, stderr, content = run_extract(AGENTIC_APP_SAMPLE)
+    assert returncode == 0, (
+        f"Expected exit 0 for agentic-app sample-report, got {returncode}. "
+        f"stderr: {stderr}"
+    )
+    assert content is not None, "Expected report-data.typ to be written"
+    return content
+
+
+@pytest.fixture(scope="module")
+def golden_image_flag_lines():
+    assert GOLDEN_EXISTING_FLAGS.exists(), (
+        f"Missing golden fixture: {GOLDEN_EXISTING_FLAGS}"
+    )
+    lines = [
+        line for line in GOLDEN_EXISTING_FLAGS.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert len(lines) == 5, (
+        f"Expected exactly 5 lines in {GOLDEN_EXISTING_FLAGS.name}, got {len(lines)}"
+    )
+    return lines
+
+
 @pytest.mark.parametrize(
     "expected_line",
     [
@@ -223,55 +172,16 @@ def test_executive_architecture_image_path_relative_to_template_dir():
         "#let has-maestro-heatmap-image = false",
     ],
 )
-def test_existing_image_flags_unchanged(expected_line):
-    """Pre-existing image flag lines are byte-identical to the pre-F-128 golden.
-
-    The golden file ``golden_existing_image_flags.txt`` was captured BEFORE
-    the executive-architecture detection branch was added to
-    ``extract-report-data.py`` by running the script against
-    ``examples/agentic-app/sample-report/``. That folder has funnel, baseball,
-    and architecture JPEGs present but no MAESTRO images, producing the 5
-    canonical flag values used as the backward-compat baseline.
-
-    This test re-runs the script against the same folder and asserts that
-    each of the 5 ``#let has-*-image = ...`` lines appears byte-identically
-    in the new output. A regression here indicates F-128 accidentally
-    modified an existing image flag's emission format, variable name, or
-    default value — all of which would break every downstream example.
-
-    Unlike the other 4 tests, this one is expected to PASS at T017 (before
-    T018/T019) and continue passing after T018/T019. It is a frozen
-    backward-compatibility baseline.
-    """
-    # Load the golden file; it must exist with exactly 5 lines.
-    assert GOLDEN_EXISTING_FLAGS.exists(), (
-        f"Missing golden fixture: {GOLDEN_EXISTING_FLAGS}"
-    )
-    golden_lines = [
-        line for line in GOLDEN_EXISTING_FLAGS.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
-    assert len(golden_lines) == 5, (
-        f"Expected exactly 5 lines in {GOLDEN_EXISTING_FLAGS.name}, "
-        f"got {len(golden_lines)}"
-    )
-    # The parametrized expected_line must be in the golden file (sanity check
-    # that the test and the golden agree).
-    assert expected_line in golden_lines, (
+def test_existing_image_flags_unchanged(
+    expected_line, agentic_app_report_typst, golden_image_flag_lines
+):
+    """Pre-existing image flag lines stay byte-identical to the frozen golden baseline."""
+    assert expected_line in golden_image_flag_lines, (
         f"Test parameter {expected_line!r} is not in golden file. "
-        f"Golden contents: {golden_lines!r}"
+        f"Golden contents: {golden_image_flag_lines!r}"
     )
 
-    # Re-run the script against the canonical agentic-app sample-report folder.
-    returncode, _stdout, stderr, content = run_extract(AGENTIC_APP_SAMPLE)
-    assert returncode == 0, (
-        f"Expected exit 0 for agentic-app sample-report, got {returncode}. "
-        f"stderr: {stderr}"
-    )
-    assert content is not None, "Expected report-data.typ to be written"
-
-    # Byte-identical line match.
-    output_lines = content.splitlines()
+    output_lines = agentic_app_report_typst.splitlines()
     assert expected_line in output_lines, (
         f"Golden flag line drifted. Expected line {expected_line!r} "
         f"not found in generated report-data.typ. Backward compatibility regression."

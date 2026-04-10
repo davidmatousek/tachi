@@ -1,20 +1,8 @@
-"""US-1 unit tests for the executive-architecture template in extract-infographic-data.py.
+"""Unit tests for the executive-architecture template in extract-infographic-data.py.
 
-These tests exercise the Phase 3 implementation of F-128. They use a mix of
-subprocess invocation (for end-to-end behavior and exit-code assertions) and
-direct module-level calls through the `extract_infographic_data` conftest
-fixture (for helper-function and shape assertions).
-
-Note on the test-first gate (T007):
------------------------------------
-Tests 1-11 assert behavior that does NOT yet exist in the script (the
-executive-architecture dispatch branch, helper functions, and payload shape).
-They are expected to FAIL on T007 (the gate) and PASS after T012.
-
-Test 12 (`test_existing_templates_unchanged`) compares the 5 pre-existing
-templates to golden files captured BEFORE the dispatch branch was added. It
-is expected to PASS at T007 (as a backward-compat baseline) and continue
-passing at T012.
+Exercises both subprocess invocation (for end-to-end behavior and exit codes) and
+direct module-level calls through the ``extract_infographic_data`` conftest fixture
+(for helper-function and payload-shape assertions).
 """
 
 import json
@@ -26,23 +14,14 @@ from pathlib import Path
 
 import pytest
 
-# Repository root resolved from this file's location:
-# tests/scripts/test_extract_infographic_data.py -> parents[2] == repo root
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "extract-infographic-data.py"
 FIXTURES_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "exec_arch"
 GOLDEN_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "golden"
 
 
-# -----------------------------------------------------------------------------
-# Subprocess helper
-# -----------------------------------------------------------------------------
-
 def run_extract(target_dir, template, extra_args=None):
-    """Run extract-infographic-data.py as a subprocess.
-
-    Returns: (returncode, stdout, stderr, payload_dict_or_None)
-    """
+    """Run extract-infographic-data.py and return (returncode, stdout, stderr, payload)."""
     with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
         output_path = f.name
     try:
@@ -72,10 +51,6 @@ def run_extract(target_dir, template, extra_args=None):
         except OSError:
             pass
 
-
-# -----------------------------------------------------------------------------
-# US-1 Tests
-# -----------------------------------------------------------------------------
 
 def test_executive_architecture_happy_path():
     """Agentic-app fixture: exit 0, ≥1 layer, ≥1 callout, skip_image=False."""
@@ -427,7 +402,7 @@ def test_build_executive_architecture_payload_helper(extract_infographic_data):
         {"id": "I-1", "component": "DB", "threat": "info disclosure",
          "risk_level": "Medium"},  # excluded
     ]
-    payload = build(None, "threats", findings, scope, "/tmp/threats.md")
+    payload = build("threats", findings, scope, "/tmp/threats.md")
     assert payload["metadata"]["template_name"] == "executive-architecture"
     assert payload["metadata"]["tier_source"] == "threats"
     assert payload["metadata"]["source_file"] == "/tmp/threats.md"
@@ -450,7 +425,7 @@ def test_build_executive_architecture_payload_helper(extract_infographic_data):
         {"id": "L-1", "component": "API Gateway", "threat": "low issue",
          "risk_level": "Low"},
     ]
-    payload = build(None, "threats", findings_low, scope, "/tmp/threats.md")
+    payload = build("threats", findings_low, scope, "/tmp/threats.md")
     assert payload["metadata"]["skip_image"] is True
     assert payload["callouts"] == []
     assert payload["severity_distribution"]["total_qualifying"] == 0
@@ -465,7 +440,7 @@ def test_build_executive_architecture_payload_helper(extract_infographic_data):
         "trust_boundaries": [],
         "boundary_crossings": [],
     }
-    payload = build(None, "threats", findings[:2], fallback_scope, "/tmp/threats.md")
+    payload = build("threats", findings[:2], fallback_scope, "/tmp/threats.md")
     assert payload["metadata"]["fallback_used"] is True
     assert all(layer["source_kind"] == "dfd_type" for layer in payload["layers"])
 
@@ -476,7 +451,7 @@ def test_build_executive_architecture_payload_helper(extract_infographic_data):
         "trust_boundaries": [],
         "boundary_crossings": [],
     }
-    result = build(None, "threats", [], empty_scope, "/tmp/threats.md")
+    result = build("threats", [], empty_scope, "/tmp/threats.md")
     assert result == {"error": "no_scope_data"}
 
 
@@ -491,11 +466,10 @@ def test_build_executive_architecture_payload_helper(extract_infographic_data):
     ],
 )
 def test_existing_templates_unchanged(template):
-    """Pre-existing templates produce byte-identical output to pre-F-128 golden files.
+    """Pre-existing templates produce byte-identical output to the frozen golden files.
 
-    The goldens in `tests/scripts/fixtures/golden/` were captured before the
-    executive-architecture dispatch branch was added. Any drift indicates a
-    backward-compatibility regression.
+    Goldens in ``tests/scripts/fixtures/golden/`` are the backward-compatibility
+    baseline — any drift indicates a regression in an existing template.
     """
     golden_path = GOLDEN_DIR / f"{template}.json"
     assert golden_path.exists(), f"Missing golden file: {golden_path}"

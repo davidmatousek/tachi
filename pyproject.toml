@@ -13,3 +13,6 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-ra --strict-markers"
+markers = [
+    "slow: tests that invoke typst compile or other slow external subprocesses",
+]

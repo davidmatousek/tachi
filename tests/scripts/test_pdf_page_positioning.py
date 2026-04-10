@@ -1,39 +1,21 @@
-"""US-2 PDF page-positioning test for the Executive Threat Architecture page.
+"""PDF page-positioning tests for the Executive Threat Architecture page.
 
-This module automates the T023 manual end-to-end verification (see
-``specs/128-prd-128-executive/manual-verification.md``): it runs the full
-extraction + Typst compile pipeline against ``examples/agentic-app/sample-report/``
-with a placeholder ``threat-executive-architecture.jpg`` in place, then asserts
-that the rendered PDF places the Executive Threat Architecture page *between*
-Executive Summary and Attack Path Analysis.
+Runs the extraction + Typst compile pipeline against
+``examples/agentic-app/sample-report/`` with a placeholder
+``threat-executive-architecture.jpg`` in place, then asserts that the rendered
+PDF places the Executive Threat Architecture page *between* Executive Summary
+and Attack Path Analysis.
 
-Why relative ordering only
---------------------------
-The absolute page numbers observed in T023 (10 / 11 / 12) are example-dependent:
-the number of findings, attack trees, and optional infographic images can all
-shift the three sections forward or backward across examples. This test asserts
-*relative order* only — Executive Threat Architecture > Executive Summary AND
-Executive Threat Architecture < Attack Path Analysis — so it survives any
-legitimate content drift on the ``agentic-app`` example without needing to be
-re-baselined.
+Absolute page numbers are content-dependent (findings, attack trees, and optional
+infographic images all shift sections forward and backward), so this test asserts
+*relative order* only. That lets it survive legitimate content drift on the
+``agentic-app`` example without a baseline rebuild.
 
-Why the placeholder JPEG
-------------------------
-``examples/agentic-app/sample-report/`` does not yet contain a real
-Gemini-generated ``threat-executive-architecture.jpg``; that image will land in
-T033 (Phase 7 regeneration). Until then, the ``has-executive-architecture``
-flag in ``extract-report-data.py`` only checks for *presence* and *non-zero
-size* of the file, so we copy the existing ``threat-system-architecture.jpg``
-under the new name to satisfy the detection logic. The placeholder is removed
-in a ``try/finally`` block regardless of test outcome — leaving stale files in
-the examples tree would pollute downstream tasks.
-
-T029 placeholder
-----------------
-The skip-image branch (flag=false, page should NOT appear) is covered by T029
-in Wave 5 (US-4) via a second test function
-``test_executive_architecture_skip_image_pdf_omits_page`` that will be appended
-to this same file. This file intentionally leaves room for that second test.
+The placeholder JPEG is a copy of the real ``threat-system-architecture.jpg``
+under the executive-architecture filename, used because
+``has-executive-architecture`` in ``extract-report-data.py`` only checks for
+presence and non-zero size. The placeholder is removed in a ``try/finally``
+block regardless of test outcome so it does not pollute the examples tree.
 """
 
 import os
@@ -45,8 +27,6 @@ from pathlib import Path
 import pytest
 
 
-# Repository root resolved from this file's location:
-# tests/scripts/test_pdf_page_positioning.py -> parents[2] == repo root
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "extract-report-data.py"
 TEMPLATE_DIR = REPO_ROOT / "templates" / "tachi" / "security-report"
@@ -56,14 +36,11 @@ AGENTIC_APP_SAMPLE = REPO_ROOT / "examples" / "agentic-app" / "sample-report"
 SOURCE_JPEG = AGENTIC_APP_SAMPLE / "threat-system-architecture.jpg"
 PLACEHOLDER_JPEG = AGENTIC_APP_SAMPLE / "threat-executive-architecture.jpg"
 
-# Deterministic timestamp for compile reproducibility (consistent with T024).
 SOURCE_DATE_EPOCH = "1700000000"
 
-# How many leading lines of each extracted page we scan for section headings.
-# 25 is enough to cover the typical section-divider layout (header + title +
-# leading content). TOC pages are excluded via the "Table of Contents" marker
-# (see ``_find_first_page_with_heading``), so this window can safely be a bit
-# generous without risk of capturing TOC entries.
+# 25 covers the typical section-divider layout (header + title + leading content).
+# TOC pages are filtered via the "Table of Contents" marker in
+# _find_first_page_with_heading, so this window can be generous without risk.
 PAGE_HEADING_SCAN_LINES = 25
 
 
@@ -107,28 +84,10 @@ def _find_first_page_with_heading(pages, heading):
     return None
 
 
+@pytest.mark.slow
 def test_executive_architecture_page_position(tmp_path):
-    """Verify the Executive Threat Architecture page renders between Exec Summary
-    and Attack Path Analysis when the placeholder image is present.
-
-    Pipeline:
-        1. Copy ``threat-system-architecture.jpg`` to
-           ``threat-executive-architecture.jpg`` in the agentic-app sample
-           folder (placeholder — T033 will replace with real Gemini output).
-        2. Run ``scripts/extract-report-data.py`` to emit ``report-data.typ``
-           with ``has-executive-architecture = true`` and the relative image
-           path.
-        3. Run ``typst compile`` against ``main.typ`` producing a PDF in
-           ``tmp_path``.
-        4. Extract per-page text with ``pdftotext -layout`` and split on the
-           form-feed (``\\x0c``) separator.
-        5. Locate the first page containing each of the three section
-           headings in its first 25 lines.
-        6. Assert relative ordering + small spread window.
-
-    Cleanup runs in a ``finally`` block regardless of outcome: the placeholder
-    JPEG and the intermediate ``report-data.typ`` are both deleted.
-    """
+    """Stage the placeholder JPEG, run the pipeline, and assert the Executive Threat
+    Architecture page renders between Executive Summary and Attack Path Analysis."""
     # Guard: skip if neither pdftotext nor pypdf is available. pdftotext is
     # installed on the dev machine and in CI; this is purely defensive.
     pdftotext_bin = shutil.which("pdftotext")
@@ -159,9 +118,8 @@ def test_executive_architecture_page_position(tmp_path):
     placeholder_created = False
     report_data_created = False
     try:
-        # Step 1: Stage the placeholder JPEG. Only create if not already
-        # present — if a previous test left one behind (shouldn't happen, but
-        # defensive), we don't clobber it.
+        # Stage the placeholder only if not already present — don't clobber a
+        # previous test's leftover.
         if not PLACEHOLDER_JPEG.exists():
             shutil.copyfile(SOURCE_JPEG, PLACEHOLDER_JPEG)
             placeholder_created = True
@@ -173,11 +131,9 @@ def test_executive_architecture_page_position(tmp_path):
             "detection requires non-zero size."
         )
 
-        # Deterministic env for reproducible Typst output (parity with T024)
         env = os.environ.copy()
         env["SOURCE_DATE_EPOCH"] = SOURCE_DATE_EPOCH
 
-        # Step 2: Run the extraction script against the agentic-app sample
         extract_cmd = [
             sys.executable,
             str(SCRIPT_PATH),
@@ -212,9 +168,9 @@ def test_executive_architecture_page_position(tmp_path):
             f"{report_data_content[:500]}"
         )
 
-        # Step 3: Typst compile. --root . ensures the template can resolve
-        # the relative image path computed by extract-report-data.py (which
-        # walks up from templates/tachi/security-report/ to examples/...).
+        # --root pins Typst to the repo root so it can resolve the relative
+        # image path computed by extract-report-data.py (which walks up from
+        # templates/tachi/security-report/ to examples/...).
         compile_cmd = [
             "typst",
             "compile",
@@ -237,8 +193,6 @@ def test_executive_architecture_page_position(tmp_path):
             f"typst produced no output at {tmp_pdf} (or zero-byte file)."
         )
 
-        # Step 4: Extract per-page text. Prefer pdftotext -layout (matches
-        # T023 manual verification tooling); fall back to pypdf if unavailable.
         if pdftotext_bin is not None:
             pdftotext_cmd = [
                 pdftotext_bin,
@@ -271,7 +225,6 @@ def test_executive_architecture_page_position(tmp_path):
 
         assert len(pages) > 0, "Extracted zero pages from the generated PDF."
 
-        # Step 5: Locate the three section heading pages
         exec_summary_page = _find_first_page_with_heading(
             pages, "Executive Summary"
         )
@@ -282,7 +235,6 @@ def test_executive_architecture_page_position(tmp_path):
             pages, "Attack Path Analysis"
         )
 
-        # Step 6: Assertions
         assert exec_summary_page is not None, (
             "Could not find 'Executive Summary' heading on any page "
             "(checked first %d lines of each page)." % PAGE_HEADING_SCAN_LINES
@@ -299,7 +251,6 @@ def test_executive_architecture_page_position(tmp_path):
             "%d lines of each page." % PAGE_HEADING_SCAN_LINES
         )
 
-        # Relative ordering — the core contract of T025
         assert exec_architecture_page > exec_summary_page, (
             f"Executive Threat Architecture (page {exec_architecture_page}) "
             f"must appear AFTER Executive Summary (page {exec_summary_page}). "
@@ -314,10 +265,6 @@ def test_executive_architecture_page_position(tmp_path):
         )
 
     finally:
-        # Cleanup: always remove the placeholder JPEG and the intermediate
-        # report-data.typ, even if the test failed. Leaving either behind
-        # would pollute downstream tasks (T033 writes the real JPEG; other
-        # tests expect report-data.typ to be generated fresh).
         if placeholder_created and PLACEHOLDER_JPEG.exists():
             try:
                 PLACEHOLDER_JPEG.unlink()
@@ -330,53 +277,10 @@ def test_executive_architecture_page_position(tmp_path):
                 pass
 
 
-# ---------------------------------------------------------------------------
-# T029 (Wave 5, US-4):
-# test_executive_architecture_skip_image_pdf_omits_page
-#
-# Covers the absent-image branch — the end-to-end downstream effect of
-# ``extract-infographic-data.py`` setting ``metadata.skip_image = true`` when
-# no Critical/High findings exist. Under that condition the infographic agent
-# does NOT invoke Gemini, so no ``threat-executive-architecture.jpg`` is
-# created. This test verifies that when the JPEG is absent, the rendered PDF
-# does NOT contain an Executive Threat Architecture page.
-#
-# This is the PDF-side test only. The extraction-side skip_image behavior is
-# covered by Wave 3 T006's extraction bundle
-# (``test_executive_architecture_no_critical_high_skip_image``).
-# ---------------------------------------------------------------------------
-
-
+@pytest.mark.slow
 def test_executive_architecture_skip_image_pdf_omits_page(tmp_path):
-    """Verify the Executive Threat Architecture page is OMITTED from the PDF
-    when ``threat-executive-architecture.jpg`` is absent (the skip_image=true
-    downstream effect).
-
-    Pipeline:
-        1. Assert ``threat-executive-architecture.jpg`` does NOT exist in
-           ``examples/agentic-app/sample-report/`` (skip test if it does, to
-           avoid clobbering a real Gemini output from T033).
-        2. Run ``scripts/extract-report-data.py`` against the agentic-app
-           sample folder. Because the JPEG is absent, ``detect_images()``
-           sets ``has-executive-architecture = false`` in the generated
-           ``report-data.typ``.
-        3. Run ``typst compile`` against ``main.typ`` producing a PDF in
-           ``tmp_path``. The conditional block in ``main.typ`` should skip
-           the Executive Threat Architecture page entirely.
-        4. Extract per-page text with ``pdftotext -layout`` (with a ``pypdf``
-           fallback, matching the present-branch test above).
-        5. Assert NO page's first ``PAGE_HEADING_SCAN_LINES`` lines contain
-           the literal "Executive Threat Architecture" string (modulo TOC
-           leader filtering via ``_find_first_page_with_heading``).
-        6. Sanity-assert that "Executive Summary" and "Attack Path Analysis"
-           ARE present — these sections must still render so a missing
-           heading on page 1 doesn't silently pass the omission check.
-        7. Assert the report-data.typ flag is ``false`` before cleanup.
-
-    Cleanup runs in a ``finally`` block: the intermediate ``report-data.typ``
-    is deleted. This test does NOT create any placeholder JPEG, so nothing
-    needs to be cleaned up in the examples tree.
-    """
+    """Run the pipeline without a ``threat-executive-architecture.jpg`` in place and
+    assert the Executive Threat Architecture page is omitted from the rendered PDF."""
     # Guard: skip if neither pdftotext nor pypdf is available (same pattern
     # as the present-branch test).
     pdftotext_bin = shutil.which("pdftotext")
@@ -393,12 +297,9 @@ def test_executive_architecture_skip_image_pdf_omits_page(tmp_path):
             "cannot extract per-page text from the generated PDF."
         )
 
-    # Temporarily move the JPEG aside so the test exercises the
-    # absent-image branch. After T033 landed, the real Gemini output lives at
-    # PLACEHOLDER_JPEG, so simply skipping when it exists would leave the
-    # absent-branch contract untested. Instead, stash the real file and
-    # restore it in finally, guaranteeing the committed example stays intact
-    # regardless of test outcome.
+    # Stash any real Gemini output aside for the duration of the test so the
+    # absent-branch contract stays covered even when the checked-in example
+    # has a real ``threat-executive-architecture.jpg``. Restored in finally.
     jpeg_backup = None
     if PLACEHOLDER_JPEG.exists():
         jpeg_backup = tmp_path / "threat-executive-architecture.jpg.backup"
@@ -410,13 +311,9 @@ def test_executive_architecture_skip_image_pdf_omits_page(tmp_path):
 
     report_data_created = False
     try:
-        # Deterministic env for reproducible Typst output (parity with T024)
         env = os.environ.copy()
         env["SOURCE_DATE_EPOCH"] = SOURCE_DATE_EPOCH
 
-        # Step 2: Run the extraction script against the agentic-app sample.
-        # With no JPEG in place, detect_images() must emit
-        # has-executive-architecture = false.
         extract_cmd = [
             sys.executable,
             str(SCRIPT_PATH),
@@ -451,9 +348,9 @@ def test_executive_architecture_skip_image_pdf_omits_page(tmp_path):
             f"{report_data_content[:500]}"
         )
 
-        # Step 3: Typst compile. --root . ensures the template can resolve
-        # relative image paths for the OTHER infographic images (funnel,
-        # baseball card, system architecture) which DO exist in the sample.
+        # --root pins Typst to the repo root so it can resolve the relative
+        # image paths for the OTHER infographic images (funnel, baseball card,
+        # system architecture) which DO exist in the sample.
         compile_cmd = [
             "typst",
             "compile",
@@ -476,8 +373,6 @@ def test_executive_architecture_skip_image_pdf_omits_page(tmp_path):
             f"typst produced no output at {tmp_pdf} (or zero-byte file)."
         )
 
-        # Step 4: Extract per-page text. Prefer pdftotext -layout (matches
-        # T023 manual verification tooling); fall back to pypdf if unavailable.
         if pdftotext_bin is not None:
             pdftotext_cmd = [
                 pdftotext_bin,
@@ -506,12 +401,9 @@ def test_executive_architecture_skip_image_pdf_omits_page(tmp_path):
 
         assert len(pages) > 0, "Extracted zero pages from the generated PDF."
 
-        # Step 5: Assert NO page contains "Executive Threat Architecture" in
-        # its first PAGE_HEADING_SCAN_LINES lines (after TOC filtering).
-        # Reuse _find_first_page_with_heading so the test shares the exact
-        # same TOC-filtering logic as the present-branch test — if either
-        # test drifts in what counts as a "heading match", both drift
-        # together.
+        # Reuse _find_first_page_with_heading so the TOC-filtering logic stays
+        # shared with the present-branch test; if either test drifts in what
+        # counts as a heading match, both drift together.
         exec_architecture_page = _find_first_page_with_heading(
             pages, "Executive Threat Architecture"
         )
@@ -524,11 +416,9 @@ def test_executive_architecture_skip_image_pdf_omits_page(tmp_path):
             "and extract-report-data.py's detect_images()."
         )
 
-        # Step 6: Sanity-check that the pipeline DID produce the expected
-        # surrounding sections. If Executive Summary or Attack Path Analysis
-        # are also missing, the pipeline is broken and the page-omission
-        # assertion above is a false positive (it would pass if the PDF were
-        # entirely empty).
+        # Sanity-check the surrounding sections — if Executive Summary or
+        # Attack Path Analysis are also missing, the page-omission assertion
+        # above is a false positive (it would trivially pass on an empty PDF).
         exec_summary_page = _find_first_page_with_heading(
             pages, "Executive Summary"
         )
@@ -548,11 +438,8 @@ def test_executive_architecture_skip_image_pdf_omits_page(tmp_path):
         )
 
         # With the page omitted, Attack Path Analysis should follow directly
-        # after Executive Summary (no gap page for Executive Threat
-        # Architecture in between). T023 observed page 10 → page 11 in the
-        # absent branch. We don't assert the absolute values (content drift
-        # can shift them) — we assert the gap is at most 1 page, matching the
-        # omission of exactly one page.
+        # after Executive Summary with exactly a one-page gap. Absolute page
+        # numbers can drift with content changes, so we assert the relative gap.
         gap = attack_path_page - exec_summary_page
         assert gap == 1, (
             f"Expected Attack Path Analysis (page {attack_path_page}) to "
@@ -564,9 +451,8 @@ def test_executive_architecture_skip_image_pdf_omits_page(tmp_path):
         )
 
     finally:
-        # Cleanup: always remove the intermediate report-data.typ, even if
-        # the test failed. Restore the stashed real JPEG if we moved it aside
-        # so the committed example is never left in a broken state.
+        # Restore the stashed real JPEG if we moved it aside so the committed
+        # example is never left in a broken state.
         if report_data_created and REPORT_DATA_TYP.exists():
             try:
                 REPORT_DATA_TYP.unlink()
