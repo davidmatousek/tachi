@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-04-10T15:32:53Z.
+> Auto-generated from GitHub Issues on 2026-04-10T18:25:44Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -45,7 +45,7 @@
 
 | # | Title | Delivered | Retro | Updated |
 |---|-------|-----------|-------|---------|
-| — | *No items in this stage* | | |
+| #136 | MAESTRO framework compliance: fix canonical L5-L7 layer naming and add cross-layer analysis, agentic threat patterns, AIVSS evaluation | 2026-04-10 | — | 2026-04-10 |
 
 ## Untracked
 
@@ -53,7 +53,6 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
-| #136 | MAESTRO framework compliance: fix canonical L5-L7 layer naming and add cross-layer analysis, agentic threat patterns, AIVSS evaluation | OPEN | 2026-04-10 |
 | #27 | Developer Guide: Automated Threat Modeling for Your Architecture | CLOSED | 2026-03-24 |
 | #18 | Feature: Threat Infographic Agent | CLOSED | 2026-03-23 |
 | #15 | Feature 007: Threat Report Agent & Attack Trees | CLOSED | 2026-03-23 |
