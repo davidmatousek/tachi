@@ -63,13 +63,17 @@
     }
 
     // Image with rounded corners and subtle border, proportionally scaled.
+    // Height is constrained so portrait-aspect images (e.g., executive-architecture)
+    // don't overflow onto subsequent pages. `fit: "contain"` preserves aspect ratio
+    // within the 100% x 7.5in bounding box.
     #block(
       width: 100%,
+      height: 7.5in,
       radius: 4pt,
       clip: true,
       stroke: 0.5pt + color-rule,
     )[
-      #image(image-path, width: 100%, fit: "contain")
+      #image(image-path, width: 100%, height: 100%, fit: "contain")
     ]
 
     // Explanatory text below the image.

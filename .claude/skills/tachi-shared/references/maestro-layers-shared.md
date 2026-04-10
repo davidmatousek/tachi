@@ -14,7 +14,7 @@ consumers:
 
 Canonical CSA MAESTRO seven-layer taxonomy definitions for agentic AI architectures. This is the single source of truth for layer identifiers, descriptions, keyword mappings, and the classification algorithm used during Phase 1 (Scope). All consuming agents should Read this file rather than maintaining inline definitions.
 
-**Source**: Cloud Security Alliance — MAESTRO (Multi-Agent Environment Security Toolkit for Reasoning and Orchestration), February 2025.
+**Source**: Cloud Security Alliance — MAESTRO (Multi-Agent Environment, Security, Threat, Risk, and Outcome), February 2025.
 
 ---
 
@@ -33,13 +33,17 @@ MAESTRO layer classification runs during Phase 1 after DFD classification. It as
 
 ### Ordering Rationale
 
-The L1-L7 evaluation order is load-bearing — changing the order changes classification results. The ordering follows a specificity gradient:
+The L1-L7 evaluation order follows a specificity gradient from most specific to most general, with observability placed before security to ensure detective controls are classified correctly.
 
-- **L1 (Foundation Model)** is evaluated first because foundation model keywords are the most specific and least ambiguous.
-- **L7 (User Interface)** is evaluated last because UI keywords (e.g., "API endpoint") are the most general and could match components at other layers.
-- **L4 (Deployment Infrastructure)** and **L5 (Security)** are evaluated in the middle because their keywords have moderate specificity.
+- **L1 (Foundation Models)** is evaluated first because foundation model keywords (LLM, GPT, Claude, Gemini, inference engine) are the most specific and least ambiguous — they rarely match components at other layers.
+- **L2 (Data Operations)** follows because data pipeline keywords (vector, RAG, embedding, dataset) are domain-specific to data handling infrastructure.
+- **L3 (Agent Frameworks)** is next because agent orchestration keywords (orchestrator, planner, tool dispatch, MCP server) are specific to agentic orchestration layers.
+- **L4 (Deployment Infrastructure)** is evaluated in the middle because infrastructure keywords (container, load balancer, API gateway) are common but clearly scoped to runtime deployment.
+- **L5 (Evaluation and Observability)** is evaluated before L6 Security so that detective control keywords (audit log, monitoring, SIEM, anomaly detection, telemetry) classify to the observability layer rather than being misrouted to security. This ordering resolves the semantic ambiguity where "audit log" could match either layer — first-match-wins with L5-before-L6 gives the correct observability classification.
+- **L6 (Security and Compliance)** is evaluated after L5 because security keywords (auth, WAF, firewall, guardrail, RBAC, IAM) are specific to preventive controls and access enforcement. Components matching both L5 and L6 keywords classify to L5 first (e.g., "security audit log" → L5 via `audit log` match).
+- **L7 (Agent Ecosystem)** is evaluated last because it is the broadest catch-all — covering multi-agent coordination (multi-agent, swarm, delegation), agent-to-agent protocols, and human-agent interaction (chat UI, dashboard, API endpoint, web portal). Keywords here are the most general and could potentially match components at other layers, so L7 evaluates last to avoid capturing specific components that belong elsewhere.
 
-**WARNING**: Changing keyword order changes classification. Test against all example architectures after any modification to the keyword table.
+**WARNING**: Changing keyword order changes classification. The L5-before-L6 ordering is load-bearing for canonical MAESTRO observability/security separation. Test against all six example architectures after any modification to the keyword table.
 
 ---
 
@@ -51,9 +55,9 @@ The L1-L7 evaluation order is load-bearing — changing the order changes classi
 | L2 | Data Operations | Data pipelines, vector stores, embedding indexes, and training/retrieval data management | Vector DB, RAG pipeline, training dataset, embedding index, knowledge base |
 | L3 | Agent Framework | Orchestration layers, planning engines, tool dispatch, and agent execution frameworks | Agent orchestrator, tool server, MCP server, workflow engine, planner |
 | L4 | Deployment Infrastructure | Runtime environments, networking, and infrastructure services | API gateway, load balancer, Kubernetes cluster, container runtime, CDN |
-| L5 | Security | Authentication, authorization, content filtering, and security monitoring | WAF, auth service, secrets manager, guardrail, rate limiter, IAM |
-| L6 | Agent Ecosystem | Multi-agent coordination, delegation, and inter-agent communication | Multi-agent supervisor, agent mesh, delegation broker, swarm coordinator |
-| L7 | User Interface | User-facing surfaces and API endpoints for human interaction | Chat UI, admin dashboard, REST API, GraphQL endpoint, web portal |
+| L5 | Evaluation and Observability | Detective controls, logging, monitoring, anomaly detection, forensics, and telemetry collection | Audit logger, SIEM, observability stack, metrics collector, alerting system, forensic log store |
+| L6 | Security and Compliance | Authentication, authorization, content filtering, preventive controls, and compliance enforcement | WAF, auth service, secrets manager, guardrail, rate limiter, IAM, RBAC, encryption service |
+| L7 | Agent Ecosystem | Multi-agent coordination, delegation, agent-to-agent communication, and human-agent interaction surfaces | Multi-agent supervisor, agent mesh, delegation broker, swarm coordinator, chat UI, admin dashboard, REST API |
 
 ---
 
@@ -129,7 +133,23 @@ Keywords are matched case-insensitively against component name, description, and
 | queue |
 | registry |
 
-### L5 — Security
+### L5 — Evaluation and Observability
+
+| Keyword |
+|---------|
+| audit log |
+| monitoring |
+| SIEM |
+| anomaly detection |
+| telemetry |
+| log |
+| metrics |
+| tracing |
+| forensics |
+| alerting |
+| observability |
+
+### L6 — Security and Compliance
 
 | Keyword |
 |---------|
@@ -137,7 +157,6 @@ Keywords are matched case-insensitively against component name, description, and
 | WAF |
 | firewall |
 | secrets manager |
-| audit log |
 | guardrail |
 | content filter |
 | rate limit |
@@ -147,7 +166,7 @@ Keywords are matched case-insensitively against component name, description, and
 | access control |
 | security |
 
-### L6 — Agent Ecosystem
+### L7 — Agent Ecosystem
 
 | Keyword |
 |---------|
@@ -160,11 +179,6 @@ Keywords are matched case-insensitively against component name, description, and
 | sub-agent |
 | agent registry |
 | agent mesh |
-
-### L7 — User Interface
-
-| Keyword |
-|---------|
 | chat UI |
 | dashboard |
 | admin console |

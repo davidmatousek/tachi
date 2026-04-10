@@ -119,5 +119,13 @@ The implementation adds:
 ## References
 
 - `.claude/skills/tachi-shared/references/maestro-layers-shared.md` -- Canonical keyword-to-layer mapping
-- `schemas/finding.yaml` -- Finding IR schema with `maestro_layer` field (v1.2)
-- Cloud Security Alliance, "MAESTRO: Multi-Agent Environment Security Toolkit for Reasoning and Orchestration", February 2025
+- `schemas/finding.yaml` -- Finding IR schema with `maestro_layer` field (v1.3)
+- Cloud Security Alliance, "MAESTRO: Multi-Agent Environment, Security, Threat, Risk, and Outcome", February 2025
+
+---
+
+## Revision History
+
+**2026-04-10 (Feature 136)**: Layer names for L5, L6, L7 aligned with canonical CSA MAESTRO taxonomy per the Ken Huang authoritative definition. L5 renamed from "Security" to "Evaluation and Observability", L6 renamed from "Agent Ecosystem" to "Security and Compliance", L7 renamed from "User Interface" to "Agent Ecosystem". Acronym expansion corrected to "Multi-Agent Environment, Security, Threat, Risk, and Outcome". Schema version bumped from 1.2 to 1.3 to signal the breaking enum-value change. See `docs/product/02_PRD/136-maestro-canonical-layer-correctness-fix-2026-04-10.md` for full context.
+
+**Schema versioning rule** (established for this feature): Enum-value-only breaking changes to `schemas/finding.yaml` warrant a minor schema bump (x.y+1), not a major bump, provided the schema shape and required fields are unchanged. The CHANGELOG migration note is the accountability mechanism for downstream consumers. This rule applies to future enum-value corrections.

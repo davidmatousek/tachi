@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Breaking Changes — Correctness Fix (#136)
+
+**MAESTRO Canonical Layer Alignment**: tachi's MAESTRO seven-layer taxonomy has been aligned with the canonical CSA Ken Huang reference. Three L5/L6/L7 layer names, the acronym expansion, and a third-divergent name ("Integration Services") in the Typst PDF template have been corrected. This is a **correctness fix**, not a feature addition.
+
+#### Enum Value Migration (`schemas/finding.yaml` `maestro_layer`)
+
+The `maestro_layer` enum in `schemas/finding.yaml` has changed values. Downstream consumers (dashboards, scripts, tooling built on the enum) MUST update their code.
+
+| Old Value | New Value |
+|-----------|-----------|
+| `L5 — Security` | `L5 — Evaluation and Observability` |
+| `L6 — Agent Ecosystem` | `L6 — Security and Compliance` |
+| `L7 — User Interface` | `L7 — Agent Ecosystem` |
+| `L6 — Integration Services` (Typst template bug) | `L6 — Security and Compliance` |
+
+L1–L4 enum values are unchanged.
+
+#### Schema Version Bump
+
+`schemas/finding.yaml` schema version bumped from `1.2` to `1.3`. This signals the enum-value-only breaking change. The schema shape and required fields are unchanged — only the allowed values for `maestro_layer` changed. Per ADR-020, enum-value-only breaking changes warrant a minor schema bump (not major), provided schema shape and required fields are unchanged.
+
+#### Acronym Correction
+
+The MAESTRO acronym expansion in `.claude/skills/tachi-shared/references/maestro-layers-shared.md` (line 17) and `docs/architecture/02_ADRs/ADR-020-maestro-layer-classification.md` (line 123) has been corrected from:
+
+- **Old**: "Multi-Agent Environment Security Toolkit for Reasoning and Orchestration"
+- **New**: "Multi-Agent Environment, Security, Threat, Risk, and Outcome"
+
+The new form matches the canonical CSA source.
+
+#### Typst PDF Template Fix
+
+`templates/tachi/security-report/maestro-findings.typ` fallback dictionary (lines 132-134) previously contained `"L6": "Integration Services"` — a third divergent name matching neither the canonical CSA spec nor the prior shared reference. This pre-existing bug was corrected as part of this fix.
+
+#### Regenerated Example Outputs
+
+All six example architectures in `examples/*` have had their threat model outputs regenerated with canonical layer names:
+
+- `examples/web-app/` — threats.md + security-report.pdf.baseline
+- `examples/microservices/` — threats.md + security-report.pdf.baseline
+- `examples/ascii-web-api/` — threats.md + security-report.pdf.baseline
+- `examples/free-text-microservice/` — threats.md + security-report.pdf.baseline
+- `examples/mermaid-agentic-app/` — threats.md + threat-report.md + threat-infographic-spec.md + attack-trees/ + security-report.pdf.baseline
+- `examples/agentic-app/sample-report/` — full pipeline (threats.md, risk-scores.md, compensating-controls.md, threat-report.md, infographic specs, security-report.pdf)
+
+The five non-agentic-app PDF baselines are byte-deterministic under `SOURCE_DATE_EPOCH=1700000000` per ADR-021. The agentic-app sample remains intentionally excluded from byte-determinism testing due to non-deterministic Gemini infographic generation.
+
+#### New L5 Keyword Set
+
+A new L5 Evaluation and Observability keyword section has been added covering: audit log, monitoring, observability, telemetry, anomaly detection, SIEM, forensics, behavioral monitoring, metrics, human oversight, log aggregation. Previously, findings targeting audit loggers and observability components had no dedicated layer and were misrouted or lost.
+
+#### Downstream Migration Guidance
+
+If you consume tachi output programmatically:
+
+1. Update any hardcoded references to the old layer names (see enum migration table above)
+2. Update any scripts parsing `maestro_layer` values from `threats.md`, `risk-scores.md`, or `compensating-controls.md`
+3. Regenerate any custom report templates that reference layer names
+4. Check `schema_version` field — expect `"1.3"` going forward
+
+#### References
+
+- PRD: [docs/product/02_PRD/136-maestro-canonical-layer-correctness-fix-2026-04-10.md](docs/product/02_PRD/136-maestro-canonical-layer-correctness-fix-2026-04-10.md)
+- Spec: [specs/136-maestro-canonical-layer/spec.md](specs/136-maestro-canonical-layer/spec.md)
+- Plan: [specs/136-maestro-canonical-layer/plan.md](specs/136-maestro-canonical-layer/plan.md)
+- ADR-020 (canonical taxonomy rule): [docs/architecture/02_ADRs/ADR-020-maestro-layer-classification.md](docs/architecture/02_ADRs/ADR-020-maestro-layer-classification.md)
+- GitHub Issue: [#136](https://github.com/davidmatousek/tachi/issues/136)
+
+---
+
 ## [4.9.2](https://github.com/davidmatousek/tachi/compare/v4.9.1...v4.9.2) (2026-04-10)
 
 

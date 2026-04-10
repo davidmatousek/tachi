@@ -23,7 +23,7 @@ The output begins with YAML frontmatter containing exactly these fields:
 
 ```yaml
 ---
-schema_version: "1.2"
+schema_version: "1.3"
 date: "YYYY-MM-DD"
 input_format: "detected-or-declared-format"
 classification: "confidential"

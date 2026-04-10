@@ -257,9 +257,9 @@ For agentic AI systems, tachi maps each finding to the [CSA MAESTRO](https://clo
 | L2 | Data Operations | Vector stores, RAG pipelines, embeddings |
 | L3 | Agent Framework | Orchestrators, tool servers, MCP |
 | L4 | Deployment Infrastructure | API gateways, containers, networking |
-| L5 | Security | Auth, guardrails, rate limiting |
-| L6 | Agent Ecosystem | Multi-agent coordination, delegation |
-| L7 | User Interface | Chat UIs, dashboards, API endpoints |
+| L5 | Evaluation and Observability | Audit logging, monitoring, anomaly detection, forensics |
+| L6 | Security and Compliance | Auth, guardrails, rate limiting, encryption, IAM |
+| L7 | Agent Ecosystem | Multi-agent coordination, delegation, chat UIs, API endpoints |
 
 MAESTRO layers appear in `threats.md`, propagate through all downstream commands, and power the `maestro-stack` and `maestro-heatmap` infographic templates.
 

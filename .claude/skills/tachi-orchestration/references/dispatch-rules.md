@@ -146,14 +146,14 @@ Label this section clearly:
 |-----------|----------|---------------|-------------------|---------------|--------------|
 | LLM Agent Orchestrator | Process | L3 — Agent Framework | S, T, R, I, D, E | LLM, AG | 11 |
 | MCP Tool Server | Process | L3 — Agent Framework | S, T, R, I, D, E | AG | 8 |
-| User | External Entity | L7 — User Interface | S, R | — | 2 |
+| User | External Entity | L7 — Agent Ecosystem | S, R | — | 2 |
 | Knowledge Base | Data Store | L2 — Data Operations | T, I, D | — | 3 |
 | External API | External Entity | Unclassified | S, R | — | 2 |
 
 In this example:
 - "LLM Agent Orchestrator" is a Process (6 STRIDE agents) with dual-dispatch (3 LLM + 2 AG agents) = 11 total. Classified as L3 (Agent Framework) due to "orchestrator" keyword.
 - "MCP Tool Server" is a Process (6 STRIDE agents) with AG dispatch (2 AG agents) = 8 total. Classified as L3 due to "MCP server" keyword.
-- "User" is an External Entity (2 STRIDE agents) with no AI match = 2 total. Classified as L7 due to user-facing entity.
+- "User" is an External Entity (2 STRIDE agents) with no AI match = 2 total. Classified as L7 (Agent Ecosystem) due to the `user` keyword matching human-agent interaction scope.
 - "Knowledge Base" is a Data Store (3 STRIDE agents) with no AI match = 3 total. Classified as L2 due to "knowledge base" keyword.
 - "External API" is an External Entity with no matching MAESTRO keywords = Unclassified.
 

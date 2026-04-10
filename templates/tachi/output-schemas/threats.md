@@ -18,7 +18,7 @@
 
 ```yaml
 ---
-schema_version: "1.2"
+schema_version: "1.3"
 date: "YYYY-MM-DD"
 input_format: "{detected or declared format}"
 classification: "confidential"
@@ -38,7 +38,7 @@ coverage_gate:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `schema_version` | string | Output schema version. Always `"1.2"` for this release. |
+| `schema_version` | string | Output schema version. Always `"1.3"` for this release. |
 | `date` | string | ISO 8601 date when the threat model was generated. Format: `YYYY-MM-DD`. |
 | `input_format` | string | Architecture input format that was analyzed. One of: `ascii`, `free-text`, `mermaid`, `plantuml`, `c4`. |
 | `classification` | string | Data classification label for the report. Default: `confidential`. |
@@ -54,7 +54,7 @@ coverage_gate:
 
 ```yaml
 ---
-schema_version: "1.2"
+schema_version: "1.3"
 date: "2026-03-31"
 input_format: "mermaid"
 classification: "confidential"
@@ -74,7 +74,7 @@ coverage_gate:
 
 ```yaml
 ---
-schema_version: "1.2"
+schema_version: "1.3"
 date: "2026-03-31"
 input_format: "mermaid"
 classification: "confidential"
@@ -96,7 +96,7 @@ coverage_gate:
 
 ```yaml
 ---
-schema_version: "1.2"
+schema_version: "1.3"
 date: "2026-03-31"
 input_format: "mermaid"
 classification: "confidential"
@@ -132,7 +132,7 @@ List every component identified in the architecture input. Each component become
 |-----------|------|---------------|-------------|
 | API Gateway | Process | L4 — Deployment Infrastructure | Routes incoming HTTP requests to backend services and enforces rate limits |
 | User Database | Data Store | L2 — Data Operations | PostgreSQL database storing user credentials and profile data |
-| Mobile Client | External Entity | L7 — User Interface | iOS/Android application that authenticates users and displays content |
+| Mobile Client | External Entity | L7 — Agent Ecosystem | iOS/Android application that authenticates users and displays content |
 | Auth Token Flow | Data Flow | Unclassified | JWT tokens passed from Auth Service to API Gateway on every request |
 | LLM Agent | Process | L1 — Foundation Model | Autonomous agent that processes natural-language queries using an LLM backend |
 
@@ -276,7 +276,7 @@ Threats where an attacker denies having performed an action without the system b
 
 | ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|--------|-----------|---------------|--------|------------|--------|------------|------------|
-| R-1 | UNCHANGED | Auth Service | L5 — Security | User denies performing privileged actions because audit logs do not capture sufficient session context | MEDIUM | MEDIUM | Medium | Implement immutable audit log with session ID, IP, user agent, and action timestamp for all privileged operations |
+| R-1 | UNCHANGED | Auth Service | L6 — Security and Compliance | User denies performing privileged actions because audit logs do not capture sufficient session context | MEDIUM | MEDIUM | Medium | Implement immutable audit log with session ID, IP, user agent, and action timestamp for all privileged operations |
 
 ### 3.4 Information Disclosure (I)
 
@@ -318,7 +318,7 @@ Threats where an attacker gains higher access rights than authorized.
 
 | ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|--------|-----------|---------------|--------|------------|--------|------------|------------|
-| E-1 | NEW | Auth Service | L5 — Security | Attacker exploits insecure direct object reference (IDOR) to access admin endpoints by manipulating user role claims in JWT payload | MEDIUM | HIGH | High | Validate role claims server-side against authoritative user store on every request; never trust client-supplied role values |
+| E-1 | NEW | Auth Service | L6 — Security and Compliance | Attacker exploits insecure direct object reference (IDOR) to access admin endpoints by manipulating user role claims in JWT payload | MEDIUM | HIGH | High | Validate role claims server-side against authoritative user store on every request; never trust client-supplied role values |
 
 ---
 
@@ -518,7 +518,7 @@ Finding counts and highest severity grouped by CSA MAESTRO architectural layer. 
 |---------------|---------------|------------------|
 | L4 — Deployment Infrastructure | 3 | Critical |
 | L2 — Data Operations | 2 | High |
-| L5 — Security | 2 | Medium |
+| L6 — Security and Compliance | 2 | Medium |
 | L1 — Foundation Model | 2 | Critical |
 
 Risk summary counts below reflect deduplicated findings. When correlation groups exist, correlated findings count as one unique threat per group rather than individually.
@@ -566,9 +566,9 @@ Prioritized list of all findings sorted by risk level descending, providing a re
 | T-1 | UPDATED | User Database | L2 — Data Operations | SQL injection through unsanitized input | High | Use parameterized queries; apply input validation at API Gateway |
 | I-1 | UNCHANGED | User Database | L2 — Data Operations | Credentials exposed in error messages | High | Structured error handling with generic client responses; server-side detailed logging |
 | D-1 | UNCHANGED | API Gateway | L4 — Deployment Infrastructure | Volumetric attack exhausting connection pool | High | Per-IP rate limiting; upstream DDoS protection; circuit breaker pattern |
-| E-1 | NEW | Auth Service | L5 — Security | IDOR exploiting role claims in JWT payload | High | Server-side role validation against authoritative store on every request |
+| E-1 | NEW | Auth Service | L6 — Security and Compliance | IDOR exploiting role claims in JWT payload | High | Server-side role validation against authoritative store on every request |
 | AG-1 | UNCHANGED | LLM Agent | L1 — Foundation Model | Uncontrolled destructive command execution | High | Human-in-the-loop approval for destructive operations; tool allowlists |
-| R-1 | UNCHANGED | Auth Service | L5 — Security | Insufficient audit logging for privileged actions | Medium | Immutable audit log with session ID, IP, user agent, and timestamp |
+| R-1 | UNCHANGED | Auth Service | L5 — Evaluation and Observability | Insufficient audit logging for privileged actions | Medium | Immutable audit log with session ID, IP, user agent, and timestamp |
 
 ---
 

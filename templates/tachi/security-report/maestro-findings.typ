@@ -118,7 +118,7 @@
 
   // Introductory paragraph.
   text(size: 10pt)[
-    The following findings are grouped by their CSA MAESTRO framework architectural layer, providing a layer-oriented view of the threat landscape. Each layer represents a distinct level of the agentic AI system stack, from Foundation Model (L1) through User Interface (L7). Findings within each layer are sorted by severity.
+    The following findings are grouped by their CSA MAESTRO framework architectural layer, providing a layer-oriented view of the threat landscape. Each layer represents a distinct level of the agentic AI system stack, from Foundation Model (L1) through Agent Ecosystem (L7). Findings within each layer are sorted by severity.
   ]
 
   v(0.15in)
@@ -129,9 +129,9 @@
     "L2": "Data Operations",
     "L3": "Agent Framework",
     "L4": "Deployment Infrastructure",
-    "L5": "Security",
-    "L6": "Integration Services",
-    "L7": "User Interface",
+    "L5": "Evaluation and Observability",
+    "L6": "Security and Compliance",
+    "L7": "Agent Ecosystem",
   )
 
   // Iterate layers in provided order (expected L1-L7, then Unclassified).

@@ -17,11 +17,11 @@
 │  STACK ZONE (7 horizontal bands)                │  SIDEBAR              │
 │                                                 │                       │
 │  ┌─────────────────────────────────────────┐    │  Total Findings: {N} │
-│  │  L7 — User Interface         {N} {sev} │    │  Layers w/ Findings: N│
+│  │  L7 — Agent Ecosystem        {N} {sev} │    │  Layers w/ Findings: N│
 │  ├─────────────────────────────────────────┤    │  Empty Layers: N      │
-│  │  L6 — Agent Ecosystem        {N} {sev} │    │                       │
+│  │  L6 — Security and Compliance {N} {sev}│    │                       │
 │  ├─────────────────────────────────────────┤    │  ┌─────────────────┐ │
-│  │  L5 — Security               {N} {sev} │    │  │ MOST EXPOSED    │ │
+│  │  L5 — Evaluation and Observability {N} {sev} │  │ MOST EXPOSED    │ │
 │  ├─────────────────────────────────────────┤    │  │ {layer_id}      │ │
 │  │  L4 — Deployment Infra       {N} {sev} │    │  │ {finding_count}  │ │
 │  ├─────────────────────────────────────────┤    │  │ findings         │ │
@@ -110,7 +110,7 @@
 - Band height: equal distribution across the 7 layers within the zone
 
 **Per-Band Content:**
-- Left side: layer ID and name (e.g., "L7 — User Interface") — 16px semibold, white text
+- Left side: layer ID and name (e.g., "L7 — Agent Ecosystem") — 16px semibold, white text
 - Center: finding count badge — rounded pill showing integer count, severity-colored background
 - Center-right: highest severity indicator — colored dot or icon matching the most severe finding in that layer
 - Right side: up to 2 top finding summaries — format: "{ID}: {short threat}" in 12px regular
