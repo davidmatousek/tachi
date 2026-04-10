@@ -5,7 +5,7 @@
 **Created**: {{PROJECT_START_DATE}}
 **Last Updated**: 2026-04-10
 
-**Entry Count**: 26 / 20 (KB System Upgrade triggers at 20 — schedule review)
+**Entry Count**: 27 / 20 (KB System Upgrade triggers at 20 — schedule review)
 **Last Review**: 2026-03-30
 **Status**: ✅ Manual mode (file-based)
 
@@ -545,6 +545,29 @@ Captured during structured delivery retrospective. Smooth sailing — everything
 **Tags**: #retrospective #process #git #parallel-sessions #workflow #delivery
 
 **Quality Score**: 7/10
+
+---
+
+### KB-027: Post-Delivery Simplify Pass Commonly Finds Narrative-Comment Sprawl in Generated Tests
+
+**Date**: 2026-04-10
+**Category**: Process / Tooling
+**Source**: Feature 128 /aod.document simplify review
+**Severity**: Informational
+
+**Problem**: Feature 128 shipped 2,139 lines of new Python (two extraction-script additions plus six test modules bootstrapping the pytest harness). The post-delivery `/aod.document` simplify review deleted 660 lines and rewrote 216 — a 31% reduction in changed-line count — with almost all of that coming from the test modules. The cleanup was dominated by three repeating anti-patterns: (1) module-level docstrings narrating the task-gating story ("Note on the test-first gate (T007)"), (2) per-function step-enumeration comments (`# Step 1:`, `# Step 2:`), and (3) inline references to task IDs (T023, T024, T029, T033) and review-artifact paths that will not make sense after the feature branch is merged.
+
+**Root Cause**: Test generation during feature build captures the implementer's working-memory narrative — which tasks are gating which tests, which steps run in which order, which review findings shaped which assertion — and emits it as comments and docstrings. This information is useful *during* implementation (while the author is still holding the whole plan in their head) but becomes stale the moment the feature merges. The comments then linger as archaeological debris in the test modules, reducing signal density and creating misleading context for future maintainers.
+
+**Solution**: Keep the `/aod.document` simplify step in the lifecycle as a mandatory cleanup gate, not an optional polish. The `/simplify` skill's three-agent review (reuse, quality, efficiency) reliably catches these patterns when pointed at the changed files. For F-128 the pass also caught a dead parameter, two duplicated closures, a hand-rolled severity dict that duplicated an imported constant, and 5× redundant subprocess runs in a parametrized test that collapsed cleanly into a module-scoped fixture.
+
+**Result**: Production code became smaller, tighter, and free of task-reference artifacts. The pytest harness gained a `slow` marker registration enabling `pytest -m "not slow"` to run in ~5 seconds instead of ~20 (4× faster local iteration). Full suite still passes (39/39) and the smoke test against the agentic-app sample produces byte-identical output to the pre-refactor run.
+
+**When to Apply**: Every feature that ships new test modules or non-trivial Python helpers. Expect a post-delivery simplify pass to remove 20–30% of changed-line count through comment and duplication cleanup alone. Allocate time for the `/aod.document` stage rather than treating it as optional.
+
+**Tags**: #retrospective #process #simplify #test-quality #comments #tooling #aod-document
+
+**Quality Score**: 8/10
 
 ---
 
