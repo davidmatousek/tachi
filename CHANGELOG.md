@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.10.0](https://github.com/davidmatousek/tachi/compare/v4.9.2...v4.10.0) (2026-04-10)
+
+
+### Features
+
+* **136:** align MAESTRO layer names with canonical CSA taxonomy ([#146](https://github.com/davidmatousek/tachi/issues/146)) ([31356fb](https://github.com/davidmatousek/tachi/commit/31356fb5bb48ac02b62ce8ead35f19d91db36c13))
+
 ## [Unreleased]
 
 ### Breaking Changes — Correctness Fix (#136)
