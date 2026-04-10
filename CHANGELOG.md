@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Executive Threat Architecture Infographic** (Feature 128) — New `/tachi.infographic --template executive-architecture` (alias: `exec`) generates a layered architecture diagram with Critical/High finding callouts, designed for CISO-level readers. In the compiled PDF security report the new page lands immediately after the Executive Summary (pages 2–3 area) so executives see the visual threat narrative within their first-glance window. Included in the `all` shorthand expansion alongside the existing five templates. Backward compatible — example PDFs without a generated `threat-executive-architecture.jpg` render byte-identical to the pre-F-128 baseline. Ships with tachi's first project-level pytest harness (`pyproject.toml`, `requirements-dev.txt`, `tests/`) and five committed `.baseline` PDFs guarding backward compatibility against silent regressions.
 - **Architecture Lifecycle Command** (Feature 120) — `/tachi.architecture` now tracks versions with YAML frontmatter (version, date, description, SHA-256 checksum), archives previous versions to `.archive/v{N}/`, and supports guided updates through change categories. `/tachi.threat-model` automatically snapshots the architecture file into each timestamped output folder for full traceability. Backward compatible with existing architecture files.
 
 ### Changed
