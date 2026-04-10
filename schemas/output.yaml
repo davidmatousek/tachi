@@ -143,7 +143,9 @@ output:
       sort_order: "risk_level descending"
       fields:
         - finding_id
+        - status
         - component
+        - maestro_layer
         - threat
         - risk_level
         - mitigation

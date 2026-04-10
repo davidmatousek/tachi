@@ -118,7 +118,8 @@ Before finalizing the report, run the following checklist. Every check must pass
 #### Section Completeness
 
 - [ ] All 7 report sections are present with non-empty content
-- [ ] YAML frontmatter contains all 6 required fields (schema_version, date, source_file, finding_count, risk_distribution, attack_tree_count)
+- [ ] YAML frontmatter is the FIRST content in the report (before Section 1), enclosed in a fenced `yaml` code block between `---` delimiters
+- [ ] YAML frontmatter contains ALL required fields: schema_version, date, source_file, finding_count, risk_distribution, attack_tree_count, baseline_source, baseline_date, delta_counts (see template for full structure)
 - [ ] Section headings match `../../../schemas/report.yaml` exactly (## 1. Executive Summary through ## 7. Appendix: Finding Reference)
 
 #### Finding Traceability (Zero Loss Rule)
@@ -133,7 +134,7 @@ Before finalizing the report, run the following checklist. Every check must pass
 - [ ] Every High finding has an attack tree with minimum 2 levels of decomposition
 - [ ] No attack trees generated for Medium, Low, Note, or RESOLVED findings
 - [ ] Attack trees appear inline in Section 5 AND as standalone files in `attack-trees/`
-- [ ] Standalone file naming follows `{finding-id}-attack-tree.md` convention (lowercase, e.g., `ag-1-attack-tree.md`)
+- [ ] Standalone file naming follows `{finding-id}-attack-tree.md` convention — finding ID lowercased, `-attack-tree.md` suffix (e.g., `ag-1-attack-tree.md`, NOT `AG-1-attack-tree.md` or `AG-1-description-slug.md`)
 
 #### Mermaid Syntax Integrity
 
@@ -162,6 +163,10 @@ Before finalizing the report, run the following checklist. Every check must pass
 
 ## Report Generation Workflow
 
+### Step 0: YAML Frontmatter (MANDATORY — generate FIRST)
+
+**Before writing any section**, generate the YAML frontmatter block at the top of the report. Read `../../../templates/tachi/output-schemas/threat-report.md` for the exact field structure. The frontmatter MUST be the first content after the H1 heading, enclosed in a fenced `yaml` code block between `---` delimiters. Populate all fields from `threats.md`: schema_version (`"1.1"`), date, source_file, finding_count, risk_distribution (Critical/High/Medium/Low counts), attack_tree_count, baseline_source, baseline_date, and delta_counts. When no baseline exists, set baseline_source, baseline_date, and all delta_counts fields to `null`.
+
 ### Section 1: Executive Summary
 
 **MANDATORY**: Read `.claude/skills/tachi-threat-reporting/references/narrative-templates.md` for the 5 required elements, language rules, and remediation timeline tiers.
@@ -178,7 +183,9 @@ Generate the Architecture Overview deriving system context from `threats.md` Sec
 
 **MANDATORY**: Read `.claude/skills/tachi-threat-reporting/references/narrative-templates.md` for per-category subsection headers, per-finding narrative pattern, progressive depth rules, and large threat model handling.
 
-Generate the Threat Analysis with agent-by-agent narrative covering all 8 categories. When findings include a `maestro_layer` field, reference the architectural layer in finding narratives for additional context (e.g., "This threat targets the Agent Framework layer (L3)"). MAESTRO layer references are informational -- they do not change narrative structure, severity assessments, or attack tree construction.
+Generate the Threat Analysis with agent-by-agent narrative covering all 8 categories.
+
+**MAESTRO Layer References (MANDATORY when present)**: When findings include a `maestro_layer` field, you MUST reference the architectural layer in each finding's narrative. Include the layer designation on first mention of each finding — for example: "**S-1** targets the Agent Framework layer (L3), where..." or "Operating at the Data Operations layer (L2), **T-3** exploits...". Every finding narrative must include its MAESTRO layer context. These references are informational — they do not change narrative structure, severity assessments, or attack tree construction.
 
 ### Section 4: Cross-Cutting Themes
 
@@ -192,7 +199,20 @@ Scan all findings for emergent patterns across categories that reveal systemic i
 
 **MANDATORY**: Read `.claude/skills/tachi-threat-reporting/references/attack-tree-examples.md` before generating the first tree -- load once as reference patterns.
 
-Generate Mermaid attack trees for every Critical and High finding following Bruce Schneier's attack tree methodology. **Skip findings with delta_status RESOLVED** -- resolved threats are no longer active and must not receive attack trees. **ALWAYS generate fresh attack trees for UNCHANGED findings** -- do NOT produce placeholder text like "carried forward from baseline." An unchanged threat description does not mean the attack paths are static; adjacent components and techniques may have changed. Every active Critical/High finding gets a fully constructed Mermaid attack tree, regardless of delta_status.
+Generate Mermaid attack trees for every Critical and High finding following Bruce Schneier's attack tree methodology.
+
+**Attack tree delta handling (three rules):**
+
+First, check `delta_counts` from the `threats.md` frontmatter to determine which rule applies:
+
+**Rule 1 — All UNCHANGED (delta_counts: new=0, updated=0, resolved=0):** Architecture has not changed. For each UNCHANGED Critical/High finding, read and copy the full Mermaid content from the baseline at `{baseline_dir}/attack-trees/{finding-id}-attack-tree.md`. Derive `baseline_dir` from the `baseline.source` frontmatter path by dropping `threats.md`. Include the complete Mermaid code block in both inline (Section 5) and standalone file output. Do NOT output placeholder text without the diagram. If the baseline file is missing, generate fresh as fallback.
+
+**Rule 2 — Any NEW/UPDATED/RESOLVED (any delta_counts > 0):** Architecture shifted -- attack paths to all threats may have changed. Generate fresh attack trees for ALL Critical/High findings, including UNCHANGED ones. For UPDATED findings, add a note: _"Context changed since baseline -- attack tree regenerated."_
+
+**Rule 3 — Reconciliation (after Rule 2 only):** After generating all fresh trees, compare each UNCHANGED finding's fresh tree against its baseline version. If structurally similar (same nodes, same paths, minor wording only), use the baseline version for consistency. If materially different (new paths, removed nodes, structural changes), use the fresh version.
+
+**RESOLVED**: Skip entirely -- no attack tree.
+**No baseline**: Generate all trees fresh.
 
 ### Section 6: Remediation Roadmap
 
@@ -252,7 +272,14 @@ Embed each attack tree directly in the Attack Trees section using Mermaid code b
 
 ### Location 2: Standalone Files in attack-trees/
 
-Save each attack tree as an independent Markdown file in the `attack-trees/` directory within the output directory. File naming: `{finding-id}-attack-tree.md` (lowercase, e.g., `ag-1-attack-tree.md`).
+Save each attack tree as an independent Markdown file in the `attack-trees/` directory within the output directory.
+
+**File naming convention** (MUST follow exactly):
+- Pattern: `{finding-id}-attack-tree.md`
+- Case: **always lowercase** — the finding ID is lowercased in the filename
+- Suffix: **always `-attack-tree.md`** — never use a description slug
+- Examples: `AG-1` → `ag-1-attack-tree.md`, `LLM-2` → `llm-2-attack-tree.md`, `S-1` → `s-1-attack-tree.md`
+- **Wrong**: `AG-1-no-hitl-stdio.md`, `AG-1-attack-tree.md` (uppercase)
 
 Each standalone file contains: H1 heading with finding ID and threat description, a metadata table (Finding ID, Component, Risk Level, Threat, Correlation), and the Mermaid code block **identical** to the inline version in `threat-report.md`.
 

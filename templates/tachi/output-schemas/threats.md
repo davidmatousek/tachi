@@ -553,22 +553,22 @@ Prioritized list of all findings sorted by risk level descending, providing a re
 
 **Status column** (baseline-aware mode only): Carries the `delta_status` lifecycle annotation for each finding. Values: `NEW` (discovered this run), `UNCHANGED` (identical to baseline), `UPDATED` (component context changed). RESOLVED findings do not appear in this table — they are listed in Section 4b. When no baseline is present (first run), all findings show `NEW`. The Status column enables downstream consumers (extraction scripts, report agents) to access delta information from a single parsed table.
 
-| Finding ID | Status | Component | Threat | Risk Level | Mitigation |
-|------------|--------|-----------|--------|------------|------------|
-| _{finding ID}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{threat summary}_ | _{risk level}_ | _{recommended countermeasure}_ |
+| Finding ID | Status | Component | MAESTRO Layer | Threat | Risk Level | Mitigation |
+|------------|--------|-----------|---------------|--------|------------|------------|
+| _{finding ID}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{L1-L7 or Unclassified}_ | _{threat summary}_ | _{risk level}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| Finding ID | Status | Component | Threat | Risk Level | Mitigation |
-|------------|--------|-----------|--------|------------|------------|
-| S-1 | UNCHANGED | API Gateway | Forged JWT tokens via weak signing algorithm | Critical | Enforce RS256 signing with key rotation every 90 days; reject HS256 tokens |
-| LLM-1 | NEW | LLM Agent | Indirect prompt injection exfiltrating context data | Critical | Sanitize user input before LLM context; implement output filtering and egress controls |
-| T-1 | UPDATED | User Database | SQL injection through unsanitized input | High | Use parameterized queries; apply input validation at API Gateway |
-| I-1 | UNCHANGED | User Database | Credentials exposed in error messages | High | Structured error handling with generic client responses; server-side detailed logging |
-| D-1 | UNCHANGED | API Gateway | Volumetric attack exhausting connection pool | High | Per-IP rate limiting; upstream DDoS protection; circuit breaker pattern |
-| E-1 | NEW | Auth Service | IDOR exploiting role claims in JWT payload | High | Server-side role validation against authoritative store on every request |
-| AG-1 | UNCHANGED | LLM Agent | Uncontrolled destructive command execution | High | Human-in-the-loop approval for destructive operations; tool allowlists |
-| R-1 | UNCHANGED | Auth Service | Insufficient audit logging for privileged actions | Medium | Immutable audit log with session ID, IP, user agent, and timestamp |
+| Finding ID | Status | Component | MAESTRO Layer | Threat | Risk Level | Mitigation |
+|------------|--------|-----------|---------------|--------|------------|------------|
+| S-1 | UNCHANGED | API Gateway | L4 — Deployment Infrastructure | Forged JWT tokens via weak signing algorithm | Critical | Enforce RS256 signing with key rotation every 90 days; reject HS256 tokens |
+| LLM-1 | NEW | LLM Agent | L1 — Foundation Model | Indirect prompt injection exfiltrating context data | Critical | Sanitize user input before LLM context; implement output filtering and egress controls |
+| T-1 | UPDATED | User Database | L2 — Data Operations | SQL injection through unsanitized input | High | Use parameterized queries; apply input validation at API Gateway |
+| I-1 | UNCHANGED | User Database | L2 — Data Operations | Credentials exposed in error messages | High | Structured error handling with generic client responses; server-side detailed logging |
+| D-1 | UNCHANGED | API Gateway | L4 — Deployment Infrastructure | Volumetric attack exhausting connection pool | High | Per-IP rate limiting; upstream DDoS protection; circuit breaker pattern |
+| E-1 | NEW | Auth Service | L5 — Security | IDOR exploiting role claims in JWT payload | High | Server-side role validation against authoritative store on every request |
+| AG-1 | UNCHANGED | LLM Agent | L1 — Foundation Model | Uncontrolled destructive command execution | High | Human-in-the-loop approval for destructive operations; tool allowlists |
+| R-1 | UNCHANGED | Auth Service | L5 — Security | Insufficient audit logging for privileged actions | Medium | Immutable audit log with session ID, IP, user agent, and timestamp |
 
 ---
 

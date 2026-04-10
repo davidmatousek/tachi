@@ -196,12 +196,17 @@ flowchart TD
 >
 > **Correlated findings**: Each correlated finding receives its own individual tree with a cross-reference note to related finding IDs — not a single unified tree for the correlation group.
 >
-> **Baseline handling** (delta_status branching):
-> - **NEW**: Generate a fresh attack tree following all standard conventions above.
-> - **UPDATED**: Generate a fresh attack tree. Add a note below the tree: _"Context changed since baseline ({baseline_date}) — attack tree regenerated."_
-> - **UNCHANGED**: Do NOT generate an attack tree. Instead, note: _"Attack tree carried forward from baseline ({baseline_date}) — finding unchanged since last assessment."_
-> - **RESOLVED**: Not applicable — RESOLVED findings do not appear in Section 5. They appear only in Section 4b of the input threats.md.
-> - **No baseline**: When `baseline_source` is null in the input frontmatter, generate all attack trees fresh with no delta annotations. This is standard first-run behavior.
+> **Baseline handling** (three-rule approach):
+>
+> **Rule 1 — All UNCHANGED (no architecture change):** When `delta_counts` shows zero NEW, zero UPDATED, and zero RESOLVED findings, the architecture has not changed. For each UNCHANGED Critical/High finding, copy the full Mermaid attack tree content from the baseline's `attack-trees/{finding-id}-attack-tree.md` file. Derive the baseline directory from the `baseline.source` frontmatter field by dropping the `threats.md` filename. Include the complete Mermaid code block — do NOT output placeholder text without the actual diagram. If the baseline file is missing, generate a fresh tree as fallback.
+>
+> **Rule 2 — Any NEW/UPDATED/RESOLVED (architecture changed):** When `delta_counts` shows any non-zero value for `new`, `updated`, or `resolved`, the architecture has shifted and attack paths to all threats may have changed. Generate fresh attack trees for ALL Critical/High findings — including UNCHANGED ones — following all standard conventions above. For NEW findings, generate normally. For UPDATED findings, add a note below the tree: _"Context changed since baseline ({baseline_date}) — attack tree regenerated."_
+>
+> **Rule 3 — Post-generation reconciliation (applies only when Rule 2 fires):** After generating all fresh trees, compare each UNCHANGED finding's fresh tree against its baseline counterpart from `attack-trees/{finding-id}-attack-tree.md`. If they are structurally similar (same nodes, same paths, minor wording differences only), use the baseline version for consistency — this avoids noisy churn on trees that didn't actually change. If they are materially different (new attack paths, removed nodes, structural changes), use the fresh version. This ensures diffs between runs only show meaningful changes.
+>
+> **RESOLVED**: Not applicable — RESOLVED findings do not appear in Section 5. They appear only in Section 4b of the input threats.md.
+>
+> **No baseline**: When `baseline_source` is null in the input frontmatter, generate all attack trees fresh with no delta annotations. This is standard first-run behavior.
 
 _When no Critical or High findings exist:_
 

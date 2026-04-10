@@ -137,6 +137,20 @@ Target a maximum of approximately **20 nodes** per tree for readability. If a tr
 
 ---
 
+## Standalone File Naming
+
+Each attack tree is saved as a standalone file in the `attack-trees/` directory. The filename MUST follow this convention exactly:
+
+- **Pattern**: `{finding-id}-attack-tree.md`
+- **Case**: The finding ID MUST be **lowercased** in the filename
+- **Suffix**: Always `-attack-tree.md` — never use a description slug or other suffix
+- **Examples**: Finding `AG-1` → filename `ag-1-attack-tree.md`, Finding `LLM-2` → filename `llm-2-attack-tree.md`, Finding `S-1` → filename `s-1-attack-tree.md`
+- **Wrong examples**: `AG-1-attack-tree.md` (uppercase), `ag-1-no-hitl-stdio.md` (description slug), `AG-1-no-hitl-stdio.md` (both wrong)
+
+To produce the filename: take the finding ID (e.g., `AG-1`), convert to lowercase (e.g., `ag-1`), append `-attack-tree.md`.
+
+---
+
 ## Validation Checklist
 
 Before including any Mermaid attack tree in the report or standalone file, run every check below. A tree that fails any check must be corrected before output.
@@ -177,6 +191,12 @@ Before including any Mermaid attack tree in the report or standalone file, run e
 - [ ] OR gate nodes assigned `orGate` class
 - [ ] Leaf nodes assigned `leaf` class
 - [ ] Color values match the standard palette: goal=`#ff6b6b`, andGate=`#ffa500`, orGate=`#4ecdc4`, leaf=`#95e1d3`
+
+### Standalone File Naming
+
+- [ ] Filename is the finding ID lowercased plus `-attack-tree.md` (e.g., AG-1 → `ag-1-attack-tree.md`)
+- [ ] No uppercase letters in filename
+- [ ] No description slugs — suffix is always `-attack-tree.md`
 
 ### Readability
 

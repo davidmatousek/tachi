@@ -75,10 +75,11 @@ For each category, include all findings from the corresponding STRIDE or AI tabl
 
 For each finding, provide:
 1. **Finding reference**: State the finding ID (e.g., "**S-1**") as a bold reference
-2. **Component annotation**: Name the affected component
-3. **Threat description**: Explain the threat in context -- what could happen, how, and why it matters
-4. **Risk context**: State the likelihood, impact, and computed risk level
-5. **Mitigation summary**: Reference the recommended mitigation (the full mitigation text appears in the Remediation Roadmap)
+2. **MAESTRO layer context**: On first mention of each finding, include its MAESTRO architectural layer from the `maestro_layer` field. Integrate naturally into the sentence — for example: "**S-1** targets the Agent Framework layer (L3), where..." or "Operating at the Data Operations layer (L2), **T-3** exploits...". Every finding MUST include its MAESTRO layer on first reference.
+3. **Component annotation**: Name the affected component
+4. **Threat description**: Explain the threat in context -- what could happen, how, and why it matters
+5. **Risk context**: State the likelihood, impact, and computed risk level
+6. **Mitigation summary**: Reference the recommended mitigation (the full mitigation text appears in the Remediation Roadmap)
 
 ### Progressive Technical Depth Rules
 

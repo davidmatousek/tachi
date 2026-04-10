@@ -9,7 +9,7 @@
 #
 # Version: 1.0
 
-schema_version: "1.0"
+schema_version: "1.1"
 
 report:
   output_file: threat-report.md
@@ -19,7 +19,7 @@ report:
     fields:
       schema_version:
         type: string
-        value: "1.0"
+        value: "1.1"
       date:
         type: string
         format: "YYYY-MM-DD"
@@ -51,6 +51,37 @@ report:
         description: >
           Number of generated attack trees (one per
           Critical/High finding).
+      baseline_source:
+        type: string
+        nullable: true
+        description: >
+          File path of the baseline threats.md used for delta
+          comparison. Null when no baseline (first run).
+      baseline_date:
+        type: string
+        nullable: true
+        format: "YYYY-MM-DD"
+        description: >
+          ISO date of the baseline run. Null when no baseline.
+      delta_counts:
+        type: object
+        nullable: true
+        description: >
+          Lifecycle breakdown counts. All values null when
+          no baseline (first run).
+        fields:
+          new:
+            type: integer
+            nullable: true
+          unchanged:
+            type: integer
+            nullable: true
+          updated:
+            type: integer
+            nullable: true
+          resolved:
+            type: integer
+            nullable: true
 
   required_sections:
     - name: "Executive Summary"
@@ -100,9 +131,26 @@ report:
       requirement: >
         Complete mapping — zero finding loss.
 
+    - name: "Delta Summary"
+      heading: "## 8. Delta Summary"
+      conditional: true
+      condition: >
+        Present only when baseline_source is non-null in
+        frontmatter. Omit entirely on first run.
+      required_elements:
+        - finding_lifecycle_breakdown
+        - remediation_progress
+        - baseline_reference
+
   attack_tree_files:
     directory: "attack-trees/"
     naming: "{finding-id}-attack-tree.md"
+    naming_rules:
+      case: lowercase
+      suffix: "-attack-tree.md"
+      description: >
+        Finding ID is lowercased for the filename. Example: finding AG-1
+        becomes ag-1-attack-tree.md, finding LLM-2 becomes llm-2-attack-tree.md.
     severity_filter:
       - Critical
       - High
