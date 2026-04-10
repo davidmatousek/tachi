@@ -714,6 +714,7 @@ def _compute_dfd_type_layers(scope_data):
 
 
 def _extract_composite_score(finding):
+    """Prefer composite_score, fall back to residual_score; return float or None."""
     for key in ("composite_score", "residual_score"):
         raw = finding.get(key)
         if raw is None or raw == "":
@@ -726,6 +727,7 @@ def _extract_composite_score(finding):
 
 
 def _extract_description(finding):
+    """Prefer description, fall back to threat, fall back to mitigation."""
     for key in ("description", "threat", "mitigation"):
         val = finding.get(key)
         if val:
