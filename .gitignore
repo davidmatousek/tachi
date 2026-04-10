@@ -200,3 +200,14 @@ templates/tachi/security-report/report-data.typ
 
 # Test output artifacts (generated during local testing)
 examples/*/test-output/
+
+# Python (added F-128 Wave 1)
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/

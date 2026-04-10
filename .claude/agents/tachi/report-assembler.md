@@ -229,3 +229,13 @@ When the extraction script detects baseline data in `threats.md` frontmatter, `r
 2. **Active findings table**: Annotate findings with `delta_status: "NEW"` using a visual indicator (e.g., bold or badge) to highlight newly discovered threats.
 3. **Resolved findings section**: When `resolved-findings` is non-empty, render a separate "Resolved Findings" section after the active findings table. This section lists remediated threats for audit trail.
 4. **No-baseline behavior**: When `has-baseline` is false, render findings as before (no separation, no annotations, no resolved section). All delta variables default to zero/empty.
+
+### Executive Threat Architecture Page
+
+When the extraction script detects a `threat-executive-architecture.jpg` image in the target directory, `report-data.typ` includes an additional image flag and path for the executive architecture infographic page:
+
+| Artifact | Typst flag | Presence rule | Consumed by |
+|----------|-----------|---------------|-------------|
+| `threat-executive-architecture.jpg` | `has-executive-architecture` (boolean) | File exists in target directory AND file size > 0 | `infographic-page()` call in `main.typ`, positioned immediately after the Executive Summary page and immediately before the Attack Path Analysis conditional block |
+
+The Executive Threat Architecture infographic, when present, is rendered on a full-bleed portrait page immediately after the Executive Summary and before any Attack Path Analysis pages, placing the visual threat narrative within an executive reader's normal attention window. When the image is absent (for example, because no Critical or High findings qualified for callouts), the `has-executive-architecture` conditional is false and the page is omitted entirely, preserving byte-identical output against pre-existing baselines.

@@ -505,12 +505,30 @@ def _parse_attack_tree_file(filepath: Path, findings_by_id: dict) -> dict:
             in_table = False
 
     finding_id = meta.get("Finding ID", "").strip()
-    if not finding_id:
-        return None
-
     component = meta.get("Component", "").strip()
     file_severity = meta.get("Risk Level", "").strip()
     title = meta.get("Threat", "").strip()
+
+    # Fallback: extract finding ID and title from H1 heading when the metadata
+    # table is absent. Supports "# Attack Tree: AG-1 -- Title" and "# AG-1: Title".
+    if not finding_id:
+        for line in lines:
+            stripped = line.strip()
+            if not stripped.startswith("# "):
+                continue
+            heading = stripped[2:].strip()
+            m = re.match(r"^Attack Tree:\s+(\S+?):?\s+[-\u2014]+\s+(.*)$", heading)
+            if m:
+                finding_id = m.group(1)
+                title = title or m.group(2).strip()
+                break
+            m = re.match(r"^([A-Za-z]+-\d+):\s+(.*)$", heading)
+            if m:
+                finding_id = m.group(1)
+                title = title or m.group(2).strip()
+                break
+        if not finding_id:
+            return None
 
     # Extract Mermaid code block
     mermaid_code = _extract_mermaid_block(content)
@@ -521,6 +539,8 @@ def _parse_attack_tree_file(filepath: Path, findings_by_id: dict) -> dict:
     finding = findings_by_id.get(finding_id, {})
     # Authoritative severity from findings data
     severity = _get_finding_severity(finding) or file_severity
+    component = component or finding.get("component", "")
+    title = title or finding.get("threat", "")
     mitigation = _get_finding_mitigation(finding)
 
     return {
@@ -552,6 +572,8 @@ def _parse_inline_attack_trees(content: str, findings_by_id: dict) -> list:
         return entries
 
     # Find each attack tree subsection: "## Attack Tree: {ID}" or "### {ID}"
+    # Captured IDs may carry a trailing colon from the "### AG-1: Title" form, so
+    # strip it before use — otherwise the findings_by_id lookup silently misses.
     current_id = None
     current_start = None
 
@@ -564,7 +586,7 @@ def _parse_inline_attack_trees(content: str, findings_by_id: dict) -> list:
                 entry = _parse_inline_tree_block(current_id, block, findings_by_id)
                 if entry:
                     entries.append(entry)
-            current_id = id_match.group(1)
+            current_id = id_match.group(1).rstrip(":")
             current_start = i
 
     # Handle last block
@@ -812,6 +834,7 @@ def detect_images(target_dir: Path, template_dir: Path) -> dict:
         "architecture_image_path": "",
         "maestro_stack_image_path": "",
         "maestro_heatmap_image_path": "",
+        "executive_architecture_image_path": "",
     }
 
     image_files = {
@@ -820,6 +843,7 @@ def detect_images(target_dir: Path, template_dir: Path) -> dict:
         "architecture_image_path": "threat-system-architecture.jpg",
         "maestro_stack_image_path": "threat-maestro-stack.jpg",
         "maestro_heatmap_image_path": "threat-maestro-heatmap.jpg",
+        "executive_architecture_image_path": "threat-executive-architecture.jpg",
     }
 
     for key, filename in image_files.items():
@@ -952,6 +976,8 @@ def generate_report_data_typ(data: dict) -> str:
     lines.append(f'#let funnel-image-path = "{escape_typst_string(data["funnel_image_path"])}"')
     lines.append(f'#let baseball-image-path = "{escape_typst_string(data["baseball_image_path"])}"')
     lines.append(f'#let architecture-image-path = "{escape_typst_string(data["architecture_image_path"])}"')
+    lines.append(f"#let has-executive-architecture = {_typst_bool(bool(data.get('executive_architecture_image_path', '')))}")
+    lines.append(f'#let executive-architecture-image-path = "{escape_typst_string(data.get("executive_architecture_image_path", ""))}"')
     lines.append("")
 
     # 3g: Executive Narrative
@@ -1344,6 +1370,7 @@ def main():
     data["architecture_image_path"] = images["architecture_image_path"]
     data["maestro_stack_image_path"] = images["maestro_stack_image_path"]
     data["maestro_heatmap_image_path"] = images["maestro_heatmap_image_path"]
+    data["executive_architecture_image_path"] = images["executive_architecture_image_path"]
 
     # MAESTRO data from threats.md
     maestro = parse_maestro_data(threats_content)

@@ -98,6 +98,10 @@
 #let has-attack-trees = if has-attack-trees != none { has-attack-trees } else { false }
 #let attack-trees = if attack-trees != none { attack-trees } else { () }
 
+// Executive threat architecture defaults (F-128 — false = no executive architecture page).
+#let has-executive-architecture = if has-executive-architecture != none { has-executive-architecture } else { false }
+#let executive-architecture-image-path = if executive-architecture-image-path != none { executive-architecture-image-path } else { "" }
+
 // Page visibility — config overrides take precedence over report-data.typ defaults.
 #let show-disclaimer = cfg-show-disclaimer
 #let show-methodology = cfg-show-methodology
@@ -189,6 +193,22 @@
   executive-narrative: executive-narrative,
   component-distribution: component-distribution,
 )
+
+
+// --- Executive Threat Architecture (conditional) ---------------------------
+// Portrait infographic with layered architecture and narrative threat callouts
+// for critical/high severity findings. Only when executive-architecture image
+// exists (F-128).
+#if has-executive-architecture {
+  infographic-page(
+    executive-architecture-image-path,
+    section-name: "Executive Threat Architecture",
+    classification: classification,
+    description: [
+      Layered system architecture with critical and high severity threats annotated as narrative callouts. This visualization highlights where the most exposed components sit in the system and what kind of attack each layer is most vulnerable to.
+    ],
+  )
+}
 
 
 // --- Attack Path Analysis (conditional) -------------------------------------

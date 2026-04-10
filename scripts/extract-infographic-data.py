@@ -655,6 +655,294 @@ def _compute_trust_zones(scope_data):
     return zones
 
 
+# =============================================================================
+# F-128: Executive Architecture Helpers
+# =============================================================================
+
+def _normalize_component_name(name):
+    """Normalize a component name for case-insensitive, punctuation-insensitive matching.
+
+    Strips whitespace, lowercases, and removes hyphens, underscores, and spaces so that
+    "API Gateway", "api-gateway", "api_gateway", and "apigateway" all collapse to
+    "apigateway". Used as the matching key for layer-finding association.
+
+    Args:
+        name: Component name string (may be None).
+
+    Returns:
+        Normalized string. Empty string if input is None or empty.
+    """
+    if not name:
+        return ""
+    return (
+        name.strip()
+        .lower()
+        .replace("-", "")
+        .replace("_", "")
+        .replace(" ", "")
+    )
+
+
+def _compute_dfd_type_layers(scope_data):
+    """Group Section 1 components by DFD type for the executive-architecture fallback.
+
+    Used when no trust zones are defined in Section 2. Each unique component `type`
+    becomes an ArchitecturalLayer, with components listed alphabetically within the
+    layer. Layers are sorted alphabetically by type name.
+
+    Args:
+        scope_data: Dict from parse_scope_data().
+
+    Returns:
+        List of layer dicts (name, position, components, component_count, source_kind)
+        or None if scope_data has no components at all.
+    """
+    components = scope_data.get("components", [])
+    if not components:
+        return None
+
+    # Group component names by type
+    by_type = {}
+    for comp in components:
+        ctype = (comp.get("type") or "").strip()
+        cname = (comp.get("name") or "").strip()
+        if not ctype or not cname:
+            continue
+        by_type.setdefault(ctype, []).append(cname)
+
+    if not by_type:
+        return None
+
+    # Build layer dicts sorted alphabetically by type name
+    layers = []
+    for position, ctype in enumerate(sorted(by_type.keys())):
+        comp_names = sorted(by_type[ctype])
+        if not comp_names:
+            continue
+        layers.append({
+            "name": ctype,
+            "position": position,
+            "components": comp_names,
+            "component_count": len(comp_names),
+            "source_kind": "dfd_type",
+        })
+
+    return layers if layers else None
+
+
+def _select_critical_high_callouts(findings, layers):
+    """Filter Critical/High findings and select one callout per layer.
+
+    For each layer:
+      1. Filter findings whose normalized component is in the layer's normalized
+         component set, AND whose severity is Critical or High.
+      2. Sort by:
+         a. severity descending (Critical before High)
+         b. composite_score descending (None treated as 0.0)
+         c. finding_id ascending (lexicographic tie-break)
+      3. Select the first element as the layer's callout.
+
+    Orphaned findings (those whose component matches no layer) are dropped.
+
+    Args:
+        findings: List of finding dicts from parse_*_findings(). Expected keys:
+            `id`, `component`, `threat` (or `description`), `severity` or `risk_level`,
+            optional `composite_score`, `residual_score`.
+        layers: List of layer dicts (name, components, ...).
+
+    Returns:
+        List of callout dicts matching the ThreatCallout schema in data-model.md.
+        One callout maximum per layer; layers with no qualifying findings yield no callout.
+    """
+    # Build a lookup: normalized component name -> (layer_name, layer_index)
+    comp_to_layer = {}
+    for idx, layer in enumerate(layers):
+        for comp in layer.get("components", []):
+            key = _normalize_component_name(comp)
+            if key and key not in comp_to_layer:
+                comp_to_layer[key] = (layer["name"], idx)
+
+    # Severity ordering for sort: Critical=2, High=1 (others excluded by filter)
+    _SEV_RANK = {"critical": 2, "high": 1}
+
+    def _extract_severity(finding):
+        """Return canonical severity label ('Critical', 'High') or empty string."""
+        # Tier 2/1 use `severity` / `residual_severity`; Tier 3 uses `risk_level`.
+        for key in ("severity", "residual_severity", "risk_level"):
+            val = finding.get(key)
+            if val:
+                return str(val).strip().title()
+        return ""
+
+    def _extract_composite_score(finding):
+        """Return composite score as float or None."""
+        for key in ("composite_score", "residual_score"):
+            raw = finding.get(key)
+            if raw is None or raw == "":
+                continue
+            try:
+                return float(raw)
+            except (TypeError, ValueError):
+                continue
+        return None
+
+    def _extract_description(finding):
+        """Return the narrative description for the callout."""
+        for key in ("description", "threat", "mitigation"):
+            val = finding.get(key)
+            if val:
+                return str(val).strip()
+        return ""
+
+    # Group qualifying findings by layer
+    per_layer = {layer["name"]: [] for layer in layers}
+    for finding in findings:
+        severity = _extract_severity(finding)
+        if severity not in ("Critical", "High"):
+            continue
+        component = finding.get("component") or ""
+        key = _normalize_component_name(component)
+        if not key or key not in comp_to_layer:
+            # Orphaned finding — drop per architect L-1 observation
+            continue
+        layer_name, _idx = comp_to_layer[key]
+        per_layer[layer_name].append(finding)
+
+    # Select the top finding per layer using the tie-break rule
+    callouts = []
+    for layer in layers:
+        layer_findings = per_layer.get(layer["name"], [])
+        if not layer_findings:
+            continue
+
+        def _sort_key(f):
+            severity = _extract_severity(f)
+            composite = _extract_composite_score(f)
+            return (
+                -_SEV_RANK.get(severity.lower(), 0),          # severity desc
+                -(composite if composite is not None else 0.0),  # score desc
+                f.get("id", ""),                               # id asc
+            )
+
+        layer_findings.sort(key=_sort_key)
+        top = layer_findings[0]
+        composite = _extract_composite_score(top)
+        callouts.append({
+            "layer_name": layer["name"],
+            "finding_id": top.get("id", ""),
+            "severity": _extract_severity(top),
+            "raw_description": _extract_description(top),
+            "composite_score": composite,
+            "affected_component": (top.get("component") or None),
+        })
+
+    return callouts
+
+
+def _build_executive_architecture_payload(threats_content, tier, findings, scope_data, source_file):
+    """Assemble the ExecutiveArchitecturePayload dict for the executive-architecture template.
+
+    Handles layer derivation (trust zones → DFD type fallback), Critical/High filtering,
+    per-layer callout selection, metadata assembly, and the skip_image flag.
+
+    Args:
+        threats_content: Full text of threats.md (unused; reserved for future use).
+        tier: Tier source label (one of "compensating-controls", "risk-scores", "threats").
+        findings: List of finding dicts from extract_severity().
+        scope_data: Dict from parse_scope_data().
+        source_file: Path-like to the source threats.md file.
+
+    Returns:
+        ExecutiveArchitecturePayload dict, OR a dict {"error": "no_scope_data"} when
+        neither trust zones nor DFD-type-grouped components can be derived from
+        scope_data. The caller translates the error dict into exit code 2.
+    """
+    from datetime import datetime, timezone
+
+    # --- Step 1: Derive architectural layers ---
+    trust_zones = _compute_trust_zones(scope_data)
+    fallback_used = False
+    layers = []
+
+    if trust_zones:
+        # Trust zones returned sorted by trust level ASCENDING (trusted first).
+        # The executive-architecture view wants UNTRUSTED at top (position 0 = most
+        # exposed), so we reverse the order.
+        ordered = list(reversed(trust_zones))
+        for position, zone in enumerate(ordered):
+            comp_names = list(zone.get("components") or [])
+            if not comp_names:
+                continue
+            layers.append({
+                "name": zone.get("name") or "",
+                "position": position,
+                "components": comp_names,
+                "component_count": len(comp_names),
+                "source_kind": "trust_zone",
+            })
+    else:
+        dfd_layers = _compute_dfd_type_layers(scope_data)
+        if dfd_layers:
+            fallback_used = True
+            layers = dfd_layers
+
+    # Drop any layers that ended up with zero components
+    layers = [layer for layer in layers if layer.get("component_count", 0) > 0]
+
+    if not layers:
+        return {"error": "no_scope_data"}
+
+    # --- Step 2: Filter findings to Critical/High ---
+    def _severity_of(f):
+        for key in ("severity", "residual_severity", "risk_level"):
+            val = f.get(key)
+            if val:
+                return str(val).strip().title()
+        return ""
+
+    critical_count = 0
+    high_count = 0
+    for f in findings:
+        sev = _severity_of(f)
+        if sev == "Critical":
+            critical_count += 1
+        elif sev == "High":
+            high_count += 1
+    total_qualifying = critical_count + high_count
+
+    # --- Step 3: Per-layer callout selection ---
+    callouts = _select_critical_high_callouts(findings, layers)
+    total_after_layer_dedup = len(callouts)
+
+    # --- Step 4: Metadata assembly ---
+    skip_image = (total_qualifying == 0)
+    generation_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    metadata = {
+        "template_name": "executive-architecture",
+        "tier_source": tier,
+        "source_file": str(source_file),
+        "generation_timestamp": generation_timestamp,
+        "qualifying_layer_count": len(layers),
+        "total_filtered_count": total_qualifying,
+        "skip_image": skip_image,
+        "fallback_used": fallback_used,
+    }
+
+    severity_distribution = {
+        "critical_count": critical_count,
+        "high_count": high_count,
+        "total_qualifying": total_qualifying,
+        "total_after_layer_dedup": total_after_layer_dedup,
+    }
+
+    return {
+        "metadata": metadata,
+        "layers": layers,
+        "callouts": callouts,
+        "severity_distribution": severity_distribution,
+    }
+
+
 def _compute_data_flows(scope_data, comp_severity):
     """Compute data flow severity coloring based on destination component's highest severity.
 
@@ -1192,7 +1480,7 @@ def main():
     parser.add_argument(
         "--template",
         required=True,
-        choices=["baseball-card", "system-architecture", "risk-funnel", "maestro-stack", "maestro-heatmap"],
+        choices=["baseball-card", "system-architecture", "risk-funnel", "maestro-stack", "maestro-heatmap", "executive-architecture"],
         help="Infographic template to generate data for",
     )
     parser.add_argument(
@@ -1240,6 +1528,43 @@ def main():
 
     # Extract severity, findings, and cc_data
     severity, findings, cc_data = extract_severity(tier, threats_content, rs_content, cc_content)
+
+    # F-128 T011: executive-architecture branch (early exit — unique payload shape)
+    if args.template == "executive-architecture":
+        # Map integer tier to string tier_source label per data-model.md PayloadMetadata
+        _TIER_SOURCE_LABEL = {1: "compensating-controls", 2: "risk-scores", 3: "threats"}
+        tier_source = _TIER_SOURCE_LABEL.get(tier, "threats")
+
+        payload = _build_executive_architecture_payload(
+            threats_content=threats_content,
+            tier=tier_source,
+            findings=findings,
+            scope_data=scope,
+            source_file=(target_dir / "threats.md"),
+        )
+
+        if isinstance(payload, dict) and payload.get("error") == "no_scope_data":
+            print(
+                "[extract-infographic-data] ERROR: executive-architecture template "
+                "requires parseable scope data (trust boundaries or DFD-type "
+                "components); both are missing in threats.md",
+                file=sys.stderr,
+            )
+            sys.exit(EXIT_VALIDATION_FAILURE)
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(
+            json.dumps(payload, sort_keys=True, indent=2),
+            encoding="utf-8",
+        )
+        print(
+            "executive-architecture payload generated "
+            f"({payload['severity_distribution']['total_qualifying']} Critical/High "
+            f"findings, {len(payload['layers'])} layers, Tier {tier})",
+            file=sys.stderr,
+        )
+        sys.exit(EXIT_SUCCESS)
+    # End F-128 T011 early exit
 
     # Compute severity percentages
     severity_distribution = compute_severity_percentages(severity)

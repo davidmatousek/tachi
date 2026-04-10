@@ -363,6 +363,19 @@ To install a specific version: `install.sh --version v4.7.0` <!-- x-release-plea
 
 ---
 
+## Running Tests
+
+tachi uses pytest for Python script tests under `tests/scripts/`. To run the test suite:
+
+```bash
+pip install -r requirements-dev.txt
+make test
+```
+
+This runs `pytest tests/scripts/ --cov=scripts --cov-report=term-missing`. Tests are required by Constitution Principle VI (Testing Excellence, ≥80% coverage).
+
+---
+
 ## Contributing
 
 We welcome contributions. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.

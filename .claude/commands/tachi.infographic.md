@@ -14,14 +14,15 @@ Consider user input before proceeding (if not empty).
 
 1. If `$ARGUMENTS` contains `--template <value>`:
    - Set `template` to the specified value
-   - Valid values: `baseball-card`, `system-architecture`, `risk-funnel`, `maestro-stack`, `maestro-heatmap`, `all`, `maestro`, `corporate-white`
+   - Valid values: `baseball-card`, `system-architecture`, `risk-funnel`, `maestro-stack`, `maestro-heatmap`, `executive-architecture`, `all`, `maestro`, `corporate-white`, `exec`
    - If value is `corporate-white`: resolve alias to `baseball-card`
+   - If value is `exec`: resolve alias to `executive-architecture`
    - If value is `maestro`: expand shorthand to `["maestro-stack", "maestro-heatmap"]` — generate both sequentially
    - If value is not in the valid list, display:
      ```
      INVALID TEMPLATE: {value}
-     Valid templates: baseball-card, system-architecture, risk-funnel, maestro-stack, maestro-heatmap, all, maestro
-     Aliases: corporate-white → baseball-card, maestro → maestro-stack + maestro-heatmap
+     Valid templates: baseball-card, system-architecture, risk-funnel, maestro-stack, maestro-heatmap, executive-architecture, all, maestro
+     Aliases: corporate-white → baseball-card, exec → executive-architecture, maestro → maestro-stack + maestro-heatmap
      ```
    - Halt if invalid.
    - Strip `--template <value>` from `$ARGUMENTS` (trim extra whitespace)
@@ -160,9 +161,10 @@ Single-command entry point for tachi threat infographic generation — the visua
        --output /tmp/infographic-{template_name}.json
 
    Template expansion:
-   - "all" expands to: baseball-card, system-architecture, risk-funnel. Then check if data source contains MAESTRO layer data (grep for "MAESTRO Layer" or "maestro_layer" in the data source file) — if present, also append maestro-stack and maestro-heatmap (up to 5 runs total).
+   - "all" expands to: baseball-card, system-architecture, risk-funnel, executive-architecture. Then check if data source contains MAESTRO layer data (grep for "MAESTRO Layer" or "maestro_layer" in the data source file) — if present, also append maestro-stack and maestro-heatmap (up to 6 runs total).
    - "maestro" expands to: maestro-stack, maestro-heatmap (2 runs, sequential)
-   - Individual templates (baseball-card, system-architecture, risk-funnel, maestro-stack, maestro-heatmap): 1 run
+   - "exec" resolves to: executive-architecture (alias, 1 run)
+   - Individual templates (baseball-card, system-architecture, risk-funnel, maestro-stack, maestro-heatmap, executive-architecture): 1 run
 
    Step 2: Read the JSON output and generate the spec file per your methodology.
      - If the JSON contains a "delta" object (has_baseline: true), include delta context
@@ -234,6 +236,10 @@ Where:
 # Select a specific template
 /infographic --template baseball-card
 /infographic --template system-architecture
+
+# Executive architecture template (Feature 128 — placed after Executive Summary in PDF)
+/infographic --template executive-architecture
+/infographic --template exec              # alias: resolves to executive-architecture
 
 # MAESTRO templates (require MAESTRO layer data from Feature 084)
 /infographic --template maestro-stack

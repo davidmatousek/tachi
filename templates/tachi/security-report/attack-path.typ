@@ -95,7 +95,11 @@
   }
 
   // Remediation section.
+  // Coerce to array defensively: a bare string would iterate character-by-character.
   let remediation = entry.at("remediation", default: ())
+  if type(remediation) == str {
+    remediation = if remediation != "" { (remediation,) } else { () }
+  }
   if remediation.len() > 0 {
     heading(level: 3, "Remediation Steps")
     for step in remediation {

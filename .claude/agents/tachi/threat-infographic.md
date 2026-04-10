@@ -68,11 +68,25 @@ You must not require any other input -- you run in a fresh context with only the
 | `baseball-card` | `threat-baseball-card-spec.md` + `threat-baseball-card.jpg` | Compact risk summary dashboard: donut chart, STRIDE+AI heat map, critical finding cards, architecture overlay strip |
 | `system-architecture` | `threat-system-architecture-spec.md` + `threat-system-architecture.jpg` | Annotated architecture diagram: trust zones, components with attack surface badges, data flow arrows colored by severity, finding IDs overlaid |
 | `risk-funnel` | `threat-risk-funnel-spec.md` + `threat-risk-funnel.jpg` | 4-tier vertical funnel showing progressive risk reduction: threats identified, inherent risk scored, controls applied, residual risk |
-| `all` | All three sets of files | Generate all three templates (default) |
+| `executive-architecture` | `threat-executive-architecture-spec.md` + `threat-executive-architecture.jpg` | Executive-audience layered architecture diagram with narrative threat callouts for Critical/High findings, rendered in portrait orientation for the security report's early pages |
+| `all` | All sets of files | Generate all templates (default) |
 
-**Alias**: `corporate-white` maps to `baseball-card`.
+**Aliases**: `corporate-white` maps to `baseball-card`; `exec` maps to `executive-architecture`.
 
-When template is `all`, produce all three templates sequentially -- first Baseball Card, then System Architecture, then Risk Funnel. Each produces its own spec + image.
+When template is `all`, produce all templates sequentially -- Baseball Card, System Architecture, Risk Funnel, Executive Architecture. Each produces its own spec + image.
+
+### executive-architecture Template Specification
+
+The spec file `threat-executive-architecture-spec.md` is rendered from the JSON payload emitted by `scripts/extract-infographic-data.py --template executive-architecture`. The payload shape is defined in `specs/128-prd-128-executive/data-model.md` (`ExecutiveArchitecturePayload`).
+
+The spec MUST contain six sections matching the schema enumeration in `schemas/infographic.yaml`:
+
+1. **Metadata** -- Rendered from `metadata`: template_name, tier_source, source_file, generation_timestamp, qualifying_layer_count, total_filtered_count, skip_image, fallback_used.
+2. **Architecture Layers** -- Rendered from `layers[]`: each layer's name, position, components list, component_count, source_kind. Layers are already ordered with the most-exposed (untrusted or lowest-trust zone) at position 0 when `source_kind == "trust_zone"`.
+3. **Threat Callouts** -- Rendered from `callouts[]`: each callout's layer_name, finding_id, severity, raw_description, composite_score, affected_component. The raw_description is the unmodified source text; the Gemini prompt is responsible for rewriting it to ≤25 words of plain English.
+4. **Severity Distribution** -- Rendered from `severity_distribution`: Critical and High counts only (Medium/Low/Note are not shown in this template).
+5. **Visual Layout Directives** -- Portrait orientation, pastel layer bands untrusted-first, red dashed-border callouts. Derived from `visual_directives` in `schemas/infographic.yaml`.
+6. **Gemini Prompt Construction Notes** -- Embedded prompt text for the optional JPEG rendering step.
 
 ### Output
 
@@ -196,6 +210,31 @@ The complete JSON schema is defined in `specs/071-deterministic-infographic-extr
 **MANDATORY**: Read `.claude/skills/tachi-infographics/references/visual-design-system.md` for Section 6 color palette, layout structure, typography, background/theme selection, and template file references.
 
 The output `threat-{template-name}-spec.md` contains YAML frontmatter and 6 required sections. All sections must be present and non-empty.
+
+---
+
+## Executive-Architecture Gemini Prompt Construction
+
+When generating the `threat-executive-architecture.jpg` image via Gemini API, the prompt MUST instruct Gemini to:
+
+- **Render in portrait orientation** with an 8.5x11 aspect ratio suitable for embedding as a full-bleed page in the security report PDF.
+- **Arrange architectural layers as horizontal bands** stacked vertically, with the most exposed layer (position 0) at the TOP of the diagram and the most trusted layer at the BOTTOM. Untrusted zones and public-facing components belong at the top.
+- **Use pastel fills** for each layer band, cycling from the color palette defined in `schemas/infographic.yaml` under `visual_directives`: `#F0F4FF`, `#FFF4F0`, `#F0FFF4`, `#FFF0F8`, `#F8F0FF`. Cycle through the palette if there are more layers than colors.
+- **Place red dashed-border callout boxes** (2pt border weight, color `#DC2626`) with warning triangle icons next to each layer. Each callout box is connected to its associated `affected_component` within the layer via a leader line.
+- **Rewrite each callout's `raw_description`** to ≤25 words in plain English with no technical jargon. The goal is an executive audience who reads one sentence per callout in under 5 seconds. Avoid terms like "endpoint," "payload," "injection," "JWT," or "RBAC" without explanation. Prefer verbs like "attacker could steal," "system could leak," "user could impersonate."
+- **Use large readable typography** for layer names (24pt+) and callout text (14pt+); the infographic must be legible when printed on a letter-size page.
+- **Reference the `visual_directives` block** from `schemas/infographic.yaml` for the exact color palette, border weights, and orientation constraints.
+
+The prompt must be constructed from the JSON payload fields, not hardcoded. Layer names, component lists, and callout text all come from the emitted payload.
+
+### Skip Image Edge Case
+
+When the payload's `metadata.skip_image == True` (i.e., the threat model contains zero Critical and zero High severity findings), the agent MUST:
+
+1. **Render the spec file** with a clear explanatory note in the Threat Callouts section: "No Critical or High severity findings were identified in this threat model; the executive architecture diagram is omitted for this report run. Layer composition is preserved below for reference."
+2. **NOT invoke the Gemini API** for this run. No JPEG file is produced. Downstream PDF compilation will omit the executive architecture page entirely because the `threat-executive-architecture.jpg` file does not exist.
+
+This graceful degradation preserves the report structure while avoiding a misleading "no-threats" diagram.
 
 ---
 

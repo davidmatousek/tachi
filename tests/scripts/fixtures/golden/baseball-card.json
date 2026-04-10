@@ -1,0 +1,181 @@
+{
+  "heat_map": [
+    {
+      "component": "LLM Agent Orchestrator",
+      "critical": 0,
+      "high": 4,
+      "low": 2,
+      "medium": 5,
+      "total": 11
+    },
+    {
+      "component": "MCP Tool Server",
+      "critical": 0,
+      "high": 3,
+      "low": 1,
+      "medium": 4,
+      "total": 8
+    },
+    {
+      "component": "Guardrails Service",
+      "critical": 0,
+      "high": 0,
+      "low": 3,
+      "medium": 3,
+      "total": 6
+    },
+    {
+      "component": "Audit Logger",
+      "critical": 0,
+      "high": 0,
+      "low": 2,
+      "medium": 1,
+      "total": 3
+    },
+    {
+      "component": "Knowledge Base",
+      "critical": 0,
+      "high": 0,
+      "low": 1,
+      "medium": 2,
+      "total": 3
+    },
+    {
+      "component": "User",
+      "critical": 0,
+      "high": 0,
+      "low": 1,
+      "medium": 1,
+      "total": 2
+    },
+    {
+      "component": "External API",
+      "critical": 0,
+      "high": 0,
+      "low": 0,
+      "medium": 1,
+      "total": 1
+    }
+  ],
+  "metadata": {
+    "agent_count": 8,
+    "data_source_type": "compensating-controls",
+    "note_count": 0,
+    "project_name": "Agentic AI Application",
+    "risk_posture": "Residual risk \u2014 0 Critical and 7 High findings across 7 components",
+    "scan_date": "2026-03-25",
+    "schema_version": "1.1",
+    "template": "baseball-card",
+    "tier": 1,
+    "total_findings": 34
+  },
+  "severity_distribution": [
+    {
+      "color": "#DC2626",
+      "count": 0,
+      "label": "Critical",
+      "percentage": 0
+    },
+    {
+      "color": "#EA580C",
+      "count": 7,
+      "label": "High",
+      "percentage": 21
+    },
+    {
+      "color": "#CA8A04",
+      "count": 17,
+      "label": "Medium",
+      "percentage": 50
+    },
+    {
+      "color": "#2563EB",
+      "count": 10,
+      "label": "Low",
+      "percentage": 29
+    }
+  ],
+  "template_data": {
+    "risk_weights": [
+      {
+        "annotation": "4 High + 5 Medium + 2 Low findings",
+        "component": "LLM Agent Orchestrator",
+        "score": 2.2,
+        "weight": "medium"
+      },
+      {
+        "annotation": "3 High + 4 Medium + 1 Low findings",
+        "component": "MCP Tool Server",
+        "score": 2.2,
+        "weight": "medium"
+      },
+      {
+        "annotation": "1 Medium findings",
+        "component": "External API",
+        "score": 2.0,
+        "weight": "medium"
+      },
+      {
+        "annotation": "2 Medium + 1 Low findings",
+        "component": "Knowledge Base",
+        "score": 1.7,
+        "weight": "low"
+      },
+      {
+        "annotation": "3 Medium + 3 Low findings",
+        "component": "Guardrails Service",
+        "score": 1.5,
+        "weight": "low"
+      },
+      {
+        "annotation": "1 Medium + 1 Low findings",
+        "component": "User",
+        "score": 1.5,
+        "weight": "low"
+      },
+      {
+        "annotation": "1 Medium + 2 Low findings",
+        "component": "Audit Logger",
+        "score": 1.3,
+        "weight": "low"
+      }
+    ]
+  },
+  "top_findings": [
+    {
+      "component": "LLM Agent Orchestrator",
+      "id": "LLM-1",
+      "risk_level": "High",
+      "score": 8.3,
+      "threat": "Adversarial prompts override system prompt"
+    },
+    {
+      "component": "LLM Agent Orchestrator",
+      "id": "AG-1",
+      "risk_level": "High",
+      "score": 7.6,
+      "threat": "Orchestrator executes consequential actions without human approval"
+    },
+    {
+      "component": "LLM Agent Orchestrator",
+      "id": "E-2",
+      "risk_level": "High",
+      "score": 7.6,
+      "threat": "Attacker escalates to admin tool access through prompt injection"
+    },
+    {
+      "component": "MCP Tool Server",
+      "id": "E-3",
+      "risk_level": "High",
+      "score": 7.5,
+      "threat": "User invokes admin tool endpoints by manipulating tool_name"
+    },
+    {
+      "component": "LLM Agent Orchestrator",
+      "id": "D-2",
+      "risk_level": "High",
+      "score": 7.3,
+      "threat": "Attacker sends concurrent max-length prompts"
+    }
+  ]
+}
