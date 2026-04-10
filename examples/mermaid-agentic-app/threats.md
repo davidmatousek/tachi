@@ -4,8 +4,8 @@
 
 ```yaml
 ---
-schema_version: "1.2"
-date: "2026-03-21"
+schema_version: "1.3"
+date: "2026-04-10"
 input_format: "mermaid"
 classification: "confidential"
 ---
@@ -21,7 +21,7 @@ Parsed summary of the Mermaid flowchart architecture input for an agentic AI app
 
 | Component | Type | MAESTRO Layer | Description |
 |-----------|------|---------------|-------------|
-| User | External Entity | L7 — User Interface | End user who sends prompts and queries to the agentic application and receives responses |
+| User | External Entity | L7 — Agent Ecosystem | End user who sends prompts and queries to the agentic application and receives responses |
 | LLM Agent Orchestrator | Process | L1 — Foundation Model | Central orchestration layer that receives user prompts, retrieves context from the knowledge base, dispatches tool calls to the MCP Tool Server, and generates responses using an LLM |
 | MCP Tool Server | Process | L3 — Agent Framework | Model Context Protocol server that executes tool calls requested by the orchestrator and interfaces with external APIs |
 | Knowledge Base | Data Store | L2 — Data Operations | Document store used for retrieval-augmented generation (RAG), providing context documents to the orchestrator |
@@ -77,7 +77,7 @@ Parsed summary of the Mermaid flowchart architecture input for an agentic AI app
 
 | ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|-----------|---------------|--------|------------|--------|------------|------------|
-| S-1 | User | L7 — User Interface | Attacker impersonates a legitimate user by replaying or forging authentication credentials to submit malicious prompts to the orchestrator | MEDIUM | HIGH | High | Implement multi-factor authentication and session-bound tokens with short expiry; validate user identity on every request |
+| S-1 | User | L7 — Agent Ecosystem | Attacker impersonates a legitimate user by replaying or forging authentication credentials to submit malicious prompts to the orchestrator | MEDIUM | HIGH | High | Implement multi-factor authentication and session-bound tokens with short expiry; validate user identity on every request |
 | S-2 | External API | L3 — Agent Framework | Attacker performs DNS hijacking or certificate spoofing to redirect MCP Tool Server API requests to a malicious endpoint that returns crafted responses | LOW | HIGH | Medium | Enforce certificate pinning for external API connections; validate TLS certificates and implement mutual authentication where supported |
 
 ### 3.2 Tampering (T)
@@ -91,7 +91,7 @@ Parsed summary of the Mermaid flowchart architecture input for an agentic AI app
 
 | ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|-----------|---------------|--------|------------|--------|------------|------------|
-| R-1 | User | L7 — User Interface | User denies submitting a prompt that triggered a harmful or costly tool execution, and the system lacks sufficient audit trail to prove the action | MEDIUM | MEDIUM | Medium | Implement immutable audit logging of all user prompts with session ID, timestamp, IP address, and user identity; retain logs for compliance period |
+| R-1 | User | L7 — Agent Ecosystem | User denies submitting a prompt that triggered a harmful or costly tool execution, and the system lacks sufficient audit trail to prove the action | MEDIUM | MEDIUM | Medium | Implement immutable audit logging of all user prompts with session ID, timestamp, IP address, and user identity; retain logs for compliance period |
 | R-2 | LLM Agent Orchestrator | L1 — Foundation Model | Orchestrator executes a chain of tool calls with no record of the reasoning or decision path that led to each invocation, making post-incident analysis impossible | MEDIUM | MEDIUM | Medium | Log all orchestrator decisions including LLM reasoning traces, tool selection rationale, and intermediate outputs with correlation IDs |
 
 ### 3.4 Information Disclosure (I)
@@ -169,7 +169,7 @@ Parsed summary of the Mermaid flowchart architecture input for an agentic AI app
 | L1 — Foundation Model | 10 | Critical |
 | L3 — Agent Framework | 3 | Critical |
 | L2 — Data Operations | 4 | High |
-| L7 — User Interface | 2 | High |
+| L7 — Agent Ecosystem | 2 | High |
 
 ---
 

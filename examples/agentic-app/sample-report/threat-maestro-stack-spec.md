@@ -1,6 +1,6 @@
 ---
 schema_version: "1.0"
-template: "baseball-card"
+template: "maestro-stack"
 date: "2026-04-10"
 source_file: "compensating-controls.md"
 finding_count: 22
@@ -29,17 +29,9 @@ image_generated: false
 
 **Chart Format**: Suitable for donut chart (proportional segments) or horizontal bar chart (comparative lengths).
 
-## 3. Coverage Heat Map
+## 3. MAESTRO Layer Breakdown
 
-| Component | Critical | High | Medium | Low | Total |
-|-----------|----------|------|--------|-----|-------|
-| LLM Agent Orchestrator | 0 | 4 | 6 | 0 | 10 |
-| MCP Tool Server | 0 | 2 | 2 | 0 | 4 |
-| Guardrails Service | 0 | 2 | 0 | 0 | 2 |
-| Knowledge Base | 0 | 0 | 2 | 0 | 2 |
-| User | 0 | 1 | 1 | 0 | 2 |
-| Audit Logger | 0 | 0 | 1 | 0 | 1 |
-| External API | 0 | 1 | 0 | 0 | 1 |
+_No MAESTRO layer data in source file._
 
 ## 4. Top Critical Findings
 
@@ -77,14 +69,14 @@ image_generated: false
 - Accent lines: medium gray `#64748B`
 
 **Layout**:
-- Top banner (15% height): project name, scan date, total findings, risk posture summary
-- Risk distribution donut chart (25% height, centered)
-- Coverage heat map table (30% height, component rows x severity columns)
-- Top 5 critical/high findings list (20% height)
-- Architecture threat overlay (10% height, bottom banner)
+- Top banner (12% height): project name, scan date, total findings
+- MAESTRO seven-layer stack diagram (70% height, centered): horizontal bars representing L1-L7, stacked vertically with L1 at bottom and L7 at top
+- Per-layer finding count badge (colored by max severity in the layer)
+- Layer descriptions on the right side
+- Bottom panel (18% height): legend + unclassified bucket if present
 
-**Typography**: Sans-serif, 18-24pt headers, 10-12pt body, 8pt footnotes. High contrast for scanability.
+**Typography**: Same as baseball-card. Layer labels in 16pt bold; finding counts in 14pt; layer descriptions in 10pt.
 
-**Visual Style**: Corporate-neutral with clear information hierarchy. Donut chart shows severity proportions at-a-glance. Heat map uses color intensity to convey finding density.
+**Visual Style**: Stack diagram with canonical CSA MAESTRO layer naming (L5 Evaluation and Observability, L6 Security and Compliance, L7 Agent Ecosystem). Each layer bar colored by highest-severity finding in that layer.
 
 **Prompt Hint (Gemini)**: Generate a print-quality infographic using the layout above. Emphasize canonical MAESTRO layer naming — use ONLY the canonical CSA MAESTRO layer names: L5 Evaluation and Observability, L6 Security and Compliance, L7 Agent Ecosystem.

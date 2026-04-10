@@ -1,15 +1,22 @@
 ---
 schema_version: "1.1"
-date: "2026-03-25"
+date: "2026-04-10"
 source_file: "threats.md"
-finding_count: 34
+finding_count: 22
 risk_distribution:
-  critical: 8
-  high: 14
-  medium: 6
-  low: 1
+  critical: 2
+  high: 10
+  medium: 10
+  low: 0
   note: 0
-attack_tree_count: 22
+attack_tree_count: 12
+baseline_source: null
+baseline_date: null
+delta_counts:
+  new: null
+  unchanged: null
+  updated: null
+  resolved: null
 ---
 
 # Threat Report: Agentic AI Application

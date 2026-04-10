@@ -4,8 +4,8 @@
 
 ```yaml
 ---
-schema_version: "1.2"
-date: "2026-03-21"
+schema_version: "1.3"
+date: "2026-04-10"
 input_format: "free-text"
 classification: "confidential"
 ---
@@ -21,13 +21,13 @@ An e-commerce order processing platform built on a microservice architecture. Th
 
 | Component | Type | MAESTRO Layer | Description |
 |-----------|------|---------------|-------------|
-| External Clients | External Entity | L7 — User Interface | Web browsers and mobile applications that submit orders and authenticate via JWT |
+| External Clients | External Entity | L7 — Agent Ecosystem | Web browsers and mobile applications that submit orders and authenticate via JWT |
 | API Gateway | Process | L4 — Deployment Infrastructure | Single HTTPS entry point on port 443; terminates TLS, validates JWT tokens, enforces rate limits, routes to internal services |
 | Order Service | Process | L4 — Deployment Infrastructure | Manages order lifecycle via internal REST API on port 8080; publishes and consumes message queue events |
 | Payment Service | Process | Unclassified | Processes payment transactions by consuming MQ events and calling the External Payment Provider API |
 | Inventory Database | Data Store | L2 — Data Operations | PostgreSQL 15 on port 5432; stores product catalog, stock levels, order records, and payment transaction logs |
 | Message Queue | Data Store | L4 — Deployment Infrastructure | RabbitMQ 3.12 cluster on port 5672 (AMQP over TLS); provides durable persistent message delivery between services |
-| External Payment Provider | External Entity | L7 — User Interface | Stripe REST API at api.stripe.com; processes payment authorizations and sends webhook callbacks |
+| External Payment Provider | External Entity | L7 — Agent Ecosystem | Stripe REST API at api.stripe.com; processes payment authorizations and sends webhook callbacks |
 
 ### Data Flows
 

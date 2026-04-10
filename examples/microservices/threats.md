@@ -1,6 +1,6 @@
 ---
-schema_version: "1.2"
-date: "2026-03-23"
+schema_version: "1.3"
+date: "2026-04-10"
 input_format: "mermaid"
 classification: "confidential"
 ---
@@ -15,7 +15,7 @@ Parsed summary of the Mermaid flowchart architecture input depicting a microserv
 
 | Component | Type | MAESTRO Layer | Description |
 |-----------|------|---------------|-------------|
-| Client Application | External Entity | L7 — User Interface | End-user browser or mobile app sending HTTPS requests; resides in the External Clients zone |
+| Client Application | External Entity | L7 — Agent Ecosystem | End-user browser or mobile app sending HTTPS requests; resides in the External Clients zone |
 | API Gateway | Process | L4 — Deployment Infrastructure | Single entry point in the DMZ; routes requests, enforces authentication, terminates TLS, and performs service discovery via the Service Registry |
 | Service Registry | Process | L4 — Deployment Infrastructure | Maintains a catalog of service endpoints for dynamic discovery; resides in the DMZ alongside the API Gateway |
 | Order Service | Process | L2 — Data Operations | Manages order creation, validation, and lifecycle; reads/writes to Order Database and Inventory Database; publishes events to Message Queue |

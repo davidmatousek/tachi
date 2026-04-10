@@ -1,6 +1,6 @@
 ---
-schema_version: "1.2"
-date: "2026-03-23"
+schema_version: "1.3"
+date: "2026-04-10"
 input_format: "mermaid"
 classification: "confidential"
 ---
@@ -15,12 +15,12 @@ Parsed summary of the agentic AI application architecture including identified c
 
 | Component | Type | MAESTRO Layer | Description |
 |-----------|------|---------------|-------------|
-| User | External Entity | L7 — User Interface | End user submitting prompts and receiving responses via HTTPS |
-| Guardrails Service | Process | L5 — Security | Input validation and filtering service that screens user prompts before forwarding to orchestration |
+| User | External Entity | L7 — Agent Ecosystem | End user submitting prompts and receiving responses via HTTPS |
+| Guardrails Service | Process | L6 — Security and Compliance | Input validation and filtering service that screens user prompts before forwarding to orchestration |
 | LLM Agent Orchestrator | Process | L1 — Foundation Model | Central orchestration process that dispatches LLM inference, retrieves context from the knowledge base, and coordinates tool calls via MCP |
 | MCP Tool Server | Process | L3 — Agent Framework | Model Context Protocol server that executes tool calls on behalf of the orchestrator and interfaces with external APIs |
 | Knowledge Base | Data Store | L2 — Data Operations | Vector database storing document embeddings for retrieval-augmented generation (RAG) context |
-| Audit Logger | Data Store | L5 — Security | Append-only log store capturing decision logs, tool execution events, and filtering events for accountability |
+| Audit Logger | Data Store | L5 — Evaluation and Observability | Append-only log store capturing decision logs, tool execution events, and filtering events for accountability |
 | External API | External Entity | L3 — Agent Framework | Third-party API services accessed by the MCP Tool Server for external data and actions |
 
 ### Data Flows
@@ -85,7 +85,7 @@ Threats where an attacker pretends to be something or someone else.
 
 | ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|-----------|---------------|--------|------------|--------|------------|------------|
-| S-1 | User | L7 — User Interface | Attacker spoofs a legitimate user identity by stealing or replaying session tokens to submit unauthorized prompts | MEDIUM | HIGH | High | Implement short-lived JWT tokens with refresh rotation; bind tokens to client fingerprint; enforce MFA for sensitive operations |
+| S-1 | User | L7 — Agent Ecosystem | Attacker spoofs a legitimate user identity by stealing or replaying session tokens to submit unauthorized prompts | MEDIUM | HIGH | High | Implement short-lived JWT tokens with refresh rotation; bind tokens to client fingerprint; enforce MFA for sensitive operations |
 | S-2 | LLM Agent Orchestrator | L1 — Foundation Model | Attacker crafts spoofed tool call responses that mimic the MCP Tool Server, injecting fabricated results into the orchestration pipeline | LOW | HIGH | Medium | Enforce mutual TLS between orchestrator and tool server; validate message signatures on all JSON-RPC responses; implement request-response correlation IDs |
 | S-3 | External API | L3 — Agent Framework | Compromised or spoofed external API returns malicious payloads masquerading as legitimate API responses | MEDIUM | MEDIUM | Medium | Validate API response schemas before processing; implement certificate pinning for critical external endpoints; use response integrity checksums where supported |
 
@@ -97,7 +97,7 @@ Threats where an attacker modifies data or code without authorization.
 |----|-----------|---------------|--------|------------|--------|------------|------------|
 | T-1 | Knowledge Base | L2 — Data Operations | Attacker with write access to the vector store injects or modifies document embeddings, corrupting RAG retrieval results and influencing LLM output | MEDIUM | HIGH | High | Enforce strict write access controls on vector store; implement embedding integrity checksums; log all write operations with source attribution |
 | T-2 | LLM Agent Orchestrator | L1 — Foundation Model | Attacker tampers with orchestration configuration or intermediate state to alter agent decision logic, causing the orchestrator to produce incorrect tool call sequences or bypass safety checks | LOW | HIGH | Medium | Sign orchestration configuration at deployment; validate configuration integrity at startup; implement runtime state checksums on critical decision paths |
-| T-3 | Audit Logger | L5 — Security | Attacker with elevated access modifies or truncates audit log entries to conceal malicious activity or alter the forensic record | LOW | HIGH | Medium | Use append-only log storage with cryptographic chaining (hash chains); replicate logs to an immutable external store; enforce separate access controls for log writes vs. log administration |
+| T-3 | Audit Logger | L5 — Evaluation and Observability | Attacker with elevated access modifies or truncates audit log entries to conceal malicious activity or alter the forensic record | LOW | HIGH | Medium | Use append-only log storage with cryptographic chaining (hash chains); replicate logs to an immutable external store; enforce separate access controls for log writes vs. log administration |
 
 ### 3.3 Repudiation (R)
 
@@ -105,7 +105,7 @@ Threats where an attacker denies having performed an action without the system b
 
 | ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|-----------|---------------|--------|------------|--------|------------|------------|
-| R-1 | User | L7 — User Interface | User denies submitting a harmful or policy-violating prompt because session logs lack sufficient attribution to tie the prompt to a specific authenticated identity | MEDIUM | MEDIUM | Medium | Log authenticated user identity, session ID, timestamp, and client IP for every prompt submission; retain logs for compliance-mandated retention period |
+| R-1 | User | L7 — Agent Ecosystem | User denies submitting a harmful or policy-violating prompt because session logs lack sufficient attribution to tie the prompt to a specific authenticated identity | MEDIUM | MEDIUM | Medium | Log authenticated user identity, session ID, timestamp, and client IP for every prompt submission; retain logs for compliance-mandated retention period |
 | R-2 | LLM Agent Orchestrator | L1 — Foundation Model | Orchestrator makes autonomous multi-step decisions that cannot be attributed to a specific triggering prompt or user action because decision chain logging is incomplete | MEDIUM | HIGH | High | Log complete decision chains including triggering prompt, intermediate reasoning steps, tool calls issued, and final response; implement correlation IDs across the full request lifecycle |
 
 ### 3.4 Information Disclosure (I)
@@ -124,7 +124,7 @@ Threats where an attacker degrades or prevents legitimate access to the system.
 
 | ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|-----------|---------------|--------|------------|--------|------------|------------|
-| D-1 | Guardrails Service | L5 — Security | Attacker floods the guardrails service with complex prompts designed to maximize validation processing time, exhausting CPU and blocking legitimate requests | HIGH | MEDIUM | High | Enforce per-user and per-IP rate limiting; set maximum prompt length and complexity thresholds; implement request timeouts; deploy horizontal scaling with circuit breakers |
+| D-1 | Guardrails Service | L6 — Security and Compliance | Attacker floods the guardrails service with complex prompts designed to maximize validation processing time, exhausting CPU and blocking legitimate requests | HIGH | MEDIUM | High | Enforce per-user and per-IP rate limiting; set maximum prompt length and complexity thresholds; implement request timeouts; deploy horizontal scaling with circuit breakers |
 | D-2 | MCP Tool Server | L3 — Agent Framework | Attacker triggers recursive or excessively long tool call chains through crafted prompts, exhausting tool server resources and causing cascading timeouts across the application | MEDIUM | HIGH | High | Enforce maximum tool call depth and chain length limits; set per-request resource budgets; implement circuit breakers on tool execution; monitor and alert on anomalous call patterns |
 
 ### 3.6 Elevation of Privilege (E)
@@ -134,7 +134,7 @@ Threats where an attacker gains higher access rights than authorized.
 | ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|-----------|---------------|--------|------------|--------|------------|------------|
 | E-1 | LLM Agent Orchestrator | L1 — Foundation Model | Orchestrator escalates its own tool permissions beyond the user's authorization level by dynamically requesting elevated scopes from the MCP Tool Server, accessing tools the invoking user is not authorized to use | MEDIUM | HIGH | High | Implement per-user permission scoping on all tool calls; validate tool permissions against user authorization at the tool server, not just the orchestrator; enforce least-privilege tool allowlists |
-| E-2 | Guardrails Service | L5 — Security | Attacker bypasses guardrails validation through prompt obfuscation techniques (encoding, unicode manipulation, payload splitting) to access restricted orchestrator capabilities | MEDIUM | HIGH | High | Layer multiple validation strategies (regex, semantic analysis, LLM-based classification); maintain an evolving bypass pattern database; implement defense-in-depth with secondary validation at the orchestrator |
+| E-2 | Guardrails Service | L6 — Security and Compliance | Attacker bypasses guardrails validation through prompt obfuscation techniques (encoding, unicode manipulation, payload splitting) to access restricted orchestrator capabilities | MEDIUM | HIGH | High | Layer multiple validation strategies (regex, semantic analysis, LLM-based classification); maintain an evolving bypass pattern database; implement defense-in-depth with secondary validation at the orchestrator |
 
 ---
 
@@ -226,9 +226,10 @@ Risk summary counts below reflect deduplicated findings. When correlation groups
 |---------------|---------------|------------------|
 | L1 — Foundation Model | 8 | Critical |
 | L3 — Agent Framework | 5 | High |
-| L5 — Security | 3 | High |
 | L2 — Data Operations | 2 | High |
-| L7 — User Interface | 2 | High |
+| L6 — Security and Compliance | 2 | High |
+| L7 — Agent Ecosystem | 2 | High |
+| L5 — Evaluation and Observability | 1 | Medium |
 
 ---
 

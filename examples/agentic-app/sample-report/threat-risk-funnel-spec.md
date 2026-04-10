@@ -1,6 +1,6 @@
 ---
 schema_version: "1.0"
-template: "baseball-card"
+template: "risk-funnel"
 date: "2026-04-10"
 source_file: "compensating-controls.md"
 finding_count: 22
@@ -77,14 +77,13 @@ image_generated: false
 - Accent lines: medium gray `#64748B`
 
 **Layout**:
-- Top banner (15% height): project name, scan date, total findings, risk posture summary
-- Risk distribution donut chart (25% height, centered)
-- Coverage heat map table (30% height, component rows x severity columns)
-- Top 5 critical/high findings list (20% height)
-- Architecture threat overlay (10% height, bottom banner)
+- Top banner (10% height): project name, scan date
+- Funnel diagram (65% height, centered): inverted trapezoids stacked vertically showing Total -> Critical/High -> Medium -> Low -> Remediated
+- Severity breakdown per funnel segment (inline labels)
+- Bottom panel (25% height): narrative takeaway + top finding highlights
 
-**Typography**: Sans-serif, 18-24pt headers, 10-12pt body, 8pt footnotes. High contrast for scanability.
+**Typography**: Same as baseball-card. Funnel labels in 14pt bold.
 
-**Visual Style**: Corporate-neutral with clear information hierarchy. Donut chart shows severity proportions at-a-glance. Heat map uses color intensity to convey finding density.
+**Visual Style**: Marketing-infographic aesthetic. Funnel segments in severity-color gradients. Each segment shows count + percentage.
 
 **Prompt Hint (Gemini)**: Generate a print-quality infographic using the layout above. Emphasize canonical MAESTRO layer naming — use ONLY the canonical CSA MAESTRO layer names: L5 Evaluation and Observability, L6 Security and Compliance, L7 Agent Ecosystem.

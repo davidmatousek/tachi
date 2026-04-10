@@ -1,6 +1,6 @@
 ---
 schema_version: "1.0"
-template: "baseball-card"
+template: "maestro-heatmap"
 date: "2026-04-10"
 source_file: "compensating-controls.md"
 finding_count: 22
@@ -29,27 +29,13 @@ image_generated: false
 
 **Chart Format**: Suitable for donut chart (proportional segments) or horizontal bar chart (comparative lengths).
 
-## 3. Coverage Heat Map
+## 3. MAESTRO Layer Breakdown
 
-| Component | Critical | High | Medium | Low | Total |
-|-----------|----------|------|--------|-----|-------|
-| LLM Agent Orchestrator | 0 | 4 | 6 | 0 | 10 |
-| MCP Tool Server | 0 | 2 | 2 | 0 | 4 |
-| Guardrails Service | 0 | 2 | 0 | 0 | 2 |
-| Knowledge Base | 0 | 0 | 2 | 0 | 2 |
-| User | 0 | 1 | 1 | 0 | 2 |
-| Audit Logger | 0 | 0 | 1 | 0 | 1 |
-| External API | 0 | 1 | 0 | 0 | 1 |
+_No MAESTRO layer data in source file._
 
-## 4. Top Critical Findings
+## 4. MAESTRO Heatmap Grid
 
-| # | Finding ID | Component | Threat | Risk Level |
-|---|-----------|-----------|--------|------------|
-| 1 | LLM-1 | LLM Agent Orchestrator | Indirect prompt injection via documents retrieved from the … | High |
-| 2 | AG-4 | MCP Tool Server | Compromised or manipulated agent triggers excessive tool in… | High |
-| 3 | E-2 | Guardrails Service | Attacker bypasses guardrails validation through prompt obfu… | High |
-| 4 | E-1 | LLM Agent Orchestrator | Orchestrator escalates its own tool permissions beyond the … | High |
-| 5 | LLM-3 | LLM Agent Orchestrator | Attacker crafts prompts that cause the LLM to generate tool… | High |
+_No heatmap grid data._
 
 ## 5. Architecture Threat Overlay
 
@@ -77,14 +63,14 @@ image_generated: false
 - Accent lines: medium gray `#64748B`
 
 **Layout**:
-- Top banner (15% height): project name, scan date, total findings, risk posture summary
-- Risk distribution donut chart (25% height, centered)
-- Coverage heat map table (30% height, component rows x severity columns)
-- Top 5 critical/high findings list (20% height)
-- Architecture threat overlay (10% height, bottom banner)
+- Top banner (12% height): project name, scan date, total findings
+- MAESTRO heatmap grid (70% height, centered): rows = layers L1-L7, columns = severity bands (Critical / High / Medium / Low)
+- Cell color intensity = finding count; cell number = count
+- Row totals on the right, column totals on the bottom
+- Bottom panel (18% height): risk-by-layer narrative
 
-**Typography**: Sans-serif, 18-24pt headers, 10-12pt body, 8pt footnotes. High contrast for scanability.
+**Typography**: Same as baseball-card. Grid labels in 12pt; cell numbers in 14pt bold.
 
-**Visual Style**: Corporate-neutral with clear information hierarchy. Donut chart shows severity proportions at-a-glance. Heat map uses color intensity to convey finding density.
+**Visual Style**: Matrix heatmap aesthetic. Use sequential color ramp from white (0 findings) through severity colors. Layer rows use canonical CSA MAESTRO names.
 
 **Prompt Hint (Gemini)**: Generate a print-quality infographic using the layout above. Emphasize canonical MAESTRO layer naming — use ONLY the canonical CSA MAESTRO layer names: L5 Evaluation and Observability, L6 Security and Compliance, L7 Agent Ecosystem.

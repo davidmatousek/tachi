@@ -1,6 +1,6 @@
 ---
-schema_version: "1.2"
-date: "2026-03-23"
+schema_version: "1.3"
+date: "2026-04-10"
 input_format: "mermaid"
 classification: "confidential"
 ---
@@ -15,10 +15,10 @@ Parsed summary of the Mermaid flowchart architecture input depicting a tradition
 
 | Component | Type | MAESTRO Layer | Description |
 |-----------|------|---------------|-------------|
-| Web Client | External Entity | L7 — User Interface | Browser-based single-page application that initiates all user requests for static assets and API calls |
+| Web Client | External Entity | L7 — Agent Ecosystem | Browser-based single-page application that initiates all user requests for static assets and API calls |
 | Static CDN | Process | L4 — Deployment Infrastructure | Content delivery network serving static assets (JavaScript, CSS, images) from geographically distributed edge locations |
 | API Gateway | Process | L4 — Deployment Infrastructure | DMZ entry point that routes incoming HTTPS requests, enforces rate limits, and validates JWT tokens before forwarding to internal services |
-| Auth Service | Process | L5 — Security | Internal service that validates user credentials, issues JWT tokens, and manages session lifecycle |
+| Auth Service | Process | L6 — Security and Compliance | Internal service that validates user credentials, issues JWT tokens, and manages session lifecycle |
 | Session Store | Data Store | L2 — Data Operations | Redis-backed in-memory cache storing active user session tokens and session metadata |
 | User Database | Data Store | L2 — Data Operations | Persistent relational database storing user accounts, hashed credentials, and profile data |
 
@@ -89,9 +89,9 @@ Threats where an attacker pretends to be something or someone else.
 
 | ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|-----------|---------------|--------|------------|--------|------------|------------|
-| S-1 | Web Client | L7 — User Interface | Attacker performs credential stuffing using breached username/password pairs harvested from third-party data leaks to take over legitimate user accounts and access protected API endpoints | HIGH | HIGH | Critical | Enforce multi-factor authentication for all user accounts; implement progressive login delays and account lockout after 5 consecutive failed attempts; deploy credential breach detection services to block known-compromised passwords at registration and login |
+| S-1 | Web Client | L7 — Agent Ecosystem | Attacker performs credential stuffing using breached username/password pairs harvested from third-party data leaks to take over legitimate user accounts and access protected API endpoints | HIGH | HIGH | Critical | Enforce multi-factor authentication for all user accounts; implement progressive login delays and account lockout after 5 consecutive failed attempts; deploy credential breach detection services to block known-compromised passwords at registration and login |
 | S-2 | API Gateway | L4 — Deployment Infrastructure | Attacker forges or replays JWT tokens by exploiting a weak symmetric signing algorithm (HS256) or a compromised signing key to impersonate authenticated users and bypass authorization checks | MEDIUM | HIGH | High | Enforce asymmetric signing algorithms (RS256 or ES256) with automated key rotation every 90 days; reject tokens signed with HS256; validate issuer, audience, and expiration claims on every request; maintain a token revocation list for compromised sessions |
-| S-3 | Auth Service | L5 — Security | Attacker exploits a session fixation vulnerability by injecting a known session token into the Web Client before authentication, causing the Auth Service to associate the attacker-controlled token with the victim's authenticated session | LOW | HIGH | Medium | Regenerate session tokens upon successful authentication; bind sessions to client fingerprints (IP range, user agent); invalidate all pre-authentication session tokens at login |
+| S-3 | Auth Service | L6 — Security and Compliance | Attacker exploits a session fixation vulnerability by injecting a known session token into the Web Client before authentication, causing the Auth Service to associate the attacker-controlled token with the victim's authenticated session | LOW | HIGH | Medium | Regenerate session tokens upon successful authentication; bind sessions to client fingerprints (IP range, user agent); invalidate all pre-authentication session tokens at login |
 
 ### 3.2 Tampering (T)
 
@@ -109,8 +109,8 @@ Threats where an attacker denies having performed an action without the system b
 
 | ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|-----------|---------------|--------|------------|--------|------------|------------|
-| R-1 | Web Client | L7 — User Interface | User denies performing sensitive account actions (password changes, profile modifications, data deletion requests) because the system lacks client-side action attribution that ties browser-originated requests to authenticated user identity with sufficient forensic context | MEDIUM | MEDIUM | Medium | Log all sensitive actions server-side with authenticated user identity, session ID, source IP, user agent, timestamp, and action details in an append-only audit log; implement request signing for critical operations |
-| R-2 | Auth Service | L5 — Security | Failed and successful authentication attempts are not logged with sufficient context (source IP, geolocation, device fingerprint), enabling an attacker to deny conducting a brute-force attack or an account takeover because no forensic evidence links the attempts to the attacker's session | MEDIUM | MEDIUM | Medium | Implement comprehensive authentication event logging capturing source IP, geolocation, device fingerprint, user agent, timestamp, and outcome for every login attempt; forward logs to a centralized SIEM with tamper-proof storage; set alerts for anomalous authentication patterns |
+| R-1 | Web Client | L7 — Agent Ecosystem | User denies performing sensitive account actions (password changes, profile modifications, data deletion requests) because the system lacks client-side action attribution that ties browser-originated requests to authenticated user identity with sufficient forensic context | MEDIUM | MEDIUM | Medium | Log all sensitive actions server-side with authenticated user identity, session ID, source IP, user agent, timestamp, and action details in an append-only audit log; implement request signing for critical operations |
+| R-2 | Auth Service | L6 — Security and Compliance | Failed and successful authentication attempts are not logged with sufficient context (source IP, geolocation, device fingerprint), enabling an attacker to deny conducting a brute-force attack or an account takeover because no forensic evidence links the attempts to the attacker's session | MEDIUM | MEDIUM | Medium | Implement comprehensive authentication event logging capturing source IP, geolocation, device fingerprint, user agent, timestamp, and outcome for every login attempt; forward logs to a centralized SIEM with tamper-proof storage; set alerts for anomalous authentication patterns |
 | R-3 | API Gateway | L4 — Deployment Infrastructure | Attacker denies initiating malicious API requests because API Gateway access logs lack correlation IDs linking requests to authenticated user sessions, making it impossible to attribute a specific sequence of requests to a single authenticated actor | MEDIUM | LOW | Low | Configure the API Gateway to generate and log unique correlation IDs for each request chain; include authenticated user identity, session ID, and request fingerprint in structured access logs; forward logs to centralized SIEM with retention policies |
 
 ### 3.4 Information Disclosure (I)
@@ -119,7 +119,7 @@ Threats where sensitive data is exposed to unauthorized parties.
 
 | ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|-----------|---------------|--------|------------|--------|------------|------------|
-| I-1 | Auth Service | L5 — Security | Verbose authentication error messages distinguish between "user not found" and "incorrect password" responses, enabling user enumeration attacks that reveal which email addresses have registered accounts | HIGH | MEDIUM | High | Return a single generic error message ("Invalid credentials") for all authentication failure modes regardless of cause; implement consistent response timing to prevent timing-based enumeration; rate-limit login attempts per source IP |
+| I-1 | Auth Service | L6 — Security and Compliance | Verbose authentication error messages distinguish between "user not found" and "incorrect password" responses, enabling user enumeration attacks that reveal which email addresses have registered accounts | HIGH | MEDIUM | High | Return a single generic error message ("Invalid credentials") for all authentication failure modes regardless of cause; implement consistent response timing to prevent timing-based enumeration; rate-limit login attempts per source IP |
 | I-2 | User Database | L2 — Data Operations | Database connection strings, SQL error details, or stack traces containing internal schema information are exposed in API error responses when database queries fail, revealing internal architecture to attackers | MEDIUM | HIGH | High | Implement structured error handling that returns generic error codes to API consumers; log detailed error context (stack traces, query details, connection information) server-side only; configure production error handlers to suppress all internal details; apply database connection string encryption in configuration |
 | I-3 | Session Store | L2 — Data Operations | Session tokens stored in Redis without encryption are exposed if an attacker gains read access to the Redis instance through network misconfiguration or credential compromise, enabling mass session hijacking | LOW | HIGH | Medium | Encrypt session token payloads at rest using AES-256 before writing to Redis; restrict Redis network access to Auth Service only via firewall rules; enable Redis AUTH with strong credentials; monitor Redis access logs for unauthorized connection attempts |
 
@@ -138,7 +138,7 @@ Threats where an attacker gains higher access rights than authorized.
 
 | ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|-----------|---------------|--------|------------|--------|------------|------------|
-| E-1 | Auth Service | L5 — Security | Attacker exploits insecure direct object references (IDOR) by manipulating user ID parameters in API requests to access or modify other users' accounts, bypassing authorization checks that rely solely on the presence of a valid JWT without verifying resource ownership | MEDIUM | HIGH | High | Validate resource ownership server-side on every request by comparing the authenticated user's identity from the JWT with the target resource's owner; implement role-based access control (RBAC) with least-privilege defaults; never trust client-supplied user ID or role values without server-side verification |
+| E-1 | Auth Service | L6 — Security and Compliance | Attacker exploits insecure direct object references (IDOR) by manipulating user ID parameters in API requests to access or modify other users' accounts, bypassing authorization checks that rely solely on the presence of a valid JWT without verifying resource ownership | MEDIUM | HIGH | High | Validate resource ownership server-side on every request by comparing the authenticated user's identity from the JWT with the target resource's owner; implement role-based access control (RBAC) with least-privilege defaults; never trust client-supplied user ID or role values without server-side verification |
 | E-2 | API Gateway | L4 — Deployment Infrastructure | Attacker discovers and accesses unprotected administrative API endpoints exposed through the API Gateway that were intended for internal use only but lack authentication requirements, gaining access to configuration management, user administration, or diagnostic functions | LOW | HIGH | Medium | Apply authentication and authorization requirements to all API endpoints including administrative routes; implement network-level restrictions for admin endpoints (internal-only binding); conduct regular API endpoint inventory audits to detect unprotected routes; use API Gateway route whitelisting to prevent exposure of unintended endpoints |
 
 ---
@@ -201,9 +201,9 @@ The following OWASP 3x3 risk matrix documents how risk levels are computed for e
 | MAESTRO Layer | Finding Count | Highest Severity |
 |---------------|---------------|------------------|
 | L4 — Deployment Infrastructure | 5 | Critical |
-| L7 — User Interface | 2 | Critical |
+| L7 — Agent Ecosystem | 2 | Critical |
 | L2 — Data Operations | 5 | High |
-| L5 — Security | 4 | High |
+| L6 — Security and Compliance | 4 | High |
 
 | Risk Level | Count | Percentage |
 |------------|-------|------------|

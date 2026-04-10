@@ -4,8 +4,8 @@
 
 ```yaml
 ---
-schema_version: "1.2"
-date: "2026-03-21"
+schema_version: "1.3"
+date: "2026-04-10"
 input_format: "ascii"
 classification: "confidential"
 ---
@@ -21,9 +21,9 @@ Parsed summary of the ASCII architecture input depicting a web API with authenti
 
 | Component | Type | MAESTRO Layer | Description |
 |-----------|------|---------------|-------------|
-| External User | External Entity | L7 — User Interface | Browser or application sending HTTPS requests to the API |
+| External User | External Entity | L7 — Agent Ecosystem | Browser or application sending HTTPS requests to the API |
 | API Gateway | Process | L4 — Deployment Infrastructure | NGINX/Kong reverse proxy handling request routing and TLS termination |
-| Auth Service | Process | L5 — Security | Node.js authentication service validating credentials and issuing JWT tokens |
+| Auth Service | Process | L6 — Security and Compliance | Node.js authentication service validating credentials and issuing JWT tokens |
 | User Database | Data Store | L2 — Data Operations | PostgreSQL database storing user credentials and profile data |
 
 ### Data Flows
@@ -86,7 +86,7 @@ Threats where an attacker pretends to be something or someone else.
 | ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|-----------|---------------|--------|------------|--------|------------|------------|
 | S-1 | API Gateway | L4 — Deployment Infrastructure | Attacker forges JWT tokens using a weak or compromised signing key to impersonate authenticated users, bypassing authentication entirely | MEDIUM | HIGH | High | Enforce asymmetric signing (RS256 or ES256) with key rotation every 90 days; reject tokens signed with symmetric algorithms (HS256); validate issuer and audience claims on every request |
-| S-2 | External User | L7 — User Interface | Attacker performs credential stuffing using breached username/password pairs to take over legitimate user accounts | HIGH | HIGH | Critical | Enforce multi-factor authentication; implement progressive login delays and account lockout after 5 failed attempts; monitor for anomalous login patterns across IP ranges |
+| S-2 | External User | L7 — Agent Ecosystem | Attacker performs credential stuffing using breached username/password pairs to take over legitimate user accounts | HIGH | HIGH | Critical | Enforce multi-factor authentication; implement progressive login delays and account lockout after 5 failed attempts; monitor for anomalous login patterns across IP ranges |
 
 ### 3.2 Tampering (T)
 
@@ -95,7 +95,7 @@ Threats where an attacker modifies data or code without authorization.
 | ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|-----------|---------------|--------|------------|--------|------------|------------|
 | T-1 | User Database | L2 — Data Operations | Attacker performs SQL injection through unsanitized input fields routed via the API Gateway, modifying user records or extracting credential data | MEDIUM | HIGH | High | Use parameterized queries exclusively in both Auth Service and API Gateway database access layers; apply input validation and sanitization at the API Gateway before forwarding requests |
-| T-2 | Auth Service | L5 — Security | Attacker manipulates JWT payload claims (e.g., role, user ID) in transit between API Gateway and Auth Service over unencrypted internal HTTP, altering authorization context | LOW | HIGH | Medium | Enforce mutual TLS or signed JWTs with integrity verification between API Gateway and Auth Service; validate token signature server-side before trusting any claims |
+| T-2 | Auth Service | L6 — Security and Compliance | Attacker manipulates JWT payload claims (e.g., role, user ID) in transit between API Gateway and Auth Service over unencrypted internal HTTP, altering authorization context | LOW | HIGH | Medium | Enforce mutual TLS or signed JWTs with integrity verification between API Gateway and Auth Service; validate token signature server-side before trusting any claims |
 
 ### 3.3 Repudiation (R)
 
@@ -103,7 +103,7 @@ Threats where an attacker denies having performed an action without the system b
 
 | ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|-----------|---------------|--------|------------|--------|------------|------------|
-| R-1 | Auth Service | L5 — Security | User denies performing privileged account actions (password changes, role modifications) because the Auth Service does not maintain tamper-evident audit logs with sufficient session context | MEDIUM | MEDIUM | Medium | Implement immutable, append-only audit logging for all authentication events and account modifications; include session ID, source IP, user agent, timestamp, and action type in every log entry |
+| R-1 | Auth Service | L6 — Security and Compliance | User denies performing privileged account actions (password changes, role modifications) because the Auth Service does not maintain tamper-evident audit logs with sufficient session context | MEDIUM | MEDIUM | Medium | Implement immutable, append-only audit logging for all authentication events and account modifications; include session ID, source IP, user agent, timestamp, and action type in every log entry |
 | R-2 | API Gateway | L4 — Deployment Infrastructure | Attacker denies initiating malicious API requests because NGINX/Kong access logs lack correlation IDs linking requests to authenticated user sessions | MEDIUM | LOW | Low | Configure the API Gateway to log authenticated user identity, correlation ID, and request fingerprint alongside standard access log fields; forward logs to a centralized SIEM with tamper protection |
 
 ### 3.4 Information Disclosure (I)
@@ -113,7 +113,7 @@ Threats where sensitive data is exposed to unauthorized parties.
 | ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|-----------|---------------|--------|------------|--------|------------|------------|
 | I-1 | User Database | L2 — Data Operations | Database connection strings or SQL error details containing credentials are exposed in API error responses returned to the External User when queries fail | MEDIUM | HIGH | High | Implement structured error handling that returns generic error codes to clients; log detailed error context (stack traces, query details) server-side only; never include database internals in HTTP responses |
-| I-2 | Auth Service | L5 — Security | Verbose authentication error messages distinguish between "user not found" and "wrong password," enabling user enumeration attacks against the User Database | HIGH | MEDIUM | High | Return a single generic error message ("Invalid credentials") for all authentication failures regardless of cause; implement consistent response timing to prevent timing-based enumeration |
+| I-2 | Auth Service | L6 — Security and Compliance | Verbose authentication error messages distinguish between "user not found" and "wrong password," enabling user enumeration attacks against the User Database | HIGH | MEDIUM | High | Return a single generic error message ("Invalid credentials") for all authentication failures regardless of cause; implement consistent response timing to prevent timing-based enumeration |
 
 ### 3.5 Denial of Service (D)
 
@@ -130,7 +130,7 @@ Threats where an attacker gains higher access rights than authorized.
 
 | ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
 |----|-----------|---------------|--------|------------|--------|------------|------------|
-| E-1 | Auth Service | L5 — Security | Attacker exploits insecure direct object references (IDOR) by manipulating user ID or role claims in the JWT payload to access admin-level endpoints or other users' data | MEDIUM | HIGH | High | Validate all authorization claims server-side against the authoritative User Database on every request; never trust client-supplied role or ID values from the JWT without re-verification; implement role-based access control (RBAC) with least-privilege defaults |
+| E-1 | Auth Service | L6 — Security and Compliance | Attacker exploits insecure direct object references (IDOR) by manipulating user ID or role claims in the JWT payload to access admin-level endpoints or other users' data | MEDIUM | HIGH | High | Validate all authorization claims server-side against the authoritative User Database on every request; never trust client-supplied role or ID values from the JWT without re-verification; implement role-based access control (RBAC) with least-privilege defaults |
 
 ---
 
@@ -194,8 +194,8 @@ No LLM components detected in this architecture. The system does not incorporate
 | MAESTRO Layer | Finding Count | Highest Severity |
 |---------------|---------------|------------------|
 | L4 — Deployment Infrastructure | 3 | Critical |
-| L7 — User Interface | 1 | Critical |
-| L5 — Security | 4 | High |
+| L7 — Agent Ecosystem | 1 | Critical |
+| L6 — Security and Compliance | 4 | High |
 | L2 — Data Operations | 3 | High |
 
 ---
