@@ -22,82 +22,27 @@ output_schema: ../../../schemas/finding.yaml
 
 ## Purpose
 
-Detects prompt injection vulnerabilities in LLM-integrated components. Prompt injection is the most prevalent and highest-impact threat class for LLM applications: an attacker manipulates model behavior by embedding adversarial instructions in user input, retrieved context, or upstream data sources. This agent identifies direct injection (user-supplied malicious prompts), indirect injection (adversarial payloads embedded in data the model consumes), and jailbreaking (systematic attempts to override model safety constraints).
+Detects prompt injection vulnerabilities in LLM-integrated components. Prompt injection is the most prevalent and highest-impact threat class for LLM applications: an attacker manipulates model behavior by embedding adversarial instructions in user input, retrieved context, or upstream data sources. This agent identifies direct injection, indirect injection (adversarial payloads embedded in data the model consumes), jailbreaking, system prompt extraction, and cross-plugin injection in multi-tool orchestrations.
 
-## Detection Scope
+## Skill References
 
-### Trigger Keywords
+| Reference | File | Load When | Purpose |
+|---|---|---|---|
+| Detection patterns | .claude/skills/tachi-prompt-injection/references/detection-patterns.md | At detection start | Externalized pattern catalog for prompt injection |
+| Severity bands | .claude/skills/tachi-shared/references/severity-bands-shared.md | At detection start | OWASP 3×3 risk matrix for severity computation |
 
-This agent activates when a DFD element name or description matches any of the following patterns (case-insensitive):
+## Detection Workflow
 
-- `LLM`
-- `model`
-- `GPT`
-- `Claude`
-- `language model`
-- `completion`
-- `chat`
-- `inference`
-- `prompt`
-- `generative AI`
+**MANDATORY**: Read `.claude/skills/tachi-prompt-injection/references/detection-patterns.md` — load before applying patterns to components.
 
-### Applicable DFD Element Types
+1. Load the detection pattern catalog from the reference file above, including trigger keywords, applicable DFD element types, and the five pattern categories (Direct Prompt Injection, Indirect Prompt Injection, Jailbreaking, System Prompt Extraction, Cross-Plugin Injection).
+2. Scan each DFD Process element in the architecture input and match its name or description against the trigger keywords (case-insensitive).
+3. For each matching component, walk through the pattern categories and collect any indicators present (input flows, retrieval sources, orchestration shape, output filtering gaps).
+4. Load `.claude/skills/tachi-shared/references/severity-bands-shared.md` and compute `likelihood`, `impact`, and `risk_level` for every finding using the OWASP 3×3 matrix.
+5. Emit findings conforming to `schemas/finding.yaml` with `category: llm`, stable `LLM-{N}` ids, mitigations, and OWASP LLM01/LLM07 references. Use the example findings below for shape guidance.
+6. If no components match any trigger keyword, return zero findings; do not speculate.
 
-- **Process**: Any process node that invokes, wraps, or orchestrates an LLM. This includes API gateway processes that forward prompts, orchestration layers that compose multi-step LLM calls, and application logic that interpolates user input into prompt templates.
-
-### Detection Patterns
-
-1. **Direct Prompt Injection**: User-facing input fields whose contents are concatenated into LLM prompts without sanitization, boundary enforcement, or input classification. Look for:
-   - Chat interfaces that pass raw user text to model APIs
-   - Search bars or form fields whose values are interpolated into system prompts
-   - API endpoints that accept freeform text and forward it to LLM completions
-   - Absence of input validation or prompt boundary markers between system instructions and user content
-
-2. **Indirect Prompt Injection**: Data flows where external or semi-trusted content is retrieved and injected into the model context window. Look for:
-   - RAG pipelines that retrieve documents from user-contributed or web-scraped sources
-   - Email or message processing where attacker-controlled content enters the prompt
-   - Database records, CMS content, or API responses that are embedded in LLM context
-   - Tool outputs that are fed back into the model without sanitization
-
-3. **Jailbreaking**: Systematic prompt structures designed to override safety alignment or system instructions. Look for:
-   - Absence of output filtering or safety classifiers on model responses
-   - System prompts that lack resistance to role-play or persona-switching attacks
-   - Missing rate limiting on prompt attempts (enables iterative jailbreak refinement)
-   - No monitoring or logging of prompt patterns that match known jailbreak taxonomies
-
-4. **System Prompt Extraction**: Attempts to trick the model into revealing its system prompt or internal instructions. Look for:
-   - System prompts containing sensitive business logic, API keys, or internal URLs
-   - No output filtering for content that resembles system prompt leakage
-   - Absence of prompt-level guardrails that refuse meta-instruction queries
-
-5. **Cross-Plugin Injection**: Adversarial prompts that exploit multi-plugin or multi-tool LLM architectures to pivot between plugins, escalate privileges, or exfiltrate data across trust boundaries. Look for:
-   - LLM orchestrators that invoke multiple plugins/tools where one plugin's output feeds another plugin's input without sanitization
-   - Absence of trust boundary enforcement between plugins operating at different privilege levels
-   - Plugin architectures where a compromised or attacker-controlled plugin can influence the prompts sent to other plugins
-   - Missing input validation on cross-plugin data flows (e.g., Plugin A returns text that is interpolated into Plugin B's prompt)
-   - No isolation between plugin execution contexts, allowing shared state manipulation
-
-### Empty Results Guidance
-
-When the architecture input contains no LLM, language model, or generative AI components (i.e., no DFD elements match any trigger keyword in the Detection Scope), this agent should produce zero findings. Do not generate speculative or hypothetical prompt injection findings for architectures that do not include LLM-integrated components.
-
-## Finding Template
-
-```yaml
-id: "LLM-{N}"
-category: llm
-component: "{component name from architecture input}"
-threat: "{specific prompt injection threat description}"
-likelihood: "{LOW | MEDIUM | HIGH}"
-impact: "{LOW | MEDIUM | HIGH}"
-risk_level: "{computed from OWASP 3x3 matrix}"
-mitigation: "{recommended countermeasure}"
-references:
-  - "OWASP LLM01:2025"
-dfd_element_type: "Process"
-```
-
-### Example Findings
+## Example Findings
 
 **Direct Injection via Chat Interface**:
 
@@ -148,20 +93,3 @@ references:
 dfd_element_type: "Process"
 ```
 
-### Risk Level Computation
-
-Apply the OWASP 3x3 matrix to determine `risk_level` from `likelihood` and `impact`:
-
-|  | LOW Likelihood | MEDIUM Likelihood | HIGH Likelihood |
-|---|---|---|---|
-| **HIGH Impact** | Medium | High | Critical |
-| **MEDIUM Impact** | Low | Medium | High |
-| **LOW Impact** | Note | Low | Medium |
-
-## References
-
-- **OWASP LLM01:2025 - Prompt Injection**: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
-- **OWASP LLM07:2025 - System Prompt Leakage**: https://genai.owasp.org/llmrisk/llm07-system-prompt-leakage/
-- **MITRE ATLAS - LLM Prompt Injection**: Tactic TA0043, Technique AML.T0051
-- **CWE-77 - Improper Neutralization of Special Elements used in a Command**: Conceptual analog for prompt injection in LLM contexts
-- **Greshake et al., 2023**: "Not what you've signed up for: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection"
