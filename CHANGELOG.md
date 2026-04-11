@@ -16,6 +16,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes — Correctness Fix (#148, Feature 130)
+
+**mmdc Is Now a Hard Prerequisite**: When `/tachi.security-report` is run against a project containing Critical/High attack trees, `@mermaid-js/mermaid-cli` (`mmdc`) must be installed on `PATH`. Previously, a missing `mmdc` triggered a silent text fallback that shipped 40+ lines of raw `flowchart TD` source per attack-path page inside the PDF; the pipeline reported exit 0 and the broken output was only discoverable by paging through the PDF manually. The text-fallback Typst branch has been deleted outright, and two defense-in-depth preflight gates now raise a loud error with the canonical install command.
+
+#### Install
+
+```sh
+npm install -g @mermaid-js/mermaid-cli
+```
+
+The check is gated on input detection — projects without `attack-trees/` content continue to work unchanged without `mmdc`. See [ADR-022](docs/architecture/02_ADRs/ADR-022-mmdc-hard-prerequisite.md) for the full governance rationale, rejected alternatives (pymmdc, Kroki, auto-install), and the Future Work clause.
+
+#### Error Output on Missing Prerequisite
+
+```
+Attack path rendering requires @mermaid-js/mermaid-cli (mmdc).
+Install with: npm install -g @mermaid-js/mermaid-cli
+Then re-run /tachi.security-report.
+```
+
+The same canonical message fires from both enforcement points: a shell-level `command -v mmdc` check in `.claude/commands/tachi.security-report.md` Step 1 (mirrors the existing Typst check) and a Python-level `shutil.which("mmdc") → raise RuntimeError(...)` inside `scripts/extract-report-data.py::render_mermaid_to_png()`.
+
+#### Mid-Render Failures Now Abort With Per-Finding Detail
+
+When `mmdc` is present but a specific attack tree fails to render (invalid Mermaid syntax, subprocess crash, timeout), the pipeline now aggregates per-finding errors and raises `RuntimeError("Attack path rendering failed for N findings: ...")` with each failing finding's ID, source path, failure class (`exit:<code>`, `timeout`, or `signal`), and a 200-byte stderr excerpt. Previously, each failing entry was silently marked `has_image=False` and the text fallback kicked in. No PDF is emitted when mid-render failures occur.
+
+#### Backward Compatibility
+
+The happy path (mmdc present, all trees render) is byte-identical to the pre-Feature 130 output under `SOURCE_DATE_EPOCH=1700000000`. The 5 byte-deterministic baselines (`web-app`, `microservices`, `ascii-web-api`, `mermaid-agentic-app`, `free-text-microservice`) remain unchanged. Projects without `attack-trees/` content are completely unaffected.
+
+#### Documentation
+
+- **README.md** gains a new `## Prerequisites` section naming `typst` and `@mermaid-js/mermaid-cli` with per-OS install commands (macOS/Linux/WSL).
+- **scripts/install.sh** gains a courtesy `command -v mmdc` warning at setup time.
+- **docs/architecture/00_Tech_Stack/README.md** mmdc section rewritten as a hard prerequisite with ADR-022 cross-reference.
+- **specs/112-attack-path-pages/spec.md** SC-004 inverted (text fallback is no longer a supported shipping mode) with audit-trail comment.
+- **specs/112-attack-path-pages/research.md** pymmdc description corrected (GPL-3.0 Node.js wrapper, not a pure-Python renderer) with a Durable Decision Rationale block.
+- **New CI workflow** `.github/workflows/tachi-mmdc-preflight.yml` asserts the loud-failure path fires on `ubuntu-latest` (no mmdc preinstalled) and fails the job if `mmdc` is unexpectedly present on `PATH`.
+
+---
+
 ### Breaking Changes — Correctness Fix (#136)
 
 **MAESTRO Canonical Layer Alignment**: tachi's MAESTRO seven-layer taxonomy has been aligned with the canonical CSA Ken Huang reference. Three L5/L6/L7 layer names, the acronym expansion, and a third-divergent name ("Integration Services") in the Typst PDF template have been corrected. This is a **correctness fix**, not a feature addition.
