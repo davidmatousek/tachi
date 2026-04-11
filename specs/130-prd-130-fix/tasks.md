@@ -184,8 +184,8 @@ All US3 tasks are doc changes in different files, so all are parallelizable.
 
 **Purpose**: Final verification gates before PR submission.
 
-- [ ] T030 Run the full test suite: `pytest tests/` and confirm 100% pass. No skipped tests without documented justification.
-- [ ] T031 Pre-merge constitutional checklist walk-through (per plan.md Constitution Check section): verify no runtime Python dependencies were added, the Python stdlib-only constraint holds, feature branch workflow is intact, no commits to main, conventional commit format used throughout.
+- [X] T030 Run the full test suite: `pytest tests/` and confirm 100% pass. No skipped tests without documented justification.
+- [X] T031 Pre-merge constitutional checklist walk-through (per plan.md Constitution Check section): verify no runtime Python dependencies were added, the Python stdlib-only constraint holds, feature branch workflow is intact, no commits to main, conventional commit format used throughout.
 - [X] T032 PR description assembly: summarize all 7 FR-130.x deliverables with references to individual commits, link the manual validation results from T027/T028/T029, link the ADR-022 for governance context, and include a "Before / After" narrative suitable for the CHANGELOG entry (release-please will auto-cut the release). **Result**: PR description assembled at [specs/130-prd-130-fix/PR-description.md](PR-description.md) (98 lines, 9 sections). All 7 FR deliverables mapped to commits `db0073c` (FR-130.1/2/3), `732fd49` (FR-130.4), `b46e931` (FR-130.5), `648b4d1` (FR-130.6/7) with file-level references. Governance context via ADR-022, spec 112 corrections, Tech Stack doc. Manual validation evidence from `.aod/results/tester-130-t027-t028-t029.md` and R9 before/after guardrail pair. PR creation deferred to `/aod.deliver`.
 
 ---
