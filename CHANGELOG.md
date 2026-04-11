@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.10.1](https://github.com/davidmatousek/tachi/compare/v4.10.0...v4.10.1) (2026-04-11)
+
+
+### Bug Fixes
+
+* **130:** enforce mmdc as hard prerequisite with loud preflight/mid-render aborts ([#148](https://github.com/davidmatousek/tachi/issues/148)) ([d35a667](https://github.com/davidmatousek/tachi/commit/d35a6676dd8e409d32b06eb5e03760a0aab3f560))
+
 ## [4.10.0](https://github.com/davidmatousek/tachi/compare/v4.9.2...v4.10.0) (2026-04-10)
 
 
