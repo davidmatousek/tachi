@@ -2467,3 +2467,123 @@ render_mermaid_to_png(attack_trees, target_dir, template_dir)
 | Architecture Decision Records | `docs/architecture/02_ADRs/` | Existing pattern | **Yes** (ADR-022 is new) |
 
 **No new technology introduced.**
+
+---
+
+### Feature 082: threat-agent-skill
+
+## Components
+
+### C1: Threat Agent File (11 instances)
+
+- **Responsibility**: Orchestration-only markdown file invoked by orchestrator dispatch. Loads domain knowledge on-demand from companion skill directory; constructs findings in the shared format; emits findings to orchestrator.
+- **Interface**: Input — component name + DFD element type from orchestrator. Output — finding list in `schemas/finding.yaml` v1.3 format.
+- **Dependencies**: (a) Companion skill directory `tachi-<agent-name>/references/`; (b) shared skill directory `tachi-shared/references/` for finding format and severity bands; (c) orchestrator for invocation and finding aggregation.
+- **Line target**: STRIDE ≤120, AI ≤150, hard ceiling 180.
+- **Location**: `.claude/agents/tachi/<agent-name>.md`
+
+### C2: Companion Skill Directory (11 instances)
+
+- **Responsibility**: Per-agent domain knowledge store. Holds detection patterns, optional example findings, optional finding field guidance. Loaded on-demand by the parent agent file via `**MANDATORY**: Read` directive.
+- **Interface**: File-system directory readable by the Claude Code `Read` tool. Reference files are markdown.
+- **Dependencies**: Parent threat agent file reads from this directory; no other agent reads from it.
+- **Line target**: 60-300 lines per reference file, typically 100-200. Total per directory: 150-500 lines.
+- **Location**: `.claude/skills/tachi-<agent-name>/references/`
+
+### C3: Shared Skill Directory (1 instance, already exists)
+
+- **Responsibility**: Cross-agent shared content. Severity bands, finding format, STRIDE category definitions, MAESTRO layer taxonomy. Consumed by multiple agents — infrastructure tier (6 agents) already consumes it; threat tier (11 agents) starts consuming it in Phase 2c.
+- **Interface**: File-system directory, markdown reference files. Consumed via `**MANDATORY**: Read` directives across the agent fleet.
+- **Dependencies**: Read-only from any individual agent's perspective. Edits go through Phase 2c single-writer wave and are additive-only.
+- **Blast radius**: Any edit to a shared reference file can affect all 17 agents (threat + infra). Re-baseline of 5 byte-deterministic PDFs is the expected outcome of any edit (FR-17 / R6).
+- **Location**: `.claude/skills/tachi-shared/references/` (existing: 4 files, 646 lines)
+
+### C4: Orchestrator Dispatch (unchanged)
+
+- **Responsibility**: Phase 1 component inventory; Phase 2 dispatch to threat agents; Phase 3 Table Assembly (including MAESTRO layer inheritance for each finding). Orchestrator is the only tachi agent that knows about MAESTRO; it remains so after this refactor (FR-9).
+- **Interface**: Calls each threat agent with component + DFD element type; receives finding list; merges findings into master `threats.md`.
+- **Dependencies**: Reads its own skill directory `tachi-orchestration/references/` (dispatch rules, classification rules, MAESTRO-layers-shared).
+- **Impact of Feature 082**: Zero. Orchestrator dispatch logic and interface are unchanged (C2). The refactor is transparent to orchestrator.
+- **Location**: `.claude/agents/tachi/orchestrator.md` (not touched by this feature)
+
+### C5: ADR-023 (new architectural decision record)
+
+- **Responsibility**: Document the detection sibling variant of the lean + skill references pattern. Record decisions on load-point semantics, MAESTRO boundary, additive-only shared-ref edits, and consumer/producer audience separation in shared files.
+- **Interface**: Read by future contributors adding new threat detection patterns. Referenced from `docs/architecture/00_Tech_Stack/README.md` agent inventory section.
+- **Location**: `docs/architecture/02_ADRs/ADR-023-threat-agent-skill-references-pattern.md` (NEW, created in Phase 1)
+
+## Data Flow
+
+### Post-refactor data flow (Feature 082 target)
+
+```
+User
+  │
+  └──▶ /tachi.threat-model
+        │
+        └──▶ orchestrator.md  (UNCHANGED — same file, same logic)
+              │
+              ├──▶ Reads dispatch-rules.md, classification-rules.md (UNCHANGED)
+              │
+              ├──▶ Phase 1: Component inventory + MAESTRO classification (UNCHANGED)
+              │
+              ├──▶ Phase 2: Dispatch to 11 threat agents (UNCHANGED interface)
+              │      │
+              │      ├──▶ spoofing.md (≤120 lines, LEAN)
+              │      │    └─▶ **MANDATORY**: Read tachi-spoofing/references/detection-patterns.md
+              │      │    └─▶ **MANDATORY**: Read tachi-shared/references/finding-format-shared.md
+              │      │    └─▶ Apply patterns to component
+              │      │    └─▶ Construct findings using shared format producer section
+              │      │    └─▶ Emit finding list
+              │      │
+              │      ├──▶ tampering.md (≤120 lines, LEAN) → same pattern → finding list
+              │      ├──▶ ... (9 more threat agents, each lean)
+              │      └──▶ agent-autonomy.md (≤150 lines, LEAN) → same pattern → finding list
+              │
+              └──▶ Phase 3: Table Assembly — merge findings, inherit MAESTRO layer per finding
+                    │                                          (UNCHANGED — MAESTRO still orchestrator-owned)
+                    └──▶ Write threats.md
+```
+
+**Key observation**: The input (user command) and output (`threats.md`) are content-equivalent pre/post. The only change is the internal shape of each threat agent — where its detection vocabulary lives. Content-level regression on 6 example architectures is sufficient to validate the refactor; the orchestrator doesn't need any changes.
+
+### Shared reference consumption flow (Phase 2c edits propagate)
+
+```
+Phase 2c edit to finding-format-shared.md (APPEND "## For Threat Agents (Producers)" section)
+                                              │
+                ┌─────────────────────────────┴──────────────────────────────┐
+                │                                                            │
+                ▼                                                            ▼
+     11 threat agents                                           6 infrastructure agents
+     (NEW consumers, gain producer guidance)                    (EXISTING consumers, unchanged section)
+                │                                                            │
+                ▼                                                            ▼
+     Same finding output shape                                     Same validation logic
+     (schemas/finding.yaml v1.3)                                   (schemas/finding.yaml v1.3)
+                │                                                            │
+                └──────────────────┬─────────────────────────────────────────┘
+                                   │
+                                   ▼
+                       threats.md content unchanged
+                                   │
+                                   ▼
+                       BUT: PDFs diff at byte level (ADR-021 determinism)
+                                   │
+                                   ▼
+                       Phase 3 re-baseline with SOURCE_DATE_EPOCH=1700000000
+```
+
+## Tech Stack
+
+- **Agent runtime**: Claude Code (Anthropic) via the `.claude/agents/tachi/` markdown convention. No code, no framework, no language choice — agent files are configuration consumed by the Claude Code harness at invocation time.
+- **Skill loading**: On-demand `Read` tool invocation from within agent files via `**MANDATORY**: Read <path>` directives. File-system reads only; no network, no daemon, no index.
+- **Output format**: Finding list serialized to markdown (`threats.md`) and SARIF 2.1.0 (`threats.sarif`) by the orchestrator. Schema governed by `schemas/finding.yaml` v1.3 (unchanged by this feature).
+- **Pipeline scripts**: `scripts/tachi_parsers.py`, `scripts/extract-*.py` — Python 3.11+ stdlib-only (PRD 128 convention). Unchanged by this feature.
+- **PDF generation**: Typst + `@mermaid-js/mermaid-cli` (ADR-022 hard prerequisites). Unchanged by this feature, but 5 PDFs are re-baselined in Phase 3 (FR-17).
+- **Byte-determinism**: `SOURCE_DATE_EPOCH=1700000000` environment variable per ADR-021. Applied to 5 non-agentic example PDF regenerations.
+- **CI**: GitHub Actions workflow `.github/workflows/tachi.threat-model.yml` runs example regeneration smoke tests. Unchanged by this feature.
+- **Release management**: release-please (Feature 086) auto-cuts a version tag on merge to main.
+- **Primary source citations** (referenced only, never runtime-fetched): OWASP Top 10 (CC BY 3.0), OWASP LLM Top 10 v2025 (CC BY-SA 4.0), OWASP AI Exchange (CC0), MITRE ATT&CK v15+ (free w/ attribution), MITRE ATLAS v5.1+ (free w/ attribution), CWE Top 25 2024 (royalty-free), NIST AI 600-1 (US Federal public domain).
+
+**No new technology introduced.** The refactor modifies markdown configuration and creates one new ADR. No new runtime dependencies, no new test frameworks, no schema changes.

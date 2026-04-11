@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-04-11T16:32:10Z.
+> Auto-generated from GitHub Issues on 2026-04-11T20:33:48Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -16,7 +16,6 @@
 | #129 | Attack Tree Delta Sub-Agent — extract Section 5 generation into focused sub-agent | — | — | 2026-04-09 |
 | #126 | Auto-detect architecture drift | — | — | 2026-04-09 |
 | #98 | MAESTRO coverage matrix — show which layers have threat coverage | — | — | 2026-04-08 |
-| #82 | Enrich threat detection quality via skill-referenced domain knowledge for 11 threat agents | Impact: 9, Confidence: 9, Effort: 6 = **24** | - **Retro finding**: Identified during delivery retrospec... | 2026-04-07 |
 | #69 | Expand example datasets for broader test coverage | — | — | 2026-03-30 |
 | #62 | Custom brand presets — user-definable brand identity via config file | — | — | 2026-03-29 |
 | #55 | Feature: Security Progression Summary — multi-run trend comparison over time | | Dimension | Score | Rationale | | - Market research: no threat modeling tool provides multi... | 2026-03-28 |
@@ -52,6 +51,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #82 | Enrich threat detection quality via skill-referenced domain knowledge for 11 threat agents | OPEN | 2026-04-11 |
 | #27 | Developer Guide: Automated Threat Modeling for Your Architecture | CLOSED | 2026-03-24 |
 | #18 | Feature: Threat Infographic Agent | CLOSED | 2026-03-23 |
 | #15 | Feature 007: Threat Report Agent & Attack Trees | CLOSED | 2026-03-23 |
