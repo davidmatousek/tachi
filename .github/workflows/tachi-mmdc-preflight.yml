@@ -1,0 +1,130 @@
+# =============================================================================
+# tachi mmdc preflight gate — CI fresh-install acceptance test (FR-130.7)
+# =============================================================================
+#
+# Purpose: Prove the Feature 130 preflight gate fires in a shell where
+# `mmdc` (@mermaid-js/mermaid-cli) is NOT on PATH. ubuntu-latest ships
+# without mmdc (plan.md spike S3), so omitting the install step satisfies
+# the "mmdc absent" precondition automatically.
+#
+# The workflow:
+#   1. Installs Typst + Python 3.11 (but NOT mmdc)
+#   2. Asserts mmdc is absent (guards against transitive installs — plan Risk #6)
+#   3. Runs scripts/extract-report-data.py against examples/mermaid-agentic-app/
+#      (direct Python invocation — slash commands cannot run in CI)
+#   4. Asserts non-zero exit code
+#   5. Asserts the canonical three tokens from the RuntimeError message:
+#        - @mermaid-js/mermaid-cli
+#        - npm install -g @mermaid-js/mermaid-cli
+#        - Attack path rendering
+#
+# References:
+#   - specs/130-prd-130-fix/plan.md (spike S3 + Risk #6)
+#   - specs/130-prd-130-fix/tasks.md (T018)
+#   - docs/architecture/02_ADRs/ADR-022-mmdc-hard-prerequisite.md
+#   - scripts/extract-report-data.py:render_mermaid_to_png (preflight gate)
+# =============================================================================
+
+name: tachi mmdc preflight
+
+on:
+  pull_request:
+    paths:
+      - scripts/extract-report-data.py
+      - templates/tachi/security-report/attack-path.typ
+      - scripts/install.sh
+      - .claude/commands/tachi.security-report.md
+      - README.md
+      - .github/workflows/tachi-mmdc-preflight.yml
+
+permissions:
+  contents: read
+
+jobs:
+  preflight-fresh-install:
+    name: Verify preflight gate fires when mmdc is absent
+    # ubuntu-latest ships WITHOUT @mermaid-js/mermaid-cli (plan.md spike S3
+    # confirmed). Do not switch to a custom image that preinstalls mmdc.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Typst setup. typst-community/setup-typst@v5 is the current stable
+      # major tag at time of authoring (T018). This step MUST NOT transitively
+      # install @mermaid-js/mermaid-cli; the next step will fail the job if
+      # that invariant is ever broken by an upstream action change.
+      - name: Set up Typst
+        uses: typst-community/setup-typst@v5
+
+      # Architect refinement R3 (Medium): make the intentional absence of
+      # mmdc visible in CI logs for future debuggers.
+      - name: Diagnostic — show mmdc absence
+        run: |
+          which mmdc || echo "expected absence: mmdc not on PATH, preflight gate should fire"
+
+      # Team-lead T4 enforcement assertion (Medium) / plan Risk #6 mitigation.
+      # Guards against future transitive installs of mmdc via Typst setup or
+      # other actions. If mmdc unexpectedly appears on PATH, the S3 spike
+      # assumption is broken and this test is no longer meaningful — fail fast.
+      - name: "Enforce mmdc absence (plan Risk #6)"
+        run: |
+          if command -v mmdc >/dev/null 2>&1; then
+            echo "FATAL: mmdc unexpectedly present on PATH. S3 spike assumption broken."
+            exit 1
+          fi
+
+      # Direct Python invocation of the extraction script. Claude Code slash
+      # commands cannot run in CI — we call scripts/extract-report-data.py
+      # with its required CLI args (--target-dir, --output, --template-dir).
+      # The preflight gate in render_mermaid_to_png() fires before any file
+      # is written, so --output is only needed to satisfy argparse.
+      - name: Run extract-report-data.py against mermaid-agentic-app (expect failure)
+        run: |
+          set +e
+          python3 scripts/extract-report-data.py \
+            --target-dir examples/mermaid-agentic-app \
+            --output /tmp/report-data.typ \
+            --template-dir templates/tachi/security-report \
+            >/tmp/out.txt 2>&1
+          EXIT=$?
+          set -e
+          echo "---- captured output (stdout + stderr) ----"
+          cat /tmp/out.txt
+          echo "---- end captured output ----"
+          echo "exit code: $EXIT"
+          if [ "$EXIT" -eq 0 ]; then
+            echo "FAIL: expected non-zero exit code, got 0. Preflight gate did not fire."
+            exit 1
+          fi
+          echo "OK: non-zero exit code as expected ($EXIT)"
+
+      # Assert all three canonical tokens from the preflight RuntimeError
+      # message appear in the captured output. Grep each token individually
+      # so a missing token produces a specific, actionable error.
+      - name: Assert canonical error tokens present
+        run: |
+          MISSING=0
+          if ! grep -q '@mermaid-js/mermaid-cli' /tmp/out.txt; then
+            echo "FAIL: canonical token missing: @mermaid-js/mermaid-cli"
+            MISSING=1
+          fi
+          if ! grep -q 'npm install -g @mermaid-js/mermaid-cli' /tmp/out.txt; then
+            echo "FAIL: canonical token missing: npm install -g @mermaid-js/mermaid-cli"
+            MISSING=1
+          fi
+          if ! grep -q 'Attack path rendering' /tmp/out.txt; then
+            echo "FAIL: canonical token missing: Attack path rendering"
+            MISSING=1
+          fi
+          if [ "$MISSING" -ne 0 ]; then
+            echo "One or more canonical tokens were missing from the preflight error output."
+            echo "This means the FR-130.1 preflight gate either did not fire or emitted a non-canonical message."
+            exit 1
+          fi
+          echo "OK: all three canonical tokens present in preflight error output"
