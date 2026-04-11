@@ -53,7 +53,18 @@ Single-command entry point for tachi security assessment PDF generation — the 
      ```
    - Halt if not installed.
 
-2. **Auto-detect artifacts in target directory**:
+2. **Check mmdc is installed when attack trees are present**:
+   - Detect attack-tree presence: `ls "$target_dir"/attack-trees/*.md 2>/dev/null | head -n 1`. If the result is non-empty, the target project has at least one attack-tree file and mmdc is required.
+   - If attack trees are present, run `command -v mmdc >/dev/null 2>&1` to verify mmdc CLI is available.
+   - If mmdc is not found, display to stderr:
+     ```
+     Attack path rendering requires @mermaid-js/mermaid-cli (mmdc).
+     Install with: npm install -g @mermaid-js/mermaid-cli
+     Then re-run /tachi.security-report.
+     ```
+   - Halt (exit non-zero) if mmdc is not installed. Skip this check entirely when the target has no attack trees — projects without attack-path output do not need mmdc.
+
+3. **Auto-detect artifacts in target directory**:
 
    Scan `target_dir` for the following 7 artifact types:
 

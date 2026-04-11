@@ -21,6 +21,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 from tachi_parsers import (
     EXIT_SUCCESS,
     EXIT_MISSING_ARTIFACT,
@@ -721,13 +723,12 @@ def render_mermaid_to_png(attack_trees: list, target_dir: Path, template_dir: Pa
     if not attack_trees:
         return
 
-    # Check mmdc availability
     if not shutil.which("mmdc"):
-        print("Warning: mmdc not found — attack path diagrams will use text fallback", file=sys.stderr)
-        for entry in attack_trees:
-            entry["has_image"] = False
-            entry["image_path"] = ""
-        return
+        raise RuntimeError(
+            "Attack path rendering requires @mermaid-js/mermaid-cli (mmdc).\n"
+            "Install with: npm install -g @mermaid-js/mermaid-cli\n"
+            "Then re-run /tachi.security-report."
+        )
 
     # Compute relative path from template_dir to target_dir
     try:

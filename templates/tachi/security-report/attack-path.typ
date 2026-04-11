@@ -66,22 +66,12 @@
     v(0.1in)
   }
 
-  // Diagram: image preferred, raw Mermaid fallback.
   let has-img = entry.at("has-image", default: false)
   let img-path = str(entry.at("image-path", default: ""))
-  let mermaid-text = str(entry.at("mermaid-text", default: ""))
 
   if has-img and img-path != "" {
     align(center,
       image(img-path, width: 100%, fit: "contain"),
-    )
-  } else if mermaid-text != "" {
-    block(
-      width: 100%,
-      fill: rgb("#f8f9fa"),
-      radius: 4pt,
-      inset: 0.5em,
-      raw(mermaid-text, lang: "mermaid"),
     )
   }
 
