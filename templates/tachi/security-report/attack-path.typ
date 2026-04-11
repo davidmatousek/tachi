@@ -2,7 +2,7 @@
 // Attack Path Page: Security Assessment PDF Booklet
 // =============================================================================
 // Renders a single attack path analysis page with severity badge, diagram
-// (image or text fallback), narrative explanation, and remediation steps.
+// (rendered PNG image), narrative explanation, and remediation steps.
 //
 // Exported function:
 //   attack-path-page(entry: (:), classification: none)
@@ -36,7 +36,7 @@
 // ---------------------------------------------------------------------------
 // Parameters:
 //   entry (dict) -- attack tree data with keys: id, component, severity,
-//     title, has-image, image-path, mermaid-text, narrative, remediation
+//     title, has-image, image-path, narrative, remediation
 //   classification (string or none) -- text for the classification header bar
 
 #let attack-path-page(entry: (:), classification: none) = {
