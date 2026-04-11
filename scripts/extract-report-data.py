@@ -709,43 +709,39 @@ def _build_remediation(mitigation: str) -> list:
 # Mermaid Rendering
 # =============================================================================
 
-# Per-invocation render context. Set by ``render_mermaid_to_png`` before
-# spawning worker threads and read by ``_render_single`` at call time. Using
-# module-level state (rather than closed-over function parameters) keeps the
-# ``_render_single`` signature at two positional args ``(entry, tmp_path)``,
-# which matches the test harness in ``tests/scripts/test_mmdc_preflight.py``
-# where ``patch.object`` replaces ``_render_single`` with a 2-arg mock.
-# Thread-safe for in-process use because ``render_mermaid_to_png`` is called
-# sequentially by the CLI entry point and the fields are read-only for the
-# duration of each pool execution.
+# Per-invocation render context. Module-level (not closed-over) so
+# _render_single keeps a 2-arg signature that test fixtures can patch.
 _render_attack_trees_dir: "Path | None" = None
 _render_rel_target: "str | None" = None
+
+
+def _build_error_record(fid: str, failure_class: str, stderr_bytes) -> dict:
+    raw = stderr_bytes if stderr_bytes is not None else b""
+    if isinstance(raw, str):
+        excerpt = raw[:200]
+    else:
+        excerpt = raw[:200].decode("utf-8", errors="replace")
+    return {
+        "id": fid,
+        "file_path": f"attack-trees/{fid.lower()}.mmd",
+        "failure_class": failure_class,
+        "stderr_excerpt": excerpt,
+    }
 
 
 def _render_single(entry, tmp_path):
     """Render one Mermaid entry to PNG. Returns ``(entry, success, value)``.
 
     On success, ``value`` is the relative image path string for Typst.
-    On failure, ``value`` is a structured error-record dict with keys:
-    - ``id``: finding ID
-    - ``file_path``: canonical ``attack-trees/{fid_lower}.mmd`` source path
-    - ``failure_class``: ``"exit:<code>"``, ``"timeout"``, or ``"signal"``
-    - ``stderr_excerpt``: first 200 bytes of stderr, utf-8 decoded with
-      ``errors="replace"`` (empty string if stderr is None/empty)
-
-    Reads ``_render_attack_trees_dir`` and ``_render_rel_target`` from module
-    scope; the caller ``render_mermaid_to_png`` sets these before spawning
-    pool workers. Promoted from a nested closure to module-level so tests
-    can ``patch.object(extract_report_data, "_render_single", ...)``.
+    On failure, ``value`` is a structured error-record dict with keys
+    ``id``, ``file_path``, ``failure_class`` (``"exit:<code>"``, ``"timeout"``,
+    or ``"signal"``), and ``stderr_excerpt`` (first 200 bytes).
     """
     fid = entry["id"]
     fid_lower = fid.lower()
     mermaid_code = entry.get("mermaid_code", "")
     if not mermaid_code:
         return (entry, False, "")
-
-    attack_trees_dir = _render_attack_trees_dir
-    rel_target = _render_rel_target
 
     mmd_file = tmp_path / f"{fid_lower}.mmd"
     png_file = tmp_path / f"{fid_lower}.png"
@@ -758,39 +754,14 @@ def _render_single(entry, tmp_path):
             timeout=30,
             check=True,
         )
-        dest_png = attack_trees_dir / f"{fid_lower}-attack-tree.png"
+        dest_png = _render_attack_trees_dir / f"{fid_lower}-attack-tree.png"
         shutil.copy2(str(png_file), str(dest_png))
-        return (entry, True, rel_target + "/attack-trees/" + f"{fid_lower}-attack-tree.png")
+        return (entry, True, _render_rel_target + "/attack-trees/" + f"{fid_lower}-attack-tree.png")
     except subprocess.CalledProcessError as e:
-        if e.returncode < 0:
-            failure_class = "signal"
-        else:
-            failure_class = f"exit:{e.returncode}"
-        stderr_bytes = e.stderr if e.stderr is not None else b""
-        if isinstance(stderr_bytes, str):
-            stderr_excerpt = stderr_bytes[:200]
-        else:
-            stderr_excerpt = stderr_bytes[:200].decode("utf-8", errors="replace")
-        error_record = {
-            "id": fid,
-            "file_path": f"attack-trees/{fid_lower}.mmd",
-            "failure_class": failure_class,
-            "stderr_excerpt": stderr_excerpt,
-        }
-        return (entry, False, error_record)
+        failure_class = "signal" if e.returncode < 0 else f"exit:{e.returncode}"
+        return (entry, False, _build_error_record(fid, failure_class, e.stderr))
     except subprocess.TimeoutExpired as e:
-        stderr_bytes = e.stderr if e.stderr is not None else b""
-        if isinstance(stderr_bytes, str):
-            stderr_excerpt = stderr_bytes[:200]
-        else:
-            stderr_excerpt = stderr_bytes[:200].decode("utf-8", errors="replace")
-        error_record = {
-            "id": fid,
-            "file_path": f"attack-trees/{fid_lower}.mmd",
-            "failure_class": "timeout",
-            "stderr_excerpt": stderr_excerpt,
-        }
-        return (entry, False, error_record)
+        return (entry, False, _build_error_record(fid, "timeout", e.stderr))
 
 
 def render_mermaid_to_png(attack_trees: list, target_dir: Path, template_dir: Path):
@@ -825,7 +796,6 @@ def render_mermaid_to_png(attack_trees: list, target_dir: Path, template_dir: Pa
     attack_trees_dir = target_dir / "attack-trees"
     attack_trees_dir.mkdir(exist_ok=True)
 
-    # Publish render context to module scope for _render_single workers.
     global _render_attack_trees_dir, _render_rel_target
     _render_attack_trees_dir = attack_trees_dir
     _render_rel_target = rel_target
