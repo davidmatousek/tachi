@@ -1,11 +1,12 @@
 # PRD Index
 
-**Last Updated**: 2026-04-10
+**Last Updated**: 2026-04-11
 **Legend**: ✓=APPROVED, ⚠=APPROVED_WITH_CONCERNS, 🔄=CHANGES_REQUESTED, ⛔=BLOCKED, ⚠⚡=OVERRIDDEN
 
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 130 | [Fix Attack Path Mermaid Rendering](130-fix-attack-path-mermaid-rendering-2026-04-11.md) | ✓ | ✓ | ✓ | Approved | 2026-04-11 |
 | 136 | [MAESTRO Canonical Layer Correctness Fix](136-maestro-canonical-layer-correctness-fix-2026-04-10.md) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-10 |
 | 128 | [Executive Threat Architecture Infographic](128-executive-threat-architecture-2026-04-09.md) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-10 |
 | 120 | [Architecture Lifecycle Command](120-architecture-lifecycle-command-2026-04-09.md) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-09 |

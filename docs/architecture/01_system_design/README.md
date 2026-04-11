@@ -2360,3 +2360,110 @@ Follow-up issues recommended (not blocking Feature 136 closure):
 1. **Agentic-app sample-report JPEG regeneration**: Three infographic JPEGs in `examples/agentic-app/sample-report/` need re-rendering via Gemini API. Deferred because Gemini API calls are non-deterministic and cannot be gated by `SOURCE_DATE_EPOCH`. Manual regeneration planned in a follow-up housekeeping PR.
 
 2. **Infographic extract tier-selection bug**: When source is `compensating-controls.md`, the extraction script's tier-detection logic has a subtle misclassification bug (observed during Feature 136 validation, not in scope for correctness fix). Planned as a follow-up bug fix issue.
+
+---
+
+### Feature 130: Fix Attack Path Mermaid Rendering When mmdc Is Not Installed
+
+## Components
+
+### Preflight Gate (shell-level)
+- **Location**: `.claude/commands/tachi.security-report.md` Step 1
+- **Role**: First-line enforcement of mmdc availability at command entry, gated on attack-tree detection
+- **Pattern**: mirrors the existing Typst `which typst` check in the same file
+- **Failure mode**: non-zero exit with canonical error message
+
+### Preflight Gate (Python-level)
+- **Location**: `scripts/extract-report-data.py::render_mermaid_to_png()` line 725
+- **Role**: Defense-in-depth for direct Python invocations (tests, tooling)
+- **Pattern**: existing `shutil.which("mmdc")` check, converted from silent `return` to `raise RuntimeError(...)`
+- **Failure mode**: exception propagates up and exits the pipeline non-zero
+
+### Mid-Render Failure Aggregator (new behavior)
+- **Location**: `scripts/extract-report-data.py::render_mermaid_to_png()` after the `as_completed` loop
+- **Role**: Collects per-finding rendering failures into a list, then raises `RuntimeError("Attack path rendering failed for N findings: [...]")` if the list is non-empty
+- **Failure mode**: exception propagates, pipeline exits non-zero, stderr shows per-finding detail
+
+### CI Workflow
+- **Location**: `.github/workflows/tachi-mmdc-preflight.yml` (new file)
+- **Trigger**: `pull_request` on 5 file paths listed in FR-130.7
+- **Role**: CI-level enforcement that the loud-failure path works on a machine without mmdc
+- **Platform**: `ubuntu-latest` (no custom Docker image)
+
+### Docs Sync Cluster
+- `README.md` Prerequisites section (new)
+- `scripts/install.sh` mmdc check (new code block)
+- `docs/architecture/00_Tech_Stack/README.md` line 279 (update mmdc from optional to hard prereq)
+- `specs/112-attack-path-pages/spec.md` SC-004 inversion, line 135 deletion
+- `specs/112-attack-path-pages/research.md` line 80 correction, lines 91-93 rationale block
+- `docs/architecture/02_ADRs/ADR-022-mmdc-hard-prerequisite.md` (new — first ADR governing CLI prerequisite transitions)
+
+## Data Flow
+
+```
+user runs /tachi.security-report on project with attack-trees/
+            │
+            ▼
+.claude/commands/tachi.security-report.md Step 1
+            │
+            ├── which typst? ──No──> abort with Typst install guidance (existing behavior)
+            │
+            Yes
+            │
+            ├── attack-trees/*.md present? ──No──> skip mmdc check, proceed
+            │
+            Yes
+            │
+            ├── which mmdc? ──No──> abort with canonical error message (NEW, FR-130.1)
+            │
+            Yes
+            │
+            ▼
+report-assembler agent invokes scripts/extract-report-data.py
+            │
+            ▼
+render_mermaid_to_png(attack_trees, target_dir, template_dir)
+            │
+            ├── attack_trees empty? ──Yes──> return (existing behavior)
+            │
+            No
+            │
+            ├── shutil.which("mmdc")? ──No──> raise RuntimeError with canonical message (NEW, FR-130.2)
+            │
+            Yes
+            │
+            ▼
+        ThreadPoolExecutor(max_workers=4) rendering loop
+            │
+            ▼
+        Collect per-finding success/failure results
+            │
+            ├── any failures? ──Yes──> raise RuntimeError(per-finding list) (NEW, FR-130.4; aborts pipeline)
+            │
+            No
+            │
+            ▼
+        All entries have has_image=True, image_path=<path>
+            │
+            ▼
+        Typst template renders with has_img branch only (else-if branch deleted, FR-130.3)
+            │
+            ▼
+        PDF ships with 100% rendered diagrams
+```
+
+## Tech Stack
+
+| Layer | Choice | Rationale | New in this feature? |
+|---|---|---|---|
+| Runtime language | Python 3.11+ | Matches existing `scripts/*.py` constraint | No |
+| Runtime Python deps | stdlib only (`shutil`, `subprocess`, `concurrent.futures`, `tempfile`, `pathlib`) | Tech Stack doc hard rule | No |
+| External CLI (hard prereq, always) | Typst 0.12+ | PDF compilation | No |
+| External CLI (hard prereq, gated) | `@mermaid-js/mermaid-cli` v11+ (npm install) | Attack path rendering | **Yes** (was optional, now hard) |
+| Dev-time test framework | pytest 8.0+ | Feature 128 precedent | No |
+| CI runner | GitHub Actions `ubuntu-latest` | Standard, no mmdc preinstalled | No (workflow file is new) |
+| PDF template engine | Typst with `attack-path.typ` component | Existing Feature 112 pipeline | No |
+| Determinism harness | `SOURCE_DATE_EPOCH=1700000000` + `tests/scripts/test_backward_compatibility.py` | ADR-021 | No (reused) |
+| Architecture Decision Records | `docs/architecture/02_ADRs/` | Existing pattern | **Yes** (ADR-022 is new) |
+
+**No new technology introduced.**
