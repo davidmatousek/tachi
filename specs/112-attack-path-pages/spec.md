@@ -122,7 +122,8 @@ The attack path pages are introduced by a section header page titled "Attack Pat
 - **SC-001**: 100% of Critical and High findings with attack tree artifacts appear as dedicated pages in the PDF — no qualifying finding is omitted
 - **SC-002**: PDF generation succeeds with 100% reliability when attack tree artifacts are present — no regressions from this feature
 - **SC-003**: PDF generation succeeds with 100% reliability when attack tree artifacts are absent — identical output to pre-feature behavior
-- **SC-004**: When the rendering tool is unavailable, 100% of attack path pages still appear with text fallback — no pages dropped due to rendering failure
+<!-- Inverted by Feature 130 (2026-04-11): text fallback is no longer a supported shipping mode -->
+- **SC-004**: Rendering tool (`mmdc`) availability is verified at preflight when `attack-trees/` contains Critical/High findings; 100% of attack path pages render as PNG diagrams OR the pipeline aborts loudly at preflight with a non-zero exit code and the canonical install message — no silent fallback, no raw Mermaid source ever ships in a PDF. See [ADR-022](../../docs/architecture/02_ADRs/ADR-022-mmdc-hard-prerequisite.md).
 - **SC-005**: Total PDF generation time increases by less than 30 seconds for a report with 5 attack path pages
 - **SC-006**: All 6 example outputs in `examples/` continue to generate without errors after this feature is implemented
 
@@ -132,4 +133,4 @@ The attack path pages are introduced by a section header page titled "Attack Pat
 - The Mermaid code blocks in attack tree files are syntactically valid (validated by the threat-report agent at generation time)
 - The narrative and remediation content for each attack path page can be derived from the attack tree file metadata and the corresponding finding's mitigation field in the findings data
 - The existing Typst compilation workflow supports additional portrait pages without configuration changes
-- The rendering tool (mmdc from @mermaid-js/mermaid-cli) requires Node.js but is not a hard dependency — text fallback is acceptable
+- The rendering tool (`mmdc` from `@mermaid-js/mermaid-cli`) IS a hard dependency as of Feature 130 when `attack-trees/` contains Critical/High findings; text fallback has been removed and the pipeline aborts at preflight if `mmdc` is missing — see [ADR-022](../../docs/architecture/02_ADRs/ADR-022-mmdc-hard-prerequisite.md)

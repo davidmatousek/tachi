@@ -27,6 +27,35 @@ tachi is built with the [Agentic Oriented Development Kit (AOD Kit)](https://git
 
 ---
 
+## Prerequisites
+
+tachi requires two external CLIs for full functionality. Both are required — `typst` compiles the PDF security report and `@mermaid-js/mermaid-cli` (`mmdc`) renders attack path diagrams. See [ADR-022](docs/architecture/02_ADRs/ADR-022-mmdc-hard-prerequisite.md) for the rationale.
+
+**macOS**:
+
+```bash
+brew install typst
+npm install -g @mermaid-js/mermaid-cli
+```
+
+**Linux** (Debian/Ubuntu):
+
+```bash
+apt install typst   # or: cargo install typst-cli / dnf install typst on Fedora
+npm install -g @mermaid-js/mermaid-cli
+```
+
+**WSL** (use your distro's package manager, same as Linux):
+
+```bash
+apt install typst
+npm install -g @mermaid-js/mermaid-cli
+```
+
+`/tachi.security-report` aborts at preflight with a clear install command if either CLI is missing when attack-trees are present.
+
+---
+
 ## Quick Start
 
 ### 1. Clone tachi (one-time)

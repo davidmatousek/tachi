@@ -229,3 +229,17 @@ if [ "$COPY_FAIL" -gt 0 ]; then
   printf '  %sFailed:   %d item(s)%s\n' "$RED" "$COPY_FAIL" "$NC"
   exit 1
 fi
+
+# --- Prerequisite courtesy warning -------------------------------------------
+# mmdc (@mermaid-js/mermaid-cli) is a hard prerequisite for attack path
+# rendering in /tachi.security-report. The per-command preflight gate is the
+# enforcement point; this warning is a best-effort early signal at install
+# time. See README "Prerequisites" section and ADR-022.
+
+if ! command -v mmdc >/dev/null 2>&1; then
+  echo ""
+  printf '%sWarning:%s mmdc (@mermaid-js/mermaid-cli) is not on PATH.\n' "$RED" "$NC" >&2
+  echo "  mmdc is a prerequisite for attack path rendering in /tachi.security-report." >&2
+  echo "  Install with: npm install -g @mermaid-js/mermaid-cli" >&2
+  echo "  See README.md Prerequisites section for the full install guide." >&2
+fi

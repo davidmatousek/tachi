@@ -77,7 +77,7 @@ Attack path pages insert after Executive Summary (position 6), before infographi
 - Python subprocess pattern: `subprocess.run(['mmdc', '-i', input, '-o', output, '-s', '2'], capture_output=True, check=True)`
 - Scale flag `-s 2` for 2x resolution (recommended for print)
 - Pre-check availability: `subprocess.run(['mmdc', '--version'], capture_output=True)`
-- Pure Python alternative: `pymmdc` package (no Node.js dependency)
+- ~~Pure Python alternative: `pymmdc` package (no Node.js dependency)~~ **Corrected by Feature 130 (2026-04-11)**: [`pymmdc`](https://pypi.org/project/pymmdc/) on PyPI is a thin Python wrapper around the Node.js `@mermaid-js/mermaid-cli` CLI — it does NOT eliminate the `mmdc` dependency, only hides it. It is also GPL-3.0 licensed, which is incompatible with tachi's Apache-2.0 distribution model. No viable pure-Python Mermaid renderer exists. See ADR-022 Alternative A.
 
 ### Typst Image Embedding
 - `#image(path)` function for PNG/JPEG embedding
@@ -90,7 +90,23 @@ Attack path pages insert after Executive Summary (position 6), before infographi
 - Reuse `severity-color()` and `section-divider()` from shared.typ
 - Place mmdc invocation inside `extract-report-data.py` (per Architect guidance)
 - Use PNG at 2x resolution for diagram rendering (per PRD architect sign-off)
-- Implement graceful fallback to raw Mermaid code as preformatted text when mmdc unavailable
+- ~~Implement graceful fallback to raw Mermaid code as preformatted text when mmdc unavailable~~ **Superseded by Feature 130 (2026-04-11)**: `mmdc` is now a hard prerequisite — the pipeline aborts at preflight with a canonical install message instead of silently shipping raw Mermaid source. See Durable Decision Rationale below and ADR-022.
 - Order pages by severity (Critical first) then finding ID (matches threat-report agent ordering)
 - Use one page per finding with proportional diagram scaling
 - Add `attack-trees/` to artifact detection in security-report command
+
+#### Durable Decision Rationale — `mmdc` as Hard Prerequisite (Feature 130, 2026-04-11)
+
+Feature 112 shipped with a graceful-degradation design: when `mmdc` was absent from `PATH`, `render_mermaid_to_png()` silently returned the raw Mermaid source, and `attack-path.typ` rendered it as a Typst `raw` code block. The intent was "a usable PDF even without mmdc." The observed failure mode was different: developers running `/tachi.security-report` on a fresh machine shipped board-ready PDFs containing 40+ lines of `flowchart TD` source on every attack-path page, with the pipeline reporting success. The silent-failure was indistinguishable from success until a human flipped through the PDF.
+
+Feature 130 inverts this posture. `mmdc` is now a **hard prerequisite** when `attack-trees/` contains Critical/High findings. The pipeline aborts at preflight with a non-zero exit code and a canonical three-line install message. The text-fallback branch in `attack-path.typ` is deleted as unreachable dead code.
+
+The Feature 130 PRD evaluated five alternative designs before choosing the hard-prerequisite path; all are Rejected in the PRD's Rejected Alternatives section:
+
+- **Alternative A — Pure-Python renderer** (`pymmdc`, `mermaid-py`): rejected because `pymmdc` is a Node.js wrapper, not pure Python, and is GPL-3.0 licensed (incompatible with tachi's Apache-2.0 model); `mermaid-py` is unmaintained and produces degraded output.
+- **Alternative B — Static fallback image**: rejected because a pre-baked placeholder image still silently ships a broken PDF (same failure mode, different disguise).
+- **Alternative C — Install-at-first-run via `scripts/install.sh`**: rejected because it shifts the dependency to `npm` without eliminating the external tool and adds `npm install -g` side effects to a tooling installer.
+- **Alternative D — Graceful degradation retained** (status quo from Feature 112): explicitly rejected as the root cause of the bug.
+- **Alternative E — Text fallback via Typst `raw` block**: explicitly rejected because it IS the current silent-failure mode under a different name.
+
+The decision and its full consequence analysis live in [ADR-022](../../docs/architecture/02_ADRs/ADR-022-mmdc-hard-prerequisite.md). The Feature 130 PRD is at [docs/product/02_PRD/130-fix-attack-path-mermaid-rendering-2026-04-11.md](../../docs/product/02_PRD/130-fix-attack-path-mermaid-rendering-2026-04-11.md). This correction block is intentionally durable — future researchers should read it before proposing any "silent fallback" or "degraded but shipping" design for a critical-path CLI prerequisite in tachi.
