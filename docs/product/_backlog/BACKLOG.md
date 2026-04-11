@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-04-11T16:30:50Z.
+> Auto-generated from GitHub Issues on 2026-04-11T16:32:10Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -44,7 +44,7 @@
 
 | # | Title | Delivered | Retro | Updated |
 |---|-------|-----------|-------|---------|
-| #130 | Fix attack path Mermaid rendering when mmdc is not installed (spec 112 follow-up) | 2026-04-11 | — | 2026-04-11 |
+| — | *No items in this stage* | | |
 
 ## Untracked
 
