@@ -1,6 +1,6 @@
 ---
 schema_version: "1.1"
-date: "2026-04-10"
+date: "2026-04-12"
 source_file: "threats.md"
 finding_count: 22
 risk_distribution:
@@ -1187,7 +1187,57 @@ flowchart TD
 
 ---
 
-## 6. Remediation Roadmap
+## 6. Cross-Layer Attack Chains
+
+This section presents cross-layer attack chains identified through Phase 3.5 correlation analysis of findings spanning multiple MAESTRO layers. Each chain represents a coherent attack progression where exploitation at one layer enables or triggers exploitation at adjacent layers, cascading from initial exploit to terminal business impact.
+
+**Chain detection methodology**: Rule-based correlation using three signal types — component lineage (data flow connections), data flow dependency (shared data paths), and layer adjacency with structural relationship. Only chains spanning 2+ MAESTRO layers with at least one Critical or High finding are surfaced below.
+
+**Chains detected**: 5 total, 4 surfaced (Critical/High threshold)
+
+### CHAIN-001: Information Disclosure Cascade (Critical)
+
+**Layer Progression**: L1 — Foundation Model → L2 — Data Operations → L3 — Agent Framework
+
+The attack chain begins at the Foundation Model layer (L1), where the LLM Agent Orchestrator's context leakage vulnerability (I-1, Critical) exposes sensitive knowledge base content through model responses. When the Orchestrator fails to enforce per-user context isolation and output filtering, confidential documents retrieved during RAG operations are disclosed in model outputs. This information disclosure **triggers** exploitation at the Data Operations layer (L2), where insufficient access controls on the vector store (I-2) allow an attacker — now informed about the knowledge base schema and content structure — to directly query and extract document embeddings. The exposed embedding data can be reversed to reconstruct source document content, amplifying the initial leak into systematic data exfiltration. The cascade then **triggers** a critical infrastructure exposure at the Agent Framework layer (L3), where the MCP Tool Server's SSRF vulnerability (I-4, High) enables prompt-derived tool arguments to redirect outbound requests to cloud metadata endpoints, converting a conversational information leak into full cloud credential theft.
+
+**Chain-breaking control**: Remediate I-2 (Knowledge Base access controls) at L2 — the central node whose removal disconnects the Foundation Model context leakage from the Agent Framework SSRF exploitation.
+
+**Impacted findings**: I-1, I-2, I-4
+
+### CHAIN-002: Context Leakage Propagation (Critical)
+
+**Layer Progression**: L1 — Foundation Model → L2 — Data Operations → L3 — Agent Framework
+
+The chain originates at the Foundation Model layer (L1), where the LLM Agent Orchestrator's context leakage (I-1, Critical) exposes sensitive knowledge base content in model responses due to absent output filtering and per-user context isolation. This disclosure **triggers** a secondary exposure at the Data Operations layer (L2) — the Knowledge Base's insufficient vector store access controls (I-2) become exploitable when an attacker leverages leaked schema information to craft targeted embedding queries, enabling reconstruction of confidential document content. The information disclosure cascade then **triggers** exposure at the Agent Framework layer (L3), where the MCP Tool Server returns API credentials, internal endpoint URLs, and stack traces in error responses (I-3). The combination of knowledge base schema understanding and tool server error verbosity enables an attacker to map internal service topology and identify API authentication mechanisms for further exploitation.
+
+**Chain-breaking control**: Remediate I-2 (Knowledge Base access controls) at L2 — the central node whose removal prevents the Foundation Model leakage from reaching the Agent Framework error verbosity.
+
+**Impacted findings**: I-1, I-2, I-3
+
+### CHAIN-003: Data Pipeline Tampering (High)
+
+**Layer Progression**: L1 — Foundation Model → L2 — Data Operations → L3 — Agent Framework
+
+This tampering chain begins at the Foundation Model layer (L1), where an attacker tampers with the LLM Agent Orchestrator's configuration or intermediate state (T-2, Medium), altering agent decision logic to produce incorrect tool call sequences or bypass safety checks. The manipulated orchestrator behavior **triggers** corruption at the Data Operations layer (L2), where the Knowledge Base's write access controls (T-1, High) are insufficient to prevent poisoned model outputs from corrupting document embeddings. The data pipeline corruption then **triggers** exploitation at the Agent Framework layer (L3), where the MCP Tool Server's supply chain vulnerability (T-4, High) — unpinned dependencies, unsigned container images, and absent SLSA attestation — compounds the data integrity failure, enabling an attacker to achieve persistent tampering across the full Foundation Model to Agent Framework stack.
+
+**Chain-breaking control**: Remediate T-1 (Knowledge Base write access controls) at L2 — the central node whose removal disconnects orchestrator configuration tampering from MCP supply chain exploitation.
+
+**Impacted findings**: T-2, T-1, T-4
+
+### CHAIN-004: Reverse Data Poisoning (High)
+
+**Layer Progression**: L2 — Data Operations → L1 — Foundation Model
+
+This reverse-direction tampering chain begins at the Data Operations layer (L2), where an attacker with write access to the Knowledge Base vector store (T-1, High) injects adversarial document embeddings. The poisoned embeddings corrupt RAG retrieval results, ensuring the LLM Agent Orchestrator receives manipulated context for its reasoning. This data poisoning **triggers** a cascade to the Foundation Model layer (L1), where the corrupted retrieval context causes the Orchestrator's decision logic to malfunction (T-2, Medium), producing incorrect tool call sequences or bypassing safety checks while appearing to function normally. Unlike CHAIN-003 which attacks the model configuration first, this chain exploits the data layer as the entry point, demonstrating that the bidirectional data flow between Knowledge Base and Orchestrator creates mutual attack surfaces.
+
+**Chain-breaking control**: Remediate T-1 (Knowledge Base write access controls) at L2 — the initial exploit and higher-severity finding whose remediation prevents data poisoning from corrupting orchestrator behavior.
+
+**Impacted findings**: T-1, T-2
+
+---
+
+## 7. Remediation Roadmap
 
 This roadmap contains 30 remediation items (34 findings consolidated via 4 correlation groups): 8 Immediate, 12 Short-term, 6 Medium-term, and 1 Backlog. The most impacted component is the LLM Agent Orchestrator. Recommended starting point: implement mTLS across all inter-service channels and RBAC on tool dispatch simultaneously.
 
@@ -1243,110 +1293,110 @@ This roadmap contains 30 remediation items (34 findings consolidated via 4 corre
 
 ---
 
-## 7. Appendix: Finding Reference
+## 8. Appendix: Finding Reference
 
 | Finding ID | Report Section | Heading Reference |
 |------------|---------------|-------------------|
 | S-1 | 3.1 Spoofing | Section 3 |
 | S-1 | 5. Attack Trees | Section 5 |
-| S-1 | 6. Remediation Roadmap | Section 6 |
+| S-1 | 7. Remediation Roadmap | Section 7 |
 | S-2 | 3.1 Spoofing | Section 3 |
 | S-2 | 5. Attack Trees | Section 5 |
-| S-2 | 6. Remediation Roadmap | Section 6 |
+| S-2 | 7. Remediation Roadmap | Section 7 |
 | S-3 | 3.1 Spoofing | Section 3 |
 | S-3 | 5. Attack Trees | Section 5 |
-| S-3 | 6. Remediation Roadmap | Section 6 |
+| S-3 | 7. Remediation Roadmap | Section 7 |
 | S-4 | 3.1 Spoofing | Section 3 |
 | S-4 | 5. Attack Trees | Section 5 |
-| S-4 | 6. Remediation Roadmap | Section 6 |
+| S-4 | 7. Remediation Roadmap | Section 7 |
 | T-1 | 3.2 Tampering | Section 3 |
 | T-1 | 5. Attack Trees | Section 5 |
-| T-1 | 6. Remediation Roadmap | Section 6 |
+| T-1 | 7. Remediation Roadmap | Section 7 |
 | T-2 | 3.2 Tampering | Section 3 |
 | T-2 | 5. Attack Trees | Section 5 |
-| T-2 | 6. Remediation Roadmap | Section 6 |
+| T-2 | 7. Remediation Roadmap | Section 7 |
 | T-3 | 3.2 Tampering | Section 3 |
 | T-3 | 5. Attack Trees | Section 5 |
-| T-3 | 6. Remediation Roadmap | Section 6 |
+| T-3 | 7. Remediation Roadmap | Section 7 |
 | T-4 | 3.2 Tampering | Section 3 |
 | T-4 | 4. Cross-Cutting Themes | Section 4 |
 | T-4 | 5. Attack Trees | Section 5 |
-| T-4 | 6. Remediation Roadmap | Section 6 |
+| T-4 | 7. Remediation Roadmap | Section 7 |
 | T-5 | 3.2 Tampering | Section 3 |
 | T-5 | 5. Attack Trees | Section 5 |
-| T-5 | 6. Remediation Roadmap | Section 6 |
+| T-5 | 7. Remediation Roadmap | Section 7 |
 | R-1 | 3.3 Repudiation | Section 3 |
-| R-1 | 6. Remediation Roadmap | Section 6 |
+| R-1 | 7. Remediation Roadmap | Section 7 |
 | R-2 | 3.3 Repudiation | Section 3 |
-| R-2 | 6. Remediation Roadmap | Section 6 |
+| R-2 | 7. Remediation Roadmap | Section 7 |
 | R-3 | 3.3 Repudiation | Section 3 |
 | R-3 | 4. Cross-Cutting Themes | Section 4 |
 | R-3 | 5. Attack Trees | Section 5 |
-| R-3 | 6. Remediation Roadmap | Section 6 |
+| R-3 | 7. Remediation Roadmap | Section 7 |
 | R-4 | 3.3 Repudiation | Section 3 |
-| R-4 | 6. Remediation Roadmap | Section 6 |
+| R-4 | 7. Remediation Roadmap | Section 7 |
 | R-5 | 3.3 Repudiation | Section 3 |
-| R-5 | 6. Remediation Roadmap | Section 6 |
+| R-5 | 7. Remediation Roadmap | Section 7 |
 | I-1 | 3.4 Information Disclosure | Section 3 |
 | I-1 | 5. Attack Trees | Section 5 |
-| I-1 | 6. Remediation Roadmap | Section 6 |
+| I-1 | 7. Remediation Roadmap | Section 7 |
 | I-2 | 3.4 Information Disclosure | Section 3 |
 | I-2 | 5. Attack Trees | Section 5 |
-| I-2 | 6. Remediation Roadmap | Section 6 |
+| I-2 | 7. Remediation Roadmap | Section 7 |
 | I-3 | 3.4 Information Disclosure | Section 3 |
 | I-3 | 5. Attack Trees | Section 5 |
-| I-3 | 6. Remediation Roadmap | Section 6 |
+| I-3 | 7. Remediation Roadmap | Section 7 |
 | I-4 | 3.4 Information Disclosure | Section 3 |
 | I-4 | 5. Attack Trees | Section 5 |
-| I-4 | 6. Remediation Roadmap | Section 6 |
+| I-4 | 7. Remediation Roadmap | Section 7 |
 | I-5 | 3.4 Information Disclosure | Section 3 |
 | I-5 | 4. Cross-Cutting Themes | Section 4 |
 | I-5 | 5. Attack Trees | Section 5 |
-| I-5 | 6. Remediation Roadmap | Section 6 |
+| I-5 | 7. Remediation Roadmap | Section 7 |
 | D-1 | 3.5 Denial of Service | Section 3 |
 | D-1 | 5. Attack Trees | Section 5 |
-| D-1 | 6. Remediation Roadmap | Section 6 |
+| D-1 | 7. Remediation Roadmap | Section 7 |
 | D-2 | 3.5 Denial of Service | Section 3 |
 | D-2 | 5. Attack Trees | Section 5 |
-| D-2 | 6. Remediation Roadmap | Section 6 |
+| D-2 | 7. Remediation Roadmap | Section 7 |
 | D-3 | 3.5 Denial of Service | Section 3 |
 | D-3 | 4. Cross-Cutting Themes | Section 4 |
 | D-3 | 5. Attack Trees | Section 5 |
-| D-3 | 6. Remediation Roadmap | Section 6 |
+| D-3 | 7. Remediation Roadmap | Section 7 |
 | D-4 | 3.5 Denial of Service | Section 3 |
-| D-4 | 6. Remediation Roadmap | Section 6 |
+| D-4 | 7. Remediation Roadmap | Section 7 |
 | D-5 | 3.5 Denial of Service | Section 3 |
-| D-5 | 6. Remediation Roadmap | Section 6 |
+| D-5 | 7. Remediation Roadmap | Section 7 |
 | E-1 | 3.6 Elevation of Privilege | Section 3 |
 | E-1 | 5. Attack Trees | Section 5 |
-| E-1 | 6. Remediation Roadmap | Section 6 |
+| E-1 | 7. Remediation Roadmap | Section 7 |
 | E-2 | 3.6 Elevation of Privilege | Section 3 |
 | E-2 | 4. Cross-Cutting Themes | Section 4 |
 | E-2 | 5. Attack Trees | Section 5 |
-| E-2 | 6. Remediation Roadmap | Section 6 |
+| E-2 | 7. Remediation Roadmap | Section 7 |
 | E-3 | 3.6 Elevation of Privilege | Section 3 |
 | E-3 | 5. Attack Trees | Section 5 |
-| E-3 | 6. Remediation Roadmap | Section 6 |
+| E-3 | 7. Remediation Roadmap | Section 7 |
 | AG-1 | 3.7 Agentic Threats | Section 3 |
 | AG-1 | 4. Cross-Cutting Themes | Section 4 |
 | AG-1 | 5. Attack Trees | Section 5 |
-| AG-1 | 6. Remediation Roadmap | Section 6 |
+| AG-1 | 7. Remediation Roadmap | Section 7 |
 | AG-2 | 3.7 Agentic Threats | Section 3 |
 | AG-2 | 5. Attack Trees | Section 5 |
-| AG-2 | 6. Remediation Roadmap | Section 6 |
+| AG-2 | 7. Remediation Roadmap | Section 7 |
 | AG-3 | 3.7 Agentic Threats | Section 3 |
 | AG-3 | 4. Cross-Cutting Themes | Section 4 |
 | AG-3 | 5. Attack Trees | Section 5 |
-| AG-3 | 6. Remediation Roadmap | Section 6 |
+| AG-3 | 7. Remediation Roadmap | Section 7 |
 | AG-4 | 3.7 Agentic Threats | Section 3 |
 | AG-4 | 4. Cross-Cutting Themes | Section 4 |
 | AG-4 | 5. Attack Trees | Section 5 |
-| AG-4 | 6. Remediation Roadmap | Section 6 |
+| AG-4 | 7. Remediation Roadmap | Section 7 |
 | LLM-1 | 3.8 LLM Threats | Section 3 |
 | LLM-1 | 5. Attack Trees | Section 5 |
-| LLM-1 | 6. Remediation Roadmap | Section 6 |
+| LLM-1 | 7. Remediation Roadmap | Section 7 |
 | LLM-2 | 3.8 LLM Threats | Section 3 |
 | LLM-2 | 5. Attack Trees | Section 5 |
-| LLM-2 | 6. Remediation Roadmap | Section 6 |
+| LLM-2 | 7. Remediation Roadmap | Section 7 |
 | LLM-3 | 3.8 LLM Threats | Section 3 |
-| LLM-3 | 6. Remediation Roadmap | Section 6 |
+| LLM-3 | 7. Remediation Roadmap | Section 7 |

@@ -110,13 +110,13 @@ triad:
 
 **Independent Test**: Run full pipeline on agentic-app example. Verify output includes attack-chains.md with 3+ layer chain, threat-report.md with Attack Chains section, and PDF with chain diagram pages. Verify 5 other examples produce byte-identical output when no chains detected.
 
-- [ ] T022 [US5] Extend `examples/agentic-app/` architecture description with 1-2 components to strengthen cross-layer data flows if needed for 3+ layer chain demonstration
-- [ ] T023 [US5] Regenerate `examples/agentic-app/` full pipeline output: threats.md, attack-chains.md, threat-report.md, security-report PDF with chain diagram pages
-- [ ] T024 [P] [US5] Regenerate `examples/web-app/` pipeline output (no chains expected)
-- [ ] T025 [P] [US5] Regenerate `examples/microservices/` pipeline output (no chains expected)
-- [ ] T026 [P] [US5] Regenerate `examples/ascii-web-api/` pipeline output (no chains expected)
-- [ ] T027 [P] [US5] Regenerate `examples/free-text-microservice/` pipeline output (no chains expected)
-- [ ] T028 [P] [US5] Regenerate `examples/mermaid-agentic-app/` pipeline output (may have chains given L1/L2/L3/L7 MAESTRO coverage)
+- [X] T022 [US5] Extend `examples/agentic-app/` architecture description with 1-2 components to strengthen cross-layer data flows if needed for 3+ layer chain demonstration
+- [X] T023 [US5] Regenerate `examples/agentic-app/` full pipeline output: threats.md, attack-chains.md, threat-report.md, security-report PDF with chain diagram pages
+- [X] T024 [P] [US5] Regenerate `examples/web-app/` pipeline output (no chains expected)
+- [X] T025 [P] [US5] Regenerate `examples/microservices/` pipeline output (no chains expected)
+- [X] T026 [P] [US5] Regenerate `examples/ascii-web-api/` pipeline output (no chains expected)
+- [X] T027 [P] [US5] Regenerate `examples/free-text-microservice/` pipeline output (no chains expected)
+- [X] T028 [P] [US5] Regenerate `examples/mermaid-agentic-app/` pipeline output (may have chains given L1/L2/L3/L7 MAESTRO coverage)
 
 **Checkpoint**: agentic-app demonstrates end-to-end chain. All 6 examples regenerated.
 

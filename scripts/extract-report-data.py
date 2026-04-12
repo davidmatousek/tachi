@@ -873,15 +873,18 @@ def generate_chain_mermaid(chain: dict) -> str:
 
     # Define nodes for each finding in layer order
     for f in findings:
-        layer = f.get("maestro_layer", "")
+        raw_layer = f.get("maestro_layer", "")
         finding_id = f.get("finding_id", "")
         component = f.get("component", "")
         category = f.get("category", "")
+        # Normalize long-form "L1 — Foundation Model" to short-form "L1"
+        layer_match = re.match(r"(L\d)", raw_layer)
+        layer = layer_match.group(1) if layer_match else raw_layer
         layer_name = _MAESTRO_LAYER_NAMES.get(layer, layer)
         color = _MAESTRO_LAYER_COLORS.get(layer, "#64748b")
 
-        # Node ID uses layer (safe for Mermaid identifiers)
-        node_id = layer.replace(" ", "")
+        # Node ID uses normalized short-form layer code (safe for Mermaid identifiers)
+        node_id = layer
         label = f"{layer}: {layer_name}"
         if finding_id:
             label += f"<br/>{finding_id}"
@@ -893,8 +896,12 @@ def generate_chain_mermaid(chain: dict) -> str:
 
     # Define edges between consecutive findings with causal labels
     for i in range(len(findings) - 1):
-        src = findings[i].get("maestro_layer", "").replace(" ", "")
-        dst = findings[i + 1].get("maestro_layer", "").replace(" ", "")
+        raw_src = findings[i].get("maestro_layer", "")
+        raw_dst = findings[i + 1].get("maestro_layer", "")
+        src_match = re.match(r"(L\d)", raw_src)
+        dst_match = re.match(r"(L\d)", raw_dst)
+        src = src_match.group(1) if src_match else raw_src.replace(" ", "")
+        dst = dst_match.group(1) if dst_match else raw_dst.replace(" ", "")
         # Use causal_relationship from the source finding if available
         causal = findings[i].get("causal_relationship", "")
         if not causal:
