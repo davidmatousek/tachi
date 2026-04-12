@@ -103,6 +103,11 @@ Agentic and microservice architectures increasingly rely on cross-account cloud 
 - MITRE ATT&CK T1078.004 — Valid Accounts: Cloud Accounts: https://attack.mitre.org/techniques/T1078/004/
 - MITRE ATT&CK T1550.001 — Use Alternate Authentication Material: Application Access Token: https://attack.mitre.org/techniques/T1550/001/
 - AWS IAM Security Best Practices — Confused Deputy Problem: https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html
+- AWS IMDSv2 — Configuring the Instance Metadata Service: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html
+- GCP IAM — Service Account Impersonation: https://cloud.google.com/iam/docs/service-account-impersonation
+- GCP Compute — Metadata Server Overview: https://cloud.google.com/compute/docs/metadata/overview
+- Azure Active Directory — Managed Identities for Azure Resources: https://learn.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview
+- Azure Virtual Machines — Instance Metadata Service: https://learn.microsoft.com/en-us/azure/virtual-machines/windows/instance-metadata-service
 
 **Example**: A CI/CD runner in account A assumes a deployment role in account B. The trust policy on account B's role permits `arn:aws:iam::A:root` without an external ID or source-identity condition. An unrelated workload in account A (a Lambda function processing public webhook input) is compromised via SSRF. The attacker uses the Lambda's execution role to call `sts:AssumeRole` against account B's deployment role — the trust policy grants it, because "anything in account A" is trusted. The attacker now has deployment-level access to account B's production resources without ever compromising the CI/CD runner.
 
@@ -134,3 +139,8 @@ Agentic and microservice architectures increasingly rely on cross-account cloud 
 - MITRE ATT&CK T1078.004 Valid Accounts: Cloud Accounts: https://attack.mitre.org/techniques/T1078/004/
 - MITRE ATT&CK T1550.001 Application Access Token: https://attack.mitre.org/techniques/T1550/001/
 - AWS IAM Confused Deputy Problem guidance: https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html
+- AWS IMDSv2 Configuration: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html
+- GCP IAM Service Account Impersonation: https://cloud.google.com/iam/docs/service-account-impersonation
+- GCP Compute Metadata Server Overview: https://cloud.google.com/compute/docs/metadata/overview
+- Azure Active Directory Managed Identities Overview: https://learn.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview
+- Azure Virtual Machines Instance Metadata Service: https://learn.microsoft.com/en-us/azure/virtual-machines/windows/instance-metadata-service

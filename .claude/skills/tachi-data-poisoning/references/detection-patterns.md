@@ -77,7 +77,7 @@ Retrieval-time poisoning of shared or multi-tenant vector stores where attackers
 
 **Primary source**:
 
-- OWASP LLM08:2025 Vector and Embedding Weaknesses: https://genai.owasp.org/llmrisk/llm08-vector-and-embedding-weaknesses/
+- OWASP LLM08:2025 Vector and Embedding Weaknesses: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
 - OWASP LLM04:2025 Data and Model Poisoning: https://genai.owasp.org/llmrisk/llm04-data-and-model-poisoning/
 - MITRE ATLAS AML.T0020 Poison Training Data (retrieval-corpus subcase): https://atlas.mitre.org/techniques/AML.T0020
 
@@ -126,9 +126,9 @@ Backdoor triggers — hidden input patterns that cause a model to produce attack
 
 ## Primary Sources
 
-- **OWASP LLM03:2025 - Supply Chain Vulnerabilities**: https://genai.owasp.org/llmrisk/llm03-supply-chain-vulnerabilities/
+- **OWASP LLM03:2025 - Supply Chain**: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
 - **OWASP LLM04:2025 - Data and Model Poisoning**: https://genai.owasp.org/llmrisk/llm04-data-and-model-poisoning/
-- **OWASP LLM08:2025 - Vector and Embedding Weaknesses**: https://genai.owasp.org/llmrisk/llm08-vector-and-embedding-weaknesses/
+- **OWASP LLM08:2025 - Vector and Embedding Weaknesses**: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
 - **MITRE ATLAS AML.T0020 - Poison Training Data**: https://atlas.mitre.org/techniques/AML.T0020
 - **MITRE ATLAS AML.T0018 - Backdoor ML Model**: https://atlas.mitre.org/techniques/AML.T0018
 - **MITRE ATLAS AML.T0010 - ML Supply Chain Compromise**: https://atlas.mitre.org/techniques/AML.T0010
