@@ -827,7 +827,7 @@ def render_mermaid_to_png(attack_trees: list, target_dir: Path, template_dir: Pa
 
 
 # =============================================================================
-# Attack Chain Processing (Feature 141 — Phase 3.5 cross-layer correlation)
+# Attack Chain Processing
 # =============================================================================
 
 # Canonical MAESTRO layer names for Mermaid diagram node labels.
@@ -902,14 +902,7 @@ def generate_chain_mermaid(chain: dict) -> str:
         dst_match = re.match(r"(L\d)", raw_dst)
         src = src_match.group(1) if src_match else raw_src.replace(" ", "")
         dst = dst_match.group(1) if dst_match else raw_dst.replace(" ", "")
-        # Use causal_relationship from the source finding if available
-        causal = findings[i].get("causal_relationship", "")
-        if not causal:
-            causal = "enables"
-        # Truncate long labels for diagram readability
-        if len(causal) > 40:
-            causal = causal[:37] + "..."
-        lines.append(f'    {src} -->|"{causal}"| {dst}')
+        lines.append(f'    {src} -->|"enables"| {dst}')
 
     return "\n".join(lines)
 
@@ -1428,7 +1421,7 @@ def generate_report_data_typ(data: dict) -> str:
         lines.append("#let attack-trees = ()")
     lines.append("")
 
-    # 3r: Attack Chain Data (Feature 141)
+    # 3r: Attack Chain Data
     lines.append("// --- Attack Chain Data -------------------------------------------------------")
     lines.append(f"#let has-attack-chains = {_typst_bool(data.get('has_attack_chains', False))}")
     attack_chains = data.get("attack_chains", [])
@@ -1707,7 +1700,7 @@ def main():
         data["has_attack_trees"] = False
         data["attack_trees"] = []
 
-    # Attack chain data (Feature 141 — cross-layer correlation)
+    # Attack chain data (cross-layer correlation)
     if artifacts.get("has_attack_chains"):
         has_chains, chains = prepare_attack_chains(target_dir, data["findings"], template_dir)
         data["has_attack_chains"] = has_chains
