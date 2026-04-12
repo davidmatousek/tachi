@@ -23,6 +23,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Detection Quality and Lean Agent Architecture Complete (#151, Feature 082)
+
+**All 17 Tachi Agents Now Use Lean-Agent Architecture**: The 11 remaining threat detection agents (6 STRIDE + 5 AI-specific) have been migrated from self-contained inline shape to the lean-agent + skill references pattern, completing the lean-agent architecture for the entire tachi agent fleet. Pre-refactor, STRIDE agents were 113-141 lines and AI agents were 167-201 lines (3 AI agents were over the 180-line hard cap); post-refactor, STRIDE agents are 50-54 lines and AI agents are 78-114 lines — every agent within FR-10 tier caps (STRIDE ≤120, AI ≤150, hard cap ≤180). Detection quality has been enriched with +30 new pattern categories across the 11 agents, covering OWASP LLM Top 10 2025, MITRE ATLAS v5.1+ (including the October 2025 agent techniques AML.T0058-T0062), OWASP AI Exchange, CWE Top 25 2024, and NIST AI 600-1. Users running `/tachi.threat-model` on an agentic AI application will see additional findings surfaced that the pre-refactor inline patterns could not reach.
+
+#### Detection Variant of Lean-Agent Pattern
+
+Feature 082 introduces a second documented shape of the lean-agent pattern, sibling to the methodology variant already used by `control-analyzer`. The detection variant loads its companion reference at invocation start via a single `**MANDATORY**: Read` directive rather than phase-gated loads. All 11 threat agents now host their detection patterns at `.claude/skills/tachi-<name>/references/detection-patterns.md` (byte-preserved from the pre-refactor agent content plus enriched categories).
+
+| Pattern Variant | Used By | Load Style |
+|-----------------|---------|------------|
+| Methodology variant | control-analyzer | Phase-gated loads per workflow step |
+| **Detection variant** (new) | 11 threat agents | Single-point load at detection start |
+
+See [ADR-023](docs/architecture/02_ADRs/ADR-023-threat-agent-skill-references-pattern.md) for the full pattern definition, the MAESTRO ownership rule, and the additive-only shared reference invariant.
+
+#### New Enrichment Categories (+30 / ≥22 Floor)
+
+All 11 threat agents gained new detection pattern categories sourced from authoritative primaries:
+
+| Source | Coverage Added |
+|--------|---------------|
+| OWASP LLM Top 10 2025 | Prompt injection variants, data poisoning vectors, model theft techniques, excessive agency patterns |
+| MITRE ATLAS v5.1+ | AML.T0058 context poisoning, AML.T0059 memory corruption, AML.T0060 agent-in-the-middle, AML.T0061 excessive agency runtime, AML.T0062 cascading agent failures |
+| OWASP AI Exchange | Cross-cutting AI supply chain, model lifecycle, and training data governance patterns |
+| MITRE ATT&CK v15+ | STRIDE-side technique mappings (especially T1078 valid accounts, T1550 alt auth, T1562 impair defenses) |
+| CWE Top 25 2024 | Modernized weakness enumeration with 2024 updates |
+| NIST AI 600-1 | Generative AI risk management profile controls |
+
+T048 security review (Wave 13) flagged 5 first-draft categories for primary-source realignment; T048a (Wave 13.5) rebuilt all 5 byte-verbatim preserving substance. The final aggregate was **30 new categories** against a **≥22 floor** (SC-006 / FR-7) — **+8 margin**. See [KB-030 in INSTITUTIONAL_KNOWLEDGE.md](docs/INSTITUTIONAL_KNOWLEDGE.md) for the "cite primary sources in first draft" lesson that emerged from the T048 rebuild cycle.
+
+#### Additive-Only Shared Reference Consolidation
+
+`finding-format-shared.md` gains a new "For Threat Agents" producer section describing the finding construction responsibility for detection-tier agents. The existing "For Risk Scorer / Control Analyzer / Threat Report" consumer sections remain byte-identical — the edit is **additive-only** (T046 invariant), preventing regressions in the 6 infrastructure agents that were already in production. All 11 threat agents' Skill References tables register the shared reference for load at detection start. The OWASP 3×3 risk matrix now lives in exactly one canonical file (`severity-bands-shared.md:72`), normalized to Unicode `×` to match the SC-004 canonical-form audit. Wave 16 remediation removed 22 inline "OWASP 3×3" brand-name mentions from agent prose.
+
+#### Backward Compatibility
+
+Feature 082 is **purely agent-behavior-facing**. The PDF pipeline reads committed `threats.md`, `risk-scores.md`, `compensating-controls.md`, and `attack-trees/` files — none of which are modified by this feature. Typst templates, `extract-report-data.py`, and `extract-infographic-data.py` are untouched. The 5 byte-deterministic example PDFs (`web-app`, `microservices`, `ascii-web-api`, `mermaid-agentic-app`, `free-text-microservice`) remain **byte-identical** under `SOURCE_DATE_EPOCH=1700000000` per [ADR-021](docs/architecture/02_ADRs/ADR-021-deterministic-pdf-comparison.md). The 6th example (`agentic-app`) was regenerated as the T057 US2 AC-3 independent test, surfacing **+8 new AI findings** (22 baseline → 30) — consistent with the Option B+ gate prediction. Zero new runtime dependencies (SC-014 — empty diff on `pyproject.toml`, `requirements*.txt`, `package.json`).
+
+#### Option B+ Gate Methodology
+
+Phase 1a / 1b (2-agent prototype) and Phase 3 (11-agent scale) regression gates used **content-equivalence + DFD-vs-pattern matching** rather than live orchestrator invocation. The method was ratified by the T021 joint architect + team-lead gate approval under the "±2 tolerance interpretation (b)" ruling: pre-existing pattern categories must delta=0, new categories can have any non-negative delta from enrichment. T050 full regression gate (Wave 15) used Option B+ to prove SC-005 for all 11 agents × 6 examples; T057 live regeneration on `agentic-app` (Wave 17) then confirmed the prediction was exact.
+
+#### References
+
+- PRD: [docs/product/02_PRD/082-threat-agent-skill-references-2026-04-11.md](docs/product/02_PRD/082-threat-agent-skill-references-2026-04-11.md)
+- Spec: [specs/082-threat-agent-skill/spec.md](specs/082-threat-agent-skill/spec.md)
+- Plan: [specs/082-threat-agent-skill/plan.md](specs/082-threat-agent-skill/plan.md)
+- Delivery retrospective: [specs/082-threat-agent-skill/delivery.md](specs/082-threat-agent-skill/delivery.md)
+- ADR-023: [docs/architecture/02_ADRs/ADR-023-threat-agent-skill-references-pattern.md](docs/architecture/02_ADRs/ADR-023-threat-agent-skill-references-pattern.md)
+- PR: [#151](https://github.com/davidmatousek/tachi/pull/151)
+- GitHub Issue: [#82](https://github.com/davidmatousek/tachi/issues/82)
+
+---
+
 ### Breaking Changes — Correctness Fix (#148, Feature 130)
 
 **mmdc Is Now a Hard Prerequisite**: When `/tachi.security-report` is run against a project containing Critical/High attack trees, `@mermaid-js/mermaid-cli` (`mmdc`) must be installed on `PATH`. Previously, a missing `mmdc` triggered a silent text fallback that shipped 40+ lines of raw `flowchart TD` source per attack-path page inside the PDF; the pipeline reported exit 0 and the broken output was only discoverable by paging through the PDF manually. The text-fallback Typst branch has been deleted outright, and two defense-in-depth preflight gates now raise a loud error with the canonical install command.
