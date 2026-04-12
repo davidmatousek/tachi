@@ -14,103 +14,36 @@ model: sonnet
 category: agentic
 threat_class: AG
 dfd_targets: [Process]
-owasp_references: [ASI-02, ASI-04, MCP-03, MCP-05]
+owasp_references: [ASI-02, ASI-04, MCP-03, MCP-05, LLM06:2025]
 output_schema: ../../../schemas/finding.yaml
 ```
 
-# Tool-Use Abuse Threat Agent
+# Tool Abuse Threat Agent
 
 ## Purpose
 
-Detects threats arising from agentic systems that invoke external tools, MCP servers, plugins, or APIs as part of their execution. Tool-use abuse occurs when an agent invokes tools it should not have access to, manipulates tool parameters to achieve unintended effects, or chains tool calls in sequences that escalate privileges beyond the agent's intended scope. This agent identifies unauthorized tool invocation, capability escalation through tool composition, parameter injection in tool calls, tool chain manipulation where individually safe operations combine to produce dangerous outcomes, and tool poisoning attacks (direct poisoning, tool shadowing, and rug pulls) where malicious tool definitions alter agent behavior.
+Detects threats arising from agentic systems that invoke external tools, MCP servers, plugins, or APIs as part of their execution. Tool-use abuse occurs when an agent invokes tools it should not have access to, manipulates tool parameters to achieve unintended effects, or chains tool calls in sequences that escalate privileges beyond the agent's intended scope. This agent identifies unauthorized tool invocation, capability escalation through tool composition, parameter injection, tool chain manipulation, tool poisoning (direct poisoning, shadowing, rug pulls), and the MITRE ATLAS Oct 2025 agent-specific techniques AML.T0058 (LLM plugin compromise), AML.T0061 (unauthorized invocation via instruction hijack), and AML.T0062 (MCP server poisoning and cross-tool exfiltration).
 
-## Detection Scope
+## Skill References
 
-### Trigger Keywords
+| Reference | File | Load When | Purpose |
+|-----------|------|-----------|---------|
+| Detection patterns | `.claude/skills/tachi-tool-abuse/references/detection-patterns.md` | At detection start | Externalized pattern catalog for tool abuse and cross-tool exfiltration |
+| Severity bands | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | At detection start | OWASP 3×3 risk matrix for finding severity computation |
+| Finding format | `.claude/skills/tachi-shared/references/finding-format-shared.md` | At detection start | Canonical finding schema and field guidance |
 
-This agent activates when a DFD element name or description matches any of the following patterns (case-insensitive):
+## Detection Workflow
 
-- `agent`
-- `MCP server`
-- `tool server`
-- `plugin`
-- `tool use`
-- `function calling`
-- `tool chain`
-- `orchestrator`
-- `action executor`
+**MANDATORY**: Read `.claude/skills/tachi-tool-abuse/references/detection-patterns.md` — load before applying patterns to components.
 
-### Applicable DFD Element Types
+1. Iterate dispatched components from orchestrator input, filtering to Process DFD element types that match the trigger keywords in the reference file (agent, MCP server, tool server, plugin, tool use, function calling, tool chain, orchestrator, action executor).
+2. For each component, walk through the pattern categories in the reference file (unauthorized tool invocation, capability escalation via composition, parameter injection, tool chain manipulation, tool poisoning, LLM plugin compromise, unauthorized invocation via instruction hijack, MCP server poisoning) and collect every indicator present.
+3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: agentic`, a sequential `AG-N` id, and the target component name.
+4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of confidentiality, integrity, availability, intent alignment), then compute `risk_level` via the OWASP 3×3 matrix in `severity-bands-shared.md`.
+5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (ASI-02, ASI-04, MCP-03, MCP-05, OWASP LLM06:2025, MITRE ATLAS AML.T0058/T0061/T0062, CWE-77, CWE-89) from the reference file's Primary Sources list.
+6. Emit the finding list to the orchestrator for Phase 3 aggregation. If no components match any trigger keyword, return zero findings; do not speculate about tool abuse on architectures without agentic tool invocation.
 
-- **Process**: Any process node that represents an agent, orchestrator, or tool execution layer. This includes MCP client processes, plugin hosts, function-calling middleware, and agentic frameworks that dispatch tool invocations based on model output.
-
-### Empty Results Guidance
-
-If the architecture input contains **no** components matching the trigger keywords above (no agents, MCP servers, tool servers, plugins, function-calling layers, or tool chains), this agent should produce **zero findings**. Do not generate speculative findings about hypothetical tool-use components. An architecture without tool servers, MCP integrations, plugin systems, or agentic tool invocation is outside this agent's detection scope. Return an empty findings list.
-
-### Detection Patterns
-
-1. **Unauthorized Tool Invocation**: An agent accesses tools outside its granted capability set. Look for:
-   - Tool registries that do not enforce per-agent capability boundaries
-   - MCP servers that expose all tools to all connected clients without scoping
-   - Absence of an allowlist or deny-list mechanism for tool access per agent role
-   - Dynamic tool discovery where the agent can enumerate and call tools not explicitly granted
-
-2. **Capability Escalation via Tool Composition**: Individually authorized tool calls are chained to achieve an effect the agent should not be capable of. Look for:
-   - File-read tool + network-send tool = data exfiltration capability
-   - Database-query tool + file-write tool = unauthorized data export
-   - Code-execution tool + system-command tool = arbitrary command execution
-   - No cross-tool authorization policy that evaluates composite effects
-
-3. **Tool Parameter Injection**: The agent (or an attacker via prompt injection) manipulates tool call parameters to alter tool behavior. Look for:
-   - Tool parameters constructed from unvalidated model output
-   - SQL fragments, shell commands, or file paths passed as tool arguments without sanitization
-   - Absence of parameter schema validation at the tool server level
-   - Tool descriptions that are overly permissive about accepted parameter values
-
-4. **Tool Chain Manipulation**: An attacker influences the sequence or selection of tool calls to redirect agent behavior. Look for:
-   - Tool selection driven entirely by model reasoning without human-in-the-loop checkpoints
-   - Absence of tool call logging or audit trail for post-hoc analysis
-   - No maximum tool call depth or iteration limit on agentic loops
-   - Tool results that are fed back to the model without integrity verification
-
-5. **Tool Poisoning**: A malicious or compromised tool server manipulates tool definitions to alter agent behavior without detection. This category covers three distinct attack vectors:
-
-   **5a. Direct Poisoning**: A tool server provides tool definitions with hidden malicious instructions embedded in descriptions or parameter schemas. Look for:
-   - Tool descriptions containing embedded instructions that influence model behavior beyond the tool's stated purpose
-   - Hidden directives in parameter descriptions that cause the model to pass sensitive data as arguments
-   - Tool definitions where the description payload exceeds what is necessary for functional use
-   - Absence of tool description sanitization or length limits at the MCP client level
-
-   **5b. Tool Shadowing**: A malicious tool server registers a tool with the same name or similar description as a legitimate tool, intercepting calls intended for the original. Look for:
-   - Multiple MCP servers registering tools with identical or near-identical names
-   - No namespace isolation or server-of-origin verification for tool registrations
-   - Tool discovery mechanisms that do not disambiguate between tools from different servers
-   - Absence of tool identity verification (server signature, hash of tool definition)
-
-   **5c. Rug Pull / Tool Redefinition**: A tool server modifies its tool definitions after initial registration, altering behavior without the agent or user being aware. Look for:
-   - MCP servers that can dynamically update tool schemas after connection
-   - No integrity verification or pinning of tool definitions at registration time
-   - Absence of change detection for tool description, parameter schema, or behavior
-   - No versioning or changelog for tool definition updates
-
-## Finding Template
-
-```yaml
-id: "AG-{N}"
-category: agentic
-component: "{component name from architecture input}"
-threat: "{specific tool abuse threat description — must describe attacker action and trust assumption violated}"
-likelihood: "{LOW | MEDIUM | HIGH}"
-impact: "{LOW | MEDIUM | HIGH}"
-risk_level: "{computed from OWASP 3x3 matrix}"
-mitigation: "{actionable countermeasure with specific technology or configuration}"
-references:
-  - "{one or more of: ASI-02, ASI-04, MCP-03, MCP-05 — select references relevant to the specific threat}"
-dfd_element_type: "Process"
-```
-
-### Example Findings
+## Example Findings
 
 **Unauthorized Tool Access via Unscoped MCP Server**:
 
@@ -163,23 +96,3 @@ references:
   - "CWE-89"
 dfd_element_type: "Process"
 ```
-
-### Risk Level Computation
-
-Apply the OWASP 3x3 matrix to determine `risk_level` from `likelihood` and `impact`:
-
-|  | LOW Likelihood | MEDIUM Likelihood | HIGH Likelihood |
-|---|---|---|---|
-| **HIGH Impact** | Medium | High | Critical |
-| **MEDIUM Impact** | Low | Medium | High |
-| **LOW Impact** | Note | Low | Medium |
-
-## References
-
-- **ASI-02 - Unauthorized Tool Access**: OWASP Agentic Security Initiative reference for agents invoking tools outside their granted capability set due to absent per-agent scoping or allowlist enforcement
-- **ASI-04 - Cross-Agent Trust Exploitation**: OWASP Agentic Security Initiative reference for capability escalation through tool composition where individually authorized operations combine to exceed intended permissions
-- **MCP-03 - Tool Poisoning / Rug Pull**: Model Context Protocol security advisory on tool definition manipulation — covers direct poisoning, tool shadowing, and post-registration redefinition attacks
-- **MCP-05 - Tool Parameter Injection**: Model Context Protocol security advisory on unvalidated parameters in tool calls — SQL fragments, shell commands, or file paths passed as tool arguments without sanitization
-- **OWASP Agentic Security Initiative**: Framework for agentic application threat modeling
-- **Anthropic, 2024**: "Tool Use Security Considerations" — guidelines for safe tool-use patterns in agentic systems
-- **MITRE ATLAS - Abuse of AI Capabilities**: Techniques for exploiting tool-augmented AI systems
