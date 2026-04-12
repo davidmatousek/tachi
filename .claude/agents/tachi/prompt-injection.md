@@ -30,6 +30,7 @@ Detects prompt injection vulnerabilities in LLM-integrated components. Prompt in
 |---|---|---|---|
 | Detection patterns | .claude/skills/tachi-prompt-injection/references/detection-patterns.md | At detection start | Externalized pattern catalog for prompt injection |
 | Severity bands | .claude/skills/tachi-shared/references/severity-bands-shared.md | At detection start | OWASP 3×3 risk matrix for severity computation |
+| Finding format | .claude/skills/tachi-shared/references/finding-format-shared.md | At detection start | Canonical finding schema and field guidance |
 
 ## Detection Workflow
 
