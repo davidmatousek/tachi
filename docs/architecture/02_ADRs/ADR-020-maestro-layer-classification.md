@@ -129,3 +129,59 @@ The implementation adds:
 **2026-04-10 (Feature 136)**: Layer names for L5, L6, L7 aligned with canonical CSA MAESTRO taxonomy per the Ken Huang authoritative definition. L5 renamed from "Security" to "Evaluation and Observability", L6 renamed from "Agent Ecosystem" to "Security and Compliance", L7 renamed from "User Interface" to "Agent Ecosystem". Acronym expansion corrected to "Multi-Agent Environment, Security, Threat, Risk, and Outcome". Schema version bumped from 1.2 to 1.3 to signal the breaking enum-value change. See `docs/product/02_PRD/136-maestro-canonical-layer-correctness-fix-2026-04-10.md` for full context.
 
 **Schema versioning rule** (established for this feature): Enum-value-only breaking changes to `schemas/finding.yaml` warrant a minor schema bump (x.y+1), not a major bump, provided the schema shape and required fields are unchanged. The CHANGELOG migration note is the accountability mechanism for downstream consumers. This rule applies to future enum-value corrections.
+
+**2026-04-12 (Feature 141)**: Phase 2 — Cross-Layer Attack Chain Analysis. Transitions MAESTRO from passive taxonomy overlay to active cross-layer correlation analysis. See "Phase 2: Cross-Layer Correlation" section below. Decision section updated to reflect both passive layer tagging (Phase 1) and active cross-layer correlation (Phase 3.5). New schema: `schemas/attack-chain.yaml` v1.0.
+
+---
+
+## Phase 2: Cross-Layer Correlation
+
+Feature 141 extends MAESTRO classification from a passive taxonomy overlay (Phase 1 keyword matching) to an active cross-layer correlation engine (Phase 3.5) that identifies attack chains spanning multiple MAESTRO layers.
+
+### Architecture
+
+**Pipeline Placement**: Phase 3.5 runs after Phase 3 deduplication and Section 4a intra-component correlation, and before Phase 4 assessment. It operates on the deduplicated finding intermediate representation (IR) — not raw agent output — bounding input size for context management.
+
+**Input Contract**:
+- Phase 1 component inventory (names, types, MAESTRO layer assignments)
+- Data flow graph (source → target component relationships)
+- Deduplicated findings with `maestro_layer` assignments
+
+**Output Contract**:
+- `attack-chains.md` artifact (conditional on chain detection)
+- `has-attack-chains` boolean for downstream consumption
+
+**Independence Invariant**: Phase 3.5 cross-layer chains and Phase 3 Section 4a intra-component correlation groups are independent grouping mechanisms. A finding may appear in both without conflict.
+
+### Correlation Algorithm
+
+Rule-based pattern matching using a deterministic transition lookup table stored in `.claude/skills/tachi-shared/references/attack-chain-patterns-shared.md`. The table maps (STRIDE category, MAESTRO layer) pairs to valid successor pairs with causal vocabulary.
+
+**Correlation signals** (priority order):
+1. **Component lineage**: Findings target components connected by data flows
+2. **Data flow dependency**: Findings on components sharing data flow paths
+3. **Layer adjacency + structural**: Adjacent MAESTRO layers with at least one structural relationship
+
+**Chain assembly**:
+1. Group findings by component and MAESTRO layer
+2. Validate against transition lookup table (table-based, no probabilistic scoring)
+3. Verify structural evidence (component lineage or data flow dependency required)
+4. Assemble ordered sequences, filter to 2+ layers with Critical/High finding
+5. Rank by severity desc, chain length desc, chain ID alpha asc
+6. Cap surfaced chains at top 5; all chains recorded in artifact
+
+**Determinism**: Same input produces identical output via deterministic lookup, three-key sort with no tie possibility, and sequential chain ID assignment.
+
+### Chain Schema
+
+New schema file: `schemas/attack-chain.yaml` v1.0. Chains are cross-finding aggregates, separate from the finding schema. Each chain contains: chain_id, title, ordered layer progression, member findings with roles, causal narrative, chain-breaking controls, and surfaced flag.
+
+### Downstream Propagation
+
+- **Threat report agent**: New Section 6 (Cross-Layer Attack Chains) with 150-300 word narratives per surfaced chain, conditional on `has-attack-chains`
+- **PDF security report**: Chain diagram pages with vertical MAESTRO layer stack (Mermaid flowchart TD), rendered via existing mmdc pipeline (ADR-022)
+- **Correlation pattern reference**: `.claude/skills/tachi-shared/references/attack-chain-patterns-shared.md`
+
+### Scope Boundary
+
+The transition lookup table covers the 6 STRIDE categories only. AG and LLM findings are excluded from chain formation to avoid redundant chains (Phase 3 Section 4a handles STRIDE+AI co-location). AG/LLM findings can appear indirectly when their target component also has a STRIDE finding that participates in a chain.

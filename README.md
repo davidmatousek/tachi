@@ -168,7 +168,7 @@ Start with `threats.md` Section 7 -- Recommended Actions. Then run `/tachi.risk-
 
 ### /tachi.threat-model
 
-Runs the 5-phase threat modeling pipeline: scope, determine threats, determine countermeasures, assess, and report. Produces `threats.md`, `threats.sarif`, `threat-report.md`, and `attack-trees/`. Findings include MAESTRO layer classification for agentic AI components. Automatically detects baseline from previous runs for delta tracking.
+Runs the 5-phase threat modeling pipeline: scope, determine threats, determine countermeasures, assess, and report. Produces `threats.md`, `threats.sarif`, `threat-report.md`, `attack-trees/`, and `attack-chains.md` (conditional, when cross-layer chains are detected). Findings include MAESTRO layer classification for agentic AI components. Phase 3.5 cross-layer correlation detects attack chains spanning multiple MAESTRO layers with chain-breaking control recommendations. Automatically detects baseline from previous runs for delta tracking.
 
 ```bash
 # Default -- uses docs/security/architecture.md
@@ -243,10 +243,10 @@ Generates visual threat infographic specifications and presentation-ready images
 
 ### /tachi.security-report
 
-Assembles all pipeline artifacts into a professional multi-page PDF security assessment booklet. Auto-detects available artifacts and conditionally includes pages. Requires `typst` CLI for PDF compilation and optionally `mmdc` (Mermaid CLI) for attack path diagram rendering.
+Assembles all pipeline artifacts into a professional multi-page PDF security assessment booklet. Auto-detects available artifacts and conditionally includes pages. Requires `typst` CLI for PDF compilation and `mmdc` (Mermaid CLI) for attack path and attack chain diagram rendering (hard prerequisite per ADR-022 when diagrams are present).
 
 **Page types** (conditional, based on available artifacts):
-Cover, Disclaimer, Table of Contents, Risk Methodology, Assessment Scope, Executive Summary, Attack Path Analysis, MAESTRO Findings, Infographic pages (full-bleed), Findings Detail, Control Coverage, Remediation Roadmap
+Cover, Disclaimer, Table of Contents, Risk Methodology, Assessment Scope, Executive Summary, Attack Path Analysis, Attack Chain Diagrams, MAESTRO Findings, Infographic pages (full-bleed), Findings Detail, Control Coverage, Remediation Roadmap
 
 ```bash
 # Generate PDF from the default location
@@ -336,7 +336,7 @@ The [`examples/`](examples/) directory contains complete threat models across di
 | [ASCII Web API](examples/ascii-web-api/) | ASCII | REST API with database | STRIDE |
 | [Free-text Microservice](examples/free-text-microservice/) | Free-text | Event-driven microservice | STRIDE |
 
-The agentic-app example includes a [complete sample report](examples/agentic-app/sample-report/) showing every artifact the pipeline produces -- structured findings, SARIF, narrative report, attack trees, risk scores, compensating controls, and infographics:
+The agentic-app example includes a [complete sample report](examples/agentic-app/sample-report/) showing every artifact the pipeline produces -- structured findings, SARIF, narrative report, attack trees, cross-layer attack chains, risk scores, compensating controls, and infographics:
 
 ![Threat Baseball Card](examples/agentic-app/sample-report/threat-baseball-card.jpg)
 

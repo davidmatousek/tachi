@@ -126,11 +126,11 @@ triad:
 
 **Purpose**: ADR documentation, backward compatibility verification, and full regression testing.
 
-- [ ] T029 [P] Update ADR-020 at `docs/architecture/02_ADRs/ADR-020-maestro-layer-classification.md`: add "Phase 2: Cross-Layer Correlation" section documenting correlation architecture, Phase 3.5 placement, rule-based pattern matching, chain assembly algorithm. Update Decision section. Cross-reference attack-chain.yaml schema
-- [ ] T030 Regenerate backward-compatibility PDF baselines under `SOURCE_DATE_EPOCH=1700000000` for 5 examples without chains (web-app, microservices, ascii-web-api, free-text-microservice, mermaid-agentic-app) and verify byte-identical against pre-feature baselines per ADR-021
-- [ ] T031 Run full pytest suite (`tests/scripts/`) and verify all tests pass including new test_attack_chains.py and test_attack_chain_extraction.py
-- [ ] T032 [P] Update `README.md` prerequisites section to document attack-chains artifact in pipeline output list
-- [ ] T033 Final validation: run pipeline on agentic-app and verify SC-001 (chain detection), SC-002 (chain quality), SC-003 (output completeness), SC-004 (determinism), SC-007 (3+ layer example chain)
+- [X] T029 [P] Update ADR-020 at `docs/architecture/02_ADRs/ADR-020-maestro-layer-classification.md`: add "Phase 2: Cross-Layer Correlation" section documenting correlation architecture, Phase 3.5 placement, rule-based pattern matching, chain assembly algorithm. Update Decision section. Cross-reference attack-chain.yaml schema
+- [X] T030 Regenerate backward-compatibility PDF baselines under `SOURCE_DATE_EPOCH=1700000000` for 5 examples without chains (web-app, microservices, ascii-web-api, free-text-microservice, mermaid-agentic-app) and verify byte-identical against pre-feature baselines per ADR-021
+- [X] T031 Run full pytest suite (`tests/scripts/`) and verify all tests pass including new test_attack_chains.py and test_attack_chain_extraction.py
+- [X] T032 [P] Update `README.md` prerequisites section to document attack-chains artifact in pipeline output list
+- [X] T033 Final validation: run pipeline on agentic-app and verify SC-001 (chain detection), SC-002 (chain quality), SC-003 (output completeness), SC-004 (determinism), SC-007 (3+ layer example chain)
 
 ---
 
