@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.11.1](https://github.com/davidmatousek/tachi/compare/v4.11.0...v4.11.1) (2026-04-12)
+
+
+### Bug Fixes
+
+* **154:** PDF report — attack trees, MAESTRO headings, landscape whitespace ([#155](https://github.com/davidmatousek/tachi/issues/155)) ([7f047b7](https://github.com/davidmatousek/tachi/commit/7f047b7fe42736bd51e60d8dfca18af33cb86d98)), closes [#154](https://github.com/davidmatousek/tachi/issues/154)
+
 ## [4.11.0](https://github.com/davidmatousek/tachi/compare/v4.10.1...v4.11.0) (2026-04-12)
 
 
