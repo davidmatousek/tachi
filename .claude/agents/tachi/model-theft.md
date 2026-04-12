@@ -22,101 +22,28 @@ output_schema: ../../../schemas/finding.yaml
 
 ## Purpose
 
-Detects threats where an attacker attempts to steal, replicate, or extract proprietary model assets. Model theft encompasses direct exfiltration of model weights and parameters, API-based model extraction where systematic querying reconstructs a functional copy, and unauthorized access to model artifacts stored in training infrastructure. Successful model theft results in loss of intellectual property, enables adversaries to discover model vulnerabilities offline, and eliminates competitive advantages derived from proprietary model capabilities. This agent identifies weight exfiltration, API-based extraction, model artifact exposure, and side-channel attacks that reveal model architecture or parameters.
+Detects threats where an attacker attempts to steal, replicate, or extract proprietary model assets. Model theft encompasses direct exfiltration of model weights and parameters, API-based model extraction where systematic querying reconstructs a functional copy, unauthorized access to model artifacts in training infrastructure, embedding and fine-tune exfiltration via inference APIs (ATLAS AML.T0024), and system prompt leakage (OWASP LLM07:2025). Successful model theft destroys intellectual property, enables offline vulnerability discovery, and eliminates competitive advantages derived from proprietary model capabilities.
 
-## Detection Scope
+## Skill References
 
-### Trigger Keywords
+| Reference | File | Load When | Purpose |
+|-----------|------|-----------|---------|
+| Detection patterns | `.claude/skills/tachi-model-theft/references/detection-patterns.md` | At detection start | Externalized pattern catalog for model theft and extraction |
+| Severity bands | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | At detection start | OWASP 3×3 risk matrix for finding severity computation |
+| Finding format | `.claude/skills/tachi-shared/references/finding-format-shared.md` | At detection start | Canonical finding schema and field guidance |
 
-This agent activates when a DFD element name or description matches any of the following patterns (case-insensitive):
+## Detection Workflow
 
-- `LLM`
-- `model`
-- `GPT`
-- `Claude`
-- `weights`
-- `checkpoint`
-- `inference`
-- `model registry`
-- `model serving`
-- `model API`
-- `fine-tuned`
+**MANDATORY**: Read `.claude/skills/tachi-model-theft/references/detection-patterns.md` — load before applying patterns to components.
 
-### Applicable DFD Element Types
+1. Iterate dispatched components from orchestrator input, filtering to Data Store and Process DFD element types that match the trigger keywords in the reference file (LLM, model, weights, checkpoint, inference, model registry, model serving, model API, fine-tuned).
+2. For each component, walk through the pattern categories in the reference file (direct weight exfiltration, API-based extraction, artifact exposure, side-channel reconstruction, fine-tuned model theft, unbounded consumption, supply chain compromise, ATLAS inference-API exfiltration, system prompt leakage) and collect every indicator present.
+3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: llm`, a sequential `LLM-N` id, and the target component name.
+4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of confidentiality, integrity, intellectual property), then compute `risk_level` via the OWASP 3×3 matrix in `severity-bands-shared.md`.
+5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP LLM10/LLM07/LLM03, OWASP AI Exchange, MITRE ATLAS AML.T0024/T0057, MITRE ATT&CK T1005, CWE-200/209/522) from the reference file's Primary Sources list.
+6. Emit the finding list to the orchestrator for Phase 3 aggregation. If no components match any trigger keyword, return zero findings; do not speculate about model theft on architectures without model hosting or inference components.
 
-- **Data Store**: Model registries, weight storage systems, checkpoint repositories, artifact stores, and any storage containing model parameters, configurations, or training outputs.
-- **Process**: Model serving endpoints, inference APIs, training pipelines, and fine-tuning processes that have access to model weights or produce outputs from which model behavior can be inferred.
-
-### Detection Patterns
-
-1. **Direct Weight Exfiltration**: Unauthorized access to stored model files, parameters, or checkpoints. Look for:
-   - Model weight files stored in shared storage without access controls (S3 buckets, NFS mounts, model registries)
-   - Overly broad IAM permissions on model artifact storage
-   - Training pipelines that write checkpoints to world-readable locations
-   - Model serving infrastructure where the container filesystem exposes weight files
-   - Absence of encryption at rest for model artifacts
-
-2. **API-Based Model Extraction**: Systematic querying of a model API to reconstruct a functional copy through distillation. Look for:
-   - Model APIs that return full probability distributions (logits/logprobs) rather than only top-k outputs
-   - Absence of rate limiting or query budgets on model API endpoints
-   - No monitoring for systematic query patterns (grid sampling, active learning probes)
-   - APIs that do not enforce per-user or per-API-key query volume limits
-   - Lack of query diversity analysis to detect extraction campaigns
-
-3. **Model Artifact Exposure**: Unintended disclosure of model architecture, hyperparameters, or training configurations. Look for:
-   - API error messages that reveal model architecture details (layer counts, parameter sizes, framework versions)
-   - Debug endpoints or health checks that expose model metadata
-   - Model versioning systems where older (less protected) versions remain accessible
-   - Documentation or API schemas that unnecessarily disclose model architecture details
-   - Container images published with model weights embedded
-
-4. **Side-Channel Model Reconstruction**: Inference timing, memory patterns, or response characteristics that leak model structure information. Look for:
-   - Model APIs without response time normalization (timing reveals model complexity per query)
-   - Batch inference endpoints where batch size affects response time predictably
-   - Model APIs that expose token-level timing information
-   - GPU utilization metrics exposed through monitoring dashboards
-
-5. **Fine-Tuned Model Theft**: Theft of organization-specific fine-tuned models or adapters that represent proprietary domain knowledge. Look for:
-   - LoRA adapters or PEFT modules stored without access controls
-   - Fine-tuned model sharing between teams without tracking or authorization
-   - Model export functionality that allows downloading fine-tuned weights
-   - Absence of model asset inventory (unknown models cannot be protected)
-
-6. **Unbounded Inference Consumption**: Attackers exploit unrestricted access to model inference endpoints to consume excessive compute resources, effectively stealing model value through unconstrained usage. Look for:
-   - Model inference APIs without per-user or per-API-key usage quotas
-   - Absence of cost controls or budget caps on inference compute
-   - No monitoring of inference volume anomalies or consumption spikes per tenant
-   - Free-tier or unauthenticated access to model endpoints that enables unlimited querying
-   - Missing billing attribution that allows inference costs to be shifted to the model owner
-
-7. **Model Supply Chain Compromise**: Tampering with model artifacts, dependencies, or serving infrastructure within the supply chain to inject backdoors or replace legitimate models. Look for:
-   - Base models or pretrained checkpoints downloaded from public registries without cryptographic signature verification
-   - Model serving frameworks or inference libraries sourced from unverified package repositories
-   - CI/CD pipelines for model deployment that lack artifact integrity checks between build and deploy stages
-   - Model conversion tools (ONNX export, quantization) sourced from untrusted origins
-   - Absence of a software bill of materials (SBOM) for model inference dependencies
-
-### Empty Results Guidance
-
-When the architecture input contains no LLM, language model, model serving, or model storage components (i.e., no DFD elements match any trigger keyword in the Detection Scope), this agent should produce zero findings. Do not generate speculative or hypothetical model theft findings for architectures that do not include model hosting or model inference components.
-
-## Finding Template
-
-```yaml
-id: "LLM-{N}"
-category: llm
-component: "{component name from architecture input}"
-threat: "{specific model theft threat description}"
-likelihood: "{LOW | MEDIUM | HIGH}"
-impact: "{LOW | MEDIUM | HIGH}"
-risk_level: "{computed from OWASP 3x3 matrix}"
-mitigation: "{recommended countermeasure}"
-references:
-  - "OWASP LLM10:2025"
-dfd_element_type: "{Data Store | Process}"
-```
-
-### Example Findings
+## Example Findings
 
 **Model Weights Exposed via Unprotected Storage**:
 
@@ -166,23 +93,3 @@ references:
   - "CWE-209"
 dfd_element_type: "Process"
 ```
-
-### Risk Level Computation
-
-Apply the OWASP 3x3 matrix to determine `risk_level` from `likelihood` and `impact`:
-
-|  | LOW Likelihood | MEDIUM Likelihood | HIGH Likelihood |
-|---|---|---|---|
-| **HIGH Impact** | Medium | High | Critical |
-| **MEDIUM Impact** | Low | Medium | High |
-| **LOW Impact** | Note | Low | Medium |
-
-## References
-
-- **OWASP LLM10:2025 - Model Theft**: https://genai.owasp.org/llmrisk/llm10-model-theft/
-- **OWASP LLM03:2025 - Supply Chain Vulnerabilities**: https://genai.owasp.org/llmrisk/llm03-supply-chain-vulnerabilities/
-- **MITRE ATLAS - ML Model Access**: Tactic TA0044, Technique AML.T0044
-- **Tramer et al., 2016**: "Stealing Machine Learning Models via Prediction APIs" — foundational work on API-based model extraction
-- **CWE-200 - Exposure of Sensitive Information to an Unauthorized Actor**: Parent category covering model weight exfiltration, API-based extraction, and metadata leakage
-- **CWE-209 - Generation of Error Message Containing Sensitive Information**: Applicable to model metadata leakage through error responses
-- **CWE-522 - Insufficiently Protected Credentials**: Analogous to insufficiently protected model artifacts
