@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.13.0](https://github.com/davidmatousek/tachi/compare/v4.12.0...v4.13.0) (2026-04-12)
+
+
+### Features
+
+* **141:** MAESTRO Phase 2 — Cross-Layer Attack Chain Analysis ([#159](https://github.com/davidmatousek/tachi/issues/159)) ([5a108e9](https://github.com/davidmatousek/tachi/commit/5a108e984aa8623df3a856007c876006cdff6eb3))
+
+
+### Bug Fixes
+
+* **141:** constrain attack chain diagram height to fit one page ([2310af3](https://github.com/davidmatousek/tachi/commit/2310af313128aaec1cd147a3f028aba41a2f2150))
+
 ## [4.12.0](https://github.com/davidmatousek/tachi/compare/v4.11.1...v4.12.0) (2026-04-12)
 
 
