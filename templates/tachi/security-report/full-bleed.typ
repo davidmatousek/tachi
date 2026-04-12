@@ -36,12 +36,23 @@
 //   section-name   (content|none) — heading text for the page and TOC.
 //   classification (string|none)  — classification marking for header bar.
 //   description    (content|none) — explanatory text rendered below the image.
+//   is-portrait    (bool)         — true for portrait-aspect images (e.g.,
+//                                    executive-architecture 912×1168); false
+//                                    (default) for landscape 16:9 infographics
+//                                    (1376×768) like risk-funnel, baseball-card,
+//                                    maestro-stack, maestro-heatmap, etc.
+//                                    Landscape images are sized by content
+//                                    width so the border hugs the image and
+//                                    no dead whitespace surrounds it. Portrait
+//                                    images are capped at 7.5in tall to avoid
+//                                    page overflow.
 
 #let infographic-page(
   image-path,
   section-name: none,
   classification: none,
   description: none,
+  is-portrait: false,
 ) = {
   page(
     width: page-width,
@@ -62,19 +73,32 @@
       heading(level: 1)[#section-name]
     }
 
-    // Image with rounded corners and subtle border, proportionally scaled.
-    // Height is constrained so portrait-aspect images (e.g., executive-architecture)
-    // don't overflow onto subsequent pages. `fit: "contain"` preserves aspect ratio
-    // within the 100% x 7.5in bounding box.
-    #block(
-      width: 100%,
-      height: 7.5in,
-      radius: 4pt,
-      clip: true,
-      stroke: 0.5pt + color-rule,
-    )[
-      #image(image-path, width: 100%, height: 100%, fit: "contain")
-    ]
+    // Image block: orientation-aware sizing so the border hugs the image
+    // without leaving dead whitespace above or below.
+    //   - Landscape: block fills content width; height derives from image aspect
+    //   - Portrait:  block capped at 7.5in tall; width derives from image aspect
+    #if is-portrait {
+      align(center,
+        block(
+          radius: 4pt,
+          clip: true,
+          stroke: 0.5pt + color-rule,
+          inset: 0pt,
+        )[
+          #image(image-path, height: 7.5in)
+        ],
+      )
+    } else {
+      block(
+        width: 100%,
+        radius: 4pt,
+        clip: true,
+        stroke: 0.5pt + color-rule,
+        inset: 0pt,
+      )[
+        #image(image-path, width: 100%)
+      ]
+    }
 
     // Explanatory text below the image.
     #if description != none {

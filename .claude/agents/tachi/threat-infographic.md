@@ -138,6 +138,28 @@ Data extraction is performed by a deterministic Python script that replaces the 
 
 ### Script Invocation
 
+**Preflight (MANDATORY)**: Verify the extraction script and its parser helpers exist before invoking:
+
+```bash
+test -f scripts/extract-infographic-data.py && test -f scripts/tachi_parsers.py
+```
+
+If either file is missing, abort with:
+
+```
+EXTRACTION SCRIPT MISSING
+
+Required files not found:
+  - scripts/extract-infographic-data.py
+  - scripts/tachi_parsers.py
+
+Re-run the tachi installer to distribute these files:
+
+  ~/Projects/tachi/scripts/install.sh
+
+DO NOT attempt LLM-based inline extraction as a fallback.
+```
+
 Run the extraction script before generating the specification:
 
 ```bash

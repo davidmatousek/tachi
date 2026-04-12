@@ -204,6 +204,7 @@
     executive-architecture-image-path,
     section-name: "Executive Threat Architecture",
     classification: classification,
+    is-portrait: true,
     description: [
       Layered system architecture with critical and high severity threats annotated as narrative callouts. This visualization highlights where the most exposed components sit in the system and what kind of attack each layer is most vulnerable to.
     ],

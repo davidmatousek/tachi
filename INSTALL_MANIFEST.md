@@ -12,6 +12,7 @@ Canonical list of files and directories that must be copied when installing tach
 | `templates/tachi/output-schemas/` | Canonical output format templates | orchestrator, risk-scorer, control-analyzer, threat-report |
 | `templates/tachi/infographics/` | Infographic design templates | threat-infographic |
 | `templates/tachi/security-report/` | Typst PDF report templates | report-assembler |
+| `scripts/` (3 Python files) | Deterministic extraction scripts | report-assembler, threat-infographic |
 | `adapters/claude-code/agents/references/` | SARIF generation and validation guides | risk-scorer, control-analyzer |
 | `brand/` | Logo assets for branded PDF reports | report-assembler |
 | `docs/guides/DEVELOPER_GUIDE_TACHI.md` | Full walkthrough with worked examples | User reference |
@@ -53,6 +54,22 @@ Copy the entire `.claude/agents/tachi/` directory. Current agents:
 | `threat-infographic.md` | Visual infographic generator |
 | `report-assembler.md` | PDF report assembler |
 
+## Script Files
+
+Copy these 3 Python files from `scripts/` to the target project's `scripts/`:
+
+| File | Purpose | Invoked By |
+|------|---------|------------|
+| `extract-report-data.py` | Parses tachi artifacts and generates `report-data.typ` for Typst compilation; also renders attack-tree Mermaid blocks to PNG via mmdc | report-assembler (via `/tachi.security-report`) |
+| `extract-infographic-data.py` | Parses tachi artifacts and generates infographic specification JSON | threat-infographic (via `/tachi.infographic`) |
+| `tachi_parsers.py` | Shared parser helpers imported by both extraction scripts | extract-report-data.py, extract-infographic-data.py |
+
+Scripts use stdlib-only imports — no pip dependencies required in the target project.
+
+**Critical**: If these scripts are missing, the report-assembler and threat-infographic agents will silently fall through to LLM-based inline extraction, producing technically-compiling but field-incomplete outputs (missing attack-tree images, empty MAESTRO layer headings, missing infographic data). Always include these files when distributing tachi.
+
+Other files in `scripts/` (`check.sh`, `install.sh`, `generate-adapter-version.sh`, `polish-release-notes.sh`, `sync-upstream.sh`) are tachi-internal and are NOT distributed to target projects.
+
 ## Schema Files
 
 Copy the entire `schemas/` directory. Current schemas:
@@ -80,6 +97,9 @@ The install script parses this section automatically. One path per line — dire
 .claude/commands/tachi.architecture.md
 schemas/
 templates/tachi/
+scripts/extract-report-data.py
+scripts/extract-infographic-data.py
+scripts/tachi_parsers.py
 adapters/claude-code/agents/references/
 brand/
 docs/guides/DEVELOPER_GUIDE_TACHI.md
@@ -95,6 +115,7 @@ When adding a new feature, check whether it requires updates to:
 - [ ] A new output template in `templates/tachi/output-schemas/`
 - [ ] A new infographic template in `templates/tachi/infographics/`
 - [ ] New report page templates in `templates/tachi/security-report/`
+- [ ] A new distributable Python script in `scripts/` -- add to script table above
 - [ ] New reference docs in `adapters/claude-code/agents/references/`
 - [ ] Update install instructions in `README.md` and `docs/guides/DEVELOPER_GUIDE_TACHI.md`
 - [ ] Update the machine-parseable manifest section (`<!-- BEGIN MANIFEST -->` / `<!-- END MANIFEST -->`)
