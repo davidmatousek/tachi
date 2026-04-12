@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.11.0](https://github.com/davidmatousek/tachi/compare/v4.10.1...v4.11.0) (2026-04-12)
+
+
+### Features
+
+* **082:** threat agent skill references — detection tier lean refactor ([#151](https://github.com/davidmatousek/tachi/issues/151)) ([6f9a40d](https://github.com/davidmatousek/tachi/commit/6f9a40dbe17b14a04f10b56357f1a81bb025e24d))
+
 ## [4.10.1](https://github.com/davidmatousek/tachi/compare/v4.10.0...v4.10.1) (2026-04-11)
 
 
