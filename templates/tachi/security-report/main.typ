@@ -44,6 +44,7 @@
 #import "control-coverage.typ": control-coverage-page
 #import "remediation-roadmap.typ": remediation-roadmap-page
 #import "attack-path.typ": attack-path-page
+#import "attack-chain.typ": attack-chain-page
 
 
 // ---------------------------------------------------------------------------
@@ -97,6 +98,10 @@
 // Attack tree defaults (empty = no attack path pages).
 #let has-attack-trees = if has-attack-trees != none { has-attack-trees } else { false }
 #let attack-trees = if attack-trees != none { attack-trees } else { () }
+
+// Attack chain defaults (empty = no attack chain pages, Feature 141).
+#let has-attack-chains = if has-attack-chains != none { has-attack-chains } else { false }
+#let attack-chains = if attack-chains != none { attack-chains } else { () }
 
 // Executive threat architecture defaults (F-128 — false = no executive architecture page).
 #let has-executive-architecture = if has-executive-architecture != none { has-executive-architecture } else { false }
@@ -230,6 +235,29 @@
       footer: report-footer(),
     )[
       #attack-path-page(entry: entry, classification: classification)
+    ]
+  }
+}
+
+
+// --- Cross-Layer Attack Chain Analysis (conditional) ------------------------
+// One page per surfaced (Critical/High) cross-layer attack chain. Section
+// divider + individual pages, gated by has-attack-chains boolean (Feature 141).
+#if has-attack-chains and attack-chains.len() > 0 {
+  section-divider("Cross-Layer Attack Chain Analysis", classification: classification)
+  for entry in attack-chains {
+    page(
+      width: page-width,
+      height: page-height,
+      margin: (
+        top: margin-top,
+        bottom: margin-bottom,
+        left: margin-left,
+        right: margin-right,
+      ),
+      footer: report-footer(),
+    )[
+      #attack-chain-page(entry: entry, classification: classification)
     ]
   }
 }

@@ -53,16 +53,17 @@ Single-command entry point for tachi security assessment PDF generation — the 
      ```
    - Halt if not installed.
 
-2. **Check mmdc is installed when attack trees are present**:
-   - Detect attack-tree presence: `ls "$target_dir"/attack-trees/*.md 2>/dev/null | head -n 1`. If the result is non-empty, the target project has at least one attack-tree file and mmdc is required.
-   - If attack trees are present, run `command -v mmdc >/dev/null 2>&1` to verify mmdc CLI is available.
+2. **Check mmdc is installed when attack trees or attack chains are present**:
+   - Detect attack-tree presence: `ls "$target_dir"/attack-trees/*.md 2>/dev/null | head -n 1`. If the result is non-empty, the target project has at least one attack-tree file.
+   - Detect attack-chain presence: `test -f "$target_dir/attack-chains.md"`. If the file exists, the target project has attack chain data requiring chain diagram rendering.
+   - If attack trees OR attack chains are present, run `command -v mmdc >/dev/null 2>&1` to verify mmdc CLI is available.
    - If mmdc is not found, display to stderr:
      ```
-     Attack path rendering requires @mermaid-js/mermaid-cli (mmdc).
+     Attack path/chain rendering requires @mermaid-js/mermaid-cli (mmdc).
      Install with: npm install -g @mermaid-js/mermaid-cli
      Then re-run /tachi.security-report.
      ```
-   - Halt (exit non-zero) if mmdc is not installed. Skip this check entirely when the target has no attack trees — projects without attack-path output do not need mmdc.
+   - Halt (exit non-zero) if mmdc is not installed. Skip this check entirely when the target has no attack trees and no attack chains — projects without Mermaid-based output do not need mmdc.
 
 3. **Auto-detect artifacts in target directory**:
 
@@ -80,6 +81,7 @@ Single-command entry point for tachi security assessment PDF generation — the 
    | MAESTRO Stack Infographic | `threat-maestro-stack.jpg` | optional | MAESTRO Stack page (full-bleed) |
    | MAESTRO Heatmap Infographic | `threat-maestro-heatmap.jpg` | optional | MAESTRO Heatmap page (full-bleed) |
    | Attack Trees | `attack-trees/*.md` | optional | Attack Path pages (portrait) |
+   | Attack Chains | `attack-chains.md` | optional | Attack Chain pages (portrait, Feature 141) |
    | Brand Assets | `brand/final/tachi-logo-*.png` | optional | Cover (branded), Headers (branded) |
 
 3. **Require `threats.md` minimum**:
@@ -124,6 +126,7 @@ Single-command entry point for tachi security assessment PDF generation — the 
      threat-maestro-stack.jpg ... {FOUND | not found}
      threat-maestro-heatmap.jpg . {FOUND | not found}
      attack-trees/ ................. {FOUND (N files) | not found}
+     attack-chains.md .............. {FOUND | not found}
      brand/final/*.png .............. {FOUND (N files) | not found}
 
    Data source tier: {Tier 1 — residual risk | Tier 2 — quantitative | Tier 3 — qualitative}
@@ -137,6 +140,7 @@ Single-command entry point for tachi security assessment PDF generation — the 
      5. Assessment Scope ......... portrait (US Letter)
      6. Executive Summary ......... portrait (US Letter)
      {if attack-trees found: "N. Attack Path Analysis ...... portrait (US Letter)"}
+     {if attack-chains found: "N. Attack Chain Analysis ..... portrait (US Letter)"}
      {if risk-funnel found:  "N. Risk Funnel .............. landscape (full-bleed 16:9)"}
      {if baseball-card found: "N. Baseball Card ............ landscape (full-bleed 16:9)"}
      {if architecture found:  "N. System Architecture ...... landscape (full-bleed 16:9)"}

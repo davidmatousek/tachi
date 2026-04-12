@@ -47,6 +47,7 @@ from tachi_parsers import (
     parse_component_distribution,
     parse_scope_data,
     parse_compensating_controls_md,
+    parse_attack_chains,
     strip_bold,
 )
 
@@ -715,7 +716,7 @@ _render_attack_trees_dir: "Path | None" = None
 _render_rel_target: "str | None" = None
 
 
-def _build_error_record(fid: str, failure_class: str, stderr_bytes) -> dict:
+def _build_error_record(fid: str, failure_class: str, stderr_bytes, subdir: str = "attack-trees") -> dict:
     raw = stderr_bytes if stderr_bytes is not None else b""
     if isinstance(raw, str):
         excerpt = raw[:200]
@@ -723,7 +724,7 @@ def _build_error_record(fid: str, failure_class: str, stderr_bytes) -> dict:
         excerpt = raw[:200].decode("utf-8", errors="replace")
     return {
         "id": fid,
-        "file_path": f"attack-trees/{fid.lower()}.mmd",
+        "file_path": f"{subdir}/{fid.lower()}.mmd",
         "failure_class": failure_class,
         "stderr_excerpt": excerpt,
     }
@@ -823,6 +824,230 @@ def render_mermaid_to_png(attack_trees: list, target_dir: Path, template_dir: Pa
                     lines.append(f"    failure: {rec['failure_class']}")
                     lines.append(f"    stderr: {rec['stderr_excerpt']}")
                 raise RuntimeError("\n".join(lines))
+
+
+# =============================================================================
+# Attack Chain Processing (Feature 141 — Phase 3.5 cross-layer correlation)
+# =============================================================================
+
+# Canonical MAESTRO layer names for Mermaid diagram node labels.
+_MAESTRO_LAYER_NAMES = {
+    "L1": "Foundation Model",
+    "L2": "Data Operations",
+    "L3": "Agent Framework",
+    "L4": "Deployment Infrastructure",
+    "L5": "Evaluation & Observability",
+    "L6": "Security & Compliance",
+    "L7": "Agent Ecosystem",
+}
+
+# Mermaid node colors per MAESTRO layer (distinct from attack tree red/orange).
+_MAESTRO_LAYER_COLORS = {
+    "L1": "#6366f1",  # indigo
+    "L2": "#8b5cf6",  # violet
+    "L3": "#a855f7",  # purple
+    "L4": "#3b82f6",  # blue
+    "L5": "#06b6d4",  # cyan
+    "L6": "#14b8a6",  # teal
+    "L7": "#f59e0b",  # amber
+}
+
+
+def generate_chain_mermaid(chain: dict) -> str:
+    """Generate a Mermaid flowchart TD diagram for a single attack chain.
+
+    Produces a vertical MAESTRO layer stack with L1 at top, L7 at bottom,
+    downward attack progression arrows with causal labels between layers.
+
+    Args:
+        chain: Parsed chain dict from parse_attack_chains().
+
+    Returns:
+        Mermaid flowchart source string.
+    """
+    findings = chain.get("findings", [])
+    if not findings:
+        return ""
+
+    lines = ["flowchart TD"]
+
+    # Define nodes for each finding in layer order
+    for f in findings:
+        layer = f.get("maestro_layer", "")
+        finding_id = f.get("finding_id", "")
+        component = f.get("component", "")
+        category = f.get("category", "")
+        layer_name = _MAESTRO_LAYER_NAMES.get(layer, layer)
+        color = _MAESTRO_LAYER_COLORS.get(layer, "#64748b")
+
+        # Node ID uses layer (safe for Mermaid identifiers)
+        node_id = layer.replace(" ", "")
+        label = f"{layer}: {layer_name}"
+        if finding_id:
+            label += f"<br/>{finding_id}"
+        if component:
+            label += f"<br/>{component}"
+
+        lines.append(f'    {node_id}["{label}"]')
+        lines.append(f"    style {node_id} fill:{color},stroke:#1e293b,color:#fff")
+
+    # Define edges between consecutive findings with causal labels
+    for i in range(len(findings) - 1):
+        src = findings[i].get("maestro_layer", "").replace(" ", "")
+        dst = findings[i + 1].get("maestro_layer", "").replace(" ", "")
+        # Use causal_relationship from the source finding if available
+        causal = findings[i].get("causal_relationship", "")
+        if not causal:
+            causal = "enables"
+        # Truncate long labels for diagram readability
+        if len(causal) > 40:
+            causal = causal[:37] + "..."
+        lines.append(f'    {src} -->|"{causal}"| {dst}')
+
+    return "\n".join(lines)
+
+
+def prepare_attack_chains(target_dir: Path, findings: list, template_dir: Path) -> tuple:
+    """Parse attack chains, generate Mermaid diagrams, and render to PNG.
+
+    Follows the same pattern as parse_attack_trees + render_mermaid_to_png
+    but generates Mermaid code from structured chain data.
+
+    Args:
+        target_dir: Directory containing attack-chains.md artifact.
+        findings: Parsed findings list for cross-referencing.
+        template_dir: Typst template directory (for relative path calculation).
+
+    Returns:
+        (has_attack_chains: bool, chains: list of chain dicts with rendering data)
+    """
+    chains_file = target_dir / "attack-chains.md"
+    if not chains_file.exists():
+        return False, []
+
+    content = chains_file.read_text(encoding="utf-8")
+    chains = parse_attack_chains(content)
+
+    if not chains:
+        return False, []
+
+    # Filter to surfaced chains only (Critical/High) for PDF rendering
+    surfaced = [c for c in chains if c.get("surfaced", False)]
+
+    if not surfaced:
+        return True, chains  # chains exist but none surfaced for PDF
+
+    # Generate Mermaid code for each surfaced chain
+    for chain in surfaced:
+        chain["mermaid_code"] = generate_chain_mermaid(chain)
+
+    # Prepare rendering entries (adapt to render_mermaid_to_png interface)
+    render_entries = []
+    for chain in surfaced:
+        if chain.get("mermaid_code"):
+            render_entries.append({
+                "id": chain["chain_id"],
+                "mermaid_code": chain["mermaid_code"],
+            })
+
+    if render_entries:
+        _render_chain_diagrams(render_entries, target_dir, template_dir)
+        # Map rendered paths back to chains
+        rendered_map = {e["id"]: e for e in render_entries}
+        for chain in surfaced:
+            entry = rendered_map.get(chain["chain_id"])
+            if entry:
+                chain["has_image"] = entry.get("has_image", False)
+                chain["image_path"] = entry.get("image_path", "")
+            else:
+                chain["has_image"] = False
+                chain["image_path"] = ""
+    else:
+        for chain in surfaced:
+            chain["has_image"] = False
+            chain["image_path"] = ""
+
+    return True, chains
+
+
+def _render_chain_diagrams(entries: list, target_dir: Path, template_dir: Path):
+    """Render chain Mermaid diagrams to PNG, following render_mermaid_to_png pattern.
+
+    Writes PNGs to {target_dir}/attack-chains/ directory.
+    """
+    if not entries:
+        return
+
+    if not shutil.which("mmdc"):
+        raise RuntimeError(
+            "Attack chain rendering requires @mermaid-js/mermaid-cli (mmdc).\n"
+            "Install with: npm install -g @mermaid-js/mermaid-cli\n"
+            "Then re-run /tachi.security-report."
+        )
+
+    try:
+        rel_target = os.path.relpath(str(target_dir), str(template_dir))
+    except ValueError:
+        rel_target = str(target_dir)
+
+    chains_dir = target_dir / "attack-chains"
+    chains_dir.mkdir(exist_ok=True)
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+            futures = [
+                pool.submit(_render_chain_single, entry, tmp_path, chains_dir, rel_target)
+                for entry in entries
+            ]
+            failures = []
+            for future in concurrent.futures.as_completed(futures):
+                entry, success, value = future.result()
+                if success:
+                    entry["has_image"] = True
+                    entry["image_path"] = value
+                else:
+                    entry["has_image"] = False
+                    entry["image_path"] = ""
+                    if isinstance(value, dict):
+                        failures.append(value)
+
+            if failures:
+                lines = [f"Attack chain rendering failed for {len(failures)} chains:"]
+                for rec in failures:
+                    lines.append(f"  - {rec['id']} ({rec['file_path']})")
+                    lines.append(f"    failure: {rec['failure_class']}")
+                    lines.append(f"    stderr: {rec['stderr_excerpt']}")
+                raise RuntimeError("\n".join(lines))
+
+
+def _render_chain_single(entry, tmp_path, chains_dir, rel_target):
+    """Render one chain Mermaid diagram to PNG. Returns (entry, success, value)."""
+    cid = entry["id"]
+    cid_lower = cid.lower()
+    mermaid_code = entry.get("mermaid_code", "")
+    if not mermaid_code:
+        return (entry, False, "")
+
+    mmd_file = tmp_path / f"{cid_lower}.mmd"
+    png_file = tmp_path / f"{cid_lower}.png"
+    mmd_file.write_text(mermaid_code, encoding="utf-8")
+
+    try:
+        subprocess.run(
+            ["mmdc", "-i", str(mmd_file), "-o", str(png_file), "-s", "2", "-b", "transparent"],
+            capture_output=True,
+            timeout=30,
+            check=True,
+        )
+        dest_png = chains_dir / f"{cid_lower}-attack-chain.png"
+        shutil.copy2(str(png_file), str(dest_png))
+        return (entry, True, rel_target + "/attack-chains/" + f"{cid_lower}-attack-chain.png")
+    except subprocess.CalledProcessError as e:
+        failure_class = "signal" if e.returncode < 0 else f"exit:{e.returncode}"
+        return (entry, False, _build_error_record(cid, failure_class, e.stderr, subdir="attack-chains"))
+    except subprocess.TimeoutExpired as e:
+        return (entry, False, _build_error_record(cid, "timeout", e.stderr, subdir="attack-chains"))
 
 
 # =============================================================================
@@ -1196,7 +1421,42 @@ def generate_report_data_typ(data: dict) -> str:
         lines.append("#let attack-trees = ()")
     lines.append("")
 
-    # 3r: Page Visibility
+    # 3r: Attack Chain Data (Feature 141)
+    lines.append("// --- Attack Chain Data -------------------------------------------------------")
+    lines.append(f"#let has-attack-chains = {_typst_bool(data.get('has_attack_chains', False))}")
+    attack_chains = data.get("attack_chains", [])
+    surfaced_chains = [c for c in attack_chains if c.get("surfaced", False)]
+    if surfaced_chains:
+        lines.append("#let attack-chains = (")
+        for chain in surfaced_chains:
+            chain_id = escape_typst_string(chain.get("chain_id", ""))
+            title = escape_typst_string(chain.get("title", ""))
+            layers = chain.get("layers", [])
+            layers_str = " → ".join(layers)
+            max_sev = escape_typst_string(chain.get("max_severity", ""))
+            narrative = escape_typst_string(chain.get("narrative", ""))
+            has_img = _typst_bool(chain.get("has_image", False))
+            img_path = escape_typst_string(chain.get("image_path", ""))
+            # Collect finding IDs
+            finding_ids = [f.get("finding_id", "") for f in chain.get("findings", [])]
+            finding_ids_typst = ", ".join(f'"{escape_typst_string(fid)}"' for fid in finding_ids if fid)
+            if finding_ids_typst:
+                finding_ids_typst += ","
+            lines.append(
+                f'  (id: "{chain_id}", '
+                f'title: "{title}", '
+                f'layers: "{escape_typst_string(layers_str)}", '
+                f'max-severity: "{max_sev}", '
+                f'has-image: {has_img}, '
+                f'image-path: "{img_path}", '
+                f'narrative: "{narrative}", '
+                f'finding-ids: ({finding_ids_typst})),')
+        lines.append(")")
+    else:
+        lines.append("#let attack-chains = ()")
+    lines.append("")
+
+    # 3s: Page Visibility
     lines.append("// --- Page Visibility (defaults, overridden by report-config.typ) ------------")
     lines.append("#let show-disclaimer = true")
     lines.append("#let show-methodology = true")
@@ -1439,6 +1699,18 @@ def main():
     else:
         data["has_attack_trees"] = False
         data["attack_trees"] = []
+
+    # Attack chain data (Feature 141 — cross-layer correlation)
+    if artifacts.get("has_attack_chains"):
+        has_chains, chains = prepare_attack_chains(target_dir, data["findings"], template_dir)
+        data["has_attack_chains"] = has_chains
+        data["attack_chains"] = chains
+        surfaced = [c for c in chains if c.get("surfaced", False)]
+        if surfaced:
+            print(f"Attack chains: {len(surfaced)} surfaced chain(s) extracted", file=sys.stderr)
+    else:
+        data["has_attack_chains"] = False
+        data["attack_chains"] = []
 
     # Delta / baseline data
     data["has_baseline"] = has_baseline
