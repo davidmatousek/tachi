@@ -1,11 +1,12 @@
 # PRD Index
 
-**Last Updated**: 2026-04-11
+**Last Updated**: 2026-04-12
 **Legend**: ✓=APPROVED, ⚠=APPROVED_WITH_CONCERNS, 🔄=CHANGES_REQUESTED, ⛔=BLOCKED, ⚠⚡=OVERRIDDEN
 
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 141 | [MAESTRO Phase 2: Cross-Layer Attack Chains](141-maestro-cross-layer-attack-chains-2026-04-12.md) | ✓ | ⚠ | ⚠ | Approved | 2026-04-12 |
 | 082 | [Threat Agent Skill References](082-threat-agent-skill-references-2026-04-11.md) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-11 |
 | 130 | [Fix Attack Path Mermaid Rendering](130-fix-attack-path-mermaid-rendering-2026-04-11.md) | ✓ | ✓ | ✓ | Delivered | 2026-04-11 |
 | 136 | [MAESTRO Canonical Layer Correctness Fix](136-maestro-canonical-layer-correctness-fix-2026-04-10.md) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-10 |

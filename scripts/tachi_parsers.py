@@ -361,6 +361,13 @@ def detect_artifacts(target_dir: Path) -> dict:
     else:
         artifacts["has_attack_trees"] = False
 
+    # File-based artifact: attack-chains.md
+    attack_chains_file = target_dir / "attack-chains.md"
+    if attack_chains_file.exists() and attack_chains_file.stat().st_size > 0:
+        artifacts["has_attack_chains"] = True
+    else:
+        artifacts["has_attack_chains"] = False
+
     return artifacts
 
 
@@ -917,3 +924,187 @@ def parse_compensating_controls_md(content: str) -> dict:
             i += 1
 
     return result
+
+
+# =============================================================================
+# Attack Chain Parser
+# =============================================================================
+
+def parse_attack_chains(content: str) -> list:
+    """Parse attack-chains.md artifact into a list of chain dicts.
+
+    Each chain dict contains:
+        chain_id: str (e.g., "CHAIN-001")
+        title: str
+        layers: list[str] (e.g., ["L2", "L3", "L7"])
+        max_severity: str (Critical, High, Medium, Low)
+        findings: list[dict] with keys: finding_id, maestro_layer, role,
+                  component, category, severity
+        narrative: str (attack progression text)
+        chain_breaking_controls: list[dict] with keys: target_finding_id,
+                                 target_layer, rationale, recommendation
+        surfaced: bool
+
+    Returns empty list if content is empty or unparseable.
+    """
+    if not content or not content.strip():
+        return []
+
+    chains = []
+    lines = content.split("\n")
+
+    # Find all chain detail subsections (### CHAIN-NNN: Title)
+    chain_starts = []
+    for i, line in enumerate(lines):
+        match = re.match(r"^###\s+(CHAIN-\d{3}):\s+(.+)$", line.strip())
+        if match:
+            chain_starts.append((i, match.group(1), match.group(2).strip()))
+
+    if not chain_starts:
+        return []
+
+    for idx, (start_line, chain_id, title) in enumerate(chain_starts):
+        # Determine section end (next chain or end of file)
+        if idx + 1 < len(chain_starts):
+            end_line = chain_starts[idx + 1][0]
+        else:
+            end_line = len(lines)
+
+        section_lines = lines[start_line:end_line]
+        section_text = "\n".join(section_lines)
+
+        # Parse layers from **Layers**: L2 → L3 → L7
+        layers = []
+        layers_match = re.search(r"\*\*Layers\*\*:\s*(.+)", section_text)
+        if layers_match:
+            layers_str = layers_match.group(1).strip()
+            layer_parts = re.split(r"\s*(?:→|->|—>)\s*", layers_str)
+            layers = [p.strip() for p in layer_parts if p.strip()]
+
+        # Parse max severity from **Max Severity**: Critical
+        max_severity = ""
+        sev_match = re.search(r"\*\*Max Severity\*\*:\s*(\w+)", section_text)
+        if sev_match:
+            max_severity = sev_match.group(1).strip()
+
+        # Parse surfaced from **Surfaced**: Yes/No
+        surfaced = False
+        surf_match = re.search(r"\*\*Surfaced\*\*:\s*(\w+)", section_text)
+        if surf_match:
+            surfaced = surf_match.group(1).strip().lower() in ("yes", "true")
+
+        # Parse member findings table
+        findings = _parse_chain_member_findings(section_text)
+
+        # Parse narrative
+        narrative = _parse_chain_narrative(section_lines)
+
+        # Parse chain-breaking controls
+        controls = _parse_chain_breaking_controls(section_text)
+
+        chains.append({
+            "chain_id": chain_id,
+            "title": title,
+            "layers": layers,
+            "max_severity": max_severity,
+            "findings": findings,
+            "narrative": narrative,
+            "chain_breaking_controls": controls,
+            "surfaced": surfaced,
+        })
+
+    return chains
+
+
+def _parse_chain_member_findings(section_text: str) -> list:
+    """Parse the Member Findings table from a chain detail section."""
+    rows = parse_markdown_table(section_text, "#### Member Findings")
+    findings = []
+    for row in rows:
+        findings.append({
+            "finding_id": row.get("Finding ID", "").strip(),
+            "maestro_layer": row.get("MAESTRO Layer", "").strip(),
+            "role": row.get("Role", "").strip(),
+            "component": row.get("Component", "").strip(),
+            "category": row.get("Category", "").strip(),
+            "severity": row.get("Severity", "").strip(),
+        })
+    return findings
+
+
+def _parse_chain_narrative(section_lines: list) -> str:
+    """Extract prose text from the Attack Progression subsection."""
+    text_start = None
+    for i, line in enumerate(section_lines):
+        if line.strip().startswith("#### Attack Progression"):
+            text_start = i + 1
+            break
+
+    if text_start is None:
+        return ""
+
+    text_lines = []
+    for i in range(text_start, len(section_lines)):
+        line = section_lines[i].strip()
+        if line.startswith("####") or line.startswith("###"):
+            break
+        if line:
+            text_lines.append(line)
+
+    return " ".join(text_lines)
+
+
+def _parse_chain_breaking_controls(section_text: str) -> list:
+    """Parse chain-breaking controls from a chain detail section.
+
+    Controls follow the pattern:
+        **Target**: finding_id (layer)
+        **Rationale**: text
+        **Recommendation**: text
+    """
+    controls = []
+    lines = section_text.split("\n")
+
+    ctrl_start = None
+    for i, line in enumerate(lines):
+        if line.strip().startswith("#### Chain-Breaking Controls"):
+            ctrl_start = i + 1
+            break
+
+    if ctrl_start is None:
+        return controls
+
+    current = {}
+    for i in range(ctrl_start, len(lines)):
+        line = lines[i].strip()
+        if line.startswith("###") and not line.startswith("#### Chain-Breaking"):
+            break
+        if line.startswith("####") and not line.startswith("#### Chain-Breaking"):
+            break
+
+        target_match = re.match(r"\*\*Target\*\*:\s*(\S+)\s*(?:\(([^)]+)\))?", line)
+        if target_match:
+            if current:
+                controls.append(current)
+            current = {
+                "target_finding_id": target_match.group(1).strip(),
+                "target_layer": target_match.group(2).strip() if target_match.group(2) else "",
+                "rationale": "",
+                "recommendation": "",
+            }
+            continue
+
+        rationale_match = re.match(r"\*\*Rationale\*\*:\s*(.+)", line)
+        if rationale_match and current:
+            current["rationale"] = rationale_match.group(1).strip()
+            continue
+
+        rec_match = re.match(r"\*\*Recommendation\*\*:\s*(.+)", line)
+        if rec_match and current:
+            current["recommendation"] = rec_match.group(1).strip()
+            continue
+
+    if current:
+        controls.append(current)
+
+    return controls

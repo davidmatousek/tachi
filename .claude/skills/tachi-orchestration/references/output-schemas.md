@@ -292,11 +292,25 @@ Before finalizing the output document, run the following validation checklist ag
 
 - [ ] `threat-report.md` exists in the output directory
 - [ ] `threat-report.md` contains YAML frontmatter with `schema_version: "1.0"`, `date`, `source_file`, `finding_count`, `risk_distribution`, `attack_tree_count`
-- [ ] `threat-report.md` contains all 7 required sections (## 1. Executive Summary through ## 7. Appendix: Finding Reference)
+- [ ] `threat-report.md` contains all required sections (## 1. Executive Summary through ## 7. Appendix: Finding Reference, plus ## 6. Cross-Layer Attack Chains when chains exist)
 - [ ] `attack-trees/` directory exists in the output directory
 - [ ] `attack-trees/` contains one file per Critical and High finding, named `{finding-id}-attack-tree.md`
 - [ ] Finding count in `threat-report.md` frontmatter matches the finding count in `threats.md`
 - [ ] Appendix: Finding Reference in `threat-report.md` contains every finding ID from `threats.md`
+
+### Phase 3.5 Outputs (conditional on chain detection)
+
+- [ ] `attack-chains.md` exists in the output directory when cross-layer chains are detected
+- [ ] `attack-chains.md` is absent when no cross-layer chains are detected (no empty artifact)
+- [ ] `attack-chains.md` contains YAML frontmatter with `schema_version: "1.0"`, `date`, `chain_count`, `surfaced_count`
+- [ ] `attack-chains.md` Section 1 (Chain Summary) contains a table with columns: Chain ID, Title, Layers, Max Severity, Finding Count, Chain-Breaking Target
+- [ ] `attack-chains.md` Section 2 (Chain Details) contains one subsection per chain with: title, layer progression, member findings table (Finding ID, MAESTRO Layer, Role, Component, Category, Severity), attack progression narrative with causal vocabulary, and chain-breaking controls
+- [ ] Chain IDs match pattern `CHAIN-NNN` with sequential numbering in ranked order
+- [ ] Each chain spans at least 2 distinct MAESTRO layers
+- [ ] Each surfaced chain has at least one Critical or High severity member finding
+- [ ] Chain narratives use canonical causal vocabulary ("enables," "triggers," "shifts," "manifests as")
+- [ ] Each chain has at least one chain-breaking control with heuristic disclaimer
+- [ ] `has-attack-chains` boolean is set for downstream consumption by threat-report agent and PDF pipeline
 
 ---
 

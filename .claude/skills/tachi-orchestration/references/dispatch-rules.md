@@ -245,4 +245,76 @@ After the self-check passes, assemble Section 4a of the output using the correla
 
 When zero correlation groups exist, output: "No cross-agent correlations detected." followed by the empty table header with no data rows. Do not omit Section 4a — it is always present in the output.
 
-After Section 4a is assembled, proceed to Phase 4: Assess.
+After Section 4a is assembled, proceed to Phase 3.5: Cross-Layer Correlation.
+
+---
+
+## Phase 3.5: Cross-Layer Attack Chain Correlation
+
+Phase 3.5 runs after Phase 3 correlation detection (Section 4a) and before Phase 4 Assess. It analyzes findings across MAESTRO layers to identify cross-layer attack chains — sequences of related findings that cascade vertically through the MAESTRO layer stack.
+
+### Placement
+
+```
+Phase 3: Determine Countermeasures
+  ├── Collect findings from agents
+  ├── Merge/deduplicate
+  ├── Table assembly (Sections 3, 4)
+  └── Correlation detection (Section 4a)
+Phase 3.5: Cross-Layer Attack Chain Correlation    <-- NEW
+  ├── Group findings by component + MAESTRO layer
+  ├── Apply correlation signals
+  ├── Assemble chains using transition lookup table
+  ├── Generate attack-chains.md (conditional)
+  └── Set has-attack-chains boolean
+Phase 4: Assess
+  ├── Coverage matrix
+  ├── Risk summary
+  └── SARIF output
+```
+
+### Input Contract
+
+Phase 3.5 consumes:
+1. **Phase 1 component inventory**: Component names, types, MAESTRO layer assignments
+2. **Phase 1 data flow graph**: Source -> target component relationships
+3. **Deduplicated findings IR**: From Phase 3, each finding has `component`, `maestro_layer`, `stride_category`, `severity`
+4. **Correlation pattern lookup table**: Loaded from `.claude/skills/tachi-shared/references/attack-chain-patterns-shared.md`
+
+Phase 3.5 does NOT consume:
+- Section 4a output (independence invariant — cross-layer chains and intra-component correlation groups are independent grouping mechanisms)
+- Raw agent output (operates on deduplicated findings IR only, bounding input size)
+
+### Output Contract
+
+Phase 3.5 produces:
+1. **`attack-chains.md`**: Structured artifact with YAML frontmatter, chain summary table, and chain details sections (conditional — only produced when chains are detected)
+2. **`has-attack-chains` boolean**: Consumed by Phase 5 (threat-report agent Section 6) and PDF pipeline (`extract-report-data.py`, `main.typ`)
+
+### Independence Invariant
+
+Phase 3.5 cross-layer chains and Phase 3 Section 4a intra-component correlation groups are independent grouping mechanisms:
+- A finding may appear in both a Section 4a correlation group AND a Phase 3.5 attack chain without conflict
+- Phase 3.5 does not read, modify, or depend on Section 4a output
+- Section 4a does not read, modify, or depend on Phase 3.5 output
+- Both contribute independently to the threat model's analytical value
+
+### Correlation Signals
+
+Phase 3.5 uses three correlation signals in priority order:
+
+| Priority | Signal | Description | Sufficient Alone? |
+|----------|--------|-------------|-------------------|
+| 1 | Component lineage | Findings targeting components connected by data flows | Yes |
+| 2 | Data flow dependency | Findings on components sharing data flow paths | Yes |
+| 3 | Layer adjacency + structural | Adjacent MAESTRO layers with transition lookup table match | No — requires signal 1 or 2 |
+
+Signal 3 (layer adjacency) refines the transition type using the lookup table in `attack-chain-patterns-shared.md` but is not sufficient alone. At least one structural signal (1 or 2) is required.
+
+### Reference
+
+- Schema: `schemas/attack-chain.yaml` (v1.0)
+- Patterns: `.claude/skills/tachi-shared/references/attack-chain-patterns-shared.md`
+- Layers: `.claude/skills/tachi-shared/references/maestro-layers-shared.md`
+
+After Phase 3.5 completes (or is skipped when no cross-layer chains exist), proceed to Phase 4: Assess.
