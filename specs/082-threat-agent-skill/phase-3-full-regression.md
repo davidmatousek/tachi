@@ -457,3 +457,49 @@ Feature 082 modifies only: `.claude/agents/tachi/*.md`, `.claude/skills/tachi-*/
 **2 / 2 PASS**. T056 no-op rebaseline (backward-compat pytest 5/5 byte-identical) + T057 live inline regeneration (+8 new findings, all 22 baseline preserved). Phase 8 re-baseline closed. Wave 18 (T055d + T058-T063 delivery) unblocked.
 
 **Tasks complete**: 61 / 68 (89.7%).
+
+---
+
+## Wave 18 Appendix — Phase 8 Docs and Delivery
+
+**Date**: 2026-04-11
+**Entry**: Wave 17 2/2 PASS
+**Scope**: T055d + T058, T059, T060, T061 (parallel docs + tests); T062, T063 deferred to user gate
+
+### T055d — SC-009 ADR-023 Accepted post-condition — **PASS**
+
+Verification:
+- `docs/architecture/02_ADRs/ADR-023-threat-agent-skill-references-pattern.md` header: `**Status**: Accepted` + `**Date**: 2026-04-11` + `**Accepted**: 2026-04-11 (post Phase 1 combined checkpoint / T023, Feature 082 Wave 8)` — set during Wave 8 T022, confirmed intact in Wave 18.
+- `docs/architecture/00_Tech_Stack/README.md` line 117 (updated in T058 Wave 18) now contains the Feature 082 cross-reference: "Feature 082 introduces ADR-023 recording the **sibling detection variant** of the lean pattern — tachi now documents two lean-agent shapes: the **methodology variant** ... and the **detection variant**". Full narrative on the two variants follows.
+
+SC-009 satisfied: ADR-023 is Accepted AND cross-referenced from the architecture tech stack documentation.
+
+### T058 / T059 / T060 — Documentation sync — **DONE**
+
+- T058 Tech Stack README: Feature 082 paragraph appended to agent prompts section at line 117.
+- T059 CLAUDE.md Recent Changes: Feature 082 entry added at the top with 10 bullet points (matches Feature 130 / 136 depth).
+- T060 enrichment-tally.md: Wave 18 finalization section appended; final count FINAL at 30/22/+8, no Phase 2e de-scopes.
+
+### T061 — Full pytest suite — **PASS (47 / 47)**
+
+```
+$ python3 -m pytest tests/ -v
+============================== 47 passed in 37.32s ==============================
+```
+
+Breakdown:
+- 5 backward-compatibility tests (byte-identical PDFs under SOURCE_DATE_EPOCH=1700000000) — confirms T056 no-op rebaseline.
+- 2 command dispatch tests.
+- 20 extract-infographic-data tests (including all 5 existing infographic templates unchanged).
+- 8 extract-report-data tests.
+- 9 mmdc preflight tests (Feature 130 regression).
+- 2 PDF page positioning tests.
+- 1 smoke test.
+
+Zero failures, zero new warnings beyond the pre-existing macOS LibreSSL urllib3 notice.
+
+### Wave 18 Verdict
+
+**5 / 5 PASS** (T055d + T058 + T059 + T060 + T061). T062 (PR creation) and T063 (PR merge) deferred to user gate — PR creation is a user-visible action that requires confirmation, and T063 merge is a hard-stop user decision per CLAUDE.md commit/delivery discipline. Build implementation phase complete.
+
+**Tasks complete**: 66 / 68 (97.1%). Remaining: T062 PR creation (user-gated), T063 PR merge (user-gated).

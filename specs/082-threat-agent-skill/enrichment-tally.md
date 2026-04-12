@@ -109,3 +109,28 @@ Per plan.md Phase 7 exit criteria, T049 PASS unblocks Phase 8 (full regression g
 ## Note on T060
 
 T060 (Phase 8 Delivery) revisits this enrichment-tally.md as the SC-006 evidence artifact for the T062 PR. Since T048a remediation introduced no de-scopes, T060 will republish the same 30/22 (+8) tally without recomputation.
+
+---
+
+## T060 Finalization — Wave 18 Phase 2e Post-Adjustment Count
+
+**Date**: 2026-04-11
+**Task**: T060 — Update enrichment-tally.md with final Phase 2e-adjusted count after any Phase 7 de-scopes; becomes the SC-006 evidence artifact for T062 PR.
+
+**Finalized count**: **30 new pattern categories** across 11 threat agents. Floor: 22. Margin: +8.
+
+**Phase 2e adjustments**: none. T048 (Wave 13) security-analyst review flagged 5 categories (3 tool-abuse C6/C7/C8 + 1 agent-autonomy C8 + 1 data-poisoning category) as CHANGES_REQUESTED on primary-source attribution grounds. T048a (Wave 13.5) rebuilt all 5 with correct primary sources, preserving substance byte-verbatim — zero category deletions, zero count reductions. The 30/22/+8 tally from T049 (Wave 14) remains authoritative.
+
+**Breakdown by mode** (unchanged from T049):
+
+| Mode | Agents | New categories |
+|---|---|---:|
+| mixed (baseline preserved + enriched) | 8 agents (spoofing, tampering, repudiation, info-disclosure, denial-of-service, prompt-injection, data-poisoning, agent-autonomy) | 21 |
+| restructured (headers rewritten with enrichment integrated) | 3 agents (privilege-escalation, model-theft, tool-abuse) | 9 (total - baseline) |
+| **Total** | **11** | **30** |
+
+**Margin analysis**: The 8-category margin above the 22 floor provides R3 contingency slack per plan.md Risk 3 (enrichment shortfall). R3 was never activated — margin preserved through all Phase 1 (prototype), Phase 4+5 (rollout), and Phase 7 (tally + security review) gates. Every category cites at least one primary source with a canonical URL (FR-8 / SC-007). Per-category source attribution is recorded in the individual `.claude/skills/tachi-<name>/references/detection-patterns.md` Primary Sources footers, not in this tally (content lives with patterns per the content-as-data principle).
+
+**SC-006 evidence**: this finalized count is the T062 PR evidence artifact for SC-006 "aggregate enrichment of ≥22 new pattern categories across the 11 threat agents, with every new category citing a primary source". Satisfied with +8 margin, all sourced, all reviewed.
+
+**Status**: FINAL (Wave 18). No further updates expected. T060 complete.
