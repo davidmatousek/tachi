@@ -29,7 +29,7 @@ Detects threats arising from autonomous agent systems that operate with insuffic
 | Reference | File | Load When | Purpose |
 |-----------|------|-----------|---------|
 | Detection patterns | `.claude/skills/tachi-agent-autonomy/references/detection-patterns.md` | At detection start | Externalized pattern catalog for agent autonomy, excessive agency, goal drift, and multi-agent delegation cycles |
-| Severity bands | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | At detection start | OWASP 3×3 risk matrix for finding severity computation |
+| Severity bands | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | At detection start | Risk matrix for finding severity computation |
 | Finding format | `.claude/skills/tachi-shared/references/finding-format-shared.md` | At detection start | Canonical finding schema and field guidance |
 
 ## Detection Workflow
@@ -39,7 +39,7 @@ Detects threats arising from autonomous agent systems that operate with insuffic
 1. Iterate dispatched components from orchestrator input, filtering to Process DFD element types that match the trigger keywords in the reference file (agent, autonomous, orchestrator, multi-agent, agent loop, agentic, planner, executor, workflow engine, task runner).
 2. For each component, walk through the pattern categories in the reference file (excessive autonomy, goal misalignment, unconstrained action scope, missing human-in-the-loop, cascading multi-agent failures, autonomous resource consumption, OWASP LLM06:2025 Excessive Agency sub-categories, ATLAS AML.T0058 agent context poisoning runtime view, NIST AI 600-1 + LLM10:2025 goal drift and unbounded planning loops, OWASP AI Exchange multi-agent delegation cycles) and collect every indicator present.
 3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: agentic`, a sequential `AG-N` id, and the target component name.
-4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of confidentiality, integrity, availability, intent alignment), then compute `risk_level` via the OWASP 3×3 matrix in `severity-bands-shared.md`.
+4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of confidentiality, integrity, availability, intent alignment), then compute `risk_level` via the matrix in `severity-bands-shared.md`.
 5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (ASI-01, ASI-06, ASI-08, ASI-09, ASI-10, OWASP LLM06:2025, OWASP LLM10:2025, OWASP AI Exchange, NIST AI 600-1, MITRE ATLAS AML.T0058 runtime-context view) from the reference file's Primary Sources list.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation. If no components match any trigger keyword, return zero findings; do not speculate about agent autonomy threats on architectures without autonomous agent capabilities.
 

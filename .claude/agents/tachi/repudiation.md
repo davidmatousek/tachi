@@ -35,7 +35,7 @@ Detects threats where a user or system can deny having performed an action and t
 | Reference | File | Load When | Purpose |
 |-----------|------|-----------|---------|
 | Detection patterns | `.claude/skills/tachi-repudiation/references/detection-patterns.md` | At detection start | Externalized pattern catalog for repudiation |
-| Severity bands | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | At detection start | OWASP 3×3 risk matrix for finding severity computation |
+| Severity bands | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | At detection start | Risk matrix for finding severity computation |
 | Finding format | `.claude/skills/tachi-shared/references/finding-format-shared.md` | At detection start | Canonical finding schema and field guidance |
 
 ## Detection Workflow
@@ -45,6 +45,6 @@ Detects threats where a user or system can deny having performed an action and t
 1. Iterate dispatched components from orchestrator input, filtering to External Entity and Process DFD element types.
 2. For each component, match against the loaded pattern catalog (missing audit trails, insufficient log detail, log tampering vulnerability, deniable actions, timestamp manipulation, log injection and evasion, security logging and monitoring coverage gaps, indicator removal and timestomping).
 3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: repudiation`, a sequential `R-N` id, and the target component name.
-4. Assign `likelihood` and `impact` using OWASP factors (attacker motivation to deny actions, log coverage gaps, detection difficulty; accountability loss, compliance violations, financial dispute exposure, forensic investigation capability), then compute `risk_level` via the OWASP 3×3 matrix in `severity-bands-shared.md`.
+4. Assign `likelihood` and `impact` using OWASP factors (attacker motivation to deny actions, log coverage gaps, detection difficulty; accountability loss, compliance violations, financial dispute exposure, forensic investigation capability), then compute `risk_level` via the matrix in `severity-bands-shared.md`.
 5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP, CWE, MITRE ATT&CK) from the pattern catalog's Primary Sources list.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation.

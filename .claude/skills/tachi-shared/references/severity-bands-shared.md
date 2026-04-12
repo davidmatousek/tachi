@@ -69,7 +69,7 @@ The `risk_disposition` field uses one of four values. The scorer assigns only `M
 
 ---
 
-## OWASP 3x3 Risk Matrix
+## OWASP 3×3 Risk Matrix
 
 The qualitative risk matrix used during threat model generation (`threats.md`) to derive the initial `risk_level` from likelihood and impact. This matrix is the input signal that the quantitative scorer refines.
 

@@ -29,7 +29,7 @@ Detects threats where an attacker attempts to steal, replicate, or extract propr
 | Reference | File | Load When | Purpose |
 |-----------|------|-----------|---------|
 | Detection patterns | `.claude/skills/tachi-model-theft/references/detection-patterns.md` | At detection start | Externalized pattern catalog for model theft and extraction |
-| Severity bands | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | At detection start | OWASP 3×3 risk matrix for finding severity computation |
+| Severity bands | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | At detection start | Risk matrix for finding severity computation |
 | Finding format | `.claude/skills/tachi-shared/references/finding-format-shared.md` | At detection start | Canonical finding schema and field guidance |
 
 ## Detection Workflow
@@ -39,7 +39,7 @@ Detects threats where an attacker attempts to steal, replicate, or extract propr
 1. Iterate dispatched components from orchestrator input, filtering to Data Store and Process DFD element types that match the trigger keywords in the reference file (LLM, model, weights, checkpoint, inference, model registry, model serving, model API, fine-tuned).
 2. For each component, walk through the pattern categories in the reference file (direct weight exfiltration, API-based extraction, artifact exposure, side-channel reconstruction, fine-tuned model theft, unbounded consumption, supply chain compromise, ATLAS inference-API exfiltration, system prompt leakage) and collect every indicator present.
 3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: llm`, a sequential `LLM-N` id, and the target component name.
-4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of confidentiality, integrity, intellectual property), then compute `risk_level` via the OWASP 3×3 matrix in `severity-bands-shared.md`.
+4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of confidentiality, integrity, intellectual property), then compute `risk_level` via the matrix in `severity-bands-shared.md`.
 5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP LLM10/LLM07/LLM03, OWASP AI Exchange, MITRE ATLAS AML.T0024/T0057, MITRE ATT&CK T1005, CWE-200/209/522) from the reference file's Primary Sources list.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation. If no components match any trigger keyword, return zero findings; do not speculate about model theft on architectures without model hosting or inference components.
 

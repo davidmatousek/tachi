@@ -39,7 +39,7 @@ Detects threats where sensitive information is exposed to unauthorized parties â
 | Reference | File | Load When | Purpose |
 |-----------|------|-----------|---------|
 | Detection patterns | `.claude/skills/tachi-info-disclosure/references/detection-patterns.md` | At detection start | Externalized pattern catalog for information disclosure |
-| Severity bands | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | At detection start | OWASP 3Ã—3 risk matrix for finding severity computation |
+| Severity bands | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | At detection start | Risk matrix for finding severity computation |
 | Finding format | `.claude/skills/tachi-shared/references/finding-format-shared.md` | At detection start | Canonical finding schema and field guidance |
 
 ## Detection Workflow
@@ -49,6 +49,6 @@ Detects threats where sensitive information is exposed to unauthorized parties â
 1. Iterate dispatched components from orchestrator input, filtering to Process, Data Store, and Data Flow DFD element types.
 2. For each component, match against the loaded pattern catalog (error message exposure, excessive data in responses, data at rest exposure, data in transit exposure, side-channel leakage, debug and diagnostic exposure, SSRF to cloud metadata and internal services, data staging from information repositories).
 3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: info-disclosure`, a sequential `I-N` id, and the target component name.
-4. Assign `likelihood` and `impact` using OWASP factors (ease of discovery, ease of exploit, attacker awareness, intrusion detection capability; confidentiality loss scope, data sensitivity classification, secondary attack enablement), then compute `risk_level` via the OWASP 3Ã—3 matrix in `severity-bands-shared.md`.
+4. Assign `likelihood` and `impact` using OWASP factors (ease of discovery, ease of exploit, attacker awareness, intrusion detection capability; confidentiality loss scope, data sensitivity classification, secondary attack enablement), then compute `risk_level` via the matrix in `severity-bands-shared.md`.
 5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP, CWE, MITRE ATT&CK) from the pattern catalog's Primary Sources list.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation.

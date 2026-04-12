@@ -29,7 +29,7 @@ Detects threats arising from agentic systems that invoke external tools, MCP ser
 | Reference | File | Load When | Purpose |
 |-----------|------|-----------|---------|
 | Detection patterns | `.claude/skills/tachi-tool-abuse/references/detection-patterns.md` | At detection start | Externalized pattern catalog for tool abuse and cross-tool exfiltration |
-| Severity bands | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | At detection start | OWASP 3×3 risk matrix for finding severity computation |
+| Severity bands | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | At detection start | Risk matrix for finding severity computation |
 | Finding format | `.claude/skills/tachi-shared/references/finding-format-shared.md` | At detection start | Canonical finding schema and field guidance |
 
 ## Detection Workflow
@@ -39,7 +39,7 @@ Detects threats arising from agentic systems that invoke external tools, MCP ser
 1. Iterate dispatched components from orchestrator input, filtering to Process DFD element types that match the trigger keywords in the reference file (agent, MCP server, tool server, plugin, tool use, function calling, tool chain, orchestrator, action executor).
 2. For each component, walk through the pattern categories in the reference file (unauthorized tool invocation, capability escalation via composition, parameter injection, tool chain manipulation, tool poisoning, LLM plugin compromise, unauthorized invocation via instruction hijack, MCP server poisoning) and collect every indicator present.
 3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: agentic`, a sequential `AG-N` id, and the target component name.
-4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of confidentiality, integrity, availability, intent alignment), then compute `risk_level` via the OWASP 3×3 matrix in `severity-bands-shared.md`.
+4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of confidentiality, integrity, availability, intent alignment), then compute `risk_level` via the matrix in `severity-bands-shared.md`.
 5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (ASI-02, ASI-04, MCP-03, MCP-05, OWASP LLM06:2025, MITRE ATLAS AML.T0058/T0061/T0062, CWE-77, CWE-89) from the reference file's Primary Sources list.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation. If no components match any trigger keyword, return zero findings; do not speculate about tool abuse on architectures without agentic tool invocation.
 

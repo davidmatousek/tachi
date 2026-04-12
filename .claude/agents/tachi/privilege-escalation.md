@@ -37,7 +37,7 @@ Detects threats where an attacker gains higher privileges than authorized — pe
 | Reference | File | Load When | Purpose |
 |-----------|------|-----------|---------|
 | Detection patterns | `.claude/skills/tachi-privilege-escalation/references/detection-patterns.md` | At detection start | Externalized pattern catalog for elevation of privilege |
-| Severity bands | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | At detection start | OWASP 3×3 risk matrix for finding severity computation |
+| Severity bands | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | At detection start | Risk matrix for finding severity computation |
 | Finding format | `.claude/skills/tachi-shared/references/finding-format-shared.md` | At detection start | Canonical finding schema and field guidance |
 
 ## Detection Workflow
@@ -47,6 +47,6 @@ Detects threats where an attacker gains higher privileges than authorized — pe
 1. Iterate dispatched components from orchestrator input, filtering to Process DFD element types.
 2. For each component, match against the loaded pattern catalog (broken access control, IDOR, role and permission escalation, path traversal and scope bypass, multi-tenancy boundary violations, lateral movement, privilege persistence, function/field-level authorization gaps, improper privilege management, abuse elevation control mechanism).
 3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: privilege-escalation`, a sequential `E-N` id, and the target component name.
-4. Assign `likelihood` and `impact` using OWASP factors (attacker skill level — often low for IDOR, tool availability, access surface; scope of unauthorized access gained, data sensitivity exposed, system control obtained), then compute `risk_level` via the OWASP 3×3 matrix in `severity-bands-shared.md`.
+4. Assign `likelihood` and `impact` using OWASP factors (attacker skill level — often low for IDOR, tool availability, access surface; scope of unauthorized access gained, data sensitivity exposed, system control obtained), then compute `risk_level` via the matrix in `severity-bands-shared.md`.
 5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP, CWE, MITRE ATT&CK) from the pattern catalog's Primary Sources list.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation.

@@ -36,7 +36,7 @@ Detects threats where an attacker assumes the identity of another entity — use
 | Reference | File | Load When | Purpose |
 |-----------|------|-----------|---------|
 | Detection patterns | `.claude/skills/tachi-spoofing/references/detection-patterns.md` | At detection start | Externalized pattern catalog for spoofing |
-| Severity bands | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | At detection start | OWASP 3×3 risk matrix for finding severity computation |
+| Severity bands | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | At detection start | Risk matrix for finding severity computation |
 | Finding format | `.claude/skills/tachi-shared/references/finding-format-shared.md` | At detection start | Canonical finding schema and field guidance |
 
 ## Detection Workflow
@@ -46,6 +46,6 @@ Detects threats where an attacker assumes the identity of another entity — use
 1. Iterate dispatched components from orchestrator input, filtering to External Entity and Process DFD element types.
 2. For each component, match against the loaded pattern catalog (authentication bypass, credential theft, session hijacking, service impersonation, federated identity attacks).
 3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: spoofing`, a sequential `S-N` id, and the target component name.
-4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of confidentiality, integrity, accountability), then compute `risk_level` via the OWASP 3×3 matrix in `severity-bands-shared.md`.
+4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of confidentiality, integrity, accountability), then compute `risk_level` via the matrix in `severity-bands-shared.md`.
 5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP, CWE, MITRE ATT&CK) from the pattern catalog's Primary Sources list.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation.

@@ -29,7 +29,7 @@ Detects prompt injection vulnerabilities in LLM-integrated components. Prompt in
 | Reference | File | Load When | Purpose |
 |---|---|---|---|
 | Detection patterns | .claude/skills/tachi-prompt-injection/references/detection-patterns.md | At detection start | Externalized pattern catalog for prompt injection |
-| Severity bands | .claude/skills/tachi-shared/references/severity-bands-shared.md | At detection start | OWASP 3×3 risk matrix for severity computation |
+| Severity bands | .claude/skills/tachi-shared/references/severity-bands-shared.md | At detection start | Risk matrix for severity computation |
 | Finding format | .claude/skills/tachi-shared/references/finding-format-shared.md | At detection start | Canonical finding schema and field guidance |
 
 ## Detection Workflow
@@ -39,7 +39,7 @@ Detects prompt injection vulnerabilities in LLM-integrated components. Prompt in
 1. Load the detection pattern catalog from the reference file above, including trigger keywords, applicable DFD element types, and the five pattern categories (Direct Prompt Injection, Indirect Prompt Injection, Jailbreaking, System Prompt Extraction, Cross-Plugin Injection).
 2. Scan each DFD Process element in the architecture input and match its name or description against the trigger keywords (case-insensitive).
 3. For each matching component, walk through the pattern categories and collect any indicators present (input flows, retrieval sources, orchestration shape, output filtering gaps).
-4. Load `.claude/skills/tachi-shared/references/severity-bands-shared.md` and compute `likelihood`, `impact`, and `risk_level` for every finding using the OWASP 3×3 matrix.
+4. Load `.claude/skills/tachi-shared/references/severity-bands-shared.md` and compute `likelihood`, `impact`, and `risk_level` for every finding using the matrix.
 5. Emit findings conforming to `schemas/finding.yaml` with `category: llm`, stable `LLM-{N}` ids, mitigations, and OWASP LLM01/LLM07 references. Use the example findings below for shape guidance.
 6. If no components match any trigger keyword, return zero findings; do not speculate.
 
