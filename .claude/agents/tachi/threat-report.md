@@ -48,7 +48,7 @@ Load domain knowledge on-demand from the `tachi-threat-reporting` skill using th
 
 | Reference | File | Load When |
 |-----------|------|-----------|
-| Narrative Templates | `.claude/skills/tachi-threat-reporting/references/narrative-templates.md` | Generating Executive Summary (Section 1), Architecture Overview (Section 2), Threat Analysis (Section 3), Cross-Cutting Themes (Section 4), Remediation Roadmap (Section 6) |
+| Narrative Templates | `.claude/skills/tachi-threat-reporting/references/narrative-templates.md` | Generating Executive Summary (Section 1), Architecture Overview (Section 2), Threat Analysis (Section 3), Cross-Cutting Themes (Section 4), Remediation Roadmap (Section 7) |
 | Attack Tree Construction | `.claude/skills/tachi-threat-reporting/references/attack-tree-construction.md` | Constructing Mermaid attack trees for Critical and High findings (Section 5) |
 | Attack Tree Examples | `.claude/skills/tachi-threat-reporting/references/attack-tree-examples.md` | Before generating the first attack tree -- load once as reference patterns |
 | Severity bands (shared) | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | Executive summary / severity-based narrative ordering |
@@ -65,8 +65,8 @@ You consume the complete `threats.md` file produced by the orchestrator. The str
 |---------|---------|-------------------|
 | Section 1: System Overview | Components, data flows, technologies | Architecture Overview (Section 2 of report) |
 | Section 2: Trust Boundaries | Trust zones, boundary crossings, controls | Architecture Overview (Section 2 of report) |
-| Section 3: STRIDE Tables | 6 category tables with findings | Threat Analysis narrative (Section 3), Attack Trees (Section 5), Remediation Roadmap (Section 6), Appendix (Section 7) |
-| Section 4: AI Threat Tables | 2 category tables (AG, LLM) with findings | Threat Analysis narrative (Section 3), Attack Trees (Section 5), Remediation Roadmap (Section 6), Appendix (Section 7) |
+| Section 3: STRIDE Tables | 6 category tables with findings | Threat Analysis narrative (Section 3), Attack Trees (Section 5), Attack Chains (Section 6), Remediation Roadmap (Section 7), Appendix (Section 8) |
+| Section 4: AI Threat Tables | 2 category tables (AG, LLM) with findings | Threat Analysis narrative (Section 3), Attack Trees (Section 5), Attack Chains (Section 6), Remediation Roadmap (Section 7), Appendix (Section 8) |
 | Section 4a: Correlated Findings | Cross-agent correlation groups | Cross-Cutting Themes (Section 4), correlation handling in narrative, attack trees, and roadmap |
 | Section 5: Coverage Matrix | Component x category analysis coverage | Executive Summary risk posture context |
 | Section 6: Risk Summary | Aggregate counts by risk level | Executive Summary risk posture, Remediation Roadmap priority ordering |
@@ -117,16 +117,24 @@ Before finalizing the report, run the following checklist. Every check must pass
 
 #### Section Completeness
 
-- [ ] All 7 report sections are present with non-empty content
+- [ ] All base report sections (1-5, 7-8) are present with non-empty content. Section 6 (Attack Chains) is present only when `has-attack-chains` is true. Section 9 (Delta Summary) is present only when baseline exists.
 - [ ] YAML frontmatter is the FIRST content in the report (before Section 1), enclosed in a fenced `yaml` code block between `---` delimiters
 - [ ] YAML frontmatter contains ALL required fields: schema_version, date, source_file, finding_count, risk_distribution, attack_tree_count, baseline_source, baseline_date, delta_counts (see template for full structure)
-- [ ] Section headings match `../../../schemas/report.yaml` exactly (## 1. Executive Summary through ## 7. Appendix: Finding Reference)
+- [ ] Section headings match `../../../schemas/report.yaml` exactly (## 1. Executive Summary through ## 8. Appendix: Finding Reference, with ## 6. Cross-Layer Attack Chains conditional on `has-attack-chains`)
 
 #### Finding Traceability (Zero Loss Rule)
 
-- [ ] Every finding ID from `threats.md` Sections 3 (STRIDE), 4 (AI), and 4a (Correlated) appears in the Appendix: Finding Reference (Section 7)
+- [ ] Every finding ID from `threats.md` Sections 3 (STRIDE), 4 (AI), and 4a (Correlated) appears in the Appendix: Finding Reference (Section 8)
 - [ ] Finding IDs in the report match exactly -- no ID rewriting, renaming, or reinterpretation
 - [ ] Every finding addressed in the Threat Analysis narrative (Section 3) references its correct finding ID
+
+#### Attack Chain Narrative (Conditional)
+
+- [ ] When `has-attack-chains` is true: Section 6 is present with narrative walkthroughs for all surfaced chains
+- [ ] Each chain narrative is 150-300 words
+- [ ] Each chain narrative uses canonical CSA MAESTRO causal vocabulary ("enables," "triggers," "shifts," "manifests as")
+- [ ] Each chain includes chain-breaking control recommendation with heuristic disclaimer
+- [ ] When `has-attack-chains` is false: Section 6 is entirely absent (no heading, no placeholder)
 
 #### Attack Tree Completeness
 
@@ -214,13 +222,40 @@ First, check `delta_counts` from the `threats.md` frontmatter to determine which
 **RESOLVED**: Skip entirely -- no attack tree.
 **No baseline**: Generate all trees fresh.
 
-### Section 6: Remediation Roadmap
+### Section 6: Cross-Layer Attack Chains
+
+**Conditional**: Only generate this section when the orchestrator produced an `attack-chains.md` artifact (i.e., `has-attack-chains` is true). When no attack chains exist, skip this section entirely — do not include the heading or any placeholder text. The report proceeds directly from Section 5 to Section 7.
+
+**MANDATORY**: Read `.claude/skills/tachi-shared/references/attack-chain-patterns-shared.md` for the causal vocabulary table (Section: Causal Vocabulary) and chain structure definitions.
+
+Load `attack-chains.md` from the output directory. Parse the Chain Summary table (Section 1) and Chain Details (Section 2). Filter to chains with `surfaced: true` (top 5 by ranking, Critical/High maximum severity).
+
+For each surfaced chain, generate:
+
+1. **Chain heading**: H3 with chain ID and title (e.g., "### CHAIN-001: Data Poisoning to Agent Compromise")
+2. **Chain metadata line**: Layer progression (e.g., "L2 → L3 → L7"), maximum severity, member finding count
+3. **Narrative walkthrough** (150-300 words):
+   - **Initial exploit**: Describe the first finding — what vulnerability exists, which component is affected, how an attacker initiates the chain at the source MAESTRO layer
+   - **Intermediate cascades**: For each subsequent finding, describe how the previous exploit leads to the next using canonical CSA MAESTRO causal vocabulary:
+     - "enables" — indirect causal link (precondition created)
+     - "triggers" — direct causal link (immediate consequence)
+     - "shifts" — lateral movement or layer-crossing pivot
+     - "manifests as" — terminal business impact (last transition only)
+   - **Business impact**: Conclude with what the attacker achieves at the chain's terminal layer and the resulting business consequence
+4. **Chain-breaking control**: Reference the chain-breaking control recommendation from the artifact — target finding ID, MAESTRO layer, structural rationale, and control recommendation. Include the heuristic disclaimer: "Chain-breaking controls are structurally derived from graph centrality analysis and should be validated against the specific deployment context."
+5. **Impacted findings**: List all member finding IDs with their MAESTRO layer designations and roles (initial exploit, intermediate cascade, terminal impact)
+
+**Ordering**: Chains ordered by maximum severity (Critical first), then chain length (longer first), then chain ID (alphabetical).
+
+**Word count enforcement**: Each chain narrative MUST be 150-300 words. Focus on specific causal relationships between findings — avoid padding with generic security language.
+
+### Section 7: Remediation Roadmap
 
 **MANDATORY**: Read `.claude/skills/tachi-threat-reporting/references/narrative-templates.md` for priority ordering, roadmap item format, section introduction structure, and effort estimation heuristics.
 
 Generate the Remediation Roadmap transforming findings into actionable items with effort estimates.
 
-### Section 7: Appendix -- Finding Reference
+### Section 8: Appendix -- Finding Reference
 
 Generate the Finding Reference appendix ensuring complete traceability. See Finding Reference Appendix Generation below.
 
@@ -242,7 +277,7 @@ When `threats.md` Section 4a contains correlation groups (produced by the orches
 - In each tree's heading or introductory text, note the correlation relationship: "This finding is part of correlation group CG-{N}. See also: {peer finding IDs}."
 - Do NOT merge correlated findings into a single unified tree
 
-### Remediation Roadmap Treatment (Section 6)
+### Remediation Roadmap Treatment (Section 7)
 
 - Single roadmap item per correlation group using the **primary finding ID** (first listed)
 - Merge mitigation texts; use most comprehensive version when they overlap
@@ -291,6 +326,6 @@ After generating all trees, verify the `attack-trees/` directory contains exactl
 
 ## Finding Reference Appendix Generation
 
-Generate the Appendix: Finding Reference as Section 7 of the report. **Zero Finding Loss Rule**: Every finding ID from `threats.md` Sections 3, 4, and 4a MUST appear in the appendix mapping table (columns: Finding ID | Report Section | Heading Reference). Each finding appears in multiple rows -- one per report section where it is referenced (Section 3, Section 5 if Critical/High, Section 6).
+Generate the Appendix: Finding Reference as Section 8 of the report. **Zero Finding Loss Rule**: Every finding ID from `threats.md` Sections 3, 4, and 4a MUST appear in the appendix mapping table (columns: Finding ID | Report Section | Heading Reference). Each finding appears in multiple rows -- one per report section where it is referenced (Section 3, Section 5 if Critical/High, Section 6 if chains exist, Section 7).
 
 **Completeness Self-Check**: After generating, count unique finding IDs in the appendix vs. `threats.md` Sections 3 + 4 + 4a. Counts must match exactly. If any finding is missing, add it before finalizing.

@@ -214,7 +214,32 @@ _When no Critical or High findings exist:_
 
 ---
 
-## 6. Remediation Roadmap
+## 6. Cross-Layer Attack Chains
+
+_Present only when the orchestrator produced an `attack-chains.md` artifact (i.e., `has-attack-chains` is true). When no attack chains exist, omit this entire section — the report proceeds directly from Section 5 to Section 7._
+
+_For each surfaced chain (Critical/High maximum severity, top 5 by ranking):_
+
+### _{CHAIN-ID}_: _{Chain title}_
+
+**Layers**: _{L2 → L3 → L7}_ | **Max Severity**: _{Critical/High}_ | **Findings**: _{count}_
+
+_150-300 word narrative walkthrough covering:_
+- _Initial exploit at the source MAESTRO layer_
+- _Intermediate cascades using canonical CSA causal vocabulary ("enables," "triggers," "shifts," "manifests as")_
+- _Terminal business impact_
+
+**Chain-Breaking Control**: _{Target finding ID at layer LN. Structural rationale. Control recommendation.}_
+
+> _Disclaimer: Chain-breaking controls are structurally derived from graph centrality analysis and should be validated against the specific deployment context._
+
+**Impacted Findings**: _{Finding IDs with MAESTRO layers and roles (initial exploit, intermediate cascade, terminal impact)}_
+
+> **Constraints**: Each chain narrative MUST be 150-300 words. Use canonical CSA MAESTRO causal vocabulary for all layer transitions. Chains ordered by maximum severity (Critical first), then chain length (longer first), then chain ID (alphabetical).
+
+---
+
+## 7. Remediation Roadmap
 
 _Prioritized table of all findings ordered by risk level (Critical first, then High, Medium, Low). Within the same risk level, items are grouped by component. Each item is directly convertible to a development task or backlog item._
 
@@ -243,7 +268,7 @@ _Prioritized table of all findings ordered by risk level (Critical first, then H
 
 ---
 
-## 7. Appendix: Finding Reference
+## 8. Appendix: Finding Reference
 
 _Complete mapping table from report sections back to original finding IDs in threats.md. Every finding ID from threats.md Sections 3, 4, and 4a MUST appear in this table — zero finding loss._
 
@@ -255,7 +280,7 @@ _Complete mapping table from report sections back to original finding IDs in thr
 
 ---
 
-## 8. Delta Summary
+## 9. Delta Summary
 
 _Present only when the input threats.md contains baseline data (i.e., `baseline.source` is non-null in frontmatter). Omit this entire section on first run (no baseline)._
 

@@ -117,8 +117,21 @@ report:
         One Mermaid flowchart TD tree per Critical/High
         finding.
 
+    - name: "Cross-Layer Attack Chains"
+      heading: "## 6. Cross-Layer Attack Chains"
+      conditional: true
+      condition: >
+        Present only when the orchestrator produced an
+        attack-chains.md artifact (has-attack-chains is true).
+        Omit entirely when no chains are detected.
+      requirement: >
+        One narrative walkthrough (150-300 words) per surfaced
+        chain (Critical/High severity, top 5). Uses canonical
+        CSA MAESTRO causal vocabulary. Includes chain-breaking
+        control recommendations with heuristic disclaimer.
+
     - name: "Remediation Roadmap"
-      heading: "## 6. Remediation Roadmap"
+      heading: "## 7. Remediation Roadmap"
       required_fields:
         - finding_id
         - component
@@ -127,12 +140,12 @@ report:
         - dependencies
 
     - name: "Appendix: Finding Reference"
-      heading: "## 7. Appendix: Finding Reference"
+      heading: "## 8. Appendix: Finding Reference"
       requirement: >
         Complete mapping — zero finding loss.
 
     - name: "Delta Summary"
-      heading: "## 8. Delta Summary"
+      heading: "## 9. Delta Summary"
       conditional: true
       condition: >
         Present only when baseline_source is non-null in
