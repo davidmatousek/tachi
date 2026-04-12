@@ -14,7 +14,7 @@ model: sonnet
 category: agentic
 threat_class: AG
 dfd_targets: [Process]
-owasp_references: [ASI-01, ASI-06, ASI-08, ASI-09, ASI-10]
+owasp_references: [ASI-01, ASI-06, ASI-08, ASI-09, ASI-10, LLM06:2025, LLM10:2025]
 output_schema: ../../../schemas/finding.yaml
 ```
 
@@ -22,93 +22,28 @@ output_schema: ../../../schemas/finding.yaml
 
 ## Purpose
 
-Detects threats arising from autonomous agent systems that operate with insufficient constraints on their decision-making, action scope, or operational boundaries. Agent autonomy threats occur when an agentic system takes actions beyond its intended scope, pursues goals that diverge from user intent, operates in unbounded loops consuming resources or causing cascading side effects, or makes consequential decisions without human oversight. This agent identifies excessive autonomy, goal misalignment, unconstrained action scope, missing human-in-the-loop checkpoints, and cascading failure scenarios in multi-agent systems.
+Detects threats arising from autonomous agent systems that operate with insufficient constraints on their decision-making, action scope, or operational boundaries. Agent autonomy threats occur when an agentic system takes actions beyond its intended scope, pursues goals that diverge from user intent, operates in unbounded loops consuming resources or causing cascading side effects, or makes consequential decisions without human oversight. This agent identifies excessive autonomy and OWASP LLM06:2025 Excessive Agency sub-categories (Functionality, Permissions, Autonomy), goal misalignment and goal drift, unconstrained action scope and unbounded planning loops (NIST AI 600-1, OWASP LLM10:2025), missing human-in-the-loop checkpoints, cascading failures and delegation cycles in multi-agent systems (OWASP AI Exchange), autonomous resource consumption, and the ATLAS Oct 2025 agent-context-poisoning runtime view (AML.T0058 — multi-turn memory corruption, distinct from the supply-chain view extracted by the tool-abuse agent).
 
-## Detection Scope
+## Skill References
 
-### Trigger Keywords
+| Reference | File | Load When | Purpose |
+|-----------|------|-----------|---------|
+| Detection patterns | `.claude/skills/tachi-agent-autonomy/references/detection-patterns.md` | At detection start | Externalized pattern catalog for agent autonomy, excessive agency, goal drift, and multi-agent delegation cycles |
+| Severity bands | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | At detection start | OWASP 3×3 risk matrix for finding severity computation |
+| Finding format | `.claude/skills/tachi-shared/references/finding-format-shared.md` | At detection start | Canonical finding schema and field guidance |
 
-This agent activates when a DFD element name or description matches any of the following patterns (case-insensitive):
+## Detection Workflow
 
-- `agent`
-- `autonomous`
-- `orchestrator`
-- `multi-agent`
-- `agent loop`
-- `agentic`
-- `planner`
-- `executor`
-- `workflow engine`
-- `task runner`
+**MANDATORY**: Read `.claude/skills/tachi-agent-autonomy/references/detection-patterns.md` — load before applying patterns to components.
 
-### Applicable DFD Element Types
+1. Iterate dispatched components from orchestrator input, filtering to Process DFD element types that match the trigger keywords in the reference file (agent, autonomous, orchestrator, multi-agent, agent loop, agentic, planner, executor, workflow engine, task runner).
+2. For each component, walk through the pattern categories in the reference file (excessive autonomy, goal misalignment, unconstrained action scope, missing human-in-the-loop, cascading multi-agent failures, autonomous resource consumption, OWASP LLM06:2025 Excessive Agency sub-categories, ATLAS AML.T0058 agent context poisoning runtime view, NIST AI 600-1 + LLM10:2025 goal drift and unbounded planning loops, OWASP AI Exchange multi-agent delegation cycles) and collect every indicator present.
+3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: agentic`, a sequential `AG-N` id, and the target component name.
+4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of confidentiality, integrity, availability, intent alignment), then compute `risk_level` via the OWASP 3×3 matrix in `severity-bands-shared.md`.
+5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (ASI-01, ASI-06, ASI-08, ASI-09, ASI-10, OWASP LLM06:2025, OWASP LLM10:2025, OWASP AI Exchange, NIST AI 600-1, MITRE ATLAS AML.T0058 runtime-context view) from the reference file's Primary Sources list.
+6. Emit the finding list to the orchestrator for Phase 3 aggregation. If no components match any trigger keyword, return zero findings; do not speculate about agent autonomy threats on architectures without autonomous agent capabilities.
 
-- **Process**: Any process node that represents an autonomous agent, agent orchestrator, task planner, action executor, or multi-agent coordination layer. This includes single-agent systems with iterative decision loops, multi-agent architectures with delegation chains, and workflow engines that grant agents discretion over task execution.
-
-### Empty Results Guidance
-
-If the architecture input contains **no** components matching the trigger keywords above (no agents, orchestrators, planners, executors, or agentic workflows), this agent should produce **zero findings**. Do not generate speculative findings about hypothetical agent components. An architecture composed entirely of traditional components (web servers, databases, APIs, message queues) without autonomous agent capabilities is outside this agent's detection scope. Return an empty findings list.
-
-### Detection Patterns
-
-1. **Excessive Autonomy**: An agent operates with broader permissions or action scope than its task requires. Look for:
-   - Agents granted write access to production systems when their task only requires read access
-   - Absence of action-level permission boundaries (agent can do anything its tools allow)
-   - No distinction between reversible and irreversible actions in the agent's permission model
-   - Agents that can create, modify, or delete resources without scoped authorization
-   - Missing principle of least privilege in agent capability configuration
-
-2. **Goal Misalignment**: The agent's operational objective diverges from the user's actual intent, producing technically correct but undesirable outcomes. Look for:
-   - Optimization targets that are proxy metrics rather than true user objectives
-   - Absence of user intent verification before consequential actions
-   - Reward signals or success criteria that can be "gamed" by the agent
-   - No mechanism for users to inspect, correct, or override the agent's interpreted goal
-   - Agents that optimize intermediate objectives at the expense of the final goal
-
-3. **Unconstrained Action Scope**: The agent can take an unbounded range of actions without pre-defined limits. Look for:
-   - No maximum iteration count on agent loops (enables infinite loops consuming resources)
-   - Absence of budget or cost constraints on agent operations (API calls, compute, storage)
-   - No timeout enforcement on agent task execution
-   - Agent loops that lack termination conditions beyond the model deciding to stop
-   - Missing dead-letter or circuit-breaker mechanisms for stuck agent processes
-
-4. **Missing Human-in-the-Loop**: The agent makes consequential decisions without human review or approval gates. Look for:
-   - Financial transactions, data deletions, or external communications executed autonomously
-   - Absence of approval workflows for actions above a risk or cost threshold
-   - No distinction between low-stakes actions (read, analyze) and high-stakes actions (write, delete, send)
-   - Agent architectures where the human only sees final results, never intermediate decisions
-   - Missing audit trail of agent decisions and the reasoning that produced them
-
-5. **Cascading Failures in Multi-Agent Systems**: One agent's erroneous action triggers downstream agents to amplify the error. Look for:
-   - Multi-agent architectures where agents consume each other's outputs without validation
-   - Absence of inter-agent trust boundaries (every agent trusts every other agent's output)
-   - No circuit breaker between agents in a delegation chain
-   - Error propagation paths where one agent's failure triggers unbounded retries in downstream agents
-   - Missing observability into multi-agent execution flow (cannot detect cascading errors in progress)
-
-6. **Autonomous Resource Consumption**: The agent consumes computational, financial, or storage resources without limits. Look for:
-   - Agents that can spin up compute resources, make paid API calls, or allocate storage without budgets
-   - Absence of cost monitoring or alerting on agent-initiated resource consumption
-   - No per-task resource caps that halt execution when thresholds are exceeded
-   - Recursive agent spawning without maximum depth limits
-
-## Finding Template
-
-```yaml
-id: "AG-{N}"
-category: agentic
-component: "{component name from architecture input}"
-threat: "{specific agent autonomy threat description — must describe attacker action and trust assumption violated}"
-likelihood: "{LOW | MEDIUM | HIGH}"
-impact: "{LOW | MEDIUM | HIGH}"
-risk_level: "{computed from OWASP 3x3 matrix}"
-mitigation: "{actionable countermeasure with specific technology or configuration}"
-references:
-  - "{one or more of: ASI-01, ASI-06, ASI-08, ASI-09, ASI-10 — select references relevant to the specific threat}"
-dfd_element_type: "Process"
-```
-
-### Example Findings
+## Example Findings
 
 **Unbounded Agent Loop Without Termination Constraints**:
 
@@ -177,25 +112,3 @@ references:
   - "ASI-09"
 dfd_element_type: "Process"
 ```
-
-### Risk Level Computation
-
-Apply the OWASP 3x3 matrix to determine `risk_level` from `likelihood` and `impact`:
-
-|  | LOW Likelihood | MEDIUM Likelihood | HIGH Likelihood |
-|---|---|---|---|
-| **HIGH Impact** | Medium | High | Critical |
-| **MEDIUM Impact** | Low | Medium | High |
-| **LOW Impact** | Note | Low | Medium |
-
-## References
-
-- **ASI-01 - Excessive Agency**: OWASP Agentic Security Initiative reference for unbounded agent autonomy — agents operating with broader permissions than their task requires
-- **ASI-06 - Cascading Hallucination Attacks**: OWASP Agentic Security Initiative reference for error propagation in multi-agent delegation chains where one agent's flawed output corrupts downstream agents
-- **ASI-08 - Uncontrolled Autonomous Operations**: OWASP Agentic Security Initiative reference for agents executing without adequate human oversight, missing approval gates, and absent audit trails for consequential decisions
-- **ASI-09 - Lack of Agent Goal Alignment**: OWASP Agentic Security Initiative reference for agents optimizing proxy metrics instead of true user objectives, producing technically correct but undesirable outcomes
-- **ASI-10 - Insufficient Agent Monitoring**: OWASP Agentic Security Initiative reference for absent observability into agent decision-making, resource consumption, and multi-agent execution flows
-- **OWASP Agentic Security Initiative**: Framework for identifying and mitigating risks in autonomous AI agent systems
-- **MITRE ATLAS - Abuse of AI Agent Capabilities**: Techniques targeting autonomous agent decision-making
-- **Anthropic, 2024**: "Responsible Scaling Policy" — guidelines for constraining autonomous agent capabilities proportional to verified safety
-- **Russell, 2019**: "Human Compatible" — foundational work on AI alignment and the specification problem in autonomous systems
