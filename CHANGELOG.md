@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.12.0](https://github.com/davidmatousek/tachi/compare/v4.11.1...v4.12.0) (2026-04-12)
+
+
+### Features
+
+* **154:** deterministic Gemini prompt scaffold for infographic quality stability ([f2ad9be](https://github.com/davidmatousek/tachi/commit/f2ad9be2f24d8d94168dc82cd49048623164f4de))
+
+
+### Bug Fixes
+
+* **154:** add .claude/skills/tachi-*/ to INSTALL_MANIFEST ([6547360](https://github.com/davidmatousek/tachi/commit/6547360d39c44301adb51c8b8ec23cc722a13e8a))
+* **154:** infographic quality — extract risk metrics, update Gemini model config ([3cd5d27](https://github.com/davidmatousek/tachi/commit/3cd5d27edde4310dc0ad650ef7265bcc49f098d6))
+* **154:** MAESTRO layer detection in /tachi.infographic checks wrong file and pattern ([30f9ad9](https://github.com/davidmatousek/tachi/commit/30f9ad96b49178b447c79a3d6e49b97977b6ab0d))
+
 ## [4.11.1](https://github.com/davidmatousek/tachi/compare/v4.11.0...v4.11.1) (2026-04-12)
 
 
