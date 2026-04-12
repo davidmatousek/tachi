@@ -158,7 +158,7 @@ chain_member_finding:
       - Low
       - Note
     description: >
-      Individual finding severity from the OWASP 3x3 risk matrix.
+      Individual finding severity via the risk matrix in severity-bands-shared.md.
 
   causal_relationship:
     type: string

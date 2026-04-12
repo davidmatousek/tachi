@@ -836,8 +836,8 @@ _MAESTRO_LAYER_NAMES = {
     "L2": "Data Operations",
     "L3": "Agent Framework",
     "L4": "Deployment Infrastructure",
-    "L5": "Evaluation & Observability",
-    "L6": "Security & Compliance",
+    "L5": "Evaluation and Observability",
+    "L6": "Security and Compliance",
     "L7": "Agent Ecosystem",
 }
 
