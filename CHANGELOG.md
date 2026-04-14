@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.14.1](https://github.com/davidmatousek/tachi/compare/v4.14.0...v4.14.1) (2026-04-14)
+
+
+### Bug Fixes
+
+* fall back to architecture.md H1 when threats.md lacks project name ([#165](https://github.com/davidmatousek/tachi/issues/165)) ([b746cb7](https://github.com/davidmatousek/tachi/commit/b746cb74595f9a15041c50bcdef69e5e0ed21709))
+
 ## [4.14.0](https://github.com/davidmatousek/tachi/compare/v4.13.0...v4.14.0) (2026-04-14)
 
 
