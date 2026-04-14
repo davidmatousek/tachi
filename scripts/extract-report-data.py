@@ -1591,7 +1591,7 @@ def main():
     frontmatter = parse_frontmatter(threats_content)
 
     # Parse project name
-    project_name = parse_project_name(threats_content, args.title)
+    project_name = parse_project_name(threats_content, args.title, target_dir)
 
     # Parse baseline metadata for delta-aware output
     baseline = parse_baseline_frontmatter(threats_content)

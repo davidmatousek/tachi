@@ -286,34 +286,82 @@ def parse_baseline_frontmatter(content: str) -> dict:
 # Project Name Parser
 # =============================================================================
 
-def parse_project_name(content: str, title_override: str = None) -> str:
-    """Extract project name from threats.md H1 heading.
+def parse_project_name(
+    content: str,
+    title_override: str = None,
+    target_dir: Path = None,
+) -> str:
+    """Extract project name from threats.md H1, with architecture.md fallback.
 
-    Supports two heading formats:
-      - "# {Name} Threat Model" (orchestrator output format)
-      - "# Threat Model: {Name}" (legacy format)
+    Precedence:
+      1. ``title_override`` if provided (CLI --title wins)
+      2. threats.md H1 in one of the two recognized formats
+      3. architecture.md H1 in ``target_dir`` (snapshot from Feature 120)
+      4. ``"Unknown Project"`` fallback
 
-    Args:
-        content: threats.md content.
-        title_override: If provided, use this instead of auto-detected name.
+    Recognized threats.md H1 formats:
+      - ``# {Name} Threat Model``
+      - ``# Threat Model: {Name}``
 
-    Returns:
-        Project name string.
+    Recognized architecture.md H1 formats (em-dash separated):
+      - ``# {Name} — Architecture`` (example convention)
+      - ``# Security Architecture — {Name}`` / ``# Architecture — {Name}``
+
+    The current orchestrator output template writes a literal
+    ``# Threat Model Report`` H1, which matches neither threats.md format, so
+    the architecture.md fallback recovers the name for real pipeline runs that
+    snapshot architecture.md alongside threats.md.
     """
     if title_override:
         return title_override
 
-    # Format 1: "# {Name} Threat Model" (orchestrator output)
     match = re.search(r"^#\s+(.+?)\s+Threat Model\s*$", content, re.MULTILINE)
     if match:
         return match.group(1).strip()
 
-    # Format 2: "# Threat Model: {Name}" (legacy)
     match = re.search(r"^#\s+Threat Model:\s*(.+)$", content, re.MULTILINE)
     if match:
         return match.group(1).strip()
 
+    if target_dir is not None:
+        arch_name = _parse_architecture_project_name(target_dir)
+        if arch_name:
+            return arch_name
+
     return "Unknown Project"
+
+
+def _parse_architecture_project_name(target_dir: Path):
+    """Extract project name from architecture.md H1 in ``target_dir``.
+
+    Returns None when architecture.md is absent, unreadable, or has no
+    parseable H1 in the recognized em-dash formats.
+    """
+    arch_path = target_dir / "architecture.md"
+    if not arch_path.is_file():
+        return None
+
+    try:
+        arch_content = arch_path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+    match = re.search(r"^#\s+(.+)$", arch_content, re.MULTILINE)
+    if not match:
+        return None
+
+    heading = match.group(1).strip()
+    parts = [p.strip() for p in heading.split(" — ")]
+    if len(parts) != 2:
+        return None
+
+    left, right = parts
+    if left.lower() in ("architecture", "security architecture"):
+        return right or None
+    if right.lower() == "architecture":
+        return left or None
+
+    return None
 
 
 # =============================================================================
