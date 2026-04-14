@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.14.0](https://github.com/davidmatousek/tachi/compare/v4.13.0...v4.14.0) (2026-04-14)
+
+
+### Features
+
+* **129:** attack tree delta sub-agent — extract Section 5 generation ([#162](https://github.com/davidmatousek/tachi/issues/162)) ([0729490](https://github.com/davidmatousek/tachi/commit/072949017f633d029ac4af22032da21efcb67b17))
+
+
+### Bug Fixes
+
+* auto-detect newest docs/security run directory in tachi commands ([#164](https://github.com/davidmatousek/tachi/issues/164)) ([39c962c](https://github.com/davidmatousek/tachi/commit/39c962c4eaed2e4cec899f5036169ba005b6d163))
+
 ## [4.13.0](https://github.com/davidmatousek/tachi/compare/v4.12.0...v4.13.0) (2026-04-12)
 
 
