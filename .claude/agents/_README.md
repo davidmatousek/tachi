@@ -12,6 +12,7 @@ Quick reference for all agents in tachi.
 | Agent | Role | Lines | Primary Use Cases |
 |-------|------|-------|-------------------|
 | [architect](./architect.md) | System Architect | 269 | Technical design, architecture decisions, technology selection |
+| [attack-tree-delta](./tachi/attack-tree-delta.md) | Attack Tree Delta Sub-Agent (Leaf) | 146 | Attack tree generation and delta reconciliation; spawned by tachi-threat-report (first pipeline-agent-spawning-pipeline-agent pattern in tachi) |
 | [code-reviewer](./code-reviewer.md) | Code Quality Analyst | 269 | Pull request reviews, code quality assessment, best practices |
 | [debugger](./debugger.md) | Root Cause Analyst | 239 | Bug investigation, 5 Whys analysis, error diagnosis |
 | [devops](./devops.md) | Infrastructure Engineer | 291 | Deployment, CI/CD, environment management |
@@ -25,7 +26,7 @@ Quick reference for all agents in tachi.
 | [ux-ui-designer](./ux-ui-designer.md) | UX/UI Designer | 245 | UI/UX design, user experience, interface design, wireframes |
 | [web-researcher](./web-researcher.md) | Research Specialist | 265 | Web research, documentation lookup, technology investigation |
 
-**Total Agents**: 13 | **Total Lines**: 3,287 | **Average**: 253 lines/agent
+**Total Agents**: 14 | **Total Lines**: 3,433 | **Average**: 245 lines/agent
 
 ---
 

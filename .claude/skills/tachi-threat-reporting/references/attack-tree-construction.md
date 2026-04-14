@@ -204,3 +204,103 @@ Before including any Mermaid attack tree in the report or standalone file, run e
 - [ ] Labels are concise but descriptive (aim for 3-10 words per label)
 - [ ] Gate purpose is clear from surrounding context
 - [ ] Tree layout does not create excessive width (prefer depth over breadth where possible)
+
+---
+
+## Baseline Reconciliation
+
+When a baseline exists and the architecture has changed (Rule 2 applies), fresh attack trees are generated for ALL Critical/High findings, then this structural similarity algorithm is applied to each UNCHANGED finding to decide whether to carry forward the baseline version or keep the fresh version.
+
+**Purpose**: Rule 3 reconciliation preserves consistency. If an UNCHANGED finding's attack tree is substantively the same as the baseline despite minor LLM wording variation, the baseline version is preserved. This prevents cosmetic churn while still detecting meaningful structural changes.
+
+### Named Constants
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `LEAF_MATCH_THRESHOLD` | 0.70 | Minimum token-level Jaccard similarity for a leaf label pair to count as a match |
+| `TREE_SIMILARITY_THRESHOLD` | 0.80 | Minimum proportion of matched leaf pairs for overall tree similarity |
+| `NODE_COUNT_VARIANCE` | 0.20 | Maximum allowed proportional difference in total node count |
+
+### Algorithm Steps
+
+For each UNCHANGED finding that has both a fresh tree and a baseline tree:
+
+**Step 1 — Parse Mermaid Trees**: Parse both `flowchart TD` diagrams. Extract total node count (all nodes matching the `{FindingID}_{type}{N}` pattern), total edge count (`-->` connections), and an ordered gate-type list (scan node IDs for `_or` and `_and` prefixes, record in the order they appear).
+
+**Step 2 — Extract Leaf Labels**: Identify leaf nodes by the `_leaf` prefix in their node ID (e.g., `AG1_leaf1`, `AG1_leaf2`). Extract the text label from each leaf's `["..."]` quoted content.
+
+**Step 3 — Tokenize Labels**: For each leaf label:
+1. Convert to lowercase
+2. Strip all punctuation (periods, commas, colons, semicolons, parentheses, single and double quotes)
+3. Split on whitespace into tokens
+4. Treat hyphenated words as single tokens (e.g., `"high-stakes"` → one token `high-stakes`)
+5. No stop-word removal — retain every token
+
+**Step 4 — Per-Label Jaccard Similarity**: For each pair of leaf labels (one baseline, one fresh), compute:
+
+```
+jaccard(A, B) = |tokens(A) ∩ tokens(B)| / |tokens(A) ∪ tokens(B)|
+```
+
+A pair **matches** if `jaccard >= LEAF_MATCH_THRESHOLD` (0.70). Use greedy best-match pairing: for each baseline leaf, select the fresh leaf with the highest Jaccard score that has not yet been paired. Each leaf may be matched at most once.
+
+**Step 5 — Tree-Level Similarity**:
+
+```
+tree_similarity = matched_pairs / max(baseline_leaf_count, fresh_leaf_count)
+```
+
+**Step 6 — Gate-Type Comparison**: Compare the ordered gate-type lists from both trees. If the lists differ in length or at any position, treat the trees as **materially different** regardless of leaf similarity. This guard catches semantic changes like OR→AND conversions where leaf labels may still overlap.
+
+**Step 7 — Node Count Guard**:
+
+```
+node_variance = |baseline_nodes - fresh_nodes| / max(baseline_nodes, fresh_nodes)
+```
+
+If `node_variance > NODE_COUNT_VARIANCE` (0.20), treat the trees as **materially different**.
+
+**Step 8 — Decision**: Carry forward the baseline version if ALL three conditions hold:
+- `tree_similarity >= 0.80` (Step 5)
+- Gate types identical (Step 6)
+- `node_variance <= 0.20` (Step 7)
+
+Otherwise, keep the fresh version and record the action as `regenerated` in the manifest.
+
+### Worked Example
+
+#### Example A: Structurally Similar → Carry Forward Baseline
+
+Baseline S-1 tree has 16 nodes (1 root, 1 AND gate, 2 OR gates, 12 leaves). Fresh S-1 tree has 17 nodes (1 root, 1 AND gate, 2 OR gates, 13 leaves). Three representative leaf comparisons:
+
+| Baseline Leaf | Fresh Leaf | Intersection / Union | Jaccard |
+|---|---|---|---|
+| `"Exploit weak session token generation"` | `"Exploit weak session token generation mechanism"` | 5 / 6 | 0.83 ✓ |
+| `"Forge credentials using leaked API keys"` | `"Forge credentials using leaked API key material"` | 5 / 7 | 0.71 ✓ |
+| `"Hijack active session via cookie theft"` | `"Hijack active session via cookie theft"` | 6 / 6 | 1.00 ✓ |
+
+Aggregate across all leaves: 12 of 13 fresh leaves find a baseline match at Jaccard ≥ 0.70.
+
+- **Tree similarity**: `12 / max(12, 13) = 12/13 = 0.92` ≥ 0.80 ✓
+- **Gate types**: `[AND, OR, OR]` == `[AND, OR, OR]` ✓
+- **Node variance**: `|16 - 17| / 17 = 0.06` ≤ 0.20 ✓
+
+**Decision**: All three conditions met → **carry forward baseline version**. Manifest action: `carried_forward`.
+
+#### Example B: Materially Different → Use Fresh
+
+Baseline AG-2 tree has 10 nodes (1 root, 2 OR gates, 1 sub-goal, 6 leaves). Fresh AG-2 tree has 12 nodes (1 root, 1 OR gate, 1 AND gate, 2 sub-goals, 7 leaves). Three representative leaf comparisons:
+
+| Baseline Leaf | Fresh Leaf | Intersection / Union | Jaccard |
+|---|---|---|---|
+| `"Intercept tool call parameters"` | `"Intercept and modify tool call parameters"` | 4 / 6 | 0.67 ✗ |
+| `"Exploit unvalidated plugin inputs"` | `"Leverage unvalidated agent plugin configuration"` | 2 / 6 | 0.33 ✗ |
+| `"Abuse elevated runtime permissions"` | `"Abuse elevated runtime permissions"` | 4 / 4 | 1.00 ✓ |
+
+Aggregate: 4 of 7 fresh leaves match a baseline leaf at Jaccard ≥ 0.70.
+
+- **Tree similarity**: `4 / max(6, 7) = 4/7 ≈ 0.57` < 0.80 ✗
+- **Gate types**: `[OR, OR]` ≠ `[OR, AND]` ✗ (OR→AND gate change)
+- **Node variance**: `|10 - 12| / 12 ≈ 0.17` ≤ 0.20 ✓
+
+**Decision**: Both leaf similarity and gate-type checks fail → **use fresh version**. Manifest action: `regenerated`. Any one failed check is sufficient to reject the baseline; here two fail independently.

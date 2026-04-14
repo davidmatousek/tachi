@@ -49,8 +49,13 @@ report:
       attack_tree_count:
         type: integer
         description: >
-          Number of generated attack trees (one per
-          Critical/High finding).
+          Total attack trees produced (fresh + carried-forward),
+          equal to the number of files in the attack-trees/
+          directory. Note: This reverses the Feature 104
+          definition which counted only NEW/UPDATED trees.
+          Changed in Feature 129 because the total count is
+          more useful to consumers and always equals the file
+          count.
       baseline_source:
         type: string
         nullable: true

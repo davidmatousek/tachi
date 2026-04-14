@@ -195,3 +195,50 @@ Assign a qualitative effort estimate (Low / Medium / High) to each roadmap item 
 3. **Architectural indicators**: Keywords suggesting High effort: "implement framework," "redesign," "new component," "pipeline," "workflow system," "classification framework," "provenance tracking."
 4. **Configuration indicators**: Keywords suggesting Low effort: "configure," "enable," "set," "adjust," "update parameter," "add to allowlist."
 5. **Do not estimate time**: Never convert effort levels to hours, days, or sprints. Effort is relative complexity only.
+
+---
+
+## Section 5 Delta Annotations
+
+When attack trees are generated in a delta context (a baseline exists), annotate each tree's inline Section 5 content to indicate its provenance. These annotations help readers understand whether a tree reflects current fresh analysis or was carried forward from the prior run.
+
+### Regenerated Trees
+
+When a tree was freshly generated because the architecture changed, or because Rule 3 reconciliation found the fresh version materially different from the baseline, add the following annotation immediately after the H3 heading for the finding, before the metadata line:
+
+> _"Context changed since baseline — attack tree regenerated."_
+
+Apply this annotation when the sub-agent manifest records the per-tree `action` as `generated_fresh` (for NEW or UPDATED findings) or `regenerated` (for UNCHANGED findings where Rule 3 produced a materially different fresh tree).
+
+### Carried-Forward Trees
+
+When a tree was carried forward verbatim from the baseline (Rule 1 bulk copy, or Rule 3 structural-similarity match on an UNCHANGED finding), add the following annotation immediately after the H3 heading:
+
+> _"Unchanged from baseline ({baseline_date})."_
+
+Where `{baseline_date}` is the ISO date from the `baseline.date` frontmatter field of `threats.md` (e.g., `2026-03-15`). Apply this annotation when the sub-agent manifest records the per-tree `action` as `carried_forward`.
+
+### No Baseline (First Run)
+
+When no baseline exists (first run or baseline directory missing), omit delta annotations entirely. Present trees without provenance context — the absence of a baseline is already conveyed by the frontmatter `baseline_source: null` and the absence of a Delta Summary section.
+
+### Example Inline Block
+
+```
+### S-1: Credential Theft via Session Hijacking
+
+_Unchanged from baseline (2026-03-15)._
+
+**Component**: API Gateway | **Risk Level**: Critical | **Finding**: S-1
+
+One-sentence summary of the attack path.
+
+```mermaid
+flowchart TD
+    ...
+```
+```
+
+### Ordering with Annotations
+
+Delta annotations do not affect ordering. Critical findings still appear before High findings, alphabetical by finding ID within each severity tier. Carried-forward and regenerated trees are interleaved by severity and alphabetical order, not grouped by provenance.

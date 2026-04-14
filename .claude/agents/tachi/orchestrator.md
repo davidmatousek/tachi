@@ -222,7 +222,9 @@ For each finding in the baseline finding registry, apply a three-step classifica
 2. **Check threat applicability**: If the threat category no longer applies to the component's current DFD type, classify as `RESOLVED`.
 3. **Assess finding stability**: If the component's context (description, data flows, trust boundary) is unchanged, classify as `UNCHANGED`. If context has changed, classify as `UPDATED`.
 
-Each classified finding inherits its baseline ID. `UNCHANGED` findings inherit all scores. `UPDATED` findings are re-scored in Phase 2. `RESOLVED` findings retain last-known scores and are collected into a separate `resolved_findings` list.
+Each classified finding inherits its baseline ID. `UNCHANGED` findings inherit all baseline scores. `UPDATED` findings are re-scored in Phase 2. `RESOLVED` findings retain last-known scores and are collected into a separate `resolved_findings` list.
+
+**MAESTRO layer re-inheritance**: For `UNCHANGED` and `UPDATED` findings, `maestro_layer` is re-derived from the current Phase 1 component inventory (not copied from the baseline finding). This prevents stale layer labels from propagating when the MAESTRO taxonomy or keyword table changes between runs (e.g., across a schema version bump). `RESOLVED` findings retain the baseline `maestro_layer` because their component is absent from the current inventory and no fresh classification is available.
 
 **Edge cases**: Component renames (same `primaryLocationLineHash` and DFD type) are treated as `UPDATED`, not RESOLVED + NEW. Partial fixes (context changed but category still applies) are `UPDATED`, not `RESOLVED`. Each RESOLVED finding retains audit fields (`id`, `threat`, `likelihood`, `impact`, `risk_level`, `mitigation`, `baseline_run_id`, `resolution_reason`).
 

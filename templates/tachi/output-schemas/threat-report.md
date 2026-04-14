@@ -27,7 +27,7 @@ risk_distribution:
   High: "{integer}"
   Medium: "{integer}"
   Low: "{integer}"
-attack_tree_count: "{integer — number of attack trees generated (Critical + High findings)}"
+attack_tree_count: "{integer — total attack trees produced (fresh + carried-forward)}"
 baseline_source: "{baseline file path or null}"
 baseline_date: "{ISO date of baseline run or null}"
 delta_counts:
@@ -47,7 +47,7 @@ delta_counts:
 | `source_file` | string | Relative path to the `threats.md` file used as input. |
 | `finding_count` | integer | Total number of findings from `threats.md` Sections 3, 4, and 4a. |
 | `risk_distribution` | object | Count of findings per risk level (Critical, High, Medium, Low). |
-| `attack_tree_count` | integer | Number of Mermaid attack trees with actual generated content. Counts Critical and High findings with delta_status NEW or UPDATED (fresh trees). UNCHANGED findings carried forward from baseline are excluded. When no baseline, equals total Critical + High findings. |
+| `attack_tree_count` | integer | Total attack trees produced (fresh + carried-forward), equal to the number of `.md` files in the `attack-trees/` directory. Includes both freshly generated and baseline-carried-forward trees. |
 | `baseline_source` | string, nullable | File path of the baseline used for this report's source threats.md. Null when no baseline (first run). |
 | `baseline_date` | string, nullable | ISO date of the baseline run. Null when no baseline. |
 | `delta_counts` | object, nullable | Lifecycle breakdown counts. All values null when no baseline. |

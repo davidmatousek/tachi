@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-04-12T20:02:24Z.
+> Auto-generated from GitHub Issues on 2026-04-13T23:09:23Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -12,7 +12,6 @@
 | #144 | MAESTRO companion: NIST AI RMF integration evaluation ADR | Impact: 6, Confidence: 7, Effort: 7 = **20** | Identified during MAESTRO compliance audit alongside #136... | 2026-04-10 |
 | #143 | MAESTRO Phase 4: OWASP AIVSS evaluation ADR | Impact: 5, Confidence: 8, Effort: 9 = **22** | Follow-on from #136 per PM recommendation. Canonical MAES... | 2026-04-10 |
 | #142 | MAESTRO Phase 3: Agentic threat pattern expansion (Collusion, Emergent Behavior, Temporal, Trust, Communication, Resource) | Impact: 7, Confidence: 6, Effort: 5 = **18** | Follow-on from #136 per PM recommendation. Canonical MAES... | 2026-04-10 |
-| #129 | Attack Tree Delta Sub-Agent — extract Section 5 generation into focused sub-agent | — | — | 2026-04-09 |
 | #126 | Auto-detect architecture drift | | Dimension | Score | Rationale | | — | 2026-04-12 |
 | #98 | MAESTRO coverage matrix — show which layers have threat coverage | — | — | 2026-04-12 |
 | #69 | Expand example datasets for broader test coverage | — | — | 2026-04-12 |
@@ -51,6 +50,7 @@
 | # | Title | State | Updated |
 |---|-------|-------|---------|
 | #154 | fix: PDF security report — attack tree images missing, MAESTRO headings empty, landscape infographic whitespace | CLOSED | 2026-04-12 |
+| #129 | Attack Tree Delta Sub-Agent — extract Section 5 generation into focused sub-agent | OPEN | 2026-04-13 |
 | #27 | Developer Guide: Automated Threat Modeling for Your Architecture | CLOSED | 2026-03-24 |
 | #18 | Feature: Threat Infographic Agent | CLOSED | 2026-03-23 |
 | #15 | Feature 007: Threat Report Agent & Attack Trees | CLOSED | 2026-03-23 |

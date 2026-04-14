@@ -6,6 +6,7 @@ tools:
   - Glob
   - Grep
   - Write
+  - Agent
 model: sonnet
 ---
 ## Metadata
@@ -50,9 +51,7 @@ Load domain knowledge on-demand from the `tachi-threat-reporting` skill using th
 
 | Reference | File | Load When |
 |-----------|------|-----------|
-| Narrative Templates | `.claude/skills/tachi-threat-reporting/references/narrative-templates.md` | Generating Executive Summary (Section 1), Architecture Overview (Section 2), Threat Analysis (Section 3), Cross-Cutting Themes (Section 4), Remediation Roadmap (Section 7) |
-| Attack Tree Construction | `.claude/skills/tachi-threat-reporting/references/attack-tree-construction.md` | Constructing Mermaid attack trees for Critical and High findings (Section 5) |
-| Attack Tree Examples | `.claude/skills/tachi-threat-reporting/references/attack-tree-examples.md` | Before generating the first attack tree -- load once as reference patterns |
+| Narrative Templates | `.claude/skills/tachi-threat-reporting/references/narrative-templates.md` | Generating Executive Summary (Section 1), Architecture Overview (Section 2), Threat Analysis (Section 3), Cross-Cutting Themes (Section 4), Section 5 delta annotations (from manifest `action` values), Remediation Roadmap (Section 7) |
 | Severity bands (shared) | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | Executive summary / severity-based narrative ordering |
 | Attack chain patterns (shared) | `.claude/skills/tachi-shared/references/attack-chain-patterns-shared.md` | Generating Cross-Layer Attack Chains narrative (Section 6) — causal vocabulary, chain structure definitions |
 
@@ -209,24 +208,9 @@ Scan all findings for emergent patterns across categories that reveal systemic i
 
 ### Section 5: Attack Trees
 
-**MANDATORY**: Read `.claude/skills/tachi-threat-reporting/references/attack-tree-construction.md` for tree structure, depth requirements, Mermaid syntax, color styling, and validation checklist.
+Section 5 is delegated to the `tachi-attack-tree-delta` sub-agent, which owns all attack tree generation and delta reconciliation. Spawn it via the Agent tool with four atomic inputs: (1) Critical/High findings list from `threats.md` Sections 3/4, each entry with `id`, `category`, `component`, `threat`, `risk_level`, `delta_status`; (2) the `delta_counts` object from `threats.md` frontmatter (`{new, unchanged, updated, resolved}`), or `null` when no baseline; (3) baseline directory path from `baseline.source` frontmatter minus the trailing `/threats.md` suffix, or `null` when no baseline; (4) the current run's output directory path. The sub-agent writes standalone files to `attack-trees/{finding-id-lowercase}-attack-tree.md` plus a manifest at `attack-trees/.manifest.json`, then returns `STATUS`, `RULE_APPLIED`, `TREES_GENERATED`, `MANIFEST`, and `SUMMARY` counts.
 
-**MANDATORY**: Read `.claude/skills/tachi-threat-reporting/references/attack-tree-examples.md` before generating the first tree -- load once as reference patterns.
-
-Generate Mermaid attack trees for every Critical and High finding following Bruce Schneier's attack tree methodology.
-
-**Attack tree delta handling (three rules):**
-
-First, check `delta_counts` from the `threats.md` frontmatter to determine which rule applies:
-
-**Rule 1 — All UNCHANGED (delta_counts: new=0, updated=0, resolved=0):** Architecture has not changed. For each UNCHANGED Critical/High finding, read and copy the full Mermaid content from the baseline at `{baseline_dir}/attack-trees/{finding-id}-attack-tree.md`. Derive `baseline_dir` from the `baseline.source` frontmatter path by dropping `threats.md`. Include the complete Mermaid code block in both inline (Section 5) and standalone file output. Do NOT output placeholder text without the diagram. If the baseline file is missing, generate fresh as fallback.
-
-**Rule 2 — Any NEW/UPDATED/RESOLVED (any delta_counts > 0):** Architecture shifted -- attack paths to all threats may have changed. Generate fresh attack trees for ALL Critical/High findings, including UNCHANGED ones. For UPDATED findings, add a note: _"Context changed since baseline -- attack tree regenerated."_
-
-**Rule 3 — Reconciliation (after Rule 2 only):** After generating all fresh trees, compare each UNCHANGED finding's fresh tree against its baseline version. If structurally similar (same nodes, same paths, minor wording only), use the baseline version for consistency. If materially different (new paths, removed nodes, structural changes), use the fresh version.
-
-**RESOLVED**: Skip entirely -- no attack tree.
-**No baseline**: Generate all trees fresh.
+**Consume the manifest**: Read `{output_dir}/attack-trees/.manifest.json`. The `trees` array is already ordered Critical-first alphabetical, then High alphabetical — use it directly. For each entry, read the standalone file at `{output_dir}/{file_path}` and embed inline under: H3 heading with finding ID and threat description; metadata line (**Component** | **Risk Level** | **Finding**); one-sentence summary; the Mermaid code block verbatim. Apply delta annotations (per `narrative-templates.md` Section 5 Delta Annotations): `action == "regenerated"` → include _"Context changed since baseline — attack tree regenerated."_; `action == "carried_forward"` with UNCHANGED delta_status and known baseline_date → optionally include _"Unchanged from baseline ({baseline_date})."_. Apply correlation notes per the Correlation Group Handling → Attack Tree Treatment policy below. After assembly, verify the `.md` file count in `attack-trees/` (excluding `.manifest.json`) equals the manifest's `attack_tree_count`; on mismatch the sub-agent reported `STATUS: PARTIAL` — re-read the manifest before finalizing. RESOLVED findings are excluded by the sub-agent.
 
 ### Section 6: Cross-Layer Attack Chains
 
@@ -282,6 +266,7 @@ When `threats.md` Section 4a contains correlation groups (produced by the orches
 - Generate individual attack trees for each correlated finding that meets the severity threshold (Critical/High)
 - In each tree's heading or introductory text, note the correlation relationship: "This finding is part of correlation group CG-{N}. See also: {peer finding IDs}."
 - Do NOT merge correlated findings into a single unified tree
+- Correlation cross-referencing remains this agent's responsibility — the `tachi-attack-tree-delta` manifest does not carry correlation data; augment manifest-driven inline entries using `threats.md` Section 4a as the source
 
 ### Remediation Roadmap Treatment (Section 7)
 
@@ -296,37 +281,6 @@ When `threats.md` Section 4a contains correlation groups (produced by the orches
 ### Missing Section 4a
 
 If Section 4a contains "No cross-agent correlations detected" or is absent entirely, skip correlation handling. Treat all findings as independent.
-
----
-
-## Dual Output Location
-
-Every attack tree must appear in two locations.
-
-### Location 1: Inline in threat-report.md (Section 5: Attack Trees)
-
-Embed each attack tree directly in the Attack Trees section using Mermaid code blocks. For each finding include: H3 heading with finding ID and threat description, metadata line (**Component** | **Risk Level** | **Finding**), one-sentence summary, and the Mermaid code block.
-
-**Ordering**: All Critical findings first, then all High findings. Within the same severity, order alphabetically by finding ID.
-
-**Correlated findings**: Add a note after the finding header: "This finding is part of correlation group CG-{N}. See also: {peer finding IDs}."
-
-### Location 2: Standalone Files in attack-trees/
-
-Save each attack tree as an independent Markdown file in the `attack-trees/` directory within the output directory.
-
-**File naming convention** (MUST follow exactly):
-- Pattern: `{finding-id}-attack-tree.md`
-- Case: **always lowercase** — the finding ID is lowercased in the filename
-- Suffix: **always `-attack-tree.md`** — never use a description slug
-- Examples: `AG-1` → `ag-1-attack-tree.md`, `LLM-2` → `llm-2-attack-tree.md`, `S-1` → `s-1-attack-tree.md`
-- **Wrong**: `AG-1-no-hitl-stdio.md`, `AG-1-attack-tree.md` (uppercase)
-
-Each standalone file contains: H1 heading with finding ID and threat description, a metadata table (Finding ID, Component, Risk Level, Threat, Correlation), and the Mermaid code block **identical** to the inline version in `threat-report.md`.
-
-### File Inventory
-
-After generating all trees, verify the `attack-trees/` directory contains exactly one file per Critical and High finding. No files for Medium, Low, or Note findings.
 
 ---
 

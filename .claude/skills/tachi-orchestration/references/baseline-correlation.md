@@ -120,6 +120,8 @@ After matching, classify each finding:
 | `RESOLVED` | Baseline finding has no current match (component/threat removed) | Retain baseline ID | Retain last-known score |
 | `NEW` | Current finding has no baseline match | Assign new sequential ID | Score fresh with bounds |
 
+**MAESTRO layer handling**: `maestro_layer` is a classification field, not a score. For `UNCHANGED` and `UPDATED` findings, re-derive `maestro_layer` from the current Phase 1 component inventory rather than inheriting from the baseline finding. This prevents stale layer labels from persisting across MAESTRO taxonomy revisions (schema version bumps or keyword table changes). `RESOLVED` findings retain the baseline `maestro_layer` because the component is absent from the current inventory.
+
 ### Sequential ID Assignment for NEW Findings
 
 New findings receive IDs that continue after the highest existing ID in their category:
