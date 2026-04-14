@@ -84,12 +84,15 @@ Single-command entry point for tachi threat infographic generation — the visua
    - Set `data_source_dir` to the directory containing the file
 
    **If no explicit path** (auto-detect):
-   - Scan current working directory for `compensating-controls.md`
-     - If found: set `primary_file = compensating-controls.md`, type is `compensating-controls`
-   - If `compensating-controls.md` not found, scan for `risk-scores.md`
-     - If found: set `primary_file = risk-scores.md`, type is `risk-scores`
-   - If `risk-scores.md` not found, scan for `threats.md`
-     - If found: set `primary_file = threats.md`, type is `threats`
+   - Determine scan directory:
+     - If `./docs/security/` exists in cwd: glob `docs/security/*/`, sort directory names descending (ISO-like `YYYY-MM-DDTHH-MM-SS` timestamps sort correctly as strings), and select the newest directory that contains at least one of `compensating-controls.md`, `risk-scores.md`, or `threats.md`. Set `data_source_dir` to that path and display: `Auto-detected data source dir: {data_source_dir}`.
+     - Otherwise, set `data_source_dir` to current working directory.
+   - Scan `data_source_dir` for `compensating-controls.md`
+     - If found: set `primary_file = {data_source_dir}/compensating-controls.md`, type is `compensating-controls`
+   - If `compensating-controls.md` not found, scan `data_source_dir` for `risk-scores.md`
+     - If found: set `primary_file = {data_source_dir}/risk-scores.md`, type is `risk-scores`
+   - If `risk-scores.md` not found, scan `data_source_dir` for `threats.md`
+     - If found: set `primary_file = {data_source_dir}/threats.md`, type is `threats`
    - If none found, display:
      ```
      NO DATA SOURCE FILES FOUND
@@ -101,7 +104,6 @@ Single-command entry point for tachi threat infographic generation — the visua
      Then optionally: /risk-score → /compensating-controls for richer data.
      ```
    - Halt if none found.
-   - Set `data_source_dir` to current working directory
 
 3. **Co-located threats.md check** (when type is `risk-scores` or `compensating-controls`):
    - Verify `threats.md` exists in `data_source_dir`

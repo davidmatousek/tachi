@@ -23,7 +23,9 @@ Consider user input before proceeding (if not empty).
 4. Default: `title_override = null` (auto-detected from `threats.md` frontmatter in agent)
 
 5. Remaining `$ARGUMENTS` is treated as the target directory path.
-6. Default: `target_dir = current working directory`
+6. If no target directory was provided in `$ARGUMENTS`:
+   - If `./docs/security/` exists in cwd: glob `docs/security/*/`, sort directory names descending (ISO-like `YYYY-MM-DDTHH-MM-SS` timestamps sort correctly as strings), and select the newest directory that contains `threats.md` (the minimum required artifact). Set `target_dir` to that path and display: `Auto-detected target: {target_dir}`.
+   - Otherwise, default to current working directory (`.`).
 
 ## Overview
 

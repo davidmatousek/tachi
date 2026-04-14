@@ -23,7 +23,9 @@ Consider user input before proceeding (if not empty).
 4. Default: `output_dir = null` (outputs written to same directory as input risk-scores)
 
 5. Remaining `$ARGUMENTS` is treated as the risk-score input directory path.
-6. Default input directory: current working directory (`.`)
+6. If no input directory was provided in `$ARGUMENTS`:
+   - If `./docs/security/` exists in cwd: glob `docs/security/*/`, sort directory names descending (ISO-like `YYYY-MM-DDTHH-MM-SS` timestamps sort correctly as strings), and select the newest directory that contains `risk-scores.md` or `risk-scores.sarif`. Set `input_dir` to that path and display: `Auto-detected input: {input_dir}`.
+   - Otherwise, default to current working directory (`.`).
 
 ## Overview
 
