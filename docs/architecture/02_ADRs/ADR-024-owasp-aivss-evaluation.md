@@ -1,7 +1,7 @@
 # ADR-024: OWASP AIVSS Evaluation and Tachi Composite Scoring Posture
 
 **Status**: Accepted
-**Date**: 2026-04-16
+**Date**: 2026-04-15
 **Deciders**: Architect, Product Manager, Team-Lead
 **Feature**: 143 (MAESTRO Phase 4)
 **Related ADRs**: [ADR-020](ADR-020-maestro-layer-classification.md) (MAESTRO classification), [ADR-019](ADR-019-shared-definitions-and-model-field-governance.md) (shared cross-agent definitions), [ADR-018](ADR-018-baseline-aware-pipeline-correlation.md) (baseline-aware scoring lineage)
