@@ -19,13 +19,13 @@ Run each `/aod.define` in order. Items on the same line can run in parallel.
 | **Wave 1 — Foundation work (weeks 2-4, parallel)** ||||
 | ~~3~~ | ~~`/aod.define 82`~~ **[DONE]** | [#82](https://github.com/davidmatousek/tachi/issues/82) | ~~Enrich 11 threat agents via skill references~~ — **DELIVERED 2026-04-12. All 11 STRIDE+AI threat agents migrated to lean + skill references pattern. 11 companion skill directories created. +30 new detection pattern categories. 68 tasks across 18 waves. See CLAUDE.md Feature 082 entry for full details.** |
 | ~~4~~ | ~~`/aod.define 141`~~ **[DONE]** | [#141](https://github.com/davidmatousek/tachi/issues/141) | ~~MAESTRO Phase 2: cross-layer attack chain analysis~~ — **DELIVERED 2026-04-12. Cross-layer attack chain correlation engine (orchestrator Phase 3.5), attack-chains.md artifact, threat report Section 6 narrative, PDF chain diagram pages, schema (attack-chain.yaml v1.0), parser (parse_attack_chains), 800+ lines test coverage. 34 tasks across 7 waves. PR #159, v4.13.0.** |
-| **Wave 2 — Sequential follow-on (week 5)** ||||
-| 5 | `/aod.define 129` | [#129](https://github.com/davidmatousek/tachi/issues/129) | Attack tree delta sub-agent (must wait for #82) |
+| **Wave 2 — Sequential follow-on (week 5) — DELIVERED 2026-04-14** ||||
+| ~~5~~ | ~~`/aod.define 129`~~ **[DONE]** | [#129](https://github.com/davidmatousek/tachi/issues/129) | ~~Attack tree delta sub-agent (must wait for #82)~~ — **DELIVERED 2026-04-14 via PR #162. New leaf agent `tachi-attack-tree-delta` extracts Section 5 generation from threat-report (-56 lines). Deterministic Rule 1 (carry-forward) / Rule 2 (fresh + per-finding Rule 3 reconciliation) / no-baseline fallback dispatch on `delta_counts`. Rule 3 structural similarity algorithm with named constants (LEAF_MATCH_THRESHOLD=0.70, TREE_SIMILARITY_THRESHOLD=0.80, NODE_COUNT_VARIANCE=0.20). `attack_tree_count` definition unified across schema/template/sub-agent (reverses Feature 104 metric). 13 tasks complete, ~1 day wall-clock against 1-2 day estimate, smooth sailing per retrospective. Sidecar bugfix PR #164 added auto-detection of newest `docs/security/<timestamp>/` run directory across the four downstream tachi commands.** |
 | **Wave 3 — ADR spikes (week 5, run alongside Wave 2 as a pair)** ||||
 | 6 | `/aod.define 143` | [#143](https://github.com/davidmatousek/tachi/issues/143) | MAESTRO Phase 4: OWASP AIVSS evaluation ADR |
 | 7 | `/aod.define 144` | [#144](https://github.com/davidmatousek/tachi/issues/144) | MAESTRO companion: NIST AI RMF integration ADR |
 | **Wave 4 — MAESTRO enhancements (weeks 6-8)** ||||
-| 8 | *(re-scope check)* | [#98](https://github.com/davidmatousek/tachi/issues/98) | MAESTRO coverage matrix — investigate whether #141 subsumed this |
+| 8 | ~~*(re-scope check)*~~ **DONE 2026-04-14** | [#98](https://github.com/davidmatousek/tachi/issues/98) | ~~MAESTRO coverage matrix — investigate whether #141 subsumed this~~ — **NOT subsumed. Shrunk from 2-3 weeks to ~1 day. Real gap: every layer-aware view (threats.md "Risk by MAESTRO Layer", PDF MAESTRO Layer Analysis page, maestro-stack infographic) silently omits layers with zero findings (per `output-schemas.md` spec rule and `extract-report-data.py:388` filter). Reviewers cannot tell "analyzed but clean" from "not applicable" or "never analyzed." Fix: invert the omission rule across the 3 enforcement points; activate the existing dead-code empty-layer branch in `maestro-findings.typ:151-155`. Reschedule from Wave 4 to Wave 5 opportunistic. See [#98 comment](https://github.com/davidmatousek/tachi/issues/98#issuecomment-4247897465).** |
 | 9 | `/aod.define 142` | [#142](https://github.com/davidmatousek/tachi/issues/142) | MAESTRO Phase 3: agentic threat pattern expansion |
 | 10 | `/aod.define 145` | [#145](https://github.com/davidmatousek/tachi/issues/145) | MAESTRO canonical worked example |
 | **Wave 5 — Nice-to-haves (weeks 9+, opportunistic)** ||||
@@ -41,13 +41,13 @@ Run each `/aod.define` in order. Items on the same line can run in parallel.
 3. ~~Post re-scope comments on #98 and #69 to prevent duplicate work~~ **DONE 2026-04-12** — scope overlap flag posted on #98 (gated on #141), scope adjacency flag posted on #69 (gated on #145).
 4. ~~Run `/aod.validate 126` and `/aod.validate 62` to get bodies and ICE scores on stub issues~~ **DONE 2026-04-12** — #126 "Auto-detect architecture drift" scored ICE 17 (I:9 C:5 E:3), #62 "Custom brand presets" scored ICE 16 (I:6 C:5 E:5). Both above defer gate, both remain Wave 5 opportunistic.
 
-**All immediate actions complete.** Wave 1 fully delivered.
+**All immediate actions complete.** Waves 0, 1, and 2 fully delivered.
 
-**Next up now that Wave 0 + Wave 1 are fully delivered**:
-- **#141 DELIVERED 2026-04-12** — cross-layer attack chain correlation engine shipped as PR #159. Chose rule-based correlation (not LLM-assisted or hybrid). ADR-020 updated with Phase 2 architecture. Unblocks #145, #142, and the #98 re-scope.
-- **#98 re-scope check is now actionable** — #141 delivery exposed MAESTRO layer coverage via chain output. Investigate whether coverage matrix is subsumed.
-- **#129 is unblocked** by #82 delivery (2026-04-12). Wave 2 is actionable.
-- **#143 + #144 ADR spikes** (Wave 3) can pair alongside Wave 2 as pure research work.
+**Next up now that Waves 0, 1, 2 are fully delivered**:
+- **#129 DELIVERED 2026-04-14** — attack tree delta sub-agent shipped as PR #162. Parent-leaf decomposition with structured JSON manifest IPC. Rule 3 reconciliation now actually fires (the original bug — it never fired in practice). Sidecar PR #164 added auto-detection of newest `docs/security/<timestamp>/` run directory across the four downstream tachi commands.
+- **Recommended next: Wave 3 ADR pair — `/aod.define 143` + `/aod.define 144`** (OWASP AIVSS ADR + NIST AI RMF ADR). Pure research/documentation scope, paired research phase, single `/aod.define` cycle covers both in ~1 week vs 2 weeks if sequenced. Both reference canonical MAESTRO complementary frameworks.
+- **#98 re-scope check DONE 2026-04-14** — NOT subsumed by #141. Shrunk from 2-3 weeks to ~1 day; rescheduled to Wave 5 opportunistic. Gap is real: layer-aware views silently omit zero-finding layers, hiding "analyzed but clean" vs "not applicable." Fix is a 3-point omission-rule inversion. See [#98 comment](https://github.com/davidmatousek/tachi/issues/98#issuecomment-4247897465).
+- **Wave 4 (after Wave 3)**: #142 (MAESTRO Phase 3 agentic patterns), #145 (MAESTRO canonical worked example). Both unblocked, both benefit from Phase 2 chains being in place.
 - **ADR-022 (Feature 130 output) establishes new precedent** — any future CLI prerequisite (third-party binary, renderer, compiler required at runtime) now follows the defense-in-depth two-gate pattern: shell-level preflight in the command file + Python-level `shutil.which` raise at the function boundary, gated on input detection, with a Future Work clause for helper extraction once a third CLI prereq is added.
 
 ---
@@ -89,8 +89,8 @@ These are small ADR-only scopes where `/aod.run` can handle research and draftin
 |-------|--------|
 | ~~[#82](https://github.com/davidmatousek/tachi/issues/82) Enrich 11 threat agents~~ | **DELIVERED 2026-04-12** |
 | ~~[#141](https://github.com/davidmatousek/tachi/issues/141) MAESTRO Phase 2 chains~~ | **DELIVERED 2026-04-12** — chose rule-based correlation |
+| ~~[#129](https://github.com/davidmatousek/tachi/issues/129) Attack tree delta sub-agent~~ | **DELIVERED 2026-04-14** — Triad-governed manual orchestration; Rule 3 named-constant heuristics designed in spec, ~1 day wall-clock |
 | [#142](https://github.com/davidmatousek/tachi/issues/142) MAESTRO Phase 3 patterns | Central ADR unresolved (extend agents vs new tier vs hybrid) |
-| [#129](https://github.com/davidmatousek/tachi/issues/129) Attack tree delta sub-agent | Novel sub-agent design; comparison heuristics need judgment |
 | [#55](https://github.com/davidmatousek/tachi/issues/55) Security Progression Summary | Novel capability; multiple design decisions |
 | [#46](https://github.com/davidmatousek/tachi/issues/46) Upstream AOD sync | Three-way manual merge review per file is the entire job |
 
@@ -168,11 +168,11 @@ Both items run in parallel because they touch different parts of the pipeline. #
 | ~~3~~ | ~~[#82](https://github.com/davidmatousek/tachi/issues/82) Enrich 11 threat agents via skill refs~~ | ~~ICE 24; architectural foundation for every future threat agent improvement; detection quality lift across the entire STRIDE+AI tier~~ | ~~2-4 weeks~~ | **DELIVERED 2026-04-12** — 18-wave build, 68 tasks, all 11 agents migrated to lean pattern with skill references |
 | ~~4~~ | ~~[#141](https://github.com/davidmatousek/tachi/issues/141) MAESTRO Phase 2 cross-layer chains~~ | ~~ICE 20; defining MAESTRO capability; unblocks #145 and re-scopes #98~~ | ~~2-3 weeks~~ | **DELIVERED 2026-04-12** — PR #159, 34 tasks across 7 waves, rule-based correlation (not LLM-assisted). Unblocks #145, #142, #98 re-scope |
 
-### Wave 2 — Sequential follow-on to Wave 1 (week 5)
+### Wave 2 — Sequential follow-on to Wave 1 (week 5) — **DELIVERED 2026-04-14**
 
-| Order | Issue | Why this slot | Effort | Why it must wait |
-|-------|-------|---------------|--------|------------------|
-| 5 | [#129](https://github.com/davidmatousek/tachi/issues/129) Attack tree delta sub-agent | Correctness fix for delta reconciliation (Rule 3 never fires in practice); important for incremental threat modeling quality | 1-2 weeks | **UNBLOCKED** — #82 delivered 2026-04-12; threat-report.md is now the lean refactored version |
+| Order | Issue | Why this slot | Effort | Actual result |
+|-------|-------|---------------|--------|---------------|
+| ~~5~~ | ~~[#129](https://github.com/davidmatousek/tachi/issues/129) Attack tree delta sub-agent~~ | ~~Correctness fix for delta reconciliation (Rule 3 never fires in practice); important for incremental threat modeling quality~~ | ~~1-2 weeks~~ | **DELIVERED 2026-04-14** — PR #162, ~1 day wall-clock against 1-2d estimate. New leaf agent extracts Section 5 generation; deterministic Rule 1/2/3 dispatch; named-constant heuristics; `attack_tree_count` unification reverses Feature 104. Sidecar PR #164 fixed cwd auto-detection bug across the four downstream tachi commands. |
 
 ### Wave 3 — ADR spikes (week 5, pair, run alongside Wave 2)
 
@@ -189,7 +189,7 @@ Run both as a single `/aod.define` cycle because the research phase overlaps alm
 
 | Order | Issue | Rationale | Effort | Dependency |
 |-------|-------|-----------|--------|------------|
-| 8 | **Re-scope check on [#98](https://github.com/davidmatousek/tachi/issues/98)** | Before doing work, verify whether #141 Phase 2 subsumed the coverage matrix ask | 1 hour investigation | After #141 |
+| ~~8~~ | ~~**Re-scope check on [#98](https://github.com/davidmatousek/tachi/issues/98)**~~ **DONE 2026-04-14** | ~~Before doing work, verify whether #141 Phase 2 subsumed the coverage matrix ask~~ — **Investigation complete. NOT subsumed; shrunk from 2-3 weeks to ~1 day; rescheduled to Wave 5 opportunistic. Real gap: every layer-aware view filters out zero-finding layers, so reviewers can't distinguish "analyzed but clean" from "not applicable." Fix is a 3-point omission-rule inversion + dead-code activation in `maestro-findings.typ:151-155`.** | ~~1 hour investigation~~ | ~~After #141~~ |
 | 9 | [#142](https://github.com/davidmatousek/tachi/issues/142) MAESTRO Phase 3 agentic patterns | ICE 18; benefits from #141 in place so patterns can intersect with chains | 2-3 weeks | After #141 ideally; independent of #82 |
 | 10 | [#145](https://github.com/davidmatousek/tachi/issues/145) MAESTRO canonical worked example | Headline demonstration artifact; value multiplied by #141 being visible in output | ~1 week | After #141 strongly preferred; after #136 required |
 
@@ -216,16 +216,16 @@ Run both as a single `/aod.define` cycle because the research phase overlaps alm
                         ├─ #142 (UNBLOCKED — canonical layers + chains in place)
                         └─ #145 (UNBLOCKED — canonical layers + chains in place)
 
-#82 [DONE 2026-04-12] ─── #129 (UNBLOCKED — lean threat-report.md ready for extraction)
+#82 [DONE 2026-04-12] ─── #129 [DONE 2026-04-14] ─── (Wave 2 closed)
 
-#143 ─┬─ pair (overlapping research phase)
+#143 ─┬─ pair (overlapping research phase) — RECOMMENDED NEXT
 #144 ─┘
 
 #55, #126, #62, #46 ─── all independent
 #69 ─── overlaps #145, re-scope after #145 lands
 ```
 
-**Wave 0 + Wave 1 fully delivered** — all 4 foundation items closed by 2026-04-12. #141 unblocks Wave 2, Wave 3, Wave 4, and the #98 re-scope.
+**Waves 0, 1, 2 fully delivered** — all 5 prerequisite items closed by 2026-04-14. Wave 3 (#143 + #144 ADR pair) is the recommended next item. Wave 4 (#142, #145, #98 re-scope) follows.
 
 ---
 
@@ -279,6 +279,8 @@ This plan is a snapshot as of 2026-04-10. Re-generate or revise when:
 - **Wave 1 fully delivered 2026-04-12** — #82 (68 tasks, 18 waves) and #141 (34 tasks, 7 waves) both shipped same day. All foundation work complete. Waves 2-5 are now the active frontier.
 - ~~#141 ships (re-scope #98 and #69; #142 and #145 become high-priority)~~ **Triggered 2026-04-12 — PR #159, #142 and #145 now high-priority, #98 re-scope actionable**
 - ~~#82 ships (#129 becomes unblocked)~~ **Triggered 2026-04-12 — #129 now unblocked, Wave 2 is actionable**
+- ~~#129 ships (closes Wave 2)~~ **Triggered 2026-04-14 — PR #162, ~1 day wall-clock; sidecar PR #164 fixed cwd auto-detection bug across four tachi commands. Wave 3 (#143 + #144 ADR pair) is the recommended next item.**
+- **Wave 2 fully delivered 2026-04-14** — Wave 3 ADR pair is the active frontier; Wave 4 (#142, #145, #98 re-scope) follows.
 - A critical bug enters the backlog that pre-empts Wave 0
 
 Source of truth is always GitHub Issues, not this file or BACKLOG.md.

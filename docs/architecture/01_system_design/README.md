@@ -2587,3 +2587,78 @@ Phase 2c edit to finding-format-shared.md (APPEND "## For Threat Agents (Produce
 - **Primary source citations** (referenced only, never runtime-fetched): OWASP Top 10 (CC BY 3.0), OWASP LLM Top 10 v2025 (CC BY-SA 4.0), OWASP AI Exchange (CC0), MITRE ATT&CK v15+ (free w/ attribution), MITRE ATLAS v5.1+ (free w/ attribution), CWE Top 25 2024 (royalty-free), NIST AI 600-1 (US Federal public domain).
 
 **No new technology introduced.** The refactor modifies markdown configuration and creates one new ADR. No new runtime dependencies, no new test frameworks, no schema changes.
+
+---
+
+### Feature 143: MAESTRO Phase 4 — OWASP AIVSS Evaluation ADR
+
+## Components
+
+This feature touches three surfaces; the canonical extraction for downstream system-design reference is listed below.
+
+| Component | Type | File Path | Change Type | Rationale |
+|-----------|------|-----------|-------------|-----------|
+| ADR-024: OWASP AIVSS Evaluation and Tachi Composite Scoring Posture | New architecture decision record | `docs/architecture/02_ADRs/ADR-024-owasp-aivss-evaluation.md` | Create | PRD FR-5, Spec FR-005 — the primary deliverable |
+| tachi-risk-scoring skill: AIVSS Relationship section | Update to existing skill file | `.claude/skills/tachi-risk-scoring/SKILL.md` | Add new section | PRD FR-6, Spec FR-006 — cross-reference to ADR-024 for skill consumers |
+| Follow-on implementation Issue (conditional) | New GitHub Issue | `github.com/davidmatousek/tachi/issues` | Create (only if decision = Option A or B) | PRD FR-7, Spec FR-007 — deferred adoption work with option-specific effort estimate copied verbatim from ADR-024 |
+
+**Architectural posture**: additive-only. No existing agent, schema, script, or example file is modified. ADR-024 becomes the canonical source of truth for tachi's AIVSS stance; SKILL.md becomes the runtime-adjacent pointer; the conditional Issue becomes the discovery anchor for any future implementation work.
+
+## Data Flow
+
+**No runtime data flow changes.** The feature is purely authoritative-document work.
+
+### Author-time flow (implementer's workflow)
+
+```
+Wave 1 (Research):
+  web-researcher → aivss.owasp.org (read v0.8 spec end-to-end, 2-hour timebox)
+                → captures: version, URL, dimensions, formula, bands (if any)
+                → produces: internal notes for Wave 2 consumption
+
+Wave 2 (Authorship):
+  architect → synthesizes Wave 1 notes with schemas/risk-scoring.yaml + severity-bands-shared.md
+           → writes: ADR-024 (Context with 3 surfaces, Decision, Rationale, Alternatives, Consequences)
+           → writes: SKILL.md AIVSS Relationship section (80-200 words, relative link to ADR-024)
+  product-manager → IF decision is Option A or B:
+                    uses .aod/scripts/bash/create-issue.sh
+                    creates Issue with stage:discover label, option-specific effort verbatim
+                  → ELSE (Option C):
+                    no Issue filed (correct behavior per FR-007 conditionality)
+```
+
+### Read-time flow (stakeholder's workflow — post-merge)
+
+```
+CISO / compliance officer / future maintainer / security engineer
+  → opens ADR-024 → reads Decision → follows cross-reference to SKILL.md (or vice versa)
+  → sees consistent decision across both surfaces (FR-006 single-source-of-truth rule)
+```
+
+### Verification flow (gate at PR review)
+
+```
+PR review → SC-001 file exists → SC-002 Status: Accepted grep → SC-003 three surfaces present
+         → SC-004 ≥3 options with effort estimate → SC-005 SKILL.md section present + word count
+         → SC-006 git diff returns empty for schemas/scripts/agents/examples
+         → SC-007 decision-noun consistency between ADR and SKILL.md
+         → SC-008 conditional Issue filed (only if A or B) → SC-009 Related ADRs list includes ADR-020, -019, -018
+```
+
+## Tech Stack
+
+### New Dependencies
+
+**None.** This feature introduces zero new runtime or development dependencies.
+
+### Tools Used (all pre-existing)
+
+| Tool | Purpose | Source |
+|------|---------|--------|
+| Markdown | ADR-024 + SKILL.md authorship | Native to repository |
+| YAML | ADR-024 frontmatter | Matches existing ADR-020 through ADR-023 convention |
+| `.aod/scripts/bash/create-issue.sh` | Conditional follow-on Issue filing (Wave 2) | Pre-existing at `.aod/scripts/bash/create-issue.sh` |
+| `bash` + `grep` + `git diff` | Verification gates (SC-002, SC-005, SC-006, SC-007) | Standard shell |
+| Existing backward-compat test suite | Trivial pass gate | `tests/scripts/test_backward_compatibility.py` |
+
+**No new technology introduced.** Documentation-only feature. Zero schema changes, zero script changes, zero agent changes, zero example regenerations.

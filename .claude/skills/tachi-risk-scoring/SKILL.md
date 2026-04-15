@@ -18,6 +18,10 @@ The risk scoring model assesses each threat finding on four dimensions:
 
 Dimensional scores combine into a weighted composite score (0.0-10.0), which maps to a severity band (Critical/High/Medium/Low) that drives governance fields (SLA, disposition, review date).
 
+## AIVSS Relationship
+
+Tachi's four-dimensional composite scoring model **diverges** from OWASP AIVSS at the present time. AIVSS v0.8 (the latest published version, with its public review period opening 2026-04-16) builds on CVSS v4.0 and uses an amplification model in which 10 Agentic AI Risk Factors uplift the CVSS baseline up to a 10.0 ceiling, then a mitigation factor scales the result. Tachi uses CVSS 3.1 and a weighted-sum composite across four operational dimensions (CVSS, Exploitability, Reachability, Scalability). The two formulas produce measurably different scores on the same finding — see [ADR-024](../../../docs/architecture/02_ADRs/ADR-024-owasp-aivss-evaluation.md) for the three-surface comparison (dimensions, formula, severity bands), the worked examples that quantify the divergence, and the re-evaluation trigger tied to AIVSS reaching stable v1.0 with at least one external adopter case study. Severity bands are aligned (Surface C overlap), so downstream consumers (governance, SLA, color coding) behave identically across the two frameworks' outputs.
+
 ## Baseline-Aware Scoring Rules
 
 ### Score Inheritance
