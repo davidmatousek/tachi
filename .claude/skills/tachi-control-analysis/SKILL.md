@@ -17,6 +17,10 @@ The control analysis domain covers three areas:
 
 3. **Residual Risk Calculation and Recommendations** -- Recommendation generation rules for missing and partial controls (templates, effort calibration), residual score computation formula with the P0 binary reduction model (reduction factors by control status), severity band mapping for residual scores, and summary statistics calculations.
 
+## NIST AI RMF Relationship
+
+Tachi's compensating-controls analyzer operates in a STRIDE+AI idiom, not a NIST idiom. The NIST AI Risk Management Framework (AI RMF 1.0, NIST AI 100-1) and its companion Generative AI Profile (NIST AI 600-1) are the U.S. federal reference vocabulary for managing AI system risk — Functions (Govern, Map, Measure, Manage), Subcategories, and 12 GAI risk categories. Tachi's posture toward both documents is **documentation-only mapping** per [ADR-025](../../../docs/architecture/02_ADRs/ADR-025-nist-ai-rmf-evaluation.md): no schema field, no agent, no pipeline phase, and no SARIF tag emits NIST-keyed output. The strongest direct semantic overlap is MEASURE 2.7 ("AI system security and resilience are evaluated and documented") — essentially what `compensating-controls.md` already produces without NIST labeling. Adopters who must cite NIST mappings during procurement, audit, or examination workflows should consult the companion reference `.claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md` and ADR-025 for the three-surface comparison (Functions × phases, Subcategories × control categories, GAI risks × STRIDE+AI), the full re-evaluation triggers, and the structural-fit rationale for choosing mapping over wired integration.
+
 ## Baseline-Aware Control Analysis Rules
 
 ### Carry-Forward Conditions

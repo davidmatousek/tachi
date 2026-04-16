@@ -2662,3 +2662,85 @@ PR review → SC-001 file exists → SC-002 Status: Accepted grep → SC-003 thr
 | Existing backward-compat test suite | Trivial pass gate | `tests/scripts/test_backward_compatibility.py` |
 
 **No new technology introduced.** Documentation-only feature. Zero schema changes, zero script changes, zero agent changes, zero example regenerations.
+
+---
+
+### Feature 144: NIST AI RMF Integration Evaluation ADR
+
+## Components
+
+This feature does not add or modify runtime components. Components touched are documentation surfaces:
+
+### Component 1 — ADR-025 (new)
+
+**File**: `docs/architecture/02_ADRs/ADR-025-nist-ai-rmf-evaluation.md`
+**Owner**: architect (Wave 2 author)
+
+Sections: Header (Status: Accepted, Date, Deciders, Feature 144, Related ADRs cross-referencing ADR-024 + ADR-020 + ADR-019 + ADR-018 + ADR-021 + ADR-023); Context with three Surface subsections using explicit anchors `<a id="surface-{a,b,c}"></a>`; Decision (canonical noun in first paragraph); Rationale (five-criteria justification); Alternatives Considered (Options A/B/C); Consequences (Positive/Negative/Mitigation/Follow-on); When to Re-Evaluate; References. Length expected 200-280 lines.
+
+### Component 2 — `nist-ai-rmf-mapping.md` (new)
+
+**File**: `.claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md`
+**Owner**: architect (Wave 2)
+
+Content shape conditional on chosen option: Option A → complete mapping table (8 control categories → NIST Subcategories) + Surface C crosswalk; Option B/C → relationship-only stub naming wired-integration site + forward link to follow-on Issue + back-link to ADR-025. Additive only; renderable in standard Markdown.
+
+### Component 3 — SKILL.md NIST AI RMF Relationship Section (additive edit)
+
+**File**: `.claude/skills/tachi-control-analysis/SKILL.md`
+**Owner**: architect (Wave 2, after ADR-025 Decision text is finalized)
+
+Insertion point: After existing `## Domain Overview`, before existing `## Baseline-Aware Control Analysis Rules`. 80-200 words. Decision-noun byte-identical (case-insensitive) to ADR-025 Decision section. Relative link to ADR-025.
+
+### Component 4 — ADR-024 Back-Reference (single-line edit)
+
+**File**: `docs/architecture/02_ADRs/ADR-024-owasp-aivss-evaluation.md`
+**Owner**: architect (Wave 2, ships in same PR as ADR-025)
+
+Append `[ADR-025](ADR-025-nist-ai-rmf-evaluation.md) (companion NIST AI RMF evaluation)` to the existing Related ADRs line. Housekeeping edit — does NOT change ADR-024 Status field.
+
+### Component 5 — Follow-On GitHub Issue (conditional)
+
+**File**: GitHub Issues (filed via `bash .aod/scripts/bash/create-issue.sh`)
+**Owner**: product-manager (Wave 2 cleanup, only if Option B or C chosen)
+
+`stage:discover` label, concrete title, body links back to ADR-025, names surfaces that would change, includes effort estimate copied verbatim from ADR-025 Alternatives, names "non-disruptive"/"opt-in" constraint. **Skipped if Option A chosen** (FR-008 N/A).
+
+## Data Flow
+
+Documentation flows from authoring (Wave 1 + Wave 2) to publication (PR merge to `main`):
+
+```
+Wave 1 (3-hour timebox)
+  web-researcher reads NIST AI RMF 1.0 + NIST AI 600-1 (canonical URLs from spec Assumptions)
+  → appends findings to specs/144-*/research.md ## Wave 1 — NIST AI RMF Spec Notes section
+  → escalates to PM if 3-hour budget exceeded (3 contingency options per Edge Case 1)
+
+Wave 2 (sequential authorship)
+  architect drafts ADR-025 skeleton
+  → fills Surface A/B/C tables from research.md Wave 1 notes + tachi compensating controls reference
+  → drafts Decision (canonical noun) → Rationale → Alternatives → Consequences → Re-Evaluation Triggers → References
+  → creates .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md (content shape per chosen option)
+  → appends ## NIST AI RMF Relationship section to .claude/skills/tachi-control-analysis/SKILL.md
+  → appends ADR-025 back-reference to docs/architecture/02_ADRs/ADR-024-owasp-aivss-evaluation.md Related ADRs line
+  → product-manager files follow-on Issue if Option B/C chosen (FR-008)
+
+PR Cycle (~half-day)
+  Open PR with docs: prefix conventional commit
+  → 13 SCs verified (shell + awk + grep + pytest + manual inspection)
+  → architect reviews PR (= "Accepted at merge" attestation per Closed Q2)
+  → squash-merge to main
+```
+
+## Tech Stack
+
+No tech stack changes. Reference lineage unchanged from current state:
+
+- **Documentation format**: Markdown (CommonMark, no GFM extensions required)
+- **ADR conventions**: Match ADR-022/023/024 structural template
+- **Verifiers**: shell (`grep`, `awk`, `wc -w`, `tr`), Python (`pytest tests/scripts/test_backward_compatibility.py`), git (`git diff`, `git log`)
+- **Determinism baseline**: `SOURCE_DATE_EPOCH=1700000000` for byte-identical PDF comparison (per ADR-021)
+- **Conventional commits**: `docs:` prefix only (per Constitution IX + SC-012)
+- **GitHub CLI**: `bash .aod/scripts/bash/create-issue.sh` for FR-008 conditional Issue filing
+
+**Zero new runtime dependencies**: empty diff on `requirements*.txt`, `pyproject.toml`, `package.json`. Zero new CLI prerequisites.

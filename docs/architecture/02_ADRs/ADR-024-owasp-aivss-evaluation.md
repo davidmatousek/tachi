@@ -4,7 +4,7 @@
 **Date**: 2026-04-15
 **Deciders**: Architect, Product Manager, Team-Lead
 **Feature**: 143 (MAESTRO Phase 4)
-**Related ADRs**: [ADR-020](ADR-020-maestro-layer-classification.md) (MAESTRO classification), [ADR-019](ADR-019-shared-definitions-and-model-field-governance.md) (shared cross-agent definitions), [ADR-018](ADR-018-baseline-aware-pipeline-correlation.md) (baseline-aware scoring lineage)
+**Related ADRs**: [ADR-020](ADR-020-maestro-layer-classification.md) (MAESTRO classification), [ADR-019](ADR-019-shared-definitions-and-model-field-governance.md) (shared cross-agent definitions), [ADR-018](ADR-018-baseline-aware-pipeline-correlation.md) (baseline-aware scoring lineage), [ADR-025](ADR-025-nist-ai-rmf-evaluation.md) (companion NIST AI RMF evaluation)
 
 ---
 
