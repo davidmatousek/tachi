@@ -2744,3 +2744,134 @@ No tech stack changes. Reference lineage unchanged from current state:
 - **GitHub CLI**: `bash .aod/scripts/bash/create-issue.sh` for FR-008 conditional Issue filing
 
 **Zero new runtime dependencies**: empty diff on `requirements*.txt`, `pyproject.toml`, `package.json`. Zero new CLI prerequisites.
+
+---
+
+### Feature 142: MAESTRO Phase 3 — Agentic Threat Pattern Expansion
+
+## Components
+
+### Component 1: Pattern Synthesis Engine (Orchestrator Phase 3.6)
+
+**Location**: `.claude/agents/tachi/orchestrator.md` (Phase 3.6 insertion **after** Feature 141's Phase 3.5 cross-layer correlation, **before** Phase 4 assessment)
+
+**Responsibility**: After Phase 3.5 cross-layer chain correlation completes, synthesize the `agentic_pattern` value for each deduplicated finding using a deterministic rule-based classification engine. The engine MAY also generate net-new findings for the three previously-uncovered patterns (Agent Collusion, Emergent Behavior, Temporal Attack) when the architecture meets the multi-agent gate predicate AND the rule table indicates a pattern that no existing finding represents.
+
+**Independence Invariants**:
+- vs. Feature 141 Phase 3.5: Pattern synthesis runs AFTER cross-layer chain correlation; chains and patterns are independent grouping mechanisms
+- vs. Section 4a intra-component correlation: Pattern field is finding-level metadata; Section 4a is a presentation-time grouping mechanism — orthogonal
+- vs. existing 11 agents: Phase 3.6 reads the deduplicated finding IR but does NOT invoke or modify any threat-detection agent — zero-edit invariant
+
+**Architectural Divergence from Feature 141**: Phase 3.5 produces an aggregate artifact (`attack-chains.md`) WITHOUT modifying the finding IR. Phase 3.6 modifies the finding IR in-place (write-back). Documented in ADR-026 with formal Governance Rule for Future Post-Hoc Synthesis Phases.
+
+### Component 2: Shared Reference — Agentic Patterns
+
+**Location**: `.claude/skills/tachi-shared/references/maestro-agentic-patterns-shared.md` (NEW)
+
+**Content**: Six canonical pattern definitions (Section 1), coverage mapping table with Coverage Strength constrained to Full/Partial/None — Coverage Required (Section 2), classification rule table R-01 through R-06+ (Section 3), multi-agent gate predicate spec with worked examples on the 6 example architectures (Section 4), explicit component_type and topology indicator token lists (canonical finite enumerations).
+
+**Consumed by**: Orchestrator Phase 3.6 synthesis, threat-report agent Agentic Pattern Analysis section narrative.
+
+### Component 3: Finding Schema Extension
+
+**Location**: `schemas/finding.yaml` (UPDATE; version 1.3 → 1.4)
+
+**Schema change**: Adds `agentic_pattern` enum field (8 values: 6 canonical + `none` + `multiple`, default `none`). Also extends `id.pattern` regex to accept `AGP-` prefix for net-new generated findings.
+
+**Versioning rationale (ADR-026)**: Minor bump 1.3 → 1.4 under the extended enum-typed-field-addition rule (additive + has default + shape unchanged).
+
+### Component 4: threats.md Output Extension
+
+**Location**: `templates/tachi/output-schemas/threats.md`
+
+**Changes**: New Pattern column in Section 7 findings table (after Category, before Component); new conditional Section 4b "Findings by Agentic Pattern" rendered iff `has-agentic-patterns: true`.
+
+### Component 5: Threat Report Agentic Pattern Analysis Section
+
+**Location**: `.claude/agents/tachi/threat-report.md` + `.claude/skills/tachi-threat-reporting/references/narrative-templates.md`
+
+**Design**: New conditional section "Agentic Pattern Analysis" placed after Cross-Layer Attack Chains (Feature 141), section number grep-determined at code time. Per pattern subsection: definition + severity counts + 100-200 word narrative + impacted finding IDs. Subsections ordered by max severity descending then finding count descending. Zero-finding subsections suppressed.
+
+### Component 6: SARIF Pattern Tag Propagation
+
+**Location**: `.claude/agents/tachi/orchestrator.md` (SARIF emission step extension)
+
+**Design**: Per finding with non-`none` pattern, append `maestro-pattern:<pattern_name>` to `result.properties.tags`. Format matches existing `maestro-layer:<L#>` convention exactly (lowercase, colon-separator). Findings with `agentic_pattern: none` receive no pattern tag.
+
+### Component 7: Example Architecture Extension (agentic-app)
+
+**Location**: `examples/agentic-app/architecture.md`
+
+**Path Decision**: Path 1 (extend agentic-app) selected. Adds Second LLM Agent (Specialist Agent), Long-running Learning Loop, Inter-agent Communication Channel. Surfaces ≥3 of the 6 canonical patterns end-to-end. 1-2h budget per PRD planned scope.
+
+## Data Flow
+
+```
+Architecture Description + Components + Data Flows (Phase 1 output)
+    │
+    ▼
+[Phase 1: MAESTRO Layer Classification] (existing, unchanged)
+    │
+    ▼
+[Phase 2: Threat Agent Dispatch] (existing — 6 STRIDE + 5 AI agents, all UNCHANGED)
+    │
+    ▼
+[Phase 3: Deduplication + Section 4a Correlation] (existing, unchanged)
+    │
+    ▼
+[Phase 3.5: Cross-Layer Chain Correlation] (Feature 141, unchanged)
+    │ Output: attack-chains.md (conditional)
+    │
+    ▼
+[Phase 3.6: Pattern Synthesis Engine] (NEW — Feature 142)
+    │ Reads: maestro-agentic-patterns-shared.md (rule table + multi-agent gate predicate)
+    │ Reads: deduplicated finding IR (post-Phase 3.5)
+    │ Reads: Phase 1 component inventory + data flow graph + agentic/llm category counts
+    │
+    │ Step 1: Evaluate multi-agent gate predicate (FR-006 conditions a/b/c)
+    │   ├─ FALSE → assign agentic_pattern: none to all findings → exit
+    │   └─ TRUE  → continue
+    │
+    │ Step 2: For each finding in IR:
+    │   ├─ Evaluate classification rule table in priority order
+    │   ├─ Assign first matching pattern (or 'multiple' on equal-priority match)
+    │   └─ Default to 'none' if no rule matches
+    │
+    │ Step 3: For each rule with generates_finding_when_no_match: true:
+    │   ├─ Check if any existing finding now carries this pattern
+    │   ├─ If not AND architectural context matches → emit net-new finding
+    │   └─ Append net-new findings to IR (with id prefix AGP-)
+    │
+    │ Step 4: Set has-agentic-patterns boolean (true iff any non-'none' pattern)
+    │
+    ▼
+[Phase 4: Coverage Matrix + Risk Summary] (existing, unchanged — passively reads new pattern field)
+    │
+    ▼
+[Phase 5: threat-report Agent + SARIF Emission] (UPDATED)
+    │
+    ├──► threats.md (NEW Pattern column, conditional Section 4b)
+    │
+    ├──► threat-report.md (NEW conditional Agentic Pattern Analysis section)
+    │      │ Loads: maestro-agentic-patterns-shared.md (canonical definitions)
+    │      │ Reads: deduplicated finding IR with agentic_pattern populated
+    │      │ Conditional on: has-agentic-patterns boolean
+    │
+    └──► SARIF (NEW maestro-pattern:<name> tags on result.properties.tags)
+           Conditional per finding: only when agentic_pattern != 'none'
+```
+
+## Tech Stack
+
+| Layer | Technology | Justification |
+|-------|-----------|---------------|
+| Pattern Synthesis Engine | Orchestrator agent (markdown instructions) | Matches existing pipeline phase pattern (Phase 3.5 precedent in Feature 141); no new runtime dependency |
+| Pattern Storage | Shared reference file (markdown) | Matches existing tachi-shared pattern (maestro-layers-shared.md, attack-chain-patterns-shared.md, severity-bands-shared.md); ADR-019 governance |
+| Schema | YAML (finding.yaml v1.4) | Matches existing finding schema convention; minor bump per ADR-026 extending Feature 136 precedent |
+| Pattern Parsing | Python 3.11 stdlib | Matches existing tachi_parsers.py pattern; zero-dependency constraint per Feature 128/136 |
+| Output Templates | Markdown (threats.md, threat-report.md) | Matches existing output-schemas convention |
+| SARIF Emission | Existing orchestrator SARIF step | Reuses existing maestro-layer:<L#> tagging code path; format parity verified by unit test |
+| Testing | pytest >= 8.0 | Established in Feature 128; backward-compat baselines per ADR-021 |
+| Example Architecture | Markdown (agentic-app extension) | Matches existing examples/ convention; 1-2h architectural extension budget |
+
+**Zero new runtime dependencies**: empty diff on `requirements*.txt`, `pyproject.toml`, `package.json`. Zero new CLI prerequisites.

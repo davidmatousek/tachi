@@ -1,6 +1,6 @@
 ---
-schema_version: "1.3"
-date: "2026-04-11"
+schema_version: "1.4"
+date: "2026-04-16"
 input_format: "mermaid"
 classification: "confidential"
 ---
@@ -183,6 +183,32 @@ Cross-agent correlation groups linking findings from different agent categories 
 
 ---
 
+## 4b. Findings by Agentic Pattern
+
+This section groups findings by canonical CSA MAESTRO agentic pattern per [ADR-026](../../docs/architecture/02_ADRs/ADR-026-pattern-classification-mechanism.md). Patterns are assigned during Phase 3.6 pattern synthesis. The multi-agent gate predicate evaluates **true** for this architecture via all three conditions: (a) ≥2 agentic components (LLM Agent Orchestrator, Specialist Agent, MCP Tool Server, Long-Running Learning Loop), (b) inter-agent data flow (Specialist ↔ Orchestrator via the Inter-Agent Communication Channel), (c) architecture description contains multi-agent keywords ("multi-agent", "delegation", "supervisor").
+
+Section 4b complements Section 4a (intra-component correlation) — the two grouping mechanisms are independent (FR-008 invariant; pattern membership and correlation group membership apply orthogonally). A finding MAY appear in both.
+
+### Agent Collusion
+
+> **Definition**: Multiple compromised agents coordinate to achieve malicious objectives that no single agent could accomplish alone — exfiltrating data across shared channels, jointly manipulating planning outputs, or circumventing policies by distributing actions below per-agent detection thresholds.
+
+Count: 1 (AGP-01)
+
+### Emergent Behavior
+
+> **Definition**: Attackers exploit unpredictable behaviors that arise only from the interaction of multiple agents (cascading failures, feedback amplification, behavioral drift) — behaviors that are invisible in per-agent analysis and manifest only when agents act in concert.
+
+Count: 1 (AGP-02)
+
+### Temporal Attacks
+
+> **Definition**: Attacks that exploit persistent state to achieve delayed or time-gated effects — sleeper agents activating under specific triggers, gradual corruption of learned parameters, seasonal exploitation patterns, or poisoned training data that surfaces only during re-training cycles.
+
+Count: 30 (S-1, S-2, S-3, S-4, T-1, T-2, T-3, T-4, R-1, R-2, R-3, I-1, I-2, I-3, I-4, D-1, D-2, D-3, E-1, E-2, AG-1, AG-2, AG-3, AG-4, AG-5, LLM-1, LLM-2, LLM-3, LLM-4, LLM-5)
+
+---
+
 ## 5. Coverage Matrix
 
 Cross-reference matrix showing which components were analyzed for which threat categories. Each cell uses a three-state model:
@@ -195,16 +221,18 @@ Cross-reference matrix showing which components were analyzed for which threat c
 |-----------|---|---|---|---|---|---|----|-----|-------|
 | User | 2 | n/a | 1 | n/a | n/a | n/a | n/a | n/a | 3 |
 | Guardrails Service | — | — | — | — | 1 | 1 | n/a | n/a | 2 |
-| LLM Agent Orchestrator | 1 | 1 | 2 | 1 | 1 | 1 | 3 | 5 | 15 |
+| LLM Agent Orchestrator | 1 | 1 | 2 | 1 | 1 | 1 | 5 | 5 | 17 |
 | MCP Tool Server | — | 1 | — | 2 | 1 | — | 2 | n/a | 6 |
 | Knowledge Base | n/a | 1 | n/a | 1 | — | n/a | n/a | n/a | 2 |
 | Audit Logger | n/a | 1 | n/a | — | — | n/a | n/a | n/a | 1 |
 | External API | 1 | n/a | — | n/a | n/a | n/a | n/a | n/a | 1 |
-| **Total** | **4** | **4** | **3** | **4** | **3** | **2** | **5** | **5** | **30** |
+| **Total** | **4** | **4** | **3** | **4** | **3** | **2** | **7** | **5** | **32** |
 
-Counts reflect raw finding distribution for analytical traceability (matching baseline convention). 3 correlation groups (CG-1, CG-2, CG-3) merged 6 individual findings into 3 unique group threats. Raw finding count = 30; deduplicated unique threats = 27 after correlation (see Section 6 Risk Summary for deduplicated counts).
+Counts reflect raw finding distribution for analytical traceability (matching baseline convention). 3 correlation groups (CG-1, CG-2, CG-3) merged 6 individual findings into 3 unique group threats. Raw finding count = 32 (30 agent-produced + 2 Phase-3.6 net-new); deduplicated unique threats = 29 after correlation (see Section 6 Risk Summary for deduplicated counts).
 
 Wave 17 T057 enrichment note: 8 new findings (S-4, T-4, R-3, I-4, D-3, LLM-4, LLM-5, AG-5) surfaced from the Feature 082 enriched threat agent detection-pattern catalogs, exercising OAuth/OIDC token replay (spoofing Cat 6), software supply-chain integrity (tampering Cat 8), indicator removal and timestomping (repudiation Cat 8), SSRF to cloud metadata (info-disclosure Cat 7), cascade failures and noisy neighbor (DoS Cat 11), input-layer encoding evasion (prompt-injection Cat 8), system prompt leakage (model-theft Cat 9), and goal drift with unbounded planning loops (agent-autonomy Cat 9).
+
+Feature 142 Phase 3.6 net-new note: 2 new agentic-category findings (AGP-01, AGP-02) emitted by the Pattern Synthesis Engine. R-01 (Agent Collusion, tightened at P1 architect checkpoint to require `inter_agent_data_flow` topology + `description_contains` collusion tokens per architect MED-1 ruling) did not match any existing finding — no existing finding's description contains coordination-indicative language — so AGP-01 was generated per `generates_finding_when_no_match: true`. R-02 (Temporal Attack) matched all 30 existing findings under the current rule definition (architectural precondition only; no finding-level filter), so no net-new AGP for temporal_attack. R-03 (Emergent Behavior) did not match any existing finding (no cascade/unpredictable/interaction/emergent tokens in agentic/llm-category finding descriptions; D-3 has "cascade" but category is denial-of-service which R-03 does not accept), so AGP-02 was generated. Both AGP findings target the LLM Agent Orchestrator (first matching agentic component) and are counted in the AG column above. The R-02 over-classification behavior (every finding → temporal_attack) is a documented follow-up item — the rule's architectural-precondition-only match condition is intentionally broad for the initial release and will be refined in a future rule-tuning feature.
 
 ---
 
@@ -224,18 +252,18 @@ Risk summary counts below reflect deduplicated findings. When correlation groups
 
 | Risk Level | Count | Percentage |
 |------------|-------|------------|
-| Critical | 2 | 7.4% |
-| High | 15 (16 raw) | 55.6% |
-| Medium | 10 (12 raw) | 37.0% |
+| Critical | 2 | 6.9% |
+| High | 15 (16 raw) | 51.7% |
+| Medium | 12 (14 raw) | 41.4% |
 | Low | 0 | 0.0% |
 | Note | 0 | 0.0% |
-| **Total** | **27 (30 raw)** | **100%** |
+| **Total** | **29 (32 raw)** | **100%** |
 
 #### Risk by MAESTRO Layer
 
 | MAESTRO Layer | Finding Count | Highest Severity |
 |---------------|---------------|------------------|
-| L1 — Foundation Model | 15 | Critical |
+| L1 — Foundation Model | 17 | Critical |
 | L3 — Agent Framework | 7 | High |
 | L7 — Agent Ecosystem | 3 | High |
 | L2 — Data Operations | 2 | High |
@@ -248,38 +276,40 @@ Risk summary counts below reflect deduplicated findings. When correlation groups
 
 Prioritized list of all findings sorted by risk level descending, providing a remediation roadmap. Critical and High findings should be addressed before deployment. Medium findings should be addressed within the current development cycle.
 
-| Finding ID | Status | Component | Threat | Risk Level | Mitigation |
-|------------|--------|-----------|--------|------------|------------|
-| I-1 | UNCHANGED | LLM Agent Orchestrator | Context leakage exposing confidential documents or other users' data in responses | Critical | Implement output filtering to detect and redact sensitive data patterns; enforce per-user context isolation; apply retrieval access controls |
-| LLM-1 | UNCHANGED | LLM Agent Orchestrator | Indirect prompt injection via retrieved documents exfiltrating context or invoking unauthorized tools | Critical | Sanitize retrieved documents before LLM context inclusion; implement instruction-data separation; deploy output filtering and canary tokens |
-| S-1 | UNCHANGED | User | Spoofed user identity via stolen or replayed session tokens | High | Short-lived JWT tokens with refresh rotation; client fingerprint binding; MFA for sensitive operations |
-| S-4 | NEW | User | OAuth/OIDC access token replay across services sharing issuer, missing `aud` enforcement, `jti` replay window, and JWKS pinning | High | Exact `aud` match at Guardrails boundary; pin JWKS and reject unknown `kid`; require `jti` + short TTL with nonce cache; rotate refresh tokens on every use |
-| T-1 | UNCHANGED | Knowledge Base | Poisoned document embeddings corrupting RAG retrieval results | High | Strict write access controls on vector store; embedding integrity checksums; write operation logging |
-| T-4 | NEW | MCP Tool Server | Software supply-chain integrity failure — unpinned dependencies, unsigned container images, no SLSA/sigstore attestation on tool-server build and runtime dependencies | High | Hash-pinned lockfiles; container digest pinning; private-registry-first resolution with fail-closed on unknown packages; reserved private package names on public registries; SLSA provenance and sigstore attestation verification |
-| R-2 | UNCHANGED | LLM Agent Orchestrator | Autonomous multi-step decisions not attributable to specific user actions | High | Log complete decision chains with correlation IDs; capture triggering prompts, reasoning steps, and tool calls |
-| I-4 | NEW | MCP Tool Server | SSRF to cloud metadata service — prompt-derived tool arguments redirect outbound fetch to `169.254.169.254` and exfiltrate workload IAM role credentials | High | Enforce IMDSv2 with hop-limit 1; server-side DNS resolution with RFC1918 + link-local denylist; explicit egress destination allowlist per tool; disable redirect-following on user-controlled fetches; network-level metadata-CIDR block as defense in depth |
-| D-1 | UNCHANGED | Guardrails Service | Resource exhaustion via complex prompt flooding | High | Per-user and per-IP rate limiting; prompt length and complexity thresholds; request timeouts; horizontal scaling |
-| D-2 | UNCHANGED | MCP Tool Server | Recursive tool call chains exhausting resources and causing cascading timeouts | High | Maximum tool call depth and chain length limits; per-request resource budgets; circuit breakers |
-| D-3 | NEW | LLM Agent Orchestrator | Cascade failure across synchronous `User → Guardrails → Orchestrator → (KB, ToolServer, ExtAPI)` chain without declared budgets, circuit breakers, bulkheads, or graceful-degradation paths | High | Per-hop and total request budgets; circuit breakers on every synchronous downstream; retries with exponential backoff AND jitter; bulkhead isolation via per-downstream connection pools; graceful-degradation paths; exclude downstream health from load-balancer liveness |
-| E-1 | UNCHANGED | LLM Agent Orchestrator | Orchestrator escalates tool permissions beyond user authorization | High | Per-user permission scoping on tool calls; server-side authorization at tool server; least-privilege allowlists |
-| E-2 | UNCHANGED | Guardrails Service | Guardrails bypass via prompt obfuscation enabling access to restricted capabilities | High | Layered validation strategies; evolving bypass pattern database; defense-in-depth with secondary orchestrator validation |
-| AG-1 | UNCHANGED | LLM Agent Orchestrator | Autonomous privilege escalation through chained tool calls bypassing per-tool authorization | High | Cumulative permission budgets; human-in-the-loop for scope escalation; chain-level authorization checks |
-| AG-2 | UNCHANGED | MCP Tool Server | Unauthorized tool invocations executing file system, network, or data mutation operations | High | Strict tool allowlists; sandboxed execution; input schema validation on all tool call parameters |
-| AG-4 | UNCHANGED | MCP Tool Server | Excessive tool invocations exhausting API quotas and downstream capacity | High | Per-agent rate limits; resource budgets per request; circuit breakers on external API calls |
-| LLM-3 | UNCHANGED | LLM Agent Orchestrator | LLM-generated tool call parameters containing injection payloads targeting downstream systems | High | Validate and sanitize LLM-generated parameters; strict parameter schemas; parameterized interfaces; audit logging |
-| LLM-4 | NEW | LLM Agent Orchestrator | Encoding and Unicode obfuscation evasion bypassing Guardrails substring filters — normalization gap between filter and LLM tokenizer | High | Unicode NFKC normalization; zero-width and bidi-override character stripping; Base64/hex/URL-encode decoding before filtering; OCR/transcription for multimodal inputs; defense-in-depth secondary classifier at Orchestrator |
-| S-2 | UNCHANGED | LLM Agent Orchestrator | Spoofed tool call responses injecting fabricated results into orchestration pipeline | Medium | Mutual TLS between orchestrator and tool server; message signatures; request-response correlation IDs |
-| S-3 | UNCHANGED | External API | Spoofed external API returning malicious payloads | Medium | Response schema validation; certificate pinning; response integrity checksums |
-| T-2 | UNCHANGED | LLM Agent Orchestrator | Tampered orchestration configuration altering agent decision logic | Medium | Signed configuration at deployment; integrity validation at startup; runtime state checksums |
-| T-3 | UNCHANGED | Audit Logger | Modified or truncated audit log entries concealing malicious activity | Medium | Append-only storage with cryptographic hash chaining; immutable external replication; separate access controls |
-| R-1 | UNCHANGED | User | User repudiates harmful prompts due to insufficient session attribution | Medium | Log user identity, session ID, timestamp, and client IP for all prompt submissions |
-| R-3 | NEW | LLM Agent Orchestrator | Orchestrator actions non-attributable because producer and audit store share trust zone; no declared off-box immutability, no cryptographic hash chaining, no separation of audit-administration from operational administration — MITRE ATT&CK T1070 Indicator Removal surface | Medium | Object-lock style compliance retention; off-box forwarding to dedicated logging trust boundary; external signed timestamp source; separate audit-admin rights with just-in-time privileged access |
-| I-2 | UNCHANGED | Knowledge Base | Unauthorized vector store access exposing reversible document embeddings | Medium | Encrypt embeddings at rest; role-based access controls; query auditing; rate-limit bulk retrieval |
-| I-3 | UNCHANGED | MCP Tool Server | API credentials and internal paths exposed in tool server error responses | Medium | Structured error handling with generic error codes; server-side diagnostic logging; error response scrubbing |
-| LLM-2 | UNCHANGED | LLM Agent Orchestrator | Knowledge base poisoning persistently corrupting LLM reasoning for specific queries | Medium | Document ingestion validation; provenance metadata; automated regression testing; ingestion batch rollback |
-| LLM-5 | NEW | LLM Agent Orchestrator | System prompt leakage — internal routing rules, tool-selection logic, and allowed/denied topic lists echoed to user via meta-queries and no output-filter classifier (OWASP LLM07:2025) | Medium | Remove secrets from system prompts and reference via tool calls; output filter for prompt-echo patterns; input classifier that refuses meta-queries; least-privilege storage and rotation of system prompts; audit events on filter triggers |
-| AG-3 | UNCHANGED | LLM Agent Orchestrator | Uncontrolled multi-step plan execution making irreversible changes without human review | Medium | Human approval for multi-step plans; inter-step checkpoints with rollback; maximum autonomous step count |
-| AG-5 | NEW | LLM Agent Orchestrator | Goal drift and unbounded planning loops — LLM-determined termination with no iteration cap, cost budget, wall-clock timeout, goal-consistency check, or external watchdog (NIST AI 600-1 §2.1/§2.7, OWASP LLM10:2025) | Medium | Hard maximum iteration count per loop; cumulative cost and wall-clock budget per task with hard halt; periodic goal-consistency check against original intent; external watchdog with forcible-halt authority; programmatic verification of sub-task completion; iteration-level logging and drift alerting |
+| Finding ID | Status | Pattern | Component | Threat | Risk Level | Mitigation |
+|------------|--------|---------|-----------|--------|------------|------------|
+| I-1 | UNCHANGED | temporal_attack | LLM Agent Orchestrator | Context leakage exposing confidential documents or other users' data in responses | Critical | Implement output filtering to detect and redact sensitive data patterns; enforce per-user context isolation; apply retrieval access controls |
+| LLM-1 | UNCHANGED | temporal_attack | LLM Agent Orchestrator | Indirect prompt injection via retrieved documents exfiltrating context or invoking unauthorized tools | Critical | Sanitize retrieved documents before LLM context inclusion; implement instruction-data separation; deploy output filtering and canary tokens |
+| S-1 | UNCHANGED | temporal_attack | User | Spoofed user identity via stolen or replayed session tokens | High | Short-lived JWT tokens with refresh rotation; client fingerprint binding; MFA for sensitive operations |
+| S-4 | NEW | temporal_attack | User | OAuth/OIDC access token replay across services sharing issuer, missing `aud` enforcement, `jti` replay window, and JWKS pinning | High | Exact `aud` match at Guardrails boundary; pin JWKS and reject unknown `kid`; require `jti` + short TTL with nonce cache; rotate refresh tokens on every use |
+| T-1 | UNCHANGED | temporal_attack | Knowledge Base | Poisoned document embeddings corrupting RAG retrieval results | High | Strict write access controls on vector store; embedding integrity checksums; write operation logging |
+| T-4 | NEW | temporal_attack | MCP Tool Server | Software supply-chain integrity failure — unpinned dependencies, unsigned container images, no SLSA/sigstore attestation on tool-server build and runtime dependencies | High | Hash-pinned lockfiles; container digest pinning; private-registry-first resolution with fail-closed on unknown packages; reserved private package names on public registries; SLSA provenance and sigstore attestation verification |
+| R-2 | UNCHANGED | temporal_attack | LLM Agent Orchestrator | Autonomous multi-step decisions not attributable to specific user actions | High | Log complete decision chains with correlation IDs; capture triggering prompts, reasoning steps, and tool calls |
+| I-4 | NEW | temporal_attack | MCP Tool Server | SSRF to cloud metadata service — prompt-derived tool arguments redirect outbound fetch to `169.254.169.254` and exfiltrate workload IAM role credentials | High | Enforce IMDSv2 with hop-limit 1; server-side DNS resolution with RFC1918 + link-local denylist; explicit egress destination allowlist per tool; disable redirect-following on user-controlled fetches; network-level metadata-CIDR block as defense in depth |
+| D-1 | UNCHANGED | temporal_attack | Guardrails Service | Resource exhaustion via complex prompt flooding | High | Per-user and per-IP rate limiting; prompt length and complexity thresholds; request timeouts; horizontal scaling |
+| D-2 | UNCHANGED | temporal_attack | MCP Tool Server | Recursive tool call chains exhausting resources and causing cascading timeouts | High | Maximum tool call depth and chain length limits; per-request resource budgets; circuit breakers |
+| D-3 | NEW | temporal_attack | LLM Agent Orchestrator | Cascade failure across synchronous `User → Guardrails → Orchestrator → (KB, ToolServer, ExtAPI)` chain without declared budgets, circuit breakers, bulkheads, or graceful-degradation paths | High | Per-hop and total request budgets; circuit breakers on every synchronous downstream; retries with exponential backoff AND jitter; bulkhead isolation via per-downstream connection pools; graceful-degradation paths; exclude downstream health from load-balancer liveness |
+| E-1 | UNCHANGED | temporal_attack | LLM Agent Orchestrator | Orchestrator escalates tool permissions beyond user authorization | High | Per-user permission scoping on tool calls; server-side authorization at tool server; least-privilege allowlists |
+| E-2 | UNCHANGED | temporal_attack | Guardrails Service | Guardrails bypass via prompt obfuscation enabling access to restricted capabilities | High | Layered validation strategies; evolving bypass pattern database; defense-in-depth with secondary orchestrator validation |
+| AG-1 | UNCHANGED | temporal_attack | LLM Agent Orchestrator | Autonomous privilege escalation through chained tool calls bypassing per-tool authorization | High | Cumulative permission budgets; human-in-the-loop for scope escalation; chain-level authorization checks |
+| AG-2 | UNCHANGED | temporal_attack | MCP Tool Server | Unauthorized tool invocations executing file system, network, or data mutation operations | High | Strict tool allowlists; sandboxed execution; input schema validation on all tool call parameters |
+| AG-4 | UNCHANGED | temporal_attack | MCP Tool Server | Excessive tool invocations exhausting API quotas and downstream capacity | High | Per-agent rate limits; resource budgets per request; circuit breakers on external API calls |
+| LLM-3 | UNCHANGED | temporal_attack | LLM Agent Orchestrator | LLM-generated tool call parameters containing injection payloads targeting downstream systems | High | Validate and sanitize LLM-generated parameters; strict parameter schemas; parameterized interfaces; audit logging |
+| LLM-4 | NEW | temporal_attack | LLM Agent Orchestrator | Encoding and Unicode obfuscation evasion bypassing Guardrails substring filters — normalization gap between filter and LLM tokenizer | High | Unicode NFKC normalization; zero-width and bidi-override character stripping; Base64/hex/URL-encode decoding before filtering; OCR/transcription for multimodal inputs; defense-in-depth secondary classifier at Orchestrator |
+| S-2 | UNCHANGED | temporal_attack | LLM Agent Orchestrator | Spoofed tool call responses injecting fabricated results into orchestration pipeline | Medium | Mutual TLS between orchestrator and tool server; message signatures; request-response correlation IDs |
+| S-3 | UNCHANGED | temporal_attack | External API | Spoofed external API returning malicious payloads | Medium | Response schema validation; certificate pinning; response integrity checksums |
+| T-2 | UNCHANGED | temporal_attack | LLM Agent Orchestrator | Tampered orchestration configuration altering agent decision logic | Medium | Signed configuration at deployment; integrity validation at startup; runtime state checksums |
+| T-3 | UNCHANGED | temporal_attack | Audit Logger | Modified or truncated audit log entries concealing malicious activity | Medium | Append-only storage with cryptographic hash chaining; immutable external replication; separate access controls |
+| R-1 | UNCHANGED | temporal_attack | User | User repudiates harmful prompts due to insufficient session attribution | Medium | Log user identity, session ID, timestamp, and client IP for all prompt submissions |
+| R-3 | NEW | temporal_attack | LLM Agent Orchestrator | Orchestrator actions non-attributable because producer and audit store share trust zone; no declared off-box immutability, no cryptographic hash chaining, no separation of audit-administration from operational administration — MITRE ATT&CK T1070 Indicator Removal surface | Medium | Object-lock style compliance retention; off-box forwarding to dedicated logging trust boundary; external signed timestamp source; separate audit-admin rights with just-in-time privileged access |
+| I-2 | UNCHANGED | temporal_attack | Knowledge Base | Unauthorized vector store access exposing reversible document embeddings | Medium | Encrypt embeddings at rest; role-based access controls; query auditing; rate-limit bulk retrieval |
+| I-3 | UNCHANGED | temporal_attack | MCP Tool Server | API credentials and internal paths exposed in tool server error responses | Medium | Structured error handling with generic error codes; server-side diagnostic logging; error response scrubbing |
+| LLM-2 | UNCHANGED | temporal_attack | LLM Agent Orchestrator | Knowledge base poisoning persistently corrupting LLM reasoning for specific queries | Medium | Document ingestion validation; provenance metadata; automated regression testing; ingestion batch rollback |
+| LLM-5 | NEW | temporal_attack | LLM Agent Orchestrator | System prompt leakage — internal routing rules, tool-selection logic, and allowed/denied topic lists echoed to user via meta-queries and no output-filter classifier (OWASP LLM07:2025) | Medium | Remove secrets from system prompts and reference via tool calls; output filter for prompt-echo patterns; input classifier that refuses meta-queries; least-privilege storage and rotation of system prompts; audit events on filter triggers |
+| AG-3 | UNCHANGED | temporal_attack | LLM Agent Orchestrator | Uncontrolled multi-step plan execution making irreversible changes without human review | Medium | Human approval for multi-step plans; inter-step checkpoints with rollback; maximum autonomous step count |
+| AG-5 | NEW | temporal_attack | LLM Agent Orchestrator | Goal drift and unbounded planning loops — LLM-determined termination with no iteration cap, cost budget, wall-clock timeout, goal-consistency check, or external watchdog (NIST AI 600-1 §2.1/§2.7, OWASP LLM10:2025) | Medium | Hard maximum iteration count per loop; cumulative cost and wall-clock budget per task with hard halt; periodic goal-consistency check against original intent; external watchdog with forcible-halt authority; programmatic verification of sub-task completion; iteration-level logging and drift alerting |
+| AGP-01 | NEW | agent_collusion | LLM Agent Orchestrator | Two or more agentic components in the LLM Agent Orchestrator coordinate over an inter-agent data flow (Specialist ↔ Orchestrator via the Inter-Agent Communication Channel), creating a potential for coordinated malicious action. Compromised agents could jointly exfiltrate data, split prohibited actions across peers, or issue coordinated tool calls that individually fall below per-agent detection thresholds | Medium | Inter-agent rate limits that throttle the shared channel throughput; coordination throttles that require supervisor approval for any action pattern exceeding a per-agent baseline; per-flow audit logging on every message crossing the Inter-Agent Communication Channel with cryptographic linkage |
+| AGP-02 | NEW | emergent_behavior | LLM Agent Orchestrator | Multi-agent interactions between the LLM Agent Orchestrator and the Specialist Agent over the Inter-Agent Communication Channel exhibit the potential for emergent behavior — cascading failures, feedback amplification, or collective optimization that bypasses per-agent safety evaluation. The Long-Running Learning Loop compounds the risk by propagating emergent drift back into future agent behavior via periodic fine-tuning | Medium | Fail-safe shutdown circuits that halt the collective agent system on anomalous cross-agent interaction patterns; bounded action scopes per agent that cap the blast radius of any single agent's output; behavioral baselining of the multi-agent system's collective output distribution, with drift alarms when the joint distribution departs from baseline |
 
 ---
 
@@ -289,12 +319,12 @@ Baseline: `examples/agentic-app/threats.md` pre-Feature-082 (22 raw findings, sc
 
 | Status | Count | Finding IDs |
 |--------|-------|-------------|
-| NEW | 8 | S-4, T-4, R-3, I-4, D-3, LLM-4, LLM-5, AG-5 |
+| NEW | 10 | S-4, T-4, R-3, I-4, D-3, LLM-4, LLM-5, AG-5, AGP-01, AGP-02 |
 | UNCHANGED | 22 | S-1, S-2, S-3, T-1, T-2, T-3, R-1, R-2, I-1, I-2, I-3, D-1, D-2, E-1, E-2, AG-1, AG-2, AG-3, AG-4, LLM-1, LLM-2, LLM-3 |
 | UPDATED | 0 | — |
 | RESOLVED | 0 | — |
 
-**Delta rationale**: The 8 NEW findings surfaced from Feature 082 enriched detection-pattern catalogs that were not present in the pre-Feature-082 agents. Each NEW finding grounds in an indicator from a specific enriched pattern category (cited in its threat description), targets a DFD component whose type/keywords match the agent's dispatch rules, and does not duplicate any UNCHANGED finding — each new finding targets a distinct attack surface (OAuth token replay ≠ basic session theft, supply-chain integrity ≠ runtime tampering, indicator removal ≠ live log tampering, SSRF to cloud metadata ≠ error-message credential leakage, cascade failures ≠ single-component resource exhaustion, encoding evasion ≠ generic guardrails bypass, system prompt leakage ≠ context leakage, unbounded planning loops ≠ uncontrolled multi-step plans).
+**Delta rationale**: 8 NEW findings surfaced from Feature 082 enriched detection-pattern catalogs (S-4 OAuth/OIDC token replay, T-4 software supply-chain integrity, R-3 indicator removal + timestomp, I-4 SSRF to cloud metadata, D-3 cascade failure, LLM-4 encoding-obfuscation evasion, LLM-5 system prompt leakage, AG-5 goal-drift + unbounded planning loops). 2 NEW net-new AGP-NN findings (AGP-01 agent_collusion, AGP-02 emergent_behavior) surfaced from Feature 142 Phase 3.6 Pattern Synthesis Engine. With R-01 tightened at the P1 architect checkpoint to require `inter_agent_data_flow` topology AND `description_contains` collusion-indicative tokens, no existing finding matched R-01's finding-level filter (no existing finding description contains "coordinate", "joint", "collude", "cross-agent", "inter-agent", "shared channel", or "shared memory" in its threat narrative) — so Phase 3.6 Step 3 emitted AGP-01 under the `generates_finding_when_no_match: true` clause. R-03 (emergent_behavior) did not match any existing finding (no cascade/unpredictable/interaction/emergent tokens in agentic/llm-category findings), so Phase 3.6 Step 3 also emitted AGP-02. Each NEW finding targets a distinct attack surface; the AGP findings specifically demonstrate net-new detection for the previously-uncovered cross-cutting CSA MAESTRO patterns that existing tachi agents do not detect by construction.
 
 ---
 
@@ -334,3 +364,5 @@ This appendix maps each finding to applicable OWASP framework categories across 
 | LLM-3 | UNCHANGED | MCP05 | Command Injection and Execution | LLM-generated tool parameters containing injection payloads targeting downstream execution |
 | LLM-4 | NEW | MCP10 | Context Injection and Over-Sharing | Input-layer encoding and Unicode obfuscation evasion (prompt-injection Cat 8; MITRE ATLAS AML.T0051) |
 | LLM-5 | NEW | LLM07 | System Prompt Leakage | System prompt echoed via meta-queries without output filter or input classifier (model-theft Cat 9; OWASP LLM07:2025) |
+| AGP-01 | NEW | ASI04 | Inter-Agent Collusion and Coordination | Agent collusion pattern surfaced via Feature 142 Phase 3.6 Pattern Synthesis Engine net-new generation (R-01 agent_collusion, tightened to require inter-agent data flow + collusion-indicative tokens); CSA MAESTRO Agent Collusion canonical pattern |
+| AGP-02 | NEW | ASI08 | Memory Poisoning and Emergent Behavior | Multi-agent interaction emergent behavior surfaced via Feature 142 Phase 3.6 Pattern Synthesis Engine net-new generation (R-03 emergent_behavior); CSA MAESTRO Emergent Behavior canonical pattern |

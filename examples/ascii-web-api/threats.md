@@ -4,7 +4,7 @@
 
 ```yaml
 ---
-schema_version: "1.3"
+schema_version: "1.4"
 date: "2026-04-10"
 input_format: "ascii"
 classification: "confidential"
@@ -204,16 +204,16 @@ No LLM components detected in this architecture. The system does not incorporate
 
 All findings sorted by risk level descending. Critical and High findings should be addressed before deployment. Medium findings should be addressed within the current development cycle. Low findings should be tracked for future consideration.
 
-| Finding ID | Status | Component | Threat | Risk Level | Mitigation |
-|------------|--------|-----------|--------|------------|------------|
-| S-2 | NEW | External User | Credential stuffing using breached username/password pairs | Critical | Enforce multi-factor authentication; implement progressive login delays and account lockout after 5 failed attempts; monitor for anomalous login patterns |
-| D-1 | NEW | API Gateway | Volumetric HTTP flood exhausting connection pool | Critical | Per-IP and per-user rate limiting (100 req/min); upstream DDoS mitigation; connection timeouts and circuit breaker patterns |
-| S-1 | NEW | API Gateway | Forged JWT tokens via weak or compromised signing key | High | Enforce RS256/ES256 signing with 90-day key rotation; reject HS256 tokens; validate issuer and audience claims |
-| T-1 | NEW | User Database | SQL injection through unsanitized input fields | High | Parameterized queries exclusively; input validation and sanitization at API Gateway |
-| I-1 | NEW | User Database | Database credentials exposed in API error responses | High | Structured error handling with generic client responses; server-side detailed logging only |
-| I-2 | NEW | Auth Service | User enumeration via verbose authentication error messages | High | Single generic error message for all auth failures; consistent response timing |
-| E-1 | NEW | Auth Service | IDOR exploiting JWT role claims for privilege escalation | High | Server-side role validation against authoritative store on every request; RBAC with least-privilege defaults |
-| R-1 | NEW | Auth Service | Insufficient audit logging for privileged account actions | Medium | Immutable audit log with session ID, IP, user agent, timestamp for all authentication events |
-| T-2 | NEW | Auth Service | JWT payload tampering over unencrypted internal HTTP | Medium | Mutual TLS or signed JWTs with integrity verification between Gateway and Auth Service |
-| D-2 | NEW | User Database | Resource-exhaustive SQL queries consuming connection pool | Medium | PostgreSQL statement_timeout; connection limits per user; query complexity analysis |
-| R-2 | NEW | API Gateway | Missing correlation IDs in access logs preventing attribution | Low | Log authenticated user identity and correlation ID; centralized SIEM with tamper protection |
+| Finding ID | Status | Pattern | Component | Threat | Risk Level | Mitigation |
+|------------|--------|---------|-----------|--------|------------|------------|
+| S-2 | NEW | — | External User | Credential stuffing using breached username/password pairs | Critical | Enforce multi-factor authentication; implement progressive login delays and account lockout after 5 failed attempts; monitor for anomalous login patterns |
+| D-1 | NEW | — | API Gateway | Volumetric HTTP flood exhausting connection pool | Critical | Per-IP and per-user rate limiting (100 req/min); upstream DDoS mitigation; connection timeouts and circuit breaker patterns |
+| S-1 | NEW | — | API Gateway | Forged JWT tokens via weak or compromised signing key | High | Enforce RS256/ES256 signing with 90-day key rotation; reject HS256 tokens; validate issuer and audience claims |
+| T-1 | NEW | — | User Database | SQL injection through unsanitized input fields | High | Parameterized queries exclusively; input validation and sanitization at API Gateway |
+| I-1 | NEW | — | User Database | Database credentials exposed in API error responses | High | Structured error handling with generic client responses; server-side detailed logging only |
+| I-2 | NEW | — | Auth Service | User enumeration via verbose authentication error messages | High | Single generic error message for all auth failures; consistent response timing |
+| E-1 | NEW | — | Auth Service | IDOR exploiting JWT role claims for privilege escalation | High | Server-side role validation against authoritative store on every request; RBAC with least-privilege defaults |
+| R-1 | NEW | — | Auth Service | Insufficient audit logging for privileged account actions | Medium | Immutable audit log with session ID, IP, user agent, timestamp for all authentication events |
+| T-2 | NEW | — | Auth Service | JWT payload tampering over unencrypted internal HTTP | Medium | Mutual TLS or signed JWTs with integrity verification between Gateway and Auth Service |
+| D-2 | NEW | — | User Database | Resource-exhaustive SQL queries consuming connection pool | Medium | PostgreSQL statement_timeout; connection limits per user; query complexity analysis |
+| R-2 | NEW | — | API Gateway | Missing correlation IDs in access logs preventing attribution | Low | Log authenticated user identity and correlation ID; centralized SIEM with tamper protection |

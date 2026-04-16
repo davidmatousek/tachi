@@ -54,6 +54,7 @@ Load domain knowledge on-demand from the `tachi-threat-reporting` skill using th
 | Narrative Templates | `.claude/skills/tachi-threat-reporting/references/narrative-templates.md` | Generating Executive Summary (Section 1), Architecture Overview (Section 2), Threat Analysis (Section 3), Cross-Cutting Themes (Section 4), Section 5 delta annotations (from manifest `action` values), Remediation Roadmap (Section 7) |
 | Severity bands (shared) | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | Executive summary / severity-based narrative ordering |
 | Attack chain patterns (shared) | `.claude/skills/tachi-shared/references/attack-chain-patterns-shared.md` | Generating Cross-Layer Attack Chains narrative (Section 6) — causal vocabulary, chain structure definitions |
+| Agentic patterns (shared) | `.claude/skills/tachi-shared/references/maestro-agentic-patterns-shared.md` | Generating Agentic Pattern Analysis narrative — six canonical CSA MAESTRO pattern definitions (Section 1 of the shared reference). Loaded on-demand only when `has-agentic-patterns` is true. |
 
 ---
 
@@ -140,6 +141,16 @@ Before finalizing the report, run the following checklist. Every check must pass
 - [ ] Each chain narrative uses canonical CSA MAESTRO causal vocabulary ("enables," "triggers," "shifts," "manifests as")
 - [ ] Each chain includes chain-breaking control recommendation with heuristic disclaimer
 - [ ] When `has-attack-chains` is false: Section 6 is entirely absent (no heading, no placeholder)
+
+#### Agentic Pattern Analysis (Conditional)
+
+- [ ] When `has-agentic-patterns` is true: the Agentic Pattern Analysis section is present with its section number grep-computed from the count of preceding sections (never hardcoded; never left as a `{grep-determined}` placeholder)
+- [ ] Each per-pattern subsection includes all four required elements in order: H3 heading with display name, 1-sentence definition sourced verbatim from `maestro-agentic-patterns-shared.md` Section 1, severity counts line (`Critical: N | High: N | Medium: N | Low: N`), 100-200 word architecture-specific narrative, and `Impacted findings:` line with comma-separated IDs
+- [ ] Zero-finding pattern subsections are omitted entirely (not rendered empty)
+- [ ] Per-pattern subsections are ordered by max severity desc → finding count desc → pattern enum order (agent_collusion < emergent_behavior < temporal_attack < trust_exploitation < communication_vulnerability < resource_competition)
+- [ ] If any finding carries `agentic_pattern: multiple`, a "Multi-Pattern Findings" subsection is rendered FIRST (before per-pattern subsections); multi-pattern findings ALSO appear under each matching per-pattern subsection
+- [ ] `attack-chains.md` is NOT modified by this section (FR-008 invariant); files under `examples/*/attack-trees/` are NOT modified; only prose cross-references to chain IDs are permitted in pattern narratives
+- [ ] When `has-agentic-patterns` is false: the Agentic Pattern Analysis section is entirely absent (no heading, no placeholder)
 
 #### Attack Tree Completeness
 
@@ -238,6 +249,79 @@ For each surfaced chain, generate:
 **Ordering**: Chains ordered by maximum severity (Critical first), then chain length (longer first), then chain ID (alphabetical).
 
 **Word count enforcement**: Each chain narrative MUST be 150-300 words. Focus on specific causal relationships between findings — avoid padding with generic security language.
+
+### Section {grep-determined}: Agentic Pattern Analysis
+
+**Conditional**: Only generate this section when `has-agentic-patterns` is true (orchestrator Phase 3.6 sets this boolean when at least one finding carries a non-`none` `agentic_pattern`). When `has-agentic-patterns` is false, skip this section entirely — do not include the heading or any placeholder text. When the Cross-Layer Attack Chains section (Feature 141) is also absent, the report proceeds from Section 5 directly to the next populated section.
+
+**Section number — grep-determined, NOT hardcoded (per FR-011)**: Do NOT hardcode this section number. At report-generation time, count the sections you have already written (starting from Section 1: Executive Summary) and assign the next sequential integer. In the common case where Section 6 Cross-Layer Attack Chains is also rendered, this section becomes Section 7 and Remediation Roadmap shifts to Section 8, Appendix to Section 9. In the case where Cross-Layer Attack Chains is absent but Agentic Pattern Analysis is present, this section becomes Section 6. Always emit the section with the computed integer — never a placeholder like `{grep-determined}`.
+
+**Placement**: AFTER the Cross-Layer Attack Chains section (Feature 141 Section 6 when present) and BEFORE the Remediation Roadmap and Appendix (Finding Reference) sections.
+
+**MANDATORY**: Read `.claude/skills/tachi-shared/references/maestro-agentic-patterns-shared.md` on-demand for the six canonical pattern definitions (Section 1 of the shared reference). Each subsection's 1-sentence definition is sourced verbatim from the matching subsection (1.1 Agent Collusion, 1.2 Emergent Behavior, 1.3 Temporal Attacks, 1.4 Trust Exploitation, 1.5 Communication Vulnerabilities, 1.6 Resource Competition).
+
+**FR-008 Independence Invariant (CRITICAL)**: This section MUST NOT cause any modification to `attack-chains.md` (Feature 141 artifact) or any file under `examples/*/attack-trees/`. Only prose cross-references into those artifacts are permitted (e.g., mentioning a chain ID or attack tree finding ID in a narrative). Cross-Layer Attack Chains and Agentic Patterns are independent grouping mechanisms — a single finding MAY appear in both (consistent with ADR-026 and the Feature 141 / Section 4a independence invariant).
+
+**Section boilerplate** (insert verbatim at section open, using your computed section number):
+
+```markdown
+## Section {N}: Agentic Pattern Analysis
+
+This section enumerates threats by CSA MAESTRO canonical agentic pattern. Patterns are assigned during Phase 3.6 (Pattern Synthesis Engine) per [ADR-026](../../../../docs/architecture/02_ADRs/ADR-026-pattern-classification-mechanism.md) and surface cross-cutting agentic risks that emerge from multi-agent coordination, persistent state, or inter-agent communication — distinct from per-component STRIDE threats. Canonical pattern definitions are sourced from [`maestro-agentic-patterns-shared.md`](../../../../.claude/skills/tachi-shared/references/maestro-agentic-patterns-shared.md).
+```
+
+After the boilerplate, render subsections in this order:
+
+1. **Multi-Pattern Findings subsection FIRST** — if and only if at least one finding carries `agentic_pattern: multiple`. See "Multi-Pattern Findings Subsection" below.
+2. **Per-pattern subsections** — one per pattern with non-zero finding count, ordered per FR-013.
+
+#### Per-Pattern Subsection Structure
+
+For each pattern with ≥1 finding, render an H3 subsection containing four elements in this fixed order:
+
+1. **H3 heading**: `### {Pattern Display Name}` (e.g., `### Agent Collusion`, `### Emergent Behavior`, `### Temporal Attacks`, `### Trust Exploitation`, `### Communication Vulnerabilities`, `### Resource Competition`). Use the display name from Section 1 of the shared reference (title-cased form), NOT the enum value (which is lowercase snake_case).
+2. **Definition line (1 sentence)**: Verbatim 1-sentence canonical definition sourced from `maestro-agentic-patterns-shared.md` Section 1.{1-6}. Do NOT paraphrase — copy the first sentence of the pattern's Definition paragraph from the shared reference. This preserves the load-on-demand contract and keeps the canonical source authoritative.
+3. **Severity counts line**: Exactly this format: `Critical: N | High: N | Medium: N | Low: N` (four counts, pipe-separated, always all four severity levels shown even when a count is zero; Note-severity findings are excluded from this line per Feature 141 Section 6 precedent).
+4. **Narrative (100-200 words)**: Describe this pattern's manifestation in THIS architecture. SYNTHESIZE the concrete architectural situation using (a) the component names and types of impacted findings, (b) the architectural context from Section 2 (trust boundaries, data flows), and (c) the finding descriptions themselves. Do NOT paste a canned template — the narrative must be architecture-specific. You MAY cross-reference a Cross-Layer Attack Chain membership in prose when relevant (e.g., "**AG-1** (Agent Collusion) also participates in CHAIN-002, where it enables the subsequent tampering pivot on the Specialist Agent"), but this is PROSE ONLY — do NOT modify `attack-chains.md` or any attack tree file. When the narrative would otherwise exceed 200 words, prefer tightening the architectural description over dropping the finding IDs.
+5. **Impacted findings line**: Exactly this format: `Impacted findings: {ID1}, {ID2}, {ID3}` (comma-space-separated, in the order they appear in Sections 3 and 4 of `threats.md`). Finding IDs are the raw identifiers (e.g., `F-12`, `AG-1`, `AGP-01`) and act as inline anchors into the Appendix: Finding Reference.
+
+#### Subsection Ordering (per FR-013)
+
+Order per-pattern subsections by:
+
+1. **Primary sort**: maximum severity descending (Critical > High > Medium > Low > Note). A subsection's max severity is the highest severity present among its tagged findings.
+2. **Secondary sort**: finding count descending (more findings render before fewer findings).
+3. **Tertiary sort**: pattern enum order (agent_collusion < emergent_behavior < temporal_attack < trust_exploitation < communication_vulnerability < resource_competition).
+
+Note on the tertiary tiebreaker: this deliberately diverges from Feature 141 Section 6's alphabetic `chain_id` tertiary tiebreaker because pattern enum order carries semantic meaning (CSA canonical ordering) while `chain_id` is an arbitrary uniqueness token. See `.claude/skills/tachi-threat-reporting/references/narrative-templates.md` for the full rationale.
+
+#### Zero-Finding Subsections Suppressed (FR-013)
+
+If a pattern has zero findings in this architecture, its subsection is OMITTED entirely — do not render an empty subsection, a "no findings" placeholder, or a struck-through heading. Only populated subsections appear.
+
+#### Multi-Pattern Findings Subsection
+
+If ANY finding has `agentic_pattern: multiple`, render a dedicated subsection titled exactly:
+
+```markdown
+### Multi-Pattern Findings
+
+{1-2 sentence intro explaining that these findings exemplify two or more patterns equally, drawn from the multi-pattern semantics in ADR-026 and `maestro-agentic-patterns-shared.md`.}
+
+{For each multi-pattern finding:}
+- **{FINDING-ID}** — {Brief 1-sentence description of the finding} Patterns: {Pattern A}, {Pattern B}{, Pattern C if applicable}.
+```
+
+Render the Multi-Pattern Findings subsection FIRST (before any per-pattern subsection) because the compound-pattern case carries the most architectural significance (per plan.md Open Questions Resolution). Multi-pattern findings ALSO appear under EACH of their matching pattern subsections below — do NOT exclude a multi-pattern finding from a per-pattern subsection's `Impacted findings:` line.
+
+#### Chain-Membership Cross-References (OPTIONAL)
+
+When a pattern-tagged finding is also a member of a Cross-Layer Attack Chain (Feature 141 Section 6), you MAY cross-reference the chain membership in the pattern subsection's narrative. Example phrasings:
+
+- "**AG-1** (Agent Collusion) participates in **CHAIN-002** — the collusion pattern here is the initial exploit that triggers the subsequent Privilege Escalation cascade."
+- "Two of the Emergent Behavior findings (**AGP-01**, **AGP-02**) are members of **CHAIN-001** and contribute the terminal impact."
+
+Keep cross-references concise (one clause per chain) and prefer narrative integration over footnote-style notation. Cross-referencing is OPTIONAL — omit when it would force the narrative over the 200-word cap or when the chain membership does not add architectural insight. The reverse reference (from Section 6 Cross-Layer Attack Chains back to the pattern subsection) is not required — chains and patterns are independent groupings, and double-linking is not a guarantee.
 
 ### Section 7: Remediation Roadmap
 

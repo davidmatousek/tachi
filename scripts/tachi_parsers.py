@@ -42,6 +42,25 @@ SEVERITY_ORDINAL = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1, "Note": 0}
 # Canonical MAESTRO layer ordering (L1 through L7)
 MAESTRO_LAYERS = ["L1", "L2", "L3", "L4", "L5", "L6", "L7"]
 
+# Canonical CSA MAESTRO agentic pattern enum values (Feature 142, schema 1.4).
+# Ordering mirrors schemas/finding.yaml agentic_pattern.enum. The first six are
+# the canonical CSA patterns; "none" is the sentinel for findings without
+# pattern relevance (default per FR-017); "multiple" covers findings that
+# exemplify two or more patterns with equal classification-rule priority.
+# See ADR-026 for the classification mechanism and
+# .claude/skills/tachi-shared/references/maestro-agentic-patterns-shared.md
+# for the canonical definitions.
+VALID_AGENTIC_PATTERNS = (
+    "agent_collusion",
+    "emergent_behavior",
+    "temporal_attack",
+    "trust_exploitation",
+    "communication_vulnerability",
+    "resource_competition",
+    "none",
+    "multiple",
+)
+
 
 # =============================================================================
 # Utility Functions
@@ -67,6 +86,42 @@ def _parse_int(s: str) -> int:
     """Safely parse an integer from a string, stripping non-numeric chars."""
     match = re.search(r"\d+", s)
     return int(match.group()) if match else 0
+
+
+def parse_finding_pattern(value) -> str:
+    """Normalize an ``agentic_pattern`` cell value to a canonical enum string.
+
+    Accepts string, None, or missing (empty) input. Returns one of the eight
+    canonical lowercase values in ``VALID_AGENTIC_PATTERNS``:
+    ``agent_collusion``, ``emergent_behavior``, ``temporal_attack``,
+    ``trust_exploitation``, ``communication_vulnerability``,
+    ``resource_competition``, ``none``, ``multiple``.
+
+    Backward compatibility (per FR-017, Feature 142): null, missing,
+    empty-string, whitespace-only, ``"—"`` (em dash placeholder rendered by
+    FR-009 for findings with ``agentic_pattern: none``), ``"-"`` (ASCII
+    dash), and unrecognized strings all collapse to ``"none"``. This lets
+    pre-Feature-142 threats.md (no Pattern column) parse cleanly with
+    every finding defaulted to ``none``, and preserves determinism across
+    schema version skew (per ADR-021 / ADR-026).
+
+    Case-insensitive on input: ``Agent_Collusion`` and ``AGENT_COLLUSION``
+    both normalize to ``agent_collusion``. Canonical storage is always
+    lowercase.
+
+    See: ADR-026 (Hybrid Post-Hoc Synthesis mechanism for Phase 3.6 pattern
+    classification) and
+    ``.claude/skills/tachi-shared/references/maestro-agentic-patterns-shared.md``
+    for pattern semantics and the classification rule table.
+    """
+    if value is None:
+        return "none"
+    normalized = str(value).strip().lower()
+    if not normalized or normalized in ("\u2014", "-", "—"):
+        return "none"
+    if normalized in VALID_AGENTIC_PATTERNS:
+        return normalized
+    return "none"
 
 
 # =============================================================================
@@ -372,6 +427,16 @@ def detect_artifacts(target_dir: Path) -> dict:
     """Scan target directory for tachi pipeline artifacts.
 
     Returns dict with boolean flags for each artifact type.
+
+    The ``has_agentic_patterns`` boolean (Feature 142) is ``True`` iff the
+    threats.md at ``target_dir`` contains at least one finding with a
+    non-``none`` ``agentic_pattern`` value after :func:`parse_threats_findings`
+    processing. Mirrors the :data:`has_attack_chains` propagation path from
+    Feature 141. Downstream consumers: the threat-report agent (conditional
+    Agentic Pattern Analysis section gating), the threats.md output
+    template (conditional Section 4b "Findings by Agentic Pattern"
+    rendering), and the PDF security report pipeline
+    (``extract-report-data.py`` conditional pattern data emission).
     """
     artifacts = {
         "threats_md": False,
@@ -415,6 +480,22 @@ def detect_artifacts(target_dir: Path) -> dict:
         artifacts["has_attack_chains"] = True
     else:
         artifacts["has_attack_chains"] = False
+
+    # Feature 142: agentic pattern presence flag. True iff threats.md
+    # contains at least one finding with agentic_pattern != "none" after
+    # parse_threats_findings normalization. Pre-Feature-142 threats.md
+    # files (no Pattern column) yield False here because every finding
+    # defaults to "none" per FR-017.
+    artifacts["has_agentic_patterns"] = False
+    if artifacts["threats_md"]:
+        try:
+            threats_content = (target_dir / "threats.md").read_text(encoding="utf-8")
+            for finding in parse_threats_findings(threats_content):
+                if finding.get("agentic_pattern", "none") != "none":
+                    artifacts["has_agentic_patterns"] = True
+                    break
+        except OSError:
+            pass
 
     return artifacts
 
@@ -558,14 +639,43 @@ def parse_threats_findings(content: str) -> list:
     """Parse Section 7 Recommended Actions table for Tier 3 findings.
 
     Returns list of finding dicts with Tier 3 keys.
+
+    The ``agentic_pattern`` key (Feature 142, schema 1.4) is always present
+    on every returned finding dict. When the Section 7 table contains a
+    ``Pattern`` or ``Agentic Pattern`` column (case-insensitive), the raw
+    value is routed through :func:`parse_finding_pattern` to yield a
+    canonical enum string. When no such column exists (pre-Feature-142
+    threats.md), every finding defaults to ``agentic_pattern: 'none'`` per
+    FR-017 backward compatibility.
     """
     rows = parse_markdown_table(content, "## 7. Recommended Actions")
     if not rows:
         print("Warning: could not find Recommended Actions table in threats.md", file=sys.stderr)
         return []
 
+    # Detect the Pattern column key (case-insensitive match on the table
+    # header). FR-009 specifies the threats.md Section 3 / 4 tables render
+    # the column as "Agentic Pattern"; the orchestrator MAY propagate the
+    # same column into the Section 7 summary. Accept either spelling here
+    # so a single parser handles both table shapes.
+    pattern_key = None
+    for col in rows[0].keys():
+        if col.strip().lower() in ("pattern", "agentic pattern"):
+            pattern_key = col
+            break
+
     findings = []
     for row in rows:
+        # Agentic pattern: always populated on every finding per FR-017.
+        # Pre-Feature-142 threats.md (no Pattern column) → defaults to
+        # 'none' via parse_finding_pattern's sentinel handling. The
+        # em-dash placeholder ("—") rendered by FR-009 for findings with
+        # agentic_pattern: none normalizes to 'none' as well.
+        if pattern_key is not None:
+            pattern_value = parse_finding_pattern(row.get(pattern_key, ""))
+        else:
+            pattern_value = "none"
+
         finding = {
             "id": row.get("Finding ID", "").strip(),
             "component": row.get("Component", "").strip(),
@@ -574,6 +684,7 @@ def parse_threats_findings(content: str) -> list:
             "impact": "\u2014",
             "risk_level": row.get("Risk Level", "").strip(),
             "mitigation": row.get("Mitigation", "").strip(),
+            "agentic_pattern": pattern_value,
         }
         # Delta fields: include only when present (backward compatible)
         status = row.get("Status", "").strip()

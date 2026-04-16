@@ -11,14 +11,17 @@
   Consumers      : Integrators, SARIF export (F-006), downstream features
 
   Every generated threat model output MUST conform to this structure.
-  All 7 sections plus Section 4a are required. Sections must appear in the order listed.
+  All 7 sections plus Section 4a are required. Section 4b (Findings by Agentic Pattern)
+  is conditional on `has-agentic-patterns: true` (Feature 142). Section 4c (Resolved
+  Findings) is conditional on a baseline being provided. Section 8 (Delta Summary) is
+  conditional on a baseline being provided. Sections must appear in the order listed.
 -->
 
 ---
 
 ```yaml
 ---
-schema_version: "1.3"
+schema_version: "1.4"
 date: "YYYY-MM-DD"
 input_format: "{detected or declared format}"
 classification: "confidential"
@@ -38,7 +41,7 @@ coverage_gate:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `schema_version` | string | Output schema version. Always `"1.3"` for this release. |
+| `schema_version` | string | Output schema version. Always `"1.4"` for this release (bumped from 1.3 in Feature 142 to cover the additive Pattern column in Section 7 and the new conditional Section 4b "Findings by Agentic Pattern"; additive-only, backward-compatible with 1.3 parsers per FR-017). |
 | `date` | string | ISO 8601 date when the threat model was generated. Format: `YYYY-MM-DD`. |
 | `input_format` | string | Architecture input format that was analyzed. One of: `ascii`, `free-text`, `mermaid`, `plantuml`, `c4`. |
 | `classification` | string | Data classification label for the report. Default: `confidential`. |
@@ -54,7 +57,7 @@ coverage_gate:
 
 ```yaml
 ---
-schema_version: "1.3"
+schema_version: "1.4"
 date: "2026-03-31"
 input_format: "mermaid"
 classification: "confidential"
@@ -74,7 +77,7 @@ coverage_gate:
 
 ```yaml
 ---
-schema_version: "1.3"
+schema_version: "1.4"
 date: "2026-03-31"
 input_format: "mermaid"
 classification: "confidential"
@@ -96,7 +99,7 @@ coverage_gate:
 
 ```yaml
 ---
-schema_version: "1.3"
+schema_version: "1.4"
 date: "2026-03-31"
 input_format: "mermaid"
 classification: "confidential"
@@ -226,7 +229,7 @@ One table per STRIDE category containing threat findings for each applicable com
 | D | Denial of Service |
 | E | Elevation of Privilege |
 
-**Status column** (baseline-aware mode only): Every finding includes a delta annotation showing its lifecycle status relative to the baseline: `NEW` (discovered this run), `UNCHANGED` (identical to baseline), `UPDATED` (component context changed). `RESOLVED` findings appear in Section 4b, not in these tables. When no baseline is present (first run), all findings show `NEW`.
+**Status column** (baseline-aware mode only): Every finding includes a delta annotation showing its lifecycle status relative to the baseline: `NEW` (discovered this run), `UNCHANGED` (identical to baseline), `UPDATED` (component context changed). `RESOLVED` findings appear in Section 4c, not in these tables. When no baseline is present (first run), all findings show `NEW`.
 
 **Risk level computation (OWASP 3x3 matrix):**
 
@@ -386,7 +389,95 @@ Cross-agent correlation groups linking findings from different agent categories 
 
 ---
 
-## 4b. Resolved Findings
+## 4b. Findings by Agentic Pattern
+
+This section groups findings by canonical CSA MAESTRO agentic pattern. Patterns are assigned during Phase 3.6 (Pattern Synthesis Engine) per [ADR-026](../../docs/architecture/02_ADRs/ADR-026-pattern-classification-mechanism.md). Each pattern subsection below enumerates the findings that were classified under that pattern by the deterministic classification rule table in [`maestro-agentic-patterns-shared.md`](../../.claude/skills/tachi-shared/references/maestro-agentic-patterns-shared.md).
+
+**Conditional rendering**: This section is rendered ONLY when `has-agentic-patterns: true` (i.e., at least one finding has `agentic_pattern` value other than `none` after Phase 3.6 synthesis). The section is **suppressed entirely** — including its header — when all findings have `agentic_pattern: none` (multi-agent gate predicate evaluated `false`, or predicate evaluated `true` but no classification rule matched any finding). Do not render an empty section header.
+
+**Independence from Section 4a**: Section 4b complements Section 4a (intra-component correlation) — the two grouping mechanisms are independent (FR-008 invariant; pattern membership and correlation group membership apply orthogonally). A finding MAY appear in both.
+
+**Subsection ordering**: Subsections appear in canonical pattern enum order (`agent_collusion` → `emergent_behavior` → `temporal_attack` → `trust_exploitation` → `communication_vulnerability` → `resource_competition`). Zero-finding subsections are suppressed (not rendered empty). When any finding has `agentic_pattern: multiple`, the "Multi-Pattern Findings" subsection is rendered FIRST (before the per-pattern subsections) to call attention to findings that exemplify two or more patterns equally.
+
+### Multi-Pattern Findings
+
+Rendered only when at least one finding has `agentic_pattern: multiple`. Each row lists a finding that exemplifies two or more canonical patterns equally. The "Matching Patterns" column lists the comma-separated canonical pattern names (in enum order) that the finding satisfies.
+
+| Finding ID | Component | Matching Patterns | Threat Summary |
+|------------|-----------|-------------------|----------------|
+| _{finding ID}_ | _{component}_ | _{comma-separated pattern enum values}_ | _{threat summary}_ |
+
+**Example:**
+
+| Finding ID | Component | Matching Patterns | Threat Summary |
+|------------|-----------|-------------------|----------------|
+| AG-4 | Specialist Agent | agent_collusion, communication_vulnerability | Coordinated message-bus exfiltration spanning two peer agents via shared channel |
+
+### Agent Collusion
+
+> **Definition**: Multiple compromised agents coordinate to achieve malicious objectives that no single agent could accomplish alone — exfiltrating data across shared channels, jointly manipulating planning outputs, or circumventing policies by distributing actions below per-agent detection thresholds.
+
+Count: _{N}_ (_{comma-separated finding IDs}_)
+
+**Example:**
+
+Count: 3 (AG-2, LLM-1, AGP-01)
+
+### Emergent Behavior
+
+> **Definition**: Attackers exploit unpredictable behaviors that arise only from the interaction of multiple agents (cascading failures, feedback amplification, behavioral drift) — behaviors that are invisible in per-agent analysis and manifest only when agents act in concert.
+
+Count: _{N}_ (_{comma-separated finding IDs}_)
+
+**Example:**
+
+Count: 2 (AG-1, AGP-02)
+
+### Temporal Attacks
+
+> **Definition**: Attacks that exploit persistent state to achieve delayed or time-gated effects — sleeper agents activating under specific triggers, gradual corruption of learned parameters, seasonal exploitation patterns, or poisoned training data that surfaces only during re-training cycles.
+
+Count: _{N}_ (_{comma-separated finding IDs}_)
+
+**Example:**
+
+Count: 1 (AGP-03)
+
+### Trust Exploitation
+
+> **Definition**: Attacks that subvert the trust relationships between agents — identity spoofing between cooperating agents, reputation manipulation in agent registries, trust chain attacks that pivot from a weakly-trusted agent to a highly-trusted peer, and impersonation of supervisor agents.
+
+Count: _{N}_ (_{comma-separated finding IDs}_)
+
+**Example:**
+
+Count: 1 (S-2)
+
+### Communication Vulnerabilities
+
+> **Definition**: Attacks against the inter-agent messaging substrate — interception of messages on shared channels, protocol manipulation that degrades authentication or integrity guarantees, routing attacks that divert messages to adversary-controlled agents, and replay attacks on agent-to-agent communication.
+
+Count: _{N}_ (_{comma-separated finding IDs}_)
+
+**Example:**
+
+Count: 1 (I-3)
+
+### Resource Competition
+
+> **Definition**: Attacks that exploit contention between agents for shared resources — resource monopolization by one agent starving peers, priority manipulation in shared schedulers, coordination disruption that induces resource-use conflicts, and quota-exhaustion attacks that degrade peer agents' availability.
+
+Count: _{N}_ (_{comma-separated finding IDs}_)
+
+**Example:**
+
+Count: 1 (D-2)
+
+Section 4b complements Section 4a (intra-component correlation) — the two grouping mechanisms are independent (FR-008 invariant; pattern membership and correlation group membership apply orthogonally). A finding MAY appear in both.
+
+---
+
+## 4c. Resolved Findings
 
 Findings from the baseline that are no longer applicable in the current architecture. These findings are retained for audit traceability — each preserves its original ID, description, and last-known risk level. This section is only present when a baseline was used for the current run.
 
@@ -551,24 +642,27 @@ When correlation groups exist and the deduplicated total differs from the raw fi
 
 Prioritized list of all findings sorted by risk level descending, providing a remediation roadmap. Critical and High findings should be addressed before deployment. Medium findings should be addressed within the current development cycle. Low and Note findings should be tracked for future consideration.
 
-**Status column** (baseline-aware mode only): Carries the `delta_status` lifecycle annotation for each finding. Values: `NEW` (discovered this run), `UNCHANGED` (identical to baseline), `UPDATED` (component context changed). RESOLVED findings do not appear in this table — they are listed in Section 4b. When no baseline is present (first run), all findings show `NEW`. The Status column enables downstream consumers (extraction scripts, report agents) to access delta information from a single parsed table.
+**Status column** (baseline-aware mode only): Carries the `delta_status` lifecycle annotation for each finding. Values: `NEW` (discovered this run), `UNCHANGED` (identical to baseline), `UPDATED` (component context changed). RESOLVED findings do not appear in this table — they are listed in Section 4c. When no baseline is present (first run), all findings show `NEW`. The Status column enables downstream consumers (extraction scripts, report agents) to access delta information from a single parsed table.
 
-| Finding ID | Status | Component | MAESTRO Layer | Threat | Risk Level | Mitigation |
-|------------|--------|-----------|---------------|--------|------------|------------|
-| _{finding ID}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{component}_ | _{L1-L7 or Unclassified}_ | _{threat summary}_ | _{risk level}_ | _{recommended countermeasure}_ |
+**Pattern column** (always rendered): Carries the canonical CSA MAESTRO agentic threat pattern assigned during Phase 3.6 pattern synthesis (Feature 142 — see [ADR-026](../../docs/architecture/02_ADRs/ADR-026-pattern-classification-mechanism.md)). Values: one of the six canonical pattern enum values (`agent_collusion`, `emergent_behavior`, `temporal_attack`, `trust_exploitation`, `communication_vulnerability`, `resource_competition`), or `multiple` (finding exemplifies two or more patterns equally; rare). Empty/sentinel values (`agentic_pattern: none`) display as `—` (em-dash, U+2014). The column MUST always render across all architectures for consistent table shape (FR-009), including when the multi-agent gate predicate evaluates `false` (in which case every row's Pattern cell shows `—`). The column header is `Pattern` (the parser in `scripts/tachi_parsers.py::parse_threats_findings()` also accepts `Agentic Pattern` case-insensitively).
+
+| Finding ID | Status | Category | Pattern | Component | MAESTRO Layer | Threat | Risk Level | Mitigation |
+|------------|--------|----------|---------|-----------|---------------|--------|------------|------------|
+| _{finding ID}_ | _{NEW \| UNCHANGED \| UPDATED}_ | _{category}_ | _{pattern enum value or —}_ | _{component}_ | _{L1-L7 or Unclassified}_ | _{threat summary}_ | _{risk level}_ | _{recommended countermeasure}_ |
 
 **Example:**
 
-| Finding ID | Status | Component | MAESTRO Layer | Threat | Risk Level | Mitigation |
-|------------|--------|-----------|---------------|--------|------------|------------|
-| S-1 | UNCHANGED | API Gateway | L4 — Deployment Infrastructure | Forged JWT tokens via weak signing algorithm | Critical | Enforce RS256 signing with key rotation every 90 days; reject HS256 tokens |
-| LLM-1 | NEW | LLM Agent | L1 — Foundation Model | Indirect prompt injection exfiltrating context data | Critical | Sanitize user input before LLM context; implement output filtering and egress controls |
-| T-1 | UPDATED | User Database | L2 — Data Operations | SQL injection through unsanitized input | High | Use parameterized queries; apply input validation at API Gateway |
-| I-1 | UNCHANGED | User Database | L2 — Data Operations | Credentials exposed in error messages | High | Structured error handling with generic client responses; server-side detailed logging |
-| D-1 | UNCHANGED | API Gateway | L4 — Deployment Infrastructure | Volumetric attack exhausting connection pool | High | Per-IP rate limiting; upstream DDoS protection; circuit breaker pattern |
-| E-1 | NEW | Auth Service | L6 — Security and Compliance | IDOR exploiting role claims in JWT payload | High | Server-side role validation against authoritative store on every request |
-| AG-1 | UNCHANGED | LLM Agent | L1 — Foundation Model | Uncontrolled destructive command execution | High | Human-in-the-loop approval for destructive operations; tool allowlists |
-| R-1 | UNCHANGED | Auth Service | L5 — Evaluation and Observability | Insufficient audit logging for privileged actions | Medium | Immutable audit log with session ID, IP, user agent, and timestamp |
+| Finding ID | Status | Category | Pattern | Component | MAESTRO Layer | Threat | Risk Level | Mitigation |
+|------------|--------|----------|---------|-----------|---------------|--------|------------|------------|
+| S-1 | UNCHANGED | Spoofing | — | API Gateway | L4 — Deployment Infrastructure | Forged JWT tokens via weak signing algorithm | Critical | Enforce RS256 signing with key rotation every 90 days; reject HS256 tokens |
+| LLM-1 | NEW | LLM | agent_collusion | LLM Agent | L1 — Foundation Model | Indirect prompt injection exfiltrating context data | Critical | Sanitize user input before LLM context; implement output filtering and egress controls |
+| T-1 | UPDATED | Tampering | — | User Database | L2 — Data Operations | SQL injection through unsanitized input | High | Use parameterized queries; apply input validation at API Gateway |
+| I-1 | UNCHANGED | Information Disclosure | — | User Database | L2 — Data Operations | Credentials exposed in error messages | High | Structured error handling with generic client responses; server-side detailed logging |
+| D-1 | UNCHANGED | Denial of Service | — | API Gateway | L4 — Deployment Infrastructure | Volumetric attack exhausting connection pool | High | Per-IP rate limiting; upstream DDoS protection; circuit breaker pattern |
+| E-1 | NEW | Elevation of Privilege | — | Auth Service | L6 — Security and Compliance | IDOR exploiting role claims in JWT payload | High | Server-side role validation against authoritative store on every request |
+| AG-1 | UNCHANGED | Agentic | emergent_behavior | LLM Agent | L1 — Foundation Model | Uncontrolled destructive command execution | High | Human-in-the-loop approval for destructive operations; tool allowlists |
+| AGP-01 | NEW | Agentic | temporal_attack | Fine-Tuning Pipeline | L2 — Data Operations | Training data poisoning introducing sleeper agent via delayed-trigger keyword | High | Training-data provenance attestation; memory-write audit trails; behavioral baselining against pre-training snapshots |
+| R-1 | UNCHANGED | Repudiation | — | Auth Service | L5 — Evaluation and Observability | Insufficient audit logging for privileged actions | Medium | Immutable audit log with session ID, IP, user agent, and timestamp |
 
 ---
 
@@ -576,7 +670,7 @@ Prioritized list of all findings sorted by risk level descending, providing a re
 
 _Present only when a baseline was used for the current run. Omit this entire section (header and content) on first run (no baseline)._
 
-This section provides an aggregate lifecycle breakdown of all findings relative to the baseline, remediation proof, and a reference back to the baseline used for comparison. Section 4b provides individual resolved finding details; this section provides the summary view.
+This section provides an aggregate lifecycle breakdown of all findings relative to the baseline, remediation proof, and a reference back to the baseline used for comparison. Section 4c provides individual resolved finding details; this section provides the summary view.
 
 ### Finding Lifecycle
 
@@ -585,7 +679,7 @@ This section provides an aggregate lifecycle breakdown of all findings relative 
 | NEW | _{count}_ | Findings discovered in this run with no baseline match |
 | UNCHANGED | _{count}_ | Findings identical to baseline (same component, threat, assessment) |
 | UPDATED | _{count}_ | Findings with changed context since baseline |
-| RESOLVED | _{count}_ | Baseline findings no longer applicable (see Section 4b for details) |
+| RESOLVED | _{count}_ | Baseline findings no longer applicable (see Section 4c for details) |
 | **Total** | _{total}_ | Sum of all findings (active + resolved) |
 
 ### Baseline Reference
@@ -606,7 +700,7 @@ This section provides an aggregate lifecycle breakdown of all findings relative 
 | NEW | 5 | Findings discovered in this run with no baseline match |
 | UNCHANGED | 12 | Findings identical to baseline (same component, threat, assessment) |
 | UPDATED | 2 | Findings with changed context since baseline |
-| RESOLVED | 3 | Baseline findings no longer applicable (see Section 4b for details) |
+| RESOLVED | 3 | Baseline findings no longer applicable (see Section 4c for details) |
 | **Total** | **22** | Sum of all findings (active + resolved) |
 
 ### Baseline Reference

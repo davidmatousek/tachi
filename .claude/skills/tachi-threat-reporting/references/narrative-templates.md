@@ -198,6 +198,79 @@ Assign a qualitative effort estimate (Low / Medium / High) to each roadmap item 
 
 ---
 
+## Agentic Pattern Analysis Template
+
+Generate the Agentic Pattern Analysis as a conditional section of the report. The section is placed after Cross-Layer Attack Chains (Feature 141 Section 6) and before Findings Detail. The section number is NOT hardcoded — determine it at code time by counting existing sections in the current `threat-report.md` output.
+
+### Conditional Rendering Gate
+
+Before rendering the section, inspect the `has-agentic-patterns` boolean. If `false`, emit no output for this section. Do not leave placeholder text, do not render an empty heading, do not announce the absence of patterns. The section is simply omitted from the report.
+
+### Subsection Structure
+
+One subsection per canonical pattern with a non-zero finding count. Each subsection contains four required elements in the following order:
+
+1. **Pattern name and canonical definition** (level 3 heading + 1 sentence): The pattern name as a level 3 heading, followed by the 1-sentence canonical definition loaded from `.claude/skills/tachi-shared/references/maestro-agentic-patterns-shared.md`. Do not paraphrase the canonical definition — use it verbatim.
+
+2. **Severity counts** (single inline line): Render as `Critical: N | High: N | Medium: N | Low: N` on its own line. Include all four tiers even when some counts are zero (consistent shape across subsections).
+
+3. **Manifestation narrative** (100-200 word paragraph): Describe how this pattern manifests in THIS specific architecture. Name the components involved, the coordination or state mechanism that enables the pattern, and the business impact. Use finding descriptions as raw material; do not simply restate individual findings.
+
+4. **Impacted findings list** (single line): Render as `Impacted findings: <comma-separated IDs with anchors>` where each finding ID links to its entry in Section 7 Findings Detail.
+
+### Subsection Ordering Rules
+
+1. **Primary sort**: max severity descending (Critical > High > Medium > Low > Note)
+2. **Secondary sort**: finding count descending
+3. **Tertiary sort**: pattern enum order — `agent_collusion` < `emergent_behavior` < `temporal_attack` < `trust_exploitation` < `communication_vulnerability` < `resource_competition`
+
+> **Note on tertiary tiebreaker**: Feature 141 Section 6 (Cross-Layer Attack Chains) uses `chain_id` alphabetic order as its tertiary tiebreaker. Feature 142 Agentic Pattern Analysis uses pattern enum order as its tertiary tiebreaker. The divergence is deliberate because pattern enum order is a **meaningful semantic ordering** (CSA MAESTRO canonical pattern order: agent_collusion → emergent_behavior → temporal_attack → trust_exploitation → communication_vulnerability → resource_competition — reflects CSA's category grouping from collaboration-originated threats to resource-competition threats), whereas Feature 141's `chain_id` alphabetic is an **arbitrary uniqueness tiebreaker** (chain IDs are sequential IDs with no semantic ordering). Do NOT homogenize the two Feature 141/142 tertiary rules — the divergence preserves meaningful ordering per pattern context.
+
+### Suppression Rules
+
+- **Zero-finding subsections**: MUST be suppressed entirely. Do not render a heading with "No findings in this pattern" — omit the subsection.
+- **Full section**: MUST be omitted when `has-agentic-patterns: false` (no finding carries a non-`none` pattern). See the Conditional Rendering Gate above.
+
+### Multi-Pattern Findings Subsection
+
+When at least one finding has `agentic_pattern: multiple`, render a dedicated "Multi-Pattern Findings" subsection as the **first** subsection of the Agentic Pattern Analysis (before any per-pattern subsection). The heading is `### Multi-Pattern Findings` (no canonical definition line, no severity counts line).
+
+For each multi-pattern finding, render one bullet of the form:
+
+```
+- Finding {ID}: {title_or_description_first_sentence} (patterns: {comma-separated pattern names})
+```
+
+Multi-pattern findings ALSO appear under each matching pattern's per-pattern subsection (no exclusion). The Multi-Pattern Findings subsection surfaces them collectively; the per-pattern subsections include them in their impacted findings lists.
+
+### Chain-Membership Cross-Reference Format
+
+When a pattern-tagged finding also participates in a Feature 141 Cross-Layer Attack Chain, the manifestation narrative MAY include a prose cross-reference of the form:
+
+```
+Finding F-12 (Agent Collusion) participates in Chain CHAIN-002.
+```
+
+Use this format for optional narrative enrichment only. The cross-reference is **prose-only** and **read-only** against the chain data.
+
+> **FR-008 independence invariant**: The threat-report agent MUST NOT modify `attack-chains.md` when rendering this cross-reference. Chain membership is surfaced by reading the chain artifact, not by writing to it. Pattern data placement is confined to the finding IR and `threats.md`; the chain artifact remains independent.
+
+### Example Subsection
+
+```
+### Agent Collusion
+
+Multiple compromised agents coordinating to achieve malicious objectives (DDoS, info gathering, policy circumvention).
+
+Critical: 1 | High: 2 | Medium: 0 | Low: 0
+
+The LLM Agent Orchestrator and Specialist Agent communicate over the shared message bus, enabling a compromised Orchestrator to recruit the Specialist Agent as an unwitting accomplice in data exfiltration. Finding F-12 (Agent Collusion) participates in Chain CHAIN-002. Controls addressing this pattern require inter-agent coordination throttles rather than per-component input validation.
+
+Impacted findings: [F-12](#f-12), [AGP-01](#agp-01), [AG-3](#ag-3)
+```
+
+---
+
 ## Section 5 Delta Annotations
 
 When attack trees are generated in a delta context (a baseline exists), annotate each tree's inline Section 5 content to indicate its provenance. These annotations help readers understand whether a tree reflects current fresh analysis or was carried forward from the prior run.

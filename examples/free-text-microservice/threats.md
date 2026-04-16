@@ -4,7 +4,7 @@
 
 ```yaml
 ---
-schema_version: "1.3"
+schema_version: "1.4"
 date: "2026-04-10"
 input_format: "free-text"
 classification: "confidential"
@@ -210,20 +210,20 @@ No agentic or LLM components detected in the architecture. The system uses no la
 
 ## 7. Recommended Actions
 
-| Finding ID | Status | Component | Threat | Risk Level | Mitigation |
-|------------|--------|-----------|--------|------------|------------|
-| S-1 | NEW | API Gateway | JWT token forgery or theft enabling user impersonation | Critical | Enforce short-lived JWT expiration (15 min); implement token revocation list; validate issuer and audience claims; use RS256 asymmetric signing |
-| D-1 | NEW | API Gateway | Volumetric DDoS exhausting TLS capacity and connection pool | Critical | Deploy upstream DDoS protection; enforce per-IP and per-user rate limiting; implement connection timeouts and circuit breaker patterns; auto-scale |
-| S-3 | NEW | Order Service | Rogue internal service impersonating API Gateway | High | Implement mutual TLS or signed request headers between gateway and services; enforce network policies restricting port 8080 |
-| T-1 | NEW | Message Queue | Message injection or modification on RabbitMQ orders exchange | High | Enable message signing/HMAC; enforce AMQP user-level publish permissions; restrict network access to port 5672 |
-| T-3 | NEW | Payment Service | Forged or replayed Stripe webhook callbacks | High | Verify Stripe webhook signatures; enforce HTTPS-only endpoint; implement idempotency checks against replay |
-| R-2 | NEW | Payment Service | Payment transaction disputes without cross-system correlation | High | Log complete payment lifecycle with correlation IDs linking order, MQ message, and Stripe charge; retain for compliance |
-| I-1 | NEW | Inventory Database | Database credentials exposed in error stack traces | High | Structured error handling returning generic codes; internal-only centralized logging; never propagate database errors across trust boundaries |
-| D-2 | NEW | Message Queue | Message flood consuming broker disk and memory | High | Configure per-queue message limits and publish rate limits; set memory/disk watermarks; dead-letter exchanges; queue depth monitoring |
-| D-3 | NEW | Inventory Database | Connection pool exhaustion during traffic spikes | High | Enforce per-service connection pool limits; configure PostgreSQL max_connections; connection timeout with exponential backoff; PgBouncer |
-| E-1 | NEW | Order Service | Order status manipulation bypassing state machine | High | Strict server-side state machine validation; reject invalid transitions; log all status change attempts |
-| S-2 | NEW | Payment Service | Stripe API key compromise enabling unauthorized payment operations | Medium | Secrets manager for API keys; quarterly rotation; minimum-permission key scoping; Stripe dashboard anomaly monitoring |
-| T-2 | NEW | Inventory Database | Direct database record manipulation via over-privileged service account | Medium | Least-privilege database accounts per service; PostgreSQL audit logging on all DML operations |
-| R-1 | NEW | Order Service | Missing audit trail for order creation disputes | Medium | Immutable audit log with user ID, session ID, source IP, user agent, payload hash, and timestamp; append-only storage |
-| I-2 | NEW | Message Queue | Payment data readable by any AMQP-credentialed service | Medium | Application-layer envelope encryption; per-queue ACLs; dedicated payment vhost |
-| E-2 | NEW | API Gateway | JWT claim manipulation for role escalation | Medium | Validate JWT signature and all claims against identity provider; claim-based access control at gateway and service layers |
+| Finding ID | Status | Pattern | Component | Threat | Risk Level | Mitigation |
+|------------|--------|---------|-----------|--------|------------|------------|
+| S-1 | NEW | — | API Gateway | JWT token forgery or theft enabling user impersonation | Critical | Enforce short-lived JWT expiration (15 min); implement token revocation list; validate issuer and audience claims; use RS256 asymmetric signing |
+| D-1 | NEW | — | API Gateway | Volumetric DDoS exhausting TLS capacity and connection pool | Critical | Deploy upstream DDoS protection; enforce per-IP and per-user rate limiting; implement connection timeouts and circuit breaker patterns; auto-scale |
+| S-3 | NEW | — | Order Service | Rogue internal service impersonating API Gateway | High | Implement mutual TLS or signed request headers between gateway and services; enforce network policies restricting port 8080 |
+| T-1 | NEW | — | Message Queue | Message injection or modification on RabbitMQ orders exchange | High | Enable message signing/HMAC; enforce AMQP user-level publish permissions; restrict network access to port 5672 |
+| T-3 | NEW | — | Payment Service | Forged or replayed Stripe webhook callbacks | High | Verify Stripe webhook signatures; enforce HTTPS-only endpoint; implement idempotency checks against replay |
+| R-2 | NEW | — | Payment Service | Payment transaction disputes without cross-system correlation | High | Log complete payment lifecycle with correlation IDs linking order, MQ message, and Stripe charge; retain for compliance |
+| I-1 | NEW | — | Inventory Database | Database credentials exposed in error stack traces | High | Structured error handling returning generic codes; internal-only centralized logging; never propagate database errors across trust boundaries |
+| D-2 | NEW | — | Message Queue | Message flood consuming broker disk and memory | High | Configure per-queue message limits and publish rate limits; set memory/disk watermarks; dead-letter exchanges; queue depth monitoring |
+| D-3 | NEW | — | Inventory Database | Connection pool exhaustion during traffic spikes | High | Enforce per-service connection pool limits; configure PostgreSQL max_connections; connection timeout with exponential backoff; PgBouncer |
+| E-1 | NEW | — | Order Service | Order status manipulation bypassing state machine | High | Strict server-side state machine validation; reject invalid transitions; log all status change attempts |
+| S-2 | NEW | — | Payment Service | Stripe API key compromise enabling unauthorized payment operations | Medium | Secrets manager for API keys; quarterly rotation; minimum-permission key scoping; Stripe dashboard anomaly monitoring |
+| T-2 | NEW | — | Inventory Database | Direct database record manipulation via over-privileged service account | Medium | Least-privilege database accounts per service; PostgreSQL audit logging on all DML operations |
+| R-1 | NEW | — | Order Service | Missing audit trail for order creation disputes | Medium | Immutable audit log with user ID, session ID, source IP, user agent, payload hash, and timestamp; append-only storage |
+| I-2 | NEW | — | Message Queue | Payment data readable by any AMQP-credentialed service | Medium | Application-layer envelope encryption; per-queue ACLs; dedicated payment vhost |
+| E-2 | NEW | — | API Gateway | JWT claim manipulation for role escalation | Medium | Validate JWT signature and all claims against identity provider; claim-based access control at gateway and service layers |

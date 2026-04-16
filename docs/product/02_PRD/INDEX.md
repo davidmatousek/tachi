@@ -6,6 +6,7 @@
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 142 | [MAESTRO Phase 3: Agentic Threat Pattern Expansion](142-maestro-agentic-pattern-expansion-2026-04-16.md) | ✓ | ⚠ | ⚠ | Approved | 2026-04-16 |
 | 144 | [MAESTRO Companion: NIST AI RMF Integration Evaluation ADR](144-nist-ai-rmf-evaluation-adr-2026-04-15.md) ([PR #169](https://github.com/davidmatousek/tachi/pull/169)) | ⚠ | ⚠ | ⚠ | Delivered | 2026-04-16 |
 | 143 | [MAESTRO Phase 4: OWASP AIVSS Evaluation ADR](143-maestro-aivss-evaluation-adr-2026-04-14.md) | ⚠ | ⚠ | ⚠ | Delivered | 2026-04-15 |
 | 129 | [Attack Tree Delta Sub-Agent](129-attack-tree-delta-sub-agent-2026-04-13.md) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-14 |

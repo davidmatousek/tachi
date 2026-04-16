@@ -544,7 +544,129 @@ Set `has-attack-chains = true` when `attack-chains.md` is produced. This boolean
 - Phase 5 threat-report agent (Section 6: Cross-Layer Attack Chains)
 - PDF pipeline (`extract-report-data.py` for chain data extraction, `main.typ` for conditional page sequencing)
 
-After Phase 3.5 completes, proceed to Phase 4: Assess.
+After Phase 3.5 completes, proceed to Phase 3.6: Pattern Synthesis Engine.
+
+---
+
+## Phase 3.6: Pattern Synthesis Engine (Feature 142)
+
+Phase 3.6 synthesizes the `agentic_pattern` field on every deduplicated finding using a deterministic rule-based classification engine. It assigns one of six canonical CSA MAESTRO agentic threat patterns (Agent Collusion, Emergent Behavior, Temporal Attack, Trust Exploitation, Communication Vulnerability, Resource Competition) — or `none` / `multiple` — based on finding content and architectural context. For the three previously-uncovered patterns (Agent Collusion, Temporal Attack, Emergent Behavior), the engine MAY emit net-new findings with `AGP-NN` id prefix when the architecture indicates the pattern exists but no existing detection-tier finding represents it.
+
+**MANDATORY**: Read `.claude/skills/tachi-shared/references/maestro-agentic-patterns-shared.md` for the six canonical pattern definitions, the classification rule table (R-01 through R-06), the multi-agent gate predicate specification, and the canonical component_type + topology indicator token lists.
+
+This phase is governed by [ADR-026](../../../docs/architecture/02_ADRs/ADR-026-pattern-classification-mechanism.md) (Hybrid Post-Hoc Synthesis — Option C). The phase runs AFTER Phase 3.5 cross-layer correlation and BEFORE Phase 4 Assess.
+
+### Input
+
+- **Phase 1 component inventory**: Component names, DFD types, MAESTRO layer assignments, and agentic/llm category classification from the Phase 2 dispatch keywords
+- **Phase 1 data flow graph**: Source → target component relationships (including source/target category classification)
+- **Architecture description**: The full free-text architecture input (for keyword substring matching)
+- **Deduplicated findings IR**: Post-Phase-3 (post-dedup, post-Section-4a-correlation) and post-Phase-3.5 (cross-layer chains already assembled). Each finding has `id`, `category`, `component`, `maestro_layer`, `description`, `likelihood`, `impact`, `risk_level`
+- **Shared reference**: `.claude/skills/tachi-shared/references/maestro-agentic-patterns-shared.md` — rule table, multi-agent gate predicate, component_type tokens, topology indicators
+
+### Output
+
+- **Modifies findings IR in-place**: every finding receives a populated `agentic_pattern` field (one of eight enum values — six canonical patterns, `none`, or `multiple`). No finding may exit Phase 3.6 without the field populated (FR-003 / SC-010 — field universality).
+- **MAY emit net-new findings** with `id` prefix `AGP-NN` (sequential, starting at `AGP-01`). Maximum 1 net-new finding per pattern per architecture (per data-model.md Entity 5 Generation Constraints). Net-new findings are appended to the deduplicated finding IR and flow through Phase 4-5 identically to detection-tier findings.
+- **Sets `has-agentic-patterns` boolean**: `true` iff at least one finding (existing or net-new) has `agentic_pattern != 'none'`. This boolean is consumed by Phase 5 threat-report agent for conditional Agentic Pattern Analysis section gating and by SARIF emission (Phase 4) for conditional `maestro-pattern:<name>` tag attachment.
+
+### Independence Invariants
+
+- **vs. Phase 3.5 (Feature 141)**: Phase 3.6 runs AFTER cross-layer chain correlation and does NOT read, modify, or depend on `attack-chains.md`. Pattern membership and chain membership are independent grouping mechanisms — a finding may appear in both a Phase 3.5 attack chain AND a Phase 3.6 agentic pattern without conflict. This invariant is FR-008 from the Feature 142 spec.
+- **vs. the 11 detection agents** (6 STRIDE + 5 AI): Phase 3.6 reads the deduplicated finding IR but does NOT invoke or modify any threat-detection agent. The zero-edit invariant on the 11 agents is the foundation of ADR-026 Option C (Hybrid Post-Hoc Synthesis) and protects the Feature 082 stabilization.
+- **vs. Section 4a intra-component correlation**: Pattern is a finding-level field; Section 4a is a presentation-time grouping mechanism. The two are orthogonal and may co-occur on the same finding.
+- **vs. MAESTRO layer (Feature 084/136)**: Pattern is independent of `maestro_layer` — a finding with `maestro_layer: Unclassified` MAY still receive a non-`none` pattern if the multi-agent gate predicate is satisfied at the architecture level.
+
+### Process Step 1: Evaluate Multi-Agent Gate Predicate (T007)
+
+Evaluate the predicate EXACTLY ONCE per architecture (cached for Phase 3.6 duration; per data-model.md Entity 4). The predicate returns `true` when at least one of three OR conditions (a, b, c) holds. All three conditions are independently sufficient.
+
+1. **Condition (a) — Agentic Component Count**: Count components in the Phase 1 inventory classified as `agentic` or `llm` category in the Phase 2 dispatch keywords. The condition holds iff the count is `>= 2`.
+
+2. **Condition (b) — Inter-Agent Data Flow**: Inspect the Phase 1 data flow graph for inter-component data flows where BOTH source and target components are classified as `agentic` or `llm` category. A single `agentic` ↔ `data_store` or `agentic` ↔ `external_service` flow does NOT count — both endpoints MUST be agentic/llm. The condition holds iff the count is `>= 1`.
+
+3. **Condition (c) — Explicit Multi-Agent Keywords**: Case-insensitive substring search of the architecture description for any of: `multi-agent`, `swarm`, `supervisor`, `delegation`, `agent mesh`. The keyword list is authoritative (defined in `maestro-agentic-patterns-shared.md` Section 4); no expansion without a minor version bump on the shared reference. The condition holds iff the count is `>= 1`.
+
+**Predicate result**: `result = condition_a OR condition_b OR condition_c`.
+
+**If `result == false`** (all three conditions false):
+- Assign `agentic_pattern: none` to every finding in the IR.
+- Set `has-agentic-patterns = false`.
+- Skip Steps 2 and 3 entirely (no rule evaluation, no net-new finding generation).
+- Exit Phase 3.6; proceed to Phase 4: Assess.
+
+**If `result == true`** (at least one condition holds):
+- Continue to Process Step 2.
+
+The predicate evaluation is deterministic (pure function of architecture description + component inventory + data flow graph) per ADR-021. Cache the predicate result and the per-condition booleans for diagnostic logging in Step 4.
+
+### Process Step 2: Apply Classification Rule Table (T008)
+
+Load rule entries R-01 through R-06 from `maestro-agentic-patterns-shared.md` Section 3. For each finding in the deduplicated IR:
+
+1. **Evaluate rules in ascending priority order** (lowest priority value = most specific = first match wins). The canonical rule set has priorities 10 (R-01 Agent Collusion), 20 (R-02 Temporal Attack), 30 (R-03 Emergent Behavior), 40 (R-04 Trust Exploitation), 50 (R-05 Communication Vulnerability), 60 (R-06 Resource Competition).
+
+2. **For each rule, evaluate its `match_conditions`** as a conjunction (AND across all specified conditions). A condition with multiple values uses disjunction within the condition (any value matches):
+   - `category_in: [<list>]` — `finding.category` MUST be in the list (case-insensitive match against the category enum values).
+   - `maestro_layer_in: [<list>]` — `finding.maestro_layer` MUST be in the list (reserved; not used by R-01 through R-06).
+   - `target_component_matches.type_or_name_regex: <regex>` — case-insensitive regex match against the finding's target component type OR name.
+   - `architecture_has.topology: [<indicators>]` — at least one listed topology indicator evaluates true against the Phase 1 inventory + data flow graph. Evaluate each indicator deterministically: `multi_agent` = cached condition (a) from Step 1; `inter_agent_data_flow` = cached condition (b) from Step 1; `persistent_state` = at least one component matches any of the three persistent-state component_type tokens (`fine_tuning_pipeline`, `persistent_agent_memory`, `long_running_learning_loop`); `inter_agent_channel` = at least one component matches the `inter_agent_channel` component_type token AND `multi_agent` holds.
+   - `architecture_has.component_type: [<tokens>]` — at least one listed component_type token matches against the architecture description's component types and names (case-insensitive substring match using the canonical keyword list in `maestro-agentic-patterns-shared.md` Section 4).
+   - `description_contains: [<tokens>]` — `finding.description` MUST contain at least one listed token (case-insensitive substring match).
+
+3. **Assign the FIRST matching rule's pattern** to `finding.agentic_pattern`. If no rule matches, assign `agentic_pattern: none`.
+
+4. **Tie-breaking for equal-priority matches**: if two or more rules share the same priority value AND both match the same finding, assign `agentic_pattern: multiple` per data-model.md Entity 3 tie-breaking spec. (The initial rule set R-01 through R-06 is total-ordered on priority — no `multiple` assignments are expected from R-01-R-06 alone. Future rule additions that share priority warrant a minor version bump on the shared reference and an explicit tie-breaking design note.)
+
+All rule evaluation is deterministic (no LLM judgment). The same finding + same rule table produces identical pattern assignments on every run (per ADR-021).
+
+### Process Step 3: Generate Net-New Findings for Previously-Uncovered Patterns (T009)
+
+For each rule where `generates_finding_when_no_match: true` (R-01 Agent Collusion, R-02 Temporal Attack, R-03 Emergent Behavior), evaluate whether a net-new finding should be emitted:
+
+1. **Suppression check — skip if pattern already represented**. Apply two defense-in-depth checks in order; skip net-new generation for the rule if EITHER check triggers:
+   - **1a. Label-match check**: after Step 2 completes, check whether ANY existing finding in the IR now carries the rule's pattern label. If at least one existing finding has `agentic_pattern == <rule.pattern>`, SKIP net-new generation for that rule. This prevents duplication when a detection-tier finding already exemplifies the pattern.
+   - **1b. Content-overlap check (≥80% Jaccard token overlap — defense-in-depth)**: if no existing finding matches by label (1a passes), additionally compute the Jaccard token-overlap coefficient between (a) each existing finding's `description` field and (b) the rule's `generation_template` with placeholders stripped. Tokenize both strings by lowercasing and splitting on whitespace/punctuation. Compute `|intersection| / |union|` of the two token sets. If ANY existing finding has a Jaccard overlap `>= 0.80` against the rule's generation template, SKIP net-new generation for that rule. The 0.80 threshold is the canonical value (asserted by `test_netnew_skipped_when_existing_content_overlap_80pct` in `tests/scripts/test_pattern_synthesis.py`) and MUST NOT be adjusted without updating the test. This content-overlap check prevents semantic duplication even when label assignment differs (e.g., an existing finding describes coordinated inter-agent attacks but is labelled as `agentic_pattern: none` because Step 2 rule matching was inconclusive).
+
+2. **Architectural context check — skip if rule does not match architecture**: Evaluate the rule's `match_conditions` that apply at the architectural level (`architecture_has.topology`, `architecture_has.component_type`, and implicit conditions like `multi_agent` required by R-01 / R-03). If the architectural context does not match, SKIP net-new generation for that rule.
+
+3. **Select target component (deterministic selection rule)**: Identify the target component in precedence order: (1) components whose type or name matches any `architecture_has.component_type` token listed in the rule's `match_conditions`; (2) if no component matches (1), the first component in the Phase 1 component inventory with category `agentic` or `llm` (inventory order as produced by Phase 1 component extraction — which is itself deterministic). Record the selected component name in the generated finding's `component` field.
+
+4. **Emit the net-new finding** with the following field assignments:
+   - `id`: `AGP-NN` where NN is a sequential counter starting at `01`, incrementing by 1 for each net-new finding emitted during this phase (e.g., `AGP-01`, `AGP-02`, `AGP-03`). The `schemas/finding.yaml` `id.pattern` regex was extended in Feature 142 Wave 0 to accept the `AGP-` prefix.
+   - `category`: `agentic` (always — net-new pattern findings live in the AI categorization branch).
+   - `agentic_pattern`: the rule's `pattern` value (e.g., `agent_collusion` for R-01).
+   - `component`: the target component selected in step (3).
+   - `maestro_layer`: inherited from the target component via the existing Phase 3 MAESTRO layer inheritance pattern (Feature 084); `Unclassified` if the component has no layer assignment.
+   - `dfd_element_type`: inherited from the target component (Phase 1 DFD classification).
+   - `description`: rendered from the rule's `generation_template` with the `{component}` placeholder substituted with the target component name. Render other placeholders verbatim per the template.
+   - `likelihood`: `MEDIUM` (default; analyst may re-rate post-pipeline).
+   - `impact`: `MEDIUM` (default; analyst may re-rate post-pipeline).
+   - `risk_level`: computed from likelihood × impact via the existing OWASP 3×3 matrix (MEDIUM × MEDIUM → Medium).
+   - `mitigation`: rendered from the rule's mitigation template if present in the shared reference (the R-01, R-02, R-03 generation templates include inline "Recommended controls:" text that serves as the mitigation); else leave blank.
+   - `references`: CSA citation from the shared reference (`https://cloudsecurityalliance.org/blog/2025/02/06/agentic-ai-threat-modeling-framework-maestro`) plus the rule's detection-criteria reference.
+   - `delta_status`: `NEW` (always, for baseline delta tracking per Feature 104 convention).
+
+5. **Append the net-new finding to the deduplicated IR**. Net-new findings participate in all downstream processing (Phase 4 coverage matrix, risk summary, Phase 5 threat-report narrative, SARIF emission) identically to detection-tier findings. No special handling by the parser, threat-report agent, or SARIF emitter is required — the `AGP-` prefix flows through the existing id-based identification paths.
+
+**Generation constraints** (per data-model.md Entity 5):
+- **Maximum 1 net-new finding per pattern per architecture** (no flooding). Each of R-01, R-02, R-03 may contribute at most one net-new finding.
+- **Deterministic by construction**: same architecture + same rule table + same existing-finding state produces identical generated findings on every run (per ADR-021).
+- **Only R-01, R-02, R-03 generate** (`generates_finding_when_no_match: true`). R-04, R-05, R-06 classify existing findings but do NOT emit net-new findings — existing spoofing / tool-abuse / info-disclosure / denial-of-service agents already produce findings that those rules retroactively classify.
+
+### Process Step 4: Set has-agentic-patterns Boolean (T010)
+
+After Step 2 (classification) and Step 3 (net-new generation) complete, scan the finding IR (including any net-new findings appended in Step 3):
+
+- Set `has-agentic-patterns = true` iff at least one finding has `agentic_pattern != 'none'`.
+- Set `has-agentic-patterns = false` otherwise (every finding has `agentic_pattern: none`).
+
+This boolean is consumed by:
+- **Phase 4 SARIF emission**: gates the addition of `maestro-pattern:<name>` tags to `result.properties.tags` on each result. Findings with `agentic_pattern: none` MUST NOT receive a `maestro-pattern:` tag (avoiding noise on non-pattern findings); findings with non-`none` pattern MUST receive exactly one `maestro-pattern:<name>` tag matching the existing `maestro-layer:<L#>` convention (lowercase, colon-separator, no quoting, no spaces).
+- **Phase 5 threat-report agent**: gates the conditional Agentic Pattern Analysis section — the section is rendered only when `has-agentic-patterns == true`, and is omitted entirely when `false`.
+- **threats.md Section 4b (Findings by Agentic Pattern)**: gates the conditional Section 4b — suppressed entirely when `has-agentic-patterns == false`; rendered with pattern-grouped finding listings when `true`. The Pattern column in the Section 7 findings table renders unconditionally (showing `—` for all `none` values) to preserve consistent table shape across architectures.
+
+After Phase 3.6 completes, proceed to Phase 4: Assess.
 
 ---
 
@@ -591,6 +713,17 @@ For each finding result in the SARIF output, include MAESTRO layer metadata in t
 - Add `"maestro-layer:{layer-id}"` to `result.properties.tags[]` (e.g., `"maestro-layer:L3"`), using the layer ID for tag brevity. Use `"maestro-layer:Unclassified"` for findings with no layer classification.
 - Add `"maestro-layer"` key to `result.properties` with the full layer name as value (e.g., `"L3 — Agent Framework"`). Set to `"Unclassified"` when the finding's component matched no layer keywords.
 - MAESTRO layer properties merge additively with existing baseline properties (`delta_status` in `properties`, `baselineRunId` in `partialFingerprints`). MAESTRO uses distinct property keys -- no conflict per TD-4.
+
+For each finding result with `agentic_pattern != 'none'`, append an additional MAESTRO pattern tag to `result.properties.tags` (Feature 142):
+
+- Add `"maestro-pattern:<pattern_name>"` to `result.properties.tags[]` (e.g., `"maestro-pattern:agent_collusion"`), using the exact lowercase pattern enum string. Valid pattern values: `agent_collusion`, `emergent_behavior`, `temporal_attack`, `trust_exploitation`, `communication_vulnerability`, `resource_competition`, `multiple`.
+- Skip condition: if `agentic_pattern == 'none'`, emit NO `maestro-pattern:` tag on that result. This avoids tag noise on non-pattern findings (per FR-014 from spec 142).
+- The `multiple` value IS emitted as a tag (`maestro-pattern:multiple`) because it is a non-`none` value per data-model.md Entity 3 tie-breaking spec -- `multiple` indicates two or more rules matched with equal priority and is a valid classification outcome, not a sentinel for absence.
+- Pattern tags merge additively with the existing `maestro-layer:<L#>` tag (Feature 084), the `delta_status` baseline property (Feature 104), and other tags (`security`, `stride`, `ai`). Distinct namespaces (`maestro-pattern:` vs `maestro-layer:`) eliminate any tag key conflict.
+
+**Format parity invariant**: the `maestro-pattern:<pattern_name>` tag format MUST be regex-parity with the existing `maestro-layer:<L#>` tag format from Feature 084. Both tags match the regex family `^[a-z-]+:[a-z_][a-z0-9_]*$` (lowercase ASCII namespace, colon separator, lowercase-enum value, no quoting, no spaces, no mixed case). This parity is verified by the T018 integration test (format-parity regex check against a sample SARIF output -- `tests/scripts/test_pattern_extraction.py`).
+
+Cross-reference: [ADR-026](../../../docs/architecture/02_ADRs/ADR-026-pattern-classification-mechanism.md) (Hybrid Post-Hoc Synthesis -- Option C); spec 142 FR-014 (SARIF tag format constraint); spec 142 SC-007 (SARIF tag fidelity).
 
 ---
 

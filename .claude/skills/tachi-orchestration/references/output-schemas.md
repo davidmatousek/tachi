@@ -23,7 +23,7 @@ The output begins with YAML frontmatter containing exactly these fields:
 
 ```yaml
 ---
-schema_version: "1.3"
+schema_version: "1.4"
 date: "YYYY-MM-DD"
 input_format: "detected-or-declared-format"
 classification: "confidential"
@@ -32,7 +32,7 @@ classification: "confidential"
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `schema_version` | string | Always `"1.2"` for this release. |
+| `schema_version` | string | Always `"1.4"` for this release (bumped in Feature 142 from 1.3 to cover the additive Pattern column and Section 4b; backward-compatible with 1.3 parsers per FR-017). |
 | `date` | string | ISO 8601 date when the threat model was generated. Format: `YYYY-MM-DD`. |
 | `input_format` | string | The architecture input format that was analyzed. One of: `ascii`, `free-text`, `mermaid`, `plantuml`, `c4`. Set to the detected format when `format: auto`, or the explicitly declared format value. |
 | `classification` | string | Always `"confidential"`. |
@@ -94,17 +94,18 @@ Six tables, one per STRIDE category. Each table contains threat findings for app
 
 **Finding row fields** (same for all 6 STRIDE tables):
 
-| ID | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|---------------|--------|------------|--------|------------|------------|
+| ID | Component | MAESTRO Layer | Agentic Pattern | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|-----------|---------------|-----------------|--------|------------|--------|------------|------------|
 
 When baseline-aware, an additional Status column is included after ID:
 
-| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|---------------|--------|------------|--------|------------|------------|
+| ID | Status | Component | MAESTRO Layer | Agentic Pattern | Threat | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|-----------------|--------|------------|--------|------------|------------|
 
 - **ID**: Pattern `{S|T|R|I|D|E}-{N}` where N is a sequential integer starting at 1 within each category.
 - **Component**: The target component name from the architecture input.
 - **MAESTRO Layer**: The CSA MAESTRO architectural layer classification inherited from the component's Phase 1 classification (e.g., "L3 — Agent Framework"). Defaults to "Unclassified" if the component matched no layer keywords.
+- **Agentic Pattern**: The canonical CSA MAESTRO cross-cutting agentic threat pattern assigned during Phase 3.6 pattern synthesis (Feature 142). One of eight enum values: `agent_collusion`, `emergent_behavior`, `temporal_attack`, `trust_exploitation`, `communication_vulnerability`, `resource_competition`, `none` (sentinel — finding does not map to any canonical pattern), or `multiple` (finding exemplifies two or more patterns equally; rare). Default: `none`. Introduced in schema version 1.4 (Feature 142). See [ADR-026](../../../../docs/architecture/02_ADRs/ADR-026-pattern-classification-mechanism.md) for the classification mechanism and [`maestro-agentic-patterns-shared.md`](../../tachi-shared/references/maestro-agentic-patterns-shared.md) for the canonical definitions and classification rule table. The column always renders for consistent table shape across architectures; `none` values display as `—` (em dash) per FR-009.
 - **Threat**: Description of the identified threat.
 - **Likelihood**: One of `LOW`, `MEDIUM`, `HIGH`.
 - **Impact**: One of `LOW`, `MEDIUM`, `HIGH`.
@@ -142,15 +143,16 @@ Two tables containing findings from AI-specific threat agents. Each finding row 
 
 **Finding row fields** (same for both AI tables):
 
-| ID | Component | MAESTRO Layer | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
-|----|-----------|---------------|--------|------------------|------------|--------|------------|------------|
+| ID | Component | MAESTRO Layer | Agentic Pattern | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
+|----|-----------|---------------|-----------------|--------|------------------|------------|--------|------------|------------|
 
 When baseline-aware, an additional Status column is included after ID:
 
-| ID | Status | Component | MAESTRO Layer | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
-|----|--------|-----------|---------------|--------|------------------|------------|--------|------------|------------|
+| ID | Status | Component | MAESTRO Layer | Agentic Pattern | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
+|----|--------|-----------|---------------|-----------------|--------|------------------|------------|--------|------------|------------|
 
 - **MAESTRO Layer**: The CSA MAESTRO architectural layer classification inherited from the component's Phase 1 classification. Same field as in STRIDE tables.
+- **Agentic Pattern**: The canonical CSA MAESTRO cross-cutting agentic threat pattern assigned during Phase 3.6 pattern synthesis (Feature 142). Same field as in STRIDE tables (see Section 3 for the full enum value list and semantics). Column always renders; `none` values display as `—`. Introduced in schema version 1.4.
 - **OWASP Reference**: The applicable OWASP identifier (e.g., `ASI-01`, `MCP-03`, `OWASP LLM01:2025`).
 
 **5-agent-to-2-table mapping**:
@@ -163,6 +165,38 @@ When baseline-aware, an additional Status column is included after ID:
 Findings from `agent-autonomy` and `tool-abuse` agents are grouped under the **AG** table. Findings from `prompt-injection`, `data-poisoning`, and `model-theft` agents are grouped under the **LLM** table.
 
 If no AI agents were dispatched (because no components matched AI keywords), include both table headers with a note stating no AI-related components were identified. Do not omit the tables.
+
+### Section 4b: Findings by Agentic Pattern
+
+Conditional section introduced in Feature 142 (schema version 1.4) that groups findings by canonical CSA MAESTRO agentic threat pattern. This section complements (does not replace) Section 4a (intra-component correlation groups) — a finding may appear in both sections since pattern grouping and intra-component correlation are independent mechanisms.
+
+**Position**: Rendered AFTER Section 4a (intra-component correlation) and BEFORE Section 5 (Coverage Matrix). When the threats.md template uses Section 4b for a different artifact (Resolved Findings, baseline-aware mode), this pattern-grouping section may render under a renumbered heading chosen at code time per plan.md Component 4 — the canonical label in the orchestrator reference is "Findings by Agentic Pattern".
+
+**Conditional rendering**: This section is rendered ONLY when the `has-agentic-patterns` boolean is `true` (i.e., at least one finding has `agentic_pattern` value other than `none` after Phase 3.6 synthesis). The section is **suppressed entirely** — including its header — when all findings have `agentic_pattern: none`. This preserves backward compatibility for single-agent architectures where the multi-agent gate predicate (FR-006) evaluates to `false`.
+
+**Grouping table**: Lists each canonical pattern present in the finding set, with finding count and finding IDs.
+
+| Pattern | Count | Findings |
+|---------|-------|----------|
+| _{pattern name}_ | _{count of findings with this agentic_pattern value}_ | _{comma-separated finding IDs from Sections 3 and 4}_ |
+
+- **Pattern**: Canonical pattern name — one of the six canonical values (`agent_collusion`, `emergent_behavior`, `temporal_attack`, `trust_exploitation`, `communication_vulnerability`, `resource_competition`) or `multiple` for findings that exemplify two or more patterns equally. The `none` sentinel value is NEVER rendered as a group in Section 4b — findings with `agentic_pattern: none` are excluded from this section by construction.
+- **Count**: Number of findings with this `agentic_pattern` value in the current run. Deduplicated counts MAY differ from raw finding counts when correlation groups (Section 4a) overlap with pattern groups; Section 4b reports raw counts per pattern to avoid double-discounting with Section 4a.
+- **Findings**: Comma-separated finding IDs referencing entries in the STRIDE tables (Section 3), AI tables (Section 4), or net-new generated findings (IDs of the form `AGP-NN`, per Feature 142 data model).
+
+**Row ordering**: Pattern groups are ordered by count descending, then by canonical pattern enum order as tertiary tiebreak (`agent_collusion` < `emergent_behavior` < `temporal_attack` < `trust_exploitation` < `communication_vulnerability` < `resource_competition` < `multiple`).
+
+**Independence from Phase 3.5 `attack-chains.md`**: Section 4b documents pattern grouping only — it does NOT modify or reference the cross-layer chain artifact (FR-008 invariant). Findings that participate in both a pattern group AND a cross-layer attack chain appear in both artifacts independently; the threat report agent MAY cross-reference chain membership in narrative prose, but the artifacts (`threats.md` and `attack-chains.md`) remain structurally independent.
+
+**Example** (multi-agent architecture with 3 previously-uncovered patterns demonstrated):
+
+| Pattern | Count | Findings |
+|---------|-------|----------|
+| agent_collusion | 3 | AG-2, LLM-1, AGP-01 |
+| emergent_behavior | 2 | AG-1, AGP-02 |
+| temporal_attack | 1 | AGP-03 |
+
+**When has-agentic-patterns is false**: Omit the Section 4b header AND the table entirely. Do not render an empty table header. This contrasts with Sections 3 / 4 which always render table headers for consistent table shape.
 
 ### Section 5: Coverage Matrix
 
@@ -311,6 +345,16 @@ Before finalizing the output document, run the following validation checklist ag
 - [ ] Chain narratives use canonical causal vocabulary ("enables," "triggers," "shifts," "manifests as")
 - [ ] Each chain has at least one chain-breaking control with heuristic disclaimer
 - [ ] `has-attack-chains` boolean is set for downstream consumption by threat-report agent and PDF pipeline
+
+### Phase 3.6 Outputs (conditional on multi-agent gate predicate + pattern synthesis)
+
+- [ ] Every finding in the IR has an `agentic_pattern` field populated after Phase 3.6 synthesis (one of 8 enum values: `agent_collusion`, `emergent_behavior`, `temporal_attack`, `trust_exploitation`, `communication_vulnerability`, `resource_competition`, `none`, `multiple`). Findings without pattern relevance have `agentic_pattern: none` (sentinel); missing/null values are not permitted.
+- [ ] Multi-agent gate predicate (FR-006) evaluated exactly once per architecture; when all three conditions (a)/(b)/(c) evaluate to `false`, every finding receives `agentic_pattern: none` and no net-new `AGP-NN` findings are generated.
+- [ ] Net-new pattern findings (when generated) use ID prefix `AGP-` with sequential numbering (e.g., `AGP-01`, `AGP-02`) — distinct from the `S|T|R|I|D|E|AG|LLM` detection-tier prefixes and aligned with the extended `finding.yaml` `id.pattern` regex.
+- [ ] Section 4b (Findings by Agentic Pattern) is present when `has-agentic-patterns: true` (at least one finding has non-`none` pattern). Section contains the Pattern / Count / Findings grouping table with rows ordered by count descending then canonical pattern enum order. Section is omitted entirely (header and table) when `has-agentic-patterns: false`.
+- [ ] SARIF output propagates `maestro-pattern:<pattern_name>` tags on `result.properties.tags` for findings with non-`none` `agentic_pattern`, matching the existing `maestro-layer:<L#>` lowercase / colon-separator convention. Findings with `agentic_pattern: none` do NOT receive a `maestro-pattern:` tag.
+- [ ] `attack-chains.md` artifact is NOT modified by Phase 3.6 (FR-008 independence invariant — pattern data placement is confined to the finding IR and threats.md only).
+- [ ] `has-agentic-patterns` boolean is set for downstream consumption — consumed by the threat-report agent (conditional Agentic Pattern Analysis section gating), the threats.md output template (conditional Section 4b rendering), and the security-report PDF extraction pipeline (`extract-report-data.py` conditional pattern data emission). The boolean is defined as `true` iff at least one finding has `agentic_pattern != 'none'` after Phase 3.6 synthesis completes; propagates through `parse_threats_findings()` / `detect_artifacts()` in `scripts/tachi_parsers.py` mirroring the `has-attack-chains` propagation path from Feature 141.
 
 ---
 

@@ -1,0 +1,32 @@
+# Synthetic Phase 1 abstract for mermaid-agentic-app baseline.
+# Expected: multi-agent gate predicate TRUE via condition (a) alone
+# (≥2 agentic/llm components present), BUT classification rule table
+# MUST NOT match any non-`none` pattern — no inter-agent data flow,
+# no persistent state, no multi-agent coordination keywords.
+
+name: mermaid-agentic-app
+description: >
+  A simple agentic application with two independent LLM agents that
+  handle user queries. Agent One answers factual questions; Agent Two
+  handles task execution. Each agent is invoked directly by the user
+  interface and returns results without cross-agent collaboration.
+
+components:
+  - name: Agent One
+    category: agentic
+  - name: Agent Two
+    category: agentic
+  - name: User Interface
+    category: process
+  - name: Query Log
+    category: data_store
+
+data_flows:
+  - source: User Interface
+    target: Agent One
+  - source: User Interface
+    target: Agent Two
+  - source: Agent One
+    target: Query Log
+  - source: Agent Two
+    target: Query Log

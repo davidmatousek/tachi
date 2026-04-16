@@ -317,4 +317,62 @@ Signal 3 (layer adjacency) refines the transition type using the lookup table in
 - Patterns: `.claude/skills/tachi-shared/references/attack-chain-patterns-shared.md`
 - Layers: `.claude/skills/tachi-shared/references/maestro-layers-shared.md`
 
-After Phase 3.5 completes (or is skipped when no cross-layer chains exist), proceed to Phase 4: Assess.
+After Phase 3.5 completes (or is skipped when no cross-layer chains exist), proceed to Phase 3.6: Pattern Synthesis Engine.
+
+---
+
+## Phase 3.6: Pattern Synthesis Engine (Feature 142)
+
+Phase 3.6 runs after Phase 3.5 cross-layer chain correlation and before Phase 4 Assess. It synthesizes the `agentic_pattern` field on every deduplicated finding using a deterministic rule-based classification engine, and optionally emits net-new findings for previously-uncovered CSA MAESTRO patterns (Agent Collusion, Emergent Behavior, Temporal Attack). See [`ADR-026`](../../../docs/architecture/02_ADRs/ADR-026-pattern-classification-mechanism.md) for the authoritative mechanism decision and governance rule for future post-hoc synthesis phases.
+
+### Placement
+
+```
+Phase 3.5: Cross-Layer Attack Chain Correlation (Feature 141)
+  └── Emits attack-chains.md (conditional aggregate artifact)
+Phase 3.6: Pattern Synthesis Engine                 <-- NEW (Feature 142)
+  ├── Evaluate multi-agent gate predicate (FR-006)
+  ├── Apply classification rule table to each finding
+  ├── Generate net-new findings for uncovered patterns (id prefix AGP-)
+  └── Set has-agentic-patterns boolean
+Phase 4: Assess
+  ├── Coverage matrix
+  ├── Risk summary
+  └── SARIF output (with maestro-pattern:<name> tags)
+```
+
+### Input Contract
+
+Phase 3.6 consumes:
+1. **Deduplicated finding IR** (post-Phase 3.5): each finding has `component`, `maestro_layer`, `category`, `severity`, `description`
+2. **Phase 1 component inventory**: component names, DFD types, MAESTRO layer assignments, and agentic/llm category classification from existing dispatch keywords
+3. **Data flow graph**: source → target component relationships (for inter-agent channel detection)
+4. **Architecture description** (free-text source): consumed by the multi-agent gate predicate substring search
+5. **Classification rule table + multi-agent gate predicate spec**: loaded from `.claude/skills/tachi-shared/references/maestro-agentic-patterns-shared.md`
+
+### Output Contract
+
+Phase 3.6 produces:
+1. **Finding IR with `agentic_pattern` populated on every finding** — one of six canonical patterns (`agent_collusion`, `emergent_behavior`, `temporal_attack`, `trust_exploitation`, `communication_vulnerability`, `resource_competition`), or `none`, or `multiple`. This is a **write-back** to the finding IR (per ADR-026 governance rule for finding-level metadata synthesis).
+2. **Optional net-new findings** with id prefix `AGP-` (e.g., `AGP-01`, `AGP-02`) for previously-uncovered patterns when the architectural context matches a rule marked `generates_finding_when_no_match: true` AND no existing finding already carries that pattern label.
+3. **`has-agentic-patterns` boolean** (derived: true iff at least one finding has non-`none` pattern) — consumed by Phase 5 (threat-report agent Agentic Pattern Analysis section) and by the PDF pipeline for conditional section inclusion.
+
+### Independence Invariants
+
+Phase 3.6 preserves three independence invariants:
+
+1. **Does NOT modify or extend `attack-chains.md`** (FR-008) — the Phase 3.5 aggregate artifact is unchanged. Pattern data lives on the finding IR, not in the chain artifact. Pattern grouping and cross-layer chain grouping are independent mechanisms: a finding may participate in both without conflict.
+2. **Does NOT invoke or modify any of the 11 detection agents** (zero-edit invariant per ADR-026) — the 6 STRIDE agents and 5 AI agents remain byte-identical. Phase 3.6 reads the deduplicated finding IR but does not reopen the Feature 082 stabilization.
+3. **Independent from Phase 3 Section 4a intra-component correlation** — pattern field is finding-level metadata; Section 4a is a presentation-time grouping mechanism. They are orthogonal and a finding may appear in both without conflict.
+
+### Determinism
+
+Pattern classification is rule-based and deterministic per ADR-021: each rule's `match_conditions` is structurally evaluated (exact enum match, regex, boolean topology check, case-insensitive substring) with no LLM judgment. Same input (finding IR + architecture + rule table) → same output on every run. Matches Feature 141 Phase 3.5 transition lookup table determinism.
+
+### Reference
+
+- Decision: `docs/architecture/02_ADRs/ADR-026-pattern-classification-mechanism.md` (authoritative — records the write-back model governance rule and the four-option mechanism trade-off)
+- Patterns: `.claude/skills/tachi-shared/references/maestro-agentic-patterns-shared.md` (rule table, multi-agent gate predicate spec, six canonical pattern definitions, coverage mapping)
+- Schema: `schemas/finding.yaml` v1.4 (`agentic_pattern` enum field)
+
+After Phase 3.6 completes, proceed to Phase 4: Assess.

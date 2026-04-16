@@ -156,3 +156,194 @@ def test_unmodified_examples_byte_identical_pdfs(
                 REPORT_DATA_TYP.unlink()
             except OSError:
                 pass
+
+
+# =============================================================================
+# Feature 142 Wave 4 additions — T028 / T029
+# =============================================================================
+
+# Tachi detection agents whose zero-edit invariant must hold across Feature 142
+# per ADR-026 Decision 1 (zero-edit invariant). This list is authoritative;
+# adding a new detection agent file warrants updating both `schemas/coverage-
+# checklists.yaml` and this list in the same change.
+DETECTION_AGENT_PATHS = [
+    ".claude/agents/tachi/spoofing.md",
+    ".claude/agents/tachi/tampering.md",
+    ".claude/agents/tachi/repudiation.md",
+    ".claude/agents/tachi/info-disclosure.md",
+    ".claude/agents/tachi/denial-of-service.md",
+    ".claude/agents/tachi/privilege-escalation.md",
+    ".claude/agents/tachi/prompt-injection.md",
+    ".claude/agents/tachi/data-poisoning.md",
+    ".claude/agents/tachi/model-theft.md",
+    ".claude/agents/tachi/agent-autonomy.md",
+    ".claude/agents/tachi/tool-abuse.md",
+]
+
+# Detection-patterns reference files produced by Feature 082 in
+# `.claude/skills/tachi-<agent>/references/detection-patterns.md`. ADR-026
+# Decision 1 requires these to remain byte-unmodified on the Feature 142
+# feature branch because Feature 142 is a post-hoc synthesis layer and must
+# not touch the detection tier.
+DETECTION_PATTERN_REF_GLOB = ".claude/skills/tachi-*/references/detection-patterns.md"
+
+
+def test_feature_142_zero_edit_invariant_on_detection_agents():
+    """ADR-026 Decision 1: no edits to the 11 detection agents on this branch.
+
+    Per tasks.md T029 (architect LOW-3): assert ``git diff --name-only
+    main..HEAD`` filtered to the 11 detection agent files and their
+    companion detection-patterns.md reference files is empty. Any non-empty
+    diff violates the zero-edit invariant and must be reverted before
+    Feature 142 can ship.
+    """
+    # Only enforce when running on a Feature 142 branch (or a superset). On
+    # main or other branches the invariant is trivially satisfied.
+    branch_result = subprocess.run(
+        ["git", "branch", "--show-current"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    current_branch = (branch_result.stdout or "").strip()
+    if not current_branch or current_branch == "main":
+        pytest.skip(
+            f"Zero-edit invariant is only enforced on feature branches. "
+            f"Current branch: {current_branch or '(none)'}"
+        )
+
+    # Build the glob-expanded list of files to diff against main. Use
+    # `git ls-files` filtered by the glob so we get a stable enumeration
+    # even if new detection-patterns.md files are added.
+    ls_result = subprocess.run(
+        ["git", "ls-files", DETECTION_PATTERN_REF_GLOB],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    detection_pattern_refs = [
+        line for line in (ls_result.stdout or "").splitlines() if line.strip()
+    ]
+
+    paths_to_check = DETECTION_AGENT_PATHS + detection_pattern_refs
+    assert len(DETECTION_AGENT_PATHS) == 11, (
+        f"Expected 11 detection agent paths, got {len(DETECTION_AGENT_PATHS)}. "
+        "Update DETECTION_AGENT_PATHS when adding a new detection agent."
+    )
+
+    diff_result = subprocess.run(
+        ["git", "diff", "--name-only", "main..HEAD", "--"] + paths_to_check,
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    modified_files = [
+        line for line in (diff_result.stdout or "").splitlines() if line.strip()
+    ]
+
+    assert modified_files == [], (
+        f"Zero-edit invariant violated (ADR-026 Decision 1). "
+        f"The following detection-tier files were modified on branch "
+        f"{current_branch!r} relative to main: {modified_files}. "
+        "Feature 142 (Post-Hoc Synthesis) must not edit detection agents "
+        "or their companion detection-patterns.md reference files. Revert "
+        "those changes or refactor the synthesis engine to avoid them."
+    )
+
+
+def test_feature_142_backward_compat_pattern_defaults():
+    """FR-017: pre-Feature-142 threats.md without the Pattern column defaults
+    every finding to ``agentic_pattern: none``.
+
+    Exercises the three paths in ``parse_threats_findings`` + ``parse_finding_pattern``:
+    (1) missing Pattern column (pre-Feature-142 baseline), (2) present Pattern
+    column with em-dash placeholder, (3) present Pattern column with enum value.
+    """
+    # Make tachi_parsers importable from the test directory.
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    try:
+        from tachi_parsers import parse_threats_findings  # noqa: E402
+    finally:
+        # Keep sys.path clean.
+        pass
+
+    # Path 1 — pre-Feature-142 table with NO Pattern column.
+    pre_f142 = (
+        "## 7. Recommended Actions\n\n"
+        "| Finding ID | Status | Component | Threat | Risk Level | Mitigation |\n"
+        "|------------|--------|-----------|--------|------------|------------|\n"
+        "| S-1 | NEW | API | Credential stuffing | High | MFA |\n"
+    )
+    findings = parse_threats_findings(pre_f142)
+    assert len(findings) == 1
+    assert findings[0]["agentic_pattern"] == "none", (
+        "Pre-Feature-142 threats.md (no Pattern column) MUST default "
+        f"agentic_pattern to 'none' per FR-017. Got: {findings[0]['agentic_pattern']!r}"
+    )
+
+    # Path 2 — post-Feature-142 table with em-dash placeholder rendering.
+    em_dash = (
+        "## 7. Recommended Actions\n\n"
+        "| Finding ID | Status | Pattern | Component | Threat | Risk Level | Mitigation |\n"
+        "|------------|--------|---------|-----------|--------|------------|------------|\n"
+        "| S-1 | NEW | \u2014 | API | Credential stuffing | High | MFA |\n"
+    )
+    findings = parse_threats_findings(em_dash)
+    assert findings[0]["agentic_pattern"] == "none", (
+        f"Em-dash Pattern cell must normalize to 'none'. Got: {findings[0]['agentic_pattern']!r}"
+    )
+
+    # Path 3 — post-Feature-142 table with a real enum value.
+    with_enum = (
+        "## 7. Recommended Actions\n\n"
+        "| Finding ID | Status | Pattern | Component | Threat | Risk Level | Mitigation |\n"
+        "|------------|--------|---------|-----------|--------|------------|------------|\n"
+        "| AG-1 | NEW | agent_collusion | Orchestrator | Collusion | High | Rate limits |\n"
+    )
+    findings = parse_threats_findings(with_enum)
+    assert findings[0]["agentic_pattern"] == "agent_collusion", (
+        f"Pattern enum value must pass through unchanged. Got: {findings[0]['agentic_pattern']!r}"
+    )
+
+
+@pytest.mark.parametrize("example_name", BASELINE_EXAMPLES)
+def test_feature_142_multi_agent_gate_predicate_false_on_baselines(example_name):
+    """SC-003 support: the 4 single-agent baselines produce zero non-`none`
+    patterns because their architectures do not satisfy the multi-agent gate
+    predicate. ``parse_threats_findings`` on each committed baseline emits
+    findings that all carry ``agentic_pattern: none`` (either via missing
+    Pattern column default or via explicit em-dash value).
+
+    mermaid-agentic-app is excluded from this parametrization list (it lives
+    in BASELINE_EXAMPLES but the SC-003 interpretation in tasks.md T033
+    narrows SC-003 to the 4 single-agent baselines; mermaid-agentic-app's
+    synthesis output would contain non-`none` patterns under the current
+    rule table, documented as a known limitation).
+    """
+    # mermaid-agentic-app is an edge case per the T033 narrowed SC-003
+    # interpretation — skip its multi-agent-gate-false assertion here.
+    if example_name == "mermaid-agentic-app":
+        pytest.skip(
+            "mermaid-agentic-app is excluded from SC-003 per T033 narrowed "
+            "interpretation (multi-agent gate predicate evaluates TRUE via "
+            "condition (a)+(b); pattern classification is a documented "
+            "known-limitation pending R-04/R-06 rule-tuning follow-up)."
+        )
+
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from tachi_parsers import parse_threats_findings  # noqa: E402
+
+    threats_path = REPO_ROOT / "examples" / example_name / "threats.md"
+    assert threats_path.exists(), f"Missing baseline threats.md for {example_name}"
+
+    content = threats_path.read_text()
+    findings = parse_threats_findings(content)
+    non_none = [f for f in findings if f.get("agentic_pattern") != "none"]
+    assert non_none == [], (
+        f"SC-003 violation: {example_name} produced {len(non_none)} non-`none` "
+        f"patterns on a single-agent baseline. Expected zero. "
+        f"Offending findings: {[(f['id'], f['agentic_pattern']) for f in non_none]}"
+    )

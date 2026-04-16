@@ -292,6 +292,23 @@ For agentic AI systems, tachi maps each finding to the [CSA MAESTRO](https://clo
 
 MAESTRO layers appear in `threats.md`, propagate through all downstream commands, and power the `maestro-stack` and `maestro-heatmap` infographic templates.
 
+### Agentic Pattern Synthesis
+
+For multi-agent architectures, tachi's Phase 3.6 Pattern Synthesis Engine (per [ADR-026](docs/architecture/02_ADRs/ADR-026-pattern-classification-mechanism.md)) classifies findings into the six canonical CSA MAESTRO cross-cutting agentic patterns:
+
+| Pattern | Canonical Definition |
+|---------|----------------------|
+| `agent_collusion` | Multiple compromised agents coordinate to achieve malicious objectives |
+| `emergent_behavior` | Unpredictable behaviors arising from multi-agent interactions (cascades, feedback amplification, drift) |
+| `temporal_attack` | Persistent-state exploits: sleeper agents, gradual corruption, seasonal exploitation |
+| `trust_exploitation` | Inter-agent identity spoofing, reputation manipulation, trust chain attacks |
+| `communication_vulnerability` | Inter-agent message interception, protocol manipulation, routing attacks |
+| `resource_competition` | Resource monopolization, priority manipulation, coordination disruption |
+
+Each finding receives a new `agentic_pattern` enum field (schema 1.4) during Phase 3.6 — gated by the multi-agent predicate (≥2 agentic/LLM components, inter-agent data flow, or explicit multi-agent keywords in the architecture description). Pattern assignments appear in `threats.md` Section 7 (Pattern column), Section 4b (Findings by Agentic Pattern), `threat-report.md` Section 7 (Agentic Pattern Analysis narrative), and SARIF `maestro-pattern:<name>` tags mirroring the existing `maestro-layer:<L#>` convention. The deterministic classification rule table and the multi-agent gate predicate live in [`maestro-agentic-patterns-shared.md`](.claude/skills/tachi-shared/references/maestro-agentic-patterns-shared.md).
+
+Previously-uncovered patterns (Agent Collusion, Temporal Attacks, Emergent Behavior) that are not captured by any individual detection agent surface via net-new findings with the `AGP-NN` id prefix, generated deterministically when the architecture satisfies a rule's topology preconditions but no existing finding carries the pattern label.
+
 ### Baseline Delta Tracking
 
 When you run `/tachi.threat-model` on a system that already has a previous run, tachi automatically detects the baseline and computes a delta: new findings, resolved findings, unchanged findings, and updated findings. This lets you track risk posture changes over time without manual diffing.

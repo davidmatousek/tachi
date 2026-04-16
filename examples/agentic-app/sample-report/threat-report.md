@@ -1237,7 +1237,39 @@ This reverse-direction tampering chain begins at the Data Operations layer (L2),
 
 ---
 
-## 7. Remediation Roadmap
+## 7. Agentic Pattern Analysis
+
+This section groups findings by canonical CSA MAESTRO agentic pattern, assigned during Phase 3.6 Pattern Synthesis per [ADR-026](../../../docs/architecture/02_ADRs/ADR-026-pattern-classification-mechanism.md). The multi-agent gate predicate evaluates **true** for this architecture via all three conditions: (a) ≥2 agentic components (LLM Agent Orchestrator, Specialist Agent, MCP Tool Server, Long-Running Learning Loop), (b) inter-agent data flow (Specialist ↔ Orchestrator via Inter-Agent Communication Channel), and (c) multi-agent keyword match ("multi-agent", "delegation", "supervisor") in the architecture description. Section 7 presents pattern grouping independent of the cross-layer attack chains surfaced in Section 6 — a finding MAY appear in both (FR-008 invariant). Subsections below are ordered by max severity descending, then finding count descending, with canonical pattern enum order as tertiary tiebreaker (per `narrative-templates.md`).
+
+**Patterns assigned**: 3 of 6 canonical patterns surfaced on this architecture (Temporal Attacks via existing-finding classification, Agent Collusion and Emergent Behavior via net-new AGP generation). The remaining three (Trust Exploitation, Communication Vulnerabilities, Resource Competition) did not surface: R-04/R-05/R-06 have `generates_finding_when_no_match: false` so no net-new findings, and R-02 (Temporal Attacks, priority 20) matched all STRIDE findings earlier in the classification priority chain, leaving no STRIDE-category findings to reach R-04/R-05/R-06. Pattern detection fidelity (specifically narrowing R-02 to require finding-level temporal semantics) is a documented follow-up for future rule-tuning iterations; see the Feature 142 P1 architect checkpoint ruling in `maestro-agentic-patterns-shared.md`.
+
+### Temporal Attacks
+
+> **Definition**: Attacks that exploit persistent state to achieve delayed or time-gated effects — sleeper agents activating under specific triggers, gradual corruption of learned parameters, seasonal exploitation patterns, or poisoned training data that surfaces only during re-training cycles.
+
+**Finding counts**: 30 total (Critical: 2, High: 15, Medium: 13, Low: 0) — IDs: S-1, S-2, S-3, S-4, T-1, T-2, T-3, T-4, R-1, R-2, R-3, I-1, I-2, I-3, I-4, D-1, D-2, D-3, E-1, E-2, AG-1, AG-2, AG-3, AG-4, AG-5, LLM-1, LLM-2, LLM-3, LLM-4, LLM-5.
+
+Every existing finding on this architecture receives the Temporal Attacks pattern label because R-02 is the architectural-precondition-only rule (priority 20, no category or description filter) and fires on any finding in an architecture that has the `persistent_state` topology indicator. The extended agentic-app satisfies this indicator via the Long-Running Learning Loop component, which matches the `long_running_learning_loop` component-type token in the canonical finite enumeration (per `maestro-agentic-patterns-shared.md` Section 4). The semantic interpretation is: the Learning Loop's periodic fine-tuning cycle creates a temporal surface where an attacker-influenced signal in the Audit Logger output can propagate into the next generation of both the Orchestrator and the Specialist Agent, producing a sleeper-agent effect that activates only after the next fine-tuning pass (a temporal gap of hours to days between exploit and effect). Chain membership cross-reference: I-1 (Critical, Temporal Attacks) participates in CHAIN-001 (L1 → L2 → L3 Information Disclosure Cascade); T-1 and T-4 participate in CHAIN-003 and CHAIN-004 (Data Pipeline Tampering variants) — the temporal pattern reframes these findings as delayed-activation attack surfaces rather than single-point tampering surfaces. The high raw count (30 of 30 existing findings) reflects R-02's intentionally broad match condition for initial release; a future rule-tuning iteration will narrow R-02 with a `description_contains` filter for temporal-indicative tokens (sleeper, time-delayed, gradual, seasonal, drift, persistent, dormant, re-training) so findings whose threat narrative does not mention temporal mechanics fall through to other rules or `none`. Recommended chain-breaking controls: training-data provenance attestation on every document ingested into the Knowledge Base and every signal written to the Audit Logger; memory-write audit trails with cryptographic linkage so an adversary-influenced signal can be retrospectively identified; periodic behavioral baselining of both agents against pre-training snapshots to detect drift caused by a poisoned training cycle.
+
+### Agent Collusion
+
+> **Definition**: Multiple compromised agents coordinate to achieve malicious objectives that no single agent could accomplish alone — exfiltrating data across shared channels, jointly manipulating planning outputs, or circumventing policies by distributing actions below per-agent detection thresholds.
+
+**Finding counts**: 1 total (Medium: 1) — IDs: AGP-01.
+
+The Agent Collusion pattern surfaces via net-new finding AGP-01 emitted by Phase 3.6 Step 3 (`generates_finding_when_no_match: true` clause in R-01). R-01 was tightened at the Feature 142 P1 architect checkpoint to require BOTH the architectural precondition (`inter_agent_data_flow` topology) AND finding-level evidence of coordination semantics (`description_contains` with tokens: coordinate, joint, collude, cross-agent, inter-agent, shared channel, shared memory). The tightening was motivated by the P1 review observation that the original (disjunctive topology, no description filter) R-01 over-classified every agentic/llm finding in a multi-agent architecture as Agent Collusion — including findings that describe single-agent autonomy rather than cross-agent coordination. Under the tightened rule, no existing finding's description contains coordination-indicative language, so Step 2 classification did not tag any existing finding with `agent_collusion`. Step 3 then emitted AGP-01 on the LLM Agent Orchestrator component (first matching agentic component per the deterministic target-component selection). AGP-01 frames the architectural risk: two or more agentic components in the architecture coordinate over an inter-agent data flow (specifically Specialist ↔ Orchestrator via the Inter-Agent Communication Channel), creating a potential for coordinated malicious action that no per-agent analysis would flag — compromised agents could jointly exfiltrate data, split prohibited actions across peers, or issue coordinated tool calls that individually fall below per-agent detection thresholds. Recommended controls: inter-agent rate limits that throttle the shared channel throughput; cross-agent coordination gates that require supervisor approval for any action pattern exceeding a per-agent baseline; per-flow audit logging on every message crossing the Inter-Agent Communication Channel with cryptographic linkage to preserve attribution under an adversarial coordination scenario.
+
+### Emergent Behavior
+
+> **Definition**: Attackers exploit unpredictable behaviors that arise only from the interaction of multiple agents (cascading failures, feedback amplification, behavioral drift) — behaviors that are invisible in per-agent analysis and manifest only when agents act in concert.
+
+**Finding counts**: 1 total (Medium: 1) — IDs: AGP-02.
+
+The Emergent Behavior pattern surfaces via net-new finding AGP-02 emitted by Phase 3.6 Step 3 when the prior classification step did not tag any existing finding with `emergent_behavior`. R-03's rule body requires category in [agentic, llm] AND `multi_agent` topology AND `description_contains` one of [cascade, unpredictable, interaction, emergent]; the existing-finding classification did not match this rule on any agentic/llm finding (the AG / LLM finding descriptions on this architecture describe single-agent autonomy and prompt-injection behaviors rather than emergent multi-agent interaction patterns — and D-3's "cascade" token does not match because R-03 only accepts agentic/llm categories). Therefore Step 3 fired for R-03 under the `generates_finding_when_no_match: true` clause and emitted AGP-02 on the LLM Agent Orchestrator component. AGP-02 frames the architectural risk: multi-agent interactions between the Orchestrator and the Specialist Agent over the Inter-Agent Communication Channel exhibit the potential for cascading failures, feedback amplification, or collective optimization that bypasses per-agent safety evaluation. The Long-Running Learning Loop compounds this risk by propagating emergent drift back into future agent behavior via periodic fine-tuning. Recommended controls: fail-safe shutdown circuits that halt the collective agent system on anomalous cross-agent interaction patterns; bounded action scopes per agent that cap the blast radius of any single agent's output; behavioral baselining of the multi-agent system's collective output distribution, with drift alarms when the joint distribution departs from baseline.
+
+---
+
+## 8. Remediation Roadmap
 
 This roadmap contains 30 remediation items (34 findings consolidated via 4 correlation groups): 8 Immediate, 12 Short-term, 6 Medium-term, and 1 Backlog. The most impacted component is the LLM Agent Orchestrator. Recommended starting point: implement mTLS across all inter-service channels and RBAC on tool dispatch simultaneously.
 
@@ -1293,7 +1325,7 @@ This roadmap contains 30 remediation items (34 findings consolidated via 4 corre
 
 ---
 
-## 8. Appendix: Finding Reference
+## 9. Appendix: Finding Reference
 
 | Finding ID | Report Section | Heading Reference |
 |------------|---------------|-------------------|
