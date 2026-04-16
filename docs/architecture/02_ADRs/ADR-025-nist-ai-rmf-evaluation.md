@@ -1,7 +1,7 @@
 # ADR-025: NIST AI RMF Evaluation and Tachi Alignment Posture
 
 **Status**: Accepted
-**Date**: <merge-date-placeholder>
+**Date**: 2026-04-16
 **Deciders**: Architect, Product Manager, Team-Lead
 **Feature**: 144 (MAESTRO Companion: NIST AI RMF)
 **Related ADRs**: [ADR-024](ADR-024-owasp-aivss-evaluation.md) (companion AIVSS), [ADR-020](ADR-020-maestro-layer-classification.md) (MAESTRO classification), [ADR-019](ADR-019-shared-definitions-and-model-field-governance.md) (shared definitions), [ADR-018](ADR-018-baseline-aware-pipeline-correlation.md) (baseline lineage), [ADR-021](ADR-021-source-date-epoch-for-deterministic-pdf-comparison.md) (SOURCE_DATE_EPOCH determinism), [ADR-023](ADR-023-threat-agent-skill-references-pattern.md) (skill-references pattern)
