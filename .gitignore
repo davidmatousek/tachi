@@ -189,8 +189,8 @@ _site/
 # Local threat model runs (sample report lives in examples/)
 docs/security/
 
-# Enterprise planning documents (internal strategy, not public)
-docs/planning/
+# Internal, non-public content (strategy, planning, competitive analysis, founder notes)
+_internal/
 
 # Subagent result artifacts (ephemeral, session-scoped)
 .aod/results/
