@@ -6,6 +6,7 @@
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 144 | [MAESTRO Companion: NIST AI RMF Integration Evaluation ADR](144-nist-ai-rmf-evaluation-adr-2026-04-15.md) | ⚠ | ⚠ | ⚠ | Approved | 2026-04-15 |
 | 143 | [MAESTRO Phase 4: OWASP AIVSS Evaluation ADR](143-maestro-aivss-evaluation-adr-2026-04-14.md) | ⚠ | ⚠ | ⚠ | Delivered | 2026-04-15 |
 | 129 | [Attack Tree Delta Sub-Agent](129-attack-tree-delta-sub-agent-2026-04-13.md) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-14 |
 | 141 | [MAESTRO Phase 2: Cross-Layer Attack Chains](141-maestro-cross-layer-attack-chains-2026-04-12.md) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-12 |
