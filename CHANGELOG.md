@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.15.0](https://github.com/davidmatousek/tachi/compare/v4.14.1...v4.15.0) (2026-04-16)
+
+
+### Features
+
+* **142:** MAESTRO Phase 3 — Agentic Threat Pattern Expansion ([#172](https://github.com/davidmatousek/tachi/issues/172)) ([c0b7378](https://github.com/davidmatousek/tachi/commit/c0b73780c83aa3df16ac7965738bc76034e88454))
+
 ## [4.14.1](https://github.com/davidmatousek/tachi/compare/v4.14.0...v4.14.1) (2026-04-14)
 
 
