@@ -38,6 +38,7 @@ Zero new runtime dependencies per FR-020 — uses stdlib + PyYAML
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -49,6 +50,9 @@ import yaml
 
 # Repo root resolved from this test file location: tests/scripts/test_*.py
 REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+from tachi_parsers import VALID_AGENTIC_PATTERNS  # noqa: E402
 
 SHARED_REF_PATH = (
     REPO_ROOT
@@ -61,17 +65,9 @@ SHARED_REF_PATH = (
 
 FINDING_SCHEMA_PATH = REPO_ROOT / "schemas" / "finding.yaml"
 
-# Six canonical pattern names per data-model.md Entity 2 (matches the
-# ``agentic_pattern`` enum in schemas/finding.yaml minus ``none`` and
-# ``multiple`` sentinels). Ordering matches Section 1 canonical ordering.
-CANONICAL_PATTERNS = {
-    "agent_collusion",
-    "emergent_behavior",
-    "temporal_attack",
-    "trust_exploitation",
-    "communication_vulnerability",
-    "resource_competition",
-}
+# Six canonical pattern names — derived from VALID_AGENTIC_PATTERNS dropping
+# the `none` / `multiple` sentinels. Matches data-model.md Entity 2.
+CANONICAL_PATTERNS = set(VALID_AGENTIC_PATTERNS) - {"none", "multiple"}
 
 # Four component_type tokens per data-model.md Entity 3 Component Type Token
 # List (authoritative finite enumeration; per determinism invariant).

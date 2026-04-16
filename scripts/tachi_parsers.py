@@ -91,33 +91,16 @@ def _parse_int(s: str) -> int:
 def parse_finding_pattern(value) -> str:
     """Normalize an ``agentic_pattern`` cell value to a canonical enum string.
 
-    Accepts string, None, or missing (empty) input. Returns one of the eight
-    canonical lowercase values in ``VALID_AGENTIC_PATTERNS``:
-    ``agent_collusion``, ``emergent_behavior``, ``temporal_attack``,
-    ``trust_exploitation``, ``communication_vulnerability``,
-    ``resource_competition``, ``none``, ``multiple``.
-
-    Backward compatibility (per FR-017, Feature 142): null, missing,
-    empty-string, whitespace-only, ``"—"`` (em dash placeholder rendered by
-    FR-009 for findings with ``agentic_pattern: none``), ``"-"`` (ASCII
-    dash), and unrecognized strings all collapse to ``"none"``. This lets
-    pre-Feature-142 threats.md (no Pattern column) parse cleanly with
-    every finding defaulted to ``none``, and preserves determinism across
-    schema version skew (per ADR-021 / ADR-026).
-
-    Case-insensitive on input: ``Agent_Collusion`` and ``AGENT_COLLUSION``
-    both normalize to ``agent_collusion``. Canonical storage is always
-    lowercase.
-
-    See: ADR-026 (Hybrid Post-Hoc Synthesis mechanism for Phase 3.6 pattern
-    classification) and
-    ``.claude/skills/tachi-shared/references/maestro-agentic-patterns-shared.md``
-    for pattern semantics and the classification rule table.
+    Accepts string, None, or missing input and returns one of the values in
+    ``VALID_AGENTIC_PATTERNS``. Null, whitespace, em-dash placeholder, ASCII
+    dash, and unrecognized strings all collapse to ``"none"`` so pre-schema-1.4
+    inputs without a Pattern column parse cleanly. Case-insensitive; canonical
+    storage is always lowercase.
     """
     if value is None:
         return "none"
     normalized = str(value).strip().lower()
-    if not normalized or normalized in ("\u2014", "-", "—"):
+    if not normalized or normalized in ("\u2014", "-"):
         return "none"
     if normalized in VALID_AGENTIC_PATTERNS:
         return normalized

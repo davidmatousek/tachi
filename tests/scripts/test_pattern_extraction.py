@@ -86,16 +86,11 @@ from tachi_parsers import (  # noqa: E402
 # Shared constants
 # ---------------------------------------------------------------------------
 
-# Canonical CSA pattern enum order per data-model.md Entity 6 and
-# maestro-agentic-patterns-shared.md Section 1. Used as the tertiary
-# tiebreak in FR-013 subsection ordering.
-PATTERN_ENUM_ORDER = (
-    "agent_collusion",
-    "emergent_behavior",
-    "temporal_attack",
-    "trust_exploitation",
-    "communication_vulnerability",
-    "resource_competition",
+# Canonical CSA pattern enum order (Section 1 ordering) — derived from the
+# authoritative VALID_AGENTIC_PATTERNS tuple in tachi_parsers, dropping the
+# `none` / `multiple` sentinels. Used as the tertiary tiebreak in FR-013.
+PATTERN_ENUM_ORDER = tuple(
+    p for p in VALID_AGENTIC_PATTERNS if p not in ("none", "multiple")
 )
 
 # Severity ordinal from tachi_parsers.SEVERITY_ORDINAL — reproduced here

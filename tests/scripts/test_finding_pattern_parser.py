@@ -108,21 +108,17 @@ class TestValidAgenticPatternsConstant:
     """
 
     def test_constant_is_exported(self):
-        """The module exports VALID_AGENTIC_PATTERNS at the top level."""
         import tachi_parsers
 
         assert hasattr(tachi_parsers, "VALID_AGENTIC_PATTERNS")
 
     def test_constant_has_eight_values(self):
-        """The constant contains exactly 8 enum values per FR-003."""
         assert len(VALID_AGENTIC_PATTERNS) == 8
 
     def test_constant_has_exact_values(self):
-        """The constant contains exactly the 8 canonical values (no drift)."""
         assert set(VALID_AGENTIC_PATTERNS) == set(CANONICAL_PATTERN_VALUES)
 
     def test_constant_values_are_all_lowercase(self):
-        """All enum values are lowercase strings (canonical storage format)."""
         for value in VALID_AGENTIC_PATTERNS:
             assert isinstance(value, str)
             assert value == value.lower(), (
@@ -130,11 +126,9 @@ class TestValidAgenticPatternsConstant:
             )
 
     def test_constant_has_none_sentinel(self):
-        """The constant contains the `none` sentinel for non-pattern findings."""
         assert "none" in VALID_AGENTIC_PATTERNS
 
     def test_constant_has_multiple_sentinel(self):
-        """The constant contains the `multiple` value for equal-rule matches."""
         assert "multiple" in VALID_AGENTIC_PATTERNS
 
 
@@ -147,7 +141,6 @@ class TestParseFindingPatternCanonicalValues:
 
     @pytest.mark.parametrize("canonical_value", CANONICAL_PATTERN_VALUES)
     def test_canonical_value_returns_itself(self, canonical_value):
-        """Each of the 8 canonical values normalizes to itself (identity)."""
         assert parse_finding_pattern(canonical_value) == canonical_value
 
 
@@ -197,7 +190,6 @@ class TestParseFindingPatternBackwardCompat:
     """
 
     def test_none_input_returns_none_string(self):
-        """Python None input returns the string 'none' (not None)."""
         assert parse_finding_pattern(None) == "none"
 
     def test_empty_string_returns_none(self):
@@ -210,32 +202,25 @@ class TestParseFindingPatternBackwardCompat:
         assert parse_finding_pattern("\t\n  \n") == "none"
 
     def test_em_dash_unicode_escape_returns_none(self):
-        """U+2014 em-dash via unicode escape — canonical FR-009 placeholder."""
         assert parse_finding_pattern("\u2014") == "none"
 
     def test_em_dash_literal_returns_none(self):
-        """U+2014 em-dash as a literal character in source returns 'none'."""
         assert parse_finding_pattern("—") == "none"
 
     def test_ascii_hyphen_returns_none(self):
-        """ASCII hyphen-minus returns 'none' (editor-de-curling tolerance)."""
         assert parse_finding_pattern("-") == "none"
 
     def test_unrecognized_string_returns_none(self):
-        """Unrecognized strings gracefully degrade to 'none' per FR-017."""
         assert parse_finding_pattern("xyz") == "none"
 
     def test_almost_canonical_typo_returns_none(self):
-        """A near-miss typo is not silently corrected — returns 'none'."""
         assert parse_finding_pattern("agent_collusio") == "none"
 
     def test_non_string_integer_returns_none(self):
-        """Non-string input (int) converts + fails validation → 'none'."""
-        # `str(0).strip().lower()` is "0", which is not in VALID_AGENTIC_PATTERNS
+        # str(0).strip().lower() is "0", not a canonical value — hits the fall-through.
         assert parse_finding_pattern(0) == "none"
 
     def test_em_dash_with_surrounding_whitespace_returns_none(self):
-        """Em-dash with surrounding whitespace — strip before comparison."""
         assert parse_finding_pattern("  —  ") == "none"
 
 
@@ -252,11 +237,9 @@ class TestParseThreatsFindingsWithPatternColumn:
         return parse_threats_findings(content)
 
     def test_all_findings_parsed(self, findings):
-        """All 10 rows in the fixture table are parsed."""
         assert len(findings) == 10
 
     def test_every_finding_has_pattern_field(self, findings):
-        """Every parsed finding has a populated ``agentic_pattern`` field."""
         for finding in findings:
             assert "agentic_pattern" in finding, (
                 f"finding {finding.get('id')} missing agentic_pattern key"
@@ -265,7 +248,6 @@ class TestParseThreatsFindingsWithPatternColumn:
             assert finding["agentic_pattern"] != ""
 
     def test_every_pattern_is_canonical(self, findings):
-        """Every emitted agentic_pattern is one of the 8 canonical values."""
         for finding in findings:
             assert finding["agentic_pattern"] in VALID_AGENTIC_PATTERNS, (
                 f"finding {finding['id']} has non-canonical pattern "
@@ -277,14 +259,12 @@ class TestParseThreatsFindingsWithPatternColumn:
         assert match["agentic_pattern"] == "trust_exploitation"
 
     def test_agent_collusion_mapped_twice(self, findings):
-        """Two separate rows with agent_collusion both parse correctly."""
         collusion = [f for f in findings if f["agentic_pattern"] == "agent_collusion"]
         assert len(collusion) == 2
         ids = {f["id"] for f in collusion}
         assert ids == {"AG-2", "AGP-01"}
 
     def test_em_dash_row_parses_as_none(self, findings):
-        """The T-3 row with Pattern = `—` parses as `agentic_pattern: 'none'`."""
         em_dash_finding = next(f for f in findings if f["id"] == "T-3")
         assert em_dash_finding["agentic_pattern"] == "none"
 
@@ -309,7 +289,7 @@ class TestParseThreatsFindingsWithPatternColumn:
         assert match["agentic_pattern"] == "multiple"
 
     def test_explicit_none_value_mapped(self, findings):
-        """A literal 'none' value in the table parses as 'none' (not '—')."""
+        # A literal 'none' string must parse to 'none' the same as the em-dash placeholder.
         match = next(f for f in findings if f["id"] == "AG-9")
         assert match["agentic_pattern"] == "none"
 
@@ -331,30 +311,24 @@ class TestParseThreatsFindingsCaseInsensitiveHeaders:
         return parse_threats_findings(content)
 
     def test_agentic_pattern_header_detected(self, findings):
-        """The 'Agentic Pattern' spelling is detected (FR-009 canonical)."""
         # If header detection failed, every finding would default to 'none'.
-        # We have 4 non-none rows in this fixture, so at least one must be
-        # non-none for detection to have worked.
+        # The fixture has 4 non-none rows, so any detection failure collapses this count.
         non_none = [f for f in findings if f["agentic_pattern"] != "none"]
         assert len(non_none) >= 4
 
     def test_uppercase_value_canonicalized(self, findings):
-        """AGENT_COLLUSION in a table cell normalizes to 'agent_collusion'."""
         match = next(f for f in findings if f["id"] == "AG-2")
         assert match["agentic_pattern"] == "agent_collusion"
 
     def test_title_case_value_canonicalized(self, findings):
-        """Trust_Exploitation in a table cell normalizes to 'trust_exploitation'."""
         match = next(f for f in findings if f["id"] == "S-1")
         assert match["agentic_pattern"] == "trust_exploitation"
 
     def test_mixed_case_multiple_canonicalized(self, findings):
-        """'Multiple' in a cell normalizes to 'multiple'."""
         match = next(f for f in findings if f["id"] == "AG-4")
         assert match["agentic_pattern"] == "multiple"
 
     def test_mixed_case_none_canonicalized(self, findings):
-        """'None' in a cell normalizes to 'none'."""
         match = next(f for f in findings if f["id"] == "T-5")
         assert match["agentic_pattern"] == "none"
 
@@ -382,7 +356,6 @@ class TestParseThreatsFindingsColumnPositionIndependent:
         assert len(findings) == 3
 
     def test_shifted_column_values_extracted(self, findings):
-        """Pattern column values extract correctly even at the table end."""
         trust_exp = next(f for f in findings if f["id"] == "S-1")
         assert trust_exp["agentic_pattern"] == "trust_exploitation"
 
@@ -412,11 +385,9 @@ class TestParseThreatsFindingsAllEmDash:
         return parse_threats_findings(content)
 
     def test_all_findings_parsed(self, findings):
-        """Four rows in the fixture table are all parsed."""
         assert len(findings) == 4
 
     def test_every_finding_has_none_pattern(self, findings):
-        """Every em-dash cell canonicalizes to 'none'."""
         for finding in findings:
             assert finding["agentic_pattern"] == "none", (
                 f"finding {finding['id']} expected 'none' got "
@@ -442,20 +413,16 @@ class TestParseThreatsFindingsPreFeature142Backward:
         return parse_threats_findings(content)
 
     def test_all_findings_parsed(self, findings):
-        """All 5 rows of the pre-Feature-142 fixture parse successfully."""
         assert len(findings) == 5
 
     def test_zero_parse_errors(self, findings):
-        """Parsing produces findings (not an empty list on error)."""
         assert findings, "pre-Feature-142 fixture parsed to empty list"
 
     def test_every_finding_has_pattern_key(self, findings):
-        """Per FR-017, every finding has an ``agentic_pattern`` key populated."""
         for finding in findings:
             assert "agentic_pattern" in finding
 
     def test_every_finding_defaults_to_none(self, findings):
-        """Per FR-017, every finding defaults to 'none' (no Pattern column)."""
         for finding in findings:
             assert finding["agentic_pattern"] == "none", (
                 f"finding {finding['id']} expected default 'none' got "
@@ -463,12 +430,10 @@ class TestParseThreatsFindingsPreFeature142Backward:
             )
 
     def test_non_pattern_fields_still_parsed(self, findings):
-        """Existing (non-pattern) fields remain correctly parsed post-FR-017."""
         first = findings[0]
         assert first["id"] == "S-1"
         assert first["component"] == "Auth Service"
         assert first["risk_level"] == "High"
-        # The mitigation field exercises the unchanged Section 7 extraction path
         assert "RS256" in first["mitigation"]
 
     def test_no_warnings_emitted(self, capsys, findings):
