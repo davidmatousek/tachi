@@ -2982,6 +2982,299 @@
   edge_type: primary
   confidence: medium
   citation: https://attack.mitre.org/techniques/T1498/
+
+# ─── T023 (Wave 3.1): NIST Surface B canonical verbatim transcription (27) ─────
+# Source: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md Surface B
+# (tachi Compensating-Control Categories × NIST AI RMF Subcategories).
+# Canonical target id format matches nist-ai-rmf.yaml `id` field (space-separated,
+# e.g., `MEASURE 2.7`), superseding the dash-format drift in Batch 5 (commit 004cd00).
+# FR-022 verbatim transcription: every Surface B Overlap cell is emitted as one edge
+# per (tachi-control-category, NIST Subcategory) pair. All 8 FR-018-enum control
+# categories present; 27 total edges. Confidence: high (verbatim-from-ref discipline).
+# NOTE: Surface C (AI 600-1 §2.X → STRIDE+AI) DEFERRED — Surface C rows in the
+# reference use AI 600-1 §2.X identifiers that are NOT in the 7-value taxonomy enum
+# (FR-010) nor in nist-ai-rmf.yaml (which holds AI RMF 1.0 Subcategories only).
+# Flagged for ADR-025 amendment Issue per FR-024 discipline; see T023 results file.
+# T028 integrity test + T029 remediation will reconcile against the 22 drifted
+# Batch 5 edges (dash-format targets, 3 source IDs outside FR-018 enum).
+
+# --- authentication (3 Subcategories: MAP 4.2, MEASURE 2.7, MANAGE 1.3) ---
+- source:
+    taxonomy: tachi-control-category
+    id: authentication
+  target:
+    taxonomy: nist-ai-rmf
+    id: MAP 4.2
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: authentication
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE 2.7
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: authentication
+  target:
+    taxonomy: nist-ai-rmf
+    id: MANAGE 1.3
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+# --- input-validation (5 Subcategories: MAP 4.2, MEASURE 2.6, 2.7, 2.10, MANAGE 1.3) ---
+- source:
+    taxonomy: tachi-control-category
+    id: input-validation
+  target:
+    taxonomy: nist-ai-rmf
+    id: MAP 4.2
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: input-validation
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE 2.6
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: input-validation
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE 2.7
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: input-validation
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE 2.10
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: input-validation
+  target:
+    taxonomy: nist-ai-rmf
+    id: MANAGE 1.3
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+# --- rate-limiting (3 Subcategories: MEASURE 2.6, 2.7, MANAGE 1.3) ---
+- source:
+    taxonomy: tachi-control-category
+    id: rate-limiting
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE 2.6
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: rate-limiting
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE 2.7
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: rate-limiting
+  target:
+    taxonomy: nist-ai-rmf
+    id: MANAGE 1.3
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+# --- encryption (4 Subcategories: MAP 4.2, MEASURE 2.7, 2.10, MANAGE 1.3) ---
+- source:
+    taxonomy: tachi-control-category
+    id: encryption
+  target:
+    taxonomy: nist-ai-rmf
+    id: MAP 4.2
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: encryption
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE 2.7
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: encryption
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE 2.10
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: encryption
+  target:
+    taxonomy: nist-ai-rmf
+    id: MANAGE 1.3
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+# --- logging-audit (4 Subcategories: GOVERN 1.4, MEASURE 2.7, 2.8, MANAGE 1.3) ---
+- source:
+    taxonomy: tachi-control-category
+    id: logging-audit
+  target:
+    taxonomy: nist-ai-rmf
+    id: GOVERN 1.4
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: logging-audit
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE 2.7
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: logging-audit
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE 2.8
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: logging-audit
+  target:
+    taxonomy: nist-ai-rmf
+    id: MANAGE 1.3
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+# --- csrf-protection (2 Subcategories: MEASURE 2.7, MANAGE 1.3) ---
+- source:
+    taxonomy: tachi-control-category
+    id: csrf-protection
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE 2.7
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: csrf-protection
+  target:
+    taxonomy: nist-ai-rmf
+    id: MANAGE 1.3
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+# --- csp-security-headers (2 Subcategories: MEASURE 2.7, MANAGE 1.3) ---
+- source:
+    taxonomy: tachi-control-category
+    id: csp-security-headers
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE 2.7
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: csp-security-headers
+  target:
+    taxonomy: nist-ai-rmf
+    id: MANAGE 1.3
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+# --- access-control (4 Subcategories: MAP 4.2, MEASURE 2.7, 2.10, MANAGE 1.3) ---
+- source:
+    taxonomy: tachi-control-category
+    id: access-control
+  target:
+    taxonomy: nist-ai-rmf
+    id: MAP 4.2
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: access-control
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE 2.7
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: access-control
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE 2.10
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-control-category
+    id: access-control
+  target:
+    taxonomy: nist-ai-rmf
+    id: MANAGE 1.3
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
 # ─── Batch 6 (T024): OWASP ASI + ML ↔ ATLAS/ATT&CK cross-taxonomy (50 edges) ──
 # Source composition:
 #   (a) OWASP Agentic ASI01-ASI10 ↔ ATLAS AML.T0051-T0062 (18 edges). Agent-
@@ -3517,3 +3810,527 @@
   edge_type: primary
   confidence: medium
   citation: https://attack.mitre.org/techniques/T1078/
+# ─── Batch 7 (T024): tachi-stride-ai-category ↔ ATT&CK + ATLAS (50 edges) ──────
+# Source composition:
+#   (a) STRIDE category ↔ ATT&CK (30 edges). Authoritative: .claude/skills/
+#       tachi-<category>/references/detection-patterns.md "Primary source"
+#       sections cite the ATT&CK technique URLs. Spoofing, Tampering,
+#       Repudiation, Information Disclosure, Denial of Service, and Elevation
+#       of Privilege each map to 4-6 ATT&CK parents/sub-techniques.
+#   (b) AI category ↔ ATLAS (20 edges). Authoritative: .claude/skills/
+#       tachi-<ai-category>/references/detection-patterns.md. Prompt Injection,
+#       Data Poisoning, Model Theft, Tool Abuse, Agent Autonomy map to the
+#       relevant ATLAS techniques; AML.T0058-T0062 picked up by Tool Abuse
+#       + Agent Autonomy via curator semantic alignment (no explicit URL
+#       in detection-patterns.md for those two categories — MITRE-page cited).
+# Confidence: high where detection-patterns.md cites the URL verbatim; medium
+# where the mapping is pattern-text-inferred rather than URL-declared.
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: spoofing
+  target:
+    taxonomy: mitre-attack
+    id: T1078
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-spoofing/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: spoofing
+  target:
+    taxonomy: mitre-attack
+    id: T1078.004
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-spoofing/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: spoofing
+  target:
+    taxonomy: mitre-attack
+    id: T1550
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-spoofing/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: spoofing
+  target:
+    taxonomy: mitre-attack
+    id: T1550.001
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-spoofing/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: spoofing
+  target:
+    taxonomy: mitre-attack
+    id: T1556
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-spoofing/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: tampering
+  target:
+    taxonomy: mitre-attack
+    id: T1195
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-tampering/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: tampering
+  target:
+    taxonomy: mitre-attack
+    id: T1195.001
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-tampering/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: tampering
+  target:
+    taxonomy: mitre-attack
+    id: T1195.002
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-tampering/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: tampering
+  target:
+    taxonomy: mitre-attack
+    id: T1565
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1565/
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: repudiation
+  target:
+    taxonomy: mitre-attack
+    id: T1070
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-repudiation/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: repudiation
+  target:
+    taxonomy: mitre-attack
+    id: T1070.001
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-repudiation/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: repudiation
+  target:
+    taxonomy: mitre-attack
+    id: T1070.002
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-repudiation/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: repudiation
+  target:
+    taxonomy: mitre-attack
+    id: T1070.006
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-repudiation/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: repudiation
+  target:
+    taxonomy: mitre-attack
+    id: T1562
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-repudiation/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: repudiation
+  target:
+    taxonomy: mitre-attack
+    id: T1562.006
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-repudiation/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: information-disclosure
+  target:
+    taxonomy: mitre-attack
+    id: T1005
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-info-disclosure/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: information-disclosure
+  target:
+    taxonomy: mitre-attack
+    id: T1039
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-info-disclosure/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: information-disclosure
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-info-disclosure/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: information-disclosure
+  target:
+    taxonomy: mitre-attack
+    id: T1213.003
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-info-disclosure/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: information-disclosure
+  target:
+    taxonomy: mitre-attack
+    id: T1530
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-info-disclosure/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: denial-of-service
+  target:
+    taxonomy: mitre-attack
+    id: T1498
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-denial-of-service/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: denial-of-service
+  target:
+    taxonomy: mitre-attack
+    id: T1498.001
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-denial-of-service/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: denial-of-service
+  target:
+    taxonomy: mitre-attack
+    id: T1498.002
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-denial-of-service/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: denial-of-service
+  target:
+    taxonomy: mitre-attack
+    id: T1499
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-denial-of-service/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: denial-of-service
+  target:
+    taxonomy: mitre-attack
+    id: T1499.003
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-denial-of-service/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: denial-of-service
+  target:
+    taxonomy: mitre-attack
+    id: T1499.004
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-denial-of-service/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: elevation-of-privilege
+  target:
+    taxonomy: mitre-attack
+    id: T1068
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-privilege-escalation/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: elevation-of-privilege
+  target:
+    taxonomy: mitre-attack
+    id: T1548
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-privilege-escalation/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: elevation-of-privilege
+  target:
+    taxonomy: mitre-attack
+    id: T1548.001
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-privilege-escalation/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: elevation-of-privilege
+  target:
+    taxonomy: mitre-attack
+    id: T1548.003
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-privilege-escalation/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: elevation-of-privilege
+  target:
+    taxonomy: mitre-attack
+    id: T1548.005
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-privilege-escalation/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: prompt-injection
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0051
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-prompt-injection/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: prompt-injection
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0054
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-prompt-injection/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: prompt-injection
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0061
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0061
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: prompt-injection
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0062
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0062
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: data-poisoning
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0010
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-data-poisoning/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: data-poisoning
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0018
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-data-poisoning/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: data-poisoning
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0020
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-data-poisoning/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: data-poisoning
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0058
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0058
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: data-poisoning
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0059
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0059
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: model-theft
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0024
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-model-theft/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: model-theft
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0057
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-model-theft/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: model-theft
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0010
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0010
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: tool-abuse
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0051
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0051
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: tool-abuse
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0054
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0054
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: tool-abuse
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0061
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0061
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: tool-abuse
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0060
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0060
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: agent-autonomy
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0054
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0054
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: agent-autonomy
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0061
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0061
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: agent-autonomy
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0062
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0062
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: agent-autonomy
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0058
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0058
