@@ -5225,3 +5225,389 @@
   edge_type: primary
   confidence: medium
   citation: https://atlas.mitre.org/techniques/AML.T0054
+
+# Batch 10: Day 4 top-up — OWASP↔CWE + ATT&CK↔CWE + OWASP↔ATT&CK (T024 architect pre-auth 2026-04-17)
+# Net-new primary edges: 42 (post-batch-10 total primary: 551)
+# Composition: OWASP→CWE (12, Tier 1 from per-category Mapped CWEs sections),
+#              OWASP→ATT&CK (18, curator-derived from OWASP category attack narratives),
+#              ATT&CK→CWE (12, curator semantic alignment — medium confidence).
+# Zero NIST/STRIDE-AI cross edges (AVOID list per architect T027 Path 1 authorization).
+# Zero CWE→CWE edges (batch 8 already saturated the pair).
+- source:
+    taxonomy: owasp
+    id: A01
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: high
+  citation: "https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/"
+- source:
+    taxonomy: owasp
+    id: A01
+  target:
+    taxonomy: cwe
+    id: CWE-538
+  edge_type: primary
+  confidence: high
+  citation: "https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/"
+- source:
+    taxonomy: owasp
+    id: A01
+  target:
+    taxonomy: cwe
+    id: CWE-639
+  edge_type: primary
+  confidence: high
+  citation: "https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/"
+- source:
+    taxonomy: owasp
+    id: A03
+  target:
+    taxonomy: cwe
+    id: CWE-90
+  edge_type: primary
+  confidence: high
+  citation: "https://owasp.org/Top10/2021/A03_2021-Injection/"
+- source:
+    taxonomy: owasp
+    id: A03
+  target:
+    taxonomy: cwe
+    id: CWE-116
+  edge_type: primary
+  confidence: high
+  citation: "https://owasp.org/Top10/2021/A03_2021-Injection/"
+- source:
+    taxonomy: owasp
+    id: A03
+  target:
+    taxonomy: cwe
+    id: CWE-917
+  edge_type: primary
+  confidence: high
+  citation: "https://owasp.org/Top10/2021/A03_2021-Injection/"
+- source:
+    taxonomy: owasp
+    id: A04
+  target:
+    taxonomy: cwe
+    id: CWE-266
+  edge_type: primary
+  confidence: high
+  citation: "https://owasp.org/Top10/2021/A04_2021-Insecure_Design/"
+- source:
+    taxonomy: owasp
+    id: A05
+  target:
+    taxonomy: cwe
+    id: CWE-776
+  edge_type: primary
+  confidence: high
+  citation: "https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/"
+- source:
+    taxonomy: owasp
+    id: A07
+  target:
+    taxonomy: cwe
+    id: CWE-290
+  edge_type: primary
+  confidence: high
+  citation: "https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/"
+- source:
+    taxonomy: owasp
+    id: A07
+  target:
+    taxonomy: cwe
+    id: CWE-613
+  edge_type: primary
+  confidence: high
+  citation: "https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/"
+- source:
+    taxonomy: owasp
+    id: API3
+  target:
+    taxonomy: cwe
+    id: CWE-285
+  edge_type: primary
+  confidence: high
+  citation: "https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/"
+- source:
+    taxonomy: owasp
+    id: API8
+  target:
+    taxonomy: cwe
+    id: CWE-209
+  edge_type: primary
+  confidence: high
+  citation: "https://owasp.org/API-Security/editions/2023/en/0xa8-security-misconfiguration/"
+- source:
+    taxonomy: owasp
+    id: A01
+  target:
+    taxonomy: mitre-attack
+    id: T1078
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/"
+- source:
+    taxonomy: owasp
+    id: A01
+  target:
+    taxonomy: mitre-attack
+    id: T1548
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/"
+- source:
+    taxonomy: owasp
+    id: A01
+  target:
+    taxonomy: mitre-attack
+    id: T1550.001
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/"
+- source:
+    taxonomy: owasp
+    id: A05
+  target:
+    taxonomy: mitre-attack
+    id: T1078
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/"
+- source:
+    taxonomy: owasp
+    id: A07
+  target:
+    taxonomy: mitre-attack
+    id: T1078
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/"
+- source:
+    taxonomy: owasp
+    id: A07
+  target:
+    taxonomy: mitre-attack
+    id: T1556
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/"
+- source:
+    taxonomy: owasp
+    id: A07
+  target:
+    taxonomy: mitre-attack
+    id: T1550.001
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/"
+- source:
+    taxonomy: owasp
+    id: A08
+  target:
+    taxonomy: mitre-attack
+    id: T1195
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/"
+- source:
+    taxonomy: owasp
+    id: A08
+  target:
+    taxonomy: mitre-attack
+    id: T1195.001
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/"
+- source:
+    taxonomy: owasp
+    id: A08
+  target:
+    taxonomy: mitre-attack
+    id: T1195.002
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/"
+- source:
+    taxonomy: owasp
+    id: A09
+  target:
+    taxonomy: mitre-attack
+    id: T1070
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A09_2021-Security_Logging_and_Monitoring_Failures/"
+- source:
+    taxonomy: owasp
+    id: A09
+  target:
+    taxonomy: mitre-attack
+    id: T1070.001
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A09_2021-Security_Logging_and_Monitoring_Failures/"
+- source:
+    taxonomy: owasp
+    id: A09
+  target:
+    taxonomy: mitre-attack
+    id: T1070.002
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A09_2021-Security_Logging_and_Monitoring_Failures/"
+- source:
+    taxonomy: owasp
+    id: A09
+  target:
+    taxonomy: mitre-attack
+    id: T1562.006
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A09_2021-Security_Logging_and_Monitoring_Failures/"
+- source:
+    taxonomy: owasp
+    id: A06
+  target:
+    taxonomy: mitre-attack
+    id: T1195.001
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A06_2021-Vulnerable_and_Outdated_Components/"
+- source:
+    taxonomy: owasp
+    id: A06
+  target:
+    taxonomy: mitre-attack
+    id: T1195.002
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A06_2021-Vulnerable_and_Outdated_Components/"
+- source:
+    taxonomy: owasp
+    id: A10
+  target:
+    taxonomy: mitre-attack
+    id: T1530
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A10_2021-Server-Side_Request_Forgery_%28SSRF%29/"
+- source:
+    taxonomy: owasp
+    id: A10
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: medium
+  citation: "https://owasp.org/Top10/2021/A10_2021-Server-Side_Request_Forgery_%28SSRF%29/"
+- source:
+    taxonomy: mitre-attack
+    id: T1068
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: medium
+  citation: "https://attack.mitre.org/techniques/T1068/"
+- source:
+    taxonomy: mitre-attack
+    id: T1068
+  target:
+    taxonomy: cwe
+    id: CWE-787
+  edge_type: primary
+  confidence: medium
+  citation: "https://attack.mitre.org/techniques/T1068/"
+- source:
+    taxonomy: mitre-attack
+    id: T1565
+  target:
+    taxonomy: cwe
+    id: CWE-502
+  edge_type: primary
+  confidence: medium
+  citation: "https://attack.mitre.org/techniques/T1565/"
+- source:
+    taxonomy: mitre-attack
+    id: T1213.002
+  target:
+    taxonomy: cwe
+    id: CWE-538
+  edge_type: primary
+  confidence: medium
+  citation: "https://attack.mitre.org/techniques/T1213/002/"
+- source:
+    taxonomy: mitre-attack
+    id: T1005
+  target:
+    taxonomy: cwe
+    id: CWE-538
+  edge_type: primary
+  confidence: medium
+  citation: "https://attack.mitre.org/techniques/T1005/"
+- source:
+    taxonomy: mitre-attack
+    id: T1039
+  target:
+    taxonomy: cwe
+    id: CWE-538
+  edge_type: primary
+  confidence: medium
+  citation: "https://attack.mitre.org/techniques/T1039/"
+- source:
+    taxonomy: mitre-attack
+    id: T1548.005
+  target:
+    taxonomy: cwe
+    id: CWE-266
+  edge_type: primary
+  confidence: medium
+  citation: "https://attack.mitre.org/techniques/T1548/005/"
+- source:
+    taxonomy: mitre-attack
+    id: T1556
+  target:
+    taxonomy: cwe
+    id: CWE-306
+  edge_type: primary
+  confidence: medium
+  citation: "https://attack.mitre.org/techniques/T1556/"
+- source:
+    taxonomy: mitre-attack
+    id: T1530
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: medium
+  citation: "https://attack.mitre.org/techniques/T1530/"
+- source:
+    taxonomy: mitre-attack
+    id: T1530
+  target:
+    taxonomy: cwe
+    id: CWE-284
+  edge_type: primary
+  confidence: medium
+  citation: "https://attack.mitre.org/techniques/T1530/"
+- source:
+    taxonomy: mitre-attack
+    id: T1530
+  target:
+    taxonomy: cwe
+    id: CWE-862
+  edge_type: primary
+  confidence: medium
+  citation: "https://attack.mitre.org/techniques/T1530/"
+- source:
+    taxonomy: mitre-attack
+    id: T1556
+  target:
+    taxonomy: cwe
+    id: CWE-290
+  edge_type: primary
+  confidence: medium
+  citation: "https://attack.mitre.org/techniques/T1556/"
