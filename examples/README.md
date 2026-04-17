@@ -2,15 +2,18 @@
 
 Example architecture inputs and their corresponding threat model outputs. These serve as reference implementations for users evaluating tachi and as test fixtures for validating agent behavior.
 
+> **New here and interested in MAESTRO?** Start with [`maestro-reference/README.md`](maestro-reference/README.md) — a canonical healthcare-CDSS multi-agent walkthrough demonstrating MAESTRO layer coverage, cross-layer attack chains, and agentic pattern classification across all 7 layers. For format-specific parsing validation, see the "Format-Specific Test Fixtures" section below.
+
 ## Standardized Examples
 
-Three polished examples demonstrate tachi's threat modeling capabilities across different architecture types. Each example pairs a Mermaid architecture diagram (`architecture.md`) with a complete schema v1.1 threat model output (`threats.md`).
+Four polished examples demonstrate tachi's threat modeling capabilities across different architecture types. Each example pairs a Mermaid architecture diagram (`architecture.md`) with a complete schema v1.1+ threat model output (`threats.md`).
 
 | Example | Architecture | Components | Key Demonstration |
 |---------|-------------|------------|-------------------|
 | [`web-app/`](web-app/) | Traditional multi-tier web application | 6 (CDN, API Gateway, Auth Service, Session Store, User Database) | Baseline STRIDE output with correctly empty AI sections |
 | [`agentic-app/`](agentic-app/) | Agentic AI application with LLM and MCP | 7 (Guardrails, LLM Orchestrator, MCP Tool Server, Knowledge Base, Audit Logger) | STRIDE + AI findings, correlated findings, dual-dispatch |
 | [`microservices/`](microservices/) | E-commerce microservices platform | 10 (API Gateway, Order/Payment/Notification Services, Message Queue, Databases) | Cross-service threat analysis at scale |
+| [`maestro-reference/`](maestro-reference/) | Healthcare CDSS multi-agent reference scenario | 18 (Physician, Supervisor Orchestrator, Diagnostic Agent, Treatment Planner Agent, Risk Stratification Model, Outcomes Telemetry, Inter-Agent Communication Channel, +11 supporting components) | Canonical MAESTRO walkthrough — all 7 layers, cross-layer attack chains, agentic patterns, compliance posture cross-references |
 
 ## Framework Relationship Hierarchy
 
