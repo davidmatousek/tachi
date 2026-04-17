@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.16.0](https://github.com/davidmatousek/tachi/compare/v4.15.0...v4.16.0) (2026-04-17)
+
+
+### Features
+
+* **180:** F-A1 Taxonomy Crosswalk Collection ([#181](https://github.com/davidmatousek/tachi/issues/181)) ([8b7c7bf](https://github.com/davidmatousek/tachi/commit/8b7c7bf59a6de93a0d3f5016a4395755de19c79e))
+
 ## [4.15.0](https://github.com/davidmatousek/tachi/compare/v4.14.1...v4.15.0) (2026-04-16)
 
 
