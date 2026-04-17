@@ -4334,3 +4334,511 @@
   edge_type: primary
   confidence: medium
   citation: https://atlas.mitre.org/techniques/AML.T0058
+# ─── Batch 8 (T024): stride-ai-category ↔ CWE + CWE ↔ CWE (50 edges) ───────────
+# Source composition:
+#   (a) STRIDE+AI category ↔ CWE (30 edges). Authoritative: detection-patterns.md
+#       "Primary Sources" sections cite CWE IDs verbatim for each category.
+#   (b) CWE ↔ CWE parent/child/related (20 edges). Authoritative: cwe.mitre.org
+#       per-CWE definition pages declare "Related Weaknesses" (ChildOf / ParentOf /
+#       PeerOf). All 20 edges are within the 53-record CWE catalog.
+# Confidence: high where the relationship is declared on the CWE page or the
+# detection-patterns.md cites the CWE verbatim; medium where curator-inferred.
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: spoofing
+  target:
+    taxonomy: cwe
+    id: CWE-287
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-spoofing/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: spoofing
+  target:
+    taxonomy: cwe
+    id: CWE-290
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-spoofing/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: spoofing
+  target:
+    taxonomy: cwe
+    id: CWE-306
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-spoofing/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: spoofing
+  target:
+    taxonomy: cwe
+    id: CWE-345
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-spoofing/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: spoofing
+  target:
+    taxonomy: cwe
+    id: CWE-384
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-spoofing/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: spoofing
+  target:
+    taxonomy: cwe
+    id: CWE-613
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-spoofing/references/detection-patterns.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: tampering
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/20.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: tampering
+  target:
+    taxonomy: cwe
+    id: CWE-77
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/77.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: tampering
+  target:
+    taxonomy: cwe
+    id: CWE-78
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/78.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: tampering
+  target:
+    taxonomy: cwe
+    id: CWE-502
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/502.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: repudiation
+  target:
+    taxonomy: cwe
+    id: CWE-117
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/117.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: repudiation
+  target:
+    taxonomy: cwe
+    id: CWE-223
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/223.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: repudiation
+  target:
+    taxonomy: cwe
+    id: CWE-532
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/532.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: repudiation
+  target:
+    taxonomy: cwe
+    id: CWE-778
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/778.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: information-disclosure
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/200.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: information-disclosure
+  target:
+    taxonomy: cwe
+    id: CWE-209
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/209.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: information-disclosure
+  target:
+    taxonomy: cwe
+    id: CWE-215
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/215.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: information-disclosure
+  target:
+    taxonomy: cwe
+    id: CWE-538
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/538.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: information-disclosure
+  target:
+    taxonomy: cwe
+    id: CWE-522
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/522.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: denial-of-service
+  target:
+    taxonomy: cwe
+    id: CWE-400
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/400.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: denial-of-service
+  target:
+    taxonomy: cwe
+    id: CWE-770
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/770.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: denial-of-service
+  target:
+    taxonomy: cwe
+    id: CWE-407
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/407.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: denial-of-service
+  target:
+    taxonomy: cwe
+    id: CWE-1333
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/1333.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: elevation-of-privilege
+  target:
+    taxonomy: cwe
+    id: CWE-250
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/250.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: elevation-of-privilege
+  target:
+    taxonomy: cwe
+    id: CWE-266
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/266.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: elevation-of-privilege
+  target:
+    taxonomy: cwe
+    id: CWE-269
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/269.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: elevation-of-privilege
+  target:
+    taxonomy: cwe
+    id: CWE-285
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/285.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: elevation-of-privilege
+  target:
+    taxonomy: cwe
+    id: CWE-862
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/862.html
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: elevation-of-privilege
+  target:
+    taxonomy: cwe
+    id: CWE-863
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/863.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-284
+  target:
+    taxonomy: cwe
+    id: CWE-285
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/284.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-284
+  target:
+    taxonomy: cwe
+    id: CWE-287
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/284.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-284
+  target:
+    taxonomy: cwe
+    id: CWE-862
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/284.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-284
+  target:
+    taxonomy: cwe
+    id: CWE-863
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/284.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-287
+  target:
+    taxonomy: cwe
+    id: CWE-290
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/287.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-287
+  target:
+    taxonomy: cwe
+    id: CWE-306
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/287.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-287
+  target:
+    taxonomy: cwe
+    id: CWE-384
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/287.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-287
+  target:
+    taxonomy: cwe
+    id: CWE-522
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/287.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-287
+  target:
+    taxonomy: cwe
+    id: CWE-613
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/287.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-20
+  target:
+    taxonomy: cwe
+    id: CWE-77
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/20.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-20
+  target:
+    taxonomy: cwe
+    id: CWE-78
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/20.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-20
+  target:
+    taxonomy: cwe
+    id: CWE-79
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/20.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-20
+  target:
+    taxonomy: cwe
+    id: CWE-89
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/20.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-20
+  target:
+    taxonomy: cwe
+    id: CWE-94
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/20.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-77
+  target:
+    taxonomy: cwe
+    id: CWE-78
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/77.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-400
+  target:
+    taxonomy: cwe
+    id: CWE-770
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/400.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-400
+  target:
+    taxonomy: cwe
+    id: CWE-407
+  edge_type: primary
+  confidence: medium
+  citation: https://cwe.mitre.org/data/definitions/400.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-200
+  target:
+    taxonomy: cwe
+    id: CWE-209
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/200.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-200
+  target:
+    taxonomy: cwe
+    id: CWE-215
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/200.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-200
+  target:
+    taxonomy: cwe
+    id: CWE-532
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/200.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-200
+  target:
+    taxonomy: cwe
+    id: CWE-538
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/200.html
