@@ -4461,3 +4461,804 @@
   edge_type: primary
   confidence: medium
   citation: "https://attack.mitre.org/techniques/T1556/"
+
+# Batch 11: Day 4 post-T029 top-up — OWASP↔CWE + ATT&CK↔CWE + OWASP↔ATT&CK
+# (T024 architect pre-auth 2026-04-17 §T029 serial cadence; target ≥62 to restore Tier 1)
+
+# --- owasp → cwe (58 edges, semantic alignment from authoritative OWASP per-risk pages) ---
+- source:
+    taxonomy: owasp
+    id: M1
+  target:
+    taxonomy: cwe
+    id: CWE-287
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m1-improper-credential-usage
+- source:
+    taxonomy: owasp
+    id: M2
+  target:
+    taxonomy: cwe
+    id: CWE-494
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m2-inadequate-supply-chain-security
+- source:
+    taxonomy: owasp
+    id: M2
+  target:
+    taxonomy: cwe
+    id: CWE-1395
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m2-inadequate-supply-chain-security
+- source:
+    taxonomy: owasp
+    id: M3
+  target:
+    taxonomy: cwe
+    id: CWE-290
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m3-insecure-authentication-authorization
+- source:
+    taxonomy: owasp
+    id: M3
+  target:
+    taxonomy: cwe
+    id: CWE-306
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m3-insecure-authentication-authorization
+- source:
+    taxonomy: owasp
+    id: M4
+  target:
+    taxonomy: cwe
+    id: CWE-79
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m4-insufficient-input-output-validation
+- source:
+    taxonomy: owasp
+    id: M4
+  target:
+    taxonomy: cwe
+    id: CWE-89
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m4-insufficient-input-output-validation
+- source:
+    taxonomy: owasp
+    id: M4
+  target:
+    taxonomy: cwe
+    id: CWE-77
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m4-insufficient-input-output-validation
+- source:
+    taxonomy: owasp
+    id: M5
+  target:
+    taxonomy: cwe
+    id: CWE-345
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m5-insecure-communication
+- source:
+    taxonomy: owasp
+    id: M5
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m5-insecure-communication
+- source:
+    taxonomy: owasp
+    id: M6
+  target:
+    taxonomy: cwe
+    id: CWE-538
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m6-inadequate-privacy-controls
+- source:
+    taxonomy: owasp
+    id: M7
+  target:
+    taxonomy: cwe
+    id: CWE-494
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m7-insufficient-binary-protection
+- source:
+    taxonomy: owasp
+    id: M8
+  target:
+    taxonomy: cwe
+    id: CWE-778
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m8-security-misconfiguration
+- source:
+    taxonomy: owasp
+    id: M8
+  target:
+    taxonomy: cwe
+    id: CWE-532
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m8-security-misconfiguration
+- source:
+    taxonomy: owasp
+    id: M9
+  target:
+    taxonomy: cwe
+    id: CWE-522
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m9-insecure-data-storage
+- source:
+    taxonomy: owasp
+    id: M9
+  target:
+    taxonomy: cwe
+    id: CWE-538
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m9-insecure-data-storage
+- source:
+    taxonomy: owasp
+    id: M10
+  target:
+    taxonomy: cwe
+    id: CWE-522
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m10-insufficient-cryptography
+- source:
+    taxonomy: owasp
+    id: API1
+  target:
+    taxonomy: cwe
+    id: CWE-284
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/
+- source:
+    taxonomy: owasp
+    id: API1
+  target:
+    taxonomy: cwe
+    id: CWE-862
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/
+- source:
+    taxonomy: owasp
+    id: API1
+  target:
+    taxonomy: cwe
+    id: CWE-863
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/
+- source:
+    taxonomy: owasp
+    id: API2
+  target:
+    taxonomy: cwe
+    id: CWE-384
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa2-broken-authentication/
+- source:
+    taxonomy: owasp
+    id: API2
+  target:
+    taxonomy: cwe
+    id: CWE-306
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa2-broken-authentication/
+- source:
+    taxonomy: owasp
+    id: API2
+  target:
+    taxonomy: cwe
+    id: CWE-613
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa2-broken-authentication/
+- source:
+    taxonomy: owasp
+    id: API2
+  target:
+    taxonomy: cwe
+    id: CWE-290
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa2-broken-authentication/
+- source:
+    taxonomy: owasp
+    id: API3
+  target:
+    taxonomy: cwe
+    id: CWE-284
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/
+- source:
+    taxonomy: owasp
+    id: API3
+  target:
+    taxonomy: cwe
+    id: CWE-862
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/
+- source:
+    taxonomy: owasp
+    id: API3
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/
+- source:
+    taxonomy: owasp
+    id: API4
+  target:
+    taxonomy: cwe
+    id: CWE-1333
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/
+- source:
+    taxonomy: owasp
+    id: API5
+  target:
+    taxonomy: cwe
+    id: CWE-862
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa5-broken-function-level-authorization/
+- source:
+    taxonomy: owasp
+    id: API5
+  target:
+    taxonomy: cwe
+    id: CWE-863
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa5-broken-function-level-authorization/
+- source:
+    taxonomy: owasp
+    id: API6
+  target:
+    taxonomy: cwe
+    id: CWE-284
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa6-unrestricted-access-to-sensitive-business-flows/
+- source:
+    taxonomy: owasp
+    id: API6
+  target:
+    taxonomy: cwe
+    id: CWE-770
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa6-unrestricted-access-to-sensitive-business-flows/
+- source:
+    taxonomy: owasp
+    id: API7
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa7-server-side-request-forgery/
+- source:
+    taxonomy: owasp
+    id: API8
+  target:
+    taxonomy: cwe
+    id: CWE-116
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa8-security-misconfiguration/
+- source:
+    taxonomy: owasp
+    id: API8
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa8-security-misconfiguration/
+- source:
+    taxonomy: owasp
+    id: API8
+  target:
+    taxonomy: cwe
+    id: CWE-778
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa8-security-misconfiguration/
+- source:
+    taxonomy: owasp
+    id: API9
+  target:
+    taxonomy: cwe
+    id: CWE-1395
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa9-improper-inventory-management/
+- source:
+    taxonomy: owasp
+    id: API10
+  target:
+    taxonomy: cwe
+    id: CWE-345
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xaa-unsafe-consumption-of-apis/
+- source:
+    taxonomy: owasp
+    id: API10
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xaa-unsafe-consumption-of-apis/
+- source:
+    taxonomy: owasp
+    id: API10
+  target:
+    taxonomy: cwe
+    id: CWE-918
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xaa-unsafe-consumption-of-apis/
+- source:
+    taxonomy: owasp
+    id: LLM01
+  target:
+    taxonomy: cwe
+    id: CWE-79
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+- source:
+    taxonomy: owasp
+    id: LLM01
+  target:
+    taxonomy: cwe
+    id: CWE-116
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+- source:
+    taxonomy: owasp
+    id: LLM02
+  target:
+    taxonomy: cwe
+    id: CWE-532
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+- source:
+    taxonomy: owasp
+    id: LLM02
+  target:
+    taxonomy: cwe
+    id: CWE-209
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+- source:
+    taxonomy: owasp
+    id: LLM05
+  target:
+    taxonomy: cwe
+    id: CWE-94
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
+- source:
+    taxonomy: owasp
+    id: LLM06
+  target:
+    taxonomy: cwe
+    id: CWE-284
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
+- source:
+    taxonomy: owasp
+    id: LLM08
+  target:
+    taxonomy: cwe
+    id: CWE-287
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
+- source:
+    taxonomy: owasp
+    id: LLM10
+  target:
+    taxonomy: cwe
+    id: CWE-1333
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/
+- source:
+    taxonomy: owasp
+    id: ASI01
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+- source:
+    taxonomy: owasp
+    id: ASI02
+  target:
+    taxonomy: cwe
+    id: CWE-284
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+- source:
+    taxonomy: owasp
+    id: ASI03
+  target:
+    taxonomy: cwe
+    id: CWE-306
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+- source:
+    taxonomy: owasp
+    id: ASI04
+  target:
+    taxonomy: cwe
+    id: CWE-345
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+- source:
+    taxonomy: owasp
+    id: ASI05
+  target:
+    taxonomy: cwe
+    id: CWE-77
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+- source:
+    taxonomy: owasp
+    id: ASI06
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+- source:
+    taxonomy: owasp
+    id: ASI07
+  target:
+    taxonomy: cwe
+    id: CWE-345
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+- source:
+    taxonomy: owasp
+    id: ASI08
+  target:
+    taxonomy: cwe
+    id: CWE-1333
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+- source:
+    taxonomy: owasp
+    id: ASI09
+  target:
+    taxonomy: cwe
+    id: CWE-290
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+- source:
+    taxonomy: owasp
+    id: ASI10
+  target:
+    taxonomy: cwe
+    id: CWE-269
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+
+# --- owasp → mitre-attack (12 edges, attack scenario alignment from OWASP category pages) ---
+- source:
+    taxonomy: owasp
+    id: A02
+  target:
+    taxonomy: mitre-attack
+    id: T1078
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
+- source:
+    taxonomy: owasp
+    id: A02
+  target:
+    taxonomy: mitre-attack
+    id: T1550
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
+- source:
+    taxonomy: owasp
+    id: A03
+  target:
+    taxonomy: mitre-attack
+    id: T1499
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/Top10/2021/A03_2021-Injection/
+- source:
+    taxonomy: owasp
+    id: A03
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/Top10/2021/A03_2021-Injection/
+- source:
+    taxonomy: owasp
+    id: A04
+  target:
+    taxonomy: mitre-attack
+    id: T1548
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/Top10/2021/A04_2021-Insecure_Design/
+- source:
+    taxonomy: owasp
+    id: A05
+  target:
+    taxonomy: mitre-attack
+    id: T1562
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
+- source:
+    taxonomy: owasp
+    id: API3
+  target:
+    taxonomy: mitre-attack
+    id: T1078
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/
+- source:
+    taxonomy: owasp
+    id: API7
+  target:
+    taxonomy: mitre-attack
+    id: T1530
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa7-server-side-request-forgery/
+- source:
+    taxonomy: owasp
+    id: LLM02
+  target:
+    taxonomy: mitre-attack
+    id: T1005
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+- source:
+    taxonomy: owasp
+    id: LLM02
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+- source:
+    taxonomy: owasp
+    id: LLM03
+  target:
+    taxonomy: mitre-attack
+    id: T1195.001
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
+- source:
+    taxonomy: owasp
+    id: LLM03
+  target:
+    taxonomy: mitre-attack
+    id: T1195.002
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
+
+# --- mitre-attack → cwe (18 edges, curator semantic alignment from ATT&CK technique pages) ---
+- source:
+    taxonomy: mitre-attack
+    id: T1213
+  target:
+    taxonomy: cwe
+    id: CWE-284
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1213/
+- source:
+    taxonomy: mitre-attack
+    id: T1213.003
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1213/003/
+- source:
+    taxonomy: mitre-attack
+    id: T1078
+  target:
+    taxonomy: cwe
+    id: CWE-522
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1078/
+- source:
+    taxonomy: mitre-attack
+    id: T1195
+  target:
+    taxonomy: cwe
+    id: CWE-1395
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1195/
+- source:
+    taxonomy: mitre-attack
+    id: T1195.001
+  target:
+    taxonomy: cwe
+    id: CWE-1395
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1195/001/
+- source:
+    taxonomy: mitre-attack
+    id: T1498
+  target:
+    taxonomy: cwe
+    id: CWE-770
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1498/
+- source:
+    taxonomy: mitre-attack
+    id: T1499
+  target:
+    taxonomy: cwe
+    id: CWE-1333
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1499/
+- source:
+    taxonomy: mitre-attack
+    id: T1499.001
+  target:
+    taxonomy: cwe
+    id: CWE-400
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1499/001/
+- source:
+    taxonomy: mitre-attack
+    id: T1499.002
+  target:
+    taxonomy: cwe
+    id: CWE-400
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1499/002/
+- source:
+    taxonomy: mitre-attack
+    id: T1499.003
+  target:
+    taxonomy: cwe
+    id: CWE-1333
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1499/003/
+- source:
+    taxonomy: mitre-attack
+    id: T1499.004
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1499/004/
+- source:
+    taxonomy: mitre-attack
+    id: T1548
+  target:
+    taxonomy: cwe
+    id: CWE-269
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1548/
+- source:
+    taxonomy: mitre-attack
+    id: T1548
+  target:
+    taxonomy: cwe
+    id: CWE-250
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1548/
+- source:
+    taxonomy: mitre-attack
+    id: T1548.003
+  target:
+    taxonomy: cwe
+    id: CWE-269
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1548/003/
+- source:
+    taxonomy: mitre-attack
+    id: T1550
+  target:
+    taxonomy: cwe
+    id: CWE-522
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1550/
+- source:
+    taxonomy: mitre-attack
+    id: T1562
+  target:
+    taxonomy: cwe
+    id: CWE-778
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1562/
+- source:
+    taxonomy: mitre-attack
+    id: T1562
+  target:
+    taxonomy: cwe
+    id: CWE-223
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1562/
+- source:
+    taxonomy: mitre-attack
+    id: T1070
+  target:
+    taxonomy: cwe
+    id: CWE-117
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1070/
