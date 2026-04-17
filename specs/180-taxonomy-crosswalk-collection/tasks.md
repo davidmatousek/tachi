@@ -152,7 +152,7 @@ R6 fallback: if only senior-backend-engineer is available, wall-clock extends to
 
 ### Day 4 Exit Gate
 
-- [ ] **T035** [code-reviewer] Verify PR is open with complete description per T033. Verify all 9 YAMLs + `tests/schemas/test_taxonomy_integrity.py` + ADR-027 Accepted are included. Verify CI green on the PR branch (backward-compat + integrity tests).
+- [X] **T035** [code-reviewer] Verify PR is open with complete description per T033. Verify all 9 YAMLs + `tests/schemas/test_taxonomy_integrity.py` + ADR-027 Accepted are included. Verify CI green on the PR branch (backward-compat + integrity tests). **COMPLETED 2026-04-17 — APPROVED_WITH_CONCERNS**: PR #181 Day 4 Exit Gate verified across 6 categories (30/31 checks PASS). PR state OPEN + MERGEABLE, title exact-match. All 12 artifacts present with correct record counts (owasp 60, attack 38, atlas 12, cwe 53, nist-ai-rmf 72, control-category 8, stride-ai 11, crosswalk **526 primary edges Tier 1 HOLDS**, README 219 lines). Tests: 5/5 integrity green in 0.53s + 13 passed/1 skipped backward-compat (6/6 PDF baselines byte-identical under `SOURCE_DATE_EPOCH=1700000000`). ADR-027 Status=Accepted (L3), Accepted-date=2026-04-21 provisional (L4), SHA placeholder `<pending-T039-post-merge-fill>` (L5), Revision History has T027 Option (c) + T032 transition entries. CI `tachi mmdc preflight` success on head SHA `d9cccbd`. **Single minor concern (non-blocking per guardrail)**: 5 follow-on Issue URLs in PR body (f) still contain `<placeholder-link-T034-N>` tokens; team-lead T034 will replace via `gh pr edit` after filing. Full details in `.aod/results/code-reviewer.md` §T035.
 
 ---
 
