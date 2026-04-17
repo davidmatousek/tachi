@@ -1,3 +1,11 @@
+---
+version: "1.0"
+date: 2026-04-17
+description: "Initial architecture description for canonical MAESTRO worked example — Healthcare CDSS multi-agent reference scenario exercising all 7 MAESTRO layers with supervisor-plus-specialist delegation topology, long-running learning loop, and cascading delegation for emergent-behavior pattern coverage."
+checksum: sha256:55f3ba95ca9caea8671696d725de4b6cc30e0d2b56a713c00d9a537bbefa6e8c
+previous_version: null
+---
+
 # Canonical MAESTRO Worked Example — Healthcare Clinical Decision Support System
 
 > **DISCLAIMER**: This is a security reference scenario for threat-modeling teaching purposes only. It is NOT a real clinical system and contains NO real patient data. Nothing in this example constitutes medical advice, regulatory guidance, or a compliance framework recommendation. Component names, data flows, and descriptions are synthetic constructs chosen to exercise the full seven-layer CSA MAESTRO taxonomy end-to-end.
