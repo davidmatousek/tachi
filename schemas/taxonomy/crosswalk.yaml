@@ -117,16 +117,6 @@
 # context and associated CWE categories. Confidence set to medium per anti-drift rule.
 - source:
     taxonomy: mitre-attack
-    id: T1190
-  target:
-    taxonomy: cwe
-    id: CWE-20
-  edge_type: primary
-  confidence: medium
-  citation: https://attack.mitre.org/techniques/T1190/
-
-- source:
-    taxonomy: mitre-attack
     id: T1078
   target:
     taxonomy: cwe
@@ -298,29 +288,6 @@
   confidence: medium
   citation: https://atlas.mitre.org/techniques/AML.T0058
 
-- source:
-    taxonomy: mitre-atlas
-    id: AML.T0059
-  target:
-    taxonomy: mitre-attack
-    id: T1565.001
-  edge_type: primary
-  confidence: medium
-  citation: https://atlas.mitre.org/techniques/AML.T0059
-
-- source:
-    taxonomy: mitre-atlas
-    id: AML.T0060
-  target:
-    taxonomy: mitre-attack
-    id: T1557
-  edge_type: primary
-  confidence: medium
-  citation: https://atlas.mitre.org/techniques/AML.T0060
-
-# ─── Slice 4: LLM ↔ NIST (10 edges) ───────────────────────────────────────────
-# Source: nist-ai-rmf-mapping.md (Feature 144) Surface B + Surface C verbatim rows.
-# Confidence: high — verbatim transcription from Feature 144 authoritative mapping.
 - source:
     taxonomy: tachi-control-category
     id: authentication
@@ -555,16 +522,6 @@
     id: A01
   target:
     taxonomy: cwe
-    id: CWE-285
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/
-
-- source:
-    taxonomy: owasp
-    id: A01
-  target:
-    taxonomy: cwe
     id: CWE-352
   edge_type: primary
   confidence: high
@@ -589,56 +546,6 @@
   edge_type: primary
   confidence: high
   citation: https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/
-
-- source:
-    taxonomy: owasp
-    id: A02
-  target:
-    taxonomy: cwe
-    id: CWE-259
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
-
-- source:
-    taxonomy: owasp
-    id: A02
-  target:
-    taxonomy: cwe
-    id: CWE-319
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
-
-- source:
-    taxonomy: owasp
-    id: A02
-  target:
-    taxonomy: cwe
-    id: CWE-327
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
-
-- source:
-    taxonomy: owasp
-    id: A02
-  target:
-    taxonomy: cwe
-    id: CWE-522
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
-
-- source:
-    taxonomy: owasp
-    id: A02
-  target:
-    taxonomy: cwe
-    id: CWE-916
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
 
 - source:
     taxonomy: owasp
@@ -685,16 +592,6 @@
     id: A03
   target:
     taxonomy: cwe
-    id: CWE-89
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A03_2021-Injection/
-
-- source:
-    taxonomy: owasp
-    id: A03
-  target:
-    taxonomy: cwe
     id: CWE-94
   edge_type: primary
   confidence: high
@@ -715,27 +612,7 @@
     id: A04
   target:
     taxonomy: cwe
-    id: CWE-256
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A04_2021-Insecure_Design/
-
-- source:
-    taxonomy: owasp
-    id: A04
-  target:
-    taxonomy: cwe
     id: CWE-269
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A04_2021-Insecure_Design/
-
-- source:
-    taxonomy: owasp
-    id: A04
-  target:
-    taxonomy: cwe
-    id: CWE-311
   edge_type: primary
   confidence: high
   citation: https://owasp.org/Top10/2021/A04_2021-Insecure_Design/
@@ -749,106 +626,6 @@
   edge_type: primary
   confidence: high
   citation: https://owasp.org/Top10/2021/A04_2021-Insecure_Design/
-
-- source:
-    taxonomy: owasp
-    id: A05
-  target:
-    taxonomy: cwe
-    id: CWE-16
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
-
-- source:
-    taxonomy: owasp
-    id: A05
-  target:
-    taxonomy: cwe
-    id: CWE-260
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
-
-- source:
-    taxonomy: owasp
-    id: A05
-  target:
-    taxonomy: cwe
-    id: CWE-520
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
-
-- source:
-    taxonomy: owasp
-    id: A05
-  target:
-    taxonomy: cwe
-    id: CWE-611
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
-
-- source:
-    taxonomy: owasp
-    id: A05
-  target:
-    taxonomy: cwe
-    id: CWE-614
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
-
-- source:
-    taxonomy: owasp
-    id: A06
-  target:
-    taxonomy: cwe
-    id: CWE-937
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A06_2021-Vulnerable_and_Outdated_Components/
-
-- source:
-    taxonomy: owasp
-    id: A06
-  target:
-    taxonomy: cwe
-    id: CWE-1035
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A06_2021-Vulnerable_and_Outdated_Components/
-
-- source:
-    taxonomy: owasp
-    id: A06
-  target:
-    taxonomy: cwe
-    id: CWE-1104
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A06_2021-Vulnerable_and_Outdated_Components/
-
-- source:
-    taxonomy: owasp
-    id: A07
-  target:
-    taxonomy: cwe
-    id: CWE-255
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/
-
-- source:
-    taxonomy: owasp
-    id: A07
-  target:
-    taxonomy: cwe
-    id: CWE-287
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/
 
 - source:
     taxonomy: owasp
@@ -872,26 +649,6 @@
 
 - source:
     taxonomy: owasp
-    id: A07
-  target:
-    taxonomy: cwe
-    id: CWE-521
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/
-
-- source:
-    taxonomy: owasp
-    id: A07
-  target:
-    taxonomy: cwe
-    id: CWE-798
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/
-
-- source:
-    taxonomy: owasp
     id: A08
   target:
     taxonomy: cwe
@@ -906,26 +663,6 @@
   target:
     taxonomy: cwe
     id: CWE-494
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/
-
-- source:
-    taxonomy: owasp
-    id: A08
-  target:
-    taxonomy: cwe
-    id: CWE-502
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/
-
-- source:
-    taxonomy: owasp
-    id: A08
-  target:
-    taxonomy: cwe
-    id: CWE-829
   edge_type: primary
   confidence: high
   citation: https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/
@@ -982,64 +719,10 @@
 
 - source:
     taxonomy: owasp
-    id: A08
-  target:
-    taxonomy: cwe
-    id: CWE-565
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/
-
-- source:
-    taxonomy: owasp
-    id: A08
-  target:
-    taxonomy: cwe
-    id: CWE-915
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/
-
-- source:
-    taxonomy: owasp
-    id: A04
-  target:
-    taxonomy: cwe
-    id: CWE-73
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A04_2021-Insecure_Design/
-
-- source:
-    taxonomy: owasp
-    id: A05
-  target:
-    taxonomy: cwe
-    id: CWE-1174
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
-
-# ─── Batch 2 (T016): OWASP LLM Top 10:2025 ↔ CWE (50 edges) ────────────────────
-# Source: genai.owasp.org/llmrisk/* per-category pages "Common Weaknesses" /
-# "Common Examples" sections. Canonical short IDs (LLM01-LLM10) resolve against
-# owasp.yaml. Confidence: high (published CWE refs in OWASP pages).
-- source:
-    taxonomy: owasp
     id: LLM01
   target:
     taxonomy: cwe
     id: CWE-20
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
-
-- source:
-    taxonomy: owasp
-    id: LLM01
-  target:
-    taxonomy: cwe
-    id: CWE-77
   edge_type: primary
   confidence: high
   citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
@@ -1056,36 +739,6 @@
 
 - source:
     taxonomy: owasp
-    id: LLM01
-  target:
-    taxonomy: cwe
-    id: CWE-1427
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
-
-- source:
-    taxonomy: owasp
-    id: LLM02
-  target:
-    taxonomy: cwe
-    id: CWE-200
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
-
-- source:
-    taxonomy: owasp
-    id: LLM02
-  target:
-    taxonomy: cwe
-    id: CWE-201
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
-
-- source:
-    taxonomy: owasp
     id: LLM02
   target:
     taxonomy: cwe
@@ -1096,26 +749,6 @@
 
 - source:
     taxonomy: owasp
-    id: LLM02
-  target:
-    taxonomy: cwe
-    id: CWE-359
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
-
-- source:
-    taxonomy: owasp
-    id: LLM03
-  target:
-    taxonomy: cwe
-    id: CWE-1357
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
-
-- source:
-    taxonomy: owasp
     id: LLM03
   target:
     taxonomy: cwe
@@ -1123,36 +756,6 @@
   edge_type: primary
   confidence: high
   citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
-
-- source:
-    taxonomy: owasp
-    id: LLM03
-  target:
-    taxonomy: cwe
-    id: CWE-829
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
-
-- source:
-    taxonomy: owasp
-    id: LLM03
-  target:
-    taxonomy: cwe
-    id: CWE-1395
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
-
-- source:
-    taxonomy: owasp
-    id: LLM04
-  target:
-    taxonomy: cwe
-    id: CWE-20
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm042025-data-and-model-poisoning/
 
 - source:
     taxonomy: owasp
@@ -1169,30 +772,10 @@
     id: LLM04
   target:
     taxonomy: cwe
-    id: CWE-915
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm042025-data-and-model-poisoning/
-
-- source:
-    taxonomy: owasp
-    id: LLM04
-  target:
-    taxonomy: cwe
     id: CWE-1395
   edge_type: primary
   confidence: medium
   citation: https://genai.owasp.org/llmrisk/llm042025-data-and-model-poisoning/
-
-- source:
-    taxonomy: owasp
-    id: LLM05
-  target:
-    taxonomy: cwe
-    id: CWE-79
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
 
 - source:
     taxonomy: owasp
@@ -1222,16 +805,6 @@
     id: CWE-78
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
-
-- source:
-    taxonomy: owasp
-    id: LLM05
-  target:
-    taxonomy: cwe
-    id: CWE-601
-  edge_type: primary
-  confidence: medium
   citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
 
 - source:
@@ -1266,16 +839,6 @@
 
 - source:
     taxonomy: owasp
-    id: LLM06
-  target:
-    taxonomy: cwe
-    id: CWE-732
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
-
-- source:
-    taxonomy: owasp
     id: LLM07
   target:
     taxonomy: cwe
@@ -1290,26 +853,6 @@
   target:
     taxonomy: cwe
     id: CWE-538
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/
-
-- source:
-    taxonomy: owasp
-    id: LLM07
-  target:
-    taxonomy: cwe
-    id: CWE-540
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/
-
-- source:
-    taxonomy: owasp
-    id: LLM07
-  target:
-    taxonomy: cwe
-    id: CWE-1426
   edge_type: primary
   confidence: high
   citation: https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/
@@ -1369,16 +912,6 @@
     id: LLM09
   target:
     taxonomy: cwe
-    id: CWE-1426
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm092025-misinformation/
-
-- source:
-    taxonomy: owasp
-    id: LLM09
-  target:
-    taxonomy: cwe
     id: CWE-20
   edge_type: primary
   confidence: medium
@@ -1402,16 +935,6 @@
     id: CWE-770
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/
-
-- source:
-    taxonomy: owasp
-    id: LLM10
-  target:
-    taxonomy: cwe
-    id: CWE-799
-  edge_type: primary
-  confidence: medium
   citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/
 
 - source:
@@ -1459,26 +982,6 @@
 
 - source:
     taxonomy: owasp
-    id: API2
-  target:
-    taxonomy: cwe
-    id: CWE-307
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/API-Security/editions/2023/en/0xa2-broken-authentication/
-
-- source:
-    taxonomy: owasp
-    id: API3
-  target:
-    taxonomy: cwe
-    id: CWE-213
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/
-
-- source:
-    taxonomy: owasp
     id: API4
   target:
     taxonomy: cwe
@@ -1517,20 +1020,6 @@
   confidence: high
   citation: https://owasp.org/API-Security/editions/2023/en/0xa7-server-side-request-forgery/
 
-- source:
-    taxonomy: owasp
-    id: API8
-  target:
-    taxonomy: cwe
-    id: CWE-16
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/API-Security/editions/2023/en/0xa8-security-misconfiguration/
-
-# ─── Batch 3 (T016): ATT&CK↔CWE expansion (30 edges) ───────────────────────────
-# Source: attack.mitre.org technique pages. CWE relationships inferred from technique
-# descriptions and mitigations. Confidence: medium (inferred semantic match); high
-# where ATT&CK explicitly publishes CWE refs.
 - source:
     taxonomy: mitre-attack
     id: T1005
@@ -1590,16 +1079,6 @@
   edge_type: primary
   confidence: medium
   citation: https://attack.mitre.org/techniques/T1070/004/
-
-- source:
-    taxonomy: mitre-attack
-    id: T1070.006
-  target:
-    taxonomy: cwe
-    id: CWE-1269
-  edge_type: primary
-  confidence: low
-  citation: https://attack.mitre.org/techniques/T1070/006/
 
 - source:
     taxonomy: mitre-attack
@@ -1803,16 +1282,6 @@
 
 - source:
     taxonomy: mitre-attack
-    id: T1562
-  target:
-    taxonomy: cwe
-    id: CWE-693
-  edge_type: primary
-  confidence: medium
-  citation: https://attack.mitre.org/techniques/T1562/
-
-- source:
-    taxonomy: mitre-attack
     id: T1562.006
   target:
     taxonomy: cwe
@@ -1839,40 +1308,10 @@
     id: M1
   target:
     taxonomy: cwe
-    id: CWE-798
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m1-improper-credential-usage
-
-- source:
-    taxonomy: owasp
-    id: M1
-  target:
-    taxonomy: cwe
     id: CWE-522
   edge_type: primary
   confidence: high
   citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m1-improper-credential-usage
-
-- source:
-    taxonomy: owasp
-    id: M2
-  target:
-    taxonomy: cwe
-    id: CWE-1357
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m2-inadequate-supply-chain-security
-
-- source:
-    taxonomy: owasp
-    id: M2
-  target:
-    taxonomy: cwe
-    id: CWE-1104
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m2-inadequate-supply-chain-security
 
 - source:
     taxonomy: owasp
@@ -1916,36 +1355,6 @@
 
 - source:
     taxonomy: owasp
-    id: M5
-  target:
-    taxonomy: cwe
-    id: CWE-319
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m5-insecure-communication
-
-- source:
-    taxonomy: owasp
-    id: M5
-  target:
-    taxonomy: cwe
-    id: CWE-295
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m5-insecure-communication
-
-- source:
-    taxonomy: owasp
-    id: M6
-  target:
-    taxonomy: cwe
-    id: CWE-359
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m6-inadequate-privacy-controls
-
-- source:
-    taxonomy: owasp
     id: M6
   target:
     taxonomy: cwe
@@ -1956,89 +1365,6 @@
 
 - source:
     taxonomy: owasp
-    id: M7
-  target:
-    taxonomy: cwe
-    id: CWE-693
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m7-insufficient-binary-protection
-
-- source:
-    taxonomy: owasp
-    id: M7
-  target:
-    taxonomy: cwe
-    id: CWE-489
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m7-insufficient-binary-protection
-
-- source:
-    taxonomy: owasp
-    id: M8
-  target:
-    taxonomy: cwe
-    id: CWE-16
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m8-security-misconfiguration
-
-- source:
-    taxonomy: owasp
-    id: M8
-  target:
-    taxonomy: cwe
-    id: CWE-732
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m8-security-misconfiguration
-
-- source:
-    taxonomy: owasp
-    id: M9
-  target:
-    taxonomy: cwe
-    id: CWE-312
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m9-insecure-data-storage
-
-- source:
-    taxonomy: owasp
-    id: M9
-  target:
-    taxonomy: cwe
-    id: CWE-311
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m9-insecure-data-storage
-
-- source:
-    taxonomy: owasp
-    id: M10
-  target:
-    taxonomy: cwe
-    id: CWE-327
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m10-insufficient-cryptography
-
-- source:
-    taxonomy: owasp
-    id: M10
-  target:
-    taxonomy: cwe
-    id: CWE-326
-  edge_type: primary
-  confidence: high
-  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m10-insufficient-cryptography
-
-# ─── Batch 4 (T016): OWASP ML Top 10:2023 ↔ CWE (20 edges) ─────────────────────
-# Source: OWASP ML Security Top 10:2023 per-category pages. CWE mappings inferred
-# from risk descriptions. Confidence: medium (inferred semantic match).
-- source:
-    taxonomy: owasp
     id: ML01
   target:
     taxonomy: cwe
@@ -2046,26 +1372,6 @@
   edge_type: primary
   confidence: medium
   citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML01_2023-Input_Manipulation_Attack.html
-
-- source:
-    taxonomy: owasp
-    id: ML01
-  target:
-    taxonomy: cwe
-    id: CWE-1039
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML01_2023-Input_Manipulation_Attack.html
-
-- source:
-    taxonomy: owasp
-    id: ML02
-  target:
-    taxonomy: cwe
-    id: CWE-1039
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML02_2023-Data_Poisoning_Attack.html
 
 - source:
     taxonomy: owasp
@@ -2089,30 +1395,10 @@
 
 - source:
     taxonomy: owasp
-    id: ML03
-  target:
-    taxonomy: cwe
-    id: CWE-201
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML03_2023-Model_Inversion_Attack.html
-
-- source:
-    taxonomy: owasp
     id: ML04
   target:
     taxonomy: cwe
     id: CWE-200
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML04_2023-Membership_Inference_Attack.html
-
-- source:
-    taxonomy: owasp
-    id: ML04
-  target:
-    taxonomy: cwe
-    id: CWE-359
   edge_type: primary
   confidence: medium
   citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML04_2023-Membership_Inference_Attack.html
@@ -2126,26 +1412,6 @@
   edge_type: primary
   confidence: medium
   citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML05_2023-Model_Theft.html
-
-- source:
-    taxonomy: owasp
-    id: ML05
-  target:
-    taxonomy: cwe
-    id: CWE-312
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML05_2023-Model_Theft.html
-
-- source:
-    taxonomy: owasp
-    id: ML06
-  target:
-    taxonomy: cwe
-    id: CWE-1357
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML06_2023-AI_Supply_Chain_Attacks.html
 
 - source:
     taxonomy: owasp
@@ -2166,26 +1432,6 @@
   edge_type: primary
   confidence: medium
   citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML07_2023-Transfer_Learning_Attack.html
-
-- source:
-    taxonomy: owasp
-    id: ML07
-  target:
-    taxonomy: cwe
-    id: CWE-1039
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML07_2023-Transfer_Learning_Attack.html
-
-- source:
-    taxonomy: owasp
-    id: ML08
-  target:
-    taxonomy: cwe
-    id: CWE-1039
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML08_2023-Model_Skewing.html
 
 - source:
     taxonomy: owasp
@@ -2222,16 +1468,6 @@
     id: ML10
   target:
     taxonomy: cwe
-    id: CWE-1039
-  edge_type: primary
-  confidence: medium
-  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML10_2023-Model_Poisoning.html
-
-- source:
-    taxonomy: owasp
-    id: ML10
-  target:
-    taxonomy: cwe
     id: CWE-494
   edge_type: primary
   confidence: medium
@@ -2247,16 +1483,6 @@
   target:
     taxonomy: cwe
     id: CWE-77
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
-
-- source:
-    taxonomy: owasp
-    id: ASI01
-  target:
-    taxonomy: cwe
-    id: CWE-1427
   edge_type: primary
   confidence: medium
   citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
@@ -2297,16 +1523,6 @@
   target:
     taxonomy: cwe
     id: CWE-285
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
-
-- source:
-    taxonomy: owasp
-    id: ASI04
-  target:
-    taxonomy: cwe
-    id: CWE-1357
   edge_type: primary
   confidence: medium
   citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
@@ -2366,16 +1582,6 @@
     id: ASI07
   target:
     taxonomy: cwe
-    id: CWE-319
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
-
-- source:
-    taxonomy: owasp
-    id: ASI07
-  target:
-    taxonomy: cwe
     id: CWE-287
   edge_type: primary
   confidence: medium
@@ -2413,16 +1619,6 @@
 
 - source:
     taxonomy: owasp
-    id: ASI09
-  target:
-    taxonomy: cwe
-    id: CWE-1426
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
-
-- source:
-    taxonomy: owasp
     id: ASI10
   target:
     taxonomy: cwe
@@ -2430,150 +1626,6 @@
   edge_type: primary
   confidence: medium
   citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
-
-- source:
-    taxonomy: owasp
-    id: ASI10
-  target:
-    taxonomy: cwe
-    id: CWE-1427
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
-
-# ─── Batch 4 (cont.): Additional ATLAS → ATT&CK mappings (15 edges) ────────────
-# Source: atlas.mitre.org ATLAS v5.x technique pages. AML.T0061-T0062 are
-# October 2025 agent-technique additions. Confidence: medium unless page
-# explicitly declares ATT&CK parent.
-- source:
-    taxonomy: mitre-atlas
-    id: AML.T0000
-  target:
-    taxonomy: mitre-attack
-    id: T1213
-  edge_type: primary
-  confidence: medium
-  citation: https://atlas.mitre.org/techniques/AML.T0000
-
-- source:
-    taxonomy: mitre-atlas
-    id: AML.T0001
-  target:
-    taxonomy: mitre-attack
-    id: T1213
-  edge_type: primary
-  confidence: medium
-  citation: https://atlas.mitre.org/techniques/AML.T0001
-
-- source:
-    taxonomy: mitre-atlas
-    id: AML.T0003
-  target:
-    taxonomy: mitre-attack
-    id: T1195.002
-  edge_type: primary
-  confidence: medium
-  citation: https://atlas.mitre.org/techniques/AML.T0003
-
-- source:
-    taxonomy: mitre-atlas
-    id: AML.T0005
-  target:
-    taxonomy: mitre-attack
-    id: T1213
-  edge_type: primary
-  confidence: medium
-  citation: https://atlas.mitre.org/techniques/AML.T0005
-
-- source:
-    taxonomy: mitre-atlas
-    id: AML.T0011
-  target:
-    taxonomy: mitre-attack
-    id: T1005
-  edge_type: primary
-  confidence: medium
-  citation: https://atlas.mitre.org/techniques/AML.T0011
-
-- source:
-    taxonomy: mitre-atlas
-    id: AML.T0016
-  target:
-    taxonomy: mitre-attack
-    id: T1195.002
-  edge_type: primary
-  confidence: medium
-  citation: https://atlas.mitre.org/techniques/AML.T0016
-
-- source:
-    taxonomy: mitre-atlas
-    id: AML.T0025
-  target:
-    taxonomy: mitre-attack
-    id: T1005
-  edge_type: primary
-  confidence: medium
-  citation: https://atlas.mitre.org/techniques/AML.T0025
-
-- source:
-    taxonomy: mitre-atlas
-    id: AML.T0029
-  target:
-    taxonomy: mitre-attack
-    id: T1499
-  edge_type: primary
-  confidence: medium
-  citation: https://atlas.mitre.org/techniques/AML.T0029
-
-- source:
-    taxonomy: mitre-atlas
-    id: AML.T0034
-  target:
-    taxonomy: mitre-attack
-    id: T1565
-  edge_type: primary
-  confidence: medium
-  citation: https://atlas.mitre.org/techniques/AML.T0034
-
-- source:
-    taxonomy: mitre-atlas
-    id: AML.T0037
-  target:
-    taxonomy: mitre-attack
-    id: T1213
-  edge_type: primary
-  confidence: medium
-  citation: https://atlas.mitre.org/techniques/AML.T0037
-
-- source:
-    taxonomy: mitre-atlas
-    id: AML.T0040
-  target:
-    taxonomy: mitre-attack
-    id: T1068
-  edge_type: primary
-  confidence: medium
-  citation: https://atlas.mitre.org/techniques/AML.T0040
-
-- source:
-    taxonomy: mitre-atlas
-    id: AML.T0043
-  target:
-    taxonomy: mitre-attack
-    id: T1190
-  edge_type: primary
-  confidence: medium
-  citation: https://atlas.mitre.org/techniques/AML.T0043
-
-- source:
-    taxonomy: mitre-atlas
-    id: AML.T0048
-  target:
-    taxonomy: mitre-attack
-    id: T1499
-  edge_type: primary
-  confidence: medium
-  citation: https://atlas.mitre.org/techniques/AML.T0048
 
 - source:
     taxonomy: mitre-atlas
@@ -2688,58 +1740,6 @@
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
 
-- source:
-    taxonomy: tachi-control-category
-    id: monitoring-alerting
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-control-category
-    id: monitoring-alerting
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 3.2
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-control-category
-    id: error-handling
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.6
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-control-category
-    id: secrets-management
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.10
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-control-category
-    id: secrets-management
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-# ─── Batch 5 (cont.): NIST Surface C (tachi-stride-ai-category ↔ NIST, 14) ─────
-# Source: nist-ai-rmf-mapping.md Surface C Overlap rows. Verbatim per FR-022.
 - source:
     taxonomy: tachi-stride-ai-category
     id: spoofing
@@ -3014,16 +2014,6 @@
     id: authentication
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-control-category
-    id: authentication
-  target:
-    taxonomy: nist-ai-rmf
     id: MANAGE 1.3
   edge_type: primary
   confidence: high
@@ -3045,62 +2035,12 @@
     id: input-validation
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE 2.6
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-control-category
-    id: input-validation
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-control-category
-    id: input-validation
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.10
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-control-category
-    id: input-validation
-  target:
-    taxonomy: nist-ai-rmf
     id: MANAGE 1.3
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
 
 # --- rate-limiting (3 Subcategories: MEASURE 2.6, 2.7, MANAGE 1.3) ---
-- source:
-    taxonomy: tachi-control-category
-    id: rate-limiting
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.6
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-control-category
-    id: rate-limiting
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
 - source:
     taxonomy: tachi-control-category
     id: rate-limiting
@@ -3127,62 +2067,12 @@
     id: encryption
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-control-category
-    id: encryption
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.10
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-control-category
-    id: encryption
-  target:
-    taxonomy: nist-ai-rmf
     id: MANAGE 1.3
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
 
 # --- logging-audit (4 Subcategories: GOVERN 1.4, MEASURE 2.7, 2.8, MANAGE 1.3) ---
-- source:
-    taxonomy: tachi-control-category
-    id: logging-audit
-  target:
-    taxonomy: nist-ai-rmf
-    id: GOVERN 1.4
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-control-category
-    id: logging-audit
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-control-category
-    id: logging-audit
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.8
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
 - source:
     taxonomy: tachi-control-category
     id: logging-audit
@@ -3242,26 +2132,6 @@
   target:
     taxonomy: nist-ai-rmf
     id: MAP 4.2
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-control-category
-    id: access-control
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-control-category
-    id: access-control
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.10
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -5188,16 +4058,6 @@
 
 - source:
     taxonomy: owasp
-    id: ASI01
-  target:
-    taxonomy: mitre-atlas
-    id: AML.T0061
-  edge_type: primary
-  confidence: medium
-  citation: https://atlas.mitre.org/techniques/AML.T0061
-
-- source:
-    taxonomy: owasp
     id: ASI08
   target:
     taxonomy: mitre-atlas
@@ -5205,16 +4065,6 @@
   edge_type: primary
   confidence: medium
   citation: https://atlas.mitre.org/techniques/AML.T0051
-
-- source:
-    taxonomy: owasp
-    id: ASI05
-  target:
-    taxonomy: mitre-atlas
-    id: AML.T0058
-  edge_type: primary
-  confidence: medium
-  citation: https://atlas.mitre.org/techniques/AML.T0058
 
 - source:
     taxonomy: owasp
