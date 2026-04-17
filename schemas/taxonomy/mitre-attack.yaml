@@ -1,0 +1,212 @@
+# MITRE ATT&CK Catalog (taxonomy: mitre-attack)
+#
+# Composition per FR-003 / A1 seed list (38 unique techniques + sub-techniques
+# extracted from the 11 threat-detection agents' detection-patterns.md files,
+# frozen at spec time 2026-04-17):
+#
+#   T1005, T1039, T1068, T1070 (+ .001/.002/.004/.006/.008), T1078 (+ .004),
+#   T1195 (+ .001/.002), T1213 (+ .001/.002/.003/.005),
+#   T1498 (+ .001/.002), T1499 (+ .001/.002/.003/.004),
+#   T1530, T1548 (+ .001/.003/.005), T1550 (+ .001),
+#   T1556, T1562 (+ .006), T1565
+#
+# Record shape per FR-003: {id, full_id, name, url, cwe_refs}.
+# `cwe_refs: []` for all records — MITRE ATT&CK does not publish direct CWE
+# cross-references as part of technique definitions. ATT&CK->CWE relationships
+# (where meaningful) live in crosswalk.yaml as edges with curator citations.
+#
+# URL pattern per FR-033: https://attack.mitre.org/techniques/T<N>/ for parent
+# techniques; https://attack.mitre.org/techniques/T<N>/<sub>/ for sub-techniques.
+#
+# Sorted alphabetically by `id` per FR-032.
+
+- id: T1005
+  full_id: ATT&CK-T1005
+  name: Data from Local System
+  url: https://attack.mitre.org/techniques/T1005/
+  cwe_refs: []
+- id: T1039
+  full_id: ATT&CK-T1039
+  name: Data from Network Shared Drive
+  url: https://attack.mitre.org/techniques/T1039/
+  cwe_refs: []
+- id: T1068
+  full_id: ATT&CK-T1068
+  name: Exploitation for Privilege Escalation
+  url: https://attack.mitre.org/techniques/T1068/
+  cwe_refs: []
+- id: T1070
+  full_id: ATT&CK-T1070
+  name: Indicator Removal
+  url: https://attack.mitre.org/techniques/T1070/
+  cwe_refs: []
+- id: T1070.001
+  full_id: ATT&CK-T1070.001
+  name: Clear Windows Event Logs
+  url: https://attack.mitre.org/techniques/T1070/001/
+  cwe_refs: []
+- id: T1070.002
+  full_id: ATT&CK-T1070.002
+  name: Clear Linux or Mac System Logs
+  url: https://attack.mitre.org/techniques/T1070/002/
+  cwe_refs: []
+- id: T1070.004
+  full_id: ATT&CK-T1070.004
+  name: File Deletion
+  url: https://attack.mitre.org/techniques/T1070/004/
+  cwe_refs: []
+- id: T1070.006
+  full_id: ATT&CK-T1070.006
+  name: Timestomp
+  url: https://attack.mitre.org/techniques/T1070/006/
+  cwe_refs: []
+- id: T1070.008
+  full_id: ATT&CK-T1070.008
+  name: Clear Mailbox Data
+  url: https://attack.mitre.org/techniques/T1070/008/
+  cwe_refs: []
+- id: T1078
+  full_id: ATT&CK-T1078
+  name: Valid Accounts
+  url: https://attack.mitre.org/techniques/T1078/
+  cwe_refs: []
+- id: T1078.004
+  full_id: ATT&CK-T1078.004
+  name: Cloud Accounts
+  url: https://attack.mitre.org/techniques/T1078/004/
+  cwe_refs: []
+- id: T1195
+  full_id: ATT&CK-T1195
+  name: Supply Chain Compromise
+  url: https://attack.mitre.org/techniques/T1195/
+  cwe_refs: []
+- id: T1195.001
+  full_id: ATT&CK-T1195.001
+  name: Compromise Software Dependencies and Development Tools
+  url: https://attack.mitre.org/techniques/T1195/001/
+  cwe_refs: []
+- id: T1195.002
+  full_id: ATT&CK-T1195.002
+  name: Compromise Software Supply Chain
+  url: https://attack.mitre.org/techniques/T1195/002/
+  cwe_refs: []
+- id: T1213
+  full_id: ATT&CK-T1213
+  name: Data from Information Repositories
+  url: https://attack.mitre.org/techniques/T1213/
+  cwe_refs: []
+- id: T1213.001
+  full_id: ATT&CK-T1213.001
+  name: Confluence
+  url: https://attack.mitre.org/techniques/T1213/001/
+  cwe_refs: []
+- id: T1213.002
+  full_id: ATT&CK-T1213.002
+  name: Sharepoint
+  url: https://attack.mitre.org/techniques/T1213/002/
+  cwe_refs: []
+- id: T1213.003
+  full_id: ATT&CK-T1213.003
+  name: Code Repositories
+  url: https://attack.mitre.org/techniques/T1213/003/
+  cwe_refs: []
+- id: T1213.005
+  full_id: ATT&CK-T1213.005
+  name: Messaging Applications
+  url: https://attack.mitre.org/techniques/T1213/005/
+  cwe_refs: []
+- id: T1498
+  full_id: ATT&CK-T1498
+  name: Network Denial of Service
+  url: https://attack.mitre.org/techniques/T1498/
+  cwe_refs: []
+- id: T1498.001
+  full_id: ATT&CK-T1498.001
+  name: Direct Network Flood
+  url: https://attack.mitre.org/techniques/T1498/001/
+  cwe_refs: []
+- id: T1498.002
+  full_id: ATT&CK-T1498.002
+  name: Reflection Amplification
+  url: https://attack.mitre.org/techniques/T1498/002/
+  cwe_refs: []
+- id: T1499
+  full_id: ATT&CK-T1499
+  name: Endpoint Denial of Service
+  url: https://attack.mitre.org/techniques/T1499/
+  cwe_refs: []
+- id: T1499.001
+  full_id: ATT&CK-T1499.001
+  name: OS Exhaustion Flood
+  url: https://attack.mitre.org/techniques/T1499/001/
+  cwe_refs: []
+- id: T1499.002
+  full_id: ATT&CK-T1499.002
+  name: Service Exhaustion Flood
+  url: https://attack.mitre.org/techniques/T1499/002/
+  cwe_refs: []
+- id: T1499.003
+  full_id: ATT&CK-T1499.003
+  name: Application Exhaustion Flood
+  url: https://attack.mitre.org/techniques/T1499/003/
+  cwe_refs: []
+- id: T1499.004
+  full_id: ATT&CK-T1499.004
+  name: Application or System Exploitation
+  url: https://attack.mitre.org/techniques/T1499/004/
+  cwe_refs: []
+- id: T1530
+  full_id: ATT&CK-T1530
+  name: Data from Cloud Storage
+  url: https://attack.mitre.org/techniques/T1530/
+  cwe_refs: []
+- id: T1548
+  full_id: ATT&CK-T1548
+  name: Abuse Elevation Control Mechanism
+  url: https://attack.mitre.org/techniques/T1548/
+  cwe_refs: []
+- id: T1548.001
+  full_id: ATT&CK-T1548.001
+  name: Setuid and Setgid
+  url: https://attack.mitre.org/techniques/T1548/001/
+  cwe_refs: []
+- id: T1548.003
+  full_id: ATT&CK-T1548.003
+  name: Sudo and Sudo Caching
+  url: https://attack.mitre.org/techniques/T1548/003/
+  cwe_refs: []
+- id: T1548.005
+  full_id: ATT&CK-T1548.005
+  name: Temporary Elevated Cloud Access
+  url: https://attack.mitre.org/techniques/T1548/005/
+  cwe_refs: []
+- id: T1550
+  full_id: ATT&CK-T1550
+  name: Use Alternate Authentication Material
+  url: https://attack.mitre.org/techniques/T1550/
+  cwe_refs: []
+- id: T1550.001
+  full_id: ATT&CK-T1550.001
+  name: Application Access Token
+  url: https://attack.mitre.org/techniques/T1550/001/
+  cwe_refs: []
+- id: T1556
+  full_id: ATT&CK-T1556
+  name: Modify Authentication Process
+  url: https://attack.mitre.org/techniques/T1556/
+  cwe_refs: []
+- id: T1562
+  full_id: ATT&CK-T1562
+  name: Impair Defenses
+  url: https://attack.mitre.org/techniques/T1562/
+  cwe_refs: []
+- id: T1562.006
+  full_id: ATT&CK-T1562.006
+  name: Indicator Blocking
+  url: https://attack.mitre.org/techniques/T1562/006/
+  cwe_refs: []
+- id: T1565
+  full_id: ATT&CK-T1565
+  name: Data Manipulation
+  url: https://attack.mitre.org/techniques/T1565/
+  cwe_refs: []
