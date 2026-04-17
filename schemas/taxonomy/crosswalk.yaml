@@ -9,519 +9,518 @@
 #
 # Day 1 Spike (T007): 50 edges across 5 diverse slices per FR A5 composition.
 # All edges carry edge_type: primary. Subsequent waves (T016, T023, T024) extend toward the ≥500 floor.
-edges:
-  # ─── Slice 1: OWASP ↔ CWE (10 edges) ──────────────────────────────────────────
-  # Source: OWASP official pages where CWE cross-references are explicitly published.
-  - source:
-      taxonomy: owasp
-      id: LLM01:2025
-    target:
-      taxonomy: cwe
-      id: CWE-77
-    edge_type: primary
-    confidence: high
-    citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+# ─── Slice 1: OWASP ↔ CWE (10 edges) ──────────────────────────────────────────
+# Source: OWASP official pages where CWE cross-references are explicitly published.
+- source:
+    taxonomy: owasp
+    id: LLM01:2025
+  target:
+    taxonomy: cwe
+    id: CWE-77
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
 
-  - source:
-      taxonomy: owasp
-      id: LLM02:2025
-    target:
-      taxonomy: cwe
-      id: CWE-200
-    edge_type: primary
-    confidence: high
-    citation: https://genai.owasp.org/llmrisk/llm02-sensitive-information-disclosure/
+- source:
+    taxonomy: owasp
+    id: LLM02:2025
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm02-sensitive-information-disclosure/
 
-  - source:
-      taxonomy: owasp
-      id: LLM03:2025
-    target:
-      taxonomy: cwe
-      id: CWE-1395
-    edge_type: primary
-    confidence: high
-    citation: https://genai.owasp.org/llmrisk/llm03-supply-chain/
+- source:
+    taxonomy: owasp
+    id: LLM03:2025
+  target:
+    taxonomy: cwe
+    id: CWE-1395
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm03-supply-chain/
 
-  - source:
-      taxonomy: owasp
-      id: LLM04:2025
-    target:
-      taxonomy: cwe
-      id: CWE-20
-    edge_type: primary
-    confidence: high
-    citation: https://genai.owasp.org/llmrisk/llm04-data-and-model-poisoning/
+- source:
+    taxonomy: owasp
+    id: LLM04:2025
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm04-data-and-model-poisoning/
 
-  - source:
-      taxonomy: owasp
-      id: LLM05:2025
-    target:
-      taxonomy: cwe
-      id: CWE-79
-    edge_type: primary
-    confidence: high
-    citation: https://genai.owasp.org/llmrisk/llm05-improper-output-handling/
+- source:
+    taxonomy: owasp
+    id: LLM05:2025
+  target:
+    taxonomy: cwe
+    id: CWE-79
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm05-improper-output-handling/
 
-  - source:
-      taxonomy: owasp
-      id: A01:2021
-    target:
-      taxonomy: cwe
-      id: CWE-285
-    edge_type: primary
-    confidence: high
-    citation: https://owasp.org/Top10/A01_2021-Broken_Access_Control/
+- source:
+    taxonomy: owasp
+    id: A01:2021
+  target:
+    taxonomy: cwe
+    id: CWE-285
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/A01_2021-Broken_Access_Control/
 
-  - source:
-      taxonomy: owasp
-      id: A02:2021
-    target:
-      taxonomy: cwe
-      id: CWE-522
-    edge_type: primary
-    confidence: high
-    citation: https://owasp.org/Top10/A02_2021-Cryptographic_Failures/
+- source:
+    taxonomy: owasp
+    id: A02:2021
+  target:
+    taxonomy: cwe
+    id: CWE-522
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/A02_2021-Cryptographic_Failures/
 
-  - source:
-      taxonomy: owasp
-      id: A03:2021
-    target:
-      taxonomy: cwe
-      id: CWE-89
-    edge_type: primary
-    confidence: high
-    citation: https://owasp.org/Top10/A03_2021-Injection/
+- source:
+    taxonomy: owasp
+    id: A03:2021
+  target:
+    taxonomy: cwe
+    id: CWE-89
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/A03_2021-Injection/
 
-  - source:
-      taxonomy: owasp
-      id: A07:2021
-    target:
-      taxonomy: cwe
-      id: CWE-287
-    edge_type: primary
-    confidence: high
-    citation: https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/
+- source:
+    taxonomy: owasp
+    id: A07:2021
+  target:
+    taxonomy: cwe
+    id: CWE-287
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/
 
-  - source:
-      taxonomy: owasp
-      id: A08:2021
-    target:
-      taxonomy: cwe
-      id: CWE-502
-    edge_type: primary
-    confidence: high
-    citation: https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/
+- source:
+    taxonomy: owasp
+    id: A08:2021
+  target:
+    taxonomy: cwe
+    id: CWE-502
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/
 
-  # ─── Slice 2: ATT&CK ↔ CWE (10 edges) ─────────────────────────────────────────
-  # Source: attack.mitre.org technique pages. ATT&CK does not publish CWE cross-references
-  # inline in most cases; relationships below are curator-inferred from Mitigations / Related
-  # context and associated CWE categories. Confidence set to medium per anti-drift rule.
-  - source:
-      taxonomy: mitre-attack
-      id: T1190
-    target:
-      taxonomy: cwe
-      id: CWE-20
-    edge_type: primary
-    confidence: medium
-    citation: https://attack.mitre.org/techniques/T1190/
+# ─── Slice 2: ATT&CK ↔ CWE (10 edges) ─────────────────────────────────────────
+# Source: attack.mitre.org technique pages. ATT&CK does not publish CWE cross-references
+# inline in most cases; relationships below are curator-inferred from Mitigations / Related
+# context and associated CWE categories. Confidence set to medium per anti-drift rule.
+- source:
+    taxonomy: mitre-attack
+    id: T1190
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1190/
 
-  - source:
-      taxonomy: mitre-attack
-      id: T1078
-    target:
-      taxonomy: cwe
-      id: CWE-287
-    edge_type: primary
-    confidence: medium
-    citation: https://attack.mitre.org/techniques/T1078/
+- source:
+    taxonomy: mitre-attack
+    id: T1078
+  target:
+    taxonomy: cwe
+    id: CWE-287
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1078/
 
-  - source:
-      taxonomy: mitre-attack
-      id: T1068
-    target:
-      taxonomy: cwe
-      id: CWE-269
-    edge_type: primary
-    confidence: medium
-    citation: https://attack.mitre.org/techniques/T1068/
+- source:
+    taxonomy: mitre-attack
+    id: T1068
+  target:
+    taxonomy: cwe
+    id: CWE-269
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1068/
 
-  - source:
-      taxonomy: mitre-attack
-      id: T1548
-    target:
-      taxonomy: cwe
-      id: CWE-266
-    edge_type: primary
-    confidence: medium
-    citation: https://attack.mitre.org/techniques/T1548/
+- source:
+    taxonomy: mitre-attack
+    id: T1548
+  target:
+    taxonomy: cwe
+    id: CWE-266
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1548/
 
-  - source:
-      taxonomy: mitre-attack
-      id: T1498
-    target:
-      taxonomy: cwe
-      id: CWE-400
-    edge_type: primary
-    confidence: medium
-    citation: https://attack.mitre.org/techniques/T1498/
+- source:
+    taxonomy: mitre-attack
+    id: T1498
+  target:
+    taxonomy: cwe
+    id: CWE-400
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1498/
 
-  - source:
-      taxonomy: mitre-attack
-      id: T1499
-    target:
-      taxonomy: cwe
-      id: CWE-770
-    edge_type: primary
-    confidence: medium
-    citation: https://attack.mitre.org/techniques/T1499/
+- source:
+    taxonomy: mitre-attack
+    id: T1499
+  target:
+    taxonomy: cwe
+    id: CWE-770
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1499/
 
-  - source:
-      taxonomy: mitre-attack
-      id: T1195
-    target:
-      taxonomy: cwe
-      id: CWE-494
-    edge_type: primary
-    confidence: medium
-    citation: https://attack.mitre.org/techniques/T1195/
+- source:
+    taxonomy: mitre-attack
+    id: T1195
+  target:
+    taxonomy: cwe
+    id: CWE-494
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1195/
 
-  - source:
-      taxonomy: mitre-attack
-      id: T1070
-    target:
-      taxonomy: cwe
-      id: CWE-778
-    edge_type: primary
-    confidence: medium
-    citation: https://attack.mitre.org/techniques/T1070/
+- source:
+    taxonomy: mitre-attack
+    id: T1070
+  target:
+    taxonomy: cwe
+    id: CWE-778
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1070/
 
-  - source:
-      taxonomy: mitre-attack
-      id: T1556
-    target:
-      taxonomy: cwe
-      id: CWE-287
-    edge_type: primary
-    confidence: medium
-    citation: https://attack.mitre.org/techniques/T1556/
+- source:
+    taxonomy: mitre-attack
+    id: T1556
+  target:
+    taxonomy: cwe
+    id: CWE-287
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1556/
 
-  - source:
-      taxonomy: mitre-attack
-      id: T1530
-    target:
-      taxonomy: cwe
-      id: CWE-522
-    edge_type: primary
-    confidence: medium
-    citation: https://attack.mitre.org/techniques/T1530/
+- source:
+    taxonomy: mitre-attack
+    id: T1530
+  target:
+    taxonomy: cwe
+    id: CWE-522
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1530/
 
-  # ─── Slice 3: ATT&CK ↔ ATLAS (10 edges) ───────────────────────────────────────
-  # Source: atlas.mitre.org technique pages cite parent ATT&CK techniques. Confidence: high
-  # where ATLAS explicitly declares the ATT&CK relationship; medium where inferred.
-  - source:
-      taxonomy: mitre-atlas
-      id: AML.T0010
-    target:
-      taxonomy: mitre-attack
-      id: T1195
-    edge_type: primary
-    confidence: high
-    citation: https://atlas.mitre.org/techniques/AML.T0010
+# ─── Slice 3: ATT&CK ↔ ATLAS (10 edges) ───────────────────────────────────────
+# Source: atlas.mitre.org technique pages cite parent ATT&CK techniques. Confidence: high
+# where ATLAS explicitly declares the ATT&CK relationship; medium where inferred.
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0010
+  target:
+    taxonomy: mitre-attack
+    id: T1195
+  edge_type: primary
+  confidence: high
+  citation: https://atlas.mitre.org/techniques/AML.T0010
 
-  - source:
-      taxonomy: mitre-atlas
-      id: AML.T0018
-    target:
-      taxonomy: mitre-attack
-      id: T1195.002
-    edge_type: primary
-    confidence: high
-    citation: https://atlas.mitre.org/techniques/AML.T0018
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0018
+  target:
+    taxonomy: mitre-attack
+    id: T1195.002
+  edge_type: primary
+  confidence: high
+  citation: https://atlas.mitre.org/techniques/AML.T0018
 
-  - source:
-      taxonomy: mitre-atlas
-      id: AML.T0020
-    target:
-      taxonomy: mitre-attack
-      id: T1565
-    edge_type: primary
-    confidence: medium
-    citation: https://atlas.mitre.org/techniques/AML.T0020
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0020
+  target:
+    taxonomy: mitre-attack
+    id: T1565
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0020
 
-  - source:
-      taxonomy: mitre-atlas
-      id: AML.T0024
-    target:
-      taxonomy: mitre-attack
-      id: T1005
-    edge_type: primary
-    confidence: medium
-    citation: https://atlas.mitre.org/techniques/AML.T0024
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0024
+  target:
+    taxonomy: mitre-attack
+    id: T1005
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0024
 
-  - source:
-      taxonomy: mitre-atlas
-      id: AML.T0051
-    target:
-      taxonomy: mitre-attack
-      id: T1565
-    edge_type: primary
-    confidence: medium
-    citation: https://atlas.mitre.org/techniques/AML.T0051
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0051
+  target:
+    taxonomy: mitre-attack
+    id: T1565
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0051
 
-  - source:
-      taxonomy: mitre-atlas
-      id: AML.T0054
-    target:
-      taxonomy: mitre-attack
-      id: T1068
-    edge_type: primary
-    confidence: medium
-    citation: https://atlas.mitre.org/techniques/AML.T0054
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0054
+  target:
+    taxonomy: mitre-attack
+    id: T1068
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0054
 
-  - source:
-      taxonomy: mitre-atlas
-      id: AML.T0057
-    target:
-      taxonomy: mitre-attack
-      id: T1039
-    edge_type: primary
-    confidence: medium
-    citation: https://atlas.mitre.org/techniques/AML.T0057
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0057
+  target:
+    taxonomy: mitre-attack
+    id: T1039
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0057
 
-  - source:
-      taxonomy: mitre-atlas
-      id: AML.T0058
-    target:
-      taxonomy: mitre-attack
-      id: T1565
-    edge_type: primary
-    confidence: medium
-    citation: https://atlas.mitre.org/techniques/AML.T0058
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0058
+  target:
+    taxonomy: mitre-attack
+    id: T1565
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0058
 
-  - source:
-      taxonomy: mitre-atlas
-      id: AML.T0059
-    target:
-      taxonomy: mitre-attack
-      id: T1565.001
-    edge_type: primary
-    confidence: medium
-    citation: https://atlas.mitre.org/techniques/AML.T0059
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0059
+  target:
+    taxonomy: mitre-attack
+    id: T1565.001
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0059
 
-  - source:
-      taxonomy: mitre-atlas
-      id: AML.T0060
-    target:
-      taxonomy: mitre-attack
-      id: T1557
-    edge_type: primary
-    confidence: medium
-    citation: https://atlas.mitre.org/techniques/AML.T0060
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0060
+  target:
+    taxonomy: mitre-attack
+    id: T1557
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0060
 
-  # ─── Slice 4: LLM ↔ NIST (10 edges) ───────────────────────────────────────────
-  # Source: nist-ai-rmf-mapping.md (Feature 144) Surface B + Surface C verbatim rows.
-  # Confidence: high — verbatim transcription from Feature 144 authoritative mapping.
-  - source:
-      taxonomy: tachi-control-category
-      id: authentication
-    target:
-      taxonomy: nist-ai-rmf
-      id: MEASURE-2.7
-    edge_type: primary
-    confidence: high
-    citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+# ─── Slice 4: LLM ↔ NIST (10 edges) ───────────────────────────────────────────
+# Source: nist-ai-rmf-mapping.md (Feature 144) Surface B + Surface C verbatim rows.
+# Confidence: high — verbatim transcription from Feature 144 authoritative mapping.
+- source:
+    taxonomy: tachi-control-category
+    id: authentication
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE-2.7
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
 
-  - source:
-      taxonomy: tachi-control-category
-      id: input-validation
-    target:
-      taxonomy: nist-ai-rmf
-      id: MEASURE-2.6
-    edge_type: primary
-    confidence: high
-    citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+- source:
+    taxonomy: tachi-control-category
+    id: input-validation
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE-2.6
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
 
-  - source:
-      taxonomy: tachi-control-category
-      id: input-validation
-    target:
-      taxonomy: nist-ai-rmf
-      id: MEASURE-2.10
-    edge_type: primary
-    confidence: high
-    citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+- source:
+    taxonomy: tachi-control-category
+    id: input-validation
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE-2.10
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
 
-  - source:
-      taxonomy: tachi-control-category
-      id: rate-limiting
-    target:
-      taxonomy: nist-ai-rmf
-      id: MEASURE-2.6
-    edge_type: primary
-    confidence: high
-    citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+- source:
+    taxonomy: tachi-control-category
+    id: rate-limiting
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE-2.6
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
 
-  - source:
-      taxonomy: tachi-control-category
-      id: encryption
-    target:
-      taxonomy: nist-ai-rmf
-      id: MEASURE-2.10
-    edge_type: primary
-    confidence: high
-    citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+- source:
+    taxonomy: tachi-control-category
+    id: encryption
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE-2.10
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
 
-  - source:
-      taxonomy: tachi-control-category
-      id: logging-audit
-    target:
-      taxonomy: nist-ai-rmf
-      id: GOVERN-1.4
-    edge_type: primary
-    confidence: high
-    citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+- source:
+    taxonomy: tachi-control-category
+    id: logging-audit
+  target:
+    taxonomy: nist-ai-rmf
+    id: GOVERN-1.4
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
 
-  - source:
-      taxonomy: tachi-control-category
-      id: logging-audit
-    target:
-      taxonomy: nist-ai-rmf
-      id: MEASURE-2.8
-    edge_type: primary
-    confidence: high
-    citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+- source:
+    taxonomy: tachi-control-category
+    id: logging-audit
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE-2.8
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
 
-  - source:
-      taxonomy: tachi-control-category
-      id: access-control
-    target:
-      taxonomy: nist-ai-rmf
-      id: MEASURE-2.10
-    edge_type: primary
-    confidence: high
-    citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+- source:
+    taxonomy: tachi-control-category
+    id: access-control
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE-2.10
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
 
-  - source:
-      taxonomy: tachi-stride-ai-category
-      id: prompt-injection
-    target:
-      taxonomy: nist-ai-rmf
-      id: MEASURE-2.7
-    edge_type: primary
-    confidence: high
-    citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: prompt-injection
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE-2.7
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
 
-  - source:
-      taxonomy: tachi-stride-ai-category
-      id: data-poisoning
-    target:
-      taxonomy: nist-ai-rmf
-      id: MEASURE-2.7
-    edge_type: primary
-    confidence: high
-    citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: data-poisoning
+  target:
+    taxonomy: nist-ai-rmf
+    id: MEASURE-2.7
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
 
-  # ─── Slice 5: Agentic ↔ MITRE (10 edges) ──────────────────────────────────────
-  # Mix: OWASP Agentic 2026 (ASI01-ASI10) → MITRE ATLAS agent techniques (AML.T0058-T0062)
-  # and ATT&CK techniques. Confidence: medium — external curation via Feature 082 detection
-  # patterns and ATLAS v5.4 October 2025 agent technique additions.
-  - source:
-      taxonomy: owasp
-      id: ASI01:2026
-    target:
-      taxonomy: mitre-atlas
-      id: AML.T0061
-    edge_type: primary
-    confidence: medium
-    citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+# ─── Slice 5: Agentic ↔ MITRE (10 edges) ──────────────────────────────────────
+# Mix: OWASP Agentic 2026 (ASI01-ASI10) → MITRE ATLAS agent techniques (AML.T0058-T0062)
+# and ATT&CK techniques. Confidence: medium — external curation via Feature 082 detection
+# patterns and ATLAS v5.4 October 2025 agent technique additions.
+- source:
+    taxonomy: owasp
+    id: ASI01:2026
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0061
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
 
-  - source:
-      taxonomy: owasp
-      id: ASI02:2026
-    target:
-      taxonomy: mitre-atlas
-      id: AML.T0062
-    edge_type: primary
-    confidence: medium
-    citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+- source:
+    taxonomy: owasp
+    id: ASI02:2026
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0062
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
 
-  - source:
-      taxonomy: owasp
-      id: ASI03:2026
-    target:
-      taxonomy: mitre-atlas
-      id: AML.T0059
-    edge_type: primary
-    confidence: medium
-    citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+- source:
+    taxonomy: owasp
+    id: ASI03:2026
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0059
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
 
-  - source:
-      taxonomy: owasp
-      id: ASI04:2026
-    target:
-      taxonomy: mitre-atlas
-      id: AML.T0060
-    edge_type: primary
-    confidence: medium
-    citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+- source:
+    taxonomy: owasp
+    id: ASI04:2026
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0060
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
 
-  - source:
-      taxonomy: owasp
-      id: ASI05:2026
-    target:
-      taxonomy: mitre-atlas
-      id: AML.T0058
-    edge_type: primary
-    confidence: medium
-    citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+- source:
+    taxonomy: owasp
+    id: ASI05:2026
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0058
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
 
-  - source:
-      taxonomy: owasp
-      id: ASI06:2026
-    target:
-      taxonomy: mitre-attack
-      id: T1548
-    edge_type: primary
-    confidence: medium
-    citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+- source:
+    taxonomy: owasp
+    id: ASI06:2026
+  target:
+    taxonomy: mitre-attack
+    id: T1548
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
 
-  - source:
-      taxonomy: owasp
-      id: ASI07:2026
-    target:
-      taxonomy: mitre-atlas
-      id: AML.T0018
-    edge_type: primary
-    confidence: medium
-    citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+- source:
+    taxonomy: owasp
+    id: ASI07:2026
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0018
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
 
-  - source:
-      taxonomy: owasp
-      id: ASI08:2026
-    target:
-      taxonomy: mitre-attack
-      id: T1078
-    edge_type: primary
-    confidence: medium
-    citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+- source:
+    taxonomy: owasp
+    id: ASI08:2026
+  target:
+    taxonomy: mitre-attack
+    id: T1078
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
 
-  - source:
-      taxonomy: owasp
-      id: ASI09:2026
-    target:
-      taxonomy: mitre-atlas
-      id: AML.T0057
-    edge_type: primary
-    confidence: medium
-    citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+- source:
+    taxonomy: owasp
+    id: ASI09:2026
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0057
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
 
-  - source:
-      taxonomy: owasp
-      id: ASI10:2026
-    target:
-      taxonomy: mitre-attack
-      id: T1195
-    edge_type: primary
-    confidence: medium
-    citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+- source:
+    taxonomy: owasp
+    id: ASI10:2026
+  target:
+    taxonomy: mitre-attack
+    id: T1195
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
