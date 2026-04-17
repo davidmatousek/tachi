@@ -524,3 +524,498 @@
   edge_type: primary
   confidence: medium
   citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+# ─── Batch 1 (T016): OWASP 2021 A-category ↔ CWE (49 edges) ────────────────────
+# Source: OWASP Top 10:2021 per-category pages "List of Mapped CWEs" (verbatim from
+# owasp.yaml cwe_refs populated per FR-008). Canonical short IDs resolve against
+# owasp.yaml records. Day 1 5 A-category edges used ':2021'-suffixed IDs; those are
+# preserved verbatim and these short-ID edges are semantically new edges.
+- source:
+    taxonomy: owasp
+    id: A01
+  target:
+    taxonomy: cwe
+    id: CWE-22
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/
+
+- source:
+    taxonomy: owasp
+    id: A01
+  target:
+    taxonomy: cwe
+    id: CWE-284
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/
+
+- source:
+    taxonomy: owasp
+    id: A01
+  target:
+    taxonomy: cwe
+    id: CWE-285
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/
+
+- source:
+    taxonomy: owasp
+    id: A01
+  target:
+    taxonomy: cwe
+    id: CWE-352
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/
+
+- source:
+    taxonomy: owasp
+    id: A01
+  target:
+    taxonomy: cwe
+    id: CWE-862
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/
+
+- source:
+    taxonomy: owasp
+    id: A01
+  target:
+    taxonomy: cwe
+    id: CWE-863
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/
+
+- source:
+    taxonomy: owasp
+    id: A02
+  target:
+    taxonomy: cwe
+    id: CWE-259
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A02
+  target:
+    taxonomy: cwe
+    id: CWE-319
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A02
+  target:
+    taxonomy: cwe
+    id: CWE-327
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A02
+  target:
+    taxonomy: cwe
+    id: CWE-522
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A02
+  target:
+    taxonomy: cwe
+    id: CWE-916
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A03
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A03_2021-Injection/
+
+- source:
+    taxonomy: owasp
+    id: A03
+  target:
+    taxonomy: cwe
+    id: CWE-77
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A03_2021-Injection/
+
+- source:
+    taxonomy: owasp
+    id: A03
+  target:
+    taxonomy: cwe
+    id: CWE-78
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A03_2021-Injection/
+
+- source:
+    taxonomy: owasp
+    id: A03
+  target:
+    taxonomy: cwe
+    id: CWE-79
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A03_2021-Injection/
+
+- source:
+    taxonomy: owasp
+    id: A03
+  target:
+    taxonomy: cwe
+    id: CWE-89
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A03_2021-Injection/
+
+- source:
+    taxonomy: owasp
+    id: A03
+  target:
+    taxonomy: cwe
+    id: CWE-94
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A03_2021-Injection/
+
+- source:
+    taxonomy: owasp
+    id: A04
+  target:
+    taxonomy: cwe
+    id: CWE-209
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A04_2021-Insecure_Design/
+
+- source:
+    taxonomy: owasp
+    id: A04
+  target:
+    taxonomy: cwe
+    id: CWE-256
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A04_2021-Insecure_Design/
+
+- source:
+    taxonomy: owasp
+    id: A04
+  target:
+    taxonomy: cwe
+    id: CWE-269
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A04_2021-Insecure_Design/
+
+- source:
+    taxonomy: owasp
+    id: A04
+  target:
+    taxonomy: cwe
+    id: CWE-311
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A04_2021-Insecure_Design/
+
+- source:
+    taxonomy: owasp
+    id: A04
+  target:
+    taxonomy: cwe
+    id: CWE-434
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A04_2021-Insecure_Design/
+
+- source:
+    taxonomy: owasp
+    id: A05
+  target:
+    taxonomy: cwe
+    id: CWE-16
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
+
+- source:
+    taxonomy: owasp
+    id: A05
+  target:
+    taxonomy: cwe
+    id: CWE-260
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
+
+- source:
+    taxonomy: owasp
+    id: A05
+  target:
+    taxonomy: cwe
+    id: CWE-520
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
+
+- source:
+    taxonomy: owasp
+    id: A05
+  target:
+    taxonomy: cwe
+    id: CWE-611
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
+
+- source:
+    taxonomy: owasp
+    id: A05
+  target:
+    taxonomy: cwe
+    id: CWE-614
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
+
+- source:
+    taxonomy: owasp
+    id: A06
+  target:
+    taxonomy: cwe
+    id: CWE-937
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A06_2021-Vulnerable_and_Outdated_Components/
+
+- source:
+    taxonomy: owasp
+    id: A06
+  target:
+    taxonomy: cwe
+    id: CWE-1035
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A06_2021-Vulnerable_and_Outdated_Components/
+
+- source:
+    taxonomy: owasp
+    id: A06
+  target:
+    taxonomy: cwe
+    id: CWE-1104
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A06_2021-Vulnerable_and_Outdated_Components/
+
+- source:
+    taxonomy: owasp
+    id: A07
+  target:
+    taxonomy: cwe
+    id: CWE-255
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A07
+  target:
+    taxonomy: cwe
+    id: CWE-287
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A07
+  target:
+    taxonomy: cwe
+    id: CWE-306
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A07
+  target:
+    taxonomy: cwe
+    id: CWE-384
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A07
+  target:
+    taxonomy: cwe
+    id: CWE-521
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A07
+  target:
+    taxonomy: cwe
+    id: CWE-798
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A08
+  target:
+    taxonomy: cwe
+    id: CWE-345
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A08
+  target:
+    taxonomy: cwe
+    id: CWE-494
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A08
+  target:
+    taxonomy: cwe
+    id: CWE-502
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A08
+  target:
+    taxonomy: cwe
+    id: CWE-829
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A09
+  target:
+    taxonomy: cwe
+    id: CWE-117
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A09_2021-Security_Logging_and_Monitoring_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A09
+  target:
+    taxonomy: cwe
+    id: CWE-223
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A09_2021-Security_Logging_and_Monitoring_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A09
+  target:
+    taxonomy: cwe
+    id: CWE-532
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A09_2021-Security_Logging_and_Monitoring_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A09
+  target:
+    taxonomy: cwe
+    id: CWE-778
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A09_2021-Security_Logging_and_Monitoring_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A10
+  target:
+    taxonomy: cwe
+    id: CWE-918
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A10_2021-Server-Side_Request_Forgery_%28SSRF%29/
+
+- source:
+    taxonomy: owasp
+    id: A08
+  target:
+    taxonomy: cwe
+    id: CWE-565
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A08
+  target:
+    taxonomy: cwe
+    id: CWE-915
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/
+
+- source:
+    taxonomy: owasp
+    id: A04
+  target:
+    taxonomy: cwe
+    id: CWE-73
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A04_2021-Insecure_Design/
+
+- source:
+    taxonomy: owasp
+    id: A05
+  target:
+    taxonomy: cwe
+    id: CWE-1174
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
