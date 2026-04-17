@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-04-17T15:13:47Z.
+> Auto-generated from GitHub Issues on 2026-04-17T18:57:20Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -46,6 +46,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #180 | F-A1 — Taxonomy Crosswalk Collection [Foundation] | OPEN | 2026-04-17 |
 | #170 | chore: relocate internal strategy docs to _internal/ and update .gitignore | CLOSED | 2026-04-16 |
 | #154 | fix: PDF security report — attack tree images missing, MAESTRO headings empty, landscape infographic whitespace | CLOSED | 2026-04-12 |
 | #27 | Developer Guide: Automated Threat Modeling for Your Architecture | CLOSED | 2026-03-24 |

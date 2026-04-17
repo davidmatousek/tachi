@@ -1,11 +1,12 @@
 # PRD Index
 
-**Last Updated**: 2026-04-17
+**Last Updated**: 2026-04-17 (PRD 180 added — F-A1 Taxonomy Crosswalk Collection)
 **Legend**: ✓=APPROVED, ⚠=APPROVED_WITH_CONCERNS, 🔄=CHANGES_REQUESTED, ⛔=BLOCKED, ⚠⚡=OVERRIDDEN
 
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 180 | [F-A1 Taxonomy Crosswalk Collection](180-taxonomy-crosswalk-collection-2026-04-17.md) | ⚠ | ⚠ | ⚠ | Approved | 2026-04-17 |
 | 145 | [MAESTRO Canonical Worked Example: Multi-Agent Reference Architecture](145-maestro-canonical-worked-example-2026-04-16.md) ([PR #175](https://github.com/davidmatousek/tachi/pull/175)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-17 |
 | 142 | [MAESTRO Phase 3: Agentic Threat Pattern Expansion](142-maestro-agentic-pattern-expansion-2026-04-16.md) ([PR #172](https://github.com/davidmatousek/tachi/pull/172)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-16 |
 | 144 | [MAESTRO Companion: NIST AI RMF Integration Evaluation ADR](144-nist-ai-rmf-evaluation-adr-2026-04-15.md) ([PR #169](https://github.com/davidmatousek/tachi/pull/169)) | ⚠ | ⚠ | ⚠ | Delivered | 2026-04-16 |
