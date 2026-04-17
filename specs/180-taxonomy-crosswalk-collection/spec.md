@@ -17,7 +17,16 @@ triad:
       - /Users/david/Projects/tachi/.aod/results/architect.md
   architect_signoff: null  # Added by /aod.project-plan
   techlead_signoff: null   # Added by /aod.tasks
-  pm_signoff_amendment_2: null  # Opened 2026-04-17 T027 — Surface C Option (c) scope-narrow amendment; PM concurrence required on FR-022 / SC-008 narrowing + F-A1.1 follow-on acceptance. Architect decision artifact at .aod/results/architect.md.
+  # Opened 2026-04-17 T027 — Surface C Option (c) scope-narrow amendment; PM concurrence required on FR-022 / SC-008 narrowing + F-A1.1 follow-on acceptance. Architect decision artifact at .aod/results/architect.md.
+  pm_signoff_amendment_2:
+    agent: product-manager
+    date: 2026-04-17
+    status: APPROVED
+    scope: "Surface C Option (c) scope-narrow: FR-022 41→27 edges (Surface B only), SC-008 Surface C deferred, FR-004 example canonical-format fix, FR-032 sort clarification, F-A1.1 follow-on acceptance"
+    notes: "APPROVED Option (c) — Surface C GAI Risk → STRIDE+AI transcription deferred to F-A1.1 follow-on Issue. PM traceability re-verified: no PRD FR broken. PRD FR-1 (9 files) intact; PRD FR-5 catalog at 72 records intact; PRD FR-6 direction ('Each Surface C row becomes an edge from tachi-stride-ai-category to nist-ai-rmf') was structurally ill-specified at PRD time — conflated Surface C target taxonomy (NIST AI 600-1 §2.X GAI Risks) with Surface B target taxonomy (AI RMF Subcategories). Architect's first-principles check at implementation time surfaced the mismatch; Option (c) defers to F-A1.1 with an 8th enum value rather than accommodating textually-wrong edges that would fail FR-030 referential integrity. PRD Success Metric 2 (≥500 primary edges) intact pending Day 4 architect-pre-authorized +31 edge top-up. User-value assessment: Surface B (control → AI RMF Subcategory) 27-edge compliance path delivered; Surface C (STRIDE+AI → GAI Risk) 15-edge threat-taxonomy audit path deferred ~1 day. Net user-value gain vs. pre-F-A1 state (where Surface C had zero pathway anywhere). F-A1.1 scope (0.5-1 day, schema-minor additive release) structurally parallel to the pm_signoff_amendment_1 FR-021 68→72 precedent. 3 non-blocking concerns recorded: C1 Tier 2 fallback (300-edge floor) is team-lead-authorizable per Risk R3 without PM re-gate; C2 team-lead T034 F-A1.1 Issue MUST cite this signoff + architect T027 analysis for decision-trail integrity; C3 README 'What F-A1 does NOT give you today' subsection should gain Surface C line at T028/T031. Applied First Principles lens per governance.md. Minor amendments (FR-004 space-format, FR-032 numeric-within-function NIST sort, FR-022 14→15 dead-letter count correction) all approved. Team-lead re-sign NOT required (scope narrows, no new timeline/resource risk beyond pre-authorized top-up). Unblocks Wave 4.1 Day 4: web-researcher top-up + T028-T035."
+    decision_artifacts:
+      - /Users/david/Projects/tachi/.aod/results/product-manager.md
+      - /Users/david/Projects/tachi/.aod/results/architect.md
 ---
 
 # Feature Specification: F-A1 Taxonomy Crosswalk Collection
