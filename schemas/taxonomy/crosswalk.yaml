@@ -1526,3 +1526,510 @@
   edge_type: primary
   confidence: medium
   citation: https://owasp.org/API-Security/editions/2023/en/0xa8-security-misconfiguration/
+
+# ─── Batch 3 (T016): ATT&CK↔CWE expansion (30 edges) ───────────────────────────
+# Source: attack.mitre.org technique pages. CWE relationships inferred from technique
+# descriptions and mitigations. Confidence: medium (inferred semantic match); high
+# where ATT&CK explicitly publishes CWE refs.
+- source:
+    taxonomy: mitre-attack
+    id: T1005
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1005/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1039
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1039/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1068
+  target:
+    taxonomy: cwe
+    id: CWE-250
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1068/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1070.001
+  target:
+    taxonomy: cwe
+    id: CWE-778
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1070/001/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1070.002
+  target:
+    taxonomy: cwe
+    id: CWE-778
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1070/002/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1070.004
+  target:
+    taxonomy: cwe
+    id: CWE-117
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1070/004/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1070.006
+  target:
+    taxonomy: cwe
+    id: CWE-1269
+  edge_type: primary
+  confidence: low
+  citation: https://attack.mitre.org/techniques/T1070/006/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1070.008
+  target:
+    taxonomy: cwe
+    id: CWE-532
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1070/008/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1078.004
+  target:
+    taxonomy: cwe
+    id: CWE-287
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1078/004/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1195.001
+  target:
+    taxonomy: cwe
+    id: CWE-494
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1195/001/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1195.002
+  target:
+    taxonomy: cwe
+    id: CWE-494
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1195/002/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1213
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1213/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1213.001
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1213/001/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1213.002
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1213/002/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1213.003
+  target:
+    taxonomy: cwe
+    id: CWE-538
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1213/003/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1213.005
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1213/005/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1498.001
+  target:
+    taxonomy: cwe
+    id: CWE-400
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1498/001/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1498.002
+  target:
+    taxonomy: cwe
+    id: CWE-400
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1498/002/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1499.001
+  target:
+    taxonomy: cwe
+    id: CWE-770
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1499/001/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1499.002
+  target:
+    taxonomy: cwe
+    id: CWE-770
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1499/002/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1499.003
+  target:
+    taxonomy: cwe
+    id: CWE-400
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1499/003/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1499.004
+  target:
+    taxonomy: cwe
+    id: CWE-400
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1499/004/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1548.001
+  target:
+    taxonomy: cwe
+    id: CWE-250
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1548/001/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1548.003
+  target:
+    taxonomy: cwe
+    id: CWE-250
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1548/003/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1548.005
+  target:
+    taxonomy: cwe
+    id: CWE-269
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1548/005/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1550
+  target:
+    taxonomy: cwe
+    id: CWE-287
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1550/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1550.001
+  target:
+    taxonomy: cwe
+    id: CWE-287
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1550/001/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1562
+  target:
+    taxonomy: cwe
+    id: CWE-693
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1562/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1562.006
+  target:
+    taxonomy: cwe
+    id: CWE-778
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1562/006/
+
+- source:
+    taxonomy: mitre-attack
+    id: T1565
+  target:
+    taxonomy: cwe
+    id: CWE-345
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1565/
+
+# ─── Batch 3 (cont.): OWASP Mobile M1-M10 ↔ CWE (20 edges) ─────────────────────
+# Source: OWASP Mobile Top 10:2024 per-category pages. Confidence: medium (pages
+# describe risks; CWE mapping inferred from titles).
+- source:
+    taxonomy: owasp
+    id: M1
+  target:
+    taxonomy: cwe
+    id: CWE-798
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m1-improper-credential-usage
+
+- source:
+    taxonomy: owasp
+    id: M1
+  target:
+    taxonomy: cwe
+    id: CWE-522
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m1-improper-credential-usage
+
+- source:
+    taxonomy: owasp
+    id: M2
+  target:
+    taxonomy: cwe
+    id: CWE-1357
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m2-inadequate-supply-chain-security
+
+- source:
+    taxonomy: owasp
+    id: M2
+  target:
+    taxonomy: cwe
+    id: CWE-1104
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m2-inadequate-supply-chain-security
+
+- source:
+    taxonomy: owasp
+    id: M3
+  target:
+    taxonomy: cwe
+    id: CWE-287
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m3-insecure-authentication-authorization
+
+- source:
+    taxonomy: owasp
+    id: M3
+  target:
+    taxonomy: cwe
+    id: CWE-285
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m3-insecure-authentication-authorization
+
+- source:
+    taxonomy: owasp
+    id: M4
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m4-insufficient-input-output-validation
+
+- source:
+    taxonomy: owasp
+    id: M4
+  target:
+    taxonomy: cwe
+    id: CWE-116
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m4-insufficient-input-output-validation
+
+- source:
+    taxonomy: owasp
+    id: M5
+  target:
+    taxonomy: cwe
+    id: CWE-319
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m5-insecure-communication
+
+- source:
+    taxonomy: owasp
+    id: M5
+  target:
+    taxonomy: cwe
+    id: CWE-295
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m5-insecure-communication
+
+- source:
+    taxonomy: owasp
+    id: M6
+  target:
+    taxonomy: cwe
+    id: CWE-359
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m6-inadequate-privacy-controls
+
+- source:
+    taxonomy: owasp
+    id: M6
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m6-inadequate-privacy-controls
+
+- source:
+    taxonomy: owasp
+    id: M7
+  target:
+    taxonomy: cwe
+    id: CWE-693
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m7-insufficient-binary-protection
+
+- source:
+    taxonomy: owasp
+    id: M7
+  target:
+    taxonomy: cwe
+    id: CWE-489
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m7-insufficient-binary-protection
+
+- source:
+    taxonomy: owasp
+    id: M8
+  target:
+    taxonomy: cwe
+    id: CWE-16
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m8-security-misconfiguration
+
+- source:
+    taxonomy: owasp
+    id: M8
+  target:
+    taxonomy: cwe
+    id: CWE-732
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m8-security-misconfiguration
+
+- source:
+    taxonomy: owasp
+    id: M9
+  target:
+    taxonomy: cwe
+    id: CWE-312
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m9-insecure-data-storage
+
+- source:
+    taxonomy: owasp
+    id: M9
+  target:
+    taxonomy: cwe
+    id: CWE-311
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m9-insecure-data-storage
+
+- source:
+    taxonomy: owasp
+    id: M10
+  target:
+    taxonomy: cwe
+    id: CWE-327
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m10-insufficient-cryptography
+
+- source:
+    taxonomy: owasp
+    id: M10
+  target:
+    taxonomy: cwe
+    id: CWE-326
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m10-insufficient-cryptography
