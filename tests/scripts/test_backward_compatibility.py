@@ -41,6 +41,7 @@ BASELINE_EXAMPLES = [
     "ascii-web-api",
     "mermaid-agentic-app",
     "free-text-microservice",
+    "maestro-reference",
 ]
 
 
