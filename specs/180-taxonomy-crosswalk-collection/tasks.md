@@ -115,7 +115,7 @@ R6 fallback: if only senior-backend-engineer is available, wall-clock extends to
 
 ### Wave 3.2 — Day 3 Gate + Tier 3 Tripwire
 
-- [ ] **T026** [US2] [team-lead] **Day 3 Tier Gate** (per Team-Lead review clarification): count committed primary edges in `crosswalk.yaml`. Decision matrix:
+- [X] **T026** [US2] [team-lead] **Day 3 Tier Gate** (per Team-Lead review clarification): count committed primary edges in `crosswalk.yaml`. Decision matrix:
   - **≥500** → Tier 1 holds (no action; the R3 Tier 1 default scope is achieved).
   - **300–499** → If Tier 2 was authorized at Day 2, Tier 2 holds (300-floor achieved). If Tier 1 was still active at Day 2 end, **escalate to Tier 2 now** (team-lead authorizes 300-floor without PRD amendment; record rationale).
   - **100–299** → **escalate to Tier 2 now** (team-lead authorizes 300-floor; record rationale); if ≤200 at Day 3 end, parallel-evaluate whether Day 4 catch-up to 300 is feasible (senior-backend-engineer + web-researcher coordinate).
@@ -259,9 +259,10 @@ Every spec.md Success Criterion traces to at least one task:
 - **FR-021 72 vs 68 secondary concern**: deferred to T022 with architect non-binding recommendation of Option (b) — curate 68-subset from Jan 2023 AI RMF Core publication, treat the 4 excess as post-publication Playbook expansions outside FR-021 scope.
 
 ### Day 3 Tier Gate (T026)
-- **Committed primary edges at end of Day 3**: (to be recorded)
-- **Decision**: (TIER 1 HOLDS / TIER 2 HOLDS / ESCALATE TIER 3)
-- **Rationale**: (to be recorded)
+- **Committed primary edges at end of Day 3**: **509** primary / 509 total (measured at HEAD `1cd00ab`; every edge in the file is `edge_type: primary`)
+- **Threshold**: ≥500 for R3 Tier 1 default scope
+- **Decision**: **TIER 1 HOLDS** (no escalation; no PRD amendment; no re-sign)
+- **Rationale**: 509 crosses the ≥500 Tier 1 floor by 9 edges. Day 3 net authoring of +217 primary edges (start-of-Day-3 baseline 292 + T023 Surface B canonical 27 + T024 web-researcher net-new harvest 190 = 509) closed the 208-edge gap projected by the Day 2 tier gate T019 rationale. Day 1 T008 tripwire of 3.24s/edge (≈12× under the 38.4s/edge threshold) held through the Day 3 harvest, confirming the R3 Tier 1 feasibility substrate. Confidence discipline per FR-013 held: 283 high / 225 medium / 1 low across the 509-edge final state (source: `.aod/results/web-researcher.md` Confidence Distribution table). T023 Surface B canonical 27 edges co-exist in `crosswalk.yaml` with 22 dash-format drifted Surface B edges from Batch 5 (deferred to T029 fix-in-YAML remediation per NEXT-SESSION.md §Open Decisions #2); 16 pre-existing drifted Surface C edges likewise remain pending T029 cleanup. T023 Surface C canonical transcription was deferred to an ADR-025 amendment Issue (structural blocker per `.aod/results/senior-backend-engineer.md` §5.1 — AI 600-1 §2.X identifiers are not in the 7-value taxonomy enum and not in `nist-ai-rmf.yaml`). Neither co-present drift nor Surface C deferral affects T026 math — the decision matrix counts raw primary edges. Full details: `.aod/results/team-lead.md`.
 
 ### SC-013 Parse Performance (T030)
 - **crosswalk.yaml parse time**: (to be recorded) ms
