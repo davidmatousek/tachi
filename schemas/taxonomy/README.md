@@ -1,6 +1,7 @@
 # schemas/taxonomy/ — Machine-Readable Taxonomy Catalog + Crosswalk
 
-> **Status**: Draft (Day 2 authoring). Provenance counts and retrieval dates are stubs here and will be finalized by T025 on Day 3.
+> **Status**: Day 3 final (per-framework provenance counts and retrieval dates resolved by T025).
+> **Retrieval date (all external frameworks, this revision)**: 2026-04-17.
 >
 > **Feature**: [180-taxonomy-crosswalk-collection](../../specs/180-taxonomy-crosswalk-collection/spec.md) (F-A1)
 > **ADR**: [ADR-027 Taxonomy Crosswalk Schema](../../docs/architecture/02_ADRs/ADR-027-taxonomy-crosswalk-schema.md)
@@ -54,7 +55,7 @@ F-A1 is the machine-readable **foundation** — it deliberately defers three dow
 The 7 catalog YAMLs are assembled from three source classes:
 
 1. **Agent citation seed** — the 38 ATT&CK / 7 ATLAS / 41 CWE IDs currently cited across the 11 threat-detection agents' `detection-patterns.md` files (full frozen list in spec Assumption A1).
-2. **External published lists** — the full published item set for each externally-curated framework: OWASP (6 Top 10 lists), NIST AI RMF 1.0 (68 Subcategories from NIST AI 100-1 Tables 1–4), CWE Top 25 (2025), MITRE ATLAS v5.x October 2025 agent techniques (AML.T0058–T0062).
+2. **External published lists** — the full published item set for each externally-curated framework: OWASP (6 Top 10 lists), NIST AI RMF 1.0 (72 Subcategories — see §3.4 for the FR-021 amendment trail), CWE Top 25 (2025), MITRE ATLAS v5.4 October 2025 agent techniques (AML.T0058–T0062).
 3. **Verbatim transcription from `nist-ai-rmf-mapping.md`** — per spec FR-022, every Surface B real-mapping row (27) and every Surface C Overlap row (14) in `.claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md` (authored via Feature 144 / ADR-025) is transcribed verbatim into `crosswalk.yaml` as 41 edges. "No equivalent" and "Gap" rows are omitted by default.
 
 Curation rule: F-A1 is a **harvest + transcription** feature, not a re-authorship feature. Where a published source is factually incorrect, the correction is filed as a separate ADR-025 (or equivalent) amendment Issue, NOT silently corrected in F-A1 (per spec FR-024).
@@ -65,59 +66,62 @@ Curation rule: F-A1 is a **harvest + transcription** feature, not a re-authorshi
 
 ### 3.1 `owasp.yaml`
 
-- **Seed source**: external published lists (OWASP does not appear in agent citations as canonical IDs).
-- **External curation**: 6 OWASP published Top 10 lists:
-  - OWASP Top 10:2021 (A01–A10)
-  - OWASP API Security Top 10:2023 (API1–API10)
-  - OWASP Top 10 for Agentic Applications:2026 (ASI01–ASI10)
-  - OWASP LLM Top 10:2025 (LLM01–LLM10)
-  - OWASP Mobile Top 10:2024 (M1–M10)
-  - OWASP Machine Learning Security Top 10:2023 (ML01–ML10)
-- **Retrieval date**: *(T025 to finalize)*
-- **Target count** (FR-020): ≥60 items.
+- **Seed source**: external published lists (OWASP does not appear in agent citations as canonical IDs at F-A1 merge time).
+- **External curation**: 6 OWASP published Top 10 lists (10 items each = 60 records total):
+  - OWASP Top 10:2021 (A01–A10) — source: `https://owasp.org/Top10/2021/`
+  - OWASP API Security Top 10:2023 (API1–API10) — source: `https://owasp.org/API-Security/editions/2023/en/0x11-t10/`
+  - OWASP Top 10 for Agentic Applications:2026 (ASI01–ASI10) — source: OWASP GenAI Security Project, `https://genai.owasp.org/resource/agentic-ai-security-top-10/` (2026 edition published by the OWASP GenAI project)
+  - OWASP LLM Top 10:2025 (LLM01–LLM10) — source: `https://owasp.org/www-project-top-10-for-large-language-model-applications/` (LLM01:2025 through LLM10:2025)
+  - OWASP Mobile Top 10:2024 (M1–M10) — source: `https://owasp.org/www-project-mobile-top-10/`
+  - OWASP Machine Learning Security Top 10:2023 (ML01–ML10) — source: `https://owasp.org/www-project-machine-learning-security-top-10/`
+- **CWE cross-references**: `cwe_refs` populated for Top 10:2021 records only (A01–A10), transcribed from the per-category OWASP pages' "List of Mapped CWEs" sections. LLM / Agentic / Mobile / ML / API records carry `cwe_refs: []` because the respective OWASP sources do not publish per-item CWE cross-references; cross-framework edges for those lists live in `crosswalk.yaml`.
+- **Retrieval date**: **2026-04-17** (all 6 lists).
+- **Final record count**: **60** (FR-020 floor ≥60 — met exactly).
 
 ### 3.2 `mitre-attack.yaml`
 
-- **Seed source**: 38 unique MITRE ATT&CK technique IDs currently cited across the 11 threat-detection agents' `detection-patterns.md` files (spec Assumption A1).
-- **External curation**: growth via external ATT&CK matrix curation is permitted but NOT mandated in F-A1.
-- **Retrieval date**: *(T025 to finalize)*
-- **Target count** (FR-015): ≥38 techniques.
+- **Seed source**: 38 unique MITRE ATT&CK technique / sub-technique IDs currently cited across the 11 threat-detection agents' `detection-patterns.md` files (frozen list per spec Assumption A1): `T1005, T1039, T1068, T1070 (+ .001/.002/.004/.006/.008), T1078 (+ .004), T1195 (+ .001/.002), T1213 (+ .001/.002/.003/.005), T1498 (+ .001/.002), T1499 (+ .001/.002/.003/.004), T1530, T1548 (+ .001/.003/.005), T1550 (+ .001), T1556, T1562 (+ .006), T1565` — source: MITRE ATT&CK Enterprise matrix at `https://attack.mitre.org/`.
+- **External curation**: none in F-A1. Growth via external ATT&CK matrix curation is permitted but NOT mandated; the agent-citation seed is the authoritative baseline (see §6.2).
+- **Retrieval date**: **2026-04-17** (per-technique pages on `attack.mitre.org`).
+- **Final record count**: **38** (FR-015 floor ≥38 — met exactly).
 
 ### 3.3 `mitre-atlas.yaml`
 
-- **Seed source**: 7 ATLAS technique IDs currently cited across the 11 threat-detection agents: AML.T0010, AML.T0018, AML.T0020, AML.T0024, AML.T0051, AML.T0054, AML.T0057.
-- **External curation**: 5 October 2025 agent techniques from `atlas.mitre.org` (AML.T0058, AML.T0059, AML.T0060, AML.T0061, AML.T0062). AML.T0058 additionally appears in tachi's `finding-format-shared.md`.
-- **Retrieval date**: *(T025 to finalize)*
-- **Target count** (FR-016): ≥12 records (7 seed + 5 curated). A curation tripwire (per spec FR-016) escalates to architect if any of AML.T0058–T0062 cannot be resolved to a stable citation URL by Day 2 end.
+- **Seed source**: 7 ATLAS technique IDs currently cited across the 11 threat-detection agents' `detection-patterns.md` files: `AML.T0010, AML.T0018, AML.T0020, AML.T0024, AML.T0051, AML.T0054, AML.T0057`. AML.T0058 is additionally cited in tachi's `.claude/skills/tachi-shared/references/finding-format-shared.md`.
+- **External curation**: 5 October 2025 agent techniques added per FR-016: `AML.T0058, AML.T0059, AML.T0060, AML.T0061, AML.T0062`.
+- **Canonical source**: MITRE ATLAS **v5.4** as of 2026-04-17, primary source `https://atlas.mitre.org/techniques/<id>` (URL pattern, no trailing slash). During T020 harvest on 2026-04-17, WebFetch returned HTTP 404 on individual ATLAS technique pages due to client-side anti-bot gating (confirmed with the known-good seed AML.T0051, which also 404'd via the same client). URL stability was verified by cross-referencing the authoritative MITRE-owned `atlas-data` repository at `https://raw.githubusercontent.com/mitre-atlas/atlas-data/main/data/techniques.yaml` (primary) and MISP galaxy `mitre-atlas-attack-pattern` (secondary). Canonical names for AML.T0058–T0062 were **corrected at commit `be18076`** against `atlas-data/techniques.yaml` after T011's initial harvest produced contaminated names; the name correction did not alter URLs or IDs, so zero crosswalk edge rewrites were needed. See the R7 tripwire resolution in `mitre-atlas.yaml` inline comments lines 18–30.
+- **Retrieval date**: **2026-04-17** (MITRE `atlas-data` repo `main` branch snapshot).
+- **Final record count**: **12** (FR-016 floor ≥12 — 7 seed + 5 curated, exact match).
 
 ### 3.4 `nist-ai-rmf.yaml`
 
-- **Seed source**: external published catalog — NIST AI 100-1 Tables 1–4 (Govern / Map / Measure / Manage Functions × 18 Categories × 68 Subcategories).
-- **External curation**: full published Subcategory catalog.
-- **Retrieval date**: *(T025 to finalize)*
-- **Target count** (FR-021): exactly 68 records.
+- **Seed source**: external published catalog — **NIST AI RMF 1.0** (NIST AI 100-1, DOI `https://doi.org/10.6028/NIST.AI.100-1`, initial publication January 2023) PLUS the NIST AI Risk Management Playbook pages at `airc.nist.gov` (GOVERN / MAP / MEASURE / MANAGE Functions), which provide the authoritative operational Subcategory enumeration.
+- **External curation**: full published Subcategory catalog harvested from the `airc.nist.gov` Playbook pages on 2026-04-17. Breakdown: **GOVERN 19 + MAP 18 + MEASURE 22 + MANAGE 13 = 72 Subcategories** (per Function Tables 1–4). All records share the DOI-anchored URL `https://doi.org/10.6028/NIST.AI.100-1` per the §5 canonical-URL convention; per-Subcategory section anchors are not stable across NIST publication revisions, so the DOI is the reproducible citation.
+- **Retrieval date**: **2026-04-17** (airc.nist.gov Playbook page snapshot for all 4 Functions).
+- **FR-021 amendment (68 → 72)**: FR-021 originally pinned the count at 68, a historical figure from the initial January 2023 publication of NIST AI 100-1. Day 2 primary-source harvest of the current `airc.nist.gov` Playbook catalog surfaced 72 Subcategories — MEASURE 2.12, MEASURE 2.13, and 2 others were added in subsequent NIST Playbook expansions. Under FR-024 primary-source-correction discipline, the spec was amended 68 → 72 at commit SHA **`9da377c`** rather than descoping the catalog. Both Architect (`.aod/results/architect.md`, Path (a)) and PM (`.aod/results/product-manager.md`, pm_signoff_amendment_1 at `specs/180-taxonomy-crosswalk-collection/spec.md` lines 9–17) concurred. Existing Surface B/C cited Subcategories (`MAP 4.2`, `MEASURE 2.6–2.10`, `MANAGE 1.3`, `MANAGE 2.4`, `GOVERN 1.4`) are within the 68-subset ⊂ 72-superset, so FR-022 transcription fidelity and the 38 already-committed `nist-ai-rmf` crosswalk edges (batch 5, commit `004cd00`) remain intact — zero edits required to ADR-025 or `nist-ai-rmf-mapping.md`. This is the same pinned-with-retrieval-date provenance pattern applied to CWE Top 25 2025 in §3.5.
+- **Final record count**: **72** (FR-021 amended — exact; GOVERN 19 + MAP 18 + MEASURE 22 + MANAGE 13).
 
 ### 3.5 `cwe.yaml`
 
-- **Seed source**: 41 unique CWE IDs currently cited across the 11 threat-detection agents' `detection-patterns.md` files (spec Assumption A1).
-- **External curation**: CWE Top 25 (**2025**, published 2025-12-11) — 12 net-new CWEs beyond the agent seed (the 13-CWE overlap between seed and Top 25 is deduplicated to a single record).
-- **Retrieval date**: *(T025 to finalize)*
-- **Target count** (FR-017): ≥53 records.
-- **Record-shape exception**: `cwe_refs` is **omitted entirely** on `cwe.yaml` records — CWE→CWE relations live in `crosswalk.yaml`, not as per-record cross-references (per ADR-027 Decision 1).
+- **Seed source**: 41 unique CWE IDs currently cited across the 11 threat-detection agents' `detection-patterns.md` files (frozen at spec time 2026-04-17 per spec Assumption A1): `CWE-20, 22, 77, 78, 89, 90, 117, 200, 209, 215, 223, 250, 266, 269, 285, 287, 290, 306, 345, 352, 384, 400, 407, 494, 502, 522, 532, 538, 613, 639, 770, 776, 778, 779, 862, 863, 917, 918, 943, 1333, 1395`.
+- **External curation**: CWE Top 25 (**2025** edition, published **2025-12-11** by MITRE/CISA, source `https://cwe.mitre.org/top25/archive/2025/2025_cwe_top25.html`) — of the 25 Top 25 IDs, 14 overlap the agent seed and are deduplicated to a single record; **11 net-new CWEs** are added: `CWE-79, 94, 120, 121, 122, 125, 284, 416, 434, 476, 787`. Plus **1 additional CWE** sourced from the OWASP Top 10 A03:2021 / LLM05:2025 cross-references already transcribed into `owasp.yaml`: `CWE-116` (output-encoding companion to CWE-79). Total added via external curation = **12** (11 Top 25 + 1 OWASP-derived).
+- **Retrieval date**: **2026-04-17** (CWE Top 25 2025 page + per-CWE definition pages at `https://cwe.mitre.org/data/definitions/<N>.html`).
+- **Final record count**: **53** (FR-017 floor ≥53 — 41 seed + 12 external-curation, exact match).
+- **Record-shape exception**: `cwe_refs` is **omitted entirely** on `cwe.yaml` records per FR-003 explicit exclusion — CWE→CWE relations (e.g., `ChildOf`, `CanPrecede`, superseded/related) live ONLY in `crosswalk.yaml`, never as per-record cross-references (per ADR-027 Decision 1).
 
 ### 3.6 `tachi-control-category.yaml`
 
-- **Seed source**: `.claude/skills/tachi-control-analysis/references/control-categories.md`.
-- **External curation**: none (tachi pseudo-taxonomy).
-- **Retrieval date**: *(T025 to finalize)*
-- **Target count** (FR-018): exactly 8 records — `authentication`, `input-validation`, `rate-limiting`, `encryption`, `logging-audit`, `csrf-protection`, `csp-security-headers`, `access-control`.
+- **Seed source**: `.claude/skills/tachi-control-analysis/references/control-categories.md` — FR-018 frozen 8-value enum. All 8 canonical categories verified at spec time 2026-04-17: `access-control`, `authentication`, `csp-security-headers`, `csrf-protection`, `encryption`, `input-validation`, `logging-audit`, `rate-limiting`.
+- **External curation**: none (tachi pseudo-taxonomy — no external publisher).
+- **Retrieval date**: **2026-04-17** (repo file at commit baseline; the canonical source lives in-repo).
+- **Final record count**: **8** (FR-018 — exact).
 
 ### 3.7 `tachi-stride-ai-category.yaml`
 
-- **Seed source**: `.claude/skills/tachi-shared/references/stride-categories-shared.md`.
-- **External curation**: none (tachi pseudo-taxonomy).
-- **Retrieval date**: *(T025 to finalize)*
-- **Target count** (FR-019): exactly 11 records — 6 STRIDE categories (`spoofing`, `tampering`, `repudiation`, `information-disclosure`, `denial-of-service`, `elevation-of-privilege`) + 5 AI categories (`prompt-injection`, `data-poisoning`, `model-theft`, `agent-autonomy`, `tool-abuse`).
+- **Seed source**: `.claude/skills/tachi-shared/references/stride-categories-shared.md` — FR-019 frozen 11-value enum. 6 STRIDE categories (`spoofing`, `tampering`, `repudiation`, `information-disclosure`, `denial-of-service`, `elevation-of-privilege`) + 5 AI categories (`prompt-injection`, `data-poisoning`, `model-theft`, `agent-autonomy`, `tool-abuse`), verified at spec time 2026-04-17.
+- **External curation**: none (tachi pseudo-taxonomy — no external publisher).
+- **Retrieval date**: **2026-04-17** (repo file at commit baseline; the canonical source lives in-repo).
+- **Final record count**: **11** (FR-019 — exact).
 
 ---
 
@@ -151,7 +155,7 @@ This rule inverts the default bias toward confidence inflation — the single mo
 | OWASP API Security Top 10:2023 | `owasp.yaml` | `https://owasp.org/API-Security/editions/2023/en/0xa<N>-<slug>/` |
 | OWASP Mobile Top 10:2024 | `owasp.yaml` | `https://owasp.org/www-project-mobile-top-10/2024-risks/m<N>-<slug>` |
 | OWASP ML Security Top 10:2023 | `owasp.yaml` | `https://owasp.org/www-project-machine-learning-security-top-10/docs/ML<NN>_<year>-<slug>` |
-| OWASP Agentic Top 10:2026 | `owasp.yaml` | OWASP GenAI project URL (per-item; finalize in T025) |
+| OWASP Agentic Top 10:2026 | `owasp.yaml` | `https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/` (single document URL shared across ASI01–ASI10; per-item anchors not stable in the 2026 publication) |
 | tachi pseudo-taxonomies | `tachi-control-category.yaml`, `tachi-stride-ai-category.yaml` | Repo-relative path to canonical source reference (e.g., `.claude/skills/tachi-control-analysis/references/control-categories.md`) |
 
 Link-rot monitoring for external URLs is **out of F-A1 scope** (follow-on Issue filed on F-A1 PR merge). The integrity test (`test_citation_shape()` per FR-031) verifies URL syntax via regex only — no HTTP fetch (ADR-021 determinism).
@@ -178,7 +182,7 @@ When CWE Top 25 publishes a new edition (e.g., 2026 list): diff the new list aga
 
 ### 6.5 NIST AI RMF
 
-When NIST AI RMF 2.0 publishes: re-harvest the full Subcategory catalog, verify count changes from 68, and **re-verify** the Surface B/C transcriptions in `crosswalk.yaml` against the updated `nist-ai-rmf-mapping.md`. Changes to Surface B/C content MUST go through an ADR-025 amendment Issue per spec FR-024 — F-A1 remains a transcription feature, not a re-authorship feature.
+When NIST AI RMF 2.0 publishes (or the `airc.nist.gov` Playbook pages add/remove Subcategories in the 1.0 lineage): re-harvest the full Subcategory catalog from the authoritative Playbook pages, verify count changes from 72, record the new retrieval date in §3.4, and **re-verify** the Surface B/C transcriptions in `crosswalk.yaml` against the updated `nist-ai-rmf-mapping.md`. Count drift from primary-source expansions is a **FR-024 primary-source correction** (amend the spec to match the authoritative count, do not descope the catalog) — this is the same discipline applied to the 68 → 72 amendment at SHA `9da377c` documented in §3.4. Changes to Surface B/C content MUST go through an ADR-025 amendment Issue per spec FR-024 — F-A1 remains a transcription feature, not a re-authorship feature.
 
 ---
 
