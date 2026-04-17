@@ -2033,3 +2033,564 @@
   edge_type: primary
   confidence: high
   citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m10-insufficient-cryptography
+
+# ─── Batch 4 (T016): OWASP ML Top 10:2023 ↔ CWE (20 edges) ─────────────────────
+# Source: OWASP ML Security Top 10:2023 per-category pages. CWE mappings inferred
+# from risk descriptions. Confidence: medium (inferred semantic match).
+- source:
+    taxonomy: owasp
+    id: ML01
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML01_2023-Input_Manipulation_Attack.html
+
+- source:
+    taxonomy: owasp
+    id: ML01
+  target:
+    taxonomy: cwe
+    id: CWE-1039
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML01_2023-Input_Manipulation_Attack.html
+
+- source:
+    taxonomy: owasp
+    id: ML02
+  target:
+    taxonomy: cwe
+    id: CWE-1039
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML02_2023-Data_Poisoning_Attack.html
+
+- source:
+    taxonomy: owasp
+    id: ML02
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML02_2023-Data_Poisoning_Attack.html
+
+- source:
+    taxonomy: owasp
+    id: ML03
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML03_2023-Model_Inversion_Attack.html
+
+- source:
+    taxonomy: owasp
+    id: ML03
+  target:
+    taxonomy: cwe
+    id: CWE-201
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML03_2023-Model_Inversion_Attack.html
+
+- source:
+    taxonomy: owasp
+    id: ML04
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML04_2023-Membership_Inference_Attack.html
+
+- source:
+    taxonomy: owasp
+    id: ML04
+  target:
+    taxonomy: cwe
+    id: CWE-359
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML04_2023-Membership_Inference_Attack.html
+
+- source:
+    taxonomy: owasp
+    id: ML05
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML05_2023-Model_Theft.html
+
+- source:
+    taxonomy: owasp
+    id: ML05
+  target:
+    taxonomy: cwe
+    id: CWE-312
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML05_2023-Model_Theft.html
+
+- source:
+    taxonomy: owasp
+    id: ML06
+  target:
+    taxonomy: cwe
+    id: CWE-1357
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML06_2023-AI_Supply_Chain_Attacks.html
+
+- source:
+    taxonomy: owasp
+    id: ML06
+  target:
+    taxonomy: cwe
+    id: CWE-494
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML06_2023-AI_Supply_Chain_Attacks.html
+
+- source:
+    taxonomy: owasp
+    id: ML07
+  target:
+    taxonomy: cwe
+    id: CWE-494
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML07_2023-Transfer_Learning_Attack.html
+
+- source:
+    taxonomy: owasp
+    id: ML07
+  target:
+    taxonomy: cwe
+    id: CWE-1039
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML07_2023-Transfer_Learning_Attack.html
+
+- source:
+    taxonomy: owasp
+    id: ML08
+  target:
+    taxonomy: cwe
+    id: CWE-1039
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML08_2023-Model_Skewing.html
+
+- source:
+    taxonomy: owasp
+    id: ML08
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML08_2023-Model_Skewing.html
+
+- source:
+    taxonomy: owasp
+    id: ML09
+  target:
+    taxonomy: cwe
+    id: CWE-345
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML09_2023-Output_Integrity_Attack.html
+
+- source:
+    taxonomy: owasp
+    id: ML09
+  target:
+    taxonomy: cwe
+    id: CWE-116
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML09_2023-Output_Integrity_Attack.html
+
+- source:
+    taxonomy: owasp
+    id: ML10
+  target:
+    taxonomy: cwe
+    id: CWE-1039
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML10_2023-Model_Poisoning.html
+
+- source:
+    taxonomy: owasp
+    id: ML10
+  target:
+    taxonomy: cwe
+    id: CWE-494
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML10_2023-Model_Poisoning.html
+
+# ─── Batch 4 (cont.): OWASP Agentic ASI ↔ CWE (20 edges, short-ID) ─────────────
+# Source: genai.owasp.org Agentic Top 10:2026. Inferred CWE mappings from risk
+# descriptions (pages don't publish CWE refs). Short IDs (ASI01-ASI10) resolve
+# against owasp.yaml; Day 1 ASI edges used ':2026'-suffixed IDs so these are new.
+- source:
+    taxonomy: owasp
+    id: ASI01
+  target:
+    taxonomy: cwe
+    id: CWE-77
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI01
+  target:
+    taxonomy: cwe
+    id: CWE-1427
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI02
+  target:
+    taxonomy: cwe
+    id: CWE-250
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI02
+  target:
+    taxonomy: cwe
+    id: CWE-269
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI03
+  target:
+    taxonomy: cwe
+    id: CWE-287
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI03
+  target:
+    taxonomy: cwe
+    id: CWE-285
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI04
+  target:
+    taxonomy: cwe
+    id: CWE-1357
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI04
+  target:
+    taxonomy: cwe
+    id: CWE-494
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI05
+  target:
+    taxonomy: cwe
+    id: CWE-94
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI05
+  target:
+    taxonomy: cwe
+    id: CWE-78
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI06
+  target:
+    taxonomy: cwe
+    id: CWE-502
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI06
+  target:
+    taxonomy: cwe
+    id: CWE-345
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI07
+  target:
+    taxonomy: cwe
+    id: CWE-319
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI07
+  target:
+    taxonomy: cwe
+    id: CWE-287
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI08
+  target:
+    taxonomy: cwe
+    id: CWE-770
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI08
+  target:
+    taxonomy: cwe
+    id: CWE-400
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI09
+  target:
+    taxonomy: cwe
+    id: CWE-345
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI09
+  target:
+    taxonomy: cwe
+    id: CWE-1426
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI10
+  target:
+    taxonomy: cwe
+    id: CWE-250
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+- source:
+    taxonomy: owasp
+    id: ASI10
+  target:
+    taxonomy: cwe
+    id: CWE-1427
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+
+# ─── Batch 4 (cont.): Additional ATLAS → ATT&CK mappings (15 edges) ────────────
+# Source: atlas.mitre.org ATLAS v5.x technique pages. AML.T0061-T0062 are
+# October 2025 agent-technique additions. Confidence: medium unless page
+# explicitly declares ATT&CK parent.
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0000
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0000
+
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0001
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0001
+
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0003
+  target:
+    taxonomy: mitre-attack
+    id: T1195.002
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0003
+
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0005
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0005
+
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0011
+  target:
+    taxonomy: mitre-attack
+    id: T1005
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0011
+
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0016
+  target:
+    taxonomy: mitre-attack
+    id: T1195.002
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0016
+
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0025
+  target:
+    taxonomy: mitre-attack
+    id: T1005
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0025
+
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0029
+  target:
+    taxonomy: mitre-attack
+    id: T1499
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0029
+
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0034
+  target:
+    taxonomy: mitre-attack
+    id: T1565
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0034
+
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0037
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0037
+
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0040
+  target:
+    taxonomy: mitre-attack
+    id: T1068
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0040
+
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0043
+  target:
+    taxonomy: mitre-attack
+    id: T1190
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0043
+
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0048
+  target:
+    taxonomy: mitre-attack
+    id: T1499
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0048
+
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0061
+  target:
+    taxonomy: mitre-attack
+    id: T1550
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0061
+
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0062
+  target:
+    taxonomy: mitre-attack
+    id: T1068
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0062
