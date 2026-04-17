@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-04-17T22:21:05Z.
+> Auto-generated from GitHub Issues on 2026-04-17T22:23:09Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -38,7 +38,7 @@
 
 | # | Title | Delivered | Retro | Updated |
 |---|-------|-----------|-------|---------|
-| #180 | F-A1 — Taxonomy Crosswalk Collection [Foundation] | 2026-04-17 | — | 2026-04-17 |
+| — | *No items in this stage* | | |
 
 ## Untracked
 
