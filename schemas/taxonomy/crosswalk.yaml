@@ -4842,3 +4842,386 @@
   edge_type: primary
   confidence: high
   citation: https://cwe.mitre.org/data/definitions/200.html
+# ─── Batch 9 (T024): OWASP API↔ATT&CK + extra CWE↔CWE + residual LLM/ASI (≈36) ─
+# Source composition:
+#   (a) OWASP API Security Top 10:2023 ↔ ATT&CK (14 edges) — broken auth,
+#       broken authz, server-side request forgery, unrestricted consumption.
+#   (b) Additional CWE ↔ CWE parent/child (12 edges) — CWE-269 hierarchy
+#       (privilege management → setuid/setgid, improper preservation),
+#       CWE-345 (data authenticity) → CWE-494 (integrity check),
+#       CWE-862/863 (authorization) peers.
+#   (c) OWASP LLM05/08 ↔ ATLAS cross-mappings (4 edges) — improper output
+#       handling → prompt injection; vector/embedding weaknesses → LLM data
+#       leakage + prompt injection.
+#   (d) OWASP ASI ↔ ATLAS agent-technique residuals (6 edges).
+# Confidence: high on CWE declared hierarchies; medium elsewhere where
+# curator-inferred from category semantics.
+- source:
+    taxonomy: owasp
+    id: API1
+  target:
+    taxonomy: mitre-attack
+    id: T1078
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1078/
+
+- source:
+    taxonomy: owasp
+    id: API1
+  target:
+    taxonomy: mitre-attack
+    id: T1530
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1530/
+
+- source:
+    taxonomy: owasp
+    id: API2
+  target:
+    taxonomy: mitre-attack
+    id: T1078
+  edge_type: primary
+  confidence: high
+  citation: https://attack.mitre.org/techniques/T1078/
+
+- source:
+    taxonomy: owasp
+    id: API2
+  target:
+    taxonomy: mitre-attack
+    id: T1550.001
+  edge_type: primary
+  confidence: high
+  citation: https://attack.mitre.org/techniques/T1550/001/
+
+- source:
+    taxonomy: owasp
+    id: API2
+  target:
+    taxonomy: mitre-attack
+    id: T1556
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1556/
+
+- source:
+    taxonomy: owasp
+    id: API3
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1213/
+
+- source:
+    taxonomy: owasp
+    id: API4
+  target:
+    taxonomy: mitre-attack
+    id: T1499
+  edge_type: primary
+  confidence: high
+  citation: https://attack.mitre.org/techniques/T1499/
+
+- source:
+    taxonomy: owasp
+    id: API4
+  target:
+    taxonomy: mitre-attack
+    id: T1498
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1498/
+
+- source:
+    taxonomy: owasp
+    id: API5
+  target:
+    taxonomy: mitre-attack
+    id: T1068
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1068/
+
+- source:
+    taxonomy: owasp
+    id: API6
+  target:
+    taxonomy: mitre-attack
+    id: T1078
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1078/
+
+- source:
+    taxonomy: owasp
+    id: API8
+  target:
+    taxonomy: mitre-attack
+    id: T1068
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1068/
+
+- source:
+    taxonomy: owasp
+    id: API8
+  target:
+    taxonomy: mitre-attack
+    id: T1078.004
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1078/004/
+
+- source:
+    taxonomy: owasp
+    id: API9
+  target:
+    taxonomy: mitre-attack
+    id: T1195
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1195/
+
+- source:
+    taxonomy: owasp
+    id: API10
+  target:
+    taxonomy: mitre-attack
+    id: T1195.002
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1195/002/
+
+- source:
+    taxonomy: cwe
+    id: CWE-285
+  target:
+    taxonomy: cwe
+    id: CWE-862
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/285.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-285
+  target:
+    taxonomy: cwe
+    id: CWE-863
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/285.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-269
+  target:
+    taxonomy: cwe
+    id: CWE-250
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/269.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-269
+  target:
+    taxonomy: cwe
+    id: CWE-266
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/269.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-345
+  target:
+    taxonomy: cwe
+    id: CWE-494
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/345.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-352
+  target:
+    taxonomy: cwe
+    id: CWE-287
+  edge_type: primary
+  confidence: medium
+  citation: https://cwe.mitre.org/data/definitions/352.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-20
+  target:
+    taxonomy: cwe
+    id: CWE-434
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/20.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-20
+  target:
+    taxonomy: cwe
+    id: CWE-476
+  edge_type: primary
+  confidence: medium
+  citation: https://cwe.mitre.org/data/definitions/20.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-125
+  target:
+    taxonomy: cwe
+    id: CWE-787
+  edge_type: primary
+  confidence: medium
+  citation: https://cwe.mitre.org/data/definitions/125.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-120
+  target:
+    taxonomy: cwe
+    id: CWE-121
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/120.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-120
+  target:
+    taxonomy: cwe
+    id: CWE-122
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/120.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-20
+  target:
+    taxonomy: cwe
+    id: CWE-22
+  edge_type: primary
+  confidence: high
+  citation: https://cwe.mitre.org/data/definitions/20.html
+
+- source:
+    taxonomy: cwe
+    id: CWE-502
+  target:
+    taxonomy: cwe
+    id: CWE-345
+  edge_type: primary
+  confidence: medium
+  citation: https://cwe.mitre.org/data/definitions/502.html
+
+- source:
+    taxonomy: owasp
+    id: LLM05
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0051
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0051
+
+- source:
+    taxonomy: owasp
+    id: LLM05
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0060
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0060
+
+- source:
+    taxonomy: owasp
+    id: LLM08
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0057
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0057
+
+- source:
+    taxonomy: owasp
+    id: LLM08
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0051
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0051
+
+- source:
+    taxonomy: owasp
+    id: ASI10
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0058
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0058
+
+- source:
+    taxonomy: owasp
+    id: ASI10
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0060
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0060
+
+- source:
+    taxonomy: owasp
+    id: ASI01
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0061
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0061
+
+- source:
+    taxonomy: owasp
+    id: ASI08
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0051
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0051
+
+- source:
+    taxonomy: owasp
+    id: ASI05
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0058
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0058
+
+- source:
+    taxonomy: owasp
+    id: ASI05
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0054
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0054
