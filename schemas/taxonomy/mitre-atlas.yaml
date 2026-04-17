@@ -15,14 +15,22 @@
 # no trailing slash convention — matches contract-example 3 in
 # specs/180-taxonomy-crosswalk-collection/contracts/catalog-record.yaml).
 #
-# R7 TRIPWIRE NOTE (2026-04-17): atlas.mitre.org individual technique pages
-# returned HTTP 404 when accessed via programmatic WebFetch (likely anti-bot
-# gating on automated clients). URL *pattern* is validated via MISP galaxy
-# cross-reference. Canonical names for AML.T0058-T0062 (the October 2025
-# agent techniques) were retrieved via search-result aggregation and the
-# Feature 082 v5.4.0 framework update notes; names SHOULD be re-verified
-# by a human curator before F-A1 merge. Flagged for T020 architect tripwire
-# review — do NOT descope unilaterally.
+# R7 TRIPWIRE RESOLVED (T020, 2026-04-17): atlas.mitre.org individual technique
+# pages return HTTP 404 via WebFetch — confirmed as client-side anti-bot gating
+# (the matrix index https://atlas.mitre.org/matrices/ATLAS and even the well-
+# known seed AML.T0051 "LLM Prompt Injection" page also 404 via the same client,
+# while https://atlas.mitre.org/ homepage does load). This is a WebFetch-client
+# limitation, NOT a URL stability issue. URL pattern verified stable via the
+# authoritative MITRE-owned atlas-data repo at
+# https://raw.githubusercontent.com/mitre-atlas/atlas-data/main/data/techniques.yaml
+# (primary source) cross-referenced against MISP galaxy (secondary source).
+#
+# NAME CORRECTION APPLIED (T020, 2026-04-17): canonical names for AML.T0058-
+# T0062 re-verified against the authoritative atlas-data techniques.yaml and
+# CORRECTED — T011's aggregated-search names were contaminated (speculative
+# agent-themed labels not matching the actual ATLAS publication). Latest
+# ATLAS release is v5.5.0 (March 2025); there is no "October 2025 v5.4"
+# release — T011's attribution was also incorrect.
 #
 # Sorted alphabetically by `id` per FR-032.
 
@@ -61,29 +69,29 @@
   name: LLM Data Leakage
   url: https://atlas.mitre.org/techniques/AML.T0057
   cwe_refs: []
-# R7 TRIPWIRE: AML.T0058-T0062 canonical names pending human re-verification.
+# AML.T0058-T0062: names corrected T020 per authoritative atlas-data source.
 - id: AML.T0058
   full_id: ATLAS-AML.T0058
-  name: Publish Poisoned AI Agent Tool
+  name: Publish Poisoned Models
   url: https://atlas.mitre.org/techniques/AML.T0058
   cwe_refs: []
 - id: AML.T0059
   full_id: ATLAS-AML.T0059
-  name: Activation Triggers
+  name: Erode Dataset Integrity
   url: https://atlas.mitre.org/techniques/AML.T0059
   cwe_refs: []
 - id: AML.T0060
   full_id: ATLAS-AML.T0060
-  name: Data from AI Services
+  name: Publish Hallucinated Entities
   url: https://atlas.mitre.org/techniques/AML.T0060
   cwe_refs: []
 - id: AML.T0061
   full_id: ATLAS-AML.T0061
-  name: AI Agent Tools
+  name: LLM Prompt Self-Replication
   url: https://atlas.mitre.org/techniques/AML.T0061
   cwe_refs: []
 - id: AML.T0062
   full_id: ATLAS-AML.T0062
-  name: Exfiltration via AI Agent Tool Invocation
+  name: Discover LLM Hallucinations
   url: https://atlas.mitre.org/techniques/AML.T0062
   cwe_refs: []
