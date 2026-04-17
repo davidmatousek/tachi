@@ -16,25 +16,29 @@
 # function, space separator, dotted category.subcategory). Example: `MEASURE 2.7`.
 # `full_id` format: `NIST-AI-RMF-<ID>` (e.g., `NIST-AI-RMF-MEASURE-2.7`).
 #
-# COUNT DISCREPANCY FLAG (for T020/T022 architect tripwire review — do NOT
-# descope unilaterally):
-#   FR-021 pins the count at EXACTLY 68 Subcategories. Authoritative NIST
-#   sources (airc.nist.gov playbook pages for Govern/Map/Measure/Manage
-#   fetched 2026-04-17) enumerate 72 Subcategories across AI RMF 1.0
-#   Tables 1-4:
+# SPEC AMENDMENT NOTE (2026-04-17) — FR-021 amended 68→72 at SHA 9da377c:
+#   The authoritative NIST AI RMF 1.0 Subcategory catalog (airc.nist.gov
+#   playbook pages for Govern/Map/Measure/Manage fetched 2026-04-17)
+#   enumerates 72 Subcategories across AI RMF 1.0 Tables 1-4:
 #     GOVERN : 19 (1.1-1.7, 2.1-2.3, 3.1-3.2, 4.1-4.3, 5.1-5.2, 6.1-6.2)
 #     MAP    : 18 (1.1-1.6, 2.1-2.3, 3.1-3.5, 4.1-4.2, 5.1-5.2)
 #     MEASURE: 22 (1.1-1.3, 2.1-2.13, 3.1-3.3, 4.1-4.3)
 #     MANAGE : 13 (1.1-1.4, 2.1-2.4, 3.1-3.2, 4.1-4.3)
 #     Total  : 72
-#   This file records the authoritative 72 per NIST primary source; the
-#   4-record excess vs. FR-021's 68 target is flagged for T022 tripwire
-#   decision (FR amendment to 72 vs. scope selection of 68). Likely source
-#   of the 68 figure: AI RMF 1.0 initial publication Jan 2023 had 68
-#   Subcategories; MEASURE 2.12, MEASURE 2.13, and 2 others were added in
-#   subsequent playbook expansions. The nist-ai-rmf-mapping.md companion
-#   already cites MEASURE 2.10 and MANAGE 2.4, both within the 68 subset —
-#   so existing Surface B/C rows are not affected by the count decision.
+#   FR-021 originally pinned the count at 68 (AI RMF 1.0 initial publication
+#   Jan 2023 historical reference). Day 2 harvest surfaced the authoritative
+#   count differs: MEASURE 2.12, MEASURE 2.13, and 2 others were added in
+#   subsequent NIST playbook expansions. Under FR-024 primary-source-
+#   correction discipline, amending the spec to 72 was chosen over
+#   descoping to 68 — F-A1 is a verbatim transcription feature, not a
+#   re-authorship feature. Both Architect and PM concurred on path (a)
+#   (spec amendment vs. catalog descope) per:
+#     - .aod/results/architect.md (CHANGES_REQUESTED → path (a))
+#     - .aod/results/product-manager.md (APPROVED → path (a))
+#   Existing `nist-ai-rmf-mapping.md` Surface B/C cited Subcategories
+#   (MAP 4.2, MEASURE 2.6-2.10, MANAGE 1.3, MANAGE 2.4, GOVERN 1.4) are
+#   within the 68-subset ⊂ 72-superset — FR-022 transcription fidelity
+#   preserved; no ADR-025 / nist-ai-rmf-mapping.md edits required.
 #
 # Sorted alphabetically by `id` per FR-032 (Python string-sort semantics:
 # GOVERN < MANAGE < MAP < MEASURE, then numeric ordering within function).
