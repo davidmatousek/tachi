@@ -2982,3 +2982,538 @@
   edge_type: primary
   confidence: medium
   citation: https://attack.mitre.org/techniques/T1498/
+# ─── Batch 6 (T024): OWASP ASI + ML ↔ ATLAS/ATT&CK cross-taxonomy (50 edges) ──
+# Source composition:
+#   (a) OWASP Agentic ASI01-ASI10 ↔ ATLAS AML.T0051-T0062 (18 edges). Agent-
+#       technique alignment between the 2026 Agentic Top 10 risk categories and
+#       the ATLAS agent-technique additions (AML.T0058-T0062) + long-standing
+#       LLM-era techniques (AML.T0051/T0054/T0057).
+#   (b) OWASP ML ML01-ML10 ↔ ATLAS AML.T0010-T0024 (18 edges). ML-attack
+#       alignment between the 2023 ML Top 10 risk categories and the ATLAS
+#       ML-era techniques (supply chain, backdoor, poisoning, inference-API
+#       exfiltration).
+#   (c) OWASP Agentic ASI01-ASI10 ↔ ATT&CK T10XX (14 edges). Cross-mappings
+#       where the ASI risk semantic aligns with a classical ATT&CK technique
+#       (supply chain, valid accounts, impair defenses, data manipulation).
+# Citations: authoritative MITRE pages (atlas.mitre.org / attack.mitre.org) and
+# the OWASP Agentic/ML Top 10 index pages. Confidence medium where the linkage
+# is curator-inferred from pattern text rather than a declared mapping.
+- source:
+    taxonomy: owasp
+    id: ASI01
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0051
+  edge_type: primary
+  confidence: high
+  citation: https://atlas.mitre.org/techniques/AML.T0051
+
+- source:
+    taxonomy: owasp
+    id: ASI01
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0054
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0054
+
+- source:
+    taxonomy: owasp
+    id: ASI02
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0061
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0061
+
+- source:
+    taxonomy: owasp
+    id: ASI02
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0060
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0060
+
+- source:
+    taxonomy: owasp
+    id: ASI03
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0054
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0054
+
+- source:
+    taxonomy: owasp
+    id: ASI03
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0051
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0051
+
+- source:
+    taxonomy: owasp
+    id: ASI04
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0010
+  edge_type: primary
+  confidence: high
+  citation: https://atlas.mitre.org/techniques/AML.T0010
+
+- source:
+    taxonomy: owasp
+    id: ASI04
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0058
+  edge_type: primary
+  confidence: high
+  citation: https://atlas.mitre.org/techniques/AML.T0058
+
+- source:
+    taxonomy: owasp
+    id: ASI05
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0018
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0018
+
+- source:
+    taxonomy: owasp
+    id: ASI05
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0051
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0051
+
+- source:
+    taxonomy: owasp
+    id: ASI06
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0020
+  edge_type: primary
+  confidence: high
+  citation: https://atlas.mitre.org/techniques/AML.T0020
+
+- source:
+    taxonomy: owasp
+    id: ASI06
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0059
+  edge_type: primary
+  confidence: high
+  citation: https://atlas.mitre.org/techniques/AML.T0059
+
+- source:
+    taxonomy: owasp
+    id: ASI07
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0057
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0057
+
+- source:
+    taxonomy: owasp
+    id: ASI07
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0061
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0061
+
+- source:
+    taxonomy: owasp
+    id: ASI08
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0062
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0062
+
+- source:
+    taxonomy: owasp
+    id: ASI08
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0060
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0060
+
+- source:
+    taxonomy: owasp
+    id: ASI09
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0054
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0054
+
+- source:
+    taxonomy: owasp
+    id: ASI09
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0051
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0051
+
+- source:
+    taxonomy: owasp
+    id: ML01
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0051
+  edge_type: primary
+  confidence: high
+  citation: https://atlas.mitre.org/techniques/AML.T0051
+
+- source:
+    taxonomy: owasp
+    id: ML01
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0054
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0054
+
+- source:
+    taxonomy: owasp
+    id: ML02
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0020
+  edge_type: primary
+  confidence: high
+  citation: https://atlas.mitre.org/techniques/AML.T0020
+
+- source:
+    taxonomy: owasp
+    id: ML02
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0059
+  edge_type: primary
+  confidence: high
+  citation: https://atlas.mitre.org/techniques/AML.T0059
+
+- source:
+    taxonomy: owasp
+    id: ML03
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0024
+  edge_type: primary
+  confidence: high
+  citation: https://atlas.mitre.org/techniques/AML.T0024
+
+- source:
+    taxonomy: owasp
+    id: ML03
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0057
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0057
+
+- source:
+    taxonomy: owasp
+    id: ML04
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0024
+  edge_type: primary
+  confidence: high
+  citation: https://atlas.mitre.org/techniques/AML.T0024
+
+- source:
+    taxonomy: owasp
+    id: ML04
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0057
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0057
+
+- source:
+    taxonomy: owasp
+    id: ML05
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0024
+  edge_type: primary
+  confidence: high
+  citation: https://atlas.mitre.org/techniques/AML.T0024
+
+- source:
+    taxonomy: owasp
+    id: ML06
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0010
+  edge_type: primary
+  confidence: high
+  citation: https://atlas.mitre.org/techniques/AML.T0010
+
+- source:
+    taxonomy: owasp
+    id: ML06
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0058
+  edge_type: primary
+  confidence: high
+  citation: https://atlas.mitre.org/techniques/AML.T0058
+
+- source:
+    taxonomy: owasp
+    id: ML07
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0018
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0018
+
+- source:
+    taxonomy: owasp
+    id: ML07
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0010
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0010
+
+- source:
+    taxonomy: owasp
+    id: ML08
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0020
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0020
+
+- source:
+    taxonomy: owasp
+    id: ML08
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0059
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0059
+
+- source:
+    taxonomy: owasp
+    id: ML09
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0060
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0060
+
+- source:
+    taxonomy: owasp
+    id: ML09
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0051
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0051
+
+- source:
+    taxonomy: owasp
+    id: ML10
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0018
+  edge_type: primary
+  confidence: high
+  citation: https://atlas.mitre.org/techniques/AML.T0018
+
+- source:
+    taxonomy: owasp
+    id: ML10
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0058
+  edge_type: primary
+  confidence: high
+  citation: https://atlas.mitre.org/techniques/AML.T0058
+
+- source:
+    taxonomy: owasp
+    id: ASI02
+  target:
+    taxonomy: mitre-attack
+    id: T1068
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1068/
+
+- source:
+    taxonomy: owasp
+    id: ASI02
+  target:
+    taxonomy: mitre-attack
+    id: T1548
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1548/
+
+- source:
+    taxonomy: owasp
+    id: ASI03
+  target:
+    taxonomy: mitre-attack
+    id: T1078
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1078/
+
+- source:
+    taxonomy: owasp
+    id: ASI03
+  target:
+    taxonomy: mitre-attack
+    id: T1550.001
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1550/001/
+
+- source:
+    taxonomy: owasp
+    id: ASI04
+  target:
+    taxonomy: mitre-attack
+    id: T1195
+  edge_type: primary
+  confidence: high
+  citation: https://attack.mitre.org/techniques/T1195/
+
+- source:
+    taxonomy: owasp
+    id: ASI04
+  target:
+    taxonomy: mitre-attack
+    id: T1195.001
+  edge_type: primary
+  confidence: high
+  citation: https://attack.mitre.org/techniques/T1195/001/
+
+- source:
+    taxonomy: owasp
+    id: ASI05
+  target:
+    taxonomy: mitre-attack
+    id: T1068
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1068/
+
+- source:
+    taxonomy: owasp
+    id: ASI06
+  target:
+    taxonomy: mitre-attack
+    id: T1565
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1565/
+
+- source:
+    taxonomy: owasp
+    id: ASI06
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1213/
+
+- source:
+    taxonomy: owasp
+    id: ASI07
+  target:
+    taxonomy: mitre-attack
+    id: T1530
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1530/
+
+- source:
+    taxonomy: owasp
+    id: ASI07
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1213/
+
+- source:
+    taxonomy: owasp
+    id: ASI08
+  target:
+    taxonomy: mitre-attack
+    id: T1499
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1499/
+
+- source:
+    taxonomy: owasp
+    id: ASI08
+  target:
+    taxonomy: mitre-attack
+    id: T1562
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1562/
+
+- source:
+    taxonomy: owasp
+    id: ASI10
+  target:
+    taxonomy: mitre-attack
+    id: T1556
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1556/
+
+- source:
+    taxonomy: owasp
+    id: ASI10
+  target:
+    taxonomy: mitre-attack
+    id: T1078
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1078/
