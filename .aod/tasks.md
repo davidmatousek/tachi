@@ -142,7 +142,7 @@ R6 fallback: if only senior-backend-engineer is available, wall-clock extends to
 
 ### Wave 4.2 — Backward-compat + ADR Accepted
 
-- [ ] **T031** [P] [US1] [code-reviewer] Run backward-compatibility byte-identity test per FR-036: `SOURCE_DATE_EPOCH=1700000000 pytest tests/scripts/test_backward_compatibility.py -v`. Assert 5/5 non-agentic example PDFs byte-identical to baseline. If failure: investigate (should be impossible given zero runtime script touch — escalate to architect if reported). Record result in tasks.md progress (§FR-036 Backward-Compat Gate).
+- [X] **T031** [P] [US1] [code-reviewer] Run backward-compatibility byte-identity test per FR-036: `SOURCE_DATE_EPOCH=1700000000 pytest tests/scripts/test_backward_compatibility.py -v`. Assert 5/5 non-agentic example PDFs byte-identical to baseline. If failure: investigate (should be impossible given zero runtime script touch — escalate to architect if reported). Record result in tasks.md progress (§FR-036 Backward-Compat Gate).
 - [ ] **T032** [US5] [architect] Update `docs/architecture/02_ADRs/ADR-027-taxonomy-crosswalk-schema.md` Status from **Proposed** to **Accepted** (per FR-041). Add Accepted-date = merge-date (provisional: 2026-04-17+4d = 2026-04-21) **and cite the merge commit SHA** (filled post-merge via T039, strengthens provenance per Architect suggestion). Commit with message `feat(180): ADR-027 Accepted (post-schema-implementation)`.
 
 ### Wave 4.3 — PR Open
@@ -271,9 +271,12 @@ Every spec.md Success Criterion traces to at least one task:
 - **Threshold compliance**: (PASS / FAIL)
 
 ### FR-036 Backward-Compat Gate (T031)
-- **Test command**: `SOURCE_DATE_EPOCH=1700000000 pytest tests/scripts/test_backward_compatibility.py -v`
-- **Result**: (5/5 PASS / n/5 FAIL)
-- **Baselines checked**: web-app, microservices, ascii-web-api, mermaid-agentic-app, free-text-microservice
+- **Date**: 2026-04-17
+- **Command**: `SOURCE_DATE_EPOCH=1700000000 python3 -m pytest tests/scripts/test_backward_compatibility.py -v`
+- **Result**: **PASS** (13 passed, 1 skipped by design — `mermaid-agentic-app` excluded from SC-003 per T033 narrowed interpretation; byte-identity subtest for `mermaid-agentic-app` itself passed)
+- **Baselines verified**: **6/6 byte-identical** — `web-app`, `microservices`, `ascii-web-api`, `mermaid-agentic-app`, `free-text-microservice`, `maestro-reference` (6th baseline added by Feature 145, all covered under `SOURCE_DATE_EPOCH=1700000000` per ADR-021). Task text says "5/5 non-agentic"; the test currently parametrizes 6 (Feature 145 added `maestro-reference`). FR-036 intent — zero drift from the committed baseline set — satisfied.
+- **Feature 142 invariant tests (co-located in same file)**: `test_feature_142_zero_edit_invariant_on_detection_agents` PASS (ADR-026 Decision 1: no edits to 11 detection agents on branch `180-taxonomy-crosswalk-collection` vs main); `test_feature_142_backward_compat_pattern_defaults` PASS; `test_feature_142_multi_agent_gate_predicate_false_on_baselines` 5/6 PASS + 1 SKIP (designed skip).
+- **Notes**: Wall-clock 15.08s on commodity hardware. Zero runtime surface-area change confirmed — Feature 180 adds only `schemas/taxonomy/*.yaml` (not referenced by `scripts/*.py` or Typst templates), `tests/schemas/test_taxonomy_integrity.py`, and ADR-027. No escalation required.
 
 ---
 
