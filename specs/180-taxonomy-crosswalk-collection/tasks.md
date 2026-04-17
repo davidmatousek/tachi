@@ -67,7 +67,7 @@ R6 fallback: if only senior-backend-engineer is available, wall-clock extends to
 
 ### Day 1 Exit Gate
 
-- [ ] **T009** [architect] Verify T002 ADR-027 commit exists with Status: Proposed. Verify T005 `owasp.yaml` committed. Verify T007 spike edges committed. Verify T008 tripwire decision logged in tasks.md progress.
+- [X] **T009** [architect] Verify T002 ADR-027 commit exists with Status: Proposed. Verify T005 `owasp.yaml` committed. Verify T007 spike edges committed. Verify T008 tripwire decision logged in tasks.md progress. **VERIFIED 2026-04-17**: ADR-027 at `b0f0159` (Status: Proposed confirmed); owasp.yaml at `e150b81` (60 items exactly); crosswalk.yaml at `b4527f1` (50 edges, 5-slice composition verified via yaml.safe_load); tests/schemas/__init__.py at `889b38b`; T008 CONTINUE TIER 1 decision logged at `499bdf5`. Day 1 Exit Gate PASSES. Wave 2 authoring unblocked.
 
 ---
 
