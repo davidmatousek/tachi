@@ -1,0 +1,89 @@
+# MITRE ATLAS Catalog (taxonomy: mitre-atlas)
+#
+# Composition per FR-003 / A1 seed + external curation (12 records total):
+#   - 7 seed IDs (from 11 threat-detection agents' detection-patterns.md):
+#     AML.T0010, AML.T0018, AML.T0020, AML.T0024, AML.T0051, AML.T0054, AML.T0057
+#   - 5 curated October 2025 agent techniques (FR-016):
+#     AML.T0058, AML.T0059, AML.T0060, AML.T0061, AML.T0062
+#
+# Record shape per FR-003: {id, full_id, name, url, cwe_refs}.
+# `cwe_refs: []` for all records — MITRE ATLAS does not publish direct CWE
+# cross-references. ATLAS->CWE relationships live in crosswalk.yaml.
+#
+# URL pattern per FR-033: https://atlas.mitre.org/techniques/<id>
+# (canonical URL pattern per MISP-galaxy mitre-atlas-attack-pattern reference,
+# no trailing slash convention — matches contract-example 3 in
+# specs/180-taxonomy-crosswalk-collection/contracts/catalog-record.yaml).
+#
+# R7 TRIPWIRE NOTE (2026-04-17): atlas.mitre.org individual technique pages
+# returned HTTP 404 when accessed via programmatic WebFetch (likely anti-bot
+# gating on automated clients). URL *pattern* is validated via MISP galaxy
+# cross-reference. Canonical names for AML.T0058-T0062 (the October 2025
+# agent techniques) were retrieved via search-result aggregation and the
+# Feature 082 v5.4.0 framework update notes; names SHOULD be re-verified
+# by a human curator before F-A1 merge. Flagged for T020 architect tripwire
+# review — do NOT descope unilaterally.
+#
+# Sorted alphabetically by `id` per FR-032.
+
+- id: AML.T0010
+  full_id: ATLAS-AML.T0010
+  name: ML Supply Chain Compromise
+  url: https://atlas.mitre.org/techniques/AML.T0010
+  cwe_refs: []
+- id: AML.T0018
+  full_id: ATLAS-AML.T0018
+  name: Backdoor ML Model
+  url: https://atlas.mitre.org/techniques/AML.T0018
+  cwe_refs: []
+- id: AML.T0020
+  full_id: ATLAS-AML.T0020
+  name: Poison Training Data
+  url: https://atlas.mitre.org/techniques/AML.T0020
+  cwe_refs: []
+- id: AML.T0024
+  full_id: ATLAS-AML.T0024
+  name: Exfiltration via ML Inference API
+  url: https://atlas.mitre.org/techniques/AML.T0024
+  cwe_refs: []
+- id: AML.T0051
+  full_id: ATLAS-AML.T0051
+  name: LLM Prompt Injection
+  url: https://atlas.mitre.org/techniques/AML.T0051
+  cwe_refs: []
+- id: AML.T0054
+  full_id: ATLAS-AML.T0054
+  name: LLM Jailbreak
+  url: https://atlas.mitre.org/techniques/AML.T0054
+  cwe_refs: []
+- id: AML.T0057
+  full_id: ATLAS-AML.T0057
+  name: LLM Data Leakage
+  url: https://atlas.mitre.org/techniques/AML.T0057
+  cwe_refs: []
+# R7 TRIPWIRE: AML.T0058-T0062 canonical names pending human re-verification.
+- id: AML.T0058
+  full_id: ATLAS-AML.T0058
+  name: Publish Poisoned AI Agent Tool
+  url: https://atlas.mitre.org/techniques/AML.T0058
+  cwe_refs: []
+- id: AML.T0059
+  full_id: ATLAS-AML.T0059
+  name: Activation Triggers
+  url: https://atlas.mitre.org/techniques/AML.T0059
+  cwe_refs: []
+- id: AML.T0060
+  full_id: ATLAS-AML.T0060
+  name: Data from AI Services
+  url: https://atlas.mitre.org/techniques/AML.T0060
+  cwe_refs: []
+- id: AML.T0061
+  full_id: ATLAS-AML.T0061
+  name: AI Agent Tools
+  url: https://atlas.mitre.org/techniques/AML.T0061
+  cwe_refs: []
+- id: AML.T0062
+  full_id: ATLAS-AML.T0062
+  name: Exfiltration via AI Agent Tool Invocation
+  url: https://atlas.mitre.org/techniques/AML.T0062
+  cwe_refs: []
