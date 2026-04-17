@@ -1019,3 +1019,510 @@
   edge_type: primary
   confidence: high
   citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
+
+# ─── Batch 2 (T016): OWASP LLM Top 10:2025 ↔ CWE (50 edges) ────────────────────
+# Source: genai.owasp.org/llmrisk/* per-category pages "Common Weaknesses" /
+# "Common Examples" sections. Canonical short IDs (LLM01-LLM10) resolve against
+# owasp.yaml. Confidence: high (published CWE refs in OWASP pages).
+- source:
+    taxonomy: owasp
+    id: LLM01
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+
+- source:
+    taxonomy: owasp
+    id: LLM01
+  target:
+    taxonomy: cwe
+    id: CWE-77
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+
+- source:
+    taxonomy: owasp
+    id: LLM01
+  target:
+    taxonomy: cwe
+    id: CWE-94
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+
+- source:
+    taxonomy: owasp
+    id: LLM01
+  target:
+    taxonomy: cwe
+    id: CWE-1427
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+
+- source:
+    taxonomy: owasp
+    id: LLM02
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+
+- source:
+    taxonomy: owasp
+    id: LLM02
+  target:
+    taxonomy: cwe
+    id: CWE-201
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+
+- source:
+    taxonomy: owasp
+    id: LLM02
+  target:
+    taxonomy: cwe
+    id: CWE-538
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+
+- source:
+    taxonomy: owasp
+    id: LLM02
+  target:
+    taxonomy: cwe
+    id: CWE-359
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+
+- source:
+    taxonomy: owasp
+    id: LLM03
+  target:
+    taxonomy: cwe
+    id: CWE-1357
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
+
+- source:
+    taxonomy: owasp
+    id: LLM03
+  target:
+    taxonomy: cwe
+    id: CWE-494
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
+
+- source:
+    taxonomy: owasp
+    id: LLM03
+  target:
+    taxonomy: cwe
+    id: CWE-829
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
+
+- source:
+    taxonomy: owasp
+    id: LLM03
+  target:
+    taxonomy: cwe
+    id: CWE-1395
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
+
+- source:
+    taxonomy: owasp
+    id: LLM04
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm042025-data-and-model-poisoning/
+
+- source:
+    taxonomy: owasp
+    id: LLM04
+  target:
+    taxonomy: cwe
+    id: CWE-502
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm042025-data-and-model-poisoning/
+
+- source:
+    taxonomy: owasp
+    id: LLM04
+  target:
+    taxonomy: cwe
+    id: CWE-915
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm042025-data-and-model-poisoning/
+
+- source:
+    taxonomy: owasp
+    id: LLM04
+  target:
+    taxonomy: cwe
+    id: CWE-1395
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm042025-data-and-model-poisoning/
+
+- source:
+    taxonomy: owasp
+    id: LLM05
+  target:
+    taxonomy: cwe
+    id: CWE-79
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
+
+- source:
+    taxonomy: owasp
+    id: LLM05
+  target:
+    taxonomy: cwe
+    id: CWE-89
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
+
+- source:
+    taxonomy: owasp
+    id: LLM05
+  target:
+    taxonomy: cwe
+    id: CWE-116
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
+
+- source:
+    taxonomy: owasp
+    id: LLM05
+  target:
+    taxonomy: cwe
+    id: CWE-78
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
+
+- source:
+    taxonomy: owasp
+    id: LLM05
+  target:
+    taxonomy: cwe
+    id: CWE-601
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
+
+- source:
+    taxonomy: owasp
+    id: LLM06
+  target:
+    taxonomy: cwe
+    id: CWE-250
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
+
+- source:
+    taxonomy: owasp
+    id: LLM06
+  target:
+    taxonomy: cwe
+    id: CWE-269
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
+
+- source:
+    taxonomy: owasp
+    id: LLM06
+  target:
+    taxonomy: cwe
+    id: CWE-285
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
+
+- source:
+    taxonomy: owasp
+    id: LLM06
+  target:
+    taxonomy: cwe
+    id: CWE-732
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
+
+- source:
+    taxonomy: owasp
+    id: LLM07
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/
+
+- source:
+    taxonomy: owasp
+    id: LLM07
+  target:
+    taxonomy: cwe
+    id: CWE-538
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/
+
+- source:
+    taxonomy: owasp
+    id: LLM07
+  target:
+    taxonomy: cwe
+    id: CWE-540
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/
+
+- source:
+    taxonomy: owasp
+    id: LLM07
+  target:
+    taxonomy: cwe
+    id: CWE-1426
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/
+
+- source:
+    taxonomy: owasp
+    id: LLM08
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
+
+- source:
+    taxonomy: owasp
+    id: LLM08
+  target:
+    taxonomy: cwe
+    id: CWE-209
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
+
+- source:
+    taxonomy: owasp
+    id: LLM08
+  target:
+    taxonomy: cwe
+    id: CWE-285
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
+
+- source:
+    taxonomy: owasp
+    id: LLM08
+  target:
+    taxonomy: cwe
+    id: CWE-639
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
+
+- source:
+    taxonomy: owasp
+    id: LLM09
+  target:
+    taxonomy: cwe
+    id: CWE-345
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm092025-misinformation/
+
+- source:
+    taxonomy: owasp
+    id: LLM09
+  target:
+    taxonomy: cwe
+    id: CWE-1426
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm092025-misinformation/
+
+- source:
+    taxonomy: owasp
+    id: LLM09
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm092025-misinformation/
+
+- source:
+    taxonomy: owasp
+    id: LLM10
+  target:
+    taxonomy: cwe
+    id: CWE-400
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/
+
+- source:
+    taxonomy: owasp
+    id: LLM10
+  target:
+    taxonomy: cwe
+    id: CWE-770
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/
+
+- source:
+    taxonomy: owasp
+    id: LLM10
+  target:
+    taxonomy: cwe
+    id: CWE-799
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/
+
+- source:
+    taxonomy: owasp
+    id: LLM10
+  target:
+    taxonomy: cwe
+    id: CWE-918
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/
+
+# ─── Batch 2 (cont.): OWASP API Top 10:2023 ↔ CWE (10 edges) ────────────────────
+# Source: OWASP API Security Top 10:2023 per-category pages. Inferred CWE mappings
+# from published definitions (pages don't list "Mapped CWEs" explicitly).
+- source:
+    taxonomy: owasp
+    id: API1
+  target:
+    taxonomy: cwe
+    id: CWE-285
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/
+
+- source:
+    taxonomy: owasp
+    id: API1
+  target:
+    taxonomy: cwe
+    id: CWE-639
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/
+
+- source:
+    taxonomy: owasp
+    id: API2
+  target:
+    taxonomy: cwe
+    id: CWE-287
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa2-broken-authentication/
+
+- source:
+    taxonomy: owasp
+    id: API2
+  target:
+    taxonomy: cwe
+    id: CWE-307
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa2-broken-authentication/
+
+- source:
+    taxonomy: owasp
+    id: API3
+  target:
+    taxonomy: cwe
+    id: CWE-213
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/
+
+- source:
+    taxonomy: owasp
+    id: API4
+  target:
+    taxonomy: cwe
+    id: CWE-770
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/
+
+- source:
+    taxonomy: owasp
+    id: API4
+  target:
+    taxonomy: cwe
+    id: CWE-400
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/
+
+- source:
+    taxonomy: owasp
+    id: API5
+  target:
+    taxonomy: cwe
+    id: CWE-285
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa5-broken-function-level-authorization/
+
+- source:
+    taxonomy: owasp
+    id: API7
+  target:
+    taxonomy: cwe
+    id: CWE-918
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa7-server-side-request-forgery/
+
+- source:
+    taxonomy: owasp
+    id: API8
+  target:
+    taxonomy: cwe
+    id: CWE-16
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa8-security-misconfiguration/
