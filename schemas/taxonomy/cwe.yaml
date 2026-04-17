@@ -27,14 +27,6 @@
 # Sorted alphabetically by `id` per FR-032 (Python string-sort semantics:
 # `sorted(['CWE-20', 'CWE-100'])` → `['CWE-100', 'CWE-20']`).
 
-- id: CWE-1333
-  full_id: CWE-1333
-  name: Inefficient Regular Expression Complexity
-  url: https://cwe.mitre.org/data/definitions/1333.html
-- id: CWE-1395
-  full_id: CWE-1395
-  name: Dependency on Vulnerable Third-Party Component
-  url: https://cwe.mitre.org/data/definitions/1395.html
 - id: CWE-116
   full_id: CWE-116
   name: Improper Encoding or Escaping of Output
@@ -59,6 +51,14 @@
   full_id: CWE-125
   name: Out-of-bounds Read
   url: https://cwe.mitre.org/data/definitions/125.html
+- id: CWE-1333
+  full_id: CWE-1333
+  name: Inefficient Regular Expression Complexity
+  url: https://cwe.mitre.org/data/definitions/1333.html
+- id: CWE-1395
+  full_id: CWE-1395
+  name: Dependency on Vulnerable Third-Party Component
+  url: https://cwe.mitre.org/data/definitions/1395.html
 - id: CWE-20
   full_id: CWE-20
   name: Improper Input Validation
@@ -175,6 +175,10 @@
   full_id: CWE-639
   name: Authorization Bypass Through User-Controlled Key
   url: https://cwe.mitre.org/data/definitions/639.html
+- id: CWE-77
+  full_id: CWE-77
+  name: Improper Neutralization of Special Elements used in a Command ('Command Injection')
+  url: https://cwe.mitre.org/data/definitions/77.html
 - id: CWE-770
   full_id: CWE-770
   name: Allocation of Resources Without Limits or Throttling
@@ -183,10 +187,6 @@
   full_id: CWE-776
   name: Improper Restriction of Recursive Entity References in DTDs ('XML Entity Expansion')
   url: https://cwe.mitre.org/data/definitions/776.html
-- id: CWE-77
-  full_id: CWE-77
-  name: Improper Neutralization of Special Elements used in a Command ('Command Injection')
-  url: https://cwe.mitre.org/data/definitions/77.html
 - id: CWE-778
   full_id: CWE-778
   name: Insufficient Logging
@@ -195,14 +195,14 @@
   full_id: CWE-779
   name: Logging of Excessive Data
   url: https://cwe.mitre.org/data/definitions/779.html
-- id: CWE-787
-  full_id: CWE-787
-  name: Out-of-bounds Write
-  url: https://cwe.mitre.org/data/definitions/787.html
 - id: CWE-78
   full_id: CWE-78
   name: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')
   url: https://cwe.mitre.org/data/definitions/78.html
+- id: CWE-787
+  full_id: CWE-787
+  name: Out-of-bounds Write
+  url: https://cwe.mitre.org/data/definitions/787.html
 - id: CWE-79
   full_id: CWE-79
   name: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')
@@ -217,25 +217,25 @@
   url: https://cwe.mitre.org/data/definitions/863.html
 - id: CWE-89
   full_id: CWE-89
-  name: "Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+  name: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')
   url: https://cwe.mitre.org/data/definitions/89.html
 - id: CWE-90
   full_id: CWE-90
-  name: "Improper Neutralization of Special Elements used in an LDAP Query ('LDAP Injection')"
+  name: Improper Neutralization of Special Elements used in an LDAP Query ('LDAP Injection')
   url: https://cwe.mitre.org/data/definitions/90.html
 - id: CWE-917
   full_id: CWE-917
-  name: "Improper Neutralization of Special Elements used in an Expression Language Statement ('Expression Language Injection')"
+  name: Improper Neutralization of Special Elements used in an Expression Language Statement ('Expression Language Injection')
   url: https://cwe.mitre.org/data/definitions/917.html
 - id: CWE-918
   full_id: CWE-918
   name: Server-Side Request Forgery (SSRF)
   url: https://cwe.mitre.org/data/definitions/918.html
+- id: CWE-94
+  full_id: CWE-94
+  name: Improper Control of Generation of Code ('Code Injection')
+  url: https://cwe.mitre.org/data/definitions/94.html
 - id: CWE-943
   full_id: CWE-943
   name: Improper Neutralization of Special Elements in Data Query Logic
   url: https://cwe.mitre.org/data/definitions/943.html
-- id: CWE-94
-  full_id: CWE-94
-  name: "Improper Control of Generation of Code ('Code Injection')"
-  url: https://cwe.mitre.org/data/definitions/94.html

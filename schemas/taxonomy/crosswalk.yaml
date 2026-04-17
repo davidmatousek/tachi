@@ -13,7 +13,7 @@
 # Source: OWASP official pages where CWE cross-references are explicitly published.
 - source:
     taxonomy: owasp
-    id: LLM01:2025
+    id: LLM01
   target:
     taxonomy: cwe
     id: CWE-77
@@ -23,7 +23,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM02:2025
+    id: LLM02
   target:
     taxonomy: cwe
     id: CWE-200
@@ -33,7 +33,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM03:2025
+    id: LLM03
   target:
     taxonomy: cwe
     id: CWE-1395
@@ -43,7 +43,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM04:2025
+    id: LLM04
   target:
     taxonomy: cwe
     id: CWE-20
@@ -53,7 +53,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM05:2025
+    id: LLM05
   target:
     taxonomy: cwe
     id: CWE-79
@@ -63,7 +63,7 @@
 
 - source:
     taxonomy: owasp
-    id: A01:2021
+    id: A01
   target:
     taxonomy: cwe
     id: CWE-285
@@ -73,7 +73,7 @@
 
 - source:
     taxonomy: owasp
-    id: A02:2021
+    id: A02
   target:
     taxonomy: cwe
     id: CWE-522
@@ -83,7 +83,7 @@
 
 - source:
     taxonomy: owasp
-    id: A03:2021
+    id: A03
   target:
     taxonomy: cwe
     id: CWE-89
@@ -93,7 +93,7 @@
 
 - source:
     taxonomy: owasp
-    id: A07:2021
+    id: A07
   target:
     taxonomy: cwe
     id: CWE-287
@@ -103,7 +103,7 @@
 
 - source:
     taxonomy: owasp
-    id: A08:2021
+    id: A08
   target:
     taxonomy: cwe
     id: CWE-502
@@ -326,7 +326,7 @@
     id: authentication
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -336,7 +336,7 @@
     id: input-validation
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.6
+    id: MEASURE 2.6
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -346,7 +346,7 @@
     id: input-validation
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.10
+    id: MEASURE 2.10
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -356,7 +356,7 @@
     id: rate-limiting
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.6
+    id: MEASURE 2.6
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -366,7 +366,7 @@
     id: encryption
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.10
+    id: MEASURE 2.10
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -376,7 +376,7 @@
     id: logging-audit
   target:
     taxonomy: nist-ai-rmf
-    id: GOVERN-1.4
+    id: GOVERN 1.4
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -386,7 +386,7 @@
     id: logging-audit
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.8
+    id: MEASURE 2.8
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -396,7 +396,7 @@
     id: access-control
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.10
+    id: MEASURE 2.10
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -406,7 +406,7 @@
     id: prompt-injection
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -416,7 +416,7 @@
     id: data-poisoning
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -427,7 +427,7 @@
 # patterns and ATLAS v5.4 October 2025 agent technique additions.
 - source:
     taxonomy: owasp
-    id: ASI01:2026
+    id: ASI01
   target:
     taxonomy: mitre-atlas
     id: AML.T0061
@@ -437,7 +437,7 @@
 
 - source:
     taxonomy: owasp
-    id: ASI02:2026
+    id: ASI02
   target:
     taxonomy: mitre-atlas
     id: AML.T0062
@@ -447,7 +447,7 @@
 
 - source:
     taxonomy: owasp
-    id: ASI03:2026
+    id: ASI03
   target:
     taxonomy: mitre-atlas
     id: AML.T0059
@@ -457,7 +457,7 @@
 
 - source:
     taxonomy: owasp
-    id: ASI04:2026
+    id: ASI04
   target:
     taxonomy: mitre-atlas
     id: AML.T0060
@@ -467,7 +467,7 @@
 
 - source:
     taxonomy: owasp
-    id: ASI05:2026
+    id: ASI05
   target:
     taxonomy: mitre-atlas
     id: AML.T0058
@@ -477,7 +477,7 @@
 
 - source:
     taxonomy: owasp
-    id: ASI06:2026
+    id: ASI06
   target:
     taxonomy: mitre-attack
     id: T1548
@@ -487,7 +487,7 @@
 
 - source:
     taxonomy: owasp
-    id: ASI07:2026
+    id: ASI07
   target:
     taxonomy: mitre-atlas
     id: AML.T0018
@@ -497,7 +497,7 @@
 
 - source:
     taxonomy: owasp
-    id: ASI08:2026
+    id: ASI08
   target:
     taxonomy: mitre-attack
     id: T1078
@@ -507,7 +507,7 @@
 
 - source:
     taxonomy: owasp
-    id: ASI09:2026
+    id: ASI09
   target:
     taxonomy: mitre-atlas
     id: AML.T0057
@@ -517,7 +517,7 @@
 
 - source:
     taxonomy: owasp
-    id: ASI10:2026
+    id: ASI10
   target:
     taxonomy: mitre-attack
     id: T1195
@@ -2603,7 +2603,7 @@
     id: authentication
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.10
+    id: MEASURE 2.10
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2613,7 +2613,7 @@
     id: rate-limiting
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2623,7 +2623,7 @@
     id: access-control
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2633,7 +2633,7 @@
     id: access-control
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.8
+    id: MEASURE 2.8
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2643,7 +2643,7 @@
     id: encryption
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2653,7 +2653,7 @@
     id: logging-audit
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2663,7 +2663,7 @@
     id: logging-audit
   target:
     taxonomy: nist-ai-rmf
-    id: GOVERN-4.1
+    id: GOVERN 4.1
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2673,7 +2673,7 @@
     id: logging-audit
   target:
     taxonomy: nist-ai-rmf
-    id: MANAGE-4.1
+    id: MANAGE 4.1
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2683,7 +2683,7 @@
     id: input-validation
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2693,7 +2693,7 @@
     id: monitoring-alerting
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2703,7 +2703,7 @@
     id: monitoring-alerting
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-3.2
+    id: MEASURE 3.2
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2713,7 +2713,7 @@
     id: error-handling
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.6
+    id: MEASURE 2.6
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2723,7 +2723,7 @@
     id: secrets-management
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.10
+    id: MEASURE 2.10
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2733,7 +2733,7 @@
     id: secrets-management
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2745,7 +2745,7 @@
     id: spoofing
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2755,7 +2755,7 @@
     id: tampering
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2765,7 +2765,7 @@
     id: tampering
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.8
+    id: MEASURE 2.8
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2775,27 +2775,27 @@
     id: repudiation
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.8
+    id: MEASURE 2.8
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: information-disclosure
+    id: info-disclosure
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: information-disclosure
+    id: info-disclosure
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.10
+    id: MEASURE 2.10
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2805,7 +2805,7 @@
     id: denial-of-service
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2815,7 +2815,7 @@
     id: privilege-escalation
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2825,7 +2825,7 @@
     id: prompt-injection
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.6
+    id: MEASURE 2.6
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2835,7 +2835,7 @@
     id: data-poisoning
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.8
+    id: MEASURE 2.8
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2845,7 +2845,7 @@
     id: model-theft
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.10
+    id: MEASURE 2.10
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2855,7 +2855,7 @@
     id: model-theft
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2865,7 +2865,7 @@
     id: tool-abuse
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -2875,7 +2875,7 @@
     id: agent-autonomy
   target:
     taxonomy: nist-ai-rmf
-    id: MEASURE-2.7
+    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -3977,7 +3977,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: information-disclosure
+    id: info-disclosure
   target:
     taxonomy: mitre-attack
     id: T1005
@@ -3987,7 +3987,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: information-disclosure
+    id: info-disclosure
   target:
     taxonomy: mitre-attack
     id: T1039
@@ -3997,7 +3997,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: information-disclosure
+    id: info-disclosure
   target:
     taxonomy: mitre-attack
     id: T1213
@@ -4007,7 +4007,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: information-disclosure
+    id: info-disclosure
   target:
     taxonomy: mitre-attack
     id: T1213.003
@@ -4017,7 +4017,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: information-disclosure
+    id: info-disclosure
   target:
     taxonomy: mitre-attack
     id: T1530
@@ -4087,7 +4087,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: elevation-of-privilege
+    id: privilege-escalation
   target:
     taxonomy: mitre-attack
     id: T1068
@@ -4097,7 +4097,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: elevation-of-privilege
+    id: privilege-escalation
   target:
     taxonomy: mitre-attack
     id: T1548
@@ -4107,7 +4107,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: elevation-of-privilege
+    id: privilege-escalation
   target:
     taxonomy: mitre-attack
     id: T1548.001
@@ -4117,7 +4117,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: elevation-of-privilege
+    id: privilege-escalation
   target:
     taxonomy: mitre-attack
     id: T1548.003
@@ -4127,7 +4127,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: elevation-of-privilege
+    id: privilege-escalation
   target:
     taxonomy: mitre-attack
     id: T1548.005
@@ -4485,7 +4485,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: information-disclosure
+    id: info-disclosure
   target:
     taxonomy: cwe
     id: CWE-200
@@ -4495,7 +4495,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: information-disclosure
+    id: info-disclosure
   target:
     taxonomy: cwe
     id: CWE-209
@@ -4505,7 +4505,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: information-disclosure
+    id: info-disclosure
   target:
     taxonomy: cwe
     id: CWE-215
@@ -4515,7 +4515,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: information-disclosure
+    id: info-disclosure
   target:
     taxonomy: cwe
     id: CWE-538
@@ -4525,7 +4525,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: information-disclosure
+    id: info-disclosure
   target:
     taxonomy: cwe
     id: CWE-522
@@ -4575,7 +4575,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: elevation-of-privilege
+    id: privilege-escalation
   target:
     taxonomy: cwe
     id: CWE-250
@@ -4585,7 +4585,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: elevation-of-privilege
+    id: privilege-escalation
   target:
     taxonomy: cwe
     id: CWE-266
@@ -4595,7 +4595,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: elevation-of-privilege
+    id: privilege-escalation
   target:
     taxonomy: cwe
     id: CWE-269
@@ -4605,7 +4605,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: elevation-of-privilege
+    id: privilege-escalation
   target:
     taxonomy: cwe
     id: CWE-285
@@ -4615,7 +4615,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: elevation-of-privilege
+    id: privilege-escalation
   target:
     taxonomy: cwe
     id: CWE-862
@@ -4625,7 +4625,7 @@
 
 - source:
     taxonomy: tachi-stride-ai-category
-    id: elevation-of-privilege
+    id: privilege-escalation
   target:
     taxonomy: cwe
     id: CWE-863
