@@ -27,6 +27,17 @@ tachi is built with the [Agentic Oriented Development Kit (AOD Kit)](https://git
 
 ---
 
+## Community
+
+- **Questions, ideas, and feature requests** → [GitHub Discussions](https://github.com/davidmatousek/tachi/discussions)
+- **Reproducible bugs** → [GitHub Issues](https://github.com/davidmatousek/tachi/issues)
+- **Security vulnerabilities** → [private advisory](https://github.com/davidmatousek/tachi/security/advisories/new) (do not post publicly)
+- **Real-world usage** → [In the Wild](https://github.com/davidmatousek/tachi/discussions/categories/in-the-wild) — tell me how you're using tachi, anonymized is fine
+
+If you're new here, start with the [Welcome thread](https://github.com/davidmatousek/tachi/discussions) for how the board is organized.
+
+---
+
 ## Prerequisites
 
 tachi requires two external CLIs for full functionality. Both are required — `typst` compiles the PDF security report and `@mermaid-js/mermaid-cli` (`mmdc`) renders attack path diagrams. See [ADR-022](docs/architecture/02_ADRs/ADR-022-mmdc-hard-prerequisite.md) for the rationale.
