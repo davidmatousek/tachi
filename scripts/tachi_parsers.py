@@ -8,6 +8,7 @@ Used by extract-report-data.py and extract-infographic-data.py to ensure
 consistent, cross-output-identical parsing of the same source artifacts.
 """
 
+from dataclasses import dataclass
 import re
 import sys
 from pathlib import Path
@@ -743,7 +744,31 @@ def _extract_source_attribution(content: str, finding_id: str):
                 f"record: {missing}"
             )
         rec = dict(record)
+
+        # V1 — taxonomy enum membership (ADR-028 Decision 3)
+        taxonomy = rec["taxonomy"]
+        if taxonomy not in VALID_SOURCE_ATTRIBUTION_TAXONOMIES:
+            raise ValueError(
+                f"Finding {finding_id}: invalid taxonomy {taxonomy!r}. "
+                f"Allowed: {set(VALID_SOURCE_ATTRIBUTION_TAXONOMIES)}"
+            )
+
+        # V3 — id non-empty string
+        id_value = rec.get("id", "")
+        if not isinstance(id_value, str) or id_value == "":
+            raise ValueError(
+                f"Finding {finding_id}: empty or null id in source_attribution record"
+            )
+
+        # V2 — relationship enum membership (after default injection per Decision 4)
         rec.setdefault("relationship", "primary")
+        relationship = rec["relationship"]
+        if relationship not in VALID_SOURCE_ATTRIBUTION_RELATIONSHIPS:
+            raise ValueError(
+                f"Finding {finding_id}: invalid relationship {relationship!r}. "
+                f"Allowed: {set(VALID_SOURCE_ATTRIBUTION_RELATIONSHIPS)}"
+            )
+
         emit.append(rec)
     return emit
 
@@ -816,6 +841,98 @@ def parse_threats_findings(content: str) -> list:
             finding["source_attribution"] = attribution
         findings.append(finding)
     return findings
+
+
+# =============================================================================
+# Source Attribution Validator (F-A2 / Feature 189, ADR-028 Decision 5)
+#
+# Tier 2 (referential integrity) check: every record's ``id`` MUST resolve as
+# a top-level ``- id: <value>`` key in ``schemas/taxonomy/{taxonomy}.yaml``.
+# Stdlib-only implementation: scans each catalog YAML line-by-line for the
+# ``^- id: (\S+)`` pattern. This preserves PAT-014 (scripts/ stdlib-only;
+# pyyaml is developer-only per Feature 128). Per-invocation cache is scoped
+# to a local dict in the call frame — no module-level state (ADR-021
+# determinism guarantee).
+# =============================================================================
+
+_CATALOG_ID_PATTERN = re.compile(r"^- id: (\S+)\s*$", re.MULTILINE)
+
+
+@dataclass(frozen=True)
+class ValidationError:
+    """Structured referential-integrity validation error (ADR-028 Decision 5)."""
+
+    finding_id: str
+    record: dict
+    target_yaml_path: str
+    reason: str
+
+
+def _load_catalog_ids(taxonomy: str, taxonomy_dir: Path) -> frozenset:
+    """Load the set of top-level ``id:`` keys from a catalog YAML.
+
+    Stdlib-only (no pyyaml). Matches ``- id: <value>`` at the start of a line
+    — the canonical shape of F-A1 catalog records per ADR-027.
+    """
+    catalog_path = taxonomy_dir / f"{taxonomy}.yaml"
+    text = catalog_path.read_text()
+    return frozenset(_CATALOG_ID_PATTERN.findall(text))
+
+
+def validate_source_attribution(
+    findings: list,
+    taxonomy_dir: Path = Path("schemas/taxonomy"),
+) -> list:
+    """Validate referential integrity of source_attribution records (V4).
+
+    For every finding with ``source_attribution``, resolve every record's
+    ``id`` against a top-level key in ``{taxonomy_dir}/{taxonomy}.yaml``.
+    Returns a list of :class:`ValidationError` on failure; empty list on
+    full success. Callers decide whether to raise or log.
+
+    Args:
+        findings: list of parsed finding dicts (output of parse_threats_findings).
+        taxonomy_dir: path to F-A1 catalog directory. Default matches the
+            repository-root-relative layout per ADR-027.
+
+    Returns:
+        list[ValidationError]: empty on full success; one entry per
+        unresolved record id on failure.
+
+    Notes:
+        Per-invocation cache scoped to the local ``catalog_cache`` dict —
+        preserves ADR-021 determinism (no module-level mutable state). A
+        single call with N findings / M records / K unique taxonomies
+        performs at most K disk reads (not M).
+
+        Parser-tier enum errors (V1/V2/V3/V5) surface in
+        :func:`parse_threats_findings` via ``ValueError``; this validator
+        assumes its input has already passed Tier 1 checks.
+    """
+    catalog_cache: dict = {}
+    errors: list = []
+    for finding in findings:
+        if "source_attribution" not in finding:
+            continue
+        finding_id = finding.get("id", "")
+        for record in finding["source_attribution"]:
+            taxonomy = record["taxonomy"]
+            if taxonomy not in catalog_cache:
+                catalog_cache[taxonomy] = _load_catalog_ids(taxonomy, taxonomy_dir)
+            record_id = record["id"]
+            if record_id not in catalog_cache[taxonomy]:
+                errors.append(
+                    ValidationError(
+                        finding_id=finding_id,
+                        record=dict(record),
+                        target_yaml_path=str(taxonomy_dir / f"{taxonomy}.yaml"),
+                        reason=(
+                            f"id {record_id!r} not found as a top-level "
+                            f"'- id:' key in the catalog"
+                        ),
+                    )
+                )
+    return errors
 
 
 def parse_risk_scores_findings(content: str) -> list:
