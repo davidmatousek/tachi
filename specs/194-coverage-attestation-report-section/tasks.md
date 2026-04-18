@@ -193,14 +193,14 @@ triad:
 
 - [X] T039 Team-lead Day 2 EOD F-A3 merge-order coordination check (per architect M-2 / team-lead M-2). Query GitHub Issues for any F-A3 / populator / "threat-agent source_attribution" Issue filed during Days 1-2. If filed, escalate to serialization decision: hold F-B PR for F-A3 merge, OR advance F-B and accept F-A3 re-baseline cost (~0.5-1d). Document decision in PR description. **Outcome 2026-04-18**: No F-A3 Issue filed; F-B advances independently. Decision recorded at `specs/194-coverage-attestation-report-section/fa3-coordination-decision.md` for T046 PR-prep consumption.
 
-- [ ] T040 Zero-edit invariant grep audit per SC-009 — run:
+- [X] T040 Zero-edit invariant grep audit per SC-009 — run:
     ```bash
     git diff --name-only main...HEAD | \
       grep -E '^\.claude/(agents/tachi/(stride|ai)/.*\.md|skills/tachi-.*/references/detection-patterns\.md)$'
     ```
     Expected output: empty (no matches). Any match is a BLOCKER regression. Documented in PR.
 
-- [ ] T041 Zero-dependency diff audit per SC-008 — run:
+- [X] T041 Zero-dependency diff audit per SC-008 — run:
     ```bash
     git diff main...HEAD -- pyproject.toml requirements.txt requirements-dev.txt package.json
     ```
@@ -212,7 +212,7 @@ triad:
 
 - [ ] T044 Post-merge SHA fill on ADR-029 — after PR squash-merges to main, amend the ADR's `merge-sha:` placeholder with the actual squash commit SHA; commit directly to main (per Feature 180/189 post-merge SHA fill precedent). Tracked as a separate commit, not amended into the PR.
 
-- [ ] T045 [P] Update `docs/architecture/01_system_design/README.md` with a new `### Feature 194: coverage-attestation-report-section` subsection referencing plan.md's System Design block (Components, Data Flow, Tech Stack). Mirrors Feature 143 / 144 architecture documentation precedent.
+- [X] T045 [P] Update `docs/architecture/01_system_design/README.md` with a new `### Feature 194: coverage-attestation-report-section` subsection referencing plan.md's System Design block (Components, Data Flow, Tech Stack). Mirrors Feature 143 / 144 architecture documentation precedent.
 
 - [ ] T046 PR preparation — open PR against `main` with description citing: (a) spec.md, plan.md, tasks.md paths, (b) triple sign-off status, (c) ADR-029 Accepted with pending SHA, (d) SC-002 regression results, (e) SC-009 zero-edit audit results, (f) SC-008 zero-dep audit results, (g) T039 F-A3 coordination outcome.
 

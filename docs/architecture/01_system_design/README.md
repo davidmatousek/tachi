@@ -3177,3 +3177,74 @@ F-A3 / F-B scope: risk-scorer, control-analyzer, threat-report, SARIF,
 | Serialization surface | Q1-resolved at Day 1 memo | Primary: Q1-E conditional Section 9 YAML block (Feature 141 precedent). Fallback: Q1-B YAML sidecar file. Both preserve SC-2 byte-identity on the 5 non-agentic baselines. |
 
 **Zero new runtime dependencies**: empty diff on `requirements*.txt`, `pyproject.toml`, `package.json`. Zero new CLI prerequisites. 22-file zero-edit scope preserved per ADR-023.
+
+---
+
+### Feature 194: coverage-attestation-report-section
+
+**Branch**: `194-coverage-attestation-report-section` | **Status**: In Progress | **Planned merge**: 2026-04-23 | **Position**: BLP-01 Tier 2 (F-B) — first downstream consumer of the F-A1 (Feature 180 taxonomy catalogs) + F-A2 (Feature 189 `source_attribution` contract) supply-side pair, consumed independently of the deferred F-A3 populator
+
+Conditional PDF-only coverage-attestation section appended to the tachi security report, rendering (a) a single paginated per-finding attribution table (7 columns) and (b) one per-framework coverage matrix page per external framework in the F-A2 5-value taxonomy enum (OWASP, MITRE ATT&CK, MITRE ATLAS, NIST AI RMF, CWE). Gated on a single new `has-source-attribution` boolean in the Typst data contract — `true` iff ≥1 finding carries a non-empty `source_attribution` array; `false` on all 5 non-agentic baselines pre-F-A3, preserving SC-002 byte-identity under `SOURCE_DATE_EPOCH=1700000000` per ADR-021. Mirrors the Feature 141 `has-attack-chains` pattern verbatim (new Typst page + boolean emission + conditional `main.typ` block with default-value guard and `.len() > 0` belt-and-suspenders check) and the Feature 128 new-Typst-page precedent. New [ADR-029](../02_ADRs/ADR-029-coverage-attestation-report-section.md) under the Proposed → Accepted dual-commit pattern.
+
+## Components
+
+| Component | File | Change | Scope |
+|-----------|------|--------|-------|
+| C1 Aggregator | `scripts/extract-report-data.py` (new function) | Consumes parsed findings from `parse_threats_findings` (F-A2 round-trip at `tachi_parsers.py:796`); classifies every top-level record in each framework YAML as Covered / Partial / Gap per Q1-A rule; emits per-finding rows + per-framework aggregates + `has-source-attribution` boolean | ≈200-300 lines |
+| C2 Typst Template | `templates/tachi/security-report/coverage-attestation.typ` (new) | Single `coverage-attestation-page` function rendering per-finding table + 5 per-framework matrix pages with WCAG AA color + icon distinction (Q5 ux-ui-designer memo) | ≈200-350 lines |
+| C3 main.typ Integration | `templates/tachi/security-report/main.typ` | 3 coordinated edits as a single atomic block: default-value guards (§2b), unconditional `#import` (top), conditional inclusion block inserted AFTER findings-detail-page (~:393) and BEFORE compensating-controls (:398) | ≈12 lines total |
+| C4 ADR | `docs/architecture/02_ADRs/ADR-029-coverage-attestation-report-section.md` (new) | Proposed → Accepted dual-commit per F-A1/F-A2 precedent; documents 7 decision surfaces enumerated in spec FR-013 | ≈300-500 lines |
+| C5 Tests | `tests/scripts/test_coverage_attestation.py` (new) + 3 fixtures (empty, one-primary, multi-mixed) | Aggregator unit tests; backward-compat regression on 5 baselines unchanged | ≈400-600 lines |
+
+## Data Flow
+
+```
+Tachi Pipeline (unchanged upstream)
+  threats.md ─▶ parse_threats_findings ─▶ finding list
+                (F-A2 conditional-key round-trip of source_attribution)
+         │
+         ▼
+Coverage Attestation Aggregator (NEW, scripts/extract-report-data.py)
+  Step 1  Scan findings for any non-empty source_attribution
+          → sets has-source-attribution = True/False
+  Step 2  Load schemas/taxonomy/{owasp,mitre-attack,mitre-atlas,nist-ai-rmf,cwe}.yaml
+          → compute yaml_record_count ONCE per framework (per-invocation cache)
+  Step 3  Group per-finding attributions by taxonomy; merge MITRE ATT&CK + ATLAS
+          under single MITRE column with per-ref prefix
+  Step 4  Classify every framework YAML record: Covered (≥1 primary) / Partial
+          (zero primary AND ≥1 related/derived) / Gap (zero attributions)
+  Step 5  Compute per-framework aggregates {yaml_record_count, covered_count,
+          partial_count, gap_count, coverage_percentage}
+          Edges: yaml_record_count=0 → "N/A"; covered_count=0 → "0.00%";
+                 yaml.safe_load raise → fail loud per ADR-022
+         │
+         ▼
+Typst Data Contract (extract-report-data.py emission)
+  #let has-source-attribution = true|false
+  #let per-finding-rows = ( ... )
+  #let per-framework-aggregates = ( ... 5 records ... )
+         │
+         ▼
+main.typ conditional guard
+  #if has-source-attribution and per-finding-rows.len() > 0 {
+    coverage-attestation-page(...)
+  }
+         │
+         ▼
+PDF Output — byte-identical on 5 baselines when gate=false.
+```
+
+## Tech Stack
+
+| Layer | Technology | Justification |
+|-------|-----------|---------------|
+| Aggregator | Python 3.11 + pyyaml (runtime, pre-existing) | Matches `extract-report-data.py` pattern; zero new runtime dep |
+| Template | Typst (pre-existing) | Matches Feature 128 new-page + Feature 141 conditional-gate precedent |
+| ADR | Markdown | Proposed → Accepted dual-commit per F-A1 (Feature 180) / F-A2 (Feature 189) precedent |
+| Tests | pytest >= 8.0 (developer-only, pre-existing) | Established in Feature 128; SC-002 byte-identity harness reused unmodified |
+| Determinism | `SOURCE_DATE_EPOCH=1700000000` per ADR-021 | 5 non-agentic baselines byte-identical (SC-002 BLOCKER gate) |
+| Gate pattern | `has-source-attribution` + `.len() > 0` | Mirrors Feature 141 `has-attack-chains` dual-predicate (`main.typ:246`) |
+
+**Architectural posture**: additive-only. Zero schema changes (FR-015 BLOCKER); zero edits to the 22-file scope (11 threat-detection agents + 11 companion skill-reference `detection-patterns.md` files) per ADR-023 / ADR-028 lineage (FR-014 / SC-009 BLOCKER); no crosswalk JOIN (FR-017 scope boundary). Zero new runtime or developer dependencies (SC-008): empty diff on `requirements*.txt`, `pyproject.toml`, `package.json`. F-A3 populator coordination handled via Day 2 EOD status check; second-merger absorbs ~0.5-1d re-baselining cost per R3 mitigation.
+
+**Cross-references**: [ADR-029](../02_ADRs/ADR-029-coverage-attestation-report-section.md) (this feature's decision record) · [ADR-028](../02_ADRs/ADR-028-source-attribution-schema-extension.md) (F-A2 schema contract — direct upstream dependency) · [ADR-027](../02_ADRs/ADR-027-taxonomy-crosswalk-schema.md) (F-A1 catalog vocabulary — denominator source) · [ADR-023](../02_ADRs/ADR-023-threat-agent-skill-references-pattern.md) (22-file zero-edit invariant — extended here) · [ADR-022](../02_ADRs/ADR-022-mmdc-hard-prerequisite.md) (fail-loud posture on malformed YAML) · [ADR-021](../02_ADRs/ADR-021-source-date-epoch-determinism.md) (SC-002 byte-identity baseline) · Feature 141 (`has-attack-chains` conditional-gate pattern precedent) · Feature 128 (new Typst page + Typst data contract precedent).
