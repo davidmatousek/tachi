@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.18.1](https://github.com/davidmatousek/tachi/compare/v4.18.0...v4.18.1) (2026-04-18)
+
+
+### Bug Fixes
+
+* **198:** merge source_attribution onto Tier 1/2 findings ([#199](https://github.com/davidmatousek/tachi/issues/199)) ([e637d31](https://github.com/davidmatousek/tachi/commit/e637d31927c1e2c66f4f0afe5b2ab2b9ea8abcd1))
+
 ## [4.18.0](https://github.com/davidmatousek/tachi/compare/v4.17.0...v4.18.0) (2026-04-18)
 
 
