@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.18.0](https://github.com/davidmatousek/tachi/compare/v4.17.0...v4.18.0) (2026-04-18)
+
+
+### Features
+
+* **194:** Coverage Attestation Report Section (F-B / BLP-01) ([#195](https://github.com/davidmatousek/tachi/issues/195)) ([c4b8dc6](https://github.com/davidmatousek/tachi/commit/c4b8dc68f36b59ee7ab49cc587661526ffd1a818))
+
 ## [4.17.0](https://github.com/davidmatousek/tachi/compare/v4.16.0...v4.17.0) (2026-04-18)
 
 
