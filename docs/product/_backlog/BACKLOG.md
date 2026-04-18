@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-04-18T01:22:03Z.
+> Auto-generated from GitHub Issues on 2026-04-18T17:16:18Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -46,6 +46,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #194 | F-B: Coverage Attestation Report Section | OPEN | 2026-04-18 |
 | #186 | F-A1.3 follow-on: MITRE ATT&CK + ATLAS catalog expansion | OPEN | 2026-04-17 |
 | #185 | F-A1.2 follow-on: cwe.yaml expansion — add CWE records discovered in T029 drift analysis | OPEN | 2026-04-17 |
 | #184 | F-A1.1 follow-on: NIST AI 600-1 GAI Risk taxonomy addition — Surface C transcription (ADR-027 / FR-010 enum expansion) | OPEN | 2026-04-17 |

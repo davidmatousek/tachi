@@ -1,11 +1,12 @@
 # PRD Index
 
-**Last Updated**: 2026-04-17 (PRD 189 delivered — F-A2 Source Attribution Schema Extension, PR #190)
+**Last Updated**: 2026-04-18 (PRD 194 approved — F-B Coverage Attestation Report Section)
 **Legend**: ✓=APPROVED, ⚠=APPROVED_WITH_CONCERNS, 🔄=CHANGES_REQUESTED, ⛔=BLOCKED, ⚠⚡=OVERRIDDEN
 
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 194 | [F-B Coverage Attestation Report Section](194-coverage-attestation-report-section-2026-04-18.md) | ✓ | ⚠ | ⚠ | Approved | 2026-04-18 |
 | 189 | [F-A2 Source Attribution Schema Extension](189-source-attribution-schema-extension-2026-04-17.md) ([PR #190](https://github.com/davidmatousek/tachi/pull/190)) | ⚠ | ✓ | ⚠ | Delivered | 2026-04-17 |
 | 180 | [F-A1 Taxonomy Crosswalk Collection](180-taxonomy-crosswalk-collection-2026-04-17.md) ([PR #181](https://github.com/davidmatousek/tachi/pull/181)) | ⚠ | ⚠ | ⚠ | Delivered | 2026-04-17 |
 | 145 | [MAESTRO Canonical Worked Example: Multi-Agent Reference Architecture](145-maestro-canonical-worked-example-2026-04-16.md) ([PR #175](https://github.com/davidmatousek/tachi/pull/175)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-17 |
