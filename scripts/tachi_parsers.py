@@ -619,19 +619,9 @@ def parse_resolved_findings(content: str) -> list:
     return findings
 
 
-# =============================================================================
-# Source Attribution Parser (F-A2 / Feature 189, schema 1.5)
-#
-# Q1-E serialization surface per ADR-028 Decision 2: an optional
-# ``## 9. Source Attribution`` section in threats.md containing a YAML
-# code fence keyed by finding ID with a list of ``{taxonomy, id,
-# relationship}`` records. Absent-section => absent-key on every
-# finding dict (conditional-key semantic per Feature 104 delta_status
-# precedent). Stdlib-only regex parsing preserves PAT-014 (scripts/
-# stay stdlib-only; pyyaml remains developer-only per Feature 128).
-# =============================================================================
+# Source Attribution parser — optional "## 9. Source Attribution" YAML block
+# with conditional-key emission (absent section => no key on finding dict).
 
-# Closed 5-value taxonomy enum (ADR-028 Decision 3; external frameworks only)
 VALID_SOURCE_ATTRIBUTION_TAXONOMIES = (
     "owasp",
     "mitre-attack",
@@ -640,29 +630,26 @@ VALID_SOURCE_ATTRIBUTION_TAXONOMIES = (
     "cwe",
 )
 
-# Closed 3-value relationship enum (ADR-028 Decision 4)
 VALID_SOURCE_ATTRIBUTION_RELATIONSHIPS = ("primary", "related", "derived")
 
-# Valid record key sets (V5 shape rule from data-model.md)
 _SRC_ATTR_KEYS_2 = frozenset(("taxonomy", "id"))
 _SRC_ATTR_KEYS_3 = frozenset(("taxonomy", "id", "relationship"))
 
 
-def _parse_source_attribution_flow_dict(body: str) -> dict:
-    """Parse a flow-style YAML dict body into a Python dict.
+_SRC_ATTR_KV_PATTERN = re.compile(r"\s*([a-zA-Z_][a-zA-Z_0-9]*)\s*:\s*(.*?)\s*$")
 
-    Handles the restricted shape ``key: value, key: value, ...`` used in
-    Section 9 source_attribution records. No nested dicts, no quoted
-    strings with commas, no multiline values. Stdlib-only — avoids a
-    pyyaml runtime dependency per PAT-014.
+
+def _parse_source_attribution_flow_dict(body: str) -> dict:
+    """Parse a flow-style YAML dict body (``key: value, ...``) into a Python dict.
+
+    Restricted shape: no nested dicts, no quoted commas, no multiline values.
+    Stdlib-only to keep scripts/ free of the pyyaml runtime dependency.
     """
     out: dict = {}
     for part in body.split(","):
-        kv = re.match(r"\s*([a-zA-Z_][a-zA-Z_0-9]*)\s*:\s*(.*?)\s*$", part)
+        kv = _SRC_ATTR_KV_PATTERN.match(part)
         if kv:
-            key = kv.group(1)
-            value = kv.group(2).strip().strip("'\"")
-            out[key] = value
+            out[kv.group(1)] = kv.group(2).strip().strip("'\"")
     return out
 
 
@@ -704,28 +691,14 @@ def _extract_source_attribution_block(content: str):
     return result
 
 
-def _extract_source_attribution(content: str, finding_id: str):
-    """Extract source_attribution records for one finding from Section 9.
+def _extract_source_attribution(finding_id: str, block):
+    """Resolve source_attribution records for one finding from a pre-parsed block.
 
-    Args:
-        content: full threats.md text.
-        finding_id: the finding's ``id`` field (e.g., ``"LLM-5"``).
-
-    Returns:
-        ``None`` when Section 9 is absent OR when finding_id is not keyed
-        in the block (V6 conditional-key semantic — caller MUST NOT inject
-        the ``source_attribution`` key on the finding dict).
-        ``list[dict]`` (possibly empty) when finding_id IS keyed. Each
-        emitted record has all three ``{taxonomy, id, relationship}`` keys
-        populated; ``relationship`` defaults to ``"primary"`` when absent
-        on input (V2 default injection).
-
-    Raises:
-        ValueError: V5 shape violation — record has keys outside the
-        ``{taxonomy, id}`` / ``{taxonomy, id, relationship}`` sets. The
-        message names the finding ID and the offending keys.
+    Returns None when ``block`` is None or ``finding_id`` is not keyed — caller
+    must not inject the ``source_attribution`` key (conditional-key semantic,
+    distinguishing absent from explicitly-empty). Returns list[dict] (possibly
+    empty) otherwise; missing ``relationship`` values default to ``"primary"``.
     """
-    block = _extract_source_attribution_block(content)
     if block is None or finding_id not in block:
         return None
     emit: list = []
@@ -734,18 +707,12 @@ def _extract_source_attribution(content: str, finding_id: str):
         if keys != _SRC_ATTR_KEYS_2 and keys != _SRC_ATTR_KEYS_3:
             extra = sorted(keys - _SRC_ATTR_KEYS_3)
             missing = sorted(_SRC_ATTR_KEYS_2 - keys)
-            if extra:
-                raise ValueError(
-                    f"Finding {finding_id}: unexpected key(s) in source_attribution "
-                    f"record: {extra}"
-                )
+            problem = f"unexpected key(s): {extra}" if extra else f"missing required key(s): {missing}"
             raise ValueError(
-                f"Finding {finding_id}: missing required key(s) in source_attribution "
-                f"record: {missing}"
+                f"Finding {finding_id}: {problem} in source_attribution record"
             )
         rec = dict(record)
 
-        # V1 — taxonomy enum membership (ADR-028 Decision 3)
         taxonomy = rec["taxonomy"]
         if taxonomy not in VALID_SOURCE_ATTRIBUTION_TAXONOMIES:
             raise ValueError(
@@ -753,14 +720,12 @@ def _extract_source_attribution(content: str, finding_id: str):
                 f"Allowed: {set(VALID_SOURCE_ATTRIBUTION_TAXONOMIES)}"
             )
 
-        # V3 — id non-empty string
         id_value = rec.get("id", "")
         if not isinstance(id_value, str) or id_value == "":
             raise ValueError(
                 f"Finding {finding_id}: empty or null id in source_attribution record"
             )
 
-        # V2 — relationship enum membership (after default injection per Decision 4)
         rec.setdefault("relationship", "primary")
         relationship = rec["relationship"]
         if relationship not in VALID_SOURCE_ATTRIBUTION_RELATIONSHIPS:
@@ -778,19 +743,11 @@ def parse_threats_findings(content: str) -> list:
 
     Returns list of finding dicts with Tier 3 keys.
 
-    The ``agentic_pattern`` key (Feature 142, schema 1.4) is always present
-    on every returned finding dict. When the Section 7 table contains a
-    ``Pattern`` or ``Agentic Pattern`` column (case-insensitive), the raw
-    value is routed through :func:`parse_finding_pattern` to yield a
-    canonical enum string. When no such column exists (pre-Feature-142
-    threats.md), every finding defaults to ``agentic_pattern: 'none'`` per
-    FR-017 backward compatibility.
-
-    The ``source_attribution`` key (Feature 189, schema 1.5) is
-    conditionally injected on each finding when the document carries a
-    ``## 9. Source Attribution`` block keyed by the finding's ID. Absent
-    section OR absent key in the block => omitted from the returned dict
-    entirely (V6 conditional-key semantic per ADR-028 Decision 2).
+    The ``agentic_pattern`` key is always present; if the table has no
+    ``Pattern`` / ``Agentic Pattern`` column (pre-1.4 threats.md), every
+    finding defaults to ``'none'``. The ``source_attribution`` key is
+    conditionally injected only when the finding's ID is keyed in a
+    ``## 9. Source Attribution`` block.
     """
     rows = parse_markdown_table(content, "## 7. Recommended Actions")
     if not rows:
@@ -807,6 +764,8 @@ def parse_threats_findings(content: str) -> list:
         if col.strip().lower() in ("pattern", "agentic pattern"):
             pattern_key = col
             break
+
+    source_attribution_block = _extract_source_attribution_block(content)
 
     findings = []
     for row in rows:
@@ -834,33 +793,22 @@ def parse_threats_findings(content: str) -> list:
         status = row.get("Status", "").strip()
         if status:
             finding["delta_status"] = status
-        # Source attribution (F-A2, schema 1.5): conditional-key emission
-        # per ADR-028 Decision 2 (V6 absent-vs-empty semantic preserved).
-        attribution = _extract_source_attribution(content, finding["id"])
+        attribution = _extract_source_attribution(finding["id"], source_attribution_block)
         if attribution is not None:
             finding["source_attribution"] = attribution
         findings.append(finding)
     return findings
 
 
-# =============================================================================
-# Source Attribution Validator (F-A2 / Feature 189, ADR-028 Decision 5)
-#
-# Tier 2 (referential integrity) check: every record's ``id`` MUST resolve as
-# a top-level ``- id: <value>`` key in ``schemas/taxonomy/{taxonomy}.yaml``.
-# Stdlib-only implementation: scans each catalog YAML line-by-line for the
-# ``^- id: (\S+)`` pattern. This preserves PAT-014 (scripts/ stdlib-only;
-# pyyaml is developer-only per Feature 128). Per-invocation cache is scoped
-# to a local dict in the call frame — no module-level state (ADR-021
-# determinism guarantee).
-# =============================================================================
+# Tier 2 referential-integrity validator: resolves each record's id against
+# the catalog YAMLs in schemas/taxonomy/. Stdlib-only (no pyyaml).
 
 _CATALOG_ID_PATTERN = re.compile(r"^- id: (\S+)\s*$", re.MULTILINE)
 
 
 @dataclass(frozen=True)
 class ValidationError:
-    """Structured referential-integrity validation error (ADR-028 Decision 5)."""
+    """Referential-integrity failure: a record's id did not resolve in its catalog."""
 
     finding_id: str
     record: dict
@@ -869,11 +817,7 @@ class ValidationError:
 
 
 def _load_catalog_ids(taxonomy: str, taxonomy_dir: Path) -> frozenset:
-    """Load the set of top-level ``id:`` keys from a catalog YAML.
-
-    Stdlib-only (no pyyaml). Matches ``- id: <value>`` at the start of a line
-    — the canonical shape of F-A1 catalog records per ADR-027.
-    """
+    """Return the set of top-level ``- id: <value>`` keys from a catalog YAML."""
     catalog_path = taxonomy_dir / f"{taxonomy}.yaml"
     text = catalog_path.read_text()
     return frozenset(_CATALOG_ID_PATTERN.findall(text))
@@ -883,31 +827,12 @@ def validate_source_attribution(
     findings: list,
     taxonomy_dir: Path = Path("schemas/taxonomy"),
 ) -> list:
-    """Validate referential integrity of source_attribution records (V4).
+    """Validate referential integrity of source_attribution records.
 
-    For every finding with ``source_attribution``, resolve every record's
-    ``id`` against a top-level key in ``{taxonomy_dir}/{taxonomy}.yaml``.
-    Returns a list of :class:`ValidationError` on failure; empty list on
-    full success. Callers decide whether to raise or log.
-
-    Args:
-        findings: list of parsed finding dicts (output of parse_threats_findings).
-        taxonomy_dir: path to F-A1 catalog directory. Default matches the
-            repository-root-relative layout per ADR-027.
-
-    Returns:
-        list[ValidationError]: empty on full success; one entry per
-        unresolved record id on failure.
-
-    Notes:
-        Per-invocation cache scoped to the local ``catalog_cache`` dict —
-        preserves ADR-021 determinism (no module-level mutable state). A
-        single call with N findings / M records / K unique taxonomies
-        performs at most K disk reads (not M).
-
-        Parser-tier enum errors (V1/V2/V3/V5) surface in
-        :func:`parse_threats_findings` via ``ValueError``; this validator
-        assumes its input has already passed Tier 1 checks.
+    For every finding with ``source_attribution``, resolve each record's ``id``
+    against a top-level key in ``{taxonomy_dir}/{taxonomy}.yaml``. Returns a
+    list of ValidationError (empty on success). Catalog YAMLs are read at
+    most once per call via a local cache — no module-level state.
     """
     catalog_cache: dict = {}
     errors: list = []
