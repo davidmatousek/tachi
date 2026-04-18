@@ -95,17 +95,11 @@ triad:
 
 - [X] T011 [US3] Implement `compute_has_source_attribution(findings) -> bool` in `scripts/extract-report-data.py`. Returns `True` iff any finding has `source_attribution` that is not `None` and has `len() > 0`. Emits `#let has-source-attribution = true|false` to the Typst data contract via `_typst_bool()` (existing helper from Feature 141 at line 1426 precedent).
 
-- [ ] T012 [US3] Add 3 default-value guards to `templates/tachi/security-report/main.typ` §2b defaults block (around lines 89-107) as a **single atomic edit block** (architect L-1):
-    ```typst
-    #let has-source-attribution = if has-source-attribution != none { has-source-attribution } else { false }
-    #let per-finding-rows = if per-finding-rows != none { per-finding-rows } else { () }
-    #let per-framework-aggregates = if per-framework-aggregates != none { per-framework-aggregates } else { () }
-    ```
-    Matches the existing default-guard pattern at `main.typ:103` for `has-attack-chains`.
+- [X] T012 [US3] Add 3 default-value guards to `templates/tachi/security-report/main.typ` §2b defaults block (around lines 89-107) as a **single atomic edit block** (architect L-1). **Implementation deviation from architect's prescribed `if X != none { X } else { default }` idiom**: discovered during T016 that the prescribed pattern only handles present-but-`none` vars (because `#import "report-data.typ": *` doesn't bind absent names). The data-contract.md §Backward Compatibility explicitly requires handling the absent-from-data-file case. Switched to `dictionary(report-data-module).at("name", default: ...)` after binding `#import "report-data.typ" as report-data-module`. T010 stale-data test green; T015 baselines byte-identical. ADR-029 may need a "guard-pattern selection" addendum in T043.
 
-- [ ] T013 [US3] Add `#import "coverage-attestation.typ": coverage-attestation-page` to `templates/tachi/security-report/main.typ` in the existing imports block (around lines 43-47). Unconditional import; byte-identity is preserved because the function is not invoked when the gate predicate is false.
+- [X] T013 [US3] Add `#import "coverage-attestation.typ": coverage-attestation-page` to `templates/tachi/security-report/main.typ` in the existing imports block (around lines 43-47). Unconditional import; byte-identity is preserved because the function is not invoked when the gate predicate is false.
 
-- [ ] T014 [US3] Add conditional inclusion block to `templates/tachi/security-report/main.typ` AFTER the always-rendered findings-detail-page (~line 393) and BEFORE the compensating-controls block (line 398) — architect M-1 refined insertion point, NOT between MAESTRO-findings (:348) and compensating-controls (:398). Block:
+- [X] T014 [US3] Add conditional inclusion block to `templates/tachi/security-report/main.typ` AFTER the always-rendered findings-detail-page (~line 393) and BEFORE the compensating-controls block (line 398) — architect M-1 refined insertion point, NOT between MAESTRO-findings (:348) and compensating-controls (:398). Block:
     ```typst
     #if has-source-attribution and per-finding-rows.len() > 0 {
       coverage-attestation-page(per-finding-rows: per-finding-rows, per-framework-aggregates: per-framework-aggregates)
@@ -115,7 +109,7 @@ triad:
 
 - [ ] T015 [US3] SC-002 byte-identity regression — run `SOURCE_DATE_EPOCH=1700000000 pytest tests/scripts/test_backward_compatibility.py` and verify all 5 non-agentic baselines regenerate byte-identical to committed `.pdf.baseline` files. **BLOCKER** gate: if any baseline regresses, fix before proceeding.
 
-- [ ] T016 [US3] Day 3 `#import` byte-identity smoke (architect MED-5) — verify that adding the `#import` in T013 alone (without T014 conditional block) produces byte-identical PDFs on the 5 baselines. Subset of T015 run at Day 3 PM.
+- [X] T016 [US3] Day 3 `#import` byte-identity smoke (architect MED-5) — verified that adding the `#import` in T013 + T012 guards (without T014 conditional block) produces byte-identical PDFs on the 6 baselines (web-app, microservices, ascii-web-api, mermaid-agentic-app, free-text-microservice, maestro-reference). Run via `SOURCE_DATE_EPOCH=1700000000 pytest tests/scripts/test_backward_compatibility.py -k byte_identical` — 6/6 green.
 
 **Checkpoint**: US3 complete. The gate is live. Coverage attestation section is omitted on all 5 baselines. PDFs byte-identical to pre-F-B state.
 
@@ -197,7 +191,7 @@ triad:
 
 **Purpose**: ADR transition, documentation cross-linking, final validation, PR preparation.
 
-- [ ] T039 Team-lead Day 2 EOD F-A3 merge-order coordination check (per architect M-2 / team-lead M-2). Query GitHub Issues for any F-A3 / populator / "threat-agent source_attribution" Issue filed during Days 1-2. If filed, escalate to serialization decision: hold F-B PR for F-A3 merge, OR advance F-B and accept F-A3 re-baseline cost (~0.5-1d). Document decision in PR description.
+- [X] T039 Team-lead Day 2 EOD F-A3 merge-order coordination check (per architect M-2 / team-lead M-2). Query GitHub Issues for any F-A3 / populator / "threat-agent source_attribution" Issue filed during Days 1-2. If filed, escalate to serialization decision: hold F-B PR for F-A3 merge, OR advance F-B and accept F-A3 re-baseline cost (~0.5-1d). Document decision in PR description. **Outcome 2026-04-18**: No F-A3 Issue filed; F-B advances independently. Decision recorded at `specs/194-coverage-attestation-report-section/fa3-coordination-decision.md` for T046 PR-prep consumption.
 
 - [ ] T040 Zero-edit invariant grep audit per SC-009 — run:
     ```bash
