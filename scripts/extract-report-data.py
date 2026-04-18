@@ -973,9 +973,9 @@ def prepare_attack_chains(target_dir: Path, findings: list, template_dir: Path) 
 def compute_has_source_attribution(findings: list[dict]) -> bool:
     """Return True iff any finding has a non-empty source_attribution array.
 
-    F-B gate predicate (FR-002 / SC-003). Single-predicate gate for the entire
-    coverage-attestation section. ``has-source-attribution: false`` MUST cause
-    the section to be omitted entirely from the PDF (SC-002 byte-identity).
+    Gate predicate for the coverage-attestation section. False MUST omit the
+    section entirely from the PDF to preserve byte-identity on non-attributed
+    baselines (ADR-021 determinism convention).
     """
     for finding in findings or ():
         attribution = finding.get("source_attribution")
@@ -984,18 +984,9 @@ def compute_has_source_attribution(findings: list[dict]) -> bool:
     return False
 
 
-# =============================================================================
-# F-B Coverage Attestation Aggregator (Feature 194 / Wave 2.2)
-# =============================================================================
-# Reads F-A2 source_attribution arrays on findings + F-A1 catalog YAMLs from
-# schemas/taxonomy/ and emits the two transient entities consumed by
-# templates/tachi/security-report/coverage-attestation.typ:
-#   - Per-Finding Attribution Row (one record per finding)
-#   - Per-Framework Aggregate Record (exactly 5 records, fixed framework order)
-# Contract: specs/194-coverage-attestation-report-section/contracts/typst-data-contract.md
-# Spec: data-model.md §New Transient Entities (F-B Aggregator Output)
-# Decisions: ADR-029 §Q1-A 3-value classification, §Q2-A denominator authority
-# =============================================================================
+# Coverage attestation aggregator: joins source_attribution arrays on findings
+# against schemas/taxonomy/ catalogs and emits per-finding rows + per-framework
+# aggregates for the coverage-attestation Typst template.
 
 SCHEMAS_TAXONOMY_DIR = Path(__file__).resolve().parent.parent / "schemas" / "taxonomy"
 
@@ -1014,13 +1005,14 @@ TAXONOMY_REF_GROUPS = (
 def _load_framework_yaml_records(framework_name: str) -> list:
     """Return the list of top-level records from schemas/taxonomy/{framework_name}.yaml.
 
-    Internal helper. Wraps yaml.safe_load with a fail-loud RuntimeError that
-    names the offending framework + path (ADR-022 fail-loud / FR-011(c)).
-    Empty YAML yields an empty list (zero-denominator edge case).
+    Wraps yaml.safe_load with a fail-loud RuntimeError that names the offending
+    framework + path. Empty YAML yields an empty list (zero-denominator case).
 
     yaml is imported lazily so the module loads without pyyaml installed —
-    preserves the stdlib-only module-load invariant (tachi_parsers.py:646, 804)
-    and lets the Feature 130 mmdc preflight gate fire before yaml is needed.
+    required by the stdlib-only module-load invariant in sibling tachi_parsers
+    (which uses regex `_load_catalog_ids` for the ids-only case). An ids-only
+    caller should prefer `tachi_parsers._load_catalog_ids`; this helper returns
+    full record dicts in YAML order, which is what the aggregator needs.
     """
     import yaml
 
@@ -1041,10 +1033,10 @@ def _load_framework_yaml_records(framework_name: str) -> list:
 def load_framework_yaml_record_counts() -> dict:
     """Return ``{framework_name: top_level_record_count}`` for the 5 external frameworks.
 
-    Q2-A denominator authority (FR-008): the denominator of every coverage
-    percentage is ``len(yaml.safe_load(schemas/taxonomy/{framework}.yaml))``
-    at invocation time. Tests monkeypatch this function to inject zero-
-    denominator scenarios without touching disk.
+    The denominator of every coverage percentage is
+    ``len(yaml.safe_load(schemas/taxonomy/{framework}.yaml))`` at invocation
+    time. Tests monkeypatch this function to inject zero-denominator scenarios
+    without touching disk.
     """
     return {fw: len(_load_framework_yaml_records(fw)) for fw in ORDERED_FRAMEWORKS}
 
@@ -1052,7 +1044,7 @@ def load_framework_yaml_record_counts() -> dict:
 def classify_framework_items(
     findings: list, framework_name: str, framework_records: list
 ) -> list:
-    """Classify each top-level YAML record per Q1-A 3-value rule (FR-007).
+    """Classify each top-level YAML record into Covered / Partial / Gap.
 
     Rule:
       - Covered → ≥1 finding cites this id with relationship = primary
@@ -1085,10 +1077,10 @@ def _build_per_framework_aggregate(
 ) -> dict:
     """Combine classified items + denominator into a Per-Framework Aggregate Record.
 
-    Partition invariant (data-model.md §Per-Framework Aggregate Record):
-    ``covered_count + partial_count + gap_count == yaml_record_count``.
+    Partition invariant: ``covered_count + partial_count + gap_count ==
+    yaml_record_count``.
 
-    Coverage percentage formatting (FR-011):
+    Coverage percentage formatting:
       - "X.XX%" when yaml_record_count > 0 (numerator = covered_count only)
       - "N/A"   when yaml_record_count == 0 (zero-denominator edge case)
     Zero-numerator with non-zero denominator yields "0.00%" via normal arithmetic.
@@ -1114,7 +1106,7 @@ def _build_per_framework_aggregate(
 def build_per_framework_aggregates(findings: list) -> list:
     """Emit exactly 5 Per-Framework Aggregate Records in fixed framework order.
 
-    Order: owasp, mitre-attack, mitre-atlas, nist-ai-rmf, cwe (Q4 — always-5).
+    Order: owasp, mitre-attack, mitre-atlas, nist-ai-rmf, cwe.
     Calls ``load_framework_yaml_record_counts`` for the authoritative denominator;
     classification skips when the count is zero so the partition invariant holds.
     """
@@ -1136,12 +1128,11 @@ def build_per_framework_aggregates(findings: list) -> list:
 def build_per_finding_rows(findings: list) -> list:
     """Emit one Per-Finding Attribution Row per finding, preserving input order.
 
-    Per FR-005 / FR-006:
-      - Every finding produces one row, including findings without attribution
-        (4 ref arrays present as empty lists).
-      - MITRE column merges ``mitre-attack`` + ``mitre-atlas`` with per-ref
-        prefix ``ATT&CK:`` / ``ATLAS:`` to disambiguate (architect L-2 — merge
-        applies to per-finding column only, NOT to per-framework matrix pages).
+    Every finding produces one row, including findings without attribution
+    (4 ref arrays present as empty lists). The MITRE column merges
+    ``mitre-attack`` + ``mitre-atlas`` with per-ref prefix ``ATT&CK:`` /
+    ``ATLAS:`` to disambiguate; the merge applies to the per-finding column
+    only, NOT to per-framework matrix pages.
     """
     rows = []
     for finding in findings or ():
@@ -1659,12 +1650,10 @@ def generate_report_data_typ(data: dict) -> str:
         lines.append("#let attack-chains = ()")
     lines.append("")
 
-    # 3t: Coverage Attestation Data (Feature 194 / F-B)
-    # Three additive declarations consumed by main.typ default-value guards
-    # and the conditional inclusion block. Always emitted (additive backward-
-    # compat per typst-data-contract.md §Backward Compatibility): empty arrays
-    # when the gate is false, populated otherwise.
-    lines.append("// --- Coverage Attestation Data (F-B / Feature 194) --------------------------")
+    # 3t: Coverage Attestation Data
+    # Always emitted so main.typ default-value guards have something to bind;
+    # empty arrays when the gate is false, populated otherwise.
+    lines.append("// --- Coverage Attestation Data ----------------------------------------------")
     lines.append(
         f"#let has-source-attribution = {_typst_bool(data.get('has_source_attribution', False))}"
     )
@@ -1986,11 +1975,8 @@ def main():
         data["has_attack_chains"] = False
         data["attack_chains"] = []
 
-    # F-B Coverage Attestation (Feature 194 / Wave 2.2 — T027 + T036)
-    # Gate predicate is computed unconditionally; per-finding rows and per-
-    # framework aggregates render only when the gate is true. Empty arrays
-    # otherwise so the Typst consumer's belt-and-suspenders ``.len() > 0``
-    # check fires safely.
+    # Empty arrays on the false branch so the Typst consumer's `.len() > 0`
+    # check fires safely even when the gate is false.
     data["has_source_attribution"] = compute_has_source_attribution(data["findings"])
     if data["has_source_attribution"]:
         data["per_finding_rows"] = build_per_finding_rows(data["findings"])
