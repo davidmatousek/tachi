@@ -1,0 +1,49 @@
+# Coverage Attestation Fixture — one_primary_attribution
+#
+# Feature 194 Wave 1.1 / T004: Minimal populated state.
+#
+# Shape: list of finding dicts matching the contract of
+# scripts/tachi_parsers.py::parse_threats_findings. Findings without
+# attribution OMIT the source_attribution key entirely (per the F-A2
+# conditional-key semantic in schemas/finding.yaml v1.5).
+#
+# Purpose: exactly ONE finding carries a single primary attribution to a
+# single framework (OWASP LLM05). Feeds tests asserting
+# ``has_source_attribution == True`` with minimal aggregator state —
+# single-finding, single-record, single-framework path.
+#
+# ID validation: ``LLM05`` is a top-level ``id:`` in
+# schemas/taxonomy/owasp.yaml (OWASP LLM Top 10:2025 — Improper Output Handling).
+#
+# Used-by (planned):
+#   - tests/scripts/test_coverage_attestation.py::test_single_primary_triggers_section
+#   - tests/scripts/test_coverage_attestation.py::test_single_framework_coverage_counts
+
+- id: LLM-1
+  component: LLM Response Handler
+  threat: Unsanitized LLM output renders into downstream HTML surface
+  likelihood: "\u2014"
+  impact: "\u2014"
+  risk_level: High
+  mitigation: Strict output encoding and CSP enforcement
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: LLM05, relationship: primary}
+
+- id: S-2
+  component: Session Service
+  threat: Session fixation via predictable session identifiers
+  likelihood: "\u2014"
+  impact: "\u2014"
+  risk_level: Medium
+  mitigation: Rotate session IDs on authentication; use CSPRNG entropy
+  agentic_pattern: none
+
+- id: D-3
+  component: Rate Limiter
+  threat: Unauthenticated request flood exhausts API capacity
+  likelihood: "\u2014"
+  impact: "\u2014"
+  risk_level: Medium
+  mitigation: Per-IP token bucket with adaptive backoff
+  agentic_pattern: none
