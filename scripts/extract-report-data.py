@@ -21,8 +21,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-import yaml
-
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from tachi_parsers import (
@@ -1019,7 +1017,13 @@ def _load_framework_yaml_records(framework_name: str) -> list:
     Internal helper. Wraps yaml.safe_load with a fail-loud RuntimeError that
     names the offending framework + path (ADR-022 fail-loud / FR-011(c)).
     Empty YAML yields an empty list (zero-denominator edge case).
+
+    yaml is imported lazily so the module loads without pyyaml installed —
+    preserves the stdlib-only module-load invariant (tachi_parsers.py:646, 804)
+    and lets the Feature 130 mmdc preflight gate fire before yaml is needed.
     """
+    import yaml
+
     path = SCHEMAS_TAXONOMY_DIR / f"{framework_name}.yaml"
     try:
         with path.open() as fh:

@@ -513,9 +513,12 @@ def test_aggregator_fails_loud_on_malformed_yaml(extract_report_data):
     def _raise_yaml_error(*args, **kwargs):
         raise yaml.YAMLError("malformed: simulated safe_load failure")
 
-    # Patch yaml.safe_load on the extract_report_data module to raise. The
-    # aggregator must allow the error (or a wrapper) to propagate.
-    with patch.object(extract_report_data.yaml, "safe_load", _raise_yaml_error):
+    # Patch yaml.safe_load on the yaml module directly. extract-report-data.py
+    # imports yaml lazily inside _load_framework_yaml_records (stdlib-only
+    # module-load invariant per tachi_parsers.py:646/804), so the patch target
+    # is the shared yaml module rather than a module-level attribute of
+    # extract_report_data.
+    with patch.object(yaml, "safe_load", _raise_yaml_error):
         with pytest.raises((yaml.YAMLError, RuntimeError, OSError)) as exc_info:
             extract_report_data.load_framework_yaml_record_counts()
 
