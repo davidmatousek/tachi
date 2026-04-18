@@ -1,11 +1,12 @@
 # PRD Index
 
-**Last Updated**: 2026-04-17 (PRD 180 added — F-A1 Taxonomy Crosswalk Collection)
+**Last Updated**: 2026-04-17 (PRD 189 added — F-A2 Source Attribution Schema Extension)
 **Legend**: ✓=APPROVED, ⚠=APPROVED_WITH_CONCERNS, 🔄=CHANGES_REQUESTED, ⛔=BLOCKED, ⚠⚡=OVERRIDDEN
 
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 189 | [F-A2 Source Attribution Schema Extension](189-source-attribution-schema-extension-2026-04-17.md) | ✓ | ⚠ | ⚠ | Approved | 2026-04-17 |
 | 180 | [F-A1 Taxonomy Crosswalk Collection](180-taxonomy-crosswalk-collection-2026-04-17.md) ([PR #181](https://github.com/davidmatousek/tachi/pull/181)) | ⚠ | ⚠ | ⚠ | Delivered | 2026-04-17 |
 | 145 | [MAESTRO Canonical Worked Example: Multi-Agent Reference Architecture](145-maestro-canonical-worked-example-2026-04-16.md) ([PR #175](https://github.com/davidmatousek/tachi/pull/175)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-17 |
 | 142 | [MAESTRO Phase 3: Agentic Threat Pattern Expansion](142-maestro-agentic-pattern-expansion-2026-04-16.md) ([PR #172](https://github.com/davidmatousek/tachi/pull/172)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-16 |

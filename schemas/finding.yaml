@@ -10,7 +10,7 @@
 #
 # Version: 1.0
 
-schema_version: "1.4"
+schema_version: "1.5"
 
 finding:
   id:
@@ -206,6 +206,78 @@ finding:
     examples:
       - "2026-03-25T12-53-57"
       - null
+
+  # Source Attribution (v1.5 — Feature 189)
+
+  source_attribution:
+    type: list[record]
+    # Added in Feature 189 (F-A2) as an optional list-of-RECORD field carrying
+    # machine-readable citations to external compliance-framework items that the
+    # finding addresses. Schema version bumped from 1.4 to 1.5 as a minor bump
+    # per ADR-026 Complex-Shape Addition Clarifier extension (additive +
+    # default-absent + schema shape unchanged). See ADR-028 for the full
+    # decision record including the Q1 serialization-surface choice
+    # (conditional ## 9. Source Attribution YAML block in threats.md, gated
+    # like Feature 141 has-attack-chains), the Q2 referential-integrity phase
+    # choice (two-tier: parser-tier enum inline; referential integrity in a
+    # separate post-parse helper invoked by orchestrator Phase 4), and the
+    # 5-value taxonomy enum scope (external frameworks only; internal tachi
+    # taxonomies deliberately excluded per ADR-028 Decision 3).
+    #
+    # F-A2 ships the data-shape contract only. Populator wiring inside the 11
+    # threat-detection agents is deferred to F-A3 under the 22-file zero-edit
+    # invariant per ADR-023 / ADR-028 Decision 6. All findings emitted by the
+    # 5 non-agentic baselines OMIT this field entirely, preserving byte-identity
+    # under SOURCE_DATE_EPOCH=1700000000 per ADR-021.
+    #
+    # Conditional-key semantic (per Feature 104 delta_status precedent):
+    #   - Field ABSENT  → finding cites no framework items (no implicit [] default)
+    #   - source_attribution: []  → explicitly no citation claimed (present-but-empty)
+    # The two states are semantically distinct and round-trip verbatim.
+    record:
+      taxonomy:
+        type: string
+        enum:
+          - owasp
+          - mitre-attack
+          - mitre-atlas
+          - nist-ai-rmf
+          - cwe
+        description: >
+          Closed 5-value enum naming which F-A1 external-framework catalog
+          the citation points into. Matches the filename stem of the
+          catalog YAML under schemas/taxonomy/. Internal tachi taxonomies
+          (tachi-control-category, tachi-stride-ai-category) are
+          deliberately excluded per ADR-028 Decision 3.
+      id:
+        type: string
+        description: >
+          Non-empty; MUST resolve as a top-level id: key in
+          schemas/taxonomy/{taxonomy}.yaml. Referential integrity is
+          enforced by validate_source_attribution in scripts/tachi_parsers.py
+          (ADR-028 Decision 5 — invoked by orchestrator Phase 4).
+      relationship:
+        type: string
+        enum:
+          - primary
+          - related
+          - derived
+        default: primary
+        description: >
+          Closed 3-value enum characterizing how the finding relates to
+          the cited framework item. primary = canonical mapping;
+          related = adjacent mapping that adds context; derived = mapping
+          inferred from another citation. Parser injects the default
+          primary on emission when the field is absent on an input record.
+    description: >
+      Optional list of machine-readable citations to external compliance-
+      framework items this finding addresses. Populated by threat-detection
+      agents in F-A3 (deferred); F-A2 establishes the contract only.
+      See ADR-028 for the Complex-Shape Addition Clarifier rationale and
+      data-model.md V1..V6 for the full validation rule set.
+    examples:
+      - [{taxonomy: owasp, id: LLM05, relationship: primary}]
+      - [{taxonomy: owasp, id: LLM05, relationship: primary}, {taxonomy: cwe, id: CWE-1426, relationship: primary}, {taxonomy: mitre-atlas, id: AML.T0051, relationship: related}]
 
 # Validation Rules
 #

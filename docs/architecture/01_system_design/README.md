@@ -3121,3 +3121,59 @@ Architecture Description + Components + Data Flows (Phase 1 output)
 | Example Architecture | Markdown (agentic-app extension) | Matches existing examples/ convention; 1-2h architectural extension budget |
 
 **Zero new runtime dependencies**: empty diff on `requirements*.txt`, `pyproject.toml`, `package.json`. Zero new CLI prerequisites.
+
+---
+
+### Feature 189: Source Attribution Schema Extension (F-A2)
+
+**PR**: TBD | **Status**: In Planning | **Date**: 2026-04-17
+
+Additive schema extension introducing `source_attribution` as an optional list-of-RECORD field on findings. Schema version bumps 1.4 → 1.5 per ADR-026's Complex-Shape Addition Clarifier extension (list-of-RECORD case). No new runtime dependencies. No edits to the 22-file zero-edit scope (11 threat-detection agents + 11 companion skill-reference files) per ADR-023.
+
+## Components
+
+| Component | File | Change | Scope |
+|-----------|------|--------|-------|
+| C1 Schema | `schemas/finding.yaml` | schema_version 1.4 → 1.5; new `source_attribution` optional field | ≈40 lines |
+| C2 Parser | `scripts/tachi_parsers.py::parse_threats_findings` | Conditional-key round-trip per Feature 104 `delta_status` precedent; Q1-resolved serialization surface | ≈30-60 lines |
+| C3 Validator | `scripts/tachi_parsers.py::validate_source_attribution` (new) | Two-tier validation: enum inline in parser; referential-integrity separate phase invoked by orchestrator Phase 4 (Q2-B preferred) | ≈80-120 lines |
+| C4 ADR | `docs/architecture/02_ADRs/ADR-028-source-attribution-schema-extension.md` (new) | Proposed → Accepted dual-commit per F-A1 precedent; 6 required body items per spec FR-014 | ≈400-600 lines |
+| C5 Tests | `tests/scripts/test_source_attribution.py` + 7 fixtures | 3 round-trip + 3 validation + edge cases + referential-integrity | ≈300-500 lines |
+| C6 Docs | `README.md` + `docs/architecture/00_Tech_Stack/README.md` | Two cross-reference updates matching F-A1 precedent | 2 lines |
+
+## Data Flow
+
+```
+schemas/finding.yaml v1.5  (declares source_attribution contract)
+         │
+         ▼
+threats.md output (Q1 surface: conditional Section 9 YAML block OR sidecar file)
+         │
+         ▼
+parse_threats_findings (parser-tier enum validation; conditional-key emission)
+         │
+         ▼
+validate_source_attribution (new helper, orchestrator Phase 4 caller per Q2-B)
+         │  • Loads schemas/taxonomy/{taxonomy}.yaml × 5 (cached per-invocation)
+         │  • Returns list[ValidationError] on failure
+         ▼
+[F-A2 scope ENDS]
+         │
+         ▼
+F-A3 / F-B scope: risk-scorer, control-analyzer, threat-report, SARIF,
+                  Typst templates, extract-report-data.py, coverage attestation
+```
+
+## Tech Stack
+
+| Layer | Technology | Justification |
+|-------|-----------|---------------|
+| Schema | YAML (finding.yaml v1.5) | Matches existing finding schema convention; minor bump per ADR-026 extension |
+| Parser | Python 3.11 stdlib | Matches existing tachi_parsers.py pattern; zero-dependency constraint per Feature 128 |
+| Validator | Python 3.11 + pyyaml (developer-only) | Loads F-A1 YAMLs; referential integrity per-invocation cached |
+| Validation phase | Orchestrator Phase 4 (Q2-B) | Separate from parser to keep parser thin; deterministic per ADR-021 |
+| ADR | Markdown | Proposed → Accepted dual-commit per F-A1 precedent; 6 required body items |
+| Tests | pytest >= 8.0 (developer-only) | Established in Feature 128; SC-2 harness reused unmodified |
+| Serialization surface | Q1-resolved at Day 1 memo | Primary: Q1-E conditional Section 9 YAML block (Feature 141 precedent). Fallback: Q1-B YAML sidecar file. Both preserve SC-2 byte-identity on the 5 non-agentic baselines. |
+
+**Zero new runtime dependencies**: empty diff on `requirements*.txt`, `pyproject.toml`, `package.json`. Zero new CLI prerequisites. 22-file zero-edit scope preserved per ADR-023.
