@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.17.0](https://github.com/davidmatousek/tachi/compare/v4.16.0...v4.17.0) (2026-04-18)
+
+
+### Features
+
+* **189:** F-A2 source attribution schema extension ([#189](https://github.com/davidmatousek/tachi/issues/189)) ([#190](https://github.com/davidmatousek/tachi/issues/190)) ([6d5d890](https://github.com/davidmatousek/tachi/commit/6d5d890c388af5f546246f4e39f8a4d61fe840b1))
+
 ## [4.16.0](https://github.com/davidmatousek/tachi/compare/v4.15.0...v4.16.0) (2026-04-17)
 
 
