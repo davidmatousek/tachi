@@ -21,6 +21,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import yaml
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from tachi_parsers import (
@@ -973,10 +975,198 @@ def prepare_attack_chains(target_dir: Path, findings: list, template_dir: Path) 
 def compute_has_source_attribution(findings: list[dict]) -> bool:
     """Return True iff any finding has a non-empty source_attribution array.
 
-    F-B gate predicate (FR-002 / SC-003). In Wave 1.1 this is a STUB returning
-    False unconditionally; full implementation lands in T011 (Wave 2.2).
+    F-B gate predicate (FR-002 / SC-003). Single-predicate gate for the entire
+    coverage-attestation section. ``has-source-attribution: false`` MUST cause
+    the section to be omitted entirely from the PDF (SC-002 byte-identity).
     """
+    for finding in findings or ():
+        attribution = finding.get("source_attribution")
+        if attribution is not None and len(attribution) > 0:
+            return True
     return False
+
+
+# =============================================================================
+# F-B Coverage Attestation Aggregator (Feature 194 / Wave 2.2)
+# =============================================================================
+# Reads F-A2 source_attribution arrays on findings + F-A1 catalog YAMLs from
+# schemas/taxonomy/ and emits the two transient entities consumed by
+# templates/tachi/security-report/coverage-attestation.typ:
+#   - Per-Finding Attribution Row (one record per finding)
+#   - Per-Framework Aggregate Record (exactly 5 records, fixed framework order)
+# Contract: specs/194-coverage-attestation-report-section/contracts/typst-data-contract.md
+# Spec: data-model.md §New Transient Entities (F-B Aggregator Output)
+# Decisions: ADR-029 §Q1-A 3-value classification, §Q2-A denominator authority
+# =============================================================================
+
+SCHEMAS_TAXONOMY_DIR = Path(__file__).resolve().parent.parent / "schemas" / "taxonomy"
+
+ORDERED_FRAMEWORKS = ("owasp", "mitre-attack", "mitre-atlas", "nist-ai-rmf", "cwe")
+
+MITRE_PREFIXES = {"mitre-attack": "ATT&CK:", "mitre-atlas": "ATLAS:"}
+
+TAXONOMY_REF_GROUPS = (
+    ("owasp_refs", ("owasp",)),
+    ("mitre_refs", ("mitre-attack", "mitre-atlas")),
+    ("nist_refs", ("nist-ai-rmf",)),
+    ("cwe_refs", ("cwe",)),
+)
+
+
+def _load_framework_yaml_records(framework_name: str) -> list:
+    """Return the list of top-level records from schemas/taxonomy/{framework_name}.yaml.
+
+    Internal helper. Wraps yaml.safe_load with a fail-loud RuntimeError that
+    names the offending framework + path (ADR-022 fail-loud / FR-011(c)).
+    Empty YAML yields an empty list (zero-denominator edge case).
+    """
+    path = SCHEMAS_TAXONOMY_DIR / f"{framework_name}.yaml"
+    try:
+        with path.open() as fh:
+            data = yaml.safe_load(fh)
+    except yaml.YAMLError as exc:
+        raise RuntimeError(
+            f"Failed to load taxonomy YAML for framework {framework_name!r} "
+            f"({path}): {exc}"
+        ) from exc
+    if data is None:
+        return []
+    return list(data)
+
+
+def load_framework_yaml_record_counts() -> dict:
+    """Return ``{framework_name: top_level_record_count}`` for the 5 external frameworks.
+
+    Q2-A denominator authority (FR-008): the denominator of every coverage
+    percentage is ``len(yaml.safe_load(schemas/taxonomy/{framework}.yaml))``
+    at invocation time. Tests monkeypatch this function to inject zero-
+    denominator scenarios without touching disk.
+    """
+    return {fw: len(_load_framework_yaml_records(fw)) for fw in ORDERED_FRAMEWORKS}
+
+
+def classify_framework_items(
+    findings: list, framework_name: str, framework_records: list
+) -> list:
+    """Classify each top-level YAML record per Q1-A 3-value rule (FR-007).
+
+    Rule:
+      - Covered → ≥1 finding cites this id with relationship = primary
+      - Partial → zero primary citations AND ≥1 related/derived citation
+      - Gap → zero citations
+    Order-preserving: emitted items mirror ``framework_records`` iteration order.
+    """
+    items = []
+    for record in framework_records:
+        record_id = record.get("id") if isinstance(record, dict) else None
+        if record_id is None:
+            continue
+        relationships = set()
+        for finding in findings or ():
+            for ref in finding.get("source_attribution") or ():
+                if ref.get("taxonomy") == framework_name and ref.get("id") == record_id:
+                    relationships.add(ref.get("relationship", "primary"))
+        if "primary" in relationships:
+            classification = "covered"
+        elif "related" in relationships or "derived" in relationships:
+            classification = "partial"
+        else:
+            classification = "gap"
+        items.append({"id": record_id, "classification": classification})
+    return items
+
+
+def _build_per_framework_aggregate(
+    framework_name: str, items: list, yaml_record_count: int
+) -> dict:
+    """Combine classified items + denominator into a Per-Framework Aggregate Record.
+
+    Partition invariant (data-model.md §Per-Framework Aggregate Record):
+    ``covered_count + partial_count + gap_count == yaml_record_count``.
+
+    Coverage percentage formatting (FR-011):
+      - "X.XX%" when yaml_record_count > 0 (numerator = covered_count only)
+      - "N/A"   when yaml_record_count == 0 (zero-denominator edge case)
+    Zero-numerator with non-zero denominator yields "0.00%" via normal arithmetic.
+    """
+    covered_count = sum(1 for it in items if it["classification"] == "covered")
+    partial_count = sum(1 for it in items if it["classification"] == "partial")
+    gap_count = sum(1 for it in items if it["classification"] == "gap")
+    if yaml_record_count == 0:
+        coverage_percentage = "N/A"
+    else:
+        coverage_percentage = f"{(covered_count / yaml_record_count) * 100:.2f}%"
+    return {
+        "framework": framework_name,
+        "yaml_record_count": yaml_record_count,
+        "covered_count": covered_count,
+        "partial_count": partial_count,
+        "gap_count": gap_count,
+        "coverage_percentage": coverage_percentage,
+        "items": items,
+    }
+
+
+def build_per_framework_aggregates(findings: list) -> list:
+    """Emit exactly 5 Per-Framework Aggregate Records in fixed framework order.
+
+    Order: owasp, mitre-attack, mitre-atlas, nist-ai-rmf, cwe (Q4 — always-5).
+    Calls ``load_framework_yaml_record_counts`` for the authoritative denominator;
+    classification skips when the count is zero so the partition invariant holds.
+    """
+    counts = load_framework_yaml_record_counts()
+    aggregates = []
+    for framework_name in ORDERED_FRAMEWORKS:
+        yaml_record_count = counts.get(framework_name, 0)
+        if yaml_record_count == 0:
+            items = []
+        else:
+            records = _load_framework_yaml_records(framework_name)
+            items = classify_framework_items(findings, framework_name, records)
+        aggregates.append(
+            _build_per_framework_aggregate(framework_name, items, yaml_record_count)
+        )
+    return aggregates
+
+
+def build_per_finding_rows(findings: list) -> list:
+    """Emit one Per-Finding Attribution Row per finding, preserving input order.
+
+    Per FR-005 / FR-006:
+      - Every finding produces one row, including findings without attribution
+        (4 ref arrays present as empty lists).
+      - MITRE column merges ``mitre-attack`` + ``mitre-atlas`` with per-ref
+        prefix ``ATT&CK:`` / ``ATLAS:`` to disambiguate (architect L-2 — merge
+        applies to per-finding column only, NOT to per-framework matrix pages).
+    """
+    rows = []
+    for finding in findings or ():
+        ref_buckets = {key: [] for key, _ in TAXONOMY_REF_GROUPS}
+        for ref in finding.get("source_attribution") or ():
+            taxonomy = ref.get("taxonomy")
+            ref_id = ref.get("id", "")
+            relationship = ref.get("relationship", "primary")
+            for bucket_key, taxonomies in TAXONOMY_REF_GROUPS:
+                if taxonomy in taxonomies:
+                    if taxonomy in MITRE_PREFIXES:
+                        display_id = f"{MITRE_PREFIXES[taxonomy]}{ref_id}"
+                    else:
+                        display_id = ref_id
+                    ref_buckets[bucket_key].append(
+                        {"id": display_id, "relationship": relationship}
+                    )
+                    break
+        severity = finding.get("severity") or finding.get("risk_level", "")
+        rows.append({
+            "id": finding.get("id", ""),
+            "title": finding.get("title") or finding.get("threat", ""),
+            "severity": str(severity).lower(),
+            "owasp_refs": ref_buckets["owasp_refs"],
+            "mitre_refs": ref_buckets["mitre_refs"],
+            "nist_refs": ref_buckets["nist_refs"],
+            "cwe_refs": ref_buckets["cwe_refs"],
+        })
+    return rows
 
 
 def _render_chain_diagrams(entries: list, target_dir: Path, template_dir: Path):
@@ -1465,7 +1655,78 @@ def generate_report_data_typ(data: dict) -> str:
         lines.append("#let attack-chains = ()")
     lines.append("")
 
-    # 3s: Page Visibility
+    # 3t: Coverage Attestation Data (Feature 194 / F-B)
+    # Three additive declarations consumed by main.typ default-value guards
+    # and the conditional inclusion block. Always emitted (additive backward-
+    # compat per typst-data-contract.md §Backward Compatibility): empty arrays
+    # when the gate is false, populated otherwise.
+    lines.append("// --- Coverage Attestation Data (F-B / Feature 194) --------------------------")
+    lines.append(
+        f"#let has-source-attribution = {_typst_bool(data.get('has_source_attribution', False))}"
+    )
+    per_finding_rows = data.get("per_finding_rows", [])
+    if per_finding_rows:
+        lines.append("#let per-finding-rows = (")
+        for row in per_finding_rows:
+            row_id = escape_typst_string(row.get("id", ""))
+            title = escape_typst_string(row.get("title", ""))
+            severity = escape_typst_string(row.get("severity", ""))
+            ref_parts = []
+            for ref_key, hyphen_key in (
+                ("owasp_refs", "owasp-refs"),
+                ("mitre_refs", "mitre-refs"),
+                ("nist_refs", "nist-refs"),
+                ("cwe_refs", "cwe-refs"),
+            ):
+                refs = row.get(ref_key, []) or ()
+                if refs:
+                    inner = ", ".join(
+                        f'(id: "{escape_typst_string(r["id"])}", '
+                        f'relationship: "{escape_typst_string(r["relationship"])}")'
+                        for r in refs
+                    )
+                    ref_parts.append(f"{hyphen_key}: ({inner},)")
+                else:
+                    ref_parts.append(f"{hyphen_key}: ()")
+            lines.append(
+                f'  (id: "{row_id}", title: "{title}", severity: "{severity}", '
+                f'{", ".join(ref_parts)}),'
+            )
+        lines.append(")")
+    else:
+        lines.append("#let per-finding-rows = ()")
+    per_framework_aggregates = data.get("per_framework_aggregates", [])
+    if per_framework_aggregates:
+        lines.append("#let per-framework-aggregates = (")
+        for agg in per_framework_aggregates:
+            framework = escape_typst_string(agg.get("framework", ""))
+            yaml_count = int(agg.get("yaml_record_count", 0))
+            covered = int(agg.get("covered_count", 0))
+            partial = int(agg.get("partial_count", 0))
+            gap = int(agg.get("gap_count", 0))
+            pct = escape_typst_string(agg.get("coverage_percentage", "N/A"))
+            items = agg.get("items", []) or ()
+            if items:
+                items_inner = ", ".join(
+                    f'(id: "{escape_typst_string(it["id"])}", '
+                    f'classification: "{escape_typst_string(it["classification"])}")'
+                    for it in items
+                )
+                items_typst = f"({items_inner},)"
+            else:
+                items_typst = "()"
+            lines.append(
+                f'  (framework: "{framework}", yaml-record-count: {yaml_count}, '
+                f'covered-count: {covered}, partial-count: {partial}, '
+                f'gap-count: {gap}, coverage-percentage: "{pct}", '
+                f'items: {items_typst}),'
+            )
+        lines.append(")")
+    else:
+        lines.append("#let per-framework-aggregates = ()")
+    lines.append("")
+
+    # 3u: Page Visibility
     lines.append("// --- Page Visibility (defaults, overridden by report-config.typ) ------------")
     lines.append("#let show-disclaimer = true")
     lines.append("#let show-methodology = true")
@@ -1720,6 +1981,25 @@ def main():
     else:
         data["has_attack_chains"] = False
         data["attack_chains"] = []
+
+    # F-B Coverage Attestation (Feature 194 / Wave 2.2 — T027 + T036)
+    # Gate predicate is computed unconditionally; per-finding rows and per-
+    # framework aggregates render only when the gate is true. Empty arrays
+    # otherwise so the Typst consumer's belt-and-suspenders ``.len() > 0``
+    # check fires safely.
+    data["has_source_attribution"] = compute_has_source_attribution(data["findings"])
+    if data["has_source_attribution"]:
+        data["per_finding_rows"] = build_per_finding_rows(data["findings"])
+        data["per_framework_aggregates"] = build_per_framework_aggregates(data["findings"])
+        print(
+            f"Coverage attestation: gate=true, "
+            f"{len(data['per_finding_rows'])} per-finding row(s), "
+            f"{len(data['per_framework_aggregates'])} per-framework aggregate(s)",
+            file=sys.stderr,
+        )
+    else:
+        data["per_finding_rows"] = []
+        data["per_framework_aggregates"] = []
 
     # Delta / baseline data
     data["has_baseline"] = has_baseline

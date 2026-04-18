@@ -93,7 +93,7 @@ triad:
 
 ### Implementation for User Story 3 (Day 2-3)
 
-- [ ] T011 [US3] Implement `compute_has_source_attribution(findings) -> bool` in `scripts/extract-report-data.py`. Returns `True` iff any finding has `source_attribution` that is not `None` and has `len() > 0`. Emits `#let has-source-attribution = true|false` to the Typst data contract via `_typst_bool()` (existing helper from Feature 141 at line 1426 precedent).
+- [X] T011 [US3] Implement `compute_has_source_attribution(findings) -> bool` in `scripts/extract-report-data.py`. Returns `True` iff any finding has `source_attribution` that is not `None` and has `len() > 0`. Emits `#let has-source-attribution = true|false` to the Typst data contract via `_typst_bool()` (existing helper from Feature 141 at line 1426 precedent).
 
 - [ ] T012 [US3] Add 3 default-value guards to `templates/tachi/security-report/main.typ` §2b defaults block (around lines 89-107) as a **single atomic edit block** (architect L-1):
     ```typst
@@ -145,13 +145,13 @@ triad:
 
 ### Implementation for User Story 2 (Day 2 aggregator + Day 3 Typst)
 
-- [ ] T024 [US2] Implement `load_framework_yaml_record_counts() -> dict[str, int]` in `scripts/extract-report-data.py` — loads 5 external-framework YAMLs (`owasp`, `mitre-attack`, `mitre-atlas`, `nist-ai-rmf`, `cwe`) from `schemas/taxonomy/*.yaml` via `yaml.safe_load`. Returns a dict `{framework_name: yaml_record_count}`. Cached per-invocation (local function dict, no module-level mutable state — per F-A2 convention). Malformed YAML raises `yaml.YAMLError` with framework-identifying wrapper.
+- [X] T024 [US2] Implement `load_framework_yaml_record_counts() -> dict[str, int]` in `scripts/extract-report-data.py` — loads 5 external-framework YAMLs (`owasp`, `mitre-attack`, `mitre-atlas`, `nist-ai-rmf`, `cwe`) from `schemas/taxonomy/*.yaml` via `yaml.safe_load`. Returns a dict `{framework_name: yaml_record_count}`. Cached per-invocation (local function dict, no module-level mutable state — per F-A2 convention). Malformed YAML raises `yaml.YAMLError` with framework-identifying wrapper.
 
-- [ ] T025 [US2] Implement `classify_framework_items(findings, framework_name, framework_yaml_records) -> list[dict]` in `scripts/extract-report-data.py` — for each top-level record in the framework YAML, applies Q1-A classification: Covered if ≥1 finding has `source_attribution[i].taxonomy == framework_name` and `.id == record.id` and `.relationship == "primary"`; Partial if zero primary AND ≥1 related/derived; Gap otherwise. Returns list of `{id, classification}` preserving YAML iteration order.
+- [X] T025 [US2] Implement `classify_framework_items(findings, framework_name, framework_yaml_records) -> list[dict]` in `scripts/extract-report-data.py` — for each top-level record in the framework YAML, applies Q1-A classification: Covered if ≥1 finding has `source_attribution[i].taxonomy == framework_name` and `.id == record.id` and `.relationship == "primary"`; Partial if zero primary AND ≥1 related/derived; Gap otherwise. Returns list of `{id, classification}` preserving YAML iteration order.
 
-- [ ] T026 [US2] Implement `build_per_framework_aggregate(framework_name, findings, yaml_record_count, items) -> dict` in `scripts/extract-report-data.py` — computes `covered_count` / `partial_count` / `gap_count` from classified items; computes `coverage_percentage` as `"X.XX%"` or `"N/A"` when `yaml_record_count == 0` or `"0.00%"` when `covered_count == 0`. Returns the Per-Framework Aggregate Record shape per data-model.md. Partition invariant asserted (T018 covers).
+- [X] T026 [US2] Implement `build_per_framework_aggregate(framework_name, findings, yaml_record_count, items) -> dict` in `scripts/extract-report-data.py` — computes `covered_count` / `partial_count` / `gap_count` from classified items; computes `coverage_percentage` as `"X.XX%"` or `"N/A"` when `yaml_record_count == 0` or `"0.00%"` when `covered_count == 0`. Returns the Per-Framework Aggregate Record shape per data-model.md. Partition invariant asserted (T018 covers).
 
-- [ ] T027 [US2] Wire aggregator invocation in `scripts/extract-report-data.py`'s main extraction pathway — after findings are parsed, compute `has_source_attribution`, then if True compute per-framework aggregates for all 5 frameworks and emit them alongside `has-source-attribution` and (empty for now) `per-finding-rows` to the Typst data contract. Emits `#let per-framework-aggregates = (...)`.
+- [X] T027 [US2] Wire aggregator invocation in `scripts/extract-report-data.py`'s main extraction pathway — after findings are parsed, compute `has_source_attribution`, then if True compute per-framework aggregates for all 5 frameworks and emit them alongside `has-source-attribution` and (empty for now) `per-finding-rows` to the Typst data contract. Emits `#let per-framework-aggregates = (...)`.
 
 - [ ] T028 [US2] Render per-framework matrix page body in `templates/tachi/security-report/coverage-attestation.typ` — iterate over `per-framework-aggregates`; render one page per framework (5 pages, always rendered when gate is true per Q4 resolution); title, 3-group item visualizations (Covered / Partial / Gap), summary line `"Covered: K/N = X.XX% · Partial: P · Gap: G"` with equal visual weight (FR-008).
 
@@ -181,9 +181,9 @@ triad:
 
 ### Implementation for User Story 1 (Day 2-3)
 
-- [ ] T035 [US1] Implement `build_per_finding_rows(findings) -> list[dict]` in `scripts/extract-report-data.py` — for each finding, emit `{id, title, severity, owasp_refs, mitre_refs, nist_refs, cwe_refs}` per data-model.md. Groups `source_attribution` records by taxonomy; merges `mitre-attack` and `mitre-atlas` into the `mitre_refs` column with per-ref prefix `"ATT&CK:"` / `"ATLAS:"` respectively (FR-005, architect L-2 per-finding-only). Findings with empty or absent `source_attribution` produce a row with 4 empty ref arrays.
+- [X] T035 [US1] Implement `build_per_finding_rows(findings) -> list[dict]` in `scripts/extract-report-data.py` — for each finding, emit `{id, title, severity, owasp_refs, mitre_refs, nist_refs, cwe_refs}` per data-model.md. Groups `source_attribution` records by taxonomy; merges `mitre-attack` and `mitre-atlas` into the `mitre_refs` column with per-ref prefix `"ATT&CK:"` / `"ATLAS:"` respectively (FR-005, architect L-2 per-finding-only). Findings with empty or absent `source_attribution` produce a row with 4 empty ref arrays.
 
-- [ ] T036 [US1] Wire per-finding row emission into `scripts/extract-report-data.py`'s Typst data-contract output — emits `#let per-finding-rows = (...)` alongside the existing `has-source-attribution` and `per-framework-aggregates` declarations.
+- [X] T036 [US1] Wire per-finding row emission into `scripts/extract-report-data.py`'s Typst data-contract output — emits `#let per-finding-rows = (...)` alongside the existing `has-source-attribution` and `per-framework-aggregates` declarations.
 
 - [ ] T037 [US1] Render per-finding attribution table in `templates/tachi/security-report/coverage-attestation.typ` — section header + single paginated table (Typst native row-break) with 7 columns: `Finding ID | Title | Severity | OWASP refs | MITRE refs | NIST refs | CWE refs`. Each row iterates the 4 `*_refs` arrays; applies bold styling when `relationship == "primary"`, plain otherwise. Empty ref arrays render as blank cells (row still visible per FR-006).
 
