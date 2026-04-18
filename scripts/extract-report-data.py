@@ -49,6 +49,8 @@ from tachi_parsers import (
     parse_compensating_controls_md,
     parse_attack_chains,
     strip_bold,
+    _extract_source_attribution_block,
+    _extract_source_attribution,
 )
 
 # SLA mapping by severity for remediation actions
@@ -984,6 +986,24 @@ def compute_has_source_attribution(findings: list[dict]) -> bool:
     return False
 
 
+def _merge_source_attribution(findings: list, threats_content: str) -> None:
+    """Merge source_attribution from threats.md Section 9 onto findings in-place.
+
+    parse_threats_findings already attaches source_attribution at Tier 3. This
+    helper bridges the gap at Tier 1 (findings from parse_compensating_controls_md)
+    and Tier 2 (findings from parse_risk_scores_findings) — neither of those
+    parsers reads Section 9, so attribution would otherwise be invisible to the
+    F-B aggregator.
+    """
+    block = _extract_source_attribution_block(threats_content)
+    if block is None:
+        return
+    for finding in findings:
+        attribution = _extract_source_attribution(finding["id"], block)
+        if attribution is not None:
+            finding["source_attribution"] = attribution
+
+
 # Coverage attestation aggregator: joins source_attribution arrays on findings
 # against schemas/taxonomy/ catalogs and emits per-finding rows + per-framework
 # aggregates for the coverage-attestation Typst template.
@@ -1909,6 +1929,13 @@ def main():
                 sev[key] += 1
         sev["total"] = len(data["findings"])
         data["severity"] = sev
+
+    # parse_threats_findings attaches source_attribution at Tier 3, but cc/rs
+    # parsers don't read Section 9 — without this merge, F-B's gate stays false
+    # on every real pipeline run that has cc.md or rs.md, silently omitting the
+    # coverage-attestation section even when attribution is populated.
+    if tier in (1, 2):
+        _merge_source_attribution(data["findings"], threats_content)
 
     # Component distribution (from whichever findings source is active)
     data["component_distribution"] = parse_component_distribution(data["findings"])
