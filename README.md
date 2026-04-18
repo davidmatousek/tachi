@@ -382,6 +382,7 @@ The agentic-app example includes a [complete sample report](examples/agentic-app
 | Output Templates | [`templates/tachi/`](templates/tachi/) | Canonical output structures and Typst PDF templates |
 | Schemas | [`schemas/`](schemas/) | Machine-readable contracts ([finding.yaml](schemas/finding.yaml), [input.yaml](schemas/input.yaml), [output.yaml](schemas/output.yaml), [risk-scoring.yaml](schemas/risk-scoring.yaml)) |
 | Taxonomy Crosswalk | [`schemas/taxonomy/`](schemas/taxonomy/README.md) | Machine-readable catalog of OWASP/MITRE/NIST/CWE IDs + cross-framework crosswalk (Feature 180 F-A1) |
+| Source Attribution | [`docs/architecture/02_ADRs/ADR-028-source-attribution-schema-extension.md`](docs/architecture/02_ADRs/ADR-028-source-attribution-schema-extension.md) | Optional `source_attribution` finding field (schema 1.5) citing F-A1 framework IDs — contract only (Feature 189 F-A2) |
 | Threat Agents | [`.claude/agents/tachi/`](.claude/agents/tachi/) | 12 threat agents (7 STRIDE + 3 LLM + 2 Agentic) + utility agents |
 | Commands | [`.claude/commands/`](.claude/commands/) | 6 slash commands: tachi.threat-model, tachi.risk-score, tachi.compensating-controls, tachi.infographic, tachi.security-report, tachi.architecture |
 | Developer Guide | [`docs/guides/DEVELOPER_GUIDE_TACHI.md`](docs/guides/DEVELOPER_GUIDE_TACHI.md) | Full walkthrough with worked examples |

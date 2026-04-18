@@ -136,7 +136,7 @@ def test_round_trip_multi_record(tmp_path):
 ```yaml
 LLM-5:
   - {taxonomy: owasp, id: LLM05, relationship: primary}
-  - {taxonomy: cwe, id: CWE-1426, relationship: primary}
+  - {taxonomy: cwe, id: CWE-116, relationship: primary}
   - {taxonomy: mitre-atlas, id: AML.T0051, relationship: primary}
 ```
 """)

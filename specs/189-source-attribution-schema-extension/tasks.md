@@ -142,16 +142,15 @@ triad:
 
 **Wave 6.1 (Day 3 PM, 2026-04-22)**
 
-- [ ] T029 [P] Update `README.md` (top-level) — add one line under Recent Changes naming Feature 189 and linking to `docs/architecture/02_ADRs/ADR-028-source-attribution-schema-extension.md`. Follow the F-A1 precedent; preserve existing structure byte-identically apart from the one added line.
-- [ ] T030 [P] Update `docs/architecture/00_Tech_Stack/README.md` Standards section — add an entry under the finding-schema evolution timeline naming `schema_version 1.5` and linking to ADR-028. Follow the F-A1 2-link-edit precedent per spec FR-038.
-- [ ] T031 Transition ADR-028 `Status: Proposed` → `Status: Accepted` with `Accepted-date: 2026-04-22` (provisional; will auto-correct post-merge) and `Accepted-commit-SHA: <pending-post-merge-fill>` placeholder. Mirrors ADR-027 / F-A1 precedent exactly.
-- [ ] T032 Run the SC audit grep checks:
-  - SC-001: `grep '^schema_version: "1.5"' schemas/finding.yaml` returns match.
-  - SC-006: `git diff main -- pyproject.toml requirements.txt requirements-dev.txt package.json` returns empty.
-  - SC-007: `git diff main -- .claude/agents/tachi/stride/ .claude/agents/tachi/ai/ .claude/skills/tachi-spoofing/ .claude/skills/tachi-tampering/ .claude/skills/tachi-repudiation/ .claude/skills/tachi-info-disclosure/ .claude/skills/tachi-denial-of-service/ .claude/skills/tachi-privilege-escalation/ .claude/skills/tachi-prompt-injection/ .claude/skills/tachi-data-poisoning/ .claude/skills/tachi-model-theft/ .claude/skills/tachi-tool-abuse/ .claude/skills/tachi-agent-autonomy/` returns empty.
-  Save audit output to `.aod/results/sc-audit.md` for PR review record.
-- [ ] T033 [P] Run quickstart validation — walk through the 5 steps in `specs/189-source-attribution-schema-extension/quickstart.md` against actual pipeline behavior. If any step fails to execute as documented, flag and correct the quickstart content OR the implementation. Record outcome at `.aod/results/quickstart-validation.md`.
-- [ ] T034 Full pytest suite: run `pytest tests/scripts/ -v` from repo root. Assert all pre-existing tests pass + new T008/T009/T014/T015/T021/T022/T023/T024/T025 tests pass. Zero new failures. Attach output to PR description.
+- [X] T029 [P] Update `README.md` (top-level) — add one line under Recent Changes naming Feature 189 and linking to `docs/architecture/02_ADRs/ADR-028-source-attribution-schema-extension.md`. Follow the F-A1 precedent; preserve existing structure byte-identically apart from the one added line.
+- [X] T030 [P] Update `docs/architecture/00_Tech_Stack/README.md` Standards section — add an entry under the finding-schema evolution timeline naming `schema_version 1.5` and linking to ADR-028. Follow the F-A1 2-link-edit precedent per spec FR-038.
+- [X] T031 Transition ADR-028 `Status: Proposed` → `Status: Accepted` with `Accepted-date: 2026-04-17` (provisional; will auto-correct post-merge) and `Accepted-commit-SHA: <pending-post-merge-fill>` placeholder. Mirrors ADR-027 / F-A1 precedent exactly.
+- [X] T032 Run the SC audit grep checks — output saved to `.aod/results/sc-audit.md`:
+  - SC-001: schema_version 1.5 verified at `schemas/finding.yaml:13`.
+  - SC-006: empty diff on pyproject.toml / requirements*.txt / package.json.
+  - SC-007: empty diff on 22 detection-tier files (flat `.claude/agents/tachi/<name>.md` layout + 11 skill-refs). ADR-028 Decision 6 paths also corrected to reflect flat layout.
+- [X] T033 [P] Run quickstart validation — walked 5 steps end-to-end against live pipeline. All passed. One correction: `CWE-1426` → `CWE-116` in the round-trip test example (CWE-1426 not in catalog). Outcome saved to `.aod/results/quickstart-validation.md`.
+- [X] T034 Full pytest suite: run `pytest tests/scripts/ -v` from repo root. Assert all pre-existing tests pass + new T008/T009/T014/T015/T021/T022/T023/T024/T025 tests pass. Zero new failures. Attach output to PR description. Result: 284 passed, 1 skipped (pre-existing SC-003 narrowing).
 - [ ] T035 Submit PR — title "feat(189): F-A2 source attribution schema extension (#189)". Body references spec, plan, research, ADR-028, quickstart. Includes SC audit output summary, pytest output summary, test-coverage numbers, 22-file zero-edit confirmation.
 
 **Post-merge**:

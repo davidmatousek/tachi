@@ -1,7 +1,7 @@
 # ADR-028: Source Attribution Schema Extension
 
-**Status**: Proposed
-**Date**: 2026-04-17 (Proposed); TBD (Accepted — pending PR merge)
+**Status**: Accepted
+**Date**: 2026-04-17 (Proposed); 2026-04-17 (Accepted — provisional; confirmed at post-merge SHA fill)
 **Accepted-commit-SHA**: `<pending-post-merge-fill>`
 **Deciders**: Architect, Product Manager, Team-Lead
 **Feature**: 189 (F-A2 Source Attribution Schema Extension)
@@ -170,20 +170,20 @@ Parser-tier violations raise `ValueError` with a structured message naming the f
 
 F-A2 MUST NOT edit any file in the 22-file zero-edit scope enumerated in ADR-023 Decision 2. The scope is grep-auditable:
 
-**STRIDE agent files (6)**:
-- `.claude/agents/tachi/stride/spoofing.md`
-- `.claude/agents/tachi/stride/tampering.md`
-- `.claude/agents/tachi/stride/repudiation.md`
-- `.claude/agents/tachi/stride/info-disclosure.md`
-- `.claude/agents/tachi/stride/denial-of-service.md`
-- `.claude/agents/tachi/stride/privilege-escalation.md`
+**STRIDE agent files (6)** — flat layout under `.claude/agents/tachi/`:
+- `.claude/agents/tachi/spoofing.md`
+- `.claude/agents/tachi/tampering.md`
+- `.claude/agents/tachi/repudiation.md`
+- `.claude/agents/tachi/info-disclosure.md`
+- `.claude/agents/tachi/denial-of-service.md`
+- `.claude/agents/tachi/privilege-escalation.md`
 
-**AI agent files (5)**:
-- `.claude/agents/tachi/ai/prompt-injection.md`
-- `.claude/agents/tachi/ai/data-poisoning.md`
-- `.claude/agents/tachi/ai/model-theft.md`
-- `.claude/agents/tachi/ai/tool-abuse.md`
-- `.claude/agents/tachi/ai/agent-autonomy.md`
+**AI agent files (5)** — flat layout under `.claude/agents/tachi/`:
+- `.claude/agents/tachi/prompt-injection.md`
+- `.claude/agents/tachi/data-poisoning.md`
+- `.claude/agents/tachi/model-theft.md`
+- `.claude/agents/tachi/tool-abuse.md`
+- `.claude/agents/tachi/agent-autonomy.md`
 
 **Skill-reference files (11)** — one per agent above:
 - `.claude/skills/tachi-spoofing/references/detection-patterns.md`
@@ -353,3 +353,5 @@ The existing §7 finding table in `threats.md` gains a new "Source Attribution" 
 ## Revision History
 
 **2026-04-17 (Proposed — Feature 189, Day 1 Wave 1.1 schema-lock commit)**: Records the F-A2 Source Attribution Schema Extension decisions. Documents 7 numbered decisions covering the additive-optional-field minor-bump under the ADR-026 Complex-Shape Addition Clarifier extension for list-of-RECORD fields (Decision 1), the Q1-E conditional Section 9 serialization surface with Q1-B sidecar fallback (Decision 2), the 5-value `taxonomy` enum restricted to external frameworks (Decision 3), the 3-value `relationship` enum with default-to-`primary` (Decision 4), the Q2-B two-tier validation model with separate post-parse `validate_source_attribution` helper at orchestrator Phase 4 (Decision 5), the 22-file zero-edit invariant on the detection tier per ADR-023 lineage (Decision 6), and the Proposed → Accepted dual-commit governance protocol (Decision 7). Q1, Q2, and Q3 resolutions are all recorded at Proposed time; no Decision field is deferred to Accepted. Authored at end of Day 1 Wave 1.1 after Q1/Q2 architect memo; serves as the schema-lock signal that unblocks parallel authoring in Wave 2.1 onwards. Status transitions to Accepted at Day 3 Wave 6.1 (T031) per Decision 7; `<pending-post-merge-fill>` placeholder on the `Accepted-commit-SHA` field replaced at post-merge T036 with the squash-merge commit SHA.
+
+**2026-04-17 (Accepted — Feature 189, Wave 6.1 pre-merge transition T031)**: Transitioned ADR-028 from `Status: Proposed` to `Status: Accepted`. All 7 numbered decisions land as specified at Proposed time; no decision text is amended at Accepted. Implementation waves 1-5 verified green: schema 1.4 → 1.5 bump landed in `schemas/finding.yaml`, parser round-trip + two-tier validation landed in `scripts/tachi_parsers.py` (lines 621-977), 7 fixtures + 9 tests under `tests/scripts/` pass, SC-2 byte-identity harness 6/6 baselines byte-identical under `SOURCE_DATE_EPOCH=1700000000`, and 22-file zero-edit invariant preserved (ADR-023 sibling governance). Checkpoint 5.5 interim pytest gate (team-lead concern #4) green: full `pytest tests/scripts/ -v` reports 279 passed / 1 skipped (pre-existing SC-003 narrowing). Accepted-date is provisional pending PR merge; `<pending-post-merge-fill>` placeholder on `Accepted-commit-SHA` will be replaced by the squash-merge commit SHA at post-merge task T036 per Decision 7.
