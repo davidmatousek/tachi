@@ -214,7 +214,7 @@ triad:
 
 - [X] T045 [P] Update `docs/architecture/01_system_design/README.md` with a new `### Feature 194: coverage-attestation-report-section` subsection referencing plan.md's System Design block (Components, Data Flow, Tech Stack). Mirrors Feature 143 / 144 architecture documentation precedent.
 
-- [ ] T046 PR preparation — open PR against `main` with description citing: (a) spec.md, plan.md, tasks.md paths, (b) triple sign-off status, (c) ADR-029 Accepted with pending SHA, (d) SC-002 regression results, (e) SC-009 zero-edit audit results, (f) SC-008 zero-dep audit results, (g) T039 F-A3 coordination outcome.
+- [X] T046 PR preparation — open PR against `main` with description citing: (a) spec.md, plan.md, tasks.md paths, (b) triple sign-off status, (c) ADR-029 Accepted with pending SHA, (d) SC-002 regression results, (e) SC-009 zero-edit audit results, (f) SC-008 zero-dep audit results, (g) T039 F-A3 coordination outcome. **Outcome (Wave 4.2)**: PR #195 opened 2026-04-18 — `https://github.com/davidmatousek/tachi/pull/195`. Triple sign-off confirmed (PM APPROVED + Architect APPROVED + Team-Lead APPROVED_WITH_CONCERNS, all 2026-04-18). ADR-029 Accepted with placeholder `merge-sha: <pending-post-merge-fill>` for T044. SC-002 (13 pass / 1 pre-existing skip), SC-008 (empty dep diff), SC-009 (22-file zero-edit audit) all green. Test suite: 305 pass, 1 skip. Quickstart 9/9 green. 3 user stories delivered (US3 gate MVP, US2 per-framework matrix, US1 per-finding table).
 
 **Checkpoint**: All 12 SCs green. PR ready for external review and squash-merge.
 
