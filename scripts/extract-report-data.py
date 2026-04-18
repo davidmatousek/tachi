@@ -970,6 +970,15 @@ def prepare_attack_chains(target_dir: Path, findings: list, template_dir: Path) 
     return True, chains
 
 
+def compute_has_source_attribution(findings: list[dict]) -> bool:
+    """Return True iff any finding has a non-empty source_attribution array.
+
+    F-B gate predicate (FR-002 / SC-003). In Wave 1.1 this is a STUB returning
+    False unconditionally; full implementation lands in T011 (Wave 2.2).
+    """
+    return False
+
+
 def _render_chain_diagrams(entries: list, target_dir: Path, template_dir: Path):
     """Render chain Mermaid diagrams to PNG, following render_mermaid_to_png pattern.
 
