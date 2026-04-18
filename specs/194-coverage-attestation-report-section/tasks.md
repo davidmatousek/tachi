@@ -47,7 +47,7 @@ triad:
 
 **Purpose**: Feature-branch scaffolding. Minimal since the tachi repo already carries all runtime tooling (Python 3.11, Typst, pytest, pyyaml).
 
-- [ ] T001 Feature branch `194-coverage-attestation-report-section` verified on `origin` and tracking upstream; GitHub Issue #194 moved to `stage:plan` (already complete — this task is a verification checkpoint, not a re-run)
+- [X] T001 Feature branch `194-coverage-attestation-report-section` verified on `origin` and tracking upstream; GitHub Issue #194 moved to `stage:build` (verification checkpoint, no work)
 
 ---
 
