@@ -180,7 +180,7 @@ See Phase 2 T009, T010, T011 — ADR-030 Proposed authoring happens at Wave 1.1 
 - [X] T049 [P] SC-010: confirm F-A2 validation passes on regenerated findings per T037 (fixture-driven PARTIAL: T037 27/27 green on valid + invalid fixtures; regen-based validation deferred with T032)
 - [X] T050 [P] SC-011: verify zero MAESTRO references per T018 `grep -i maestro` check
 - [X] T051 [P] SC-012: verify schema_version `"1.6"` + regex extends to `OI` per T006; regex unit test passes
-- [ ] T052 Open PR from `201-output-integrity-threat-agent` → `main` with title `feat(201): output-integrity threat agent (OWASP LLM05:2025)` and body linking to PRD, spec, plan, tasks, ADR-030. Request triple review (PM + Architect + Team-Lead) as part of PR process. **DEFERRED (pending T032-T036 regeneration)**
+- [X] T052 Open PR from `201-output-integrity-threat-agent` → `main` with title `feat(201): output-integrity threat agent (OWASP LLM05:2025)` and body linking to PRD, spec, plan, tasks, ADR-030. Request triple review (PM + Architect + Team-Lead) as part of PR process.
 
 **Checkpoint**: All 12 SCs green; PR opened. Wave 6 buffer day available if Outcome A or R5 (regeneration surface) materializes.
 
