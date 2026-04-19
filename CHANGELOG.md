@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.19.0](https://github.com/davidmatousek/tachi/compare/v4.18.1...v4.19.0) (2026-04-19)
+
+
+### Features
+
+* **201:** output-integrity threat agent (OWASP LLM05:2025) ([#202](https://github.com/davidmatousek/tachi/issues/202)) ([558e75e](https://github.com/davidmatousek/tachi/commit/558e75eb333ad7787167833c97b645bc251492e1))
+
 ## [4.18.1](https://github.com/davidmatousek/tachi/compare/v4.18.0...v4.18.1) (2026-04-18)
 
 
