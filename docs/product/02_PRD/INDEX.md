@@ -1,11 +1,12 @@
 # PRD Index
 
-**Last Updated**: 2026-04-18 (Feature 194 delivered — F-B Coverage Attestation Report Section)
+**Last Updated**: 2026-04-18 (Feature 201 PRD approved — F-1 Output Integrity Threat Agent)
 **Legend**: ✓=APPROVED, ⚠=APPROVED_WITH_CONCERNS, 🔄=CHANGES_REQUESTED, ⛔=BLOCKED, ⚠⚡=OVERRIDDEN
 
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 201 | [F-1 Output Integrity Threat Agent (LLM05)](201-output-integrity-threat-agent-2026-04-18.md) ([Issue #201](https://github.com/davidmatousek/tachi/issues/201)) | ✓ | ⚠ | ⚠ | Approved | 2026-04-18 |
 | 194 | [F-B Coverage Attestation Report Section](194-coverage-attestation-report-section-2026-04-18.md) ([PR #195](https://github.com/davidmatousek/tachi/pull/195)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-18 |
 | 189 | [F-A2 Source Attribution Schema Extension](189-source-attribution-schema-extension-2026-04-17.md) ([PR #190](https://github.com/davidmatousek/tachi/pull/190)) | ⚠ | ✓ | ⚠ | Delivered | 2026-04-17 |
 | 180 | [F-A1 Taxonomy Crosswalk Collection](180-taxonomy-crosswalk-collection-2026-04-17.md) ([PR #181](https://github.com/davidmatousek/tachi/pull/181)) | ⚠ | ⚠ | ⚠ | Delivered | 2026-04-17 |

@@ -42,6 +42,7 @@ references:
       - model-theft.md
       - agent-autonomy.md
       - tool-abuse.md
+      - output-integrity.md
     report: threat-report.md
 ```
 

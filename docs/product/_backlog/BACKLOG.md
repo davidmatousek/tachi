@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-04-18T18:38:59Z.
+> Auto-generated from GitHub Issues on 2026-04-19T01:11:50Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -46,6 +46,8 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #201 | F-1 LLM05 Improper Output Handling — new output-integrity threat agent | OPEN | 2026-04-18 |
+| #198 | F-B source_attribution invisible at Tier 1 and Tier 2 (cc/rs findings) | CLOSED | 2026-04-18 |
 | #186 | F-A1.3 follow-on: MITRE ATT&CK + ATLAS catalog expansion | OPEN | 2026-04-17 |
 | #185 | F-A1.2 follow-on: cwe.yaml expansion — add CWE records discovered in T029 drift analysis | OPEN | 2026-04-17 |
 | #184 | F-A1.1 follow-on: NIST AI 600-1 GAI Risk taxonomy addition — Surface C transcription (ADR-027 / FR-010 enum expansion) | OPEN | 2026-04-17 |
