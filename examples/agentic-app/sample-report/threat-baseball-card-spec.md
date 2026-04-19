@@ -1,90 +1,78 @@
 ---
 schema_version: "1.0"
 template: "baseball-card"
-date: "2026-04-10"
-source_file: "compensating-controls.md"
-finding_count: 22
-image_generated: false
+date: "2026-04-19"
+source_file: "threats.md"
+data_source_type: "threats"
+finding_count: 69
+image_generated: true
+project_name: "Agentic AI Application"
+fallback_note: "Extraction ran against threats.md (Tier 3 fallback); score numbers inlined from compensating-controls.md + risk-scores.md Executive Summary due to parser heading-format mismatch against current compensating-controls.md schema"
 ---
+
+# Threat Infographic Specification — Baseball Card
 
 ## 1. Metadata
 
-| Field | Value |
-|-------|-------|
-| Project Name | Agentic AI Application |
-| Scan Date | 2026-04-10 |
-| Analysis Agents | 8 (S, T, R, I, D, E, AG, LLM) |
-| Total Findings | 22 |
-| Risk Posture | Residual risk — 0 Critical and 10 High findings across 7 components |
+- **Project**: Agentic AI Application
+- **Scan Date**: 2026-04-19
+- **Schema Version**: 1.6
+- **Data Source Tier**: 3 (threats)
+- **Total Findings**: 69 (70 in source; parser yields 69 unique after dedup)
+- **Components**: 10
+- **Risk Posture**: Severity assessment — 38 Critical and 23 High findings across 10 components
+- **Inherent Risk**: 395.6
+- **Residual Risk**: 395.6 (0.0% reduction)
+- **Control Coverage**: 0.0% (reference architecture)
 
 ## 2. Risk Distribution
 
 | Severity | Count | Percentage | Color |
 |----------|-------|------------|-------|
-| Critical | 0 | 0.0% | #DC2626 |
-| High | 10 | 45.0% | #EA580C |
-| Medium | 12 | 55.0% | #CA8A04 |
-| Low | 0 | 0.0% | #2563EB |
-| **Total** | **22** | **100%** | -- |
-
-**Chart Format**: Suitable for donut chart (proportional segments) or horizontal bar chart (comparative lengths).
+| Critical | 38 | 55% | #DC2626 |
+| High | 23 | 33% | #EA580C |
+| Medium | 6 | 9% | #CA8A04 |
+| Low | 2 | 3% | #2563EB |
 
 ## 3. Coverage Heat Map
 
 | Component | Critical | High | Medium | Low | Total |
-|-----------|----------|------|--------|-----|-------|
-| LLM Agent Orchestrator | 0 | 4 | 6 | 0 | 10 |
-| MCP Tool Server | 0 | 2 | 2 | 0 | 4 |
-| Guardrails Service | 0 | 2 | 0 | 0 | 2 |
-| Knowledge Base | 0 | 0 | 2 | 0 | 2 |
-| User | 0 | 1 | 1 | 0 | 2 |
-| Audit Logger | 0 | 0 | 1 | 0 | 1 |
-| External API | 0 | 1 | 0 | 0 | 1 |
+|-----------|---------:|-----:|-------:|----:|------:|
+| LLM Agent Orchestrator | 15 | 3 | 1 | 0 | 19 |
+| Specialist Agent | 4 | 6 | 0 | 0 | 10 |
+| Long-Running Learning Loop | 5 | 3 | 1 | 0 | 9 |
+| MCP Tool Server | 5 | 3 | 0 | 0 | 8 |
+| Inter-Agent Communication Channel | 5 | 1 | 0 | 1 | 7 |
+| Guardrails Service | 2 | 2 | 2 | 0 | 6 |
+| Audit Logger | 1 | 2 | 0 | 0 | 3 |
+| Other | 1 | 3 | 2 | 1 | 7 |
 
-## 4. Top Critical Findings
+## 4. Top Findings
 
-| # | Finding ID | Component | Threat | Risk Level |
-|---|-----------|-----------|--------|------------|
-| 1 | LLM-1 | LLM Agent Orchestrator | Indirect prompt injection via documents retrieved from the … | High |
-| 2 | AG-4 | MCP Tool Server | Compromised or manipulated agent triggers excessive tool in… | High |
-| 3 | E-2 | Guardrails Service | Attacker bypasses guardrails validation through prompt obfu… | High |
-| 4 | E-1 | LLM Agent Orchestrator | Orchestrator escalates its own tool permissions beyond the … | High |
-| 5 | LLM-3 | LLM Agent Orchestrator | Attacker crafts prompts that cause the LLM to generate tool… | High |
+Top 5 critical findings (with OI-1 surfaced for Feature 201 visibility):
 
-## 5. Architecture Threat Overlay
+| Rank | Finding ID | Component | Risk | Threat Summary |
+|-----:|------------|-----------|------|----------------|
+| 1 | AG-1 | LLM Agent Orchestrator | Critical | Prompt injection causes autonomous unauthorized high-impact actions |
+| 2 | AG-2 | LLM Agent Orchestrator | Critical | Orchestrator+Specialist coordinate for policy circumvention above per-agent limits |
+| 3 | AG-3 | Specialist Agent | Critical | Adversarial delegation causes autonomous prohibited cumulative tool call sequence |
+| 4 | AG-4 | Inter-Agent Communication Channel | Critical | Agent-in-the-middle intercepts and modifies delegation messages |
+| 5 | OI-1 | LLM Agent Orchestrator | Critical | Client-side XSS via LLM response to User browser (F-201, OWASP LLM05:2025) |
 
-| Component | Risk Weight | Finding Count | Annotation |
-|-----------|-------------|---------------|------------|
-| LLM Agent Orchestrator | High | 10 | Central coordination hub dispatching LLM inference, tool calls, and knowledge retrieval. Concentrates the majority of findings as the primary target for spoofing, tampering, information disclosure, privilege escalation, and AI-specific (LLM + agentic) threats. |
-| MCP Tool Server | Medium-High | 4 | Executes tool calls on behalf of the orchestrator. Exposed to prompt-driven parameter manipulation, unauthorized tool invocation, resource exhaustion, and scope-crossing agentic actions. |
-| Guardrails Service | Medium-High | 2 | Entry-point input filter screening user prompts. High-severity denial-of-service and privilege-escalation findings reflect its position as the first attacker-facing component in the application zone. |
-| Knowledge Base | Medium | 2 | Vector store providing RAG context. Data integrity (embedding poisoning) and confidentiality (embedding reversal) findings reflect its role as the indirect prompt injection attack surface. |
-| User | Medium-High | 2 | External entity submitting prompts. Spoofing (token replay) and repudiation (insufficient session attribution) findings reflect identity-boundary risks. |
-| Audit Logger | Medium | 1 | Centralized observability and forensics store (MAESTRO L5). Tampering findings reflect accountability risks if log integrity is not cryptographically chained. |
-| External API | Medium-High | 1 | Third-party service reached through the tool server. Spoofing findings reflect response-integrity risks at the trust-zone boundary. |
+### Feature 201 Output-Integrity Findings
+
+- **OI-1** (inherent Critical / residual 7.2 High): Client-side XSS via LLM response rendered in User browser
+- **OI-2** (inherent Critical / residual 6.7 Medium): Server-side code/command execution via LLM-synthesized Tool Call parameters
+- **OI-3** (inherent High / residual 6.1 Medium): SSRF via LLM-synthesized URL in Tool Call Request
+
+## 5. Template-Specific Format — Baseball Card
+
+Compact dashboard, four zones: (1) top header strip; (2) left-center risk donut; (3) right-center heat map; (4) bottom strip of 5 critical-finding cards (OI-1 included).
 
 ## 6. Visual Design Directives
 
-**Format**: Portrait orientation (2:3 aspect ratio), print-ready at 300 DPI, 2480 x 3508 px minimum.
-
-**Color System**:
-- Critical: `#DC2626` (deep red) — urgent action required
-- High: `#EA580C` (orange-red) — priority remediation
-- Medium: `#CA8A04` (gold) — scheduled remediation
-- Low: `#2563EB` (blue) — backlog/monitor
-- Background: light gray `#F5F5F5` with white panels `#FFFFFF`
-- Headers: dark navy `#1E293B`
-- Accent lines: medium gray `#64748B`
-
-**Layout**:
-- Top banner (15% height): project name, scan date, total findings, risk posture summary
-- Risk distribution donut chart (25% height, centered)
-- Coverage heat map table (30% height, component rows x severity columns)
-- Top 5 critical/high findings list (20% height)
-- Architecture threat overlay (10% height, bottom banner)
-
-**Typography**: Sans-serif, 18-24pt headers, 10-12pt body, 8pt footnotes. High contrast for scanability.
-
-**Visual Style**: Corporate-neutral with clear information hierarchy. Donut chart shows severity proportions at-a-glance. Heat map uses color intensity to convey finding density.
-
-**Prompt Hint (Gemini)**: Generate a print-quality infographic using the layout above. Emphasize canonical MAESTRO layer naming — use ONLY the canonical CSA MAESTRO layer names: L5 Evaluation and Observability, L6 Security and Compliance, L7 Agent Ecosystem.
+- **Orientation**: Landscape 16:9
+- **Background**: Dark navy gradient (#0F172A → #1E293B)
+- **Severity palette**: Critical #DC2626, High #EA580C, Medium #CA8A04, Low #2563EB
+- **Typography**: 32pt titles, 18pt labels
+- **F-201 emphasis**: OI-1 card red-orange accent border, small 'F-201' tag

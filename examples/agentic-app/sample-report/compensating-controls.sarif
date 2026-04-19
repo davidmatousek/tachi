@@ -1,999 +1,1376 @@
 {
-  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
   "version": "2.1.0",
   "runs": [
     {
       "tool": {
         "driver": {
-          "name": "Tachi Control Analyzer",
+          "name": "tachi-control-analyzer",
+          "version": "1.0",
           "semanticVersion": "1.0",
-          "informationUri": "https://github.com/tachi-org/tachi",
+          "informationUri": "https://github.com/davidmatousek/tachi",
           "rules": [
             {
-              "id": "tachi/compensating-controls/no-control-found",
-              "shortDescription": {
-                "text": "No compensating control detected"
-              },
-              "fullDescription": {
-                "text": "A scored threat finding has no detected compensating control in the target codebase. Residual risk equals inherent risk."
-              },
-              "properties": {
-                "tags": [
-                  "compensating-controls",
-                  "coverage-gap"
-                ]
-              }
+              "id": "tachi/stride/spoofing",
+              "name": "Spoofing",
+              "shortDescription": {"text": "Identity spoofing threats (STRIDE-S)"},
+              "properties": {"security-severity": "7.9"}
+            },
+            {
+              "id": "tachi/stride/tampering",
+              "name": "Tampering",
+              "shortDescription": {"text": "Data/message tampering threats (STRIDE-T)"},
+              "properties": {"security-severity": "5.8"}
+            },
+            {
+              "id": "tachi/stride/repudiation",
+              "name": "Repudiation",
+              "shortDescription": {"text": "Non-repudiation gaps (STRIDE-R)"},
+              "properties": {"security-severity": "5.7"}
+            },
+            {
+              "id": "tachi/stride/info-disclosure",
+              "name": "Information Disclosure",
+              "shortDescription": {"text": "Sensitive-data exposure threats (STRIDE-I)"},
+              "properties": {"security-severity": "5.5"}
+            },
+            {
+              "id": "tachi/stride/denial-of-service",
+              "name": "Denial of Service",
+              "shortDescription": {"text": "Availability threats (STRIDE-D)"},
+              "properties": {"security-severity": "6.6"}
+            },
+            {
+              "id": "tachi/stride/privilege-escalation",
+              "name": "Privilege Escalation",
+              "shortDescription": {"text": "Elevation-of-privilege threats (STRIDE-E)"},
+              "properties": {"security-severity": "7.3"}
+            },
+            {
+              "id": "tachi/ai/agentic",
+              "name": "Agentic",
+              "shortDescription": {"text": "Agent-autonomy / tool-abuse threats"},
+              "properties": {"security-severity": "6.9"}
+            },
+            {
+              "id": "tachi/ai/llm",
+              "name": "LLM",
+              "shortDescription": {"text": "LLM-specific threats (prompt injection, output integrity, model theft)"},
+              "properties": {"security-severity": "7.2"}
             }
           ]
         }
       },
       "results": [
         {
-          "ruleId": "tachi/compensating-controls/no-control-found",
+          "ruleId": "tachi/stride/spoofing",
+          "message": {"text": "Attacker impersonates legitimate user via replayed session tokens [Control: missing]"},
           "level": "error",
-          "message": {
-            "text": "LLM-1: Indirect prompt injection via documents retrieved from the knowledge base causes the orchestrator to execute attacker-controlled instructions, exfiltrating sensitive context or invoking unauthorized tool calls \u2014 No compensating control detected; residual = inherent (8.1)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
+          "locations": [{"logicalLocations": [{"name": "User", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "S-1"},
           "properties": {
-            "security-severity": "8.1",
-            "finding_id": "LLM-1",
-            "inherent_score": 8.1,
-            "residual_score": 8.1,
-            "inherent_severity": "High",
-            "residual_severity": "High",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:high",
-              "maestro-layer:L1"
-            ]
+            "security-severity": "7.9",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "authentication",
+            "inherent-risk": "7.9",
+            "residual-risk": "7.9",
+            "maestro-layer": "L7 — Agent Ecosystem",
+            "recommendation": "Implement session authentication with replay protection: short-lived JWT or opaque session tokens (5-15 min access, refresh-token rotation) bound to client IP and device fingerprint; MFA enrollment required; token revocation list checked on every request.",
+            "effort-estimate": "High"
           }
         },
         {
-          "ruleId": "tachi/compensating-controls/no-control-found",
+          "ruleId": "tachi/stride/privilege-escalation",
+          "message": {"text": "Prompt injection bypass elevates attacker to trusted Orchestrator caller [Control: missing]"},
           "level": "error",
-          "message": {
-            "text": "AG-4: Compromised or manipulated agent triggers excessive tool invocations in rapid succession, exhausting external API quotas, compute resources, and downstream service capacity \u2014 No compensating control detected; residual = inherent (8.0)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "MCP Tool Server",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
-          "properties": {
-            "security-severity": "8.0",
-            "finding_id": "AG-4",
-            "inherent_score": 8.0,
-            "residual_score": 8.0,
-            "inherent_severity": "High",
-            "residual_severity": "High",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "MCP Tool Server",
-            "maestro-layer": "L3 \u2014 Agent Framework",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:high",
-              "maestro-layer:L3"
-            ]
-          }
-        },
-        {
-          "ruleId": "tachi/compensating-controls/no-control-found",
-          "level": "error",
-          "message": {
-            "text": "E-2: Attacker bypasses guardrails validation through prompt obfuscation techniques (encoding, unicode manipulation, payload splitting) to access restricted orchestrator capabilities \u2014 No compensating control detected; residual = inherent (7.7)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "Guardrails Service",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
-          "properties": {
-            "security-severity": "7.7",
-            "finding_id": "E-2",
-            "inherent_score": 7.7,
-            "residual_score": 7.7,
-            "inherent_severity": "High",
-            "residual_severity": "High",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "Guardrails Service",
-            "maestro-layer": "L6 \u2014 Security and Compliance",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:high",
-              "maestro-layer:L6"
-            ]
-          }
-        },
-        {
-          "ruleId": "tachi/compensating-controls/no-control-found",
-          "level": "error",
-          "message": {
-            "text": "E-1: Orchestrator escalates its own tool permissions beyond the user's authorization level by dynamically requesting elevated scopes from the MCP Tool Server, accessing tools the invoking user is not authorized to use \u2014 No compensating control detected; residual = inherent (7.5)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
-          "properties": {
-            "security-severity": "7.5",
-            "finding_id": "E-1",
-            "inherent_score": 7.5,
-            "residual_score": 7.5,
-            "inherent_severity": "High",
-            "residual_severity": "High",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:high",
-              "maestro-layer:L1"
-            ]
-          }
-        },
-        {
-          "ruleId": "tachi/compensating-controls/no-control-found",
-          "level": "error",
-          "message": {
-            "text": "LLM-3: Attacker crafts prompts that cause the LLM to generate tool call parameters containing injection payloads (SQL, shell commands, JSON-RPC manipulation) that execute on downstream systems through the MCP Tool Server \u2014 No compensating control detected; residual = inherent (7.5)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
-          "properties": {
-            "security-severity": "7.5",
-            "finding_id": "LLM-3",
-            "inherent_score": 7.5,
-            "residual_score": 7.5,
-            "inherent_severity": "High",
-            "residual_severity": "High",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:high",
-              "maestro-layer:L1"
-            ]
-          }
-        },
-        {
-          "ruleId": "tachi/compensating-controls/no-control-found",
-          "level": "error",
-          "message": {
-            "text": "AG-2: Attacker manipulates prompt context to cause the tool server to invoke tools outside the intended scope, executing unauthorized file system operations, network calls, or data mutations \u2014 No compensating control detected; residual = inherent (7.4)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "MCP Tool Server",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
-          "properties": {
-            "security-severity": "7.4",
-            "finding_id": "AG-2",
-            "inherent_score": 7.4,
-            "residual_score": 7.4,
-            "inherent_severity": "High",
-            "residual_severity": "High",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "MCP Tool Server",
-            "maestro-layer": "L3 \u2014 Agent Framework",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:high",
-              "maestro-layer:L3"
-            ]
-          }
-        },
-        {
-          "ruleId": "tachi/compensating-controls/no-control-found",
-          "level": "error",
-          "message": {
-            "text": "D-1: Attacker floods the guardrails service with complex prompts designed to maximize validation processing time, exhausting CPU and blocking legitimate requests \u2014 No compensating control detected; residual = inherent (7.4)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "Guardrails Service",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
-          "properties": {
-            "security-severity": "7.4",
-            "finding_id": "D-1",
-            "inherent_score": 7.4,
-            "residual_score": 7.4,
-            "inherent_severity": "High",
-            "residual_severity": "High",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "Guardrails Service",
-            "maestro-layer": "L6 \u2014 Security and Compliance",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:high",
-              "maestro-layer:L6"
-            ]
-          }
-        },
-        {
-          "ruleId": "tachi/compensating-controls/no-control-found",
-          "level": "error",
-          "message": {
-            "text": "S-1: Attacker spoofs a legitimate user identity by stealing or replaying session tokens to submit unauthorized prompts \u2014 No compensating control detected; residual = inherent (7.4)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "User",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
-          "properties": {
-            "security-severity": "7.4",
-            "finding_id": "S-1",
-            "inherent_score": 7.4,
-            "residual_score": 7.4,
-            "inherent_severity": "High",
-            "residual_severity": "High",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "User",
-            "maestro-layer": "L7 \u2014 Agent Ecosystem",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:high",
-              "maestro-layer:L7"
-            ]
-          }
-        },
-        {
-          "ruleId": "tachi/compensating-controls/no-control-found",
-          "level": "error",
-          "message": {
-            "text": "S-3: Compromised or spoofed external API returns malicious payloads masquerading as legitimate API responses \u2014 No compensating control detected; residual = inherent (7.4)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "External API",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
-          "properties": {
-            "security-severity": "7.4",
-            "finding_id": "S-3",
-            "inherent_score": 7.4,
-            "residual_score": 7.4,
-            "inherent_severity": "High",
-            "residual_severity": "High",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "External API",
-            "maestro-layer": "L3 \u2014 Agent Framework",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:high",
-              "maestro-layer:L3"
-            ]
-          }
-        },
-        {
-          "ruleId": "tachi/compensating-controls/no-control-found",
-          "level": "error",
-          "message": {
-            "text": "AG-1: Orchestrator autonomously escalates its own action scope by chaining multiple tool calls into a privileged operation sequence that no single tool call would permit, bypassing per-tool authorization boundaries \u2014 No compensating control detected; residual = inherent (7.3)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
+          "locations": [{"logicalLocations": [{"name": "Guardrails Service", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "E-1"},
           "properties": {
             "security-severity": "7.3",
-            "finding_id": "AG-1",
-            "inherent_score": 7.3,
-            "residual_score": 7.3,
-            "inherent_severity": "High",
-            "residual_severity": "High",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:high",
-              "maestro-layer:L1"
-            ]
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "access-control",
+            "inherent-risk": "7.3",
+            "residual-risk": "7.3",
+            "maestro-layer": "L6 — Security and Compliance",
+            "recommendation": "Implement defense-in-depth prompt injection detection at the Orchestrator layer, independent of Guardrails. Apply separate input classification on the Orchestrator (policy engine, second-stage classifier, or LLM-based guard). Enforce least-privilege on Guardrails→Orchestrator flows.",
+            "effort-estimate": "High"
           }
         },
         {
-          "ruleId": "tachi/compensating-controls/no-control-found",
+          "ruleId": "tachi/stride/privilege-escalation",
+          "message": {"text": "Orchestrator prompt injection self-authorizes elevated operations [Control: missing]"},
+          "level": "error",
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "E-2", "correlationGroup": "CG-3"},
+          "properties": {
+            "security-severity": "7.2",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "access-control",
+            "inherent-risk": "7.2",
+            "residual-risk": "7.2",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "Implement per-session scoped permissions enforced by the Tool Server and KB independently. Determine session's permitted tool set and KB scope at authentication time. Apply step-up authentication for high-privilege operations.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm",
+          "message": {"text": "Direct prompt injection overrides system prompt or reveals context [Control: missing]"},
+          "level": "error",
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "LLM-1", "correlationGroup": "CG-4"},
+          "properties": {
+            "security-severity": "7.2",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "7.2",
+            "residual-risk": "7.2",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "Implement input validation to detect direct prompt injection patterns. Combine structural checks (reject injection markers, role-override syntax, encoded payloads) with model-based classification (Prompt-Guard, adversarial-trained classifier). Apply BEFORE prompt reaches Orchestrator LLM.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm",
+          "message": {"text": "Client-side XSS via LLM response rendered in browser [Control: missing]"},
+          "level": "error",
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "LLM-5"},
+          "properties": {
+            "security-severity": "7.2",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "7.2",
+            "residual-risk": "7.2",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "Implement server-side output sanitization (DOMPurify/sanitize-html/bleach) plus strict Content-Security-Policy (default-src 'self'; script-src 'self' 'nonce-<nonce>'; object-src 'none'). Use textContent (not innerHTML); React as {value} JSX (never dangerouslySetInnerHTML).",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm",
+          "message": {"text": "Client-side XSS via LLM response to User browser [Control: missing]"},
+          "level": "error",
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "OI-1"},
+          "properties": {
+            "security-severity": "7.2",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "output-sanitization-and-encoding",
+            "inherent-risk": "7.2",
+            "residual-risk": "7.2",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "Output encoding and context-aware sanitization on LLM responses to User browser. Server-side: DOMPurify or sanitize-html on generated text. Response header: Content-Security-Policy with strict script-src 'self' 'nonce-<nonce>'. Client: textContent (not innerHTML); React {value} JSX (not dangerouslySetInnerHTML).",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic",
+          "message": {"text": "Prompt injection causes autonomous unauthorized high-impact actions [Control: missing]"},
           "level": "warning",
-          "message": {
-            "text": "LLM-2: Attacker poisons knowledge base documents with adversarial content designed to persistently corrupt LLM reasoning, causing the orchestrator to consistently produce incorrect or malicious outputs for specific query patterns \u2014 No compensating control detected; residual = inherent (6.9)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "AG-1", "correlationGroup": "CG-3"},
           "properties": {
             "security-severity": "6.9",
-            "finding_id": "LLM-2",
-            "inherent_score": 6.9,
-            "residual_score": 6.9,
-            "inherent_severity": "Medium",
-            "residual_severity": "Medium",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:medium",
-              "maestro-layer:L1"
-            ]
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "access-control",
+            "inherent-risk": "6.9",
+            "residual-risk": "6.9",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "Scope-enforcement layer: Orchestrator MUST validate every proposed action against user session's permitted scope before execution. Human-in-the-loop confirmation for high-impact ops (bulk exports, external writes). Supervised-autonomy model: Orchestrator proposes, separate policy engine approves/rejects.",
+            "effort-estimate": "High"
           }
         },
         {
-          "ruleId": "tachi/compensating-controls/no-control-found",
+          "ruleId": "tachi/ai/llm",
+          "message": {"text": "Prompt injection via delegation message hijacks Specialist [Control: missing]"},
           "level": "warning",
-          "message": {
-            "text": "AG-3: Orchestrator generates and executes multi-step plans without checkpoints, making irreversible changes across multiple tools before any human review occurs \u2014 No compensating control detected; residual = inherent (6.7)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
+          "locations": [{"logicalLocations": [{"name": "Specialist Agent", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "LLM-8"},
+          "properties": {
+            "security-severity": "6.8",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "6.8",
+            "residual-risk": "6.8",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Validate and sanitize all delegation task payloads received by Specialist. Apply HMAC/digital signature verification on every delegation message. Reject tasks with unexpected structural patterns (new tool targets, exfiltration URLs).",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm",
+          "message": {"text": "Server-side execution via LLM-emitted Tool Call Request params [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "LLM-6"},
           "properties": {
             "security-severity": "6.7",
-            "finding_id": "AG-3",
-            "inherent_score": 6.7,
-            "residual_score": 6.7,
-            "inherent_severity": "Medium",
-            "residual_severity": "Medium",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:medium",
-              "maestro-layer:L1"
-            ]
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "6.7",
+            "residual-risk": "6.7",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "Allowlist validation on every Tool Call Request parameter. Reject unknown tool names; per-parameter JSON Schema enforcement. SQL: parameterized queries (psycopg2 cursor.execute(sql, params), SQLAlchemy text().bindparams()). Shell: subprocess.run([cmd, arg1, arg2], shell=False). Never interpolate LLM-emitted text into shell/SQL.",
+            "effort-estimate": "Medium"
           }
         },
         {
-          "ruleId": "tachi/compensating-controls/no-control-found",
+          "ruleId": "tachi/ai/llm",
+          "message": {"text": "Server-side code/command execution via LLM-synthesized Tool Call parameters [Control: missing]"},
           "level": "warning",
-          "message": {
-            "text": "D-2: Attacker triggers recursive or excessively long tool call chains through crafted prompts, exhausting tool server resources and causing cascading timeouts across the application \u2014 No compensating control detected; residual = inherent (6.7)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "MCP Tool Server",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "OI-2"},
           "properties": {
             "security-severity": "6.7",
-            "finding_id": "D-2",
-            "inherent_score": 6.7,
-            "residual_score": 6.7,
-            "inherent_severity": "Medium",
-            "residual_severity": "Medium",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "MCP Tool Server",
-            "maestro-layer": "L3 \u2014 Agent Framework",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:medium",
-              "maestro-layer:L3"
-            ]
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "allowlist-validation",
+            "inherent-risk": "6.7",
+            "residual-risk": "6.7",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "Allowlist validation + parameterization at the Tool Server. Per-tool JSON Schema catalog (tool-name enum, per-parameter type/length/regex/enum). SQL: parameterized queries. Shell: subprocess.run([cmd, arg1, arg2], shell=False). Template engines: SandboxedEnvironment (Jinja2). Never interpolate LLM-emitted text into execution contexts.",
+            "effort-estimate": "Medium"
           }
         },
         {
-          "ruleId": "tachi/compensating-controls/no-control-found",
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {"text": "Resource exhaustion via high-volume expensive prompts [Control: missing]"},
           "level": "warning",
-          "message": {
-            "text": "I-1: Orchestrator leaks sensitive context from the knowledge base or prior conversation turns in its responses to the user, exposing confidential documents or other users' data \u2014 No compensating control detected; residual = inherent (6.7)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
+          "locations": [{"logicalLocations": [{"name": "Guardrails Service", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "D-1"},
           "properties": {
-            "security-severity": "6.7",
-            "finding_id": "I-1",
-            "inherent_score": 6.7,
-            "residual_score": 6.7,
-            "inherent_severity": "Medium",
-            "residual_severity": "Medium",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:medium",
-              "maestro-layer:L1"
-            ]
+            "security-severity": "6.6",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "rate-limiting",
+            "inherent-risk": "6.6",
+            "residual-risk": "6.6",
+            "maestro-layer": "L6 — Security and Compliance",
+            "recommendation": "Per-IP and per-session rate limiting at network ingress BEFORE Guardrails. Computational complexity budget per prompt; reject over-budget prompts. Async processing queues with backpressure. Libraries: express-rate-limit, rate-limiter-flexible, slowapi, flask-limiter; NGINX limit_req.",
+            "effort-estimate": "Medium"
           }
         },
         {
-          "ruleId": "tachi/compensating-controls/no-control-found",
+          "ruleId": "tachi/stride/privilege-escalation",
+          "message": {"text": "Unauthorized tool calls gain Tool Server execution privileges [Control: missing]"},
           "level": "warning",
-          "message": {
-            "text": "I-3: Tool server includes API credentials, internal endpoint URLs, or stack traces in error responses returned to the orchestrator, which may propagate to the user \u2014 No compensating control detected; residual = inherent (6.2)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "MCP Tool Server",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
+          "locations": [{"logicalLocations": [{"name": "MCP Tool Server", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "E-5"},
+          "properties": {
+            "security-severity": "6.6",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "access-control",
+            "inherent-risk": "6.6",
+            "residual-risk": "6.6",
+            "maestro-layer": "L3 — Agent Framework",
+            "recommendation": "Zero-trust authorization at the Tool Server: every tool invocation authorized against originating session scope, independent of caller identity. Tool-specific service accounts with least-privilege external permissions. Rotate API credentials via KMS.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic",
+          "message": {"text": "Tool call injection via LLM-influenced JSON-RPC parameters [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "MCP Tool Server", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "AG-5"},
+          "properties": {
+            "security-severity": "6.5",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "6.5",
+            "residual-risk": "6.5",
+            "maestro-layer": "L3 — Agent Framework",
+            "recommendation": "Strict parameter validation + allowlist enforcement on all JSON-RPC tool invocations. Per-parameter JSON Schema; reject metacharacters and unexpected structural elements before tool dispatch.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic",
+          "message": {"text": "Runaway tool calls exhaust External API rate limits [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "MCP Tool Server", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "AG-6", "correlationGroup": "CG-5"},
+          "properties": {
+            "security-severity": "6.5",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "rate-limiting",
+            "inherent-risk": "6.5",
+            "residual-risk": "6.5",
+            "maestro-layer": "L3 — Agent Framework",
+            "recommendation": "Per-caller and per-tool rate limiting at Tool Server with connection-pool overflow rejection (not queuing). Per-session tool-call budgets. Circuit breakers (opossum, cockatiel, resilience4j) isolating External API degradation from internal availability.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm",
+          "message": {"text": "Indirect prompt injection via adversarial Knowledge Base documents [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "LLM-2"},
+          "properties": {
+            "security-severity": "6.4",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "6.4",
+            "residual-risk": "6.4",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "Document-level integrity checks (hash + signature at KB write, verify at retrieval) on all retrieved KB documents. Regular corpus scanning for adversarial patterns. Treat retrieved documents as untrusted input at context-injection time.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/privilege-escalation",
+          "message": {"text": "Channel forged elevated sender identity [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Inter-Agent Communication Channel", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "E-4"},
+          "properties": {
+            "security-severity": "6.4",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "access-control",
+            "inherent-risk": "6.4",
+            "residual-risk": "6.4",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Sender identity authentication at Channel layer: every message carries verifiable signed token or mTLS certificate (SPIFFE/SPIRE, per-message ED25519). Channel rejects unverifiable messages before routing.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {"text": "Connection pool exhaustion via high-volume tool call requests [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "MCP Tool Server", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "D-5", "correlationGroup": "CG-5"},
+          "properties": {
+            "security-severity": "6.3",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "rate-limiting",
+            "inherent-risk": "6.3",
+            "residual-risk": "6.3",
+            "maestro-layer": "L3 — Agent Framework",
+            "recommendation": "Per-caller and per-tool rate limits; connection-pool overflow rejection (not queuing); per-session tool-call budgets. Circuit breakers isolating External API degradation.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic",
+          "message": {"text": "Orchestrator-Specialist collusion for policy circumvention [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "AG-2"},
           "properties": {
             "security-severity": "6.2",
-            "finding_id": "I-3",
-            "inherent_score": 6.2,
-            "residual_score": 6.2,
-            "inherent_severity": "Medium",
-            "residual_severity": "Medium",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "MCP Tool Server",
-            "maestro-layer": "L3 \u2014 Agent Framework",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:medium",
-              "maestro-layer:L3"
-            ]
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "access-control",
+            "inherent-risk": "6.2",
+            "residual-risk": "6.2",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "Cross-agent rate limits and coordination throttles at Channel. Log all inter-agent coordination patterns to Audit Logger. Policy engine evaluating combined effects of multi-agent action sequences. Per-agent AND per-session action budgets enforced independently.",
+            "effort-estimate": "High"
           }
         },
         {
-          "ruleId": "tachi/compensating-controls/no-control-found",
+          "ruleId": "tachi/ai/agentic",
+          "message": {"text": "Agent-in-the-middle modifies delegation messages [Control: missing]"},
           "level": "warning",
-          "message": {
-            "text": "T-1: Attacker with write access to the vector store injects or modifies document embeddings, corrupting RAG retrieval results and influencing LLM output \u2014 No compensating control detected; residual = inherent (6.1)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "Knowledge Base",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
+          "locations": [{"logicalLocations": [{"name": "Inter-Agent Communication Channel", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "AG-4"},
+          "properties": {
+            "security-severity": "6.2",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "encryption",
+            "inherent-risk": "6.2",
+            "residual-risk": "6.2",
+            "maestro-layer": "Unclassified",
+            "recommendation": "End-to-end message integrity protection with digital signatures at channel layer. Per-message sequence numbers and monotonic counters detecting dropped/reordered messages.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/privilege-escalation",
+          "message": {"text": "Forged delegation grants Specialist elevated permissions [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Specialist Agent", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "E-3"},
+          "properties": {
+            "security-severity": "6.2",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "access-control",
+            "inherent-risk": "6.2",
+            "residual-risk": "6.2",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Tool Server MUST verify Specialist's claimed permission scope against originating user session's authorization at every invocation. Delegation messages validated against central session-authorization record (not self-signed by Orchestrator alone).",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm",
+          "message": {"text": "SSRF via LLM-synthesized URL in Tool Call Request [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "LLM-7"},
           "properties": {
             "security-severity": "6.1",
-            "finding_id": "T-1",
-            "inherent_score": 6.1,
-            "residual_score": 6.1,
-            "inherent_severity": "Medium",
-            "residual_severity": "Medium",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "Knowledge Base",
-            "maestro-layer": "L2 \u2014 Data Operations",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:medium",
-              "maestro-layer:L2"
-            ]
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "6.1",
+            "residual-risk": "6.1",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "URL allowlist + egress firewall blocking 169.254.169.254 (cloud metadata), RFC1918, 127.0.0.0/8, ::1, link-local. Parse LLM URL, verify scheme=https, host in allowlist, port=443. Apply at Tool Server BEFORE fetch/HTTP-client invocation.",
+            "effort-estimate": "Medium"
           }
         },
         {
-          "ruleId": "tachi/compensating-controls/no-control-found",
+          "ruleId": "tachi/ai/llm",
+          "message": {"text": "SSRF via LLM-synthesized URL in Tool Call Request [Control: missing]"},
           "level": "warning",
-          "message": {
-            "text": "S-2: Attacker crafts spoofed tool call responses that mimic the MCP Tool Server, injecting fabricated results into the orchestration pipeline \u2014 No compensating control detected; residual = inherent (6.0)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "OI-3"},
+          "properties": {
+            "security-severity": "6.1",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "egress-control",
+            "inherent-risk": "6.1",
+            "residual-risk": "6.1",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "URL allowlist + network egress firewall. Block 169.254.169.254 (cloud metadata), RFC1918 private ranges, 127.0.0.0/8, ::1, link-local. Parse LLM URL, verify scheme=https and host in allowlist. Network layer: VPC egress rules, eBPF filters, Istio/Cilium egress policies.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic",
+          "message": {"text": "Specialist cumulative prohibited tool call sequence [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Specialist Agent", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "AG-3"},
           "properties": {
             "security-severity": "6.0",
-            "finding_id": "S-2",
-            "inherent_score": 6.0,
-            "residual_score": 6.0,
-            "inherent_severity": "Medium",
-            "residual_severity": "Medium",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:medium",
-              "maestro-layer:L1"
-            ]
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "access-control",
+            "inherent-risk": "6.0",
+            "residual-risk": "6.0",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Per-session cumulative action budgets at Tool Server. Policy engine evaluates sequences of tool calls against prohibited-sequence patterns.",
+            "effort-estimate": "High"
           }
         },
         {
-          "ruleId": "tachi/compensating-controls/no-control-found",
+          "ruleId": "tachi/ai/llm",
+          "message": {"text": "Model theft via systematic API probing [Control: missing]"},
           "level": "warning",
-          "message": {
-            "text": "R-1: User denies submitting a harmful or policy-violating prompt because session logs lack sufficient attribution to tie the prompt to a specific authenticated identity \u2014 No compensating control detected; residual = inherent (5.8)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "User",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "LLM-3"},
+          "properties": {
+            "security-severity": "6.0",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "logging-audit",
+            "inherent-risk": "6.0",
+            "residual-risk": "6.0",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "Anomaly detection on query patterns (volume, entropy, semantic novelty) consistent with model-extraction probing. Rate-limit by session; step-up auth on high-volume queriers. Log all queries with classification scores.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {"text": "Orchestrator inference pipeline exhaustion [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "D-2"},
+          "properties": {
+            "security-severity": "5.9",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "rate-limiting",
+            "inherent-risk": "5.9",
+            "residual-risk": "5.9",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "Per-session token budgets, hard context-window limits. Circuit breakers on tool invocation chains (max recursive depth per session). Request queuing with priority tiers and capacity-based load shedding. Monitor anomalous context-window utilization and alert/throttle outlier sessions.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {"text": "Specialist Agent resource exhaustion [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Specialist Agent", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "D-3"},
+          "properties": {
+            "security-severity": "5.9",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "rate-limiting",
+            "inherent-risk": "5.9",
+            "residual-risk": "5.9",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Per-task execution-time limits and resource budgets on Specialist invocations. Task-queue depth limits; reject or queue new delegation when depth exceeds threshold. Orchestrator health-check probes to detect overload, apply backpressure.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {"text": "Message queue flooding drops coordination messages [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Inter-Agent Communication Channel", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "D-4"},
+          "properties": {
+            "security-severity": "5.9",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "rate-limiting",
+            "inherent-risk": "5.9",
+            "residual-risk": "5.9",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Message-queue depth limits + per-sender rate limits at Channel. Backpressure when queue approaches capacity: reject new messages with rate-limit response. Queue-depth metrics with alerts on sustained high-water-mark conditions.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm",
+          "message": {"text": "Server-side injection via tool result incorporation [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Specialist Agent", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "LLM-10"},
+          "properties": {
+            "security-severity": "5.9",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "5.9",
+            "residual-risk": "5.9",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Treat tool results as untrusted input; apply output encoding and schema validation before incorporation into Specialist's context or emitted downstream.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {"text": "Context window tampering via upstream data source [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "T-2", "correlationGroup": "CG-1"},
           "properties": {
             "security-severity": "5.8",
-            "finding_id": "R-1",
-            "inherent_score": 5.8,
-            "residual_score": 5.8,
-            "inherent_severity": "Medium",
-            "residual_severity": "Medium",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "User",
-            "maestro-layer": "L7 \u2014 Agent Ecosystem",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:medium",
-              "maestro-layer:L7"
-            ]
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "5.8",
+            "residual-risk": "5.8",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "Validate integrity of all context sources before injection into Orchestrator context window: hash retrieved KB documents; HMAC-verify aggregated results from Channel; treat tool results as untrusted and apply output encoding.",
+            "effort-estimate": "Medium"
           }
         },
         {
-          "ruleId": "tachi/compensating-controls/no-control-found",
+          "ruleId": "tachi/stride/tampering",
+          "message": {"text": "LLM-generated tool parameter allowlist bypass [Control: missing]"},
           "level": "warning",
-          "message": {
-            "text": "T-2: Attacker tampers with orchestration configuration or intermediate state to alter agent decision logic, causing the orchestrator to produce incorrect tool call sequences or bypass safety checks \u2014 No compensating control detected; residual = inherent (5.7)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
+          "locations": [{"logicalLocations": [{"name": "MCP Tool Server", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "T-5"},
+          "properties": {
+            "security-severity": "5.8",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "5.8",
+            "residual-risk": "5.8",
+            "maestro-layer": "L3 — Agent Framework",
+            "recommendation": "Per-tool JSON Schema enforcement + allowlisted parameter values + metacharacter rejection. See OI-2/LLM-6.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {"text": "User denies submitting prompt; no non-repudiation control [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "User", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "R-1"},
           "properties": {
             "security-severity": "5.7",
-            "finding_id": "T-2",
-            "inherent_score": 5.7,
-            "residual_score": 5.7,
-            "inherent_severity": "Medium",
-            "residual_severity": "Medium",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:medium",
-              "maestro-layer:L1"
-            ]
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "logging-audit",
+            "inherent-risk": "5.7",
+            "residual-risk": "5.7",
+            "maestro-layer": "L7 — Agent Ecosystem",
+            "recommendation": "Client-side request signing (user-held private key or WebCrypto-derived session key). Log signed request hash in Audit Logger alongside session identity. Timestamped immutable audit entries establish proof of submission.",
+            "effort-estimate": "High"
           }
         },
         {
-          "ruleId": "tachi/compensating-controls/no-control-found",
+          "ruleId": "tachi/stride/spoofing",
+          "message": {"text": "Orchestrator identity not attested to Specialist [Control: missing]"},
           "level": "warning",
-          "message": {
-            "text": "I-2: Unauthorized access to vector store contents exposes confidential document embeddings that can be reversed to reconstruct source document content \u2014 No compensating control detected; residual = inherent (5.3)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "Knowledge Base",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "S-3"},
+          "properties": {
+            "security-severity": "5.6",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "authentication",
+            "inherent-risk": "5.6",
+            "residual-risk": "5.6",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "Authenticate Orchestrator→Channel messages via HMAC or asymmetric signing with per-session keys. Specialist verifies signature before acting. Nonce/replay-prevention field in every delegation message.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {"text": "Channel no sender authentication [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Inter-Agent Communication Channel", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "S-5"},
+          "properties": {
+            "security-severity": "5.6",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "authentication",
+            "inherent-risk": "5.6",
+            "residual-risk": "5.6",
+            "maestro-layer": "Unclassified",
+            "recommendation": "ED25519 or HMAC-SHA256 per-message digital signatures on all channel messages. Bind sender identity to envelope. Reject unsigned/unverifiable messages.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {"text": "Tool Server caller authentication bypass [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "MCP Tool Server", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "S-6"},
+          "properties": {
+            "security-severity": "5.6",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "authentication",
+            "inherent-risk": "5.6",
+            "residual-risk": "5.6",
+            "maestro-layer": "L3 — Agent Framework",
+            "recommendation": "Caller authentication on all JSON-RPC endpoints via signed caller token or mTLS certificate. Tool Server verifies caller identity before executing any tool invocation. SPIFFE/SPIRE or Istio mTLS.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {"text": "Audit Logger flooding attack [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Audit Logger", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "D-7"},
+          "properties": {
+            "security-severity": "5.5",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "rate-limiting",
+            "inherent-risk": "5.5",
+            "residual-risk": "5.5",
+            "maestro-layer": "L5 — Evaluation and Observability",
+            "recommendation": "Decouple Audit Logger writes from critical path via async write queues. Per-source write rate limits. Log rotation and capacity management. Alerts on abnormal write rates from any single source.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/privilege-escalation",
+          "message": {"text": "Poisoned update escalates to model parameter control [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Long-Running Learning Loop", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "E-6"},
+          "properties": {
+            "security-severity": "5.5",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "access-control",
+            "inherent-risk": "5.5",
+            "residual-risk": "5.5",
+            "maestro-layer": "Unclassified",
+            "recommendation": "HSM-backed signing of every model update package. Orchestrator and Specialist verify update signature before applying. Staged rollout with A/B testing and behavioral regression checks before production deployment.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {"text": "Specialist delegation message tampering [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Specialist Agent", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "T-3"},
+          "properties": {
+            "security-severity": "5.5",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "5.5",
+            "residual-risk": "5.5",
+            "maestro-layer": "Unclassified",
+            "recommendation": "HMAC or digital signature verification on every received delegation message. Reject tasks with unexpected structural patterns (new tool targets, exfiltration URLs).",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {"text": "Messages modified in transit (AITM) [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Inter-Agent Communication Channel", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "T-4"},
+          "properties": {
+            "security-severity": "5.5",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "5.5",
+            "residual-risk": "5.5",
+            "maestro-layer": "Unclassified",
+            "recommendation": "End-to-end digital signatures at channel layer. Sequence numbers and monotonic counters detecting dropped/reordered messages.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/info-disclosure",
+          "message": {"text": "Context window leaked via injection/hallucination [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "I-2", "correlationGroup": "CG-4"},
+          "properties": {
+            "security-severity": "5.5",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "encryption",
+            "inherent-risk": "5.5",
+            "residual-risk": "5.5",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "Output scrubbing on Orchestrator responses before HTTPS transmission: detect and redact sensitive-data markers (system prompt preambles, KB doc IDs, tool-response metadata). Separate response-auditor step reviews output before sending.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {"text": "Direct bypass to Orchestrator internal endpoint [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Guardrails Service", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "S-2"},
+          "properties": {
+            "security-severity": "5.4",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "authentication",
+            "inherent-risk": "5.4",
+            "residual-risk": "5.4",
+            "maestro-layer": "L6 — Security and Compliance",
+            "recommendation": "Enforce mutual TLS between Guardrails and Orchestrator. Service-mesh identity (SPIFFE/SPIRE). Orchestrator endpoint never exposed to unauthenticated internal callers.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {"text": "Specialist impersonates Orchestrator [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Specialist Agent", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "S-4"},
+          "properties": {
+            "security-severity": "5.4",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "authentication",
+            "inherent-risk": "5.4",
+            "residual-risk": "5.4",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Sign all Specialist→Channel messages with Specialist identity key. Orchestrator verifies result origin before incorporating into context or acting on it.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {"text": "DNS hijacking / BGP attack on External API [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "External API", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "S-8"},
+          "properties": {
+            "security-severity": "5.4",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "authentication",
+            "inherent-risk": "5.4",
+            "residual-risk": "5.4",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Certificate pinning on outbound HTTPS from Tool Server to External API. Verify leaf certificate CN/SAN against expected provider identity. HSTS with preloaded entry where available.",
+            "effort-estimate": "Low"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm",
+          "message": {"text": "Training data poisoning via Learning Loop [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "LLM-4", "correlationGroup": "CG-1"},
           "properties": {
             "security-severity": "5.3",
-            "finding_id": "I-2",
-            "inherent_score": 5.3,
-            "residual_score": 5.3,
-            "inherent_severity": "Medium",
-            "residual_severity": "Medium",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "Knowledge Base",
-            "maestro-layer": "L2 \u2014 Data Operations",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:medium",
-              "maestro-layer:L2"
-            ]
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "5.3",
+            "residual-risk": "5.3",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "Training data provenance attestation (per-log-entry origin signature). Anomaly detection on training-signal distributions. Per-source influence limits. Gradient clipping and differential privacy during training.",
+            "effort-estimate": "High"
           }
         },
         {
-          "ruleId": "tachi/compensating-controls/no-control-found",
+          "ruleId": "tachi/ai/llm",
+          "message": {"text": "Specialist self-poisoning via audit log loop [Control: missing]"},
           "level": "warning",
-          "message": {
-            "text": "T-3: Attacker with elevated access modifies or truncates audit log entries to conceal malicious activity or alter the forensic record \u2014 No compensating control detected; residual = inherent (5.3)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "Audit Logger",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
+          "locations": [{"logicalLocations": [{"name": "Specialist Agent", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "LLM-9"},
           "properties": {
             "security-severity": "5.3",
-            "finding_id": "T-3",
-            "inherent_score": 5.3,
-            "residual_score": 5.3,
-            "inherent_severity": "Medium",
-            "residual_severity": "Medium",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "Audit Logger",
-            "maestro-layer": "L5 \u2014 Evaluation and Observability",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:medium",
-              "maestro-layer:L5"
-            ]
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "5.3",
+            "residual-risk": "5.3",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Training data provenance attestation. Feedback-loop detection (flag training signals whose source is the Specialist's own output). Anomaly detection on distributions; gradient clipping; differential privacy.",
+            "effort-estimate": "High"
           }
         },
         {
-          "ruleId": "tachi/compensating-controls/no-control-found",
+          "ruleId": "tachi/ai/llm",
+          "message": {"text": "Systematic audit log poisoning temporal attack [Control: missing]"},
           "level": "warning",
-          "message": {
-            "text": "R-2: Orchestrator makes autonomous multi-step decisions that cannot be attributed to a specific triggering prompt or user action because decision chain logging is incomplete \u2014 No compensating control detected; residual = inherent (5.0)"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "risk-scores.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
+          "locations": [{"logicalLocations": [{"name": "Long-Running Learning Loop", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "LLM-11", "correlationGroup": "CG-2"},
           "properties": {
-            "security-severity": "5.0",
-            "finding_id": "R-2",
-            "inherent_score": 5.0,
-            "residual_score": 5.0,
-            "inherent_severity": "Medium",
-            "residual_severity": "Medium",
-            "control_status": "No Control Found",
-            "reduction_factor": 0.0,
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "compensating-controls",
-              "no-control-found",
-              "severity:medium",
-              "maestro-layer:L1"
-            ]
+            "security-severity": "5.3",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "5.3",
+            "residual-risk": "5.3",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Training data provenance attestation at Learning Loop ingestion boundary. Anomaly detection on distributions. Per-source influence limits. Gradient clipping and differential privacy during training.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm",
+          "message": {"text": "Model theft via update artifact monitoring [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Long-Running Learning Loop", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "LLM-12"},
+          "properties": {
+            "security-severity": "5.3",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "logging-audit",
+            "inherent-risk": "5.3",
+            "residual-risk": "5.3",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Restrict observability access to Learning Loop output artifacts to a narrow set of privileged accounts. Log all read accesses. Monitor for enumeration patterns.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/info-disclosure",
+          "message": {"text": "Knowledge Base corpus exfiltration [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Knowledge Base", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "I-6"},
+          "properties": {
+            "security-severity": "5.3",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "encryption",
+            "inherent-risk": "5.3",
+            "residual-risk": "5.3",
+            "maestro-layer": "L2 — Data Operations",
+            "recommendation": "Per-query result limits + per-session query budgets. Context-aware authorization restricting retrieval to session-permitted scope. Monitor anomalous query patterns (high-volume, exhaustive retrievals).",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {"text": "Vector search DoS [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Knowledge Base", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "D-6"},
+          "properties": {
+            "security-severity": "5.3",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "rate-limiting",
+            "inherent-risk": "5.3",
+            "residual-risk": "5.3",
+            "maestro-layer": "L2 — Data Operations",
+            "recommendation": "Per-session query rate limits + complexity bounds on vector search. Result caching for frequent queries. Reject queries exceeding complexity thresholds.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic",
+          "message": {"text": "Temporal autonomy expansion via training data [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Long-Running Learning Loop", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "AG-7"},
+          "properties": {
+            "security-severity": "5.1",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "access-control",
+            "inherent-risk": "5.1",
+            "residual-risk": "5.1",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Behavioral regression testing of post-update models against fixed evaluation set including autonomy-boundary probes. Staged rollout. Reject updates exceeding autonomy drift threshold.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {"text": "Training signal source integrity not verified [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Long-Running Learning Loop", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "S-7"},
+          "properties": {
+            "security-severity": "5.1",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "authentication",
+            "inherent-risk": "5.1",
+            "residual-risk": "5.1",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Cryptographic signing of every training signal batch at Audit Logger emission. Learning Loop verifies signature before ingestion. Provenance attestation on all training data.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/info-disclosure",
+          "message": {"text": "Inter-agent messages observable [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Inter-Agent Communication Channel", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "I-4"},
+          "properties": {
+            "security-severity": "5.1",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "encryption",
+            "inherent-risk": "5.1",
+            "residual-risk": "5.1",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Per-message end-to-end encryption (keys derived from sender-receiver pair, not channel transport security alone). Strict ACLs on channel infrastructure preventing unauthorized reads.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/info-disclosure",
+          "message": {"text": "Audit Logger unauthorized read exposure [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Audit Logger", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "I-7"},
+          "properties": {
+            "security-severity": "4.9",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "encryption",
+            "inherent-risk": "4.9",
+            "residual-risk": "4.9",
+            "maestro-layer": "L5 — Evaluation and Observability",
+            "recommendation": "Strict read ACLs limited to incident-response and analytics service accounts. Envelope encryption at rest with per-batch keys stored in HSM-backed KMS. Audit all read accesses.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/info-disclosure",
+          "message": {"text": "Specialist result sensitive context leakage [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Specialist Agent", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "I-3"},
+          "properties": {
+            "security-severity": "4.8",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "encryption",
+            "inherent-risk": "4.8",
+            "residual-risk": "4.8",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Data minimization on delegation messages: Orchestrator MUST NOT include sensitive context in task payloads unless strictly required. Output scrubbing on Specialist results before logging/forwarding. Classify and label sensitive fields in inter-agent messages.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/info-disclosure",
+          "message": {"text": "Tool results PII logging [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "MCP Tool Server", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "I-5"},
+          "properties": {
+            "security-severity": "4.8",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "encryption",
+            "inherent-risk": "4.8",
+            "residual-risk": "4.8",
+            "maestro-layer": "L3 — Agent Framework",
+            "recommendation": "Structured logging with field-level classification. PII/sensitive tool-result fields hashed or tokenized before writing to Audit Logger. Log-before-hash policy (hash content, log the hash).",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {"text": "Guardrails filtering rule modification [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Guardrails Service", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "T-1"},
+          "properties": {
+            "security-severity": "4.8",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "4.8",
+            "residual-risk": "4.8",
+            "maestro-layer": "L6 — Security and Compliance",
+            "recommendation": "Configuration-as-code with cryptographic commit signing for Guardrails rule updates. Dual approval for rule changes. Audit every rule modification in Audit Logger with immutable timestamps. Alert on any rule relaxation event.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {"text": "Audit log tampering [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Audit Logger", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "T-7"},
+          "properties": {
+            "security-severity": "4.8",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "4.8",
+            "residual-risk": "4.8",
+            "maestro-layer": "L5 — Evaluation and Observability",
+            "recommendation": "Append-only store (no update/delete). Merkle-tree hash of log batches detecting post-write modification. External hash-chain store that cannot be altered without detection.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/info-disclosure",
+          "message": {"text": "Guardrails rejection reason leakage [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Guardrails Service", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "I-1"},
+          "properties": {
+            "security-severity": "4.7",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "encryption",
+            "inherent-risk": "4.7",
+            "residual-risk": "4.7",
+            "maestro-layer": "L6 — Security and Compliance",
+            "recommendation": "Return generic rejection messages to User that do not reveal the specific rule triggered. Log detailed rejection reason internally to Audit Logger only.",
+            "effort-estimate": "Low"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {"text": "KB corpus poisoning via unauthorized write [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Knowledge Base", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "T-6"},
+          "properties": {
+            "security-severity": "4.7",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "access-control",
+            "inherent-risk": "4.7",
+            "residual-risk": "4.7",
+            "maestro-layer": "L2 — Data Operations",
+            "recommendation": "Write access controls on KB with least-privilege service accounts. All writes logged with immutable audit trails. Document-level hash + signature at write; verify at retrieval. Regularly scan corpus for adversarial content patterns.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm",
+          "message": {"text": "Multi-agent emergent behavior [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "AGP-01"},
+          "properties": {
+            "security-severity": "4.6",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "logging-audit",
+            "inherent-risk": "4.6",
+            "residual-risk": "4.6",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "Emergent-behavior observability: log all cross-agent coordination events to Audit Logger. Policy engine evaluating combined effects of multi-agent action sequences.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {"text": "Learning Loop training signal flooding [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Long-Running Learning Loop", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "D-8"},
+          "properties": {
+            "security-severity": "4.6",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "rate-limiting",
+            "inherent-risk": "4.6",
+            "residual-risk": "4.6",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Training-run scheduling with resource quotas (CPU, memory, time-to-completion). Training-data volume cap per scheduled run. Separate compute pools for Learning Loop vs. real-time inference.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {"text": "Training signal temporal poisoning [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Long-Running Learning Loop", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "T-8", "correlationGroup": "CG-2"},
+          "properties": {
+            "security-severity": "4.3",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "input-validation",
+            "inherent-risk": "4.3",
+            "residual-risk": "4.3",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Training data provenance attestation. Anomaly detection on training-signal distributions detecting adversarial drift. Per-source influence limits. Gradient clipping and differential privacy during training.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/info-disclosure",
+          "message": {"text": "Training data extraction via model memorization [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "Long-Running Learning Loop", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "I-8"},
+          "properties": {
+            "security-severity": "4.3",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "encryption",
+            "inherent-risk": "4.3",
+            "residual-risk": "4.3",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Differential privacy during training to limit per-example memorization. Training data de-identification: strip PII, usernames, session IDs from training signals before ingestion. Canary injection to detect memorization during post-training evaluation.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {"text": "External API provider denies response [Control: missing]"},
+          "level": "warning",
+          "locations": [{"logicalLocations": [{"name": "External API", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "R-8"},
+          "properties": {
+            "security-severity": "4.1",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "logging-audit",
+            "inherent-risk": "4.1",
+            "residual-risk": "4.1",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Log all External API responses (content hash + timestamp) in Audit Logger immediately upon receipt. Implement request/response signing protocols with API provider where supported (webhook signatures).",
+            "effort-estimate": "Low"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {"text": "Orchestrator action repudiation [Control: missing]"},
+          "level": "note",
+          "locations": [{"logicalLocations": [{"name": "LLM Agent Orchestrator", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "R-3", "correlationGroup": "CG-3"},
+          "properties": {
+            "security-severity": "3.9",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "logging-audit",
+            "inherent-risk": "3.9",
+            "residual-risk": "3.9",
+            "maestro-layer": "L1 — Foundation Model",
+            "recommendation": "Log every Orchestrator action (delegation messages, tool call requests, response generation): action type + content hash + session/request ID + monotonic sequence number + Orchestrator service key signature. Log BEFORE execution.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {"text": "Guardrails filtering decision repudiation [Control: missing]"},
+          "level": "note",
+          "locations": [{"logicalLocations": [{"name": "Guardrails Service", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "R-2"},
+          "properties": {
+            "security-severity": "3.5",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "logging-audit",
+            "inherent-risk": "3.5",
+            "residual-risk": "3.5",
+            "maestro-layer": "L6 — Security and Compliance",
+            "recommendation": "All Guardrails filtering decisions (pass and reject) logged to Audit Logger with hash of evaluated prompt + rule applied + monotonic sequence number. Log entries written atomically before filtering response is returned.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {"text": "Specialist action repudiation [Control: missing]"},
+          "level": "note",
+          "locations": [{"logicalLocations": [{"name": "Specialist Agent", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "R-4"},
+          "properties": {
+            "security-severity": "3.5",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "logging-audit",
+            "inherent-risk": "3.5",
+            "residual-risk": "3.5",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Log every Specialist Agent action (received task, tool calls invoked, result produced) with content hashes and signature using Specialist service key. Log entries MUST precede corresponding action.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {"text": "Tool Server invocation repudiation [Control: missing]"},
+          "level": "note",
+          "locations": [{"logicalLocations": [{"name": "MCP Tool Server", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "R-6"},
+          "properties": {
+            "security-severity": "3.5",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "logging-audit",
+            "inherent-risk": "3.5",
+            "residual-risk": "3.5",
+            "maestro-layer": "L3 — Agent Framework",
+            "recommendation": "Log every JSON-RPC tool invocation to Audit Logger before execution: calling agent identity (verified from caller token), tool name, all parameters (hashed for PII), resulting output (hashed). Atomic writes before tool execution begins.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {"text": "Learning Loop model update repudiation [Control: missing]"},
+          "level": "note",
+          "locations": [{"logicalLocations": [{"name": "Long-Running Learning Loop", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "R-7"},
+          "properties": {
+            "security-severity": "3.3",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "logging-audit",
+            "inherent-risk": "3.3",
+            "residual-risk": "3.3",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Log every model update event: training dataset hash, parameter diff hash, update timestamp, approval signature. Store provenance records in immutable, externally-verifiable store. Model versioning with signed manifests.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {"text": "Channel message delivery repudiation [Control: missing]"},
+          "level": "note",
+          "locations": [{"logicalLocations": [{"name": "Inter-Agent Communication Channel", "kind": "component"}]}],
+          "partialFingerprints": {"findingId/v1": "R-5"},
+          "properties": {
+            "security-severity": "3.3",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-effectiveness": "none",
+            "control-category": "logging-audit",
+            "inherent-risk": "3.3",
+            "residual-risk": "3.3",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Message-delivery ACKs including content-hash of received message. Store ACK records in Audit Logger. If sender's message hash and receiver's ACK hash mismatch, flag for investigation.",
+            "effort-estimate": "Low"
           }
         }
       ]

@@ -1,140 +1,103 @@
 {
-  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
   "version": "2.1.0",
   "runs": [
     {
       "tool": {
         "driver": {
-          "name": "Tachi Risk Scorer",
+          "name": "tachi-risk-scorer",
+          "version": "1.0",
           "semanticVersion": "1.0",
-          "informationUri": "https://github.com/tachi-org/tachi",
+          "informationUri": "https://github.com/owner/tachi",
+          "supportedTaxonomies": [
+            {
+              "name": "OWASP-Top-10",
+              "index": 0
+            },
+            {
+              "name": "CWE",
+              "index": 1
+            }
+          ],
           "rules": [
             {
-              "id": "tachi/risk-scoring/spoofing",
-              "shortDescription": {
-                "text": "Quantitative risk scoring (spoofing)"
-              },
-              "fullDescription": {
-                "text": "Four-dimensional risk scoring for spoofing category findings using CVSS 3.1 base + exploitability + scalability + reachability"
-              },
+              "id": "tachi/stride/spoofing",
+              "name": "Spoofing",
+              "shortDescription": { "text": "Identity or source impersonation" },
+              "fullDescription": { "text": "Threats that involve an attacker assuming the identity of another user, process, or system component." },
               "properties": {
-                "tags": [
-                  "risk-scoring",
-                  "spoofing"
-                ],
-                "security-severity": "8.2"
+                "security-severity": "7.9",
+                "tags": ["stride", "spoofing"]
               }
             },
             {
-              "id": "tachi/risk-scoring/tampering",
-              "shortDescription": {
-                "text": "Quantitative risk scoring (tampering)"
-              },
-              "fullDescription": {
-                "text": "Four-dimensional risk scoring for tampering category findings using CVSS 3.1 base + exploitability + scalability + reachability"
-              },
+              "id": "tachi/stride/tampering",
+              "name": "Tampering",
+              "shortDescription": { "text": "Unauthorized modification of data or code" },
+              "fullDescription": { "text": "Threats that involve unauthorized modification of data, configuration, or code in transit or at rest." },
               "properties": {
-                "tags": [
-                  "risk-scoring",
-                  "tampering"
-                ],
-                "security-severity": "7.1"
+                "security-severity": "5.8",
+                "tags": ["stride", "tampering"]
               }
             },
             {
-              "id": "tachi/risk-scoring/repudiation",
-              "shortDescription": {
-                "text": "Quantitative risk scoring (repudiation)"
-              },
-              "fullDescription": {
-                "text": "Four-dimensional risk scoring for repudiation category findings using CVSS 3.1 base + exploitability + scalability + reachability"
-              },
+              "id": "tachi/stride/repudiation",
+              "name": "Repudiation",
+              "shortDescription": { "text": "Inability to attribute actions" },
+              "fullDescription": { "text": "Threats that involve an actor denying an action they performed, where the system cannot prove otherwise." },
               "properties": {
-                "tags": [
-                  "risk-scoring",
-                  "repudiation"
-                ],
-                "security-severity": "4.3"
+                "security-severity": "5.7",
+                "tags": ["stride", "repudiation"]
               }
             },
             {
-              "id": "tachi/risk-scoring/info-disclosure",
-              "shortDescription": {
-                "text": "Quantitative risk scoring (info-disclosure)"
-              },
-              "fullDescription": {
-                "text": "Four-dimensional risk scoring for info-disclosure category findings using CVSS 3.1 base + exploitability + scalability + reachability"
-              },
+              "id": "tachi/stride/information-disclosure",
+              "name": "Information Disclosure",
+              "shortDescription": { "text": "Unauthorized data exposure" },
+              "fullDescription": { "text": "Threats that involve the exposure of data to unauthorized parties." },
               "properties": {
-                "tags": [
-                  "risk-scoring",
-                  "info-disclosure"
-                ],
-                "security-severity": "6.5"
+                "security-severity": "5.5",
+                "tags": ["stride", "information-disclosure"]
               }
             },
             {
-              "id": "tachi/risk-scoring/denial-of-service",
-              "shortDescription": {
-                "text": "Quantitative risk scoring (denial-of-service)"
-              },
-              "fullDescription": {
-                "text": "Four-dimensional risk scoring for denial-of-service category findings using CVSS 3.1 base + exploitability + scalability + reachability"
-              },
+              "id": "tachi/stride/denial-of-service",
+              "name": "Denial of Service",
+              "shortDescription": { "text": "Resource exhaustion or service disruption" },
+              "fullDescription": { "text": "Threats that involve degrading or disrupting service availability for legitimate users." },
               "properties": {
-                "tags": [
-                  "risk-scoring",
-                  "denial-of-service"
-                ],
-                "security-severity": "7.5"
+                "security-severity": "6.6",
+                "tags": ["stride", "denial-of-service"]
               }
             },
             {
-              "id": "tachi/risk-scoring/privilege-escalation",
-              "shortDescription": {
-                "text": "Quantitative risk scoring (privilege-escalation)"
-              },
-              "fullDescription": {
-                "text": "Four-dimensional risk scoring for privilege-escalation category findings using CVSS 3.1 base + exploitability + scalability + reachability"
-              },
+              "id": "tachi/stride/elevation-of-privilege",
+              "name": "Elevation of Privilege",
+              "shortDescription": { "text": "Unauthorized privilege acquisition" },
+              "fullDescription": { "text": "Threats that involve an attacker gaining capabilities or permissions they were not granted." },
               "properties": {
-                "tags": [
-                  "risk-scoring",
-                  "privilege-escalation"
-                ],
-                "security-severity": "9.9"
+                "security-severity": "7.3",
+                "tags": ["stride", "privilege-escalation"]
               }
             },
             {
-              "id": "tachi/risk-scoring/agentic",
-              "shortDescription": {
-                "text": "Quantitative risk scoring (agentic)"
-              },
-              "fullDescription": {
-                "text": "Four-dimensional risk scoring for agentic category findings using CVSS 3.1 base + exploitability + scalability + reachability"
-              },
+              "id": "tachi/ai/agentic-threats",
+              "name": "Agentic Threats",
+              "shortDescription": { "text": "Agent autonomy and tool abuse threats" },
+              "fullDescription": { "text": "Threats specific to agentic AI systems involving autonomous action execution, tool abuse, and multi-agent coordination." },
               "properties": {
-                "tags": [
-                  "risk-scoring",
-                  "agentic"
-                ],
-                "security-severity": "9.1"
+                "security-severity": "6.9",
+                "tags": ["ai", "agentic"]
               }
             },
             {
-              "id": "tachi/risk-scoring/llm",
-              "shortDescription": {
-                "text": "Quantitative risk scoring (llm)"
-              },
-              "fullDescription": {
-                "text": "Four-dimensional risk scoring for llm category findings using CVSS 3.1 base + exploitability + scalability + reachability"
-              },
+              "id": "tachi/ai/llm-threats",
+              "name": "LLM Threats",
+              "shortDescription": { "text": "LLM-specific threats" },
+              "fullDescription": { "text": "Threats specific to large language model systems including prompt injection, data poisoning, model theft, and output-integrity execution sinks." },
               "properties": {
-                "tags": [
-                  "risk-scoring",
-                  "llm"
-                ],
-                "security-severity": "9.3"
+                "security-severity": "7.2",
+                "tags": ["ai", "llm"]
               }
             }
           ]
@@ -142,1060 +105,2139 @@
       },
       "results": [
         {
-          "ruleId": "tachi/risk-scoring/llm",
+          "ruleId": "tachi/stride/spoofing",
           "level": "error",
           "message": {
-            "text": "LLM-1: Indirect prompt injection via documents retrieved from the knowledge base causes the orchestrator to execute attacker-controlled instructions, exfiltrating sensitive context or invoking unauthorized tool calls"
+            "text": "Attacker impersonates legitimate user via replayed session tokens or forged credentials at User->Guardrails boundary.",
+            "markdown": "Implement short-lived JWT tokens with MFA; use token revocation lists and refresh-token rotation with binding checks."
           },
           "locations": [
             {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "User", "fullyQualifiedName": "User Zone/User", "kind": "externalEntity" }]
             }
           ],
+          "partialFingerprints": { "findingId/v1": "S-1" },
           "properties": {
-            "security-severity": "8.1",
-            "finding_id": "LLM-1",
-            "cvss_base": 9.3,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N",
-            "exploitability": 8.5,
-            "scalability": 8.5,
-            "reachability": 5.0,
-            "composite_score": 8.1,
-            "severity_band": "High",
-            "remediation_sla": "7d",
-            "risk_disposition": "Mitigate",
-            "risk_owner": "Unassigned",
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "risk-scoring",
-              "llm",
-              "severity:high",
-              "maestro-layer:L1"
-            ]
+            "security-severity": "7.9",
+            "cvss-base-score": "8.2",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N",
+            "exploitability": "7.5",
+            "scalability": "6.8",
+            "reachability": "9.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-04-25",
+            "maestro-layer": "L7 - Agent Ecosystem"
           }
         },
         {
-          "ruleId": "tachi/risk-scoring/agentic",
+          "ruleId": "tachi/stride/elevation-of-privilege",
           "level": "error",
           "message": {
-            "text": "AG-4: Compromised or manipulated agent triggers excessive tool invocations in rapid succession, exhausting external API quotas, compute resources, and downstream service capacity"
+            "text": "Prompt injection bypass elevates attacker from unauthenticated user to trusted Orchestrator caller; the attacker's prompt reaches the Orchestrator with the same trust level as validated internal inputs.",
+            "markdown": "Layer defense-in-depth: the Orchestrator applies independent input validation; do not treat Guardrails-passed inputs as implicitly trusted."
           },
           "locations": [
             {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "MCP Tool Server",
-                  "kind": "component"
-                }
-              ]
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Guardrails Service", "fullyQualifiedName": "Application Zone/Guardrails Service", "kind": "process" }]
             }
           ],
-          "properties": {
-            "security-severity": "8.0",
-            "finding_id": "AG-4",
-            "cvss_base": 9.1,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
-            "exploitability": 8.5,
-            "scalability": 8.0,
-            "reachability": 5.5,
-            "composite_score": 8.0,
-            "severity_band": "High",
-            "remediation_sla": "7d",
-            "risk_disposition": "Mitigate",
-            "risk_owner": "Unassigned",
-            "component": "MCP Tool Server",
-            "maestro-layer": "L3 \u2014 Agent Framework",
-            "tags": [
-              "risk-scoring",
-              "agentic",
-              "severity:high",
-              "maestro-layer:L3"
-            ]
-          }
-        },
-        {
-          "ruleId": "tachi/risk-scoring/privilege-escalation",
-          "level": "error",
-          "message": {
-            "text": "E-2: Attacker bypasses guardrails validation through prompt obfuscation techniques (encoding, unicode manipulation, payload splitting) to access restricted orchestrator capabilities"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "Guardrails Service",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
-          "properties": {
-            "security-severity": "7.7",
-            "finding_id": "E-2",
-            "cvss_base": 9.9,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
-            "exploitability": 6.5,
-            "scalability": 7.5,
-            "reachability": 6.0,
-            "composite_score": 7.7,
-            "severity_band": "High",
-            "remediation_sla": "7d",
-            "risk_disposition": "Mitigate",
-            "risk_owner": "Unassigned",
-            "component": "Guardrails Service",
-            "maestro-layer": "L6 \u2014 Security and Compliance",
-            "tags": [
-              "risk-scoring",
-              "privilege-escalation",
-              "severity:high",
-              "maestro-layer:L6"
-            ]
-          }
-        },
-        {
-          "ruleId": "tachi/risk-scoring/privilege-escalation",
-          "level": "error",
-          "message": {
-            "text": "E-1: Orchestrator escalates its own tool permissions beyond the user's authorization level by dynamically requesting elevated scopes from the MCP Tool Server, accessing tools the invoking user is not authorized to use"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
-          "properties": {
-            "security-severity": "7.5",
-            "finding_id": "E-1",
-            "cvss_base": 9.9,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
-            "exploitability": 6.5,
-            "scalability": 7.5,
-            "reachability": 5.0,
-            "composite_score": 7.5,
-            "severity_band": "High",
-            "remediation_sla": "7d",
-            "risk_disposition": "Mitigate",
-            "risk_owner": "Unassigned",
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "risk-scoring",
-              "privilege-escalation",
-              "severity:high",
-              "maestro-layer:L1"
-            ]
-          }
-        },
-        {
-          "ruleId": "tachi/risk-scoring/llm",
-          "level": "error",
-          "message": {
-            "text": "LLM-3: Attacker crafts prompts that cause the LLM to generate tool call parameters containing injection payloads (SQL, shell commands, JSON-RPC manipulation) that execute on downstream systems through the MCP Tool Server"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
-          "properties": {
-            "security-severity": "7.5",
-            "finding_id": "LLM-3",
-            "cvss_base": 9.3,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N",
-            "exploitability": 6.5,
-            "scalability": 8.5,
-            "reachability": 5.0,
-            "composite_score": 7.5,
-            "severity_band": "High",
-            "remediation_sla": "7d",
-            "risk_disposition": "Mitigate",
-            "risk_owner": "Unassigned",
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "risk-scoring",
-              "llm",
-              "severity:high",
-              "maestro-layer:L1"
-            ]
-          }
-        },
-        {
-          "ruleId": "tachi/risk-scoring/agentic",
-          "level": "error",
-          "message": {
-            "text": "AG-2: Attacker manipulates prompt context to cause the tool server to invoke tools outside the intended scope, executing unauthorized file system operations, network calls, or data mutations"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "MCP Tool Server",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
-          "properties": {
-            "security-severity": "7.4",
-            "finding_id": "AG-2",
-            "cvss_base": 9.1,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
-            "exploitability": 6.5,
-            "scalability": 8.0,
-            "reachability": 5.5,
-            "composite_score": 7.4,
-            "severity_band": "High",
-            "remediation_sla": "7d",
-            "risk_disposition": "Mitigate",
-            "risk_owner": "Unassigned",
-            "component": "MCP Tool Server",
-            "maestro-layer": "L3 \u2014 Agent Framework",
-            "tags": [
-              "risk-scoring",
-              "agentic",
-              "severity:high",
-              "maestro-layer:L3"
-            ]
-          }
-        },
-        {
-          "ruleId": "tachi/risk-scoring/denial-of-service",
-          "level": "error",
-          "message": {
-            "text": "D-1: Attacker floods the guardrails service with complex prompts designed to maximize validation processing time, exhausting CPU and blocking legitimate requests"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "Guardrails Service",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
-          "properties": {
-            "security-severity": "7.4",
-            "finding_id": "D-1",
-            "cvss_base": 7.5,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
-            "exploitability": 8.5,
-            "scalability": 7.0,
-            "reachability": 6.0,
-            "composite_score": 7.4,
-            "severity_band": "High",
-            "remediation_sla": "7d",
-            "risk_disposition": "Mitigate",
-            "risk_owner": "Unassigned",
-            "component": "Guardrails Service",
-            "maestro-layer": "L6 \u2014 Security and Compliance",
-            "tags": [
-              "risk-scoring",
-              "denial-of-service",
-              "severity:high",
-              "maestro-layer:L6"
-            ]
-          }
-        },
-        {
-          "ruleId": "tachi/risk-scoring/spoofing",
-          "level": "error",
-          "message": {
-            "text": "S-1: Attacker spoofs a legitimate user identity by stealing or replaying session tokens to submit unauthorized prompts"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "User",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
-          "properties": {
-            "security-severity": "7.4",
-            "finding_id": "S-1",
-            "cvss_base": 8.2,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N",
-            "exploitability": 6.5,
-            "scalability": 5.5,
-            "reachability": 9.0,
-            "composite_score": 7.4,
-            "severity_band": "High",
-            "remediation_sla": "7d",
-            "risk_disposition": "Mitigate",
-            "risk_owner": "Unassigned",
-            "component": "User",
-            "maestro-layer": "L7 \u2014 Agent Ecosystem",
-            "tags": [
-              "risk-scoring",
-              "spoofing",
-              "severity:high",
-              "maestro-layer:L7"
-            ]
-          }
-        },
-        {
-          "ruleId": "tachi/risk-scoring/spoofing",
-          "level": "error",
-          "message": {
-            "text": "S-3: Compromised or spoofed external API returns malicious payloads masquerading as legitimate API responses"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "External API",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
-          "properties": {
-            "security-severity": "7.4",
-            "finding_id": "S-3",
-            "cvss_base": 8.2,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N",
-            "exploitability": 6.5,
-            "scalability": 5.5,
-            "reachability": 9.0,
-            "composite_score": 7.4,
-            "severity_band": "High",
-            "remediation_sla": "7d",
-            "risk_disposition": "Mitigate",
-            "risk_owner": "Unassigned",
-            "component": "External API",
-            "maestro-layer": "L3 \u2014 Agent Framework",
-            "tags": [
-              "risk-scoring",
-              "spoofing",
-              "severity:high",
-              "maestro-layer:L3"
-            ]
-          }
-        },
-        {
-          "ruleId": "tachi/risk-scoring/agentic",
-          "level": "error",
-          "message": {
-            "text": "AG-1: Orchestrator autonomously escalates its own action scope by chaining multiple tool calls into a privileged operation sequence that no single tool call would permit, bypassing per-tool authorization boundaries"
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
-            }
-          ],
+          "partialFingerprints": { "findingId/v1": "E-1" },
           "properties": {
             "security-severity": "7.3",
-            "finding_id": "AG-1",
-            "cvss_base": 9.1,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
-            "exploitability": 6.5,
-            "scalability": 8.0,
-            "reachability": 5.0,
-            "composite_score": 7.3,
-            "severity_band": "High",
-            "remediation_sla": "7d",
-            "risk_disposition": "Mitigate",
-            "risk_owner": "Unassigned",
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "risk-scoring",
-              "agentic",
-              "severity:high",
-              "maestro-layer:L1"
-            ]
+            "cvss-base-score": "9.9",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:H",
+            "exploitability": "8.5",
+            "scalability": "7.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-04-25",
+            "maestro-layer": "L6 - Security and Compliance"
           }
         },
         {
-          "ruleId": "tachi/risk-scoring/llm",
-          "level": "warning",
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "level": "error",
           "message": {
-            "text": "LLM-2: Attacker poisons knowledge base documents with adversarial content designed to persistently corrupt LLM reasoning, causing the orchestrator to consistently produce incorrect or malicious outputs for specific query patterns"
+            "text": "Orchestrator prompt injection self-authorizes elevated operations: exfiltrating KB corpus, invoking tools outside user scope, or issuing delegation messages beyond normal user request.",
+            "markdown": "Implement per-session scoped permissions enforced by downstream services independently; apply step-up authentication for high-privilege operations."
           },
           "locations": [
             {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
             }
           ],
+          "partialFingerprints": { "findingId/v1": "E-2", "correlationGroup": "CG-3" },
+          "relatedLocations": [
+            {
+              "id": 1,
+              "message": { "text": "R-3: Orchestrator denies having issued delegation/tool actions without content-hash log." },
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator" }]
+            },
+            {
+              "id": 2,
+              "message": { "text": "AG-1: Prompt injection causes autonomous unauthorized high-impact actions." },
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator" }]
+            }
+          ],
+          "properties": {
+            "security-severity": "7.2",
+            "cvss-base-score": "9.9",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
+            "exploitability": "8.0",
+            "scalability": "7.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-04-25",
+            "maestro-layer": "L1 - Foundation Model"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "level": "error",
+          "message": {
+            "text": "Direct prompt injection overrides system prompt or reveals internal configuration via User->Guardrails->Orchestrator chain.",
+            "markdown": "Multi-layer injection detection at Guardrails + Orchestrator; treat user content as data, not instructions; privilege-separated prompt architecture."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "LLM-1", "correlationGroup": "CG-4" },
+          "relatedLocations": [
+            {
+              "id": 1,
+              "message": { "text": "I-2: Context window leaked in response via hallucination/injection." },
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator" }]
+            }
+          ],
+          "properties": {
+            "security-severity": "7.2",
+            "cvss-base-score": "9.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N",
+            "exploitability": "8.8",
+            "scalability": "7.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-04-25",
+            "maestro-layer": "L1 - Foundation Model"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "level": "error",
+          "message": {
+            "text": "Improper output handling - client-side XSS via LLM response rendered in browser without HTML entity encoding.",
+            "markdown": "HTML entity encode all LLM output before browser rendering; use framework-safe APIs (React {value}, Django auto-escape); strict CSP nonce."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "LLM-5" },
+          "properties": {
+            "security-severity": "7.2",
+            "cvss-base-score": "9.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N",
+            "exploitability": "8.8",
+            "scalability": "7.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-04-25",
+            "maestro-layer": "L1 - Foundation Model"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "level": "error",
+          "message": {
+            "text": "Improper output handling - client-side XSS via LLM response rendered in user browser DOM through innerHTML or equivalent without HTML entity encoding.",
+            "markdown": "Use textContent (not innerHTML); DOMPurify with strict allowlist; strict Content Security Policy with nonce-based script loading."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "OI-1" },
+          "properties": {
+            "security-severity": "7.2",
+            "cvss-base-score": "9.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N",
+            "exploitability": "8.8",
+            "scalability": "7.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-04-25",
+            "maestro-layer": "L1 - Foundation Model",
+            "source-attribution": "OWASP:LLM05;CWE:CWE-79"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "level": "warning",
+          "message": {
+            "text": "Prompt injection causes Orchestrator to autonomously execute unauthorized high-impact actions beyond user scope.",
+            "markdown": "Scope-enforcement layer validates every proposed action; human-in-the-loop for high-impact operations; supervised-autonomy policy engine."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "AG-1" },
           "properties": {
             "security-severity": "6.9",
-            "finding_id": "LLM-2",
-            "cvss_base": 9.3,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N",
-            "exploitability": 4.5,
-            "scalability": 8.5,
-            "reachability": 5.0,
-            "composite_score": 6.9,
-            "severity_band": "Medium",
-            "remediation_sla": "30d",
-            "risk_disposition": "Review",
-            "risk_owner": "Unassigned",
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "risk-scoring",
-              "llm",
-              "severity:medium",
-              "maestro-layer:L1"
-            ]
+            "cvss-base-score": "9.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
+            "exploitability": "8.0",
+            "scalability": "7.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L1 - Foundation Model"
           }
         },
         {
-          "ruleId": "tachi/risk-scoring/agentic",
+          "ruleId": "tachi/ai/llm-threats",
           "level": "warning",
           "message": {
-            "text": "AG-3: Orchestrator generates and executes multi-step plans without checkpoints, making irreversible changes across multiple tools before any human review occurs"
+            "text": "Prompt injection via delegation messages hijacks Specialist Agent task execution causing unauthorized tool invocations.",
+            "markdown": "Prompt injection detection at Specialist input layer; instruction boundary enforcement; verify delegation message signatures."
           },
           "locations": [
             {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Specialist Agent", "fullyQualifiedName": "Application Zone/Specialist Agent", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "LLM-8" },
+          "properties": {
+            "security-severity": "6.8",
+            "cvss-base-score": "9.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:N",
+            "exploitability": "7.5",
+            "scalability": "7.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "level": "warning",
+          "message": {
+            "text": "Improper output handling - server-side execution via LLM-emitted Tool Call Request parameters containing SQL/shell injection payloads.",
+            "markdown": "Tool Server parameterizes all LLM-supplied inputs; parameterized SQL queries; argument-vector commands; URL allowlisting."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "LLM-6" },
+          "properties": {
+            "security-severity": "6.7",
+            "cvss-base-score": "9.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:H",
+            "exploitability": "7.5",
+            "scalability": "7.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L1 - Foundation Model"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "level": "warning",
+          "message": {
+            "text": "Improper output handling - server-side code/command execution via LLM-synthesized Tool Call Request parameters.",
+            "markdown": "MCP Tool Server parameterizes SQL (cursor.execute with params); argument vectors (subprocess.run shell=False); closed allowlists."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "OI-2" },
+          "properties": {
+            "security-severity": "6.7",
+            "cvss-base-score": "9.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:H",
+            "exploitability": "7.5",
+            "scalability": "7.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L1 - Foundation Model",
+            "source-attribution": "OWASP:LLM05;CWE:CWE-89;CWE:CWE-78"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "level": "warning",
+          "message": {
+            "text": "Resource exhaustion via high-volume computationally expensive prompt submission to Guardrails Service.",
+            "markdown": "Per-IP/session rate limiting before Guardrails; computational complexity budget per prompt; asynchronous queues with backpressure."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Guardrails Service", "fullyQualifiedName": "Application Zone/Guardrails Service", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "D-1" },
+          "properties": {
+            "security-severity": "6.6",
+            "cvss-base-score": "7.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+            "exploitability": "8.5",
+            "scalability": "8.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L6 - Security and Compliance"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "level": "warning",
+          "message": {
+            "text": "Unauthorized tool calls gain Tool Server execution privileges and full credential set for external APIs.",
+            "markdown": "Zero-trust authorization at Tool Server; per-tool least-privilege service accounts; regular credential rotation."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "MCP Tool Server", "fullyQualifiedName": "Application Zone/MCP Tool Server", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "E-5" },
+          "properties": {
+            "security-severity": "6.6",
+            "cvss-base-score": "9.9",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
+            "exploitability": "6.5",
+            "scalability": "6.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L3 - Agent Framework"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "level": "warning",
+          "message": {
+            "text": "Tool call injection via LLM-influenced JSON-RPC parameters causes unintended tool invocations or malicious arguments.",
+            "markdown": "Registered tool allowlist; per-tool parameter JSON Schema validation; reject requests failing validation before execution."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "MCP Tool Server", "fullyQualifiedName": "Application Zone/MCP Tool Server", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "AG-5" },
+          "properties": {
+            "security-severity": "6.5",
+            "cvss-base-score": "9.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
+            "exploitability": "7.0",
+            "scalability": "6.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L3 - Agent Framework"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "level": "warning",
+          "message": {
+            "text": "Runaway agent-driven tool calls exhaust External API rate limits, incur cost overruns, and trigger security lockouts.",
+            "markdown": "Per-session/agent tool call budgets; per-tool circuit breakers; cumulative external API spend monitoring."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "MCP Tool Server", "fullyQualifiedName": "Application Zone/MCP Tool Server", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "AG-6", "correlationGroup": "CG-5" },
+          "relatedLocations": [
+            {
+              "id": 1,
+              "message": { "text": "D-5: Connection pool exhaustion via high-volume tool call requests." },
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" } },
+              "logicalLocations": [{ "name": "MCP Tool Server" }]
             }
           ],
           "properties": {
-            "security-severity": "6.7",
-            "finding_id": "AG-3",
-            "cvss_base": 9.1,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
-            "exploitability": 4.5,
-            "scalability": 8.0,
-            "reachability": 5.0,
-            "composite_score": 6.7,
-            "severity_band": "Medium",
-            "remediation_sla": "30d",
-            "risk_disposition": "Review",
-            "risk_owner": "Unassigned",
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "risk-scoring",
-              "agentic",
-              "severity:medium",
-              "maestro-layer:L1"
-            ]
+            "security-severity": "6.5",
+            "cvss-base-score": "9.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
+            "exploitability": "7.0",
+            "scalability": "6.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L3 - Agent Framework"
           }
         },
         {
-          "ruleId": "tachi/risk-scoring/denial-of-service",
+          "ruleId": "tachi/ai/llm-threats",
           "level": "warning",
           "message": {
-            "text": "D-2: Attacker triggers recursive or excessively long tool call chains through crafted prompts, exhausting tool server resources and causing cascading timeouts across the application"
+            "text": "Indirect prompt injection via adversarial Knowledge Base documents retrieved during vector search.",
+            "markdown": "Retrieval-time content sanitization; context segmentation marking retrieved content as untrusted data."
           },
           "locations": [
             {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "MCP Tool Server",
-                  "kind": "component"
-                }
-              ]
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
             }
           ],
+          "partialFingerprints": { "findingId/v1": "LLM-2" },
           "properties": {
-            "security-severity": "6.7",
-            "finding_id": "D-2",
-            "cvss_base": 7.5,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
-            "exploitability": 6.5,
-            "scalability": 7.0,
-            "reachability": 5.5,
-            "composite_score": 6.7,
-            "severity_band": "Medium",
-            "remediation_sla": "30d",
-            "risk_disposition": "Review",
-            "risk_owner": "Unassigned",
-            "component": "MCP Tool Server",
-            "maestro-layer": "L3 \u2014 Agent Framework",
-            "tags": [
-              "risk-scoring",
-              "denial-of-service",
-              "severity:medium",
-              "maestro-layer:L3"
-            ]
+            "security-severity": "6.4",
+            "cvss-base-score": "9.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:N",
+            "exploitability": "6.0",
+            "scalability": "7.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L1 - Foundation Model"
           }
         },
         {
-          "ruleId": "tachi/risk-scoring/info-disclosure",
+          "ruleId": "tachi/stride/elevation-of-privilege",
           "level": "warning",
           "message": {
-            "text": "I-1: Orchestrator leaks sensitive context from the knowledge base or prior conversation turns in its responses to the user, exposing confidential documents or other users' data"
+            "text": "Application Zone process injects messages with forged elevated sender identity claiming to be Orchestrator.",
+            "markdown": "Enforce sender identity authentication at Channel; reject messages whose sender credentials cannot be verified before routing."
           },
           "locations": [
             {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Inter-Agent Communication Channel", "fullyQualifiedName": "Application Zone/Inter-Agent Communication Channel", "kind": "process" }]
             }
           ],
+          "partialFingerprints": { "findingId/v1": "E-4" },
           "properties": {
-            "security-severity": "6.7",
-            "finding_id": "I-1",
-            "cvss_base": 6.5,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
-            "exploitability": 8.5,
-            "scalability": 6.0,
-            "reachability": 5.0,
-            "composite_score": 6.7,
-            "severity_band": "Medium",
-            "remediation_sla": "30d",
-            "risk_disposition": "Review",
-            "risk_owner": "Unassigned",
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "risk-scoring",
-              "info-disclosure",
-              "severity:medium",
-              "maestro-layer:L1"
-            ]
+            "security-severity": "6.4",
+            "cvss-base-score": "9.9",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
+            "exploitability": "6.0",
+            "scalability": "6.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
           }
         },
         {
-          "ruleId": "tachi/risk-scoring/info-disclosure",
+          "ruleId": "tachi/stride/denial-of-service",
           "level": "warning",
           "message": {
-            "text": "I-3: Tool server includes API credentials, internal endpoint URLs, or stack traces in error responses returned to the orchestrator, which may propagate to the user"
+            "text": "Connection pool exhaustion via high-volume tool call requests causing all legitimate tool calls to fail.",
+            "markdown": "Per-caller/tool rate limiting; connection pool overflow rejection (not queuing); per-session tool call budgets."
           },
           "locations": [
             {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "MCP Tool Server",
-                  "kind": "component"
-                }
-              ]
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "MCP Tool Server", "fullyQualifiedName": "Application Zone/MCP Tool Server", "kind": "process" }]
             }
           ],
+          "partialFingerprints": { "findingId/v1": "D-5" },
+          "properties": {
+            "security-severity": "6.3",
+            "cvss-base-score": "7.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+            "exploitability": "8.0",
+            "scalability": "7.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L3 - Agent Framework"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "level": "warning",
+          "message": {
+            "text": "Orchestrator and Specialist Agent jointly coordinate to achieve policy circumvention via Channel-shared actions.",
+            "markdown": "Cross-agent rate limits; combined action sequence policy engine; per-agent AND per-session action budgets independently."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "AG-2" },
           "properties": {
             "security-severity": "6.2",
-            "finding_id": "I-3",
-            "cvss_base": 6.5,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
-            "exploitability": 6.5,
-            "scalability": 6.0,
-            "reachability": 5.5,
-            "composite_score": 6.2,
-            "severity_band": "Medium",
-            "remediation_sla": "30d",
-            "risk_disposition": "Review",
-            "risk_owner": "Unassigned",
-            "component": "MCP Tool Server",
-            "maestro-layer": "L3 \u2014 Agent Framework",
-            "tags": [
-              "risk-scoring",
-              "info-disclosure",
-              "severity:medium",
-              "maestro-layer:L3"
-            ]
+            "cvss-base-score": "9.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
+            "exploitability": "6.5",
+            "scalability": "5.8",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L1 - Foundation Model"
           }
         },
         {
-          "ruleId": "tachi/risk-scoring/tampering",
+          "ruleId": "tachi/ai/agentic-threats",
           "level": "warning",
           "message": {
-            "text": "T-1: Attacker with write access to the vector store injects or modifies document embeddings, corrupting RAG retrieval results and influencing LLM output"
+            "text": "Agent-in-the-middle attack intercepts and modifies delegation messages on Inter-Agent Communication Channel.",
+            "markdown": "End-to-end message authentication with digital signatures; replay detection with monotonic counters and timestamp windows."
           },
           "locations": [
             {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "Knowledge Base",
-                  "kind": "component"
-                }
-              ]
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Inter-Agent Communication Channel", "fullyQualifiedName": "Application Zone/Inter-Agent Communication Channel", "kind": "process" }]
             }
           ],
+          "partialFingerprints": { "findingId/v1": "AG-4" },
+          "properties": {
+            "security-severity": "6.2",
+            "cvss-base-score": "9.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
+            "exploitability": "6.5",
+            "scalability": "5.8",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "level": "warning",
+          "message": {
+            "text": "Forged delegation grants Specialist elevated permissions beyond originating session scope.",
+            "markdown": "MCP Tool Server validates Specialist claimed scope against session authorization record at every tool invocation."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Specialist Agent", "fullyQualifiedName": "Application Zone/Specialist Agent", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "E-3" },
+          "properties": {
+            "security-severity": "6.2",
+            "cvss-base-score": "9.9",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H",
+            "exploitability": "5.5",
+            "scalability": "6.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "level": "warning",
+          "message": {
+            "text": "Improper output handling - SSRF via LLM-synthesized URL in Tool Call Request with server-side network credentials.",
+            "markdown": "URL allowlisting on outbound HTTP tool invocations; egress firewall blocking RFC 1918/metadata; scheme validation; DNS pinning."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "LLM-7" },
           "properties": {
             "security-severity": "6.1",
-            "finding_id": "T-1",
-            "cvss_base": 7.1,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:L",
-            "exploitability": 6.5,
-            "scalability": 5.5,
-            "reachability": 4.0,
-            "composite_score": 6.1,
-            "severity_band": "Medium",
-            "remediation_sla": "30d",
-            "risk_disposition": "Review",
-            "risk_owner": "Unassigned",
-            "component": "Knowledge Base",
-            "maestro-layer": "L2 \u2014 Data Operations",
-            "tags": [
-              "risk-scoring",
-              "tampering",
-              "severity:medium",
-              "maestro-layer:L2"
-            ]
+            "cvss-base-score": "8.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N",
+            "exploitability": "6.5",
+            "scalability": "6.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L1 - Foundation Model"
           }
         },
         {
-          "ruleId": "tachi/risk-scoring/spoofing",
+          "ruleId": "tachi/ai/llm-threats",
           "level": "warning",
           "message": {
-            "text": "S-2: Attacker crafts spoofed tool call responses that mimic the MCP Tool Server, injecting fabricated results into the orchestration pipeline"
+            "text": "Improper output handling - SSRF via LLM-synthesized URL in Tool Call Request to MCP Tool Server; server-side HTTP fetch exposes cloud metadata and internal services.",
+            "markdown": "URL allowlisting; egress firewall blocking RFC 1918/link-local/cloud metadata; URL scheme validation; DNS pinning."
           },
           "locations": [
             {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
             }
           ],
+          "partialFingerprints": { "findingId/v1": "OI-3" },
           "properties": {
-            "security-severity": "6.0",
-            "finding_id": "S-2",
-            "cvss_base": 8.2,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N",
-            "exploitability": 4.5,
-            "scalability": 5.5,
-            "reachability": 5.0,
-            "composite_score": 6.0,
-            "severity_band": "Medium",
-            "remediation_sla": "30d",
-            "risk_disposition": "Review",
-            "risk_owner": "Unassigned",
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "risk-scoring",
-              "spoofing",
-              "severity:medium",
-              "maestro-layer:L1"
-            ]
+            "security-severity": "6.1",
+            "cvss-base-score": "8.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N",
+            "exploitability": "6.5",
+            "scalability": "6.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L1 - Foundation Model",
+            "source-attribution": "OWASP:LLM05;CWE:CWE-918"
           }
         },
         {
-          "ruleId": "tachi/risk-scoring/repudiation",
+          "ruleId": "tachi/ai/agentic-threats",
           "level": "warning",
           "message": {
-            "text": "R-1: User denies submitting a harmful or policy-violating prompt because session logs lack sufficient attribution to tie the prompt to a specific authenticated identity"
+            "text": "Specialist Agent executes prohibited cumulative tool call sequence under adversarial delegation message.",
+            "markdown": "Task-level intent verification; per-task tool call budget; re-authorization required for task extensions."
           },
           "locations": [
             {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "User",
-                  "kind": "component"
-                }
-              ]
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Specialist Agent", "fullyQualifiedName": "Application Zone/Specialist Agent", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "AG-3" },
+          "properties": {
+            "security-severity": "6.0",
+            "cvss-base-score": "9.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
+            "exploitability": "6.0",
+            "scalability": "5.8",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "level": "warning",
+          "message": {
+            "text": "Model theft via systematic API probing; attacker crafts queries to extract model behavior or fine-tuning characteristics.",
+            "markdown": "Query rate limiting and anomaly detection for probing; differential privacy; output perturbation/watermarking."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "LLM-3" },
+          "properties": {
+            "security-severity": "6.0",
+            "cvss-base-score": "8.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:N/A:N",
+            "exploitability": "6.3",
+            "scalability": "6.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L1 - Foundation Model"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "level": "warning",
+          "message": {
+            "text": "Orchestrator inference pipeline exhaustion via high-token prompts or injected recursive tool invocation chains.",
+            "markdown": "Per-session token budgets; circuit breakers on tool chains; capacity-based load shedding."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "D-2" },
+          "properties": {
+            "security-severity": "5.9",
+            "cvss-base-score": "7.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+            "exploitability": "7.5",
+            "scalability": "6.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L1 - Foundation Model"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "level": "warning",
+          "message": {
+            "text": "Adversarially crafted delegation message triggers computationally expensive subtasks that exhaust Specialist capacity.",
+            "markdown": "Per-task execution time/resource limits; task queue depth limits; backpressure from Orchestrator health-checks."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Specialist Agent", "fullyQualifiedName": "Application Zone/Specialist Agent", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "D-3" },
+          "properties": {
+            "security-severity": "5.9",
+            "cvss-base-score": "7.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+            "exploitability": "7.0",
+            "scalability": "6.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "level": "warning",
+          "message": {
+            "text": "Channel message queue flooding drops or delays legitimate coordination messages; queue saturation disrupts Orchestrator-Specialist coordination.",
+            "markdown": "Queue depth limits; per-sender rate limits; backpressure on queue saturation."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Inter-Agent Communication Channel", "fullyQualifiedName": "Application Zone/Inter-Agent Communication Channel", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "D-4" },
+          "properties": {
+            "security-severity": "5.9",
+            "cvss-base-score": "7.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+            "exploitability": "7.0",
+            "scalability": "6.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "level": "warning",
+          "message": {
+            "text": "Server-side injection via tool result incorporation into Specialist subsequent tool invocations.",
+            "markdown": "Output sanitization on tool results before context incorporation; allowlist-based parameter validation at Tool Server."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Specialist Agent", "fullyQualifiedName": "Application Zone/Specialist Agent", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "LLM-10" },
+          "properties": {
+            "security-severity": "5.9",
+            "cvss-base-score": "8.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H",
+            "exploitability": "6.0",
+            "scalability": "6.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "level": "warning",
+          "message": {
+            "text": "Orchestrator context window tampered via upstream data source (KB, Channel, Tool Server) compromise.",
+            "markdown": "Validate integrity of all context sources; content hashing at KB read; treat tool results as untrusted input."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "T-2", "correlationGroup": "CG-1" },
+          "relatedLocations": [
+            {
+              "id": 1,
+              "message": { "text": "LLM-4: Training data poisoning via Audit Logger-fed Learning Loop." },
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator" }]
             }
           ],
           "properties": {
             "security-severity": "5.8",
-            "finding_id": "R-1",
-            "cvss_base": 4.3,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
-            "exploitability": 6.5,
-            "scalability": 3.5,
-            "reachability": 9.0,
-            "composite_score": 5.8,
-            "severity_band": "Medium",
-            "remediation_sla": "30d",
-            "risk_disposition": "Review",
-            "risk_owner": "Unassigned",
-            "component": "User",
-            "maestro-layer": "L7 \u2014 Agent Ecosystem",
-            "tags": [
-              "risk-scoring",
-              "repudiation",
-              "severity:medium",
-              "maestro-layer:L7"
-            ]
+            "cvss-base-score": "7.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:H/A:L",
+            "exploitability": "7.0",
+            "scalability": "6.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L1 - Foundation Model"
           }
         },
         {
-          "ruleId": "tachi/risk-scoring/tampering",
+          "ruleId": "tachi/stride/tampering",
           "level": "warning",
           "message": {
-            "text": "T-2: Attacker tampers with orchestration configuration or intermediate state to alter agent decision logic, causing the orchestrator to produce incorrect tool call sequences or bypass safety checks"
+            "text": "LLM-generated tool parameters bypass Tool Server allowlist; shell/SQL injection via JSON-RPC metacharacter passthrough.",
+            "markdown": "Strict parameter validation per JSON Schema; reject requests with metacharacters; parameter-level allowlisting before dispatch."
           },
           "locations": [
             {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "MCP Tool Server", "fullyQualifiedName": "Application Zone/MCP Tool Server", "kind": "process" }]
             }
           ],
+          "partialFingerprints": { "findingId/v1": "T-5" },
+          "properties": {
+            "security-severity": "5.8",
+            "cvss-base-score": "7.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:H/A:L",
+            "exploitability": "7.0",
+            "scalability": "6.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L3 - Agent Framework"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "level": "warning",
+          "message": {
+            "text": "User denies having submitted a particular prompt; no non-repudiation controls at User->Guardrails boundary.",
+            "markdown": "Implement request signing at the client layer; log signed request hash in Audit Logger."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "User", "fullyQualifiedName": "User Zone/User", "kind": "externalEntity" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "R-1" },
           "properties": {
             "security-severity": "5.7",
-            "finding_id": "T-2",
-            "cvss_base": 7.1,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:L",
-            "exploitability": 4.5,
-            "scalability": 5.5,
-            "reachability": 5.0,
-            "composite_score": 5.7,
-            "severity_band": "Medium",
-            "remediation_sla": "30d",
-            "risk_disposition": "Review",
-            "risk_owner": "Unassigned",
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "risk-scoring",
-              "tampering",
-              "severity:medium",
-              "maestro-layer:L1"
-            ]
+            "cvss-base-score": "4.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+            "exploitability": "5.0",
+            "scalability": "5.3",
+            "reachability": "9.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L7 - Agent Ecosystem"
           }
         },
         {
-          "ruleId": "tachi/risk-scoring/info-disclosure",
+          "ruleId": "tachi/stride/spoofing",
           "level": "warning",
           "message": {
-            "text": "I-2: Unauthorized access to vector store contents exposes confidential document embeddings that can be reversed to reconstruct source document content"
+            "text": "Orchestrator identity not cryptographically attested to Specialist; rogue process can inject delegation instructions into Channel.",
+            "markdown": "Authenticate Orchestrator->Channel messages via HMAC/asymmetric signing; Specialist verifies signature before acting."
           },
           "locations": [
             {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "Knowledge Base",
-                  "kind": "component"
-                }
-              ]
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "S-3" },
+          "properties": {
+            "security-severity": "5.6",
+            "cvss-base-score": "8.2",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+            "exploitability": "5.5",
+            "scalability": "6.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L1 - Foundation Model"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "level": "warning",
+          "message": {
+            "text": "Channel has no sender authentication; malicious Application Zone process can inject impersonated messages.",
+            "markdown": "Per-message digital signatures (ED25519 or HMAC-SHA256); bind sender identity to each envelope."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Inter-Agent Communication Channel", "fullyQualifiedName": "Application Zone/Inter-Agent Communication Channel", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "S-5" },
+          "properties": {
+            "security-severity": "5.6",
+            "cvss-base-score": "8.2",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+            "exploitability": "5.5",
+            "scalability": "6.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "level": "warning",
+          "message": {
+            "text": "Application Zone process spoofs agent identity to submit unauthorized tool call requests to MCP Tool Server.",
+            "markdown": "Enforce caller authentication on all JSON-RPC endpoints; verify signed caller token or mTLS cert per invocation."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "MCP Tool Server", "fullyQualifiedName": "Application Zone/MCP Tool Server", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "S-6" },
+          "properties": {
+            "security-severity": "5.6",
+            "cvss-base-score": "8.2",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+            "exploitability": "5.5",
+            "scalability": "6.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L3 - Agent Framework"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "level": "warning",
+          "message": {
+            "text": "Audit Logger log-flooding from compromised Application Zone process creates audit gaps and blocks pipeline operations.",
+            "markdown": "Asynchronous write queues; write rate limits per source; log rotation and capacity management."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Audit Logger", "fullyQualifiedName": "Application Zone/Audit Logger", "kind": "dataStore" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "D-7" },
+          "properties": {
+            "security-severity": "5.5",
+            "cvss-base-score": "7.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+            "exploitability": "6.0",
+            "scalability": "5.8",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L5 - Evaluation and Observability"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "level": "warning",
+          "message": {
+            "text": "Poisoned model update escalates attacker from data-layer access to model-parameter control of both agents.",
+            "markdown": "HSM-backed signed model updates; staged rollout with capability regression checks before production deployment."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Long-Running Learning Loop", "fullyQualifiedName": "Application Zone/Long-Running Learning Loop", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "E-6" },
+          "properties": {
+            "security-severity": "5.5",
+            "cvss-base-score": "9.9",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H",
+            "exploitability": "3.5",
+            "scalability": "5.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "level": "warning",
+          "message": {
+            "text": "Specialist Agent delegation message tampered via Channel injection redirecting Specialist actions.",
+            "markdown": "Validate and sanitize all delegation payloads; HMAC verify on every received message; reject structural anomalies."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Specialist Agent", "fullyQualifiedName": "Application Zone/Specialist Agent", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "T-3" },
+          "properties": {
+            "security-severity": "5.5",
+            "cvss-base-score": "7.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:H/A:L",
+            "exploitability": "6.5",
+            "scalability": "6.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "level": "warning",
+          "message": {
+            "text": "Channel messages modified in transit by agent-in-the-middle with access to message queue or shared memory.",
+            "markdown": "End-to-end message integrity via digital signatures at channel layer; sequence numbers detect drops/reordering."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Inter-Agent Communication Channel", "fullyQualifiedName": "Application Zone/Inter-Agent Communication Channel", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "T-4" },
+          "properties": {
+            "security-severity": "5.5",
+            "cvss-base-score": "7.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:H/A:L",
+            "exploitability": "6.5",
+            "scalability": "6.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "level": "warning",
+          "message": {
+            "text": "Orchestrator context window leaked in HTTPS response to User via prompt injection or hallucination.",
+            "markdown": "Output scrubbing on responses before transmission; response auditor reviews output before sending."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "I-2" },
+          "properties": {
+            "security-severity": "5.5",
+            "cvss-base-score": "6.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+            "exploitability": "7.0",
+            "scalability": "6.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L1 - Foundation Model"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "level": "warning",
+          "message": {
+            "text": "Direct bypass to Orchestrator internal endpoint without Guardrails; intra-zone services lack mutual TLS.",
+            "markdown": "Enforce mTLS between Guardrails and Orchestrator; SPIFFE/SPIRE identity for service-to-service auth."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Guardrails Service", "fullyQualifiedName": "Application Zone/Guardrails Service", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "S-2" },
+          "properties": {
+            "security-severity": "5.4",
+            "cvss-base-score": "8.2",
+            "cvss-vector": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N",
+            "exploitability": "5.0",
+            "scalability": "5.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L6 - Security and Compliance"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "level": "warning",
+          "message": {
+            "text": "Specialist impersonates Orchestrator returning fabricated aggregated results to Channel.",
+            "markdown": "Sign Specialist->Channel messages with Specialist identity key; Orchestrator verifies result origin."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Specialist Agent", "fullyQualifiedName": "Application Zone/Specialist Agent", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "S-4" },
+          "properties": {
+            "security-severity": "5.4",
+            "cvss-base-score": "8.2",
+            "cvss-vector": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+            "exploitability": "5.0",
+            "scalability": "5.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "level": "warning",
+          "message": {
+            "text": "DNS hijacking or BGP route hijack redirects External API calls to attacker-controlled server returning malicious results.",
+            "markdown": "Certificate pinning on outbound HTTPS from Tool Server; HSTS preload; leaf certificate CN/SAN verification."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "External API", "fullyQualifiedName": "External Services/External API", "kind": "externalEntity" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "S-8" },
+          "properties": {
+            "security-severity": "5.4",
+            "cvss-base-score": "8.2",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:L/A:N",
+            "exploitability": "3.0",
+            "scalability": "4.5",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "level": "warning",
+          "message": {
+            "text": "Training data poisoning of Orchestrator via Audit Logger-fed Learning Loop update cycle.",
+            "markdown": "Training data validation; data provenance tracking; adversarial training detection; anomaly detection on distributions."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "LLM-4" },
+          "properties": {
+            "security-severity": "5.3",
+            "cvss-base-score": "9.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N",
+            "exploitability": "3.0",
+            "scalability": "6.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L1 - Foundation Model"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "level": "warning",
+          "message": {
+            "text": "Specialist Agent self-poisoning via own decision logs incorporated into Learning Loop training signal.",
+            "markdown": "Training data provenance attestation; agent-specific behavioral baselining; pre/post-update evaluation."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Specialist Agent", "fullyQualifiedName": "Application Zone/Specialist Agent", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "LLM-9" },
+          "properties": {
+            "security-severity": "5.3",
+            "cvss-base-score": "9.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N",
+            "exploitability": "3.0",
+            "scalability": "6.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "level": "warning",
+          "message": {
+            "text": "Systematic audit log poisoning for delayed temporal model behavioral shift via Learning Loop training cycle.",
+            "markdown": "Cryptographic log signing; anomaly detection on training signal distributions; differential privacy during training."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Long-Running Learning Loop", "fullyQualifiedName": "Application Zone/Long-Running Learning Loop", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "LLM-11", "correlationGroup": "CG-2" },
+          "relatedLocations": [
+            {
+              "id": 1,
+              "message": { "text": "T-8: Training signal temporal/sleeper-agent poisoning." },
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" } },
+              "logicalLocations": [{ "name": "Long-Running Learning Loop" }]
             }
           ],
           "properties": {
             "security-severity": "5.3",
-            "finding_id": "I-2",
-            "cvss_base": 6.5,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
-            "exploitability": 4.5,
-            "scalability": 6.0,
-            "reachability": 4.0,
-            "composite_score": 5.3,
-            "severity_band": "Medium",
-            "remediation_sla": "30d",
-            "risk_disposition": "Review",
-            "risk_owner": "Unassigned",
-            "component": "Knowledge Base",
-            "maestro-layer": "L2 \u2014 Data Operations",
-            "tags": [
-              "risk-scoring",
-              "info-disclosure",
-              "severity:medium",
-              "maestro-layer:L2"
-            ]
+            "cvss-base-score": "9.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N",
+            "exploitability": "3.0",
+            "scalability": "6.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
           }
         },
         {
-          "ruleId": "tachi/risk-scoring/tampering",
+          "ruleId": "tachi/ai/llm-threats",
           "level": "warning",
           "message": {
-            "text": "T-3: Attacker with elevated access modifies or truncates audit log entries to conceal malicious activity or alter the forensic record"
+            "text": "Model theft via observability access to Learning Loop model update artifact diffs or packages.",
+            "markdown": "Encrypt model update packages end-to-end; HSM-managed keys; model watermarking; restrict artifact access."
           },
           "locations": [
             {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "Audit Logger",
-                  "kind": "component"
-                }
-              ]
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Long-Running Learning Loop", "fullyQualifiedName": "Application Zone/Long-Running Learning Loop", "kind": "process" }]
             }
           ],
+          "partialFingerprints": { "findingId/v1": "LLM-12" },
           "properties": {
             "security-severity": "5.3",
-            "finding_id": "T-3",
-            "cvss_base": 7.1,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:L",
-            "exploitability": 4.5,
-            "scalability": 5.5,
-            "reachability": 3.0,
-            "composite_score": 5.3,
-            "severity_band": "Medium",
-            "remediation_sla": "30d",
-            "risk_disposition": "Review",
-            "risk_owner": "Unassigned",
-            "component": "Audit Logger",
-            "maestro-layer": "L5 \u2014 Evaluation and Observability",
-            "tags": [
-              "risk-scoring",
-              "tampering",
-              "severity:medium",
-              "maestro-layer:L5"
-            ]
+            "cvss-base-score": "8.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:C/C:H/I:N/A:N",
+            "exploitability": "4.5",
+            "scalability": "5.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
           }
         },
         {
-          "ruleId": "tachi/risk-scoring/repudiation",
+          "ruleId": "tachi/stride/information-disclosure",
           "level": "warning",
           "message": {
-            "text": "R-2: Orchestrator makes autonomous multi-step decisions that cannot be attributed to a specific triggering prompt or user action because decision chain logging is incomplete"
+            "text": "Full Knowledge Base corpus exfiltration via unrestricted vector search queries and exhaustive retrievals.",
+            "markdown": "Per-session result limits and query budgets; context-aware authorization; anomaly detection on query patterns."
           },
           "locations": [
             {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": "threats.md"
-                },
-                "region": {
-                  "startLine": 1,
-                  "endLine": 1
-                }
-              },
-              "logicalLocations": [
-                {
-                  "name": "LLM Agent Orchestrator",
-                  "kind": "component"
-                }
-              ]
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Knowledge Base", "fullyQualifiedName": "Application Zone/Knowledge Base", "kind": "dataStore" }]
             }
           ],
+          "partialFingerprints": { "findingId/v1": "I-6" },
           "properties": {
-            "security-severity": "5.0",
-            "finding_id": "R-2",
-            "cvss_base": 4.3,
-            "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
-            "exploitability": 6.5,
-            "scalability": 3.5,
-            "reachability": 5.0,
-            "composite_score": 5.0,
-            "severity_band": "Medium",
-            "remediation_sla": "30d",
-            "risk_disposition": "Review",
-            "risk_owner": "Unassigned",
-            "component": "LLM Agent Orchestrator",
-            "maestro-layer": "L1 \u2014 Foundation Model",
-            "tags": [
-              "risk-scoring",
-              "repudiation",
-              "severity:medium",
-              "maestro-layer:L1"
-            ]
+            "security-severity": "5.3",
+            "cvss-base-score": "6.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+            "exploitability": "6.5",
+            "scalability": "6.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L2 - Data Operations"
           }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "level": "warning",
+          "message": {
+            "text": "Knowledge Base high-volume complex vector search queries degrade retrieval performance.",
+            "markdown": "Per-session query rate limits; complexity bounds on vector search; result caching for frequent queries."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Knowledge Base", "fullyQualifiedName": "Application Zone/Knowledge Base", "kind": "dataStore" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "D-6" },
+          "properties": {
+            "security-severity": "5.3",
+            "cvss-base-score": "6.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:L",
+            "exploitability": "6.5",
+            "scalability": "6.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L2 - Data Operations"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "level": "warning",
+          "message": {
+            "text": "Training data causes Learning Loop model update to expand autonomous action scope on next cycle.",
+            "markdown": "Capability auditing in every update evaluation; capability allowlist enforced post-update before production deployment."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Long-Running Learning Loop", "fullyQualifiedName": "Application Zone/Long-Running Learning Loop", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "AG-7" },
+          "properties": {
+            "security-severity": "5.1",
+            "cvss-base-score": "9.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:L",
+            "exploitability": "3.0",
+            "scalability": "4.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "level": "warning",
+          "message": {
+            "text": "Learning Loop accepts training signal stream from Audit Logger without source integrity verification.",
+            "markdown": "Cryptographically sign training signal batches at Audit Logger; Learning Loop verifies signature before ingestion."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Long-Running Learning Loop", "fullyQualifiedName": "Application Zone/Long-Running Learning Loop", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "S-7" },
+          "properties": {
+            "security-severity": "5.1",
+            "cvss-base-score": "8.2",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:L/A:N",
+            "exploitability": "4.0",
+            "scalability": "5.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "level": "warning",
+          "message": {
+            "text": "Inter-agent messages observable by unauthorized Application Zone processes on shared message bus or queue.",
+            "markdown": "End-to-end encryption between agents per sender-receiver pair; strict access controls on channel infrastructure."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Inter-Agent Communication Channel", "fullyQualifiedName": "Application Zone/Inter-Agent Communication Channel", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "I-4" },
+          "properties": {
+            "security-severity": "5.1",
+            "cvss-base-score": "6.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+            "exploitability": "6.0",
+            "scalability": "5.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "level": "warning",
+          "message": {
+            "text": "Audit Logger unauthorized read access exposes full operational history of agent system.",
+            "markdown": "Strict read access controls; envelope encryption at rest; audit all read access to log store."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Audit Logger", "fullyQualifiedName": "Application Zone/Audit Logger", "kind": "dataStore" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "I-7" },
+          "properties": {
+            "security-severity": "4.9",
+            "cvss-base-score": "6.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+            "exploitability": "5.5",
+            "scalability": "6.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L5 - Evaluation and Observability"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "level": "warning",
+          "message": {
+            "text": "Specialist Agent includes sensitive delegation context verbatim in Channel results; downstream observation exposes upstream data.",
+            "markdown": "Data minimization in delegation messages; output scrubbing on Specialist results; classify sensitive fields in inter-agent messages."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Specialist Agent", "fullyQualifiedName": "Application Zone/Specialist Agent", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "I-3" },
+          "properties": {
+            "security-severity": "4.8",
+            "cvss-base-score": "6.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+            "exploitability": "5.0",
+            "scalability": "5.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "level": "warning",
+          "message": {
+            "text": "Tool results containing PII logged verbatim to Audit Logger; PII accessible to any process reading audit trail.",
+            "markdown": "Field-level classification in structured logging; hash/tokenize PII before writing; log-before-hash policy."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "MCP Tool Server", "fullyQualifiedName": "Application Zone/MCP Tool Server", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "I-5" },
+          "properties": {
+            "security-severity": "4.8",
+            "cvss-base-score": "6.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+            "exploitability": "5.0",
+            "scalability": "5.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L3 - Agent Framework"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "level": "warning",
+          "message": {
+            "text": "Guardrails Service filtering rule modification via misconfigured admin endpoint or insider threat; silent policy bypass.",
+            "markdown": "Configuration-as-code with commit signing; dual approval for rule changes; audit every modification with immutable timestamps."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Guardrails Service", "fullyQualifiedName": "Application Zone/Guardrails Service", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "T-1" },
+          "properties": {
+            "security-severity": "4.8",
+            "cvss-base-score": "7.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:U/C:N/I:H/A:L",
+            "exploitability": "4.5",
+            "scalability": "5.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L6 - Security and Compliance"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "level": "warning",
+          "message": {
+            "text": "Audit Logger entries tampered; training signal corruption and forensic evidence destruction.",
+            "markdown": "Append-only store; Merkle hash chain detects post-write modification; external immutable hash store."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Audit Logger", "fullyQualifiedName": "Application Zone/Audit Logger", "kind": "dataStore" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "T-7" },
+          "properties": {
+            "security-severity": "4.8",
+            "cvss-base-score": "7.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:N/I:H/A:L",
+            "exploitability": "4.5",
+            "scalability": "5.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L5 - Evaluation and Observability"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "level": "warning",
+          "message": {
+            "text": "Guardrails rejection reasons reveal filtering rule details to iterative probers enabling systematic bypass.",
+            "markdown": "Generic rejection messages externally; detailed rejection reason logged internally to Audit Logger only."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Guardrails Service", "fullyQualifiedName": "Application Zone/Guardrails Service", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "I-1" },
+          "properties": {
+            "security-severity": "4.7",
+            "cvss-base-score": "5.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+            "exploitability": "6.0",
+            "scalability": "6.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L6 - Security and Compliance"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "level": "warning",
+          "message": {
+            "text": "Knowledge Base corpus poisoning via unauthorized write access; adversarial documents injected for later retrieval.",
+            "markdown": "Write access controls with least-privilege; immutable audit trails; per-document integrity at write, verify at retrieval."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Knowledge Base", "fullyQualifiedName": "Application Zone/Knowledge Base", "kind": "dataStore" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "T-6" },
+          "properties": {
+            "security-severity": "4.7",
+            "cvss-base-score": "7.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:N/I:H/A:N",
+            "exploitability": "4.0",
+            "scalability": "5.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L2 - Data Operations"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "level": "warning",
+          "message": {
+            "text": "Multi-agent emergent behavior - cascading failures or feedback amplification bypass per-agent safety evaluation.",
+            "markdown": "Fail-safe shutdown circuits; bounded action scopes; behavioral baselining of collective agent system."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "AGP-01" },
+          "properties": {
+            "security-severity": "4.6",
+            "cvss-base-score": "7.0",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:L/I:H/A:L",
+            "exploitability": "4.0",
+            "scalability": "5.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "L1 - Foundation Model"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "level": "warning",
+          "message": {
+            "text": "Training signal flooding causes runaway Learning Loop batch processing, consuming excessive compute resources.",
+            "markdown": "Training run scheduling with resource quotas; training data volume limits per run; separate compute pools."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Long-Running Learning Loop", "fullyQualifiedName": "Application Zone/Long-Running Learning Loop", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "D-8" },
+          "properties": {
+            "security-severity": "4.6",
+            "cvss-base-score": "6.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:L",
+            "exploitability": "4.5",
+            "scalability": "5.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "level": "warning",
+          "message": {
+            "text": "Training signal stream from Audit Logger poisoned with temporal/sleeper-agent injection activating at specific trigger.",
+            "markdown": "Training data provenance attestation; anomaly detection on training signal distributions; gradient clipping; differential privacy."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Long-Running Learning Loop", "fullyQualifiedName": "Application Zone/Long-Running Learning Loop", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "T-8" },
+          "properties": {
+            "security-severity": "4.3",
+            "cvss-base-score": "7.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:N/I:H/A:L",
+            "exploitability": "3.0",
+            "scalability": "5.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "level": "warning",
+          "message": {
+            "text": "Learning Loop trained model memorizes training data PII and can reproduce it in responses; training data extraction attack.",
+            "markdown": "Differential privacy during training; de-identify training signals; canary injection to detect memorization."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Long-Running Learning Loop", "fullyQualifiedName": "Application Zone/Long-Running Learning Loop", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "I-8" },
+          "properties": {
+            "security-severity": "4.3",
+            "cvss-base-score": "6.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:N/A:N",
+            "exploitability": "3.5",
+            "scalability": "5.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "level": "warning",
+          "message": {
+            "text": "External API provider denies returning specific response to Tool Server, enabling disputes over received data.",
+            "markdown": "Log all External API responses with content hash and timestamp; implement request/response signing where supported."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "External API", "fullyQualifiedName": "External Services/External API", "kind": "externalEntity" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "R-8" },
+          "properties": {
+            "security-severity": "4.1",
+            "cvss-base-score": "4.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+            "exploitability": "3.5",
+            "scalability": "4.5",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-18",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "level": "note",
+          "message": {
+            "text": "Orchestrator denies having issued specific delegation message or tool call request; claims action was performed by another process.",
+            "markdown": "Log every Orchestrator action with content hash, session ID, monotonic sequence number, and Orchestrator service key signature; log before execution."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "LLM Agent Orchestrator", "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "R-3" },
+          "properties": {
+            "security-severity": "3.9",
+            "cvss-base-score": "4.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+            "exploitability": "4.5",
+            "scalability": "5.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Low",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "90d",
+            "risk-disposition": "Review",
+            "review-date": "2026-07-17",
+            "maestro-layer": "L1 - Foundation Model"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "level": "note",
+          "message": {
+            "text": "Guardrails Service can deny filtering decisions or claim differently without tamper-evident logs.",
+            "markdown": "Log all filtering decisions (pass and reject) atomically with prompt hash, rule applied, and monotonic sequence number."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Guardrails Service", "fullyQualifiedName": "Application Zone/Guardrails Service", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "R-2" },
+          "properties": {
+            "security-severity": "3.5",
+            "cvss-base-score": "4.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+            "exploitability": "3.5",
+            "scalability": "5.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Low",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "90d",
+            "risk-disposition": "Review",
+            "review-date": "2026-07-17",
+            "maestro-layer": "L6 - Security and Compliance"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "level": "note",
+          "message": {
+            "text": "Specialist Agent denies having executed a tool call or produced a specific result.",
+            "markdown": "Log every Specialist action to Audit Logger with content hashes and service key signature; log entries precede the action."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Specialist Agent", "fullyQualifiedName": "Application Zone/Specialist Agent", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "R-4" },
+          "properties": {
+            "security-severity": "3.5",
+            "cvss-base-score": "4.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+            "exploitability": "3.5",
+            "scalability": "5.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Low",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "90d",
+            "risk-disposition": "Review",
+            "review-date": "2026-07-17",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "level": "note",
+          "message": {
+            "text": "Tool Server denies having executed specific tool invocation or received particular JSON-RPC request.",
+            "markdown": "Log every JSON-RPC tool invocation before execution with caller identity, tool name, parameter hash, and output hash."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "MCP Tool Server", "fullyQualifiedName": "Application Zone/MCP Tool Server", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "R-6" },
+          "properties": {
+            "security-severity": "3.5",
+            "cvss-base-score": "4.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+            "exploitability": "3.5",
+            "scalability": "5.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Low",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "90d",
+            "risk-disposition": "Review",
+            "review-date": "2026-07-17",
+            "maestro-layer": "L3 - Agent Framework"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "level": "note",
+          "message": {
+            "text": "Learning Loop denies having applied specific model update or claims different training data than recorded.",
+            "markdown": "Log every model update event with training data hash, parameter diff hash, timestamp, approval signature; signed manifests."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Long-Running Learning Loop", "fullyQualifiedName": "Application Zone/Long-Running Learning Loop", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "R-7" },
+          "properties": {
+            "security-severity": "3.3",
+            "cvss-base-score": "4.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+            "exploitability": "3.0",
+            "scalability": "4.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Low",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "90d",
+            "risk-disposition": "Review",
+            "review-date": "2026-07-17",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "level": "note",
+          "message": {
+            "text": "Channel denies delivering or modifying specific message without delivery receipts and integrity records.",
+            "markdown": "Message delivery ACKs with received message content hash; store ACK records in Audit Logger; flag hash mismatches."
+          },
+          "locations": [
+            {
+              "physicalLocation": { "artifactLocation": { "uri": "architecture.md" }, "region": { "startLine": 1 } },
+              "logicalLocations": [{ "name": "Inter-Agent Communication Channel", "fullyQualifiedName": "Application Zone/Inter-Agent Communication Channel", "kind": "process" }]
+            }
+          ],
+          "partialFingerprints": { "findingId/v1": "R-5" },
+          "properties": {
+            "security-severity": "3.3",
+            "cvss-base-score": "4.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+            "exploitability": "3.0",
+            "scalability": "4.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Low",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "90d",
+            "risk-disposition": "Review",
+            "review-date": "2026-07-17",
+            "maestro-layer": "Unclassified"
+          }
+        }
+      ],
+      "taxonomies": [
+        {
+          "name": "OWASP-Top-10",
+          "version": "2021",
+          "organization": "OWASP",
+          "shortDescription": { "text": "OWASP Top 10 web application security risks" },
+          "informationUri": "https://owasp.org/Top10/"
+        },
+        {
+          "name": "CWE",
+          "version": "4.13",
+          "organization": "MITRE",
+          "shortDescription": { "text": "Common Weakness Enumeration" },
+          "informationUri": "https://cwe.mitre.org/"
         }
       ]
     }

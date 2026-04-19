@@ -1,45 +1,28 @@
-# Attack Tree: AG-3 -- Unscoped Tool Access on MCP Server
+---
+finding_id: "AG-3"
+risk_level: "Critical"
+component: "Specialist Agent"
+generated: "2026-04-19"
+---
 
-| Field | Value |
-|-------|-------|
-| Finding ID | AG-3 |
-| Component | MCP Tool Server |
-| Risk Level | Critical |
-| Threat | Unscoped Tool Access on MCP Server |
-| Correlation | None |
+# Attack Tree: AG-3 — Specialist Agent Cumulative Prohibited Tool Call Sequence
 
 ```mermaid
-flowchart TD
-    AG3_root["Access all MCP tools regardless of agent authorization"]
-    AG3_or1{{"OR"}}
-    AG3_sub1["Exploit unscoped tool registry"]
-    AG3_sub2["Dynamic tool discovery enumeration"]
-    AG3_and1{{"AND"}}
-    AG3_leaf1["Connect to MCP Tool Server as any agent"]
-    AG3_leaf2["Enumerate all available tools via discovery endpoint"]
-    AG3_leaf3["Invoke privileged tool not in agent capability set"]
-    AG3_leaf4["Query tool registry for complete tool listing"]
-    AG3_leaf5["Identify high-value tools outside intended scope"]
-
-    AG3_root --> AG3_or1
-    AG3_or1 --> AG3_sub1
-    AG3_or1 --> AG3_sub2
-    AG3_sub1 --> AG3_and1
-    AG3_and1 --> AG3_leaf1
-    AG3_and1 --> AG3_leaf2
-    AG3_and1 --> AG3_leaf3
-    AG3_sub2 --> AG3_leaf4
-    AG3_sub2 --> AG3_leaf5
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class AG3_root goal
-    class AG3_or1 orGate
-    class AG3_and1 andGate
-    class AG3_sub1,AG3_sub2 subGoal
-    class AG3_leaf1,AG3_leaf2,AG3_leaf3,AG3_leaf4,AG3_leaf5 leaf
+graph TD
+    GOAL["GOAL: Specialist executes cumulative prohibited\ntool call sequence via adversarial delegation"]
+    GOAL --> A["AND"]
+    A --> B["Adversarially crafted delegation message\nreaches Specialist"]
+    A --> C["No task-level intent verification\nor tool call budget"]
+    B --> B1["Tampered delegation message\nvia Channel interception\n[High / High]"]
+    B --> B2["Compromised Orchestrator issues\nmalicious delegation\n[High / High]"]
+    C --> C1["Specialist does not verify each\ntool call against task objective\n[High / High]"]
+    C --> C2["No maximum tool calls\nper task enforcement\n[High / High]"]
+    B1 --> D["Specialist receives adversarial task\ndirecting multi-tool sequence"]
+    B2 --> D
+    C1 --> D
+    C2 --> D
+    D --> E["Each individual tool call appears permitted"]
+    E --> F["Cumulative sequence achieves\nprohibited compound action:\n- Data exfiltration via chained reads\n- Permission escalation across tool chain\n- External API abuse via coordinated calls"]
 ```
+
+**Chain-breaking control**: Implement task-level intent verification: the Specialist MUST check that each tool invocation in a task sequence is consistent with the task's stated objective. Apply a budget on tool calls per task (maximum N calls); require re-authorization from the Orchestrator for task extensions.

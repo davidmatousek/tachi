@@ -1,31 +1,28 @@
-# Attack Tree: I-2 -- Internal State Leakage via Error Messages
+---
+finding_id: "I-2"
+risk_level: "Critical"
+component: "LLM Agent Orchestrator"
+generated: "2026-04-19"
+---
 
-| Field | Value |
-|-------|-------|
-| Finding ID | I-2 |
-| Component | LLM Agent Orchestrator |
-| Risk Level | High |
-| Threat | Internal State Leakage via Error Messages |
-| Correlation | None |
+# Attack Tree: I-2 — LLM Agent Orchestrator Context Window Leakage
 
 ```mermaid
-flowchart TD
-    I2_root["Extract internal topology from Orchestrator error messages"]
-    I2_or1{{"OR"}}
-    I2_leaf1["Trigger tool call failures to expose internal service details"]
-    I2_leaf2["Cause context retrieval errors to reveal KB schema"]
-    I2_leaf3["Induce model configuration errors exposing parameters"]
-
-    I2_root --> I2_or1
-    I2_or1 --> I2_leaf1
-    I2_or1 --> I2_leaf2
-    I2_or1 --> I2_leaf3
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class I2_root goal
-    class I2_or1 orGate
-    class I2_leaf1,I2_leaf2,I2_leaf3 leaf
+graph TD
+    GOAL["GOAL: Orchestrator leaks sensitive context\nwindow data in HTTPS response to User"]
+    GOAL --> A["OR"]
+    A --> B["Prompt injection causing context leakage"]
+    A --> C["Model hallucination producing\nsystem data in output"]
+    B --> B1["Direct prompt injection via User input\n[High / High]"]
+    B --> B2["Indirect injection via adversarial KB document\n[High / High]"]
+    C --> C1["Model reproduces system prompt\npreamble in response\n[Med / High]"]
+    C --> C2["Model includes KB document identifiers\nor tool metadata in response\n[Med / High]"]
+    B1 --> D["AND"]
+    B2 --> D
+    C1 --> D
+    C2 --> D
+    D --> E["No output scrubbing before\nHTTPS response transmission"]
+    E --> F["Sensitive data sent to User:\n- System prompt contents\n- KB document identifiers\n- Tool response metadata\n- Internal configuration"]
 ```
+
+**Chain-breaking control**: Implement output scrubbing on the Orchestrator's response before transmission to the User: detect and redact content pattern-matching against known sensitive-data markers. Apply a separate "response auditor" step that reviews the output before sending.

@@ -1,31 +1,26 @@
-# Attack Tree: R-3 -- Missing Decision Chain Audit Trail
+---
+finding_id: "R-3"
+risk_level: "Critical"
+component: "LLM Agent Orchestrator"
+generated: "2026-04-19"
+---
 
-| Field | Value |
-|-------|-------|
-| Finding ID | R-3 |
-| Component | LLM Agent Orchestrator |
-| Risk Level | High |
-| Threat | Missing Decision Chain Audit Trail |
-| Correlation | CG-3 (See also: AG-2) |
+# Attack Tree: R-3 — LLM Agent Orchestrator Action Repudiation
 
 ```mermaid
-flowchart TD
-    R3_root["Deny orchestrator actions due to missing decision audit trail"]
-    R3_or1{{"OR"}}
-    R3_leaf1["Tool calls lack originating user context in logs"]
-    R3_leaf2["Model reasoning trace not captured for decisions"]
-    R3_leaf3["Response attribution gaps prevent forensic reconstruction"]
-
-    R3_root --> R3_or1
-    R3_or1 --> R3_leaf1
-    R3_or1 --> R3_leaf2
-    R3_or1 --> R3_leaf3
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class R3_root goal
-    class R3_or1 orGate
-    class R3_leaf1,R3_leaf2,R3_leaf3 leaf
+graph TD
+    GOAL["GOAL: Orchestrator denies having issued\nspecific delegation or tool call actions"]
+    GOAL --> A["AND"]
+    A --> B["No per-action logging with content hashes"]
+    A --> C["No service key signatures on log entries"]
+    B --> B1["Delegation messages not logged\nbefore execution\n[High / High]"]
+    B --> B2["Tool call requests not logged\nwith content hash\n[High / High]"]
+    C --> C1["Log entries unsigned — not\nattributable to Orchestrator\n[High / High]"]
+    B1 --> D["Orchestrator executes undisclosed action"]
+    B2 --> D
+    C1 --> D
+    D --> E["Incident response cannot prove\nOrchestrator issued specific action"]
+    E --> F["Attacker or Orchestrator operator\ndenies unauthorized action occurred"]
 ```
+
+**Chain-breaking control**: Log every Orchestrator action with action type, content hash, session/request ID, monotonic sequence number, and service key signature. Actions MUST be logged before execution, not after.

@@ -1,45 +1,29 @@
-# Attack Tree: S-1 -- User Identity Spoofing via Token Replay
+---
+finding_id: "S-1"
+risk_level: "Critical"
+component: "User"
+generated: "2026-04-19"
+---
 
-| Field | Value |
-|-------|-------|
-| Finding ID | S-1 |
-| Component | User |
-| Risk Level | High |
-| Threat | User Identity Spoofing via Token Replay |
-| Correlation | None |
+# Attack Tree: S-1 — User Identity Spoofing
 
 ```mermaid
-flowchart TD
-    S1_root["Impersonate legitimate user to submit unauthorized prompts"]
-    S1_or1{{"OR"}}
-    S1_sub1["Replay stolen bearer token"]
-    S1_sub2["Forge new bearer token"]
-    S1_and1{{"AND"}}
-    S1_leaf1["Intercept token from network traffic or logs"]
-    S1_leaf2["Submit requests with stolen token before expiry"]
-    S1_and2{{"AND"}}
-    S1_leaf3["Extract signing key or exploit weak algorithm"]
-    S1_leaf4["Craft token with target user claims"]
-
-    S1_root --> S1_or1
-    S1_or1 --> S1_sub1
-    S1_or1 --> S1_sub2
-    S1_sub1 --> S1_and1
-    S1_and1 --> S1_leaf1
-    S1_and1 --> S1_leaf2
-    S1_sub2 --> S1_and2
-    S1_and2 --> S1_leaf3
-    S1_and2 --> S1_leaf4
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class S1_root goal
-    class S1_or1 orGate
-    class S1_and1,S1_and2 andGate
-    class S1_sub1,S1_sub2 subGoal
-    class S1_leaf1,S1_leaf2,S1_leaf3,S1_leaf4 leaf
+graph TD
+    GOAL["GOAL: Attacker impersonates legitimate user\nat User→Guardrails boundary"]
+    GOAL --> A["OR"]
+    A --> B["Replay stolen session token"]
+    A --> C["Forge identity credentials"]
+    B --> B1["Steal session token via XSS\n[High / High]"]
+    B --> B2["Intercept token in transit\n[Med / High]"]
+    B --> B3["Extract token from client storage\n[Med / High]"]
+    C --> C1["Obtain victim credentials via phishing\n[High / High]"]
+    C --> C2["Credential stuffing from breach data\n[Med / High]"]
+    B1 --> X["Bypass authentication at\nUser→Guardrails boundary"]
+    B2 --> X
+    B3 --> X
+    C1 --> X
+    C2 --> X
+    X --> Y["Access system under victim identity"]
 ```
+
+**Chain-breaking control**: Implement short-lived JWT tokens with binding to client IP/device fingerprint. Enforce MFA for all user sessions. Use token revocation lists and refresh-token rotation with binding checks.

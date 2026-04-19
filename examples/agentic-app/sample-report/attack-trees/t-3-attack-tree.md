@@ -1,49 +1,26 @@
-# Attack Tree: T-3 -- JSON-RPC Parameter Injection
+---
+finding_id: "T-3"
+risk_level: "Critical"
+component: "Specialist Agent"
+generated: "2026-04-19"
+---
 
-| Field | Value |
-|-------|-------|
-| Finding ID | T-3 |
-| Component | MCP Tool Server |
-| Risk Level | Critical |
-| Threat | JSON-RPC Parameter Injection |
-| Correlation | None |
+# Attack Tree: T-3 — Specialist Agent Delegation Message Tampering
 
 ```mermaid
-flowchart TD
-    T3_root["Inject malicious payloads into tool call parameters"]
-    T3_or1{{"OR"}}
-    T3_sub1["Tamper with parameters in transit"]
-    T3_sub2["Manipulate Orchestrator to generate malicious parameters"]
-    T3_and1{{"AND"}}
-    T3_leaf1["Intercept JSON-RPC message on network"]
-    T3_leaf2["Inject SQL or shell command fragments into parameters"]
-    T3_leaf3["Tool Server executes without schema validation"]
-    T3_and2{{"AND"}}
-    T3_leaf4["Achieve prompt injection against Orchestrator"]
-    T3_leaf5["Cause Orchestrator to produce tool calls with injected parameters"]
-    T3_leaf6["Tool Server trusts Orchestrator-sourced parameters"]
-
-    T3_root --> T3_or1
-    T3_or1 --> T3_sub1
-    T3_or1 --> T3_sub2
-    T3_sub1 --> T3_and1
-    T3_and1 --> T3_leaf1
-    T3_and1 --> T3_leaf2
-    T3_and1 --> T3_leaf3
-    T3_sub2 --> T3_and2
-    T3_and2 --> T3_leaf4
-    T3_and2 --> T3_leaf5
-    T3_and2 --> T3_leaf6
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class T3_root goal
-    class T3_or1 orGate
-    class T3_and1,T3_and2 andGate
-    class T3_sub1,T3_sub2 subGoal
-    class T3_leaf1,T3_leaf2,T3_leaf3,T3_leaf4,T3_leaf5,T3_leaf6 leaf
+graph TD
+    GOAL["GOAL: Redirect Specialist Agent actions\nvia tampered delegation message"]
+    GOAL --> A["AND"]
+    A --> B["Access to Inter-Agent Channel"]
+    A --> C["No message integrity verification at Specialist"]
+    B --> B1["Agent-in-the-middle on Channel queue\n[High / High]"]
+    B --> B2["Compromised process with Channel access\n[Med / High]"]
+    C --> C1["Specialist accepts delegation messages\nwithout HMAC verification\n[High / High]"]
+    B1 --> D["Modify Delegated Task payload:\n- Change tool call targets\n- Inject exfiltration URLs\n- Redirect specialist actions"]
+    B2 --> D
+    C1 --> D
+    D --> E["Specialist executes attacker-directed\ntask sequence"]
+    E --> F["Data exfiltration or unauthorized\ntool invocations"]
 ```
+
+**Chain-breaking control**: Validate and sanitize all task payloads received by the Specialist Agent before execution. Apply message integrity verification (HMAC or digital signature) on every received delegation message. Reject tasks containing unexpected structural patterns.

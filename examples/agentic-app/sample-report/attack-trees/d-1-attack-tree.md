@@ -1,49 +1,27 @@
-# Attack Tree: D-1 -- Guardrails Service Resource Exhaustion
+---
+finding_id: "D-1"
+risk_level: "Critical"
+component: "Guardrails Service"
+generated: "2026-04-19"
+---
 
-| Field | Value |
-|-------|-------|
-| Finding ID | D-1 |
-| Component | Guardrails Service |
-| Risk Level | Critical |
-| Threat | Guardrails Service Resource Exhaustion |
-| Correlation | None |
+# Attack Tree: D-1 — Guardrails Service Resource Exhaustion
 
 ```mermaid
-flowchart TD
-    D1_root["Exhaust Guardrails Service CPU to block all prompt processing"]
-    D1_or1{{"OR"}}
-    D1_sub1["Exploit ReDoS-vulnerable regex patterns"]
-    D1_sub2["Flood with high-volume requests"]
-    D1_and1{{"AND"}}
-    D1_leaf1["Identify regex patterns used in content filtering"]
-    D1_leaf2["Craft input triggering catastrophic backtracking"]
-    D1_leaf3["Submit sufficient volume to saturate all workers"]
-    D1_and2{{"AND"}}
-    D1_leaf4["Generate automated high-volume request stream"]
-    D1_leaf5["Bypass any client-side rate controls"]
-    D1_leaf6["Sustain flood until service degradation occurs"]
-
-    D1_root --> D1_or1
-    D1_or1 --> D1_sub1
-    D1_or1 --> D1_sub2
-    D1_sub1 --> D1_and1
-    D1_and1 --> D1_leaf1
-    D1_and1 --> D1_leaf2
-    D1_and1 --> D1_leaf3
-    D1_sub2 --> D1_and2
-    D1_and2 --> D1_leaf4
-    D1_and2 --> D1_leaf5
-    D1_and2 --> D1_leaf6
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class D1_root goal
-    class D1_or1 orGate
-    class D1_and1,D1_and2 andGate
-    class D1_sub1,D1_sub2 subGoal
-    class D1_leaf1,D1_leaf2,D1_leaf3,D1_leaf4,D1_leaf5,D1_leaf6 leaf
+graph TD
+    GOAL["GOAL: Exhaust Guardrails Service resources\nto collapse the filtering pipeline"]
+    GOAL --> A["AND"]
+    A --> B["No per-IP/session rate limiting before Guardrails"]
+    A --> C["No computational complexity budget per prompt"]
+    B --> B1["Attacker submits high-volume prompt requests\n[High / High]"]
+    C --> C1["Adversarially crafted prompts maximize\nregex evaluation cost\n[High / High]"]
+    B1 --> D["High-rate complex prompt storm\nreaches Guardrails Service"]
+    C1 --> D
+    D --> E["OR"]
+    E --> E1["Guardrails Service CPU exhaustion\nand crash"]
+    E --> E2["Guardrails Service response latency\nexceeds SLA — timeout cascade"]
+    E1 --> F["Guardrails unavailable — pipeline blocked\nor prompts bypass filtering"]
+    E2 --> F
 ```
+
+**Chain-breaking control**: Implement per-IP and per-session rate limiting at the network ingress (before the Guardrails Service). Apply a computational complexity budget per prompt evaluation; reject prompts that exceed the budget. Use asynchronous processing queues with backpressure.

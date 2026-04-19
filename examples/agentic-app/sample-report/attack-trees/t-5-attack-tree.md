@@ -1,31 +1,30 @@
-# Attack Tree: T-5 -- Audit Log Tampering
+---
+finding_id: "T-5"
+risk_level: "Critical"
+component: "MCP Tool Server"
+generated: "2026-04-19"
+---
 
-| Field | Value |
-|-------|-------|
-| Finding ID | T-5 |
-| Component | Audit Logger |
-| Risk Level | High |
-| Threat | Audit Log Tampering |
-| Correlation | None |
+# Attack Tree: T-5 — MCP Tool Server Parameter Injection
 
 ```mermaid
-flowchart TD
-    T5_root["Modify or delete audit logs to cover attack evidence"]
-    T5_or1{{"OR"}}
-    T5_leaf1["Exploit application write access to log store"]
-    T5_leaf2["Access log database with shared credentials"]
-    T5_leaf3["Exploit log rotation to delete entries before retention"]
-
-    T5_root --> T5_or1
-    T5_or1 --> T5_leaf1
-    T5_or1 --> T5_leaf2
-    T5_or1 --> T5_leaf3
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class T5_root goal
-    class T5_or1 orGate
-    class T5_leaf1,T5_leaf2,T5_leaf3 leaf
+graph TD
+    GOAL["GOAL: Inject malicious tool call parameters\nvia LLM-generated JSON-RPC output"]
+    GOAL --> A["OR"]
+    A --> B["Influence Orchestrator LLM output"]
+    A --> C["Influence Specialist Agent LLM output"]
+    B --> B1["Prompt injection into Orchestrator\n[High / High]"]
+    B --> B2["Adversarial KB documents in context\n[Med / High]"]
+    C --> C1["Prompt injection via delegation message\n[High / High]"]
+    B1 --> D["Attacker-controlled JSON-RPC\ntool call parameters generated"]
+    B2 --> D
+    C1 --> D
+    D --> D1["Tool name injection: call unintended tool"]
+    D --> D2["Parameter injection: shell metacharacters\nor SQL fragments in arguments"]
+    D1 --> E["AND"]
+    D2 --> E
+    E --> F["No parameter allowlist validation\nat Tool Server"]
+    F --> G["Tool Server executes malicious\ntool invocation with service credentials"]
 ```
+
+**Chain-breaking control**: Implement strict parameter validation on all JSON-RPC tool invocations: validate parameter types, enforce allowlisted values for enumerable parameters, and reject any request containing metacharacters or unexpected structural elements.

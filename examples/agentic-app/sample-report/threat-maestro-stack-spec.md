@@ -1,82 +1,67 @@
 ---
 schema_version: "1.0"
 template: "maestro-stack"
-date: "2026-04-10"
-source_file: "compensating-controls.md"
-finding_count: 22
-image_generated: false
+date: "2026-04-19"
+source_file: "threats.md"
+data_source_type: "threats"
+finding_count: 69
+image_generated: true
+project_name: "Agentic AI Application"
+fallback_note: "Extraction ran against threats.md (Tier 3 fallback); score numbers inlined from compensating-controls.md + risk-scores.md Executive Summary due to parser heading-format mismatch against current compensating-controls.md schema"
 ---
+
+# Threat Infographic Specification — MAESTRO Stack
 
 ## 1. Metadata
 
-| Field | Value |
-|-------|-------|
-| Project Name | Agentic AI Application |
-| Scan Date | 2026-04-10 |
-| Analysis Agents | 8 (S, T, R, I, D, E, AG, LLM) |
-| Total Findings | 22 |
-| Risk Posture | Residual risk — 0 Critical and 10 High findings across 7 components |
+- **Project**: Agentic AI Application
+- **Scan Date**: 2026-04-19
+- **Total Findings**: 69
+- **MAESTRO Layers Populated**: 6/7 (L4 empty)
 
 ## 2. Risk Distribution
 
 | Severity | Count | Percentage | Color |
 |----------|-------|------------|-------|
-| Critical | 0 | 0.0% | #DC2626 |
-| High | 10 | 45.0% | #EA580C |
-| Medium | 12 | 55.0% | #CA8A04 |
-| Low | 0 | 0.0% | #2563EB |
-| **Total** | **22** | **100%** | -- |
+| Critical | 38 | 55% | #DC2626 |
+| High | 23 | 33% | #EA580C |
+| Medium | 6 | 9% | #CA8A04 |
+| Low | 2 | 3% | #2563EB |
 
-**Chart Format**: Suitable for donut chart (proportional segments) or horizontal bar chart (comparative lengths).
+## 3. Coverage Heat Map
 
-## 3. MAESTRO Layer Breakdown
+| Component | Critical | High | Medium | Low | Total |
+|-----------|---------:|-----:|-------:|----:|------:|
+| LLM Agent Orchestrator | 15 | 3 | 1 | 0 | 19 |
+| Specialist Agent | 4 | 6 | 0 | 0 | 10 |
+| Long-Running Learning Loop | 5 | 3 | 1 | 0 | 9 |
+| MCP Tool Server | 5 | 3 | 0 | 0 | 8 |
+| Inter-Agent Communication Channel | 5 | 1 | 0 | 1 | 7 |
+| Guardrails Service | 2 | 2 | 2 | 0 | 6 |
+| Audit Logger | 1 | 2 | 0 | 0 | 3 |
+| Other | 1 | 3 | 2 | 1 | 7 |
 
-_No MAESTRO layer data in source file._
+## 4. Top Findings by Layer
 
-## 4. Top Critical Findings
+**Most-exposed layer**: L1 Foundation Model (LLM Agent Orchestrator, 15C+3H) — includes all 3 Feature 201 OI findings.
 
-| # | Finding ID | Component | Threat | Risk Level |
-|---|-----------|-----------|--------|------------|
-| 1 | LLM-1 | LLM Agent Orchestrator | Indirect prompt injection via documents retrieved from the … | High |
-| 2 | AG-4 | MCP Tool Server | Compromised or manipulated agent triggers excessive tool in… | High |
-| 3 | E-2 | Guardrails Service | Attacker bypasses guardrails validation through prompt obfu… | High |
-| 4 | E-1 | LLM Agent Orchestrator | Orchestrator escalates its own tool permissions beyond the … | High |
-| 5 | LLM-3 | LLM Agent Orchestrator | Attacker crafts prompts that cause the LLM to generate tool… | High |
+| Layer | Components | Critical | High |
+|-------|------------|---------:|-----:|
+| L7 — Agent Ecosystem | User | 1 | 0 |
+| L6 — Security and Compliance | Guardrails Service | 2 | 2 |
+| L5 — Evaluation and Observability | Audit Logger | 1 | 2 |
+| L4 — Deployment Infrastructure | — | 0 | 0 |
+| L3 — Agent Framework | MCP Tool Server | 5 | 3 |
+| L2 — Data Operations | Knowledge Base | 0 | 2 |
+| L1 — Foundation Model | LLM Agent Orchestrator | 15 | 3 |
 
-## 5. Architecture Threat Overlay
+## 5. Template-Specific Format — MAESTRO Stack
 
-| Component | Risk Weight | Finding Count | Annotation |
-|-----------|-------------|---------------|------------|
-| LLM Agent Orchestrator | High | 10 | Central coordination hub dispatching LLM inference, tool calls, and knowledge retrieval. Concentrates the majority of findings as the primary target for spoofing, tampering, information disclosure, privilege escalation, and AI-specific (LLM + agentic) threats. |
-| MCP Tool Server | Medium-High | 4 | Executes tool calls on behalf of the orchestrator. Exposed to prompt-driven parameter manipulation, unauthorized tool invocation, resource exhaustion, and scope-crossing agentic actions. |
-| Guardrails Service | Medium-High | 2 | Entry-point input filter screening user prompts. High-severity denial-of-service and privilege-escalation findings reflect its position as the first attacker-facing component in the application zone. |
-| Knowledge Base | Medium | 2 | Vector store providing RAG context. Data integrity (embedding poisoning) and confidentiality (embedding reversal) findings reflect its role as the indirect prompt injection attack surface. |
-| User | Medium-High | 2 | External entity submitting prompts. Spoofing (token replay) and repudiation (insufficient session attribution) findings reflect identity-boundary risks. |
-| Audit Logger | Medium | 1 | Centralized observability and forensics store (MAESTRO L5). Tampering findings reflect accountability risks if log integrity is not cryptographically chained. |
-| External API | Medium-High | 1 | Third-party service reached through the tool server. Spoofing findings reflect response-integrity risks at the trust-zone boundary. |
+7-layer vertical stack (L7 top, L1 bottom). L1 rendered as the most-exposed band in deep red, carrying a red-bordered callout box naming Feature 201 OI-1 (XSS, Critical), OI-2 (Server-Exec, Critical), OI-3 (SSRF, High) — OWASP LLM05:2025.
 
 ## 6. Visual Design Directives
 
-**Format**: Portrait orientation (2:3 aspect ratio), print-ready at 300 DPI, 2480 x 3508 px minimum.
-
-**Color System**:
-- Critical: `#DC2626` (deep red) — urgent action required
-- High: `#EA580C` (orange-red) — priority remediation
-- Medium: `#CA8A04` (gold) — scheduled remediation
-- Low: `#2563EB` (blue) — backlog/monitor
-- Background: light gray `#F5F5F5` with white panels `#FFFFFF`
-- Headers: dark navy `#1E293B`
-- Accent lines: medium gray `#64748B`
-
-**Layout**:
-- Top banner (12% height): project name, scan date, total findings
-- MAESTRO seven-layer stack diagram (70% height, centered): horizontal bars representing L1-L7, stacked vertically with L1 at bottom and L7 at top
-- Per-layer finding count badge (colored by max severity in the layer)
-- Layer descriptions on the right side
-- Bottom panel (18% height): legend + unclassified bucket if present
-
-**Typography**: Same as baseball-card. Layer labels in 16pt bold; finding counts in 14pt; layer descriptions in 10pt.
-
-**Visual Style**: Stack diagram with canonical CSA MAESTRO layer naming (L5 Evaluation and Observability, L6 Security and Compliance, L7 Agent Ecosystem). Each layer bar colored by highest-severity finding in that layer.
-
-**Prompt Hint (Gemini)**: Generate a print-quality infographic using the layout above. Emphasize canonical MAESTRO layer naming — use ONLY the canonical CSA MAESTRO layer names: L5 Evaluation and Observability, L6 Security and Compliance, L7 Agent Ecosystem.
+- **Orientation**: Portrait 9:16
+- **Background**: Dark navy gradient
+- **Layer band colors**: Tint by highest-severity finding in layer (L1 deepest red)
+- **F-201 callout**: Red-bordered box attached to L1 band with OI-1/OI-2/OI-3 listing

@@ -1,39 +1,31 @@
-# Attack Tree: AG-4 -- Capability Escalation via Tool Chaining
+---
+finding_id: "AG-4"
+risk_level: "Critical"
+component: "Inter-Agent Communication Channel"
+generated: "2026-04-19"
+---
 
-| Field | Value |
-|-------|-------|
-| Finding ID | AG-4 |
-| Component | MCP Tool Server |
-| Risk Level | High |
-| Threat | Capability Escalation via Tool Chaining |
-| Correlation | CG-4 (See also: D-3) |
+# Attack Tree: AG-4 — Inter-Agent Channel Agent-in-the-Middle Attack
 
 ```mermaid
-flowchart TD
-    AG4_root["Achieve data exfiltration via tool call chaining"]
-    AG4_and1{{"AND"}}
-    AG4_sub1["Execute data retrieval tool"]
-    AG4_sub2["Execute data export tool"]
-    AG4_sub3["Execute network send tool"]
-    AG4_leaf1["Query database via authorized read tool"]
-    AG4_leaf2["Write results to file via authorized export tool"]
-    AG4_leaf3["Transmit file externally via authorized network tool"]
-
-    AG4_root --> AG4_and1
-    AG4_and1 --> AG4_sub1
-    AG4_and1 --> AG4_sub2
-    AG4_and1 --> AG4_sub3
-    AG4_sub1 --> AG4_leaf1
-    AG4_sub2 --> AG4_leaf2
-    AG4_sub3 --> AG4_leaf3
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
-    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class AG4_root goal
-    class AG4_and1 andGate
-    class AG4_sub1,AG4_sub2,AG4_sub3 subGoal
-    class AG4_leaf1,AG4_leaf2,AG4_leaf3 leaf
+graph TD
+    GOAL["GOAL: Attacker intercepts and modifies\ndelegation messages in the Channel"]
+    GOAL --> A["AND"]
+    A --> B["Access to Channel message routing layer"]
+    A --> C["No end-to-end message authentication"]
+    B --> B1["Compromised process with Channel access\n[Med / High]"]
+    B --> B2["Channel infrastructure vulnerability\n[Med / High]"]
+    C --> C1["Orchestrator does not sign\ndelegation messages\n[High / High]"]
+    C --> C2["Specialist does not verify\nmessage signature before processing\n[High / High]"]
+    C --> C3["No replay detection (monotonic\ncounters, timestamps)\n[High / High]"]
+    B1 --> D["Intercept delegation message in transit"]
+    B2 --> D
+    C1 --> D
+    C2 --> D
+    C3 --> D
+    D --> E["Modify task parameters:\n- Replace tool targets with attacker-controlled\n- Modify resource identifiers\n- Inject unauthorized instructions"]
+    E --> F["Forward modified message to Specialist"]
+    F --> G["Specialist executes unauthorized actions\nbelieving instructions are from Orchestrator"]
 ```
+
+**Chain-breaking control**: Implement end-to-end message authentication with digital signatures (Orchestrator signs, Specialist verifies). The Channel itself MUST NOT be trusted for integrity. Implement replay detection (monotonic message counters, timestamp windows).
