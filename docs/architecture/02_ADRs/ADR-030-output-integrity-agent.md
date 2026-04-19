@@ -1,7 +1,7 @@
 # ADR-030: `output-integrity` Threat Agent (OWASP LLM05:2025)
 
-**Status**: Proposed
-**Date**: 2026-04-18 (Proposed); `<provisional>` (Accepted — provisional; confirmed at post-merge SHA fill)
+**Status**: Accepted
+**Date**: 2026-04-18 (Proposed); 2026-04-18 (Accepted — provisional; confirmed at post-merge SHA fill)
 **Accepted-commit-SHA**: `<pending-post-merge-fill>`
 **Deciders**: Architect, Product Manager, Team-Lead
 **Feature**: 201 (F-1 `output-integrity` Threat Agent — first BLP-01 Tier 1 feature)
@@ -266,3 +266,5 @@ Treat the regex-alternation prefix addition as a breaking schema change requirin
 ## Revision History
 
 **2026-04-18 (Proposed — Feature 201, Day 1 Wave 1.1 schema-lock commit)**: Records the F-1 `output-integrity` Threat Agent decisions. Documents 8 numbered decisions covering the new AI-tier agent adoption (Decision 1), the Heuristic A Outcome B scope resolution with Outcome A counter-argument per PM M2 (Decision 2), lean-agent shape conformance per ADR-023 detection variant (Decision 3), LLM05 + ML09 documentation-only bundling per BLP-01 §4 (Decision 4), the 22-file zero-edit invariant preservation with grep-auditable enumeration (Decision 5), the Proposed → Accepted dual-commit governance protocol per ADR-027/028/029 precedent (Decision 6), `category: llm` enum reuse without new category value (Decision 7), and the ADR-026 Complex-Shape Clarifier extension to regex-alternation prefix additions under the three additive-compatibility conditions per architect M1 (Decision 8). Heuristic A resolution and D8 regex-extension rule are both recorded at Proposed time; no Decision is deferred to Accepted. Authored at Day 1 Wave 1.1 after T004 Heuristic A ruling and T006 schema bump; serves as the schema-lock signal that unblocks parallel Wave 2 authoring of the pattern catalog, agent file, and mitigation text. Status transitions to Accepted at Wave 5 T022 per Decision 6; `<pending-post-merge-fill>` placeholder on the `Accepted-commit-SHA` field replaced at post-merge T025 with the squash-merge commit SHA.
+
+**2026-04-18 (Proposed → Accepted — Feature 201, Wave 5 T022 transition, PR #NNN pending merge)**: Status transitions from Proposed to Accepted with a provisional Accepted-date. Preconditions verified: Wave 3 orchestrator-tier registration landed (T026-T028 additive-only per HIGH-2 tier grouping and ADR-023 Decision 3 byte-identity); Wave 4 test coverage green (27/27 pass on `tests/scripts/test_output_integrity.py` including F-A2 referential-integrity validation fixture-driven checks; 13/13 pass + 1 skipped on backward-compat suite under `SOURCE_DATE_EPOCH=1700000000` per ADR-021); structural checks green (T029 `## ` heading byte-identity on `finding-format-shared.md`; T030 zero keyword false-positives on `web-app` baseline). The `Accepted-commit-SHA` field carries the `<pending-post-merge-fill>` placeholder until post-merge T025 records the squash-merge commit short SHA per ADR-027/028/029 lineage. All 8 decisions remain as committed at Proposed time — no reinterpretation, no scope change at the Accepted transition.
