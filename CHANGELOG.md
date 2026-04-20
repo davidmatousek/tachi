@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.20.0](https://github.com/davidmatousek/tachi/compare/v4.19.0...v4.20.0) (2026-04-20)
+
+
+### Features
+
+* update template from AOD-kit (first F129 run) ([a36a73f](https://github.com/davidmatousek/tachi/commit/a36a73fc28a367047c1eabb2860ba83c60a83e5d))
+
 ## [4.19.0](https://github.com/davidmatousek/tachi/compare/v4.18.1...v4.19.0) (2026-04-19)
 
 
