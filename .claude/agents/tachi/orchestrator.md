@@ -43,6 +43,7 @@ references:
       - agent-autonomy.md
       - tool-abuse.md
       - output-integrity.md
+      - misinformation.md
     report: threat-report.md
 ```
 
@@ -293,7 +294,7 @@ The orchestrator supports two dispatch modes. Both produce identical output -- t
 
 **Parallel Mode**: Determine all dispatch targets, produce the dispatch table, invoke all applicable agents concurrently, collect all results before proceeding to Phase 3.
 
-**Sequential Mode**: Same preparation, but invoke agents one at a time in category order: S, T, R, I, D, E, AG (agent-autonomy then tool-abuse), LLM (prompt-injection then data-poisoning then model-theft). Collect findings from each agent before invoking the next.
+**Sequential Mode**: Same preparation, but invoke agents one at a time in category order: S, T, R, I, D, E, AG (agent-autonomy then tool-abuse), LLM (prompt-injection then data-poisoning then model-theft then output-integrity then misinformation). Collect findings from each agent before invoking the next.
 
 Platform-specific dispatch adapters that bind these protocols to concrete invocation mechanisms are out of scope for this orchestrator.
 
@@ -367,7 +368,7 @@ Assemble 2 AI threat tables for Section 4 of the output.
 | Output Table | ID Prefix | Source Agents |
 |--------------|-----------|---------------|
 | Agentic Threats (AG) | AG | agent-autonomy, tool-abuse |
-| LLM Threats (LLM) | LLM | prompt-injection, data-poisoning, model-theft |
+| LLM Threats (LLM) | LLM | prompt-injection, data-poisoning, model-theft, output-integrity, misinformation |
 
 AI table rows include an additional OWASP Reference field compared to STRIDE tables. For each table: (1) collect findings from source agents, (2) validate risk levels, (3) assign sequential IDs ordered by agent then by component appearance, (4) **inherit MAESTRO layer** -- same inheritance logic as STRIDE tables: look up each finding's component in the Phase 1 inventory and copy the MAESTRO layer value, defaulting to `"Unclassified"` if not found, (5) populate rows including the MAESTRO Layer column per the output schemas reference. If no AI agents were dispatched, include both table headers with a note: "No AI-related components were identified in the architecture input."
 
@@ -574,7 +575,7 @@ This phase is governed by [ADR-026](../../../docs/architecture/02_ADRs/ADR-026-p
 ### Independence Invariants
 
 - **vs. Phase 3.5 (Feature 141)**: Phase 3.6 runs AFTER cross-layer chain correlation and does NOT read, modify, or depend on `attack-chains.md`. Pattern membership and chain membership are independent grouping mechanisms — a finding may appear in both a Phase 3.5 attack chain AND a Phase 3.6 agentic pattern without conflict. This invariant is FR-008 from the Feature 142 spec.
-- **vs. the 11 detection agents** (6 STRIDE + 5 AI): Phase 3.6 reads the deduplicated finding IR but does NOT invoke or modify any threat-detection agent. The zero-edit invariant on the 11 agents is the foundation of ADR-026 Option C (Hybrid Post-Hoc Synthesis) and protects the Feature 082 stabilization.
+- **vs. the 13 detection agents** (6 STRIDE + 7 AI): Phase 3.6 reads the deduplicated finding IR but does NOT invoke or modify any threat-detection agent. The zero-edit invariant on the 13 agents is the foundation of ADR-026 Option C (Hybrid Post-Hoc Synthesis) and protects the Feature 082 stabilization.
 - **vs. Section 4a intra-component correlation**: Pattern is a finding-level field; Section 4a is a presentation-time grouping mechanism. The two are orthogonal and may co-occur on the same finding.
 - **vs. MAESTRO layer (Feature 084/136)**: Pattern is independent of `maestro_layer` — a finding with `maestro_layer: Unclassified` MAY still receive a non-`none` pattern if the multi-agent gate predicate is satisfied at the architecture level.
 

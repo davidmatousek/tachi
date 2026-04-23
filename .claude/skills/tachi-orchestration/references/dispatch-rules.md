@@ -72,8 +72,11 @@ LLM dispatch triggers these agents:
 - `data-poisoning` (OWASP LLM03:2025)
 - `model-theft` (OWASP LLM10:2025)
 - `output-integrity` (OWASP LLM05:2025) — see emission activation rule below
+- `misinformation` (OWASP LLM09:2025) — see emission activation rule below
 
 **`output-integrity` emission activation rule (FR-011)**: `output-integrity` is dispatched on any LLM keyword match (same trigger logic as the other three LLM agents). However, unlike the other three, `output-integrity` enforces a two-part emission gate internally: the agent MUST only emit an `OI-{N}` finding when BOTH (a) the dispatched Process matches an LLM keyword AND (b) at least one output Data Flow from that Process lands in a component performing execution. Execution-sink indicators include: browser rendering (`rendered HTML`, `model output to browser`), SQL execution (`model output to SQL`, `LLM-generated query`), shell/command execution (`command construction`), template rendering (`template engine`), URL fetch (`outbound HTTP from agent`, `LLM-synthesized URL`), and file write (`file path from model`). If an LLM keyword matches but no execution sink is structurally present in the architecture, the agent MUST emit zero findings for that component per FR-011 — dispatch still happens, but the agent self-gates emission to prevent false positives on LLM components whose output is consumed only as human-facing text.
+
+**`misinformation` emission activation rule (FR-011)**: `misinformation` is dispatched on any LLM keyword match (same trigger logic as the other four LLM agents). However, unlike `prompt-injection` / `data-poisoning` / `model-theft` (and distinct from `output-integrity`'s execution-sink gate), `misinformation` enforces a factual-output two-part emission gate internally: the agent MUST only emit an `MI-{N}` finding when BOTH (a) the dispatched Process matches an LLM keyword AND (b) at least one misinformation trigger keyword is structurally present in the architecture near that Process — `factual output`, `citation generation`, `recommendation engine`, `decision support`, `\bRAG\b` (word-boundary match — literal token `RAG`, NOT the substring `stoRAGe`, per `detection-patterns.md` Detection Scope and T012 FP dry-run finding), `grounding`, `hallucination`, `advisory`, `medical`, `legal`, `financial`, `clinical`. If an LLM keyword matches but no factual-output indicator is structurally present, the agent MUST emit zero findings for that component per FR-011 — dispatch still happens, but the agent self-gates emission to prevent false positives on purely stylistic LLM output whose content is not factual-emission.
 
 **AG keywords** — when any of the following keywords are found in a component's name or description, dispatch the AG (Agentic) threat agents:
 
@@ -100,11 +103,11 @@ AG dispatch triggers these agents:
 When a component matches keywords from **both** the LLM and AG categories, both agent categories are dispatched. This is called dual-dispatch.
 
 **Example**: A component named "LLM Agent Orchestrator" matches:
-- `"LLM"` --> LLM agents dispatched (prompt-injection, data-poisoning, model-theft)
+- `"LLM"` --> LLM agents dispatched (prompt-injection, data-poisoning, model-theft, output-integrity, misinformation)
 - `"agent"` --> AG agents dispatched (agent-autonomy, tool-abuse)
 - `"orchestrator"` --> AG agents dispatched (already included from "agent" match — no duplicate dispatch)
 
-The component receives its STRIDE categories (based on DFD type) plus all 5 AI agents.
+The component receives its STRIDE categories (based on DFD type) plus all 7 AI agents.
 
 ### Ambiguity Note
 
@@ -117,7 +120,7 @@ AI findings produced by the dispatched agents are grouped into 2 output tables:
 | Output Table | Agents | Reference Standards |
 |--------------|--------|---------------------|
 | AG (Agentic Threats) | agent-autonomy, tool-abuse | OWASP Agentic Top 10, MCP Top 10 |
-| LLM (LLM Threats) | prompt-injection, data-poisoning, model-theft | OWASP LLM Top 10 v2025 |
+| LLM (LLM Threats) | prompt-injection, data-poisoning, model-theft, output-integrity, misinformation | OWASP LLM Top 10 v2025 |
 
 ---
 
@@ -141,20 +144,20 @@ Label this section clearly:
 - **MAESTRO Layer**: The CSA MAESTRO architectural layer classification assigned during Phase 1 (e.g., "L3 — Agent Framework"). Set to "Unclassified" if no layer keywords matched. See `.claude/skills/tachi-shared/references/maestro-layers-shared.md` for the layer taxonomy and classification algorithm.
 - **STRIDE Categories**: Comma-separated list of applicable STRIDE categories based on DFD type (e.g., "S, R" for External Entity).
 - **AI Categories**: Comma-separated list of applicable AI categories based on keyword matching (e.g., "LLM, AG" for dual-dispatch). Use "—" if no AI keywords matched.
-- **Total Agents**: The total count of individual agents to be dispatched for this component. Count each STRIDE category as 1 agent and each AI agent individually (AG = 2 agents: agent-autonomy + tool-abuse; LLM = 3 agents: prompt-injection + data-poisoning + model-theft).
+- **Total Agents**: The total count of individual agents to be dispatched for this component. Count each STRIDE category as 1 agent and each AI agent individually (AG = 2 agents: agent-autonomy + tool-abuse; LLM = 5 agents: prompt-injection + data-poisoning + model-theft + output-integrity + misinformation).
 
 ### Example Rows
 
 | Component | DFD Type | MAESTRO Layer | STRIDE Categories | AI Categories | Total Agents |
 |-----------|----------|---------------|-------------------|---------------|--------------|
-| LLM Agent Orchestrator | Process | L3 — Agent Framework | S, T, R, I, D, E | LLM, AG | 11 |
+| LLM Agent Orchestrator | Process | L3 — Agent Framework | S, T, R, I, D, E | LLM, AG | 13 |
 | MCP Tool Server | Process | L3 — Agent Framework | S, T, R, I, D, E | AG | 8 |
 | User | External Entity | L7 — Agent Ecosystem | S, R | — | 2 |
 | Knowledge Base | Data Store | L2 — Data Operations | T, I, D | — | 3 |
 | External API | External Entity | Unclassified | S, R | — | 2 |
 
 In this example:
-- "LLM Agent Orchestrator" is a Process (6 STRIDE agents) with dual-dispatch (3 LLM + 2 AG agents) = 11 total. Classified as L3 (Agent Framework) due to "orchestrator" keyword.
+- "LLM Agent Orchestrator" is a Process (6 STRIDE agents) with dual-dispatch (5 LLM + 2 AG agents) = 13 total. Classified as L3 (Agent Framework) due to "orchestrator" keyword.
 - "MCP Tool Server" is a Process (6 STRIDE agents) with AG dispatch (2 AG agents) = 8 total. Classified as L3 due to "MCP server" keyword.
 - "User" is an External Entity (2 STRIDE agents) with no AI match = 2 total. Classified as L7 (Agent Ecosystem) due to the `user` keyword matching human-agent interaction scope.
 - "Knowledge Base" is a Data Store (3 STRIDE agents) with no AI match = 3 total. Classified as L2 due to "knowledge base" keyword.
@@ -365,7 +368,7 @@ Phase 3.6 produces:
 Phase 3.6 preserves three independence invariants:
 
 1. **Does NOT modify or extend `attack-chains.md`** (FR-008) — the Phase 3.5 aggregate artifact is unchanged. Pattern data lives on the finding IR, not in the chain artifact. Pattern grouping and cross-layer chain grouping are independent mechanisms: a finding may participate in both without conflict.
-2. **Does NOT invoke or modify any of the 11 detection agents** (zero-edit invariant per ADR-026) — the 6 STRIDE agents and 5 AI agents remain byte-identical. Phase 3.6 reads the deduplicated finding IR but does not reopen the Feature 082 stabilization.
+2. **Does NOT invoke or modify any of the 13 detection agents** (zero-edit invariant per ADR-026) — the 6 STRIDE agents and 7 AI agents remain byte-identical. Phase 3.6 reads the deduplicated finding IR but does not reopen the Feature 082 stabilization.
 3. **Independent from Phase 3 Section 4a intra-component correlation** — pattern field is finding-level metadata; Section 4a is a presentation-time grouping mechanism. They are orthogonal and a finding may appear in both without conflict.
 
 ### Determinism

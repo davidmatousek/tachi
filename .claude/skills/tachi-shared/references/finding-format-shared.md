@@ -17,6 +17,7 @@ consumers:
   - agent-autonomy
   - tool-abuse
   - output-integrity
+  - misinformation
   - risk-scorer
 ---
 
