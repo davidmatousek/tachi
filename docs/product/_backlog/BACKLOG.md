@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-04-20T14:54:00Z.
+> Auto-generated from GitHub Issues on 2026-04-23T22:22:44Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -14,7 +14,6 @@
 | #69 | Expand example datasets for broader test coverage | — | — | 2026-04-12 |
 | #62 | Custom brand presets — user-definable brand identity via config file | | Dimension | Score | Rationale | | — | 2026-04-12 |
 | #55 | Feature: Security Progression Summary — multi-run trend comparison over time | | Dimension | Score | Rationale | | - Market research: no threat modeling tool provides multi... | 2026-03-28 |
-| #46 | Sync upstream AOD Kit — merge new skills, commands, rules, and guides | — | — | 2026-04-04 |
 
 ## Define
 
@@ -52,6 +51,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #206 | F-2 — LLM09 Misinformation Detection [Tier 1] | OPEN | 2026-04-23 |
 | #198 | F-B source_attribution invisible at Tier 1 and Tier 2 (cc/rs findings) | CLOSED | 2026-04-18 |
 | #186 | F-A1.3 follow-on: MITRE ATT&CK + ATLAS catalog expansion | OPEN | 2026-04-17 |
 | #185 | F-A1.2 follow-on: cwe.yaml expansion — add CWE records discovered in T029 drift analysis | OPEN | 2026-04-17 |
