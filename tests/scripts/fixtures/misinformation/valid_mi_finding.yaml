@@ -1,0 +1,45 @@
+# Valid MI-{N} finding fixture — Feature 206 (misinformation threat agent, F-2)
+#
+# Exercises the F-A2 source_attribution contract with two valid catalog
+# citations:
+#   1. owasp:LLM09 (primary)   — present in schemas/taxonomy/owasp.yaml
+#   2. cwe:CWE-345 (related)   — present in schemas/taxonomy/cwe.yaml
+#
+# Test surface: test_misinformation.py::TestMisinformationSourceAttribution
+#   - test_valid_fixture_parses
+#
+# Fixture conforms to schema 1.7 (post-T006 bump adding MI prefix to
+# id.pattern regex alternation per ADR-030 Decision 8 — 2nd recorded
+# application). F-1 precedent: tests/scripts/fixtures/output_integrity/
+# valid_oi_finding.yaml shipped at schema 1.6 bump time with the same
+# pattern.
+#
+# The finding models Pattern Category 1 (Ungrounded Factual Emission) per
+# specs/206-misinformation-threat-agent/data-model.md §3:
+#   - LLM Process emits factual clinical claims without declared RAG
+#     grounding mechanism
+#   - Sub-class: factual-emission (per FR-017 sub-class disambiguation)
+#   - Mitigation names a SPECIFIC grounding/verification mechanism per
+#     finding-contract.md §Mitigation Field invariants (not generic
+#     "ground the LLM")
+#
+# Fictional framing per NFR-6: "(fictional example)" appended to title;
+# component named generically ("LLM Clinical Summarizer") with no real
+# institutional, clinician, or patient identity.
+
+id: MI-1
+category: llm
+severity: high
+component: "LLM Clinical Summarizer"
+threat: "Ungrounded clinical recommendation from LLM summarizer (fictional example): the Process component produces clinical summaries containing factual claims (diagnoses, treatment recommendations, drug-interaction warnings) without a declared RAG grounding mechanism or per-claim source attribution. Per OWASP LLM09:2025 factual-emission sub-class, ungrounded output in high-stakes clinical contexts presents material misinformation risk: downstream consumers (clinicians, patients, EHR systems) lack provenance to verify whether emitted claims are grounded in the patient record, clinical guidelines, or model priors. Absent a retrieval-grounding gap indicator or human-in-the-loop confirmation gate, the component fails the two-part emission check and surfaces as an LLM09 misinformation finding."
+mitigation: "Mandatory RAG grounding with per-claim source attribution: route all factual emissions through a declared RetrievalLayer with a published retrieval-strength metric (hit-rate >= 0.85, recall@k reported); reject responses containing unsupported factual claims (claims whose token spans do not trace back to a retrieved source URI); require human-in-the-loop confirmation for any clinical recommendation before downstream delivery; emit confidence-calibrated scores alongside claims and gate auto-delivery on a minimum calibration threshold (ECE monitor with alert band)."
+references:
+  - "OWASP LLM09:2025 Misinformation"
+  - "https://cwe.mitre.org/data/definitions/345.html"
+source_attribution:
+  - taxonomy: owasp
+    id: LLM09
+    relationship: primary
+  - taxonomy: cwe
+    id: CWE-345
+    relationship: related

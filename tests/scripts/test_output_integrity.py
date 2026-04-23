@@ -35,9 +35,9 @@ class TestSchemaIdPatternRegex:
     def schema_version(self) -> str:
         return _load_schema()["schema_version"]
 
-    def test_schema_version_is_1_6(self, schema_version: str) -> None:
-        assert schema_version == "1.6", (
-            f"Schema version MUST be 1.6. Got: {schema_version!r}"
+    def test_schema_version_is_1_7(self, schema_version: str) -> None:
+        assert schema_version == "1.7", (
+            f"Schema version MUST be 1.7. Got: {schema_version!r}"
         )
 
     @pytest.mark.parametrize(
