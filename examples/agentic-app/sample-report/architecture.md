@@ -21,6 +21,7 @@ flowchart TD
         KB[(Knowledge Base)]
         AuditLog[(Audit Logger)]
         LearningLoop[Long-Running Learning Loop]
+        ClinAdvisor[Clinical Advisory Sub-Agent]
     end
 
     subgraph External Services
@@ -50,6 +51,12 @@ flowchart TD
     AuditLog -->|"Training Signal Stream"| LearningLoop
     LearningLoop -->|"Periodic Model Update"| Orchestrator
     LearningLoop -->|"Periodic Model Update"| Specialist
+    Orchestrator -->|"Clinical Query / Context (JSON-RPC)"| ClinAdvisor
+    ClinAdvisor -->|"Context Retrieval (Vector Search)"| KB
+    KB -->|"Retrieved Documents"| ClinAdvisor
+    ClinAdvisor -->|"Clinical Summary + Recommendations"| Orchestrator
+    ClinAdvisor -->|"Clinical Decision Log Entry"| AuditLog
+    LearningLoop -->|"Periodic Model Update"| ClinAdvisor
 ```
 
 ## Component Summary
@@ -65,6 +72,7 @@ flowchart TD
 | Knowledge Base | Data Store | None |
 | Audit Logger | Data Store | None |
 | Long-Running Learning Loop | Process | LLM ("learning loop" training context) + AG ("Agent" model update recipients) |
+| Clinical Advisory Sub-Agent | Process | LLM ("LLM", "clinical", "advisory", "medical", "grounding") |
 | External API | External Entity | None |
 
 ## Expected Dispatch Behavior
@@ -73,6 +81,7 @@ flowchart TD
 - **Specialist Agent**: Dual-dispatch. Matches AG keywords "Agent", "Specialist". Receives STRIDE (S,T,R,I,D,E) plus LLM agents (prompt-injection, data-poisoning, model-theft) plus AG agents (agent-autonomy, tool-abuse). Acts as the delegated worker in the supervisor-plus-specialist topology.
 - **Inter-Agent Communication Channel**: AG dispatch. Matches AG keywords "Agent", "Inter-Agent". Receives STRIDE (S,T,R,I,D,E) plus AG agents (tool-abuse for messaging-substrate attacks). Exercises the CSA Communication Vulnerabilities pattern surface.
 - **MCP Tool Server**: AG dispatch. Matches AG keywords "MCP" (from "MCP Tool Server") and "Tool Server". Receives STRIDE (S,T,R,I,D,E) plus AG agents (agent-autonomy, tool-abuse).
+- **Clinical Advisory Sub-Agent**: LLM dispatch. Matches LLM keyword "LLM" (inherited delegation context) and F-2 misinformation trigger keywords "clinical", "advisory", "medical" (with optional "grounding" reinforcement and word-boundary "RAG" match). Receives STRIDE (S,T,R,I,D,E) plus LLM agents (prompt-injection, output-integrity, **misinformation**) plus calibration-check agents as applicable. Factual-output indicators are structurally present per FR-011 two-part emission gate — the sub-agent emits clinical summaries and decision recommendations into the Orchestrator's user-response path without a declared retrieval-strength metric, per-claim source attribution, or HITL review gate. Exercises multi-category MI-{N} emission: Ungrounded Factual Emission (Category 1), Overreliance / Missing HITL (Category 3), and Retrieval-Grounding Gap (Category 4) per FR-017 sub-class differentiation.
 - **Long-Running Learning Loop**: Dual-dispatch. Matches LLM keyword "learning loop" and AG keywords "Agent" (recipients). Receives STRIDE (T,D,E) plus LLM agents (data-poisoning, model-theft) plus AG agents (agent-autonomy). Exercises the CSA Temporal Attacks pattern surface via delayed activation through the training cycle.
 - **User**: Standard STRIDE only (S, R). External entity — no AI keywords.
 - **Guardrails Service**: Standard STRIDE only (S, T, R, I, D, E). No AI keywords. Analyzes input filtering bypass, tampering with validation rules, and denial of service through resource exhaustion.

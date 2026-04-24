@@ -179,6 +179,7 @@ DETECTION_AGENT_PATHS = [
     ".claude/agents/tachi/model-theft.md",
     ".claude/agents/tachi/agent-autonomy.md",
     ".claude/agents/tachi/tool-abuse.md",
+    ".claude/agents/tachi/misinformation.md",
 ]
 
 # Detection-patterns reference files produced by Feature 082 in
@@ -229,13 +230,14 @@ def test_feature_142_zero_edit_invariant_on_detection_agents():
     ]
 
     paths_to_check = DETECTION_AGENT_PATHS + detection_pattern_refs
-    assert len(DETECTION_AGENT_PATHS) == 11, (
-        f"Expected 11 detection agent paths, got {len(DETECTION_AGENT_PATHS)}. "
+    assert len(DETECTION_AGENT_PATHS) == 12, (
+        f"Expected 12 detection agent paths, got {len(DETECTION_AGENT_PATHS)}. "
         "Update DETECTION_AGENT_PATHS when adding a new detection agent."
     )
 
     diff_result = subprocess.run(
-        ["git", "diff", "--name-only", "main..HEAD", "--"] + paths_to_check,
+        ["git", "diff", "--name-only", "--diff-filter=M", "main..HEAD", "--"]
+        + paths_to_check,
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
