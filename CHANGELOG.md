@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.21.0](https://github.com/davidmatousek/tachi/compare/v4.20.0...v4.21.0) (2026-04-24)
+
+
+### Features
+
+* **206:** misinformation threat agent (OWASP LLM09:2025) ([#207](https://github.com/davidmatousek/tachi/issues/207)) ([b703e52](https://github.com/davidmatousek/tachi/commit/b703e52be2fac041dd9b5ffc23b1f5b610e8a262))
+
 ## [4.20.0](https://github.com/davidmatousek/tachi/compare/v4.19.0...v4.20.0) (2026-04-20)
 
 
