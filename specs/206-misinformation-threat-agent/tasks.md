@@ -120,9 +120,9 @@ See Phase 2 T009, T010, T011 — ADR-031 Proposed authoring happens at Wave 1.1 
 
 ### Wave 5 — ADR-031 Accepted Transition (Day 2 PM)
 
-- [ ] T022 [US3] Transition ADR-031 `docs/architecture/02_ADRs/ADR-031-misinformation-agent.md` Status: Proposed → Accepted. Add Revision History row: `| 2026-04-28 | Proposed → Accepted | PR #NNN pending merge | provisional |` (update date and PR number at authoring time).
-- [ ] T023 [US3] Verify ADR-031 body completeness: all 9 Decisions (D1-D9) populated (including D8 ADR-030 Decision 8 2nd application + D9 CWE-1039 exclusion); Consequences section populated; Cross-References section lists ADR-021/023/026/027/028/029/030 per T011; Revision History tracks Proposed → Accepted. Record checklist pass/fail at `.aod/results/adr-031-completeness-check.md`.
-- [ ] T024 [US3] Verify agent `## Purpose` section in `.claude/agents/tachi/misinformation.md` explicitly distinguishes three signal classes: (a) not input-side attacker-induced wrong output (that's `prompt-injection`), (b) not output-side crossing-unsanitized-boundary (that's `output-integrity` per ADR-030 Decision 1), (c) scoped to architecture-level grounding/verification/HITL/calibration absence. Forward-references to `prompt-injection` and `output-integrity` as adjacent-but-distinct concerns are present.
+- [X] T022 [US3] Transition ADR-031 `docs/architecture/02_ADRs/ADR-031-misinformation-agent.md` Status: Proposed → Accepted. Add Revision History row: `| 2026-04-28 | Proposed → Accepted | PR #NNN pending merge | provisional |` (update date and PR number at authoring time).
+- [X] T023 [US3] Verify ADR-031 body completeness: all 9 Decisions (D1-D9) populated (including D8 ADR-030 Decision 8 2nd application + D9 CWE-1039 exclusion); Consequences section populated; Cross-References section lists ADR-021/023/026/027/028/029/030 per T011; Revision History tracks Proposed → Accepted. Record checklist pass/fail at `.aod/results/adr-031-completeness-check.md`.
+- [X] T024 [US3] Verify agent `## Purpose` section in `.claude/agents/tachi/misinformation.md` explicitly distinguishes three signal classes: (a) not input-side attacker-induced wrong output (that's `prompt-injection`), (b) not output-side crossing-unsanitized-boundary (that's `output-integrity` per ADR-030 Decision 1), (c) scoped to architecture-level grounding/verification/HITL/calibration absence. Forward-references to `prompt-injection` and `output-integrity` as adjacent-but-distinct concerns are present.
 
 ### Post-Merge (Wave 6 or later)
 
@@ -170,20 +170,20 @@ See Phase 2 T009, T010, T011 — ADR-031 Proposed authoring happens at Wave 1.1 
 
 **Purpose**: Final validation against all 14 spec SCs + quickstart.md 12 steps before opening PR. Code review double-check per R5 NFR-6 compliance (healthcare/legal/finance clearly-fictional framing).
 
-- [ ] T042 [P] SC-001: verify `misinformation.md` ≤150 lines; 1 `**MANDATORY**: Read`; under `## Detection Workflow` heading
-- [ ] T043 [P] SC-002: verify `detection-patterns.md` has ≥5 pattern categories, each with worked example + anti-indicator + primary/related citations + trigger keywords + DFD element types
-- [ ] T044 [P] SC-003: verify `finding-format-shared.md` edit is additive-only per T029 result
-- [ ] T045 SC-004: confirm `/tachi.threat-model` on regenerated `agentic-app` emits ≥1 `MI-{N}`; non-qualifying baselines emit zero (two-part emission gate)
-- [ ] T046 SC-005: confirm ADR-031 Accepted at merge with all 9 decisions (D1-D9) + cross-refs + Revision History per T023
-- [ ] T047 [P] SC-006: confirm T039 backward-compat byte-identity pass on 5 non-factual baselines
-- [ ] T048 [P] SC-007: confirm regenerated `agentic-app` MI findings carry grounding/verification mitigations + OWASP LLM09:2025 citation + `source_attribution`
-- [ ] T049 [P] SC-008: verify empty diff on `pyproject.toml`, `requirements*.txt`, `package.json` via `git diff main --stat`
-- [ ] T050 SC-009: 24-file zero-edit grep audit — `git diff main --stat` returns zero lines on the 12 threat agent files + 12 companion `detection-patterns.md` files enumerated in quickstart.md Step 7 (22 original + F-1's 2)
-- [ ] T051 [P] SC-010: confirm F-A2 validation passes on regenerated findings per T038 (fixture-driven + regen-based)
-- [ ] T052 [P] SC-011: verify zero MAESTRO references per T018 `grep -i maestro` check
-- [ ] T053 [P] SC-012: verify schema_version `"1.7"` + regex extends to `MI` per T006; regex unit test passes
-- [ ] T054 [P] SC-014: three-signal-class discipline per T040 result
-- [ ] T055 **R5 code-review double-check (per HIGH-1 buffer-day budget model — consumed at Wave 2.2 PM, NOT buffer)**: senior-backend-engineer + code-reviewer review pattern-catalog worked examples for NFR-6 clearly-fictional framing compliance. Record pass/fail at `.aod/results/wave5-nfr6-compliance-check.md`.
+- [X] T042 [P] SC-001: verify `misinformation.md` ≤150 lines; 1 `**MANDATORY**: Read`; under `## Detection Workflow` heading
+- [X] T043 [P] SC-002: verify `detection-patterns.md` has ≥5 pattern categories, each with worked example + anti-indicator + primary/related citations + trigger keywords + DFD element types
+- [X] T044 [P] SC-003: verify `finding-format-shared.md` edit is additive-only per T029 result
+- [X] T045 SC-004: confirm `/tachi.threat-model` on regenerated `agentic-app` emits ≥1 `MI-{N}`; non-qualifying baselines emit zero (two-part emission gate)
+- [X] T046 SC-005: confirm ADR-031 Accepted at merge with all 9 decisions (D1-D9) + cross-refs + Revision History per T023
+- [X] T047 [P] SC-006: confirm T039 backward-compat byte-identity pass on 5 non-factual baselines
+- [X] T048 [P] SC-007: confirm regenerated `agentic-app` MI findings carry grounding/verification mitigations + OWASP LLM09:2025 citation + `source_attribution`
+- [X] T049 [P] SC-008: verify empty diff on `pyproject.toml`, `requirements*.txt`, `package.json` via `git diff main --stat`
+- [X] T050 SC-009: 24-file zero-edit grep audit — `git diff main --stat` returns zero lines on the 12 threat agent files + 12 companion `detection-patterns.md` files enumerated in quickstart.md Step 7 (22 original + F-1's 2)
+- [X] T051 [P] SC-010: confirm F-A2 validation passes on regenerated findings per T038 (fixture-driven + regen-based)
+- [X] T052 [P] SC-011: verify zero MAESTRO references per T018 `grep -i maestro` check
+- [X] T053 [P] SC-012: verify schema_version `"1.7"` + regex extends to `MI` per T006; regex unit test passes
+- [X] T054 [P] SC-014: three-signal-class discipline per T040 result
+- [X] T055 **R5 code-review double-check (per HIGH-1 buffer-day budget model — consumed at Wave 2.2 PM, NOT buffer)**: senior-backend-engineer + code-reviewer review pattern-catalog worked examples for NFR-6 clearly-fictional framing compliance. Record pass/fail at `.aod/results/wave5-nfr6-compliance-check.md`.
 - [ ] T056 Open PR from `206-misinformation-threat-agent` → `main` with title `feat(206): misinformation threat agent (OWASP LLM09:2025)` and body linking to PRD, spec, plan, tasks, ADR-031. Request triple review (PM + Architect + Team-Lead) as part of PR process.
 
 **Checkpoint**: All 14 SCs green; NFR-6 compliance verified; PR opened. Wave 6 buffer day available if R2 (regeneration friction) materializes or delivery-retrospective authoring deferred.
@@ -204,9 +204,9 @@ See Phase 2 T009, T010, T011 — ADR-031 Proposed authoring happens at Wave 1.1 
 
 **Purpose**: Final hygiene + documentation updates.
 
-- [ ] T060 [P] Update `CLAUDE.md` Recent Changes section with Feature 206 entry (similar to Features 180/189/194/201 entries). Include: new misinformation agent, ADR-031 lineage with ADR-030 Decision 1 + Decision 8 cross-refs, BLP-01 Tier 1 framing (2nd Tier 1 feature after F-1), schema 1.6 → 1.7 minor bump as 2nd recorded application of Decision 8 regex-alternation rule, three-signal-class discipline demonstrated, 24-file zero-edit invariant preservation (22 original + F-1's 2), F-2 is second net-new `source_attribution` producer.
-- [ ] T061 [P] Run quickstart.md Step 12 end-to-end smoke test (LLM09:2025 Coverage Matrix transition verification). Record pass/fail at `.aod/results/quickstart-smoke.md`.
-- [ ] T062 [P] Verify `examples/README.md` entry — F-2 does NOT add a new example (extends `agentic-app`); update only if R2 fallback to `advisory-app` was invoked at T031 (same convention as Features 084/142/145/201).
+- [X] T060 [P] Update `CLAUDE.md` Recent Changes section with Feature 206 entry (similar to Features 180/189/194/201 entries). Include: new misinformation agent, ADR-031 lineage with ADR-030 Decision 1 + Decision 8 cross-refs, BLP-01 Tier 1 framing (2nd Tier 1 feature after F-1), schema 1.6 → 1.7 minor bump as 2nd recorded application of Decision 8 regex-alternation rule, three-signal-class discipline demonstrated, 24-file zero-edit invariant preservation (22 original + F-1's 2), F-2 is second net-new `source_attribution` producer.
+- [X] T061 [P] Run quickstart.md Step 12 end-to-end smoke test (LLM09:2025 Coverage Matrix transition verification). Record pass/fail at `.aod/results/quickstart-smoke.md`.
+- [X] T062 [P] Verify `examples/README.md` entry — F-2 does NOT add a new example (extends `agentic-app`); update only if R2 fallback to `advisory-app` was invoked at T031 (same convention as Features 084/142/145/201).
 
 ---
 

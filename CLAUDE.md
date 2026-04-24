@@ -111,6 +111,14 @@ When invoked as a subagent (via Agent tool), return ONLY:
 - Review `agent-assignments.md` for workload distribution
 
 ## Recent Changes
+- **Feature 206** (2026-04-24): `misinformation` threat agent (OWASP LLM09:2025)
+  - New AI-tier detection agent `.claude/agents/tachi/misinformation.md` + companion skill `tachi-misinformation/` — 5 factual-integrity pattern categories (Ungrounded Factual Emission / Citation Fabrication / Overreliance-Missing-HITL / Retrieval-Grounding Gap / Confidence-Calibration Absence)
+  - BLP-01 Tier 1 F-2 — 2nd Tier-1 feature after F-1 (Feature 201); closes LLM09:2025 on the Coverage Matrix (Planned → Covered)
+  - ADR-031 (Accepted) cross-refs ADR-030 Decision 1 (Heuristic A inheritance — factual-integrity carve-out) and ADR-030 Decision 8 (regex-alternation minor-bump rule — 2nd application)
+  - Schema `finding.yaml` 1.6 → 1.7 — `MI` prefix added to `id.pattern` regex alternation (11 values now: `S|T|R|I|D|E|AG|LLM|AGP|OI|MI`) under the additive-compatibility conditions of ADR-026 extended by ADR-030 D8
+  - Three-signal-class discipline: `LLM-{N}` (input-side, LLM01) / `OI-{N}` (output sanitization, LLM05) / `MI-{N}` (factual integrity, LLM09) render adjacent with distinct `source_attribution` primaries
+  - 24-file zero-edit invariant preserved (22 original + F-1's 2) — F-2 is a net-new addition, not a refactor
+  - F-2 is the **second net-new producer** of `source_attribution` (F-1 was first) — F-A2 referential-integrity contract proven against two independent populators
 - **v2.0.0**: Anthropic Claude Code v2.1.16 Integration
   - Parallel Triad reviews, context forking, version detection
   - See `docs/devops/MIGRATION.md` for upgrade guide
