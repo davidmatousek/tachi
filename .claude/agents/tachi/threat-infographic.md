@@ -37,7 +37,7 @@ aliases:
   corporate-white: baseball-card
 output_files:
   - threat-{template-name}-spec.md
-  - threat-{template-name}.jpg  # conditional on GEMINI_API_KEY
+  - threat-{template-name}.{jpg|png}  # conditional on GEMINI_API_KEY; extension matches returned Gemini MIME (image/jpeg -> .jpg, image/png -> .png). gemini-2.5-flash-image returns PNG; gemini-3-pro-image-preview returns JPEG.
 references:
   schemas:
     input_threats: ../../../schemas/output.yaml
@@ -92,7 +92,7 @@ The spec MUST contain six sections matching the schema enumeration in `schemas/i
 
 For each template, your output is:
 1. **`threat-{template-name}-spec.md`** -- A structured specification with 6 sections conforming to `../../../schemas/infographic.yaml`. This is the **primary deliverable**. It contains all data points, color coding, layout instructions, and text content needed to render a presentation-ready infographic.
-2. **`threat-{template-name}.jpg`** (optional) -- A presentation-ready JPEG image rendered from the specification via Gemini API. Produced only when `GEMINI_API_KEY` is available and the API call succeeds. This is a **best-effort** deliverable.
+2. **`threat-{template-name}.{jpg|png}`** (optional) -- A presentation-ready image rendered from the specification via Gemini API. The file extension matches the returned MIME type (`image/jpeg` -> `.jpg`, `image/png` -> `.png`). `gemini-3-pro-image-preview` returns JPEG; the `gemini-2.5-flash-image` fallback returns PNG. Produced only when `GEMINI_API_KEY` is available and the API call succeeds. This is a **best-effort** deliverable.
 
 Each specification is self-contained: a designer can render the infographic from the spec alone without access to `threats.md`.
 
@@ -257,7 +257,7 @@ This ensures every run uses the same dark-navy (or template-appropriate) backgro
 
 ## Executive-Architecture Gemini Prompt Construction
 
-When generating the `threat-executive-architecture.jpg` image via Gemini API, the prompt MUST instruct Gemini to:
+When generating the `threat-executive-architecture.{jpg|png}` image via Gemini API, the prompt MUST instruct Gemini to:
 
 - **Render in portrait orientation** with an 8.5x11 aspect ratio suitable for embedding as a full-bleed page in the security report PDF.
 - **Arrange architectural layers as horizontal bands** stacked vertically, with the most exposed layer (position 0) at the TOP of the diagram and the most trusted layer at the BOTTOM. Untrusted zones and public-facing components belong at the top.
@@ -274,7 +274,7 @@ The prompt must be constructed from the JSON payload fields, not hardcoded. Laye
 When the payload's `metadata.skip_image == True` (i.e., the threat model contains zero Critical and zero High severity findings), the agent MUST:
 
 1. **Render the spec file** with a clear explanatory note in the Threat Callouts section: "No Critical or High severity findings were identified in this threat model; the executive architecture diagram is omitted for this report run. Layer composition is preserved below for reference."
-2. **NOT invoke the Gemini API** for this run. No JPEG file is produced. Downstream PDF compilation will omit the executive architecture page entirely because the `threat-executive-architecture.jpg` file does not exist.
+2. **NOT invoke the Gemini API** for this run. No image file is produced. Downstream PDF compilation will omit the executive architecture page entirely because no `threat-executive-architecture.{jpg|png}` file exists.
 
 This graceful degradation preserves the report structure while avoiding a misleading "no-threats" diagram.
 

@@ -168,8 +168,8 @@ def golden_image_flag_lines():
         "#let has-funnel-image = true",
         "#let has-baseball-image = true",
         "#let has-architecture-image = true",
-        "#let has-maestro-stack-image = false",
-        "#let has-maestro-heatmap-image = false",
+        "#let has-maestro-stack-image = true",
+        "#let has-maestro-heatmap-image = true",
     ],
 )
 def test_existing_image_flags_unchanged(

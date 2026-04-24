@@ -110,7 +110,12 @@ def parse_threat_report_md(content: str) -> dict:
             if len(sub_order) >= 2:
                 subsections[sub_order[-2]][1] = i
 
-    # Build executive narrative from: Risk Posture, Top 5 Threats, Key Recommendations
+    # Build executive narrative. Preferred shape: Risk Posture / Top 5 Threats /
+    # Key Recommendations ### subsections (for threat-report agent versions that
+    # emit them). Fallback: the entire prose block under ## 1. Executive Summary
+    # — the current agent writes a single narrative with bold-label paragraphs
+    # (**Risk profile**, **Most critical unresolved exposure**, **New findings**)
+    # rather than labeled subsections.
     narrative_sections = [
         "Risk Posture",
         "Top 5 Threats by Business Impact",
@@ -123,6 +128,17 @@ def parse_threat_report_md(content: str) -> dict:
             text = "\n".join(lines[start:end]).strip()
             if text:
                 narrative_parts.append(text)
+
+    if not narrative_parts:
+        # Remediation Timeline is parsed structurally below; exclude it from
+        # the narrative fallback to avoid duplication when the agent happens
+        # to emit both prose and a ### Remediation Timeline subsection.
+        prose_end = sec1_end
+        if "Remediation Timeline" in subsections:
+            prose_end = min(prose_end, subsections["Remediation Timeline"][0] - 1)
+        prose_text = "\n".join(lines[sec1_start:prose_end]).strip()
+        if prose_text:
+            narrative_parts.append(prose_text)
 
     if narrative_parts:
         narrative = "\n\n".join(narrative_parts)
@@ -419,9 +435,11 @@ def parse_maestro_data(threats_content):
 def parse_attack_trees(target_dir: Path, findings: list, tr_content: str = None) -> list:
     """Parse attack tree files and cross-reference with findings data.
 
-    Scans {target_dir}/attack-trees/ for *-attack-tree.md files. Falls back
-    to inline trees in threat-report.md Section 5. Filters to Critical and
-    High severity only, sorted by severity (Critical first) then finding ID.
+    Scans {target_dir}/attack-trees/ for all .md files (the attack-tree-delta
+    agent emits {ID}-{slug}.md; _parse_attack_tree_file skips unrelated files
+    by returning None when no Finding ID or Mermaid block is present). Falls
+    back to inline trees in threat-report.md Section 5. Filters to Critical
+    and High severity only, sorted by severity (Critical first) then finding ID.
 
     Args:
         target_dir: Directory containing tachi pipeline artifacts.
@@ -442,9 +460,12 @@ def parse_attack_trees(target_dir: Path, findings: list, tr_content: str = None)
     entries = []
     attack_trees_dir = target_dir / "attack-trees"
 
-    # Primary source: standalone attack tree files
+    # Primary source: standalone attack tree files. The attack-tree-delta agent
+    # writes files as {ID}-{slug}.md (e.g. "AG-1-mcp-stdio-no-human-gate.md").
+    # Glob all .md files and let _parse_attack_tree_file filter by structure —
+    # it returns None for files without a parseable Finding ID or Mermaid block.
     if attack_trees_dir.is_dir():
-        tree_files = sorted(attack_trees_dir.glob("*-attack-tree.md"))
+        tree_files = sorted(attack_trees_dir.glob("*.md"))
         for tree_file in tree_files:
             entry = _parse_attack_tree_file(tree_file, findings_by_id)
             if entry:
@@ -1004,6 +1025,33 @@ def _merge_source_attribution(findings: list, threats_content: str) -> None:
             finding["source_attribution"] = attribution
 
 
+def _merge_delta_status(findings: list, threats_content: str) -> None:
+    """Merge delta_status from threats.md Section 7 onto findings in-place.
+
+    parse_threats_findings already attaches delta_status at Tier 3 (reads the
+    Status column of Section 7 Recommended Actions). Tier 1 (compensating
+    controls) and Tier 2 (risk scores) parsers don't read threats.md, so
+    delta annotations are otherwise invisible to compute_delta_counts — every
+    finding would render without a NEW / UPDATED / UNCHANGED badge even when
+    the threat model clearly declares a baseline diff.
+    """
+    rows = parse_markdown_table(threats_content, "## 7. Recommended Actions")
+    if not rows:
+        return
+    status_by_id = {}
+    for row in rows:
+        fid = row.get("Finding ID", "").strip()
+        status = row.get("Status", "").strip()
+        if fid and status:
+            status_by_id[fid] = status
+    if not status_by_id:
+        return
+    for finding in findings:
+        fid = finding.get("id", "")
+        if fid in status_by_id:
+            finding["delta_status"] = status_by_id[fid]
+
+
 # Coverage attestation aggregator: joins source_attribution arrays on findings
 # against schemas/taxonomy/ catalogs and emits per-finding rows + per-framework
 # aggregates for the coverage-attestation Typst template.
@@ -1305,10 +1353,16 @@ def validate(data: dict) -> list:
 # =============================================================================
 
 def detect_images(target_dir: Path, template_dir: Path) -> dict:
-    """Compute image paths relative to template directory."""
+    """Compute image paths relative to template directory.
+
+    The infographic agent writes images whose extension matches the returned
+    Gemini MIME type — `.jpg` for `image/jpeg`, `.png` for `image/png`. Probe
+    both extensions and prefer the one that exists; if both exist, prefer
+    `.jpg` (treated as the canonical contract).
+    """
     # Compute relative path from template_dir to target_dir
     # Template files are at templates/tachi/security-report/
-    # Images are at {target_dir}/threat-*.jpg
+    # Images are at {target_dir}/threat-*.{jpg,png}
     # Relative path: ../../{target_dir}/
     try:
         rel_target = os.path.relpath(str(target_dir), str(template_dir))
@@ -1325,19 +1379,21 @@ def detect_images(target_dir: Path, template_dir: Path) -> dict:
         "executive_architecture_image_path": "",
     }
 
-    image_files = {
-        "funnel_image_path": "threat-risk-funnel.jpg",
-        "baseball_image_path": "threat-baseball-card.jpg",
-        "architecture_image_path": "threat-system-architecture.jpg",
-        "maestro_stack_image_path": "threat-maestro-stack.jpg",
-        "maestro_heatmap_image_path": "threat-maestro-heatmap.jpg",
-        "executive_architecture_image_path": "threat-executive-architecture.jpg",
+    image_stems = {
+        "funnel_image_path": "threat-risk-funnel",
+        "baseball_image_path": "threat-baseball-card",
+        "architecture_image_path": "threat-system-architecture",
+        "maestro_stack_image_path": "threat-maestro-stack",
+        "maestro_heatmap_image_path": "threat-maestro-heatmap",
+        "executive_architecture_image_path": "threat-executive-architecture",
     }
 
-    for key, filename in image_files.items():
-        filepath = target_dir / filename
-        if filepath.exists() and filepath.stat().st_size > 0:
-            images[key] = rel_target + "/" + filename
+    for key, stem in image_stems.items():
+        for ext in (".jpg", ".png"):
+            filepath = target_dir / f"{stem}{ext}"
+            if filepath.exists() and filepath.stat().st_size > 0:
+                images[key] = rel_target + "/" + f"{stem}{ext}"
+                break
 
     return images
 
@@ -1766,7 +1822,7 @@ def _format_finding(f: dict, tier: int) -> str:
         return esc(f.get(key, default))
 
     if tier == 1:
-        return (
+        base = (
             'id: "' + _v("id") + '", '
             'component: "' + _v("component") + '", '
             'threat: "' + _v("threat") + '", '
@@ -1776,7 +1832,7 @@ def _format_finding(f: dict, tier: int) -> str:
             'recommendation: "' + _v("recommendation") + '"'
         )
     elif tier == 2:
-        return (
+        base = (
             'id: "' + _v("id") + '", '
             'component: "' + _v("component") + '", '
             'threat: "' + _v("threat") + '", '
@@ -1796,11 +1852,13 @@ def _format_finding(f: dict, tier: int) -> str:
             'risk_level: "' + _v("risk_level") + '", '
             'mitigation: "' + _v("mitigation") + '"'
         )
-        # Include delta_status when present (backward compatible)
-        ds = f.get("delta_status", "")
-        if ds:
-            base += ', delta_status: "' + esc(ds) + '"'
-        return base
+    # Include delta_status when present (backward compatible across tiers). For
+    # Tier 1/2 this field is populated by _merge_delta_status reading threats.md
+    # Section 7; for Tier 3 it comes from parse_threats_findings directly.
+    ds = f.get("delta_status", "")
+    if ds:
+        base += ', delta_status: "' + esc(ds) + '"'
+    return base
 
 
 def _append_scope_array(lines: list, var_name: str, items: list, keys: list):
@@ -1930,12 +1988,14 @@ def main():
         sev["total"] = len(data["findings"])
         data["severity"] = sev
 
-    # parse_threats_findings attaches source_attribution at Tier 3, but cc/rs
-    # parsers don't read Section 9 — without this merge, F-B's gate stays false
-    # on every real pipeline run that has cc.md or rs.md, silently omitting the
-    # coverage-attestation section even when attribution is populated.
+    # parse_threats_findings attaches source_attribution + delta_status at Tier 3,
+    # but cc/rs parsers don't read threats.md. Without these merges, F-B's gate
+    # stays false (silently omitting coverage-attestation) and compute_delta_counts
+    # returns zeros (silently suppressing NEW / UPDATED badges) on every real
+    # pipeline run that has cc.md or rs.md.
     if tier in (1, 2):
         _merge_source_attribution(data["findings"], threats_content)
+        _merge_delta_status(data["findings"], threats_content)
 
     # Component distribution (from whichever findings source is active)
     data["component_distribution"] = parse_component_distribution(data["findings"])

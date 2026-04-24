@@ -1,5 +1,5 @@
 #let has-funnel-image = true
 #let has-baseball-image = true
 #let has-architecture-image = true
-#let has-maestro-stack-image = false
-#let has-maestro-heatmap-image = false
+#let has-maestro-stack-image = true
+#let has-maestro-heatmap-image = true

@@ -1099,6 +1099,22 @@ def parse_compensating_controls_md(content: str) -> dict:
             file=sys.stderr,
         )
 
+    # ---- Dedupe cross-listed findings by threat ID ----
+    # control-analyzer cross-lists findings under both their original band and
+    # their score-derived band so residual reclassification is traceable. The
+    # score-derived band (applied above) makes every duplicate's residual_severity
+    # identical, so keep the first occurrence and drop the rest.
+    seen_ids = set()
+    deduped = []
+    for f in result["findings"]:
+        fid = f["id"]
+        if fid and fid in seen_ids:
+            continue
+        if fid:
+            seen_ids.add(fid)
+        deduped.append(f)
+    result["findings"] = deduped
+
     # ---- Compute Tier 1 severity counts from residual severity ----
     for f in result["findings"]:
         key = f["residual_severity"].lower()

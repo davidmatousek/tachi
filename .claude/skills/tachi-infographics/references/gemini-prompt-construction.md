@@ -211,7 +211,11 @@ x-goog-api-key: {GEMINI_API_KEY}
 3. Find the part where `inline_data` is present and `inline_data.mime_type` starts with `image/`
 4. Extract the `inline_data.data` field (base64-encoded image data)
 5. Decode the base64 data
-6. Save the decoded bytes as `threat-{template-name}.jpg` in the output directory alongside the specification
+6. Save the decoded bytes as `threat-{template-name}.{ext}` where `{ext}` is derived from `inline_data.mime_type`:
+   - `image/jpeg` or `image/jpg` → `.jpg`
+   - `image/png` → `.png`
+   - Any other `image/*` → the subtype as the extension
+   **Do not use a fixed `.jpg` extension for all outputs** — the Gemini fallback model `gemini-2.5-flash-image` returns PNG bytes, and writing PNG bytes to a `.jpg` filename produces a file whose magic bytes and extension disagree (downstream consumers that trust the extension then mislabel the MIME type).
 7. Set `image_generated: true` in the specification frontmatter
 
 If no `inline_data` part with an image MIME type is found in the response, treat this as an API error (see Error Handling in the agent prompt).
