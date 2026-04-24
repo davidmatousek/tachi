@@ -1,104 +1,103 @@
 # NEXT-SESSION — Feature 206 misinformation threat agent
 
 **Branch**: `206-misinformation-threat-agent`
-**Generated**: 2026-04-23 (Wave 4 T034 API stream timeout)
-**Progress**: 28/62 tasks (45%) — Waves 1.0, 1.1, 2, 3 complete; Wave 4 T031-T033 complete; T034-T041 pending.
+**Generated**: 2026-04-24 (Wave 4 closed, Wave 5 pickup)
+**Progress**: 37/62 tasks (60%) — Waves 1.0, 1.1, 2, 3, 4 complete. Wave 5 (ADR-031 Accepted + SC sweep + NFR-6 review + PR open) remaining, then Wave 6 polish.
 
 ## Context Snapshot
 
-**Waves complete**: 1.0 (Heuristic A verification), 1.1 (schema 1.7 + ADR-031 Proposed), 2 (pattern catalog + agent authoring + worked examples), 3 (orchestrator quintet registration + MEDIUM-3 extension to 12 callsites + shared-reference consumers list).
+**Waves complete**:
+- **1.0**: Architect Heuristic A verification memo (T004)
+- **1.1**: Schema 1.7 bump + ADR-031 Proposed + regex test + valid/invalid fixtures + FP dry-run (T005–T012)
+- **2**: Pattern catalog + misinformation agent + companion skill + 3 worked examples (T013–T021)
+- **3**: Orchestrator quintet + dispatch-rules quintet + MEDIUM-3 extension to 12 callsites + shared-reference consumers insert + EMPTY structural-diff (T026–T030)
+- **4**: Architect Q4 decision EXTEND + Clinical Advisory Sub-Agent architecture extension + full pipeline regen (T031–T041)
 
-**Wave 4 partial**: Architect Q4 decision (EXTEND agentic-app) + Clinical Advisory Sub-Agent architecture extension (9 insertions, 0 deletions, additive-only) + threat-model regen (83 findings including 3 MI-{N} on Clinical Advisory Sub-Agent covering FR-017 Categories 1/3/4, three-signal-class discipline verified).
+**Wave 4 closed**: 86 findings scored (MI-1/2/3 Medium via `category: llm`, FR-014 ✓), 80 threats controls-analyzed, 6/6 infographics regenerated, 6.2 MB PDF + byte-identical baseline, canonical sync to `sample-report/` + top-level `threats.md`. 19/19 misinformation tests pass; 6/6 backward-compat byte-identity baselines pass (with test-harness fix bumping `DETECTION_AGENT_PATHS` 11 → 12 and scoping zero-edit invariant to `--diff-filter=M`). SC-014 three-signal-class discipline PASS (artifact at `.aod/results/wave4-three-signal-class-check.md`).
 
-**T033 regen output lives at** (gitignored, local): `examples/agentic-app/test-output/2026-04-23T19-30-00-F2-wave4/` — contains `architecture.md`, `threats.md` (107 KB, 83 findings, schema 1.7), `threats.sarif` (39 KB), `threat-report.md` (16 KB with Section 4.1 MI / 4.2 OI / cross-section LLM for three-signal-class discipline), `attack-chains.md`, `attack-trees/` (6 new Mermaid trees: LLM-13, LLM-14, MI-1, MI-2, MI-3, S-1).
-
-**T033 architect-level validation already done** (inline grep in last session):
-- Schema 1.7 applied in threats.md frontmatter
-- Date "2023-11-14" (SOURCE_DATE_EPOCH=1700000000 → ISO date)
-- 3 MI findings (MI-1 Ungrounded Factual Emission, MI-2 Overreliance/Missing HITL, MI-3 Retrieval-Grounding Gap) each with OWASP LLM09:2025 primary + specific grounding/HITL/retrieval-quality mitigations + NFR-6 clearly-fictional framing ("clinical summaries", "retrievable Knowledge Base document section", no real identifiers)
-- Three-signal-class discipline: `LLM-1..14`, `OI-1..4`, `MI-1..3` all present and render in distinct threat-report.md sections
-
-## Completed Tasks (28/62)
+## Completed Tasks (37/62)
 
 - **Setup**: T001, T002, T003
-- **Wave 1.0**: T004 (architect Heuristic A verification memo)
-- **Wave 1.1**: T005 (regex test), T006 (schema 1.6→1.7 bump), T007/T008 (valid + invalid fixtures), T009/T010/T011 (ADR-031 Proposed with 9 decisions), T012 (FP dry-run)
-- **Wave 2**: T013/T014 (detection-patterns.md 197 lines, 5 categories), T015 (companion README 33 lines), T016/T017/T019 (misinformation.md agent 120 lines, 3 worked MI findings), T018/T020/T021 (inline structural/FR-017/mitigation-specificity verification)
-- **Wave 3**: T026 (orchestrator.md quintet edits) + T027 (dispatch-rules.md quintet + `\bRAG\b` word-boundary rule + MEDIUM-3 scope extension to 7 additional F-1 carry-over callsites) + T028 (finding-format-shared.md consumers insert) + T029 (structural-diff EMPTY) + T030 (12/12 quintet consistency + 0/6 anti-patterns)
-- **Wave 4**: T031 (Q4 decision EXTEND) + T032 (Clinical Advisory architecture extension) + T033 (threat-model regen with 3 MI findings + three-signal-class)
+- **Wave 1.0**: T004
+- **Wave 1.1**: T005, T006, T007, T008, T009, T010, T011, T012
+- **Wave 2**: T013, T014, T015, T016, T017, T018, T019, T020, T021
+- **Wave 3**: T026, T027, T028, T029, T030
+- **Wave 4**: T031, T032, T033, T034, T035, T036, T037, T038, T039, T040, T041
 
-## Commits on Branch (post-handoff)
+## Commits on Branch
 
-1. `chore(206): checkpoint before build resume` (pre-flight)
+1. Setup + pre-Wave commits (earlier sessions)
 2. `feat(206): schema 1.7 + ADR-031 Proposed + regex test + fixtures (Wave 1.1)`
 3. `feat(206): misinformation agent + companion skill + pattern catalog (Wave 2)`
-4. `chore(206): add NEXT-SESSION handoff at wave-3 ceiling` (prior session)
-5. `chore(206): checkpoint before build resume` (this session pre-flight)
-6. `feat(206): orchestrator + dispatch + shared-reference quintet registration (Wave 3)`
-7. `feat(206): extend agentic-app with Clinical Advisory Sub-Agent (Wave 4 T032)`
-8. `chore(206): mark T031-T033 complete; Wave 4 pipeline regen partial`
+4. `feat(206): orchestrator + dispatch + shared-reference quintet registration (Wave 3)`
+5. `feat(206): extend agentic-app with Clinical Advisory Sub-Agent (Wave 4 T032)`
+6. `chore(206): mark T031-T033 complete; Wave 4 pipeline regen partial`
+7. `chore(206): refresh NEXT-SESSION handoff at Wave 4 T033→T034 boundary`
+8. `feat(206): complete Wave 4 pipeline regen (T034-T041) with 3 MI findings` ← latest (this session)
+
+Latest HEAD: `ec76c00`
 
 ## Why This Session Stopped
 
-T034 (tachi-risk-scorer) and T035 (tachi-control-analyzer) dispatched in parallel hit **API stream idle timeouts** on the 83-finding scoring scope. Partial response received but NO output files flushed. Retry with cold context recommended — the agents likely stalled on server-side streaming, not on any technical blocker.
+User explicitly scoped to Wave 4 completion; handed off at Wave 4 close to gate on Wave 5 scope (ADR transition + 13-task SC validation sweep + code-review + PR open) — which includes the PR-open decision that warrants user sign-off.
 
-Wave continuation rule ceiling (3 waves per session) was NOT the trigger. Session stopped mid-Wave-4 due to repeated stream timeouts during pipeline regen dispatch. Context was at ~28-30% — plenty of headroom for Wave 5.
+## Next Actions — Wave 5 (T022–T024, T042–T054, T055, T056)
 
-## Next Actions — Wave 4 Completion (T034-T041)
+1. **T022–T024** (ADR-031 Proposed → Accepted, sequential):
+   - **T022**: Update `specs/206-.../adrs/ADR-031.md` Revision History table — add "Accepted" row with today's date and commit SHA of T010 (the Proposed-state commit). Bump status field from Proposed → Accepted.
+   - **T023**: Architect verification — confirm the 9 ADR-031 decisions (D1-D9, including D8 2nd application of ADR-030 Decision 8 + D9 CWE-1039 exclusion) all resolved as captured. Re-read body to check nothing drifted between Proposed and Accepted.
+   - **T024**: Grep `misinformation.md` agent for forward-refs to ADR-031 — every Purpose-section reference must now cite Accepted status (not Proposed). Update if any still say Proposed.
 
-1. **T034** (tachi-risk-scorer): Run against `examples/agentic-app/test-output/2026-04-23T19-30-00-F2-wave4/`. Produces `risk-scores.md` + `risk-scores.sarif` in same dir. Verify FR-014 (risk-scorer processes MI findings via `category: llm` without edit). If timeout recurs: try `/tachi.risk-score` skill slash-command directly, or dispatch with narrower scope (only `threats.md` path, no extra context).
+2. **T042–T054** (13-task SC validation sweep, parallel-capable):
+   - Many delegate to prior-wave results:
+     - **SC-001, SC-002, SC-003** → delegate to T030 consistency audit
+     - **SC-006** → T039 backward-compat pass (done)
+     - **SC-010** → T038 F-A2 + fixture-driven validation pass (done)
+     - **SC-011** → T018 `grep -i maestro` verification (done)
+     - **SC-012** → T005 regex test pass (done) + `validate_source_attribution` AML.T0042 rejection test (done via T008 invalid fixture)
+     - **SC-014** → T040 three-signal-class artifact (done)
+   - Need fresh checks:
+     - **SC-004** → `grep -r "AML\.T0042" .claude/agents/tachi/misinformation.md .claude/skills/tachi-misinformation/` expects zero hits (FR-5 compliance)
+     - **SC-007** → `grep -c "per-claim source_attribution" .claude/agents/tachi/misinformation.md` expects ≥1 hit (FR-7 grounding-specificity)
+     - **SC-008** → confirm `category: llm` in misinformation agent's finding emission schema (grep agent + one worked example)
+     - **SC-009** → **T050 24-file zero-edit grep audit**: `git diff --name-only --diff-filter=M main -- {12 threat agent paths} {12 detection-patterns.md paths}` expects EMPTY. *Note: F-2 adds a 13th agent (misinformation.md) and 13th patterns file (tachi-misinformation/references/detection-patterns.md), but the invariant applies only to the 24 pre-existing files. Use the same `--diff-filter=M` approach as the test-harness fix in commit ec76c00.*
 
-2. **T035** (tachi-control-analyzer): Run against same dir. Produces `compensating-controls.md` + `compensating-controls.sarif`. Verify FR-014 equivalent for control-analyzer. No target codebase exists for tachi examples — architecture-level controls analysis.
+3. **T055** (code-reviewer NFR-6 compliance, sequential after SC sweep):
+   - Review `detection-patterns.md` + `misinformation.md` agent worked examples for clearly-fictional framing — no real-world PII, clinical identifiers, or company names. Artifact to `.aod/results/code-reviewer-nfr6.md`.
 
-3. **T036** (tachi-threat-infographic): Run `/tachi.infographic all` against same dir. GEMINI_API_KEY is available. Produces 6 infographic JPEGs + specs. Expect: baseball-card, executive-architecture, maestro-heatmap, maestro-stack, risk-funnel, system-architecture.
-
-4. **T037** (tachi-report-assembler): Run `/tachi.security-report` against same dir. Produces `security-report.pdf` + `security-report.pdf.baseline` (~11-12 MB each). Uses Typst under the hood with SOURCE_DATE_EPOCH=1700000000 for reproducible output.
-
-5. **Canonical sync** (not a task ID — setup step): Copy from `examples/agentic-app/test-output/2026-04-23T19-30-00-F2-wave4/` → `examples/agentic-app/sample-report/` (full suite) AND → `examples/agentic-app/threats.md` (top-level mirror). This is what F-1 did at merge. Top-level threats.md currently 82 KB (post-F-1, schema 1.6) → should become ~108 KB (post-F-2, schema 1.7).
-
-6. **T038** (tester parallel): `pytest tests/scripts/test_misinformation.py` — all tests pass. Already validated at Wave 1.1; re-run to confirm post-regen state still green.
-
-7. **T039** (tester parallel): `SOURCE_DATE_EPOCH=1700000000 pytest tests/scripts/test_backward_compatibility.py -v`. This tests **PDF byte-identity** (not threat-model byte-identity) on 6 baselines (`web-app`, `microservices`, `ascii-web-api`, `mermaid-agentic-app`, `free-text-microservice`, `maestro-reference`). `agentic-app` is explicitly excluded from this test (it's the regen target). Expected: 6/6 pass (or 5/5 on the 5 tasks.md-listed ones — task doc lags; maestro-reference was added later).
-
-8. **T040** (senior-backend-engineer parallel): Three-signal-class grep on `threat-report.md`. **Already verified inline** during T033 (Section 4.1 MI / 4.2 OI / cross-section LLM). Action: write the verification artifact to `.aod/results/wave4-three-signal-class-check.md` to close the task.
-
-9. **T041** (senior-backend-engineer parallel): Git-stage the canonical regen outputs for commit. After canonical-sync step above, stage: `examples/agentic-app/architecture.md` (already staged in T032 commit), `threats.md` (top-level new), `sample-report/*` (all suite files), plus delete any stale files. NOTE: `test-output/` remains gitignored — only canonical sample-report + top-level threats.md commit.
-
-## Wave 5 Plan (after Wave 4 closes)
-
-10. **T022-T024** (ADR-031 Proposed → Accepted transition): 3 sequential tasks. Update Revision History, verify body completeness, verify agent Purpose forward-refs.
-
-11. **T042-T054** (13-parallel SC validation sweep): Mostly delegates to prior-wave results. SC-001, SC-002, SC-003, SC-006, SC-010, SC-011, SC-012, SC-014 delegate to existing checks. SC-004, SC-007, SC-008, SC-009 need fresh grep/diff. Full 24-file zero-edit grep audit at T050.
-
-12. **T055** (code-reviewer NFR-6 compliance): Sequential after SC sweep. Review pattern-catalog + agent worked examples for clearly-fictional framing.
-
-13. **T056** (PR open): `feat(206): misinformation threat agent (OWASP LLM09:2025)` PR with triple-review request.
+4. **T056** (PR open, final Wave 5 task):
+   - Run `gh pr create --draft` with title `feat(206): misinformation threat agent (OWASP LLM09:2025)` and body summarizing the feature.
+   - Request triple-review: product-manager + architect + code-reviewer agents.
+   - **User decision gate**: confirm PR title, body, and reviewers before submission.
 
 ## Wave 6 + Polish (post-PR-open, partially post-merge)
 
-- T057 (delivery retrospective)
-- T058 (BLP-01 Coverage Matrix update, post-merge)
-- T059 (contingent R2 buffer absorption — unlikely to fire, regen looks clean)
-- T060 (CLAUDE.md Recent Changes update)
-- T061 (quickstart smoke test)
-- T062 (examples/README.md no-update verification — extends agentic-app, no new example)
-- T025 (post-merge SHA fill for ADR-031)
+- **T057** delivery retrospective (PM or buffer-day)
+- **T058** BLP-01 Coverage Matrix update (post-merge — updates `docs/threat-coverage/` with F-2 as delivered)
+- **T059** contingent R2 buffer absorption — unlikely to fire (Wave 4 regen was clean, no byte-identity breaks)
+- **T060** CLAUDE.md Recent Changes update
+- **T061** quickstart smoke test (run `examples/agentic-app/` end-to-end)
+- **T062** examples/README.md no-update verification (F-2 extends agentic-app, no new example dir)
+- **T025** post-merge SHA fill for ADR-031 Revision History
 
 ## Prerequisites Checklist (resume gate)
 
-- [x] Branch `206-misinformation-threat-agent` clean and up-to-date
-- [x] Schema at v1.7 + ADR-031 Proposed committed (Wave 1.1)
-- [x] `misinformation.md` agent + `tachi-misinformation/` companion skill + 5-category pattern catalog authored (Wave 2)
+- [x] Branch `206-misinformation-threat-agent` clean and up-to-date on HEAD `ec76c00`
+- [x] Schema v1.7 + ADR-031 Proposed committed (Wave 1.1)
+- [x] `misinformation.md` agent + `tachi-misinformation/` companion skill + 5-category pattern catalog (Wave 2)
 - [x] Orchestrator quintet + 12-callsite consistency + shared-reference additive edit (Wave 3)
 - [x] `agentic-app/architecture.md` extended with Clinical Advisory Sub-Agent (Wave 4 T032)
-- [x] T033 threat-model regen complete; 3 MI findings + three-signal-class verified in `test-output/2026-04-23T19-30-00-F2-wave4/`
-- [ ] Wave 4 T034-T041 pipeline continuation (risk-score, controls, infographic, security-report, verifications, git-stage)
-- [ ] Canonical sample-report/ + top-level threats.md sync from test-output/
+- [x] T033 threat-model regen: 3 MI findings surfaced + three-signal-class verified
+- [x] T034-T037 pipeline regen: risk-scores, controls, infographics, PDF all flushed
+- [x] Canonical sync: sample-report/ updated + top-level threats.md mirrored
+- [x] T038-T041 verifications: misinformation tests pass, backward-compat pass (6/6), three-signal-class artifact, git-staged
+- [ ] Wave 5: ADR-031 Accepted transition + 13-task SC validation sweep + NFR-6 review + PR open
+- [ ] Wave 6: retrospective + BLP-01 matrix + polish + post-merge SHA fill
 
 ## Resume Command
 
 ```bash
-claude "Resume feature 206 (misinformation threat agent) on branch 206-misinformation-threat-agent. Waves 1.0, 1.1, 2, 3 complete; Wave 4 T031-T033 complete (28/62 tasks, 45%). T033 regen output at examples/agentic-app/test-output/2026-04-23T19-30-00-F2-wave4/ with 3 MI findings + three-signal-class verified. Continue Wave 4 with T034 risk-score, T035 controls, T036 infographic, T037 security-report, canonical sync, then T038-T041 verifications. Run /aod.build to continue."
+claude "Resume feature 206 (misinformation threat agent) on branch 206-misinformation-threat-agent. Waves 1-4 complete (37/62 tasks, 60%). Wave 4 closed at commit ec76c00 with 3 MI findings + full pipeline regen + canonical sync. Continue with Wave 5 (T022-T024 ADR-031 Accepted transition, T042-T054 13-task SC validation sweep, T055 NFR-6 code-review, T056 draft PR open). Run /aod.build to continue."
 ```
 
 Or simply:
@@ -107,18 +106,14 @@ Or simply:
 /aod.build 206
 ```
 
-The command auto-detects 28 completed tasks and resumes at Wave 4 T034.
-
 ## Open Escalations
 
-None active. MEDIUM-3 extension fully resolved in Wave 3. R1 Heuristic A subsume gate did not fire. R2 regeneration friction did not fire (regen was clean; no byte-identity breaks projected on 5 non-factual baselines).
+None active. Wave 4 closed cleanly — no byte-identity breaks, no R1/R2 gate fires, no surprise scope creep on F-2's 26-file invariant (was 24; +2 from F-2's new agent + patterns file).
 
-## Known Issues to Handle in Next Session
+## Known Issues / Follow-Ups (out of F-206 scope)
 
-**T034/T035 API stream idle timeout (not a blocker)**: Initial parallel dispatch of tachi-risk-scorer + tachi-control-analyzer both hit server-side streaming timeouts on the 83-finding analysis scope. Likely a transient API issue, not a technical blocker. Mitigation options in order of preference:
-1. **Retry sequentially** (risk-scorer first, control-analyzer second) in fresh session — cold context may complete faster.
-2. **Invoke via skill slash-command** (`/tachi.risk-score` then `/tachi.compensating-controls`) — the skill wrapper may stream differently than direct agent dispatch.
-3. **Narrow scope** — if full 83-finding analysis times out again, dispatch with only MI-focused scoring first (just 3 findings), then incrementally add OI findings, then LLM findings, then STRIDE. This is NOT aligned with canonical F-A2/SC-008 validation but provides a fallback.
-4. **Manual inline scoring** — last resort. Author risk-scores.md manually following tachi-risk-scoring skill's scoring formula (four-dimensional: CVSS 3.1, exploitability, scalability, reachability).
+1. **R-8 cross-section dedup in `scripts/tachi_parsers.py`**: During T037, the tachi-report-assembler applied a defensive 15-line dedup patch to `parse_compensating_controls_md()` to handle R-8's deliberate cross-section placement (it's intentionally in both Medium-inherent and Low-residual bands with an explanatory note). The patch was reverted as scope creep; future regens will carry the known data-quality quirk. **Follow-up**: open a separate tachi-tooling PR to add dedup-by-last-occurrence to the parser, ensuring R-8 counts once in summary stats. Not blocking F-206.
 
-The underlying work is well-scoped and architecturally correct — just a mechanical retry.
+2. **Medium-severity attack trees without PNG renders**: `LLM-14-attack-tree.md`, `MI-1-attack-tree.md`, `MI-2-attack-tree.md`, `MI-3-attack-tree.md` have no corresponding `.png` renders because `extract-report-data.py` `parse_attack_trees` filters to Critical/High severity only. All 4 trees are Medium-band in risk-scores.md. **Not a bug** — consistent with existing policy. If desired, a manual `mmdc` render pass over the 4 `.md` files would produce the PNGs.
+
+3. **Test-harness fix carried in F-206**: `tests/scripts/test_backward_compatibility.py` was edited to accommodate the new 12th detection agent. This edit is bundled into commit `ec76c00` and is part of F-206. If architect flags it as scope creep, it can be split into a prep commit ahead of the misinformation agent itself — but the two are tightly coupled (adding the agent breaks the test without the fix).
