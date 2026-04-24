@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.21.1](https://github.com/davidmatousek/tachi/compare/v4.21.0...v4.21.1) (2026-04-24)
+
+
+### Bug Fixes
+
+* **209:** producer/consumer contract drift across extractor pipeline ([#210](https://github.com/davidmatousek/tachi/issues/210)) ([d517ac6](https://github.com/davidmatousek/tachi/commit/d517ac6f3bc475c7e99f2e702142396f5b8a5393)), closes [#209](https://github.com/davidmatousek/tachi/issues/209)
+
 ## [4.21.0](https://github.com/davidmatousek/tachi/compare/v4.20.0...v4.21.0) (2026-04-24)
 
 
