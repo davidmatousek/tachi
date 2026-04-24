@@ -1,119 +1,125 @@
 # NEXT-SESSION — Feature 206 misinformation threat agent
 
 **Branch**: `206-misinformation-threat-agent`
-**Generated**: 2026-04-24 (Wave 4 closed, Wave 5 pickup)
-**Progress**: 37/62 tasks (60%) — Waves 1.0, 1.1, 2, 3, 4 complete. Wave 5 (ADR-031 Accepted + SC sweep + NFR-6 review + PR open) remaining, then Wave 6 polish.
+**Generated**: 2026-04-24 (Wave 5 closed, PR #207 open, pre-merge hold)
+**Progress**: 57/62 tasks (92%) — Waves 1.0, 1.1, 2, 3, 4, 5 complete. Wave 6 + Polish remain (all post-merge or contingent-not-fired).
 
-## Context Snapshot
+## Current State
 
-**Waves complete**:
+**HEAD**: `d8b2bba` (on `origin/206-misinformation-threat-agent`)
+**PR**: [#207](https://github.com/davidmatousek/tachi/pull/207) — **Draft, awaiting review/merge**
+**Title**: `feat(206): misinformation threat agent (OWASP LLM09:2025)`
+
+## Waves Complete
+
 - **1.0**: Architect Heuristic A verification memo (T004)
 - **1.1**: Schema 1.7 bump + ADR-031 Proposed + regex test + valid/invalid fixtures + FP dry-run (T005–T012)
 - **2**: Pattern catalog + misinformation agent + companion skill + 3 worked examples (T013–T021)
-- **3**: Orchestrator quintet + dispatch-rules quintet + MEDIUM-3 extension to 12 callsites + shared-reference consumers insert + EMPTY structural-diff (T026–T030)
-- **4**: Architect Q4 decision EXTEND + Clinical Advisory Sub-Agent architecture extension + full pipeline regen (T031–T041)
+- **3**: Orchestrator quintet + dispatch-rules quintet + MEDIUM-3 5-callsite reconciliation + shared-reference consumers insert + EMPTY structural-diff (T026–T030)
+- **4**: Architect Q4 decision EXTEND + Clinical Advisory Sub-Agent architecture extension + full pipeline regen + 3 MI findings + byte-identical baseline + three-signal-class discipline artifact (T031–T041)
+- **5**: ADR-031 Accepted (provisional) + SC sweep 13/13 PASS + NFR-6 code-review PASS (0 blocking, 1 non-blocking suggestion) + CLAUDE.md Recent Changes + quickstart smoke + examples/README.md no-update verified + draft PR #207 opened (T022–T024, T042–T056, T060–T062)
 
-**Wave 4 closed**: 86 findings scored (MI-1/2/3 Medium via `category: llm`, FR-014 ✓), 80 threats controls-analyzed, 6/6 infographics regenerated, 6.2 MB PDF + byte-identical baseline, canonical sync to `sample-report/` + top-level `threats.md`. 19/19 misinformation tests pass; 6/6 backward-compat byte-identity baselines pass (with test-harness fix bumping `DETECTION_AGENT_PATHS` 11 → 12 and scoping zero-edit invariant to `--diff-filter=M`). SC-014 three-signal-class discipline PASS (artifact at `.aod/results/wave4-three-signal-class-check.md`).
+## Wave 5 Close Evidence
 
-## Completed Tasks (37/62)
+- **ADR-031 Status**: Accepted (provisional 2026-04-24, post-merge SHA fill at T025)
+- **SC sweep (T042–T054)**: 13/13 PASS — artifact at `.aod/results/wave5-sc-sweep-206.md`
+- **NFR-6 (T055)**: PASS — 8 examples reviewed, 0 blocking, 1 suggestion (illustrative Westlaw/LexisNexis with escape clause) — artifact at `.aod/results/wave5-nfr6-compliance-check.md`
+- **ADR completeness (T023)**: 10/10 PASS — artifact at `.aod/results/adr-031-completeness-check.md`
+- **Quickstart smoke (T061)**: 11 steps PASS, 1 step (SC-013) correctly pre-merge-deferred — artifact at `.aod/results/quickstart-smoke.md`
+- **Tests**: 19/19 misinformation + 13/1-skip backward-compat (skip documented per T033)
+- **Branch push**: `origin/206-misinformation-threat-agent` @ `d8b2bba`
 
-- **Setup**: T001, T002, T003
-- **Wave 1.0**: T004
-- **Wave 1.1**: T005, T006, T007, T008, T009, T010, T011, T012
-- **Wave 2**: T013, T014, T015, T016, T017, T018, T019, T020, T021
-- **Wave 3**: T026, T027, T028, T029, T030
-- **Wave 4**: T031, T032, T033, T034, T035, T036, T037, T038, T039, T040, T041
-
-## Commits on Branch
+## Commits on Branch (10 total)
 
 1. Setup + pre-Wave commits (earlier sessions)
-2. `feat(206): schema 1.7 + ADR-031 Proposed + regex test + fixtures (Wave 1.1)`
-3. `feat(206): misinformation agent + companion skill + pattern catalog (Wave 2)`
-4. `feat(206): orchestrator + dispatch + shared-reference quintet registration (Wave 3)`
-5. `feat(206): extend agentic-app with Clinical Advisory Sub-Agent (Wave 4 T032)`
-6. `chore(206): mark T031-T033 complete; Wave 4 pipeline regen partial`
-7. `chore(206): refresh NEXT-SESSION handoff at Wave 4 T033→T034 boundary`
-8. `feat(206): complete Wave 4 pipeline regen (T034-T041) with 3 MI findings` ← latest (this session)
-
-Latest HEAD: `ec76c00`
+2. `feat(206): schema 1.7 + ADR-031 Proposed + regex test + fixtures (Wave 1.1)` (b916a23)
+3. `feat(206): misinformation agent + companion skill + pattern catalog (Wave 2)` (47a4221)
+4. `chore(206): add NEXT-SESSION handoff at wave-3 ceiling` (47565c5)
+5. `chore(206): checkpoint before build resume` (c96cc4e)
+6. `feat(206): orchestrator + dispatch + shared-reference quintet registration (Wave 3)` (aaab718)
+7. `feat(206): extend agentic-app with Clinical Advisory Sub-Agent (Wave 4 T032)` (95a814d)
+8. `chore(206): mark T031-T033 complete; Wave 4 pipeline regen partial` (d32fad2)
+9. `chore(206): refresh NEXT-SESSION handoff at Wave 4 T033→T034 boundary` (c0eafee)
+10. `feat(206): complete Wave 4 pipeline regen (T034-T041) with 3 MI findings` (ec76c00)
+11. `chore(206): refresh NEXT-SESSION handoff at Wave 4 close (37/62, 60%)` (d4c7526)
+12. `feat(206): Wave 5 complete — ADR-031 Accepted + SC sweep 13/13 + polish` (bd95a3c)
+13. `chore(206): update PR number placeholder → #207 + mark T056 complete` (d8b2bba) ← latest
 
 ## Why This Session Stopped
 
-User explicitly scoped to Wave 4 completion; handed off at Wave 4 close to gate on Wave 5 scope (ADR transition + 13-task SC validation sweep + code-review + PR open) — which includes the PR-open decision that warrants user sign-off.
+Wave 5 scope from prior NEXT-SESSION (ADR transition + 13-task SC validation sweep + NFR-6 code-review + draft PR open) complete. User sign-off gate on PR title/body/reviewers cleared at T056 ("Approve and open PR"). PR #207 is draft and awaits human review + merge.
 
-## Next Actions — Wave 5 (T022–T024, T042–T054, T055, T056)
+Remaining 5 tasks (T025 / T057 / T058 / T059 / T059-buffer) are all **post-merge or buffer-contingent**, not in-session-actionable at the pre-merge hold:
 
-1. **T022–T024** (ADR-031 Proposed → Accepted, sequential):
-   - **T022**: Update `specs/206-.../adrs/ADR-031.md` Revision History table — add "Accepted" row with today's date and commit SHA of T010 (the Proposed-state commit). Bump status field from Proposed → Accepted.
-   - **T023**: Architect verification — confirm the 9 ADR-031 decisions (D1-D9, including D8 2nd application of ADR-030 Decision 8 + D9 CWE-1039 exclusion) all resolved as captured. Re-read body to check nothing drifted between Proposed and Accepted.
-   - **T024**: Grep `misinformation.md` agent for forward-refs to ADR-031 — every Purpose-section reference must now cite Accepted status (not Proposed). Update if any still say Proposed.
+## Remaining Tasks (5/62)
 
-2. **T042–T054** (13-task SC validation sweep, parallel-capable):
-   - Many delegate to prior-wave results:
-     - **SC-001, SC-002, SC-003** → delegate to T030 consistency audit
-     - **SC-006** → T039 backward-compat pass (done)
-     - **SC-010** → T038 F-A2 + fixture-driven validation pass (done)
-     - **SC-011** → T018 `grep -i maestro` verification (done)
-     - **SC-012** → T005 regex test pass (done) + `validate_source_attribution` AML.T0042 rejection test (done via T008 invalid fixture)
-     - **SC-014** → T040 three-signal-class artifact (done)
-   - Need fresh checks:
-     - **SC-004** → `grep -r "AML\.T0042" .claude/agents/tachi/misinformation.md .claude/skills/tachi-misinformation/` expects zero hits (FR-5 compliance)
-     - **SC-007** → `grep -c "per-claim source_attribution" .claude/agents/tachi/misinformation.md` expects ≥1 hit (FR-7 grounding-specificity)
-     - **SC-008** → confirm `category: llm` in misinformation agent's finding emission schema (grep agent + one worked example)
-     - **SC-009** → **T050 24-file zero-edit grep audit**: `git diff --name-only --diff-filter=M main -- {12 threat agent paths} {12 detection-patterns.md paths}` expects EMPTY. *Note: F-2 adds a 13th agent (misinformation.md) and 13th patterns file (tachi-misinformation/references/detection-patterns.md), but the invariant applies only to the 24 pre-existing files. Use the same `--diff-filter=M` approach as the test-harness fix in commit ec76c00.*
+| Task | Phase | When | Description |
+|------|-------|------|-------------|
+| T025 | Post-Merge | After PR #207 squash-merge | Add `Accepted with post-merge SHA fill \| squash commit {SHORT_SHA} \| confirmed` row to ADR-031 Revision History (ADR-027/028/029/030 precedent) |
+| T057 | Wave 6 | Wave 2.3 PM (residual capacity) OR Wednesday 2026-04-29 buffer | Author `specs/206-.../delivery.md` retrospective — estimated vs actual duration, surprises, patterns validated (now two-execution-deep post-F-2), lessons for F-3/F-4/F-5 |
+| T058 | Post-Merge | After PR #207 squash-merge | SC-013 BLP-01 Coverage Matrix update — LLM09:2025 Planned → Covered with F-2 (Feature 206) named as closure feature; edit `_internal/strategy/BLP-01-threat-coverage.md` |
+| T059 | Contingent | Only if R2 materializes | R2 buffer-day absorption OR Q4 advisory-app fallback (~0.5 day). **Status: NOT FIRED** — Wave 4 regen clean, byte-identity preserved, no R1/R2/MEDIUM-3/HIGH-1 escalations triggered |
 
-3. **T055** (code-reviewer NFR-6 compliance, sequential after SC sweep):
-   - Review `detection-patterns.md` + `misinformation.md` agent worked examples for clearly-fictional framing — no real-world PII, clinical identifiers, or company names. Artifact to `.aod/results/code-reviewer-nfr6.md`.
+## Resume Instructions
 
-4. **T056** (PR open, final Wave 5 task):
-   - Run `gh pr create --draft` with title `feat(206): misinformation threat agent (OWASP LLM09:2025)` and body summarizing the feature.
-   - Request triple-review: product-manager + architect + code-reviewer agents.
-   - **User decision gate**: confirm PR title, body, and reviewers before submission.
-
-## Wave 6 + Polish (post-PR-open, partially post-merge)
-
-- **T057** delivery retrospective (PM or buffer-day)
-- **T058** BLP-01 Coverage Matrix update (post-merge — updates `docs/threat-coverage/` with F-2 as delivered)
-- **T059** contingent R2 buffer absorption — unlikely to fire (Wave 4 regen was clean, no byte-identity breaks)
-- **T060** CLAUDE.md Recent Changes update
-- **T061** quickstart smoke test (run `examples/agentic-app/` end-to-end)
-- **T062** examples/README.md no-update verification (F-2 extends agentic-app, no new example dir)
-- **T025** post-merge SHA fill for ADR-031 Revision History
-
-## Prerequisites Checklist (resume gate)
-
-- [x] Branch `206-misinformation-threat-agent` clean and up-to-date on HEAD `ec76c00`
-- [x] Schema v1.7 + ADR-031 Proposed committed (Wave 1.1)
-- [x] `misinformation.md` agent + `tachi-misinformation/` companion skill + 5-category pattern catalog (Wave 2)
-- [x] Orchestrator quintet + 12-callsite consistency + shared-reference additive edit (Wave 3)
-- [x] `agentic-app/architecture.md` extended with Clinical Advisory Sub-Agent (Wave 4 T032)
-- [x] T033 threat-model regen: 3 MI findings surfaced + three-signal-class verified
-- [x] T034-T037 pipeline regen: risk-scores, controls, infographics, PDF all flushed
-- [x] Canonical sync: sample-report/ updated + top-level threats.md mirrored
-- [x] T038-T041 verifications: misinformation tests pass, backward-compat pass (6/6), three-signal-class artifact, git-staged
-- [ ] Wave 5: ADR-031 Accepted transition + 13-task SC validation sweep + NFR-6 review + PR open
-- [ ] Wave 6: retrospective + BLP-01 matrix + polish + post-merge SHA fill
-
-## Resume Command
+### Post-Merge Resume (after PR #207 squash-merges to `main`)
 
 ```bash
-claude "Resume feature 206 (misinformation threat agent) on branch 206-misinformation-threat-agent. Waves 1-4 complete (37/62 tasks, 60%). Wave 4 closed at commit ec76c00 with 3 MI findings + full pipeline regen + canonical sync. Continue with Wave 5 (T022-T024 ADR-031 Accepted transition, T042-T054 13-task SC validation sweep, T055 NFR-6 code-review, T056 draft PR open). Run /aod.build to continue."
+git checkout main
+git pull origin main
+
+# T025 — ADR-031 SHA fill
+SQUASH_SHA=$(gh pr view 207 --json mergeCommit --jq '.mergeCommit.oid' | cut -c1-12)
+MERGE_DATE=$(gh pr view 207 --json mergedAt --jq '.mergedAt' | cut -c1-10)
+# Append to ADR-031 Revision History:
+#   | $MERGE_DATE | Accepted with post-merge SHA fill | squash commit $SQUASH_SHA | confirmed |
+
+# T058 — BLP-01 Coverage Matrix update
+# In _internal/strategy/BLP-01-threat-coverage.md:
+#   Change row: | LLM09:2025 Misinformation | **Planned** | New `misinformation` agent | T1 | TBD (F-2) |
+#   To:          | LLM09:2025 Misinformation | **Covered** | F-2 (Feature 206) / misinformation agent | T1 | $MERGE_DATE |
+
+# T057 — author retrospective at specs/206-misinformation-threat-agent/delivery.md
+# (Can be authored pre-merge if residual capacity; current decision: post-merge)
 ```
 
-Or simply:
+Or simply: `/aod.deliver FEATURE: 206 - misinformation threat agent` — the deliver command runs T025/T057/T058 as part of the standard close-out.
+
+### Pre-Merge Pickup (if user wants T057 retrospective now)
 
 ```bash
-/aod.build 206
+claude "Author T057 delivery retrospective for Feature 206 at specs/206-misinformation-threat-agent/delivery.md. Cover: estimated vs actual duration, surprises encountered, patterns validated (two-execution-deep: F-1 + F-2), lessons for F-3/F-4/F-5. PR #207 is open pre-merge; merge metadata will be filled post-squash."
 ```
+
+## Prerequisites Checklist (post-merge resume gate)
+
+- [x] Draft PR #207 opened 2026-04-24
+- [x] Branch pushed to `origin/206-misinformation-threat-agent` @ `d8b2bba`
+- [x] Wave 5 evidence artifacts complete (`.aod/results/wave5-*.md`, `.aod/results/adr-031-completeness-check.md`, `.aod/results/quickstart-smoke.md`)
+- [x] ADR-031 Status: Accepted (provisional) with PR #207 in Revision History
+- [x] CLAUDE.md Recent Changes updated with Feature 206 entry
+- [x] Tasks.md 57/62 marked [X] (5 post-merge/contingent remaining)
+- [ ] PR #207 reviewed + squash-merged
+- [ ] T025 SHA fill committed post-merge
+- [ ] T058 BLP-01 Coverage Matrix transition committed post-merge
+- [ ] T057 delivery retrospective authored (pre-merge or post-merge)
 
 ## Open Escalations
 
-None active. Wave 4 closed cleanly — no byte-identity breaks, no R1/R2 gate fires, no surprise scope creep on F-2's 26-file invariant (was 24; +2 from F-2's new agent + patterns file).
+**None active.** All 5 PRD escalation anchors (R1, R2, MEDIUM-3, HIGH-1, HIGH-2) closed cleanly:
+
+- **R1** (Heuristic A subsume signal / Day-1-EOD hard gate) — NOT fired; ADR-030 Decision 1 inheritance confirmed at T004
+- **R2** (regeneration surface drift / Q4 fallback) — NOT fired; extend-in-place on `agentic-app` clean, byte-identity preserved
+- **MEDIUM-3** (5-callsite quintet consistency) — VERIFIED at T030; all 5 callsites updated to quintet
+- **HIGH-1** (NFR-6 code-review double-check) — VERIFIED at T055; 0 blocking violations
+- **HIGH-2** (delivery retrospective slotting) — PENDING; T057 to be authored at merge-close or Wednesday buffer
 
 ## Known Issues / Follow-Ups (out of F-206 scope)
 
-1. **R-8 cross-section dedup in `scripts/tachi_parsers.py`**: During T037, the tachi-report-assembler applied a defensive 15-line dedup patch to `parse_compensating_controls_md()` to handle R-8's deliberate cross-section placement (it's intentionally in both Medium-inherent and Low-residual bands with an explanatory note). The patch was reverted as scope creep; future regens will carry the known data-quality quirk. **Follow-up**: open a separate tachi-tooling PR to add dedup-by-last-occurrence to the parser, ensuring R-8 counts once in summary stats. Not blocking F-206.
+1. **R-8 cross-section dedup in `scripts/tachi_parsers.py`**: Follow-up tachi-tooling PR to add dedup-by-last-occurrence. Not blocking F-206.
 
-2. **Medium-severity attack trees without PNG renders**: `LLM-14-attack-tree.md`, `MI-1-attack-tree.md`, `MI-2-attack-tree.md`, `MI-3-attack-tree.md` have no corresponding `.png` renders because `extract-report-data.py` `parse_attack_trees` filters to Critical/High severity only. All 4 trees are Medium-band in risk-scores.md. **Not a bug** — consistent with existing policy. If desired, a manual `mmdc` render pass over the 4 `.md` files would produce the PNGs.
+2. **Medium-severity attack trees without PNG renders**: `LLM-14`, `MI-1`, `MI-2`, `MI-3` attack-tree `.md` files have no `.png` renders because `extract-report-data.py` `parse_attack_trees` filters to Critical/High. All 4 trees are Medium-band. Not a bug; consistent with existing policy.
 
-3. **Test-harness fix carried in F-206**: `tests/scripts/test_backward_compatibility.py` was edited to accommodate the new 12th detection agent. This edit is bundled into commit `ec76c00` and is part of F-206. If architect flags it as scope creep, it can be split into a prep commit ahead of the misinformation agent itself — but the two are tightly coupled (adding the agent breaks the test without the fix).
+3. **Test-harness fix carried in F-206**: `tests/scripts/test_backward_compatibility.py` edit for 12th detection agent is bundled in commit `ec76c00`. If reviewer flags as scope creep, it can be split — but coupling is tight.
+
+4. **NFR-6 Westlaw/LexisNexis vendor-category mention (non-blocking)**: Code-reviewer flagged MI-2 mitigation in `detection-patterns.md` references Westlaw/LexisNexis as illustrative corpus vendors with "/ equivalent corpus" escape clause. Not a blocking violation; not an endorsement. If a reviewer wants stricter neutrality, re-word as `corpus vendor` with zero brand mention. Wave 5 T055 captured it as SUGGESTION at `.aod/results/wave5-nfr6-compliance-check.md`.
