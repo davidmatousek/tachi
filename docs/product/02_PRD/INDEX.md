@@ -1,11 +1,12 @@
 # PRD Index
 
-**Last Updated**: 2026-04-25 (PRD #212 delivered — Improve Executive-Architecture Infographic / quality follow-up to #128)
+**Last Updated**: 2026-04-25 (PRD #219 created — F-3 ASI07 Insecure Inter-Agent Communication / Heuristic A enrichment of `tool-abuse`)
 **Legend**: ✓=APPROVED, ⚠=APPROVED_WITH_CONCERNS, 🔄=CHANGES_REQUESTED, ⛔=BLOCKED, ⚠⚡=OVERRIDDEN
 
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 219 | [F-3 ASI07 Insecure Inter-Agent Communication](219-asi07-tool-abuse-enrichment-2026-04-25.md) | ✓ | ⚠ | ⚠ | In Review | 2026-04-25 |
 | 212 | [Improve Executive-Architecture Infographic](212-improve-executive-architecture-infographic-2026-04-24.md) ([PR #213](https://github.com/davidmatousek/tachi/pull/213)) | ⚠ | ⚠ | ⚠ | Delivered | 2026-04-25 |
 | 206 | [F-2 Misinformation Threat Agent (LLM09)](206-misinformation-threat-agent-2026-04-23.md) ([PR #207](https://github.com/davidmatousek/tachi/pull/207)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-24 |
 | 201 | [F-1 Output Integrity Threat Agent (LLM05)](201-output-integrity-threat-agent-2026-04-18.md) ([PR #202](https://github.com/davidmatousek/tachi/pull/202)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-19 |
