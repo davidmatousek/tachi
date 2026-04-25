@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.22.1](https://github.com/davidmatousek/tachi/compare/v4.22.0...v4.22.1) (2026-04-25)
+
+
+### Bug Fixes
+
+* **215:** byte-probe image detection in extract-report-data ([#216](https://github.com/davidmatousek/tachi/issues/216)) ([672b7fb](https://github.com/davidmatousek/tachi/commit/672b7fb56295b53680f37975d4f9a243af920ec0))
+
 ## [4.22.0](https://github.com/davidmatousek/tachi/compare/v4.21.1...v4.22.0) (2026-04-25)
 
 
