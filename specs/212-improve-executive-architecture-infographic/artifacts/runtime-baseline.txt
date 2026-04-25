@@ -1,0 +1,38 @@
+# Pre-F-212 Runtime Baseline (T006)
+
+# Generated: 2026-04-25
+# Method: 5 timed executions of scripts/extract-infographic-data.py
+# Target: ~/Projects/second-brain-mcp/docs/security/2026-04-23T23-02-25/ (reference dataset)
+# Template: executive-architecture
+# Env: SOURCE_DATE_EPOCH=1700000000
+# Python: cpython-3.12.11 (uv-managed)
+# Measurement: /usr/bin/time -p, "real" wall-clock seconds
+
+# === Per-run wall-clock (seconds) ===
+run_1_real = 0.08
+run_2_real = 0.03
+run_3_real = 0.03
+run_4_real = 0.03
+run_5_real = 0.03
+
+# === Statistics ===
+mean_seconds_all_runs = 0.040
+mean_seconds_excluding_first = 0.030
+median_seconds = 0.030
+
+# === SC-212-8 gate (≤10% regression) ===
+# Mean baseline: 40 ms (all 5 runs)  |  30 ms (warm runs only — exclude run_1 first-time IO)
+# Post-F-212 acceptable mean: ≤44 ms (all-runs basis)  |  ≤33 ms (warm-runs basis)
+# Recommended comparison basis: warm-runs only (excluding first-run cache miss)
+
+sc_212_8_gate_warm_seconds_max = 0.033
+sc_212_8_gate_all_seconds_max = 0.044
+
+# === Notes ===
+# - Run 1 is consistently 2-3x slower due to filesystem cache and Python startup.
+# - Subsequent runs stabilize at ~30 ms.
+# - The reference dataset has 9 qualifying findings across 3 layers; F-212 L2's Largest
+#   Remainder Method allocation (4-step calculation) is O(layers) — negligible additional cost.
+# - F-212 L3's _build_flow_edges (sort O(N log N), N=number of data_flows) and _build_clusters
+#   (sort O(N log N), N=number of trust_boundaries) are also negligible at production scale.
+# - 10% regression headroom (3 ms warm / 4 ms all) is generous for the algorithmic additions.

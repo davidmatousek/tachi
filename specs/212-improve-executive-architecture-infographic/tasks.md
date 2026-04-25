@@ -51,9 +51,9 @@ triad:
 
 **CRITICAL**: No US1/US2/US3 implementation may begin until Phase 2 is complete.
 
-- [ ] T004 Verify `parse_scope_data()` output shape in `scripts/tachi_parsers.py` (line 904+): confirm `data_flows[]` entries have keys `source`, `destination`, `data`, `protocol` (NOT `target`) and `trust_boundaries[]` entries have keys `zone`, `trust-level`, `components`. Record verification in `specs/212-improve-executive-architecture-infographic/artifacts/producer-contract-verified.md` with exact line numbers + quoted field names. This is the Architect MEDIUM-2 lock.
-- [ ] T005 Verify existing test harness `tests/scripts/test_extract_infographic_data.py`: confirm fixture `tests/scripts/fixtures/exec_arch/agentic_app/threats.md` exists, runs, and currently produces a `callouts[]` with one-per-layer count. Record count in `specs/212-improve-executive-architecture-infographic/artifacts/pre-f212-callout-count.txt` for SC-212-8 runtime baseline measurement (mean of 5 timed runs).
-- [ ] T006 Run 5 timed executions of the extractor on the reference dataset to establish runtime baseline (SC-212-8 gate — ≤10% regression target). Record mean wall-clock in `specs/212-improve-executive-architecture-infographic/artifacts/runtime-baseline.txt`.
+- [X] T004 Verify `parse_scope_data()` output shape in `scripts/tachi_parsers.py` (line 904+): confirm `data_flows[]` entries have keys `source`, `destination`, `data`, `protocol` (NOT `target`) and `trust_boundaries[]` entries have keys `zone`, `trust-level`, `components`. Record verification in `specs/212-improve-executive-architecture-infographic/artifacts/producer-contract-verified.md` with exact line numbers + quoted field names. This is the Architect MEDIUM-2 lock.
+- [X] T005 Verify existing test harness `tests/scripts/test_extract_infographic_data.py`: confirm fixture `tests/scripts/fixtures/exec_arch/agentic_app/threats.md` exists, runs, and currently produces a `callouts[]` with one-per-layer count. Record count in `specs/212-improve-executive-architecture-infographic/artifacts/pre-f212-callout-count.txt` for SC-212-8 runtime baseline measurement (mean of 5 timed runs).
+- [X] T006 Run 5 timed executions of the extractor on the reference dataset to establish runtime baseline (SC-212-8 gate — ≤10% regression target). Record mean wall-clock in `specs/212-improve-executive-architecture-infographic/artifacts/runtime-baseline.txt`.
 
 **Checkpoint**: Producer contract locked, baseline artifacts captured. User-story phases can now begin.
 
