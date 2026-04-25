@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-04-24T15:35:47Z.
+> Auto-generated from GitHub Issues on 2026-04-24T19:31:47Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -19,7 +19,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| #212 | Improve executive-architecture infographic: OpenClaw-style flow diagram with nodes, arrows, clusters, and denser callouts | — | 2026-04-24 |
+| — | *No items in this stage* | | |
 
 ## Plan
 
@@ -51,6 +51,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #212 | Improve executive-architecture infographic: OpenClaw-style flow diagram with nodes, arrows, clusters, and denser callouts | OPEN | 2026-04-24 |
 | #209 | Fix 5 extractor/agent contract-drift bugs | CLOSED | 2026-04-24 |
 | #198 | F-B source_attribution invisible at Tier 1 and Tier 2 (cc/rs findings) | CLOSED | 2026-04-18 |
 | #186 | F-A1.3 follow-on: MITRE ATT&CK + ATLAS catalog expansion | OPEN | 2026-04-17 |
