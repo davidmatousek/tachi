@@ -39,9 +39,9 @@ triad:
 
 **Purpose**: Read-only context loading and reference capture. No new dependencies; no new directories.
 
-- [ ] T001 Capture pre-F-212 baseline image for side-by-side comparison: copy current `threat-executive-architecture.jpg` from the reference dataset `~/Projects/second-brain-mcp/docs/security/2026-04-23T23-02-25/` into `specs/212-improve-executive-architecture-infographic/artifacts/baseline-before/` (create directory).
-- [ ] T002 Capture pre-F-212 baseline PDF on the zero-finding fixture for FR-212-22 / SC-212-7 regression gate: render the Typst PDF from a zero-qualifying-findings threats.md under `SOURCE_DATE_EPOCH=1700000000`; save to `specs/212-improve-executive-architecture-infographic/artifacts/baseline-zero-finding.pdf`.
-- [ ] T003 [P] Read `.claude/skills/tachi-infographics/references/visual-design-system.md` and confirm canonical severity color hex codes (`#DC2626` Critical, `#EA580C` High) used as the inheritance source for callout borders. No edits in this task — read-only reference capture.
+- [X] T001 Capture pre-F-212 baseline image for side-by-side comparison: copy current `threat-executive-architecture.jpg` from the reference dataset `~/Projects/second-brain-mcp/docs/security/2026-04-23T23-02-25/` into `specs/212-improve-executive-architecture-infographic/artifacts/baseline-before/` (create directory).
+- [X] T002 Capture pre-F-212 baseline PDF on the zero-finding fixture for FR-212-22 / SC-212-7 regression gate: render the Typst PDF from a zero-qualifying-findings threats.md under `SOURCE_DATE_EPOCH=1700000000`; save to `specs/212-improve-executive-architecture-infographic/artifacts/baseline-zero-finding.pdf`.
+- [X] T003 [P] Read `.claude/skills/tachi-infographics/references/visual-design-system.md` and confirm canonical severity color hex codes (`#DC2626` Critical, `#EA580C` High) used as the inheritance source for callout borders. No edits in this task — read-only reference capture.
 
 ---
 
