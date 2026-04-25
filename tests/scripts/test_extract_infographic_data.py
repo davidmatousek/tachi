@@ -161,27 +161,47 @@ def test_executive_architecture_trust_zone_fallback_to_dfd():
         )
 
 
-def test_executive_architecture_one_callout_per_layer():
-    """multiple_per_layer fixture: exactly one callout for the layer; tie-break wins S-1.
+def test_executive_architecture_per_layer_ceiling_and_tie_break():
+    """multiple_per_layer fixture: per-layer ceiling = 4 callouts; tie-break orders S-1..S-4.
 
     The fixture has one trust zone "Edge Layer" with 5 gateways (Alpha, Beta, Gamma,
     Delta, Epsilon), each with a Critical finding (S-1..S-5). All 5 findings are
-    Critical, so the severity tie-break falls to finding_id ascending — S-1 should win.
+    Critical, so the severity tie-break falls to finding_id ascending.
+
+    Pre-F-212 behavior (per-layer-dedup) emitted exactly 1 callout — the tie-break
+    winner S-1. Post-F-212 (FR-212-9 per-layer ceiling = 4) the same single layer
+    receives 4 callouts (capped at the ceiling) and the tie-break still selects
+    the four lex-smallest finding ids: S-1, S-2, S-3, S-4. The fifth finding S-5
+    surfaces via the layer_overflow annotation rather than a callout.
     """
     returncode, _stdout, stderr, payload = run_extract(
         FIXTURES_DIR / "multiple_per_layer", "executive-architecture"
     )
     assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
     assert payload is not None
-    # Find the Edge Layer
     edge_callouts = [
         c for c in payload["callouts"] if c["layer_name"] == "Edge Layer"
     ]
-    assert len(edge_callouts) == 1, (
-        f"Expected exactly 1 callout for 'Edge Layer', got {len(edge_callouts)}"
+    # FR-212-9 per-layer ceiling: a single layer with 5 qualifying findings
+    # receives exactly 4 callouts (the ceiling), not all 5 and not just 1.
+    assert len(edge_callouts) == 4, (
+        f"Expected 4 callouts for 'Edge Layer' (per-layer ceiling), "
+        f"got {len(edge_callouts)}"
     )
-    assert edge_callouts[0]["finding_id"] == "S-1", (
-        f"Expected tie-break winner S-1, got {edge_callouts[0]['finding_id']}"
+    # Tie-break: severity all-Critical → composite-score all-None → finding_id
+    # asc. The four lex-smallest ids must appear in ascending order.
+    assert [c["finding_id"] for c in edge_callouts] == ["S-1", "S-2", "S-3", "S-4"], (
+        f"Expected tie-break ordering [S-1, S-2, S-3, S-4]; "
+        f"got {[c['finding_id'] for c in edge_callouts]}"
+    )
+
+    # FR-212-9 layer_overflow annotation: 5 qualifying - 4 allocated = 1 more.
+    edge_layer = next(
+        layer for layer in payload["layers"] if layer["name"] == "Edge Layer"
+    )
+    assert edge_layer.get("layer_overflow") == "+ 1 more in this layer", (
+        f"Expected layer_overflow='+ 1 more in this layer'; "
+        f"got {edge_layer.get('layer_overflow')!r}"
     )
 
 

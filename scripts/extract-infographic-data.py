@@ -854,11 +854,16 @@ def _extract_description(finding):
     return ""
 
 
-def _select_critical_high_callouts(findings, layers):
-    """Select one Critical/High callout per layer.
+_TOTAL_CAP = 8
+_PER_LAYER_CEILING = 4
 
-    Sort order per layer: severity desc, composite score desc, finding id asc.
-    Findings whose component matches no layer are dropped.
+
+def _qualifying_per_layer(findings, layers):
+    """Group qualifying (Critical/High) findings by their resolved layer.
+
+    Returns ``(per_layer, comp_to_layer)`` where ``per_layer`` is a dict of
+    ``layer_name → list[finding]`` containing only qualifying findings whose
+    component maps into one of ``layers`` (orphans are dropped).
     """
     comp_to_layer = {}
     for idx, layer in enumerate(layers):
@@ -879,31 +884,160 @@ def _select_critical_high_callouts(findings, layers):
         layer_name, _idx = comp_to_layer[key]
         per_layer[layer_name].append(finding)
 
+    return per_layer, comp_to_layer
+
+
+def _callout_sort_key(f):
+    """Per-finding tie-break: severity desc → composite score desc → id asc."""
+    severity = _canonical_severity(f)
+    composite = _extract_composite_score(f)
+    return (
+        -_SEVERITY_ORDINAL.get(severity, 0),
+        -(composite if composite is not None else 0.0),
+        f.get("id", ""),
+    )
+
+
+def _allocate_callouts_per_layer(per_layer):
+    """Allocate callout slots across qualifying layers via Largest Remainder Method.
+
+    Invariants enforced (FR-212-8 / FR-212-9 / FR-212-12):
+      - Total cap: ``sum(allocation.values()) <= _TOTAL_CAP``.
+      - System-wide density (FR-212-8): when total qualifying findings >= 6
+        emit 6-8 callouts; when < 6 emit exactly that many (no synthetic
+        inflation).
+      - Per-layer floor: when ``len(qualifying_layers) <= _TOTAL_CAP``, every
+        qualifying layer receives >= 1 slot (suspended when more qualifying
+        layers exist than the total cap permits).
+      - Per-layer ceiling: no layer receives more than
+        ``min(_PER_LAYER_CEILING, qualifying_count_for_layer)``.
+      - Determinism: float-tie ordering broken by case-insensitive layer name
+        ascending so two runs on identical input produce byte-identical output
+        under SOURCE_DATE_EPOCH=1700000000.
+
+    Returns ``allocation`` as a dict mapping ``layer_name → int`` (zero when
+    a layer is non-qualifying or when the >8-layer branch trims it). Returns
+    an empty dict when there are no qualifying findings at all.
+    """
+    qualifying_per_layer = {
+        name: len(items) for name, items in per_layer.items() if items
+    }
+    if not qualifying_per_layer:
+        return {}
+
+    qualifying_layer_names = list(qualifying_per_layer.keys())
+    total_qualifying = sum(qualifying_per_layer.values())
+    target_total = min(total_qualifying, _TOTAL_CAP)
+    n_qualifying = len(qualifying_layer_names)
+
+    if n_qualifying > _TOTAL_CAP:
+        # Per-layer floor suspended (more qualifying layers than total-cap
+        # permits). Pick top _TOTAL_CAP layers by qualifying count desc
+        # (tie-break: layer name ascending case-insensitive); allocate 1 each;
+        # remaining qualifying layers receive 0. No remainder phase — the
+        # cap is fully consumed by the per-layer-floor allocations of the
+        # selected layers.
+        ranked = sorted(
+            qualifying_layer_names,
+            key=lambda n: (-qualifying_per_layer[n], n.lower()),
+        )
+        allocation = {name: 0 for name in qualifying_layer_names}
+        for name in ranked[:_TOTAL_CAP]:
+            allocation[name] = 1
+        return allocation
+
+    # Per-layer floor of 1 for every qualifying layer.
+    allocation = {name: 1 for name in qualifying_layer_names}
+    current_total = n_qualifying
+
+    if current_total >= target_total:
+        # Edge case: total_qualifying == n_qualifying (every layer has exactly
+        # one qualifying finding). No remainder slots to distribute.
+        return allocation
+
+    # Largest-Remainder-Method remainder distribution.
+    # quota[name] = (layer's qualifying share) * target_total.
+    # Layers with the largest fractional remainder get extra slots first; ties
+    # break by layer name ascending (case-insensitive) for determinism.
+    quotas = {
+        name: (qualifying_per_layer[name] / total_qualifying) * target_total
+        for name in qualifying_layer_names
+    }
+    ranked_by_remainder = sorted(
+        qualifying_layer_names,
+        key=lambda n: (
+            -(quotas[n] - math.floor(quotas[n])),
+            n.lower(),
+        ),
+    )
+
+    slots_left = target_total - current_total
+    while slots_left > 0:
+        added = 0
+        for name in ranked_by_remainder:
+            if slots_left == 0:
+                break
+            cap = min(_PER_LAYER_CEILING, qualifying_per_layer[name])
+            if allocation[name] < cap:
+                allocation[name] += 1
+                slots_left -= 1
+                added += 1
+        if added == 0:
+            # Every layer at its ceiling — cannot allocate further. This
+            # happens when target_total exceeds the sum of per-layer caps,
+            # which only occurs in deeply-pathological inputs (e.g., 8 layers
+            # each with a single qualifying finding requiring target_total=8
+            # — already satisfied by the floor=1 path above). Defensive
+            # break preserves termination.
+            break
+
+    return allocation
+
+
+def _select_critical_high_callouts(findings, layers):
+    """Select up to _TOTAL_CAP=8 Critical/High callouts via Largest Remainder Method.
+
+    Replaces the pre-F-212 per-layer-dedup logic (1 callout per layer) with
+    system-wide allocation that satisfies FR-212-8 / FR-212-9 / FR-212-10 /
+    FR-212-12:
+      - 6-8 callouts when total qualifying findings >= 6.
+      - Exactly ``total_qualifying`` callouts when < 6 (no synthetic
+        inflation).
+      - Every qualifying layer represented with >= 1 callout when the
+        qualifying-layer count is <= _TOTAL_CAP (per-layer floor).
+      - No layer over _PER_LAYER_CEILING=4 callouts.
+      - Within each layer: severity desc -> composite score desc -> finding
+        id ascending tie-break.
+      - Across layers: emit in existing layer position order (no new
+        layer-sort semantics introduced by L2).
+
+    Findings whose component does not resolve to any of ``layers`` are
+    dropped. The output record shape matches the pre-F-212 contract:
+    ``{layer_name, finding_id, severity, raw_description, composite_score,
+    affected_component}``.
+    """
+    per_layer, _comp_to_layer = _qualifying_per_layer(findings, layers)
+    allocation = _allocate_callouts_per_layer(per_layer)
+
+    if not allocation:
+        return []
+
     callouts = []
     for layer in layers:
-        layer_findings = per_layer.get(layer["name"], [])
-        if not layer_findings:
+        name = layer["name"]
+        n = allocation.get(name, 0)
+        if n <= 0:
             continue
-
-        def _sort_key(f):
-            severity = _canonical_severity(f)
-            composite = _extract_composite_score(f)
-            return (
-                -_SEVERITY_ORDINAL.get(severity, 0),
-                -(composite if composite is not None else 0.0),
-                f.get("id", ""),
-            )
-
-        layer_findings.sort(key=_sort_key)
-        top = layer_findings[0]
-        callouts.append({
-            "layer_name": layer["name"],
-            "finding_id": top.get("id", ""),
-            "severity": _canonical_severity(top),
-            "raw_description": _extract_description(top),
-            "composite_score": _extract_composite_score(top),
-            "affected_component": (top.get("component") or None),
-        })
+        items_sorted = sorted(per_layer[name], key=_callout_sort_key)
+        for top in items_sorted[:n]:
+            callouts.append({
+                "layer_name": name,
+                "finding_id": top.get("id", ""),
+                "severity": _canonical_severity(top),
+                "raw_description": _extract_description(top),
+                "composite_score": _extract_composite_score(top),
+                "affected_component": (top.get("component") or None),
+            })
 
     return callouts
 
@@ -957,6 +1091,27 @@ def _build_executive_architecture_payload(tier, findings, scope_data, source_fil
 
     callouts = _select_critical_high_callouts(findings, layers)
     total_after_layer_dedup = len(callouts)
+
+    # Annotate each layer with a layer_overflow field per FR-212-9. When the
+    # qualifying-finding count for a layer exceeds the number of callouts
+    # actually allocated, surface the residual via a compact "+ N more in
+    # this layer" string so the rendered page communicates that the page is
+    # not the full diagnosis. Otherwise the field is None.
+    per_layer_qualifying, _comp_to_layer = _qualifying_per_layer(findings, layers)
+    callouts_per_layer = {}
+    for callout in callouts:
+        callouts_per_layer[callout["layer_name"]] = (
+            callouts_per_layer.get(callout["layer_name"], 0) + 1
+        )
+    for layer in layers:
+        qualifying_count = len(per_layer_qualifying.get(layer["name"], []))
+        allocated = callouts_per_layer.get(layer["name"], 0)
+        if qualifying_count > allocated:
+            layer["layer_overflow"] = (
+                f"+ {qualifying_count - allocated} more in this layer"
+            )
+        else:
+            layer["layer_overflow"] = None
 
     skip_image = (total_qualifying == 0)
     generation_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
