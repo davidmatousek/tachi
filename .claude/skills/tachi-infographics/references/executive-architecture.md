@@ -131,6 +131,8 @@ The bracketed `<<...>>` slots map to payload fields as follows:
 | `<<callout_block>>` | Rendered from `callouts[]` (6–8 entries — see Callout Selection above) — each `finding_id`, `severity`, `affected_component`, and `raw_description` (rewritten to ≤25 words by Gemini at render time) |
 | `<<empty_layer_block>>` | One compact-badge line per layer with zero qualifying Critical/High findings (FR-212-5) |
 | `<<single_zone_caption>>` | Caption text emitted only when exactly one layer has components (Edge Case fallback — replaces the inter-layer arrow directive) |
+| `<<flow_edges_block>>` | Composed from `flow_edges[]` — one line per entry rendered as `source → destination [data via protocol]` for Gemini to draw as an explicit labeled directional arrow between two component nodes. Empty (or omitted line) when `flow_edges == []`. |
+| `<<clusters_block>>` | Composed from `clusters[]` — one entry per cluster rendered as `name (trust_level): members` for Gemini to draw as a dashed sub-group boundary grouping the listed members under the cluster name label. Empty (or omitted line) when `clusters == []`. |
 
 Slots are filled from the payload before the prompt is sent. Everything outside the slots is locked text.
 
@@ -149,11 +151,14 @@ STYLING DIRECTIVES (interpret these, do not display them):
 - Component nodes: every component within a layer MUST render as a rounded-rectangle node (corner-radius approximately 8–12px equivalent) with the layer's pastel as the fill and a 1.5–2pt colored border. The node contains the component name in medium-bold sans-serif and (optionally) a 1-line role caption. NEVER render a component as a bare text label without an enclosing shape. (FR-212-1)
 - Node border colors: when a node has at least one Critical-severity finding, its border is red #DC2626. When the node has at least one High-severity finding (and no Critical), its border is orange #EA580C. When a node has no qualifying findings, its border is the canonical gray #6B7280 desaturated to a thin neutral stroke. Severity colors are inherited unchanged from the canonical tachi palette in visual-design-system.md. (FR-212-4)
 - Inter-layer arrows: between every pair of adjacent layers, draw at least one directional arrow flowing top-to-bottom from a node in the upper layer to a node in the lower layer. The arrow MUST be a solid stroke with an explicit arrowhead glyph at the destination end (filled triangle or chevron) — bare lines without arrowheads are NOT acceptable. The phrase "shapes and arrows" at the start of this prompt is a directive to defeat the text-only failure mode in image generation; honor it. (FR-212-2)
+- Explicit data-flow arrows from `flow_edges`: when the DATA CONTENT block contains a FLOW EDGES section (populated from the `flow_edges[*]` payload field — fields `source`, `destination`, `data`, `protocol`), draw a directional arrow from each listed `source` component node to its `destination` component node with an explicit arrowhead, optionally labeling the arrow midline with the `data` value (and `protocol` in parentheses if present). These explicit edges are the structural source of truth for inter-component flow — render exactly the listed edges; do NOT infer additional flows from component-name proximity, alphabetic ordering, or layer adjacency. When the FLOW EDGES section is empty, fall back to the inter-layer arrow directive above for visual continuity. (FR-212-18)
+- Trust-zone clusters from `clusters`: when the DATA CONTENT block contains a CLUSTERS section (populated from the `clusters[*]` payload field — fields `name`, `members`, `trust_level`), draw a dashed sub-group boundary (2pt dashed neutral-gray stroke, rounded corners) enclosing the listed `members` component nodes and label the boundary in its top-left corner with the cluster `name`. These dashed cluster boundaries OVERLAY the layer bands — they do not replace them; a component node MAY belong to both a layer band (its position) and a cluster (its trust grouping). Render exactly the listed clusters; do NOT infer additional clusters from component-name patterns, layer membership, or visual proximity. (FR-212-18)
 - Callout boxes: each callout is a small rectangular box (white-with-alpha fill, dashed 2pt border in the callout's severity color, severity-colored warning triangle icon in the upper-left corner). Each callout MUST be visually anchored to a specific component node by a thin leader line (1pt solid neutral stroke) terminating on the node's edge — NEVER render a callout as floating text inside a layer band with no anchor. The callout box contains: the finding ID in monospace, the severity word in colored bold, and a ≤25-word plain-English description rewritten from the raw description with technical jargon stripped. (FR-212-3)
+- Callout NON-OVERLAP rule (HARD constraint): callout boxes MUST NOT overlap any component node, any other callout box, any layer band label, any inter-layer arrow, or any flow-edge arrow label. Each callout box MUST occupy clear whitespace — preferably the left or right page margin alongside its layer band, or the inter-layer whitespace strip directly above or below the band. When a layer has multiple callouts, distribute them across both the left and right margins of that layer's band rather than stacking them on the same side; if margin space is exhausted, place additional callouts in the inter-layer whitespace strip with leader lines crossing into the band to reach their anchor node. The leader line MAY cross other leader lines if necessary to maintain box separation, but the callout BOXES themselves MUST remain disjoint from every component node and every other callout box. Reduce per-callout box footprint (smaller font, tighter padding) before allowing any overlap. (FR-212-3, T030 polish)
 - Empty-layer treatment: a layer that contains components but has zero Critical/High qualifying findings MUST render as a compact factual badge — a thin horizontal pill no taller than approximately 15% of the total page height — containing the literal text "0 High/Critical findings in this layer". Do NOT expand such a layer into a full-band placeholder; do NOT add synthetic callouts to fill the band; the badge IS the layer for rendering purposes. (FR-212-5)
 - Single-zone fallback: if exactly one layer has components, omit the inter-layer arrows and add a centered caption above the single layer with the text supplied in <<single_zone_caption>>. The single layer still renders all of its component nodes and callouts with leader lines normally.
 - Typography: title bold 28–32pt equivalent at the top of the page; layer labels semi-bold 18–22pt equivalent left-aligned within each band; component-node labels medium-bold 12–14pt equivalent; callout text regular 12–14pt equivalent; finding IDs monospace 12–14pt equivalent. Sans-serif throughout (IBM Plex Sans, DM Sans, Manrope, or similar — avoid Inter, Roboto, Arial, Open Sans, Lato as primary).
-- Composition: leave generous whitespace between layers; group component nodes within their layer with consistent intra-layer spacing (multiples of 8pt). Position callout boxes in the page margins or between bands so leader lines do not cross other nodes when avoidable. Maintain reading order top-to-bottom.
+- Composition: leave generous whitespace between layers; group component nodes within their layer with consistent intra-layer spacing (multiples of 8pt). Position callout boxes in the page margins (left or right of the active layer band) or in the inter-layer whitespace strips between bands. Component nodes MUST occupy ONLY the central column of their layer band, leaving at least 18% of the band's width clear on each side as a margin reserved for callout boxes. Leader lines MAY cross other leader lines when necessary, but no callout box, component node, or text label MAY overlap any other shape or label. Maintain reading order top-to-bottom.
 
 DATA CONTENT (render this as visible text inside the shapes and bands):
 
@@ -171,6 +176,14 @@ EMPTY-LAYER BADGES (each layer below has zero qualifying Critical/High findings 
 
 <<empty_layer_block>>
 
+FLOW EDGES (render each entry below as an explicit directional arrow from the named `source` component node to the named `destination` component node, with an arrowhead at the destination end; optionally label the arrow midline with the `data` value — these are the structural source of truth from the `flow_edges[*]` payload field, supersede any flow inferred from component-name proximity, and MUST be rendered exactly as listed):
+
+<<flow_edges_block>>
+
+CLUSTERS (render each entry below as a dashed sub-group boundary enclosing the listed `members` component nodes with the cluster `name` labeled in the boundary's top-left corner — these dashed cluster boundaries from the `clusters[*]` payload field overlay the layer bands rather than replacing them, and MUST be rendered exactly as listed):
+
+<<clusters_block>>
+
 <<single_zone_caption>>
 
 FOOTER: "Generated by Tachi Threat Modeling Framework — OWASP STRIDE + AI Threat Analysis"
@@ -181,6 +194,37 @@ Render this as a clean, premium, boardroom-ready security infographic. Lead with
 ```
 
 The block delimited by `=== BEGIN VERBATIM PROMPT BLOCK ===` and `=== END VERBATIM PROMPT BLOCK ===` is the consumer copy target. The Gemini prompt builder MUST emit exactly the text inside these markers (after slot substitution) — no rewriting, no aesthetic recomposition, no runtime construction of the styling directives.
+
+---
+
+## Payload schema
+
+The executive-architecture payload emitted by `_build_executive_architecture_payload()` in `scripts/extract-infographic-data.py` carries the following top-level keys consumed by the slot-substitution pass before the prompt is sent. The L1 keys (`metadata`, `layers`, `callouts`, `severity_distribution`) are documented in the F-128 contract; the L3 keys `flow_edges` and `clusters` are added by F-212 and documented here. The full schema lives in `specs/212-improve-executive-architecture-infographic/data-model.md`; the producer/consumer contract surface is locked in `specs/212-improve-executive-architecture-infographic/contracts/payload-schema.md`.
+
+### `flow_edges[]` (FR-212-13, FR-212-14, FR-212-16, FR-212-17)
+
+Array of explicit data-flow records, each with the fields:
+
+| Field | Type | Source |
+|-------|------|--------|
+| `source` | str | Producer field `data_flows[].source` (component name) |
+| `destination` | str | Producer field `data_flows[].destination` (component name — NOT `target`; Architect MEDIUM-2 lock) |
+| `data` | str | Producer field `data_flows[].data` (may be empty string) |
+| `protocol` | str | Producer field `data_flows[].protocol` (may be empty string) |
+
+**Sort order**: ascending by `(source.casefold(), destination.casefold())`. **Truncation**: first 50 entries after sort retained; producer counts above 50 trigger a stderr warning (`Warning: flow_edges truncated to 50 entries (N emitted by producer)`). **Empty-semantics**: always present on every payload — `[]` when the source key is absent or empty (never `null`, never missing). **Slot rendering**: substituted into the `<<flow_edges_block>>` marker as one line per record so Gemini draws an explicit directional arrow per entry.
+
+### `clusters[]` (FR-212-13, FR-212-15, FR-212-16)
+
+Array of trust-zone cluster records, each with the fields:
+
+| Field | Type | Source |
+|-------|------|--------|
+| `name` | str | Producer field `trust_boundaries[].zone` (zone name) |
+| `members` | list[str] | Producer field `trust_boundaries[].components` (parsed from comma-separated string, stripped, sorted ascending case-insensitively) |
+| `trust_level` | str | Producer field `trust_boundaries[].trust-level` (renamed via hyphen→underscore and lowercased to match the `_TRUST_LEVEL_ORDER` lookup convention used by `_compute_trust_zones`) |
+
+**Sort order**: ascending by `(_TRUST_LEVEL_ORDER.get(trust_level, 99), name.casefold())` mirroring `_compute_trust_zones:784` — `trusted` (0) before `semi-trusted` (1) before `untrusted` (2); unknown levels sort last (99). **Empty-semantics**: always present on every payload — `[]` when the source key is absent or empty (never `null`, never missing). **Slot rendering**: substituted into the `<<clusters_block>>` marker as one line per record so Gemini draws a dashed sub-group boundary per cluster.
 
 ---
 

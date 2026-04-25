@@ -1050,6 +1050,77 @@ def _select_critical_high_callouts(findings, layers, per_layer=None):
     return callouts
 
 
+def _build_flow_edges(scope_data):
+    """Build the L3 ``flow_edges[]`` array for the executive-architecture payload.
+
+    Reads ``scope_data["data_flows"]`` (produced by ``parse_scope_data`` in
+    ``scripts/tachi_parsers.py:927``) and emits one record per entry with the
+    consumer-locked field names ``source``, ``destination`` (NOT ``target`` —
+    Architect MEDIUM-2 lock), ``data``, ``protocol``. Sorts ascending by
+    ``(source.casefold(), destination.casefold())``; truncates to the first 50
+    entries after sort and logs a warning to stderr when the producer emitted
+    more (FR-212-17). Returns ``[]`` when the source key is absent or empty.
+    """
+    flows = scope_data.get("data_flows", []) or []
+    edges = []
+    for df in flows:
+        edges.append({
+            "source": df.get("source", "") or "",
+            "destination": df.get("destination", "") or "",
+            "data": df.get("data", "") or "",
+            "protocol": df.get("protocol", "") or "",
+        })
+    edges.sort(key=lambda e: (e["source"].casefold(), e["destination"].casefold()))
+    if len(edges) > 50:
+        emitted = len(edges)
+        edges = edges[:50]
+        print(
+            f"Warning: flow_edges truncated to 50 entries "
+            f"({emitted} emitted by producer)",
+            file=sys.stderr,
+        )
+    return edges
+
+
+def _build_clusters(scope_data):
+    """Build the L3 ``clusters[]`` array for the executive-architecture payload.
+
+    Reads ``scope_data["trust_boundaries"]`` (produced by ``parse_scope_data``
+    in ``scripts/tachi_parsers.py:937``) and emits one record per entry with
+    consumer-aligned keys: ``name`` (from ``zone``), ``members`` (parsed from
+    the comma-separated ``components`` string, stripped, and sorted ascending
+    case-insensitively), ``trust_level`` (renamed from producer's
+    ``trust-level`` via hyphen→underscore and lowercased to match the
+    ``_TRUST_LEVEL_ORDER`` lookup convention used by ``_compute_trust_zones``).
+
+    Sorts ascending by ``(_TRUST_LEVEL_ORDER.get(trust_level, 99),
+    name.casefold())`` mirroring ``_compute_trust_zones:784``. Returns ``[]``
+    when the source key is absent or empty.
+    """
+    boundaries = scope_data.get("trust_boundaries", []) or []
+    clusters = []
+    for tb in boundaries:
+        zone_name = tb.get("zone", "") or ""
+        trust_level = (tb.get("trust-level", "") or "").lower()
+        components_str = tb.get("components", "") or ""
+        members = sorted(
+            [c.strip() for c in components_str.split(",") if c.strip()],
+            key=str.casefold,
+        )
+        clusters.append({
+            "name": zone_name,
+            "members": members,
+            "trust_level": trust_level,
+        })
+    clusters.sort(
+        key=lambda c: (
+            _TRUST_LEVEL_ORDER.get(c["trust_level"], 99),
+            c["name"].casefold(),
+        )
+    )
+    return clusters
+
+
 def _build_executive_architecture_payload(tier, findings, scope_data, source_file):
     """Assemble the ExecutiveArchitecturePayload.
 
@@ -1149,11 +1220,16 @@ def _build_executive_architecture_payload(tier, findings, scope_data, source_fil
         "total_after_layer_dedup": total_after_layer_dedup,
     }
 
+    flow_edges = _build_flow_edges(scope_data)
+    clusters = _build_clusters(scope_data)
+
     return {
         "metadata": metadata,
         "layers": layers,
         "callouts": callouts,
         "severity_distribution": severity_distribution,
+        "flow_edges": flow_edges,
+        "clusters": clusters,
     }
 
 
