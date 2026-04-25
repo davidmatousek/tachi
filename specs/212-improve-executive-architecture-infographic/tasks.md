@@ -74,7 +74,7 @@ triad:
 
 ### Regression Gates for User Story 1
 
-- [ ] T011 [US1] Run the PDF byte-identity regression on the zero-finding fixture (FR-212-22 / SC-212-7): regenerate the PDF from the Phase-2 baseline zero-finding threats.md under `SOURCE_DATE_EPOCH=1700000000`; `cmp` against `specs/212-improve-executive-architecture-infographic/artifacts/baseline-zero-finding.pdf`. MUST return zero differences. If differs, fix before proceeding.
+- [X] T011 [US1] Run the PDF byte-identity regression on the zero-finding fixture (FR-212-22 / SC-212-7): regenerate the PDF from the Phase-2 baseline zero-finding threats.md under `SOURCE_DATE_EPOCH=1700000000`; `cmp` against `specs/212-improve-executive-architecture-infographic/artifacts/baseline-zero-finding.pdf`. MUST return zero differences. If differs, fix before proceeding.
 
 **Checkpoint**: US1 shipped. Regenerated image passes 4/4 (target) or ≥3/4 (minimum) of SC-212-1. PDF byte-identity on zero-finding holds. Can stop here if timeline pressure forces early ship (still delivers ~70% of value).
 
@@ -97,7 +97,7 @@ triad:
 
 - [X] T016 [US2] Rewrite `_select_critical_high_callouts()` in `scripts/extract-infographic-data.py` (replacing the existing function around line 857): implement Largest Remainder Method allocation across layers with per-layer qualifying counts; total cap 8; per-layer floor ≥1 when qualifying-layer-count ≤8; per-layer ceiling 4; tie-break within a layer: severity descending (Critical before High) → composite score descending → finding ID ascending. Preserve the existing output record shape (`layer_name`, `finding_id`, `severity`, `raw_description`, `composite_score`, `affected_component`). (FR-212-8, FR-212-9, FR-212-10.)
 - [X] T017 [US2] Extend the per-layer record in `_build_executive_architecture_payload()` at `scripts/extract-infographic-data.py` to emit an optional `layer_overflow: str | None` field on `layers[]` entries, populated with `"+ N more in this layer"` when qualifying count exceeds allocated callouts for that layer, else `None`. (FR-212-9 overflow annotation.)
-- [ ] T018 [US2] Run the full test file `pytest tests/scripts/test_extract_infographic_data.py -v` — T013/T014/T015 MUST now pass. Run existing tests — all pre-F-212 tests must still pass (no regression).
+- [X] T018 [US2] Run the full test file `pytest tests/scripts/test_extract_infographic_data.py -v` — T013/T014/T015 MUST now pass. Run existing tests — all pre-F-212 tests must still pass (no regression).
 - [ ] T019 [US2] Regenerate the reference image on the full reference dataset (`~/Projects/second-brain-mcp/docs/security/2026-04-23T23-02-25/`) and confirm callout count ∈ [6, 7, 8] (SC-212-3). Save regenerated spec JSON to `specs/212-improve-executive-architecture-infographic/artifacts/us2-output-spec.md`.
 
 ### Performance Gate for User Story 2
