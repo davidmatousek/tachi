@@ -14,7 +14,7 @@ model: sonnet
 category: agentic
 threat_class: AG
 dfd_targets: [Process]
-owasp_references: [ASI-02, ASI-04, MCP-03, MCP-05, LLM06:2025]
+owasp_references: [ASI-02, ASI-04, MCP-03, MCP-05, LLM06:2025, ASI-07]
 output_schema: ../../../schemas/finding.yaml
 ```
 
@@ -23,6 +23,8 @@ output_schema: ../../../schemas/finding.yaml
 ## Purpose
 
 Detects threats arising from agentic systems that invoke external tools, MCP servers, plugins, or APIs as part of their execution. Tool-use abuse occurs when an agent invokes tools it should not have access to, manipulates tool parameters to achieve unintended effects, or chains tool calls in sequences that escalate privileges beyond the agent's intended scope. This agent identifies unauthorized tool invocation, capability escalation through tool composition, parameter injection, tool chain manipulation, tool poisoning (direct poisoning, shadowing, rug pulls), and the MITRE ATLAS Oct 2025 agent-specific techniques AML.T0058 (LLM plugin compromise), AML.T0061 (unauthorized invocation via instruction hijack), and AML.T0062 (MCP server poisoning and cross-tool exfiltration).
+
+This agent additionally covers the inter-agent channel surface — A2A communication between agent Process components (direct RPC, message bus, shared queue, MCP-to-MCP bridge) and multi-hop MCP trust chains — per OWASP ASI07:2026. Pattern Categories 9 (Insecure Inter-Agent Communication) and 10 (MCP-to-MCP Trust Propagation) detect channel-level threats distinct from single-agent tool dispatch.
 
 ## Skill References
 
@@ -40,7 +42,7 @@ Detects threats arising from agentic systems that invoke external tools, MCP ser
 2. For each component, walk through the pattern categories in the reference file (unauthorized tool invocation, capability escalation via composition, parameter injection, tool chain manipulation, tool poisoning, LLM plugin compromise, unauthorized invocation via instruction hijack, MCP server poisoning) and collect every indicator present.
 3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: agentic`, a sequential `AG-N` id, and the target component name.
 4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of confidentiality, integrity, availability, intent alignment), then compute `risk_level` via the matrix in `severity-bands-shared.md`.
-5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (ASI-02, ASI-04, MCP-03, MCP-05, OWASP LLM06:2025, MITRE ATLAS AML.T0058/T0061/T0062, CWE-77, CWE-89) from the reference file's Primary Sources list.
+5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (ASI-02, ASI-04, MCP-03, MCP-05, ASI-07, OWASP LLM06:2025, MITRE ATLAS AML.T0058/T0061/T0062/T0060, CWE-77, CWE-89, CWE-287, CWE-345) from the reference file's Primary Sources list.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation. If no components match any trigger keyword, return zero findings; do not speculate about tool abuse on architectures without agentic tool invocation.
 
 ## Example Findings

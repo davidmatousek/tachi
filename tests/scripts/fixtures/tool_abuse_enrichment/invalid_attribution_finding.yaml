@@ -1,0 +1,19 @@
+# F-3 negative-test fixture — source_attribution cites an absent taxonomy ID
+# Feature 219 / Pattern Category 9 or 10 (test fixture only)
+# F-A2 validate_source_attribution() MUST REJECT this fixture at Phase 4
+# Rejection rule: every source_attribution.id must resolve as a top-level id in schemas/taxonomy/{taxonomy}.yaml.
+# CWE-99999 is intentionally absent from schemas/taxonomy/cwe.yaml.
+id: "AG-99"
+category: "agentic"
+component: "Test fixture (negative)"
+threat: "Negative-test fixture for F-A2 referential-integrity validation. Cites CWE-99999 which is absent from the catalog."
+likelihood: LOW
+impact: LOW
+risk_level: Note
+mitigation: "Test fixture only — never emitted by production agent."
+references:
+  - "OWASP ASI07:2026"
+source_attribution:
+  - {taxonomy: owasp, id: ASI07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-99999, relationship: related}  # CWE-99999 absent from catalog → MUST fail validation
+dfd_element_type: "Process"

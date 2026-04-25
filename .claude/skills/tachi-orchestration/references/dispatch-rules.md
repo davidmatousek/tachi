@@ -89,7 +89,7 @@ LLM dispatch triggers these agents:
 
 AG dispatch triggers these agents:
 - `agent-autonomy` (ASI-01)
-- `tool-abuse` (MCP-03)
+- `tool-abuse` (MCP-03, ASI-07)
 
 ### Matching Rules
 
