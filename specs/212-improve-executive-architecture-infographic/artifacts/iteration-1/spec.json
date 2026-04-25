@@ -1,0 +1,111 @@
+{
+  "callouts": [
+    {
+      "affected_component": "MCP Server (HTTP)",
+      "composite_score": 7.8,
+      "finding_id": "D-1",
+      "layer_name": "Application Layer",
+      "raw_description": "Attacker floods HTTP MCP endpoint exhausting Deno edge function capacity",
+      "severity": "High"
+    },
+    {
+      "affected_component": "MCP Tool Surface",
+      "composite_score": 7.7,
+      "finding_id": "D-9",
+      "layer_name": "Application Layer",
+      "raw_description": "Autonomous agent chains browse_thoughts + bulk_delete causing catastrophic data destruction",
+      "severity": "High"
+    },
+    {
+      "affected_component": "MCP Server (stdio)",
+      "composite_score": 7.5,
+      "finding_id": "AG-1",
+      "layer_name": "Application Layer",
+      "raw_description": "All 10 tools exposed to local agents without human-in-the-loop approval gates",
+      "severity": "High"
+    },
+    {
+      "affected_component": "MCP Server (stdio)",
+      "composite_score": 7.5,
+      "finding_id": "AGP-01",
+      "layer_name": "Application Layer",
+      "raw_description": "Two or more agentic components coordinate over inter-agent data flow",
+      "severity": "High"
+    },
+    {
+      "affected_component": "brain CLI",
+      "composite_score": 8.4,
+      "finding_id": "S-9",
+      "layer_name": "External / Untrusted",
+      "raw_description": "The brain CLI connects directly to PostgREST via HTTPS, bypassing both MCP servers, with no documented API key",
+      "severity": "High"
+    }
+  ],
+  "layers": [
+    {
+      "component_count": 9,
+      "components": [
+        "Dead-Letter Queue",
+        "Embed Edge Function",
+        "Hybrid Search RPC",
+        "PostgREST API",
+        "Supabase Vault",
+        "developer_profile",
+        "pg_cron Scheduler",
+        "pgmq Queue",
+        "thoughts"
+      ],
+      "layer_overflow": null,
+      "name": "Supabase Platform",
+      "position": 0,
+      "source_kind": "trust_zone"
+    },
+    {
+      "component_count": 4,
+      "components": [
+        "Ingest Edge Function",
+        "MCP Server (HTTP)",
+        "MCP Server (stdio)",
+        "MCP Tool Surface"
+      ],
+      "layer_overflow": "+ 4 more in this layer",
+      "name": "Application Layer",
+      "position": 1,
+      "source_kind": "trust_zone"
+    },
+    {
+      "component_count": 9,
+      "components": [
+        "Browser Clients",
+        "ChatGPT",
+        "Claude Code",
+        "Claude Desktop",
+        "Cursor / Windsurf",
+        "Gemini Client",
+        "Slack Events API",
+        "Slack Web API",
+        "brain CLI"
+      ],
+      "layer_overflow": null,
+      "name": "External / Untrusted",
+      "position": 2,
+      "source_kind": "trust_zone"
+    }
+  ],
+  "metadata": {
+    "fallback_used": false,
+    "generation_timestamp": "2026-04-25T15:33:19Z",
+    "qualifying_layer_count": 3,
+    "skip_image": false,
+    "source_file": "/Users/david/Projects/second-brain-mcp/docs/security/2026-04-23T23-02-25/threats.md",
+    "template_name": "executive-architecture",
+    "tier_source": "compensating-controls",
+    "total_filtered_count": 9
+  },
+  "severity_distribution": {
+    "critical_count": 0,
+    "high_count": 9,
+    "total_after_layer_dedup": 5,
+    "total_qualifying": 9
+  }
+}
