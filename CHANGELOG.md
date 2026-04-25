@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.22.0](https://github.com/davidmatousek/tachi/compare/v4.21.1...v4.22.0) (2026-04-25)
+
+
+### Features
+
+* **212:** improve executive-architecture infographic ([904d952](https://github.com/davidmatousek/tachi/commit/904d9520f5db8e85493814872b4cf26fdcd5342b))
+
 ## [4.21.1](https://github.com/davidmatousek/tachi/compare/v4.21.0...v4.21.1) (2026-04-24)
 
 
