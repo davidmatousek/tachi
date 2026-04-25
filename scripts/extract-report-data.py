@@ -1352,22 +1352,37 @@ def validate(data: dict) -> list:
 # Image and Brand Asset Detection
 # =============================================================================
 
+_IMAGE_FORMAT_TO_EXT = {"jpeg": ".jpg", "png": ".png"}
+
+
+def _file_format(path: Path) -> "str | None":
+    """Return 'png', 'jpeg', or None based on magic bytes."""
+    try:
+        with path.open("rb") as f:
+            head = f.read(8)
+    except OSError:
+        return None
+    if head.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if head.startswith(b"\xff\xd8\xff"):
+        return "jpeg"
+    return None
+
+
 def detect_images(target_dir: Path, template_dir: Path) -> dict:
     """Compute image paths relative to template directory.
 
-    The infographic agent writes images whose extension matches the returned
-    Gemini MIME type — `.jpg` for `image/jpeg`, `.png` for `image/png`. Probe
-    both extensions and prefer the one that exists; if both exist, prefer
-    `.jpg` (treated as the canonical contract).
+    The infographic agent writes images whose extension is supposed to match
+    the Gemini MIME type, but the `gemini-2.5-flash-image` fallback model has
+    historically returned PNG bytes saved into `.jpg` files. Typst's decoder
+    rejects bytes that don't match the filename. Probe each candidate's magic
+    bytes (not just its extension) and pick the path whose filename matches
+    its content. If only a mislabeled candidate exists, write a corrected
+    sibling and emit that path so Typst compiles on the first attempt.
     """
-    # Compute relative path from template_dir to target_dir
-    # Template files are at templates/tachi/security-report/
-    # Images are at {target_dir}/threat-*.{jpg,png}
-    # Relative path: ../../{target_dir}/
     try:
         rel_target = os.path.relpath(str(target_dir), str(template_dir))
     except ValueError:
-        # Fallback for cross-drive paths on Windows
         rel_target = str(target_dir)
 
     images = {
@@ -1389,11 +1404,37 @@ def detect_images(target_dir: Path, template_dir: Path) -> dict:
     }
 
     for key, stem in image_stems.items():
+        candidates = []
         for ext in (".jpg", ".png"):
-            filepath = target_dir / f"{stem}{ext}"
-            if filepath.exists() and filepath.stat().st_size > 0:
-                images[key] = rel_target + "/" + f"{stem}{ext}"
+            fp = target_dir / f"{stem}{ext}"
+            if fp.exists() and fp.stat().st_size > 0:
+                candidates.append((ext, fp))
+        if not candidates:
+            continue
+
+        chosen = None
+        for ext, fp in candidates:
+            if _IMAGE_FORMAT_TO_EXT.get(_file_format(fp)) == ext:
+                chosen = fp
                 break
+
+        if chosen is None:
+            for ext, fp in candidates:
+                fmt = _file_format(fp)
+                if fmt is None:
+                    continue
+                target_path = target_dir / f"{stem}{_IMAGE_FORMAT_TO_EXT[fmt]}"
+                print(
+                    f"Image format mismatch: {fp.name} contains {fmt.upper()} bytes; "
+                    f"writing corrected sibling {target_path.name}",
+                    file=sys.stderr,
+                )
+                shutil.copyfile(fp, target_path)
+                chosen = target_path
+                break
+
+        if chosen is not None:
+            images[key] = rel_target + "/" + chosen.name
 
     return images
 

@@ -172,20 +172,30 @@ def test_bug3_narrative_fallback_to_full_section1_prose(extract_report_data):
 # Bug 4 — detect_images finds both .jpg and .png
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("extension", [".jpg", ".png"])
-def test_bug4_detect_images_finds_both_extensions(tmp_path, extract_report_data, extension):
+# Issue #215 follow-up tightened the contract: detect_images now selects by
+# magic bytes, not just by filename presence. The bytes below are the minimum
+# headers required to be recognized as JPEG/PNG by the byte probe.
+_JPEG_MAGIC_BYTES = b"\xff\xd8\xff\xe0\x00\x10JFIF" + b"\x00" * 16
+_PNG_MAGIC_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
+
+
+@pytest.mark.parametrize(
+    "extension,payload",
+    [(".jpg", _JPEG_MAGIC_BYTES), (".png", _PNG_MAGIC_BYTES)],
+)
+def test_bug4_detect_images_finds_both_extensions(
+    tmp_path, extract_report_data, extension, payload
+):
     """Gemini's ``gemini-2.5-flash-image`` fallback returns PNG bytes; the agent
     now writes ``threat-*.png`` when the MIME is ``image/png``. detect_images
-    must probe both ``.jpg`` (canonical) and ``.png`` so the report-assembler
-    doesn't need a copy-to-sibling workaround.
+    must accept both ``.jpg`` (canonical) and ``.png`` when the bytes match.
     """
     template_dir = tmp_path / "templates"
     template_dir.mkdir()
     target_dir = tmp_path / "target"
     target_dir.mkdir()
 
-    # Create a funnel image with the parametrized extension (at least 1 byte)
-    (target_dir / f"threat-risk-funnel{extension}").write_bytes(b"fake-image-bytes")
+    (target_dir / f"threat-risk-funnel{extension}").write_bytes(payload)
 
     images = extract_report_data.detect_images(target_dir, template_dir)
 

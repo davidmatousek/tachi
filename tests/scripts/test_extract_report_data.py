@@ -22,6 +22,22 @@ FIXTURES_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "report_data"
 GOLDEN_EXISTING_FLAGS = FIXTURES_DIR / "golden_existing_image_flags.txt"
 AGENTIC_APP_SAMPLE = REPO_ROOT / "examples" / "agentic-app" / "sample-report"
 
+PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+JPEG_MAGIC = b"\xff\xd8\xff\xe0\x00\x10JFIF"
+
+
+def _write_minimal_png(path: Path) -> None:
+    """Write a byte sequence that begins with the PNG magic header.
+
+    Only the magic bytes matter to ``detect_images`` (it reads the first 8
+    bytes). The trailing payload is arbitrary filler so ``st_size > 0``.
+    """
+    path.write_bytes(PNG_MAGIC + b"\x00" * 16)
+
+
+def _write_minimal_jpeg(path: Path) -> None:
+    path.write_bytes(JPEG_MAGIC + b"\x00" * 16)
+
 
 def run_extract(target_dir, template_dir=None):
     """Run extract-report-data.py and return (returncode, stdout, stderr, typst_content)."""
@@ -185,4 +201,122 @@ def test_existing_image_flags_unchanged(
     assert expected_line in output_lines, (
         f"Golden flag line drifted. Expected line {expected_line!r} "
         f"not found in generated report-data.typ. Backward compatibility regression."
+    )
+
+
+# =============================================================================
+# Byte-probe image detection (Issue #215 regression coverage)
+# =============================================================================
+
+
+def _build_byte_probe_fixture(tmp_path: Path) -> Path:
+    """Set up a minimal target dir: copy threats.md from image_present fixture."""
+    fixture = tmp_path / "target"
+    fixture.mkdir()
+    (fixture / "threats.md").write_bytes(
+        (FIXTURES_DIR / "image_present" / "threats.md").read_bytes()
+    )
+    return fixture
+
+
+def test_mislabeled_jpg_with_png_bytes_emits_png_path_and_writes_sibling(tmp_path):
+    """A `.jpg` file whose bytes are PNG must produce a corrected `.png` sibling.
+
+    Reproduces the production failure mode: assessment directories generated
+    against the `gemini-2.5-flash-image` fallback model contain `.jpg` files
+    with PNG bytes. Typst rejects mismatched bytes/extension. The extractor
+    must (a) detect the mismatch via magic-byte probe, (b) write a correctly
+    named sibling, (c) emit the corrected `.png` path in `report-data.typ`.
+    """
+    fixture = _build_byte_probe_fixture(tmp_path)
+    mislabeled = fixture / "threat-executive-architecture.jpg"
+    _write_minimal_png(mislabeled)
+
+    returncode, _stdout, stderr, content = run_extract(fixture)
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert content is not None, "Expected report-data.typ to be written"
+
+    sibling = fixture / "threat-executive-architecture.png"
+    assert sibling.exists(), (
+        "Expected a `.png` sibling to be written next to the mislabeled `.jpg`."
+    )
+    assert sibling.read_bytes().startswith(PNG_MAGIC), (
+        "Sibling must contain the original PNG bytes (not be empty/corrupt)."
+    )
+
+    path_lines = [
+        line for line in content.splitlines()
+        if line.startswith("#let executive-architecture-image-path")
+    ]
+    assert len(path_lines) == 1, f"Expected one path line, got: {path_lines!r}"
+    assert path_lines[0].rstrip().endswith('threat-executive-architecture.png"'), (
+        f"Expected emitted path to be the `.png` sibling, got: {path_lines[0]!r}"
+    )
+
+    assert "Image format mismatch" in stderr, (
+        "Expected a stderr note announcing the corrected sibling write."
+    )
+    assert "PNG bytes" in stderr, (
+        "Expected the format-mismatch note to identify the actual format."
+    )
+
+
+def test_mixed_extensions_prefers_self_consistent_png_over_stale_jpg(tmp_path):
+    """When both `.jpg` (PNG bytes, stale) and `.png` (PNG bytes, fresh) exist,
+    pick the `.png` whose extension matches its bytes — never the stale `.jpg`.
+
+    Models the cross-version re-run case: a previous fallback-model run
+    produced the `.jpg`; a fresh run produced the `.png`. The `.jpg`-first
+    preference of the old code would silently pick the stale file.
+    """
+    fixture = _build_byte_probe_fixture(tmp_path)
+    stale = fixture / "threat-executive-architecture.jpg"
+    fresh = fixture / "threat-executive-architecture.png"
+    _write_minimal_png(stale)
+    _write_minimal_png(fresh)
+
+    returncode, _stdout, stderr, content = run_extract(fixture)
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert content is not None, "Expected report-data.typ to be written"
+
+    path_lines = [
+        line for line in content.splitlines()
+        if line.startswith("#let executive-architecture-image-path")
+    ]
+    assert len(path_lines) == 1, f"Expected one path line, got: {path_lines!r}"
+    assert path_lines[0].rstrip().endswith('threat-executive-architecture.png"'), (
+        f"Expected the `.png` (self-consistent) to be selected, got: {path_lines[0]!r}"
+    )
+
+    assert "Image format mismatch" not in stderr, (
+        "Best-match path must not trip the recovery branch — no warning expected."
+    )
+
+
+def test_clean_jpeg_emits_jpg_path_without_warning(tmp_path):
+    """Backward compatibility: a true JPEG `.jpg` file must keep emitting the
+    `.jpg` path with no recovery activity. Guards against false-positive
+    warnings during normal operation.
+    """
+    fixture = _build_byte_probe_fixture(tmp_path)
+    clean = fixture / "threat-executive-architecture.jpg"
+    _write_minimal_jpeg(clean)
+
+    returncode, _stdout, stderr, content = run_extract(fixture)
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert content is not None, "Expected report-data.typ to be written"
+
+    path_lines = [
+        line for line in content.splitlines()
+        if line.startswith("#let executive-architecture-image-path")
+    ]
+    assert len(path_lines) == 1, f"Expected one path line, got: {path_lines!r}"
+    assert path_lines[0].rstrip().endswith('threat-executive-architecture.jpg"'), (
+        f"Expected `.jpg` to be preserved for clean JPEG input, got: {path_lines[0]!r}"
+    )
+    assert "Image format mismatch" not in stderr, (
+        "Clean JPEG must not emit the format-mismatch warning."
+    )
+    assert not (fixture / "threat-executive-architecture.png").exists(), (
+        "Clean JPEG must not trigger sibling creation."
     )
