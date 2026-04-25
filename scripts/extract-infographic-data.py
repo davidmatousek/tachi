@@ -994,7 +994,7 @@ def _allocate_callouts_per_layer(per_layer):
     return allocation
 
 
-def _select_critical_high_callouts(findings, layers):
+def _select_critical_high_callouts(findings, layers, per_layer=None):
     """Select up to _TOTAL_CAP=8 Critical/High callouts via Largest Remainder Method.
 
     Replaces the pre-F-212 per-layer-dedup logic (1 callout per layer) with
@@ -1015,8 +1015,16 @@ def _select_critical_high_callouts(findings, layers):
     dropped. The output record shape matches the pre-F-212 contract:
     ``{layer_name, finding_id, severity, raw_description, composite_score,
     affected_component}``.
+
+    ``per_layer`` is an optional pre-computed mapping from
+    ``_qualifying_per_layer(findings, layers)`` — when supplied, the second
+    traversal of findings × components is skipped (perf optimisation for
+    callers that already need the mapping for follow-on work). When None,
+    the mapping is computed inline so the helper remains independently
+    callable from tests and future call sites.
     """
-    per_layer, _comp_to_layer = _qualifying_per_layer(findings, layers)
+    if per_layer is None:
+        per_layer, _comp_to_layer = _qualifying_per_layer(findings, layers)
     allocation = _allocate_callouts_per_layer(per_layer)
 
     if not allocation:
@@ -1089,7 +1097,16 @@ def _build_executive_architecture_payload(tier, findings, scope_data, source_fil
             high_count += 1
     total_qualifying = critical_count + high_count
 
-    callouts = _select_critical_high_callouts(findings, layers)
+    # Compute the qualifying-per-layer mapping ONCE and pass it through to
+    # both the callout selector and the overflow annotation below. The
+    # mapping iterates findings x components and was previously called
+    # twice per payload build (once inside _select_critical_high_callouts,
+    # once for layer_overflow annotation); caching here removes one full
+    # traversal. Defensive perf hygiene aligned with SC-212-8.
+    per_layer_qualifying, _comp_to_layer = _qualifying_per_layer(findings, layers)
+    callouts = _select_critical_high_callouts(
+        findings, layers, per_layer=per_layer_qualifying
+    )
     total_after_layer_dedup = len(callouts)
 
     # Annotate each layer with a layer_overflow field per FR-212-9. When the
@@ -1097,7 +1114,6 @@ def _build_executive_architecture_payload(tier, findings, scope_data, source_fil
     # actually allocated, surface the residual via a compact "+ N more in
     # this layer" string so the rendered page communicates that the page is
     # not the full diagnosis. Otherwise the field is None.
-    per_layer_qualifying, _comp_to_layer = _qualifying_per_layer(findings, layers)
     callouts_per_layer = {}
     for callout in callouts:
         callouts_per_layer[callout["layer_name"]] = (
