@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## Unreleased
+
+### Features
+
+* **212:** improve executive-architecture infographic — three-level upgrade. **L1 prompt rewrite** for OpenClaw-style structural clarity (rounded-rectangle component nodes, explicit inter-layer arrows, leader-line-anchored callouts, compact empty-layer badges, additive layer-fill pastels — extends the canonical visual-design-system without modifying severity colors). **L2 callout selection rework** via Largest Remainder Method with per-layer floor (every qualifying layer ≥1 callout) + per-layer ceiling (≤4 callouts/layer) + `layer_overflow` annotation (`"+ N more in this layer"`). **L3 payload schema extension** with `flow_edges[]` and `clusters[]` top-level arrays — explicit arrow-rendering data sourced from `parse_scope_data().data_flows` and trust-zone-grouping data sourced from `parse_scope_data().trust_boundaries`, with consumer-locked field names (`destination` not `target`, `members` not `components`, `trust_level` not `trust-level`) and deterministic sort orders (`(source.casefold(), destination.casefold())` for flow_edges; `(_TRUST_LEVEL_ORDER.get(trust_level, 99), name.casefold())` for clusters mirroring `_compute_trust_zones:784`). Truncates `flow_edges[]` to first 50 entries with stderr warning when producer emits more (FR-212-17). 23 functional requirements (FR-212-1 through FR-212-23) and 8 success criteria (SC-212-1 through SC-212-8) all PASS. 12 new drift-guard tests (`tests/scripts/test_executive_architecture_payload.py`). F-128 zero-finding skip-behavior contract preserved across three F-212 waves (PDF byte-identity SHA-256 unchanged: `1ff48532f301114c463bd39babbff726a3857d9a71a7c37103fde835b625d458`). Determinism preserved per ADR-017. Runtime within +10% of Phase-2 baseline (mean warm-runs 40 ms post-US3 vs 40 ms post-US2 baseline). See `specs/212-improve-executive-architecture-infographic/` for spec/plan/tasks/artifacts.
+
+---
+
 ## [4.21.1](https://github.com/davidmatousek/tachi/compare/v4.21.0...v4.21.1) (2026-04-24)
 
 

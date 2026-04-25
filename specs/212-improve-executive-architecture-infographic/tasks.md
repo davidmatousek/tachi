@@ -143,11 +143,11 @@ triad:
 
 **Purpose**: Final integration, documentation, and quickstart validation.
 
-- [ ] T033 [P] Update `CHANGELOG.md` with Feature 212 entry: "F-212: Executive-architecture infographic rewritten to OpenClaw-style system flow diagram (L1 prompt rewrite, L2 callout selection rework to 6–8 weighted-per-layer, L3 additive payload schema with flow_edges[] and clusters[])."
-- [ ] T034 [P] Run `quickstart.md` end-to-end locally: execute all commands in the quickstart, confirm every validation-checklist item passes. Record any discrepancies in `specs/212-improve-executive-architecture-infographic/artifacts/quickstart-execution.md`.
-- [ ] T035 Run the full pytest suite: `pytest tests/ -v`. Confirm zero regressions across the tachi test harness (not just the F-212 files).
-- [ ] T036 [P] Visual verification against `openclaw-agent-threat-model-infographic.jpg`: final side-by-side review with product-manager agent. Must confirm SC-212-1 4/4 PASS, SC-212-2 empty-layer waste ≤15%, SC-212-3 callout count 6–8. Record sign-off in `specs/212-improve-executive-architecture-infographic/artifacts/final-visual-signoff.md`.
-- [ ] T037 Sync draft PR #213 — push branch; keep PR in draft state. `/aod.deliver` in a follow-up will mark ready for review.
+- [X] T033 [P] Update `CHANGELOG.md` with Feature 212 entry: "F-212: Executive-architecture infographic rewritten to OpenClaw-style system flow diagram (L1 prompt rewrite, L2 callout selection rework to 6–8 weighted-per-layer, L3 additive payload schema with flow_edges[] and clusters[])."
+- [X] T034 [P] Run `quickstart.md` end-to-end locally: execute all commands in the quickstart, confirm every validation-checklist item passes. Record any discrepancies in `specs/212-improve-executive-architecture-infographic/artifacts/quickstart-execution.md`.
+- [X] T035 Run the full pytest suite: `pytest tests/ -v`. Confirm zero regressions across the tachi test harness (not just the F-212 files).
+- [X] T036 [P] Visual verification against `openclaw-agent-threat-model-infographic.jpg`: final side-by-side review with product-manager agent. Must confirm SC-212-1 4/4 PASS, SC-212-2 empty-layer waste ≤15%, SC-212-3 callout count 6–8. Record sign-off in `specs/212-improve-executive-architecture-infographic/artifacts/final-visual-signoff.md`.
+- [X] T037 Sync draft PR #213 — push branch; keep PR in draft state. `/aod.deliver` in a follow-up will mark ready for review.
 
 ---
 
