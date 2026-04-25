@@ -17,6 +17,11 @@ extraction script.
 | `mixed_case_components/` | Synthetic `threats.md` where trust zones list `API Gateway` while findings reference `api-gateway`, `auth_service`, `database` | Architect L-1: component name normalization |
 | `orphaned_finding/` | Synthetic `threats.md` with one Critical finding referencing `Component D` which is not in any trust zone or component table | Architect L-1: orphaned findings dropped from callouts |
 | `multiple_per_layer/` | Synthetic `threats.md` with one trust zone containing 5 components, each with a Critical finding | Per-layer dedup tie-break (one callout per layer, selected by severity desc → composite score desc → finding ID asc) |
+| `absent/` | Synthetic `threats.md` with 0 qualifying Critical/High findings across 2 layers | F-212 L2: skip_image short-circuit (`callouts==[]`, `skip_image==True`) |
+| `single-layer/` | Synthetic `threats.md` with 1 qualifying layer / 2 Critical+High findings | F-212 L2: total-floor rule (callouts == total_qualifying when count < 6) |
+| `two-layer/` | Synthetic `threats.md` with 2 qualifying layers / 5 Critical+High findings (3+2) | F-212 L2: total-floor rule + per-layer floor invariant (each qualifying layer ≥ 1 callout) |
+| `three-layer/` | Synthetic `threats.md` with 3 qualifying layers / 9 Critical+High findings (4+3+2) | F-212 L2: 6-8 density (LRM allocation), per-layer floor + ceiling, determinism, superset invariant |
+| `all-layers-qualifying/` | Synthetic `threats.md` with 5 qualifying layers / 11 Critical+High findings | F-212 L2: total-cap=8 vs per-layer floor (qualifying_layer_count=5 ≤ 8 so all 5 layers represented) |
 
 ## Notes on Synthetic Fixtures
 

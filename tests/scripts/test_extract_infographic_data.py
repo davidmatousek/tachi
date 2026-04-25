@@ -484,3 +484,256 @@ def test_existing_templates_unchanged(template):
         f"Template {template} output drifted from golden baseline. "
         "Backward compatibility regression."
     )
+
+
+# -----------------------------------------------------------------------------
+# F-212 L2 — Per-layer floor-rule fixture matrix (TDD red-bar tests)
+#
+# These tests codify the FR-212-8 / FR-212-9 / FR-212-11 / FR-212-12 invariants
+# for the reworked _select_critical_high_callouts() (US-212-2). They are
+# intentionally authored RED-BAR before the L2 implementation lands in T016/T017
+# (Wave 3): the existing per-layer-dedup logic emits ≤1 callout per layer, so
+# these assertions do not yet hold on most fixtures. The tests will go GREEN
+# once the Largest Remainder Method allocator with floor + ceiling rules ships.
+#
+# Fixture matrix (created in T012):
+#   - absent                  — 0 qualifying findings → skip_image=True, callouts=[]
+#   - single-layer            — 1 qualifying layer / 2 findings
+#   - two-layer               — 2 qualifying layers / 3+2 findings
+#   - three-layer             — 3 qualifying layers / 4+3+2 findings
+#   - all-layers-qualifying   — 5 qualifying layers / 11 findings (>8 cap)
+# -----------------------------------------------------------------------------
+
+# Map fixture directory → expected behavior anchor.
+# - qualifying_findings: total Critical+High findings present in threats.md
+# - qualifying_layer_count: layers with ≥1 qualifying finding (NOT len(layers))
+_F212_L2_FIXTURES = [
+    ("absent", 0, 0),
+    ("single-layer", 2, 1),
+    ("two-layer", 5, 2),
+    ("three-layer", 9, 3),
+    ("all-layers-qualifying", 11, 5),
+]
+
+_QUALIFYING_SEVERITIES = {"Critical", "High"}
+_PER_LAYER_CEILING = 4
+_TOTAL_CAP = 8
+
+
+def _qualifying_layer_names(payload):
+    """Return the set of layer names that have ≥1 callout in the payload.
+
+    The reworked L2 _select_critical_high_callouts must populate ≥1 callout for
+    every layer that has ≥1 qualifying finding (per-layer floor) when total-cap
+    permits, so the set returned by this helper should equal the set of layer
+    names that contained ≥1 qualifying finding (computed from `payload['layers']`
+    + `payload['callouts']`).
+    """
+    return {c["layer_name"] for c in payload["callouts"]}
+
+
+@pytest.mark.parametrize(
+    "fixture_name,total_qualifying,qualifying_layer_count",
+    _F212_L2_FIXTURES,
+    ids=[f[0] for f in _F212_L2_FIXTURES],
+)
+def test_per_layer_floor_invariant(
+    fixture_name, total_qualifying, qualifying_layer_count
+):
+    """F-212 L2: per-layer floor + total-cap + per-layer ceiling invariants.
+
+    For every fixture in the matrix, the payload's callouts[] MUST satisfy:
+      (a) len(callouts) ≤ 8 (FR-212-9 total-cap)
+      (b) every qualifying layer has ≥1 callout when qualifying_layer_count ≤ 8
+          (FR-212-9 per-layer floor)
+      (c) no single layer has more than 4 callouts (FR-212-9 per-layer ceiling)
+      (d) on the `absent` fixture, metadata.skip_image == True AND callouts == []
+          (preserves PRD-128 skip-image contract for zero-finding inputs)
+
+    RED-BAR pre-F-212: the legacy per-layer-dedup logic emits at most 1 callout
+    per layer, so single-layer and most multi-layer fixtures will fail (b)
+    because layers with multiple qualifying findings still receive only 1
+    callout. The `absent` case (d) should already pass because skip_image and
+    empty callouts are independent of the L2 selection algorithm.
+    """
+    returncode, _stdout, stderr, payload = run_extract(
+        FIXTURES_DIR / fixture_name, "executive-architecture"
+    )
+    assert returncode == 0, (
+        f"[{fixture_name}] Expected exit 0, got {returncode}. stderr: {stderr}"
+    )
+    assert payload is not None, f"[{fixture_name}] Expected payload to be written"
+
+    # (d) absent fixture: skip-image short-circuit + empty callouts.
+    if fixture_name == "absent":
+        assert payload["metadata"]["skip_image"] is True, (
+            f"[{fixture_name}] Expected metadata.skip_image=True for "
+            f"zero-qualifying-finding input"
+        )
+        assert payload["callouts"] == [], (
+            f"[{fixture_name}] Expected empty callouts[] for "
+            f"zero-qualifying-finding input; got {len(payload['callouts'])}"
+        )
+        return  # Remaining invariants are vacuous when callouts==[].
+
+    callouts = payload["callouts"]
+
+    # (a) Total-cap: ≤ 8 callouts.
+    assert len(callouts) <= _TOTAL_CAP, (
+        f"[{fixture_name}] FR-212-9 total-cap violated: "
+        f"len(callouts)={len(callouts)} > {_TOTAL_CAP}"
+    )
+
+    # (a') Density (FR-212-8): 6–8 callouts when system-wide qualifying count ≥ 6.
+    # When total_qualifying < 6, total-floor rule emits all qualifying findings
+    # exactly (no synthetic inflation) — so we expect callouts == total_qualifying.
+    # This is the assertion that makes the test red-bar pre-F-212: the legacy
+    # per-layer-dedup logic emits ≤ qualifying_layer_count callouts, never the
+    # 6–8 system-wide density target.
+    if total_qualifying >= 6:
+        assert 6 <= len(callouts) <= _TOTAL_CAP, (
+            f"[{fixture_name}] FR-212-8 density violated: "
+            f"system-wide qualifying count={total_qualifying} ≥ 6 should yield "
+            f"6-8 callouts; got {len(callouts)}"
+        )
+    else:
+        assert len(callouts) == total_qualifying, (
+            f"[{fixture_name}] FR-212-9 total-floor violated: "
+            f"system-wide qualifying count={total_qualifying} < 6 should yield "
+            f"exactly {total_qualifying} callouts; got {len(callouts)}"
+        )
+
+    # (b) Per-layer floor: every qualifying layer represented when count ≤ 8.
+    if qualifying_layer_count <= _TOTAL_CAP:
+        represented_layers = _qualifying_layer_names(payload)
+        assert len(represented_layers) == qualifying_layer_count, (
+            f"[{fixture_name}] FR-212-9 per-layer floor violated: "
+            f"expected all {qualifying_layer_count} qualifying layers to have "
+            f"≥1 callout, got {len(represented_layers)} represented layers "
+            f"({sorted(represented_layers)})"
+        )
+
+    # (c) Per-layer ceiling: no layer exceeds 4 callouts.
+    per_layer_counts = {}
+    for c in callouts:
+        per_layer_counts[c["layer_name"]] = per_layer_counts.get(
+            c["layer_name"], 0
+        ) + 1
+    for layer_name, count in per_layer_counts.items():
+        assert count <= _PER_LAYER_CEILING, (
+            f"[{fixture_name}] FR-212-9 per-layer ceiling violated: "
+            f"layer '{layer_name}' has {count} callouts > {_PER_LAYER_CEILING}"
+        )
+
+
+def test_callouts_deterministic():
+    """F-212 L2: two consecutive runs on identical input emit byte-identical callouts[].
+
+    Determinism is the ADR-017 invariant restated for callouts[] in FR-212-12.
+    The pre-F-212 implementation already satisfies this contract (sort_key is
+    deterministic in `_select_critical_high_callouts`); this test guards
+    against regressions when the L2 Largest-Remainder allocator lands.
+
+    Both runs are invoked under SOURCE_DATE_EPOCH=1700000000 (ADR-021) so
+    timestamps and other env-derived values are frozen — the comparison is
+    therefore byte-strict on json.dumps(..., sort_keys=True) of the callouts
+    array.
+    """
+    target = FIXTURES_DIR / "three-layer"
+    env_overlay = ["--frozen-time"] if False else None  # extractor lacks the flag
+    # Set SOURCE_DATE_EPOCH via env for both runs; the script does not honor a
+    # CLI flag for the executive-architecture branch, so we set env on the
+    # subprocess rather than altering run_extract.
+    env = dict(os.environ)
+    env["SOURCE_DATE_EPOCH"] = "1700000000"
+
+    payloads = []
+    for _ in range(2):
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            output_path = f.name
+        try:
+            cmd = [
+                sys.executable,
+                str(SCRIPT_PATH),
+                "--target-dir", str(target),
+                "--template", "executive-architecture",
+                "--output", output_path,
+            ]
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, env=env
+            )
+            assert result.returncode == 0, (
+                f"Expected exit 0, got {result.returncode}. stderr: {result.stderr}"
+            )
+            with open(output_path, "r", encoding="utf-8") as fh:
+                payloads.append(json.load(fh))
+        finally:
+            try:
+                os.unlink(output_path)
+            except OSError:
+                pass
+
+    # Byte-identical callouts[] across both runs.
+    callouts1 = json.dumps(payloads[0]["callouts"], sort_keys=True)
+    callouts2 = json.dumps(payloads[1]["callouts"], sort_keys=True)
+    assert callouts1 == callouts2, (
+        "FR-212-12 determinism violated: callouts[] differ between two "
+        "consecutive runs on identical input under SOURCE_DATE_EPOCH=1700000000."
+    )
+
+
+def test_superset_invariant():
+    """F-212 L2: every layer that qualifies under the OLD per-layer-dedup logic
+    appears in the NEW callouts[] with ≥1 entry (Team-Lead LOW-2 resolution).
+
+    This is the mechanically-enforceable restatement of US-212-2 acceptance
+    scenario 5 — "for every qualifying layer that contained ≥1 Critical/High
+    finding under the old logic, that same layer appears in the new callouts[]
+    with ≥1 entry." Implemented as a structural superset check on the new
+    payload (no need to also run pre-F-212 code): grouping the new callouts[]
+    by layer_name and taking the unique layer set must equal the set of layers
+    that have ≥1 qualifying finding in the fixture.
+
+    Uses the `three-layer` fixture (3 qualifying layers / 9 findings) as the
+    representative populated case — exercises both the floor invariant and the
+    superset relation in one assertion.
+
+    RED-BAR pre-F-212: legacy logic emits exactly 1 callout per qualifying
+    layer, so the superset relation IS satisfied for `three-layer` (3 layers,
+    3 callouts, identical layer-name set). However, on fixtures where a layer
+    has multiple qualifying findings the test still validates that no layer is
+    DROPPED in the rework — once L2 lands, the superset must continue to hold
+    for every fixture in the matrix, so this test will keep passing as the
+    rework proceeds. Marked here as the structural drift guard.
+    """
+    fixture = FIXTURES_DIR / "three-layer"
+    returncode, _stdout, stderr, payload = run_extract(
+        fixture, "executive-architecture"
+    )
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert payload is not None
+
+    # The three-layer fixture has these 3 qualifying layers (each with ≥1
+    # Critical/High finding). This is the OLD per-layer-dedup baseline — every
+    # qualifying layer must appear with ≥1 entry in the NEW callouts[].
+    expected_qualifying_layers = {"Edge Zone", "Core Zone", "Data Zone"}
+
+    # Compute the NEW post-rework set: unique layer_names across callouts[].
+    new_represented_layers = {c["layer_name"] for c in payload["callouts"]}
+
+    missing = expected_qualifying_layers - new_represented_layers
+    assert not missing, (
+        f"FR-212-11 superset invariant violated: layers {sorted(missing)} "
+        f"qualified under the pre-F-212 per-layer-dedup logic but are not "
+        f"represented in the new callouts[]. Got layers: "
+        f"{sorted(new_represented_layers)}"
+    )
+
+    # Every callout's layer must be one of the qualifying layers (no spurious
+    # layers introduced by the rework).
+    spurious = new_represented_layers - expected_qualifying_layers
+    assert not spurious, (
+        f"FR-212-11 superset invariant violated: callouts reference layers "
+        f"{sorted(spurious)} that did not have qualifying findings under the "
+        f"pre-F-212 logic."
+    )

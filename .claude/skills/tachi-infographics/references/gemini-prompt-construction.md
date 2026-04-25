@@ -38,6 +38,59 @@ Load `templates/tachi/infographics/infographic-{name}.md` and use its **Gemini P
 - Default template: `baseball-card`
 - If the template file is not available: use the fallback prompt structure at the end of this document
 
+---
+
+## Verbatim-Lock Rule for Executive-Architecture Template
+
+The `executive-architecture` template carries a stricter verbatim-lock contract than the scaffold-based templates above. Per spec FR-212-6 (`specs/212-improve-executive-architecture-infographic/spec.md`), the prompt block published in the **VERBATIM PROMPT BLOCK** section of `.claude/skills/tachi-infographics/references/executive-architecture.md` MUST be copied verbatim into the Gemini API request — there is NO runtime composition of aesthetic, structural, or palette language for this template.
+
+### Why a separate rule
+
+The scaffold path (Option D, above) ships the locked text in the JSON output of `scripts/extract-infographic-data.py` as a `prompt_scaffold` object. The executive-architecture template uses the **fallback path** (no `prompt_scaffold` object) because its prompt was historically composed at runtime from the template skill reference. F-212 inverts that: the prompt is now locked in the skill reference file rather than composed at runtime, but the lock lives in the markdown file rather than in JSON. This rule documents that distinction so consumers do not mistakenly recompose the prompt under the assumption that the scaffold path is the only locked path.
+
+### What is locked
+
+Everything between the `=== BEGIN VERBATIM PROMPT BLOCK (FR-212-6 LOCKED) ===` and `=== END VERBATIM PROMPT BLOCK (FR-212-6 LOCKED) ===` markers in `executive-architecture.md` is locked:
+
+- The `"schematic diagram with shapes and arrows"` opening directive (FR-212-2 — defeats the text-only failure mode in current Gemini image-gen practice)
+- The IMPORTANT pre-amble forbidding hex codes / pixel values as visible text
+- The full STYLING DIRECTIVES block including: layer band ordering, the 5-pastel layer-fill cycle (`#F0F4FF`, `#FFF4F0`, `#F0FFF4`, `#FFF0F8`, `#F8F0FF`), severity-colored node borders (Critical `#DC2626`, High `#EA580C` — inherited unchanged from `visual-design-system.md`), inter-layer directional-arrow directive with explicit arrowhead requirement, leader-line callout anchoring directive, the compact-badge empty-layer treatment, and the single-zone fallback caption directive
+- The DATA CONTENT section headers (TITLE, LAYER STACK, CALLOUTS, EMPTY-LAYER BADGES, FOOTER)
+- The closing aesthetic instruction
+
+### What is NOT locked (slot substitution only)
+
+Only the bracketed `<<...>>` data slots inside the locked block are filled at runtime from the infographic specification payload (`threat-executive-architecture-spec.md`):
+
+- `<<project_name>>` — from `metadata.project_name`
+- `<<layer_block>>` — composed from `layers[]`
+- `<<callout_block>>` — composed from `callouts[]` (6–8 entries)
+- `<<empty_layer_block>>` — one badge line per layer with zero qualifying findings
+- `<<single_zone_caption>>` — emitted only on the single-zone edge case
+
+### What is NOT permitted
+
+- Rewriting, paraphrasing, condensing, or expanding any directive inside the locked block.
+- Substituting alternate severity colors, alternate layer-fill pastels, or alternate font choices.
+- Reordering the directives or moving the styling block.
+- Composing the prompt from snippets stored elsewhere (e.g., `infographic-specifications.md`).
+- Suppressing the `"schematic diagram with shapes and arrows"` opening — this directive is structurally load-bearing for arrow rendering.
+
+### How to consume
+
+1. Read `.claude/skills/tachi-infographics/references/executive-architecture.md`.
+2. Locate the `=== BEGIN VERBATIM PROMPT BLOCK (FR-212-6 LOCKED) ===` marker.
+3. Copy the text between the BEGIN and END markers verbatim.
+4. Substitute the bracketed `<<...>>` slots with payload data per the slot-mapping table in `executive-architecture.md`.
+5. Send as the Gemini API `text` part. Do NOT modify any text outside the slots.
+
+### Cross-reference
+
+- Source-of-truth file: `.claude/skills/tachi-infographics/references/executive-architecture.md` (Gemini Prompt Block — VERBATIM section)
+- Spec rule: `specs/212-improve-executive-architecture-infographic/spec.md` FR-212-6
+- Palette source: `.claude/skills/tachi-infographics/references/visual-design-system.md` (severity colors, inherited)
+- Palette extension rationale: `specs/212-improve-executive-architecture-infographic/spec.md` Palette Strategy section (EXTEND-with-additive)
+
 ### Heat Map Cell Grid Placeholder
 
 **`{heat_map_cell_grid}` placeholder**: Populate from the Cell-Level Grid in Section 3. Format as a plain-text grid listing each component row with its per-category severity:

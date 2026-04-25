@@ -8,7 +8,7 @@ Section format, data source rules, and visual directives for the `executive-arch
 
 Executive-level visualization of the layered system architecture with Critical and High severity threat callouts. The template serves a non-technical audience (CISO, board members, executive sponsors) who read only the first few pages of a security report and need to identify the most exposed architectural layer within their normal attention window.
 
-Unlike the other infographic templates, which are general-purpose dashboards and analytical views, the executive-architecture template is audience-optimized: it trades exhaustive detail for narrative clarity, showing a small number of high-signal callouts anchored to a recognizable layered diagram of the system.
+Unlike the other infographic templates, which are general-purpose dashboards and analytical views, the executive-architecture template is audience-optimized: it trades exhaustive detail for narrative clarity, showing a small number of high-signal callouts anchored to a recognizable layered diagram of the system. The visual idiom is an OpenClaw-style system flow diagram: rounded-rectangle component nodes connected by directional arrows, with leader-lined callouts anchored to specific nodes.
 
 ---
 
@@ -64,15 +64,13 @@ Layers render ordered from untrusted (top of the portrait layout) to trusted (bo
 
 ## Callout Selection
 
-Callouts are the narrative annotations attached to layers. The extraction applies three filtering rules in order:
+Callouts are the narrative annotations attached to layers. The extraction applies these filtering rules:
 
 1. **Severity filter**: Only Critical and High severity findings are eligible. Medium, Low, and Note findings are excluded entirely.
-2. **Per-layer deduplication**: At most one callout per layer. When a layer contains multiple qualifying findings, exactly one is selected using the tie-break rule below.
+2. **System-wide weighted distribution** (Level 2 — F-212): The pipeline emits 6–8 callouts drawn from the system-wide pool of qualifying Critical/High findings using Largest Remainder Method allocation across layers, with a per-layer floor (every qualifying layer gets ≥1 callout when total-cap permits) and a 4-callout-per-layer ceiling.
 3. **Tie-break order**: severity descending (Critical before High), then composite score descending (when available from `risk-scores.md` or `compensating-controls.md` tiers), then finding ID ascending for deterministic ordering.
 
-This deduplication keeps the visual uncluttered — executive audiences see one headline threat per layer rather than an exhaustive list — while the tie-break ordering guarantees reproducibility across runs on the same input data.
-
-Layers with zero qualifying findings still appear in the diagram (to preserve the system's structural completeness) but have no callout box attached.
+The previous per-layer-dedup rule (one callout per layer) is superseded by F-212 Level 2; the current logic produces a denser, system-wide callout distribution while preserving the per-layer floor as an enforceable invariant. See `specs/212-improve-executive-architecture-infographic/spec.md` FR-212-8 through FR-212-12 for the formal allocation contract.
 
 Raw finding descriptions are passed through unchanged during extraction. The agent instructs Gemini to rewrite each raw description to ≤25 words in plain English, stripping technical jargon, during image generation. The spec file retains the raw description for auditability.
 
@@ -90,6 +88,8 @@ When the extraction finds zero Critical and zero High severity findings in the t
 
 This behavior keeps the pipeline exit code clean (0) on threat models that do not yet have qualifying findings, while preserving the spec file as a stable artifact that can be regenerated into an image if the threat data is later updated.
 
+These F-128 contracts are preserved verbatim by F-212 — output filename, file format, portrait orientation, and skip behavior all remain unchanged.
+
 ---
 
 ## Visual Directives
@@ -100,13 +100,87 @@ All visual directives are defined in `schemas/infographic.yaml` under `templates
 |-----------|-------|
 | Orientation | Portrait (8.5:11 page aspect ratio) |
 | Layer visualization | Horizontal bands, pastel fill per layer, thin solid border, left-aligned labels |
-| Callout visualization | Red dashed 2pt border, warning triangle icon, white-with-alpha fill, leader line or anchor connecting to the affected layer |
+| Component visualization | Rounded-rectangle node per component (FR-212-1) — layer-coded fill, severity-colored border, no bare text labels |
+| Inter-layer flow | Top-to-bottom directional arrows with explicit arrowheads connecting layers (FR-212-2) |
+| Callout visualization | Box anchored by a thin leader line to a specific node (FR-212-3) — not floating text inside a layer band |
+| Empty-layer treatment | Compact factual badge at ≤15% of page height for layers with zero Critical/High findings (FR-212-5) |
 | Callout text | ≤25 words, plain English, jargon-free |
-| Severity colors | Critical `#DC2626`, High `#F97316` |
-| Layer fill pastels | `#F0F4FF`, `#FFF4F0`, `#F0FFF4`, `#FFF0F8`, `#F8F0FF` (cycled per layer) |
+| Severity colors (callout borders) | Critical `#DC2626`, High `#EA580C` (inherited unchanged from `visual-design-system.md`) |
+| Layer fill pastels | `#F0F4FF`, `#FFF4F0`, `#F0FFF4`, `#FFF0F8`, `#F8F0FF` (cycled deterministically per layer index — extends the canonical palette without modifying it) |
 | Typography | Large title, medium callout text, medium-bold layer labels; readable at projection or print distance |
 
-The portrait orientation and the pastel-banded layer styling are both intentional departures from the shared visual design system — the executive-architecture template is explicitly audience-tuned rather than brand-consistent with the other templates.
+The portrait orientation, the rounded-rectangle node visualization, and the pastel-banded layer styling are all intentional departures from the shared visual design system — the executive-architecture template is explicitly audience-tuned rather than brand-consistent with the other templates.
+
+### Palette Provenance
+
+- **Severity colors** are inherited unchanged from `visual-design-system.md` and apply to callout borders. Critical `#DC2626` and High `#EA580C` match the canonical Tailwind Red-600 and Orange-600 mappings used across all tachi infographic templates and are documented as the source of truth for severity semantics.
+- **Layer-fill pastels** are an additive extension local to this template. The 5-color cycle `["#F0F4FF", "#FFF4F0", "#F0FFF4", "#FFF0F8", "#F8F0FF"]` is iterated by layer index (modulo 5) so that adjacent layers always receive distinct fills. These pastels do not replace, modify, or override any color in `visual-design-system.md` — they exist only inside the executive-architecture template's prompt block. The "EXTEND-with-additive" palette decision is documented in spec FR-212-4 and the spec's Palette Strategy section.
+
+---
+
+## Gemini Prompt Block — VERBATIM
+
+The following prompt is the **single source of truth** for image generation in this template. It MUST be copied verbatim into the Gemini API request — do NOT rewrite, paraphrase, or recompose the aesthetic, structural, or palette language at runtime. Per spec FR-212-6 the text inside the BEGIN/END markers below is locked. Runtime substitution is permitted ONLY for the bracketed `<<...>>` data slots, which are populated from the infographic specification payload (`threat-executive-architecture-spec.md`). The verbatim-lock rule is documented in `gemini-prompt-construction.md` (see "Verbatim-Lock Rule for Executive-Architecture Template").
+
+The bracketed `<<...>>` slots map to payload fields as follows:
+
+| Slot | Source field |
+|------|--------------|
+| `<<project_name>>` | `metadata.project_name` |
+| `<<layer_block>>` | Composed from `layers[]` — one entry per layer with `name`, `components[]` (rendered as nodes), `callouts[]` (rendered as anchored boxes), and optional `layer_overflow` text |
+| `<<callout_block>>` | Rendered from `callouts[]` (6–8 entries — see Callout Selection above) — each `finding_id`, `severity`, `affected_component`, and `raw_description` (rewritten to ≤25 words by Gemini at render time) |
+| `<<empty_layer_block>>` | One compact-badge line per layer with zero qualifying Critical/High findings (FR-212-5) |
+| `<<single_zone_caption>>` | Caption text emitted only when exactly one layer has components (Edge Case fallback — replaces the inter-layer arrow directive) |
+
+Slots are filled from the payload before the prompt is sent. Everything outside the slots is locked text.
+
+```
+=== BEGIN VERBATIM PROMPT BLOCK (FR-212-6 LOCKED) ===
+
+schematic diagram with shapes and arrows — produce a portrait-orientation security architecture infographic for "<<project_name>>" rendered as an OpenClaw-style system flow diagram. The image MUST be a structured visualization composed of geometric shapes (rounded rectangles), directional arrows with explicit arrowheads, and short text labels inside those shapes. Do NOT produce a text-only document, a bullet list, or floating labels without enclosing shapes. Every named component MUST appear inside its own rounded-rectangle node — bare text labels are not acceptable.
+
+IMPORTANT: The styling directives in this prompt are for your interpretation only. Do NOT render any hex color codes, pixel values, or technical specifications as visible text in the image. Render only the natural-language labels, finding IDs, severity words, component names, and callout descriptions provided in the DATA CONTENT block.
+
+STYLING DIRECTIVES (interpret these, do not display them):
+
+- Orientation: portrait, 8.5:11 page aspect ratio.
+- Background: clean off-white page surface (avoid pure white #FFFFFF and pure light-gray #F5F5F5 — use a subtle warm-neutral page tint).
+- Layer bands: horizontal bands stacked top-to-bottom, ordered untrusted (top) to trusted (bottom). Each band has a pastel fill drawn deterministically from this 5-color cycle by layer index modulo 5: layer 0 = #F0F4FF (cool blue-tinted), layer 1 = #FFF4F0 (warm peach-tinted), layer 2 = #F0FFF4 (cool green-tinted), layer 3 = #FFF0F8 (cool pink-tinted), layer 4 = #F8F0FF (cool violet-tinted). These pastels are local to this template and extend — they do NOT replace — the canonical severity palette in the tachi visual design system. (FR-212-4)
+- Component nodes: every component within a layer MUST render as a rounded-rectangle node (corner-radius approximately 8–12px equivalent) with the layer's pastel as the fill and a 1.5–2pt colored border. The node contains the component name in medium-bold sans-serif and (optionally) a 1-line role caption. NEVER render a component as a bare text label without an enclosing shape. (FR-212-1)
+- Node border colors: when a node has at least one Critical-severity finding, its border is red #DC2626. When the node has at least one High-severity finding (and no Critical), its border is orange #EA580C. When a node has no qualifying findings, its border is the canonical gray #6B7280 desaturated to a thin neutral stroke. Severity colors are inherited unchanged from the canonical tachi palette in visual-design-system.md. (FR-212-4)
+- Inter-layer arrows: between every pair of adjacent layers, draw at least one directional arrow flowing top-to-bottom from a node in the upper layer to a node in the lower layer. The arrow MUST be a solid stroke with an explicit arrowhead glyph at the destination end (filled triangle or chevron) — bare lines without arrowheads are NOT acceptable. The phrase "shapes and arrows" at the start of this prompt is a directive to defeat the text-only failure mode in image generation; honor it. (FR-212-2)
+- Callout boxes: each callout is a small rectangular box (white-with-alpha fill, dashed 2pt border in the callout's severity color, severity-colored warning triangle icon in the upper-left corner). Each callout MUST be visually anchored to a specific component node by a thin leader line (1pt solid neutral stroke) terminating on the node's edge — NEVER render a callout as floating text inside a layer band with no anchor. The callout box contains: the finding ID in monospace, the severity word in colored bold, and a ≤25-word plain-English description rewritten from the raw description with technical jargon stripped. (FR-212-3)
+- Empty-layer treatment: a layer that contains components but has zero Critical/High qualifying findings MUST render as a compact factual badge — a thin horizontal pill no taller than approximately 15% of the total page height — containing the literal text "0 High/Critical findings in this layer". Do NOT expand such a layer into a full-band placeholder; do NOT add synthetic callouts to fill the band; the badge IS the layer for rendering purposes. (FR-212-5)
+- Single-zone fallback: if exactly one layer has components, omit the inter-layer arrows and add a centered caption above the single layer with the text supplied in <<single_zone_caption>>. The single layer still renders all of its component nodes and callouts with leader lines normally.
+- Typography: title bold 28–32pt equivalent at the top of the page; layer labels semi-bold 18–22pt equivalent left-aligned within each band; component-node labels medium-bold 12–14pt equivalent; callout text regular 12–14pt equivalent; finding IDs monospace 12–14pt equivalent. Sans-serif throughout (IBM Plex Sans, DM Sans, Manrope, or similar — avoid Inter, Roboto, Arial, Open Sans, Lato as primary).
+- Composition: leave generous whitespace between layers; group component nodes within their layer with consistent intra-layer spacing (multiples of 8pt). Position callout boxes in the page margins or between bands so leader lines do not cross other nodes when avoidable. Maintain reading order top-to-bottom.
+
+DATA CONTENT (render this as visible text inside the shapes and bands):
+
+TITLE: "Executive Threat Architecture: <<project_name>>"
+
+LAYER STACK (top-to-bottom, untrusted at top, trusted at bottom):
+
+<<layer_block>>
+
+CALLOUTS (each anchored by a leader line to a specific component node — total 6–8 callouts drawn system-wide using weighted per-layer distribution; each layer with qualifying findings is represented; no layer exceeds 4 callouts):
+
+<<callout_block>>
+
+EMPTY-LAYER BADGES (each layer below has zero qualifying Critical/High findings — render each as a compact factual badge per the styling directive above, NOT as a full-band placeholder):
+
+<<empty_layer_block>>
+
+<<single_zone_caption>>
+
+FOOTER: "Generated by Tachi Threat Modeling Framework — OWASP STRIDE + AI Threat Analysis"
+
+Render this as a clean, premium, boardroom-ready security infographic. Lead with structural clarity over decoration. The reader should be able to identify the most exposed layer and the dominant threats within five seconds of looking at the page. No hex codes, color values, pixel sizes, or technical specifications should appear as visible text in the rendered image.
+
+=== END VERBATIM PROMPT BLOCK (FR-212-6 LOCKED) ===
+```
+
+The block delimited by `=== BEGIN VERBATIM PROMPT BLOCK ===` and `=== END VERBATIM PROMPT BLOCK ===` is the consumer copy target. The Gemini prompt builder MUST emit exactly the text inside these markers (after slot substitution) — no rewriting, no aesthetic recomposition, no runtime construction of the styling directives.
 
 ---
 
@@ -123,5 +197,6 @@ The canonical section list, alias, purpose, positioning, and visual directives f
 | Command registration | `.claude/commands/tachi.infographic.md` |
 | PDF page integration | `scripts/extract-report-data.py` (detection), `templates/tachi/security-report/main.typ` (positioning) |
 | Report artifact table | `.claude/agents/tachi/report-assembler.md` |
+| Verbatim-lock rule | `.claude/skills/tachi-infographics/references/gemini-prompt-construction.md` (Verbatim-Lock Rule for Executive-Architecture Template) |
 
-Implements FR-036 from `specs/128-prd-128-executive/spec.md`.
+Implements FR-036 from `specs/128-prd-128-executive/spec.md` and FR-212-1 through FR-212-7 from `specs/212-improve-executive-architecture-infographic/spec.md`.
