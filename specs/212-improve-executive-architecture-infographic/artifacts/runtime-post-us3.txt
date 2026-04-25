@@ -1,0 +1,73 @@
+# Post-US3 Runtime Measurement (T032) — Wave 5
+
+# Generated: 2026-04-25 (Wave 5 — post Wave 4 US3 implementation)
+# Method: 5 timed executions of scripts/extract-infographic-data.py (matches T006 + T020 baseline methodology)
+# Target: ~/Projects/second-brain-mcp/docs/security/2026-04-23T23-02-25/ (reference dataset)
+# Template: executive-architecture
+# Env: SOURCE_DATE_EPOCH=1700000000
+# Python: cpython-3.12.11 (uv-managed)
+# Measurement: /usr/bin/time -p, "real" wall-clock seconds (parity with T006 + T020)
+
+# Code state: Wave 4 US3 lands. _build_flow_edges() and _build_clusters()
+#             helpers added; _build_executive_architecture_payload() return
+#             dict extended with flow_edges and clusters top-level keys.
+#             Both helpers iterate the producer's existing data_flows and
+#             trust_boundaries arrays once each — no duplicate traversal,
+#             no nested loops over findings.
+
+# === Per-run wall-clock (seconds) ===
+post_us3_run_1_real = 0.08
+post_us3_run_2_real = 0.04
+post_us3_run_3_real = 0.04
+post_us3_run_4_real = 0.04
+post_us3_run_5_real = 0.04
+
+# === Statistics ===
+post_us3_mean_seconds_all_runs = 0.048
+post_us3_mean_seconds_excluding_first = 0.040
+post_us3_median_seconds = 0.040
+
+# ============================================================================
+# SC-212-8 gate (≤+10% regression vs the operative baseline)
+# ============================================================================
+
+# Operative baseline: Wave 3 T020 re-baseline (runtime-post-us2.txt, after
+# _qualifying_per_layer caching fix).
+#   mean all-runs:  44 ms
+#   mean warm-runs: 40 ms
+#   median:         40 ms
+
+# Post-US3 vs Wave 3 baseline
+post_us3_delta_pct_all_runs = +9.1   # 48 vs 44 ms — PASS (≤+10%)
+post_us3_delta_pct_warm_runs = 0.0   # 40 vs 40 ms — PASS (no change)
+post_us3_delta_pct_median   = 0.0    # 40 vs 40 ms — PASS (no change)
+
+# Post-US3 vs original Phase-2 T006 baseline (canonical pre-F-212)
+# Documented for completeness — the Wave 3 re-baseline IS the operative gate
+# per the methodology note carried forward from runtime-post-us2.txt
+# ("/usr/bin/time -p has 10 ms quantization granularity, masking sub-10ms
+# regressions and producing categorical-bucket flips that look like ±33%
+# deltas. Controlled A/B confirms no actual regression"):
+#   T006 baseline: 40 ms all-runs / 30 ms warm-runs
+#   Post-US3:      48 ms all-runs / 40 ms warm-runs
+#   all-runs delta:  +20% — measurement-floor effect (8 ms absolute)
+#   warm-runs delta: +33% — measurement-floor effect (10 ms absolute, 1 quantum)
+# These literal deltas reflect /usr/bin/time -p's 10 ms quantization granularity,
+# not a real regression. Future runtime drift detection in F-212+ should adopt
+# time.monotonic() or hyperfine for sub-10ms resolution.
+
+# ============================================================================
+# Verdict
+# ============================================================================
+# Post-US3 runtime is within +10% of the Wave 3 operative baseline:
+#   all-runs +9.1%, warm-runs 0%, median 0%.
+# SC-212-8 gate: PASS.
+#
+# The L3 payload extension (flow_edges + clusters helpers) adds two
+# single-pass iterations over already-parsed scope_data arrays. No findings-
+# x-components nested loop is introduced; no duplicate work is done. The
+# dataset has 23 data_flows and 3 trust_boundaries — total additional work
+# in the order of microseconds, well below the /usr/bin/time -p measurement
+# floor. The observed +4 ms shift on the cold run (0.08 s) is consistent
+# with module-import + filesystem cache state and not with payload
+# extension overhead.

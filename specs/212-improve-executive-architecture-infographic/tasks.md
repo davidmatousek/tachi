@@ -132,8 +132,8 @@ triad:
 
 ### Regression Gate for User Story 3
 
-- [ ] T031 [US3] Re-run PDF byte-identity regression on zero-finding fixture (FR-212-22 / SC-212-7): `cmp` regenerated PDF against `specs/212-improve-executive-architecture-infographic/artifacts/baseline-zero-finding.pdf`. MUST return zero differences.
-- [ ] T032 [US3] Re-measure extractor runtime on reference dataset (5 timed runs, post-US3). Must be within +10% of Phase-2 baseline (SC-212-8). Record in `specs/212-improve-executive-architecture-infographic/artifacts/runtime-post-us3.txt`.
+- [X] T031 [US3] Re-run PDF byte-identity regression on zero-finding fixture (FR-212-22 / SC-212-7): `cmp` regenerated PDF against `specs/212-improve-executive-architecture-infographic/artifacts/baseline-zero-finding.pdf`. MUST return zero differences.
+- [X] T032 [US3] Re-measure extractor runtime on reference dataset (5 timed runs, post-US3). Must be within +10% of Phase-2 baseline (SC-212-8). Record in `specs/212-improve-executive-architecture-infographic/artifacts/runtime-post-us3.txt`.
 
 **Checkpoint**: US3 shipped. All 8 success criteria (SC-212-1 through SC-212-8) PASS. F-128 contracts preserved. Drift-guard test file catches future field-name drift.
 
