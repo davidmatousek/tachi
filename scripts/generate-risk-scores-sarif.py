@@ -347,22 +347,15 @@ def parse_source_attribution(md: str) -> dict[str, list[dict]]:
 # Helper builders
 # ---------------------------------------------------------------------------
 
-OWASP_BY_REF = {
-    "OWASP LLM01:2025": "LLM01",
-    "OWASP LLM03:2025": "LLM03",
-    "OWASP LLM05:2025": "LLM05",
-    "OWASP LLM09:2025": "LLM09",
-    "OWASP LLM10:2025": "LLM10",
+_OWASP_REFERENCE_BY_PREFIX = {
+    "OI": "OWASP LLM05:2025",
+    "MI": "OWASP LLM09:2025",
 }
 
 
-def derive_owasp_reference(category: str, prefix: str) -> str | None:
+def derive_owasp_reference(prefix: str) -> str | None:
     """Return an OWASP reference label for legacy property compat."""
-    if prefix in {"OI"}:
-        return "OWASP LLM05:2025"
-    if prefix in {"MI"}:
-        return "OWASP LLM09:2025"
-    return None
+    return _OWASP_REFERENCE_BY_PREFIX.get(prefix)
 
 
 def level_for_band(band: str) -> str:
@@ -386,8 +379,7 @@ def build_logical_location(
     }
 
 
-def composite_weights_str(_finding: dict) -> str:
-    return "0.35/0.30/0.15/0.20"
+COMPOSITE_WEIGHTS = "0.35/0.30/0.15/0.20"
 
 
 def build_result(
@@ -419,7 +411,7 @@ def build_result(
         "scalability": finding["scalability"],
         "reachability": finding["reachability"],
         "composite": finding["composite"],
-        "composite-weights": composite_weights_str(finding),
+        "composite-weights": COMPOSITE_WEIGHTS,
         "severity_band": finding["severity_band"],
         "cvss-base-score": f"{finding['cvss_base']:.1f}",
         "cvss-vector": s3.get("cvss_vector", ""),
@@ -446,7 +438,7 @@ def build_result(
     if "correlation_primary" in s3:
         props["correlation-primary"] = s3["correlation_primary"]
 
-    owasp_ref = derive_owasp_reference(s3.get("category", ""), pref)
+    owasp_ref = derive_owasp_reference(pref)
     if owasp_ref:
         props["owasp-reference"] = owasp_ref
 

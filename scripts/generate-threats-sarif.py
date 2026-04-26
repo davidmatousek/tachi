@@ -336,9 +336,6 @@ def parse_findings(md_path: Path) -> list[dict]:
             line_end = len(findings_region)
         row = findings_region[line_start:line_end]
         cols = [c.strip() for c in row.split("|")]
-        # cols[0] is empty (leading |), cols[-1] is empty (trailing |)
-        cols = [c for c in cols if c is not None]
-        # Drop leading/trailing empties
         while cols and cols[0] == "":
             cols.pop(0)
         while cols and cols[-1] == "":
@@ -363,7 +360,7 @@ def parse_findings(md_path: Path) -> list[dict]:
         # 11-col (AI) layout:    [ID, Status, Component, MAESTRO, Pattern, Threat, OWASP, Likelihood, Impact, Risk, Mitigation]
         if len(cols) >= 11 and prefix in ("AG", "AGP", "LLM", "OI", "MI"):
             (
-                fid_,
+                _,
                 status,
                 component,
                 maestro,
@@ -377,7 +374,7 @@ def parse_findings(md_path: Path) -> list[dict]:
             ) = cols[:11]
         else:
             (
-                fid_,
+                _,
                 status,
                 component,
                 maestro,
@@ -408,7 +405,7 @@ def parse_findings(md_path: Path) -> list[dict]:
     return findings
 
 
-def normalize_owasp_id(owasp_ref: str, prefix: str, fid: str) -> str:
+def normalize_owasp_id(owasp_ref: str, prefix: str) -> str:
     """
     Normalize OWASP / source IDs from finding rows.
 
@@ -466,7 +463,7 @@ def build_result(finding: dict, run_id_baseline: str = "2026-04-19T03-20-30") ->
     fq = f"{zone}/{component}"
 
     # OWASP / source ID normalization
-    owasp_id = normalize_owasp_id(finding["owasp_ref"], finding["prefix"], finding["id"])
+    owasp_id = normalize_owasp_id(finding["owasp_ref"], finding["prefix"])
 
     # Tags
     tag_map = {
