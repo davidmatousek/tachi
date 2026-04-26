@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-04-26T16:32:04Z.
+> Auto-generated from GitHub Issues on 2026-04-26T19:31:14Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -19,7 +19,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| #224 | F-4 — ASI09 Human-Agent Trust Exploitation [Tier 1] | — | 2026-04-26 |
+| — | *No items in this stage* | | |
 
 ## Plan
 
@@ -51,6 +51,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #224 | F-4 — ASI09 Human-Agent Trust Exploitation [Tier 1] | OPEN | 2026-04-26 |
 | #217 | detect_images leaves duplicate .jpg/.png pair after recovery write | OPEN | 2026-04-25 |
 | #215 | fix: detect_images picks .jpg by filename, fails Typst when bytes are PNG | CLOSED | 2026-04-25 |
 | #209 | Fix 5 extractor/agent contract-drift bugs | CLOSED | 2026-04-24 |

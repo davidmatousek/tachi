@@ -10,12 +10,12 @@
 #
 # Version: 1.0
 
-schema_version: "1.7"
+schema_version: "1.8"
 
 finding:
   id:
     type: string
-    pattern: "^(S|T|R|I|D|E|AG|LLM|AGP|OI|MI)-\\d+$"
+    pattern: "^(S|T|R|I|D|E|AG|LLM|AGP|OI|MI|TE)-\\d+$"
     description: >
       Unique finding identifier within a threat model.
       Prefix indicates category, suffix is a sequential number.
@@ -26,6 +26,7 @@ finding:
       - "LLM-1"
       - "AGP-1"
       - "MI-1"
+      - "TE-1"
 
   category:
     type: string
