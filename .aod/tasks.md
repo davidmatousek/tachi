@@ -1,333 +1,378 @@
 ---
-spec_reference: specs/180-taxonomy-crosswalk-collection/spec.md
-plan_reference: specs/180-taxonomy-crosswalk-collection/plan.md
-prd_reference: docs/product/02_PRD/180-taxonomy-crosswalk-collection-2026-04-17.md
+description: "Task breakdown for Feature 224 — `human-trust-exploitation` threat agent (OWASP ASI09:2026)"
+spec_reference: .aod/spec.md
+plan_reference: .aod/plan.md
+prd_reference: docs/product/02_PRD/224-trust-exploitation-threat-agent-2026-04-26.md
 triad:
-  pm_signoff:
-    agent: product-manager
-    date: 2026-04-17
-    status: APPROVED_WITH_CONCERNS
-    notes: "Tasks.md preserves all 5 US (mapping table US1-5 correct) and all 13 SCs (traceability table complete, each SC has ≥1 task). Critical product concerns addressed: T017 enforces FR-033 'What F-A1 does NOT' subsection (H-PM-2), T008 assigns Day 1 tripwire to team-lead, T020 assigns R7 ATLAS tripwire to architect, T034 files both follow-ons (related/superseded + citation link-rot per PRD Out-of-Scope). No scope creep, no US without independent test, no SC without task. 3 non-blocking concerns addressed inline: (1) T036 SC-007 now explicitly verifies 'What F-A1 does NOT give you today' subsection presence and content coverage; (2) T020 R7 architect Day-2 capacity concern documented with delegation-to-senior-backend-engineer fallback; (3) T034 Issue-title exact-wording verification against PRD Out-of-Scope to preserve downstream discoverability."
-  architect_signoff:
-    agent: architect
-    date: 2026-04-17
-    status: APPROVED_WITH_CONCERNS
-    notes: "F3 compliance PASS (T028 requires T027; no transient referential-integrity window). DAG soundness mostly sound; 2 gaps addressed inline: (C1) T030 prerequisite corrected from T024 to T026 (tier-adjusted final crosswalk); (C2) T031 annotation clarifies 'nothing on F-A1 work' means technically independent per FR-036 zero-runtime-touch. Schema freeze (T002/T003) correctly gates parallel authoring in Wave 1.2. Tier-decision math consistent (38.4s/edge threshold, <200 Day 2 → Tier 2, <100 Day 3 → Tier 3); all 3 gates monotonically decreasing. Agent subagent_types all valid per .claude/agents/ inventory. ADR-027 governance (Proposed→Accepted) correct; T032 now cites merge commit SHA in Accepted-date rationale per Architect suggestion. Byte-identity command + baseline list correct per Feature 128. Pre-Mortem gotcha on batched crosswalk commits mitigated by T007/T016 cite-only-seed-ids and T029 fix-in-YAML instruction. No blocker; approved for progression to /aod.build."
-  techlead_signoff:
-    agent: team-lead
-    date: 2026-04-17
-    status: APPROVED_WITH_CONCERNS
-    notes: "3 non-blocking concerns addressed inline: (1) MEDIUM: Day 2 senior-backend-engineer load 9-11h nominal (real 7-9h given T013/T014 trivial); soft-overflow budget now documented in T015 (may defer to Day 3 start without breaking T023 sequencing). (2) LOW: T026 Day 3 tier-gate 100-499 band with Tier 1 active now explicitly escalates to Tier 2 in the decision matrix. (3) LOW: R6 single-agent wave mapping remains lead-time-deferred (team-lead re-sequences at execution time if R6 triggers). Phase-per-day feasibility sound: Day 1 balanced (architect 3h, senior-backend 4-5h, web-researcher 2h); Day 2 borderline mitigated; Day 3-5 balanced. Wave structure has no false parallelism (parallel tasks operate on disjoint files). T008 team-lead tripwire ownership correctly asserted with actionable 38.4s/edge threshold. No hidden external blocker beyond R7 ATLAS URL resolution (already tripwired via T011 + T020). Follow-on crosswalk expansion correctly lead-time-deferred (no ICE required pre-filing). Sequencing matches Architect F3 (tests AFTER YAMLs). Approved for execution."
+  pm_signoff: {agent: product-manager, date: 2026-04-26, status: APPROVED, notes: "71 tasks across 11 phases decompose plan.md's 7-wave structure with full coverage. 3/3 user stories tagged ([US1] 10 tasks; [US2] 3 tasks; [US3] 8 tasks); 15/15 spec SCs covered in Wave 6 SC-validation sweep (T046-T061 with appropriate refers-to delegation for SC-011 → T064, SC-012 → T041, SC-014 → T044, SC-015 → T032); 19/19 spec FRs traced to specific tasks (FR-001 → T016; FR-002 → T016/T024; FR-003 → T013/T015; FR-004 → T014/T020; FR-005 → T013/T029; FR-006 → T013; FR-007 → T007/T014; FR-008 → T028/T029; FR-009 → T032; FR-010 → T030; FR-011 → T006; FR-012 → T009/T010/T011/T022; FR-013 → T017/T034; FR-014 → T037/T038; FR-015 → T035; FR-016 → T043; FR-017 → T034; FR-018 → T041; FR-019 → T058/T063/T066); 7/7 NFRs traced (NFR-001 determinism → all waves; NFR-002 backward-compat → T043; NFR-003 tier-cap → T018/T046; NFR-004 zero deps → T053; NFR-005 security → all waves; NFR-006 four safe-language patterns → T014/T020/T021/T062 quadruple-anchored; NFR-007 self-disclosure → T017/T021/T062 triple-anchored). All 6 architect Q1-Q6 binding decisions captured. All 12 architect HIGH/MEDIUM/LOW fixes traced (HIGH-1 rename → all tasks consistent; HIGH-2 carve-up → T010 D2 + T024 + T054; HIGH-3 DUO→TRIO → T028 Edit 2 + T029 Edit 5; BLOCKING-1 Process-only → T013/T016/T010 D10/T029; MEDIUM-2 CWE-287 → T014 cat 4; MEDIUM-3 ATLAS sparseness → T014 + T010 D2 + T042; MEDIUM-4 Q5 conditional → T027; MEDIUM-5 grep-checklist → T032). All 3 architect plan-stage residuals absorbed at task level: MEDIUM-A schema-touch disambiguation → T012/T026 `gh pr diff` post-filter; MEDIUM-B Q5 expected-diff manifest → T027 sub-bullet enumerating both paths; LOW-C F-5 schema-baseline forward-pointer → T065 retrospective note. All 7 team-lead HIGH/MEDIUM/LOW fixes traced (HIGH-1 R10 trigger → T012 + T026 TEAM-LEAD owned; HIGH-2 PR-title → T058 + T063 + T066; MEDIUM-1 Wave 1.2 stretch → 3-4h at line 87; MEDIUM-3 retrospective slot → T065 default-buffer; LOW-1 architect Day-1-EOD → Wave 1.3 mention at line 316; LOW-2 buffer prioritization → T064-T068 explicit at lines 247-252). 26-file zero-edit invariant including `agent-autonomy.md` NOT-edit explicit at T054 with CRITICAL marker. R11 + R12 mitigations triple-anchored (R11 → T010 D9 + T041 grep test + T042 invariant test; R12 → T058 pre-merge + T063 PR ready + T066 post-merge release-please with empty-marker fallback). Parallel opportunities identified at lines 297-303 with feasible capacity check (Wave 1.1: 5 parallel; Wave 3 Step 2: 3 parallel; Wave 5: 5 parallel; Wave 6: 15 parallel SC checks; Wave 7: 5 parallel buffer-day work). Wave Gate Points enforce critical sequencing (T010 → Wave 2; T034 → Wave 5; T046-T062 → T063 PR ready). Pre-Mortem lens applied — 6 failure modes anticipated, all adequately mitigated. APPROVED for team-lead review and /aod.build. Full review at .aod/results/product-manager.md §tasks-stage."}
+  architect_signoff: {agent: architect, date: 2026-04-26, status: APPROVED, notes: "14/14 correctness dimensions PASS (6 brief + 8 sub). All 3 plan-stage residuals absorbed at task-level: MEDIUM-A schema-touch disambiguation via gh pr diff post-filter (T012/T026); MEDIUM-B Q5 fallback expected-diff manifest enumeration for both paths (T027); LOW-C F-5 schema-baseline forward-pointer in retrospective (T065). T005→T006 atomic test-first; T009→T010→T011→T022→T025/T067 ADR-033 dual-commit lifecycle complete; T010 enumerates all 10 body items (8 PRD-original + D9 HIGH-1 Naming Disambiguation + D10 BLOCKING-1 DFD Target Decision); T028/T029 6-edit grep-checklist (T032) covers all 3+3 surface edits with explicit Edit-3 no-op disambiguation; T054 26-file zero-edit invariant explicit on agent-autonomy.md NOT-edit; source_attribution contract end-to-end (T007/T008/T014/T042/T055); two-part emission gate (T017+T034) before Wave 5 regen; byte-identity SC-006 BLOCKER at T043; R11 double-anchored (T010 D9 + T041 FR-018 grep + T042 invariant); R12 belt-and-suspenders (T058 pre-merge + T063 PR ready + T066 post-merge release-please with empty-marker-commit fallback). Pre-Mortem on T012/T026 R10, T027 Q5 fallback, T032 grep-checklist, T034 false-positive, T041 FR-018 — 0 BLOCKING + 1 LOW (cosmetic prose redundancy on Wave 1.0 escalation phrasing — non-blocking). DAG strictly ordered no cycles; edit owner annotated architect on T028/T029 per F-1/F-2 precedent. Ready for /aod.build. Full review at .aod/results/architect.md §Tasks-Stage Review."}
+  techlead_signoff: {agent: team-lead, date: 2026-04-26, status: APPROVED_WITH_CONCERNS, notes: "0 BLOCKING / 1 MEDIUM / 2 LOW — all absorbed inline; no gate-block on /aod.build. Capacity check PASS (senior-backend-engineer Day 1 PM peak 60-70% / Day 2 50-60%; architect Day 1 30-40% / Day 2 40-50%; tester Day 1 40-50% / Day 2 30%; code-reviewer Day 2 PM 20%; team-lead Day 2 AM 5-10% — all within 80% ceiling). 20/20 PRD/Architect/Team-Lead fixes traced to concrete task IDs (BLOCKING-1 → T013/T016/T010-D10/T029; HIGH-1 rename → all task descriptions + T010-D9 + T041 FR-018 grep test + T042 invariant test; HIGH-2 carve-up → T010-D2 + T024 + T054 agent-autonomy.md NOT-edit; HIGH-3 DUO→TRIO → T028/T029/T032; MEDIUM-2 CWE-287 → T014; MEDIUM-3 ATLAS prose-only → T014/T010-D2/T042; MEDIUM-4 Q5 fallback → T027 with architect MEDIUM-B expected-diff manifest; MEDIUM-5 grep-checklist → T032; NFR-6 → T014/T020/T021/T062; NFR-7 → T017/T021/T062; R10 → T012+T026 with architect MEDIUM-A gh pr diff post-filter; R11 → T010-D9+T041+T042; R12 → T058+T063+T066; team-lead MEDIUM-1 stretched 3-4h → Phase 3 header + line 314; MEDIUM-3 retrospective default-buffer → T065; LOW-1 architect EOD pre-positioning → line 316; LOW-2 buffer-day 4-tier → lines 247-251; architect MEDIUM-A/B/LOW-C → T012/T026/T027/T065). Calendar verified (cal 4 2026): 2026-04-27 Mon Day 1, 2026-04-28 Tue Day 2, 2026-04-29 Wed Buffer — wave Day-of-week labels exact match. Critical-path sequence T004 → T004a/b → T006 → T010 → T013/T014/T016/T017 → T026 → T027 → T028-T030 → T032 → T034 → T035 → T036 → T041-T044 → T046-T061 → T062 → T063 → merge → T064-T067 — no cycles, no false parallelism. Parallelization maxima sound: Wave 1.1 5-parallel (T005/T007/T008/T009/T012); Wave 3 Step 2 3-parallel (T028/T029/T030); Wave 5 5-parallel (T041-T045); Wave 6 16-parallel (T046-T061). 5 cross-wave dependencies traced (ADR-033 D9 Naming → T041 FR-018 test; D2 carve-up → T054 agent-autonomy.md NOT-edit audit; D10 DFD → T013/T016/T029; Q5 manifest → T036 regen → T044 three-prefix-family; 3-gate sequence Wave 3→4→5). Hidden external blocker check PASS (F-5 ships AFTER F-4 deliver-stage closes per R10; F-3 zero spillover; schema bump single-threaded; release-please skip risk via T058+T063+T066). Constraint Analysis + Systems Thinking lenses both confirm sound design. Agent subagent_types valid (architect, senior-backend-engineer, tester, code-reviewer, team-lead, product-manager all per .claude/agents/_README.md). Repository slug 224-trust-exploitation-threat-agent preserved per .claude/rules/git-workflow.md NNN-descriptive-name convention; agent/file/directory/schema-prefix names use human-trust-exploitation per HIGH-1. Three concerns: MEDIUM-1 Wave 6 PR ready (T063) immediately after T062 NFR-006/7 review — narrow buffer for revision (R7 surface; absorbed by buffer-day tier 1 prioritization); LOW-1 16-parallel SC checks T046-T061 lack per-check failure-mode escalation for T053/T054 self-healing failures (no action needed); LOW-2 T065 retrospective same-day Wave 6 opt-in lacks decision criterion (default-to-buffer-day is safe path). All concerns absorbed inline; ready for /aod.build. Full review at .aod/results/team-lead.md."}
 ---
 
-# Tasks: F-A1 Taxonomy Crosswalk Collection (Feature 180)
+# Tasks: `human-trust-exploitation` Threat Agent (OWASP ASI09:2026)
 
-**Input**: Design documents from `/specs/180-taxonomy-crosswalk-collection/`
-**Prerequisites**: spec.md (APPROVED_WITH_CONCERNS by PM), plan.md (APPROVED by PM, APPROVED_WITH_CONCERNS by Architect), research.md, data-model.md, contracts/catalog-record.yaml, contracts/crosswalk-edge.yaml, contracts/integrity-test-contract.md, quickstart.md
+**Input**: Design documents from `.aod/`
+**Prerequisites**: plan.md (PM APPROVED, Architect APPROVED_WITH_CONCERNS), spec.md (PM APPROVED_WITH_CONCERNS), research.md, data-model.md, contracts/finding-contract.md, quickstart.md
+**Branch**: `224-trust-exploitation-threat-agent`
+**Draft PR**: #225 (already opened with `feat(224):` Conventional-Commit prefix per R12 mitigation)
 
-**Tests**: Required — FR-027 through FR-032 mandate a `tests/schemas/test_taxonomy_integrity.py` pytest suite.
+**Tests**: Regex unit test + fixture-driven `source_attribution` validation test REQUIRED (per SC-010 + invariant 5); FR-018 grep-checkable test for AGP-vs-TE prose-synthesis-prevention (R11 mitigation per SC-012); backward-compat byte-identity is an existing harness (existing `tests/scripts/test_backward_compatibility.py`).
 
-**Organization**: Tasks are grouped by 5-phase execution plan (per plan.md Phase 2 preview), mapping 1:1 to PRD Timeline § Phase Breakdown. Each task carries its story ownership ([US1]–[US5]), parallel-eligibility flag ([P]), and agent assignment.
+**Organization**: Tasks are grouped into waves matching plan.md's 7-wave structure. Wave 1.1 schema-lock + ADR-033 Proposed is the unblock-gate; Wave 2 pattern + agent authoring proceeds after; Wave 3 (PRD Wave 2.0) orchestrator + shared edits with R10 enforceable trigger (Step 0) + Q5 fallback gate (Step 1) + 6-edit grep-checklist (Step 3); Wave 4 (PRD Wave 2.1) false-positive check; Wave 5 (PRD Wave 2.2) example regeneration with FR-018 grep test; Wave 6 (PRD Wave 2.3) NFR-006/007 review + ADR-033 Accepted + PR; Wave 7 (PRD buffer day) delivery retrospective + Coverage Matrix update + F-5 schema-baseline forward-pointer.
 
 ## Format: `[ID] [P?] [Story] Description`
+
 - **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: US-180-1 (catalog YAMLs), US-180-2 (crosswalk), US-180-3 (README), US-180-4 (tests), US-180-5 (ADR)
-- All paths are relative to repo root `/Users/david/Projects/tachi/`
-
-## Agent Assignments (3-agent parallel execution, per PRD Phase Breakdown)
-
-- **architect**: schema freeze, ADR-027 authoring, README structure, cross-references (2 link edits)
-- **senior-backend-engineer**: YAML authoring (9 files), integrity tests (`tests/schemas/`)
-- **web-researcher**: crosswalk edge citation discovery (≥500 primary edges), Day 1 50-edge spike
-- **code-reviewer**: byte-identity verification, enum-closure review, pre-merge PR checks
-
-R6 fallback: if only senior-backend-engineer is available, wall-clock extends to 5-6 days (team-lead authorizable without PRD amendment).
+- **[Story]**: Which user story this task belongs to (US1 = ASI09 communication-axis detection, US2 = human-trust mitigation guidance, US3 = Heuristic A signal-class distinctness / ADR-033 + Naming Disambiguation)
+- Include exact file paths in descriptions
 
 ---
 
-## Phase 1: Schema Freeze + OWASP + Day 1 Crosswalk Spike (Day 1)
+## Phase 1: Setup (Shared Infrastructure)
 
-**Goal**: Lock schema shape, produce ADR-027 in Status: Proposed, author first YAML (`owasp.yaml`), execute 50-edge crosswalk spike with Risk R1 tripwire measurement.
+**Purpose**: Ensure feature directory and branch are correctly configured. Branch already created at start of `/aod.plan`; draft PR already opened.
 
-**Deliverables at end of Day 1**: committed `owasp.yaml`; ADR-027 in Status: Proposed; Day 1 spike outcome recorded in tasks.md with tripwire tier decision.
-
-### Wave 1.1 — Schema Lock (serial, foundation for parallel authoring)
-
-- [X] **T001** [architect] Verify FR-A7 (ADR-004 absence): run `ls docs/architecture/02_ADRs/ | grep -E '^ADR-004'` — confirm empty output. Verify ADR-027 is next unused by `ls docs/architecture/02_ADRs/ADR-027*` (must be empty). If ADR-027 is taken by an unrelated in-flight PR, use next unused number (document deviation in tasks.md progress log).
-- [X] **T002** [architect] Author `docs/architecture/02_ADRs/ADR-027-taxonomy-crosswalk-schema.md` in Status: **Proposed** (per FR-041) using `ADR-000-template.md` section structure. Content per FR-040: per-item record shape (FR-003), per-edge record shape (FR-009), 7-value taxonomy enum (FR-010), 3-value edge_type enum (FR-012), 3-value confidence enum (FR-013), Interpretation C rationale, scope/cadence exception rationale, Related ADRs (ADR-020, ADR-021, ADR-023, ADR-024, ADR-025). Commit with message `feat(180): ADR-027 Proposed`.
-- [X] **T003** [architect] Freeze schema shape by committing ADR-027 (T002). This unblocks parallel authoring in Waves 1.2 and beyond.
-
-### Wave 1.2 — Parallel Day 1 authoring (after Wave 1.1)
-
-- [X] **T004** [P] [US1] [senior-backend-engineer] Create directory `schemas/taxonomy/` (T001 gate: must not exist at start; `mkdir schemas/taxonomy`). Commit with message `chore(180): bootstrap schemas/taxonomy/ directory`. (Absorbed into T005 commit per note "git cannot commit empty dir".)
-- [X] **T005** [P] [US1] [senior-backend-engineer] Author `schemas/taxonomy/owasp.yaml` with ≥60 items covering 6 OWASP lists per FR-020 (LLM Top 10:2025 — 10 items, Agentic Top 10:2026 — 10 items, Top 10:2021 — 10 items, API Security Top 10:2023 — 10 items, Mobile Top 10:2024 — 10 items, ML Top 10:2023 — 10 items). Record shape per FR-003 `{id, full_id, name, url, cwe_refs}`; `cwe_refs` populated where OWASP source explicitly publishes CWE cross-references (per FR-008 unidirectional OWASP→CWE rule). Commit with message `feat(180): author owasp.yaml (≥60 items, 6 OWASP lists)`.
-- [X] **T006** [P] [US4] [senior-backend-engineer] Bootstrap `tests/schemas/` subdirectory: create empty `tests/schemas/__init__.py`. Commit with message `chore(180): bootstrap tests/schemas/ subdirectory`.
-- [X] **T007** [P] [US2] [web-researcher] **Day 1 crosswalk spike** (Risk R1 tripwire): author **50 edges** on diverse slice per A5 composition: 10 OWASP↔CWE + 10 ATT&CK↔CWE + 10 ATT&CK↔ATLAS + 10 LLM↔NIST + 10 Agentic↔MITRE. Each edge uses FR-009 shape; each has `edge_type: primary`; confidence calibrated per FR-013 anti-drift rule. Write 50 edges to `schemas/taxonomy/crosswalk.yaml` as Day 1 seed. **Record wall-clock time** (start-to-finish for the 50 edges) in tasks.md progress log (§Day 1 Spike Outcome).
-- [X] **T008** [US2] [team-lead] **Day 1 Tripwire Decision Gate**: at end of Day 1, compute `seconds_per_edge = total_wall_clock / 50`. If ≤38.4s/edge → R3 Tier 1 default stands (≥500-edge floor); log decision "CONTINUE TIER 1". If >38.4s/edge → escalate to architect + team-lead for Day 2 end re-evaluation (pre-authorize R3 Tier 2 if Day 2 end <200 edges). **Assignee for tripwire decision: team-lead** (Architect F3 explicit ownership).
-
-### Day 1 Exit Gate
-
-- [X] **T009** [architect] Verify T002 ADR-027 commit exists with Status: Proposed. Verify T005 `owasp.yaml` committed. Verify T007 spike edges committed. Verify T008 tripwire decision logged in tasks.md progress. **VERIFIED 2026-04-17**: ADR-027 at `b0f0159` (Status: Proposed confirmed); owasp.yaml at `e150b81` (60 items exactly); crosswalk.yaml at `b4527f1` (50 edges, 5-slice composition verified via yaml.safe_load); tests/schemas/__init__.py at `889b38b`; T008 CONTINUE TIER 1 decision logged at `499bdf5`. Day 1 Exit Gate PASSES. Wave 2 authoring unblocked.
+- [ ] T001 Verify working directory clean on branch `224-trust-exploitation-threat-agent` and `.aod/` contains spec.md, plan.md, research.md, data-model.md, contracts/finding-contract.md, quickstart.md, checklists/requirements.md
+- [ ] T002 [P] Create directory `.claude/skills/tachi-human-trust-exploitation/references/` (companion skill)
+- [ ] T003 [P] Create directory `tests/scripts/fixtures/human_trust_exploitation/` (test fixtures)
 
 ---
 
-## Phase 2: MITRE + CWE + Pseudo-Taxonomies + NIST Catalog Start (Day 2)
+## Phase 2: Foundational — Wave 1.0 & 1.1 (Blocking Prerequisites)
 
-**Goal**: Author 5 more YAMLs (3 MITRE/CWE + 2 pseudo-taxonomy); begin `nist-ai-rmf.yaml` catalog; continue crosswalk citation discovery; draft README; stage 2 cross-reference link edits.
+**Purpose**: Schema-lock commit + ADR-033 Proposed commit unblock parallel Wave 2 pattern authoring. Escalation gate fires if Heuristic A signal-class verification surfaces a subsume-into-`agent-autonomy` signal before Day 1 EOD.
 
-**Deliverables at end of Day 2**: 6 YAMLs committed (owasp + attack + atlas + cwe + 2 pseudo); `nist-ai-rmf.yaml` in progress; ~200 crosswalk edges committed; README.md draft; 2 cross-reference link edits drafted.
+**CRITICAL**: No user story work can begin until T006 (schema bump) and T010 (ADR-033 Proposed) are committed.
 
-### Wave 2.1 — Parallel Day 2 authoring
+### Wave 1.0 — Architect Heuristic A Verification + Trigger-Keyword Adjudication (30-60 min, Day 1 AM)
 
-- [X] **T010** [P] [US1] [senior-backend-engineer] Author `schemas/taxonomy/mitre-attack.yaml` with the 38 seed MITRE ATT&CK techniques from spec.md Assumption A1 (full ID list pinned). Record shape per FR-003; `url` per canonical pattern `https://attack.mitre.org/techniques/T<N>/` (FR-033 canonical-URL conventions). Commit with message `feat(180): author mitre-attack.yaml (38 seed techniques)`. **COMPLETED 2026-04-17** commit `c622654`, 212 lines, 38 techniques.
-- [X] **T011** [P] [US1] [senior-backend-engineer] Author `schemas/taxonomy/mitre-atlas.yaml` with ≥12 records: 7 seed (AML.T0010, T0018, T0020, T0024, T0051, T0054, T0057) + 5 externally-curated (AML.T0058, T0059, T0060, T0061, T0062) per FR-016. **Curation tripwire** (FR-016 + PM concern): if any of AML.T0059–T0062 cannot be resolved to a stable citation URL on `atlas.mitre.org` by end of T011, escalate to architect; architect may authorize descope to ≥8 (seed + AML.T0058 only). Commit with message `feat(180): author mitre-atlas.yaml (7 seed + 5 curated)`. **COMPLETED 2026-04-17** commit `8445147`, 89 lines, 12 records (7+5). URL resolution: all 5 AML.T0058-T0062 URLs returned HTTP 404 from WebFetch (anti-bot gating suspected); URL pattern validated via MISP galaxy cross-ref; names retrieved via WebSearch aggregation. All 5 flagged in YAML comments for T020 architect tripwire review.
-- [X] **T012** [P] [US1] [senior-backend-engineer] Author `schemas/taxonomy/cwe.yaml` with ≥53 records: 41 seed CWEs from spec.md Assumption A1 + 12 net-new CWEs from CWE Top 25 (2025) per FR-017. CWE record shape OMITS `cwe_refs` field entirely per FR-003. Commit with message `feat(180): author cwe.yaml (41 seed + CWE Top 25 2025 expansion)`. **COMPLETED 2026-04-17** commit `4fc8e7d`, 241 lines, 53 records (41 seed + 11 net-new Top 25 2025 + CWE-116 cited in OWASP A03/LLM05).
-- [X] **T013** [P] [US1] [senior-backend-engineer] Author `schemas/taxonomy/tachi-control-category.yaml` with exactly 8 records (per FR-018): `authentication`, `input-validation`, `rate-limiting`, `encryption`, `logging-audit`, `csrf-protection`, `csp-security-headers`, `access-control`. Record shape per FR-003; `url` field is relative repo path `.claude/skills/tachi-control-analysis/references/control-categories.md`; `cwe_refs: []`. Commit with message `feat(180): author tachi-control-category.yaml (8 records)`. **COMPLETED 2026-04-17** commit `46b2b9f`, 65 lines, 8 records.
-- [X] **T014** [P] [US1] [senior-backend-engineer] Author `schemas/taxonomy/tachi-stride-ai-category.yaml` with exactly 11 records (per FR-019): 6 STRIDE (`spoofing`, `tampering`, `repudiation`, `information-disclosure`, `denial-of-service`, `elevation-of-privilege`) + 5 AI (`prompt-injection`, `data-poisoning`, `model-theft`, `agent-autonomy`, `tool-abuse`). Record shape per FR-003; `url` field is `.claude/skills/tachi-shared/references/stride-categories-shared.md`; `cwe_refs: []`. Commit with message `feat(180): author tachi-stride-ai-category.yaml (11 records)`. **COMPLETED 2026-04-17** commit `713705f`, 86 lines, 11 records.
-- [X] **T015** [US1] [senior-backend-engineer] Begin authoring `schemas/taxonomy/nist-ai-rmf.yaml` Subcategory catalog. Target 68 records (exact, per FR-021) from NIST AI 100-1 Tables 1–4. May be partial at end of Day 2; completion target is Day 3 (T022). Commit in-progress work with message `feat(180): begin nist-ai-rmf.yaml catalog (Subcategory records 1..N)`. **Soft-overflow budget** (per Team-Lead review MEDIUM concern): Day 2 senior-backend-engineer load totals T010+T011+T012+T013+T014+T015 ≈ 9-11h nominal; T013/T014 are trivial (exact-count copies from seed references, ~30min each); real load is ~7-9h. If Day 2 slips, T015 MAY defer fully to Day 3 start without breaking T023 sequencing (T022 still completes NIST catalog before T023 authors Surface B/C edges). No wave-structure change required. **COMPLETED 2026-04-17** commit `5123023`, 401 lines, **72 records** (GOVERN 19, MAP 18, MEASURE 22, MANAGE 13). **COUNT DISCREPANCY FLAG**: authoritative NIST AIRC enumerates 72 Subcategories across Tables 1-4; FR-021 targets 68. Architect/PM decision required (amend FR-021 to 72 vs. select 68-subset); all Surface B/C mapping-cited Subcategories fall within the 68 subset regardless, so downstream T023 work is unaffected. T022 is likely redundant if FR-021 amendment path chosen.
-- [X] **T016** [P] [US2] [web-researcher] Continue crosswalk citation discovery. Target: ≥200 primary edges committed to `crosswalk.yaml` by end of Day 2. Each edge: FR-009 shape, `edge_type: primary`, citation per FR-014, confidence per FR-013 anti-drift rule. Commit in batches (one commit per ~50 edges) to avoid pre-commit hook timeout (Risk R8 per plan). **COMPLETED 2026-04-17** — shape reshape commit `d9bdb1c` (top-level list per FR-009 contract, 50 Day 1 edges preserved verbatim); 5 harvest batches `d459cd0`, `8b66a31`, `abe3551`, `cd56a3d`, `004cd00` = 242 new edges. **Total: 292 edges** (Day 2 target ≥200 exceeded by 46%). Confidence dist: 141 high / 150 medium / 1 low. Zero duplicates on 5-tuple. **Referential-integrity flags for T028**: (i) Day 1 used `A01:2021`/`LLM01:2025`/`ASI01:2026` ID-format — canonical short IDs differ; (ii) some ATT&CK IDs (`T1190`, `T1557`, `T1565.001`) in Day 1 edges not in `mitre-attack.yaml` 38-seed; (iii) some CWE IDs referenced (`CWE-693`, `CWE-1269`, `CWE-1357`, `CWE-1426`, `CWE-1427`) may not be in `cwe.yaml` 53-record set; (iv) 22 control-category edges reference IDs (`monitoring-alerting`, `error-handling`, `secrets-management`) outside the FR-018 frozen 8-value enum — MUST be fixed in T029 or pre-T028.
-- [X] **T017** [P] [US3] [architect] Draft `schemas/taxonomy/README.md` per FR-033 structure: (a) §Purpose with runnable Python snippet + **"What F-A1 does NOT give you today" subsection** (per FR-033 clarification addressing PM H-PM-2); (b) §Harvest methodology; (c) §Per-framework provenance (7 sections); (d) §Confidence calibration rubric with anti-drift rule; (e) §Canonical-URL conventions; (f) §Update procedure (5 per-framework sections); (g) §Crosswalk methodology; (h) §Single-source-of-truth cross-reference to nist-ai-rmf-mapping.md. Draft committed with message `docs(180): draft schemas/taxonomy/README.md`. **COMPLETED 2026-04-17** commit `5b1d1ef`, 215 lines, 8 sections per FR-033 (SC-007 runnable snippet + H-PM-2 subsection both present).
-- [X] **T018** [P] [US3] [architect] Stage 2 cross-reference link edits per FR-038: (a) top-level `README.md` gains single link to `schemas/taxonomy/README.md` in the appropriate section; (b) `docs/architecture/00_Tech_Stack/README.md` gains single link under Schemas or Conventions. Commit with message `docs(180): add schemas/taxonomy/ cross-references to README + Tech_Stack`. **COMPLETED 2026-04-17** commit `c6b2f58`, 2 files + 1 new line each: top-level README Integration Reference table gains Taxonomy Crosswalk row; Tech_Stack Threat Modeling Schemas section gains taxonomy bullet cross-linking ADR-027.
+- [ ] T004 Architect verifies Heuristic A signal-class intact: ADR-030 Decision 2 Outcome B reserved ASI09 communication-axis for F-4 (vs. F-1 output-sanitization scope per ADR-030 D1; vs. F-2 factual-integrity scope per ADR-031). ADR-033 sub-scope carve-up between `agent-autonomy` autonomy axis (already covers ASI-09 in `owasp_references` at `.claude/agents/tachi/agent-autonomy.md:17`) and `human-trust-exploitation` communication axis is the architectural commitment. **Vocabulary-disjoint test**: verify `agent-autonomy` vocabulary (excessive-autonomy, missing-HITL, goal-drift, cascading-failures) does NOT cover communication-axis vocabulary (AI-disclosure, authority-claim, persuasion, persona, synthetic-relationship). Capture verification in a short decision memo saved at `.aod/results/heuristic-a-verification.md` for traceability. If pattern authoring later surfaces a subsume signal, re-escalate per spec R1 Day 1 gate.
+- [ ] T004a [US1] **architect MEDIUM-A residual concern absorbed at task-level**: Architect adjudicates final FR-005 trigger keyword count. Spec FR-005 captures verbatim Q2 12-keyword baseline as a starting point with architect license to tighten or expand at Wave 1.0 review. Decision recorded in `.aod/results/wave-1.0-trigger-keyword-decision.md` with rationale (final count + persona anti-indicator subsection scope + alignment with PRD Q2 binding). Output feeds T013 + T029.
+- [ ] T004b [US1] Architect adjudicates final FR-010 `finding-format-shared.md` placement (R9 mitigation). PM-leaning placement: between `tool-abuse` (line 18) and `output-integrity` (line 19) — Agentic-category cluster grouping. Decision recorded in `.aod/results/wave-1.0-consumers-placement-decision.md` with grep-verification of current consumers list state.
 
-### Wave 2.2 — Day 2 Gate + R7 Tripwire
+### Wave 1.1 — Schema Lock + ADR-033 Proposed (parallel, Day 1 AM/PM)
 
-- [X] **T019** [US2] [team-lead] **Day 2 Tier Gate**: count committed primary edges in `crosswalk.yaml`. If ≥200 → Tier 1 stands. If <200 and Tier 1 was adopted at Day 1 → escalate to **R3 Tier 2** (300-edge floor, team-lead-authorizable without PRD amendment). Log decision in tasks.md progress (§Day 2 Tier Gate). **COMPLETED 2026-04-17** — decision **TIER 1 HOLDS** (292 primary edges; 58% of ≥500 merge floor with 3 authoring days remaining; within 200-499 on-track band; residual gap absorbed by T023 41-edge transcription + T024 ~167-edge Day 3 harvest).
-- [X] **T020** [US1] [architect] **R7 Tripwire (Architect)** per FR-016: if T011 escalated AML.T0058-T0062 citation unresolvability, architect authorizes descope to ≥8 (7 seed + AML.T0058). If all 5 resolve to stable URLs, no action. Record decision in tasks.md progress (§R7 Tripwire Outcome). **PM concern 2**: architect Day-2 availability is not formally capacity-validated in tasks.md; if architect Day-2 is conflicted, T011 may need to pre-mark uncertainty and team-lead re-evaluates T020 ownership (may transfer to senior-backend-engineer under architect written delegation, same descope authority). **COMPLETED 2026-04-17** — decision **ALL 5 PRESENT** (no descope): 404s were WebFetch client-side anti-bot gating (control proof: known-good seed AML.T0051 also 404s via same client); all 5 IDs confirmed present in authoritative MITRE-owned `atlas-data/techniques.yaml` on GitHub. **Name-correction commit `be18076`** (architect inline): T011-aggregated names for all 5 AML.T0058-T0062 were WRONG — corrected to authoritative names (T0058 "Publish Poisoned Models", T0059 "Erode Dataset Integrity", T0060 "Publish Hallucinated Entities", T0061 "LLM Prompt Self-Replication", T0062 "Discover LLM Hallucinations"). URL pattern unchanged → zero crosswalk edge rewrites required.
+- [ ] T005 [P] Write regex unit test at `tests/scripts/test_human_trust_exploitation.py` covering: (a) pre-1.8 IDs (`S-1`, `T-1`, `R-1`, `I-1`, `D-1`, `E-1`, `AG-1`, `LLM-1`, `AGP-1`, `OI-1`, `MI-1`) remain valid, (b) `TE-1`, `TE-10`, `TE-99` match the 1.8 regex, (c) non-matching inputs (`TE1`, `TEA-1`, `te-1`, empty string) are rejected. Test MUST FAIL at authoring time (before T006 regex bump).
+- [ ] T006 Modify `schemas/finding.yaml`: line 13 `schema_version: "1.7"` → `"1.8"`; line 18 `id.pattern: "^(S|T|R|I|D|E|AG|LLM|AGP|OI|MI)-\\d+$"` → `"^(S|T|R|I|D|E|AG|LLM|AGP|OI|MI|TE)-\\d+$"`; append a `TE-1` entry to the `examples:` list AFTER the existing `MI-1` entry (current MI-1 at line 28) to preserve chronological prefix-introduction ordering. Verify T005 regex test now passes.
+- [ ] T007 [P] Author test fixture `tests/scripts/fixtures/human_trust_exploitation/valid_te_finding.yaml` — complete `TE-1` finding with valid `source_attribution` citing `owasp:ASI09` (primary) + `cwe:CWE-223` (related), populated AI-disclosure-mitigation text (e.g., "Implement mandatory AI-generation disclosure banner on every user-facing turn. Configure pre-conversation AI-disclosure splash..."), description distinguishing undisclosed-AI-authorship sub-class. Apply NFR-006 safe-language patterns ("Hypothetical:" prefix, "for context, not legal interpretation" framing, etc.).
+- [ ] T008 [P] Author test fixture `tests/scripts/fixtures/human_trust_exploitation/invalid_attribution_finding.yaml` — three rejection cases per contracts/finding-contract.md: (a) finding with `CWE-451` in `source_attribution` (catalog absent — F-A2 validator MUST reject), (b) finding with `agentic_pattern: "trust_exploitation"` on a `TE-{N}` finding (R11 Naming Disambiguation invariant 8 — Phase 3.6 MUST NOT assign that value to TE findings), (c) finding with empty `source_attribution: []` (invariant 3 — non-empty required).
+- [ ] T009 [P] [US3] Author ADR-033 skeleton at `docs/architecture/02_ADRs/ADR-033-human-trust-exploitation-agent.md` with **Status: Proposed** (per FR-012 / Q6 / plan Wave 1.1): title block, Context section (BLP-01 Tier 1 framing, ASI09 communication-axis problem statement, ASI09 Planned → Covered transition for communication axis only, autonomy axis remains attributed to `agent-autonomy`), Decisions section placeholder (populated in T010), Consequences placeholder, Cross-References placeholder, Revision History table with one initial Proposed row, no Layer 2 / commercial framing.
+- [ ] T010 [US3] Populate ADR-033 Decisions section in `docs/architecture/02_ADRs/ADR-033-human-trust-exploitation-agent.md` with **all 10 body items** (8 PRD-original + 2 architect-required additions per FR-012):
+  - **(D1) Decision** statement — adopt new `human-trust-exploitation` agent for ASI09 communication-axis closure
+  - **(D2) Heuristic A signal-class rationale + ASI09 sub-scope carve-up (HIGH-2 fix)** — four-way scope boundary: distinct from `output-integrity` (machine-victim sanitization per ADR-030 D1), distinct from `misinformation` (machine-consumer factual-integrity per ADR-031), distinct from `agent-autonomy` autonomy axis (autonomy/HITL surface — agent's own behavior boundary; vocabulary-disjoint per ADR-032 enrichment-eligibility test), scoped to human-victim communication axis (AI-disclosure, authority-attestation, persuasion, persona-boundary, synthetic-relationship). Explicit ASI09 sub-scope carve-up: `agent-autonomy` retains autonomy/HITL axis; `human-trust-exploitation` adds communication axis. **No edit to `agent-autonomy.md`** — carve-up at ADR layer only (preserves SC-009 26-file invariant). Cite ADR-030 D2 Outcome B as architectural reservation that creates F-4's scope.
+  - **(D3) Standalone-vs-enrichment branch contrast** — explicit contrast against F-3 / ADR-032 enrichment-branch path: `agent-autonomy`'s autonomy-axis vocabulary (excessive-autonomy / missing-HITL / goal-drift / cascading-failures) does not cover communication-axis vocabulary; enrichment is structurally not available — Outcome B (standalone) is the only Heuristic A path forward
+  - **(D4) Lean-agent shape conformance** per ADR-023 — single-point load, ≤150 lines, zero MAESTRO references
+  - **(D5) Cross-references** to ADR-021, ADR-023, ADR-026, ADR-027, ADR-028, ADR-029, **ADR-030 (Decision 2 Outcome B reservation creates F-4's scope; Decision 8 regex-alternation rule invoked third time on `TE` prefix)**, ADR-031 (F-2 second-execution standalone-branch precedent), ADR-032 (F-3 enrichment-branch alternative)
+  - **(D6) 26-file zero-edit invariant** preservation with grep-auditable enumeration (architect MEDIUM-5) — explicit listing of untouched files; new agent + companion are additions; **`agent-autonomy.md` is NOT edited** despite ASI09 sub-scope carve-up
+  - **(D7) Commercial framing omitted** per blueprint governance — public ADR stands on technical merits alone
+  - **(D8) Revision history** table tracking Proposed → Accepted transition with dates
+  - **(D9 / NEW per architect HIGH-1) Naming Disambiguation** — explicit documentation of new `human-trust-exploitation` agent name (hyphen-cased file/directory convention) vs. existing `trust_exploitation` agentic_pattern enum value (`schemas/finding.yaml:162`, underscore-cased schema-enum convention; multi-agent topology pattern per Feature 142 / `maestro-agentic-patterns-shared.md:220-231` R-04); the two cover non-overlapping scopes (agent-to-human ASI09 vs. agent-to-agent CSA MAESTRO multi-agent topology); the `TE` finding-prefix is the threat-class abbreviation (agent-name-agnostic, "Trust Exploitation"); FR-018 grep-checkable test verifies no prose synthesis at threat-report rendering
+  - **(D10 / NEW per architect BLOCKING-1) DFD Target Decision** — explicit rationale for `dfd_targets: [Process]` (Process-only) declaration: F-4 mirrors F-1 / F-2 single-DFD-target precedent; human-user trust boundary captured at indicator level within `detection-patterns.md` rather than dispatch metadata level; no existing AI-tier or agentic-category agent has declared External Entity as a DFD target (only STRIDE-only precedent: `repudiation`, `spoofing`); architectural commitment that future AI-tier agents wishing to declare External Entity must update this ADR; deferred External Entity pattern available for future enrichment if/when a second AI-tier agent justifies the cost
+  Commit ADR-033 Proposed at Wave 1.1.
+- [ ] T011 [US3] Populate ADR-033 Cross-References section in `docs/architecture/02_ADRs/ADR-033-human-trust-exploitation-agent.md`: ADR-021 (determinism baseline), ADR-023 (lean-agent pattern — F-4 third standalone-branch execution), ADR-026 (minor-bump rule + agentic_pattern enum source for Naming Disambiguation), ADR-027 (F-A1 taxonomy enum source), ADR-028 (F-A2 `source_attribution` contract — F-4 is third producer after F-1 + F-2), ADR-029 (F-B downstream consumer — `has-source-attribution` fires true on regen), **ADR-030 (F-1 precedent — Decision 2 Outcome B reservation creates F-4's scope; Decision 8 regex-alternation minor-bump rule F-4 invokes as 3rd application)**, **ADR-031 (F-2 precedent — second-execution standalone-branch structural template)**, **ADR-032 (F-3 precedent — enrichment-branch alternative; F-4 explicitly contrasts in D3)**.
+- [ ] T012 [P] **architect MEDIUM-A absorption + R10 enforceable trigger pre-check (TEAM-LEAD owned per HIGH-1)**: Pre-Wave 3 static check — team-lead runs the R10 enforceable trigger queries: `gh issue list --label stage:plan --state open --search "F-5"` AND `gh pr list --state open --search "schemas/finding.yaml" --search "orchestrator.md" --search "dispatch-rules.md" --search "finding-format-shared.md"`. **architect MEDIUM-A absorption (schema-touch disambiguation)**: post-filter results with `gh pr diff <PR>` checking whether any matching PR actually MODIFIES the 4 surface files (not just mentions them in a comment). Innocent comment-only PRs that mention surface-file names without modifying content do NOT trigger HALT. Record results at `.aod/results/wave-3-r10-precheck.md`. If actual concurrent edits to any of the 4 surfaces detected: HALT and escalate. Otherwise: green-light Wave 3.
 
-### Day 2 Exit Gate
+**Checkpoint**: Schema locked at 1.8; ADR-033 Proposed committed with all 10 decisions including architect HIGH-1 Naming Disambiguation + BLOCKING-1 DFD Target Decision; fixtures authored; R10 pre-check clean. Wave 2 can now start.
 
-- [X] **T021** [architect] Verify T010-T018 commits exist. Verify primary-edge count per T019. Verify `nist-ai-rmf.yaml` progress per T015. Verify T019/T020 tripwire decisions logged. **COMPLETED 2026-04-17 — CONDITIONAL PASS**: 12/12 Day 2 commits present; 7/7 catalog record counts meet SC-002 floors (owasp 60, mitre-attack 38, mitre-atlas 12, cwe 53, control-category 8, stride-ai 11, nist-ai-rmf 72 — note FR-021 target was 68 exact; actual overage deferred to T022); crosswalk.yaml has 292 primary edges (T019 ≥200 gate PASS); T015 NIST shape spot-check PASS (`{id, full_id, name, url, cwe_refs}` + `cwe_refs: []`); 10-edge enum-closure spot-check PASS (all within 7-value taxonomy enum). Deferred to T028/T029: 20 Day 1 edges with `A01:2021`/`LLM01:2025`/`ASI01:2026` ID-format drift, 22 control-category edges referencing non-FR-018 IDs, several CWE/ATT&CK IDs referenced but not in committed catalogs — all resolved at integrity-test / fix-YAML gates per plan. `.aod/tasks.md` (active workspace copy) synced from `specs/180-taxonomy-crosswalk-collection/tasks.md` (authoritative) post-verification.
-
----
-
-## Phase 3: NIST Completion + Crosswalk Assembly (Day 3)
-
-**Goal**: Complete `nist-ai-rmf.yaml` catalog; author 41 NIST-derived Surface B/C crosswalk edges (verbatim transcription per FR-022); continue crosswalk citation harvest toward ≥500 primary edges; finalize README.
-
-**Deliverables at end of Day 3**: all 9 YAMLs committed; crosswalk.yaml ≥500 primary edges; README.md final.
-
-### Wave 3.1 — Parallel Day 3 authoring
-
-- [X] **T022** [US1] [senior-backend-engineer] Complete `schemas/taxonomy/nist-ai-rmf.yaml` Subcategory catalog. Assert count == exactly 68 (FR-021). Record shape per FR-003; `url` per NIST DOI-based convention. Commit with message `feat(180): complete nist-ai-rmf.yaml catalog (68 Subcategories)`. **COMPLETED 2026-04-17** commit `9780a96` — catalog was already at 72 records per T015 (SHA `5123023`); FR-021 amended 68→72 at SHA `9da377c` under FR-024 primary-source-correction discipline (architect + PM concur path (a)). T022 verification green (72 records, all 5 required fields, unique IDs, NIST DOI url, function composition GOVERN 19 / MAP 18 / MEASURE 22 / MANAGE 13). T022 deliverable was a comment-block update rewriting the "COUNT DISCREPANCY FLAG" block as a "SPEC AMENDMENT NOTE (2026-04-17)" referencing SHA `9da377c` and the architect/PM decision artifacts in `.aod/results/`.
-- [X] **T023** [US2] [senior-backend-engineer] Author ~41 NIST-derived crosswalk edges per FR-022 verbatim transcription: 27 Surface B edges (`tachi-control-category` → `nist-ai-rmf`) + 14 Surface C Overlap edges (`tachi-stride-ai-category` → `nist-ai-rmf`). All edges: `edge_type: primary`, `confidence: high`, `citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md`. Per FR-023: omit "No equivalent" rows (8 on Surface C) + default-omit "Gap" rows (2 on Surface C) unless curator articulates `confidence: low` with specific citation. Per FR-024: if a row is factually inaccurate, file separate ADR-025 amendment Issue — DO NOT silent-correct in F-A1. Commit with message `feat(180): author NIST Surface B+C crosswalk edges (41 edges)`. **COMPLETED 2026-04-17** — 27 canonical Surface B edges authored (verbatim per FR-022, space-format targets matching `nist-ai-rmf.yaml` `id` field). All 8 FR-018 enum control categories present. Surface C (14 or 15 Overlap rows) DEFERRED to ADR-025 amendment Issue per FR-024 — Surface C rows in the reference use AI 600-1 §2.X identifiers not in the 7-value taxonomy enum (FR-010) nor in `nist-ai-rmf.yaml`. Edits landed in batch 7 commit `a348f28` (bundled with parallel batch 7 work). Net-new canonical Surface B edges: 27. Drift cleanup (22 Batch 5 dash-format edges + 3 outside-enum source IDs + 16 pre-existing Surface C edges with inconsistent targets) remains deferred to T028/T029 per NEXT-SESSION.md §Open Decisions #2. Surface C structural issue and 14-vs-15 Overlap row count discrepancy flagged in `.aod/results/senior-backend-engineer.md` for ADR-025 amendment Issue.
-- [X] **T024** [P] [US2] [web-researcher] Continue crosswalk citation harvest. Target: ≥500 primary edges total committed to `crosswalk.yaml` by end of Day 3 (per FR-025 Tier 1 default). Commit in batches of ~50. **COMPLETED 2026-04-17** — **509 primary edges** (≥500 Tier 1 floor crossed). 4 harvest batches committed: batch 6 (SHA `c60a1c2`, +52 edges OWASP Agentic/ML ↔ ATLAS/ATT&CK), batch 7 (SHA `a348f28`, +51 edges stride-ai↔ATT&CK/ATLAS — note: commit also bundles T023's 27 canonical Surface B edges staged from a parallel working-tree change; T023's contribution is annotated in-file under the "T023 (Wave 3.1)" header), batch 8 (SHA `33afed1`, +50 edges stride-ai↔CWE + CWE↔CWE parent-child), batch 9 (SHA `2b124e0`, +37 edges OWASP API↔ATT&CK + CWE↔CWE residuals + LLM/ASI↔ATLAS fills). Confidence distribution: 283 high / 225 medium / 1 low. Pair distribution: owasp→cwe 169, owasp→mitre-atlas 60, tachi-control-category→nist-ai-rmf 49, mitre-attack→cwe 40, owasp→mitre-attack 36, cwe→cwe 34 (all new in T024), tachi-stride-ai-category→mitre-attack 31 (all new in T024), tachi-stride-ai-category→cwe 29 (all new in T024), mitre-atlas→mitre-attack 25, tachi-stride-ai-category→mitre-atlas 20 (all new in T024), tachi-stride-ai-category→nist-ai-rmf 16. Zero 5-tuple duplicates. Referential integrity held clean against in-catalog IDs for all net-new T024 edges (all 217 new edges reference only catalog-resident ATT&CK / ATLAS / CWE / OWASP / FR-018 control-category / FR-019 stride-ai-category IDs). Pre-existing orphan references inherited from Day 1-2 (T1190, T1557, T1565.001, ATLAS IDs outside the 12-record catalog, 40 CWEs outside the 53-record catalog, NIST dash-format targets) were not extended — T028/T029 cleanup territory preserved. Full details: `.aod/results/web-researcher.md`.
-- [X] **T025** [P] [US3] [architect] Finalize `schemas/taxonomy/README.md`: populate all 7 per-framework provenance sections with final seed counts + external-curation sources. Commit with message `docs(180): finalize schemas/taxonomy/README.md (provenance + update procedures)`. **COMPLETED 2026-04-17** commit `46b4e09`, README.md 219 lines (was 215 pre-T025), +43/-39 diff. All 7 provenance subsections populated with final counts (owasp 60, mitre-attack 38, mitre-atlas 12, nist-ai-rmf 72, cwe 53, control-category 8, stride-ai 11), external-curation sources, and 2026-04-17 retrieval dates. FR-021 68→72 amendment trail (SHA 9da377c) documented in §3.4 mirroring CWE Top 25 2025 pinned-with-retrieval-date pattern in §3.5. §6.5 NIST update procedure updated to reflect FR-024 primary-source-correction discipline. §5 OWASP Agentic Top 10:2026 URL finalized. SC-007 runnable Python snippet verified (all 7 catalogs load, counts match spec). H-PM-2 subsection, FR-013 anti-drift rule, FR-033d canonical-URL conventions, FR-033f 5 update procedures, FR-033h single-source-of-truth cross-ref all intact.
-
-### Wave 3.2 — Day 3 Gate + Tier 3 Tripwire
-
-- [X] **T026** [US2] [team-lead] **Day 3 Tier Gate** (per Team-Lead review clarification): count committed primary edges in `crosswalk.yaml`. Decision matrix:
-  - **≥500** → Tier 1 holds (no action; the R3 Tier 1 default scope is achieved).
-  - **300–499** → If Tier 2 was authorized at Day 2, Tier 2 holds (300-floor achieved). If Tier 1 was still active at Day 2 end, **escalate to Tier 2 now** (team-lead authorizes 300-floor without PRD amendment; record rationale).
-  - **100–299** → **escalate to Tier 2 now** (team-lead authorizes 300-floor; record rationale); if ≤200 at Day 3 end, parallel-evaluate whether Day 4 catch-up to 300 is feasible (senior-backend-engineer + web-researcher coordinate).
-  - **<100** → escalate to **R3 Tier 3** (150-edge floor, PRD amendment + architect/team-lead re-sign required).
-  Log decision in tasks.md progress (§Day 3 Tier Gate).
-
-### Day 3 Exit Gate
-
-- [X] **T027** [architect] Verify all 9 YAMLs committed (owasp, mitre-attack, mitre-atlas, nist-ai-rmf, cwe, tachi-control-category, tachi-stride-ai-category, crosswalk, README.md). Verify `crosswalk.yaml` primary-edge count per T026. Verify NIST Surface B+C transcription count matches 41 (per FR-022). Verify T026 tripwire decision logged. **COMPLETED 2026-04-17** — Day 3 Exit Gate PASSES. All 9 YAMLs present (record counts: owasp 60, mitre-attack 38, mitre-atlas 12, cwe 53, nist-ai-rmf 72, tachi-control-category 8, tachi-stride-ai-category 11, crosswalk 509 primary / 509 total, README.md 219 lines). Primary-edge count 509 ≥ 500 Tier 1 floor → TIER 1 HOLDS (T026 arithmetic definitional — team-lead log-entry in parallel). Surface B canonical transcription = 27 edges per T023 (FR-022 Surface B contract SATISFIED). **Surface C structural blocker resolved via Option (c)** — Surface C out-of-scope for F-A1; scope-narrow spec amendment landed (FR-022 / SC-008 narrowed to Surface B only; FR-004 example + FR-032 NIST sort convention clarified); ADR-027 Revision History updated (Status remains Proposed → T032 at merge); F-A1.1 follow-on Issue scoped for T034 filing (enum 7→8, nist-ai-600-1.yaml catalog, 15 Surface C Overlap rows transcribed). T029 cleanup direction: REMOVE all 38 drifted edges (22 Surface B + 16 Surface C); web-researcher Day 4 pre-T029 top-up target ≥540 primary edges. Minor corrections (§5.2 15 vs 14 count, §5.3 NIST sort convention, §5.4 FR-004 MEASURE 2.7 dash→space) all landed. **PM re-sign slot opened** at `pm_signoff_amendment_2` for Option (c) concurrence. Architect decision artifact: `.aod/results/architect.md`.
+**Escalation Gate**: If T004 Heuristic A verification surfaces a subsume-into-`agent-autonomy` signal or T010 not complete by Day 1 EOD (Monday 2026-04-27 23:59 local), surface user tie-break escalation before Day 2 AM. Do NOT proceed to Wave 2 without ADR-033 Proposed commit.
 
 ---
 
-## Phase 4: Integrity Tests + ADR Accepted + PR (Day 4)
+## Phase 3: User Story 1 — Human-Trust Communication-Axis Detection (Priority: P0) MVP
 
-**Goal**: Author FR-027–FR-032 integrity test suite AFTER all 8 YAMLs are committed (Architect F3 sequencing constraint); run backward-compat byte-identity verification (FR-036); move ADR-027 from Proposed to Accepted; open PR.
+**Goal**: Ship the new `human-trust-exploitation` agent + companion skill pattern catalog so that running `/tachi.threat-model` on an architecture with consumer-facing AI emission emits ≥1 `TE-{N}` finding with valid `source_attribution` and zero findings on backend-only architectures.
 
-**Deliverables at end of Day 4**: `tests/schemas/test_taxonomy_integrity.py` green; backward-compat test green; ADR-027 in Status: Accepted; PR opened.
+**Independent Test**: Run the pipeline on `examples/consumer-agent-app/architecture.md` (Q5 lean) or `examples/agentic-app/` extension (Q5 fallback); confirm ≥1 `TE-{N}` finding in the output `threats.md` with `category: agentic`, `source_attribution` citing OWASP ASI09:2026 primary + CWE-{223,287,290,345} related per pattern category, mitigation text naming a specific AI-disclosure / confidence-calibration / refusal-pattern / persona-boundary / synthetic-relationship-safeguard mechanism. Confirm zero `TE-{N}` findings on 5 non-consumer-facing baselines.
 
-### Wave 4.1 — Integrity test authoring (AFTER all 8 YAMLs committed per Architect F3)
+### Wave 2 — Pattern Catalog + Agent Authoring (0.5d, Day 1 PM, **stretched 3-4h per team-lead MEDIUM-1**)
 
-- [X] **T028** [US4] [senior-backend-engineer] Author `tests/schemas/test_taxonomy_integrity.py` per `contracts/integrity-test-contract.md`. 4 mandatory test functions (FR-028 `test_framework_yamls_load`, FR-029 `test_crosswalk_loads`, FR-030 `test_crosswalk_referential_integrity`, FR-031 `test_citation_shape`) + 1 optional (FR-032 `test_records_sorted`). Stdlib-only + pyyaml; no HTTP fetches (preserves ADR-021 determinism). Run `pytest tests/schemas/ -v` locally; all tests green. Commit with message `test(180): author tests/schemas/test_taxonomy_integrity.py (4+1 integrity tests)`. **COMPLETED 2026-04-17** commit `f34141b` — 5 tests authored. Initial run 3/5 passed; 2 expected-fail surfaced the 162-edge drift scope (vs T027's 38-edge flag) that triggered T029 architect escalation. Post-T029+Batch 11: 5/5 green.
-- [X] **T029** [US4] [senior-backend-engineer] If any integrity-test failure in T028, fix the offending YAML record(s) (NOT the test), then re-run `pytest tests/schemas/` until green. Commit fixes with message `fix(180): resolve taxonomy integrity test failures`. **COMPLETED 2026-04-17** — Architect Option (d) MIX executed: (1) NORMALIZE 81 line-level rewrites across 74 distinct edges (20 OWASP year-suffix strip `LLM05:2025 → LLM05`, 38 NIST dash→space `MEASURE-2.7 → MEASURE 2.7`, 23 STRIDE slug `information-disclosure → info-disclosure` / `elevation-of-privilege → privilege-escalation`); (2) REMOVE 88 semantic-drift edges (67 target-CWE-missing, 12 source-ATLAS-missing, 5 hybrid source-control-outside-enum, 3+1 ATT&CK-missing, 1 dual-missing); (3) DEDUPE 25 post-normalize duplicate 5-tuples (22 Surface B dash→space collisions with T023 canonical twins + 10 OWASP LLM/3 ASI year-suffix collisions); (4) SORT `cwe.yaml` lexicographically on `id` field (53 records reordered; header comment preserved). Commit SHAs: `e58f247` (normalize + cwe-sort), `991e1ee` (remove + dedup). Final state: 551 − 88 (semantic) − 25 (dedup) = **438 primary edges**. 4/5 integrity tests green (`test_crosswalk_referential_integrity` GREEN — the primary T029 objective). `test_crosswalk_loads` FR-025 floor (≥500) blocked awaiting web-researcher Batch 11 top-up (serial-after per architect cadence, target ≥47 clean primary edges for ≥485, ≥62 for ≥500 Tier 1 restoration). Dedup count 25 is higher than architect's expected 5-10 because normalize exposed T023 canonical twins for all 22 dash-format Surface B drift edges + 13 OWASP year-suffix → canonical short-ID drift edges that pre-existed as Batch 4/6 twins. Full details in `.aod/results/senior-backend-engineer.md` §T029.
-- [X] **T030** [P] [US1] [senior-backend-engineer] Run SC-013 parse-performance sanity check: `time python -c "import yaml; yaml.safe_load(open('schemas/taxonomy/crosswalk.yaml'))"` — assert <500ms on commodity hardware. Record measurement in tasks.md progress (§SC-013 Parse Performance). **Prerequisite** (Architect C1): T026 tier-gate decision resolved (crosswalk.yaml reflects tier-adjusted final edge count), not T024 (which is in-progress). **COMPLETED 2026-04-17** — crosswalk.yaml parse measured at 375ms steady-state (526 primary edges; macOS Darwin 25.3.0 arm64, Python 3.9.6, PyYAML 6.0.2); 125ms under the 500ms informational bound. Details in §SC-013 Parse Performance block below.
+- [ ] T013 [US1] Author `.claude/skills/tachi-human-trust-exploitation/references/detection-patterns.md` per data-model.md: frontmatter (`name`, `description`, `consumers: [tachi-human-trust-exploitation]`, `last_updated: 2026-04-27`), `## Overview` paragraph (scope — human-trust communication-axis signal class; four-way distinctness from output-integrity output-sanitization (ADR-030 D1) / misinformation factual-integrity (ADR-031) / agent-autonomy autonomy axis (ADR-033 sub-scope carve-up) / scoped to human-victim communication axis; OWASP ASI09:2026 canonical surface), `## Detection Scope` with three subsections: (a) `### Trigger Keywords` per T004a architect adjudication (with `persona` / `personality` / `character agent` anti-indicator subsection per Q2 LOW-2 — when these dual-use keywords appear in prompt-engineering context with no human-user-facing emission indicator, agent emits zero findings), (b) `### Applicable DFD Element Types` = `Process` only per Q4 BLOCKING-1, (c) `### Human-User-Facing Emission Indicators` 4-category subsection per FR-006 (Indicator A outgoing Data Flow to human-named External Entity; Indicator B Process description with human-user-facing emission keywords; Indicator C sustained-engagement framing; Indicator D authority-claim emission framing).
+- [ ] T014 [US1] Author `## Detection Patterns` section of `detection-patterns.md` with **5 numbered categories per FR-004**: (1) **Undisclosed AI Authorship** (primary `OWASP ASI09:2026`, related `CWE-223`), (2) **Authority-Claim Emission Without Confidence/Source Attestation** (primary `OWASP ASI09:2026`, related `CWE-345`), (3) **Persuasive-Tone Manipulation / Missing Uncertainty Disclosure** (primary `OWASP ASI09:2026`, related `CWE-345` + optional `CWE-223`), (4) **Persona-Boundary Violations on Long-Running Dialogues** (primary `OWASP ASI09:2026`, related `CWE-287` + `CWE-290`), (5) **Synthetic-Relationship Exploitation** (primary `OWASP ASI09:2026`, related `CWE-223` + `CWE-290` + vulnerable-population safeguards layer). Each category MUST include 3-6 indicators + ≥1 anti-indicator (with `persona` anti-indicator on category 4) + ≥1 worked example with **NFR-006 four safe-language patterns enforced verbatim** (Hypothetical: prefix; "for context, not legal interpretation" framing; non-clinical distress framing — "user expresses high emotional distress" not "suicidal ideation"; no real institutional/clinician/lawyer/advisor/product names) + primary/related citations + trigger keywords + applicable DFD element types. Category 5 vulnerable-population worked example MUST cite consumer-protection rationale (FTC AI consumer-protection guidance / FDA SaMD guidance / AARP eldercare advocacy) framed as "for context, not legal interpretation" AND MUST recommend escalation-to-human path as a baseline mitigation. Pattern-catalog Primary Sources list cites OWASP ASI09:2026 (catalog-resolvable), CWE-223/287/290/345 (catalog-resolvable), **CWE-451 (prose-only — catalog absent at PRD/plan time)**, **MITRE ATLAS AML.T0060 (prose-only — offensive use-case, no defensive match)**, External regulatory references FTC/FDA/ABA/SEC/SB-1001/AARP (prose-only — not framework-anchored).
+- [ ] T015 [P] [US1] Author `.claude/skills/tachi-human-trust-exploitation/README.md` — mirror `.claude/skills/tachi-misinformation/README.md` shape (title + short description + `Consumers:` list + purpose header + layout overview). Keep under 50 lines.
+- [ ] T016 [US1] Author `.claude/agents/tachi/human-trust-exploitation.md` 5-section canonical shape per data-model.md: YAML frontmatter (`name: tachi-human-trust-exploitation`, `description`, `tools: Read, Glob, Grep`, `model: sonnet`) → metadata YAML block (`category: agentic`, `threat_class: ASI`, `dfd_targets: [Process]`, `owasp_references: [OWASP ASI09:2026]`, `output_schema: ../../../schemas/finding.yaml`; **NO `agentic_pattern` field** per FR-001) → `## Purpose` section per FR-002 (describe human-trust communication-axis threat surface; 5 pattern categories; **explicit four-way scope boundary + ASI09 sub-scope carve-up** — distinct from output-integrity (machine-victim sanitization per ADR-030 D1), distinct from misinformation (machine-consumer factual-integrity per ADR-031), distinct from agent-autonomy autonomy axis (which retains ASI09's autonomy/HITL surface; see ADR-033 D2), scoped to human-victim communication axis; cite ADR-030 D2 Outcome B as architectural reservation that creates F-4's scope; cite ADR-033 §"ASI09 Sub-Scope Carve-Up" as the carve-up that distinguishes communication axis from autonomy axis; forward-reference output-integrity, misinformation, agent-autonomy as adjacent-but-distinct concerns) → `## Skill References` table (3 rows: detection-patterns, severity-bands-shared, finding-format-shared) → `## Detection Workflow` with exactly ONE `**MANDATORY**: Read` directive at section start.
+- [ ] T017 [US1] Complete the `## Detection Workflow` steps in `.claude/agents/tachi/human-trust-exploitation.md`: step 1 (trigger keyword identification per FR-005), step 2 (**two-part emission gate per FR-013 — BOTH AI-agent keyword match AND at least one human-user-facing emission indicator from FR-006 4-category subsection required; backend-only AI architectures emit zero findings**), step 3 (pattern classification across 5 categories), step 4 (severity via OWASP 3×3 distinguishing consumer-facing high-stakes HIGH/CRITICAL vs internal low-stakes MEDIUM or below; vulnerable-population deployment in category 5 escalates severity baseline), step 5 (emission with `source_attribution` per pattern-category template + named AI-disclosure / confidence-calibration / refusal-pattern / persona-boundary / synthetic-relationship-safeguard mitigation), step 6 (zero-speculation on non-qualifying arch — keyword-only match without indicator emits nothing). Reference quickstart.md Step 5 for the emission shape. **NFR-007 self-disclosure discipline applied**: workflow prose uses neutral mitigation language ("Implement X" / "Configure Y" / "Enable Z") without persuasive language.
+- [ ] T018 [P] [US1] Structural validation: `wc -l .claude/agents/tachi/human-trust-exploitation.md` ≤ 150 (hard cap 180); `grep -c '\*\*MANDATORY\*\*: Read' .claude/agents/tachi/human-trust-exploitation.md` = 1; `grep -i maestro .claude/agents/tachi/human-trust-exploitation.md .claude/skills/tachi-human-trust-exploitation/references/detection-patterns.md` returns empty. Record pass/fail at `.aod/results/wave2-structural-check.md`.
 
-### Wave 4.2 — Backward-compat + ADR Accepted
-
-- [X] **T031** [P] [US1] [code-reviewer] Run backward-compatibility byte-identity test per FR-036: `SOURCE_DATE_EPOCH=1700000000 pytest tests/scripts/test_backward_compatibility.py -v`. Assert 5/5 non-agentic example PDFs byte-identical to baseline. If failure: investigate (should be impossible given zero runtime script touch — escalate to architect if reported). Record result in tasks.md progress (§FR-036 Backward-Compat Gate).
-- [X] **T032** [US5] [architect] Update `docs/architecture/02_ADRs/ADR-027-taxonomy-crosswalk-schema.md` Status from **Proposed** to **Accepted** (per FR-041). Add Accepted-date = merge-date (provisional: 2026-04-17+4d = 2026-04-21) **and cite the merge commit SHA** (filled post-merge via T039, strengthens provenance per Architect suggestion). Commit with message `feat(180): ADR-027 Accepted (post-schema-implementation)`. **Completed 2026-04-17 at commit `04a26a9`** — Status transitioned Proposed → Accepted; provisional Accepted-date 2026-04-21 recorded; Accepted-commit-SHA placeholder `<pending-T039-post-merge-fill>` reserved for post-merge fill per FR-041; Revision History entry 2026-04-17 (T032 transition) appended without overwriting prior T027 Option (c) Surface C amendment entry.
-
-### Wave 4.3 — PR Open
-
-- [X] **T033** [architect] Open PR against `main` with title `feat(180): F-A1 Taxonomy Crosswalk Collection`. Body: (a) link to spec.md + plan.md + tasks.md, (b) link to ADR-027, (c) summary of 9 files + 1 test file + 1 ADR + 2 cross-ref link edits, (d) evidence table showing all 13 SCs met, (e) Interpretation C rationale summary, (f) follow-on Issue links (`related`/`superseded` crosswalk expansion, ATLAS v5.4 catalog growth), (g) FR-036 backward-compat evidence link. PR assignee: PM + code-reviewer. **Completed 2026-04-17**: PR #181 opened at https://github.com/davidmatousek/tachi/pull/181 — base=main, head=180-taxonomy-crosswalk-collection, assignee=davidmatousek.
-- [X] **T034** [US2] [team-lead] **Follow-on Issue filing**: after PR opened, file GitHub Issue titled `F-A1 follow-on: crosswalk `related` and `superseded` edge expansion` per FR-025 out-of-scope clause. Link from PR description (T033-f). Also file citation-URL link-rot monitoring follow-on Issue per PRD Out-of-Scope. **PM concern 3**: verify Issue titles match PRD Out-of-Scope exact wording (§Out of Scope) at filing time to preserve downstream discoverability. **Completed 2026-04-17**: Filed 5 follow-on Issues (3 F-A1 + F-A1.1 per T027 Option (c) + F-A1.2/F-A1.3 per T029 Scope Disposition): #182 (related/superseded edge expansion), #183 (citation-URL link-rot monitoring), #184 (F-A1.1 NIST AI 600-1 GAI Risk taxonomy Surface C transcription), #185 (F-A1.2 cwe.yaml expansion), #186 (F-A1.3 MITRE ATT&CK + ATLAS catalog expansion). PR #181 body updated via `gh pr edit`: 5 placeholder tokens replaced with live Issue URLs.
-
-### Day 4 Exit Gate
-
-- [X] **T035** [code-reviewer] Verify PR is open with complete description per T033. Verify all 9 YAMLs + `tests/schemas/test_taxonomy_integrity.py` + ADR-027 Accepted are included. Verify CI green on the PR branch (backward-compat + integrity tests). **COMPLETED 2026-04-17 — APPROVED_WITH_CONCERNS**: PR #181 Day 4 Exit Gate verified across 6 categories (30/31 checks PASS). PR state OPEN + MERGEABLE, title exact-match. All 12 artifacts present with correct record counts (owasp 60, attack 38, atlas 12, cwe 53, nist-ai-rmf 72, control-category 8, stride-ai 11, crosswalk **526 primary edges Tier 1 HOLDS**, README 219 lines). Tests: 5/5 integrity green in 0.53s + 13 passed/1 skipped backward-compat (6/6 PDF baselines byte-identical under `SOURCE_DATE_EPOCH=1700000000`). ADR-027 Status=Accepted (L3), Accepted-date=2026-04-21 provisional (L4), SHA placeholder `<pending-T039-post-merge-fill>` (L5), Revision History has T027 Option (c) + T032 transition entries. CI `tachi mmdc preflight` success on head SHA `d9cccbd`. **Single minor concern (non-blocking per guardrail)**: 5 follow-on Issue URLs in PR body (f) still contain `<placeholder-link-T034-N>` tokens; team-lead T034 will replace via `gh pr edit` after filing. Full details in `.aod/results/code-reviewer.md` §T035.
+**Checkpoint**: Wave 2 complete. Agent + companion authored. Structural checks green. Ready for Wave 3 orchestrator registration.
 
 ---
 
-## Phase 5: Review + Buffer (Day 5)
+## Phase 4: User Story 2 — Named Human-Trust Mitigation Guidance (Priority: P0)
 
-**Goal**: PR review cycle; ADR review iteration; crosswalk edge-count completion if Day 3 fell short; merge.
+**Goal**: Every emitted `TE-{N}` finding MUST carry `mitigation` text naming a specific AI-disclosure / confidence-calibration / refusal-pattern / persona-boundary / synthetic-relationship-safeguard mechanism matched to the finding's pattern category — not generic "disclose AI authorship" prose. **Distinct from output-sanitization (F-1), factual-grounding (F-2), or HITL/autonomy mitigations (`agent-autonomy` autonomy axis)** to prevent conflation.
 
-### Wave 5.1 — Review Iteration
+**Independent Test**: For each `TE-{N}` finding in regenerated example `threats.md`, inspect the `mitigation` field: it names at least one of the required pattern-specific mechanisms per US-2 acceptance scenarios (mandatory AI-generation disclosure banner / pre-conversation AI-disclosure splash / per-message AI-source label for undisclosed authorship; confidence-threshold gate / source-attestation requirement / refusal pattern for authority-claim emission; uncertainty-disclosure layer / temperature-bounded decoder / persuasion-pattern classifier for persuasive-tone manipulation; persona-memory timeout / identity-impersonation refusal pattern / persona-anchor declaration for persona-boundary; session-length cap with escalation-to-human / emotional-support disclosure / dependency-risk classifier / vulnerable-population safeguards layer for synthetic-relationship).
 
-- [ ] **T036** [code-reviewer] Review PR: verify SC-001 (9 files exist) + SC-002 (record count floors) + SC-003 (integrity test green) + SC-004 (backward-compat green) + SC-005 (zero-surface-area diff on runtime paths) + SC-006 (ADR-027 Accepted) + SC-007 (runnable Python snippet works) — **also explicitly verify** (per PM concern 1) the README contains the "What F-A1 does NOT give you today" subsection per FR-033/H-PM-2 naming F-A2 finding-level citation, F-B coverage attestation, and agent-reference migration as deliberately-deferred capabilities + SC-008 (NIST transcription spot-check: pick 5 Surface B rows + 5 Surface C rows; each resolves to exactly one crosswalk edge with matching fields) + SC-009 (ATLAS seed + curation coverage) + SC-010 (Day 1 spike outcome recorded) + SC-011 (cross-reference links present) + SC-012 (zero new dep diff) + SC-013 (parse perf measured). Post review comments.
-- [ ] **T037** [senior-backend-engineer] Address code-reviewer PR comments. Commit fixes with message `fix(180): address PR review comments`.
-- [ ] **T038** [architect] Address ADR-027 review comments (if any). Commit fixes with message `docs(180): address ADR-027 review comments`.
+### Wave 2 (parallel with US1) — Example Findings + Mitigation Text
 
-### Wave 5.2 — Merge
+- [ ] T019 [US2] Author `## Example Findings` section of `.claude/agents/tachi/human-trust-exploitation.md` with **2-3 worked `TE-{N}` example findings** demonstrating (a) undisclosed AI authorship on hypothetical customer-support chatbot with `mandatory AI-generation disclosure banner` mitigation, (b) authority-claim emission on hypothetical legal-research assistant with `confidence-threshold gate + source-attestation requirement` mitigation, optionally (c) synthetic-relationship exploitation on hypothetical mental-health-companion with `session-length cap + escalation-to-human + emotional-support disclosure + vulnerable-population safeguards layer` mitigation. Each example MUST populate `source_attribution` correctly per contracts/finding-contract.md per-pattern-category templates (ASI09 primary + CWE-{223/287/290/345} related). Apply NFR-006 safe-language patterns verbatim.
+- [ ] T020 [US2] In `detection-patterns.md` pattern categories (authored in T014), each category MUST include at least one worked example whose mitigation text names a specific AI-disclosure / confidence-calibration / refusal-pattern / persona-boundary / synthetic-relationship-safeguard mechanism (not generic). Reviewer checkpoint per FR-004(e): **each worked example's `description` field MUST explicitly distinguish authorship-disclosure / authority-attestation / persuasion-manipulation / persona-boundary / synthetic-relationship sub-classes** — surface this as an explicit acceptance predicate. **NFR-006 compliance check**: all 5 worked examples use the four explicit safe-language patterns:
+  1. Hypothetical: prefix on every worked-example scenario opening
+  2. Regulatory framing as "see, e.g., [regulation] — for context, not legal interpretation" wherever a regulation is cited
+  3. Non-clinical distress framing ("user expresses high emotional distress" not "suicidal ideation"; no clinical-precision pathologization)
+  4. No real institutional/clinician/lawyer/advisor/product names (no real hospital / law-firm / advisory-firm / school / chatbot-product names)
+- [ ] T021 [P] [US2] Sanity grep on NFR-006 + NFR-007 compliance:
+  - **NFR-006 patterns present**: `grep -c 'Hypothetical:' .claude/skills/tachi-human-trust-exploitation/references/detection-patterns.md` MUST be ≥5 (one per worked example); `grep -c 'for context, not legal interpretation' .claude/skills/tachi-human-trust-exploitation/references/detection-patterns.md` MUST be ≥1 (regulatory-citation framing)
+  - **NFR-006 forbidden phrases absent**: `grep -iE 'suicidal ideation|clinical depression|self-harm ideation' .claude/skills/tachi-human-trust-exploitation/references/detection-patterns.md` MUST return empty (non-clinical distress framing)
+  - **NFR-007 self-disclosure discipline**: `grep -iE 'you really should|critical to fix immediately|you must immediately' .claude/skills/tachi-human-trust-exploitation/references/detection-patterns.md .claude/agents/tachi/human-trust-exploitation.md` MUST return empty (no persuasive language)
+  - **NFR-006 generic-mitigation absence**: `grep -iE '(disclose ai authorship|add a disclaimer|make it clear)' .claude/skills/tachi-human-trust-exploitation/references/detection-patterns.md .claude/agents/tachi/human-trust-exploitation.md` MUST NOT return a line where these generic phrases appear without a specific mechanism named in the same sentence or adjacent line
+  Record pass/fail at `.aod/results/wave2-nfr6-nfr7-compliance-check.md`.
 
-- [ ] **T039** [architect] Squash-merge PR to `main` per tachi convention. Tag commit with message `feat(180): F-A1 Taxonomy Crosswalk Collection (#NNN)`. Verify `git log` on main shows squash commit.
-- [ ] **T040** [team-lead] Post-merge: update PRD 180 status to "Delivered" in `docs/product/02_PRD/INDEX.md`. Update BACKLOG.md via `.aod/scripts/bash/backlog-regenerate.sh`. Move GitHub Issue #180 to `stage:done`.
-
-### Day 5 Exit Gate
-
-- [ ] **T041** [team-lead] Verify PR merged. Verify PRD status updated. Verify BACKLOG regenerated. Verify Issue #180 at stage:done. **F-A1 Complete**.
-
----
-
-## Success Criteria Traceability
-
-Every spec.md Success Criterion traces to at least one task:
-
-| SC | Verification Task(s) |
-|----|---------------------|
-| SC-001 (9 files exist) | T036 |
-| SC-002 (record count floors) | T036 |
-| SC-003 (integrity test green) | T028, T029, T036 |
-| SC-004 (backward-compat) | T031, T036 |
-| SC-005 (zero-surface-area diff) | T036 |
-| SC-006 (ADR-027 Accepted) | T032, T036 |
-| SC-007 (runnable Python snippet) | T017 (README draft) + T025 (README finalized) + T036 (verification) |
-| SC-008 (NIST Surface B/C verbatim) | T023, T036 |
-| SC-009 (ATLAS seed + curation) | T011, T036 |
-| SC-010 (Day 1 spike outcome recorded) | T007, T008 |
-| SC-011 (2 cross-reference links) | T018, T036 |
-| SC-012 (zero new deps) | T036 |
-| SC-013 (parse performance) | T030 |
-
-## Story-to-Task Mapping
-
-| User Story | Tasks | Deliverable |
-|------------|-------|-------------|
-| US-180-1 (machine-readable records) | T004, T005, T010–T015, T022, T030 | 7 catalog YAMLs |
-| US-180-2 (authoritative crosswalk) | T007, T008, T016, T019, T023, T024, T026, T034 | crosswalk.yaml with ≥500 primary edges |
-| US-180-3 (documented methodology) | T017, T018, T025 | README.md + 2 cross-reference links |
-| US-180-4 (integrity test suite) | T006, T028, T029 | tests/schemas/test_taxonomy_integrity.py |
-| US-180-5 (public ADR) | T001, T002, T003, T032 | ADR-027 Proposed → Accepted |
-
-## Wave-based Parallelism Summary
-
-| Wave | Day | Parallel Tasks | Serial Gate |
-|------|-----|----------------|-------------|
-| 1.1 | 1 | T001, T002, T003 (sequential within architect) | T003 unlocks 1.2 |
-| 1.2 | 1 | T004, T005, T006, T007 (4-way parallel across 2 agents) | T008 tripwire decision |
-| 2.1 | 2 | T010, T011, T012, T013, T014, T016, T017, T018 (senior-backend-engineer on T010-T014, web-researcher on T016, architect on T017-T018) + T015 start | T019 tier gate |
-| 2.2 | 2 | T019, T020 (sequential decisions) | T021 day-end gate |
-| 3.1 | 3 | T022, T023 sequential (NIST edges depend on NIST catalog) + T024, T025 parallel | T026 tier gate |
-| 3.2 | 3 | T026 (serial decision) | T027 day-end gate |
-| 4.1 | 4 | T028, T029 sequential (tests depend on fixes) + T030 parallel | — |
-| 4.2 | 4 | T031, T032 parallel | T033 PR open |
-| 4.3 | 4 | T033, T034 parallel | T035 day-end gate |
-| 5.1 | 5 | T036 (serial review) → T037, T038 parallel | T039 merge gate |
-| 5.2 | 5 | T039, T040 serial | T041 final gate |
-
-## Progress Log (filled during execution)
-
-### Day 1 Spike Outcome (T008)
-- **Start time**: 2026-04-17T19:03:59Z
-- **End time**: 2026-04-17T19:06:41Z
-- **Total wall-clock for 50 edges**: 162 seconds
-- **Seconds per edge**: 3.24s/edge
-- **Tripwire threshold**: 38.4s/edge
-- **Preliminary decision (T007 web-researcher)**: CONTINUE TIER 1 — 3.24s/edge is ~12× under the 38.4s/edge threshold; R3 Tier 1 default ≥500-edge floor is comfortably feasible.
-- **Final decision (T008 team-lead, 2026-04-17)**: **CONTINUE TIER 1** — ratifies the web-researcher preliminary measurement. Agent-authored wall-clock of 3.24s/edge × 500 edges = 1620s ≈ 27min of agent-time for full Tier 1 floor, well within Days 2-3 harvest budget. Human-authored equivalent unobserved (agent-executed), but R3 tier-gate math holds regardless of authoring modality because the monotonic-decreasing Day 2/Day 3 tier gates (<200 / <100 primary edges committed) rely on commit-count, not authoring-time. No escalation needed. Tier 1 (≥500-edge floor) remains the scope target through Day 3; downstream Day 2 gate (T019) and Day 3 gate (T026) will re-verify on committed-edge count.
-- **Rationale**: 50 edges authored across 5 diverse slices (10+10+10+10+10 per A5 composition) completed in 162s wall-clock. Slice composition verified: 10 OWASP↔CWE (high confidence, explicit CWE cross-references), 10 ATT&CK↔CWE (medium confidence, inferred from Mitigations context per anti-drift rule), 10 ATLAS↔ATT&CK (mix of high/medium from atlas.mitre.org parent-technique citations), 10 LLM↔NIST (high confidence verbatim from Feature 144 nist-ai-rmf-mapping.md Surface B+C), 10 Agentic↔MITRE (medium confidence via OWASP Agentic 2026 ASI01-ASI10 → AML.T0058-T0062 agent techniques + T1548/T1078/T1195 legacy ATT&CK). All 50 edges passed shape conformance (FR-009) and enum closure (FR-010/FR-012/FR-013). Citation resolution concerns: (a) AML.T0059-T0062 URLs cited as atlas.mitre.org/techniques/AML.TNNNN — stability to be verified by T011/T020 R7 tripwire on Day 2; (b) OWASP Agentic 2026 full_id form pinned as ASI01:2026 style (parallel to LLM01:2025 convention) — to be confirmed against authoritative OWASP source in T005 owasp.yaml authoring.
-
-### Day 2 Tier Gate (T019)
-- **Committed primary edges at end of Day 2**: 292 primary / 292 total
-- **Threshold**: ≥200 for Tier 1
-- **Decision**: **TIER 1 HOLDS**
-- **Rationale**: 292 edges = 58% of the ≥500 merge floor with 3 authoring days remaining. Within 200-499 "Tier 1 on track" band per the T019 decision matrix. Day 1's T008 ratified a 3.24s/edge authoring rate (~12× under 38.4s/edge tripwire) that continues to support the ≥500 floor; residual 208-edge gap is absorbed by T023 (41 NIST-derived edges transcribed verbatim per FR-022) + T024 Day 3 harvest (~167 edges). No Tier 2 escalation trigger met. T023/T024 proceed as planned.
-
-### R7 Tripwire Outcome (T020)
-- **AML.T0058 resolved?** YES — present in authoritative MITRE-owned `atlas-data/techniques.yaml` on GitHub; URL pattern `https://atlas.mitre.org/techniques/AML.T0058`
-- **AML.T0059 resolved?** YES — same source; URL pattern identical
-- **AML.T0060 resolved?** YES — same source; URL pattern identical
-- **AML.T0061 resolved?** YES — same source; URL pattern identical
-- **AML.T0062 resolved?** YES — same source; URL pattern identical
-- **WebFetch control proof**: known-good seed AML.T0051 also returns 404 via WebFetch → client-side anti-bot gating, not URL instability
-- **Decision**: **ALL 5 PRESENT** (no descope required)
-- **Inline correction (commit `be18076`)**: T011 aggregated-search names were WRONG for all 5 AML.T0058-T0062. Architect corrected to authoritative names from atlas-data:
-  - AML.T0058: "Publish Poisoned Models" (was "Publish Poisoned AI Agent Tool")
-  - AML.T0059: "Erode Dataset Integrity" (was "Activation Triggers")
-  - AML.T0060: "Publish Hallucinated Entities" (was "Data from AI Services")
-  - AML.T0061: "LLM Prompt Self-Replication" (was "AI Agent Tools")
-  - AML.T0062: "Discover LLM Hallucinations" (was "Exfiltration via AI Agent Tool Invocation")
-- **Architect sign-off**: 2026-04-17 (no descope, name correction authorized)
-- **FR-021 72 vs 68 secondary concern**: deferred to T022 with architect non-binding recommendation of Option (b) — curate 68-subset from Jan 2023 AI RMF Core publication, treat the 4 excess as post-publication Playbook expansions outside FR-021 scope.
-
-### Day 3 Tier Gate (T026)
-- **Committed primary edges at end of Day 3**: **509** primary / 509 total (measured at HEAD `1cd00ab`; every edge in the file is `edge_type: primary`)
-- **Threshold**: ≥500 for R3 Tier 1 default scope
-- **Decision**: **TIER 1 HOLDS** (no escalation; no PRD amendment; no re-sign)
-- **Rationale**: 509 crosses the ≥500 Tier 1 floor by 9 edges. Day 3 net authoring of +217 primary edges (start-of-Day-3 baseline 292 + T023 Surface B canonical 27 + T024 web-researcher net-new harvest 190 = 509) closed the 208-edge gap projected by the Day 2 tier gate T019 rationale. Day 1 T008 tripwire of 3.24s/edge (≈12× under the 38.4s/edge threshold) held through the Day 3 harvest, confirming the R3 Tier 1 feasibility substrate. Confidence discipline per FR-013 held: 283 high / 225 medium / 1 low across the 509-edge final state (source: `.aod/results/web-researcher.md` Confidence Distribution table). T023 Surface B canonical 27 edges co-exist in `crosswalk.yaml` with 22 dash-format drifted Surface B edges from Batch 5 (deferred to T029 fix-in-YAML remediation per NEXT-SESSION.md §Open Decisions #2); 16 pre-existing drifted Surface C edges likewise remain pending T029 cleanup. T023 Surface C canonical transcription was deferred to an ADR-025 amendment Issue (structural blocker per `.aod/results/senior-backend-engineer.md` §5.1 — AI 600-1 §2.X identifiers are not in the 7-value taxonomy enum and not in `nist-ai-rmf.yaml`). Neither co-present drift nor Surface C deferral affects T026 math — the decision matrix counts raw primary edges. Full details: `.aod/results/team-lead.md`.
-
-### SC-013 Parse Performance (T030)
-
-- **Date**: 2026-04-17
-- **Command**: `time python3 -c "import yaml; yaml.safe_load(open('schemas/taxonomy/crosswalk.yaml'))"`
-- **crosswalk.yaml parse time**: **375ms** (steady-state median across 3 runs: 378ms, 374ms, 517ms cold — 374-378ms steady)
-- **owasp.yaml parse time**: **~70ms** (3-run range 67-73ms)
-- **cwe.yaml parse time**: **~55ms** (3-run range 54-56ms)
-- **Threshold compliance**: **PASS** (<500ms FR-031 / SC-013 informational bound; crosswalk at 375ms is 125ms under the bound; smaller catalogs are ≈7-9× under)
-- **Commodity hardware**: macOS Darwin 25.3.0 (arm64), Python 3.9.6, PyYAML 6.0.2
-- **Edge count at measurement**: 526 primary edges (438 post-T029 + 88 Batch 11 net-new)
-- **Note**: FR-031 / SC-013 is an informational bound, not a CI gate — test_records_sorted does not fail on slower parses. Measurement recorded for adopter guidance. If future growth approaches 500ms, consider index caching or YAML streaming parse.
-
-### FR-036 Backward-Compat Gate (T031)
-- **Date**: 2026-04-17
-- **Command**: `SOURCE_DATE_EPOCH=1700000000 python3 -m pytest tests/scripts/test_backward_compatibility.py -v`
-- **Result**: **PASS** (13 passed, 1 skipped by design — `mermaid-agentic-app` excluded from SC-003 per T033 narrowed interpretation; byte-identity subtest for `mermaid-agentic-app` itself passed)
-- **Baselines verified**: **6/6 byte-identical** — `web-app`, `microservices`, `ascii-web-api`, `mermaid-agentic-app`, `free-text-microservice`, `maestro-reference` (6th baseline added by Feature 145, all covered under `SOURCE_DATE_EPOCH=1700000000` per ADR-021). Task text says "5/5 non-agentic"; the test currently parametrizes 6 (Feature 145 added `maestro-reference`). FR-036 intent — zero drift from the committed baseline set — satisfied.
-- **Feature 142 invariant tests (co-located in same file)**: `test_feature_142_zero_edit_invariant_on_detection_agents` PASS (ADR-026 Decision 1: no edits to 11 detection agents on branch `180-taxonomy-crosswalk-collection` vs main); `test_feature_142_backward_compat_pattern_defaults` PASS; `test_feature_142_multi_agent_gate_predicate_false_on_baselines` 5/6 PASS + 1 SKIP (designed skip).
-- **Notes**: Wall-clock 15.08s on commodity hardware. Zero runtime surface-area change confirmed — Feature 180 adds only `schemas/taxonomy/*.yaml` (not referenced by `scripts/*.py` or Typst templates), `tests/schemas/test_taxonomy_integrity.py`, and ADR-027. No escalation required.
+**Checkpoint**: Mitigation specificity verified. NFR-006 four safe-language patterns + NFR-007 self-disclosure discipline verified. Five-sub-class distinction explicit. Ready for Wave 3.
 
 ---
 
-## Dependencies + Prerequisites (Per Task)
+## Phase 5: User Story 3 — Trust-Exploitation Communication-Axis as a First-Class Distinct Threat Class (Priority: P0)
 
-- **T001** requires: nothing
-- **T002** requires: T001 (ADR-004 absence verification)
-- **T003** requires: T002 (ADR-027 committed in Proposed)
-- **T004** requires: T003 (schema frozen)
-- **T005** requires: T004 (directory exists)
-- **T006** requires: nothing (parallel to T004)
-- **T007** requires: T003 (schema frozen; crosswalk shape committed in ADR)
-- **T008** requires: T007 (spike completed)
-- **T009** requires: T002, T005, T007, T008
-- **T010–T015** require: T009 (Day 1 gate passed)
-- **T016** requires: T008 (tripwire decision)
-- **T017–T018** require: T009 (schema frozen)
-- **T019–T021** require: T010–T018
-- **T022** requires: T021 (Day 2 gate passed)
-- **T023** requires: T022 (NIST catalog complete)
-- **T024** requires: T019 (tier decision preserved)
-- **T025** requires: T017 (README draft)
-- **T026–T027** require: T022–T025
-- **T028** requires: T027 (all 8 YAMLs committed — Architect F3 sequencing)
-- **T029** requires: T028 (test failures to fix)
-- **T030** requires: T026 (crosswalk.yaml tier-adjusted final state; Architect C1 correction — was listed as T024 but T026 is the post-tier-gate finalization)
-- **T031** requires: nothing on F-A1 work (backward-compat is independent by FR-036 zero-runtime-touch guarantee; annotation per Architect C2 — mental-model prerequisite is "schemas/taxonomy/ staged via T027", but technically T031 can run at any point on main after Feature 128 bootstrap)
-- **T032** requires: T028, T029 (tests green)
-- **T033** requires: T028, T029, T030, T031, T032 (all ready)
-- **T034** requires: T033 (PR exists to link from)
-- **T035** requires: T033, T034
-- **T036** requires: T035 (PR complete)
-- **T037–T038** require: T036 (review comments)
-- **T039** requires: T037, T038 (all addressed + green CI)
-- **T040–T041** require: T039 (merged)
+**Goal**: ADR-033 Accepted at F-4 merge contains explicit Heuristic A four-way signal-class determination + ASI09 sub-scope carve-up + Naming Disambiguation + DFD Target Decision; regenerated example architecture renders `AG-{N}`, `AGP-{N}` (when topology applicable), and `TE-{N}` findings adjacent (not synthesized) in the `category: agentic` section of `threat-report.md`; FR-018 grep test passes (R11 mitigation); BLP-01 Coverage Matrix transitions ASI09:2026 communication axis Planned → Covered with F-4 named as closure feature for the communication axis (autonomy axis remains attributed to `agent-autonomy`).
+
+**Independent Test**: ADR-033 at F-4 merge: (a) Status: Accepted, (b) Decisions section has all 10 body items including D2 explicitly resolving four-way scope boundaries + ASI09 sub-scope carve-up with `agent-autonomy` (HIGH-2), D9 Naming Disambiguation with explicit contrast vs. `trust_exploitation` agentic_pattern enum value (HIGH-1), D10 DFD Target Decision with future-extension reservation (BLOCKING-1); (c) D5 cross-references ADR-030 D2 Outcome B reservation + ADR-030 D8 third application; (d) D6 grep-auditable enumeration of 26-file invariant including `agent-autonomy.md` NOT-edit; (e) Revision History shows Proposed → Accepted transition with dates; (f) agent's `## Purpose` section explicitly forward-references output-integrity, misinformation, agent-autonomy as adjacent-but-distinct concerns; (g) FR-018 grep test passes on regenerated `threat-report.md`.
+
+### Wave 1.1 — ADR-033 Proposed authoring (T009-T011 above)
+
+See Phase 2 T009, T010, T011 — ADR-033 Proposed authoring happens at Wave 1.1 to unblock Wave 2.
+
+### Wave 6 — ADR-033 Accepted Transition (Day 2 PM)
+
+- [ ] T022 [US3] Transition ADR-033 `docs/architecture/02_ADRs/ADR-033-human-trust-exploitation-agent.md` Status: Proposed → Accepted. Add Revision History row: `| 2026-04-28 | Proposed → Accepted | PR #225 pending merge | provisional |` (update date and PR number at authoring time).
+- [ ] T023 [US3] Verify ADR-033 body completeness: all 10 Decisions (D1-D10) populated (including HIGH-1 Naming Disambiguation + BLOCKING-1 DFD Target Decision); Consequences section populated; Cross-References section lists ADR-021/023/026/027/028/029/030/031/032 per T011; Revision History tracks Proposed → Accepted. Record checklist pass/fail at `.aod/results/adr-033-completeness-check.md`.
+- [ ] T024 [US3] Verify agent `## Purpose` section in `.claude/agents/tachi/human-trust-exploitation.md` explicitly distinguishes four signal classes: (a) not output-side machine-victim sanitization (that's `output-integrity` per ADR-030 D1), (b) not machine-consumer factual-integrity (that's `misinformation` per ADR-031), (c) not agent's own behavior boundary autonomy/HITL (that's `agent-autonomy` autonomy axis per ADR-033 D2 sub-scope carve-up), (d) scoped to human-victim communication axis (AI-disclosure / authority-attestation / persuasion / persona-boundary / synthetic-relationship). Forward-references to output-integrity, misinformation, agent-autonomy as adjacent-but-distinct concerns are present.
+
+### Post-Merge (Wave 7 or later)
+
+- [ ] T025 [US3] After PR squash-merge: update ADR-033 Revision History with `| YYYY-MM-DD | Accepted with post-merge SHA fill | squash commit {SHORT_SHA} | confirmed |` (ADR-027/028/029/030/031/032 precedent). Deferred to buffer day per team-lead LOW-2 prioritization.
+
+**Checkpoint**: Heuristic A four-way signal-class discipline + ASI09 sub-scope carve-up + Naming Disambiguation + DFD Target Decision locked in public ADR; ASI09 communication-axis coverage surface documented.
 
 ---
 
-## Definition of Done (all 13 SCs + governance)
+## Phase 6: Wave 3 (PRD Wave 2.0) — R10 Trigger + Q5 Fallback Gate + Orchestrator Registration + Shared-Reference Additive Edits + 6-Edit Grep-Checklist (Day 2 AM, ~0.3d)
 
-F-A1 is **Delivered** when all of the following are true:
-1. SC-001 through SC-013 all verified green at merge time
-2. ADR-027 Status: Accepted
-3. PR merged to main (squash)
-4. PRD 180 status: Delivered in `docs/product/02_PRD/INDEX.md`
-5. BACKLOG.md regenerated
-6. GitHub Issue #180 at stage:done
-7. 2 follow-on Issues filed (related/superseded expansion; citation link-rot monitoring)
+**Purpose**: R10 enforceable trigger (Step 0); Q5 conditional fallback gate (Step 1); register the new agent in orchestrator dispatch (FR-008 — Step 2); reconcile no F-1/F-2/F-3 carry-over (post-F-3 Agentic dispatch state is clean DUO `agent-autonomy, tool-abuse`); extend the shared-reference consumers list (FR-010 — Step 2); 6-edit Wave 2.0 grep-checklist verification (Step 3, FR-009 / SC-015). All edits MUST be additive; ADR-023 Decision 3 byte-identity on `## ` headings is enforced on the shared-reference edit. Edit owner: architect per F-1 HIGH-1 / F-2 MEDIUM-4 precedent.
+
+### Wave 3 Step 0 — R10 Enforceable Trigger (architect MEDIUM-A absorbed)
+
+- [ ] T026 **R10 enforceable trigger execution (TEAM-LEAD owned per HIGH-1)**: Re-run T012 R10 pre-check at the moment Wave 3 Step 2 begins editing the 4 shared surfaces. Same query set: `gh issue list --label stage:plan --state open --search "F-5"` AND `gh pr list --state open --search "schemas/finding.yaml" --search "orchestrator.md" --search "dispatch-rules.md" --search "finding-format-shared.md"`. **architect MEDIUM-A absorption (schema-touch disambiguation)**: post-filter results with `gh pr diff <PR>` to verify any matching PR actually MODIFIES one of the 4 surface files (innocent comment-only PRs that mention surface-file names without modifying content do NOT trigger HALT). If actual concurrent edits to any of the 4 surfaces detected: HALT and escalate to team-lead. Record green-light artifact at `.aod/results/wave-3-r10-greenlight.md` before Step 2 proceeds.
+
+### Wave 3 Step 1 — Q5 Fallback Gate (architect MEDIUM-4)
+
+- [ ] T027 [US1] **Q5 fallback gate execution (architect MEDIUM-4)**: Architect assesses fixture authoring progress on `examples/consumer-agent-app/` (Q5 lean target). If on track (architecture authoring NOT exceeding 1 day; no test-harness friction surfaced) → continue with Q5 lean. If foreseeable slip → switch FR-015 to fallback (a) `examples/agentic-app/` extension; document decision in PR description with the trigger that fired the gate. Decision artifact at `.aod/results/wave-3-q5-fallback-decision.md`. **architect MEDIUM-B absorption (Q5 fallback expected-diff manifest)**: For BOTH paths, the decision artifact MUST enumerate the expected-diff manifest:
+  - **If Q5 lean (consumer-agent-app)**: zero existing findings (new baseline); expected post-regen state ≥3 TE-{N} findings (one per applicable pattern category); zero AG-{N}/AGP-{N} carry-over from a prior baseline (clean slate)
+  - **If Q5 fallback (agentic-app extension)**: existing findings present at post-F-3 state include LLM-{N} (prompt-injection), OI-{N} (output-integrity), AG-1 through AG-8 (agent-autonomy autonomy-axis, including F-3's new AG-8 inter-agent-communication), AGP-{N} (Feature 142 multi-agent topology). Expected post-regen state: AG-1 through AG-8 PRESERVED (zero regression); AGP-{N} unchanged-unless-topology (only changes if new sub-component introduces multi-agent topology); LLM-{N} + OI-{N} preserved; **net additive**: ≥1 new TE-{N} finding(s) on the consumer-facing AI sub-component.
+
+### Wave 3 Step 2 — Architect Lands Day-1-EOD Edit Checklist (per team-lead LOW-1)
+
+- [ ] T028 Modify `.claude/agents/tachi/orchestrator.md` (3 edits per FR-008): (a) **Edit 1**: insert `  - human-trust-exploitation` after the `tool-abuse` entry in the AI-tier dispatch list (Agentic-tier ordering preserves established `agent-autonomy → tool-abuse → human-trust-exploitation`); (b) **Edit 2**: update Agentic Threats row from `agent-autonomy, tool-abuse` → `agent-autonomy, tool-abuse, human-trust-exploitation` (DUO → TRIO per architect HIGH-3); (c) **Edit 3**: update sequential-mode text if it enumerates Agentic agents (architect verifies whether current state uses generic "Agentic agents" phrasing or explicit list; if generic, edit 3 is a no-op confirming nothing to update). Zero changes to STRIDE tier or LLM-AI tier or infrastructure tier. Edit owner: architect.
+- [ ] T029 Modify `.claude/skills/tachi-orchestration/references/dispatch-rules.md` (3 edits per FR-008): (a) **Edit 4**: extend the Agentic dispatch DUO (post-F-3; lines 91-92) to **TRIO** by adding `- \`human-trust-exploitation\` (OWASP ASI09:2026)` after the `tool-abuse` line with FR-013-style two-part emission activation rule (requires BOTH AI-agent keyword match AND at least one human-user-facing emission indicator from FR-006 4-category subsection); (b) **Edit 5**: update the table row for Agentic dispatch from `agent-autonomy, tool-abuse` → `agent-autonomy, tool-abuse, human-trust-exploitation` — identical TRIO update; (c) **Edit 6**: extend trigger-keyword rules section with `human-trust-exploitation` activation logic per T004a final keyword set (with `persona` / `personality` / `character agent` anti-indicator subsection). **No External Entity declaration** in DFD element types per Q4 BLOCKING-1 fix — F-4 declares Process only. Edit owner: architect.
+- [ ] T030 [P] Modify `.claude/skills/tachi-shared/references/finding-format-shared.md`: in the frontmatter `consumers:` list (post-F-2 state at lines 6-21), insert `- human-trust-exploitation` on a new line **between `  - tool-abuse` (line 18) and `  - output-integrity` (line 19)** per FR-010 PM-leaning placement (Agentic-category cluster grouping). T004b architect adjudication confirms or refines placement. ZERO changes to any body `## ` heading.
+- [ ] T031 Structural-diff validation on `finding-format-shared.md`: run `git diff main -- .claude/skills/tachi-shared/references/finding-format-shared.md | grep -E '^[+-]## '`. MUST return empty (no `## ` heading changes per ADR-023 Decision 3). Record pass/fail at `.aod/results/wave3-structural-diff-check.md`.
+
+### Wave 3 Step 3 — 6-Edit Wave 2.0 Grep-Checklist (FR-009 / SC-015)
+
+- [ ] T032 **Wave 2.0 grep-checklist verification (architect MEDIUM-5 / FR-009 / SC-015)**: Explicit verification that all 6 coordinated edits across `orchestrator.md` (3) + `dispatch-rules.md` (3) landed cleanly. Six-row checklist:
+  - **Edit 1** (orchestrator.md): `grep -c 'human-trust-exploitation' .claude/agents/tachi/orchestrator.md` ≥ 2 (dispatch list + Agentic Threats row at minimum) → ✓ landed
+  - **Edit 2** (orchestrator.md): grep verifies Agentic Threats row contains all 3 agents `agent-autonomy, tool-abuse, human-trust-exploitation` → ✓ landed
+  - **Edit 3** (orchestrator.md): if sequential-mode text enumerates Agentic agents, grep verifies inclusion; if generic phrasing, mark as ✓ no-op
+  - **Edit 4** (dispatch-rules.md): grep verifies Agentic dispatch list contains 3 agents incl. `human-trust-exploitation` with two-part emission gate activation rule → ✓ landed
+  - **Edit 5** (dispatch-rules.md): grep verifies table row updated DUO → TRIO → ✓ landed
+  - **Edit 6** (dispatch-rules.md): grep verifies trigger-keyword rules section extended with `human-trust-exploitation` activation logic incl. `persona` anti-indicator → ✓ landed
+  Verification artifact lands in PR description (or `.aod/results/wave-2.0-grep-checklist.md`) with all 6 rows marked ✓.
+- [ ] T033 Post-bump schema parser round-trip test: `python3 -c "import yaml; data = yaml.safe_load(open('schemas/finding.yaml')); assert data['schema_version'] == '1.8'; import re; assert re.match(data['id']['pattern'], 'TE-1')"`. Record pass at `.aod/results/wave3-schema-roundtrip-check.md`.
+
+**Checkpoint**: Orchestrator registered with Agentic DUO → TRIO; shared reference extended at architect-adjudicated placement; 6-edit Wave 2.0 grep-checklist green; schema round-trip green. Ready for Wave 4 false-positive check.
+
+---
+
+## Phase 7: Wave 4 (PRD Wave 2.1) — False-Positive Check on Non-Consumer-Facing Baselines (Day 2 AM, ~0.2d)
+
+**Purpose**: Verify the two-part emission gate (FR-013) prevents false positives on backend-only AI architectures. R6 mitigation per FR-017. **Critical sequencing**: Wave 4 MUST complete and pass BEFORE Wave 5 regen runs.
+
+- [ ] T034 [US1] False-positive check (FR-017 / R6 mitigation): run dispatch dry-run grep against `examples/web-app/architecture.md` and `examples/microservices/architecture.md` for the FR-005 trigger keyword set. Verify (a) zero AI-agent-keyword matches OR (b) AI-agent-keyword matches without ANY accompanying human-user-facing emission indicator (per FR-006 4 categories — outgoing Data Flow to human-named External Entity, Process description with human-user-facing keywords, sustained-engagement framing, authority-claim emission framing). Confirm the two-part emission gate would emit zero `TE-{N}` findings on these baselines. Record results at `.aod/results/wave4-fp-check.md`. **If false positives surface**: HALT and tighten the emission gate (FR-013) before proceeding to Wave 5 regeneration; involves revising `detection-patterns.md` Trigger Keywords or Human-User-Facing Emission Indicators subsections.
+
+**Checkpoint**: False-positive check green. Two-part emission gate verified on non-consumer-facing baselines. Ready for Wave 5 regeneration.
+
+---
+
+## Phase 8: Wave 5 (PRD Wave 2.2) — Example Regeneration + Backward-Compatibility Verification + FR-018 Grep Test (Day 2 PM, ~0.4d)
+
+**Purpose**: Regenerate per Q5 decision (consumer-agent-app new baseline OR agentic-app extension); verify ≥1 `TE-{N}` finding + three-prefix-family discipline within agentic (`AG`, `AGP`, `TE` adjacent without prose synthesis); verify 5 non-consumer-facing baselines remain byte-identical under `SOURCE_DATE_EPOCH=1700000000` (SC-006 BLOCKER); verify FR-018 grep-checkable test passes (R11 mitigation per SC-012).
+
+- [ ] T035 [US1] Per T027 Q5 decision: if Q5 lean → author `examples/consumer-agent-app/architecture.md` (chatbot / mental-health-companion / eldercare-coach archetype) with at least one consumer-facing AI Process emitting to a human-named External Entity, satisfying ≥1 trigger keyword + ≥1 human-user-facing emission indicator. If Q5 fallback → extend `examples/agentic-app/architecture.md` with a consumer-facing AI sub-component. Apply NFR-006 safe-language patterns to architecture description prose (Hypothetical: framing on persona-bearing components; non-clinical distress framing; no real institutional names). Decision recorded in T027 artifact.
+- [ ] T036 Run `/tachi.threat-model examples/{consumer-agent-app|agentic-app}/architecture.md` with `SOURCE_DATE_EPOCH=1700000000`. Expect ≥1 `TE-{N}` finding on the consumer-facing AI Process. If Q5 fallback to `agentic-app`: also verify F-1 `OI-{N}` + F-2 `MI-{N}` (if applicable) + F-3 `AG-1..AG-8` + existing `LLM-{N}` + `AGP-{N}` findings preserved (per T027 expected-diff manifest). Verify three-prefix-family discipline within agentic (`AG-{N}`, `AGP-{N}` if applicable, `TE-{N}` adjacent in `category: agentic` section without prose synthesis) per SC-014.
+- [ ] T037 Run `/tachi.risk-score` on the regenerated example. Verify risk-scorer processes `TE-{N}` findings through `category: agentic` code paths without edit (FR-014).
+- [ ] T038 Run `/tachi.compensating-controls` on the regenerated example. Verify control-analyzer processes `TE-{N}` findings through `category: agentic` code paths.
+- [ ] T039 Run `/tachi.infographic all` on the regenerated example. Regenerate all 6 infographic JPEGs + specs.
+- [ ] T040 Run `/tachi.security-report` on the regenerated example. Regenerate `security-report.pdf` and `security-report.pdf.baseline`.
+- [ ] T041 [P] [US3] **FR-018 grep-checkable test (R11 mitigation per SC-012)**: extend `tests/scripts/test_human_trust_exploitation.py::test_no_agp_te_prose_synthesis` to grep on the regenerated `threat-report.md`: confirm `AGP-` and `TE-` prefixes appear in distinct prose blocks (no shared bullet, no shared sentence, no shared synthesis paragraph) when both are present. Test logic: extract all bullets/sentences/paragraphs containing either prefix; assert no single bullet/sentence/paragraph contains BOTH prefixes simultaneously. Record pass/fail at `.aod/results/fr-018-grep-test.md`.
+- [ ] T042 [P] F-A2 referential-integrity validation: run `pytest tests/scripts/test_human_trust_exploitation.py` — all tests pass including fixture-driven tests invoking `validate_source_attribution` on the regenerated `TE-{N}` findings (MUST confirm CWE-451 absence + ATLAS absence + external regulatory references absence from `source_attribution` on all emitted findings per FR-007). **Naming Disambiguation invariant test**: confirm no TE-{N} finding has `agentic_pattern: "trust_exploitation"` (R11 invariant 8).
+- [ ] T043 [P] Backward-compat byte-identity (SC-006 BLOCKER): run `SOURCE_DATE_EPOCH=1700000000 pytest tests/scripts/test_backward_compatibility.py -v`. Expect 5/5 pass on `web-app`, `microservices`, `ascii-web-api`, `mermaid-agentic-app`, `free-text-microservice` (consumer-facing AI emission indicators not present — two-part emission gate guarantees zero `TE-{N}` findings). If any baseline fails: escalate per spec R6 with architect + team-lead approval.
+- [ ] T044 [P] Three-prefix-family discipline within agentic verification (SC-014): grep regenerated `examples/{consumer-agent-app|agentic-app}/threat-report.md` `category: agentic` section. Confirm `AG-{N}`, `AGP-{N}` (if applicable), and `TE-{N}` finding IDs appear adjacent (not synthesized into unified prose) and each carries its own `source_attribution` primary (autonomy-axis ASI04/06/08/09[autonomy]/10, Feature 142 multi-agent topology, communication-axis ASI09 respectively). Combined with LLM-side three-prefix family (LLM-{N}, OI-{N}, MI-{N}) demonstrated by F-2, the report demonstrates a 6-prefix-family AI threat surface (qualitative metric). Record pass/fail at `.aod/results/wave5-three-prefix-family-check.md`.
+- [ ] T045 [P] Git-stage regenerated artifacts for commit: `examples/{consumer-agent-app|agentic-app}/architecture.md`, `threats.md`, `threats.sarif`, `risk-scores.md`, `risk-scores.sarif`, `compensating-controls.md`, `compensating-controls.sarif`, `threat-report.md`, `attack-trees/`, `attack-chains.md` (if applicable), `threat-*.jpg` × 6 + corresponding specs, `security-report.pdf`, `security-report.pdf.baseline`.
+
+**Checkpoint**: Wave 5 complete. Regenerated example shows TE findings + three-prefix-family discipline within agentic; FR-018 grep test green; 5 baselines byte-identical; all pytest green.
+
+---
+
+## Phase 9: Wave 6 (PRD Wave 2.3) — Pre-Merge Validation + NFR-006/007 Code-Review Double-Check + ADR-033 Accepted + PR Ready (Day 2 PM, ~0.3d)
+
+**Purpose**: Final validation against all 15 spec SCs + quickstart.md 12 steps before PR ready. Code-review double-check per R7 NFR-006 compliance (vulnerable-population worked-example wording). Pre-merge PR-title verification + post-merge release-please verification (R12 mitigation per FR-019 / SC-013).
+
+- [ ] T046 [P] SC-001: verify `human-trust-exploitation.md` ≤150 lines; 1 `**MANDATORY**: Read`; under `## Detection Workflow` heading; zero MAESTRO references on agent + companion
+- [ ] T047 [P] SC-002: verify `detection-patterns.md` has ≥5 pattern categories, each with worked example (NFR-006 patterns) + anti-indicator (incl. `persona` on category 4) + primary/related citations + trigger keywords + DFD element types + Human-User-Facing Emission Indicators 4-category subsection
+- [ ] T048 [P] SC-003: verify `finding-format-shared.md` edit is additive-only per T031 result; `human-trust-exploitation` placed at architect-adjudicated location (T004b)
+- [ ] T049 SC-004: confirm `/tachi.threat-model` on regenerated example emits ≥1 `TE-{N}`; non-qualifying baselines emit zero (two-part emission gate)
+- [ ] T050 SC-005: confirm ADR-033 Accepted at merge with all **10 body items** (8 PRD-original + Naming Disambiguation HIGH-1 + DFD Target Decision BLOCKING-1) + cross-refs + Revision History per T023
+- [ ] T051 [P] SC-006: confirm T043 backward-compat byte-identity pass on 5 non-consumer-facing baselines
+- [ ] T052 [P] SC-007: confirm regenerated example TE findings carry AI-disclosure / authority-attestation / persuasion-safeguard / persona-boundary / synthetic-relationship-safeguard mitigations + OWASP ASI09:2026 citation + `source_attribution`
+- [ ] T053 [P] SC-008: verify empty diff on `pyproject.toml`, `requirements*.txt`, `package.json` via `git diff main --stat`
+- [ ] T054 SC-009: **26-file zero-edit grep audit** — `git diff main --stat` returns zero lines on the 13 threat agent files + 13 companion `detection-patterns.md` files (22 original + F-1's 2 + F-2's 2; F-3 enrichment-edits to `tool-abuse.md` + companion are reconciled into the post-F-3 baseline). **CRITICAL: `agent-autonomy.md` MUST show zero diff** despite the ASI09 sub-scope carve-up — the carve-up is documented in ADR-033 D2 layer only.
+- [ ] T055 [P] SC-010: confirm F-A2 validation passes on regenerated findings per T042 (fixture-driven + regen-based); verify CWE-451/ATLAS/regulatory-references prose-only (NOT in `source_attribution`)
+- [ ] T056 [P] SC-011: BLP-01 Coverage Matrix update planned for T064 (Wave 7 buffer day; post-merge documentation commit)
+- [ ] T057 [P] SC-012: verify FR-018 grep test passes per T041 result (R11 mitigation — AGP-vs-TE prose-synthesis-prevention on regenerated `threat-report.md`)
+- [ ] T058 [P] SC-013: verify PR title `feat(224): ...` Conventional-Commit-formatted at draft creation (already applied at branch-creation step). **Pre-merge re-verification**: `gh pr view --json title --jq '.title'` MUST return a string starting with `feat(224):`. If non-conventional title slipped: retitle via `gh pr edit <PR> --title "feat(224): ..."`. Record pass at `.aod/results/sc-013-pr-title-check.md`.
+- [ ] T059 [P] SC-014: three-prefix-family discipline within agentic per T044 result
+- [ ] T060 [P] SC-015: Wave 2.0 grep-checklist artifact in PR description per T032 result (all 6 coordinated edits ✓ landed)
+- [ ] T061 SC-001 verify schema_version `"1.8"` + regex extends to `TE` per T006; regex unit test passes per T005
+- [ ] T062 **R7 code-review double-check (per HIGH-1 buffer-day budget model — consumed at Wave 6 PM, NOT buffer)**: senior-backend-engineer + code-reviewer review pattern-catalog worked examples for **NFR-006 compliance** (4 explicit safe-language patterns: Hypothetical: prefix on every worked example; "for context, not legal interpretation" framing on every regulatory citation; non-clinical distress framing — no "suicidal ideation"; no real institutional/clinician/lawyer/advisor/product names; vulnerable-population examples cite consumer-protection rationale + escalation-to-human path). Code-reviewer also verifies **NFR-007 self-disclosure discipline** (no persuasive language in agent-authored prose; neutral mitigation framing). Record pass/fail at `.aod/results/wave6-nfr6-nfr7-compliance-check.md`.
+- [ ] T063 **PR ready / pre-merge verification**: PR #225 (already opened at branch-creation step) is updated with: (a) latest tasks/SC verification results in description, (b) Wave 2.0 grep-checklist artifact, (c) Q5 decision artifact (T027 result — consumer-agent-app vs. agentic-app extension with expected-diff manifest), (d) PR title verified Conventional-Commit-formatted (`feat(224): ...`), (e) link to ADR-033, spec, plan, tasks. Mark draft PR ready for review (`gh pr ready 225`). Triple-review (PM + Architect + Team-Lead) takes place via PR comments + `gh pr merge --squash` after approval.
+
+**Checkpoint**: All 15 SCs green; NFR-006 + NFR-007 compliance verified; PR ready. Wave 7 buffer day available if R2/R6/R7 materializes or delivery-retrospective authoring deferred.
+
+---
+
+## Phase 10: Wave 7 (PRD Buffer Day) — Delivery Retrospective + Coverage Matrix Update + F-5 Schema Forward-Pointer (Day 3 — Wednesday 2026-04-29 — buffer)
+
+**Purpose**: Delivery retrospective slotting per team-lead MEDIUM-3 (default-slotted to buffer day); BLP-01 Coverage Matrix update per SC-011; post-merge SHA fill on ADR-033 + release-please PR verification (R12 mitigation); F-5 schema-baseline forward-pointer (architect LOW-C absorption); contingent buffer-day work if R2/R6/R7 materializes.
+
+**Buffer-day prioritization (per team-lead LOW-2)**:
+1. First call: any in-flight contingency from R2/R6/R7
+2. Second call: delivery retrospective
+3. Third call: post-merge SHA fill + release-please verification
+4. Fourth call: F-5 PRD drafting NOT until F-4 deliver-stage closes (Constraint Analysis on R10)
+
+- [ ] T064 **SC-011 BLP-01 Coverage Matrix update**: after PR squash-merge, update `_internal/strategy/BLP-01-threat-coverage.md`: ASI09:2026 communication axis row transitions Planned → Covered with F-4 (Feature 224) named as closure feature for the **communication axis** (autonomy axis remains attributed to `agent-autonomy`). Post-F-4 the BLP-01 Coverage Matrix shows 7/11 BLP-01 features delivered; Tier 1 at 4/5 (F-1, F-2, F-3, F-4; F-5 remains). Post-merge documentation commit (private file — not in public git history per project convention).
+- [ ] T065 **Delivery retrospective (DEFAULT-SLOTTED HERE per team-lead MEDIUM-3 — same-day in Wave 6 only with explicit team-lead opt-in; default is buffer-day)**: Author `.aod/delivery.md` (which moves to `specs/224-trust-exploitation-threat-agent/delivery.md` post-deliver-stage) following F-2 / F-3 retrospective template. Cover: estimated vs actual duration, surprises encountered, patterns validated (now three-execution-deep post-F-4: F-1 + F-2 + F-4 standalone-branch; F-3 separate enrichment-branch), lessons learned for F-5 authoring. **architect LOW-C absorption (F-5 schema-baseline forward-pointer)**: include explicit note in retrospective: "post-F-4 schema baseline is 1.8; F-5 (LLM10) if it bumps the schema must use 1.9 — minor-bump-rule fourth application; F-5 also forward-eligible for the third Decision 8 application IF it adds a new finding-prefix to the regex alternation."
+- [ ] T066 **Post-merge release-please verification (R12 mitigation per FR-019 / SC-013)**: After `gh pr merge --squash 225` and `git push origin main`, verify a release-please PR opened within ~30s via `gh pr list --state open --search "release-please" --limit 3`. If empty (release-please skipped silently per F-212 incident pattern), push an empty `feat(224):` marker commit on main: `git commit --allow-empty -m "feat(224): human-trust-exploitation threat agent — release marker" && git push origin main`. Record pass/fail at `.aod/results/wave7-release-please-verification.md`.
+- [ ] T067 **Post-merge SHA fill on ADR-033** (T025 companion): After PR squash-merge: update `docs/architecture/02_ADRs/ADR-033-human-trust-exploitation-agent.md` Revision History with squash-commit short SHA per ADR-027/028/029/030/031/032 precedent. Format: `| YYYY-MM-DD | Accepted with post-merge SHA fill | squash commit {SHORT_SHA} | confirmed |`.
+- [ ] T068 Contingent R2/R6/R7 buffer-day work (ONLY if regeneration friction / first-execution emission gate issue / pattern-quality issue materializes): extend buffer-day capacity to absorb friction. If R2/R6/R7 do NOT materialize, buffer-day capacity redirects to T065 delivery retrospective authoring + T064 Coverage Matrix update.
+
+---
+
+## Phase 11: Polish & Cross-Cutting
+
+**Purpose**: Final hygiene + documentation updates.
+
+- [ ] T069 [P] Update `CLAUDE.md` Recent Changes section with Feature 224 entry (similar to Features 180/189/194/201/206/212/219 entries). Include: new `human-trust-exploitation` agent, ADR-033 lineage with ADR-030 D2 Outcome B + D8 third application + ADR-033 Naming Disambiguation + DFD Target Decision cross-refs, BLP-01 Tier 1 framing (4th Tier 1 feature after F-1 + F-2 + F-3), schema 1.7 → 1.8 minor bump as 3rd recorded application of Decision 8 regex-alternation rule, three-prefix-family discipline within agentic demonstrated (combined with LLM three-prefix family from F-2 = 6-prefix-family AI threat surface), 26-file zero-edit invariant preservation **including agent-autonomy.md NOT-edit despite ASI09 sub-scope carve-up**, F-4 is third net-new `source_attribution` producer (after F-1 + F-2; F-3 was first to use enrichment branch).
+- [ ] T070 [P] Run quickstart.md Step 12 end-to-end smoke test (PR title verification + post-merge release-please PR check). Record pass/fail at `.aod/results/quickstart-smoke.md`.
+- [ ] T071 [P] Verify `examples/README.md` entry — if Q5 lean (consumer-agent-app new baseline), add new entry; if Q5 fallback (agentic-app extension), update only if cumulative changes warrant a note per same convention as Features 084/142/145/201/206.
+
+---
+
+## Dependencies & Execution Order
+
+### Phase Dependencies
+
+- **Phase 1 (Setup)**: No dependencies — can start immediately
+- **Phase 2 (Foundational / Wave 1.0 + 1.1)**: T004 → T004a → T004b (architect adjudications) → T005 → T006 (T006 blocks all Wave 2 pattern authoring); T007, T008 parallel; T009 → T010 → T011 (ADR-033 Proposed commit); T012 independent (R10 pre-check)
+- **Phase 3 (US1 Wave 2)**: Depends on T006 (schema lock) + T010 (ADR-033 Proposed with Heuristic A D2 + Naming Disambiguation D9 + DFD Target Decision D10)
+- **Phase 4 (US2 Wave 2)**: Depends on T014 (pattern categories authored) + T016 (agent file skeleton). Can run in parallel with Phase 3 continuation.
+- **Phase 5 (US3 Wave 6 ADR Accepted)**: Depends on Phase 8 (Wave 5 regeneration with three-prefix-family discipline + FR-018 grep test) + Phase 9 PR pre-merge
+- **Phase 6 (Wave 3 Step 0/1/2/3)**: Depends on Phase 3 + Phase 4 (agent + companion authored). Step 0 R10 trigger MUST pass before Step 1 Q5 fallback gate; Step 1 decision MUST land before Step 2 architect edits; Step 2 edits MUST land before Step 3 grep-checklist
+- **Phase 7 (Wave 4)**: Depends on Phase 6 (orchestrator registration complete + 6-edit grep-checklist green). MUST pass before Wave 5 regen
+- **Phase 8 (Wave 5)**: Depends on Phase 7 (Wave 4 false-positive check green)
+- **Phase 9 (Wave 6 Pre-Merge)**: Depends on Phase 8 (Wave 5 regen complete + FR-018 grep test green)
+- **Phase 10 (Wave 7 Buffer Day)**: Depends on Phase 9 PR merge
+- **Phase 11 (Polish)**: After PR opened (can run pre-merge)
+
+### Wave Gate Points
+
+- **Wave 1.1 Gate**: T010 committed → unblocks Wave 2 (escalation gate fires if not by Day 1 EOD)
+- **Wave 2 Gate**: T013-T021 complete → structural checks + NFR-006/007 grep-checks green → unblocks Wave 3
+- **Wave 3 Gate**: T026 R10 pass → T027 Q5 decision → T028-T031 edits land → T032 6-edit grep-checklist green + T033 schema round-trip green → unblocks Wave 4
+- **Wave 4 Gate**: T034 false-positive check green → unblocks Wave 5
+- **Wave 5 Gate**: T035-T045 complete → Q5 expected-diff matches per T027 manifest + byte-identity pass + TE findings surfaced + three-prefix-family verified + FR-018 grep test green → unblocks Wave 6
+- **Wave 6 Gate**: T046-T062 all green (15 SC checks + NFR-006/007 compliance + PR title verification) → unblocks T063 PR ready
+- **Wave 7 Gate**: T064 (Coverage Matrix) + T065 (retrospective) + T066 (release-please verification) + T067 (SHA fill) → delivery closed
+
+### Parallel Opportunities
+
+- **Wave 1.1 parallel track**: T005 (regex test) ∥ T007 (valid fixture) ∥ T008 (invalid fixture) ∥ T009 (ADR skeleton) ∥ T012 (R10 pre-check) — 5 parallel tasks
+- **Wave 2 parallel track**: T013 (pattern scope) ∥ T015 (README) — parallel with T016 (agent skeleton). T014 sequential after T013.
+- **Wave 3 Step 2 parallel track**: T028 (orchestrator edit) ∥ T029 (dispatch rules) ∥ T030 (shared consumers) — 3 parallel file edits (different files). T031/T032 sequential after T030.
+- **Wave 5 parallel track**: T041 (FR-018 grep test) ∥ T042 (F-A2 validation) ∥ T043 (backward-compat) ∥ T044 (three-prefix-family check) ∥ T045 (git-stage) — 5 parallel verifications
+- **Wave 6 parallel track**: T046-T061 all parallel SC checks (15 independent verifications on different file surfaces); T062 sequential NFR-006/007 double-check before T063 PR ready
+
+---
+
+## Implementation Strategy
+
+### MVP Path (Baseline — 2-day envelope)
+
+**Day 1 (Monday 2026-04-27)**:
+- Morning: T004 Heuristic A verification → T004a/b architect adjudications → T006 schema bump → T010 ADR-033 Proposed commit (critical path)
+- Parallel morning/afternoon: T005 regex test ∥ T007/T008 fixtures ∥ T009 ADR skeleton ∥ T012 R10 pre-check
+- Afternoon (3-4h stretched per MEDIUM-1): T013-T018 pattern catalog + agent file + structural checks (Wave 2)
+- End of day: T019-T021 mitigation text + example findings + NFR-006/007 compliance check (continuation of Wave 2)
+- **Wave 1.3 PM EOD checkpoint**: Architect reviews Human-User-Facing Emission Indicators subsection (R6 mitigation); Day-1-EOD pre-positioning checklist for Wave 3 Step 2 edits
+
+**Day 2 (Tuesday 2026-04-28)**:
+- Early morning: T026 R10 enforceable trigger → T027 Q5 fallback gate decision (Wave 3 Step 0 + Step 1)
+- Morning: T028-T030 architect orchestrator + dispatch-rules + shared edits (Wave 3 Step 2) → T031-T033 6-edit grep-checklist + schema round-trip (Wave 3 Step 3)
+- Late morning: T034 false-positive check on web-app + microservices (Wave 4)
+- Early PM: T035-T045 example regeneration + FR-018 grep test + three-prefix-family verification + byte-identity (Wave 5)
+- PM: T022-T024 ADR-033 Accepted transition (Wave 6 start)
+- PM: T046-T062 SC validation sweep + NFR-006/007 compliance double-check (Wave 6)
+- PM: T063 PR ready → triple review (PM + Architect + Team-Lead) via PR
+
+**Buffer Day (Wednesday 2026-04-29)** — per team-lead LOW-2 prioritization:
+- Primary (T065): delivery retrospective (default-slotted to buffer per MEDIUM-3)
+- Primary (T064): SC-011 Coverage Matrix update post-merge
+- Primary (T066/T067): release-please verification + SHA fill post-merge
+- Contingent (T068): R2/R6/R7 absorption if friction surfaces
+- F-5 PRD drafting NOT until F-4 deliver-stage closes (Constraint Analysis on R10)
+
+### Escalation Paths
+
+- **Wave 1.0 Heuristic A escalation**: if T004 surfaces a subsume-into-`agent-autonomy` signal OR T010 not complete by Day 1 EOD (Monday 2026-04-27 23:59 local), user tie-break before Day 2 AM (R1 mitigation)
+- **Wave 3 Step 0 R10 trigger fire**: if T012/T026 R10 enforceable trigger detects actual concurrent edit on any of the 4 surface files (post-filter via `gh pr diff` per architect MEDIUM-A absorption), HALT and escalate to team-lead — F-4 takes priority (already in build); F-5 waits for F-4's PR to merge before entering build
+- **Wave 4 false-positive surface (T034)**: if 5 non-consumer-facing baselines show keyword + indicator combination matches that would emit findings, halt and tighten the emission gate (FR-013) before proceeding to Wave 5 — preserves SC-006 byte-identity invariant
+- **F-A2 validation failure (T042)**: if validate_source_attribution rejects a TE finding, pattern worked examples likely cite CWE-451 / MITRE ATLAS / external regulatory references — revise per FR-007 (ASI09 primary + CWE-{223/287/290/345} related only)
+- **R11 prose-synthesis violation (T041)**: if FR-018 grep test fails on regenerated `threat-report.md` (AGP-{N} and TE-{N} prefixes share a bullet/sentence/paragraph), root-cause the report-rendering prose-synthesis surface and tighten the renderer or pattern-catalog prose
+- **R12 release-please skip (T066)**: if post-merge release-please PR doesn't open within ~30s, push empty `feat(224):` marker commit on main per `feedback_aod_deliver_release_gate.md`
+- **Regeneration surface drift (T043, R2)**: if backward-compat byte-identity breaks on non-consumer-facing baseline, pause PR and root-cause; invoke Q5 fallback to `examples/agentic-app/` extension if `consumer-agent-app` cumulative-state cost too high (0.5-1 day buffer consumption per architect MEDIUM-4)
+- **NFR-006 compliance violation (T062)**: if code-reviewer surfaces a worked example violating any of the 4 safe-language patterns, revise pattern-catalog prose pre-PR-ready
+
+---
+
+## Notes
+
+- [P] tasks = different files / independent commands / no dependencies on incomplete tasks
+- [Story] label maps task to user story (US1 = ASI09 communication-axis detection, US2 = human-trust mitigation guidance, US3 = Heuristic A signal-class distinctness / ADR-033 + Naming Disambiguation)
+- Commit boundaries: Wave 1.1 schema-lock commit is atomic (T006 + T010); subsequent waves commit at wave-gate checkpoints
+- ADR-033 Proposed commit at T010 unblocks Wave 2; ADR-033 Accepted transition at T022 happens pre-PR-ready
+- 26-file zero-edit invariant (22 original + F-1's 2 + F-2's 2; F-3 reconciled) is enforced by T054 grep audit — verify this as the final pre-merge check **INCLUDING `agent-autonomy.md` NOT-edit verification** despite ASI09 sub-scope carve-up
+- Post-merge: T067 SHA-fill is the last per-feature task (updates ADR-033 Revision History with squash-commit short SHA)
+- All PRD Triad-fix predicates traceable:
+  - **BLOCKING-1 (Q4 Process-only with indicator-level filtering)** → T013 Detection Scope Process only + Human-User-Facing Emission Indicators 4-category subsection; T016 agent metadata `dfd_targets: [Process]`; T010 D10 ADR rationale; T029 dispatch-rules.md NO External Entity declaration
+  - **HIGH-1 (agent rename `trust-exploitation` → `human-trust-exploitation`)** → all task descriptions use `human-trust-exploitation` consistently; T010 D9 Naming Disambiguation discipline; FR-018 grep test (T041) verifies no prose synthesis at threat-report rendering
+  - **HIGH-2 (ASI09 sub-scope carve-up)** → T010 D2 four-way scope boundary + ASI09 sub-scope carve-up between agent-autonomy autonomy axis and human-trust-exploitation communication axis; T024 agent Purpose verification; T054 26-file invariant preserves `agent-autonomy.md` NOT-edit
+  - **HIGH-3 (Agentic dispatch DUO → TRIO)** → T028 Edit 2 Agentic Threats row + T029 Edit 5 table row; F-3 carry-over assessment confirmed F-3 enrichment-branch did NOT add to dispatch list; F-4 extends post-F-3 DUO to TRIO
+  - **MEDIUM-2 (CWE-287 added)** → T014 pattern category 4 cites CWE-287 + CWE-290; T007 valid fixture; T042 F-A2 validation
+  - **MEDIUM-3 (ATLAS sparseness intentional)** → T014 Primary Sources list cites AML.T0060 prose-only; T010 D2 + body items document sparseness; T042 F-A2 validation rejects ATLAS in source_attribution
+  - **MEDIUM-4 (Q5 conditional fallback)** → T027 Q5 fallback gate at Wave 3 Step 1; expected-diff manifest per architect MEDIUM-B absorption
+  - **MEDIUM-5 (Wave 2.0 grep-checklist)** → T032 6-row grep-checklist verification artifact in PR description
+  - **NFR-6 four safe-language patterns** → T014 worked-example authoring; T020 reviewer checkpoint; T021 grep-check; T062 code-review double-check
+  - **NFR-7 self-disclosure discipline** → T017 agent prose authoring; T021 grep-check; T062 code-review double-check
+  - **R10 enforceable trigger** → T012 pre-check + T026 Wave 3 Step 0; team-lead HIGH-1; **architect MEDIUM-A absorbed**: schema-touch disambiguation via `gh pr diff` post-filter
+  - **R11 (Naming Disambiguation residual)** → T010 D9 ADR documentation; T041 FR-018 grep-checkable test on regenerated threat-report.md; T042 invariant test (no TE-{N} with `agentic_pattern: trust_exploitation`)
+  - **R12 (PR-title release-please incident prevention)** → T058 pre-merge title verification; T063 PR ready; T066 post-merge release-please verification with empty marker commit fallback
+  - **architect MEDIUM-A absorbed** → T012 + T026 schema-touch disambiguation via `gh pr diff` post-filter
+  - **architect MEDIUM-B absorbed** → T027 Q5 fallback decision artifact MUST enumerate expected-diff manifest for both paths (consumer-agent-app vs. agentic-app extension)
+  - **architect LOW-C absorbed** → T065 delivery retrospective MUST include F-5 schema-baseline forward-pointer note (post-F-4 baseline 1.8; F-5 if it bumps must use 1.9)
+  - **Q1 (5 categories)** → T014 five numbered categories; T010 D2 codification
+  - **Q2 (12-baseline keywords with `persona` anti-indicator)** → T004a architect Wave 1.0 final adjudication; T013 Detection Scope; T029 dispatch-rules trigger-keyword rules
+  - **Q3 (`category: agentic`)** → T013 Applicable DFD Element Types; T016 agent metadata
+  - **Q4 (Process-only with indicator-level filtering)** → T013 + T029 + T010 D10 (BLOCKING-1)
+  - **Q5 (consumer-agent-app new baseline / agentic-app extension fallback)** → T027 fallback gate; T035 architecture authoring per decision; T068 contingent buffer-day work
+  - **Q6 (ADR-033 Proposed Day 1 Wave 1.1)** → T009/T010 Wave 1.1 sequencing
+- **Repository slug discipline**: `224-trust-exploitation-threat-agent` preserved across Issue / branch / PR title / spec-archive directory per `.claude/rules/git-workflow.md` `NNN-descriptive-name` convention. Agent / file / directory / schema-prefix names use disambiguated `human-trust-exploitation` per architect HIGH-1 fix.
