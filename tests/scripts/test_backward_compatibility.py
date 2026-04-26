@@ -167,6 +167,13 @@ def test_unmodified_examples_byte_identical_pdfs(
 # per ADR-026 Decision 1 (zero-edit invariant). This list is authoritative;
 # adding a new detection agent file warrants updating both `schemas/coverage-
 # checklists.yaml` and this list in the same change.
+#
+# Feature 219 (F-3 ASI07 enrichment) is the first feature to additively edit
+# an existing detection-tier host file (`tool-abuse.md` + companion
+# `detection-patterns.md`) under ADR-023 Decision 3's additive-only edit
+# discipline. Per F-3 spec FR-015 / SC-013 / ADR-032 Decision 2, F-3's host
+# files are explicitly carved out of the zero-edit invariant — the remaining
+# 24 files (12 other agents + 12 other companions) stay byte-identical.
 DETECTION_AGENT_PATHS = [
     ".claude/agents/tachi/spoofing.md",
     ".claude/agents/tachi/tampering.md",
@@ -178,7 +185,7 @@ DETECTION_AGENT_PATHS = [
     ".claude/agents/tachi/data-poisoning.md",
     ".claude/agents/tachi/model-theft.md",
     ".claude/agents/tachi/agent-autonomy.md",
-    ".claude/agents/tachi/tool-abuse.md",
+    ".claude/agents/tachi/output-integrity.md",
     ".claude/agents/tachi/misinformation.md",
 ]
 
@@ -186,8 +193,11 @@ DETECTION_AGENT_PATHS = [
 # `.claude/skills/tachi-<agent>/references/detection-patterns.md`. ADR-026
 # Decision 1 requires these to remain byte-unmodified on the Feature 142
 # feature branch because Feature 142 is a post-hoc synthesis layer and must
-# not touch the detection tier.
+# not touch the detection tier. Per F-3 ADR-032 Decision 2, the
+# `tachi-tool-abuse/...` companion is carved out of this invariant
+# (additive-only edits per ADR-023 Decision 3).
 DETECTION_PATTERN_REF_GLOB = ".claude/skills/tachi-*/references/detection-patterns.md"
+DETECTION_PATTERN_REF_F3_HOST = ".claude/skills/tachi-tool-abuse/references/detection-patterns.md"
 
 
 def test_feature_142_zero_edit_invariant_on_detection_agents():
@@ -226,7 +236,9 @@ def test_feature_142_zero_edit_invariant_on_detection_agents():
         check=True,
     )
     detection_pattern_refs = [
-        line for line in (ls_result.stdout or "").splitlines() if line.strip()
+        line
+        for line in (ls_result.stdout or "").splitlines()
+        if line.strip() and line != DETECTION_PATTERN_REF_F3_HOST
     ]
 
     paths_to_check = DETECTION_AGENT_PATHS + detection_pattern_refs
