@@ -339,3 +339,47 @@ def test_fixture_ids_match_ag_prefix() -> None:
             f"Fixture {fixture_name} id {finding_id!r} MUST match ^AG-\\d+$ "
             f"(F-3 reuses existing AG prefix; no schema bump per ADR-032 Decision 3)."
         )
+
+
+# ---------------------------------------------------------------------------
+# Section E: Live regen validation (T039 — extends fixture-driven F-A2 tests)
+# ---------------------------------------------------------------------------
+
+def test_validate_source_attribution_on_regen() -> None:
+    """SC-009 / SC-015 / FR-A2: Regenerated agentic-app/threats.md MUST contain
+    at least 1 NEW AG-{N} finding from Pattern Category 9 (A2A Inter-Agent
+    Communication Channel security) with primary OWASP ASI-07 citation + related
+    CWE-287 citation + optional MITRE ATLAS AML.T0060 citation.
+
+    Read `examples/agentic-app/sample-report/threats.md` (canonical post-Wave-3 promote)
+    and verify:
+    - At least 1 AG-{N} finding marked [NEW]
+    - That finding cites ASI-07 (or ASI07) in its OWASP/STRIDE column or description
+    - Description references "Inter-Agent Communication" or "A2A" (Pattern Category 9)
+    - Mitigations reference at least 2 of: mTLS, message signing (HMAC/Ed25519),
+      nonce-based replay prevention, taint propagation
+    """
+    threats_md = REPO_ROOT / "examples" / "agentic-app" / "sample-report" / "threats.md"
+    assert threats_md.exists(), f"Regenerated threats.md not found at {threats_md}"
+    content = threats_md.read_text(encoding="utf-8")
+
+    # NEW AG finding present
+    new_ag_matches = re.findall(r"\| (AG-\d+) \| \[NEW\]", content)
+    assert new_ag_matches, "Expected at least 1 AG-{N} finding marked [NEW] in regen threats.md"
+
+    # ASI-07 cited
+    assert re.search(r"ASI-?07", content), "Expected ASI-07 citation in regen threats.md"
+
+    # Pattern Category 9 indicators
+    assert re.search(r"Inter-Agent Communication|A2A", content, re.IGNORECASE), \
+        "Expected Pattern Category 9 (A2A / Inter-Agent Communication) reference"
+
+    # Mitigation indicators (at least 2 of the named mechanisms)
+    mitigation_count = sum(1 for pattern in [
+        r"mTLS",
+        r"HMAC|Ed25519|message sign",
+        r"nonce|replay",
+        r"taint",
+    ] if re.search(pattern, content, re.IGNORECASE))
+    assert mitigation_count >= 2, \
+        f"Expected >=2 of {{mTLS, message signing, nonce/replay, taint}} mitigations; found {mitigation_count}"

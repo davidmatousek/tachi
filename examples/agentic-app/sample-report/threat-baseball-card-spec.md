@@ -1,16 +1,13 @@
 ---
 schema_version: "1.0"
 template: "baseball-card"
-date: "2023-11-14"
+date: "2026-04-26"
 source_file: "compensating-controls.md"
 data_source_type: "compensating-controls"
 finding_count: 81
 image_generated: true
----
-
-# Threat Infographic Specification — Baseball Card
-## Project: Agentic AI Application
-
+has_baseline: true
+delta_note: "NEW finding AG-8 (Inter-Agent Communication Channel, OWASP ASI07:2026, raw Critical — residual High after controls)"
 ---
 
 ## 1. Metadata
@@ -18,26 +15,28 @@ image_generated: true
 | Field | Value |
 |-------|-------|
 | Project Name | Agentic AI Application |
-| Scan Date | 2023-11-14 |
+| Scan Date | 2026-04-26 |
 | Analysis Agents | 8 |
 | Total Findings | 81 |
-| Risk Posture | Residual risk — 0 Critical and 17 High findings across 11 components |
+| Risk Posture | Residual risk — 0 Critical and 8 High findings across 11 components |
+| Baseline | 2026-04-23 (F2-wave4) |
+| Delta | NEW: AG-8 (Inter-Agent Communication Channel) — insecure inter-agent communication, OWASP ASI07:2026, raw Critical, residual High after compensating controls |
+
+**Delta Context**: This run introduced finding AG-8, a new Critical-raw finding against the Inter-Agent Communication Channel. Controls were detected (mTLS enforcement, message signing policy, nonce-based replay prevention), reducing residual severity to High. AG-8 remains the single most structurally significant new finding in this wave — it targets the A2A trust fabric connecting the Orchestrator, Specialist Agent, and Clinical Advisory Sub-Agent without authenticated relay.
 
 ---
 
 ## 2. Risk Distribution
 
-**Chart Title**: Residual Risk Distribution
-
 | Severity | Count | Percentage | Color |
 |----------|-------|------------|-------|
 | Critical | 0 | 0% | #DC2626 |
-| High | 17 | 21% | #EA580C |
-| Medium | 62 | 77% | #CA8A04 |
-| Low | 2 | 2% | #2563EB |
+| High | 8 | 10% | #EA580C |
+| Medium | 68 | 84% | #EAB308 |
+| Low | 5 | 6% | #4169E1 |
 | **Total** | **81** | **100%** | — |
 
-**Chart Format**: Donut chart. Dominant segment: Medium (amber/yellow, 77%). Donut center text: "81 findings".
+**Chart Format**: Donut chart. Risk label: **Residual Risk Distribution** (post-control exposure after accounting for detected compensating controls).
 
 ---
 
@@ -45,60 +44,62 @@ image_generated: true
 
 | Component | Critical | High | Medium | Low | Total |
 |-----------|----------|------|--------|-----|-------|
-| LLM Agent Orchestrator | 0 | 11 | 7 | 0 | 18 |
-| Clinical Advisory Sub-Agent | 0 | 1 | 11 | 0 | 12 |
-| Specialist Agent | 0 | 1 | 9 | 0 | 10 |
+| LLM Agent Orchestrator | 0 | 4 | 15 | 0 | 19 |
+| Clinical Advisory Sub-Agent | 0 | 0 | 11 | 1 | 12 |
+| Specialist Agent | 0 | 0 | 9 | 1 | 10 |
 | Long-Running Learning Loop | 0 | 0 | 9 | 0 | 9 |
-| MCP Tool Server | 0 | 2 | 6 | 0 | 8 |
-| Inter-Agent Communication Channel | 0 | 0 | 7 | 0 | 7 |
-| Guardrails Service | 0 | 1 | 5 | 0 | 6 |
-| Other | 0 | 1 | 8 | 2 | 11 |
+| Inter-Agent Communication Channel | 0 | 0 | 8 | 0 | 8 |
+| MCP Tool Server | 0 | 2 | 5 | 1 | 8 |
+| Guardrails Service | 0 | 1 | 3 | 1 | 5 |
+| Other | 0 | 1 | 8 | 1 | 10 |
 
 ### Cell-Level Grid
 
-Highest residual severity per component × STRIDE+AI category (S=Spoofing, T=Tampering, R=Repudiation, I=Information Disclosure, D=Denial of Service, E=Elevation of Privilege, AG=Agentic, LLM=LLM):
-
 | Component | S | T | R | I | D | E | AG | LLM |
-|-----------|---|---|---|---|---|---|-----|-----|
-| LLM Agent Orchestrator | High | High | High | High | High | High | High | High |
-| Clinical Advisory Sub-Agent | High | High | High | High | Medium | Medium | — | High |
-| Specialist Agent | Medium | High | Medium | Medium | Medium | Medium | High | — |
-| Long-Running Learning Loop | High | High | Medium | Medium | Medium | High | High | — |
-| MCP Tool Server | High | High | Medium | Medium | High | High | High | — |
-| Inter-Agent Communication Channel | Medium | High | Low | High | Medium | High | High | — |
-| Guardrails Service | Medium | Medium | Medium | Medium | High | High | — | — |
-| Other (User, KB, Audit Logger, External API) | High | Medium | Low | Medium | Low | — | — | — |
+|-----------|---|---|---|---|---|---|----|-----|
+| LLM Agent Orchestrator | High | Medium | Medium | High | Medium | High | High | Medium |
+| Clinical Advisory Sub-Agent | --- | Medium | Medium | Medium | Medium | --- | --- | Medium |
+| Specialist Agent | --- | Medium | Medium | Medium | Medium | --- | --- | Medium |
+| Long-Running Learning Loop | --- | Medium | Medium | Medium | Medium | --- | --- | Medium |
+| Inter-Agent Communication Channel | --- | Medium | --- | Medium | Medium | --- | High | --- |
+| MCP Tool Server | --- | High | Medium | Medium | --- | Medium | High | --- |
+| Guardrails Service | --- | --- | --- | Medium | --- | High | --- | Medium |
+| Other | --- | Medium | Medium | Medium | --- | High | --- | --- |
+
+**Delta note**: Inter-Agent Communication Channel AG cell = High (AG-8, residual). Raw severity was Critical; compensating controls reduced residual to High.
 
 ---
 
 ## 4. Top Critical Findings
 
-No Critical residual-severity findings identified. Top High-residual findings shown (by residual score descending):
+No Critical residual findings identified. Top High findings shown (residual risk, post-control):
 
 | # | Finding ID | Component | Threat | Residual Risk |
 |---|-----------|-----------|--------|---------------|
-| 1 | S-1 | User | Attacker replays stolen session tokens to impersonate a legitimate user, bypassing authentication | High |
-| 2 | AG-1 | LLM Agent Orchestrator | Prompt injection causes the Orchestrator to autonomously execute unauthorized high-impact actions | High |
-| 3 | E-2 | LLM Agent Orchestrator | Orchestrator self-authorizes elevated operations via privileged access to tools, KB, and sub-agents | High |
-| 4 | R-3 | LLM Agent Orchestrator | Orchestrator denies issuing a delegation message or tool call; no non-repudiable action log | High |
-| 5 | E-1 | Guardrails Service | Prompt injection bypasses Guardrails and elevates attacker to trusted Orchestrator caller privilege | High |
+| 1 | S-1 | User | An attacker impersonates a legitimate user by replaying stolen session tokens or forging identity credentials | High (score 8.2) |
+| 2 | AG-1 | LLM Agent Orchestrator | Prompt injection causes the Orchestrator to autonomously execute unauthorized high-impact actions | High (score 7.8) |
+| 3 | E-2 | LLM Agent Orchestrator | The Orchestrator has privileged access to KB, MCP Tool Server, and delegation authority — self-authorization via prompt injection | High (score 7.8) |
+| 4 | E-1 | Guardrails Service | Prompt injection that bypasses the Guardrails Service elevates attacker privilege to trusted caller | High (score 7.7) |
+| 5 | I-2 | LLM Agent Orchestrator | The Orchestrator's context window contains sensitive data exposed via inference side-channels | High (score 7.2) |
+
+**Note on AG-8**: Finding AG-8 (Inter-Agent Communication Channel — insecure inter-agent communication, OWASP ASI07:2026) carries raw Critical severity. Its residual score places it just outside the top-5 after compensating controls reduce its residual band to High. Designers should consider adding an AG-8 callout to the architecture overlay strip to emphasize the NEW status of this finding.
 
 ---
 
 ## 5. Architecture Threat Overlay
 
-**Risk Reduction: 0.5%** (469.4 inherent → 467.2 residual — near-zero reduction; controls largely absent)
-
 | Component | Risk Weight | Finding Count | Annotation |
 |-----------|-------------|---------------|------------|
-| LLM Agent Orchestrator | Medium | 18 | 11 High + 7 Medium findings; avg residual 2.6 — dominant orchestration hub with privileged access to all sub-systems |
-| Guardrails Service | Medium | 6 | 1 High + 5 Medium findings; avg residual 2.2 — sole input validation barrier; bypass elevates any user to trusted caller |
-| MCP Tool Server | Medium | 8 | 2 High + 6 Medium findings; avg residual 2.2 — external execution broker; tool injection enables external API abuse |
-| Clinical Advisory Sub-Agent | Medium | 12 | 1 High + 11 Medium findings; avg residual 2.1 — clinical output path with no HITL; data leakage risk to audit trail |
-| Specialist Agent | Medium | 10 | 1 High + 9 Medium findings; avg residual 2.1 — autonomous delegated worker; task injection achieves unauthorized tool calls |
-| Inter-Agent Communication Channel | Medium | 7 | 7 Medium findings; avg residual 2.0 — shared message bus with no sender authentication |
-| Long-Running Learning Loop | Medium | 9 | 9 Medium findings; avg residual 2.0 — temporal attack vector via training data poisoning |
-| Other | Low | 11 | 1 High + 8 Medium + 2 Low findings; avg residual 1.9 — User, KB, Audit Logger, External API combined |
+| LLM Agent Orchestrator | Medium (2.2) | 19 | 4 High + 15 Medium findings. Dominant threat categories: Spoofing (S), Elevation-of-Privilege (E), Agentic (AG), Information-Disclosure (I). Central orchestration hub with widest attack surface. |
+| MCP Tool Server | Medium (2.1) | 8 | 2 High + 5 Medium + 1 Low findings. Dominant: Tampering (T), Agentic (AG). Outbound API call path; tool-abuse risk vector. |
+| Guardrails Service | Medium (2.0) | 5 | 1 High + 3 Medium + 1 Low findings. Dominant: Elevation-of-Privilege (E). Bypass risk elevates privilege to trusted caller. |
+| Inter-Agent Communication Channel | Medium (2.0) | 8 | 8 Medium findings (residual); AG-8 [NEW] raw Critical reduced to High residual. OWASP ASI07:2026 — no mTLS, no message signing, no replay prevention across A2A fabric. Highest delta-significance component this wave. |
+| Long-Running Learning Loop | Medium (2.0) | 9 | 9 Medium findings. Dominant: training signal poisoning, model update integrity. Persistent risk with no inherent score available. |
+| Other | Medium (2.0) | 10 | 1 High + 8 Medium + 1 Low. Mixed components with moderate residual exposure. |
+| Clinical Advisory Sub-Agent | Low (1.9) | 12 | 11 Medium + 1 Low findings. No High residual; clinical decision integrity controls effective. |
+| Specialist Agent | Low (1.9) | 10 | 9 Medium + 1 Low findings. No High residual; delegation controls applied. |
+
+**Risk Reduction**: Control coverage percentage not available from this pipeline run (risk-scores.md inherent scores absent).
 
 ---
 
@@ -119,14 +120,12 @@ No Critical residual-severity findings identified. Top High-residual findings sh
 
 ### Layout Structure
 
-- Background: Dark navy (#1E293B)
-- Aspect Ratio: 16:9 landscape (1920x1080 minimum)
-- Style: Premium dark-theme professional security dashboard. Sans-serif typography. Polished Figma-style aesthetic.
-- 4-Zone Layout:
-  1. TOP SECTION (~10%): Title "Threat Model: Agentic AI Application", date "2023-11-14", CONFIDENTIAL badge (red pill), subtitle "81 Findings — Residual Risk After Control Analysis"
-  2. MIDDLE ROW (~50%): Left panel (donut chart + residual risk posture), Center panel (component × STRIDE+AI heat map), Right panel (top 5 High-residual finding cards with orange left border)
-  3. BOTTOM STRIP (~30%): Architecture overlay — 3 trust zones (User Zone, Application Zone, External Services), component boxes inside zones, data flow arrows colored by highest residual severity, Risk Reduction badge "0.5% reduction"
-  4. FOOTER (~5%): "Generated by Tachi Threat Modeling Framework — STRIDE + AI Threat Analysis"
+Standard 4-Zone Layout (16:9 landscape, dark navy background):
+
+1. **TOP SECTION (~10%)**: Title "Threat Model: Agentic AI Application", date 2026-04-26, CONFIDENTIAL badge, subtitle "81 Residual Findings Across 11 Components — Baseline Comparison Active"
+2. **MIDDLE ROW (~50%)**: Left panel (donut chart — 0 Critical / 8 High / 68 Medium / 5 Low; center text "81 findings"), Center panel (Coverage Heat Map — component x STRIDE+AG category, Cell-Level Grid above), Right panel (top finding cards with orange left borders — High residual risk)
+3. **BOTTOM STRIP (~30%)**: Architecture threat overlay showing trust zones (User Zone, External Services, Application Zone), data flow arrows, AG-8 callout on Inter-Agent Communication Channel marked [NEW]
+4. **FOOTER (~5%)**: "Generated by Tachi Threat Modeling Framework — STRIDE + AI Threat Analysis"
 
 ### Typography
 
@@ -137,50 +136,11 @@ No Critical residual-severity findings identified. Top High-residual findings sh
 
 ### Background
 
-Dark navy (#1E293B). All text: white or light gray on dark panels. Finding cards: slightly lighter panel background with orange left-border accent.
+Dark navy (#1E293B) — premium dark dashboard aesthetic. All text white or light gray on dark background.
 
----
+### Delta Emphasis Directive
 
-## 7. Gemini Prompt
-
-Create a premium, professional security risk dashboard with a polished, modern dark-theme aesthetic. This should look like a professionally designed Figma dashboard — not a data table or spreadsheet. The overall feel should be confident, sophisticated, and visually impressive — a formal security report artifact, not a presentation slide or boardroom scene. Render ONLY the dashboard itself as a flat document — no perspective, no 3D effects, no room or table context, no environmental background. The image should be the report, not a photo of the report.
-
-IMPORTANT: The styling directives below are for your interpretation only. Do NOT render any hex color codes, pixel values, font sizes, or technical CSS specifications as visible text in the image. Only render the data labels, numbers, and natural-language text specified in the DATA CONTENT sections.
-
-STYLING DIRECTIVES (interpret these, do not display them):
-- Background: dark navy
-- Severity color mapping: Critical = red, High = orange, Medium = amber/yellow, Low = blue
-- All text on dark background: white or light gray
-- Cards and panels: rounded corners, subtle drop shadows, generous whitespace
-- Layout: 16:9 landscape
-- Empty heat map cells: subtle dark gray
-
-DATA CONTENT (render this as visible text):
-
-TOP SECTION: Title "Threat Model: Agentic AI Application" with date "2023-11-14" and "CONFIDENTIAL" badge. Subtitle: "Agentic AI Application — 81 Residual Findings Across 11 Components".
-
-LEFT PANEL: Donut chart showing residual risk distribution: 0 Critical (red), 17 High (orange), 62 Medium (amber), 2 Low (blue). Center text "81 findings". Below the donut: severity legend with counts and percentages. Below that: "RESIDUAL RISK: 0 Critical / 17 High — 0.5% risk reduction after control analysis. Near-zero control coverage detected — remediation urgently required."
-
-CENTER PANEL: Heat map grid titled "Residual Coverage Heat Map" with components as rows and 8 threat categories as columns (S, T, R, I, D, E, AG, LLM). Each cell MUST use the exact severity from this grid — do not infer or guess cell values:
-LLM Agent Orchestrator: S=High, T=High, R=High, I=High, D=High, E=High, AG=High, LLM=High
-Clinical Advisory Sub-Agent: S=High, T=High, R=High, I=High, D=Medium, E=Medium, AG=—, LLM=High
-Specialist Agent: S=Medium, T=High, R=Medium, I=Medium, D=Medium, E=Medium, AG=High, LLM=—
-Long-Running Learning Loop: S=High, T=High, R=Medium, I=Medium, D=Medium, E=High, AG=High, LLM=—
-MCP Tool Server: S=High, T=High, R=Medium, I=Medium, D=High, E=High, AG=High, LLM=—
-Inter-Agent Communication Channel: S=Medium, T=High, R=Low, I=High, D=Medium, E=High, AG=High, LLM=—
-Guardrails Service: S=Medium, T=Medium, R=Medium, I=Medium, D=High, E=High, AG=—, LLM=—
-Other: S=High, T=Medium, R=Low, I=Medium, D=Low, E=—, AG=—, LLM=—
-Color each cell: orange for High, amber for Medium, blue for Low, dark gray for no findings (—). Show severity initial in each cell.
-
-RIGHT PANEL: Top 5 High-residual finding cards in a vertical stack. Each card has an orange left border accent, finding ID in monospace, component name in bold, and one-line threat description:
-Card 1: S-1 | User | Attacker replays stolen session tokens to impersonate a legitimate user
-Card 2: AG-1 | LLM Agent Orchestrator | Prompt injection causes autonomous execution of unauthorized actions
-Card 3: E-2 | LLM Agent Orchestrator | Orchestrator self-authorizes elevated operations across tools and sub-agents
-Card 4: R-3 | LLM Agent Orchestrator | Orchestrator denies having issued delegation messages or tool calls
-Card 5: E-1 | Guardrails Service | Prompt injection bypasses Guardrails and elevates attacker privilege
-
-BOTTOM STRIP: Architecture overlay showing 3 trust zones as labeled horizontal bands: "User Zone" (User), "Application Zone" (LLM Agent Orchestrator, Guardrails Service, MCP Tool Server, Clinical Advisory Sub-Agent, Specialist Agent, Inter-Agent Communication Channel, Long-Running Learning Loop, Knowledge Base, Audit Logger), "External Services" (External API). Data flow arrows between zones colored orange (High residual). Risk Reduction badge: "0.5% Risk Reduction — 3 of 83 findings have partial controls".
-
-FOOTER: "Generated by Tachi Threat Modeling Framework — STRIDE + AI Threat Analysis" in small light gray text, centered.
-
-The overall impression should be a polished professional report — confident, clear, and visually sophisticated. No hex codes, color values, or technical specifications should appear as visible text. Render the dashboard as a flat, full-bleed graphic filling the entire 16:9 frame. No perspective, no 3D, no boardroom, no table, no environmental context.
+The [NEW] AG-8 finding on Inter-Agent Communication Channel MUST receive visual distinction:
+- In the heat map, the Inter-Agent Communication Channel AG cell renders with an orange (High) fill AND a small "NEW" badge overlay in white text on a dark accent.
+- In the architecture overlay strip, the Inter-Agent Communication Channel component box has an orange dashed border (2pt) instead of the standard solid border, with a "NEW" callout label.
+- If space permits, a small annotation beneath the architecture strip reads: "AG-8 (NEW): Inter-Agent Communication Channel — OWASP ASI07:2026 — no mTLS / no message signing / no replay prevention."

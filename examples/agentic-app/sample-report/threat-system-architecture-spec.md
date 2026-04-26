@@ -1,16 +1,13 @@
 ---
 schema_version: "1.0"
 template: "system-architecture"
-date: "2023-11-14"
+date: "2026-04-26"
 source_file: "compensating-controls.md"
 data_source_type: "compensating-controls"
 finding_count: 81
 image_generated: true
----
-
-# Threat Infographic Specification — System Architecture
-## Project: Agentic AI Application
-
+has_baseline: true
+delta_note: "NEW finding AG-8 (Inter-Agent Communication Channel, OWASP ASI07:2026, raw Critical — residual High after controls)"
 ---
 
 ## 1. Metadata
@@ -18,24 +15,28 @@ image_generated: true
 | Field | Value |
 |-------|-------|
 | Project Name | Agentic AI Application |
-| Scan Date | 2023-11-14 |
+| Scan Date | 2026-04-26 |
 | Analysis Agents | 8 |
 | Total Findings | 81 |
-| Risk Posture | Residual risk — 0 Critical and 17 High findings across 11 components |
+| Risk Posture | Residual risk — 0 Critical and 8 High findings across 11 components |
+| Baseline | 2026-04-23 (F2-wave4) |
+| Delta | NEW: AG-8 (Inter-Agent Communication Channel) — insecure inter-agent communication, OWASP ASI07:2026, raw Critical, residual High after compensating controls |
+
+**Delta Context**: AG-8 is the sole new finding this wave. It targets the A2A trust fabric — the Inter-Agent Communication Channel connecting the Orchestrator, Specialist Agent, and Clinical Advisory Sub-Agent. The channel has no declared mTLS, no inter-agent message signing, and no nonce-based replay prevention. The Orchestrator relay does not propagate taint labels, enabling attacker-controlled content to reach Clinical Advisory Sub-Agent without an authentic-source signal.
 
 ---
 
 ## 2. Risk Distribution
 
-**Chart Title**: Residual Risk Distribution
-
 | Severity | Count | Percentage | Color |
 |----------|-------|------------|-------|
 | Critical | 0 | 0% | #DC2626 |
-| High | 17 | 21% | #EA580C |
-| Medium | 62 | 77% | #CA8A04 |
-| Low | 2 | 2% | #2563EB |
+| High | 8 | 10% | #EA580C |
+| Medium | 68 | 84% | #EAB308 |
+| Low | 5 | 6% | #4169E1 |
 | **Total** | **81** | **100%** | — |
+
+**Chart Format**: Horizontal bar chart or donut. Risk label: **Residual Risk Distribution**.
 
 ---
 
@@ -43,130 +44,127 @@ image_generated: true
 
 | Component | Critical | High | Medium | Low | Total |
 |-----------|----------|------|--------|-----|-------|
-| LLM Agent Orchestrator | 0 | 11 | 7 | 0 | 18 |
-| Clinical Advisory Sub-Agent | 0 | 1 | 11 | 0 | 12 |
-| Specialist Agent | 0 | 1 | 9 | 0 | 10 |
+| LLM Agent Orchestrator | 0 | 4 | 15 | 0 | 19 |
+| Clinical Advisory Sub-Agent | 0 | 0 | 11 | 1 | 12 |
+| Specialist Agent | 0 | 0 | 9 | 1 | 10 |
 | Long-Running Learning Loop | 0 | 0 | 9 | 0 | 9 |
-| MCP Tool Server | 0 | 2 | 6 | 0 | 8 |
-| Inter-Agent Communication Channel | 0 | 0 | 7 | 0 | 7 |
-| Guardrails Service | 0 | 1 | 5 | 0 | 6 |
-| Other | 0 | 1 | 8 | 2 | 11 |
+| Inter-Agent Communication Channel | 0 | 0 | 8 | 0 | 8 |
+| MCP Tool Server | 0 | 2 | 5 | 1 | 8 |
+| Guardrails Service | 0 | 1 | 3 | 1 | 5 |
+| Other | 0 | 1 | 8 | 1 | 10 |
 
 ### Cell-Level Grid
 
 | Component | S | T | R | I | D | E | AG | LLM |
-|-----------|---|---|---|---|---|---|-----|-----|
-| LLM Agent Orchestrator | High | High | High | High | High | High | High | High |
-| Clinical Advisory Sub-Agent | High | High | High | High | Medium | Medium | — | High |
-| Specialist Agent | Medium | High | Medium | Medium | Medium | Medium | High | — |
-| Long-Running Learning Loop | High | High | Medium | Medium | Medium | High | High | — |
-| MCP Tool Server | High | High | Medium | Medium | High | High | High | — |
-| Inter-Agent Communication Channel | Medium | High | Low | High | Medium | High | High | — |
-| Guardrails Service | Medium | Medium | Medium | Medium | High | High | — | — |
-| Other | High | Medium | Low | Medium | Low | — | — | — |
+|-----------|---|---|---|---|---|---|----|-----|
+| LLM Agent Orchestrator | High | Medium | Medium | High | Medium | High | High | Medium |
+| Clinical Advisory Sub-Agent | --- | Medium | Medium | Medium | Medium | --- | --- | Medium |
+| Specialist Agent | --- | Medium | Medium | Medium | Medium | --- | --- | Medium |
+| Long-Running Learning Loop | --- | Medium | Medium | Medium | Medium | --- | --- | Medium |
+| Inter-Agent Communication Channel | --- | Medium | --- | Medium | Medium | --- | High | --- |
+| MCP Tool Server | --- | High | Medium | Medium | --- | Medium | High | --- |
+| Guardrails Service | --- | --- | --- | Medium | --- | High | --- | Medium |
+| Other | --- | Medium | Medium | Medium | --- | High | --- | --- |
+
+**Delta note**: Inter-Agent Communication Channel AG cell = High (AG-8, residual). Raw severity Critical; controls reduced residual to High.
 
 ---
 
 ## 4. Top Critical Findings
 
-No Critical residual-severity findings identified. Top High-residual findings shown (by residual score descending):
+No Critical residual findings identified. Top High findings shown (residual risk, post-control):
 
 | # | Finding ID | Component | Threat | Residual Risk |
 |---|-----------|-----------|--------|---------------|
-| 1 | S-1 | User | Attacker replays stolen session tokens to impersonate a legitimate user | High |
-| 2 | AG-1 | LLM Agent Orchestrator | Prompt injection causes autonomous execution of unauthorized high-impact actions | High |
-| 3 | E-2 | LLM Agent Orchestrator | Orchestrator self-authorizes elevated operations across tools and sub-agents | High |
-| 4 | R-3 | LLM Agent Orchestrator | Orchestrator denies issuing delegation messages or tool calls | High |
-| 5 | E-1 | Guardrails Service | Prompt injection bypasses Guardrails and elevates attacker to Orchestrator trust level | High |
+| 1 | S-1 | User | An attacker impersonates a legitimate user by replaying stolen session tokens or forging identity credentials | High (score 8.2) |
+| 2 | AG-1 | LLM Agent Orchestrator | Prompt injection causes the Orchestrator to autonomously execute unauthorized high-impact actions | High (score 7.8) |
+| 3 | E-2 | LLM Agent Orchestrator | The Orchestrator has privileged access to KB, MCP Tool Server, and delegation authority — self-authorization via prompt injection | High (score 7.8) |
+| 4 | E-1 | Guardrails Service | Prompt injection that bypasses the Guardrails Service elevates attacker privilege to trusted caller | High (score 7.7) |
+| 5 | I-2 | LLM Agent Orchestrator | The Orchestrator's context window contains sensitive data exposed via inference side-channels | High (score 7.2) |
 
 ---
 
 ## 5. Architecture Threat Overlay
 
-### Trust Zones (Spatial Layout)
+### Trust Zones
 
-**Zone 1 — User Zone** (untrusted, warm red tint)
+**User Zone** (untrusted):
 - Components: User
-- Highest residual severity: High (S-1 residual score 8.2)
-- Border color: orange (High)
+- Highest residual severity: High (S-1)
+- Border color: orange
 
-**Zone 2 — External Services** (semi-trusted, neutral tint)
+**External Services** (semi-trusted):
 - Components: External API
-- Highest residual severity: Low (R-8)
-- Border color: blue (Low)
+- Highest residual severity: none
+- Border color: gray
 
-**Zone 3 — Application Zone** (trusted, cool green tint)
-- Components: Guardrails Service, LLM Agent Orchestrator, Inter-Agent Communication Channel, Specialist Agent, MCP Tool Server, Knowledge Base, Audit Logger, Long-Running Learning Loop, Clinical Advisory Sub-Agent
-- Highest residual severity: High (multiple)
-- Border color: orange (High)
+**Application Zone** (trusted):
+- Components: Audit Logger, Clinical Advisory Sub-Agent, Guardrails Service, Inter-Agent Communication Channel, Knowledge Base, LLM Agent Orchestrator, Long-Running Learning Loop, MCP Tool Server, Specialist Agent
+- Highest residual severity: High (AG-1, E-2, E-1, I-2 on LLM Agent Orchestrator; AG-8 [NEW] on Inter-Agent Communication Channel)
 
-### Component Risk Badges (Residual Severity)
+### Component Risk Weights
 
-| Component | Badge Color | Finding Count | Badge Label |
-|-----------|------------|---------------|-------------|
-| LLM Agent Orchestrator | Orange (High) | 18 | 18 findings |
-| Clinical Advisory Sub-Agent | Orange (High) | 12 | 12 findings |
-| Specialist Agent | Orange (High) | 10 | 10 findings |
-| Long-Running Learning Loop | Amber (Medium) | 9 | 9 findings |
-| MCP Tool Server | Orange (High) | 8 | 8 findings |
-| Inter-Agent Communication Channel | Amber (Medium) | 7 | 7 findings |
-| Guardrails Service | Orange (High) | 6 | 6 findings |
-| Knowledge Base | Amber (Medium) | 3 | 3 findings |
-| Audit Logger | Amber (Medium) | 3 | 3 findings |
-| User | Orange (High) | 3 | 3 findings |
-| External API | Blue (Low) | 2 | 2 findings |
+| Component | Risk Weight | Score | Annotation |
+|-----------|-------------|-------|------------|
+| LLM Agent Orchestrator | Medium | 2.2 | 4 High + 15 Medium findings |
+| MCP Tool Server | Medium | 2.1 | 2 High + 5 Medium + 1 Low findings |
+| Guardrails Service | Medium | 2.0 | 1 High + 3 Medium + 1 Low findings |
+| Inter-Agent Communication Channel | Medium | 2.0 | 8 Medium findings (residual); AG-8 [NEW] raw Critical |
+| Long-Running Learning Loop | Medium | 2.0 | 9 Medium findings |
+| Other | Medium | 2.0 | 1 High + 8 Medium + 1 Low findings |
+| Clinical Advisory Sub-Agent | Low | 1.9 | 11 Medium + 1 Low findings |
+| Specialist Agent | Low | 1.9 | 9 Medium + 1 Low findings |
 
-### Data Flows (Severity Colored)
+### Data Flows (with severity coloring)
 
-| Source | Destination | Flow Label | Arrow Color |
-|--------|-------------|-----------|-------------|
-| User | Guardrails Service | Prompt / Query | Orange (High) |
-| Guardrails Service | LLM Agent Orchestrator | Validated Prompt | Orange (High) |
-| Guardrails Service | User | Rejected Prompt + Reason | Gray (clean) |
-| LLM Agent Orchestrator | Knowledge Base | Context Retrieval (Vector Search) | Gray (clean) |
-| Knowledge Base | LLM Agent Orchestrator | Retrieved Documents | Orange (High) |
-| LLM Agent Orchestrator | Inter-Agent Communication Channel | Delegation Message | Amber (Medium) |
-| Inter-Agent Communication Channel | Specialist Agent | Delegated Task | Orange (High) |
-| Specialist Agent | Inter-Agent Communication Channel | Specialist Result | Amber (Medium) |
-| Inter-Agent Communication Channel | LLM Agent Orchestrator | Aggregated Result | Orange (High) |
-| LLM Agent Orchestrator | MCP Tool Server | Tool Call Request | Orange (High) |
-| Specialist Agent | MCP Tool Server | Tool Call Request | Orange (High) |
-| MCP Tool Server | LLM Agent Orchestrator | Tool Result | Orange (High) |
-| MCP Tool Server | Specialist Agent | Tool Result | Orange (High) |
-| MCP Tool Server | External API | API Request | Gray (clean) |
-| External API | MCP Tool Server | API Response | Orange (High) |
-| LLM Agent Orchestrator | User | Response | Gray (clean) |
-| LLM Agent Orchestrator | Audit Logger | Decision Log Entry | Gray (clean) |
-| Specialist Agent | Audit Logger | Decision Log Entry | Gray (clean) |
-| MCP Tool Server | Audit Logger | Tool Execution Log | Gray (clean) |
-| Guardrails Service | Audit Logger | Filtering Event Log | Gray (clean) |
-| Audit Logger | Long-Running Learning Loop | Training Signal Stream | Amber (Medium) |
-| Long-Running Learning Loop | LLM Agent Orchestrator | Periodic Model Update | Orange (High) |
-| Long-Running Learning Loop | Specialist Agent | Periodic Model Update | Orange (High) |
-| Long-Running Learning Loop | Clinical Advisory Sub-Agent | Periodic Model Update | Orange (High) |
-| LLM Agent Orchestrator | Clinical Advisory Sub-Agent | Clinical Query / Context | Orange (High) |
-| Clinical Advisory Sub-Agent | Knowledge Base | Context Retrieval (Vector Search) | Gray (clean) |
-| Knowledge Base | Clinical Advisory Sub-Agent | Retrieved Documents | Orange (High) |
-| Clinical Advisory Sub-Agent | LLM Agent Orchestrator | Clinical Summary + Recommendations | Orange (High) |
-| Clinical Advisory Sub-Agent | Audit Logger | Clinical Decision Log Entry | Gray (clean) |
+| Source | Destination | Label | Severity Color |
+|--------|-------------|-------|---------------|
+| User | Guardrails Service | Prompt / Query | orange (High) |
+| Guardrails Service | LLM Agent Orchestrator | Validated Prompt | orange (High) |
+| Guardrails Service | User | Rejected Prompt + Reason | gray |
+| Guardrails Service | Audit Logger | Filtering Event Log | gray |
+| LLM Agent Orchestrator | Clinical Advisory Sub-Agent | Clinical Query / Context | yellow (Medium) |
+| LLM Agent Orchestrator | Inter-Agent Communication Channel | Delegation Message | yellow (Medium) |
+| LLM Agent Orchestrator | Knowledge Base | Context Retrieval (Vector Search) | gray |
+| LLM Agent Orchestrator | MCP Tool Server | Tool Call Request | orange (High) |
+| LLM Agent Orchestrator | User | Response | gray |
+| LLM Agent Orchestrator | Audit Logger | Decision Log Entry | gray |
+| Inter-Agent Communication Channel | Specialist Agent | Delegated Task | yellow (Medium) |
+| Inter-Agent Communication Channel | LLM Agent Orchestrator | Aggregated Result | orange (High) |
+| Specialist Agent | Inter-Agent Communication Channel | Specialist Result | yellow (Medium) |
+| Specialist Agent | MCP Tool Server | Tool Call Request | orange (High) |
+| Specialist Agent | Audit Logger | Decision Log Entry | gray |
+| MCP Tool Server | External API | API Request | gray |
+| MCP Tool Server | LLM Agent Orchestrator | Tool Result | orange (High) |
+| MCP Tool Server | Specialist Agent | Tool Result | yellow (Medium) |
+| MCP Tool Server | Audit Logger | Tool Execution Log | gray |
+| External API | MCP Tool Server | API Response | orange (High) |
+| Clinical Advisory Sub-Agent | LLM Agent Orchestrator | Clinical Summary + Recommendations | orange (High) |
+| Clinical Advisory Sub-Agent | Knowledge Base | Context Retrieval (Vector Search) | gray |
+| Clinical Advisory Sub-Agent | Audit Logger | Clinical Decision Log Entry | gray |
+| Knowledge Base | LLM Agent Orchestrator | Retrieved Documents | orange (High) |
+| Knowledge Base | Clinical Advisory Sub-Agent | Retrieved Documents | yellow (Medium) |
+| Long-Running Learning Loop | LLM Agent Orchestrator | Periodic Model Update | orange (High) |
+| Long-Running Learning Loop | Clinical Advisory Sub-Agent | Periodic Model Update | yellow (Medium) |
+| Long-Running Learning Loop | Specialist Agent | Periodic Model Update | yellow (Medium) |
+| Audit Logger | Long-Running Learning Loop | Training Signal Stream | yellow (Medium) |
 
 ### Trust Boundary Crossings
 
-| Boundary | From Zone | To Zone | Finding Count | Notes |
-|----------|-----------|---------|---------------|-------|
-| User → Guardrails Service | User Zone | Application Zone | 0 direct boundary findings | Highest-risk entry point (S-1 at boundary) |
-| Guardrails Service → User | Application Zone | User Zone | 0 direct boundary findings | Rejection path |
-| LLM Agent Orchestrator → User | Application Zone | User Zone | 0 direct boundary findings | Response path |
-| MCP Tool Server → External API | Application Zone | External Services | 0 direct boundary findings | Outbound API call |
-| External API → MCP Tool Server | External Services | Application Zone | 0 direct boundary findings | API response return |
+| Crossing | From Zone | To Zone | Finding Count |
+|----------|-----------|---------|---------------|
+| User → Guardrails Service | User Zone | Application Zone | 0 (boundary crossing, findings on User component itself) |
+| LLM Agent Orchestrator → User | Application Zone | User Zone | 0 |
+| Guardrails Service → User | Application Zone | User Zone | 0 |
+| MCP Tool Server → External API | Application Zone | External Services | 0 |
+| External API → MCP Tool Server | External Services | Application Zone | 0 |
 
-### Finding Legend (Residual Severity Bands)
+### Delta Emphasis: AG-8 [NEW]
 
-**High Residual (17 findings)**: S-1, AG-1, E-2, R-3, E-1, LLM-6, OI-2, LLM-5, OI-1, LLM-13, LLM-8, I-2, LLM-1, LLM-4, T-2, E-5, T-5
+Inter-Agent Communication Channel — AG-8 (OWASP ASI07:2026, AML.T0060):
 
-**Medium Residual (62 findings)**: All remaining findings including AG-5, E-7, I-9, LLM-2, D-1, LLM-7, LLM-14, MI-2, and 54 additional Medium-band findings
-
-**Low Residual (2 findings)**: R-5, R-8
+- **What it means**: No mutual authentication (mTLS), no HMAC/Ed25519 message signing, no nonce-based replay window, no taint propagation across Orchestrator relay. A compromised process in the Application Zone can intercept and replay delegation messages to the Specialist Agent or inject attacker-controlled content into the Clinical Advisory Sub-Agent via the Orchestrator relay without detection.
+- **Visual directive**: The Inter-Agent Communication Channel component box MUST display an orange dashed border (2pt) with a "[NEW]" badge in the upper-right corner. The delegation flows to/from this component (Orchestrator → Channel → Specialist Agent, and Channel → Orchestrator) are annotated with a small "AG-8" finding ID pill badge in orange.
 
 ---
 
@@ -176,89 +174,39 @@ No Critical residual-severity findings identified. Top High-residual findings sh
 
 | Severity | Hex Code | Usage |
 |----------|----------|-------|
-| Critical | #DC2626 | Red-600: component box borders, finding ID pill badges, data flow arrows |
-| High | #EA580C | Orange-600: component box borders, finding ID pill badges, data flow arrows |
-| Medium | #CA8A04 | Yellow-600: component box borders, finding ID pill badges, data flow arrows |
-| Low | #2563EB | Blue-600: component box borders, finding ID pill badges, data flow arrows |
-| Clean | #10B981 | Emerald: components with no findings — clean state |
-| Note | #6B7280 | Gray-500: data flows with no associated findings |
-| Card bg | #F9FAFB | Gray-50: finding card fill |
+| Critical | #DC2626 | Red-600: component borders, data flow arrows |
+| High | #EA580C | Orange-600: component borders, data flow arrows, finding badge fills |
+| Medium | #CA8A04 | Yellow-600: component borders, data flow arrows |
+| Low | #2563EB | Blue-600: component borders, data flow arrows |
+| Note | #6B7280 | Gray-500: neutral flows, clean components |
+| Clean cell | #F3F4F6 | Gray-100: components with no findings |
+| Card bg | #F9FAFB | Gray-50: component box fill |
 | Border | #E5E7EB | Gray-200: panel and card borders |
+
+### Trust Zone Tints
+
+- User Zone (untrusted): soft warm red tint
+- External Services (semi-trusted): neutral slate tint
+- Application Zone (trusted): cool green tint
 
 ### Layout Structure
 
-- Background: Clean white (#FFFFFF)
-- Aspect Ratio: 16:9 landscape
-- Style: Professional architecture poster — Figma/Miro aesthetic, clean and authoritative
-- Trust zones as labeled rectangular regions with tinted fills:
-  - User Zone: soft warm red tint (untrusted)
-  - External Services: neutral slate tint (semi-trusted)
-  - Application Zone: cool green tint (trusted internal)
-- Component boxes: rounded corners, subtle drop shadow, white fill, colored border matching highest residual severity
-- Finding ID pills: severity-colored background, white monospace text, overlaid on or beside component boxes
-- Data flow arrows: smooth curved arrows, colored by highest residual severity on path
-- Reference legend: bottom-right corner, severity color swatches with labels
+System Architecture spatial layout (16:9 landscape, white background):
+
+- Three trust zones rendered as labeled bounding boxes with zone-specific background tints
+- Components placed as rounded-rectangle boxes inside their zone, border color = highest residual severity
+- Finding ID pills rendered as severity-colored badges on each component
+- Data flow arrows: smooth curved arrows colored by highest residual severity on that path
+- Finding legend (bottom right): groups by residual severity band
+- Header label: "Residual Risk"
 
 ### Typography
 
 - Title: Bold, 28-32pt equivalent
-- Zone Labels: Semi-bold, 18-22pt equivalent
-- Component Names: Bold, 14-16pt equivalent
-- Flow Labels: Regular, 11-12pt equivalent
-- Finding IDs: Monospace bold, 11pt, white on colored pill
+- Section Headers: Semi-bold, 18-22pt equivalent
+- Data Labels: Regular, 12-14pt equivalent
+- Data Values: Bold, 14-16pt equivalent
 
 ### Background
 
-Clean white. Trust zones use subtle color tints (not solid fills). Arrows and borders provide the severity color signal.
-
----
-
-## 7. Gemini Prompt
-
-Create a premium, professionally designed system architecture diagram showing security threat analysis findings. This should look like an architecture poster from a top-tier security consultancy — clean, authoritative, and visually sophisticated. The feel should be modern and polished, like a Figma or Miro design artifact.
-
-IMPORTANT: The styling directives below are for your interpretation only. Do NOT render any hex color codes, pixel values, font sizes, or technical CSS specifications as visible text in the image. Only render the data labels, component names, finding IDs, and natural-language text specified in the DATA CONTENT sections.
-
-STYLING DIRECTIVES (interpret these, do not display them):
-- Background: clean white
-- Severity color mapping: Critical = red, High = orange, Medium = amber/yellow, Low = blue, Clean = emerald green
-- Trust zone tints: untrusted = soft warm red tint, application = neutral slate tint, trusted = cool green tint
-- Component boxes: rounded corners, subtle drop shadow, white fill, full colored border matching highest severity
-- Finding IDs: rendered as individual pill badges with severity-colored background and white text
-- Data flow arrows: smooth curved arrows, colored by highest severity on that path
-- Layout: 16:9 landscape, professional spacing between components
-
-DATA CONTENT (render this as visible text):
-
-TOP SECTION: Title "System Architecture — Threat Analysis: Agentic AI Application" with date "2023-11-14" and "CONFIDENTIAL" badge. Subtitle: "Residual Risk Map — 81 Findings, 11 Components".
-
-TRUST ZONES (labeled rectangular regions, left-to-right or nested):
-
-Zone 1 — "User Zone" (untrusted, warm red tint): Contains: User (orange border, finding count badge "3"). Primary finding: S-1 pill badge (orange).
-
-Zone 2 — "External Services" (semi-trusted, slate tint): Contains: External API (blue border, finding count badge "2").
-
-Zone 3 — "Application Zone" (trusted, cool green tint): Contains 9 components:
-- LLM Agent Orchestrator (orange border, badge "18") — finding pills: AG-1, E-2, R-3, LLM-1, LLM-4 (top 5 shown)
-- Guardrails Service (orange border, badge "6") — finding pill: E-1
-- Inter-Agent Communication Channel (amber border, badge "7")
-- Specialist Agent (orange border, badge "10")
-- MCP Tool Server (orange border, badge "8") — finding pill: E-5, T-5
-- Knowledge Base (amber border, badge "3")
-- Audit Logger (amber border, badge "3")
-- Long-Running Learning Loop (amber border, badge "9")
-- Clinical Advisory Sub-Agent (orange border, badge "12") — finding pill: LLM-13, I-9
-
-DATA FLOW ARROWS (colored by highest residual severity on path):
-Orange arrows (High residual): User→Guardrails, Guardrails→Orchestrator, KB→Orchestrator, Channel→Specialist, Channel→Orchestrator, Orchestrator→MCP, Specialist→MCP, MCP→Orchestrator, MCP→Specialist, ExternalAPI→MCP, LearningLoop→Orchestrator, LearningLoop→Specialist, LearningLoop→ClinAdvisor, Orchestrator→ClinAdvisor, KB→ClinAdvisor, ClinAdvisor→Orchestrator
-Amber arrows (Medium residual): Orchestrator→Channel, Specialist→Channel, AuditLogger→LearningLoop
-Gray arrows (clean/informational): Guardrails→User, Orchestrator→KB, Orchestrator→AuditLogger, Specialist→AuditLogger, MCP→AuditLogger, Guardrails→AuditLogger, Orchestrator→User, MCP→ExternalAPI, ClinAdvisor→KB, ClinAdvisor→AuditLogger
-
-FINDING LEGEND (bottom-right panel, compact):
-Orange pill = High Residual (17 findings): S-1, AG-1, E-1, E-2, R-3, LLM-6, LLM-5, OI-1, OI-2, LLM-13, LLM-8, I-2, LLM-1, LLM-4, T-2, E-5, T-5
-Amber pill = Medium Residual (62 findings)
-Blue pill = Low Residual (2 findings): R-5, R-8
-
-FOOTER: "Generated by Tachi Threat Modeling Framework — STRIDE + AI Threat Analysis" in small gray text, centered.
-
-The overall impression should be a polished, authoritative architecture diagram with a complete reference legend — the kind you'd see in a professional security audit deliverable. Prioritize readability — component names, finding IDs, and legend entries must be legible. No hex codes, color values, or technical specifications should appear as visible text. Every element should feel intentionally designed.
+Clean white (#FFFFFF) — polished card styling with subtle drop shadows. Dark text.

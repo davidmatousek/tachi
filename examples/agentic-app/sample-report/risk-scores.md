@@ -1,7 +1,7 @@
 ---
 schema_version: "1.0"
-date: "2026-04-23"
-source_file: "examples/agentic-app/test-output/2026-04-23T19-30-00-F2-wave4/threats.md"
+date: "2026-04-25"
+source_file: "examples/agentic-app/test-output/2026-04-26T03-39-12-F3-wave3/threats.md"
 classification: "confidential"
 scoring_weights:
   cvss_base: 0.35
@@ -10,11 +10,11 @@ scoring_weights:
   reachability: 0.20
 ---
 
-# Risk Scores — Agentic AI Application (F-2 Wave 4)
+# Risk Scores — Agentic AI Application (F-3 Wave 3)
 
 ## 1. Executive Summary
 
-**Total findings scored**: 83 (9 Spoofing · 9 Tampering · 9 Repudiation · 9 Information Disclosure · 9 Denial of Service · 7 Privilege Escalation · 7 Agentic Threats · 14 LLM Threats · 4 Output Integrity · 3 Misinformation)
+**Total findings scored**: 84 (9 Spoofing · 9 Tampering · 9 Repudiation · 9 Information Disclosure · 9 Denial of Service · 7 Privilege Escalation · 8 Agentic Threats · 14 LLM Threats · 4 Output Integrity · 3 Misinformation · 1 Agentic Pattern · 1 NEW: AG-8)
 
 ### Severity Band Distribution
 
@@ -22,12 +22,12 @@ scoring_weights:
 |---------------|------:|----------:|
 | Critical | 0 | 0% |
 | High | 17 | 20% |
-| Medium | 66 | 80% |
+| Medium | 67 | 80% |
 | Low | 0 | 0% |
 
 **Highest-risk component**: User (maximum composite score 8.2, finding S-1)
 
-The portfolio is dominated by Medium-severity findings (80%) with a concentrated High-severity cluster of 17 findings spanning session token replay, privilege escalation, server-side and client-side output injection, and LLM prompt injection. No findings reached the Critical composite threshold, reflecting that the trusted Application Zone placement of most components (reachability 2.5) moderates composite scores even when CVSS base and exploitability are high. The three new MI findings (MI-1, MI-2, MI-3) on the Clinical Advisory Sub-Agent all score Medium, consistent with the LLM category scoring profile for that component.
+The portfolio remains dominated by Medium-severity findings (80%) with the same High-severity cluster of 17 findings as the baseline. The single new finding AG-8 (Insecure Inter-Agent Communication — OWASP ASI07:2026) enters as Medium severity with composite score 5.5, inheriting scores from correlation group primary D-4. No findings crossed the Critical composite threshold in this run; the Trusted Application Zone placement of all internal components (reachability 2.5) continues to moderate composite scores even when CVSS base and exploitability are high.
 
 ---
 
@@ -95,6 +95,7 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 | D-3 | Specialist Agent | The Specialist Agent is invoked by the Orchest... | 5.7 | 6.8 | 6.3 | 2.5 | 5.5 | Medium | 30d | Review |
 | D-4 | Inter-Agent Communication Channel | The Channel's message queue can be flooded by ... | 5.7 | 6.8 | 6.5 | 2.5 | 5.5 | Medium | 30d | Review |
 | D-7 | Audit Logger | The Audit Logger can be overwhelmed by a log-f... | 5.7 | 6.8 | 6.3 | 2.5 | 5.5 | Medium | 30d | Review |
+| AG-8 | Inter-Agent Communication Channel | Insecure Inter-Agent Communication (Category 9... | 5.7 | 6.8 | 6.5 | 2.5 | 5.5 | Medium | 30d | Review |
 | I-6 | Knowledge Base | The Knowledge Base exposes its full document c... | 6.5 | 5.8 | 6.3 | 2.0 | 5.4 | Medium | 30d | Review |
 | I-7 | Audit Logger | The Audit Logger aggregates sensitive data fro... | 6.5 | 5.8 | 6.0 | 2.5 | 5.4 | Medium | 30d | Review |
 | D-8 | Long-Running Learning Loop | The Learning Loop is a resource-intensive batc... | 6.5 | 5.8 | 5.5 | 2.5 | 5.3 | Medium | 30d | Review |
@@ -107,6 +108,7 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 | I-4 | Inter-Agent Communication Channel | Messages on the Inter-Agent Communication Chan... | 5.7 | 5.8 | 5.8 | 2.5 | 5.1 | Medium | 30d | Review |
 | R-8 | External API | The External API provider denies having return... | 4.3 | 5.0 | 5.3 | 6.0 | 5.0 | Medium | 30d | Review |
 | T-1 | Guardrails Service | An attacker with write access to the Guardrail... | 6.6 | 4.8 | 5.0 | 2.5 | 5.0 | Medium | 30d | Review |
+| AGP-01 | LLM Agent Orchestrator | Multi-agent emergent behavior — cascading failu... | 5.5 | 4.5 | 5.8 | 2.5 | 4.6 | Medium | 30d | Review |
 | I-8 | Long-Running Learning Loop | The Learning Loop consumes the full Audit Logg... | 5.9 | 5.0 | 5.8 | 2.5 | 4.9 | Medium | 30d | Review |
 | R-7 | Long-Running Learning Loop | The Learning Loop denies having applied a spec... | 6.5 | 4.5 | 5.3 | 2.5 | 4.9 | Medium | 30d | Review |
 | S-4 | Specialist Agent | The Specialist Agent impersonates the Orchestr... | 5.7 | 5.3 | 5.3 | 2.5 | 4.9 | Medium | 30d | Review |
@@ -143,6 +145,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Credential stuffing can be fully automated across all user accounts; detection is moderate since replay traffic resembles legitimate login activity.
 - **Reachability**: User component is in the Untrusted zone with "user" keyword adjustment (+0.5), yielding 9.5; the internet-facing authentication boundary is maximally exposed.
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### AG-1: Prompt injection causes the Orchestrator to autonomously execute unauthorized high-impact actions (mass data exfiltration from KB, bulk tool invocations against External API) beyond the scope of the user's original request, exploiting the Orchestrator's broad access to system capabilities.
@@ -169,6 +173,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Automatable against any Orchestrator-facing endpoint; affects all sessions; detection is difficult because injected instructions resemble legitimate complex requests.
 - **Reachability**: Component is in the Trusted Application Zone (baseline 2.5); internal placement moderates score despite the severity of the threat.
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### E-2: The Orchestrator has privileged access to the Knowledge Base, MCP Tool Server, and delegation authority over the Specialist Agent and Clinical Advisory Sub-Agent. A prompt injection attack that manipulates the Orchestrator's reasoning can cause it to self-authorize elevated operations: exfiltrating the full KB corpus, invoking tools outside the user's permitted scope, or issuing unauthorized delegation messages.
@@ -193,6 +199,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Prompt injection against an LLM with broad tool access is extensively documented; no special conditions required beyond crafting adversarial input.
 - **Scalability**: Fully automatable; affects any Orchestrator session; blends with legitimate complex requests making detection difficult.
 - **Reachability**: Trusted Application Zone (2.5); the internal placement is the primary score moderator.
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -220,6 +228,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Inherited from CG-3 primary. The inability to attribute actions scales across all Orchestrator sessions systemically.
 - **Reachability**: Inherited from CG-3 primary. Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### E-1: A prompt injection attack that bypasses the Guardrails Service effectively elevates the attacker's privilege from "unauthenticated user" to "trusted caller of the Orchestrator". The attacker's prompt reaches the Orchestrator with the same trust level as validated internal inputs, enabling subsequent escalation.
@@ -244,6 +254,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Prompt injection bypass of guardrails is one of the most widely documented AI security techniques; extensive public research and tooling exists.
 - **Scalability**: Highly scriptable; affects all user sessions; detection is moderately difficult since injected content resembles valid user prompts.
 - **Reachability**: Guardrails Service is in the Trusted Application Zone (2.5); internal zone moderates despite being the first security control.
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -270,6 +282,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Affects all Orchestrator sessions that invoke tools; highly scriptable; server-side execution artifacts may evade application-layer monitoring.
 - **Reachability**: Trusted Application Zone (2.5); the Orchestrator's internal placement moderates the reachability component.
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### OI-2: Improper output handling — server-side execution via Tool Call Request: the Orchestrator emits "Tool Call Request (JSON-RPC)" messages to the MCP Tool Server containing LLM-synthesized parameters. If tool parameters are used to construct SQL queries, shell commands, template expressions, or filesystem paths server-side without parameterization or sanitization, an attacker who influences the Orchestrator's output achieves server-side code/command execution via the tool execution sink.
@@ -294,6 +308,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Widely documented server-side injection class with proven exploit patterns across SQL, shell, and template injection vectors.
 - **Scalability**: Scales across all tool-calling sessions; parameterization failures are systemic rather than per-instance, enabling broad exploitation.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -320,6 +336,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Fully automatable; affects all users who render LLM responses in a browser; XSS payloads are generic and require no per-victim customization.
 - **Reachability**: Trusted Application Zone (2.5) for the Orchestrator component.
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### OI-1: Improper output handling — client-side XSS via LLM response rendered in user browser: the Orchestrator's "Response (HTTPS)" data flow sends LLM-generated content directly to the User. If the client-side rendering layer injects this content into the DOM via innerHTML or equivalent without HTML entity encoding, an attacker who primes the Orchestrator to emit script payloads causes client-side execution in the victim's browser.
@@ -344,6 +362,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Identical assessment to LLM-5; client-side injection from LLM output is thoroughly documented with mature tooling.
 - **Scalability**: Identical to LLM-5; affects all users rendering LLM responses.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -370,6 +390,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Slightly lower than Orchestrator LLM findings due to the specialized clinical invocation path; still broadly scriptable across all clinical queries.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### LLM-8: Prompt injection via delegation messages: the Specialist Agent processes tasks delegated by the Orchestrator via the Inter-Agent Channel. An attacker who injects adversarial content into the Delegation Message can hijack the Specialist's task execution, causing it to perform unauthorized tool invocations or exfiltrate data through its result channel.
@@ -395,6 +417,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Affects all Specialist invocations; automatable through crafted delegation messages; detection difficulty is high as injected content resembles legitimate task specifications.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### I-2: The Orchestrator's context window contains sensitive information (retrieved documents from the Knowledge Base, tool results, system prompts). A prompt injection attack or model hallucination can cause the Orchestrator to leak this context in its HTTPS response to the User, exposing system-internal data.
@@ -419,6 +443,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Context leakage via prompt injection is the most extensively documented LLM attack; immediate exploitability with no prerequisites beyond submitting crafted prompts.
 - **Scalability**: Automated extraction of context across all sessions; the broad scope of exfiltratable data (entire system context) amplifies the impact per successful exploitation.
 - **Reachability**: Trusted Application Zone (2.5) for the Orchestrator.
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -446,6 +472,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Inherited from CG-4 primary. Affects all Orchestrator sessions.
 - **Reachability**: Inherited from CG-4 primary. Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### LLM-4: Training data poisoning via the Long-Running Learning Loop: the Orchestrator ingests model updates from the Learning Loop that was trained on audit log data. An attacker who pollutes the audit log with adversarial interaction records poisons the Orchestrator's future behavior at update time.
@@ -472,6 +500,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Inherited from CG-1 primary. Affects all future Orchestrator sessions after a poisoned model update.
 - **Reachability**: Inherited from CG-1 primary. Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### T-2: The Orchestrator's context window (system prompt, retrieved documents, tool results) can be tampered with by an attacker who controls any upstream data source — the Knowledge Base, the Inter-Agent Channel (aggregated results), or tool call responses from the MCP Tool Server.
@@ -496,6 +526,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Multiple attack paths (KB poisoning, tool result tampering, channel manipulation) are documented; moderate skill requirement to poison the specific upstream source.
 - **Scalability**: Poisoning upstream sources affects all subsequent Orchestrator sessions; the multi-path attack surface broadens the practical scope.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -522,6 +554,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Credential abuse enables repeated automated exploitation across all permitted external targets; detection depends on monitoring anomalous API patterns.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### T-5: Tool call request parameters supplied by agent LLM outputs can be tampered with before execution if the Tool Server does not validate them against an explicit allowlist. An attacker who can influence the Orchestrator's or Specialist's LLM output can modify JSON-RPC parameters to call unintended tools or supply malicious arguments.
@@ -546,6 +580,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: JSON-RPC parameter injection is well-documented; shell metacharacter and SQL injection patterns are well-understood attack techniques.
 - **Scalability**: Affects all tool invocations; systematically exploitable across all agents that invoke tools; execution-level impact makes detection challenging without strict input validation telemetry.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -572,6 +608,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Affects all agent-to-tool-server invocations; pattern is systematic rather than instance-specific.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### E-7: The Clinical Advisory Sub-Agent operates with access to the Knowledge Base and produces clinical outputs that feed directly into the Orchestrator's response path. A prompt injection attack embedded in the Clinical Query / Context payload can cause the sub-agent to self-authorize elevated access or return outputs designed to manipulate the Orchestrator into taking high-privilege actions.
@@ -597,9 +635,11 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Affects all clinical advisory sessions; lower scalability than direct Orchestrator paths because of the specialized invocation context.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
-### I-9: The Clinical Advisory Sub-Agent processes clinical query context from the Orchestrator and retrieves documents from the Knowledge Base. If its Clinical Summary + Recommendations output is not scrubbed before inclusion in the Orchestrator's HTTPS response to the User, clinical context can leak to unauthorized parties. Additionally, Clinical Decision Log Entries not field-classified before writing to the Audit Logger propagate sensitive clinical data into the training signal stream.
+### I-9: The Clinical Advisory Sub-Agent processes clinical query context from the Orchestrator and retrieves documents from the Knowledge Base. If its Clinical Summary + Recommendations output is not scrubbed before inclusion in the Orchestrator's HTTPS response to the User, clinical context (patient-specific data, sensitive medical records, proprietary clinical protocols) can leak to unauthorized parties. Additionally, if Clinical Decision Log Entries are not field-classified before writing to the Audit Logger, sensitive clinical data propagates into the training signal stream.
 
 **Component**: Clinical Advisory Sub-Agent
 **Category**: Information Disclosure
@@ -622,6 +662,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Leakage occurs systematically across all clinical sessions without output scrubbing; propagation into the training stream compounds scale.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### LLM-2: Indirect prompt injection via the Knowledge Base: an attacker embeds adversarial instructions in documents stored in the Knowledge Base. When the Orchestrator retrieves these documents during vector search, the adversarial instructions are injected into its context window, hijacking its reasoning.
@@ -642,14 +684,16 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 **CVSS Vector**: `CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:N`
 
 **Scoring Rationale**:
-- **CVSS**: Maximum base; indirect injection via KB is effectively unauthenticated and unatended — attacker content is already resident in the knowledge store, no real-time interaction needed.
+- **CVSS**: Maximum base; indirect injection via KB is effectively unauthenticated and unattended — attacker content is already resident in the knowledge store, no real-time interaction needed.
 - **Exploitability**: Lower than direct injection (6.0 vs 8.8) because the attacker must first gain write access to the KB or exploit a data ingestion path; the indirect nature adds complexity.
 - **Scalability**: Once adversarial documents are injected, exploitation is persistent and affects all retrieval sessions without further attacker involvement.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
-### D-1: The Guardrails Service is vulnerable to resource exhaustion via high-volume prompt submission. An attacker sends computationally expensive prompts at high rate to degrade or collapse the filtering pipeline.
+### D-1: The Guardrails Service is vulnerable to resource exhaustion via high-volume prompt submission. An attacker sends computationally expensive prompts (complex regex evaluation patterns, adversarially crafted inputs that maximize rule evaluation cost) at high rate to degrade or collapse the filtering pipeline.
 
 **Component**: Guardrails Service
 **Category**: Denial of Service
@@ -672,9 +716,11 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Highly scriptable; affects all users of the system when Guardrails collapses; detection is rapid but mitigation requires operational response.
 - **Reachability**: Trusted Application Zone (2.5); the Guardrails Service sits behind the network ingress but is the first processing layer for all user traffic.
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
-### LLM-7: Improper output handling — SSRF via LLM-synthesized URL: the Orchestrator can instruct the MCP Tool Server to fetch external URLs synthesized from LLM output. An attacker who influences the Orchestrator's output can cause it to emit internal service URLs (cloud metadata endpoints, internal admin APIs) as tool parameters.
+### LLM-7: Improper output handling — SSRF via LLM-synthesized URL: the Orchestrator can instruct the MCP Tool Server to fetch external URLs synthesized from LLM output. An attacker who influences the Orchestrator's output can cause it to emit internal service URLs (cloud metadata endpoints, internal admin APIs) as tool parameters. The Tool Server fetches these with its server-side network credentials.
 
 **Component**: LLM Agent Orchestrator
 **Category**: LLM Threats
@@ -696,6 +742,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: SSRF via LLM-synthesized URLs is documented in OWASP LLM05; requires crafting prompts that cause URL synthesis, a well-understood technique.
 - **Scalability**: Systematic exploitation possible across all tool-calling sessions; cloud metadata endpoint access can yield credentials affecting the entire infrastructure.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -723,9 +771,11 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Inherited from CG-6 primary. Poisoning affects all future clinical advisory sessions.
 - **Reachability**: Inherited from CG-6 primary. Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
-### MI-2: Overreliance / Missing HITL on Decision-Critical Output (Category 3 per FR-017): The Clinical Advisory Sub-Agent's "Clinical Summary + Recommendations" output flows directly back to the LLM Agent Orchestrator and from there into the user-facing response path without a declared human-in-the-loop (HITL) review gate. Clinical recommendations surface to the end consumer without requiring physician sign-off.
+### MI-2: Overreliance / Missing HITL on Decision-Critical Output (Category 3 per FR-017): The Clinical Advisory Sub-Agent's "Clinical Summary + Recommendations" output flows directly back to the LLM Agent Orchestrator and from there into the user-facing response path without a declared human-in-the-loop (HITL) review gate.
 
 **Component**: Clinical Advisory Sub-Agent
 **Category**: LLM Threats
@@ -748,9 +798,11 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Affects every clinical advisory session systematically; the absence of a HITL gate means the risk scales with usage volume without any mitigating friction.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
-### T-9: The Clinical Advisory Sub-Agent's context window can be tampered with via two paths: (1) adversarial documents injected into the Knowledge Base that are retrieved during vector search; (2) tampering with the Clinical Query / Context payload from the Orchestrator. Either path causes the sub-agent to incorporate adversarial content into clinical summaries returned to the Orchestrator.
+### T-9: The Clinical Advisory Sub-Agent's context window can be tampered with via two paths: (1) adversarial documents injected into the Knowledge Base that are retrieved during vector search, populating the sub-agent's reasoning context with malicious clinical "facts"; (2) tampering with the Clinical Query / Context payload from the Orchestrator, which may embed attacker-controlled clinical framing. Either path causes the sub-agent to incorporate adversarial content into clinical summaries returned to the Orchestrator.
 
 **Component**: Clinical Advisory Sub-Agent
 **Category**: Tampering
@@ -772,6 +824,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Multi-path attack (KB documents or query payload) requires initial privileged access to either path; lower exploitability than direct injection attacks.
 - **Scalability**: Once KB documents are poisoned, exploitation persists across all clinical sessions; query payload tampering is limited to compromised or attacker-influenced pipeline stages.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -798,9 +852,11 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Affects all Specialist sessions that chain tool calls; the chained injection pattern requires specific tool sequences but those sequences are common in agentic workflows.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
-### MI-1: Ungrounded Factual Emission (Category 1 per FR-017): The Clinical Advisory Sub-Agent emits clinical summaries containing factual medical claims without mandatory RAG grounding. There is no declared retrieval-strength metric, no per-claim source anchoring, and no output-time verification that factual claims are supported by retrieved content.
+### MI-1: Ungrounded Factual Emission (Category 1 per FR-017): The Clinical Advisory Sub-Agent emits clinical summaries containing factual medical claims (diagnostic observations, drug-interaction assertions, clinical recommendations) to the Orchestrator's response path without mandatory RAG grounding against a verified EHR index.
 
 **Component**: Clinical Advisory Sub-Agent
 **Category**: LLM Threats
@@ -819,13 +875,15 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 
 **Scoring Rationale**:
 - **CVSS**: Structural hallucination risk; clinical query triggers output (UI:R); scope change as ungrounded factual claims flow through Orchestrator to end consumers; HIGH C and I from patient-safety consequences of fabricated drug doses or contraindications.
-- **Exploitability**: No active attack required — this is a structural design gap; any clinical query that exceeds KB coverage triggers hallucination risk; well-documented AI safety failure mode (MITRE ATLAS AML.T0042).
+- **Exploitability**: No active attack required — this is a structural design gap; any clinical query that exceeds KB coverage triggers hallucination risk; well-documented AI safety failure mode.
 - **Scalability**: Affects every clinical advisory session where KB coverage is insufficient; scales with query volume and KB staleness; systematic rather than per-instance.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
-### MI-3: Retrieval-Grounding Gap (Category 4 per FR-017): The Clinical Advisory Sub-Agent performs vector search against the Knowledge Base to retrieve supporting clinical documents. However, there is no declared mechanism to detect or handle retrieval failures — scenarios where the Knowledge Base does not contain documents relevant to the clinical query.
+### MI-3: Retrieval-Grounding Gap (Category 4 per FR-017): The Clinical Advisory Sub-Agent performs vector search against the Knowledge Base to retrieve supporting clinical documents. However, there is no declared mechanism to detect or handle retrieval failures — scenarios where the Knowledge Base does not contain documents relevant to the clinical query (low-recall retrieval, out-of-distribution queries, stale KB content).
 
 **Component**: Clinical Advisory Sub-Agent
 **Category**: LLM Threats
@@ -847,6 +905,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Slightly lower than MI-1 (6.8 vs 7.0) because the failure requires an out-of-distribution or KB-stale query to trigger; the attack surface is narrower than general ungrounded emission.
 - **Scalability**: Scales with KB staleness and out-of-distribution query frequency; KB currency issues are systemic operational concerns affecting all clinical queries.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -873,6 +933,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Affects all tool-fetching sessions; IAM credential theft via SSRF scales to full infrastructure compromise.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### E-3: The Specialist Agent receives delegated permissions from the Orchestrator. If the delegation message is forged or tampered with (granting the Specialist elevated permissions beyond the original user session scope), the Specialist gains unauthorized capability to invoke tools or access data outside its permitted scope.
@@ -897,6 +959,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Requires first compromising the delegation message path (channel tampering or Orchestrator compromise); moderate prerequisite reduces immediate exploitability.
 - **Scalability**: Each forged delegation affects a specific session; less scalable than session-independent injection attacks.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -923,6 +987,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Persistent channel access enables ongoing message injection; limited to processes already in the Application Zone.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### S-5: The Channel is a shared message routing substrate with no inherent sender authentication. A malicious process in the Application Zone can inject messages impersonating either the Orchestrator or the Specialist Agent, enabling unauthorized task injection or result fabrication.
@@ -947,6 +1013,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Requires Application Zone network access but no authentication; moderately accessible for an insider or compromised zone process.
 - **Scalability**: Persistent forged message injection affects all inter-agent coordination; systematic rather than per-session.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -973,6 +1041,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Persistent poisoning of all future model updates; temporal delay means detection is deferred until behavioral anomalies surface post-update.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### AG-3: The Specialist Agent, once delegated a task, operates autonomously without continuous Orchestrator oversight. An adversarially crafted delegation message can cause the Specialist to execute a sequence of tool calls that constitutes a prohibited action when viewed holistically — each individual call appears permitted, but the combination achieves an unauthorized outcome.
@@ -998,9 +1068,11 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Each attack requires task-specific crafting; limited to sessions where the Specialist is delegated tasks with tool access.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
-### AG-6: The MCP Tool Server acts as a privileged execution broker. Runaway or adversarially prompted agents can cause the Tool Server to repeatedly call External API endpoints in rapid succession, exhausting the API provider's rate limits, incurring financial costs, or triggering security lockouts.
+### AG-6: The MCP Tool Server acts as a privileged execution broker. Runaway or adversarially prompted agents (Orchestrator or Specialist) can cause the Tool Server to repeatedly call External API endpoints in rapid succession, exhausting the API provider's rate limits, incurring financial costs, or triggering security lockouts that deny the system access to required external capabilities.
 
 **Component**: MCP Tool Server
 **Category**: Agentic Threats
@@ -1024,9 +1096,11 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Inherited from CG-5 primary. Systemic effect on all tool-calling sessions.
 - **Reachability**: Inherited from CG-5 primary. Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
-### D-2: The Orchestrator's inference pipeline is a bounded resource. An attacker can exhaust the Orchestrator's capacity by flooding it with high-token-count prompts or by injecting context that forces recursive tool invocation chains. This starves legitimate user requests of Orchestrator capacity.
+### D-2: The Orchestrator's inference pipeline is a bounded resource. An attacker (or malfunctioning upstream component) can exhaust the Orchestrator's capacity by flooding it with high-token-count prompts or by injecting context that forces recursive tool invocation chains. This starves legitimate user requests of Orchestrator capacity.
 
 **Component**: LLM Agent Orchestrator
 **Category**: Denial of Service
@@ -1048,6 +1122,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: High-token flooding is trivially automatable; recursive tool invocation triggering requires prompt crafting but remains accessible.
 - **Scalability**: Affects all concurrent user sessions; highly scriptable; detection depends on token budget monitoring which may not be deployed by default.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -1074,6 +1150,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Affects all concurrent tool-calling sessions; External API lockouts have secondary financial and access-denial consequences.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### OI-4: Improper output handling — server-side execution via Clinical Query / Context injection into the Orchestrator's downstream Tool Call Request: the Clinical Advisory Sub-Agent returns "Clinical Summary + Recommendations" to the Orchestrator via JSON-RPC. If the Orchestrator incorporates this clinical output into a subsequent Tool Call Request without sanitization, adversarial content injected into the clinical output can achieve server-side execution at the Tool Server.
@@ -1098,6 +1176,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Multi-hop injection path requires injecting adversarial content into the clinical output that survives Orchestrator incorporation into tool parameters; moderate complexity.
 - **Scalability**: Affects sessions that use clinical advisory output in downstream tool calls; specific clinical workflow dependency limits scope relative to direct tool injection.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -1124,6 +1204,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Exercisable across all user sessions; detection requires cryptographic evidence that may not be deployed.
 - **Reachability**: User is in the Untrusted zone (9.5); the high reachability score significantly elevates this finding's composite despite low CVSS.
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### S-6: An attacker in the Application Zone spoofs a valid agent (Orchestrator or Specialist) to submit unauthorized tool call requests to the MCP Tool Server. Without caller authentication, any process can invoke tools with the server's external-facing credentials.
@@ -1149,9 +1231,11 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Persistent spoofed access enables ongoing unauthorized tool invocations; limited to Application Zone actors.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
-### AG-2: The Orchestrator and Specialist Agent can jointly coordinate (via the Inter-Agent Channel) to achieve a combined action that neither could perform alone or that would trigger per-agent rate limits if attempted individually. An attacker who compromises both agents can leverage this coordination for policy circumvention or joint data exfiltration.
+### AG-2: The Orchestrator and Specialist Agent can jointly coordinate (via the Inter-Agent Channel) to achieve a combined action that neither could perform alone or that would trigger per-agent rate limits if attempted individually. An attacker who compromises both agents (or injects coordinated prompts via the Inter-Agent Channel) can leverage this coordination for policy circumvention or joint data exfiltration.
 
 **Component**: LLM Agent Orchestrator
 **Category**: Agentic Threats
@@ -1174,9 +1258,11 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Coordinated attacks are harder to script at scale than single-agent attacks; detection is harder because individual agent actions appear legitimate.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
-### AG-4: The Channel is a shared substrate whose compromise enables agent-in-the-middle attacks: an attacker intercepts delegation messages, modifies the task parameters (replacing legitimate tool targets with attacker-controlled endpoints), and forwards the modified message to the Specialist Agent.
+### AG-4: The Channel is a shared substrate whose compromise enables agent-in-the-middle attacks: an attacker intercepts delegation messages, modifies the task parameters (replacing legitimate tool targets with attacker-controlled endpoints), and forwards the modified message to the Specialist Agent. The Specialist executes unauthorized actions believing the instructions came from the Orchestrator.
 
 **Component**: Inter-Agent Communication Channel
 **Category**: Agentic Threats
@@ -1198,6 +1284,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Requires Application Zone network position to intercept channel messages; moderate barrier.
 - **Scalability**: Persistent channel access enables ongoing message modification; detection depends on message-level integrity checking.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -1224,6 +1312,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Once the model update is deployed, the effect is persistent across all future sessions for all three updated agents; limited detection opportunity before deployment.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### I-1: The Guardrails Service leaks the content of rejected prompts (including their rejection reasons) in error responses returned to the User. An attacker can iteratively probe the filtering rules by observing rejection reasons, enabling systematic bypass through adaptive prompt crafting.
@@ -1248,6 +1338,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Trivially exploitable — any unauthenticated user can observe rejection responses and iteratively refine prompts; no tooling or skill required beyond prompt submission.
 - **Scalability**: Automated fuzzing of rejection patterns is fully scriptable; affects all users of the Guardrails-protected endpoint; no per-victim customization needed.
 - **Reachability**: Trusted Application Zone (2.5) for the Guardrails Service component.
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -1274,6 +1366,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Persistent forged delegation messages affect all Specialist sessions; limited to Application Zone actors.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### T-3: The Specialist Agent's operational context can be tampered with by injecting adversarial content into the Delegated Task message via the Inter-Agent Communication Channel. A compromised message in the Channel can redirect the Specialist's actions, modify its tool call targets, or exfiltrate data via a fabricated task payload.
@@ -1298,6 +1392,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Requires Application Zone access to the channel; moderately exploitable for an insider or compromised zone process.
 - **Scalability**: Message-level tampering affects targeted delegation messages; not fully automated without persistent channel access.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -1324,6 +1420,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Affects all messages transiting the channel while the attacker maintains queue access.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### S-8: The External API provider's identity is not verified beyond TLS certificate validation. An attacker performing DNS hijacking or a BGP route hijack can redirect the MCP Tool Server's outbound API calls to an attacker-controlled server that returns malicious tool results.
@@ -1349,9 +1447,11 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: BGP hijacking can redirect global traffic but requires substantial resources; limited scalability for most threat actors.
 - **Reachability**: External API is in the Semi-Trusted External Services zone (6.0 with "external" keyword adjustment).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
-### S-9: The Clinical Advisory Sub-Agent receives Clinical Query / Context messages from the LLM Agent Orchestrator via JSON-RPC without per-message sender attestation. A compromised or rogue Application Zone process can inject crafted clinical queries impersonating the Orchestrator, causing the sub-agent to process unauthorized requests and return manipulated clinical summaries.
+### S-9: The Clinical Advisory Sub-Agent receives Clinical Query / Context messages from the LLM Agent Orchestrator via JSON-RPC without per-message sender attestation. A compromised or rogue Application Zone process can inject crafted clinical queries impersonating the Orchestrator, causing the sub-agent to process unauthorized requests and return manipulated clinical summaries that enter the Orchestrator's response path.
 
 **Component**: Clinical Advisory Sub-Agent
 **Category**: Spoofing
@@ -1374,6 +1474,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Targeted clinical advisory path; lower scalability than broad Orchestrator-level spoofing.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### T-7: The Audit Logger entries can be tampered with by a process with write access to the log store. Modifying or deleting log entries corrupts the training signal stream consumed by the Long-Running Learning Loop, causing poisoned model updates, and also destroys forensic evidence needed for incident response.
@@ -1394,86 +1496,12 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 **CVSS Vector**: `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:N/I:H/A:L`
 
 **Scoring Rationale**:
-- **CVSS**: Scope-changing log tampering with high integrity impact (audit trail corruption) and low availability impact (log flooding can cause availability degradation); confidentiality is not directly impacted by modification.
+- **CVSS**: Scope-changing log tampering with high integrity impact (audit trail corruption) and low availability impact; confidentiality is not directly impacted by modification.
 - **Exploitability**: Requires write access to the log store; authenticated service account compromise needed; moderate barrier.
 - **Scalability**: Systematic log modification affects the entire training signal stream; detection depends on Merkle-chain verification which may not be deployed.
 - **Reachability**: Trusted Application Zone (2.5).
 
----
-
-### D-6: The Knowledge Base can be rendered unavailable by an attacker who issues high-volume, complex vector search queries (exhaustive nearest-neighbor searches with high dimensionality). This degrades retrieval performance for the Orchestrator.
-
-**Component**: Knowledge Base
-**Category**: Denial of Service
-**MAESTRO Layer**: L2 — Data Operations
-**Composite Score**: 5.7 (Medium)
-
-| Dimension | Score | Weight | Weighted |
-|-----------|------:|-------:|---------:|
-| CVSS Base | 6.5 | 0.35 | 2.28 |
-| Exploitability | 6.8 | 0.30 | 2.04 |
-| Scalability | 6.5 | 0.15 | 0.98 |
-| Reachability | 2.0 | 0.20 | 0.40 |
-| **Composite** | | | **5.7** |
-
-**CVSS Vector**: `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H`
-
-**Scoring Rationale**:
-- **CVSS**: Authenticated DoS; high availability impact from KB retrieval degradation affecting the Orchestrator's context assembly.
-- **Exploitability**: Query flooding is scriptable with any authenticated vector search client; complexity budget exhaustion can be triggered with crafted high-dimensionality queries.
-- **Scalability**: Affects all Orchestrator and ClinAdvisor retrieval sessions simultaneously; query-level DoS is fully automatable.
-- **Reachability**: Knowledge Base in Trusted zone with "database/data store" keyword adjustment (-0.5) yields reachability of 2.0.
-
----
-
-### LLM-11: Data poisoning of the Learning Loop's training signal: the audit log training stream is the Learning Loop's primary data source. An attacker who systematically injects adversarially crafted interaction records into the Audit Logger creates poisoned training data that shifts the updated models' behavior over the training cycle.
-
-**Component**: Long-Running Learning Loop
-**Category**: LLM Threats
-**MAESTRO Layer**: Unclassified
-**Composite Score**: 5.7 (Medium)
-**Correlation Group**: Scores inherited from primary finding T-8
-
-| Dimension | Score | Weight | Weighted |
-|-----------|------:|-------:|---------:|
-| CVSS Base | 8.5 | 0.35 | 2.98 |
-| Exploitability | 4.3 | 0.30 | 1.29 |
-| Scalability | 6.3 | 0.15 | 0.95 |
-| Reachability | 2.5 | 0.20 | 0.50 |
-| **Composite** | | | **5.7** |
-
-**CVSS Vector**: `CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N`
-
-**Scoring Rationale**:
-- **CVSS**: Inherited from CG-2 primary (T-8); training data poisoning via audit log manipulation with complex timing requirements.
-- **Exploitability**: Inherited from CG-2 primary. Temporal attack requiring coordinated audit log injection.
-- **Scalability**: Inherited from CG-2 primary. Affects all future model instances after a poisoned update.
-- **Reachability**: Inherited from CG-2 primary. Trusted Application Zone (2.5).
-
----
-
-### T-8: The training signal stream from the Audit Logger to the Learning Loop can be poisoned (data poisoning attack) by injecting adversarial entries into the Audit Logger before training runs. A time-delayed attack inserts adversarial training signals that activate only when a specific trigger pattern appears in future user prompts — a sleeper-agent injection via the model update cycle.
-
-**Component**: Long-Running Learning Loop
-**Category**: Tampering
-**MAESTRO Layer**: Unclassified
-**Composite Score**: 5.7 (Medium)
-
-| Dimension | Score | Weight | Weighted |
-|-----------|------:|-------:|---------:|
-| CVSS Base | 8.5 | 0.35 | 2.98 |
-| Exploitability | 4.3 | 0.30 | 1.29 |
-| Scalability | 6.3 | 0.15 | 0.95 |
-| Reachability | 2.5 | 0.20 | 0.50 |
-| **Composite** | | | **5.7** |
-
-**CVSS Vector**: `CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N`
-
-**Scoring Rationale**:
-- **CVSS**: High-complexity temporal attack requiring precise timing for trigger activation; scope change affects all three updated models; high C and I from behavioral manipulation.
-- **Exploitability**: Very low exploitability (4.3) — sleeper-agent injection requires: crafting trigger-activated training signals, audit log write access, surviving training data validation, and waiting for model update deployment.
-- **Scalability**: Persistent effect across all future sessions once deployed; the trigger-based activation allows targeted exploitation that is hard to detect without behavioral monitoring.
-- **Reachability**: Trusted Application Zone (2.5).
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -1500,6 +1528,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Gradual autonomy expansion affects all agents updated by the Learning Loop; temporal persistence makes detection very difficult.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### D-9: The Clinical Advisory Sub-Agent is invoked by the Orchestrator for each clinical query via JSON-RPC and performs a vector search against the Knowledge Base. High-volume or adversarially-crafted clinical queries can exhaust the sub-agent's inference capacity or starve the Knowledge Base of query capacity, disrupting both clinical advisory and baseline Orchestrator retrieval operations.
@@ -1524,6 +1554,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Slightly lower than general orchestrator DoS because the attack requires accessing the clinical advisory invocation path; still automatable with authenticated access.
 - **Scalability**: Shared KB dependency means clinical DoS cascades to baseline Orchestrator retrieval; dual disruption amplifies impact.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -1550,6 +1582,90 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Affects all Specialist instances after the model update; temporal delay obscures attribution.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
+---
+
+### D-6: The Knowledge Base can be rendered unavailable by an attacker who issues high-volume, complex vector search queries (exhaustive nearest-neighbor searches with high dimensionality). This degrades retrieval performance for the Orchestrator.
+
+**Component**: Knowledge Base
+**Category**: Denial of Service
+**MAESTRO Layer**: L2 — Data Operations
+**Composite Score**: 5.7 (Medium)
+
+| Dimension | Score | Weight | Weighted |
+|-----------|------:|-------:|---------:|
+| CVSS Base | 6.5 | 0.35 | 2.28 |
+| Exploitability | 6.8 | 0.30 | 2.04 |
+| Scalability | 6.5 | 0.15 | 0.98 |
+| Reachability | 2.0 | 0.20 | 0.40 |
+| **Composite** | | | **5.7** |
+
+**CVSS Vector**: `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H`
+
+**Scoring Rationale**:
+- **CVSS**: Authenticated DoS; high availability impact from KB retrieval degradation affecting the Orchestrator's context assembly.
+- **Exploitability**: Query flooding is scriptable with any authenticated vector search client; complexity budget exhaustion can be triggered with crafted high-dimensionality queries.
+- **Scalability**: Affects all Orchestrator and ClinAdvisor retrieval sessions simultaneously; query-level DoS is fully automatable.
+- **Reachability**: Knowledge Base in Trusted zone with "data store" keyword adjustment (-0.5) yields reachability of 2.0.
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
+---
+
+### LLM-11: Data poisoning of the Learning Loop's training signal: the audit log training stream is the Learning Loop's primary data source. An attacker who systematically injects adversarially crafted interaction records into the Audit Logger creates poisoned training data that shifts the updated models' behavior over the training cycle — a temporal data poisoning attack with delayed activation at the next model update.
+
+**Component**: Long-Running Learning Loop
+**Category**: LLM Threats
+**MAESTRO Layer**: Unclassified
+**Composite Score**: 5.7 (Medium)
+**Correlation Group**: Scores inherited from primary finding T-8
+
+| Dimension | Score | Weight | Weighted |
+|-----------|------:|-------:|---------:|
+| CVSS Base | 8.5 | 0.35 | 2.98 |
+| Exploitability | 4.3 | 0.30 | 1.29 |
+| Scalability | 6.3 | 0.15 | 0.95 |
+| Reachability | 2.5 | 0.20 | 0.50 |
+| **Composite** | | | **5.7** |
+
+**CVSS Vector**: `CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N`
+
+**Scoring Rationale**:
+- **CVSS**: Inherited from CG-2 primary (T-8); training data poisoning via audit log manipulation with complex timing requirements.
+- **Exploitability**: Inherited from CG-2 primary. Temporal attack requiring coordinated audit log injection.
+- **Scalability**: Inherited from CG-2 primary. Affects all future model instances after a poisoned update.
+- **Reachability**: Inherited from CG-2 primary. Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
+---
+
+### T-8: The training signal stream from the Audit Logger to the Learning Loop can be poisoned (data poisoning attack) by injecting adversarial entries into the Audit Logger before training runs. A time-delayed attack (temporal attack pattern) inserts adversarial training signals that activate only when a specific trigger pattern appears in future user prompts — a sleeper-agent injection via the model update cycle.
+
+**Component**: Long-Running Learning Loop
+**Category**: Tampering
+**MAESTRO Layer**: Unclassified
+**Composite Score**: 5.7 (Medium)
+
+| Dimension | Score | Weight | Weighted |
+|-----------|------:|-------:|---------:|
+| CVSS Base | 8.5 | 0.35 | 2.98 |
+| Exploitability | 4.3 | 0.30 | 1.29 |
+| Scalability | 6.3 | 0.15 | 0.95 |
+| Reachability | 2.5 | 0.20 | 0.50 |
+| **Composite** | | | **5.7** |
+
+**CVSS Vector**: `CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N`
+
+**Scoring Rationale**:
+- **CVSS**: High-complexity temporal attack requiring precise timing for trigger activation; scope change affects all three updated models; high C and I from behavioral manipulation.
+- **Exploitability**: Very low exploitability (4.3) — sleeper-agent injection requires: crafting trigger-activated training signals, audit log write access, surviving training data validation, and waiting for model update deployment.
+- **Scalability**: Persistent effect across all future sessions once deployed; the trigger-based activation allows targeted exploitation that is hard to detect without behavioral monitoring.
+- **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### D-3: The Specialist Agent is invoked by the Orchestrator via the Inter-Agent Channel. An adversarially crafted delegation message that triggers computationally expensive subtasks can exhaust the Specialist Agent's processing capacity, preventing it from completing legitimate delegated work.
@@ -1574,6 +1690,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Computationally expensive task injection through delegation messages is straightforward with channel access; task queue depth limits may not be enforced.
 - **Scalability**: Affects all Specialist-delegated workloads simultaneously; crafted tasks can be mass-submitted once channel access is obtained.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -1600,6 +1718,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Queue saturation affects all in-flight messages across all agent sessions; slightly higher scriptability than D-3 because the channel is a shared substrate.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### D-7: The Audit Logger can be overwhelmed by a log-flooding attack from a compromised Application Zone process, causing legitimate log entries to be dropped or the logger to become unavailable, creating audit gaps and potentially cascading to block all pipeline operations that wait for log confirmation.
@@ -1624,6 +1744,36 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Log flooding is automatable with any Application Zone process that has write access to the logger.
 - **Scalability**: Affects the entire pipeline's audit capability; write rate limits may not be enforced by default.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
+---
+
+### AG-8: Insecure Inter-Agent Communication (Category 9 — OWASP ASI07:2026): The Inter-Agent Communication Channel connects the LLM Agent Orchestrator, Specialist Agent, and (via the Orchestrator) the Clinical Advisory Sub-Agent without declaring mutual authentication, inter-agent message signing, or nonce-based replay prevention. A network-positioned attacker or a compromised Application Zone process can intercept delegation messages (AML.T0060 agent-in-the-middle topology) and replay, modify, or inject instructions to the Specialist Agent or the Orchestrator without any authentic-source signal available to the receiving component.
+
+**Component**: Inter-Agent Communication Channel
+**Category**: Agentic Threats
+**MAESTRO Layer**: Unclassified
+**Composite Score**: 5.5 (Medium)
+**Correlation Group**: Scores inherited from primary finding D-4
+
+| Dimension | Score | Weight | Weighted |
+|-----------|------:|-------:|---------:|
+| CVSS Base | 5.7 | 0.35 | 2.00 |
+| Exploitability | 6.8 | 0.30 | 2.04 |
+| Scalability | 6.5 | 0.15 | 0.98 |
+| Reachability | 2.5 | 0.20 | 0.50 |
+| **Composite** | | | **5.5** |
+
+**CVSS Vector**: `CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H`
+
+**Scoring Rationale**:
+- **CVSS**: Inherited from CG-7 primary (D-4); the insecure channel design shares the same attack surface and availability impact as message queue flooding — an attacker who can inject/replay messages achieves the same coordination disruption as flooding. The absence of mTLS, message signing, and replay prevention enables this attack path with the same adjacent-network, low-privilege prerequisite.
+- **Exploitability**: Inherited from CG-7 primary. Message injection and replay on an unauthenticated channel substrate is automatable once Application Zone access is obtained.
+- **Scalability**: Inherited from CG-7 primary. Insecure channel affects all inter-agent coordination sessions systematically.
+- **Reachability**: Inherited from CG-7 primary. Trusted Application Zone (2.5).
+
+*Score source: inherited (correlation primary D-4, baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -1650,6 +1800,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Exhaustive corpus extraction can be automated; query-result limits are the primary mitigating control if deployed.
 - **Reachability**: Knowledge Base reachability 2.0 (Trusted zone, data store keyword adjustment).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### I-7: The Audit Logger aggregates sensitive data from all Application Zone components. Unauthorized read access to the logger (misconfigured access controls, insider threat) exposes the full operational history of the agent system, including user prompts, model decisions, tool call parameters, and filter rule triggers.
@@ -1674,6 +1826,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Requires read access to the log store; misconfigured access controls or insider threat are the primary vectors.
 - **Scalability**: Bulk log extraction is automatable; the aggregated nature of the audit trail amplifies per-access impact.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -1700,6 +1854,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Affects the entire model update pipeline; resource quotas may not be enforced on batch workloads by default.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### I-5: Tool results from External API calls may contain sensitive data (user records, financial data, PII) that the Tool Server logs verbatim to the Audit Logger. If Audit Logger access is not restricted, this data becomes accessible to any process that reads the audit trail, including the Learning Loop's training pipeline.
@@ -1724,6 +1880,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Requires read access to the Audit Logger; straightforward once access controls are misconfigured or compromised.
 - **Scalability**: PII propagation into the training pipeline is a systemic issue affecting all logged tool calls; hard to remediate retroactively.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -1750,6 +1908,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Automatable query generation for model extraction; query anomaly detection may not be deployed; extraction can be distributed across many sessions.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### LLM-12: Model theft via Learning Loop output monitoring: an attacker with observability access to the Learning Loop's model update artifacts (parameter diffs, update packages) can reconstruct the model's architecture, parameters, or training data characteristics — effectively stealing the proprietary model.
@@ -1774,6 +1934,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Requires observability access to the Learning Loop's output artifacts; insider or misconfigured access control is the primary vector.
 - **Scalability**: One-time artifact access yields the complete model; no repeated exploitation needed.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -1800,6 +1962,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Once injected, adversarial documents affect all retrieval sessions persistently; document-level integrity checks are the primary detection control.
 - **Reachability**: Knowledge Base reachability 2.0 (Trusted zone, data store keyword adjustment).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### R-9: The Clinical Advisory Sub-Agent denies having generated a specific clinical summary or recommendation. Without non-repudiable logs of each clinical output (with content hash and the KB documents retrieved to produce it), clinical decisions influenced by sub-agent outputs cannot be attributed, and the sub-agent cannot be held accountable for hallucinated or incorrect recommendations.
@@ -1824,6 +1988,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Any session-level actor can exercise repudiation when clinical logs lack content hashes and signatures; straightforward denial tactic in clinical contexts.
 - **Scalability**: Affects all clinical advisory sessions lacking non-repudiation controls; systemic gap rather than per-instance.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -1850,6 +2016,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Persistent bypass channel once established; limited to Application Zone actors.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### I-4: Messages on the Inter-Agent Communication Channel are observable by any process in the Application Zone with access to the shared message bus or queue. Unencrypted or insufficiently access-controlled inter-agent messages expose sensitive task context to unauthorized observers.
@@ -1874,6 +2042,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Requires Application Zone network access; message bus observation is passive and does not require active injection.
 - **Scalability**: Persistent message observation affects all inter-agent traffic; systematic eavesdropping is fully passive and scriptable.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -1900,6 +2070,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Exercisable per API call without additional effort; response signing protocols would mitigate at scale.
 - **Reachability**: External API is in Semi-Trusted External Services zone (6.0), which elevates this finding's composite.
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### T-1: An attacker with write access to the Guardrails Service configuration (via a misconfigured admin endpoint or insider threat) modifies filtering rules to allow previously-blocked prompt patterns through to the Orchestrator, silently bypassing content policy enforcement.
@@ -1924,6 +2096,35 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Requires admin/insider access to the Guardrails configuration; dual-approval enforcement is the primary control.
 - **Scalability**: Modified rules affect all subsequent user sessions silently; detection requires comparing rule states over time.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
+---
+
+### AGP-01: Multi-agent emergent behavior — cascading failures or feedback amplification bypassing per-agent safety evaluation
+
+**Component**: LLM Agent Orchestrator
+**Category**: Agentic Threats
+**MAESTRO Layer**: L1 — Foundation Model
+**Composite Score**: 4.6 (Medium)
+
+| Dimension | Score | Weight | Weighted |
+|-----------|------:|-------:|---------:|
+| CVSS Base | 5.5 | 0.35 | 1.93 |
+| Exploitability | 4.5 | 0.30 | 1.35 |
+| Scalability | 5.8 | 0.15 | 0.87 |
+| Reachability | 2.5 | 0.20 | 0.50 |
+| **Composite** | | | **4.6** |
+
+**CVSS Vector**: `CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:L/I:L/A:L`
+
+**Scoring Rationale**:
+- **CVSS**: High complexity reflecting the emergent and probabilistic nature of multi-agent feedback amplification; scope changes because cascading failures propagate across the Orchestrator, Specialist, and ClinAdvisor; lower C/I/A (each individual impact is limited, but collective cascade can be severe). AC:H because emergent behavior requires specific multi-agent interaction conditions to manifest.
+- **Exploitability**: Low (4.5) — emergent behavior is theoretical and probabilistic; no known weaponized exploit patterns; requires understanding of the specific multi-agent interaction topology to trigger reliably; no public tooling.
+- **Scalability**: Moderately scalable once the triggering conditions are understood; the feedback loop nature means a triggered cascade affects all downstream agents; difficult to detect because individual agent actions remain within nominal bounds.
+- **Reachability**: Trusted Application Zone (2.5); all participating agents are internal components.
+
+*Score source: fresh (AGP-01 not present in baseline risk-scores.md; scored in this run)*
 
 ---
 
@@ -1950,6 +2151,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Memorization extraction can be automated via query patterns; differential privacy during training is the primary mitigating control.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### R-7: The Learning Loop denies having applied a specific model update or claims that an update was applied with different training data than what is recorded. Without cryptographic provenance, model updates cannot be attributed to specific training runs or data sources.
@@ -1974,6 +2177,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Requires insider or system-level access to Learning Loop operations; the threat is primarily an insider or operator misconduct risk.
 - **Scalability**: Affects all model updates without provenance controls; systemic gap across the model update pipeline.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -2000,6 +2205,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Persistent result fabrication until the Orchestrator detects anomalies; limited to sessions where the Specialist is active.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### I-3: The Specialist Agent receives sensitive data via delegated tasks (from the Orchestrator's context) and may include it verbatim in its results returned via the Inter-Agent Channel. If the Channel is observable or the results are logged without redaction, sensitive upstream data leaks downstream.
@@ -2024,6 +2231,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Requires access to the Inter-Agent Channel or Audit Logger to observe leaked data; moderate barrier requiring Application Zone access.
 - **Scalability**: Systematic data minimization gap affects all delegated tasks containing sensitive context.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -2050,6 +2259,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Affects all filtering event records; systemic gap without Merkle-chain or hash-chain logging.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### R-4: The Specialist Agent denies having executed a tool call or produced a specific result. Without signed, non-repudiable decision logs, the Specialist's actions cannot be attributed.
@@ -2074,6 +2285,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Exploitability**: Any Specialist operator can exercise repudiation without signed log controls.
 - **Scalability**: Affects all Specialist actions without cryptographic attribution.
 - **Reachability**: Trusted Application Zone (2.5).
+
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
 
 ---
 
@@ -2100,6 +2313,8 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Affects all tool invocations without cryptographic attribution; systemic operational accountability gap.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ### R-5: The Channel denies having delivered or modified a specific message. Without delivery receipts and message integrity records, it is impossible to determine whether a message was delivered as sent or was modified in transit.
@@ -2125,92 +2340,96 @@ The portfolio is dominated by Medium-severity findings (80%) with a concentrated
 - **Scalability**: Affects all inter-agent messages without cryptographic delivery receipts.
 - **Reachability**: Trusted Application Zone (2.5).
 
+*Score source: inherited (baseline 2026-04-23T19-30-00)*
+
 ---
 
 ## 4. Governance Fields
 
 | ID | Component | Severity | Owner | SLA | Disposition | Review Date |
 |----|-----------|----------|-------|-----|-------------|-------------|
-| S-1 | User | High | Unassigned | 7d | Mitigate | 2026-04-30 |
-| AG-1 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-04-30 |
-| E-2 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-04-30 |
-| R-3 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-04-30 |
-| E-1 | Guardrails Service | High | Unassigned | 7d | Mitigate | 2026-04-30 |
-| LLM-6 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-04-30 |
-| OI-2 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-04-30 |
-| LLM-5 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-04-30 |
-| OI-1 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-04-30 |
-| LLM-13 | Clinical Advisory Sub-Agent | High | Unassigned | 7d | Mitigate | 2026-04-30 |
-| LLM-8 | Specialist Agent | High | Unassigned | 7d | Mitigate | 2026-04-30 |
-| I-2 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-04-30 |
-| LLM-1 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-04-30 |
-| LLM-4 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-04-30 |
-| T-2 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-04-30 |
-| E-5 | MCP Tool Server | High | Unassigned | 7d | Mitigate | 2026-04-30 |
-| T-5 | MCP Tool Server | High | Unassigned | 7d | Mitigate | 2026-04-30 |
-| AG-5 | MCP Tool Server | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| E-7 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| I-9 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| LLM-2 | LLM Agent Orchestrator | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| D-1 | Guardrails Service | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| LLM-7 | LLM Agent Orchestrator | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| LLM-14 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| MI-2 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| T-9 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| LLM-10 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| MI-1 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| MI-3 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| OI-3 | LLM Agent Orchestrator | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| E-3 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| E-4 | Inter-Agent Communication Channel | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| S-5 | Inter-Agent Communication Channel | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| S-7 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| AG-3 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| AG-6 | MCP Tool Server | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| D-2 | LLM Agent Orchestrator | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| D-5 | MCP Tool Server | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| OI-4 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| R-1 | User | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| S-6 | MCP Tool Server | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| AG-2 | LLM Agent Orchestrator | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| AG-4 | Inter-Agent Communication Channel | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| E-6 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| I-1 | Guardrails Service | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| S-3 | LLM Agent Orchestrator | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| T-3 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| T-4 | Inter-Agent Communication Channel | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| S-8 | External API | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| S-9 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| T-7 | Audit Logger | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| AG-7 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| D-9 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| LLM-9 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| D-6 | Knowledge Base | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| LLM-11 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| T-8 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| D-3 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| D-4 | Inter-Agent Communication Channel | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| D-7 | Audit Logger | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| I-6 | Knowledge Base | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| I-7 | Audit Logger | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| D-8 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| I-5 | MCP Tool Server | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| LLM-3 | LLM Agent Orchestrator | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| LLM-12 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| T-6 | Knowledge Base | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| R-9 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| S-2 | Guardrails Service | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| I-4 | Inter-Agent Communication Channel | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| R-8 | External API | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| T-1 | Guardrails Service | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| I-8 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| R-7 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| S-4 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| I-3 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| R-2 | Guardrails Service | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| R-4 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| R-6 | MCP Tool Server | Medium | Unassigned | 30d | Review | 2026-05-23 |
-| R-5 | Inter-Agent Communication Channel | Medium | Unassigned | 30d | Review | 2026-05-23 |
+| S-1 | User | High | Unassigned | 7d | Mitigate | 2026-05-02 |
+| AG-1 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-05-02 |
+| E-2 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-05-02 |
+| R-3 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-05-02 |
+| E-1 | Guardrails Service | High | Unassigned | 7d | Mitigate | 2026-05-02 |
+| LLM-6 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-05-02 |
+| OI-2 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-05-02 |
+| LLM-5 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-05-02 |
+| OI-1 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-05-02 |
+| LLM-13 | Clinical Advisory Sub-Agent | High | Unassigned | 7d | Mitigate | 2026-05-02 |
+| LLM-8 | Specialist Agent | High | Unassigned | 7d | Mitigate | 2026-05-02 |
+| I-2 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-05-02 |
+| LLM-1 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-05-02 |
+| LLM-4 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-05-02 |
+| T-2 | LLM Agent Orchestrator | High | Unassigned | 7d | Mitigate | 2026-05-02 |
+| E-5 | MCP Tool Server | High | Unassigned | 7d | Mitigate | 2026-05-02 |
+| T-5 | MCP Tool Server | High | Unassigned | 7d | Mitigate | 2026-05-02 |
+| AG-5 | MCP Tool Server | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| E-7 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| I-9 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| LLM-2 | LLM Agent Orchestrator | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| D-1 | Guardrails Service | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| LLM-7 | LLM Agent Orchestrator | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| LLM-14 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| MI-2 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| T-9 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| LLM-10 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| MI-1 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| MI-3 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| OI-3 | LLM Agent Orchestrator | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| E-3 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| E-4 | Inter-Agent Communication Channel | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| S-5 | Inter-Agent Communication Channel | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| S-7 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| AG-3 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| AG-6 | MCP Tool Server | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| D-2 | LLM Agent Orchestrator | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| D-5 | MCP Tool Server | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| OI-4 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| R-1 | User | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| S-6 | MCP Tool Server | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| AG-2 | LLM Agent Orchestrator | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| AG-4 | Inter-Agent Communication Channel | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| E-6 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| I-1 | Guardrails Service | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| S-3 | LLM Agent Orchestrator | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| T-3 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| T-4 | Inter-Agent Communication Channel | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| S-8 | External API | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| S-9 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| T-7 | Audit Logger | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| AG-7 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| D-9 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| LLM-9 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| D-6 | Knowledge Base | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| LLM-11 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| T-8 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| D-3 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| D-4 | Inter-Agent Communication Channel | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| D-7 | Audit Logger | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| AG-8 | Inter-Agent Communication Channel | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| I-6 | Knowledge Base | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| I-7 | Audit Logger | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| D-8 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| I-5 | MCP Tool Server | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| LLM-3 | LLM Agent Orchestrator | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| LLM-12 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| T-6 | Knowledge Base | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| R-9 | Clinical Advisory Sub-Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| S-2 | Guardrails Service | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| I-4 | Inter-Agent Communication Channel | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| R-8 | External API | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| T-1 | Guardrails Service | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| AGP-01 | LLM Agent Orchestrator | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| I-8 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| R-7 | Long-Running Learning Loop | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| S-4 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| I-3 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| R-2 | Guardrails Service | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| R-4 | Specialist Agent | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| R-6 | MCP Tool Server | Medium | Unassigned | 30d | Review | 2026-05-25 |
+| R-5 | Inter-Agent Communication Channel | Medium | Unassigned | 30d | Review | 2026-05-25 |
 
 ---
 
@@ -2246,11 +2465,11 @@ Boundary values are inclusive to the higher band (7.0 = High, 9.0 = Critical).
 
 ### Data Sources
 
-- **Input findings**: `examples/agentic-app/test-output/2026-04-23T19-30-00-F2-wave4/threats.md` (83 findings across STRIDE, Agentic, LLM, OI, and MI categories)
+- **Input findings**: `examples/agentic-app/test-output/2026-04-26T03-39-12-F3-wave3/threats.md` (84 findings: 83 UNCHANGED + 1 NEW AG-8)
 - **Trust zones**: Section 2 of threats.md — User Zone (Untrusted), Application Zone (Trusted), External Services (Semi-Trusted)
-- **Architecture file**: Not present in input directory; no architecture adjustments applied
+- **Architecture file**: `examples/agentic-app/test-output/2026-04-26T03-39-12-F3-wave3/architecture.md` (present; no explicit authentication barriers or network segmentation declarations found in architecture description — no architectural score adjustments applied)
+- **Baseline**: `examples/agentic-app/test-output/2026-04-23T19-30-00-F2-wave4/risk-scores.md` (80 findings with inherited scores; AGP-01 absent from baseline risk-scores.md — scored fresh; AG-8 NEW finding inheriting from CG-7 primary D-4)
 - **Category default vectors**: Per `schemas/risk-scoring.yaml` category_defaults (spoofing 8.2, tampering 7.1, repudiation 4.3, info-disclosure 6.5, denial-of-service 7.5, privilege-escalation 9.9, agentic 9.1, llm 9.3)
-- **Baseline**: No baseline risk-scores.md present; all findings scored fresh
 
 ### Trust Zone Reachability Baselines
 
@@ -2258,7 +2477,7 @@ Boundary values are inclusive to the higher band (7.0 = High, 9.0 = Critical).
 |------|-------------|----------|--------------------|--------------------|
 | User Zone | Untrusted | 9.0 | "user" +0.5 → 9.5 | 9.5 |
 | Application Zone | Trusted | 2.5 | None applicable | 2.5 |
-| Application Zone (Knowledge Base) | Trusted | 2.5 | "data store" -0.5 → 2.0 | 2.0 |
+| Application Zone (Knowledge Base) | Trusted | 2.5 | "data store" / "storage" -0.5 → 2.0 | 2.0 |
 | External Services | Semi-Trusted | 5.5 | "external" +0.5 → 6.0 | 6.0 |
 
 ### Correlation Groups
@@ -2271,7 +2490,19 @@ Boundary values are inclusive to the higher band (7.0 = High, 9.0 = Critical).
 | CG-4 | I-2 (composite 7.2) | LLM-1 | Peers inherit primary scores |
 | CG-5 | D-5 (composite 6.2) | AG-6 | Peers inherit primary scores |
 | CG-6 | T-9 (composite 6.6) | LLM-14 | Peers inherit primary scores |
+| CG-7 | D-4 (composite 5.5) | AG-8 | Peers inherit primary scores (AG-8 NEW but peer inherits from primary) |
+
+### Score Source Summary
+
+| Source | Count | Findings |
+|--------|------:|---------|
+| Inherited (baseline 2026-04-23T19-30-00) | 80 | All UNCHANGED findings present in baseline risk-scores.md |
+| Inherited (correlation primary D-4) | 1 | AG-8 (NEW, CG-7 peer) |
+| Fresh (this run) | 1 | AGP-01 (UNCHANGED but absent from baseline risk-scores.md) |
+| **Total** | **82** | 84 findings scored (80 inherited + 1 correlation peer inherit + 1 fresh) |
+
+*Note: 84 total findings = 82 score assignments (AG-8 and AGP-01 combine for 2 non-baseline-direct-inherits).*
 
 ### Reproducibility
 
-Scores are computed at temperature 0 with ±0.5 tolerance per dimension. Inherited scores (correlation group peers) are byte-identical to their primary. All findings carry `score_source: fresh` as no baseline risk-scores.md was present for this run.
+Scores are computed at temperature 0 with ±0.5 tolerance per dimension. Inherited scores (baseline and correlation group peers) are byte-identical to their source. AGP-01 scores are freshly computed and carry ±0.5 per-dimension tolerance. All 83 UNCHANGED findings carry `score_source: inherited`; AG-8 (correlation peer) carries `score_source: inherited`; AGP-01 carries `score_source: fresh`.

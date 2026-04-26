@@ -1,31 +1,44 @@
-# Attack Tree: MI-2 — Overreliance / Missing HITL (Clinical Advisory Sub-Agent)
+# Attack Tree: MI-2 — Overreliance / Missing HITL Gate on Decision-Critical Clinical Output
 
-**Finding**: MI-2 | OWASP LLM09:2025 | Risk Level: Critical
+**Finding ID**: MI-2
+**Risk Level**: Critical
+**Component**: Clinical Advisory Sub-Agent
+**Delta Status**: UNCHANGED
 
 ```mermaid
-graph TD
-    ROOT["MI-2: Clinical recommendations<br/>surface without physician<br/>sign-off gate (Missing HITL)"]
-    ROOT --> A["Attacker Goal: Harmful clinical<br/>action executed without<br/>physician oversight"]
+flowchart TD
+    MI2_root["Cause clinical recommendations to surface in patient-facing context without physician sign-off or AI-provenance disclosure"]
+    MI2_and1{{"AND"}}
+    MI2_sub1["Generate clinical recommendation via ClinAdvisor that reaches user without HITL gate"]
+    MI2_sub2["Exploit absence of AI-provenance disclosure to present recommendation as authoritative"]
+    MI2_or1{{"OR"}}
+    MI2_leaf1["Submit clinical query triggering drug dosing or contraindication recommendation"]
+    MI2_leaf2["Craft query in domain where ClinAdvisor routinely produces high-confidence recommendations"]
+    MI2_and2{{"AND"}}
+    MI2_leaf3["Confirm clinical output flows directly from ClinAdvisor through Orchestrator to User without review gate"]
+    MI2_leaf4["Confirm no risk-threshold classification triggers physician confirmation requirement"]
+    MI2_leaf5["Clinical recommendation presented to clinician or patient without AI authorship disclosure"]
 
-    A --> B["Path 1: Direct automated decision path"]
-    B --> B1["Clinical Advisory Sub-Agent generates<br/>drug recommendation or diagnostic<br/>conclusion with HIGH confidence"]
-    B1 --> B2["No HITL gate declared in<br/>ClinAdvisor→Orchestrator data flow"]
-    B2 --> B3["Orchestrator incorporates clinical<br/>recommendation into user response<br/>without physician confirmation step"]
-    B3 --> B4["Clinician receives AI-generated<br/>clinical guidance with no<br/>AI-provenance disclosure"]
+    MI2_root --> MI2_and1
+    MI2_and1 --> MI2_sub1
+    MI2_and1 --> MI2_sub2
+    MI2_sub1 --> MI2_or1
+    MI2_or1 --> MI2_leaf1
+    MI2_or1 --> MI2_leaf2
+    MI2_sub2 --> MI2_and2
+    MI2_and2 --> MI2_leaf3
+    MI2_and2 --> MI2_leaf4
+    MI2_and2 --> MI2_leaf5
 
-    A --> C["Path 2: Confidence manipulation"]
-    C --> C1["Attacker primes ClinAdvisor via<br/>prompt injection (chains from LLM-13)<br/>to emit artificially high-confidence<br/>clinical recommendation"]
-    C1 --> C2["No risk-threshold escalation;<br/>no auto-escalation to senior<br/>clinical review for high-stakes output"]
-    C2 --> C3["Fabricated high-confidence<br/>recommendation bypasses any<br/>informal review heuristics"]
+    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
+    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
+    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
 
-    A --> D["Path 3: Volume/fatigue exploit"]
-    D --> D1["High-volume clinical queries cause<br/>batch clinical recommendation output"]
-    D1 --> D2["No per-recommendation review workflow;<br/>clinical staff overwhelmed by<br/>volume of AI-generated guidance"]
-    D2 --> D3["Clinical staff auto-approve AI<br/>recommendations without<br/>substantive review (automation bias)"]
-
-    B4 --> IMPACT["Clinical Impact: Drug prescribed<br/>at wrong dose, contraindicated<br/>drug prescribed, or diagnosis<br/>acted on without validation —<br/>direct patient-safety risk"]
-    C3 --> IMPACT
-    D3 --> IMPACT
-
-    IMPACT --> MITIG["Mitigation: Mandatory HITL physician<br/>sign-off gate for all clinical output;<br/>risk-threshold auto-escalation;<br/>AI-provenance disclosure on every<br/>surfaced recommendation;<br/>audit log of all HITL decisions"]
+    class MI2_root goal
+    class MI2_and1,MI2_and2 andGate
+    class MI2_or1 orGate
+    class MI2_sub1,MI2_sub2 subGoal
+    class MI2_leaf1,MI2_leaf2,MI2_leaf3,MI2_leaf4,MI2_leaf5 leaf
 ```

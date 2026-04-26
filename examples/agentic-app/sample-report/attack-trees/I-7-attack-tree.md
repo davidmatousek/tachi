@@ -1,28 +1,46 @@
----
-finding_id: "I-7"
-risk_level: "Critical"
-component: "Audit Logger"
-generated: "2026-04-19"
----
+# Attack Tree: I-7 — Unauthorized Read Access to Audit Logger Exposes Full Agent Operational History
 
-# Attack Tree: I-7 — Audit Logger Unauthorized Read Access
+**Finding ID**: I-7
+**Risk Level**: Critical
+**Component**: Audit Logger
+**Delta Status**: UNCHANGED
 
 ```mermaid
-graph TD
-    GOAL["GOAL: Unauthorized party reads full\nAudit Logger operational history"]
-    GOAL --> A["OR"]
-    A --> B["Misconfigured read access controls"]
-    A --> C["Insider threat with log read access"]
-    A --> D["Exploit service with log read capability"]
-    B --> B1["Overly permissive IAM role on log store\n[Med / High]"]
-    B --> B2["Default credentials on log infrastructure\n[Low / High]"]
-    C --> C1["Privileged user abuses read access\n[Low / High]"]
-    D --> D1["Compromise application service\nwith log read role\n[Med / High]"]
-    B1 --> E["Read access to full Audit Logger\noperational history"]
-    B2 --> E
-    C1 --> E
-    D1 --> E
-    E --> F["Exposed data:\n- User prompts\n- Model decisions\n- Tool call parameters\n- Filtering rule triggers\n- Session identities"]
-```
+flowchart TD
+    I7_root["Exfiltrate full agent system operational history via unauthorized Audit Logger read access"]
+    I7_or1{{"OR"}}
+    I7_sub1["Exploit misconfigured access controls on Audit Logger store"]
+    I7_sub2["Insider threat with legitimate read access exfiltrates log content"]
+    I7_and1{{"AND"}}
+    I7_leaf1["Identify Audit Logger storage endpoint with overly permissive ACL"]
+    I7_leaf2["Access log store using misconfigured service account or leaked credentials"]
+    I7_leaf3["Extract user prompts, model decisions, tool parameters, and filter rule triggers"]
+    I7_and2{{"AND"}}
+    I7_leaf4["Obtain insider access to log store read credentials"]
+    I7_leaf5["Systematically read and exfiltrate log data beyond authorized scope"]
+    I7_leaf6["Exfiltrate operational history to external attacker-controlled destination"]
 
-**Chain-breaking control**: Enforce strict read access controls on the Audit Logger: only designated incident-response and analytics service accounts should have read access. Encrypt log entries at rest with envelope encryption (per-batch keys in hardware-secured KMS). Audit all read access.
+    I7_root --> I7_or1
+    I7_or1 --> I7_sub1
+    I7_or1 --> I7_sub2
+    I7_sub1 --> I7_and1
+    I7_and1 --> I7_leaf1
+    I7_and1 --> I7_leaf2
+    I7_and1 --> I7_leaf3
+    I7_sub2 --> I7_and2
+    I7_and2 --> I7_leaf4
+    I7_and2 --> I7_leaf5
+    I7_and2 --> I7_leaf6
+
+    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
+    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
+    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
+
+    class I7_root goal
+    class I7_or1 orGate
+    class I7_and1,I7_and2 andGate
+    class I7_sub1,I7_sub2 subGoal
+    class I7_leaf1,I7_leaf2,I7_leaf3,I7_leaf4,I7_leaf5,I7_leaf6 leaf
+```

@@ -1,29 +1,46 @@
----
-finding_id: "E-5"
-risk_level: "Critical"
-component: "MCP Tool Server"
-generated: "2026-04-19"
----
+# Attack Tree: E-5 — Unauthorized Tool Calls Gain MCP Tool Server Execution Privileges
 
-# Attack Tree: E-5 — MCP Tool Server Credential Privilege Escalation
+**Finding ID**: E-5
+**Risk Level**: Critical
+**Component**: MCP Tool Server
+**Delta Status**: UNCHANGED
 
 ```mermaid
-graph TD
-    GOAL["GOAL: Unauthorized agent gains Tool Server's\nexecution privileges and credential set"]
-    GOAL --> A["OR"]
-    A --> B["Forged caller identity submits tool call"]
-    A --> C["Exploited Orchestrator issues\nout-of-scope tool call"]
-    B --> B1["Spoof Orchestrator caller token\n[High / High]"]
-    B --> B2["Compromise mTLS certificate\n[Low / High]"]
-    C --> C1["Prompt injection causes Orchestrator\nto invoke unauthorized tools\n[High / High]"]
-    B1 --> D["Tool Server receives unauthorized\ntool call request"]
-    B2 --> D
-    C1 --> D
-    D --> E["AND"]
-    E --> E1["No zero-trust authorization\nagainst originating session scope"]
-    E --> E2["Tool Server trusts caller identity\nwithout independent scope check"]
-    E1 --> F["Tool Server executes with full\nservice account credentials:\n- External API keys\n- Data store access\n- Service tokens"]
-    E2 --> F
-```
+flowchart TD
+    E5_root["Acquire MCP Tool Server execution privileges and external credentials via unauthorized tool calls"]
+    E5_or1{{"OR"}}
+    E5_sub1["Exploit compromised agent identity to invoke tools with Tool Server credentials"]
+    E5_sub2["Use forged caller identity to bypass Tool Server authorization"]
+    E5_and1{{"AND"}}
+    E5_leaf1["Compromise Orchestrator or Specialist via prompt injection or delegation tampering"]
+    E5_leaf2["Issue tool calls for targets outside originating session permitted scope"]
+    E5_leaf3["Confirm Tool Server does not enforce per-invocation scope check independent of caller identity"]
+    E5_and2{{"AND"}}
+    E5_leaf4["Forge caller token or mTLS certificate for Tool Server JSON-RPC endpoint"]
+    E5_leaf5["Submit tool invocation with forged identity claiming Orchestrator permissions"]
+    E5_leaf6["Execute tools using Tool Server service account accessing external systems"]
 
-**Chain-breaking control**: Implement zero-trust authorization at the Tool Server: each tool invocation MUST be authorized against the originating session's scope, independent of the caller's identity. Apply the principle of least-privilege for tool execution: tool-specific service accounts with minimum necessary external permissions.
+    E5_root --> E5_or1
+    E5_or1 --> E5_sub1
+    E5_or1 --> E5_sub2
+    E5_sub1 --> E5_and1
+    E5_and1 --> E5_leaf1
+    E5_and1 --> E5_leaf2
+    E5_and1 --> E5_leaf3
+    E5_sub2 --> E5_and2
+    E5_and2 --> E5_leaf4
+    E5_and2 --> E5_leaf5
+    E5_and2 --> E5_leaf6
+
+    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
+    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
+    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
+
+    class E5_root goal
+    class E5_or1 orGate
+    class E5_and1,E5_and2 andGate
+    class E5_sub1,E5_sub2 subGoal
+    class E5_leaf1,E5_leaf2,E5_leaf3,E5_leaf4,E5_leaf5,E5_leaf6 leaf
+```

@@ -1,26 +1,44 @@
----
-finding_id: "T-3"
-risk_level: "Critical"
-component: "Specialist Agent"
-generated: "2026-04-19"
----
+# Attack Tree: T-3 — Specialist Agent Context Tampered via Adversarial Delegation Message
 
-# Attack Tree: T-3 — Specialist Agent Delegation Message Tampering
+**Finding ID**: T-3
+**Risk Level**: Critical
+**Component**: Specialist Agent
+**Delta Status**: UNCHANGED
 
 ```mermaid
-graph TD
-    GOAL["GOAL: Redirect Specialist Agent actions\nvia tampered delegation message"]
-    GOAL --> A["AND"]
-    A --> B["Access to Inter-Agent Channel"]
-    A --> C["No message integrity verification at Specialist"]
-    B --> B1["Agent-in-the-middle on Channel queue\n[High / High]"]
-    B --> B2["Compromised process with Channel access\n[Med / High]"]
-    C --> C1["Specialist accepts delegation messages\nwithout HMAC verification\n[High / High]"]
-    B1 --> D["Modify Delegated Task payload:\n- Change tool call targets\n- Inject exfiltration URLs\n- Redirect specialist actions"]
-    B2 --> D
-    C1 --> D
-    D --> E["Specialist executes attacker-directed\ntask sequence"]
-    E --> F["Data exfiltration or unauthorized\ntool invocations"]
-```
+flowchart TD
+    T3_root["Redirect Specialist Agent actions by injecting adversarial content into delegation message"]
+    T3_and1{{"AND"}}
+    T3_sub1["Gain write access to Inter-Agent Communication Channel"]
+    T3_sub2["Craft and deliver adversarial delegation payload"]
+    T3_or1{{"OR"}}
+    T3_leaf1["Compromise Application Zone process with channel message queue access"]
+    T3_leaf2["Exploit missing channel authentication to inject as arbitrary sender"]
+    T3_and2{{"AND"}}
+    T3_leaf3["Embed attacker-controlled task instructions in delegation message body"]
+    T3_leaf4["Confirm Specialist does not verify HMAC or digital signature on received tasks"]
+    T3_leaf5["Cause Specialist to invoke unintended tool targets or exfiltrate data via result channel"]
 
-**Chain-breaking control**: Validate and sanitize all task payloads received by the Specialist Agent before execution. Apply message integrity verification (HMAC or digital signature) on every received delegation message. Reject tasks containing unexpected structural patterns.
+    T3_root --> T3_and1
+    T3_and1 --> T3_sub1
+    T3_and1 --> T3_sub2
+    T3_sub1 --> T3_or1
+    T3_or1 --> T3_leaf1
+    T3_or1 --> T3_leaf2
+    T3_sub2 --> T3_and2
+    T3_and2 --> T3_leaf3
+    T3_and2 --> T3_leaf4
+    T3_and2 --> T3_leaf5
+
+    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
+    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
+    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
+
+    class T3_root goal
+    class T3_and1,T3_and2 andGate
+    class T3_or1 orGate
+    class T3_sub1,T3_sub2 subGoal
+    class T3_leaf1,T3_leaf2,T3_leaf3,T3_leaf4,T3_leaf5 leaf
+```

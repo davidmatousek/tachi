@@ -1,29 +1,44 @@
----
-finding_id: "E-4"
-risk_level: "Critical"
-component: "Inter-Agent Communication Channel"
-generated: "2026-04-19"
----
+# Attack Tree: E-4 — Forged Elevated Sender Identity Injected into Inter-Agent Channel
 
-# Attack Tree: E-4 — Inter-Agent Channel Elevated Sender Identity Injection
+**Finding ID**: E-4
+**Risk Level**: Critical
+**Component**: Inter-Agent Communication Channel
+**Delta Status**: UNCHANGED
 
 ```mermaid
-graph TD
-    GOAL["GOAL: Low-privilege Application Zone process\nimpersonates Orchestrator in Channel"]
-    GOAL --> A["AND"]
-    A --> B["Process has Application Zone access"]
-    A --> C["Channel does not enforce\nsender identity authentication"]
-    B --> B1["Compromised low-privilege service\n[Med / High]"]
-    B --> B2["Insider threat\n[Low / High]"]
-    C --> C1["No verifiable sender credential\nrequired per message\n[High / High]"]
-    C --> C2["Channel routes all messages\nwithout credential check\n[High / High]"]
-    B1 --> D["Forge message with Orchestrator\nidentity header in Channel"]
-    B2 --> D
-    C1 --> D
-    C2 --> D
-    D --> E["Specialist Agent receives\nforged 'Orchestrator' delegation message"]
-    E --> F["Low-privilege process elevated\nto Orchestrator trust level"]
-    F --> G["Unauthorized delegation execution\nby Specialist Agent"]
-```
+flowchart TD
+    E4_root["Elevate rogue process to Orchestrator trust level by injecting forged identity headers into channel"]
+    E4_and1{{"AND"}}
+    E4_sub1["Gain channel write access as low-privilege Application Zone process"]
+    E4_sub2["Inject message with forged elevated sender role claiming Orchestrator identity"]
+    E4_or1{{"OR"}}
+    E4_leaf1["Exploit misconfigured channel ACL allowing writes from any Application Zone process"]
+    E4_leaf2["Compromise low-privilege service with channel queue write permission"]
+    E4_and2{{"AND"}}
+    E4_leaf3["Confirm channel does not verify sender credentials before routing"]
+    E4_leaf4["Craft message with forged Orchestrator identity in sender header field"]
+    E4_leaf5["Deliver forged message to Specialist Agent causing trusted delegation execution"]
 
-**Chain-breaking control**: Enforce sender identity authentication at the Channel layer. All messages MUST carry a verifiable sender credential (signed token or mTLS certificate). The Channel MUST reject messages whose sender credentials cannot be verified before routing.
+    E4_root --> E4_and1
+    E4_and1 --> E4_sub1
+    E4_and1 --> E4_sub2
+    E4_sub1 --> E4_or1
+    E4_or1 --> E4_leaf1
+    E4_or1 --> E4_leaf2
+    E4_sub2 --> E4_and2
+    E4_and2 --> E4_leaf3
+    E4_and2 --> E4_leaf4
+    E4_and2 --> E4_leaf5
+
+    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
+    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
+    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
+
+    class E4_root goal
+    class E4_and1,E4_and2 andGate
+    class E4_or1 orGate
+    class E4_sub1,E4_sub2 subGoal
+    class E4_leaf1,E4_leaf2,E4_leaf3,E4_leaf4,E4_leaf5 leaf
+```

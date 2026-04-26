@@ -1,29 +1,44 @@
----
-finding_id: "S-3"
-risk_level: "Critical"
-component: "LLM Agent Orchestrator"
-generated: "2026-04-19"
----
+# Attack Tree: S-3 — Rogue Process Impersonates Orchestrator via Unsigned Channel Messages
 
-# Attack Tree: S-3 — LLM Agent Orchestrator Identity Spoofing
+**Finding ID**: S-3
+**Risk Level**: Critical
+**Component**: LLM Agent Orchestrator
+**Delta Status**: UNCHANGED
 
 ```mermaid
-graph TD
-    GOAL["GOAL: Rogue process injects messages\nimpersonating Orchestrator in Channel"]
-    GOAL --> A["OR"]
-    A --> B["Compromise a process in Application Zone"]
-    A --> C["Directly access Channel message queue"]
-    B --> B1["Exploit unpatched service vulnerability\n[Med / High]"]
-    B --> B2["Insider threat or misconfiguration\n[Low / High]"]
-    C --> C1["Misconfigured queue access controls\n[Med / High]"]
-    B1 --> D["AND"]
-    B2 --> D
-    C1 --> D
-    D --> E["No HMAC/asymmetric signature on messages"]
-    D --> F["Specialist Agent does not verify sender"]
-    E --> G["Inject delegation instructions to Specialist\nunder Orchestrator identity"]
-    F --> G
-    G --> H["Specialist executes unauthorized tasks\nbelieving instructions are legitimate"]
-```
+flowchart TD
+    S3_root["Issue unauthorized delegation instructions to Specialist Agent by impersonating Orchestrator"]
+    S3_and1{{"AND"}}
+    S3_sub1["Gain access to Inter-Agent Communication Channel"]
+    S3_sub2["Inject forged delegation message without signature verification"]
+    S3_or1{{"OR"}}
+    S3_leaf1["Compromise an Application Zone process with channel write access"]
+    S3_leaf2["Exploit misconfigured channel ACL allowing unauthenticated writes"]
+    S3_and2{{"AND"}}
+    S3_leaf3["Construct delegation message with valid-looking Orchestrator identity header"]
+    S3_leaf4["Confirm channel does not verify HMAC or asymmetric signature on messages"]
+    S3_leaf5["Deliver forged message causing Specialist to execute unauthorized task"]
 
-**Chain-breaking control**: Authenticate all Orchestrator→Channel messages using HMAC or asymmetric signing with per-session keys. The Specialist Agent MUST verify the signature before acting on delegated tasks.
+    S3_root --> S3_and1
+    S3_and1 --> S3_sub1
+    S3_and1 --> S3_sub2
+    S3_sub1 --> S3_or1
+    S3_or1 --> S3_leaf1
+    S3_or1 --> S3_leaf2
+    S3_sub2 --> S3_and2
+    S3_and2 --> S3_leaf3
+    S3_and2 --> S3_leaf4
+    S3_and2 --> S3_leaf5
+
+    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
+    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
+    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
+
+    class S3_root goal
+    class S3_and1,S3_and2 andGate
+    class S3_or1 orGate
+    class S3_sub1,S3_sub2 subGoal
+    class S3_leaf1,S3_leaf2,S3_leaf3,S3_leaf4,S3_leaf5 leaf
+```

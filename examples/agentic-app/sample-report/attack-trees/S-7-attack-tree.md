@@ -1,26 +1,44 @@
----
-finding_id: "S-7"
-risk_level: "Critical"
-component: "Long-Running Learning Loop"
-generated: "2026-04-19"
----
+# Attack Tree: S-7 — Fabricated Training Signals Injected via Compromised Audit Logger
 
-# Attack Tree: S-7 — Learning Loop Training Signal Spoofing
+**Finding ID**: S-7
+**Risk Level**: Critical
+**Component**: Long-Running Learning Loop
+**Delta Status**: UNCHANGED
 
 ```mermaid
-graph TD
-    GOAL["GOAL: Fabricated training signals manipulate\nfuture model updates"]
-    GOAL --> A["AND"]
-    A --> B["Compromise Audit Logger or Training Pipeline"]
-    A --> C["No cryptographic signing of training signal batches"]
-    B --> B1["Audit Logger write access via\nmisconfigured access controls\n[Med / High]"]
-    B --> B2["Insider threat on Audit Logger\n[Low / High]"]
-    C --> C1["Learning Loop accepts unsigned\ntraining signal stream\n[High / High]"]
-    B1 --> D["Inject fabricated training signal batches"]
-    B2 --> D
-    C1 --> D
-    D --> E["Learning Loop ingests adversarial\ntraining data as legitimate"]
-    E --> F["Future model updates reflect\nattacker-preferred behaviors"]
-```
+flowchart TD
+    S7_root["Manipulate future model behavior by injecting fabricated training signals into Learning Loop"]
+    S7_and1{{"AND"}}
+    S7_sub1["Compromise Audit Logger or its write pipeline"]
+    S7_sub2["Inject adversarial training signal batches without detection"]
+    S7_or1{{"OR"}}
+    S7_leaf1["Gain write access to Audit Logger store via misconfigured service account"]
+    S7_leaf2["Compromise an Application Zone process that writes to the Audit Logger"]
+    S7_and2{{"AND"}}
+    S7_leaf3["Craft training signal entries resembling legitimate interaction records"]
+    S7_leaf4["Confirm Learning Loop does not verify cryptographic signature on signal batches"]
+    S7_leaf5["Submit fabricated entries timed to precede a scheduled training run"]
 
-**Chain-breaking control**: Cryptographically sign each training signal batch at the Audit Logger before emission. The Learning Loop MUST verify the signature before ingestion. Implement provenance attestation for all training data.
+    S7_root --> S7_and1
+    S7_and1 --> S7_sub1
+    S7_and1 --> S7_sub2
+    S7_sub1 --> S7_or1
+    S7_or1 --> S7_leaf1
+    S7_or1 --> S7_leaf2
+    S7_sub2 --> S7_and2
+    S7_and2 --> S7_leaf3
+    S7_and2 --> S7_leaf4
+    S7_and2 --> S7_leaf5
+
+    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
+    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
+    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
+
+    class S7_root goal
+    class S7_and1,S7_and2 andGate
+    class S7_or1 orGate
+    class S7_sub1,S7_sub2 subGoal
+    class S7_leaf1,S7_leaf2,S7_leaf3,S7_leaf4,S7_leaf5 leaf
+```

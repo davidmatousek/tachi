@@ -1,32 +1,46 @@
----
-finding_id: "AG-5"
-risk_level: "Critical"
-component: "MCP Tool Server"
-generated: "2026-04-19"
----
+# Attack Tree: AG-5 — Tool Call Injection via LLM-Influenced JSON-RPC Parameters
 
-# Attack Tree: AG-5 — MCP Tool Server Tool Call Injection
+**Finding ID**: AG-5
+**Risk Level**: Critical
+**Component**: MCP Tool Server
+**Delta Status**: UNCHANGED
 
 ```mermaid
-graph TD
-    GOAL["GOAL: Inject malicious tool calls via\nLLM-influenced JSON-RPC parameters"]
-    GOAL --> A["OR"]
-    A --> B["Tool name injection: invoke unintended tool"]
-    A --> C["Parameter injection: malicious args\nto permitted tool"]
-    B --> B1["Influence Orchestrator output to\nemit invalid tool name\n[High / High]"]
-    B --> B2["Influence Specialist output to\nemit invalid tool name\n[High / High]"]
-    C --> C1["Inject SQL fragments in\nDB tool parameters\n[High / High]"]
-    C --> C2["Inject shell metacharacters in\ncommand tool parameters\n[High / High]"]
-    C --> C3["Inject attacker-controlled URL\nin HTTP tool parameters (SSRF)\n[Med / High]"]
-    B1 --> D["AND"]
-    B2 --> D
-    C1 --> D
-    C2 --> D
-    C3 --> D
-    D --> E["No tool name allowlist validation\nat Tool Server"]
-    D --> F["No per-tool parameter JSON Schema\nvalidation before dispatch"]
-    E --> G["Tool Server executes injected tool\nwith service credentials"]
-    F --> G
-```
+flowchart TD
+    AG5_root["Execute unintended tools or supply malicious arguments via LLM-influenced JSON-RPC tool call injection"]
+    AG5_or1{{"OR"}}
+    AG5_sub1["Inject unauthorized tool name into JSON-RPC request"]
+    AG5_sub2["Inject malicious parameter values into permitted tool call"]
+    AG5_and1{{"AND"}}
+    AG5_leaf1["Influence Orchestrator or Specialist LLM output to emit injected tool name"]
+    AG5_leaf2["Confirm Tool Server does not validate tool name against registered allowlist"]
+    AG5_leaf3["Execute unregistered or disallowed tool using Tool Server service credentials"]
+    AG5_and2{{"AND"}}
+    AG5_leaf4["Craft adversarial prompt causing LLM to emit malicious parameter encoding"]
+    AG5_leaf5["Confirm Tool Server passes parameter values to external execution sink without validation"]
+    AG5_leaf6["Achieve injection at external system via malformed parameter forwarded by Tool Server"]
 
-**Chain-breaking control**: Implement strict tool call validation: (a) validate the tool name against a registered allowlist, (b) validate each parameter against a per-tool JSON Schema, (c) reject any request that fails validation before execution. Apply parameter encoding for values forwarded to external systems.
+    AG5_root --> AG5_or1
+    AG5_or1 --> AG5_sub1
+    AG5_or1 --> AG5_sub2
+    AG5_sub1 --> AG5_and1
+    AG5_and1 --> AG5_leaf1
+    AG5_and1 --> AG5_leaf2
+    AG5_and1 --> AG5_leaf3
+    AG5_sub2 --> AG5_and2
+    AG5_and2 --> AG5_leaf4
+    AG5_and2 --> AG5_leaf5
+    AG5_and2 --> AG5_leaf6
+
+    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
+    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
+    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
+
+    class AG5_root goal
+    class AG5_or1 orGate
+    class AG5_and1,AG5_and2 andGate
+    class AG5_sub1,AG5_sub2 subGoal
+    class AG5_leaf1,AG5_leaf2,AG5_leaf3,AG5_leaf4,AG5_leaf5,AG5_leaf6 leaf
+```

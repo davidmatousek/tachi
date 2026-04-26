@@ -1,33 +1,46 @@
-# Attack Tree: MI-1 — Ungrounded Factual Emission (Clinical Advisory Sub-Agent)
+# Attack Tree: MI-1 — Ungrounded Factual Emission: Hallucinated Clinical Claims Without RAG Grounding
 
-**Finding**: MI-1 | OWASP LLM09:2025 | Risk Level: Critical
+**Finding ID**: MI-1
+**Risk Level**: Critical
+**Component**: Clinical Advisory Sub-Agent
+**Delta Status**: UNCHANGED
 
 ```mermaid
-graph TD
-    ROOT["MI-1: Clinical Advisory Sub-Agent emits<br/>hallucinated medical claims without<br/>RAG grounding verification"]
-    ROOT --> A["Attacker Goal: Harmful clinical<br/>decision based on fabricated<br/>medical information"]
+flowchart TD
+    MI1_root["Cause ClinAdvisor to emit hallucinated clinical claims accepted as authoritative without grounding verification"]
+    MI1_or1{{"OR"}}
+    MI1_sub1["Trigger hallucination by providing clinical query in low-coverage KB domain"]
+    MI1_sub2["Exploit absence of per-claim source anchoring to pass fabricated claims undetected"]
+    MI1_and1{{"AND"}}
+    MI1_leaf1["Craft clinical query for medical area with sparse or absent KB coverage"]
+    MI1_leaf2["Confirm ClinAdvisor has no retrieval-strength threshold that triggers refusal on low recall"]
+    MI1_leaf3["Receive hallucinated drug dose or contraindication claim in clinical summary output"]
+    MI1_and2{{"AND"}}
+    MI1_leaf4["Submit clinical query that causes ClinAdvisor to synthesize claims across multiple retrieved documents"]
+    MI1_leaf5["Confirm no per-claim citation requirement ties each factual assertion to a specific retrieved section"]
+    MI1_leaf6["Fabricated clinical assertion propagates to Orchestrator response as grounded recommendation"]
 
-    A --> B["Path 1: Direct KB gap exploitation"]
-    B --> B1["Clinical query targets condition<br/>not in Knowledge Base corpus"]
-    B1 --> B2["Sub-agent performs vector search<br/>with low recall@k (below threshold)"]
-    B2 --> B3["No retrieval-quality gate fires;<br/>sub-agent fills gap with<br/>plausible hallucinated content"]
-    B3 --> B4["Clinical summary with fabricated<br/>drug dose / contraindication returned<br/>to Orchestrator without confidence flag"]
+    MI1_root --> MI1_or1
+    MI1_or1 --> MI1_sub1
+    MI1_or1 --> MI1_sub2
+    MI1_sub1 --> MI1_and1
+    MI1_and1 --> MI1_leaf1
+    MI1_and1 --> MI1_leaf2
+    MI1_and1 --> MI1_leaf3
+    MI1_sub2 --> MI1_and2
+    MI1_and2 --> MI1_leaf4
+    MI1_and2 --> MI1_leaf5
+    MI1_and2 --> MI1_leaf6
 
-    A --> C["Path 2: Stale Knowledge Base exploit"]
-    C --> C1["Clinical Knowledge Base corpus<br/>not updated within staleness window"]
-    C1 --> C2["Sub-agent retrieves outdated<br/>clinical guidelines (still above k threshold)"]
-    C2 --> C3["No KB currency monitoring;<br/>outdated guidance presented<br/>as current standard-of-care"]
-    C3 --> C4["Clinician acts on superseded<br/>drug interaction or dosing guidance"]
+    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
+    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
+    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
 
-    A --> D["Path 3: Adversarial KB poisoning<br/>(chains from T-6/T-9)"]
-    D --> D1["Attacker injects adversarial<br/>clinical document into KB"]
-    D1 --> D2["Sub-agent retrieves adversarial<br/>document with high relevance score"]
-    D2 --> D3["Adversarial content (fabricated<br/>dosing, false contraindication)<br/>incorporated into clinical summary"]
-    D3 --> D4["Clinical summary contains<br/>attacker-controlled medical claims<br/>without per-claim source verification"]
-
-    B4 --> IMPACT["Clinical Impact: Clinician or downstream<br/>system acts on ungrounded<br/>clinical recommendation —<br/>potential patient harm"]
-    C4 --> IMPACT
-    D4 --> IMPACT
-
-    IMPACT --> MITIG["Mitigation: Mandatory RAG grounding<br/>with per-claim source anchoring;<br/>retrieval-quality gate (recall@k threshold);<br/>'insufficient grounding' response on failure;<br/>KB currency monitoring"]
+    class MI1_root goal
+    class MI1_or1 orGate
+    class MI1_and1,MI1_and2 andGate
+    class MI1_sub1,MI1_sub2 subGoal
+    class MI1_leaf1,MI1_leaf2,MI1_leaf3,MI1_leaf4,MI1_leaf5,MI1_leaf6 leaf
 ```

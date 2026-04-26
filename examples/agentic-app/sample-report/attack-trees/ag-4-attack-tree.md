@@ -1,31 +1,46 @@
----
-finding_id: "AG-4"
-risk_level: "Critical"
-component: "Inter-Agent Communication Channel"
-generated: "2026-04-19"
----
+# Attack Tree: AG-4 — Agent-in-the-Middle Intercepts and Modifies Delegation Messages via Compromised Channel
 
-# Attack Tree: AG-4 — Inter-Agent Channel Agent-in-the-Middle Attack
+**Finding ID**: AG-4
+**Risk Level**: Critical
+**Component**: Inter-Agent Communication Channel
+**Delta Status**: UNCHANGED
 
 ```mermaid
-graph TD
-    GOAL["GOAL: Attacker intercepts and modifies\ndelegation messages in the Channel"]
-    GOAL --> A["AND"]
-    A --> B["Access to Channel message routing layer"]
-    A --> C["No end-to-end message authentication"]
-    B --> B1["Compromised process with Channel access\n[Med / High]"]
-    B --> B2["Channel infrastructure vulnerability\n[Med / High]"]
-    C --> C1["Orchestrator does not sign\ndelegation messages\n[High / High]"]
-    C --> C2["Specialist does not verify\nmessage signature before processing\n[High / High]"]
-    C --> C3["No replay detection (monotonic\ncounters, timestamps)\n[High / High]"]
-    B1 --> D["Intercept delegation message in transit"]
-    B2 --> D
-    C1 --> D
-    C2 --> D
-    C3 --> D
-    D --> E["Modify task parameters:\n- Replace tool targets with attacker-controlled\n- Modify resource identifiers\n- Inject unauthorized instructions"]
-    E --> F["Forward modified message to Specialist"]
-    F --> G["Specialist executes unauthorized actions\nbelieving instructions are from Orchestrator"]
-```
+flowchart TD
+    AG4_root["Redirect Specialist Agent to attacker-controlled tool targets by modifying delegation messages as agent-in-the-middle"]
+    AG4_and1{{"AND"}}
+    AG4_sub1["Establish agent-in-the-middle position on channel message path"]
+    AG4_sub2["Intercept and replace delegation message with attacker-modified version"]
+    AG4_or1{{"OR"}}
+    AG4_leaf1["Compromise channel message queue infrastructure to read and rewrite messages"]
+    AG4_leaf2["Exploit channel routing logic to redirect messages through attacker-controlled relay"]
+    AG4_and2{{"AND"}}
+    AG4_leaf3["Confirm messages lack end-to-end digital signatures independent of transport"]
+    AG4_leaf4["Replace legitimate tool target parameters with attacker-controlled endpoints"]
+    AG4_leaf5["Deliver modified message so Specialist Agent executes unauthorized actions"]
+    AG4_leaf6["Suppress original message to prevent duplicate execution detection"]
 
-**Chain-breaking control**: Implement end-to-end message authentication with digital signatures (Orchestrator signs, Specialist verifies). The Channel itself MUST NOT be trusted for integrity. Implement replay detection (monotonic message counters, timestamp windows).
+    AG4_root --> AG4_and1
+    AG4_and1 --> AG4_sub1
+    AG4_and1 --> AG4_sub2
+    AG4_sub1 --> AG4_or1
+    AG4_or1 --> AG4_leaf1
+    AG4_or1 --> AG4_leaf2
+    AG4_sub2 --> AG4_and2
+    AG4_and2 --> AG4_leaf3
+    AG4_and2 --> AG4_leaf4
+    AG4_and2 --> AG4_leaf5
+    AG4_and2 --> AG4_leaf6
+
+    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
+    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
+    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
+
+    class AG4_root goal
+    class AG4_and1,AG4_and2 andGate
+    class AG4_or1 orGate
+    class AG4_sub1,AG4_sub2 subGoal
+    class AG4_leaf1,AG4_leaf2,AG4_leaf3,AG4_leaf4,AG4_leaf5,AG4_leaf6 leaf
+```

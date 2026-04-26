@@ -1,28 +1,46 @@
----
-finding_id: "I-2"
-risk_level: "Critical"
-component: "LLM Agent Orchestrator"
-generated: "2026-04-19"
----
+# Attack Tree: I-2 — Orchestrator Context Window Leaked in HTTPS Response via Hallucination or Injection
 
-# Attack Tree: I-2 — LLM Agent Orchestrator Context Window Leakage
+**Finding ID**: I-2
+**Risk Level**: Critical
+**Component**: LLM Agent Orchestrator
+**Delta Status**: UNCHANGED
 
 ```mermaid
-graph TD
-    GOAL["GOAL: Orchestrator leaks sensitive context\nwindow data in HTTPS response to User"]
-    GOAL --> A["OR"]
-    A --> B["Prompt injection causing context leakage"]
-    A --> C["Model hallucination producing\nsystem data in output"]
-    B --> B1["Direct prompt injection via User input\n[High / High]"]
-    B --> B2["Indirect injection via adversarial KB document\n[High / High]"]
-    C --> C1["Model reproduces system prompt\npreamble in response\n[Med / High]"]
-    C --> C2["Model includes KB document identifiers\nor tool metadata in response\n[Med / High]"]
-    B1 --> D["AND"]
-    B2 --> D
-    C1 --> D
-    C2 --> D
-    D --> E["No output scrubbing before\nHTTPS response transmission"]
-    E --> F["Sensitive data sent to User:\n- System prompt contents\n- KB document identifiers\n- Tool response metadata\n- Internal configuration"]
-```
+flowchart TD
+    I2_root["Extract system-internal data from Orchestrator via HTTPS response to User"]
+    I2_or1{{"OR"}}
+    I2_sub1["Cause Orchestrator to hallucinate and reproduce sensitive context"]
+    I2_sub2["Use prompt injection to instruct Orchestrator to output internal data"]
+    I2_and1{{"AND"}}
+    I2_leaf1["Craft user prompt designed to trigger context verbatim reproduction"]
+    I2_leaf2["Probe response for system prompt preambles or KB document identifiers"]
+    I2_leaf3["Confirm Orchestrator has no output scrubbing before HTTPS transmission"]
+    I2_and2{{"AND"}}
+    I2_leaf4["Bypass Guardrails with adversarial prompt embedding injection instruction"]
+    I2_leaf5["Override Orchestrator system prompt to output internal context fields"]
+    I2_leaf6["Receive sensitive data in HTTPS response payload"]
 
-**Chain-breaking control**: Implement output scrubbing on the Orchestrator's response before transmission to the User: detect and redact content pattern-matching against known sensitive-data markers. Apply a separate "response auditor" step that reviews the output before sending.
+    I2_root --> I2_or1
+    I2_or1 --> I2_sub1
+    I2_or1 --> I2_sub2
+    I2_sub1 --> I2_and1
+    I2_and1 --> I2_leaf1
+    I2_and1 --> I2_leaf2
+    I2_and1 --> I2_leaf3
+    I2_sub2 --> I2_and2
+    I2_and2 --> I2_leaf4
+    I2_and2 --> I2_leaf5
+    I2_and2 --> I2_leaf6
+
+    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
+    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
+    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
+
+    class I2_root goal
+    class I2_or1 orGate
+    class I2_and1,I2_and2 andGate
+    class I2_sub1,I2_sub2 subGoal
+    class I2_leaf1,I2_leaf2,I2_leaf3,I2_leaf4,I2_leaf5,I2_leaf6 leaf
+```

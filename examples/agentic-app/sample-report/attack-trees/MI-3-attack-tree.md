@@ -1,33 +1,46 @@
-# Attack Tree: MI-3 — Retrieval-Grounding Gap (Clinical Advisory Sub-Agent)
+# Attack Tree: MI-3 — Retrieval-Grounding Gap Causes Fabricated Clinical Content on Low-Recall Queries
 
-**Finding**: MI-3 | OWASP LLM09:2025 | Risk Level: Critical
+**Finding ID**: MI-3
+**Risk Level**: Critical
+**Component**: Clinical Advisory Sub-Agent
+**Delta Status**: UNCHANGED
 
 ```mermaid
-graph TD
-    ROOT["MI-3: KB retrieval failures cause<br/>fabricated clinical content<br/>indistinguishable from grounded output"]
-    ROOT --> A["Attacker Goal: Patient or clinician<br/>acts on hallucinated clinical data<br/>presented with retrieval confidence"]
+flowchart TD
+    MI3_root["Cause ClinAdvisor to emit hallucinated clinical content as grounded output when KB retrieval fails"]
+    MI3_and1{{"AND"}}
+    MI3_sub1["Trigger low-recall KB retrieval scenario for submitted clinical query"]
+    MI3_sub2["Exploit absence of retrieval-quality gate to receive speculative clinical output"]
+    MI3_or1{{"OR"}}
+    MI3_leaf1["Submit clinical query for condition with no matching documents in Knowledge Base"]
+    MI3_leaf2["Submit out-of-distribution query that retrieves irrelevant documents with low hit score"]
+    MI3_leaf3["Degrade KB relevance by stale content causing current queries to have insufficient recall"]
+    MI3_and2{{"AND"}}
+    MI3_leaf4["Confirm ClinAdvisor has no recall-at-k threshold evaluation before generating summary"]
+    MI3_leaf5["Confirm no structured insufficient-grounding response is returned on retrieval failure"]
+    MI3_leaf6["Receive plausible-sounding but hallucinated clinical summary without confidence indicator"]
 
-    A --> B["Path 1: Out-of-distribution clinical query"]
-    B --> B1["Clinical query covers rare condition<br/>or new drug not in KB corpus"]
-    B1 --> B2["Vector search returns zero or<br/>low-quality document matches"]
-    B2 --> B3["No retrieval-quality gate;<br/>sub-agent proceeds to generate<br/>clinical summary despite low recall@k"]
-    B3 --> B4["Sub-agent 'fills in' missing information<br/>with plausible LLM-generated<br/>clinical content (hallucination)"]
-    B4 --> B5["Returned summary has same<br/>confidence framing as high-recall<br/>retrieval-grounded summaries"]
+    MI3_root --> MI3_and1
+    MI3_and1 --> MI3_sub1
+    MI3_and1 --> MI3_sub2
+    MI3_sub1 --> MI3_or1
+    MI3_or1 --> MI3_leaf1
+    MI3_or1 --> MI3_leaf2
+    MI3_or1 --> MI3_leaf3
+    MI3_sub2 --> MI3_and2
+    MI3_and2 --> MI3_leaf4
+    MI3_and2 --> MI3_leaf5
+    MI3_and2 --> MI3_leaf6
 
-    A --> C["Path 2: Stale / incomplete KB"]
-    C --> C1["KB contains outdated or partial<br/>clinical guidelines for query domain"]
-    C1 --> C2["Vector search returns matches above<br/>the k threshold but content is<br/>clinically incomplete"]
-    C2 --> C3["Sub-agent fills the content gap<br/>with hallucinated details consistent<br/>with the partial retrieved document"]
-    C3 --> C4["Partial hallucination embedded<br/>within factually-grounded context<br/>— most dangerous gap-fill pattern"]
+    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
+    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
+    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
 
-    A --> D["Path 3: Adversarial low-recall engineering"]
-    D --> D1["Attacker crafts clinical query<br/>designed to trigger low-recall retrieval<br/>(unusual clinical terminology combinations)"]
-    D1 --> D2["Retrieval returns low-relevance<br/>documents from adjacent domains"]
-    D2 --> D3["Sub-agent bridges gap with<br/>attacker-consistent hallucinated<br/>clinical claims"]
-
-    B5 --> IMPACT["Clinical Impact: Hallucinated drug<br/>information, dosing guidance, or<br/>contraindication assessment presented<br/>as retrieval-grounded output —<br/>undetectable without per-claim audit"]
-    C4 --> IMPACT
-    D3 --> IMPACT
-
-    IMPACT --> MITIG["Mitigation: Retrieval-quality gate<br/>(recall@k threshold); return structured<br/>'insufficient grounding' on failure;<br/>per-claim retrieval coverage metadata<br/>in output; KB staleness monitoring"]
+    class MI3_root goal
+    class MI3_and1,MI3_and2 andGate
+    class MI3_or1 orGate
+    class MI3_sub1,MI3_sub2 subGoal
+    class MI3_leaf1,MI3_leaf2,MI3_leaf3,MI3_leaf4,MI3_leaf5,MI3_leaf6 leaf
 ```

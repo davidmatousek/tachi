@@ -1,31 +1,46 @@
-# Attack Tree: S-1 — User Identity Spoofing
+# Attack Tree: S-1 — Session Token Replay / Identity Credential Forgery
 
-**Finding**: S-1 | Spoofing | Risk Level: Critical
+**Finding ID**: S-1
+**Risk Level**: Critical
+**Component**: User
+**Delta Status**: UNCHANGED
 
 ```mermaid
-graph TD
-    ROOT["S-1: Attacker impersonates legitimate user<br/>via replayed session tokens or forged credentials<br/>at User-Guardrails boundary"]
-    ROOT --> A["Attacker Goal: Gain unauthorized<br/>access to agentic pipeline<br/>under victim identity"]
+flowchart TD
+    S1_root["Gain unauthorized system access by impersonating a legitimate user"]
+    S1_or1{{"OR"}}
+    S1_sub1["Replay stolen session token at User-Guardrails boundary"]
+    S1_sub2["Forge identity credentials to bypass authentication"]
+    S1_and1{{"AND"}}
+    S1_leaf1["Steal active session token via phishing, XSS, or network interception"]
+    S1_leaf2["Submit stolen token before expiry to Guardrails Service endpoint"]
+    S1_leaf3["Confirm absence of IP or device-fingerprint binding on token"]
+    S1_and2{{"AND"}}
+    S1_leaf4["Obtain victim credential material via data breach or brute-force"]
+    S1_leaf5["Bypass MFA using SIM-swap, OTP phishing, or authenticator compromise"]
+    S1_leaf6["Authenticate as victim and receive valid session token"]
 
-    A --> B["Path 1: Session token replay"]
-    B --> B1["Attacker steals session token<br/>(phishing, network interception,<br/>XSS via OI-1 chain)"]
-    B1 --> B2["Token lacks binding to<br/>client IP or device fingerprint"]
-    B2 --> B3["Attacker replays token from<br/>different IP/device without detection"]
-    B3 --> B4["Requests accepted as authenticated<br/>user session at Guardrails Service"]
+    S1_root --> S1_or1
+    S1_or1 --> S1_sub1
+    S1_or1 --> S1_sub2
+    S1_sub1 --> S1_and1
+    S1_and1 --> S1_leaf1
+    S1_and1 --> S1_leaf2
+    S1_and1 --> S1_leaf3
+    S1_sub2 --> S1_and2
+    S1_and2 --> S1_leaf4
+    S1_and2 --> S1_leaf5
+    S1_and2 --> S1_leaf6
 
-    A --> C["Path 2: Credential forgery"]
-    C --> C1["Attacker obtains JWT signing key<br/>(via E-5 credential exposure<br/>or insider threat)"]
-    C1 --> C2["Forges identity token with<br/>victim user's identity claims"]
-    C2 --> C3["No MFA requirement or<br/>token binding to prevent<br/>forged token acceptance"]
+    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
+    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
+    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
 
-    A --> D["Path 3: Session fixation/hijack"]
-    D --> D1["Session fixation attack during<br/>authentication flow"]
-    D1 --> D2["No session rotation after<br/>privilege change"]
-    D2 --> D3["Attacker's pre-authentication session<br/>inherits post-authentication identity"]
-
-    B4 --> IMPACT["Impact: Attacker issues<br/>prompts as victim user;<br/>escalates via E-1 to trusted<br/>Orchestrator caller; enables<br/>CHAIN-001 cross-layer escalation"]
-    C3 --> IMPACT
-    D3 --> IMPACT
-
-    IMPACT --> MITIG["Mitigation: Short-lived JWT with<br/>client IP/device binding; MFA;<br/>token revocation lists;<br/>refresh-token rotation"]
+    class S1_root goal
+    class S1_or1 orGate
+    class S1_and1,S1_and2 andGate
+    class S1_sub1,S1_sub2 subGoal
+    class S1_leaf1,S1_leaf2,S1_leaf3,S1_leaf4,S1_leaf5,S1_leaf6 leaf
 ```

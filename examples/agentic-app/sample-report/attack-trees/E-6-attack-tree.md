@@ -1,28 +1,44 @@
----
-finding_id: "E-6"
-risk_level: "Critical"
-component: "Long-Running Learning Loop"
-generated: "2026-04-19"
----
+# Attack Tree: E-6 — Compromised Model Update Escalates Attacker to Model Parameter Control
 
-# Attack Tree: E-6 — Learning Loop Model Update Privilege Escalation
+**Finding ID**: E-6
+**Risk Level**: Critical
+**Component**: Long-Running Learning Loop
+**Delta Status**: UNCHANGED
 
 ```mermaid
-graph TD
-    GOAL["GOAL: Attacker escalates from data-layer access\nto model-parameter control via Learning Loop"]
-    GOAL --> A["AND"]
-    A --> B["Compromise training signal or update channel"]
-    A --> C["No authentication/authorization on model update push"]
-    B --> B1["Audit Logger poisoning with\nadversarial training data\n[High / High]"]
-    B --> B2["Intercept update channel between\nLearning Loop and agents\n[Low / High]"]
-    C --> C1["Model update packages not signed\nby HSM-backed key\n[High / High]"]
-    C --> C2["Orchestrator/Specialist accept updates\nwithout signature verification\n[High / High]"]
-    B1 --> D["Adversarially trained model update\nproduced by Learning Loop"]
-    B2 --> D
-    C1 --> D
-    C2 --> D
-    D --> E["Model update applied to\nOrchestrator and Specialist"]
-    E --> F["Attacker controls model behaviors:\n- Arbitrary response generation\n- Backdoor trigger activation\n- Capability expansion beyond scope"]
-```
+flowchart TD
+    E6_root["Inject arbitrary behaviors into all agents by escalating from data-layer access to model parameter control"]
+    E6_and1{{"AND"}}
+    E6_sub1["Compromise the model update pipeline with adversarial influence"]
+    E6_sub2["Deliver unsigned or forged model update to production agents"]
+    E6_or1{{"OR"}}
+    E6_leaf1["Poison training data in Audit Logger to produce adversarially-trained model artifact"]
+    E6_leaf2["Intercept model update package in transit and replace with adversarial version"]
+    E6_and2{{"AND"}}
+    E6_leaf3["Confirm Orchestrator or Specialist does not verify model update signature before applying"]
+    E6_leaf4["Push forged model update package to at least one agent endpoint"]
+    E6_leaf5["Updated model activates attacker-injected behaviors in production inference"]
 
-**Chain-breaking control**: Authenticate all model update pushes with HSM-backed keys. The Orchestrator and Specialist MUST verify update signatures before applying. Implement staged rollout with A/B testing and behavioral regression checks before production deployment of any model update.
+    E6_root --> E6_and1
+    E6_and1 --> E6_sub1
+    E6_and1 --> E6_sub2
+    E6_sub1 --> E6_or1
+    E6_or1 --> E6_leaf1
+    E6_or1 --> E6_leaf2
+    E6_sub2 --> E6_and2
+    E6_and2 --> E6_leaf3
+    E6_and2 --> E6_leaf4
+    E6_and2 --> E6_leaf5
+
+    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
+    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
+    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
+
+    class E6_root goal
+    class E6_and1,E6_and2 andGate
+    class E6_or1 orGate
+    class E6_sub1,E6_sub2 subGoal
+    class E6_leaf1,E6_leaf2,E6_leaf3,E6_leaf4,E6_leaf5 leaf
+```

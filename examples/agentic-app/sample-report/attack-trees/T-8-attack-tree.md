@@ -1,28 +1,46 @@
----
-finding_id: "T-8"
-risk_level: "Critical"
-component: "Long-Running Learning Loop"
-generated: "2026-04-19"
----
+# Attack Tree: T-8 — Temporal Training Signal Poisoning with Sleeper-Agent Injection
 
-# Attack Tree: T-8 — Learning Loop Training Signal Poisoning (Temporal Attack)
+**Finding ID**: T-8
+**Risk Level**: Critical
+**Component**: Long-Running Learning Loop
+**Delta Status**: UNCHANGED
 
 ```mermaid
-graph TD
-    GOAL["GOAL: Inject sleeper-agent trigger into\nmodel via poisoned training signal"]
-    GOAL --> A["AND"]
-    A --> B["Inject adversarial entries into Audit Logger"]
-    A --> C["No anomaly detection on training data"]
-    B --> B1["Exploit Audit Logger write access\n[Med / High]"]
-    B --> B2["Compromise upstream component\nthat writes to Audit Logger\n[Med / High]"]
-    C --> C1["Training signal accepted without\nprovenance attestation\n[High / High]"]
-    B1 --> D["Craft adversarial interaction records\ndesigned to activate on trigger prompt"]
-    B2 --> D
-    C1 --> D
-    D --> E["Records incorporated into\nLearning Loop training run"]
-    E --> F["Sleeper-agent behavior embedded\nin model update"]
-    F --> G["Future model update applied\nto Orchestrator/Specialist"]
-    G --> H["Trigger prompt activates\nhidden adversarial behavior"]
-```
+flowchart TD
+    T8_root["Inject sleeper-agent behavior into updated models via training signal poisoning"]
+    T8_and1{{"AND"}}
+    T8_sub1["Poison Audit Logger with adversarial training signal entries"]
+    T8_sub2["Craft trigger-activated behavioral payload in training data"]
+    T8_or1{{"OR"}}
+    T8_leaf1["Gain write access to Audit Logger as compromised Application Zone process"]
+    T8_leaf2["Exploit Learning Loop's unconditional trust in Audit Logger training stream"]
+    T8_and2{{"AND"}}
+    T8_leaf3["Design adversarial interactions that activate only on specific future trigger patterns"]
+    T8_leaf4["Insert adversarial records over extended period to evade statistical anomaly detection"]
+    T8_leaf5["Confirm Learning Loop ingests poisoned entries without provenance attestation"]
+    T8_leaf6["Wait for model update cycle to propagate sleeper behavior into production models"]
 
-**Chain-breaking control**: Apply training data provenance attestation with verifiable origin signatures per log entry. Implement anomaly detection on training signal distributions. Limit influence of any single data source; apply gradient clipping and differential privacy during training.
+    T8_root --> T8_and1
+    T8_and1 --> T8_sub1
+    T8_and1 --> T8_sub2
+    T8_sub1 --> T8_or1
+    T8_or1 --> T8_leaf1
+    T8_or1 --> T8_leaf2
+    T8_sub2 --> T8_and2
+    T8_and2 --> T8_leaf3
+    T8_and2 --> T8_leaf4
+    T8_and2 --> T8_leaf5
+    T8_and2 --> T8_leaf6
+
+    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
+    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
+    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
+
+    class T8_root goal
+    class T8_and1,T8_and2 andGate
+    class T8_or1 orGate
+    class T8_sub1,T8_sub2 subGoal
+    class T8_leaf1,T8_leaf2,T8_leaf3,T8_leaf4,T8_leaf5,T8_leaf6 leaf
+```

@@ -1,29 +1,46 @@
----
-finding_id: "D-5"
-risk_level: "Critical"
-component: "MCP Tool Server"
-generated: "2026-04-19"
----
+# Attack Tree: D-5 — MCP Tool Server Connection Pool Exhausted via High-Volume Tool Requests
 
-# Attack Tree: D-5 — MCP Tool Server Connection Pool Exhaustion
+**Finding ID**: D-5
+**Risk Level**: Critical
+**Component**: MCP Tool Server
+**Delta Status**: UNCHANGED
 
 ```mermaid
-graph TD
-    GOAL["GOAL: Exhaust MCP Tool Server connection pool\ncausing all legitimate tool calls to fail"]
-    GOAL --> A["AND"]
-    A --> B["Compromised or adversarially prompted agent\ngenerates high-volume tool call requests"]
-    A --> C["No per-caller rate limiting or\nconnection pool overflow rejection"]
-    B --> B1["Orchestrator prompt injection causing\nflood of tool requests\n[High / High]"]
-    B --> B2["Adversarial delegation message causing\nSpecialist to flood tool requests\n[Med / High]"]
-    C --> C1["Tool Server queues all requests —\npool exhaustion via queuing\n[High / High]"]
-    B1 --> D["High-volume concurrent tool call requests\nreach Tool Server"]
-    B2 --> D
-    C1 --> D
-    D --> E["External API connection pool exhausted"]
-    E --> F1["Legitimate tool calls fail\nwith pool exhaustion error"]
-    E --> F2["API provider rate limit triggered —\nsystem locked out"]
-    F1 --> G["Tool-dependent agent pipeline unavailable"]
-    F2 --> G
-```
+flowchart TD
+    D5_root["Exhaust MCP Tool Server connection pool to deny all tool call availability"]
+    D5_or1{{"OR"}}
+    D5_sub1["Flood Tool Server with high-rate tool call requests from compromised agent"]
+    D5_sub2["Trigger runaway tool invocation from injected LLM context"]
+    D5_and1{{"AND"}}
+    D5_leaf1["Compromise Orchestrator or Specialist Agent to issue tool calls at maximum rate"]
+    D5_leaf2["Confirm Tool Server lacks per-caller rate limiting or connection pool overflow rejection"]
+    D5_leaf3["Saturate connection pool causing all legitimate tool calls to fail"]
+    D5_and2{{"AND"}}
+    D5_leaf4["Inject adversarial content into Orchestrator context causing autonomous tool call loop"]
+    D5_leaf5["Confirm no circuit breaker halts runaway tool invocation sequences"]
+    D5_leaf6["Tool call flood exhausts API provider rate limits and connection pool simultaneously"]
 
-**Chain-breaking control**: Implement per-caller and per-tool rate limiting at the Tool Server. Enforce a connection pool limit with overflow rejection (not queuing) for requests exceeding the pool. Apply per-session tool call budgets. Use circuit breakers to isolate External API degradation.
+    D5_root --> D5_or1
+    D5_or1 --> D5_sub1
+    D5_or1 --> D5_sub2
+    D5_sub1 --> D5_and1
+    D5_and1 --> D5_leaf1
+    D5_and1 --> D5_leaf2
+    D5_and1 --> D5_leaf3
+    D5_sub2 --> D5_and2
+    D5_and2 --> D5_leaf4
+    D5_and2 --> D5_leaf5
+    D5_and2 --> D5_leaf6
+
+    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
+    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
+    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
+
+    class D5_root goal
+    class D5_or1 orGate
+    class D5_and1,D5_and2 andGate
+    class D5_sub1,D5_sub2 subGoal
+    class D5_leaf1,D5_leaf2,D5_leaf3,D5_leaf4,D5_leaf5,D5_leaf6 leaf
+```

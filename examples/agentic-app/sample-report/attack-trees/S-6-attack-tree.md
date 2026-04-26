@@ -1,26 +1,44 @@
----
-finding_id: "S-6"
-risk_level: "Critical"
-component: "MCP Tool Server"
-generated: "2026-04-19"
----
+# Attack Tree: S-6 — Application Zone Process Spoofs Agent to Submit Unauthorized Tool Calls
 
-# Attack Tree: S-6 — MCP Tool Server Caller Spoofing
+**Finding ID**: S-6
+**Risk Level**: Critical
+**Component**: MCP Tool Server
+**Delta Status**: UNCHANGED
 
 ```mermaid
-graph TD
-    GOAL["GOAL: Unauthorized process submits\ntool calls as spoofed agent identity"]
-    GOAL --> A["AND"]
-    A --> B["Attacker process in Application Zone"]
-    A --> C["No caller authentication on JSON-RPC endpoints"]
-    B --> B1["Compromised service component\n[Med / High]"]
-    B --> B2["Insider threat\n[Low / High]"]
-    C --> C1["No mTLS or signed caller token required\n[High / High]"]
-    B1 --> D["Submit JSON-RPC tool call\nunder spoofed Orchestrator/Specialist identity"]
-    B2 --> D
-    C1 --> D
-    D --> E["Tool Server executes with full\nservice credential set"]
-    E --> F["Unauthorized external API calls\nor data access"]
-```
+flowchart TD
+    S6_root["Invoke unauthorized tools using MCP Tool Server credentials by spoofing agent identity"]
+    S6_and1{{"AND"}}
+    S6_sub1["Gain Application Zone process access with JSON-RPC endpoint reach"]
+    S6_sub2["Submit tool call request with forged agent identity"]
+    S6_or1{{"OR"}}
+    S6_leaf1["Compromise Specialist Agent or lateral-move to its network segment"]
+    S6_leaf2["Exploit misconfigured internal network allowing direct JSON-RPC access"]
+    S6_and2{{"AND"}}
+    S6_leaf3["Confirm Tool Server accepts unauthenticated or weakly authenticated callers"]
+    S6_leaf4["Craft JSON-RPC request impersonating Orchestrator or Specialist identity"]
+    S6_leaf5["Execute tool with Tool Server service credentials and external API access"]
 
-**Chain-breaking control**: Enforce caller authentication on all JSON-RPC endpoints. Each agent must present a signed caller token or mTLS certificate. The Tool Server must verify the caller's identity before executing any tool invocation.
+    S6_root --> S6_and1
+    S6_and1 --> S6_sub1
+    S6_and1 --> S6_sub2
+    S6_sub1 --> S6_or1
+    S6_or1 --> S6_leaf1
+    S6_or1 --> S6_leaf2
+    S6_sub2 --> S6_and2
+    S6_and2 --> S6_leaf3
+    S6_and2 --> S6_leaf4
+    S6_and2 --> S6_leaf5
+
+    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
+    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
+    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
+    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
+
+    class S6_root goal
+    class S6_and1,S6_and2 andGate
+    class S6_or1 orGate
+    class S6_sub1,S6_sub2 subGoal
+    class S6_leaf1,S6_leaf2,S6_leaf3,S6_leaf4,S6_leaf5 leaf
+```
