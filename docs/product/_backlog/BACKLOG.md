@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-04-26T14:55:46Z.
+> Auto-generated from GitHub Issues on 2026-04-26T16:32:04Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -19,7 +19,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| — | *No items in this stage* | | |
+| #224 | F-4 — ASI09 Human-Agent Trust Exploitation [Tier 1] | — | 2026-04-26 |
 
 ## Plan
 

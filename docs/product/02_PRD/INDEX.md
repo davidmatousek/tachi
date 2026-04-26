@@ -1,11 +1,12 @@
 # PRD Index
 
-**Last Updated**: 2026-04-26 (Feature 219 delivered — F-3 ASI07 Insecure Inter-Agent Communication / Heuristic A enrichment of `tool-abuse` / first execution of enrichment branch)
+**Last Updated**: 2026-04-26 (PRD 224 approved — F-4 ASI09 Human-Agent Trust Exploitation / new `human-trust-exploitation` agent / third execution of Heuristic A standalone-new-agent branch / ASI09 sub-scope carve-up with `agent-autonomy`)
 **Legend**: ✓=APPROVED, ⚠=APPROVED_WITH_CONCERNS, 🔄=CHANGES_REQUESTED, ⛔=BLOCKED, ⚠⚡=OVERRIDDEN
 
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 224 | [F-4 ASI09 Human-Agent Trust Exploitation](224-trust-exploitation-threat-agent-2026-04-26.md) | ✓ | ✓ | ⚠ | Approved | 2026-04-26 |
 | 219 | [F-3 ASI07 Insecure Inter-Agent Communication](219-asi07-tool-abuse-enrichment-2026-04-25.md) ([PR #220](https://github.com/davidmatousek/tachi/pull/220)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-26 |
 | 212 | [Improve Executive-Architecture Infographic](212-improve-executive-architecture-infographic-2026-04-24.md) ([PR #213](https://github.com/davidmatousek/tachi/pull/213)) | ⚠ | ⚠ | ⚠ | Delivered | 2026-04-25 |
 | 206 | [F-2 Misinformation Threat Agent (LLM09)](206-misinformation-threat-agent-2026-04-23.md) ([PR #207](https://github.com/davidmatousek/tachi/pull/207)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-24 |
