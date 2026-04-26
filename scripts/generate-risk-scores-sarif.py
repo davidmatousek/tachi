@@ -23,6 +23,17 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from sarif_common import (
+    PREFIX_TO_RULE,
+    build_sarif_envelope,
+    level_for_band,
+    parse_component_metadata,
+    prefix_for,
+)
+from tachi_parsers import parse_markdown_table
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SAMPLE = REPO_ROOT / "examples/agentic-app/sample-report"
 RISK_MD = SAMPLE / "risk-scores.md"
@@ -34,78 +45,27 @@ SOURCE_THREATS_URI = (
 )
 
 
-# ---------------------------------------------------------------------------
-# Static mappings (rules + taxonomy)
-# ---------------------------------------------------------------------------
-
-PREFIX_TO_RULE = {
-    "S": "tachi/stride/spoofing",
-    "T": "tachi/stride/tampering",
-    "R": "tachi/stride/repudiation",
-    "I": "tachi/stride/information-disclosure",
-    "D": "tachi/stride/denial-of-service",
-    "E": "tachi/stride/elevation-of-privilege",
-    "AG": "tachi/ai/agentic-threats",
-    "AGP": "tachi/ai/agentic-threats",
-    "LLM": "tachi/ai/llm-threats",
-    "OI": "tachi/ai/llm-threats",
-    "MI": "tachi/ai/llm-threats",
-}
-
-
-def prefix_for(finding_id: str) -> str:
-    """Return the symbolic prefix for a finding ID (e.g. 'AG' from 'AG-8')."""
-    return finding_id.rsplit("-", 1)[0] if "-" in finding_id else finding_id
-
-
-# ---------------------------------------------------------------------------
-# Parsers — risk-scores.md
-# ---------------------------------------------------------------------------
-
-SCORED_ROW = re.compile(
-    r"^\| (?P<id>[A-Z]+(?:-[A-Z]+)?-\d+) \| "
-    r"(?P<component>[^|]+?) \| "
-    r"(?P<threat>[^|]+?) \| "
-    r"(?P<cvss>[\d.]+) \| "
-    r"(?P<exploit>[\d.]+) \| "
-    r"(?P<scal>[\d.]+) \| "
-    r"(?P<reach>[\d.]+) \| "
-    r"(?P<composite>[\d.]+) \| "
-    r"(?P<severity>[A-Za-z]+) \| "
-    r"(?P<sla>[^|]+?) \| "
-    r"(?P<disposition>[^|]+?) \|"
-)
-
-
 def parse_risk_md_section2(md: str) -> list[dict]:
-    """Parse Section 2 'Scored Threat Table' rows into finding dicts."""
-    in_section = False
-    rows: list[dict] = []
-    for line in md.splitlines():
-        if line.startswith("## 2. Scored Threat Table"):
-            in_section = True
-            continue
-        if in_section and line.startswith("## "):
-            break
-        m = SCORED_ROW.match(line)
-        if not m:
-            continue
-        rows.append(
+    """Parse Section 2 'Scored Threat Table' rows into typed finding dicts."""
+    rows = parse_markdown_table(md, "## 2. Scored Threat Table")
+    out: list[dict] = []
+    for r in rows:
+        out.append(
             {
-                "id": m.group("id").strip(),
-                "component": m.group("component").strip(),
-                "threat_summary": m.group("threat").strip(),
-                "cvss_base": float(m.group("cvss")),
-                "exploitability": float(m.group("exploit")),
-                "scalability": float(m.group("scal")),
-                "reachability": float(m.group("reach")),
-                "composite": float(m.group("composite")),
-                "severity_band": m.group("severity").strip(),
-                "sla_days": m.group("sla").strip(),
-                "disposition": m.group("disposition").strip(),
+                "id": r["ID"].strip(),
+                "component": r["Component"].strip(),
+                "threat_summary": r["Threat"].strip(),
+                "cvss_base": float(r["CVSS"]),
+                "exploitability": float(r["Exploitability"]),
+                "scalability": float(r["Scalability"]),
+                "reachability": float(r["Reachability"]),
+                "composite": float(r["Composite"]),
+                "severity_band": r["Severity"].strip(),
+                "sla_days": r["SLA"].strip(),
+                "disposition": r["Disposition"].strip(),
             }
         )
-    return rows
+    return out
 
 
 SECTION3_HEADER = re.compile(r"^### (?P<id>[A-Z]+(?:-[A-Z]+)?-\d+):\s+(?P<text>.+)$")
@@ -118,11 +78,7 @@ SCORE_SOURCE_RE = re.compile(r"^\*Score source:\s+(?P<source>[^*]+)\*")
 
 
 def parse_risk_md_section3(md: str) -> dict[str, dict]:
-    """Parse Section 3 'Dimensional Breakdown' for per-finding details.
-
-    Returns a dict keyed by finding ID with category, MAESTRO layer, CVSS
-    vector, correlation primary, and score source.
-    """
+    """Parse Section 3 'Dimensional Breakdown' for per-finding details."""
     in_section = False
     out: dict[str, dict] = {}
     cur: dict | None = None
@@ -156,7 +112,6 @@ def parse_risk_md_section3(md: str) -> dict[str, dict]:
         ):
             mm = rx.match(line)
             if mm:
-                # CVSS vector regex uses 'vector' group; others vary.
                 if key == "cvss_vector":
                     cur[key] = mm.group("vector")
                 else:
@@ -176,92 +131,21 @@ def parse_risk_md_section3(md: str) -> dict[str, dict]:
     return out
 
 
-GOV_ROW = re.compile(
-    r"^\| (?P<id>[A-Z]+(?:-[A-Z]+)?-\d+) \| "
-    r"(?P<component>[^|]+?) \| "
-    r"(?P<severity>[A-Za-z]+) \| "
-    r"(?P<owner>[^|]+?) \| "
-    r"(?P<sla>[^|]+?) \| "
-    r"(?P<disposition>[^|]+?) \| "
-    r"(?P<review>\d{4}-\d{2}-\d{2}) \|"
-)
-
-
 def parse_risk_md_section4(md: str) -> dict[str, dict]:
     """Parse Section 4 'Governance Fields' rows into per-finding governance."""
-    in_section = False
+    rows = parse_markdown_table(md, "## 4. Governance Fields")
     out: dict[str, dict] = {}
-    for line in md.splitlines():
-        if line.startswith("## 4. Governance Fields"):
-            in_section = True
+    for r in rows:
+        fid = r.get("ID", "").strip()
+        if not fid:
             continue
-        if in_section and line.startswith("## "):
-            break
-        m = GOV_ROW.match(line)
-        if not m:
-            continue
-        out[m.group("id").strip()] = {
-            "owner": m.group("owner").strip(),
-            "sla_days": m.group("sla").strip(),
-            "disposition": m.group("disposition").strip(),
-            "review_date": m.group("review").strip(),
+        out[fid] = {
+            "owner": r.get("Owner", "").strip(),
+            "sla_days": r.get("SLA", "").strip(),
+            "disposition": r.get("Disposition", "").strip(),
+            "review_date": r.get("Review Date", "").strip(),
         }
     return out
-
-
-# ---------------------------------------------------------------------------
-# Parsers — threats.md
-# ---------------------------------------------------------------------------
-
-ZONE_ROW = re.compile(r"^\| (?P<zone>[^|]+?) \| (?P<level>[^|]+?) \| (?P<components>[^|]+?) \|")
-COMPONENT_ROW = re.compile(
-    r"^\| (?P<name>[^|]+?) \| (?P<dfd>External Entity|Process|Data Store) \| (?P<layer>[^|]+?) \| (?P<desc>[^|]+?) \|"
-)
-
-
-def parse_trust_zones(md: str) -> dict[str, str]:
-    """Map component name -> trust zone name (e.g. 'Application Zone')."""
-    in_section = False
-    component_zone: dict[str, str] = {}
-    for line in md.splitlines():
-        if line.startswith("### Trust Zones"):
-            in_section = True
-            continue
-        if in_section and line.startswith("### "):
-            break
-        m = ZONE_ROW.match(line)
-        if not m:
-            continue
-        zone = m.group("zone").strip()
-        if zone == "Zone":  # header row
-            continue
-        for c in (c.strip() for c in m.group("components").split(",")):
-            if c:
-                component_zone[c] = zone
-    return component_zone
-
-
-def parse_component_kinds(md: str) -> dict[str, str]:
-    """Map component name -> SARIF logical-location kind."""
-    kinds: dict[str, str] = {}
-    in_components = False
-    for line in md.splitlines():
-        if line.startswith("### Components"):
-            in_components = True
-            continue
-        if in_components and line.startswith("### "):
-            break
-        m = COMPONENT_ROW.match(line)
-        if not m or m.group("name").strip() == "Component":
-            continue
-        dfd = m.group("dfd").strip()
-        kind = {
-            "External Entity": "external-entity",
-            "Process": "process",
-            "Data Store": "data",
-        }.get(dfd, "process")
-        kinds[m.group("name").strip()] = kind
-    return kinds
 
 
 THREAT_ROW = re.compile(
@@ -299,14 +183,18 @@ def parse_threats_full_text(md: str) -> dict[str, tuple[str, str]]:
     return out
 
 
-SOURCE_ATTR_BLOCK = re.compile(
-    r"```yaml\n(?P<body>[\s\S]+?)```",
-    re.MULTILINE,
-)
+SOURCE_ATTR_BLOCK = re.compile(r"```yaml\n(?P<body>[\s\S]+?)```", re.MULTILINE)
 
 
 def parse_source_attribution(md: str) -> dict[str, list[dict]]:
-    """Extract per-finding source_attribution lists from threats.md YAML block."""
+    """Extract per-finding source_attribution lists from inline YAML blocks.
+
+    The threats.md flavor consumed by this generator emits source_attribution
+    inside ad-hoc yaml fences (often after Section 4 AI tables, not the
+    formally named "## 9. Source Attribution" block that
+    `tachi_parsers._extract_source_attribution_block` requires). This function
+    therefore scans every yaml fence rather than gating on Section 9.
+    """
     out: dict[str, list[dict]] = {}
     for m in SOURCE_ATTR_BLOCK.finditer(md):
         body = m.group("body")
@@ -320,7 +208,6 @@ def parse_source_attribution(md: str) -> dict[str, list[dict]]:
             if not line:
                 continue
             if not line.startswith(" "):
-                # New finding entry
                 if cur_id and cur_attrs:
                     out[cur_id] = cur_attrs
                 cur_id = line.split(":", 1)[0].strip()
@@ -343,10 +230,6 @@ def parse_source_attribution(md: str) -> dict[str, list[dict]]:
     return out
 
 
-# ---------------------------------------------------------------------------
-# Helper builders
-# ---------------------------------------------------------------------------
-
 _OWASP_REFERENCE_BY_PREFIX = {
     "OI": "OWASP LLM05:2025",
     "MI": "OWASP LLM09:2025",
@@ -354,24 +237,20 @@ _OWASP_REFERENCE_BY_PREFIX = {
 
 
 def derive_owasp_reference(prefix: str) -> str | None:
-    """Return an OWASP reference label for legacy property compat."""
     return _OWASP_REFERENCE_BY_PREFIX.get(prefix)
 
 
-def level_for_band(band: str) -> str:
-    return {
-        "Critical": "error",
-        "High": "error",
-        "Medium": "warning",
-        "Low": "note",
-    }.get(band, "warning")
+_DFD_TYPE_TO_KIND = {
+    "External Entity": "external-entity",
+    "Process": "process",
+    "Data Store": "data",
+}
 
 
-def build_logical_location(
-    component: str, kinds: dict[str, str], zones: dict[str, str]
-) -> dict:
-    zone = zones.get(component, "Application Zone")
-    kind = kinds.get(component, "process")
+def build_logical_location(component: str, component_meta: dict[str, dict[str, str]]) -> dict:
+    meta = component_meta.get(component, {"zone": "Application Zone", "dfd_type": "Process"})
+    zone = meta["zone"]
+    kind = _DFD_TYPE_TO_KIND.get(meta["dfd_type"], "process")
     return {
         "name": component,
         "fullyQualifiedName": f"{zone}/{component}",
@@ -389,8 +268,7 @@ def build_result(
     threats_status: dict[str, str],
     threats_full: dict[str, tuple[str, str]],
     source_attribution: dict[str, list[dict]],
-    component_kinds: dict[str, str],
-    component_zones: dict[str, str],
+    component_meta: dict[str, dict[str, str]],
 ) -> dict:
     """Build one SARIF 2.1.0 result entry from a scored finding plus correlated context.
 
@@ -402,7 +280,7 @@ def build_result(
     """
     fid = finding["id"]
     pref = prefix_for(fid)
-    rule_id = PREFIX_TO_RULE.get(pref, "tachi/ai/agentic-threats")
+    rule_id = PREFIX_TO_RULE.get(pref, "tachi/ai/agentic")
     level = level_for_band(finding["severity_band"])
 
     component = finding["component"]
@@ -410,7 +288,6 @@ def build_result(
         fid, (finding.get("threat_summary", ""), "")
     )
 
-    # Properties — quantitative scores + governance + provenance
     composite_str = f"{finding['composite']:.1f}"
     props: dict = {
         "security-severity": composite_str,
@@ -428,7 +305,6 @@ def build_result(
         "governance.sla_days": s4.get("sla_days", finding["sla_days"]),
         "governance.disposition": s4.get("disposition", finding["disposition"]),
         "review-date": s4.get("review_date", ""),
-        # Legacy / back-compat fields kept alongside new namespaced ones
         "risk-owner": s4.get("owner", "Unassigned"),
         "remediation-sla": s4.get("sla_days", finding["sla_days"]),
         "risk-disposition": s4.get("disposition", finding["disposition"]),
@@ -450,7 +326,6 @@ def build_result(
     if owasp_ref:
         props["owasp-reference"] = owasp_ref
 
-    # Source attribution → SARIF property
     if fid in source_attribution:
         props["source-attribution"] = source_attribution[fid]
 
@@ -463,7 +338,7 @@ def build_result(
     if threats_status.get(fid) == "NEW":
         props.setdefault("new-finding", True)
 
-    result = {
+    return {
         "ruleId": rule_id,
         "message": {
             "text": threat_text or finding.get("threat_summary", ""),
@@ -476,20 +351,13 @@ def build_result(
                     "artifactLocation": {"uri": SOURCE_THREATS_URI},
                     "region": {"startLine": 1},
                 },
-                "logicalLocation": build_logical_location(
-                    component, component_kinds, component_zones
-                ),
+                "logicalLocation": build_logical_location(component, component_meta),
             }
         ],
         "partialFingerprints": {"findingId/v1": fid},
         "properties": props,
     }
-    return result
 
-
-# ---------------------------------------------------------------------------
-# Run construction
-# ---------------------------------------------------------------------------
 
 RULE_DEFS = [
     (
@@ -541,7 +409,7 @@ RULE_DEFS = [
         "7.8",
     ),
     (
-        "tachi/ai/agentic-threats",
+        "tachi/ai/agentic",
         "Agentic Threats",
         "AI agent autonomy and multi-agent coordination threats",
         "Threats specific to agentic AI systems including autonomous action abuse, agent collusion, tool call injection, and inter-agent communication vulnerabilities (OWASP ASI 2026 series).",
@@ -549,7 +417,7 @@ RULE_DEFS = [
         "7.8",
     ),
     (
-        "tachi/ai/llm-threats",
+        "tachi/ai/llm",
         "LLM Threats",
         "Large language model specific threats",
         "Threats specific to LLM systems including prompt injection, training data poisoning, model theft, improper output handling, and misinformation emission.",
@@ -640,11 +508,6 @@ def supported_taxonomies() -> list[dict]:
     ]
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-
-
 def main() -> int:
     risk_md = RISK_MD.read_text(encoding="utf-8")
     threats_md = THREATS_MD.read_text(encoding="utf-8")
@@ -653,8 +516,7 @@ def main() -> int:
     s3_map = parse_risk_md_section3(risk_md)
     s4_map = parse_risk_md_section4(risk_md)
 
-    component_zones = parse_trust_zones(threats_md)
-    component_kinds = parse_component_kinds(threats_md)
+    component_meta = parse_component_metadata(threats_md)
     threats_status = parse_threats_status(threats_md)
     threats_full = parse_threats_full_text(threats_md)
     source_attribution = parse_source_attribution(threats_md)
@@ -678,31 +540,19 @@ def main() -> int:
                 threats_status,
                 threats_full,
                 source_attribution,
-                component_kinds,
-                component_zones,
+                component_meta,
             )
         )
 
-    sarif = {
-        "version": "2.1.0",
-        "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
-        "runs": [
-            {
-                "tool": {
-                    "driver": {
-                        "name": "tachi-risk-scorer",
-                        "version": "1.1",
-                        "semanticVersion": "1.1",
-                        "informationUri": "https://github.com/owner/tachi",
-                        "supportedTaxonomies": supported_taxonomies(),
-                        "rules": build_rules(),
-                    }
-                },
-                "taxonomies": TAXONOMIES,
-                "results": results,
-            }
-        ],
+    driver = {
+        "name": "tachi-risk-scorer",
+        "version": "1.1",
+        "semanticVersion": "1.1",
+        "informationUri": "https://github.com/owner/tachi",
+        "supportedTaxonomies": supported_taxonomies(),
+        "rules": build_rules(),
     }
+    sarif = build_sarif_envelope(driver, TAXONOMIES, results)
 
     OUT_SARIF.write_text(
         json.dumps(sarif, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"

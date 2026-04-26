@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -46,6 +47,18 @@ DETECTION_PATTERNS = (
 )
 FIXTURE_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "tool_abuse_enrichment"
 TAXONOMY_DIR = REPO_ROOT / "schemas" / "taxonomy"
+
+# Make scripts/ importable so we can use the canonical F-A2 validator instead
+# of a test-local re-implementation. Importing the canonical
+# `validate_source_attribution` ensures these tests would catch schema drift
+# (e.g. acceptance of a non-canonical "atlas" taxonomy alias) rather than
+# masking it behind a divergent test helper.
+sys.path.insert(0, str(REPO_ROOT))
+
+from scripts.tachi_parsers import (  # noqa: E402
+    ValidationError,
+    validate_source_attribution,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -217,76 +230,59 @@ def test_categories_1_8_byte_identity_against_main() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _load_taxonomy_ids(taxonomy: str) -> set[str]:
-    """Load all top-level id keys from schemas/taxonomy/{taxonomy}.yaml."""
-    suffix_map = {"owasp": "owasp.yaml", "cwe": "cwe.yaml", "atlas": "mitre-atlas.yaml"}
-    path = TAXONOMY_DIR / suffix_map[taxonomy]
-    with path.open("r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    return {entry["id"] for entry in data}
+def test_valid_cat_9_fixture_passes_referential_integrity() -> None:
+    """SC-015 BLOCKER: valid_category_9_a2a_finding.yaml MUST pass F-A2 validation.
 
-
-@pytest.fixture(scope="module")
-def taxonomy_ids() -> dict[str, set[str]]:
-    return {
-        "owasp": _load_taxonomy_ids("owasp"),
-        "cwe": _load_taxonomy_ids("cwe"),
-        "atlas": _load_taxonomy_ids("atlas"),
-    }
-
-
-def _validate_source_attribution(finding: dict, taxonomy_ids: dict[str, set[str]]) -> list[str]:
-    """Mimic F-A2 validate_source_attribution() — checks every (taxonomy, id) resolves."""
-    errors: list[str] = []
-    for entry in finding.get("source_attribution", []):
-        tax = entry.get("taxonomy")
-        ident = entry.get("id")
-        rel = entry.get("relationship")
-        if tax not in {"owasp", "mitre-attack", "mitre-atlas", "nist-ai-rmf", "cwe", "atlas"}:
-            errors.append(f"invalid taxonomy {tax!r}")
-            continue
-        normalized_tax = "atlas" if tax in {"atlas", "mitre-atlas"} else tax
-        if normalized_tax not in taxonomy_ids:
-            errors.append(f"taxonomy {tax!r} not loaded")
-            continue
-        if ident not in taxonomy_ids[normalized_tax]:
-            errors.append(f"id {ident!r} absent from {tax} catalog")
-        if rel not in {"primary", "related", "derived"}:
-            errors.append(f"invalid relationship {rel!r}")
-    return errors
-
-
-def test_valid_cat_9_fixture_passes_referential_integrity(taxonomy_ids: dict[str, set[str]]) -> None:
-    """SC-015 BLOCKER: valid_category_9_a2a_finding.yaml MUST pass F-A2 validation."""
+    Uses the canonical ``scripts.tachi_parsers.validate_source_attribution``
+    instead of a test-local re-implementation. The canonical validator reads
+    catalogs internally with its own per-call cache, so no fixture pre-load
+    is required.
+    """
     fixture_path = FIXTURE_DIR / "valid_category_9_a2a_finding.yaml"
     with fixture_path.open("r", encoding="utf-8") as f:
         finding = yaml.safe_load(f)
-    errors = _validate_source_attribution(finding, taxonomy_ids)
+    errors = validate_source_attribution([finding], taxonomy_dir=TAXONOMY_DIR)
     assert errors == [], (
         f"Cat-9 valid fixture failed F-A2 validation: {errors}. "
         f"Catalog citations must resolve in schemas/taxonomy/{{owasp,cwe,mitre-atlas}}.yaml."
     )
 
 
-def test_valid_cat_10_fixture_passes_referential_integrity(taxonomy_ids: dict[str, set[str]]) -> None:
-    """SC-015 BLOCKER: valid_category_10_mcp_to_mcp_finding.yaml MUST pass F-A2 validation."""
+def test_valid_cat_10_fixture_passes_referential_integrity() -> None:
+    """SC-015 BLOCKER: valid_category_10_mcp_to_mcp_finding.yaml MUST pass F-A2 validation.
+
+    Uses the canonical ``scripts.tachi_parsers.validate_source_attribution``
+    instead of a test-local re-implementation.
+    """
     fixture_path = FIXTURE_DIR / "valid_category_10_mcp_to_mcp_finding.yaml"
     with fixture_path.open("r", encoding="utf-8") as f:
         finding = yaml.safe_load(f)
-    errors = _validate_source_attribution(finding, taxonomy_ids)
+    errors = validate_source_attribution([finding], taxonomy_dir=TAXONOMY_DIR)
     assert errors == [], (
         f"Cat-10 valid fixture failed F-A2 validation: {errors}. "
         f"Catalog citations must resolve in schemas/taxonomy/{{owasp,cwe,mitre-atlas}}.yaml."
     )
 
 
-def test_invalid_attribution_fixture_rejected(taxonomy_ids: dict[str, set[str]]) -> None:
-    """SC-015 BLOCKER: invalid_attribution_finding.yaml MUST be rejected (CWE-99999 absent)."""
+def test_invalid_attribution_fixture_rejected() -> None:
+    """SC-015 BLOCKER: invalid_attribution_finding.yaml MUST be rejected (CWE-99999 absent).
+
+    Uses the canonical ``scripts.tachi_parsers.validate_source_attribution``;
+    asserts that the returned list of ``ValidationError`` includes a record
+    whose reason mentions ``CWE-99999``.
+    """
     fixture_path = FIXTURE_DIR / "invalid_attribution_finding.yaml"
     with fixture_path.open("r", encoding="utf-8") as f:
         finding = yaml.safe_load(f)
-    errors = _validate_source_attribution(finding, taxonomy_ids)
-    assert any("CWE-99999" in err for err in errors), (
+    errors = validate_source_attribution([finding], taxonomy_dir=TAXONOMY_DIR)
+    assert errors, (
+        "Negative fixture MUST be rejected; canonical validator returned no errors. "
+        "F-A2 referential-integrity validation is broken."
+    )
+    assert all(isinstance(e, ValidationError) for e in errors), (
+        f"Canonical validator must return ValidationError instances; got: {errors}"
+    )
+    assert any("CWE-99999" in e.reason for e in errors), (
         f"Negative fixture MUST be rejected for CWE-99999 absence; got errors: {errors}. "
         f"F-A2 referential-integrity validation is broken."
     )

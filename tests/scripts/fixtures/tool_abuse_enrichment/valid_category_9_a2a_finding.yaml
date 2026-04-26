@@ -17,5 +17,5 @@ references:
 source_attribution:
   - {taxonomy: owasp, id: ASI07, relationship: primary}
   - {taxonomy: cwe, id: CWE-287, relationship: related}
-  - {taxonomy: atlas, id: AML.T0060, relationship: related}
+  - {taxonomy: mitre-atlas, id: AML.T0060, relationship: related}
 dfd_element_type: "Process"

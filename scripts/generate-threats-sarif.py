@@ -1,14 +1,8 @@
 #!/usr/bin/env python3
-"""
-generate-threats-sarif.py
+"""Generate SARIF 2.1.0 from a regenerated threats.md (Sections 3 STRIDE + 4 AI tables).
 
-Parses a regenerated threats.md (Sections 3 STRIDE + 4 AG/LLM/OI/MI finding tables)
-and emits SARIF 2.1.0 output with:
-- 8 rules (STRIDE 6 + AI 2: agentic + llm)
-- One result per finding
-- Severity-mapped levels (error/warning/note)
-- Properties including OWASP ref, agentic pattern, MAESTRO layer
-- Special AG-8 properties: asi07_emission, feature, pattern_category
+Per-finding properties include OWASP reference, agentic pattern, MAESTRO layer.
+F-3 / Feature 219: AG-8 emits properties.asi07_emission=true and pattern_category=9.
 
 Usage:
     python3 scripts/generate-threats-sarif.py <threats.md> <output.sarif>
@@ -20,8 +14,16 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-# ---------- Rule dictionary (8 rules) ----------
+from sarif_common import (
+    PREFIX_TO_RULE,
+    SEVERITY_TO_LEVEL,
+    build_sarif_envelope,
+    parse_component_metadata,
+)
+
+
 RULES = [
     {
         "id": "tachi/stride/spoofing",
@@ -263,55 +265,17 @@ RULES = [
 ]
 
 
-PREFIX_TO_RULE = {
-    "S": "tachi/stride/spoofing",
-    "T": "tachi/stride/tampering",
-    "R": "tachi/stride/repudiation",
-    "I": "tachi/stride/information-disclosure",
-    "D": "tachi/stride/denial-of-service",
-    "E": "tachi/stride/elevation-of-privilege",
-    "AG": "tachi/ai/agentic",
-    "AGP": "tachi/ai/agentic",
-    "LLM": "tachi/ai/llm",
-    "OI": "tachi/ai/llm",
-    "MI": "tachi/ai/llm",
-}
-
-
-SEVERITY_TO_LEVEL = {
-    "Critical": "error",
-    "High": "error",
-    "Medium": "warning",
-    "Low": "note",
-    "Note": "note",
-}
-
-
-# Component → trust zone mapping (derived from threats.md Trust Zones)
-COMPONENT_ZONE = {
-    "User": ("User Zone", "external-entity"),
-    "Guardrails Service": ("Application Zone", "process"),
-    "LLM Agent Orchestrator": ("Application Zone", "process"),
-    "Specialist Agent": ("Application Zone", "process"),
-    "Inter-Agent Communication Channel": ("Application Zone", "process"),
-    "MCP Tool Server": ("Application Zone", "process"),
-    "Knowledge Base": ("Application Zone", "data-store"),
-    "Audit Logger": ("Application Zone", "data-store"),
-    "Long-Running Learning Loop": ("Application Zone", "process"),
-    "Clinical Advisory Sub-Agent": ("Application Zone", "process"),
-    "External API": ("External Services", "external-entity"),
+_DFD_TYPE_TO_KIND = {
+    "External Entity": "external-entity",
+    "Process": "process",
+    "Data Store": "data-store",
 }
 
 
 def parse_findings(md_path: Path) -> list[dict]:
-    """
-    Parses Section 3 (STRIDE) and Section 4 (AI: AG, LLM, OI, MI) finding tables.
-    Returns a list of finding dicts with keys: id, prefix, status, component,
-    maestro, agentic_pattern, threat, owasp_ref, likelihood, impact, risk_level, mitigation.
-    """
+    """Parse Section 3 (STRIDE) and Section 4 (AI: AG, LLM, OI, MI) finding tables."""
     text = md_path.read_text(encoding="utf-8")
 
-    # Restrict to Sections 3, 4, and 4a (skip Section 5+ which has summary tables)
     sec3_match = re.search(r"^## 3\. STRIDE Threat Tables\s*$", text, re.MULTILINE)
     sec5_match = re.search(r"^## 5\. ", text, re.MULTILINE)
     if not sec3_match or not sec5_match:
@@ -319,9 +283,6 @@ def parse_findings(md_path: Path) -> list[dict]:
 
     findings_region = text[sec3_match.start():sec5_match.start()]
 
-    # Match table rows with at least 9 pipe-separated columns starting with finding ID.
-    # STRIDE rows: 10 cols (ID, Status, Component, MAESTRO, Pattern, Threat, Likelihood, Impact, Risk, Mitigation)
-    # AI rows: 11 cols (adds OWASP Reference)
     finding_id_re = re.compile(
         r"^\| (?P<id>(?:S|T|R|I|D|E|AG|AGP|LLM|OI|MI)-\d+|AGP-\d+) \| (?P<status>\[NEW\]|\[UNCHANGED\]|\[UPDATED\]|\[RESOLVED\]) \|",
         re.MULTILINE,
@@ -346,18 +307,15 @@ def parse_findings(md_path: Path) -> list[dict]:
 
         fid = cols[0]
         if fid in seen_ids:
-            # Skip duplicates (e.g. summary tables in Section 7) — though we limited region
             continue
         seen_ids.add(fid)
 
-        # Extract prefix (everything before first hyphen-digit, but careful with AGP)
         m = re.match(r"^([A-Z]+)-\d+$", fid)
         if not m:
             continue
         prefix = m.group(1)
 
-        # 10-col (STRIDE) layout: [ID, Status, Component, MAESTRO, Pattern, Threat, Likelihood, Impact, Risk, Mitigation]
-        # 11-col (AI) layout:    [ID, Status, Component, MAESTRO, Pattern, Threat, OWASP, Likelihood, Impact, Risk, Mitigation]
+        # 11-col (AI) layout adds an OWASP Reference between Threat and Likelihood.
         if len(cols) >= 11 and prefix in ("AG", "AGP", "LLM", "OI", "MI"):
             (
                 _,
@@ -406,32 +364,24 @@ def parse_findings(md_path: Path) -> list[dict]:
 
 
 def normalize_owasp_id(owasp_ref: str, prefix: str) -> str:
-    """
-    Normalize OWASP / source IDs from finding rows.
+    """Normalize OWASP / source IDs from finding rows.
 
-    - "OWASP LLM01:2025" -> "LLM-01"
-    - "ASI-01" / "ASI-07" -> as-is (already canonical)
-    - "MCP-03" -> as-is
-    - "" (STRIDE rows) -> derive from prefix mapping
+    "OWASP LLM01:2025" → "LLM-01"; "ASI-01" / "MCP-03" pass through;
+    STRIDE rows derive from a fixed prefix mapping.
     """
     if owasp_ref:
         s = owasp_ref.strip()
-        # OWASP LLM##:YYYY  -> LLM-##
         m = re.match(r"^OWASP\s+LLM(\d+):\d+$", s)
         if m:
             return f"LLM-{int(m.group(1)):02d}"
-        # ASI-## or ASI##
         m = re.match(r"^ASI[-]?(\d+)$", s)
         if m:
             return f"ASI-{int(m.group(1)):02d}"
-        # MCP-## or MCP##
         m = re.match(r"^MCP[-]?(\d+)$", s)
         if m:
             return f"MCP-{int(m.group(1)):02d}"
-        # Already canonical (e.g. "ASI-01" arrived literally)
         return s
 
-    # Derive from STRIDE prefix
     stride_owasp = {
         "S": "A07",
         "T": "A08",
@@ -444,36 +394,29 @@ def normalize_owasp_id(owasp_ref: str, prefix: str) -> str:
 
 
 def line_hash_for(fid: str) -> str:
-    """
-    Stable partialFingerprint compatible with the F-2 vintage:
-    short MD5 hex of the finding ID (16 hex chars).
-    """
     return hashlib.md5(fid.encode("utf-8")).hexdigest()[:16]
 
 
-def build_result(finding: dict, run_id_baseline: str = "2026-04-19T03-20-30") -> dict:
-    """Build one SARIF 2.1.0 result entry from a parsed threats.md finding row.
+def build_result(
+    finding: dict,
+    component_meta: dict[str, dict[str, str]],
+    run_id_baseline: str = "2026-04-19T03-20-30",
+) -> dict:
+    """Build one SARIF 2.1.0 result entry from a parsed finding row.
 
-    Maps finding prefix → rule id, severity → SARIF level, and component →
-    fully-qualified logical location. Emits per-finding properties: status,
-    component, MAESTRO layer, normalized OWASP id, signal class, baseline-run
-    correlation, and source attribution. AG-8 receives an `asi07_emission`
-    marker per the F-219 enrichment contract.
+    AG-8 receives an `asi07_emission` marker per the F-219 enrichment contract.
     """
     rule_id = PREFIX_TO_RULE[finding["prefix"]]
-
-    # Level mapping
     level = SEVERITY_TO_LEVEL.get(finding["risk_level"], "note")
 
-    # Component → fully qualified location
     component = finding["component"]
-    zone, kind = COMPONENT_ZONE.get(component, ("Application Zone", "process"))
+    meta = component_meta.get(component, {"zone": "Application Zone", "dfd_type": "Process"})
+    zone = meta["zone"]
+    kind = _DFD_TYPE_TO_KIND.get(meta["dfd_type"], "process")
     fq = f"{zone}/{component}"
 
-    # OWASP / source ID normalization
     owasp_id = normalize_owasp_id(finding["owasp_ref"], finding["prefix"])
 
-    # Tags
     tag_map = {
         "S": ["security", "stride", "spoofing"],
         "T": ["security", "stride", "tampering"],
@@ -489,10 +432,8 @@ def build_result(finding: dict, run_id_baseline: str = "2026-04-19T03-20-30") ->
     }
     tags = list(tag_map.get(finding["prefix"], ["security"]))
 
-    # MAESTRO tagging
     maestro_token = finding["maestro"]
     if maestro_token and maestro_token != "—":
-        # Compact form for the tag list
         m = re.match(r"^(L\d+)\s", maestro_token)
         layer_short = m.group(1) if m else "Unclassified"
         tags.append(f"maestro-layer:{layer_short}")
@@ -513,13 +454,13 @@ def build_result(finding: dict, run_id_baseline: str = "2026-04-19T03-20-30") ->
     if owasp_id:
         properties["owasp_id"] = owasp_id
 
-    # AG-8 special enrichment for F-3 ASI-07 emission
+    # F-3 / Feature 219 ASI07 enrichment marker
     if finding["id"] == "AG-8":
         properties["asi07_emission"] = True
         properties["feature"] = "219-asi07-tool-abuse-enrichment"
         properties["pattern_category"] = 9
 
-    result = {
+    return {
         "ruleId": rule_id,
         "message": {
             "text": finding["threat"],
@@ -551,50 +492,38 @@ def build_result(finding: dict, run_id_baseline: str = "2026-04-19T03-20-30") ->
         "properties": properties,
     }
 
-    return result
+
+_TAXONOMIES = [
+    {
+        "name": "OWASP",
+        "version": "2021",
+        "informationUri": "https://owasp.org/Top10/",
+        "organization": "OWASP Foundation",
+        "shortDescription": {"text": "OWASP Top 10 Web Application Security Risks"},
+    },
+    {
+        "name": "CWE",
+        "version": "4.13",
+        "informationUri": "https://cwe.mitre.org/",
+        "organization": "MITRE",
+        "shortDescription": {"text": "Common Weakness Enumeration"},
+    },
+]
 
 
-def build_sarif(findings: list[dict]) -> dict:
-    results = [build_result(f) for f in findings]
-
-    sarif = {
-        "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
-        "version": "2.1.0",
-        "runs": [
-            {
-                "tool": {
-                    "driver": {
-                        "name": "Tachi",
-                        "semanticVersion": "1.7",
-                        "informationUri": "https://github.com/davidmatousek/tachi",
-                        "supportedTaxonomies": [
-                            {"name": "OWASP", "index": 0},
-                            {"name": "CWE", "index": 1},
-                        ],
-                        "rules": RULES,
-                    }
-                },
-                "taxonomies": [
-                    {
-                        "name": "OWASP",
-                        "version": "2021",
-                        "informationUri": "https://owasp.org/Top10/",
-                        "organization": "OWASP Foundation",
-                        "shortDescription": {"text": "OWASP Top 10 Web Application Security Risks"},
-                    },
-                    {
-                        "name": "CWE",
-                        "version": "4.13",
-                        "informationUri": "https://cwe.mitre.org/",
-                        "organization": "MITRE",
-                        "shortDescription": {"text": "Common Weakness Enumeration"},
-                    },
-                ],
-                "results": results,
-            }
+def build_sarif(findings: list[dict], component_meta: dict[str, dict[str, str]]) -> dict:
+    results = [build_result(f, component_meta) for f in findings]
+    driver = {
+        "name": "Tachi",
+        "semanticVersion": "1.7",
+        "informationUri": "https://github.com/davidmatousek/tachi",
+        "supportedTaxonomies": [
+            {"name": "OWASP", "index": 0},
+            {"name": "CWE", "index": 1},
         ],
+        "rules": RULES,
     }
-    return sarif
+    return build_sarif_envelope(driver, _TAXONOMIES, results, schema_first=True)
 
 
 def main() -> int:
@@ -607,12 +536,13 @@ def main() -> int:
         print(f"ERROR: input file not found: {args.input}", file=sys.stderr)
         return 1
 
+    threats_md = args.input.read_text(encoding="utf-8")
+    component_meta = parse_component_metadata(threats_md)
     findings = parse_findings(args.input)
-    sarif = build_sarif(findings)
+    sarif = build_sarif(findings, component_meta)
 
     args.output.write_text(json.dumps(sarif, indent=2) + "\n", encoding="utf-8")
 
-    # Diagnostic: prefix counts
     counts: dict[str, int] = {}
     for f in findings:
         counts[f["prefix"]] = counts.get(f["prefix"], 0) + 1
