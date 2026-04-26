@@ -151,13 +151,88 @@ Model Context Protocol (MCP) has become the de facto standard agent-tool bridge 
 - When a single MCP server mediates both ingress and egress tools, apply inter-tool taint tracking: data returned from an ingress tool is labeled and the egress tool must validate that label before sending
 - Sanitize and provenance-label MCP server responses before they are fed back into the model context, so server-returned content cannot be confused with user-originated instructions
 
+## Pattern Category 9: Insecure Inter-Agent Communication (A2A)
+
+OWASP Agentic ASI07:2026 names insecure inter-agent communication as a top-10 agentic application risk for 2026. Multi-agent architectures connect ≥2 agent Process components via communication channels — direct RPC, message bus, shared queue, MCP-to-MCP bridge, named pipe, or IPC — and the channel itself is an attack surface distinct from any individual agent's tool dispatch. This category targets channels that lack declared mutual authentication, message signing, replay protection, or taint propagation between sender and receiver agents. The same Heuristic A signal class as existing Categories 1-8 (message flow between agent-or-tool endpoints) — F-3 enriches the host agent rather than authoring a new sibling.
+
+**Indicators**:
+- Architecture includes ≥2 agent Process components connected by a communication channel (direct RPC, message bus, shared queue, MCP-to-MCP bridge, named pipe, IPC)
+- The channel does not declare mutual authentication (mTLS, mutual JWT, mutual API key)
+- Inter-agent messages are not signed (no HMAC, no envelope signature, no integrity verification)
+- Messages lack timestamp binding or replay-window enforcement (no nonce-based replay prevention)
+- An agent acts as a message relay between two other agents without declared taint propagation (the relay's outputs do not carry the upstream sender's authority labels)
+
+**Anti-Indicators** (architecture-level features whose presence MUST NOT trigger Category 9):
+- Architectures with exactly one agent Process component (no inter-agent channel) — Category 9 emits **zero findings**; existing Categories 1-8 fire as they do today on the single agent's tool dispatch
+- Architectures that declare mTLS AND inter-agent message signing AND replay-window enforcement AND taint propagation across relays — all four mitigations satisfied; Category 9 emits **zero findings**
+
+**Worked Example**: A clearly-fictional orchestrator agent dispatches workloads to specialized worker agents over plain HTTP — the architecture documents the dispatch channel as "JSON-over-HTTP between Orchestrator and Worker-Agents" without naming mTLS, message signing, or replay protection. A network-positioned attacker on the same compute substrate (or a sibling worker subverted via prior compromise) intercepts and tampers with the orchestrator's instructions; the receiving worker has no authentic-source signal and executes the modified instruction. Where the orchestrator additionally relays results between workers without declared taint propagation, the agent-in-the-middle topology (MITRE ATLAS AML.T0060) is realized — the relay's outputs propagate attacker-controlled content without carrying the upstream sender's authority labels.
+
+**Primary source**:
+- OWASP ASI07:2026 — Insecure Inter-Agent Communication: https://genai.owasp.org/
+
+**Related sources**:
+- CWE-287 Improper Authentication — applicable when the inter-agent channel does not declare mutual authentication: https://cwe.mitre.org/data/definitions/287.html
+- MITRE ATLAS AML.T0060 — Agent-in-the-Middle (when an agent acts as a relay without declared taint propagation): https://atlas.mitre.org/techniques/AML.T0060
+
+**Mitigations**:
+- Mutual TLS (mTLS) on every inter-agent channel — pinned client/server certificates with mutual verification; reject any channel without declared mTLS at trust-boundary crossings
+- Inter-agent message signing — HMAC envelope signing or asymmetric envelope signature (Ed25519, ECDSA) with envelope integrity verification at the receiving agent before any action is taken
+- Nonce-based replay prevention — bounded message-age window enforced with a monotonic counter or timestamp + per-call nonce; reject messages outside the replay window
+- Inter-agent taint labels — authority propagation across relays; the relay's outputs MUST carry the upstream sender's authority labels so downstream receivers can detect tampering
+- Per-channel mutual authentication fallback — mutual JWT or mutual API key authentication where mTLS is infeasible; pre-shared secrets validated peer-to-peer at every channel handshake
+
+## Pattern Category 10: MCP-to-MCP Trust Propagation
+
+OWASP Agentic ASI07:2026 also covers multi-hop MCP trust chains where Agent → MCP-A → MCP-B propagates without per-hop attestation, signed-capability handoff, or trust-chain validator. Multi-MCP architectures are a structurally distinct topology from A2A (Category 9): the same Heuristic A signal class (message flow between agent-or-tool endpoints) but a different deployment shape. MCP-A's trust over MCP-B is not transitive by default; an agent that treats MCP-B's outputs as authoritative without inheriting MCP-A's trust-inheritance reasoning is exposed to compromised-or-rogue MCP-A injecting responses purporting to come from MCP-B.
+
+**Indicators**:
+- Architecture declares an agent that dispatches to a remote MCP server which in turn dispatches to a secondary MCP server (multi-hop MCP trust chain — Agent → MCP-A → MCP-B)
+- The handoff between MCP-A and MCP-B does not declare per-hop attestation (per-hop authentication, signed capability descriptor)
+- The agent's authority assumptions over MCP-A do not transitively constrain MCP-B (no signed-capability handoff scope-limiting MCP-B's actions)
+- The architecture does not declare a trust-chain validator (a verification component or contract that walks the multi-hop chain end-to-end before invocation)
+- Cross-MCP supply-chain assumptions are not declared — the agent treats MCP-B's outputs as authoritative without inheriting MCP-A's trust-inheritance reasoning
+
+**Anti-Indicators** (architecture-level features whose presence MUST NOT trigger Category 10):
+- Architectures with exactly one MCP server (no MCP-to-MCP relay; single-MCP topology) — Category 10 emits **zero findings**; existing Categories 5-8 fire as they do today on the single MCP server
+- Architectures that declare per-hop MCP attestation AND signed-capability handoff AND a trust-chain validator — all three mitigations satisfied; Category 10 emits **zero findings**
+
+**Worked Example**: A clearly-fictional research agent dispatches to a remote MCP-A server which transparently relays the request to a secondary MCP-B server without validating MCP-A's authority over MCP-B. The architecture documents the trust chain as "Agent → MCP-A (research-fetch) → MCP-B (knowledge-base)" without naming per-hop attestation, signed-capability handoff, or trust-chain validator. A compromised or rogue MCP-A injects responses purporting to come from MCP-B; the agent has no per-hop attestation and accepts the response as authoritative. Cross-MCP supply-chain assumptions remain undeclared — MCP-A's compromise propagates to the agent's downstream reasoning as if MCP-B itself had authoritatively responded.
+
+**Primary source**:
+- OWASP ASI07:2026 — Insecure Inter-Agent Communication: https://genai.owasp.org/
+
+**Related sources**:
+- CWE-345 Insufficient Verification of Data Authenticity — applicable when MCP-B's responses are accepted without verifying MCP-A's authority over MCP-B: https://cwe.mitre.org/data/definitions/345.html
+- OWASP LLM03:2025 — Supply Chain (inherited from existing Category 6 supply-chain vocabulary; see Pattern Category Disambiguation below for non-overlap carve): https://genai.owasp.org/llmrisk/llm032025-supply-chain/
+
+**Mitigations**:
+- Per-hop MCP attestation — signed capability descriptor per hop; each MCP server in the chain authenticates its caller before accepting the request; reject any unsigned handoff
+- Signed-capability handoff — MCP-A signs the capability scope it delegates to MCP-B; MCP-B validates the signature before accepting the delegation; the scope is bounded so MCP-B cannot exceed what MCP-A authorized
+- MCP-trust-chain validator — a verification component or contract that walks the multi-hop chain end-to-end before invocation; rejects chains with missing per-hop attestation, expired signatures, or scope-mismatch deltas
+- Supply-chain trust-chain enforcement — cross-references with existing Category 6 supply-chain controls (versioned MCP server registry, signed package distribution, dependency-graph attestation); the trust chain is grounded in registry-time provenance plus invocation-time attestation
+- Taint propagation across MCP hops — MCP-A's taint labels propagate to MCP-B's outputs; the agent's downstream reasoning carries the multi-hop provenance and can detect tampering at the receiving end
+
+## Pattern Category Disambiguation: Category 6 (LLM03 Supply Chain) vs. Category 10 (MCP-to-MCP Trust Propagation)
+
+Category 10 cites OWASP LLM03:2025 as `relationship: related` per the existing Category 6 supply-chain vocabulary. This creates a **non-overlapping by design** carve formalized in ADR-032 Decision 7:
+
+- **Category 6** fires on **upstream ingestion** of plugins / tools / MCP servers — sourcing, registration, manifest pinning, signed package distribution at **registry time**. The threat is that an attacker compromises the upstream supply chain (manifest registry, plugin marketplace, MCP server publisher) and injects malicious tool definitions before the agent's first invocation.
+- **Category 10** fires on **runtime trust propagation** between already-registered MCP servers — per-hop attestation, signed-capability handoff, transitive authority validation at **invocation time**. The threat is that an attacker compromises a trusted MCP-A intermediary (or the trust-chain logic itself) and manipulates the multi-hop relay to MCP-B during an active session.
+
+**Co-emission contract**: an architecture exhibiting BOTH MCP-A unsigned at registration (Category 6) AND MCP-A relays to MCP-B without per-hop attestation (Category 10) MUST emit BOTH findings. They are **not duplicates** and MUST NOT be merged in the threat-report's Agentic-category section. The same architecture may legitimately surface both findings describing distinct architectural gaps. Per the source_attribution contract, Category 10 cites LLM03 as `relationship: related` (optional, when cross-MCP supply-chain trust-inheritance reasoning is surfaced); Category 6 cites LLM03 as `relationship: primary`. The dual citation is by design — distinct relationship semantics over the same OWASP framework anchor.
+
 ## Primary Sources
 
 - **OWASP Agentic Security Initiative (ASI)** — Framework for agentic application threat modeling. ASI-02 Unauthorized Tool Access, ASI-04 Cross-Agent Trust Exploitation: https://genai.owasp.org/
+- **OWASP ASI07:2026 — Insecure Inter-Agent Communication** — Canonical OWASP coverage of inter-agent communication channel security and multi-hop MCP trust propagation (A2A authentication / message signing / replay protection / taint propagation / per-hop MCP attestation / signed-capability handoff / trust-chain validator): https://genai.owasp.org/
 - **OWASP LLM03:2025 Supply Chain** — Canonical OWASP coverage of plugin and tool supply-chain compromise, including third-party plugin ingestion and MCP tool sources: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
 - **OWASP LLM06:2025 Excessive Agency** — Canonical OWASP coverage of tool-invocation misuse, cross-tool chaining, and agent capability overreach (Excessive Functionality / Excessive Permissions / Excessive Autonomy sub-categories): https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
 - **Model Context Protocol specification** — Tool registration security guidance, MCP-03 Tool Poisoning / Rug Pull, MCP-05 Tool Parameter Injection: https://modelcontextprotocol.io/
 - **MITRE ATLAS - Abuse of AI Capabilities** (tactic-level index): https://atlas.mitre.org/
+- **MITRE ATLAS AML.T0060 — Agent-in-the-Middle** — applicable to agent-relay topologies without declared taint propagation: https://atlas.mitre.org/techniques/AML.T0060
 - **CWE-89 SQL Injection** — applicable to tool-parameter injection via SQL fragments in model-generated tool arguments
 - **CWE-77 Command Injection** — applicable to tool-parameter injection via shell commands in model-generated tool arguments
+- **CWE-287 Improper Authentication** — applicable to inter-agent channels without declared mutual authentication
+- **CWE-345 Insufficient Verification of Data Authenticity** — applicable to multi-hop MCP trust chains without per-hop attestation
 - **Anthropic, 2024**: "Tool Use Security Considerations" — guidelines for safe tool-use patterns in agentic systems
