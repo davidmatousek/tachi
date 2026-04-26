@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.23.0](https://github.com/davidmatousek/tachi/compare/v4.22.1...v4.23.0) (2026-04-26)
+
+
+### Features
+
+* **219:** asi07-tool-abuse-enrichment ([#220](https://github.com/davidmatousek/tachi/issues/220)) ([f7bf204](https://github.com/davidmatousek/tachi/commit/f7bf20483bc7f805ce4f9f879c6bb6d23a88a211))
+
 ## [4.22.1](https://github.com/davidmatousek/tachi/compare/v4.22.0...v4.22.1) (2026-04-25)
 
 
