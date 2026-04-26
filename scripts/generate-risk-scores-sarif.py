@@ -392,6 +392,14 @@ def build_result(
     component_kinds: dict[str, str],
     component_zones: dict[str, str],
 ) -> dict:
+    """Build one SARIF 2.1.0 result entry from a scored finding plus correlated context.
+
+    Merges Section 2 scoring (composite/CVSS/severity), Section 3 metadata
+    (CVSS vector, MAESTRO layer, score-source provenance), Section 4 governance
+    (owner/SLA/disposition/review-date), threats.md status + full threat text,
+    F-A2 source_attribution, and component trust-zone/kind into one SARIF result.
+    F-3 emits an `asi07_emission` marker on AG-8 per the F-219 enrichment contract.
+    """
     fid = finding["id"]
     pref = prefix_for(fid)
     rule_id = PREFIX_TO_RULE.get(pref, "tachi/ai/agentic-threats")

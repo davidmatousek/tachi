@@ -452,6 +452,14 @@ def line_hash_for(fid: str) -> str:
 
 
 def build_result(finding: dict, run_id_baseline: str = "2026-04-19T03-20-30") -> dict:
+    """Build one SARIF 2.1.0 result entry from a parsed threats.md finding row.
+
+    Maps finding prefix → rule id, severity → SARIF level, and component →
+    fully-qualified logical location. Emits per-finding properties: status,
+    component, MAESTRO layer, normalized OWASP id, signal class, baseline-run
+    correlation, and source attribution. AG-8 receives an `asi07_emission`
+    marker per the F-219 enrichment contract.
+    """
     rule_id = PREFIX_TO_RULE[finding["prefix"]]
 
     # Level mapping
