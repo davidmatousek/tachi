@@ -172,18 +172,21 @@ def test_unmodified_examples_byte_identical_pdfs(
 # an existing detection-tier host file (`tool-abuse.md` + companion
 # `detection-patterns.md`) under ADR-023 Decision 3's additive-only edit
 # discipline. Per F-3 spec FR-015 / SC-013 / ADR-032 Decision 2, F-3's host
-# files are explicitly carved out of the zero-edit invariant — the remaining
-# 24 files (12 other agents + 12 other companions) stay byte-identical.
+# files are explicitly carved out of the zero-edit invariant.
+#
+# Feature 229 (F-5 LLM10 enrichment) is the second enrichment-branch feature.
+# Per F-5 ADR-034 Decision 2, F-5 additively edits two host pairs:
+# `denial-of-service.md` + companion, and `model-theft.md` + companion. These
+# four files are carved out of the zero-edit invariant. The remaining 22 files
+# (10 other agents + 12 other companions) stay byte-identical.
 DETECTION_AGENT_PATHS = [
     ".claude/agents/tachi/spoofing.md",
     ".claude/agents/tachi/tampering.md",
     ".claude/agents/tachi/repudiation.md",
     ".claude/agents/tachi/info-disclosure.md",
-    ".claude/agents/tachi/denial-of-service.md",
     ".claude/agents/tachi/privilege-escalation.md",
     ".claude/agents/tachi/prompt-injection.md",
     ".claude/agents/tachi/data-poisoning.md",
-    ".claude/agents/tachi/model-theft.md",
     ".claude/agents/tachi/agent-autonomy.md",
     ".claude/agents/tachi/output-integrity.md",
     ".claude/agents/tachi/misinformation.md",
@@ -193,11 +196,20 @@ DETECTION_AGENT_PATHS = [
 # `.claude/skills/tachi-<agent>/references/detection-patterns.md`. ADR-026
 # Decision 1 requires these to remain byte-unmodified on the Feature 142
 # feature branch because Feature 142 is a post-hoc synthesis layer and must
-# not touch the detection tier. Per F-3 ADR-032 Decision 2, the
-# `tachi-tool-abuse/...` companion is carved out of this invariant
-# (additive-only edits per ADR-023 Decision 3).
+# not touch the detection tier.
+#
+# Carve-outs per Heuristic A enrichment-branch precedent:
+#  - F-3 ADR-032 Decision 2: tool-abuse companion (single host)
+#  - F-5 ADR-034 Decision 2: denial-of-service + model-theft companions (two hosts)
 DETECTION_PATTERN_REF_GLOB = ".claude/skills/tachi-*/references/detection-patterns.md"
 DETECTION_PATTERN_REF_F3_HOST = ".claude/skills/tachi-tool-abuse/references/detection-patterns.md"
+DETECTION_PATTERN_REF_F5_DOS_HOST = ".claude/skills/tachi-denial-of-service/references/detection-patterns.md"
+DETECTION_PATTERN_REF_F5_MODEL_THEFT_HOST = ".claude/skills/tachi-model-theft/references/detection-patterns.md"
+DETECTION_PATTERN_REF_ENRICHMENT_HOSTS = frozenset({
+    DETECTION_PATTERN_REF_F3_HOST,
+    DETECTION_PATTERN_REF_F5_DOS_HOST,
+    DETECTION_PATTERN_REF_F5_MODEL_THEFT_HOST,
+})
 
 
 def test_feature_142_zero_edit_invariant_on_detection_agents():
@@ -238,12 +250,12 @@ def test_feature_142_zero_edit_invariant_on_detection_agents():
     detection_pattern_refs = [
         line
         for line in (ls_result.stdout or "").splitlines()
-        if line.strip() and line != DETECTION_PATTERN_REF_F3_HOST
+        if line.strip() and line not in DETECTION_PATTERN_REF_ENRICHMENT_HOSTS
     ]
 
     paths_to_check = DETECTION_AGENT_PATHS + detection_pattern_refs
-    assert len(DETECTION_AGENT_PATHS) == 12, (
-        f"Expected 12 detection agent paths, got {len(DETECTION_AGENT_PATHS)}. "
+    assert len(DETECTION_AGENT_PATHS) == 10, (
+        f"Expected 10 detection agent paths, got {len(DETECTION_AGENT_PATHS)}. "
         "Update DETECTION_AGENT_PATHS when adding a new detection agent."
     )
 
