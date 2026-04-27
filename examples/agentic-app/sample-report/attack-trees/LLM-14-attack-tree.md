@@ -1,44 +1,21 @@
-# Attack Tree: LLM-14 — Training Data Poisoning of ClinAdvisor via Adversarial Clinical Decision Log Entries
+# Attack Tree: LLM-14 — Clinical Advisory Sub-Agent
 
-**Finding ID**: LLM-14
 **Risk Level**: Critical
 **Component**: Clinical Advisory Sub-Agent
-**Delta Status**: UNCHANGED
+**Threat**: Training data poisoning via adversarial Clinical Decision Log Entries (OWASP LLM03:2025)
 
 ```mermaid
-flowchart TD
-    LLM14_root["Shift ClinAdvisor clinical reasoning toward attacker-preferred outputs via poisoned Clinical Decision Log training data"]
-    LLM14_and1{{"AND"}}
-    LLM14_sub1["Inject adversarial clinical interaction records into Audit Logger"]
-    LLM14_sub2["Ensure poisoned clinical records influence ClinAdvisor model update"]
-    LLM14_or1{{"OR"}}
-    LLM14_leaf1["Gain write access to Audit Logger to inject fabricated clinical decision entries"]
-    LLM14_leaf2["Engineer clinical interactions causing ClinAdvisor to log attacker-desired clinical patterns"]
-    LLM14_and2{{"AND"}}
-    LLM14_leaf3["Confirm Learning Loop lacks clinical-domain holdout evaluation before ClinAdvisor update"]
-    LLM14_leaf4["Confirm Clinical Decision Log entries lack origin signature for provenance attestation"]
-    LLM14_leaf5["Updated ClinAdvisor model systematically omits contraindications or recommends attacker-preferred drugs"]
-
-    LLM14_root --> LLM14_and1
-    LLM14_and1 --> LLM14_sub1
-    LLM14_and1 --> LLM14_sub2
-    LLM14_sub1 --> LLM14_or1
-    LLM14_or1 --> LLM14_leaf1
-    LLM14_or1 --> LLM14_leaf2
-    LLM14_sub2 --> LLM14_and2
-    LLM14_and2 --> LLM14_leaf3
-    LLM14_and2 --> LLM14_leaf4
-    LLM14_and2 --> LLM14_leaf5
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class LLM14_root goal
-    class LLM14_and1,LLM14_and2 andGate
-    class LLM14_or1 orGate
-    class LLM14_sub1,LLM14_sub2 subGoal
-    class LLM14_leaf1,LLM14_leaf2,LLM14_leaf3,LLM14_leaf4,LLM14_leaf5 leaf
+graph TD
+    Goal["[GOAL] Shift ClinAdvisor clinical reasoning toward attacker-preferred outputs via training data poisoning (OWASP LLM03:2025)"]
+    Goal --> A["[OR] Inject adversarial Clinical Decision Log Entries into Audit Logger"]
+    A --> A1["Compromise service with Audit Logger write access"]
+    A --> A2["Cause ClinAdvisor to log attacker-controlled clinical interactions (via LLM-13)"]
+    Goal --> B["[AND] Adversarial entries enter ClinAdvisor training via Learning Loop"]
+    B --> B1["No Clinical Decision Log Entry provenance attestation"]
+    B --> B2["No anomaly detection on clinical training signal patterns"]
+    Goal --> C["[AND] Poisoned ClinAdvisor update deployed without clinical validation"]
+    C --> C1["No clinical-domain holdout evaluation suite before deployment"]
+    C --> C2["ClinAdvisor consistently recommends specific drugs or omits contraindications"]
+    classDef critical fill:#d32f2f,color:#fff
+    class Goal critical
 ```

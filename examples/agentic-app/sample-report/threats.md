@@ -1,14 +1,14 @@
 ---
 schema_version: "1.4"
-date: "2026-04-26"
+date: "2026-04-27"
 input_format: "mermaid"
 classification: "confidential"
-run_id: "2026-04-26T03-39-12"
+run_id: "2026-04-27T17-11-26"
 baseline:
-  source: "/Users/david/Projects/tachi/examples/agentic-app/test-output/2026-04-23T19-30-00-F2-wave4/threats.md"
-  date: "2026-04-23"
-  finding_count: 83
-  run_id: "2026-04-23T19-30-00"
+  source: "/Users/david/Projects/tachi/examples/agentic-app/test-output/2026-04-26T03-39-12-F3-wave3/threats.md"
+  date: "2026-04-26"
+  finding_count: 84
+  run_id: "2026-04-26T03-39-12"
 coverage_gate:
   status: "pass"
   gaps: []
@@ -17,17 +17,17 @@ has_agentic_patterns: true
 has_source_attribution: true
 ---
 
-# Threat Model — Agentic AI Application (F-3 Wave 3)
+# Threat Model — Agentic AI Application (F-5 Wave 2)
 
 ## Pipeline Execution Log (Intermediate)
 
 ### Phase 0: Baseline Detection
 
-**Baseline detected**: `examples/agentic-app/test-output/2026-04-23T19-30-00-F2-wave4/threats.md`
-- Schema version: 1.7 (F-2 wave 4)
-- Baseline date: 2026-04-23
-- Baseline finding count: 83
-- Baseline run_id: 2026-04-23T19-30-00
+**Baseline detected**: `examples/agentic-app/test-output/2026-04-26T03-39-12-F3-wave3/threats.md`
+- Schema version: 1.4 (F-3 wave 3)
+- Baseline date: 2026-04-26
+- Baseline finding count: 84
+- Baseline run_id: 2026-04-26T03-39-12
 - Validation: PASSED (parseable YAML frontmatter, finding tables present)
 - Mode: **Baseline-aware**
 
@@ -40,12 +40,12 @@ has_source_attribution: true
 | User | External Entity | L7 — Agent Ecosystem | Human user submitting prompts and receiving responses via HTTPS |
 | Guardrails Service | Process | L6 — Security and Compliance | Input validation, content filtering, prompt rejection gating, and filtering event logging. Keywords: "guardrail" → L6. |
 | LLM Agent Orchestrator | Process | L1 — Foundation Model | Supervisor LLM orchestrating task delegation to Specialist Agent, Clinical Advisory Sub-Agent, and direct tool invocations via MCP Tool Server. Keywords: "LLM" → L1 (first-match). |
-| Specialist Agent | Process | Unclassified | Delegated worker agent performing specialized subtasks via Inter-Agent Communication Channel and MCP Tool Server. No L1-L6 keyword match; "agent" is L7 but component name lacks explicit L7 markers per keyword table evaluation. Defaulting to Unclassified per Phase 1 carry-forward (UNCHANGED from baseline). |
-| Inter-Agent Communication Channel | Process | Unclassified | Message routing substrate for delegation messages between Orchestrator and Specialist Agent. No L1-L6 keyword match; "channel" not in L7 keyword table. Unclassified (UNCHANGED from baseline). |
+| Specialist Agent | Process | Unclassified | Delegated worker agent performing specialized subtasks via Inter-Agent Communication Channel and MCP Tool Server. No L1-L6 keyword match; "agent" is L7 but component name lacks explicit L7 markers per keyword table evaluation. |
+| Inter-Agent Communication Channel | Process | Unclassified | Message routing substrate for delegation messages between Orchestrator and Specialist Agent. No L1-L6 keyword match; "channel" not in L7 keyword table. Unclassified. |
 | MCP Tool Server | Process | L3 — Agent Framework | MCP-compliant tool execution server. Keywords: "tool server" → L3. |
 | Knowledge Base | Data Store | L2 — Data Operations | Vector knowledge store for context retrieval. Keywords: "knowledge base" → L2. |
 | Audit Logger | Data Store | L5 — Evaluation and Observability | Append-only audit trail. Keywords: "audit log" → L5 (first-match, before L6). |
-| Long-Running Learning Loop | Process | Unclassified | Periodic model update pipeline. "learning loop" not in MAESTRO keyword table (token is `long_running_learning_loop` per component_type — not a MAESTRO layer keyword). Unclassified (UNCHANGED from baseline). |
+| Long-Running Learning Loop | Process | Unclassified | Periodic model update pipeline. "learning loop" not in MAESTRO keyword table. Unclassified. |
 | Clinical Advisory Sub-Agent | Process | L7 — Agent Ecosystem | LLM-backed sub-agent receiving clinical queries from Orchestrator. Keywords: "sub-agent" → L7. |
 | External API | External Entity | Unclassified | Third-party external API invoked by MCP Tool Server via HTTPS. No keyword match. |
 
@@ -60,13 +60,13 @@ has_source_attribution: true
 
 ### Phase 1a: Carry-Forward (Baseline Mode)
 
-Baseline registry: 83 findings (S-1 through S-9, T-1 through T-9, R-1 through R-9, I-1 through I-9, D-1 through D-9, E-1 through E-7, AG-1 through AG-7, LLM-1 through LLM-14, OI-1 through OI-4, MI-1 through MI-3, AGP-01).
+Baseline registry: 84 findings (S-1 through S-9, T-1 through T-9, R-1 through R-9, I-1 through I-9, D-1 through D-9, E-1 through E-7, AG-1 through AG-8, LLM-1 through LLM-14, OI-1 through OI-4, MI-1 through MI-3, AGP-01).
 
 Component inventory unchanged (11 components, all present). DFD types unchanged. Architecture context unchanged for all components.
 
-**Delta classification**: All 83 baseline findings → UNCHANGED. MAESTRO layers re-derived from current inventory (identical to baseline).
+**Delta classification**: All 84 baseline findings → UNCHANGED. MAESTRO layers re-derived from current inventory (identical to baseline).
 
-**Coverage summary produced** (for Phase 2 isolation): all categories covered for all components.
+**Coverage summary produced** (for Phase 2 isolation): all baseline categories covered for all components. F-5 enrichment active: DoS Pattern Categories 12 + 13 (LLM inference-request flooding, context-window latency amplification) and Model-Theft Pattern Categories 10 + 11 (cost amplification, denial-of-wallet) now scoped to LLM-bearing components.
 
 ### Phase 2: Dispatch Table (Intermediate)
 
@@ -86,12 +86,18 @@ Component inventory unchanged (11 components, all present). DFD types unchanged.
 
 **Dispatch summary**:
 - Total unique agent invocations: 82
-- Components with AI dispatch: 5 (LLM Agent Orchestrator, Specialist Agent, Inter-Agent Communication Channel, MCP Tool Server, Long-Running Learning Loop, Clinical Advisory Sub-Agent)
+- Components with AI dispatch: 6 (LLM Agent Orchestrator, Specialist Agent, Inter-Agent Communication Channel, MCP Tool Server, Long-Running Learning Loop, Clinical Advisory Sub-Agent)
 - Components with dual-dispatch: 3 (LLM Agent Orchestrator, Specialist Agent, Long-Running Learning Loop)
 
 **Phase 2 isolated discovery mode**: Coverage summary provided to agents; finding descriptions/scores/IDs withheld. Agents operate on full architecture context.
 
-**F-3 Wave 3 specific context**: `tool-abuse` agent dispatched to Inter-Agent Communication Channel with Category 9 (Insecure Inter-Agent Communication / A2A) pattern enrichment active. Multi-agent topology gate confirmed: Orchestrator + Specialist + ClinAdvisor delegation over Channel satisfies ≥2 agent-Process components + inter-agent data flows. Category 10 (MCP-to-MCP Trust Propagation) NOT dispatched — single MCP Tool Server topology (anti-indicator per FR-011).
+**F-5 Wave 2 specific context**: `denial-of-service` agent dispatched with Pattern Categories 12 (LLM Inference-Request Flooding and Token Exhaustion) and 13 (Context-Window Exhaustion — Latency-Driven Variant) active. LLM-serving topology gate confirmed: LLM Agent Orchestrator, Specialist Agent, Clinical Advisory Sub-Agent all match `LLM` keyword trigger. `model-theft` agent dispatched with Pattern Categories 10 (Cost Amplification via Recursive or Cost-Asymmetric Prompting) and 11 (Denial-of-Wallet via Context-Window Cost Amplification) active. Q1 SPLIT: Vector A (latency DoS) → D-{N}; Vector B (economic damage) → LLM-{N}. Q3 RESOLVED: Cat 11 emits at HIGH default (no multi-tenant freemium structure structurally evident — single-application architecture; CRITICAL floor conditions NOT met).
+
+**New findings discovered (Phase 2 isolated)**:
+- D-10 [NEW]: LLM Agent Orchestrator — DoS Cat 12 (LLM Inference-Request Flooding, OWASP LLM10:2025 + CWE-400)
+- D-11 [NEW]: LLM Agent Orchestrator — DoS Cat 13 (Context-Window Latency Amplification, OWASP LLM10:2025 + CWE-400)
+- LLM-15 [NEW]: LLM Agent Orchestrator — Model-Theft Cat 10 (Cost Amplification via Recursive Prompting, OWASP LLM10:2025; T1496 prose-only)
+- LLM-16 [NEW]: LLM Agent Orchestrator — Model-Theft Cat 11 (Denial-of-Wallet, OWASP LLM10:2025; T1496 prose-only; HIGH default — freemium CRITICAL conditions not met)
 
 ---
 
@@ -262,6 +268,8 @@ Component inventory unchanged (11 components, all present). DFD types unchanged.
 | D-7 | [UNCHANGED] | Audit Logger | L5 — Evaluation and Observability | — | The Audit Logger can be overwhelmed by a log-flooding attack from a compromised Application Zone process, causing legitimate log entries to be dropped or the logger to become unavailable, creating audit gaps and potentially cascading to block all pipeline operations that wait for log confirmation. | MEDIUM | HIGH | High | Decouple Audit Logger writes from the critical path: use asynchronous write queues so that log submission never blocks upstream components. Implement write rate limits per source component. Apply log rotation and capacity management to prevent disk exhaustion. Alert on abnormally high write rates from any single source. |
 | D-8 | [UNCHANGED] | Long-Running Learning Loop | Unclassified | — | The Learning Loop is a resource-intensive batch process. A high-volume data injection into the Audit Logger (training signal flooding) can cause the Learning Loop to enter runaway processing, consuming excessive compute resources and either blocking legitimate model updates or degrading system performance. | MEDIUM | MEDIUM | Medium | Implement training run scheduling with resource quotas (CPU, memory, time-to-completion). Apply training data volume limits per run: cap the number of training examples ingested per scheduled run. Use separate compute pools for the Learning Loop to prevent resource contention with the real-time inference pipeline. |
 | D-9 | [UNCHANGED] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | resource_competition | The Clinical Advisory Sub-Agent is invoked by the Orchestrator for each clinical query via JSON-RPC and performs a vector search against the Knowledge Base. High-volume or adversarially-crafted clinical queries (e.g., embedding maximally complex clinical contexts or triggering exhaustive KB retrievals) can exhaust the sub-agent's inference capacity or starve the Knowledge Base of query capacity, disrupting both clinical advisory and baseline Orchestrator retrieval operations. | MEDIUM | HIGH | High | Apply per-session and per-request token budgets on Clinical Advisory Sub-Agent invocations. Implement per-query timeout limits and KB query complexity bounds for ClinAdvisor searches. Rate-limit the Orchestrator's dispatch rate to ClinAdvisor. Monitor ClinAdvisor invocation latency and queue depth; apply backpressure to the Orchestrator when thresholds are exceeded. |
+| D-10 | [NEW] | LLM Agent Orchestrator | L1 — Foundation Model | resource_competition | **LLM Inference-Request Flooding and Token Exhaustion (Pattern Category 12 — OWASP LLM10:2025)**: The LLM Agent Orchestrator exposes an LLM inference pipeline without declared per-tenant queries-per-second (QPS) rate limiting at the API-gateway layer that is distinct from generic per-IP network-layer rate limiting. An attacker with valid authenticated access (or a compromised credential) can flood the Orchestrator's inference endpoint with concurrent requests each carrying maximal prompt-token payloads, exhausting per-request inference compute and starving legitimate users of Orchestrator capacity. Token-counting middleware is not declared — the system accepts requests without checking projected per-call cost, learning total token usage only after-the-fact via billing reconciliation. Per-tenant token budget per request is not declared at the inference gateway — a single attacker session can request the model's maximum output (up to full context-window completion tokens), creating per-call cost asymmetry between attacker and operator. Request timeouts configured for typical non-LLM request latency may prematurely kill legitimate long-inference calls while the attack's short-but-high-volume requests occupy the queue. The Orchestrator also fans out to the Specialist Agent and Clinical Advisory Sub-Agent, multiplying the inference cost per user request — a single attacker request can trigger three concurrent LLM inference calls, amplifying the denial-of-service surface beyond per-endpoint rate-limiting controls. | HIGH | HIGH | Critical | (1) Per-tenant QPS rate limit at the inference API gateway — separate from generic per-IP network rate limiting; enforce pre-inference, not post-billing. (2) Max-prompt-token enforcement at the API gateway — reject requests whose prompt exceeds the operator's intended cost-per-call envelope with a 413 response before inference begins. (3) Per-tenant token budget per request — hard-cap output tokens by tier; freemium/low-tier clients cannot consume max-context-window completions. (4) Token-counting middleware with synchronous cost projection — compute projected token cost before accepting the request; reject or queue if the projected cost exceeds the tenant's per-call budget. (5) Per-tenant token-velocity monitoring — alert on per-tenant input+output token-per-minute rate spikes above a 3σ baseline; trigger automated throttle or circuit break. (6) Downstream inference fan-out accounting — treat each Orchestrator→Specialist and Orchestrator→ClinAdvisor invocation as part of the same request's token budget; enforce an aggregate per-request token budget across all fan-out paths. References: OWASP LLM10:2025 — Unbounded Consumption; CWE-400: Uncontrolled Resource Consumption; CWE-770: Allocation of Resources Without Limits or Throttling. |
+| D-11 | [NEW] | LLM Agent Orchestrator | L1 — Foundation Model | resource_competition | **Context-Window Exhaustion — Latency-Driven Variant (Pattern Category 13 — OWASP LLM10:2025; Q1 SPLIT Vector A)**: The LLM Agent Orchestrator accepts conversation history and contextual payloads via the Guardrails→Orchestrator data flow without a declared max-context-window enforcement policy at the API gateway. An attacker constructs an adversarially long prompt — embedding a full 32k+ token conversation history or injecting recursive prompt-expansion templates that cause the Orchestrator to re-engage its own outputs (chain-of-thought recursion, self-reflection loops, multi-step reasoning expansion) — driving per-request context-window usage to 99% of model maximum. This spikes per-request inference latency from a typical 1–2 seconds to the per-tenant timeout threshold (often 30–60 seconds), causing legitimate requests to queue behind the blocked inference slot. The Orchestrator's fan-out to Specialist Agent and Clinical Advisory Sub-Agent compounds this: a single max-context request causes three concurrent long-latency inference calls, effectively blocking three inference slots simultaneously. Context-window monitoring is not declared — no anomaly alerting on percentage-of-max usage spikes per request or per-tenant — making the attack invisible until latency degradation is user-visible. Per-tenant context-window cap is not differentiated from per-request cap, allowing consecutive max-context requests from a single tenant to monopolize the inference cluster's per-slot latency budget. Note: Vector A (latency-driven availability disruption) is this finding. Vector B (cost-driven denial-of-wallet) is covered by LLM-16 in the model-theft / LLM section per Q1 SPLIT ADR-034 Decision 3. | HIGH | HIGH | Critical | (1) Max-context-window enforcement at the API gateway — enforce a per-request context-window limit well below model max (e.g., 8k tokens for a model with a 32k-token context window); return HTTP 413 on overflow before inference begins. (2) Per-conversation truncation policy — enforce a sliding-window limit on conversation history; older turns are dropped before the payload is sent to the inference engine. (3) Recursive-prompt-pattern detection — detect and block prompt templates that cause chain-of-thought self-engagement, self-reflection loops, or recursive tool-call expansion patterns; apply a max-chain-of-thought-iterations limit at the inference-runtime layer. (4) Context-window monitoring with anomaly alerting — alert on per-request or per-tenant percentage-of-max context-window usage spikes (e.g., > 75% of declared limit triggers an alert; > 90% triggers a circuit break). (5) Per-tenant context-window cap distinct from per-request cap — enforce that no single tenant can consume more than a declared percentage of inference cluster capacity in any rolling 5-minute window, independent of per-request limits. (6) Inference fan-out latency budget — assign each Orchestrator→Specialist and Orchestrator→ClinAdvisor fan-out a separate sub-budget within the aggregate per-request latency budget; enforce deadlines independently per fan-out leg. References: OWASP LLM10:2025 — Unbounded Consumption; CWE-400: Uncontrolled Resource Consumption. |
 
 ---
 
@@ -292,7 +300,7 @@ Component inventory unchanged (11 components, all present). DFD types unchanged.
 | AG-5 | [UNCHANGED] | MCP Tool Server | L3 — Agent Framework | trust_exploitation | The MCP Tool Server is vulnerable to tool call injection: an attacker who can influence the LLM output of either the Orchestrator or Specialist Agent can inject crafted JSON-RPC parameters that invoke unintended tools (tool name injection) or supply malicious arguments to permitted tools (parameter injection). The Tool Server executes these with its own service credentials. | MCP-03 | HIGH | HIGH | Critical | Implement strict tool call validation: (a) validate the tool name against a registered allowlist, (b) validate each parameter against a per-tool JSON Schema, (c) reject any request that fails validation before execution. Apply parameter encoding for values that will be forwarded to external systems (URLs, SQL fragments, shell arguments). |
 | AG-6 | [UNCHANGED] | MCP Tool Server | L3 — Agent Framework | resource_competition | The MCP Tool Server acts as a privileged execution broker. Runaway or adversarially prompted agents (Orchestrator or Specialist) can cause the Tool Server to repeatedly call External API endpoints in rapid succession, exhausting the API provider's rate limits, incurring financial costs, or triggering security lockouts that deny the system access to required external capabilities. | MCP-03 | MEDIUM | HIGH | High | Implement per-session and per-agent tool call budgets with hard rate limits enforced at the Tool Server (not just the agent). Apply per-tool circuit breakers: if a tool's error rate exceeds a threshold, temporarily disable it and alert operators. Monitor cumulative external API spend and alert on anomalous patterns. |
 | AG-7 | [UNCHANGED] | Long-Running Learning Loop | Unclassified | temporal_attack | The Learning Loop's model update mechanism, when fed adversarially crafted training signals, can be exploited for a temporal autonomy attack: the training data contains instructions that cause the updated model to expand its autonomous action scope on the next cycle, gradually accumulating capabilities it was not originally authorized to have. | ASI-01 | HIGH | HIGH | Critical | Apply capability auditing as part of every model update evaluation: before deploying an update, run the updated model through a capability regression suite that tests for unauthorized capability expansion. Enforce a strict capability allowlist (permitted tool types, action categories) that is evaluated post-update and MUST pass before production deployment of any model update. |
-| AG-8 | [NEW] | Inter-Agent Communication Channel | Unclassified | communication_vulnerability | **Insecure Inter-Agent Communication (Category 9 — OWASP ASI07:2026)**: The Inter-Agent Communication Channel connects the LLM Agent Orchestrator, Specialist Agent, and (via the Orchestrator) the Clinical Advisory Sub-Agent without declaring mutual authentication, inter-agent message signing, or nonce-based replay prevention. The channel does not declare mTLS between senders and receivers, messages lack HMAC envelope signatures or asymmetric envelope signatures (Ed25519 / ECDSA), and no timestamp-bound nonce-based replay-window enforcement is documented. A network-positioned attacker or a compromised Application Zone process can intercept delegation messages (AML.T0060 agent-in-the-middle topology) and replay, modify, or inject instructions to the Specialist Agent or the Orchestrator without any authentic-source signal available to the receiving component. The Orchestrator additionally acts as a relay between the Channel and the Clinical Advisory Sub-Agent without declared taint propagation — the relay's outputs do not carry the upstream sender's authority labels, enabling an attacker who compromises the Orchestrator's relay function to propagate attacker-controlled content to ClinAdvisor without the authority label that ClinAdvisor would need to detect tampering. | ASI-07 | HIGH | HIGH | Critical | (1) Mutual TLS (mTLS) — pinned client/server certificates with mutual verification on every inter-agent channel endpoint; reject any channel without declared mTLS at trust-boundary crossings. (2) Inter-agent message signing — HMAC envelope signing (HMAC-SHA256) or asymmetric envelope signature (Ed25519) with integrity verification at the receiving agent BEFORE any action is taken on the message. (3) Nonce-based replay prevention — bounded message-age window enforced with a monotonic counter or timestamp + per-call nonce; receiving agents MUST reject messages outside the replay window. (4) Inter-agent taint labels — authority propagation across the Orchestrator relay: the relay's outputs MUST carry the upstream sender's authority labels so ClinAdvisor and Specialist can detect tampering at the receiving end. (5) Per-channel mutual authentication fallback — mutual JWT or mutual API key as fallback where mTLS is infeasible, validated peer-to-peer at every channel handshake. |
+| AG-8 | [UNCHANGED] | Inter-Agent Communication Channel | Unclassified | communication_vulnerability | **Insecure Inter-Agent Communication (Category 9 — OWASP ASI07:2026)**: The Inter-Agent Communication Channel connects the LLM Agent Orchestrator, Specialist Agent, and (via the Orchestrator) the Clinical Advisory Sub-Agent without declaring mutual authentication, inter-agent message signing, or nonce-based replay prevention. The channel does not declare mTLS between senders and receivers, messages lack HMAC envelope signatures or asymmetric envelope signatures (Ed25519 / ECDSA), and no timestamp-bound nonce-based replay-window enforcement is documented. A network-positioned attacker or a compromised Application Zone process can intercept delegation messages (AML.T0060 agent-in-the-middle topology) and replay, modify, or inject instructions to the Specialist Agent or the Orchestrator without any authentic-source signal available to the receiving component. The Orchestrator additionally acts as a relay between the Channel and the Clinical Advisory Sub-Agent without declared taint propagation — the relay's outputs do not carry the upstream sender's authority labels, enabling an attacker who compromises the Orchestrator's relay function to propagate attacker-controlled content to ClinAdvisor without the authority label that ClinAdvisor would need to detect tampering. | ASI-07 | HIGH | HIGH | Critical | (1) Mutual TLS (mTLS) — pinned client/server certificates with mutual verification on every inter-agent channel endpoint; reject any channel without declared mTLS at trust-boundary crossings. (2) Inter-agent message signing — HMAC envelope signing (HMAC-SHA256) or asymmetric envelope signature (Ed25519) with integrity verification at the receiving agent BEFORE any action is taken on the message. (3) Nonce-based replay prevention — bounded message-age window enforced with a monotonic counter or timestamp + per-call nonce; receiving agents MUST reject messages outside the replay window. (4) Inter-agent taint labels — authority propagation across the Orchestrator relay: the relay's outputs MUST carry the upstream sender's authority labels so ClinAdvisor and Specialist can detect tampering at the receiving end. (5) Per-channel mutual authentication fallback — mutual JWT or mutual API key as fallback where mTLS is infeasible, validated peer-to-peer at every channel handshake. |
 
 ---
 
@@ -314,6 +322,10 @@ Component inventory unchanged (11 components, all present). DFD types unchanged.
 | LLM-12 | [UNCHANGED] | Long-Running Learning Loop | Unclassified | temporal_attack | Model theft via Learning Loop output monitoring: an attacker with observability access to the Learning Loop's model update artifacts (parameter diffs, update packages) can reconstruct the model's architecture, parameters, or training data characteristics — effectively stealing the proprietary model. | OWASP LLM10:2025 | MEDIUM | HIGH | High | Encrypt model update packages end-to-end: the Learning Loop MUST encrypt model artifacts before emission; the Orchestrator and Specialist decrypt using HSM-managed keys. Apply model watermarking to enable theft detection. Restrict access to model update artifacts to authorized deployment services only. |
 | LLM-13 | [UNCHANGED] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | Prompt injection via clinical query context: the Clinical Advisory Sub-Agent processes Clinical Query / Context payloads from the Orchestrator. If the clinical context contains adversarially crafted text (injected via the original user prompt, via adversarial KB documents retrieved upstream, or via a compromised Orchestrator), the injection can override the sub-agent's system prompt, cause it to fabricate clinical recommendations, reveal its system configuration, or escalate privileges within the advisory pipeline. | OWASP LLM01:2025 | HIGH | HIGH | Critical | Apply instruction-boundary enforcement at the Clinical Advisory Sub-Agent: the sub-agent's system prompt MUST be in a protected zone inaccessible to clinical query content from the Orchestrator. Implement clinical-query content sanitization: strip instruction-like patterns before context injection into the sub-agent. Apply output validation on the sub-agent's clinical summaries to detect system-prompt leakage or anomalous clinical claims. |
 | LLM-14 | [UNCHANGED] | Clinical Advisory Sub-Agent | L7 — Agent Ecosystem | — | Training data poisoning of the Clinical Advisory Sub-Agent via the Learning Loop: Clinical Decision Log Entries from the sub-agent are included in the Audit Logger training stream. An attacker who injects adversarially crafted clinical interaction records into the Audit Logger can shift the sub-agent's clinical reasoning toward attacker-preferred outputs — for example, consistently recommending specific drugs, understating contraindications, or omitting standard-of-care steps in returned clinical summaries. | OWASP LLM03:2025 | HIGH | HIGH | Critical | Apply Clinical Decision Log Entry provenance attestation: each log entry from the Clinical Advisory Sub-Agent must carry a verifiable origin signature. Implement anomaly detection specifically for clinical training signals — monitor for unusual shifts in diagnostic terms, drug recommendation patterns, or contraindication omission rates. Apply a clinical-domain holdout evaluation suite before deploying any model update to the ClinAdvisor: compare pre/post-update clinical recommendations against a reference set of clinically-validated cases. |
+| LLM-15 | [NEW] | LLM Agent Orchestrator | L1 — Foundation Model | resource_competition | **Cost Amplification via Recursive or Cost-Asymmetric Prompting (Pattern Category 10 — OWASP LLM10:2025)**: The LLM Agent Orchestrator accepts prompts from the Guardrails Service without declared recursive-prompt depth limits or output-token caps tuned to realistic response-length p99. The Orchestrator fans out to the Specialist Agent (via Inter-Agent Channel) and to the Clinical Advisory Sub-Agent (via JSON-RPC), both of which may themselves invoke the Knowledge Base (via RAG fan-out) and the MCP Tool Server (via tool calls). This multi-hop agent loop — Orchestrator → Specialist → ToolServer → ExtAPI, and Orchestrator → ClinAdvisor → KB — creates a recursive cost-amplification surface: an adversarial 10-token user prompt can trigger a chain-of-thought response from the Orchestrator, delegation to the Specialist and ClinAdvisor, RAG fan-out from KB, and tool calls to ToolServer and ExtAPI, generating 32k+ tokens of combined output across all three inference endpoints. Output-amplification ratio (output-tokens / input-tokens) is not declared as a monitored metric — pathological ratios above 100x from recursive chain-of-thought expansion are invisible without per-request amplification telemetry. Cost-per-query p99 alerting is not declared — sustained cost-amplification attacks register as gradual cost increases that per-request rate limits do not catch because each individual request may be under the per-request token cap while the aggregate exceeds the operator's revenue-per-query threshold. Per-tenant cost-amplification anomaly detection is not declared — without per-tenant cost-velocity monitoring the operator cannot identify which session is driving amplification. Note: MITRE ATT&CK T1496 (Resource Hijacking) is a relevant cross-reference for the attacker's goal of consuming the operator's inference compute at the operator's expense; T1496 is cited here as prose context only (not in references array — T1496 is not catalog-resolvable in schemas/taxonomy/mitre-attack.yaml per ADR-034 Decision 6). | OWASP LLM10:2025 | HIGH | HIGH | Critical | (1) Per-query output-token cap tuned to realistic response-length p99 — set the output-token cap at a value above legitimate p95 but below catastrophic recursive expansion (e.g., 4k tokens for a search-summary endpoint that legitimately uses ~500 tokens creates 8x ceiling, not 64x). (2) Recursive-prompt depth limit at inference-runtime layer — enforce a max chain-of-thought iterations limit (e.g., max 5 CoT steps) and a max self-reference depth at the inference runtime; reject prompts that trigger depth-exceeded conditions. (3) Output-amplification-ratio monitoring — measure output-tokens / input-tokens per request; flag ratios > 50x as anomalous, alert on ratios > 100x, circuit-break per-session on ratios > 200x. (4) Cost-per-query p99 alerting — compute per-query inference cost in real time; alert on cost-velocity spikes (cost-per-minute per tenant exceeds 3σ above rolling 1-hour baseline). (5) Multi-hop fan-out token budget — enforce an aggregate per-request token budget across all fan-out legs (Orchestrator + Specialist + ClinAdvisor combined); reject new fan-out invocations once the aggregate per-request budget is consumed. (6) Per-tenant cost-amplification anomaly detection — track output-token velocity per tenant across 5-minute, 1-hour, 24-hour windows; trigger graduated throttle on anomalous velocity (warn → rate-limit → block). |
+| LLM-16 | [NEW] | LLM Agent Orchestrator | L1 — Foundation Model | resource_competition | **Denial-of-Wallet via Context-Window Cost Amplification (Pattern Category 11 — OWASP LLM10:2025; Q1 SPLIT Vector B)**: The LLM Agent Orchestrator's context-window handling lacks per-tenant token budget hard-cap at the API gateway and at-query-time cost reconciliation. An attacker can drive the Orchestrator's context-window to model maximum on each call (Vector B — cost-driven economic damage, distinct from D-11's Vector A latency-driven availability disruption) by submitting large conversation histories or recursive prompts that inflate context usage. The Orchestrator's fan-out to Specialist Agent and Clinical Advisory Sub-Agent compounds per-call cost: a single max-context Orchestrator request triggers additional max-context calls to Specialist and ClinAdvisor, multiplying the per-request inference bill by up to 3x. Cost-per-query p99 alerting is not declared — denial-of-wallet attacks accumulate as gradual billing increases invisible to per-request rate limits. Denial-of-wallet anomaly detection (cost-velocity monitoring across 5-minute, 1-hour, 24-hour windows) is not declared — sustained billing-amplification attacks are invisible until the operator's invoice arrives. Automated tenant suspension on budget breach is not declared — by the time a human reviews a cost-velocity anomaly, the operator's bill is already inflated. Per-tenant billing attribution is not declared at-query-time — without synchronous attribution the operator cannot enforce per-tenant token budgets pre-inference. **Severity Q3 RESOLVED evaluation**: HIGH default applies (no multi-tenant freemium structure structurally evident in architecture; single-application topology; CRITICAL 2-condition floor not met — condition (a) B2C freemium multi-tenant NOT confirmed, condition (b) assessment deferred). Note: MITRE ATT&CK T1496 (Resource Hijacking) is a relevant cross-reference for the attacker's economic-damage goal; T1496 cited as prose context only (NOT in references array — not catalog-resolvable per ADR-034 Decision 6). | OWASP LLM10:2025 | MEDIUM | HIGH | High | (1) Per-tenant token budget hard-cap at API gateway — enforce separate per-tenant token budgets (freemium / paid / internal tier); hard-cap prevents budget overrun before inference begins. (2) At-query-time billing attribution — compute per-tenant billing attribution synchronously before inference begins (NOT asynchronously via batch reconciliation); enforce budget pre-inference. (3) Cost-per-query p99 alerting tied to per-tenant billing attribution — alert on cost-velocity spikes (cost-per-minute per tenant > 3σ above rolling 1-hour baseline). (4) Denial-of-wallet anomaly detection — monitor per-tenant inference cost velocity across 5-minute, 1-hour, 24-hour windows; trigger graduated throttle on anomalous cost velocity. (5) Automated tenant suspension on budget breach — enforce automated suspension without requiring manual approval; manual-approval delay allows bill inflation to accumulate. (6) Account-creation friction — CAPTCHA + email verification + per-IP account-creation rate limit to prevent account-spam amplification of denial-of-wallet attacks. (7) Per-tenant context-window cost reconciliation — track per-tenant cumulative context-window tokens consumed across the fan-out legs (Orchestrator + Specialist + ClinAdvisor) and charge against the per-tenant budget, not per-request. |
+
+---
 
 **OI Findings (Output Integrity — OWASP LLM05:2025)**:
 
@@ -412,6 +424,35 @@ AG-8:
     - taxonomy: mitre-atlas
       id: AML.T0060
       relationship: related
+D-10:
+  source_attribution:
+    - taxonomy: owasp
+      id: LLM10
+      relationship: primary
+    - taxonomy: cwe
+      id: CWE-400
+      relationship: related
+    - taxonomy: cwe
+      id: CWE-770
+      relationship: related
+D-11:
+  source_attribution:
+    - taxonomy: owasp
+      id: LLM10
+      relationship: primary
+    - taxonomy: cwe
+      id: CWE-400
+      relationship: related
+LLM-15:
+  source_attribution:
+    - taxonomy: owasp
+      id: LLM10
+      relationship: primary
+LLM-16:
+  source_attribution:
+    - taxonomy: owasp
+      id: LLM10
+      relationship: primary
 ```
 
 ---
@@ -428,6 +469,7 @@ Correlation detection rules applied (CR-1 through CR-5):
 - **CR-5** (D + AG/tool-abuse): MCP Tool Server → D-5 + AG-6 → CG-5
 - **CR-1** (T + LLM/data-poisoning): Clinical Advisory Sub-Agent → T-9 + LLM-14 → CG-6
 - **CR-5** (D + AG/tool-abuse): Inter-Agent Communication Channel → D-4 + AG-8 → CG-7
+- **CR-5** (D + LLM10 resource exhaustion): LLM Agent Orchestrator → D-10 + D-11 + LLM-15 + LLM-16 → CG-8 (new: LLM10 unbounded consumption cluster)
 
 | Group | Findings | Component | Threat Summary | Risk Level |
 |---|---|---|---|---|
@@ -438,6 +480,7 @@ Correlation detection rules applied (CR-1 through CR-5):
 | CG-5 | D-5, AG-6 | MCP Tool Server | Denial-of-Service: Connection pool exhaustion via high-volume tool requests; Tool-Abuse: Agent-driven API rate limit exhaustion and runaway tool invocation | Critical |
 | CG-6 | T-9, LLM-14 | Clinical Advisory Sub-Agent | Tampering: Clinical context window manipulation via adversarial KB documents or poisoned query; Data-Poisoning: Training data poisoning of ClinAdvisor via adversarial Clinical Decision Log Entries in Learning Loop | Critical |
 | CG-7 | D-4, AG-8 | Inter-Agent Communication Channel | Denial-of-Service: Message queue flooding drops legitimate coordination messages; Tool-Abuse (A2A): Insecure inter-agent channel enables replay/injection attacks exhausting channel capacity and disrupting coordination | Critical |
+| CG-8 | D-10, D-11, LLM-15, LLM-16 | LLM Agent Orchestrator | LLM10 Unbounded Consumption cluster: Inference flooding (Cat 12) + Context-window latency amplification (Cat 13) + Cost amplification via recursive prompting (Cat 10) + Denial-of-Wallet via context-window cost amplification (Cat 11) — four LLM10 vectors sharing the Orchestrator's inference endpoint and fan-out topology as the common attack surface | Critical |
 
 ---
 
@@ -451,18 +494,18 @@ Correlation detection rules applied (CR-1 through CR-5):
 
 Phase 3.6 classification rule table applied. Pattern synthesis results:
 
-- **R-01 (agent_collusion)**: AG-2 matches — `category_in: [agentic]` ✓, `architecture_has.topology: [inter_agent_data_flow]` ✓, `description_contains: [joint, inter-agent, shared channel]` ✓. No suppression (label already set from baseline). Net-new generation suppressed (existing finding already carries label).
+- **R-01 (agent_collusion)**: AG-2 matches. Net-new generation suppressed (existing finding carries label).
 - **R-02 (temporal_attack)**: Existing findings carry label: S-7, T-8, R-7, E-6, LLM-11, LLM-12, AG-7. Net-new generation suppressed.
 - **R-03 (emergent_behavior)**: AGP-01 carries label. Net-new generation suppressed.
 - **R-04 (trust_exploitation)**: Existing findings: S-1, S-3, S-4, S-5, S-6, S-9, E-7, AG-3, AG-4, AG-5. No net-new.
-- **R-05 (communication_vulnerability)**: T-4 and I-4 target Inter-Agent Communication Channel. AG-8 (NEW) also targets Inter-Agent Communication Channel and matches `category_in: [agentic]` AND `target_component_matches` ✓ AND `architecture_has.topology: [inter_agent_channel]` ✓ → AG-8 assigned `communication_vulnerability`.
-- **R-06 (resource_competition)**: D-2, D-3, D-4, D-5, D-9, AG-6 match.
+- **R-05 (communication_vulnerability)**: T-4, I-4, AG-8 match.
+- **R-06 (resource_competition)**: D-2, D-3, D-4, D-5, D-9, D-10, D-11, AG-6, LLM-15, LLM-16 match (new F-5 findings D-10, D-11, LLM-15, LLM-16 all match resource_competition via R-06 `description_contains` [exhaustion, flooding, token, context-window]).
 
 | Pattern | Count | Findings |
 |---|---|---|
 | trust_exploitation | 10 | S-1, S-3, S-4, S-5, S-6, S-9, E-7, AG-3, AG-4, AG-5 |
 | temporal_attack | 7 | T-8, S-7, R-7, E-6, LLM-11, LLM-12, AG-7 |
-| resource_competition | 6 | D-2, D-3, D-4, D-5, D-9, AG-6 |
+| resource_competition | 10 | D-2, D-3, D-4, D-5, D-9, D-10, D-11, AG-6, LLM-15, LLM-16 |
 | communication_vulnerability | 3 | T-4, I-4, AG-8 |
 | agent_collusion | 1 | AG-2 |
 | emergent_behavior | 1 | AGP-01 |
@@ -475,7 +518,7 @@ Phase 3.6 classification rule table applied. Pattern synthesis results:
 |---|---|---|---|---|---|---|---|---|---|
 | User | 1 | n/a | 1 | n/a | n/a | n/a | n/a | n/a | 2 |
 | Guardrails Service | 1 | 1 | 1 | 1 | 1 | 1 | n/a | n/a | 6 |
-| LLM Agent Orchestrator | 1 | 1 | 1 | 1 | 1 | 1 | 3 | 10 | 19 |
+| LLM Agent Orchestrator | 1 | 1 | 1 | 1 | 3 | 1 | 3 | 12 | 23 |
 | Specialist Agent | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 3 | 10 |
 | Inter-Agent Communication Channel | 1 | 1 | 1 | 1 | 1 | 1 | 2 | n/a | 8 |
 | MCP Tool Server | 1 | 1 | 1 | 1 | 1 | 1 | 2 | n/a | 8 |
@@ -484,11 +527,9 @@ Phase 3.6 classification rule table applied. Pattern synthesis results:
 | Long-Running Learning Loop | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 2 | 9 |
 | Clinical Advisory Sub-Agent | 1 | 1 | 1 | 1 | 1 | 1 | n/a | 7 | 13 |
 | External API | 1 | n/a | 1 | n/a | n/a | n/a | n/a | n/a | 2 |
-| **Total** | **9** | **9** | **9** | **9** | **9** | **7** | **9** | **22** | **83** |
+| **Total** | **9** | **9** | **9** | **9** | **13** | **7** | **9** | **24** | **88** |
 
-*Note: AG-8 (NEW, Inter-Agent Communication Channel) increments AG column for that row from 1 to 2. CG-7 merges D-4 + AG-8 → deduplicated count for Inter-Agent Communication Channel AG cell = 2 (counted once as part of CG-7 group). Total raw findings = 84 (83 baseline UNCHANGED + 1 NEW AG-8). Deduplicated: 7 correlation groups merge 16 individual findings into 7 → deduplicated total: 75 (raw 84 - 16 raw + 7 group = 75).*
-
-*Counts reflect deduplicated findings. 7 correlation groups merged 16 individual findings into 7.*
+*Note: D column increments by 2 (D-10 + D-11 NEW on LLM Agent Orchestrator, from 1 to 3). LLM column increments by 2 (LLM-15 + LLM-16 NEW on LLM Agent Orchestrator, from 10 to 12). Total raw findings = 88 (84 baseline UNCHANGED + 4 NEW: D-10, D-11, LLM-15, LLM-16). Deduplicated: 8 correlation groups (CG-1 through CG-8) merge findings — CG-8 merges D-10 + D-11 + LLM-15 + LLM-16 into 1 group.*
 
 ### 5a. Coverage Gate Results
 
@@ -496,9 +537,9 @@ Phase 3.6 classification rule table applied. Pattern synthesis results:
 |---|---|---|---|---|
 | User | external_entity | spoofing, repudiation | spoofing ✓, repudiation ✓ | PASS |
 | Guardrails Service | process | spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation | all ✓ | PASS |
-| LLM Agent Orchestrator | llm_process | spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, llm, output-integrity | all ✓ | PASS |
+| LLM Agent Orchestrator | llm_process | spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, llm, output-integrity | all ✓ (D-10 + D-11 NEW extend denial-of-service; LLM-15 + LLM-16 NEW extend llm) | PASS |
 | Specialist Agent | llm_process | spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, llm | all ✓ | PASS |
-| Inter-Agent Communication Channel | mcp_server | spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, agentic | all ✓ (AG-8 NEW satisfies agentic category) | PASS |
+| Inter-Agent Communication Channel | mcp_server | spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, agentic | all ✓ | PASS |
 | MCP Tool Server | mcp_server | spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, agentic | all ✓ | PASS |
 | Knowledge Base | data_store | tampering, info-disclosure, denial-of-service | all ✓ | PASS |
 | Audit Logger | data_store | tampering, info-disclosure, denial-of-service | all ✓ | PASS |
@@ -524,7 +565,7 @@ Phase 3.6 classification rule table applied. Pattern synthesis results:
 
 | MAESTRO Layer | Finding Count | Highest Severity |
 |---|---|---|
-| L1 — Foundation Model | 22 | Critical |
+| L1 — Foundation Model | 26 | Critical |
 | L7 — Agent Ecosystem | 18 | Critical |
 | Unclassified | 25 | Critical |
 | L6 — Security and Compliance | 8 | Critical |
@@ -532,20 +573,20 @@ Phase 3.6 classification rule table applied. Pattern synthesis results:
 | L2 — Data Operations | 3 | High |
 | L5 — Evaluation and Observability | 3 | High |
 
-Note: Unclassified count increased by 1 (AG-8 on Inter-Agent Communication Channel which is Unclassified). All other layer counts unchanged.
+*Note: L1 count increased by 4 (D-10, D-11, LLM-15, LLM-16 all on LLM Agent Orchestrator at L1 — Foundation Model). All other layer counts unchanged.*
 
 ### Risk Distribution (Raw Findings)
 
 | Risk Level | Count | Percentage |
 |---|---|---|
-| Critical | 58 | 69.0% |
-| High | 22 | 26.2% |
-| Medium | 4 | 4.8% |
+| Critical | 61 | 69.3% |
+| High | 23 | 26.1% |
+| Medium | 4 | 4.5% |
 | Low | 0 | 0.0% |
 | Note | 0 | 0.0% |
-| **Total** | **84** | **100%** |
+| **Total** | **88** | **100%** |
 
-*Deduplicated total (correlation groups applied): 7 groups merge 16 findings into 7 → deduplicated total: 75 unique threats at group risk levels. Raw total: 84 findings.*
+*Raw finding counts: D-10 = Critical (HIGH×HIGH), D-11 = Critical (HIGH×HIGH), LLM-15 = Critical (HIGH×HIGH), LLM-16 = High (MEDIUM×HIGH). Baseline 58 Critical + 22 High + 4 Medium = 84. Added: +3 Critical (D-10, D-11, LLM-15) +1 High (LLM-16) = 61 Critical, 23 High, 4 Medium = 88 total.*
 
 ---
 
@@ -575,6 +616,8 @@ Sorted by risk level descending, then by table appearance order:
 | D-1 | [UNCHANGED] | Guardrails Service | Resource exhaustion via high-volume computationally-expensive prompt submission | Critical | Per-IP/session rate limiting before Guardrails; computational budget per prompt |
 | D-2 | [UNCHANGED] | LLM Agent Orchestrator | Inference pipeline exhaustion via high-token prompts or recursive tool chains | Critical | Per-session token budgets; circuit breakers on tool chains; load shedding |
 | D-5 | [UNCHANGED] | MCP Tool Server | Connection pool exhaustion via high-volume tool call requests | Critical | Per-caller/tool rate limiting; connection pool overflow rejection; circuit breakers |
+| D-10 | [NEW] | LLM Agent Orchestrator | LLM inference-request flooding and token exhaustion (OWASP LLM10:2025 Cat 12): no per-tenant QPS rate limit at inference API gateway; no max-prompt-token enforcement; no synchronous token-counting middleware; fan-out to Specialist + ClinAdvisor multiplies DoS surface | Critical | Per-tenant QPS at inference gateway; max-prompt-token enforcement; token-counting middleware; aggregate fan-out token budget; token-velocity alerting |
+| D-11 | [NEW] | LLM Agent Orchestrator | Context-window exhaustion latency-driven variant (OWASP LLM10:2025 Cat 13 / Q1 SPLIT Vector A): adversarial max-context prompts spike inference latency to per-tenant timeout; recursive prompt patterns uninhibited; fan-out multiplies blocked inference slots | Critical | Max-context-window enforcement at API gateway; per-conversation truncation policy; recursive-prompt detection; context-window monitoring with anomaly alerting |
 | E-1 | [UNCHANGED] | Guardrails Service | Prompt injection bypass elevates attacker to trusted Orchestrator caller | Critical | Defense-in-depth: Orchestrator applies independent input validation |
 | E-2 | [UNCHANGED] | LLM Agent Orchestrator | Prompt injection self-authorizes elevated operations (full KB export, cross-scope tools) | Critical | Per-session scoped permissions enforced by downstream services independently |
 | E-4 | [UNCHANGED] | Inter-Agent Communication Channel | Application Zone process injects messages with forged elevated sender identity | Critical | Enforce sender identity authentication at Channel; reject unverified messages |
@@ -587,7 +630,7 @@ Sorted by risk level descending, then by table appearance order:
 | AG-4 | [UNCHANGED] | Inter-Agent Communication Channel | Agent-in-the-middle intercepts and modifies delegation messages | Critical | End-to-end message authentication; replay detection |
 | AG-5 | [UNCHANGED] | MCP Tool Server | Tool call injection via LLM-influenced JSON-RPC parameters | Critical | Registered tool allowlist; per-tool parameter JSON Schema validation |
 | AG-7 | [UNCHANGED] | Long-Running Learning Loop | Training data causes model to expand autonomous action scope on next update | Critical | Capability auditing in update evaluation; capability allowlist enforced post-update |
-| AG-8 | [NEW] | Inter-Agent Communication Channel | Insecure inter-agent communication: no mTLS, no message signing, no replay prevention, no taint propagation on Orchestrator relay (OWASP ASI07:2026, AML.T0060) | Critical | mTLS on all inter-agent channels; HMAC/Ed25519 message signing; nonce-based replay prevention; taint labels across Orchestrator relay |
+| AG-8 | [UNCHANGED] | Inter-Agent Communication Channel | Insecure inter-agent communication: no mTLS, no message signing, no replay prevention, no taint propagation on Orchestrator relay (OWASP ASI07:2026, AML.T0060) | Critical | mTLS on all inter-agent channels; HMAC/Ed25519 message signing; nonce-based replay prevention; taint labels across Orchestrator relay |
 | LLM-1 | [UNCHANGED] | LLM Agent Orchestrator | Direct prompt injection overrides system prompt or reveals configuration | Critical | Multi-layer injection detection; privilege-separated prompt architecture |
 | LLM-2 | [UNCHANGED] | LLM Agent Orchestrator | Indirect prompt injection via adversarial KB documents | Critical | Retrieval-time content sanitization; context segmentation marking |
 | LLM-4 | [UNCHANGED] | LLM Agent Orchestrator | Training data poisoning via Audit Logger-fed Learning Loop update | Critical | Training data validation; provenance tracking; adversarial training detection |
@@ -598,6 +641,7 @@ Sorted by risk level descending, then by table appearance order:
 | LLM-11 | [UNCHANGED] | Long-Running Learning Loop | Systematic audit log poisoning for delayed temporal model behavioral shift | Critical | Cryptographic log signing; anomaly detection; differential privacy training |
 | LLM-13 | [UNCHANGED] | Clinical Advisory Sub-Agent | Prompt injection via clinical query context overrides sub-agent system prompt | Critical | Instruction-boundary enforcement at ClinAdvisor; clinical-query content sanitization; output validation for system-prompt leakage |
 | LLM-14 | [UNCHANGED] | Clinical Advisory Sub-Agent | Training data poisoning via adversarial Clinical Decision Log Entries in Learning Loop | Critical | Clinical Decision Log provenance attestation; clinical-domain holdout evaluation before ClinAdvisor update deployment |
+| LLM-15 | [NEW] | LLM Agent Orchestrator | Cost amplification via recursive/cost-asymmetric prompting (OWASP LLM10:2025 Cat 10): adversarial prompts trigger multi-hop fan-out (Orchestrator→Specialist→ToolServer + Orchestrator→ClinAdvisor→KB) with 32k+ token recursive output; no output-amplification-ratio monitoring; no cost-per-query p99 alerting | Critical | Per-query output-token cap at realistic p99; recursive-prompt depth limit; output-amplification-ratio monitoring (>100x alert); multi-hop fan-out aggregate token budget; per-tenant cost-velocity alerting |
 | OI-1 | [UNCHANGED] | LLM Agent Orchestrator | Client-side XSS via LLM response to User browser (client-side execution) | Critical | textContent not innerHTML; DOMPurify with allowlist; strict CSP nonce |
 | OI-2 | [UNCHANGED] | LLM Agent Orchestrator | Server-side code/command execution via LLM-synthesized Tool Call Request parameters | Critical | MCP Tool Server parameter validation: SQL parameterization, argument vectors, allowlists |
 | MI-1 | [UNCHANGED] | Clinical Advisory Sub-Agent | Ungrounded factual emission: clinical summaries contain hallucinated medical claims without RAG grounding verification | Critical | Mandatory RAG grounding with per-claim source anchoring; retrieval-strength gate; clinical output validator |
@@ -627,6 +671,7 @@ Sorted by risk level descending, then by table appearance order:
 | LLM-7 | [UNCHANGED] | LLM Agent Orchestrator | SSRF via LLM-synthesized URL in Tool Call Request (server-side network access) | High | URL allowlisting; egress firewall; DNS pinning; scheme validation |
 | LLM-10 | [UNCHANGED] | Specialist Agent | Server-side injection via tool result incorporation into subsequent tool calls | High | Sanitize tool results before context injection; allowlist-based parameter validation |
 | LLM-12 | [UNCHANGED] | Long-Running Learning Loop | Model theft via Learning Loop output artifact monitoring | High | Encrypt model update packages; model watermarking; restrict artifact access |
+| LLM-16 | [NEW] | LLM Agent Orchestrator | Denial-of-Wallet via context-window cost amplification (OWASP LLM10:2025 Cat 11 / Q1 SPLIT Vector B): no per-tenant token budget hard-cap; no at-query-time billing attribution; no denial-of-wallet anomaly detection; fan-out multiplies per-request billing 3x; HIGH default (no freemium multi-tenant CRITICAL conditions met) | High | Per-tenant token budget hard-cap at API gateway; at-query-time billing attribution; denial-of-wallet anomaly detection across 5-min/1-hr/24-hr windows; automated tenant suspension on budget breach |
 | OI-3 | [UNCHANGED] | LLM Agent Orchestrator | SSRF via LLM-synthesized URL in Tool Call Request to MCP Tool Server (server-side) | High | URL allowlisting; egress firewall blocking RFC 1918/metadata; DNS pinning |
 | OI-4 | [UNCHANGED] | Clinical Advisory Sub-Agent | Server-side execution via clinical summary content injected into Orchestrator's downstream Tool Call Request | High | Orchestrator treats ClinAdvisor outputs as untrusted; parameterize before tool invocation; schema validation |
 | AGP-01 | [UNCHANGED] | LLM Agent Orchestrator | Multi-agent emergent behavior — cascading failures or feedback amplification bypassing per-agent safety evaluation | Medium | Fail-safe shutdown circuits; bounded action scopes; behavioral baselining of collective agent system |
@@ -642,22 +687,25 @@ Sorted by risk level descending, then by table appearance order:
 
 ## 8. Delta Summary
 
-**Baseline**: `/Users/david/Projects/tachi/examples/agentic-app/test-output/2026-04-23T19-30-00-F2-wave4/threats.md` (schema 1.7, run `2026-04-23T19-30-00`)
+**Baseline**: `/Users/david/Projects/tachi/examples/agentic-app/test-output/2026-04-26T03-39-12-F3-wave3/threats.md` (schema 1.4, run `2026-04-26T03-39-12`)
 
 | Status | Count |
 |---|---|
-| NEW | 1 |
-| UNCHANGED | 83 |
+| NEW | 4 |
+| UNCHANGED | 84 |
 | UPDATED | 0 |
 | RESOLVED | 0 |
-| **Total** | **84** |
+| **Total** | **88** |
 
 **Finding-level changes**:
 
-**NEW findings** (1 — Feature 219 F-3 wave 3 enrichment, Inter-Agent Communication Channel):
-- **[NEW]** AG-8: Agentic (Tool-Abuse) — Inter-Agent Communication Channel — Insecure Inter-Agent Communication (OWASP ASI07:2026, Pattern Category 9): no mTLS, no message signing, no nonce-based replay prevention, no inter-agent taint propagation across Orchestrator relay. CWE-287 (Improper Authentication). MITRE ATLAS AML.T0060 (Agent-in-the-Middle).
+**NEW findings** (4 — Feature 229 F-5 Wave 2 enrichment, LLM Agent Orchestrator — OWASP LLM10:2025 Unbounded Consumption):
+- **[NEW]** D-10: Denial-of-Service — LLM Agent Orchestrator — LLM Inference-Request Flooding and Token Exhaustion (Pattern Category 12, OWASP LLM10:2025 + CWE-400 + CWE-770). Per-tenant QPS gap; no max-prompt-token enforcement; no synchronous token-counting middleware; fan-out to Specialist + ClinAdvisor multiplies DoS surface. Risk: Critical.
+- **[NEW]** D-11: Denial-of-Service — LLM Agent Orchestrator — Context-Window Exhaustion Latency-Driven Variant (Pattern Category 13, OWASP LLM10:2025 + CWE-400; Q1 SPLIT Vector A). Adversarial max-context payloads spike per-request latency to per-tenant timeout; fan-out blocks 3 inference slots simultaneously; no context-window monitoring. Risk: Critical.
+- **[NEW]** LLM-15: LLM (model-theft category) — LLM Agent Orchestrator — Cost Amplification via Recursive or Cost-Asymmetric Prompting (Pattern Category 10, OWASP LLM10:2025; T1496 prose-only, not in references). Multi-hop fan-out (Orchestrator→Specialist→ToolServer + Orchestrator→ClinAdvisor→KB) creates 32k+ token recursive output amplification; no output-amplification-ratio monitoring; no cost-per-query p99 alerting. Risk: Critical.
+- **[NEW]** LLM-16: LLM (model-theft category) — LLM Agent Orchestrator — Denial-of-Wallet via Context-Window Cost Amplification (Pattern Category 11, OWASP LLM10:2025; Q1 SPLIT Vector B; T1496 prose-only, not in references). No per-tenant token budget hard-cap; no at-query-time billing attribution; no denial-of-wallet anomaly detection; fan-out multiplies per-request billing 3x. HIGH default (Q3 RESOLVED: no multi-tenant freemium CRITICAL conditions met). Risk: High.
 
 **NEW correlation group** (1):
-- CG-7: D-4 + AG-8 → Inter-Agent Communication Channel (Denial-of-Service + Tool-Abuse/A2A)
+- CG-8: D-10 + D-11 + LLM-15 + LLM-16 → LLM Agent Orchestrator (LLM10 Unbounded Consumption cluster — all four F-5 LLM10 vectors share inference endpoint and fan-out topology)
 
-**UNCHANGED findings** (83): All 83 prior findings carried forward as UNCHANGED. Architecture and component inventory unchanged between runs.
+**UNCHANGED findings** (84): All 84 prior findings carried forward as UNCHANGED. Architecture and component inventory unchanged between runs.

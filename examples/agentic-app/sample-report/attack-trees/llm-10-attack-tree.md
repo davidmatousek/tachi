@@ -1,44 +1,21 @@
-# Attack Tree: LLM-10 — Server-Side Injection via Tool Result Incorporation into Subsequent Tool Calls
+# Attack Tree: LLM-10 — Specialist Agent
 
-**Finding ID**: LLM-10
 **Risk Level**: High
 **Component**: Specialist Agent
-**Delta Status**: UNCHANGED
+**Threat**: Server-side injection via tool result incorporation into subsequent tool calls
 
 ```mermaid
-flowchart TD
-    LLM10_root["Achieve server-side injection at Tool Server via malicious tool results incorporated into Specialist subsequent tool calls"]
-    LLM10_and1{{"AND"}}
-    LLM10_sub1["Cause MCP Tool Server to return tool result containing injection payload"]
-    LLM10_sub2["Specialist incorporates result into next tool call parameters without sanitization"]
-    LLM10_or1{{"OR"}}
-    LLM10_leaf1["Influence External API to return adversarial content in tool result via BGP or DNS attack"]
-    LLM10_leaf2["Compromise External API provider to return injection payload in API response"]
-    LLM10_and2{{"AND"}}
-    LLM10_leaf3["Confirm Specialist does not sanitize tool results before using them in subsequent tool invocations"]
-    LLM10_leaf4["Confirm Tool Server does not apply allowlist validation on parameters regardless of source"]
-    LLM10_leaf5["Injection payload from tool result executes at Tool Server or External API via second-order injection"]
-
-    LLM10_root --> LLM10_and1
-    LLM10_and1 --> LLM10_sub1
-    LLM10_and1 --> LLM10_sub2
-    LLM10_sub1 --> LLM10_or1
-    LLM10_or1 --> LLM10_leaf1
-    LLM10_or1 --> LLM10_leaf2
-    LLM10_sub2 --> LLM10_and2
-    LLM10_and2 --> LLM10_leaf3
-    LLM10_and2 --> LLM10_leaf4
-    LLM10_and2 --> LLM10_leaf5
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class LLM10_root goal
-    class LLM10_and1,LLM10_and2 andGate
-    class LLM10_or1 orGate
-    class LLM10_sub1,LLM10_sub2 subGoal
-    class LLM10_leaf1,LLM10_leaf2,LLM10_leaf3,LLM10_leaf4,LLM10_leaf5 leaf
+graph TD
+    Goal["[GOAL] Achieve server-side injection via tool result carrying injection payload into next tool call (OWASP LLM05:2025)"]
+    Goal --> A["[OR] Tool Server returns LLM-influenced content with injection payload"]
+    A --> A1["External API response contains injection payload (S-8 chain)"]
+    A --> A2["Prior tool call from compromised Orchestrator pollutes Tool Server cache"]
+    Goal --> B["[AND] Specialist incorporates tool result into context without sanitization"]
+    B --> B1["No output sanitization on tool results before context injection"]
+    B --> B2["Tool results treated as trusted data — not untrusted input"]
+    Goal --> C["[AND] Injection payload forwarded to next tool call parameter"]
+    C --> C1["No allowlist-based parameter validation at Tool Server for subsequent calls"]
+    C --> C2["Injection payload executed server-side by next tool invocation"]
+    classDef high fill:#e65100,color:#fff
+    class Goal high
 ```

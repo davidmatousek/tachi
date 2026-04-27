@@ -1,44 +1,23 @@
-# Attack Tree: LLM-2 — Indirect Prompt Injection via Adversarial Knowledge Base Documents
+# Attack Tree: LLM-2 — LLM Agent Orchestrator
 
-**Finding ID**: LLM-2
 **Risk Level**: Critical
 **Component**: LLM Agent Orchestrator
-**Delta Status**: UNCHANGED
+**Threat**: Indirect prompt injection via adversarial Knowledge Base documents
 
 ```mermaid
-flowchart TD
-    LLM2_root["Hijack Orchestrator reasoning by injecting adversarial instructions via poisoned KB documents"]
-    LLM2_or1{{"OR"}}
-    LLM2_sub1["Inject adversarial documents into Knowledge Base directly"]
-    LLM2_sub2["Exploit existing document with instruction-like content"]
-    LLM2_and1{{"AND"}}
-    LLM2_leaf1["Obtain write access to Knowledge Base document store"]
-    LLM2_leaf2["Craft document embedding adversarial instructions with high retrieval ranking"]
-    LLM2_leaf3["Confirm no retrieval-time sanitization strips instruction patterns from documents"]
-    LLM2_and2{{"AND"}}
-    LLM2_leaf4["Identify existing KB document containing instruction-like text patterns"]
-    LLM2_leaf5["Craft user query that triggers retrieval of exploitable document into Orchestrator context"]
-
-    LLM2_root --> LLM2_or1
-    LLM2_or1 --> LLM2_sub1
-    LLM2_or1 --> LLM2_sub2
-    LLM2_sub1 --> LLM2_and1
-    LLM2_and1 --> LLM2_leaf1
-    LLM2_and1 --> LLM2_leaf2
-    LLM2_and1 --> LLM2_leaf3
-    LLM2_sub2 --> LLM2_and2
-    LLM2_and2 --> LLM2_leaf4
-    LLM2_and2 --> LLM2_leaf5
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class LLM2_root goal
-    class LLM2_or1 orGate
-    class LLM2_and1,LLM2_and2 andGate
-    class LLM2_sub1,LLM2_sub2 subGoal
-    class LLM2_leaf1,LLM2_leaf2,LLM2_leaf3,LLM2_leaf4,LLM2_leaf5 leaf
+graph TD
+    Goal["[GOAL] Hijack Orchestrator reasoning via adversarial content embedded in KB documents (OWASP LLM01:2025)"]
+    Goal --> A["[OR] Inject adversarial documents into Knowledge Base (T-6)"]
+    A --> A1["Gain write access to KB corpus"]
+    A --> A2["Embed instruction-like patterns in document content"]
+    Goal --> B["[AND] Document retrieved during Orchestrator vector search"]
+    B --> B1["No retrieval-time content sanitization"]
+    B --> B2["Adversarial document matches query terms and enters context"]
+    Goal --> C["[AND] Adversarial instructions injected into Orchestrator context window"]
+    C --> C1["No context segmentation marking retrieved content as untrusted"]
+    C --> C2["Orchestrator interprets document content as instructions"]
+    Goal --> D["[AND] Orchestrator executes adversary-controlled actions"]
+    D --> D1["Exfiltration, unauthorized tool calls, or privilege escalation"]
+    classDef critical fill:#d32f2f,color:#fff
+    class Goal critical
 ```

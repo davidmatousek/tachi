@@ -1,46 +1,22 @@
-# Attack Tree: E-1 — Prompt Injection Bypass Elevates Attacker to Trusted Orchestrator Caller
+# Attack Tree: E-1 — Guardrails Service
 
-**Finding ID**: E-1
 **Risk Level**: Critical
 **Component**: Guardrails Service
-**Delta Status**: UNCHANGED
+**Threat**: Prompt injection bypass elevates attacker to trusted Orchestrator caller
 
 ```mermaid
-flowchart TD
-    E1_root["Elevate attacker from unauthenticated user to trusted Orchestrator caller via Guardrails bypass"]
-    E1_and1{{"AND"}}
-    E1_sub1["Craft adversarial prompt that evades Guardrails filtering"]
-    E1_sub2["Exploit Orchestrator's implicit trust in Guardrails-passed inputs"]
-    E1_or1{{"OR"}}
-    E1_leaf1["Identify filtering rule gaps through iterative probing of rejection patterns"]
-    E1_leaf2["Encode adversarial instructions using encoding Guardrails does not normalize"]
-    E1_leaf3["Embed injection payload in content type Guardrails does not evaluate"]
-    E1_and2{{"AND"}}
-    E1_leaf4["Confirm Orchestrator treats all Guardrails-passed inputs as implicitly trusted"]
-    E1_leaf5["Submit injection payload causing Orchestrator to execute attacker instructions"]
-    E1_leaf6["Achieve Orchestrator-level access to KB retrieval, tool calls, and agent delegation"]
-
-    E1_root --> E1_and1
-    E1_and1 --> E1_sub1
-    E1_and1 --> E1_sub2
-    E1_sub1 --> E1_or1
-    E1_or1 --> E1_leaf1
-    E1_or1 --> E1_leaf2
-    E1_or1 --> E1_leaf3
-    E1_sub2 --> E1_and2
-    E1_and2 --> E1_leaf4
-    E1_and2 --> E1_leaf5
-    E1_and2 --> E1_leaf6
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class E1_root goal
-    class E1_and1,E1_and2 andGate
-    class E1_or1 orGate
-    class E1_sub1,E1_sub2 subGoal
-    class E1_leaf1,E1_leaf2,E1_leaf3,E1_leaf4,E1_leaf5,E1_leaf6 leaf
+graph TD
+    Goal["[GOAL] Elevate from unauthenticated user to trusted Orchestrator caller via Guardrails bypass"]
+    Goal --> A["[OR] Craft prompt that bypasses Guardrails filtering rules"]
+    A --> A1["Encoding-based evasion (Unicode, HTML entities, Base64)"]
+    A --> A2["Jailbreak template evades content classifier"]
+    A --> A3["Multi-turn attack accumulates context across turns"]
+    Goal --> B["[AND] Bypassed prompt reaches Orchestrator with trusted-input status"]
+    B --> B1["Orchestrator does not apply independent input validation"]
+    B --> B2["Guardrails-passed inputs treated as implicitly trusted"]
+    Goal --> C["[AND] Attacker achieves Orchestrator trust level"]
+    C --> C1["Enables subsequent prompt injection attacks (LLM-1 chain)"]
+    C --> C2["Enables privilege escalation via Orchestrator (E-2)"]
+    classDef critical fill:#d32f2f,color:#fff
+    class Goal critical
 ```

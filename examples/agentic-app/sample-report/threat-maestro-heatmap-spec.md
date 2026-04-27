@@ -1,13 +1,11 @@
 ---
-schema_version: "1.0"
+schema_version: "1.4"
 template: "maestro-heatmap"
-date: "2026-04-26"
+date: "2026-04-27"
 source_file: "compensating-controls.md"
 data_source_type: "compensating-controls"
-finding_count: 81
+finding_count: 85
 image_generated: true
-has_baseline: true
-delta_note: "NEW finding AG-8 (Inter-Agent Communication Channel, OWASP ASI07:2026, raw Critical — residual High after controls)"
 ---
 
 ## 1. Metadata
@@ -15,27 +13,26 @@ delta_note: "NEW finding AG-8 (Inter-Agent Communication Channel, OWASP ASI07:20
 | Field | Value |
 |-------|-------|
 | Project Name | Agentic AI Application |
-| Scan Date | 2026-04-26 |
+| Scan Date | 2026-04-27 |
 | Analysis Agents | 8 |
-| Total Findings | 81 |
-| Risk Posture | Residual risk — 0 Critical and 8 High findings across 11 components |
-| Baseline | 2026-04-23 (F2-wave4) |
-| Delta | NEW: AG-8 (Inter-Agent Communication Channel) — OWASP ASI07:2026, raw Critical, residual High after compensating controls |
-| MAESTRO Data | has_maestro_data = true; component-layer intersection grid populated for 7 components |
+| Total Findings | 85 |
+| Risk Posture | Residual risk — 0 Critical and 10 High findings across 11 components |
 
 ---
 
 ## 2. Risk Distribution
 
+**Chart Title**: Residual Risk Distribution
+
 | Severity | Count | Percentage | Color |
 |----------|-------|------------|-------|
 | Critical | 0 | 0% | #DC2626 |
-| High | 8 | 10% | #EA580C |
-| Medium | 68 | 84% | #EAB308 |
-| Low | 5 | 6% | #4169E1 |
-| **Total** | **81** | **100%** | — |
+| High | 10 | 12% | #EA580C |
+| Medium | 70 | 82% | #CA8A04 |
+| Low | 5 | 6% | #2563EB |
+| **Total** | **85** | **100%** | — |
 
-**Chart Format**: Legend panel (right side) showing severity color swatches with counts.
+**F-5 New Findings This Cycle**: D-10 (LLM Inference-Request Flooding), D-11 (Context-Window Latency Amplification), LLM-15 (Cost Amplification), LLM-16 (Denial-of-Wallet) — Feature 229 Wave 2.
 
 ---
 
@@ -43,7 +40,7 @@ delta_note: "NEW finding AG-8 (Inter-Agent Communication Channel, OWASP ASI07:20
 
 | Component | Critical | High | Medium | Low | Total |
 |-----------|----------|------|--------|-----|-------|
-| LLM Agent Orchestrator | 0 | 4 | 15 | 0 | 19 |
+| LLM Agent Orchestrator | 0 | 6 | 17 | 0 | 23 |
 | Clinical Advisory Sub-Agent | 0 | 0 | 11 | 1 | 12 |
 | Specialist Agent | 0 | 0 | 9 | 1 | 10 |
 | Long-Running Learning Loop | 0 | 0 | 9 | 0 | 9 |
@@ -52,58 +49,68 @@ delta_note: "NEW finding AG-8 (Inter-Agent Communication Channel, OWASP ASI07:20
 | Guardrails Service | 0 | 1 | 3 | 1 | 5 |
 | Other | 0 | 1 | 8 | 1 | 10 |
 
-### Cell-Level Grid (STRIDE+AG)
+### Cell-Level Grid
 
 | Component | S | T | R | I | D | E | AG | LLM |
 |-----------|---|---|---|---|---|---|----|-----|
-| LLM Agent Orchestrator | High | Medium | Medium | High | Medium | High | High | Medium |
-| Clinical Advisory Sub-Agent | --- | Medium | Medium | Medium | Medium | --- | --- | Medium |
-| Specialist Agent | --- | Medium | Medium | Medium | Medium | --- | --- | Medium |
-| Long-Running Learning Loop | --- | Medium | Medium | Medium | Medium | --- | --- | Medium |
-| Inter-Agent Communication Channel | --- | Medium | --- | Medium | Medium | --- | High | --- |
-| MCP Tool Server | --- | High | Medium | Medium | --- | Medium | High | --- |
-| Guardrails Service | --- | --- | --- | Medium | --- | High | --- | Medium |
-| Other | --- | Medium | Medium | Medium | --- | High | --- | --- |
+| LLM Agent Orchestrator | High | High | High | High | High | High | High | High |
+| Clinical Advisory Sub-Agent | Medium | Medium | Medium | Medium | Medium | Medium | --- | Medium |
+| Specialist Agent | Medium | Medium | Medium | Medium | Medium | Medium | Medium | Medium |
+| Long-Running Learning Loop | Medium | Medium | Medium | Medium | Medium | Medium | Medium | Medium |
+| Inter-Agent Communication Channel | Medium | Medium | Low | Medium | Medium | Medium | Medium | --- |
+| MCP Tool Server | High | High | Medium | Medium | High | High | High | --- |
+| Guardrails Service | High | Medium | Medium | Medium | High | High | --- | --- |
+| Other | High | Medium | Low | --- | --- | --- | --- | --- |
 
 ---
 
 ## 4. Top Critical Findings
 
-No Critical residual findings identified. Top High findings shown (residual risk, post-control):
+**Risk Level Column**: Residual Risk
 
 | # | Finding ID | Component | Threat | Residual Risk |
 |---|-----------|-----------|--------|---------------|
-| 1 | S-1 | User | An attacker impersonates a legitimate user by replaying stolen session tokens or forging identity credentials | High (score 8.2) |
-| 2 | AG-1 | LLM Agent Orchestrator | Prompt injection causes the Orchestrator to autonomously execute unauthorized high-impact actions | High (score 7.8) |
-| 3 | E-2 | LLM Agent Orchestrator | The Orchestrator has privileged access to KB, MCP Tool Server, and delegation authority — self-authorization via prompt injection | High (score 7.8) |
-| 4 | E-1 | Guardrails Service | Prompt injection that bypasses the Guardrails Service elevates attacker privilege to trusted caller | High (score 7.7) |
-| 5 | I-2 | LLM Agent Orchestrator | The Orchestrator's context window contains sensitive data exposed via inference side-channels | High (score 7.2) |
+| 1 | S-1 | User | An attacker impersonates a legitimate user by replaying stolen session tokens or forging identity credentials | High (8.2) |
+| 2 | AG-1 | LLM Agent Orchestrator | Prompt injection causes the Orchestrator to autonomously execute unauthorized high-impact actions | High (7.8) |
+| 3 | E-2 | LLM Agent Orchestrator | The Orchestrator has privileged access to KB, MCP Tool Server, and delegation authority — self-authorization via prompt injection | High (7.8) |
+| 4 | E-1 | Guardrails Service | Prompt injection that bypasses the Guardrails Service elevates attacker privilege to trusted caller | High (7.7) |
+| 5 | D-10 [NEW] | LLM Agent Orchestrator | LLM Inference-Request Flooding and Token Exhaustion without per-tenant QPS rate limiting | High (7.2) |
+
+> **F-5 callout**: D-10 is a new finding introduced in Feature 229 Wave 2, covering OWASP LLM10:2025 Unbounded Consumption.
 
 ---
 
 ## 5. Architecture Threat Overlay
 
-### Component-Layer Intersection Grid (MAESTRO Heatmap)
+### Component-Layer Intersection Grid
 
-Grid cells show the **highest residual severity** for each component-layer intersection. "—" indicates no findings mapped to that intersection. Residual severity is shown (post-control).
+The grid cells use the highest-severity finding at each component × MAESTRO-layer intersection. Source: `template_data.maestro_heatmap[]` from the extraction script.
 
 | Component | L1 | L2 | L3 | L4 | L5 | L6 | L7 |
 |-----------|----|----|----|----|----|----|-----|
-| LLM Agent Orchestrator | High | — | — | — | — | — | — |
-| Clinical Advisory Sub-Agent | — | — | — | — | — | — | High |
-| MCP Tool Server | — | — | High | — | — | — | — |
-| Guardrails Service | — | — | — | — | — | High | — |
-| Audit Logger | — | — | — | — | High | — | — |
+| LLM Agent Orchestrator | Critical* | — | — | — | — | — | — |
+| Clinical Advisory Sub-Agent | — | — | — | — | — | — | Critical* |
+| MCP Tool Server | — | — | Critical* | — | — | — | — |
+| Guardrails Service | — | — | — | — | — | Critical* | — |
+| Audit Logger | — | — | — | — | Critical* | — | — |
 | Knowledge Base | — | High | — | — | — | — | — |
-| User | — | — | — | — | — | — | High |
+| User | — | — | — | — | — | — | Critical* |
 
-**Delta note**: The extraction script uses "Critical" labels in the heatmap grid for the raw per-component-layer severity (pre-control). In this residual view, those cells reflect the residual severity after controls are applied. The maestro-heatmap JSON showed "Critical" for L1-LLM Agent Orchestrator, L7-Clinical Advisory Sub-Agent, L3-MCP Tool Server, L6-Guardrails Service, L5-Audit Logger, and L7-User — these are raw severity assignments used for MAESTRO layer mapping. Post-control residual for all is High (matching the 8 High residual findings in Section 2). The grid above displays residual severity.
+> Note: The extraction script returned "Critical" for these intersection cells based on the MAESTRO layer classification assigned in threats.md. These cells reflect the per-finding layer annotation (e.g., LLM Agent Orchestrator is classified as L1 — Foundation Model; some findings are tagged Critical at the inherent level before controls). The residual-level heat map (Section 3) uses post-controls severity which shows 0 Critical / 10 High residual. The MAESTRO heatmap grid uses the pre-control threat classification (inherent severity at each layer intersection) per the extraction script logic.
 
-**AG-8 [NEW] in heatmap**: AG-8 maps to the Inter-Agent Communication Channel, which sits at L3 (Agent Framework) and L4 (Agent Application). However, AG-8's component (Inter-Agent Communication Channel) does not appear in the 7-component heatmap grid returned by the extraction script. The grid above shows the components with explicit MAESTRO layer assignments from the source data. Inter-Agent Communication Channel should be added to the grid at L3 with severity High (AG-8 residual) when the MAESTRO annotations are fully populated.
+### Layer Legend (from maestro_layer_distribution — aggregate rollup)
 
-### MAESTRO Layer Distribution
+> Note: `template_data.maestro_layer_distribution` is empty for this report cycle. Layer names use canonical CSA MAESTRO taxonomy.
 
-Per-layer aggregate data not available for this run (`maestro_layer_distribution: []`). Refer to the component-layer grid above for intersection data.
+| Layer | Name | Components in This Report |
+|-------|------|--------------------------|
+| L1 | Foundation Model | LLM Agent Orchestrator |
+| L2 | Data Operations | Knowledge Base |
+| L3 | Agent Framework | MCP Tool Server |
+| L4 | Agent Communication | Inter-Agent Communication Channel |
+| L5 | Evaluation and Observability | Audit Logger |
+| L6 | Security and Compliance | Guardrails Service |
+| L7 | Agent Ecosystem | Clinical Advisory Sub-Agent, Specialist Agent, User |
 
 ---
 
@@ -113,37 +120,43 @@ Per-layer aggregate data not available for this run (`maestro_layer_distribution
 
 | Severity | Hex Code | Usage |
 |----------|----------|-------|
-| Critical | #DC2626 | Red-600: grid cells (raw severity; none in residual grid) |
-| High | #EA580C | Orange-600: grid cells with High residual findings |
-| Medium | #CA8A04 | Yellow-600: grid cells with Medium residual findings |
-| Low | #2563EB | Blue-600: grid cells with Low residual findings |
-| Empty | #374151 | Dark gray: grid cells with no findings (rounded rectangles) |
-| Note | #6B7280 | Gray-500: legend and decorative elements |
+| Critical | #DC2626 | Red-600: heatmap grid cells with Critical intersections |
+| High | #EA580C | Orange-600: heatmap grid cells with High intersections |
+| Medium | #CA8A04 | Yellow-600: heatmap grid cells with Medium intersections |
+| Low | #2563EB | Blue-600: heatmap grid cells with Low intersections |
+| Note | #6B7280 | Gray-500: empty grid cells |
+| Clean cell | #F3F4F6 | Gray-100: "—" (no finding) grid cells |
 
 ### Layout Structure
 
-MAESTRO Heatmap layout (16:9 landscape, dark navy background):
-
-- Title bar: project name, date, CONFIDENTIAL badge, "CSA MAESTRO Layer Analysis" subtitle
-- Main body: Component-Layer intersection grid (components as rows, L1-L7 as columns)
-- Grid cells: rounded rectangles with severity-colored fill or dark gray empty state
-- Column headers: L1 through L7 with layer names as sub-labels
-- Row labels: component names (left-aligned, up to 25 chars; truncate with "..." if longer)
-- Right panel: legend with severity color swatches + counts; top finding cards
-- AG-8 note: small annotation below the grid — "AG-8 [NEW]: Inter-Agent Communication Channel (L3) not shown — MAESTRO annotation pending"
-- Footer centered
+```
+- Background: dark navy
+- Aspect Ratio: 16:9 landscape
+- Style: Premium MAESTRO component-layer heatmap dashboard
+- Main Layout:
+  1. HEADER (top, ~10%): Title "MAESTRO Component-Layer Heatmap: Agentic AI Application",
+     date "2026-04-27", CONFIDENTIAL badge, subtitle "85 Residual Findings — F-5 Wave 2"
+  2. GRID (center, ~75%): Component × Layer intersection matrix:
+     Rows: components (7 shown from maestro_heatmap)
+     Columns: L1, L2, L3, L4, L5, L6, L7
+     Each cell: rounded rectangle, colored by severity (Critical=red, High=orange, Medium=amber, Low=blue, empty=dark gray)
+     Cell label: severity word (Critical/High/Medium/Low) or "—" if empty
+     Column headers: L1 through L7 with full layer name below
+     Row labels: component names left-aligned
+  3. LEGEND PANEL (right sidebar, ~15%):
+     - Severity color swatches: Critical (red), High (orange), Medium (amber), Low (blue), None (gray)
+     - Total: 85 residual findings
+     - "F-5 New: D-10, D-11, LLM-15, LLM-16"
+  4. FOOTER (~5%): "Generated by Tachi Threat Modeling Framework — CSA MAESTRO Layer Analysis"
+```
 
 ### Typography
 
 - Title: Bold, 28-32pt equivalent
-- Column/Row Headers: Semi-bold, 14-16pt equivalent
-- Grid Cell Values: Bold, 12-14pt equivalent
+- Grid Headers: Semi-bold, 14-16pt equivalent
+- Cell Labels: Regular, 12-14pt equivalent
 - Legend: Regular, 12-14pt equivalent
 
 ### Background
 
-Dark navy (#1E293B) — premium dark dashboard aesthetic. Grid cells use rounded rectangles with colored fills on dark background.
-
-### Delta Emphasis Directive
-
-A small annotation below the grid should note: "AG-8 [NEW] — Inter-Agent Communication Channel maps to L3 (Agent Framework) with residual High severity (OWASP ASI07:2026). Full layer assignment pending MAESTRO annotation in next run."
+Dark navy — premium dark dashboard aesthetic. Grid cells: rounded rectangles with generous padding. Empty cells: subtle dark gray. All text: white or light gray on dark background.

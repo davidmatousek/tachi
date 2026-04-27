@@ -1,46 +1,23 @@
-# Attack Tree: T-8 — Temporal Training Signal Poisoning with Sleeper-Agent Injection
+# Attack Tree: T-8 — Long-Running Learning Loop
 
-**Finding ID**: T-8
 **Risk Level**: Critical
 **Component**: Long-Running Learning Loop
-**Delta Status**: UNCHANGED
+**Threat**: Temporal data poisoning with sleeper-agent injection via training cycle
 
 ```mermaid
-flowchart TD
-    T8_root["Inject sleeper-agent behavior into updated models via training signal poisoning"]
-    T8_and1{{"AND"}}
-    T8_sub1["Poison Audit Logger with adversarial training signal entries"]
-    T8_sub2["Craft trigger-activated behavioral payload in training data"]
-    T8_or1{{"OR"}}
-    T8_leaf1["Gain write access to Audit Logger as compromised Application Zone process"]
-    T8_leaf2["Exploit Learning Loop's unconditional trust in Audit Logger training stream"]
-    T8_and2{{"AND"}}
-    T8_leaf3["Design adversarial interactions that activate only on specific future trigger patterns"]
-    T8_leaf4["Insert adversarial records over extended period to evade statistical anomaly detection"]
-    T8_leaf5["Confirm Learning Loop ingests poisoned entries without provenance attestation"]
-    T8_leaf6["Wait for model update cycle to propagate sleeper behavior into production models"]
-
-    T8_root --> T8_and1
-    T8_and1 --> T8_sub1
-    T8_and1 --> T8_sub2
-    T8_sub1 --> T8_or1
-    T8_or1 --> T8_leaf1
-    T8_or1 --> T8_leaf2
-    T8_sub2 --> T8_and2
-    T8_and2 --> T8_leaf3
-    T8_and2 --> T8_leaf4
-    T8_and2 --> T8_leaf5
-    T8_and2 --> T8_leaf6
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class T8_root goal
-    class T8_and1,T8_and2 andGate
-    class T8_or1 orGate
-    class T8_sub1,T8_sub2 subGoal
-    class T8_leaf1,T8_leaf2,T8_leaf3,T8_leaf4,T8_leaf5,T8_leaf6 leaf
+graph TD
+    Goal["[GOAL] Inject sleeper-agent behavior into model via poisoned training signal (temporal attack)"]
+    Goal --> A["[OR] Inject adversarial entries into Audit Logger"]
+    A --> A1["Audit Logger lacks append-only enforcement"]
+    A --> A2["Training signal entries not cryptographically signed at source"]
+    A --> A3["Compromised Application Zone service with log-write access"]
+    Goal --> B["[OR] Entries survive into Learning Loop training run"]
+    B --> B1["No anomaly detection on training signal distribution"]
+    B --> B2["No holdout evaluation before deploying model update"]
+    B --> B3["No gradient clipping or differential privacy during training"]
+    Goal --> C["[AND] Poisoned model update deployed"]
+    C --> C1["No staged rollout with behavioral regression checks"]
+    C --> C2["Trigger pattern embedded — activates on future user prompt"]
+    classDef critical fill:#d32f2f,color:#fff
+    class Goal critical
 ```

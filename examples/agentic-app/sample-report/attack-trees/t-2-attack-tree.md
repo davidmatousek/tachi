@@ -1,50 +1,24 @@
-# Attack Tree: T-2 — Orchestrator Context Window Tampered via Upstream Data Source
+# Attack Tree: T-2 — LLM Agent Orchestrator
 
-**Finding ID**: T-2
 **Risk Level**: Critical
 **Component**: LLM Agent Orchestrator
-**Delta Status**: UNCHANGED
+**Threat**: Context window manipulation via upstream data source tampering
 
 ```mermaid
-flowchart TD
-    T2_root["Manipulate Orchestrator reasoning by injecting adversarial content into its context window"]
-    T2_or1{{"OR"}}
-    T2_sub1["Poison Knowledge Base to corrupt retrieved documents"]
-    T2_sub2["Tamper with tool results returned from MCP Tool Server"]
-    T2_sub3["Inject adversarial content via Inter-Agent Channel aggregated results"]
-    T2_and1{{"AND"}}
-    T2_leaf1["Gain write access to Knowledge Base document store"]
-    T2_leaf2["Insert adversarial document ranked to appear in retrieval results"]
-    T2_leaf3["Trigger Orchestrator context retrieval against poisoned corpus"]
-    T2_and2{{"AND"}}
-    T2_leaf4["Intercept or influence LLM-generated tool call parameters"]
-    T2_leaf5["Craft malicious tool result payload delivered back to Orchestrator"]
-    T2_leaf6["Confirm Orchestrator injects tool result into context without integrity check"]
-    T2_leaf7["Inject adversarial content into Specialist result via Inter-Agent Channel"]
-
-    T2_root --> T2_or1
-    T2_or1 --> T2_sub1
-    T2_or1 --> T2_sub2
-    T2_or1 --> T2_sub3
-    T2_sub1 --> T2_and1
-    T2_and1 --> T2_leaf1
-    T2_and1 --> T2_leaf2
-    T2_and1 --> T2_leaf3
-    T2_sub2 --> T2_and2
-    T2_and2 --> T2_leaf4
-    T2_and2 --> T2_leaf5
-    T2_and2 --> T2_leaf6
-    T2_sub3 --> T2_leaf7
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class T2_root goal
-    class T2_or1 orGate
-    class T2_and1,T2_and2 andGate
-    class T2_sub1,T2_sub2,T2_sub3 subGoal
-    class T2_leaf1,T2_leaf2,T2_leaf3,T2_leaf4,T2_leaf5,T2_leaf6,T2_leaf7 leaf
+graph TD
+    Goal["[GOAL] Corrupt Orchestrator reasoning by tampering with context window sources"]
+    Goal --> A["[OR] Tamper with Knowledge Base (T-6)"]
+    A --> A1["Inject adversarial documents into KB corpus"]
+    A --> A2["Retrieved during vector search — injected into context"]
+    Goal --> B["[OR] Tamper with Inter-Agent Channel aggregated results"]
+    B --> B1["Modify Specialist results in transit (T-4)"]
+    B --> B2["Inject fabricated aggregated results (S-4)"]
+    Goal --> C["[OR] Tamper with Tool Server responses"]
+    C --> C1["Inject malicious content into tool result payload"]
+    C --> C2["Orchestrator lacks tool result integrity check"]
+    Goal --> D["[AND] Context window injection corrupts Orchestrator reasoning"]
+    D --> D1["No content-level hashing on retrieved documents"]
+    D --> D2["Tool results treated as trusted input"]
+    classDef critical fill:#d32f2f,color:#fff
+    class Goal critical
 ```

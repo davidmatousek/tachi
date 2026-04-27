@@ -1,46 +1,22 @@
-# Attack Tree: OI-2 — Server-Side Code Execution via LLM-Synthesized Tool Call Request Parameters
+# Attack Tree: OI-2 — LLM Agent Orchestrator
 
-**Finding ID**: OI-2
 **Risk Level**: Critical
 **Component**: LLM Agent Orchestrator
-**Delta Status**: UNCHANGED
+**Threat**: Server-side code/command execution via LLM-synthesized Tool Call Request (OWASP LLM05:2025)
 
 ```mermaid
-flowchart TD
-    OI2_root["Achieve server-side code or query execution via LLM-synthesized parameters in Tool Call Request to MCP Tool Server"]
-    OI2_or1{{"OR"}}
-    OI2_sub1["Inject SQL payload via LLM output embedded in Tool Call Request database parameter"]
-    OI2_sub2["Inject OS command via LLM output embedded in Tool Call Request command parameter"]
-    OI2_and1{{"AND"}}
-    OI2_leaf1["Prime Orchestrator via adversarial prompt to emit SQL injection fragment in tool parameter"]
-    OI2_leaf2["Confirm MCP Tool Server constructs SQL by string interpolation of LLM-supplied value"]
-    OI2_leaf3["SQL injection executes on database with Tool Server service account credentials"]
-    OI2_and2{{"AND"}}
-    OI2_leaf4["Prime Orchestrator to emit shell metacharacter sequence in command tool argument"]
-    OI2_leaf5["Confirm MCP Tool Server executes command via shell invocation not argument vector"]
-    OI2_leaf6["OS command executes on Tool Server host with service account privileges and external API access"]
-
-    OI2_root --> OI2_or1
-    OI2_or1 --> OI2_sub1
-    OI2_or1 --> OI2_sub2
-    OI2_sub1 --> OI2_and1
-    OI2_and1 --> OI2_leaf1
-    OI2_and1 --> OI2_leaf2
-    OI2_and1 --> OI2_leaf3
-    OI2_sub2 --> OI2_and2
-    OI2_and2 --> OI2_leaf4
-    OI2_and2 --> OI2_leaf5
-    OI2_and2 --> OI2_leaf6
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class OI2_root goal
-    class OI2_or1 orGate
-    class OI2_and1,OI2_and2 andGate
-    class OI2_sub1,OI2_sub2 subGoal
-    class OI2_leaf1,OI2_leaf2,OI2_leaf3,OI2_leaf4,OI2_leaf5,OI2_leaf6 leaf
+graph TD
+    Goal["[GOAL] Execute server-side code/command via LLM-synthesized Tool Call Request parameters (OWASP LLM05:2025)"]
+    Goal --> A["[OR] Cause Orchestrator to emit injection payload in Tool Call Request parameters"]
+    A --> A1["Direct prompt injection (LLM-1) shapes Orchestrator tool parameter generation"]
+    A --> A2["RAG poisoning (LLM-2) causes adversarial content in tool invocation context"]
+    Goal --> B["[AND] MCP Tool Server executes parameter without parameterization"]
+    B --> B1["SQL tools: no cursor.execute(sql, params) enforcement (string interpolation used)"]
+    B --> B2["Command tools: no subprocess.run([cmd], shell=False) enforcement"]
+    B --> B3["No JSON Schema validator at Tool Server ingress"]
+    Goal --> C["[AND] Server-side execution achieves attacker objective"]
+    C --> C1["SQL injection extracts or modifies database contents"]
+    C --> C2["Command injection executes with Tool Server service account"]
+    classDef critical fill:#d32f2f,color:#fff
+    class Goal critical
 ```

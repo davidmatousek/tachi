@@ -1,44 +1,22 @@
-# Attack Tree: LLM-4 — Training Data Poisoning of Orchestrator via Audit Logger-Fed Learning Loop
+# Attack Tree: LLM-4 — LLM Agent Orchestrator
 
-**Finding ID**: LLM-4
 **Risk Level**: Critical
 **Component**: LLM Agent Orchestrator
-**Delta Status**: UNCHANGED
+**Threat**: Training data poisoning via Audit Logger-fed Learning Loop update
 
 ```mermaid
-flowchart TD
-    LLM4_root["Shift Orchestrator future behavior by poisoning its training data via Learning Loop update cycle"]
-    LLM4_and1{{"AND"}}
-    LLM4_sub1["Inject adversarial interaction records into Audit Logger"]
-    LLM4_sub2["Ensure poisoned records influence next Learning Loop training run"]
-    LLM4_or1{{"OR"}}
-    LLM4_leaf1["Gain write access to Audit Logger as compromised Application Zone process"]
-    LLM4_leaf2["Craft user sessions designed to generate adversarial log entries via normal system operation"]
-    LLM4_and2{{"AND"}}
-    LLM4_leaf3["Confirm Learning Loop does not verify data provenance or source signatures"]
-    LLM4_leaf4["Time adversarial injection to precede scheduled training run"]
-    LLM4_leaf5["Poisoned training data shifts Orchestrator behavior toward attacker-preferred outputs after update"]
-
-    LLM4_root --> LLM4_and1
-    LLM4_and1 --> LLM4_sub1
-    LLM4_and1 --> LLM4_sub2
-    LLM4_sub1 --> LLM4_or1
-    LLM4_or1 --> LLM4_leaf1
-    LLM4_or1 --> LLM4_leaf2
-    LLM4_sub2 --> LLM4_and2
-    LLM4_and2 --> LLM4_leaf3
-    LLM4_and2 --> LLM4_leaf4
-    LLM4_and2 --> LLM4_leaf5
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class LLM4_root goal
-    class LLM4_and1,LLM4_and2 andGate
-    class LLM4_or1 orGate
-    class LLM4_sub1,LLM4_sub2 subGoal
-    class LLM4_leaf1,LLM4_leaf2,LLM4_leaf3,LLM4_leaf4,LLM4_leaf5 leaf
+graph TD
+    Goal["[GOAL] Poison Orchestrator's future behavior via adversarial training data in Learning Loop (OWASP LLM03:2025)"]
+    Goal --> A["[OR] Inject adversarial interaction records into Audit Logger"]
+    A --> A1["Fabricate user sessions designed to shift model behavior"]
+    A --> A2["Exploit misconfigured log-write access"]
+    Goal --> B["[AND] Adversarial records consumed as training data"]
+    B --> B1["No training data validation with anomaly detection"]
+    B --> B2["No data provenance tracking with verifiable source signature"]
+    B --> B3["No adversarial training detection scanning for behavioral-shift patterns"]
+    Goal --> C["[AND] Poisoned Orchestrator model deployed"]
+    C --> C1["No holdout evaluation before deploying model update"]
+    C --> C2["Behavioral shift toward attacker-preferred outputs at next update"]
+    classDef critical fill:#d32f2f,color:#fff
+    class Goal critical
 ```

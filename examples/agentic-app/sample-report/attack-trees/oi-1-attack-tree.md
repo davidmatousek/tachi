@@ -1,44 +1,22 @@
-# Attack Tree: OI-1 — Client-Side XSS via LLM Response to User Browser
+# Attack Tree: OI-1 — LLM Agent Orchestrator
 
-**Finding ID**: OI-1
 **Risk Level**: Critical
 **Component**: LLM Agent Orchestrator
-**Delta Status**: UNCHANGED
+**Threat**: Client-side XSS via LLM response in browser DOM (OWASP LLM05:2025)
 
 ```mermaid
-flowchart TD
-    OI1_root["Execute client-side script in victim browser via LLM response injected into DOM without encoding"]
-    OI1_and1{{"AND"}}
-    OI1_sub1["Cause Orchestrator to emit XSS payload in HTTPS response to User"]
-    OI1_sub2["Exploit client rendering that uses innerHTML for LLM response content"]
-    OI1_or1{{"OR"}}
-    OI1_leaf1["Craft adversarial user prompt embedding script payload that passes Guardrails"]
-    OI1_leaf2["Poison KB document to include script tag returned in Orchestrator context"]
-    OI1_and2{{"AND"}}
-    OI1_leaf3["Confirm client application inserts LLM response via innerHTML without DOMPurify"]
-    OI1_leaf4["Confirm Content Security Policy does not block inline script execution"]
-    OI1_leaf5["Script executes in victim browser origin stealing session cookies and CSRF tokens"]
-
-    OI1_root --> OI1_and1
-    OI1_and1 --> OI1_sub1
-    OI1_and1 --> OI1_sub2
-    OI1_sub1 --> OI1_or1
-    OI1_or1 --> OI1_leaf1
-    OI1_or1 --> OI1_leaf2
-    OI1_sub2 --> OI1_and2
-    OI1_and2 --> OI1_leaf3
-    OI1_and2 --> OI1_leaf4
-    OI1_and2 --> OI1_leaf5
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class OI1_root goal
-    class OI1_and1,OI1_and2 andGate
-    class OI1_or1 orGate
-    class OI1_sub1,OI1_sub2 subGoal
-    class OI1_leaf1,OI1_leaf2,OI1_leaf3,OI1_leaf4,OI1_leaf5 leaf
+graph TD
+    Goal["[GOAL] Inject XSS payload into victim browser via LLM response DOM insertion (OWASP LLM05:2025)"]
+    Goal --> A["[OR] Prime Orchestrator to emit XSS payload"]
+    A --> A1["Prompt injection causes Orchestrator to emit script tag in response"]
+    A --> A2["RAG poisoning embeds event-handler payload in KB document content"]
+    Goal --> B["[AND] Client renders response via unsafe DOM method"]
+    B --> B1["innerHTML used for LLM response insertion (not textContent)"]
+    B --> B2["No HTML sanitization library (DOMPurify) applied to LLM output"]
+    B --> B3["No Content Security Policy with script-src nonce"]
+    Goal --> C["[AND] Attacker JavaScript executes in victim browser origin"]
+    C --> C1["Session cookies and CSRF tokens exfiltrated"]
+    C --> C2["Further actions executed under victim's authenticated session"]
+    classDef critical fill:#d32f2f,color:#fff
+    class Goal critical
 ```

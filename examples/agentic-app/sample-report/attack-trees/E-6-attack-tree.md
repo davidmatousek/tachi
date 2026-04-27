@@ -1,44 +1,21 @@
-# Attack Tree: E-6 — Compromised Model Update Escalates Attacker to Model Parameter Control
+# Attack Tree: E-6 — Long-Running Learning Loop
 
-**Finding ID**: E-6
 **Risk Level**: Critical
 **Component**: Long-Running Learning Loop
-**Delta Status**: UNCHANGED
+**Threat**: Poisoned model update escalates attacker to model parameter control
 
 ```mermaid
-flowchart TD
-    E6_root["Inject arbitrary behaviors into all agents by escalating from data-layer access to model parameter control"]
-    E6_and1{{"AND"}}
-    E6_sub1["Compromise the model update pipeline with adversarial influence"]
-    E6_sub2["Deliver unsigned or forged model update to production agents"]
-    E6_or1{{"OR"}}
-    E6_leaf1["Poison training data in Audit Logger to produce adversarially-trained model artifact"]
-    E6_leaf2["Intercept model update package in transit and replace with adversarial version"]
-    E6_and2{{"AND"}}
-    E6_leaf3["Confirm Orchestrator or Specialist does not verify model update signature before applying"]
-    E6_leaf4["Push forged model update package to at least one agent endpoint"]
-    E6_leaf5["Updated model activates attacker-injected behaviors in production inference"]
-
-    E6_root --> E6_and1
-    E6_and1 --> E6_sub1
-    E6_and1 --> E6_sub2
-    E6_sub1 --> E6_or1
-    E6_or1 --> E6_leaf1
-    E6_or1 --> E6_leaf2
-    E6_sub2 --> E6_and2
-    E6_and2 --> E6_leaf3
-    E6_and2 --> E6_leaf4
-    E6_and2 --> E6_leaf5
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class E6_root goal
-    class E6_and1,E6_and2 andGate
-    class E6_or1 orGate
-    class E6_sub1,E6_sub2 subGoal
-    class E6_leaf1,E6_leaf2,E6_leaf3,E6_leaf4,E6_leaf5 leaf
+graph TD
+    Goal["[GOAL] Escalate from data-layer access to model parameter control via poisoned Learning Loop update"]
+    Goal --> A["[OR] Compromise training signal stream (T-8)"]
+    A --> A1["Inject adversarial training data via Audit Logger"]
+    A --> A2["Data poisoning shapes model behavior toward attacker-preferred outputs"]
+    Goal --> B["[OR] Compromise model update delivery channel"]
+    B --> B1["No HSM-backed Learning Loop update signing"]
+    B --> B2["Receiving agents do not verify update signature before applying"]
+    Goal --> C["[AND] Poisoned model update deployed to all three agents"]
+    C --> C1["Orchestrator, Specialist, ClinAdvisor all apply poisoned update"]
+    C --> C2["Attacker injects arbitrary behaviors via next update cycle"]
+    classDef critical fill:#d32f2f,color:#fff
+    class Goal critical
 ```

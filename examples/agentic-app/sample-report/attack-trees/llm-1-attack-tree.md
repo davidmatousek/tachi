@@ -1,46 +1,24 @@
-# Attack Tree: LLM-1 — Direct Prompt Injection Overrides Orchestrator System Prompt
+# Attack Tree: LLM-1 — LLM Agent Orchestrator
 
-**Finding ID**: LLM-1
 **Risk Level**: Critical
 **Component**: LLM Agent Orchestrator
-**Delta Status**: UNCHANGED
+**Threat**: Direct prompt injection overrides system prompt or reveals configuration
 
 ```mermaid
-flowchart TD
-    LLM1_root["Override Orchestrator system prompt via direct prompt injection through User-Guardrails chain"]
-    LLM1_and1{{"AND"}}
-    LLM1_sub1["Bypass Guardrails content filtering with adversarial prompt encoding"]
-    LLM1_sub2["Exploit Orchestrator instruction boundary weakness to execute injected instructions"]
-    LLM1_or1{{"OR"}}
-    LLM1_leaf1["Identify Guardrails filter gaps via iterative probing of rejection messages"]
-    LLM1_leaf2["Encode injection payload using encoding Guardrails does not normalize"]
-    LLM1_leaf3["Embed injection in content type not evaluated by Guardrails rule set"]
-    LLM1_and2{{"AND"}}
-    LLM1_leaf4["Confirm Orchestrator treats user content as instructions not as data"]
-    LLM1_leaf5["Inject instruction overriding system prompt or revealing internal configuration"]
-    LLM1_leaf6["Trigger unauthorized action or configuration disclosure from Orchestrator"]
-
-    LLM1_root --> LLM1_and1
-    LLM1_and1 --> LLM1_sub1
-    LLM1_and1 --> LLM1_sub2
-    LLM1_sub1 --> LLM1_or1
-    LLM1_or1 --> LLM1_leaf1
-    LLM1_or1 --> LLM1_leaf2
-    LLM1_or1 --> LLM1_leaf3
-    LLM1_sub2 --> LLM1_and2
-    LLM1_and2 --> LLM1_leaf4
-    LLM1_and2 --> LLM1_leaf5
-    LLM1_and2 --> LLM1_leaf6
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class LLM1_root goal
-    class LLM1_and1,LLM1_and2 andGate
-    class LLM1_or1 orGate
-    class LLM1_sub1,LLM1_sub2 subGoal
-    class LLM1_leaf1,LLM1_leaf2,LLM1_leaf3,LLM1_leaf4,LLM1_leaf5,LLM1_leaf6 leaf
+graph TD
+    Goal["[GOAL] Override Orchestrator system prompt via direct prompt injection (OWASP LLM01:2025)"]
+    Goal --> A["[OR] Embed adversarial instructions in user prompt"]
+    A --> A1["Jailbreak prefix bypasses Guardrails content filter"]
+    A --> A2["Encoding-based evasion (Base64, Unicode) defeats pattern matching"]
+    A --> A3["Incremental multi-turn attack accumulates context across sessions"]
+    Goal --> B["[AND] Orchestrator processes adversarial prompt as instructions"]
+    B --> B1["No Orchestrator-level instruction boundary enforcement"]
+    B --> B2["User content not treated as data — treated as instructions"]
+    B --> B3["No output validation checking for system-prompt leakage patterns"]
+    Goal --> C["[AND] Unauthorized action executed by Orchestrator"]
+    C --> C1["System prompt revealed or configuration disclosed"]
+    C --> C2["Unauthorized tool calls issued"]
+    C --> C3["Escalation to AG-1 (autonomous high-impact action)"]
+    classDef critical fill:#d32f2f,color:#fff
+    class Goal critical
 ```

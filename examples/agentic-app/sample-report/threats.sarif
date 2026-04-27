@@ -2523,6 +2523,102 @@
           }
         },
         {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "**LLM Inference-Request Flooding and Token Exhaustion (Pattern Category 12 \u2014 OWASP LLM10:2025)**: The LLM Agent Orchestrator exposes an LLM inference pipeline without declared per-tenant queries-per-second (QPS) rate limiting at the API-gateway layer that is distinct from generic per-IP network-layer rate limiting. An attacker with valid authenticated access (or a compromised credential) can flood the Orchestrator's inference endpoint with concurrent requests each carrying maximal prompt-token payloads, exhausting per-request inference compute and starving legitimate users of Orchestrator capacity. Token-counting middleware is not declared \u2014 the system accepts requests without checking projected per-call cost, learning total token usage only after-the-fact via billing reconciliation. Per-tenant token budget per request is not declared at the inference gateway \u2014 a single attacker session can request the model's maximum output (up to full context-window completion tokens), creating per-call cost asymmetry between attacker and operator. Request timeouts configured for typical non-LLM request latency may prematurely kill legitimate long-inference calls while the attack's short-but-high-volume requests occupy the queue. The Orchestrator also fans out to the Specialist Agent and Clinical Advisory Sub-Agent, multiplying the inference cost per user request \u2014 a single attacker request can trigger three concurrent LLM inference calls, amplifying the denial-of-service surface beyond per-endpoint rate-limiting controls.",
+            "markdown": "(1) Per-tenant QPS rate limit at the inference API gateway \u2014 separate from generic per-IP network rate limiting; enforce pre-inference, not post-billing. (2) Max-prompt-token enforcement at the API gateway \u2014 reject requests whose prompt exceeds the operator's intended cost-per-call envelope with a 413 response before inference begins. (3) Per-tenant token budget per request \u2014 hard-cap output tokens by tier; freemium/low-tier clients cannot consume max-context-window completions. (4) Token-counting middleware with synchronous cost projection \u2014 compute projected token cost before accepting the request; reject or queue if the projected cost exceeds the tenant's per-call budget. (5) Per-tenant token-velocity monitoring \u2014 alert on per-tenant input+output token-per-minute rate spikes above a 3\u03c3 baseline; trigger automated throttle or circuit break. (6) Downstream inference fan-out accounting \u2014 treat each Orchestrator\u2192Specialist and Orchestrator\u2192ClinAdvisor invocation as part of the same request's token budget; enforce an aggregate per-request token budget across all fan-out paths. References: OWASP LLM10:2025 \u2014 Unbounded Consumption; CWE-400: Uncontrolled Resource Consumption; CWE-770: Allocation of Resources Without Limits or Throttling."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/sample-report/threats.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "ce004af6f1685031",
+            "findingId/v1": "D-10",
+            "baselineRunId": ""
+          },
+          "properties": {
+            "baselineState": "new",
+            "tags": [
+              "security",
+              "stride",
+              "denial-of-service",
+              "maestro-layer:L1",
+              "maestro-pattern:resource_competition"
+            ],
+            "maestro-layer": "L1 \u2014 Foundation Model",
+            "severity": "Critical",
+            "likelihood": "HIGH",
+            "impact": "HIGH",
+            "maestro-pattern": "resource_competition",
+            "owasp_id": "A05"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "**Context-Window Exhaustion \u2014 Latency-Driven Variant (Pattern Category 13 \u2014 OWASP LLM10:2025; Q1 SPLIT Vector A)**: The LLM Agent Orchestrator accepts conversation history and contextual payloads via the Guardrails\u2192Orchestrator data flow without a declared max-context-window enforcement policy at the API gateway. An attacker constructs an adversarially long prompt \u2014 embedding a full 32k+ token conversation history or injecting recursive prompt-expansion templates that cause the Orchestrator to re-engage its own outputs (chain-of-thought recursion, self-reflection loops, multi-step reasoning expansion) \u2014 driving per-request context-window usage to 99% of model maximum. This spikes per-request inference latency from a typical 1\u20132 seconds to the per-tenant timeout threshold (often 30\u201360 seconds), causing legitimate requests to queue behind the blocked inference slot. The Orchestrator's fan-out to Specialist Agent and Clinical Advisory Sub-Agent compounds this: a single max-context request causes three concurrent long-latency inference calls, effectively blocking three inference slots simultaneously. Context-window monitoring is not declared \u2014 no anomaly alerting on percentage-of-max usage spikes per request or per-tenant \u2014 making the attack invisible until latency degradation is user-visible. Per-tenant context-window cap is not differentiated from per-request cap, allowing consecutive max-context requests from a single tenant to monopolize the inference cluster's per-slot latency budget. Note: Vector A (latency-driven availability disruption) is this finding. Vector B (cost-driven denial-of-wallet) is covered by LLM-16 in the model-theft / LLM section per Q1 SPLIT ADR-034 Decision 3.",
+            "markdown": "(1) Max-context-window enforcement at the API gateway \u2014 enforce a per-request context-window limit well below model max (e.g., 8k tokens for a model with a 32k-token context window); return HTTP 413 on overflow before inference begins. (2) Per-conversation truncation policy \u2014 enforce a sliding-window limit on conversation history; older turns are dropped before the payload is sent to the inference engine. (3) Recursive-prompt-pattern detection \u2014 detect and block prompt templates that cause chain-of-thought self-engagement, self-reflection loops, or recursive tool-call expansion patterns; apply a max-chain-of-thought-iterations limit at the inference-runtime layer. (4) Context-window monitoring with anomaly alerting \u2014 alert on per-request or per-tenant percentage-of-max context-window usage spikes (e.g., > 75% of declared limit triggers an alert; > 90% triggers a circuit break). (5) Per-tenant context-window cap distinct from per-request cap \u2014 enforce that no single tenant can consume more than a declared percentage of inference cluster capacity in any rolling 5-minute window, independent of per-request limits. (6) Inference fan-out latency budget \u2014 assign each Orchestrator\u2192Specialist and Orchestrator\u2192ClinAdvisor fan-out a separate sub-budget within the aggregate per-request latency budget; enforce deadlines independently per fan-out leg. References: OWASP LLM10:2025 \u2014 Unbounded Consumption; CWE-400: Uncontrolled Resource Consumption."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/sample-report/threats.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "69a9c6f82dd11c35",
+            "findingId/v1": "D-11",
+            "baselineRunId": ""
+          },
+          "properties": {
+            "baselineState": "new",
+            "tags": [
+              "security",
+              "stride",
+              "denial-of-service",
+              "maestro-layer:L1",
+              "maestro-pattern:resource_competition"
+            ],
+            "maestro-layer": "L1 \u2014 Foundation Model",
+            "severity": "Critical",
+            "likelihood": "HIGH",
+            "impact": "HIGH",
+            "maestro-pattern": "resource_competition",
+            "owasp_id": "A05"
+          }
+        },
+        {
           "ruleId": "tachi/stride/elevation-of-privilege",
           "message": {
             "text": "A prompt injection attack that bypasses the Guardrails Service effectively elevates the attacker's privilege from \"unauthenticated user\" to \"trusted caller of the Orchestrator\". The attacker's prompt reaches the Orchestrator with the same trust level as validated internal inputs, enabling subsequent escalation.",
@@ -3211,10 +3307,10 @@
           "partialFingerprints": {
             "primaryLocationLineHash": "ed386f3c4748bb48",
             "findingId/v1": "AG-8",
-            "baselineRunId": ""
+            "baselineRunId": "2026-04-19T03-20-30"
           },
           "properties": {
-            "baselineState": "new",
+            "baselineState": "unchanged",
             "tags": [
               "security",
               "ai",
@@ -3879,6 +3975,102 @@
             "likelihood": "HIGH",
             "impact": "HIGH",
             "owasp_id": "LLM-03"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm",
+          "message": {
+            "text": "**Cost Amplification via Recursive or Cost-Asymmetric Prompting (Pattern Category 10 \u2014 OWASP LLM10:2025)**: The LLM Agent Orchestrator accepts prompts from the Guardrails Service without declared recursive-prompt depth limits or output-token caps tuned to realistic response-length p99. The Orchestrator fans out to the Specialist Agent (via Inter-Agent Channel) and to the Clinical Advisory Sub-Agent (via JSON-RPC), both of which may themselves invoke the Knowledge Base (via RAG fan-out) and the MCP Tool Server (via tool calls). This multi-hop agent loop \u2014 Orchestrator \u2192 Specialist \u2192 ToolServer \u2192 ExtAPI, and Orchestrator \u2192 ClinAdvisor \u2192 KB \u2014 creates a recursive cost-amplification surface: an adversarial 10-token user prompt can trigger a chain-of-thought response from the Orchestrator, delegation to the Specialist and ClinAdvisor, RAG fan-out from KB, and tool calls to ToolServer and ExtAPI, generating 32k+ tokens of combined output across all three inference endpoints. Output-amplification ratio (output-tokens / input-tokens) is not declared as a monitored metric \u2014 pathological ratios above 100x from recursive chain-of-thought expansion are invisible without per-request amplification telemetry. Cost-per-query p99 alerting is not declared \u2014 sustained cost-amplification attacks register as gradual cost increases that per-request rate limits do not catch because each individual request may be under the per-request token cap while the aggregate exceeds the operator's revenue-per-query threshold. Per-tenant cost-amplification anomaly detection is not declared \u2014 without per-tenant cost-velocity monitoring the operator cannot identify which session is driving amplification. Note: MITRE ATT&CK T1496 (Resource Hijacking) is a relevant cross-reference for the attacker's goal of consuming the operator's inference compute at the operator's expense; T1496 is cited here as prose context only (not in references array \u2014 T1496 is not catalog-resolvable in schemas/taxonomy/mitre-attack.yaml per ADR-034 Decision 6).",
+            "markdown": "(1) Per-query output-token cap tuned to realistic response-length p99 \u2014 set the output-token cap at a value above legitimate p95 but below catastrophic recursive expansion (e.g., 4k tokens for a search-summary endpoint that legitimately uses ~500 tokens creates 8x ceiling, not 64x). (2) Recursive-prompt depth limit at inference-runtime layer \u2014 enforce a max chain-of-thought iterations limit (e.g., max 5 CoT steps) and a max self-reference depth at the inference runtime; reject prompts that trigger depth-exceeded conditions. (3) Output-amplification-ratio monitoring \u2014 measure output-tokens / input-tokens per request; flag ratios > 50x as anomalous, alert on ratios > 100x, circuit-break per-session on ratios > 200x. (4) Cost-per-query p99 alerting \u2014 compute per-query inference cost in real time; alert on cost-velocity spikes (cost-per-minute per tenant exceeds 3\u03c3 above rolling 1-hour baseline). (5) Multi-hop fan-out token budget \u2014 enforce an aggregate per-request token budget across all fan-out legs (Orchestrator + Specialist + ClinAdvisor combined); reject new fan-out invocations once the aggregate per-request budget is consumed. (6) Per-tenant cost-amplification anomaly detection \u2014 track output-token velocity per tenant across 5-minute, 1-hour, 24-hour windows; trigger graduated throttle on anomalous velocity (warn \u2192 rate-limit \u2192 block)."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/sample-report/threats.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "7c146852d343c113",
+            "findingId/v1": "LLM-15",
+            "baselineRunId": ""
+          },
+          "properties": {
+            "baselineState": "new",
+            "tags": [
+              "security",
+              "ai",
+              "llm",
+              "maestro-layer:L1",
+              "maestro-pattern:resource_competition"
+            ],
+            "maestro-layer": "L1 \u2014 Foundation Model",
+            "severity": "Critical",
+            "likelihood": "HIGH",
+            "impact": "HIGH",
+            "maestro-pattern": "resource_competition",
+            "owasp_id": "LLM-10"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm",
+          "message": {
+            "text": "**Denial-of-Wallet via Context-Window Cost Amplification (Pattern Category 11 \u2014 OWASP LLM10:2025; Q1 SPLIT Vector B)**: The LLM Agent Orchestrator's context-window handling lacks per-tenant token budget hard-cap at the API gateway and at-query-time cost reconciliation. An attacker can drive the Orchestrator's context-window to model maximum on each call (Vector B \u2014 cost-driven economic damage, distinct from D-11's Vector A latency-driven availability disruption) by submitting large conversation histories or recursive prompts that inflate context usage. The Orchestrator's fan-out to Specialist Agent and Clinical Advisory Sub-Agent compounds per-call cost: a single max-context Orchestrator request triggers additional max-context calls to Specialist and ClinAdvisor, multiplying the per-request inference bill by up to 3x. Cost-per-query p99 alerting is not declared \u2014 denial-of-wallet attacks accumulate as gradual billing increases invisible to per-request rate limits. Denial-of-wallet anomaly detection (cost-velocity monitoring across 5-minute, 1-hour, 24-hour windows) is not declared \u2014 sustained billing-amplification attacks are invisible until the operator's invoice arrives. Automated tenant suspension on budget breach is not declared \u2014 by the time a human reviews a cost-velocity anomaly, the operator's bill is already inflated. Per-tenant billing attribution is not declared at-query-time \u2014 without synchronous attribution the operator cannot enforce per-tenant token budgets pre-inference. **Severity Q3 RESOLVED evaluation**: HIGH default applies (no multi-tenant freemium structure structurally evident in architecture; single-application topology; CRITICAL 2-condition floor not met \u2014 condition (a) B2C freemium multi-tenant NOT confirmed, condition (b) assessment deferred). Note: MITRE ATT&CK T1496 (Resource Hijacking) is a relevant cross-reference for the attacker's economic-damage goal; T1496 cited as prose context only (NOT in references array \u2014 not catalog-resolvable per ADR-034 Decision 6).",
+            "markdown": "(1) Per-tenant token budget hard-cap at API gateway \u2014 enforce separate per-tenant token budgets (freemium / paid / internal tier); hard-cap prevents budget overrun before inference begins. (2) At-query-time billing attribution \u2014 compute per-tenant billing attribution synchronously before inference begins (NOT asynchronously via batch reconciliation); enforce budget pre-inference. (3) Cost-per-query p99 alerting tied to per-tenant billing attribution \u2014 alert on cost-velocity spikes (cost-per-minute per tenant > 3\u03c3 above rolling 1-hour baseline). (4) Denial-of-wallet anomaly detection \u2014 monitor per-tenant inference cost velocity across 5-minute, 1-hour, 24-hour windows; trigger graduated throttle on anomalous cost velocity. (5) Automated tenant suspension on budget breach \u2014 enforce automated suspension without requiring manual approval; manual-approval delay allows bill inflation to accumulate. (6) Account-creation friction \u2014 CAPTCHA + email verification + per-IP account-creation rate limit to prevent account-spam amplification of denial-of-wallet attacks. (7) Per-tenant context-window cost reconciliation \u2014 track per-tenant cumulative context-window tokens consumed across the fan-out legs (Orchestrator + Specialist + ClinAdvisor) and charge against the per-tenant budget, not per-request."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/sample-report/threats.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "2a28287a5d3e8a17",
+            "findingId/v1": "LLM-16",
+            "baselineRunId": ""
+          },
+          "properties": {
+            "baselineState": "new",
+            "tags": [
+              "security",
+              "ai",
+              "llm",
+              "maestro-layer:L1",
+              "maestro-pattern:resource_competition"
+            ],
+            "maestro-layer": "L1 \u2014 Foundation Model",
+            "severity": "High",
+            "likelihood": "MEDIUM",
+            "impact": "HIGH",
+            "maestro-pattern": "resource_competition",
+            "owasp_id": "LLM-10"
           }
         },
         {

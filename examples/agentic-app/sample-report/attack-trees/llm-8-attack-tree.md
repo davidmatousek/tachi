@@ -1,46 +1,22 @@
-# Attack Tree: LLM-8 — Prompt Injection via Adversarial Delegation Messages Hijacks Specialist Execution
+# Attack Tree: LLM-8 — Specialist Agent
 
-**Finding ID**: LLM-8
 **Risk Level**: Critical
 **Component**: Specialist Agent
-**Delta Status**: UNCHANGED
+**Threat**: Prompt injection via adversarial delegation messages hijacks task execution
 
 ```mermaid
-flowchart TD
-    LLM8_root["Hijack Specialist Agent task execution via prompt injection in delegation message content"]
-    LLM8_or1{{"OR"}}
-    LLM8_sub1["Inject via compromised Inter-Agent Channel message tampering"]
-    LLM8_sub2["Inject via compromised Orchestrator emitting adversarial delegation"]
-    LLM8_and1{{"AND"}}
-    LLM8_leaf1["Gain channel write access and modify delegation message body"]
-    LLM8_leaf2["Embed adversarial instructions in task content treated as instructions by Specialist"]
-    LLM8_leaf3["Confirm Specialist does not enforce instruction boundary on delegation message content"]
-    LLM8_and2{{"AND"}}
-    LLM8_leaf4["Compromise Orchestrator reasoning via direct or indirect prompt injection"]
-    LLM8_leaf5["Cause Orchestrator to emit delegation message containing injection payload"]
-    LLM8_leaf6["Specialist processes injected instruction causing unauthorized tool invocation or data exfiltration"]
-
-    LLM8_root --> LLM8_or1
-    LLM8_or1 --> LLM8_sub1
-    LLM8_or1 --> LLM8_sub2
-    LLM8_sub1 --> LLM8_and1
-    LLM8_and1 --> LLM8_leaf1
-    LLM8_and1 --> LLM8_leaf2
-    LLM8_and1 --> LLM8_leaf3
-    LLM8_sub2 --> LLM8_and2
-    LLM8_and2 --> LLM8_leaf4
-    LLM8_and2 --> LLM8_leaf5
-    LLM8_and2 --> LLM8_leaf6
-
-    classDef goal fill:#ff6b6b,stroke:#333,stroke-width:2px,color:#fff
-    classDef andGate fill:#ffa500,stroke:#333,stroke-width:2px,color:#fff
-    classDef orGate fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
-    classDef subGoal fill:#d5dbdb,stroke:#333,stroke-width:2px,color:#333
-    classDef leaf fill:#95e1d3,stroke:#333,stroke-width:2px,color:#333
-
-    class LLM8_root goal
-    class LLM8_or1 orGate
-    class LLM8_and1,LLM8_and2 andGate
-    class LLM8_sub1,LLM8_sub2 subGoal
-    class LLM8_leaf1,LLM8_leaf2,LLM8_leaf3,LLM8_leaf4,LLM8_leaf5,LLM8_leaf6 leaf
+graph TD
+    Goal["[GOAL] Hijack Specialist Agent task execution via injection in delegation message (OWASP LLM01:2025)"]
+    Goal --> A["[OR] Inject adversarial content into delegation message"]
+    A --> A1["Channel tampering (T-4) modifies delegation message payload"]
+    A --> A2["Orchestrator compromise (LLM-1) causes adversarial delegation emission"]
+    Goal --> B["[AND] Specialist processes delegation content as instructions"]
+    B --> B1["No instruction boundary enforcement at Specialist"]
+    B --> B2["Specialist system prompt not in protected zone separate from task content"]
+    B --> B3["Delegation message signatures not verified before processing"]
+    Goal --> C["[AND] Unauthorized task execution achieves attacker objective"]
+    C --> C1["Unauthorized tool invocations via MCP Tool Server"]
+    C --> C2["Data exfiltration via Specialist result channel"]
+    classDef critical fill:#d32f2f,color:#fff
+    class Goal critical
 ```
