@@ -1,11 +1,12 @@
 # PRD Index
 
-**Last Updated**: 2026-04-27 (Feature 224 delivered — F-4 ASI09 Human-Agent Trust Exploitation / new `human-trust-exploitation` agent / third execution of Heuristic A standalone-new-agent branch / ASI09 communication-axis carve-up with `agent-autonomy`)
+**Last Updated**: 2026-04-27 (PRD #229 created — F-5 LLM10 Unbounded Consumption Verification / two-agent enrichment of `denial-of-service` + `model-theft` / second execution of Heuristic A enrichment branch after F-3 / closes OWASP LLM Top 10:2025 to 10/10 Covered)
 **Legend**: ✓=APPROVED, ⚠=APPROVED_WITH_CONCERNS, 🔄=CHANGES_REQUESTED, ⛔=BLOCKED, ⚠⚡=OVERRIDDEN
 
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 229 | [F-5 LLM10 Unbounded Consumption Verification](229-llm10-unbounded-consumption-verification-2026-04-27.md) | ✓ | ⚠ | ⚠ | Approved | 2026-04-27 |
 | 224 | [F-4 ASI09 Human-Agent Trust Exploitation](224-trust-exploitation-threat-agent-2026-04-26.md) ([PR #225](https://github.com/davidmatousek/tachi/pull/225)) | ✓ | ✓ | ⚠ | Delivered | 2026-04-27 |
 | 219 | [F-3 ASI07 Insecure Inter-Agent Communication](219-asi07-tool-abuse-enrichment-2026-04-25.md) ([PR #220](https://github.com/davidmatousek/tachi/pull/220)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-26 |
 | 212 | [Improve Executive-Architecture Infographic](212-improve-executive-architecture-infographic-2026-04-24.md) ([PR #213](https://github.com/davidmatousek/tachi/pull/213)) | ⚠ | ⚠ | ⚠ | Delivered | 2026-04-25 |
