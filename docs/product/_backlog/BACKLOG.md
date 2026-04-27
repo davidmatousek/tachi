@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-04-27T22:04:16Z.
+> Auto-generated from GitHub Issues on 2026-04-27T23:13:10Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -19,7 +19,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| — | *No items in this stage* | | |
+| #232 | F-6 — ML Top 10 Coverage Bundle [Tier 2] | — | 2026-04-27 |
 
 ## Plan
 
