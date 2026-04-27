@@ -208,8 +208,8 @@ See Phase 2 T010, T011, T012 — ADR-034 Proposed authoring happens at Wave 1.1 
 - [X] T074 [P] SC-018: verify `schemas/finding.yaml` `git diff main` returns empty (no schema bump; second BLP-01 detection feature with no schema bump after F-3; first at two-agent scope).
 - [X] T075 [P] SC-019: confirm references-array contract per T056 + T057 (LLM10 + CWE-400 on Cat 12/13; LLM10 on Cat 10/11; T1496 prose-only on Cat 10/11).
 - [X] T076 [P] SC-021: verify `orchestrator.md` zero diff; `dispatch-rules.md` zero functional diff (cosmetic Q2 annotation if applied is single-token contingent on T021 result; default-NO at plan time). BLP-01 Coverage Matrix update queued for post-merge per T080.
-- [ ] T077 [P] SC-022: verify PR title matches `feat(229):` Conventional Commits format; pre-merge re-verification via `gh pr view --json title -q .title`.
-- [ ] T078 Mark PR (draft) ready for review via `gh pr ready`. PR body links to PRD, spec, plan, tasks, ADR-034. Request triple review (PM + Architect + Team-Lead) as part of PR process.
+- [X] T077 [P] SC-022: verify PR title matches `feat(229):` Conventional Commits format; pre-merge re-verification via `gh pr view --json title -q .title`.
+- [X] T078 Mark PR (draft) ready for review via `gh pr ready`. PR body links to PRD, spec, plan, tasks, ADR-034. Request triple review (PM + Architect + Team-Lead) as part of PR process.
 
 **Checkpoint**: All 22 SCs green; PR ready. Wave 4 buffer-day capacity available if R1 (regeneration friction) materialized or delivery-retrospective authoring deferred.
 
