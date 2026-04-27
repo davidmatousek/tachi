@@ -15,26 +15,8 @@ regenerated ``examples/agentic-app/`` artifacts, not here.
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
 import pytest
-import yaml
-
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-SCHEMA_PATH = REPO_ROOT / "schemas" / "finding.yaml"
-
-
-def _load_schema() -> dict:
-    with SCHEMA_PATH.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
-
-
-@pytest.fixture(scope="module")
-def id_pattern() -> re.Pattern:
-    """Compile the ``finding.id.pattern`` regex from schemas/finding.yaml."""
-    schema = _load_schema()
-    return re.compile(schema["finding"]["id"]["pattern"])
 
 
 # ---------------------------------------------------------------------------

@@ -14,30 +14,15 @@ import pytest
 import yaml
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-SCHEMA_PATH = REPO_ROOT / "schemas" / "finding.yaml"
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "output_integrity"
-
-
-def _load_schema() -> dict:
-    with SCHEMA_PATH.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
 
 
 class TestSchemaIdPatternRegex:
 
-    @pytest.fixture
-    def id_pattern(self) -> re.Pattern:
-        schema = _load_schema()
-        return re.compile(schema["finding"]["id"]["pattern"])
-
-    @pytest.fixture
-    def schema_version(self) -> str:
-        return _load_schema()["schema_version"]
-
-    def test_schema_version_is_1_7(self, schema_version: str) -> None:
-        assert schema_version == "1.7", (
-            f"Schema version MUST be 1.7. Got: {schema_version!r}"
+    def test_schema_version_is_1_8(self, schema: dict) -> None:
+        schema_version = schema["schema_version"]
+        assert schema_version == "1.8", (
+            f"Schema version MUST be 1.8. Got: {schema_version!r}"
         )
 
     @pytest.mark.parametrize(
