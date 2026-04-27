@@ -110,6 +110,24 @@ This file stores institutional knowledge for {{PROJECT_NAME}} development. It's 
 
 ---
 
+### KB-040 — ADR-layer sub-scope carve-up with zero metadata edit to the incumbent agent
+
+**Date**: 2026-04-27
+**Origin**: Feature 224 delivery retrospective ([delivery.md](../specs/224-trust-exploitation-threat-agent/delivery.md))
+**Category**: Architecture — multi-axis OWASP entry partitioning across detection agents
+
+**Pattern**: When a new OWASP taxonomy entry spans **two distinct signal classes** that map to **two different existing-or-new detection agents**, partition the entry at the **ADR Decision layer** rather than editing the incumbent agent's metadata. F-4 carved up OWASP ASI09:2026 between the **autonomy axis** (already attributed to `agent-autonomy`) and the **communication axis** (the new `human-trust-exploitation` agent's scope). The carve-up was documented in ADR-033 Decision 2 with explicit cross-reference to ADR-030 D2 Outcome B (which originally reserved the communication axis for a future feature). Critically, **`agent-autonomy.md` was not edited** — its `owasp_references` list already contained `ASI-09` (verified at T004 grep audit), and re-asserting the autonomy-axis-only scope in prose would have duplicated content already implicit in the existing entry.
+
+**When to apply**: Any future detection-tier feature whose target OWASP entry has multiple scope facets (e.g., LLM10 Unbounded Consumption could plausibly cover both compute-cost and request-rate axes; ASI-04 Resource Overload could cover both inference and orchestration axes). The decision rule: if the existing agent's scope already implicitly covers axis-A and the new agent claims axis-B with a vocabulary-disjoint signal class, carve up at ADR-D2 layer with zero edit to the incumbent. If the incumbent's scope must be narrowed (e.g., its prose currently claims both axes), edit the incumbent — but make this edit explicit in a DAR with audit-trail rationale.
+
+**Why it matters**: The 26-file zero-edit invariant (post-F-4: 22 original + F-1's 2 + F-2's 2 + F-4's 2 = 26 files; F-3 modified only host files) only holds because F-4 chose the ADR-layer carve-up over an incumbent edit. The 26-file zero-edit grep audit (T054) is the regression guard — it catches any future feature that drifts from the carve-up convention by editing an incumbent agent's metadata. Future ASI-XX entries with multi-axis scope can apply the same partition: claim a single axis explicitly in the new agent's `## Purpose` section, document the carve-up in the new ADR's Decision 2, and rely on the incumbent's existing `owasp_references` list to anchor the other axis.
+
+**Anti-pattern to avoid**: Editing the incumbent agent's `owasp_references`, `## Purpose`, or detection-pattern files to *narrow* its scope when the new agent's scope is *additive*. This double-edits the same OWASP entry across two files and creates referential ambiguity about which agent "owns" which axis. Also avoid sub-prefix ID schemes (`AG-9-{N}` or `AG-AUTONOMY-{N}`) — F-4 introduced the `TE-{N}` standalone prefix specifically because the communication-axis signal class is vocabulary-disjoint from the autonomy axis. Three-prefix-family discipline within agentic surface (`AG` autonomy / `AGP` multi-agent topology / `TE` communication) preserves cohesive single-namespace ID continuity per signal class.
+
+**Reference**: `specs/224-trust-exploitation-threat-agent/delivery.md` (Lessons §6 Standalone-branch vs enrichment-branch decision pattern; Verification Highlights — 26-file zero-edit invariant preserved including `agent-autonomy.md` zero-diff), `docs/architecture/02_ADRs/ADR-033-human-trust-exploitation-agent.md` (Decision 2 ASI09 sub-scope carve-up with explicit `agent-autonomy.md` NOT-edit clause), `docs/architecture/02_ADRs/ADR-030-output-integrity-agent.md` (Decision 2 Outcome B — original communication-axis reservation), `.aod/results/wave6-sc-009-26-file-audit.md` (regression guard execution log)
+
+---
+
 ## Bug Fixes
 
 *No entries yet. Use `/kb-create` to add the first bug fix.*
