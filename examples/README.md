@@ -6,14 +6,25 @@ Example architecture inputs and their corresponding threat model outputs. These 
 
 ## Standardized Examples
 
-Four polished examples demonstrate tachi's threat modeling capabilities across different architecture types. Each example pairs a Mermaid architecture diagram (`architecture.md`) with a complete schema v1.1+ threat model output (`threats.md`).
+Five polished examples demonstrate tachi's threat modeling capabilities across different architecture types. Each example pairs a Mermaid architecture diagram (`architecture.md`) with a complete schema v1.1+ threat model output (`threats.md`).
 
 | Example | Architecture | Components | Key Demonstration |
 |---------|-------------|------------|-------------------|
 | [`web-app/`](web-app/) | Traditional multi-tier web application | 6 (CDN, API Gateway, Auth Service, Session Store, User Database) | Baseline STRIDE output with correctly empty AI sections |
 | [`agentic-app/`](agentic-app/) | Agentic AI application with LLM and MCP | 7 (Guardrails, LLM Orchestrator, MCP Tool Server, Knowledge Base, Audit Logger) | STRIDE + AI findings, correlated findings, dual-dispatch |
+| [`consumer-agent-app/`](consumer-agent-app/) | Consumer-facing AI companion (mental-health/wellness archetype) | 4 (End User, WellnessCompanionChatbot, Conversation Session Store, Interaction Audit Log) | Triggers F-4 `human-trust-exploitation` agent (OWASP ASI09:2026 communication axis) — single Process emitting to End User External Entity; engages all 4 FR-006 emission indicators (outgoing flow to human-named entity, consumer-facing prose match on `chatbot`/`companion`/`coach`, persistent persona/multi-turn dialogue, wellness coaching authority) |
 | [`microservices/`](microservices/) | E-commerce microservices platform | 10 (API Gateway, Order/Payment/Notification Services, Message Queue, Databases) | Cross-service threat analysis at scale |
 | [`maestro-reference/`](maestro-reference/) | Healthcare CDSS multi-agent reference scenario | 18 (Physician, Supervisor Orchestrator, Diagnostic Agent, Treatment Planner Agent, Risk Stratification Model, Outcomes Telemetry, Inter-Agent Communication Channel, +11 supporting components) | Canonical MAESTRO walkthrough — all 7 layers, cross-layer attack chains, agentic patterns, compliance posture cross-references |
+
+### F-4 `consumer-agent-app` Baseline (Wave 5 regen, 2026-04-26)
+
+The `consumer-agent-app/` baseline was added as a clean-slate Q5 lean baseline (architect Wave 3 Step 1 decision) to provide a deterministic, minimal trigger surface for the F-4 `human-trust-exploitation` agent (OWASP ASI09:2026 communication axis) — distinct from extending the existing `agentic-app/` baseline. The architecture (`consumer-agent-app/architecture.md`, 48 lines / 7287 bytes) defines a single mental-health/wellness companion Process emitting to a human-named End User External Entity, engaging all four FR-006 emission indicators (outgoing flow to human-named entity, consumer-facing prose match, persistent persona/multi-turn dialogue, wellness coaching authority).
+
+**Wave 5 regen output** (under `consumer-agent-app/sample-report/`):
+- 5 `TE-{N}` findings (TE-1 through TE-5, one per Pattern Category 1-5: undisclosed AI authorship / authority-claim emission / persuasive-tone manipulation / persona-boundary violations / synthetic-relationship exploitation)
+- 19 total findings (1 Critical, 8 High, 7 Medium, 3 Low)
+- 6 / 6 infographic JPEGs generated (baseball-card / system-architecture / executive-architecture / risk-funnel / maestro-stack / maestro-heatmap)
+- 40-page security PDF with SHA-256 `7ac0b6392c9d197ada547660cace8b9f15eacd75b58f1cc2569c5f358269bce5` (byte-identical baseline preserved per ADR-021 `SOURCE_DATE_EPOCH=1700000000` invariant)
 
 ## Framework Relationship Hierarchy
 
@@ -47,6 +58,7 @@ graph TD
 |---------|--------|----------------|---------------------|----------------|-------------|
 | `web-app` | All 6 categories | A01–A10 (8 mapped) | n/a | n/a | Empty (no AI components) |
 | `agentic-app` | All 6 categories | A01–A10 (8 mapped) | ASI01–ASI10 (3 mapped) | MCP01–MCP10 (3 mapped) | Populated (AG + LLM + correlations) |
+| `consumer-agent-app` | All 6 categories | A01–A10 (subset) | ASI09 (communication axis) | n/a | Populated (TE-1 through TE-5 communication-axis findings) |
 | `microservices` | All 6 categories | A01–A10 (8 mapped) | n/a | n/a | Empty (no AI components) |
 
 ## Usage Instructions
