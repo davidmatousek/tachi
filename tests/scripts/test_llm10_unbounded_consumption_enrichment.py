@@ -36,8 +36,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+from .conftest import REPO_ROOT
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Agent files (host enrichment surface)
 DOS_AGENT = REPO_ROOT / ".claude" / "agents" / "tachi" / "denial-of-service.md"
@@ -76,13 +76,7 @@ CAT_11_FREEMIUM_FIXTURE = FIXTURE_DIR / "valid_category_11_critical_floor_freemi
 
 
 def _extract_first_yaml_block(content: str) -> dict:
-    """Extract the FIRST fenced ```yaml ... ``` block and parse it.
-
-    Both agent files (`denial-of-service.md`, `model-theft.md`) declare their
-    metadata in the first fenced YAML code block immediately after Claude Code
-    frontmatter. ``model-theft.md`` additionally contains 3 example findings
-    in subsequent fenced YAML blocks, so we MUST stop at the first ``` close.
-    """
+    """Return the first fenced ```yaml block in ``content``, parsed via yaml.safe_load."""
     match = re.search(r"^```yaml\n(.*?)\n```", content, re.MULTILINE | re.DOTALL)
     assert match is not None, "No fenced ```yaml ... ``` block found"
     return yaml.safe_load(match.group(1))
@@ -184,7 +178,7 @@ class TestMandatoryReadDirective:
     def test_dos_agent_mandatory_read_count(self) -> None:
         """denial-of-service.md MUST contain exactly 1 'MANDATORY: Read' directive."""
         content = DOS_AGENT.read_text(encoding="utf-8")
-        count = content.count("MANDATORY**: Read")
+        count = content.count("**MANDATORY**: Read")
         assert count == 1, (
             f"denial-of-service.md MUST contain exactly 1 '**MANDATORY**: Read' directive "
             f"(found {count}). The ADR-023 lean variant requires single-point load."
@@ -193,7 +187,7 @@ class TestMandatoryReadDirective:
     def test_model_theft_agent_mandatory_read_count(self) -> None:
         """model-theft.md MUST contain exactly 1 'MANDATORY: Read' directive."""
         content = MODEL_THEFT_AGENT.read_text(encoding="utf-8")
-        count = content.count("MANDATORY**: Read")
+        count = content.count("**MANDATORY**: Read")
         assert count == 1, (
             f"model-theft.md MUST contain exactly 1 '**MANDATORY**: Read' directive "
             f"(found {count}). The ADR-023 lean variant requires single-point load."
@@ -258,7 +252,6 @@ class TestPatternCategoryDisambiguation:
             "DoS detection-patterns.md MUST contain '## Pattern Category Disambiguation' "
             "subsection per Q1 SPLIT / ADR-034 D7 / FR-006/7."
         )
-        # Boundary mention: Cat 9 vs Cat 12/13
         section = _slice_section(
             content,
             "## Pattern Category Disambiguation",
@@ -280,7 +273,6 @@ class TestPatternCategoryDisambiguation:
             "model-theft detection-patterns.md MUST contain '## Pattern Category Disambiguation' "
             "subsection per Q1 SPLIT / ADR-034 D7 / FR-009/10."
         )
-        # Boundary mention: Cat 6 vs Cat 10/11
         section = _slice_section(
             content,
             "## Pattern Category Disambiguation",
@@ -419,37 +411,24 @@ class TestFixtureReferencesContract:
             f"severity={severity!r}."
         )
 
-    def test_cat_11_default_fixture_severity(self) -> None:
-        """Regular Cat 11 fixture MUST have HIGH severity (single-tenant default)."""
+    def test_cat_11_default_fixture_is_single_tenant_narrative(self) -> None:
+        """Regular Cat 11 fixture MUST be structurally distinct from the freemium fixture.
+
+        Q3 RESOLVED 2-condition CRITICAL floor (multi-tenant freemium + budget+alerting absent)
+        is asymmetric: only the freemium fixture demonstrates the 'critical' branch via the
+        Q3 predicate. The default fixture demonstrates the HIGH-default branch via single-tenant
+        narrative. Matrix-derived risk_level may evaluate to Critical for both at HIGH×HIGH —
+        the structural marker (single-tenant in threat narrative) is the predicate proxy.
+        """
         finding = _load_fixture(CAT_11_FIXTURE)
-        # Per the contract: HIGH default with a CRITICAL floor only on the
-        # 2-condition rule. The non-freemium Cat 11 fixture is single-tenant and
-        # MUST land at HIGH (or 'High') — not CRITICAL — to demonstrate the
-        # default branch of the severity rule.
         risk_level = str(finding.get("risk_level", "")).lower()
         severity = str(finding.get("severity", "")).lower()
-        # Accept either 'high' OR — if the fixture stamps its risk_level as
-        # 'Critical' from a pure likelihood*impact computation — assert the
-        # severity floor was NOT explicitly raised by the freemium predicate.
-        # The default fixture's documented severity in the YAML header comment
-        # is HIGH (Q3 default — single-tenant); the canonical risk_level
-        # field reflects the OWASP likelihood*impact matrix outcome for
-        # HIGH×HIGH which evaluates to Critical band even at HIGH default.
-        # So this test asserts the fixture is NOT in the freemium 2-condition
-        # branch by checking that the 'freemium' predicate context is absent.
-        # Use the threat narrative as the structural-evidence proxy: the
-        # default fixture explicitly states 'single-tenant' in description.
         threat_text = str(finding.get("threat", "")).lower()
         assert "single-tenant" in threat_text or "single tenant" in threat_text, (
             f"Cat 11 default (non-freemium) fixture MUST narratively be single-tenant "
             f"to demonstrate the HIGH-default branch of the Q3 severity rule; "
             f"got threat narrative without 'single-tenant'."
         )
-        # And the severity-band-equivalent fields MUST NOT be the explicit
-        # 'critical' floor that only the freemium fixture is expected to have
-        # in the YAML header documentation. We accept HIGH or the matrix-derived
-        # Critical band, but assert by exclusion that the default fixture is
-        # clearly distinct from the freemium fixture's CRITICAL-floor flag.
         assert risk_level or severity, (
             f"Cat 11 default fixture MUST declare severity or risk_level; "
             f"got risk_level={risk_level!r} severity={severity!r}."
