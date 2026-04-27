@@ -1,0 +1,25 @@
+# F-5 Cat 11 — Denial-of-Wallet via Context-Window Cost Amplification (Q1 SPLIT Vector B) (LLM-{N})
+# Schema: schemas/finding.yaml v1.8 (unchanged in F-5)
+# Category: llm
+# Severity: HIGH (Q3 default — single-tenant or multi-tenant with controls present)
+# Q3 severity floor: CRITICAL ONLY when (a) multi-tenant freemium AND (b) BOTH
+#   per-tenant token budget AND cost alerting absent. This fixture is single-tenant
+#   default — see valid_category_11_critical_floor_freemium_finding.yaml for the floor case.
+# Q1 SPLIT scope note: Cat 11 covers Vector B (cost-DoW → economic damage) + broader DoW;
+#   Vector A (latency-DoS) lives in DoS Cat 13 per F-5 FR-2.
+# T1496 cross-reference: prose-only mention in mitigation; NOT in references array
+id: "LLM-51"
+category: llm
+component: "Single-Tenant LLM Inference Service"
+dfd_element_type: "Process"
+threat: "The single-tenant LLM inference service allows the tenant's authenticated users to consume inference compute without per-user token budget. An attacker with valid credentials runs cost-amplification queries (Cat 10 pattern) at scale, plus drives context-window to model max per call (Vector B), inflating per-call cost. The operator's monthly inference bill exceeds the budgeted envelope, but availability for other tenants is not affected (single-tenant — denial-of-wallet without DoS spillover). This is denial-of-wallet (the wallet is the bill, not the system uptime) distinct from Vector A latency-DoS in DoS Cat 13."
+likelihood: HIGH
+impact: HIGH
+risk_level: Critical
+mitigation: "Per-user token budget with soft-cap (alerts) and hard-cap (rejection) at the API gateway. Per-user context-window cost reconciliation with at-query-time billing attribution. Cost-per-query p99 alerting tied to user identity. Denial-of-wallet anomaly detection via cost-velocity monitoring (sliding-window over 5-minute, 1-hour, 24-hour windows). Automated user suspension on budget breach (no manual approval delay — by the time a human reviews, the bill is already inflated). Cf. MITRE ATT&CK T1496 Resource Hijacking — text-only cross-reference (NOT in references; T1496 not catalog-resolvable in schemas/taxonomy/mitre-attack.yaml)."
+references:
+  - "OWASP LLM10:2025 — Unbounded Consumption"
+  - "OWASP LLM03:2025 — Supply Chain"
+maestro_layer: "L7"
+agentic_pattern: "none"
+source_attribution: []

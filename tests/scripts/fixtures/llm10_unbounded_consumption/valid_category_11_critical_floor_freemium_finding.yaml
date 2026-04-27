@@ -1,0 +1,25 @@
+# F-5 Cat 11 CRITICAL FLOOR — Q3 RESOLVED 2-condition multi-tenant freemium (LLM-{N})
+# Schema: schemas/finding.yaml v1.8 (unchanged in F-5)
+# Category: llm
+# Severity: CRITICAL (Q3 floor — 2-condition rule)
+# Q3 RESOLVED 2-condition CRITICAL floor:
+#   (a) multi-tenant freemium structure structurally evident in architecture, AND
+#   (b) BOTH per-tenant token budget AND cost alerting absent.
+# This fixture demonstrates the BOTH conditions met: B2C consumer chatbot SaaS with
+# freemium tier, no per-tenant token budget, no cost-velocity monitoring.
+# T1496 cross-reference: prose-only mention in mitigation; NOT in references array
+id: "LLM-52"
+category: llm
+component: "B2C Consumer Chatbot SaaS — Multi-Tenant Freemium Inference"
+dfd_element_type: "Process"
+threat: "The B2C consumer chatbot SaaS allows freemium users to consume inference compute without per-tenant token budget AND without cost-velocity monitoring. An attacker registers thousands of freemium accounts and runs cost-amplification queries (Cat 10 pattern) at scale, plus drives context-window to model max per call (Vector B), inflating per-call cost. The operator's monthly inference bill exceeds revenue by 10x; the freemium tier becomes economically untenable. Both Q3 floor conditions met: (a) multi-tenant freemium structurally evident; (b) per-tenant token budget AND cost alerting both absent. Severity floors at CRITICAL per Q3 RESOLVED 2-condition rule (HIGH default would understate the existential operator risk in this configuration)."
+likelihood: HIGH
+impact: HIGH
+risk_level: Critical
+mitigation: "Per-tenant token budget with hard-cap enforcement at the API gateway (separate budget per freemium / paid tier; freemium budget set well below cost-amplification attack threshold). Per-tenant context-window cost reconciliation computed at-query-time (synchronous, before inference begins). Cost-per-query p99 alerting tied to per-tenant billing attribution. Denial-of-wallet anomaly detection via cost-velocity monitoring across 5-minute, 1-hour, 24-hour windows. Automated tenant suspension on budget breach (no manual approval delay). Per-tenant billing attribution computed at-query-time (NOT asynchronously via batch reconciliation). Account-creation friction for freemium tier (CAPTCHA + email verification + per-IP rate limit) to prevent account-spam attacks that bypass per-tenant budgets. Cf. MITRE ATT&CK T1496 Resource Hijacking — text-only cross-reference (NOT in references; T1496 not catalog-resolvable in schemas/taxonomy/mitre-attack.yaml)."
+references:
+  - "OWASP LLM10:2025 — Unbounded Consumption"
+  - "OWASP LLM03:2025 — Supply Chain"
+maestro_layer: "L7"
+agentic_pattern: "none"
+source_attribution: []

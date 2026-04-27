@@ -24,6 +24,8 @@ output_schema: ../../../schemas/finding.yaml
 
 Detects threats where an attacker attempts to steal, replicate, or extract proprietary model assets. Model theft encompasses direct exfiltration of model weights and parameters, API-based model extraction where systematic querying reconstructs a functional copy, unauthorized access to model artifacts in training infrastructure, embedding and fine-tune exfiltration via inference APIs (ATLAS AML.T0024), and system prompt leakage (OWASP LLM07:2025). Successful model theft destroys intellectual property, enables offline vulnerability discovery, and eliminates competitive advantages derived from proprietary model capabilities.
 
+This agent additionally covers the **cost-amplification and denial-of-wallet surface** — recursive or cost-asymmetric prompting that drives output-token amplification, and multi-tenant denial-of-wallet attacks where an attacker drives the operator's inference bill to ruin without degrading availability for other tenants — per OWASP LLM10:2025. Pattern Categories 10 (Cost Amplification via Recursive or Cost-Asymmetric Prompting) and 11 (Denial-of-Wallet via Context-Window Cost Amplification) detect LLM-serving economic-attack threats distinct from model-extraction.
+
 ## Skill References
 
 | Reference | File | Load When | Purpose |

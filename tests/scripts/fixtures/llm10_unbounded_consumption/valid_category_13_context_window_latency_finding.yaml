@@ -1,0 +1,22 @@
+# F-5 Cat 13 — Context-Window Exhaustion (Latency-Driven Variant — Q1 SPLIT Vector A) (D-{N})
+# Schema: schemas/finding.yaml v1.8 (unchanged in F-5)
+# Category: denial-of-service
+# Severity: HIGH (Q3 default for Cat 13 — MEDIUM-HIGH)
+# Q1 SPLIT scope note: Cat 13 covers Vector A (latency-driven availability disruption) only;
+# Vector B (cost-DoW → economic damage) lives in model-theft Cat 11 per F-5 FR-3.
+# Worked example: consumer-facing chatbot with adversarial 32k-token mega-history payload
+id: "D-100"
+category: denial-of-service
+component: "Consumer Chatbot Inference Endpoint"
+dfd_element_type: "Process"
+threat: "The consumer-facing chatbot allows users to send arbitrarily long conversation history. An attacker constructs a 32k-token mega-history payload that drives context-window usage to 99% of model max, causing per-request latency to spike to the per-tenant timeout. Legitimate users on the same inference cluster experience degraded latency (Vector A — availability disruption). The same architecture additionally surfaces model-theft Cat 11 (denial-of-wallet via context-window cost amplification) as Vector B — both findings emit on the same architecture, neither is a duplicate."
+likelihood: HIGH
+impact: HIGH
+risk_level: Critical
+mitigation: "Max-context-window enforcement at the API gateway with automatic 413-response on overflow. Per-conversation truncation policy with sliding-window limit (e.g., last 8k tokens of conversation history retained). Recursive-prompt-pattern detection — adversarial templates causing model self-engagement (chain-of-thought, recursive tool-call, self-reflection prompts) flagged before inference begins. Context-window monitoring with anomaly alerting on percentage-of-max usage spikes per request and per-tenant. Per-tenant context-window cap distinct from per-request cap — prevents single-tenant monopolization of inference latency."
+references:
+  - "OWASP LLM10:2025 — Unbounded Consumption"
+  - "CWE-400 Uncontrolled Resource Consumption"
+maestro_layer: "L7"
+agentic_pattern: "none"
+source_attribution: []
