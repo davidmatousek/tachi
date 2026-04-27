@@ -16,6 +16,7 @@ consumers:
   - model-theft
   - agent-autonomy
   - tool-abuse
+  - human-trust-exploitation
   - output-integrity
   - misinformation
   - risk-scorer

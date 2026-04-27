@@ -90,6 +90,9 @@ LLM dispatch triggers these agents:
 AG dispatch triggers these agents:
 - `agent-autonomy` (ASI-01)
 - `tool-abuse` (MCP-03, ASI-07)
+- `human-trust-exploitation` (OWASP ASI09:2026) — see emission activation rule below
+
+**`human-trust-exploitation` emission activation rule (FR-013)**: `human-trust-exploitation` is dispatched on any AG keyword match (same trigger logic as `agent-autonomy` / `tool-abuse`). However, unlike `agent-autonomy` / `tool-abuse`, `human-trust-exploitation` enforces a **two-part emission gate** internally: the agent MUST only emit a `TE-{N}` finding when BOTH (a) the dispatched Process matches an AI-agent trigger keyword (per FR-005 trigger keywords from `tachi-human-trust-exploitation/references/detection-patterns.md` — `chatbot`, `chat agent`, `assistant`, `companion`, `coach`, `advisor`, `consultant`, `tutor`, `customer-facing`, `consumer-facing`, `direct-to-consumer`, `agent`) AND (b) at least one human-user-facing emission indicator is structurally present (per FR-006 4-category subsection): **Indicator A** outgoing Data Flow to a human-named External Entity (`Customer`, `Patient`, `User`, `Student`, `Client`, `Member`, `Individual`, `Subscriber`, `Citizen`, etc.); **Indicator B** Process description with human-user-facing emission keywords (`customer support`, `user-facing chat`, `consumer-facing advisory`, `direct-to-consumer`, `end-user interaction`, `client communication`, etc.); **Indicator C** sustained-engagement framing (`long-running dialogue`, `persistent persona`, `continuous conversation`, `session memory`, `user history`, `multi-turn dialog`, `relationship persistence`, etc.); **Indicator D** authority-claim emission framing (`legal advice`, `medical recommendation`, `financial advisory`, `clinical decision support`, `regulatory guidance`, `expert advisory`, `professional consultation`, etc.). If an AG keyword matches but no human-user-facing emission indicator is structurally present, the agent MUST emit zero findings for that component per FR-013 — dispatch still happens, but the agent self-gates emission to prevent false positives on backend-only AI architectures (R6 mitigation per FR-017). The two-part gate distinguishes communication-axis trust-exploitation surface (AI Process emitting to a human) from the autonomy-axis surface covered by `agent-autonomy`.
 
 ### Matching Rules
 
@@ -104,14 +107,45 @@ When a component matches keywords from **both** the LLM and AG categories, both 
 
 **Example**: A component named "LLM Agent Orchestrator" matches:
 - `"LLM"` --> LLM agents dispatched (prompt-injection, data-poisoning, model-theft, output-integrity, misinformation)
-- `"agent"` --> AG agents dispatched (agent-autonomy, tool-abuse)
+- `"agent"` --> AG agents dispatched (agent-autonomy, tool-abuse, human-trust-exploitation)
 - `"orchestrator"` --> AG agents dispatched (already included from "agent" match — no duplicate dispatch)
 
-The component receives its STRIDE categories (based on DFD type) plus all 7 AI agents.
+The component receives its STRIDE categories (based on DFD type) plus all 8 AI agents (5 LLM + 3 AG). Some AI agents (`output-integrity`, `misinformation`, `human-trust-exploitation`) self-gate emission per their respective two-part rules — they are dispatched but may emit zero findings if the structural gate fails.
 
 ### Ambiguity Note
 
 The keyword `"model"` is ambiguous — it could refer to a data model, a domain model, or an LLM. When `"model"` is matched, dispatch the LLM agents and include a note in the dispatch table: `"Keyword 'model' matched — may refer to data model rather than LLM. AI agents dispatched for coverage; review findings for relevance."` This ensures no AI-relevant component is missed while flagging potential false positives.
+
+### `human-trust-exploitation` Trigger-Keyword Activation Rules (FR-005 / T004a)
+
+The `human-trust-exploitation` agent uses an extended AI-agent-keyword set on top of the AG keyword family above. While AG dispatch is triggered by the 6 generic keywords (`agent`, `autonomous`, `orchestrator`, `MCP server`, `tool server`, `plugin`), `human-trust-exploitation` self-validates an additional 12-keyword AI-agent set when deciding whether to emit a `TE-{N}` finding (per the two-part emission gate above):
+
+**Primary trigger keywords** (case-insensitive substring match against component name OR description, per T004a final keyword set — preserved verbatim per Wave 1.0 / T004a architect adjudication):
+
+1. `chatbot`
+2. `chat agent`
+3. `assistant`
+4. `companion`
+5. `coach`
+6. `advisor`
+7. `consultant`
+8. `tutor`
+9. `customer-facing`
+10. `consumer-facing`
+11. `direct-to-consumer`
+12. `agent`
+
+#### Anti-Indicator Keywords (false-positive prevention)
+
+The following 3 keywords are **anti-indicators** — they appear in agent descriptions in a prompt-engineering or roleplay context WITHOUT communication-axis trust risks. Examples: "persona-driven Agent" describes a roleplay agent's behavior, not a human-trust-exploitation surface; "personality calibration" describes model tuning, not consumer-facing emission; "character agent" describes non-consumer-facing AI sub-agents in a multi-agent topology.
+
+- `persona`
+- `personality`
+- `character agent`
+
+**Anti-indicator activation rule**: When ONE of these 3 keywords is the ONLY match (no primary trigger keyword AND no human-user-facing emission indicator from the FR-006 4-category subsection), dispatch logic MUST NOT activate `human-trust-exploitation` purely on the anti-indicator. The agent self-gates emission via the two-part gate (FR-013): both a primary trigger keyword AND at least one human-user-facing emission indicator are required for `TE-{N}` emission. The dual-use nature of these three keywords in LLM prompt engineering vs. consumer-facing agents makes them the most-likely-false-positive surface for this agent; the explicit anti-indicator subsection prevents that failure mode (per architect Q2 LOW-2 discipline).
+
+When a primary trigger keyword is present alongside one of these anti-indicators (e.g., a component named "Personality-Driven Customer Coach" matches both `personality` (anti-indicator) AND `customer-facing` + `coach` (primary triggers) AND has an outgoing Data Flow to `Customer` (Indicator A)), normal two-part-gate emission applies — the anti-indicator does NOT suppress emission when primary triggers are independently satisfied.
 
 ### Agent-to-Table Mapping
 
@@ -119,7 +153,7 @@ AI findings produced by the dispatched agents are grouped into 2 output tables:
 
 | Output Table | Agents | Reference Standards |
 |--------------|--------|---------------------|
-| AG (Agentic Threats) | agent-autonomy, tool-abuse | OWASP Agentic Top 10, MCP Top 10 |
+| AG (Agentic Threats) | agent-autonomy, tool-abuse, human-trust-exploitation | OWASP Agentic Top 10, MCP Top 10, OWASP ASI09:2026 |
 | LLM (LLM Threats) | prompt-injection, data-poisoning, model-theft, output-integrity, misinformation | OWASP LLM Top 10 v2025 |
 
 ---
@@ -144,21 +178,21 @@ Label this section clearly:
 - **MAESTRO Layer**: The CSA MAESTRO architectural layer classification assigned during Phase 1 (e.g., "L3 — Agent Framework"). Set to "Unclassified" if no layer keywords matched. See `.claude/skills/tachi-shared/references/maestro-layers-shared.md` for the layer taxonomy and classification algorithm.
 - **STRIDE Categories**: Comma-separated list of applicable STRIDE categories based on DFD type (e.g., "S, R" for External Entity).
 - **AI Categories**: Comma-separated list of applicable AI categories based on keyword matching (e.g., "LLM, AG" for dual-dispatch). Use "—" if no AI keywords matched.
-- **Total Agents**: The total count of individual agents to be dispatched for this component. Count each STRIDE category as 1 agent and each AI agent individually (AG = 2 agents: agent-autonomy + tool-abuse; LLM = 5 agents: prompt-injection + data-poisoning + model-theft + output-integrity + misinformation).
+- **Total Agents**: The total count of individual agents to be dispatched for this component. Count each STRIDE category as 1 agent and each AI agent individually (AG = 3 agents: agent-autonomy + tool-abuse + human-trust-exploitation; LLM = 5 agents: prompt-injection + data-poisoning + model-theft + output-integrity + misinformation). Note that `output-integrity`, `misinformation`, and `human-trust-exploitation` self-gate emission per their respective two-part rules — they are dispatched but may emit zero findings if the structural gate fails.
 
 ### Example Rows
 
 | Component | DFD Type | MAESTRO Layer | STRIDE Categories | AI Categories | Total Agents |
 |-----------|----------|---------------|-------------------|---------------|--------------|
-| LLM Agent Orchestrator | Process | L3 — Agent Framework | S, T, R, I, D, E | LLM, AG | 13 |
-| MCP Tool Server | Process | L3 — Agent Framework | S, T, R, I, D, E | AG | 8 |
+| LLM Agent Orchestrator | Process | L3 — Agent Framework | S, T, R, I, D, E | LLM, AG | 14 |
+| MCP Tool Server | Process | L3 — Agent Framework | S, T, R, I, D, E | AG | 9 |
 | User | External Entity | L7 — Agent Ecosystem | S, R | — | 2 |
 | Knowledge Base | Data Store | L2 — Data Operations | T, I, D | — | 3 |
 | External API | External Entity | Unclassified | S, R | — | 2 |
 
 In this example:
-- "LLM Agent Orchestrator" is a Process (6 STRIDE agents) with dual-dispatch (5 LLM + 2 AG agents) = 13 total. Classified as L3 (Agent Framework) due to "orchestrator" keyword.
-- "MCP Tool Server" is a Process (6 STRIDE agents) with AG dispatch (2 AG agents) = 8 total. Classified as L3 due to "MCP server" keyword.
+- "LLM Agent Orchestrator" is a Process (6 STRIDE agents) with dual-dispatch (5 LLM + 3 AG agents) = 14 total. Classified as L3 (Agent Framework) due to "orchestrator" keyword.
+- "MCP Tool Server" is a Process (6 STRIDE agents) with AG dispatch (3 AG agents) = 9 total. Classified as L3 due to "MCP server" keyword.
 - "User" is an External Entity (2 STRIDE agents) with no AI match = 2 total. Classified as L7 (Agent Ecosystem) due to the `user` keyword matching human-agent interaction scope.
 - "Knowledge Base" is a Data Store (3 STRIDE agents) with no AI match = 3 total. Classified as L2 due to "knowledge base" keyword.
 - "External API" is an External Entity with no matching MAESTRO keywords = Unclassified.

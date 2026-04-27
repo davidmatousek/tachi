@@ -42,6 +42,7 @@ references:
       - model-theft.md
       - agent-autonomy.md
       - tool-abuse.md
+      - human-trust-exploitation.md
       - output-integrity.md
       - misinformation.md
     report: threat-report.md
@@ -294,7 +295,7 @@ The orchestrator supports two dispatch modes. Both produce identical output -- t
 
 **Parallel Mode**: Determine all dispatch targets, produce the dispatch table, invoke all applicable agents concurrently, collect all results before proceeding to Phase 3.
 
-**Sequential Mode**: Same preparation, but invoke agents one at a time in category order: S, T, R, I, D, E, AG (agent-autonomy then tool-abuse), LLM (prompt-injection then data-poisoning then model-theft then output-integrity then misinformation). Collect findings from each agent before invoking the next.
+**Sequential Mode**: Same preparation, but invoke agents one at a time in category order: S, T, R, I, D, E, AG (agent-autonomy then tool-abuse then human-trust-exploitation), LLM (prompt-injection then data-poisoning then model-theft then output-integrity then misinformation). Collect findings from each agent before invoking the next.
 
 Platform-specific dispatch adapters that bind these protocols to concrete invocation mechanisms are out of scope for this orchestrator.
 
@@ -367,7 +368,7 @@ Assemble 2 AI threat tables for Section 4 of the output.
 
 | Output Table | ID Prefix | Source Agents |
 |--------------|-----------|---------------|
-| Agentic Threats (AG) | AG | agent-autonomy, tool-abuse |
+| Agentic Threats (AG) | AG | agent-autonomy, tool-abuse, human-trust-exploitation |
 | LLM Threats (LLM) | LLM | prompt-injection, data-poisoning, model-theft, output-integrity, misinformation |
 
 AI table rows include an additional OWASP Reference field compared to STRIDE tables. For each table: (1) collect findings from source agents, (2) validate risk levels, (3) assign sequential IDs ordered by agent then by component appearance, (4) **inherit MAESTRO layer** -- same inheritance logic as STRIDE tables: look up each finding's component in the Phase 1 inventory and copy the MAESTRO layer value, defaulting to `"Unclassified"` if not found, (5) populate rows including the MAESTRO Layer column per the output schemas reference. If no AI agents were dispatched, include both table headers with a note: "No AI-related components were identified in the architecture input."
