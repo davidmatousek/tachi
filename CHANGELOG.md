@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.24.0](https://github.com/davidmatousek/tachi/compare/v4.23.0...v4.24.0) (2026-04-27)
+
+
+### Features
+
+* **224:** human-trust-exploitation threat agent (ASI09) ([#225](https://github.com/davidmatousek/tachi/issues/225)) ([feaeb95](https://github.com/davidmatousek/tachi/commit/feaeb95019340a85681b65198a4b42e3a92b16a4))
+* **229:** llm10 unbounded consumption verification ([#230](https://github.com/davidmatousek/tachi/issues/230)) ([e086d31](https://github.com/davidmatousek/tachi/commit/e086d31e4bead0dd7cb3de3fd63e4a120da59133))
+
 ## [4.23.0](https://github.com/davidmatousek/tachi/compare/v4.22.1...v4.23.0) (2026-04-26)
 
 
