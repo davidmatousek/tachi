@@ -1,0 +1,1212 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "tachi-control-analyzer",
+          "version": "1.0",
+          "semanticVersion": "1.0",
+          "informationUri": "https://github.com/davidmatousek/tachi",
+          "supportedTaxonomies": [
+            {
+              "name": "OWASP",
+              "index": 0
+            },
+            {
+              "name": "CWE",
+              "index": 1
+            }
+          ],
+          "rules": [
+            {
+              "id": "tachi/ai/agentic-threats",
+              "shortDescription": {
+                "text": "AI agent autonomy and misuse threats"
+              },
+              "fullDescription": {
+                "text": "Threats arising from autonomous agent behavior, including uncontrolled tool use, excessive autonomy, agent-to-agent trust violations, lack of human oversight in high-impact operations, and human-trust-exploitation patterns on consumer-facing AI surfaces (OWASP ASI09:2026)."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "ai",
+                  "agentic",
+                  "autonomy",
+                  "tool-use",
+                  "mcp"
+                ],
+                "security-severity": "7.4"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "CWE-693",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/denial-of-service",
+              "shortDescription": {
+                "text": "Denial of service threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker degrades or eliminates system availability through resource exhaustion, flooding, algorithmic complexity exploitation, or cascading dependency failures."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "denial-of-service",
+                  "availability",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "6.0"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A05",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-400",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/elevation-of-privilege",
+              "shortDescription": {
+                "text": "Privilege escalation threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker gains higher privileges than authorized, performing actions reserved for administrators, accessing other users' resources, or bypassing access control boundaries."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "elevation-of-privilege",
+                  "access-control",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "6.1"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A01",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-269",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/information-disclosure",
+              "shortDescription": {
+                "text": "Information disclosure threats"
+              },
+              "fullDescription": {
+                "text": "Threats where sensitive information is exposed to unauthorized parties through direct data leaks, verbose error messages, side-channel observations, or insufficient access controls on stored data."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "information-disclosure",
+                  "data-exposure",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "4.9"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A01",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-200",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/repudiation",
+              "shortDescription": {
+                "text": "Repudiation threats"
+              },
+              "fullDescription": {
+                "text": "Threats where a user or system can deny having performed an action, and the system lacks sufficient evidence to prove otherwise, undermining accountability and forensic investigation."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "repudiation",
+                  "logging",
+                  "accountability",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "4.3"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A09",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-778",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/spoofing",
+              "shortDescription": {
+                "text": "Identity spoofing threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker pretends to be something or someone else, such as forging authentication credentials, replaying tokens, or impersonating trusted components to gain unauthorized access."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "spoofing",
+                  "authentication",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "7.8"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A07",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-287",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/tampering",
+              "shortDescription": {
+                "text": "Data tampering threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker modifies data, code, or configuration without authorization, violating integrity guarantees and causing systems to operate on corrupted inputs or persist falsified records."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "tampering",
+                  "data-integrity",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "4.8"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A08",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-345",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "taxonomies": [
+        {
+          "name": "OWASP",
+          "version": "2021",
+          "informationUri": "https://owasp.org/Top10/",
+          "organization": "OWASP Foundation",
+          "shortDescription": {
+            "text": "OWASP Top 10 Web Application Security Risks"
+          }
+        },
+        {
+          "name": "CWE",
+          "version": "4.13",
+          "informationUri": "https://cwe.mitre.org/",
+          "organization": "MITRE",
+          "shortDescription": {
+            "text": "Common Weakness Enumeration"
+          }
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "An attacker could spoof the End User identity at session establishment, submitting User Turn requests under a victim user's identity if authentication on the inbound HTTPS surface relies solely on weak or single-factor credentials. The persistent persona state in the Conversation Session Store amplifies this risk. [Control: missing]"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "End User",
+                  "fullyQualifiedName": "User Zone/End User",
+                  "kind": "external-entity"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a00001",
+            "findingId/v1": "S-1"
+          },
+          "properties": {
+            "security-severity": "7.8",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": "false",
+            "control-effectiveness": "none",
+            "inherent-risk": "7.8",
+            "residual-risk": "7.8",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Implement multi-factor authentication and session-token binding at the User-Zone-to-Application-Zone boundary. Deploy short-lived JWTs with rotation, session binding to device fingerprint, and server-side token revocation. Bind persona-state restoration strictly to the authenticated session identifier.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "Hypothetical: the wellness-conversation companion sustains long-running engagement with End Users who may include vulnerable populations. Synthetic-relationship sub-class per FR-004(e); the architecture lacks session-length caps, escalation-to-human pathway, emotional-support disclosure, dependency-risk classifier, and mandatory professional-care referral pathway. [Control: missing]"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessCompanionChatbot",
+                  "fullyQualifiedName": "Application Zone/WellnessCompanionChatbot",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a00013",
+            "findingId/v1": "TE-5"
+          },
+          "properties": {
+            "security-severity": "7.4",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": "false",
+            "control-effectiveness": "none",
+            "inherent-risk": "7.4",
+            "residual-risk": "7.4",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Implement vulnerable-population safeguards: session-length caps with mandatory break prompts; escalation-to-human pathway triggered by distress-context detection; emotional-support disclosure on first turn; dependency-risk classifier; mandatory professional-care referral pathway.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "Hypothetical: a fictional wellness-conversation companion emits Companion Responses to End Users without a declared AI-generation disclosure mechanism. Undisclosed AI authorship sub-class per FR-004(e); the architecture omits mandatory pre-conversation AI-disclosure splash, banner, per-message AI-source label, and a refusal pattern for identity-impersonation challenges. [Control: missing]"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessCompanionChatbot",
+                  "fullyQualifiedName": "Application Zone/WellnessCompanionChatbot",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a0000f",
+            "findingId/v1": "TE-1"
+          },
+          "properties": {
+            "security-severity": "7.2",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": "false",
+            "control-effectiveness": "none",
+            "inherent-risk": "7.2",
+            "residual-risk": "7.2",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Implement four AI-disclosure layers: pre-conversation AI-disclosure splash; persistent banner; per-message AI-source label; refusal pattern for identity-impersonation challenges.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "Hypothetical: the wellness-conversation companion emits wellness-coaching content to End Users without per-claim confidence-attestation or source-grounding indication. Authority-attestation sub-class per FR-004(e); the architecture omits confidence-threshold gate, source-attestation requirement, and refusal pattern for low-confidence wellness claims. [Control: missing]"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessCompanionChatbot",
+                  "fullyQualifiedName": "Application Zone/WellnessCompanionChatbot",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a00010",
+            "findingId/v1": "TE-2"
+          },
+          "properties": {
+            "security-severity": "7.0",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": "false",
+            "control-effectiveness": "none",
+            "inherent-risk": "7.0",
+            "residual-risk": "7.0",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Implement three confidence-attestation layers: confidence-threshold gate; source-attestation requirement (RAG / citation-grounded emission); refusal pattern for low-confidence wellness claims.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "Hypothetical: the wellness-conversation companion emits wellness-coaching content using high-confidence persuasive framing on inherently uncertain wellness subject matter without declared uncertainty-disclosure mechanisms, temperature-bounded decoders, or persuasion-pattern classifiers. Persuasion-manipulation sub-class per FR-004(e). [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessCompanionChatbot",
+                  "fullyQualifiedName": "Application Zone/WellnessCompanionChatbot",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a00011",
+            "findingId/v1": "TE-3"
+          },
+          "properties": {
+            "security-severity": "6.7",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": "false",
+            "control-effectiveness": "none",
+            "inherent-risk": "6.7",
+            "residual-risk": "6.7",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Implement three uncertainty-disclosure layers: uncertainty-framing on uncertain subject matter; temperature-bounded decoder; output-side persuasion-pattern classifier.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "Hypothetical: the wellness-conversation companion maintains a persistent named persona across multi-turn dialogues with End Users via the Conversation Session Store. Persona-boundary sub-class per FR-004(e); the architecture omits persona-memory timeout, identity-impersonation refusal pattern, persona-anchor declaration at conversation start, and persona-prompt validation. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessCompanionChatbot",
+                  "fullyQualifiedName": "Application Zone/WellnessCompanionChatbot",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a00012",
+            "findingId/v1": "TE-4"
+          },
+          "properties": {
+            "security-severity": "6.5",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": "false",
+            "control-effectiveness": "none",
+            "inherent-risk": "6.5",
+            "residual-risk": "6.5",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Implement four persona-boundary controls: persona-memory timeout; identity-impersonation refusal pattern; persona-anchor declaration at conversation start; persona-prompt validation.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "An attacker could escalate privilege through the Process \u2014 leveraging vulnerabilities in input handling, session validation, or persona configuration to gain elevated access to other users' persona state, the audit log, or backend infrastructure. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessCompanionChatbot",
+                  "fullyQualifiedName": "Application Zone/WellnessCompanionChatbot",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a0000e",
+            "findingId/v1": "E-1"
+          },
+          "properties": {
+            "security-severity": "6.1",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": "false",
+            "control-effectiveness": "none",
+            "inherent-risk": "6.1",
+            "residual-risk": "6.1",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Implement role-based access control on Companion Process operations; add input validation on User Turn payloads (schema validation, content-length bounds, prompt-injection detection); add session-validation layer.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "An attacker could exhaust the Process's compute resources through high-volume User Turn submission, expensive query patterns, or coordinated session-establishment flooding. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessCompanionChatbot",
+                  "fullyQualifiedName": "Application Zone/WellnessCompanionChatbot",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a0000b",
+            "findingId/v1": "D-1"
+          },
+          "properties": {
+            "security-severity": "6.0",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": "false",
+            "control-effectiveness": "none",
+            "inherent-risk": "6.0",
+            "residual-risk": "6.0",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Implement rate limiting on User Turn ingestion (per-IP and per-session quotas); inference-budget caps on long-context prompts; circuit-breaker patterns on session-establishment.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "An attacker could deny service to the session store through high-volume write operations, storage exhaustion attacks, or query patterns triggering database lock contention. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Conversation Session Store",
+                  "fullyQualifiedName": "Application Zone/Conversation Session Store",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a0000c",
+            "findingId/v1": "D-2"
+          },
+          "properties": {
+            "security-severity": "5.3",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": "false",
+            "control-effectiveness": "none",
+            "inherent-risk": "5.3",
+            "residual-risk": "5.3",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Implement write-quota enforcement and storage-quota monitoring on the Conversation Session Store; connection-pool limits; query-pattern monitoring for lock-contention attacks.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "An attacker could deny service to the audit log through write-flooding attacks, storage exhaustion, or high-volume query patterns. Audit log unavailability would compromise real-time interaction monitoring. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Interaction Audit Log",
+                  "fullyQualifiedName": "Application Zone/Interaction Audit Log",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a0000d",
+            "findingId/v1": "D-3"
+          },
+          "properties": {
+            "security-severity": "5.3",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": "false",
+            "control-effectiveness": "none",
+            "inherent-risk": "5.3",
+            "residual-risk": "5.3",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Implement write-quota enforcement on Interaction Audit Log writes; storage-quota monitoring; rate-limited audit-write patterns; buffered writes with backpressure.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "An attacker could deploy a spoofed Process impersonating the WellnessCompanionChatbot, intercepting User Turn flows and emitting attacker-controlled Companion Response content. Without mutual TLS or cryptographic Process identity verification, users cannot verify response origin. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessCompanionChatbot",
+                  "fullyQualifiedName": "Application Zone/WellnessCompanionChatbot",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a00002",
+            "findingId/v1": "S-2"
+          },
+          "properties": {
+            "security-severity": "5.3",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": "false",
+            "control-effectiveness": "none",
+            "inherent-risk": "5.3",
+            "residual-risk": "5.3",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Implement mutual-TLS or cryptographic Process-identity verification on the consumer-facing surface; add Process-identity attestation in the AI-disclosure layer.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "An attacker with database read access could disclose persisted persona state across users, exposing session memory, conversation history, and any sensitive disclosures made during prior sessions. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Conversation Session Store",
+                  "fullyQualifiedName": "Application Zone/Conversation Session Store",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a00009",
+            "findingId/v1": "I-2"
+          },
+          "properties": {
+            "security-severity": "4.9",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": "false",
+            "control-effectiveness": "none",
+            "inherent-risk": "4.9",
+            "residual-risk": "4.9",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Implement at-rest encryption on persisted persona state; column-level encryption on session-memory and conversation-history fields with KMS-backed key management; field-level encryption on sensitivity-tagged fields.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "An attacker with audit log read access could disclose interaction event records exposing user interaction patterns, dialogue metadata, and engagement timelines. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Interaction Audit Log",
+                  "fullyQualifiedName": "Application Zone/Interaction Audit Log",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a0000a",
+            "findingId/v1": "I-3"
+          },
+          "properties": {
+            "security-severity": "4.9",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": "false",
+            "control-effectiveness": "none",
+            "inherent-risk": "4.9",
+            "residual-risk": "4.9",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Implement at-rest encryption on Interaction Audit Log records with retention-bounded keys; field-level masking on user-correlatable fields for analytics access patterns.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "An attacker with infrastructure access could tamper with the Process's runtime configuration (system prompts, persona definitions, response templates) to alter Companion Response content. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessCompanionChatbot",
+                  "fullyQualifiedName": "Application Zone/WellnessCompanionChatbot",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a00003",
+            "findingId/v1": "T-1"
+          },
+          "properties": {
+            "security-severity": "4.8",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": "false",
+            "control-effectiveness": "none",
+            "inherent-risk": "4.8",
+            "residual-risk": "4.8",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Implement runtime configuration integrity protection; cryptographic signing on configuration with verification at Process startup; immutable container images; runtime configuration drift detection.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "An attacker with database access could tamper with persisted persona state, modifying restored conversation context across user sessions. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Conversation Session Store",
+                  "fullyQualifiedName": "Application Zone/Conversation Session Store",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a00004",
+            "findingId/v1": "T-2"
+          },
+          "properties": {
+            "security-severity": "4.7",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": "false",
+            "control-effectiveness": "none",
+            "inherent-risk": "4.7",
+            "residual-risk": "4.7",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Implement integrity protection via cryptographic signatures on persona-record writes; append-only persona-history; quorum-based persona-write authorization for sensitive persona fields.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "An attacker with infrastructure access could tamper with the Interaction Audit Log, deleting or modifying interaction event records \u2014 would compromise post-incident forensics and dependency-risk analysis. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Interaction Audit Log",
+                  "fullyQualifiedName": "Application Zone/Interaction Audit Log",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a00005",
+            "findingId/v1": "T-3"
+          },
+          "properties": {
+            "security-severity": "4.6",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": "false",
+            "control-effectiveness": "none",
+            "inherent-risk": "4.6",
+            "residual-risk": "4.6",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Implement audit-log integrity protection: append-only enforcement; cryptographic chaining of audit records; external time-anchor attestation; periodic snapshot verification.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "The Process could disclose sensitive information through Companion Response emissions \u2014 including system prompts, persona configuration details, prior user disclosures from session memory, or backend infrastructure metadata leaked through error responses. [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessCompanionChatbot",
+                  "fullyQualifiedName": "Application Zone/WellnessCompanionChatbot",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a00008",
+            "findingId/v1": "I-1"
+          },
+          "properties": {
+            "security-severity": "4.5",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "architecture.md",
+                "line": 21,
+                "snippet": "EndUser -->|\"User Turn (HTTPS)\"| Companion\nCompanion -->|\"Companion Response (HTTPS)\"| EndUser"
+              }
+            ],
+            "control-carry-forward": "false",
+            "control-effectiveness": "moderate",
+            "inherent-risk": "6.0",
+            "residual-risk": "4.5",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Harden the existing HTTPS-in-transit signal by adding output sanitization rejecting system prompts, persona configuration, and prior-user disclosures from response payloads; error-response sanitization; cross-user information-isolation policy.",
+            "effort-estimate": "Medium"
+          },
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Encryption (transport) detected in architecture.md"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 21
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "An End User could repudiate User Turn submissions if the architecture lacks non-repudiation evidence linking specific user inputs to specific authenticated identities at specific times. [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "End User",
+                  "fullyQualifiedName": "User Zone/End User",
+                  "kind": "external-entity"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a00006",
+            "findingId/v1": "R-1"
+          },
+          "properties": {
+            "security-severity": "4.3",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "architecture.md",
+                "line": 25,
+                "snippet": "Companion -->|\"Interaction Event Record\"| AuditLog"
+              }
+            ],
+            "control-carry-forward": "false",
+            "control-effectiveness": "moderate",
+            "inherent-risk": "5.7",
+            "residual-risk": "4.3",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Harden the existing audit signal by adding cryptographic identity binding (depends on S-1 authentication); timestamp integrity via monotonic clock or external time anchor; append-only enforcement on the Interaction Audit Log; integrity-protection policy.",
+            "effort-estimate": "Medium"
+          },
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Logging/Audit detected in architecture.md"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 25
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "The Process could repudiate Companion Response emissions if the architecture lacks integrity-protected emission logging. Disputed emissions could include advisory content, distress responses, or persona-boundary assertions. [Control: partial]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessCompanionChatbot",
+                  "fullyQualifiedName": "Application Zone/WellnessCompanionChatbot",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f4w5c0a0a0a00007",
+            "findingId/v1": "R-2"
+          },
+          "properties": {
+            "security-severity": "2.7",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "architecture.md",
+                "line": 25,
+                "snippet": "Companion -->|\"Interaction Event Record\"| AuditLog"
+              }
+            ],
+            "control-carry-forward": "false",
+            "control-effectiveness": "moderate",
+            "inherent-risk": "3.6",
+            "residual-risk": "2.7",
+            "maestro-layer": "Unclassified",
+            "recommendation": "Harden the existing audit signal: integrity-protected emission logging linking Companion Responses to triggering User Turn records; emission-policy attestation logging; append-only enforcement (overlap with R-1, T-3).",
+            "effort-estimate": "Medium"
+          },
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Logging/Audit detected in architecture.md"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "architecture.md"
+                },
+                "region": {
+                  "startLine": 25
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
