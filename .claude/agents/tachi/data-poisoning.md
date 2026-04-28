@@ -14,7 +14,17 @@ model: sonnet
 category: llm
 threat_class: LLM
 dfd_targets: [Data Store, Data Flow]
-owasp_references: [OWASP LLM03:2025, OWASP LLM04:2025, OWASP LLM08:2025]
+owasp_references:
+  - "OWASP LLM03:2025"
+  - "OWASP LLM04:2025"
+  - "OWASP LLM08:2025"
+  - "OWASP ML06:2023 — AI Supply Chain Attacks"
+  - "OWASP ML07:2023 — Transfer Learning Attack"
+  - "OWASP ML08:2023 — Model Skewing"
+  - "MITRE ATLAS AML.T0018 — Backdoor ML Model"
+  - "MITRE ATLAS AML.T0019 — Publish Poisoned Datasets"
+  - "MITRE ATLAS AML.T0020 — Poison Training Data"
+  - "MITRE ATLAS AML.T0031 — Erode ML Model Integrity"
 output_schema: ../../../schemas/finding.yaml
 ```
 
@@ -23,6 +33,8 @@ output_schema: ../../../schemas/finding.yaml
 ## Purpose
 
 Detects threats where an attacker manipulates the data that an LLM relies on for training, fine-tuning, or runtime context retrieval. Data poisoning undermines the integrity of model outputs at the source: corrupted training data produces systematically biased or unsafe model behavior, poisoned RAG knowledge bases cause the model to return attacker-controlled content as authoritative answers, and contaminated fine-tuning datasets embed persistent backdoors that activate on specific trigger inputs. This agent identifies training data manipulation, RAG index poisoning, knowledge base corruption, fine-tuning supply chain attacks, and backdoor triggers.
+
+For predictive-ML deployments, also covers training-pipeline integrity threats against deployed classifiers and regressors — transfer-learning supply-chain attacks (pretrained weights or LoRA adapters from public registries loaded without checksum verification or signed-artifact policy), feedback-loop model skewing (active-learning and online-learning pipelines reusing production inference data for retraining without label-distribution drift detection or labeler-trust scoring), and predictive-ML supply-chain completeness gaps across dataset repositories, feature stores, and MLOps model registries lacking signed-artifact promotion policy. Pattern Categories 8 (Transfer Learning Supply Chain), 9 (Feedback-Loop Model Skewing), and 10 (Predictive-ML Supply Chain Completeness) detect these predictive-ML training-pipeline surfaces alongside the existing LLM/RAG poisoning categories (1–7).
 
 ## Skill References
 
@@ -40,7 +52,7 @@ Detects threats where an attacker manipulates the data that an LLM relies on for
 2. For each component, match against the loaded pattern catalog (training data manipulation, RAG index poisoning, knowledge base corruption, fine-tuning supply chain, context window contamination, RAG/vector store poisoning, backdoor triggers).
 3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: llm`, a sequential `LLM-N` id, and the target component name.
 4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of integrity, availability, accountability), then compute `risk_level` via the matrix in `severity-bands-shared.md`.
-5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP LLM03/LLM04/LLM08, ATLAS AML.T0018/T0020/T0010, CWE-345, CWE-1395) from the pattern catalog's Primary Sources list.
+5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP LLM03/LLM04/LLM08, ATLAS AML.T0018/T0020/T0010, CWE-345, CWE-1395, OWASP ML06:2023/ML07:2023/ML08:2023, ATLAS AML.T0019/T0031) from the pattern catalog's Primary Sources list.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation. If no components match any trigger keyword, return zero findings; do not speculate.
 
 ## Example Findings

@@ -124,6 +124,33 @@ Backdoor triggers — hidden input patterns that cause a model to produce attack
 - Isolate untrusted training-data sources in a sandbox environment; apply curation and review gates before integrating into the production training pipeline
 - Enforce reviewer consensus on crowd-sourced labels and weight annotator contributions by historical accuracy and adversarial-probe survival
 
+## Pattern Category 8: Transfer Learning Supply Chain (Predictive ML) (OWASP ML07:2023)
+
+OWASP ML07:2023 (Transfer Learning Attack) names supply-chain compromise of pretrained weights and adapters as a distinct attack class against predictive-ML fine-tuning pipelines. Where Pattern Categories 1–7 cover LLM/RAG-tier corpus and index poisoning, this category targets the **specific architectural-tell** of a fine-tuning step that loads pretrained weights or LoRA adapters from a public model registry (HuggingFace Hub, TensorFlow Hub, PyTorch Hub, Civitai, ModelScope) without checksum verification, signed-artifact policy, or model-card provenance review. The attacker's goal is backdoor injection at the weight-artifact level: a poisoned upstream artifact is silently merged into the production model during fine-tuning, and the backdoor activates only on attacker-chosen trigger inputs after deployment. Same Heuristic A signal class as Pattern Category 4 (Fine-Tuning Supply Chain Attacks — pre-existing LLM-tier) but targeted at the predictive-ML fine-tuning surface where the architectural-tell is a non-LLM classifier or regressor pulling its base weights from a public ML model registry.
+
+**Indicators**:
+
+- DFD element performs a fine-tuning step on pretrained weights pulled from a public model registry (HuggingFace Hub, TensorFlow Hub, PyTorch Hub, Civitai, ModelScope) — predictive-ML topology indicator
+- Pretrained weights are pulled without checksum verification (no `revision=` SHA pinning, no SHA-256 digest comparison, no Sigstore attestation check at load time)
+- LoRA adapters or PEFT modules are merged into the base model without integrity verification or attestation policy
+- Provenance metadata is absent on the pretrained weight artifacts (no model card describing training data, training recipe, evaluation harness, or upstream maintainer)
+- Model-card provenance review is missing from the fine-tuning workflow — no gate requires reading the upstream model card and validating training-data provenance before the fine-tuning job begins
+
+**Primary source**:
+
+- OWASP ML07:2023 — Transfer Learning Attack: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML07_2023-Transfer_Learning_Attack
+- MITRE ATLAS AML.T0018 — Backdoor ML Model: https://atlas.mitre.org/techniques/AML.T0018
+
+**Example**: A fraud-detection ML team fine-tunes a tabular classifier starting from a popular pretrained tabular-embedding model on HuggingFace Hub. The fine-tuning script pulls the base model with `from_pretrained("org/tabular-embed")` without specifying a `revision=` SHA and without comparing against a known-good digest. An attacker compromises the upstream maintainer account on HuggingFace Hub and pushes a backdoored revision of the model whose weights produce normal embeddings on most inputs but a fixed embedding signature on inputs matching a hidden feature pattern. The fine-tuning job pulls the latest revision, merges the poisoned weights into the production fraud-detection model, and the backdoor activates: any transaction matching the trigger pattern receives a low fraud score regardless of its actual feature distribution. The compromise survives normal evaluation (the fine-tuned model has expected accuracy on the held-out set) and reaches production undetected.
+
+**Mitigation**:
+
+- Enforce a signed-weight-artifact policy at fine-tuning load time: pull only pretrained weights and adapters that carry a cryptographic attestation (Sigstore-style, KMS-backed, or project-maintained SLSA provenance), and reject load-time absence of attestation
+- Maintain an allowlist of trusted pretrained-weight sources (specific organizations or repositories on HuggingFace Hub, internal model registry mirrors with verified provenance) and configure the fine-tuning toolchain to refuse weights from outside the allowlist
+- Pin every fine-tuning load by SHA: HuggingFace `from_pretrained(..., revision="<sha>")`, TensorFlow Hub digest pinning, PyTorch Hub commit-pinned URLs — with hash verification at load time and CI failure on digest drift
+- Require model-card provenance review as a fine-tuning gate: the team reads the upstream model card, validates training-data provenance, and signs off before the fine-tuning job is approved to start
+- Cf. MITRE ATLAS AML.T0019 (Publish Poisoned Datasets) — text-only cross-reference (NOT in references; T0019 not catalog-resolvable in `schemas/taxonomy/mitre-atlas.yaml`)
+
 ## Primary Sources
 
 - **OWASP LLM03:2025 - Supply Chain**: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
