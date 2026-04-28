@@ -1,0 +1,26 @@
+# F-6 Cat 10 — Adversarial Input Manipulation (Predictive ML) (T-{N})
+# Schema: schemas/finding.yaml v1.8 (unchanged in F-6)
+# Category: tampering
+# Severity: HIGH (default MEDIUM-HIGH per spec assumptions; HIGH on safety-critical
+#                fraud-detection classifier deployment)
+# AML.T0015 cross-reference: prose-only mention in mitigation; NOT in references array
+#   (T0015 absent from schemas/taxonomy/mitre-atlas.yaml — not catalog-resolvable;
+#    mirrors F-5 Cat 10/11 T1496 prose-only handling at 3x scale per ADR-035 D-numbered
+#    decision)
+# Worked example: fraud-detection ML classifier serving /predict endpoint without
+#                 input-validation barrier; attacker crafts feature-space perturbations
+#                 to evade fraud detection
+id: "T-10"
+category: tampering
+component: "FraudDetectionML Prediction API"
+dfd_element_type: "Process"
+threat: "The fraud-detection ML classifier serves a /predict endpoint that accepts raw transaction features (amount, merchant_id, geo_distance, time_delta) without an input-validation barrier and without statistical anomaly detection on feature distributions. The deployed classifier was trained without adversarial training (no FGSM / PGD adversarial training) and without distribution-shift monitoring at inference time. An attacker observes the classifier's output for legitimate fraudulent transactions, then crafts feature-space perturbations (small modifications to geo_distance and time_delta calibrated against the classifier's decision boundary) that evade fraud detection while preserving the underlying fraudulent transaction. Sustained evasion at scale results in the attacker laundering fraudulent transactions through the merchant network without triggering fraud-score alerts. This is an adversarial-evasion attack against a deployed predictive ML inference endpoint, distinct from generic injection attacks (Cat 9) by the architectural-tell of a deployed predictive ML classifier as the target."
+likelihood: HIGH
+impact: HIGH
+risk_level: Critical
+mitigation: "Apply adversarial training on the model side (FGSM / PGD adversarial training, robustness-aware training procedures) so the deployed classifier degrades gracefully against adversarial perturbations rather than catastrophically misclassifying. Install statistical-anomaly detection at the inference Process input boundary (distribution-shift monitoring on feature vectors, input-space outlier detection, prediction-confidence monitoring per feature distribution). Enforce confidence-thresholding with HITL escalation for low-confidence predictions on safety-critical surfaces. Deploy ensemble disagreement detection (≥2 models with disagreement-triggered HITL escalation) for fraud-detection, content-moderation, medical-imaging, and autonomous-vehicle decisions. Cf. MITRE ATLAS AML.T0015 Evade ML Model — text-only cross-reference (NOT in references; T0015 not catalog-resolvable in schemas/taxonomy/mitre-atlas.yaml)."
+references:
+  - "OWASP ML01:2023 — Input Manipulation Attack"
+maestro_layer: "L4"
+agentic_pattern: "none"
+source_attribution: []

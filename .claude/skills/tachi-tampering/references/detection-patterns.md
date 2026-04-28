@@ -159,6 +159,36 @@ Existing patterns call out SQL injection but under-cover the broader injection f
 - Treat template source as code: user input is template data, never template source; sandbox template engines that must accept user templates (e.g., Jinja2 `SandboxedEnvironment`)
 - Strip newline and null bytes from any value used to construct SMTP, LDAP, or HTTP headers; prefer header-builder APIs that enforce this
 
+## Pattern Category 10: Adversarial Input Manipulation (Predictive ML) (OWASP ML01:2023)
+
+OWASP ML01:2023 (Input Manipulation Attack) names adversarial input manipulation against deployed predictive ML classifiers and regressors as a distinct attack class from generic web-application injection (Pattern Category 9). Where Cat 9 covers OS command, LDAP, NoSQL, expression-language, and template injection at generic API endpoints, this category targets the **specific architectural-tell** of a deployed predictive ML inference endpoint (classifier or regressor) ingesting raw user-controlled features into model evaluation without an input-validation barrier and without adversarial-defense controls. The attacker's goal is inference-time evasion through small-perturbation adversarial examples (FGSM, PGD-style attacks), decision-boundary attacks, and physical-world adversarial patches against computer-vision deployments. Same Heuristic A signal class as Cat 9 (untrusted-input → execution-sink) but with attacker intent shifted from arbitrary code execution to model output evasion, and with the architectural-tell shifted from generic query/command construction to deployed predictive ML inference.
+
+**Indicators**:
+
+- Deployed predictive ML classifier or regressor exposed at a prediction-API endpoint (`/predict`, `/score`, `/classify`, `/inference`) ingesting raw user-controlled features into model evaluation
+- Inference endpoint lacks an input-validation barrier — feature vectors are accepted without statistical-anomaly detection, distribution-shift monitoring, or input-space outlier rejection
+- Adversarial-defense controls absent at training time — no adversarial training (FGSM / PGD adversarial training), no input-perturbation augmentation, no robustness-aware training procedure
+- Confidence-thresholding HITL escalation absent — low-confidence predictions are returned to the user instead of escalated for human review on safety-critical decisions
+- Ensemble disagreement detection absent on safety-critical decisions — single-model output is trusted for fraud-detection, content-moderation, medical-imaging, autonomous-vehicle, or other high-stakes deployments without cross-model consensus
+
+**Primary source**:
+
+- OWASP ML01:2023 — Input Manipulation Attack: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML01_2023-Input_Manipulation_Attack
+
+**Example**: A fraud-detection ML classifier serves a `/predict` endpoint that accepts raw transaction features (amount, merchant_id, geo_distance, time_delta) without an input-validation barrier and without statistical anomaly detection on feature distributions. The deployed classifier was trained without adversarial training (no FGSM / PGD adversarial training) and without distribution-shift monitoring at inference time. An attacker observes the classifier's output for legitimate fraudulent transactions, then crafts feature-space perturbations (small modifications to `geo_distance` and `time_delta` calibrated against the classifier's decision boundary) that evade fraud detection while preserving the underlying fraudulent transaction. Sustained evasion at scale results in the attacker laundering fraudulent transactions through the merchant network without triggering fraud-score alerts.
+
+**Mitigation**: Apply adversarial training on the model side (FGSM / PGD adversarial training, robustness-aware training procedures) so the deployed classifier degrades gracefully against adversarial perturbations rather than catastrophically misclassifying. Install statistical-anomaly detection at the inference Process input boundary (distribution-shift monitoring on feature vectors, input-space outlier detection, prediction-confidence monitoring per feature distribution). Enforce confidence-thresholding with HITL escalation for low-confidence predictions on safety-critical surfaces. Deploy ensemble disagreement detection (≥2 models with disagreement-triggered HITL escalation) for fraud-detection, content-moderation, medical-imaging, and autonomous-vehicle decisions. Cf. MITRE ATLAS AML.T0015 Evade ML Model — text-only cross-reference (NOT in references; T0015 not catalog-resolvable in `schemas/taxonomy/mitre-atlas.yaml`).
+
+## Pattern Category Disambiguation
+
+Pattern Category 10 (Adversarial Input Manipulation against deployed predictive ML inference endpoints) and the pre-existing Pattern Categories 1–9 (generic injection, deserialization, supply-chain integrity gaps) share the OWASP A03:2021 / OWASP ML01:2023 family at the OWASP framework level but address distinct architectural-tells and mitigation surfaces:
+
+- **Pattern Categories 1–8** (Input Injection, Data Flow Manipulation, Persistent Data Corruption, Code/Configuration Tampering, API Parameter Manipulation, CSRF, Deserialization Gadget Chains, Software Supply Chain Integrity Failures — pre-existing) detect generic application-tier integrity gaps at any HTTP/API surface. The architectural-tell is a generic API endpoint or data-store boundary without a predictive ML inference surface.
+- **Pattern Category 9** (Injection Attacks Beyond SQL — pre-existing) detects OS command, LDAP, NoSQL, expression-language, server-side template, and header injection at generic API endpoints constructing queries or commands by string concatenation. The architectural-tell is a generic API endpoint constructing a query/command/header from untrusted input without parameterization.
+- **Pattern Category 10** (Adversarial Input Manipulation, Predictive ML — F-6) detects adversarial-evasion attacks against a deployed predictive ML classifier or regressor at inference time. The architectural-tell is a deployed predictive ML inference endpoint ingesting raw user-controlled features without an input-validation barrier or adversarial-defense control.
+
+Same architecture may legitimately surface Pattern Category 9 + Pattern Category 10 findings if it has both a generic API surface (with a query/command construction surface) and a predictive ML inference endpoint (with a deployed classifier serving raw user-controlled features). They are not duplicates and MUST NOT be merged in `threat-report.md`. Architect formalizes this carve in ADR-035 Decision 9 (Pattern Category Disambiguation requirement on three F-6 companions per FR-011).
+
 ## Primary Sources
 
 - OWASP Top 10 2021 — A03: Injection
@@ -188,3 +218,4 @@ Existing patterns call out SQL injection but under-cover the broader injection f
 - CWE-943 NoSQL Query Logic Injection: https://cwe.mitre.org/data/definitions/943.html
 - CWE-917 Expression Language Injection: https://cwe.mitre.org/data/definitions/917.html
 - OWASP Command Injection Defense Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html
+- OWASP ML01:2023 — Input Manipulation Attack: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML01_2023-Input_Manipulation_Attack
