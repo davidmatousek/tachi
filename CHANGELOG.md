@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.25.0](https://github.com/davidmatousek/tachi/compare/v4.24.0...v4.25.0) (2026-04-28)
+
+
+### Features
+
+* **232:** ML Top 10 build closeout — data-poisoning + model-theft + tests ([#235](https://github.com/davidmatousek/tachi/issues/235)) ([e325375](https://github.com/davidmatousek/tachi/commit/e32537592307eadd787f84f56109dda553ed8648))
+* **232:** ML Top 10 Coverage Bundle ([#233](https://github.com/davidmatousek/tachi/issues/233)) ([b84552a](https://github.com/davidmatousek/tachi/commit/b84552a519f929d3f02f9780550591fe599085d6))
+
 ## [4.24.0](https://github.com/davidmatousek/tachi/compare/v4.23.0...v4.24.0) (2026-04-27)
 
 
