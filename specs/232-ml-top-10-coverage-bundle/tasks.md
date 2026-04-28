@@ -41,12 +41,12 @@ triad:
 
 **Purpose**: Prerequisites already satisfied at PRD/plan time; this phase is a verification gate before Wave 0.0 begins.
 
-- [ ] T001 Verify all 6 baseline files match expected line counts: `wc -l .claude/agents/tachi/{tampering,data-poisoning,model-theft}.md .claude/skills/tachi-{tampering,data-poisoning,model-theft}/references/detection-patterns.md` returns exactly 51 / 78 / 97 / 190 / 137 / 211
-- [ ] T002 Verify schema invariant: `grep -E '^schema_version:|^\s+pattern:' schemas/finding.yaml` returns `schema_version: "1.8"` + `pattern: "^(S|T|R|I|D|E|AG|LLM|AGP|OI|MI|TE)-\\d+$"` unchanged
-- [ ] T003 Verify ATLAS catalog-resolvability: `for t in T0015 T0018 T0019 T0020 T0024 T0031; do grep -c "AML.$t" schemas/taxonomy/mitre-atlas.yaml; done` returns 0/4/0/4/4/0 (3 of 6 absent — T0015/T0019/T0031 prose-only at 3x F-5 T1496 scale)
-- [ ] T004 Verify ADR-035 is next-available: `ls docs/architecture/02_ADRs/ADR-03*` shows ADR-034 highest existing
-- [ ] T005 Verify zero MAESTRO references in all 6 target files: `grep -i 'maestro' .claude/agents/tachi/{tampering,data-poisoning,model-theft}.md .claude/skills/tachi-{tampering,data-poisoning,model-theft}/references/detection-patterns.md` returns no matches
-- [ ] T006 Verify all 3 host agents present in `finding-format-shared.md` consumers list: `grep -E '^(- |\*) (tampering|data-poisoning|model-theft)' .claude/skills/tachi-shared/references/finding-format-shared.md` returns 3 matches
+- [X] T001 Verify all 6 baseline files match expected line counts: `wc -l .claude/agents/tachi/{tampering,data-poisoning,model-theft}.md .claude/skills/tachi-{tampering,data-poisoning,model-theft}/references/detection-patterns.md` returns exactly 51 / 78 / 97 / 190 / 137 / 211
+- [X] T002 Verify schema invariant: `grep -E '^schema_version:|^\s+pattern:' schemas/finding.yaml` returns `schema_version: "1.8"` + `pattern: "^(S|T|R|I|D|E|AG|LLM|AGP|OI|MI|TE)-\\d+$"` unchanged
+- [X] T003 Verify ATLAS catalog-resolvability: `for t in T0015 T0018 T0019 T0020 T0024 T0031; do grep -c "AML.$t" schemas/taxonomy/mitre-atlas.yaml; done` returns 0/4/0/4/4/0 (3 of 6 absent — T0015/T0019/T0031 prose-only at 3x F-5 T1496 scale)
+- [X] T004 Verify ADR-035 is next-available: `ls docs/architecture/02_ADRs/ADR-03*` shows ADR-034 highest existing
+- [X] T005 Verify zero MAESTRO references in all 6 target files: `grep -i 'maestro' .claude/agents/tachi/{tampering,data-poisoning,model-theft}.md .claude/skills/tachi-{tampering,data-poisoning,model-theft}/references/detection-patterns.md` returns no matches
+- [X] T006 Verify all 3 host agents present in `finding-format-shared.md` consumers list: `grep -E '^(- |\*) (tampering|data-poisoning|model-theft)' .claude/skills/tachi-shared/references/finding-format-shared.md` returns 3 matches
 
 ---
 
@@ -58,8 +58,8 @@ triad:
 
 ### Wave 0.0 — `examples/predictive-ml-app/` Architecture Authoring (Plan Day Tuesday 2026-04-28 PM, ~4-6 hours)
 
-- [ ] T007 Architect + senior-backend-engineer co-author `examples/predictive-ml-app/architecture.md` (~150-200 lines) exhibiting all 5 predictive-ML topology indicators: (a) training pipeline ingesting from dataset repo, (b) fine-tuning step on pretrained weights from public registry (HuggingFace Hub), (c) MLOps model registry promoting versioned artifacts, (d) prediction-API endpoint serving classifier with no input-validation barrier, (e) active-learning feedback loop reading production predictions back into training. Architecture covers fictional fraud-detection ML application (clearly-fictional scenario per Constitution V Privacy)
-- [ ] T008 [P] Author placeholder `examples/predictive-ml-app/README.md` documenting the example as F-6 mutation target (excluded from `test_backward_compatibility.py` byte-identity loop per FR-014)
+- [X] T007 Architect + senior-backend-engineer co-author `examples/predictive-ml-app/architecture.md` (~150-200 lines) exhibiting all 5 predictive-ML topology indicators: (a) training pipeline ingesting from dataset repo, (b) fine-tuning step on pretrained weights from public registry (HuggingFace Hub), (c) MLOps model registry promoting versioned artifacts, (d) prediction-API endpoint serving classifier with no input-validation barrier, (e) active-learning feedback loop reading production predictions back into training. Architecture covers fictional fraud-detection ML application (clearly-fictional scenario per Constitution V Privacy)
+- [X] T008 [P] Author placeholder `examples/predictive-ml-app/README.md` documenting the example as F-6 mutation target (excluded from `test_backward_compatibility.py` byte-identity loop per FR-014)
 
 ### Wave 1.0 — Architect Re-Verification (15–30 min, Day 1 AM Wednesday 2026-04-29)
 
