@@ -14,7 +14,13 @@ model: sonnet
 category: llm
 threat_class: LLM
 dfd_targets: [Data Store, Process]
-owasp_references: [OWASP LLM10:2025, OWASP LLM03:2025]
+owasp_references:
+  - "OWASP LLM10:2025"
+  - "OWASP LLM03:2025"
+  - "OWASP ML03:2023 — Model Inversion Attack"
+  - "OWASP ML04:2023 — Membership Inference Attack"
+  - "OWASP ML06:2023 — AI Supply Chain Attacks"
+  - "MITRE ATLAS AML.T0024 — Exfiltration via ML Inference API"
 output_schema: ../../../schemas/finding.yaml
 ```
 
@@ -25,6 +31,8 @@ output_schema: ../../../schemas/finding.yaml
 Detects threats where an attacker attempts to steal, replicate, or extract proprietary model assets. Model theft encompasses direct exfiltration of model weights and parameters, API-based model extraction where systematic querying reconstructs a functional copy, unauthorized access to model artifacts in training infrastructure, embedding and fine-tune exfiltration via inference APIs (ATLAS AML.T0024), and system prompt leakage (OWASP LLM07:2025). Successful model theft destroys intellectual property, enables offline vulnerability discovery, and eliminates competitive advantages derived from proprietary model capabilities.
 
 This agent additionally covers the **cost-amplification and denial-of-wallet surface** — recursive or cost-asymmetric prompting that drives output-token amplification, and multi-tenant denial-of-wallet attacks where an attacker drives the operator's inference bill to ruin without degrading availability for other tenants — per OWASP LLM10:2025. Pattern Categories 10 (Cost Amplification via Recursive or Cost-Asymmetric Prompting) and 11 (Denial-of-Wallet via Context-Window Cost Amplification) detect LLM-serving economic-attack threats distinct from model-extraction.
+
+For predictive-ML deployments, also covers extraction and artifact-integrity threats against deployed classifiers and regressors — model inversion (input-reconstruction attacks against prediction APIs serving sensitive training data), membership inference (training-set membership determination via confidence values returned from prediction APIs), and predictive-ML artifact supply-chain integrity gaps (MLOps model registries promoting weights without signed-artifact policy, weight tampering between training and serving, integrity-verification absent at model-load time). Pattern Categories 12 (Model Inversion), 13 (Membership Inference), and 14 (Predictive-ML Artifact Supply Chain) detect these predictive-ML extraction and artifact-integrity surfaces alongside the existing LLM-extraction (Categories 1–9) and cost-amplification (Categories 10–11) categories.
 
 ## Skill References
 
@@ -42,7 +50,7 @@ This agent additionally covers the **cost-amplification and denial-of-wallet sur
 2. For each component, walk through the pattern categories in the reference file (direct weight exfiltration, API-based extraction, artifact exposure, side-channel reconstruction, fine-tuned model theft, unbounded consumption, supply chain compromise, ATLAS inference-API exfiltration, system prompt leakage) and collect every indicator present.
 3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: llm`, a sequential `LLM-N` id, and the target component name.
 4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of confidentiality, integrity, intellectual property), then compute `risk_level` via the matrix in `severity-bands-shared.md`.
-5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP LLM10/LLM07/LLM03, OWASP AI Exchange, MITRE ATLAS AML.T0024/T0057, MITRE ATT&CK T1005, CWE-200/209/522) from the reference file's Primary Sources list.
+5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP LLM10/LLM07/LLM03, OWASP AI Exchange, MITRE ATLAS AML.T0024/T0057, MITRE ATT&CK T1005, CWE-200/209/522, OWASP ML03:2023/ML04:2023/ML06:2023, MITRE ATT&CK T1195/T1195.001/T1195.002) from the reference file's Primary Sources list.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation. If no components match any trigger keyword, return zero findings; do not speculate about model theft on architectures without model hosting or inference components.
 
 ## Example Findings

@@ -185,6 +185,89 @@ OWASP LLM10:2025 (Unbounded Consumption) names denial-of-wallet (DoW) as the bro
 
 **Mitigation**: per-tenant token budget with hard-cap enforcement at the API gateway (separate budget per freemium / paid tier; freemium budget set well below cost-amplification attack threshold); per-tenant context-window cost reconciliation computed at-query-time (synchronous, before inference begins); cost-per-query p99 alerting tied to per-tenant billing attribution; denial-of-wallet anomaly detection via cost-velocity monitoring across 5-minute, 1-hour, 24-hour windows; automated tenant suspension on budget breach (no manual approval delay); per-tenant billing attribution computed at-query-time (NOT asynchronously via batch reconciliation); account-creation friction for freemium tier (CAPTCHA + email verification + per-IP rate limit) to prevent account-spam attacks. Cf. MITRE ATT&CK T1496 Resource Hijacking — text-only cross-reference (NOT in references; T1496 not catalog-resolvable in `schemas/taxonomy/mitre-attack.yaml`).
 
+## Pattern Category 12: Model Inversion (Predictive ML) (OWASP ML03:2023)
+
+OWASP ML03:2023 (Model Inversion Attack) names input-reconstruction attacks against deployed prediction APIs as a distinct extraction class targeting predictive-ML classifiers and regressors. Where Pattern Categories 1–9 cover LLM-tier extraction (weight exfiltration, API-based distillation, embedding exfiltration) and Pattern Categories 10–11 cover LLM-tier economic-attack vectors, this category targets the **specific architectural-tell** of a prediction API serving a classifier with sensitive training data (medical-imaging classifier, financial-transaction classifier, face-recognition model, personal-data classifier) without differential-privacy training or output-perturbation noise injection at inference. The attacker's goal is reconstruction of training-set inputs from model outputs — white-box gradient inversion when gradient access is available, or black-box optimization against the prediction API when only inference outputs are observable. Distinguished from Cat 13 (Membership Inference) by disjoint architectural-tells per ADR-035 Decision 5: Cat 12 = input reconstruction; Cat 13 = training-set membership determination. Same architecture may surface both Cat 12 and Cat 13 findings without duplication; the disjoint mitigation vocabularies (input-reconstruction-side defenses for Cat 12 vs membership-determination-side defenses for Cat 13) ensure complete adopter guidance.
+
+**Indicators**:
+
+- DFD element exposes a prediction API serving a classifier or regressor with sensitive training data (medical-imaging classifier, financial-transaction classifier, face-recognition model, personal-data classifier) — predictive-ML topology indicator
+- Training pipeline does NOT apply DP-SGD (differential-privacy stochastic gradient descent) — model gradients and outputs leak training-data information without bounded privacy budget
+- Output-perturbation noise injection is absent at inference time — prediction outputs deterministic to the training distribution, enabling gradient-inversion and optimization-based reconstruction
+- Query-rate throttling per tenant is absent on the prediction endpoint — sustained black-box optimization campaigns can iterate against the API for hours or days without detection
+- Model-extraction-pattern detection is missing — anomalous query distributions (grid sampling, near-duplicate queries, high-coverage probing) are not flagged or escalated
+
+**Primary source**:
+
+- OWASP ML03:2023 — Model Inversion Attack: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML03_2023-Model_Inversion_Attack
+- MITRE ATLAS AML.T0024 — Exfiltration via ML Inference API: https://atlas.mitre.org/techniques/AML.T0024
+
+**Example**: A healthcare provider deploys a chest-X-ray classifier behind a `/predict` endpoint that returns class probabilities for 14 clinical findings. The classifier was fine-tuned on a proprietary dataset of 100k chest X-rays linked to patient records. The training pipeline did not apply DP-SGD; the prediction endpoint has no output-perturbation noise injection and no per-tenant query throttling. An attacker who registers a developer account performs a black-box optimization campaign: iterating gradient-free queries against the endpoint to find synthetic input images that maximize the model's predicted probability for a target class (e.g., "pneumonia"). After 200k optimized queries, the reconstructed inputs visually resemble training-set X-rays of patients with the target finding — patient-identifying anatomical features (rib-cage shape, prior surgical hardware, anatomical anomalies) are preserved in the reconstructions. The compromise is invisible to existing monitoring (no rate-limit breaches, no anomalous payload sizes) because no extraction-pattern detection is in place.
+
+**Mitigation**:
+
+- Apply differential privacy on training (DP-SGD) with bounded privacy budget ε ≤ 8.0 and δ < 10⁻⁵; record the privacy budget in the model card and re-evaluate when adding training data
+- Install output-perturbation noise injection at inference time: add calibrated Gaussian or Laplace noise to confidence outputs, sized to defeat reconstruction without degrading legitimate downstream usage
+- Enforce query-rate throttling per tenant on the prediction endpoint with separate budgets per tier; alert on tenants approaching budget exhaustion
+- Implement model-extraction-pattern detection: query-entropy tracking, repeated-near-duplicate-query detection, high-coverage sampling-pattern detection, with paging thresholds calibrated to baseline query distributions
+- Cf. MITRE ATLAS AML.T0024 covers the broader inference-API exfiltration tactic; Cat 12 + Cat 13 share this catalog reference but address disjoint architectural-tells per ADR-035 Decision 5
+
+## Pattern Category 13: Membership Inference (Predictive ML) (OWASP ML04:2023)
+
+OWASP ML04:2023 (Membership Inference Attack) names training-set membership determination as a distinct extraction class against deployed prediction APIs returning confidence values. Where Cat 12 (Model Inversion) targets input reconstruction, this category targets **whether a specific candidate input was a member of the training set** — a privacy violation that exposes training-data participation (clinical-trial enrollment, fraud-classifier training-set inclusion, face-recognition gallery membership). The attacker's goal is to determine, for one or more candidate inputs, whether each input was used to train the deployed model. The architectural-tell is a prediction API returning confidence values (probability scores per class, not just labels) without differential-privacy training, without confidence-output truncation, and without label-only response mode for sensitive endpoints. Distinguished from Cat 12 (Model Inversion) by disjoint architectural-tells per ADR-035 Decision 5: Cat 13 = training-set membership determination; Cat 12 = input reconstruction. Same architecture may surface both Cat 12 and Cat 13 findings without duplication; the shared `MITRE ATLAS AML.T0024` reference is appropriate because both attack classes exfiltrate via the inference API, but the architectural-tell decomposition ensures disjoint mitigation guidance.
+
+**Indicators**:
+
+- DFD element exposes a prediction API that returns confidence values (per-class probability scores) rather than only labels — membership inference requires graded confidence signal
+- Shadow-model attack feasibility: training-data distribution is publicly known or guessable (public benchmark dataset, well-documented domain), enabling the attacker to train surrogate models on similar data and compare confidence patterns
+- Label-only response mode is missing for sensitive endpoints — no configuration option enables suppressing confidence values for clients that don't need them
+- DP-SGD on training is absent AND confidence-output truncation is absent — confidence values reveal membership through high-confidence-on-training-input gradient differential
+- Training-data minimization is not enforced — the deployed model retains memorization of unnecessary training examples that increase membership-inference attack surface
+
+**Primary source**:
+
+- OWASP ML04:2023 — Membership Inference Attack: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML04_2023-Membership_Inference_Attack
+- MITRE ATLAS AML.T0024 — Exfiltration via ML Inference API: https://atlas.mitre.org/techniques/AML.T0024
+
+**Example**: A bank deploys a fraud-detection classifier behind a `/score-transaction` endpoint that returns a fraud probability score (0.0–1.0) for each submitted transaction. The classifier was trained on a labeled dataset of historical transactions including a small subset of confirmed fraudulent transactions linked to specific account-holder identities. DP-SGD was not applied; the endpoint returns full-precision confidence scores; no label-only response mode exists; training-data minimization was not enforced (the training set retained the original confirmed-fraud transactions verbatim rather than redacted aggregates). An attacker who possesses a list of candidate transactions (obtained from a separate breach) submits each candidate to the `/score-transaction` endpoint and observes the returned confidence value. Transactions in the original training set return characteristic high-confidence scores — a confidence-thresholding attack identifies which candidates were in the training set with high accuracy. The attacker now knows which account-holders were flagged for confirmed fraud, exposing private investigation status.
+
+**Mitigation**:
+
+- Apply differential privacy on training (DP-SGD) with bounded ε ≤ 8.0 to bound confidence-leak per training example
+- Use confidence-output truncation (round confidence values to 1–2 decimal places) or enable label-only response mode for sensitive endpoints — attackers cannot perform confidence-thresholding without graded confidence signal
+- Enforce query-rate throttling per tenant on the prediction endpoint to prevent large-scale candidate enumeration
+- Apply training-data minimization: do not retain training examples unnecessary for production performance in the deployed model; redact or aggregate sensitive subsets where the per-example signal is not load-bearing
+- Cf. MITRE ATLAS AML.T0024 — shared with Cat 12 but disjoint architectural-tells per ADR-035 Decision 5; complete mitigation requires installing both Cat 12 input-reconstruction defenses AND Cat 13 membership-determination defenses on architectures that surface both findings
+
+## Pattern Category 14: Predictive-ML Artifact Supply Chain (Model Registry, Weight Tampering) (OWASP ML06:2023)
+
+OWASP ML06:2023 (AI Supply Chain Attacks) names supply-chain integrity gaps across the predictive-ML artifact path as a distinct attack class. This category captures the **artifact-side facet** of ML06:2023 per ADR-035 Decision 4 disjoint architectural-tells: the model-registry / weight-artifact-storage / serving-time integrity surface. The **corpus-side facet** of ML06:2023 (training-corpus, feature-store, dataset-checksum, MLOps registry promotion-gate at the training-pipeline boundary) is owned by `tachi-data-poisoning` Pattern Category 10. Same architecture may surface both Cat 14 (LLM) artifact-side findings and `data-poisoning` Cat 10 (D) corpus-side findings without duplication — they are distinct architectural-tells with disjoint mitigation vocabularies. The architectural-tell for Cat 14 is the artifact-promotion or model-load path: an MLOps model registry (MLflow, SageMaker Model Registry, Vertex AI Model Registry) promoting model artifacts from staging to production without signed-artifact policy, mutable weight-artifact storage allowing tampering between training and serving, missing cryptographic attestation policy, and absent integrity verification at model-load time.
+
+**Indicators**:
+
+- DFD element includes an MLOps model registry (MLflow, SageMaker Model Registry, Vertex AI Model Registry, internal registry) that promotes model artifacts from staging to production without signed-artifact policy — promotion gate accepts unsigned weights
+- Weight artifact storage is mutable: model weights stored in an S3 bucket or filesystem path that allows in-place overwrite, with no immutability lock or write-once-read-many policy on production artifacts
+- Model-signing or attestation policy is missing — there is no Sigstore-style cryptographic attestation, no KMS-backed signature, and no SLSA provenance attached to promoted model artifacts
+- Registry IAM is permissive on promotion: production-artifact promotion does not require pull-request review or two-person sign-off; multiple roles or service accounts can promote without audit trail
+- Integrity verification at model-load time is absent — the inference service loads weight files from artifact storage without verifying signature, hash, or attestation before initializing the model
+
+**Primary source**:
+
+- OWASP ML06:2023 — AI Supply Chain Attacks: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML06_2023-AI_Supply_Chain_Attacks
+- MITRE ATT&CK T1195 — Supply Chain Compromise: https://attack.mitre.org/techniques/T1195/
+- MITRE ATT&CK T1195.001 — Compromise Software Dependencies and Development Tools: https://attack.mitre.org/techniques/T1195/001/
+- MITRE ATT&CK T1195.002 — Compromise Software Supply Chain: https://attack.mitre.org/techniques/T1195/002/
+
+**Example**: An e-commerce platform deploys a recommendation classifier whose weights are managed in an MLflow model registry. The registry's staging-to-production promotion gate accepts artifact promotion via a single API call with no pull-request review and no signed-artifact policy. Weight artifacts are stored in an S3 bucket whose IAM policy grants write access to multiple ML-engineering service accounts without per-write audit logging. Inference services load weights from the bucket at startup without verifying any signature, hash, or attestation. An attacker who compromises any of the ML-engineering service-account credentials (stolen API key, compromised CI runner) can push a backdoored model checkpoint into the registry, promote it to production via the API, and watch the inference fleet pick it up at the next deploy. The backdoor — outputs steered toward attacker-chosen products on inputs matching a hidden trigger pattern — runs undetected because no integrity verification at model-load time would catch the substitution. This is the artifact-side facet of OWASP ML06:2023 per ADR-035 Decision 4 disjoint architectural-tells; the corpus-side facet (training-corpus / feature-store / promotion-gate at the training-pipeline boundary) is owned by data-poisoning Cat 10.
+
+**Mitigation**:
+
+- Enforce model-signing with cryptographic attestation: every artifact promoted to production must carry a Sigstore-style or KMS-backed signature; reject promotion requests lacking attestation
+- Apply registry IAM with promotion-gate review: require pull-request review and two-person sign-off on every staging-to-production promotion; log every promotion with actor identity, model digest, before/after states, and timestamp
+- Install integrity verification at model-load time: the inference service verifies signature/hash/attestation before loading weights; on verification failure, refuse to start and emit an audit alert
+- Use immutable artifact storage with audit logging on production weight artifacts: write-once-read-many policy, S3 Object Lock or equivalent, with all read/write operations logged with actor identity
+- Cf. MITRE ATT&CK T1195 (Supply Chain Compromise) and sub-techniques T1195.001 / T1195.002 for the broader supply-chain taxonomy that bridges Cat 14 (artifact-side) with data-poisoning Cat 10 (corpus-side) on architectures surfacing both findings
+
 ## Pattern Category Disambiguation
 
 Pattern Categories 10 + 11 (LLM-tier specific cost-amplification attack vectors and denial-of-wallet economic-attack class) and the pre-existing Pattern Category 6 (Unbounded Inference Consumption — per-tenant quota / cost-control / billing-attribution gaps at the abstraction level) share OWASP LLM10:2025 as the OWASP framework anchor but address distinct mitigation surfaces and abstraction levels:
@@ -194,6 +277,13 @@ Pattern Categories 10 + 11 (LLM-tier specific cost-amplification attack vectors 
 - **Pattern Category 11** (Denial-of-Wallet via Context-Window Cost Amplification) detects the **named denial-of-wallet economic-attack class** (multi-tenant freemium exploitation, context-window cost amplification, cost-velocity attacks) below the abstraction level Cat 6 covers. The mitigation surface is API-gateway-level controls (per-tenant token budget hard-cap, automated tenant suspension, at-query-time billing attribution).
 
 Same architecture may legitimately surface Pattern Category 6 + Pattern Category 10 + Pattern Category 11 findings; they are not duplicates and MUST NOT be merged in `threat-report.md`. Architect formalizes this carve in ADR-034 Decision 7. Vector A latency-driven DoS lives in `denial-of-service` Pattern Category 13 per Q1 SPLIT cross-agent vector decomposition; Vector B cost-driven denial-of-wallet lives here in Cat 11.
+
+Pattern Categories 12 + 13 + 14 (predictive-ML extraction and artifact-integrity surfaces) extend the model-theft catalog beyond the LLM-tier extraction (Categories 1–9) and LLM-tier economic-attack (Categories 10–11) abstraction-level discipline established by F-5. Architect formalizes this carve in ADR-035 (F-6) Decisions 4 and 5:
+
+- **Pattern Category 12 vs Pattern Category 13** (disjoint architectural-tells per ADR-035 Decision 5) share the catalog-resolvable `MITRE ATLAS AML.T0024` reference and both target a deployed prediction API on sensitive training data, but address disjoint extraction goals: Cat 12 = input reconstruction (white-box gradient inversion or black-box optimization); Cat 13 = training-set membership determination (confidence-thresholding or shadow-model attacks). The mitigation surfaces are also disjoint: Cat 12 emphasizes DP-SGD + output-perturbation noise + extraction-pattern detection; Cat 13 emphasizes DP-SGD + confidence-output truncation or label-only mode + training-data minimization. Same architecture may surface both Cat 12 + Cat 13 findings without duplication; complete adopter guidance requires both mitigation narratives.
+- **Pattern Categories 12 + 13 + 14 vs Pattern Categories 1–9** (LLM-tier vs predictive-ML topology) — Cat 1–9 target LLM weight-exfiltration, API distillation, embedding exfiltration, system-prompt leakage, and ATLAS inference-API exfiltration on LLM-serving topologies (transformer-based generative models, embedding endpoints, system-prompt-bearing chat endpoints). Cat 12–14 target predictive-ML extraction and artifact-integrity surfaces on classifier and regressor topologies (fraud-detection classifiers, medical-imaging classifiers, recommendation models, fine-tuned tabular models). The architectural-tells are disjoint: predictive-ML extraction requires a `/predict` or `/score` endpoint returning class probabilities or regression outputs (NOT generative tokens); LLM extraction requires a `/generate` or `/complete` endpoint returning generated text or embedding vectors. Architectures may surface both LLM-tier and predictive-ML findings if both topologies coexist; categories are NOT duplicates.
+- **Pattern Category 14 (predictive-ML artifact supply chain) vs `data-poisoning` Pattern Category 10 (predictive-ML corpus supply chain)** (disjoint architectural-tells per ADR-035 Decision 4) split OWASP ML06:2023 across two host agents at the architectural-tell layer. Cat 14 (LLM, model-theft) owns the artifact-side facet: model registry, weight-artifact storage, serving-time integrity. data-poisoning Cat 10 (D, data-poisoning) owns the corpus-side facet: training-corpus, feature-store, dataset-checksum, MLOps registry promotion-gate at the training-pipeline boundary. Same architecture may surface both findings — the predictive-ML pipeline ingests corpus-side at training time AND serves artifact-side at inference time — and adopter mitigation requires controls on both facets; findings are NOT duplicates.
+- **Pattern Category 14 vs Pattern Categories 10 + 11 (cost-amplification / denial-of-wallet from F-5)** — Cat 14 detects artifact-integrity gaps (signed-artifact policy, model-load-time verification) in predictive-ML topology; Cat 10 + 11 detect economic-attack vectors (cost-amplification, denial-of-wallet) in LLM-serving topology. Disjoint architectural-tells, disjoint topology, disjoint attacker goals; categories are NOT duplicates.
 
 ## Primary Sources
 
@@ -209,3 +299,9 @@ Same architecture may legitimately surface Pattern Category 6 + Pattern Category
 - **CWE-209 - Generation of Error Message Containing Sensitive Information**: applicable to model metadata and system-prompt leakage through error responses
 - **CWE-522 - Insufficiently Protected Credentials**: analogous to insufficiently protected model artifacts
 - **Tramer et al., 2016**: "Stealing Machine Learning Models via Prediction APIs" — foundational work on API-based model extraction
+- **OWASP ML03:2023 - Model Inversion Attack** (predictive-ML input reconstruction via prediction-API querying): https://owasp.org/www-project-machine-learning-security-top-10/docs/ML03_2023-Model_Inversion_Attack
+- **OWASP ML04:2023 - Membership Inference Attack** (predictive-ML training-set membership determination via confidence values): https://owasp.org/www-project-machine-learning-security-top-10/docs/ML04_2023-Membership_Inference_Attack
+- **OWASP ML06:2023 - AI Supply Chain Attacks** (predictive-ML artifact supply chain — Cat 14 artifact-side facet per ADR-035 D-4 disjoint architectural-tells; corpus-side facet owned by data-poisoning Cat 10): https://owasp.org/www-project-machine-learning-security-top-10/docs/ML06_2023-AI_Supply_Chain_Attacks
+- **MITRE ATT&CK T1195 - Supply Chain Compromise** (broader supply-chain taxonomy bridging artifact-side Cat 14 and corpus-side data-poisoning Cat 10): https://attack.mitre.org/techniques/T1195/
+- **MITRE ATT&CK T1195.001 - Compromise Software Dependencies and Development Tools**: https://attack.mitre.org/techniques/T1195/001/
+- **MITRE ATT&CK T1195.002 - Compromise Software Supply Chain**: https://attack.mitre.org/techniques/T1195/002/
