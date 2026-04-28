@@ -22,6 +22,8 @@ owasp_references:
   - "CWE-384: Session Fixation"
   - "MITRE ATT&CK T1078: Valid Accounts"
   - "MITRE ATT&CK T1556: Modify Authentication Process"
+  - "OWASP M1:2024 — Improper Credential Usage"
+  - "OWASP M3:2024 — Insecure Authentication/Authorization"
 output_schema: ../../../schemas/finding.yaml
 ```
 
@@ -30,6 +32,8 @@ output_schema: ../../../schemas/finding.yaml
 ## Purpose
 
 Detects threats where an attacker assumes the identity of another entity — user, service, or system component — undermining authentication guarantees so an adversary can perform actions under a trusted identity. Targets External Entities (user/upstream-service impersonation) and Processes (forged inter-service identity bypassing trust assumptions).
+
+Extended for mobile-platform topologies, this agent additionally covers improper mobile credential usage (storage in Keystore/Keychain vs SharedPreferences/NSUserDefaults) and insecure mobile authentication/authorization (certificate pinning, biometric step-up, refresh-token binding) when the architecture exhibits mobile-platform topology indicators.
 
 ## Skill References
 
@@ -47,5 +51,5 @@ Detects threats where an attacker assumes the identity of another entity — use
 2. For each component, match against the loaded pattern catalog (authentication bypass, credential theft, session hijacking, service impersonation, federated identity attacks).
 3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: spoofing`, a sequential `S-N` id, and the target component name.
 4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of confidentiality, integrity, accountability), then compute `risk_level` via the matrix in `severity-bands-shared.md`.
-5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP, CWE, MITRE ATT&CK) from the pattern catalog's Primary Sources list.
+5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP, CWE, MITRE ATT&CK, OWASP M1:2024, OWASP M3:2024, MASTG-AUTH, MASVS-AUTH) from the pattern catalog's Primary Sources list.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation.
