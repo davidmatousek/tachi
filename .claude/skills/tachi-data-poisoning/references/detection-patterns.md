@@ -151,6 +151,33 @@ OWASP ML07:2023 (Transfer Learning Attack) names supply-chain compromise of pret
 - Require model-card provenance review as a fine-tuning gate: the team reads the upstream model card, validates training-data provenance, and signs off before the fine-tuning job is approved to start
 - Cf. MITRE ATLAS AML.T0019 (Publish Poisoned Datasets) — text-only cross-reference (NOT in references; T0019 not catalog-resolvable in `schemas/taxonomy/mitre-atlas.yaml`)
 
+## Pattern Category 9: Feedback-Loop Model Skewing (Active Learning / Online Learning) (OWASP ML08:2023)
+
+OWASP ML08:2023 (Model Skewing) names contamination of feedback loops feeding production model retraining as a distinct attack class against active-learning, online-learning, and recommendation-system pipelines. Where Pattern Categories 1–7 cover one-shot training-corpus poisoning and Pattern Category 8 covers transfer-learning weight-artifact compromise, this category targets the **specific architectural-tell** of a production inference path that loops back into retraining without integrity gates: production predictions and user clickstream are reused as training signal without tamper-detection on the loopback data, and HITL labeling tools accept label flips without labeler-trust scoring or reputation weighting. The attacker's goal is gradual model drift toward attacker-favorable outcomes (recommendation hijacking, fraud-classifier skew, content-moderation evasion via label flooding) rather than a single backdoor injection.
+
+**Indicators**:
+
+- DFD element exposes an active-learning pipeline that reads production inference data back into training without integrity controls (no anomaly detection on label distribution drift, no held-out canary set comparison)
+- HITL labeling tool accepts labels from crowd-sourced or user-facing labelers without labeler-trust scoring, reputation-based weighting, or redundancy/consensus requirement — label-flipping attack surface
+- Online-learning model continuously updates from inference inputs without input-space outlier detection — drift injection feasible by attacker submitting crafted feature distributions at scale
+- Recommendation system reuses clickstream data for retraining without tamper-detection on clickstream events (no bot-detection / coordinated-inauthentic-behavior gate before clickstream feeds the training set)
+- Drift-detection alarms are missing on production inference distributions — model skew would not be detected until downstream business metrics degrade weeks or months later
+
+**Primary source**:
+
+- OWASP ML08:2023 — Model Skewing: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML08_2023-Model_Skewing
+- MITRE ATLAS AML.T0020 — Poison Training Data: https://atlas.mitre.org/techniques/AML.T0020
+
+**Example**: A content-recommendation platform retrains its ranking model nightly from the previous day's clickstream events. The retraining pipeline reads `(user_id, item_id, click, dwell_time)` tuples from a Kafka topic without bot-detection on the originating user accounts and without anomaly detection on click-distribution drift. An attacker operates a bot network that systematically clicks and dwells on items associated with a target product category, generating fabricated engagement signal at scale. Over the course of two weeks, the recommendation model drifts toward over-recommending the target category to organic users (attacker-favorable skew). The drift survives held-out evaluation because the held-out set is sampled from the same contaminated clickstream; no canary set anchored to a clean baseline is in place. Business KPIs (click-through rate on the target category) appear to improve, masking the skew until a content-quality complaint surfaces six weeks later.
+
+**Mitigation**:
+
+- Install feedback-data integrity gates with anomaly detection on label distribution drift: compare incoming labeled batches against a clean held-out canary set before each retraining cycle, and reject batches whose label distribution diverges beyond a calibrated threshold
+- Apply labeler-trust scoring with reputation-based weighting in HITL labeling tools: weight label contributions by historical accuracy on gold-standard examples, require multi-labeler consensus on safety-critical samples, and quarantine new labelers below a reputation floor
+- Run periodic retraining-data audit with held-out canaries: maintain a clean baseline test set anchored outside the loopback path and verify retrained models maintain accuracy on it; failures block promotion
+- Add drift-detection alarms on production inference distributions (KS statistic / population stability index / KL divergence on per-feature distributions, with paging thresholds tuned to baseline drift rate)
+- Cf. MITRE ATLAS AML.T0031 (Erode ML Model Integrity) — text-only cross-reference (NOT in references; T0031 not catalog-resolvable in `schemas/taxonomy/mitre-atlas.yaml`)
+
 ## Primary Sources
 
 - **OWASP LLM03:2025 - Supply Chain**: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
