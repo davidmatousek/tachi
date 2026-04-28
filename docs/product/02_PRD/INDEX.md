@@ -1,12 +1,13 @@
 # PRD Index
 
-**Last Updated**: 2026-04-27 (Feature 232 PRD approved — F-6 ML Top 10 Coverage Bundle [Tier 2] / three-agent enrichment of `tampering` + `data-poisoning` + `model-theft` / third execution of Heuristic A enrichment branch after F-3 single-agent and F-5 two-agent / first at three-agent scope / will close OWASP ML Top 10:2023 to 10/10 Covered and complete the three-framework total at 30/30 Covered)
+**Last Updated**: 2026-04-28 (Feature 237 PRD approved — F-7 Mobile Top 10 Coverage Bundle [Tier 2] / four-or-five-agent enrichment of `spoofing` + `tampering` + `info-disclosure` + `privilege-escalation` and/or `repudiation` / fourth execution of Heuristic A enrichment branch after F-3 single-agent / F-5 two-agent / F-6 three-agent / first at four-or-five-agent scope / will close OWASP Mobile Top 10:2024 to 10/10 Covered and complete the four-framework total at 40/40 Covered; F-6 issue #232 closed at this PRD's authoring per architect MEDIUM-3 hygiene)
 **Legend**: ✓=APPROVED, ⚠=APPROVED_WITH_CONCERNS, 🔄=CHANGES_REQUESTED, ⛔=BLOCKED, ⚠⚡=OVERRIDDEN
 
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
-| 232 | [F-6 ML Top 10 Coverage Bundle [Tier 2]](232-ml-top-10-coverage-bundle-2026-04-27.md) | ✓ | ⚠ | ⚠ | Approved | 2026-04-27 |
+| 237 | [F-7 Mobile Top 10 Coverage Bundle [Tier 2]](237-mobile-top-10-coverage-bundle-2026-04-28.md) | ✓ | ⚠ | ⚠ | Approved | 2026-04-28 |
+| 232 | [F-6 ML Top 10 Coverage Bundle [Tier 2]](232-ml-top-10-coverage-bundle-2026-04-27.md) ([PR #235](https://github.com/davidmatousek/tachi/pull/235)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-28 |
 | 229 | [F-5 LLM10 Unbounded Consumption Verification](229-llm10-unbounded-consumption-verification-2026-04-27.md) ([PR #230](https://github.com/davidmatousek/tachi/pull/230)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-27 |
 | 224 | [F-4 ASI09 Human-Agent Trust Exploitation](224-trust-exploitation-threat-agent-2026-04-26.md) ([PR #225](https://github.com/davidmatousek/tachi/pull/225)) | ✓ | ✓ | ⚠ | Delivered | 2026-04-27 |
 | 219 | [F-3 ASI07 Insecure Inter-Agent Communication](219-asi07-tool-abuse-enrichment-2026-04-25.md) ([PR #220](https://github.com/davidmatousek/tachi/pull/220)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-26 |
