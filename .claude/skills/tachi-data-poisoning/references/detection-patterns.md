@@ -178,6 +178,49 @@ OWASP ML08:2023 (Model Skewing) names contamination of feedback loops feeding pr
 - Add drift-detection alarms on production inference distributions (KS statistic / population stability index / KL divergence on per-feature distributions, with paging thresholds tuned to baseline drift rate)
 - Cf. MITRE ATLAS AML.T0031 (Erode ML Model Integrity) — text-only cross-reference (NOT in references; T0031 not catalog-resolvable in `schemas/taxonomy/mitre-atlas.yaml`)
 
+## Pattern Category 10: Predictive-ML Supply Chain Completeness (Datasets, Feature Stores, MLOps Registry) (OWASP ML06:2023)
+
+OWASP ML06:2023 (AI Supply Chain Attacks) names supply-chain integrity gaps across the predictive-ML training pipeline as a distinct attack class spanning dataset repositories, feature stores, and MLOps model registries. This category captures the **corpus-side facet** of ML06:2023 per ADR-035 D-4 disjoint architectural-tells: the training-corpus, feature-store, and model-registry promotion-gate surface. The **artifact-side facet** of ML06:2023 (model registry serving weight artifacts at inference time, weight-tampering between training and serving) is owned by `tachi-model-theft` Pattern Category 14 (predictive-ML artifact supply chain). Same architecture may surface both Cat 10 (D) corpus-side findings and Cat 14 (LLM) artifact-side findings without duplication — they are distinct architectural-tells with disjoint mitigation vocabularies. The architectural-tell for Cat 10 is the training-pipeline ingestion path: a dataset repository (Kaggle / public corpus / S3-backed dataset lake), a feature store (Feast / Tecton / S3-backed), or an MLOps model registry (MLflow / SageMaker / Vertex AI) participating in the corpus-to-training data path without integrity verification, IAM-enforced write-audit, signed-artifact promotion policy, or dataset-checksum manifest.
+
+**Indicators**:
+
+- DFD element ingests training data from a dataset repository (Kaggle, public corpus, S3-backed dataset lake) without integrity verification (no checksum manifest, no SHA-256 digest comparison, no provenance attestation)
+- Feature store (Feast, Tecton, S3-backed feature tables) is exposed for write without IAM-enforced write-audit — multiple roles or service accounts can mutate feature values without audit trail or promotion-gate review
+- MLOps model registry (MLflow, SageMaker Model Registry, Vertex AI Model Registry) promotes models from staging to production without signed-artifact policy — promotion gate is missing pull-request review or cryptographic attestation requirement
+- Model-card or datasheet metadata is missing on training datasets or registered models — provenance information (data source, collection methodology, known biases, evaluation harness) is not published alongside the artifact
+- Dataset-checksum manifest is absent — the training pipeline cannot reproduce a known-good corpus snapshot, and no audit log records which dataset version produced which trained model
+
+**Primary source**:
+
+- OWASP ML06:2023 — AI Supply Chain Attacks: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML06_2023-AI_Supply_Chain_Attacks
+- MITRE ATT&CK T1195 — Supply Chain Compromise: https://attack.mitre.org/techniques/T1195/
+- MITRE ATT&CK T1195.001 — Compromise Software Dependencies and Development Tools: https://attack.mitre.org/techniques/T1195/001/
+- MITRE ATT&CK T1195.002 — Compromise Software Supply Chain: https://attack.mitre.org/techniques/T1195/002/
+
+**Example**: A predictive-ML team trains a fraud-detection classifier from a corpus assembled by stitching together a public Kaggle fraud-detection dataset, an internal transaction history table queried from a Feast feature store, and a third-party labeled-fraud dataset pulled from a vendor S3 bucket. The training pipeline pulls the Kaggle dataset by URL without a checksum manifest. The Feast feature store accepts writes from any service account in the team's IAM group without per-write audit logging. The MLflow model registry accepts promotion from staging to production via a single API call with no signed-artifact policy and no pull-request review. An attacker who compromises any one of these three surfaces — by publishing a poisoned-update of the Kaggle dataset, mutating a feature-store feature value, or promoting a backdoored model artifact through the MLflow staging-to-production gate — can inject biased or backdoored training signal into the production fraud-detection classifier. No single integrity check across the three surfaces would have caught the compromise.
+
+**Mitigation**:
+
+- Enforce a signed-artifact policy at the MLOps registry boundary: require Sigstore-style or KMS-backed cryptographic attestation on every model promoted from staging to production, and reject promotion requests lacking attestation
+- Apply IAM-enforced write-audit on feature stores: log every feature-value mutation with actor identity, before/after values, and timestamp; require pull-request review for write-access grants on production feature tables; alert on anomalous write volume from a single service account
+- Maintain a dataset-checksum manifest with reproducibility verification: every training run records the SHA-256 digest of every input corpus, the manifest is committed to version control, and CI verifies digest match on every retraining cycle
+- Require model-card review as a promotion gate: every model entering production must have an accompanying model card describing training data provenance, evaluation harness, known biases, and intended deployment scope; the team signs off on the model card before promotion
+
+## Pattern Category Disambiguation
+
+Pattern Categories 8, 9, and 10 (Predictive ML training-pipeline supply-chain surfaces — F-6) and the pre-existing Pattern Categories 1–7 (LLM/RAG-tier corpus, index, fine-tuning, and feedback-loop poisoning) share the OWASP LLM04:2025 / OWASP ML06–08:2023 family at the OWASP framework level but address distinct architectural-tells and mitigation surfaces:
+
+- **Pattern Categories 1–4** (Training Data Manipulation, RAG Index Poisoning, Knowledge Base Corruption, Fine-Tuning Supply Chain Attacks — pre-existing LLM/RAG-tier) detect corpus and index integrity gaps where the architectural-tell is an LLM training corpus, a RAG vector store, or an LLM fine-tuning pipeline. Mitigation vocabulary is corpus-validation / RAG-provenance / LLM-fine-tune-attestation focused.
+- **Pattern Category 5** (Context Window Contamination — pre-existing) detects runtime context-window manipulation at the LLM inference path.
+- **Pattern Categories 6–7** (RAG/Vector Store Poisoning at Retrieval Time, Backdoor Triggers in Training and Fine-Tuning Data — pre-existing) detect retrieval-time vector-store poisoning and trigger-based backdoor injection on LLM-tier training and retrieval surfaces. Architectural-tells: shared/multi-tenant vector store, LLM-tier RLHF pipeline, third-party LLM weight artifact.
+- **Pattern Category 8** (Transfer Learning Supply Chain, Predictive ML — F-6) detects pretrained-weight and adapter compromise at the predictive-ML fine-tuning surface. Architectural-tell: fine-tuning step on a non-LLM classifier or regressor pulling base weights from a public ML model registry without checksum verification or signed-artifact policy.
+- **Pattern Category 9** (Feedback-Loop Model Skewing, Active Learning / Online Learning — F-6) detects loopback contamination of production inference data feeding retraining. Architectural-tell: active-learning, online-learning, or recommendation-system retraining path without integrity gates on the loopback data.
+- **Pattern Category 10** (Predictive-ML Supply Chain Completeness, Datasets / Feature Stores / MLOps Registry — F-6) detects corpus-side supply-chain integrity gaps across dataset repositories, feature stores, and MLOps model registries on the **corpus-to-training data path** (ML06 corpus-side facet per ADR-035 D-4). Architectural-tells: dataset-repo without checksum manifest, feature-store without IAM-enforced write-audit, MLOps registry without signed-artifact promotion policy.
+
+Same architecture may legitimately surface findings across Pattern Categories 1–7 (LLM/RAG-tier) **and** Pattern Categories 8–10 (predictive-ML-tier) when it operates both an LLM/RAG application surface and a predictive-ML training pipeline. They are not duplicates and MUST NOT be merged in `threat-report.md`.
+
+Same architecture may also surface Pattern Category 10 (D — corpus-side ML06) **and** model-theft Pattern Category 14 (LLM — artifact-side ML06) when it has both a training-corpus / feature-store / MLOps-registry promotion-gate surface and a model-registry / weight-artifact-storage / serving-time integrity surface. The two facets of ML06:2023 are disjoint by architectural-tell per ADR-035 D-4 — Cat 10 (D) owns the corpus-side facet (training-pipeline integrity); Cat 14 (LLM) owns the artifact-side facet (serving-time integrity). Architect formalizes this carve in ADR-035 Decisions D-4 (ML06 two-facet disjoint architectural-tells) and D-9 (Pattern Category Disambiguation requirement on three F-6 companions per FR-011).
+
 ## Primary Sources
 
 - **OWASP LLM03:2025 - Supply Chain**: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
@@ -189,3 +232,9 @@ OWASP ML08:2023 (Model Skewing) names contamination of feedback loops feeding pr
 - **CWE-345 - Insufficient Verification of Data Authenticity**: https://cwe.mitre.org/data/definitions/345.html
 - **CWE-1395 - Dependency on Vulnerable Third-Party Component**: https://cwe.mitre.org/data/definitions/1395.html
 - **Carlini et al., 2023**: "Poisoning Web-Scale Training Datasets is Practical" — demonstrates feasibility of training-data poisoning at scale
+- **OWASP ML06:2023 - AI Supply Chain Attacks**: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML06_2023-AI_Supply_Chain_Attacks
+- **OWASP ML07:2023 - Transfer Learning Attack**: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML07_2023-Transfer_Learning_Attack
+- **OWASP ML08:2023 - Model Skewing**: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML08_2023-Model_Skewing
+- **MITRE ATT&CK T1195 - Supply Chain Compromise**: https://attack.mitre.org/techniques/T1195/
+- **MITRE ATT&CK T1195.001 - Compromise Software Dependencies and Development Tools**: https://attack.mitre.org/techniques/T1195/001/
+- **MITRE ATT&CK T1195.002 - Compromise Software Supply Chain**: https://attack.mitre.org/techniques/T1195/002/
