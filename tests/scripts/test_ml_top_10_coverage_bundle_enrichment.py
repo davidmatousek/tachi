@@ -3,32 +3,24 @@
 These tests enforce structural invariants on the three enriched host agent
 files and their companion pattern catalogs:
 
-- ``.claude/agents/tachi/tampering.md`` (~55 lines post-Wave-2.1)
-- ``.claude/agents/tachi/data-poisoning.md`` (~90 lines post-Wave-2.3)
-- ``.claude/agents/tachi/model-theft.md`` (105 lines post-Wave-3)
-- ``.claude/skills/tachi-tampering/references/detection-patterns.md``
-  (190 → 221 lines post-Wave-2.1; +Cat 10, +Disambiguation extension,
-  +Primary Sources extension)
-- ``.claude/skills/tachi-data-poisoning/references/detection-patterns.md``
-  (137 → 240 lines post-Wave-2.3; +Cat 8, +Cat 9, +Cat 10,
-  +Disambiguation extension)
-- ``.claude/skills/tachi-model-theft/references/detection-patterns.md``
-  (211 → 307 lines post-Wave-3; +Cat 12, +Cat 13, +Cat 14,
-  +Disambiguation extension, +Primary Sources extension)
+- ``.claude/agents/tachi/tampering.md`` (STRIDE tier, <=120 line cap)
+- ``.claude/agents/tachi/data-poisoning.md`` (AI tier, <=150 line cap)
+- ``.claude/agents/tachi/model-theft.md`` (AI tier, <=150 line cap)
+- Three companion ``detection-patterns.md`` files under
+  ``.claude/skills/tachi-{tampering,data-poisoning,model-theft}/references/``
+  carrying the new Pattern Categories per ADR-035 D-3.
 
 Per spec ``specs/232-ml-top-10-coverage-bundle/spec.md``, this module covers
 F-6 success criteria SC-014 (line caps), SC-019 (references-array contract),
 SC-022 (MAESTRO grep clean), SC-023 (Pattern Category Disambiguation
-presence) — the enrichment-surface drift-guard layer. Byte-identity of
-pre-existing Cat 1-N categories is delegated to
+presence). Byte-identity of pre-existing categories is delegated to
 ``tests/scripts/test_backward_compatibility.py`` against the 6 baselines.
 
 This module follows the F-5 enrichment-test precedent in
 ``tests/scripts/test_llm10_unbounded_consumption_enrichment.py``.
 
 Schema regex tests are NOT included — F-6 reuses the existing ``T``, ``D``,
-and ``LLM`` prefixes without a schema bump per ADR-035 (asymmetry with
-ADR-031 D8; mirrors F-3 / F-5 enrichment-branch precedents).
+and ``LLM`` prefixes without a schema bump per ADR-035.
 """
 
 from __future__ import annotations
@@ -159,24 +151,21 @@ class TestLineCountCaps:
         """SC-014: tampering.md MUST be <=120 lines (STRIDE tier cap per ADR-023)."""
         line_count = sum(1 for _ in TAMPERING_AGENT.open("r", encoding="utf-8"))
         assert line_count <= 120, (
-            f"tampering.md line count {line_count} exceeds STRIDE-tier cap of 120 "
-            f"(PRD-time baseline ~52; expected post-edit ~55-60)."
+            f"tampering.md line count {line_count} exceeds STRIDE-tier cap of 120."
         )
 
     def test_data_poisoning_md_line_cap(self) -> None:
         """SC-014: data-poisoning.md MUST be <=150 lines (AI tier cap per ADR-023)."""
         line_count = sum(1 for _ in DATA_POISONING_AGENT.open("r", encoding="utf-8"))
         assert line_count <= 150, (
-            f"data-poisoning.md line count {line_count} exceeds AI-tier cap of 150 "
-            f"(PRD-time baseline ~85; expected post-edit ~88-100)."
+            f"data-poisoning.md line count {line_count} exceeds AI-tier cap of 150."
         )
 
     def test_model_theft_md_line_cap(self) -> None:
         """SC-014: model-theft.md MUST be <=150 lines (AI tier cap per ADR-023)."""
         line_count = sum(1 for _ in MODEL_THEFT_AGENT.open("r", encoding="utf-8"))
         assert line_count <= 150, (
-            f"model-theft.md line count {line_count} exceeds AI-tier cap of 150 "
-            f"(post-F-5 baseline 97; expected post-F-6 ~100-110)."
+            f"model-theft.md line count {line_count} exceeds AI-tier cap of 150."
         )
 
 
@@ -401,46 +390,21 @@ class TestAtlasCatalogResolvability:
     T0031.
     """
 
-    def test_atlas_T0015_prose_only(self) -> None:
-        """AML.T0015 MUST NOT appear in any of the 7 fixture references arrays.
+    @pytest.mark.parametrize("atlas_id", ["T0015", "T0019", "T0031"])
+    def test_prose_only_atlas_techniques_absent_from_references(
+        self, atlas_id: str
+    ) -> None:
+        """Non-catalog-resolvable ATLAS techniques MUST NOT appear in any fixture
+        references array per Invariant 3 / ADR-035.
 
-        T0015 (Evade ML Model) is referenced in tampering Cat 10 mitigation
-        prose ONLY; it is not catalog-resolvable in
-        ``schemas/taxonomy/mitre-atlas.yaml`` per ADR-035 / Invariant 3.
+        T0015 (Evade ML Model) is prose-only on tampering Cat 10 mitigation;
+        T0019 (Publish Poisoned Datasets) is prose-only on data-poisoning Cat 8;
+        T0031 (Erode ML Model Integrity) is prose-only on data-poisoning Cat 9.
         """
         joined = _all_fixture_refs_joined()
-        assert "T0015" not in joined, (
-            f"AML.T0015 MUST NOT appear in any fixture references array per "
-            f"Invariant 3 (T0015 is prose-only on tampering Cat 10 mitigation); "
-            f"got aggregate refs containing T0015."
-        )
-
-    def test_atlas_T0019_prose_only(self) -> None:
-        """AML.T0019 MUST NOT appear in any of the 7 fixture references arrays.
-
-        T0019 (Publish Poisoned Datasets) is referenced in data-poisoning
-        Cat 8 mitigation prose ONLY; it is not catalog-resolvable per
-        ADR-035 / Invariant 3.
-        """
-        joined = _all_fixture_refs_joined()
-        assert "T0019" not in joined, (
-            f"AML.T0019 MUST NOT appear in any fixture references array per "
-            f"Invariant 3 (T0019 is prose-only on data-poisoning Cat 8 mitigation); "
-            f"got aggregate refs containing T0019."
-        )
-
-    def test_atlas_T0031_prose_only(self) -> None:
-        """AML.T0031 MUST NOT appear in any of the 7 fixture references arrays.
-
-        T0031 (Erode ML Model Integrity) is referenced in data-poisoning
-        Cat 9 mitigation prose ONLY; it is not catalog-resolvable per
-        ADR-035 / Invariant 3.
-        """
-        joined = _all_fixture_refs_joined()
-        assert "T0031" not in joined, (
-            f"AML.T0031 MUST NOT appear in any fixture references array per "
-            f"Invariant 3 (T0031 is prose-only on data-poisoning Cat 9 mitigation); "
-            f"got aggregate refs containing T0031."
+        assert atlas_id not in joined, (
+            f"AML.{atlas_id} MUST NOT appear in any fixture references array per "
+            f"Invariant 3 (it is prose-only on its owning Pattern Category mitigation)."
         )
 
     def test_atlas_T0018_catalog_resolvable_in_d_8(self) -> None:

@@ -182,15 +182,10 @@ def test_unmodified_examples_byte_identical_pdfs(
 #
 # Feature 232 (F-6 ML Top 10 Coverage Bundle) is the third enrichment-branch
 # feature. Per F-6 ADR-035 Decision 2, F-6 additively edits three host pairs:
-# `tampering.md` + companion, `data-poisoning.md` + companion, and
-# `model-theft.md` companion (model-theft.md was already an enrichment-host
-# from F-5 and remains so). The new agent removals are tampering.md +
-# data-poisoning.md (both moved out of DETECTION_AGENT_PATHS); the new
-# companion additions are tachi-tampering + tachi-data-poisoning detection-
-# patterns.md (added to DETECTION_PATTERN_REF_ENRICHMENT_HOSTS). Six files
-# total are carved out by F-6 (3 agents + 3 companions, of which model-theft.md
-# overlaps with F-5's prior carve-out). The remaining 8 detection agents +
-# 8 companion files stay byte-identical.
+# tampering, data-poisoning, and model-theft (model-theft companion already
+# carved out by F-5 and reused). When adding a future enrichment branch, both
+# DETECTION_AGENT_PATHS removals and DETECTION_PATTERN_REF_ENRICHMENT_HOSTS
+# additions land in the same change.
 DETECTION_AGENT_PATHS = [
     ".claude/agents/tachi/spoofing.md",
     ".claude/agents/tachi/repudiation.md",
