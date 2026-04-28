@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Tachi-RiskScorer",
+          "semanticVersion": "1.0",
+          "informationUri": "https://github.com/davidmatousek/tachi"
+        }
+      },
+      "results": [
+        {"ruleId": "tachi/risk/spoofing", "level": "error", "message": {"text": "S-1: Merchant Transaction Submitter — composite 8.4, severity Critical."}, "properties": {"id": "S-1", "cvss_base": 8.5, "exploitability": 8.5, "scalability": 7.0, "reachability": 9.5, "composite": 8.4, "severity": "Critical", "sla_days": 3, "disposition": "Mitigate", "security-severity": "8.4"}},
+        {"ruleId": "tachi/risk/tampering", "level": "error", "message": {"text": "T-10: FraudDetectionML Prediction API — Adversarial Input Manipulation (Pattern Category 10, OWASP ML01:2023). Composite 7.6, severity High."}, "properties": {"id": "T-10", "owasp_references": ["OWASP ML01:2023"], "cvss_base": 9.5, "exploitability": 8.5, "scalability": 8.0, "reachability": 2.5, "composite": 7.6, "severity": "High", "sla_days": 7, "disposition": "Mitigate", "security-severity": "7.6"}},
+        {"ruleId": "tachi/risk/model-theft", "level": "error", "message": {"text": "LLM-1: FraudDetectionML Prediction API — Model Inversion (Pattern Category 12, OWASP ML03:2023). Composite 7.4, severity High."}, "properties": {"id": "LLM-1", "owasp_references": ["OWASP ML03:2023"], "cvss_base": 9.0, "exploitability": 8.0, "scalability": 8.5, "reachability": 2.5, "composite": 7.4, "severity": "High", "sla_days": 7, "disposition": "Mitigate", "security-severity": "7.4"}},
+        {"ruleId": "tachi/risk/model-theft", "level": "error", "message": {"text": "LLM-2: FraudDetectionML Prediction API — Membership Inference (Pattern Category 13, OWASP ML04:2023). Composite 7.4, severity High."}, "properties": {"id": "LLM-2", "owasp_references": ["OWASP ML04:2023"], "cvss_base": 9.0, "exploitability": 8.0, "scalability": 8.5, "reachability": 2.5, "composite": 7.4, "severity": "High", "sla_days": 7, "disposition": "Mitigate", "security-severity": "7.4"}},
+        {"ruleId": "tachi/risk/model-theft", "level": "error", "message": {"text": "LLM-3: MLflow Model Registry — Predictive-ML Artifact Supply Chain (Pattern Category 14, OWASP ML06:2023, artifact-side). Composite 7.4, severity High."}, "properties": {"id": "LLM-3", "owasp_references": ["OWASP ML06:2023"], "cvss_base": 9.5, "exploitability": 8.0, "scalability": 7.5, "reachability": 2.5, "composite": 7.4, "severity": "High", "sla_days": 7, "disposition": "Mitigate", "security-severity": "7.4"}},
+        {"ruleId": "tachi/risk/model-theft", "level": "error", "message": {"text": "LLM-4: Weight Checkpoint Storage — Predictive-ML Artifact Supply Chain (Pattern Category 14, OWASP ML06:2023). Composite 7.4, severity High."}, "properties": {"id": "LLM-4", "owasp_references": ["OWASP ML06:2023"], "cvss_base": 9.5, "exploitability": 8.0, "scalability": 7.5, "reachability": 2.5, "composite": 7.4, "severity": "High", "sla_days": 7, "disposition": "Mitigate", "security-severity": "7.4"}},
+        {"ruleId": "tachi/risk/data-poisoning", "level": "error", "message": {"text": "D-8: Fine-Tuning Service — Transfer Learning Supply Chain (Pattern Category 8, OWASP ML07:2023). Composite 7.3, severity High."}, "properties": {"id": "D-8", "owasp_references": ["OWASP ML07:2023"], "cvss_base": 9.5, "exploitability": 7.5, "scalability": 8.0, "reachability": 2.5, "composite": 7.3, "severity": "High", "sla_days": 7, "disposition": "Mitigate", "security-severity": "7.3"}},
+        {"ruleId": "tachi/risk/data-poisoning", "level": "error", "message": {"text": "D-9: Active-Learning Feedback Loop — Feedback-Loop Model Skewing (Pattern Category 9, OWASP ML08:2023). Composite 7.1, severity High."}, "properties": {"id": "D-9", "owasp_references": ["OWASP ML08:2023"], "cvss_base": 9.0, "exploitability": 7.5, "scalability": 8.0, "reachability": 2.5, "composite": 7.1, "severity": "High", "sla_days": 7, "disposition": "Mitigate", "security-severity": "7.1"}},
+        {"ruleId": "tachi/risk/data-poisoning", "level": "error", "message": {"text": "D-10: Model Training Pipeline — Predictive-ML Corpus Supply Chain (Pattern Category 10, OWASP ML06:2023, corpus-side). Composite 7.4, severity High."}, "properties": {"id": "D-10", "owasp_references": ["OWASP ML06:2023"], "cvss_base": 9.5, "exploitability": 7.5, "scalability": 8.5, "reachability": 2.5, "composite": 7.4, "severity": "High", "sla_days": 7, "disposition": "Mitigate", "security-severity": "7.4"}},
+        {"ruleId": "tachi/risk/data-poisoning", "level": "error", "message": {"text": "D-11: Feast Feature Store — Predictive-ML Corpus Supply Chain (Pattern Category 10, OWASP ML06:2023). Composite 7.1, severity High."}, "properties": {"id": "D-11", "owasp_references": ["OWASP ML06:2023"], "cvss_base": 9.0, "exploitability": 7.5, "scalability": 8.0, "reachability": 2.5, "composite": 7.1, "severity": "High", "sla_days": 7, "disposition": "Mitigate", "security-severity": "7.1"}},
+        {"ruleId": "tachi/risk/spoofing", "level": "error", "message": {"text": "S-5: Fine-Tuning Service — HuggingFace Hub maintainer spoofing. Composite 7.7, severity High."}, "properties": {"id": "S-5", "cvss_base": 9.0, "exploitability": 7.5, "scalability": 7.5, "reachability": 5.5, "composite": 7.7, "severity": "High", "sla_days": 7, "disposition": "Mitigate", "security-severity": "7.7"}},
+        {"ruleId": "tachi/risk/spoofing", "level": "warning", "message": {"text": "S-2: Fraud Analyst — Compromised analyst account. Composite 7.6, severity High."}, "properties": {"id": "S-2", "cvss_base": 7.5, "exploitability": 7.0, "scalability": 6.0, "reachability": 9.5, "composite": 7.6, "severity": "High", "sla_days": 7, "disposition": "Mitigate", "security-severity": "7.6"}}
+      ]
+    }
+  ]
+}
