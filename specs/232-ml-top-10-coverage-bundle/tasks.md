@@ -194,7 +194,7 @@ ADR-035 D-numbered decisions are authored at T010 — Wave 1.1 fully operational
 
 **Goal**: BLP-01 strategy doc reflects six row transitions + coverage milestone update.
 
-- [ ] T054 [US1] Update `_internal/strategy/BLP-01-threat-coverage.md` §6 Coverage Matrix: ML01 Planned → Covered, ML03 Planned → Covered, ML04 Planned → Covered, ML06 Partial → Covered, ML07 Planned → Covered, ML08 Planned → Covered. Closure-feature column populated with "Feature 232 (F-6)" for all 6 rows. Coverage milestones panel updated to OWASP ML Top 10:2023 = 10/10 Covered + OWASP three-framework total = 30/30 (combined post-F-5 OWASP AI top-10 = 20/20). Single commit per F-3/F-4/F-5 precedent (FR-023)
+- [X] T054 [US1] Update `_internal/strategy/BLP-01-threat-coverage.md` §6 Coverage Matrix: ML01 Planned → Covered, ML03 Planned → Covered, ML04 Planned → Covered, ML06 Partial → Covered, ML07 Planned → Covered, ML08 Planned → Covered. Closure-feature column populated with "Feature 232 (F-6)" for all 6 rows. Coverage milestones panel updated to OWASP ML Top 10:2023 = 10/10 Covered + OWASP three-framework total = 30/30 (combined post-F-5 OWASP AI top-10 = 20/20). Single commit per F-3/F-4/F-5 precedent (FR-023) — DELIVERED: 6/6 §6 rows transitioned with ATLAS grounding annotations + Pattern Cat numbers; line 6 milestones panel includes ML 10/10 + 30/30 three-framework total wording; line 3 Status 8/11 → 9/11; line 5 Delivered list appended with F-6 entry containing `<TBD-T060-post-merge-fill>` SHA placeholder + `<TBD-T063-release-please>` PR placeholder for T060 backfill (T060 scope extension); §7 Feature Summary line 397 F-6 status Proposed → ✅ Delivered
 
 **Checkpoint**: Coverage Matrix six-row transition committed.
 
