@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-04-28T18:28:00Z.
+> Auto-generated from GitHub Issues on 2026-04-28T19:13:17Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -19,7 +19,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| #237 | F-7 — Mobile Top 10 Coverage Bundle [Tier 2] | — | 2026-04-28 |
+| — | *No items in this stage* | | |
 
 ## Plan
 
@@ -51,6 +51,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #237 | F-7 — Mobile Top 10 Coverage Bundle [Tier 2] | OPEN | 2026-04-28 |
 | #217 | detect_images leaves duplicate .jpg/.png pair after recovery write | OPEN | 2026-04-25 |
 | #215 | fix: detect_images picks .jpg by filename, fails Typst when bytes are PNG | CLOSED | 2026-04-25 |
 | #209 | Fix 5 extractor/agent contract-drift bugs | CLOSED | 2026-04-24 |
