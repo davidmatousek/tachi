@@ -1,0 +1,334 @@
+---
+triad:
+  pm_signoff:
+    agent: product-manager
+    date: 2026-04-27
+    status: APPROVED_WITH_CONCERNS
+    notes: "All 3 P0 user stories operationalized with traceable task chains: US-1 acceptance scenarios 1-6 via T011-T037 + T042-T044 + T054; US-2 via T010 ADR-035 + T038-T041 invariant verification; US-3 via T007 architecture + T042-T048 byte-identity. 24 of 26 spec FRs explicitly mapped to tasks (FR-021 + FR-022 implicit only — LOW). All 4 team-lead concerns absorbed: MEDIUM-1 (R5 deferral pair) → T064 + spec OoS-15; MEDIUM-2 (Day 1 PM checkpoints) → T020/T021/T022 sequential T-NN-1/2/3; MEDIUM-3 (Day 2 PM tester) → FR-025 + T046/T047; LOW-1 (Day 3 AM split) → T048 + T049 parallel. All 3 architect-deferred MEDIUM-3/4/5 absorbed into ADR-035 D-9/D-4/D-5 at T010. Conventional Commits PR title gate (T056) + post-merge release-please verification (T058) + delivery retrospective (T059 per FR-026) present. Zero scope creep across 15 OoS items. 64 tasks for 2.5-day envelope realistic. T049→T060 cross-reference defect resolved inline. 0 BLOCKING / 0 HIGH / 1 MEDIUM (resolved) / 2 LOW. PM APPROVES for /aod.build. Full review: .aod/results/product-manager-tasks-232.md."
+  architect_signoff:
+    agent: architect
+    date: 2026-04-27
+    status: APPROVED
+    notes: "Task dependency ordering correct: Wave 0.0→1.0→1.1→2→3→4.0/4.1→5.0/5.1→5.2→5.3→5.4-5.5 with explicit gate points. Parallel opportunities correctly marked: T010+T011+T016 Wave 1.1 (different files); T046+T047 Wave 4.1 (parallel spot-check); T048+T049 Wave 5.0/5.1 strong parallel (different owners); T035-T037 fixtures parallel. Day 1 PM sequential T020→T021→T022 correct (single-file constraint per team-lead MEDIUM-2 ~90-min checkpoints with rollback). ADR-035 mapping table populated COMPLETE at T010 (NOT skeleton — Day 1 AM lock per R3 mitigation). Test infrastructure additive update at T051 (DETECTION_AGENT_PATHS 10→8; DETECTION_PATTERN_REF_ENRICHMENT_HOSTS 5→7) correctly extends F-5 enrichment frozenset by 2. ADR-035 D-numbered structure complete (D-1 through D-10 covering Heuristic A 3-agent + additive-only + 8-row mapping + ML06 disjoint tells + ML03/ML04 disjoint tells + no-schema-bump + no-consumers-list + no-orchestrator + Pattern Category Disambiguation + no-source-attribution-wiring). Architect integration walkthrough at T034 catches Cat 10 → 11 → 12 → 13 → 14 visual continuity (team-lead C-2). Code-review pass at T053 covers all 6 file edits + ADR-035 + new architecture. Critical path correctly identified. 0 BLOCKING / 0 HIGH / 0 MEDIUM / 0 LOW. Architect APPROVES for /aod.build. Full review: .aod/results/architect-tasks-232.md."
+  techlead_signoff:
+    agent: team-lead
+    date: 2026-04-27
+    status: APPROVED_WITH_CONCERNS
+    notes: "FEASIBLE — 2.5-day envelope sized correctly between F-5 (1.5d two-agent) and F-2 (2d full new-agent); third execution of Heuristic A enrichment branch at three-agent scope is largest enrichment-branch fan-out to date but well within capacity per BLP-01 precedent. All 4 team-lead deferred concerns absorbed with explicit traceability: MEDIUM-1 (R5 deferral pair) → T064 + spec OoS-15 with named pair = data-poisoning Cat 10 (T022) + model-theft Cat 14 (T031) both ML06 facets; MEDIUM-2 (Day 1 PM checkpoints) → T020/T021/T022 sequential ~90-min units with rollback; MEDIUM-3 (Day 2 PM tester) → FR-025 + T046/T047 explicitly tester-owned parallel with Wave 4.0; LOW-1 (Day 3 AM split) → T048 tester (AM-1) + T049 architect (AM-2) two-owner parallel. Calendar verified at PRD time. Critical path achievable: T007→T009→T010→T011-T015→T017-T022→T026-T033→T042-T045→T048→T049→T054→T055-T058→T059. Resource allocation balanced: senior-backend-engineer (primary edits), architect (re-verification + ADR-035 + walkthroughs), tester (verification), PM + team-lead (sign-off only at Wave 5.4). 64 tasks for 2.5-day envelope = ~21 tasks/day with 25-35% parallel — reasonable. Buffer day priority order documented (T064). LOW-1 (T049 cross-reference defect) resolved inline. 0 BLOCKING / 0 HIGH / 0 MEDIUM / 1 LOW (resolved). Team-Lead APPROVES for /aod.build. Full review: .aod/results/team-lead-tasks-232.md."
+---
+
+# Tasks: ML Top 10 Coverage Bundle (F-6 / Feature 232)
+
+**Input**: Design documents from `/specs/232-ml-top-10-coverage-bundle/`
+**Prerequisites**: spec.md (PM APPROVED), plan.md (PM + Architect APPROVED), research.md, data-model.md, contracts/finding-contract.md, quickstart.md
+
+**Tests**: REQUIRED per Constitution VI (Testing Excellence) — F-6 ships with new structural-diff + line-count + MAESTRO grep + Pattern Category Disambiguation header presence + references-array fixture tests at `tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py`. Backward-compatibility byte-identity test at `tests/scripts/test_backward_compatibility.py` runs as gate (additive infrastructure update: `DETECTION_AGENT_PATHS` 10 → 8; `DETECTION_PATTERN_REF_ENRICHMENT_HOSTS` 5 → 7).
+
+**Organization**: Tasks are grouped by user story (US-1 / US-2 / US-3 from spec.md) to enable independent implementation and testing of each. The three P0 stories are operationalized through 18 sequential waves with explicit owner assignments + buffer day reserved.
+
+## Format: `[ID] [P?] [Story] Description`
+- **[P]**: Can run in parallel (different files, no dependencies)
+- **[Story]**: Which user story this task belongs to (US1 / US2 / US3)
+- Include exact file paths in descriptions
+
+## Path Conventions
+- **Single project** (tachi methodology toolkit): `.claude/agents/tachi/`, `.claude/skills/tachi-*/references/`, `docs/architecture/02_ADRs/`, `tests/scripts/`, `examples/`, `specs/`, `_internal/strategy/`
+- All paths are absolute from repo root `/Users/david/Projects/tachi/`
+
+---
+
+## Phase 1: Setup (Shared Infrastructure)
+
+**Purpose**: Prerequisites already satisfied at PRD/plan time; this phase is a verification gate before Wave 0.0 begins.
+
+- [ ] T001 Verify all 6 baseline files match expected line counts: `wc -l .claude/agents/tachi/{tampering,data-poisoning,model-theft}.md .claude/skills/tachi-{tampering,data-poisoning,model-theft}/references/detection-patterns.md` returns exactly 51 / 78 / 97 / 190 / 137 / 211
+- [ ] T002 Verify schema invariant: `grep -E '^schema_version:|^\s+pattern:' schemas/finding.yaml` returns `schema_version: "1.8"` + `pattern: "^(S|T|R|I|D|E|AG|LLM|AGP|OI|MI|TE)-\\d+$"` unchanged
+- [ ] T003 Verify ATLAS catalog-resolvability: `for t in T0015 T0018 T0019 T0020 T0024 T0031; do grep -c "AML.$t" schemas/taxonomy/mitre-atlas.yaml; done` returns 0/4/0/4/4/0 (3 of 6 absent — T0015/T0019/T0031 prose-only at 3x F-5 T1496 scale)
+- [ ] T004 Verify ADR-035 is next-available: `ls docs/architecture/02_ADRs/ADR-03*` shows ADR-034 highest existing
+- [ ] T005 Verify zero MAESTRO references in all 6 target files: `grep -i 'maestro' .claude/agents/tachi/{tampering,data-poisoning,model-theft}.md .claude/skills/tachi-{tampering,data-poisoning,model-theft}/references/detection-patterns.md` returns no matches
+- [ ] T006 Verify all 3 host agents present in `finding-format-shared.md` consumers list: `grep -E '^(- |\*) (tampering|data-poisoning|model-theft)' .claude/skills/tachi-shared/references/finding-format-shared.md` returns 3 matches
+
+---
+
+## Phase 2: Foundational — Wave 0.0 + Wave 1.0 + Wave 1.1 (Day 1 AM Blocking Prerequisites)
+
+**Purpose**: New `examples/predictive-ml-app/` architecture authoring (Q1 RESOLVED), architect re-verification, ADR-035 Proposed commit, and tampering host enrichment (Wave 1.1). MUST complete before Wave 2.x can begin.
+
+**CRITICAL**: No data-poisoning or model-theft authoring can begin until Wave 1.1 lands.
+
+### Wave 0.0 — `examples/predictive-ml-app/` Architecture Authoring (Plan Day Tuesday 2026-04-28 PM, ~4-6 hours)
+
+- [ ] T007 Architect + senior-backend-engineer co-author `examples/predictive-ml-app/architecture.md` (~150-200 lines) exhibiting all 5 predictive-ML topology indicators: (a) training pipeline ingesting from dataset repo, (b) fine-tuning step on pretrained weights from public registry (HuggingFace Hub), (c) MLOps model registry promoting versioned artifacts, (d) prediction-API endpoint serving classifier with no input-validation barrier, (e) active-learning feedback loop reading production predictions back into training. Architecture covers fictional fraud-detection ML application (clearly-fictional scenario per Constitution V Privacy)
+- [ ] T008 [P] Author placeholder `examples/predictive-ml-app/README.md` documenting the example as F-6 mutation target (excluded from `test_backward_compatibility.py` byte-identity loop per FR-014)
+
+### Wave 1.0 — Architect Re-Verification (15–30 min, Day 1 AM Wednesday 2026-04-29)
+
+- [ ] T009 Architect re-verifies all 6 baseline assumptions: line counts (51/78/97/190/137/211), schema invariant (1.8 + id.pattern unchanged), catalog-resolvability (3/6 ATLAS), ADR-035 next-available, zero MAESTRO refs, consumer-list presence. Confirm Heuristic A protocol distinctness intact at three-agent scope per ADR-034 lines 192–204 forecast.
+
+### Wave 1.1 — ADR-035 Proposed (with 8-Row Mapping Table COMPLETE) + tampering Edits + Fixtures (parallel, Day 1 AM Wednesday 2026-04-29)
+
+- [ ] T010 [P] Author ADR-035 Proposed at `docs/architecture/02_ADRs/ADR-035-ml-top-10-coverage-bundle.md` (~330-400 lines) with 9-10 numbered Decisions: D-1 Heuristic A enrichment at three-agent scope; D-2 additive-only edit discipline (ADR-023 D3); D-3 canonical 8-row sub-pattern → owning-agent mapping table with severity-hint annotation column populated COMPLETE (NOT skeleton — 8 closure rows + 4 reference rows for ML02/05/09/10); D-4 ML06 two-facet disjoint architectural-tells (corpus-side Cat 10 D vs artifact-side Cat 14 LLM); D-5 ML03 vs ML04 disjoint architectural-tells (Cat 12 input reconstruction vs Cat 13 membership determination); D-6 no schema bump (third no-bump enrichment); D-7 no consumers-list edit; D-8 no functional orchestrator/dispatch edit; D-9 Pattern Category Disambiguation requirement on 3 companions (architect MEDIUM-3); D-10 no source_attribution populator wiring (F-A3 deferral). Cross-references: ADR-021, ADR-023, ADR-027, ADR-028, ADR-030 D1, ADR-031 D8 (asymmetry — F-6 does NOT invoke), ADR-032, ADR-034 lines 192–204 forecast. Revision History with provisional Proposed date; SHA-fill placeholder for post-merge. Public-only governance per Option C (no SDR-001 cross-ref).
+- [ ] T011 [P] [US1] Edit `.claude/agents/tachi/tampering.md` Edit 1: extend metadata YAML `owasp_references` with `"OWASP ML01:2023 — Input Manipulation Attack"` and `"MITRE ATLAS AML.T0015 — Evade ML Model"` appended; pre-existing entries byte-identical (FR-001)
+- [ ] T012 [US1] Edit `.claude/agents/tachi/tampering.md` Edit 2: extend `## Purpose` section with 1–3 line additive append naming the adversarial input manipulation surface for predictive ML (small-perturbation adversarial examples, FGSM/PGD-style attacks, decision-boundary attacks against deployed classifiers) alongside existing data-tampering surface; pre-existing prose byte-identical (FR-002)
+- [ ] T013 [US1] Edit `.claude/agents/tachi/tampering.md` Edit 3: extend Detection Workflow Step 5 references list with `OWASP ML01:2023, MITRE ATLAS AML.T0015` exemplar mention; existing references byte-identical (FR-003). Verify post-edit line count ≤120 (target 54-58)
+- [ ] T014 [US1] Edit `.claude/skills/tachi-tampering/references/detection-patterns.md`: append **Pattern Category 10 — Adversarial Input Manipulation (Predictive ML)** after Cat 9 with primary OWASP ML01:2023, AML.T0015 in mitigation prose only (catalog-absent); ≥4 indicators (target 5: deployed predictive ML classifier + inference endpoint with no input-validation barrier + missing adversarial-defense controls + missing distribution-shift monitoring + missing confidence-thresholding HITL escalation); ≥1 worked example (fraud-detection ML classifier serving `/predict` endpoint without input-validation barrier; attacker crafts feature-space perturbations to evade fraud detection); named adversarial-defense mitigations (adversarial training, statistical anomaly detection on inputs, distribution-shift monitoring, confidence-thresholding with HITL escalation, ensemble disagreement detection); Primary Sources extension with `OWASP ML01:2023` (FR-004 + FR-012)
+- [ ] T015 [US2] Edit `.claude/skills/tachi-tampering/references/detection-patterns.md`: append **Pattern Category Disambiguation** subsection after Cat 10 explicitly drawing the boundary between Cat 10 (Adversarial Input Manipulation against predictive ML inference endpoints) and Cat 1-9 (generic web-application injection / deserialization / supply-chain integrity gaps) — same architecture may surface both Cat 9 + Cat 10 findings if it has both a generic API surface and a predictive-ML inference endpoint (FR-011)
+- [ ] T016 [P] [US1] Author tampering Cat 10 fixture finding at `tests/scripts/fixtures/ml_top_10_coverage_bundle/valid_category_10_tampering_adversarial_input_finding.yaml` per `contracts/finding-contract.md` Cat 10 (T) shape — including `references: ["OWASP ML01:2023 — Input Manipulation Attack"]` (T0015 prose-only in mitigation, NOT in references)
+
+**Checkpoint**: ADR-035 Proposed committed with 8-row mapping table populated COMPLETE; `tampering.md` 3 additive edits applied (≤120 lines verified); tampering companion Cat 10 + Pattern Category Disambiguation + Primary Sources extension applied; 1 fixture authored. **Wave 2 can now start.**
+
+---
+
+## Phase 3: User Story 1 — Adversarial-ML Threat Coverage on a Predictive-ML Architecture (Priority: P0) MVP
+
+**Goal**: Surface findings covering the full OWASP ML Top 10:2023 surface (ML01, ML03, ML04, ML06, ML07, ML08) through three existing host agents on the new `predictive-ml-app/` architecture.
+
+**Independent Test**: Given the new `predictive-ml-app/` architecture exhibiting all 5 predictive-ML topology indicators, running `/tachi.threat-model` emits ≥1 new `T-{N}` (Cat 10), ≥1 new `D-{N}` (Cat 8/9/10), ≥1 new `LLM-{N}` (Cat 12/13/14) — aggregate ≥6 ML findings across 6 closed ML Top 10 items.
+
+### Wave 2 — data-poisoning Edits + Pattern Categories 8/9/10 (Day 1 PM Wednesday 2026-04-29)
+
+**Note**: Per team-lead MEDIUM-2, Wave 2 is broken into three sequential category-by-category checkpoints (T-NN-1 / T-NN-2 / T-NN-3) at ~90 minutes each with rollback capability. T024 + T025 + T026 ARE the team-lead's T-NN-1/2/3 checkpoints.
+
+- [ ] T017 [US1] Edit `.claude/agents/tachi/data-poisoning.md` Edit 1: extend metadata YAML `owasp_references` with 7-line append: `"OWASP ML06:2023 — AI Supply Chain Attacks"`, `"OWASP ML07:2023 — Transfer Learning Attack"`, `"OWASP ML08:2023 — Model Skewing"`, `"MITRE ATLAS AML.T0018 — Backdoor ML Model"`, `"MITRE ATLAS AML.T0019 — Publish Poisoned Datasets"`, `"MITRE ATLAS AML.T0020 — Poison Training Data"`, `"MITRE ATLAS AML.T0031 — Erode ML Model Integrity"`; pre-existing entries byte-identical (FR-005)
+- [ ] T018 [US1] Edit `.claude/agents/tachi/data-poisoning.md` Edit 2: extend `## Purpose` section with 1–3 line additive append naming the predictive-ML training poisoning, transfer-learning supply-chain, and feedback-loop skewing surfaces alongside existing LLM/RAG poisoning surface; pre-existing prose byte-identical (FR-006)
+- [ ] T019 [US1] Edit `.claude/agents/tachi/data-poisoning.md` Edit 3: extend Detection Workflow Step 5 references list with new OWASP ML and MITRE ATLAS citations; existing references byte-identical. Verify post-edit line count ≤150 (target 84-90) (FR-006)
+- [ ] T020 [US1] Wave 2.1 / **TEAM-LEAD MEDIUM-2 CHECKPOINT T-NN-1**: Edit `.claude/skills/tachi-data-poisoning/references/detection-patterns.md` PART 1 of 3 — append **Pattern Category 8 — Transfer Learning Supply Chain (Predictive ML)** after Cat 7 with primary OWASP ML07:2023, AML.T0018 in references (catalog-resolvable), AML.T0019 in mitigation prose only (catalog-absent); ≥4 indicators (target 5: fine-tuning step on pretrained weights from public registry + weights pulled without checksum verification + adapter merged without integrity verification + provenance metadata absent + model-card review missing); ≥1 worked example (fine-tuning pipeline pulling pretrained weights from HuggingFace Hub without `revision=` checksum pinning); named LLM-specific mitigations (signed-weight-artifact policy with cryptographic verification — Sigstore-style or KMS-backed, allowlist of trusted pretrained-weight sources, fine-tuning hash-pinning, model-card provenance review). **Self-review checkpoint**: re-read Cat 8 for indicator/example/citation/mitigation discipline before proceeding to T-NN-2 (FR-007 part 1)
+- [ ] T021 [US1] Wave 2.2 / **TEAM-LEAD MEDIUM-2 CHECKPOINT T-NN-2**: Edit `.claude/skills/tachi-data-poisoning/references/detection-patterns.md` PART 2 of 3 — append **Pattern Category 9 — Feedback-Loop Model Skewing (Active Learning / Online Learning)** after Cat 8 with primary OWASP ML08:2023, AML.T0020 in references (catalog-resolvable), AML.T0031 in mitigation prose only (catalog-absent); ≥4 indicators (target 5: active-learning pipeline reading production data back into training without integrity controls + label-flipping in HITL labeling without labeler-trust scoring + online-learning drift injection from inference inputs + recommendation-system feedback loops without tamper-detection on clickstream + drift-detection alarms missing); ≥1 worked example (active-learning loop with no anomaly detection on label distribution drift); named mitigations (feedback-data integrity gates with anomaly detection on label distribution drift, labeler-trust scoring with reputation-based weighting, periodic retraining-data audit with held-out canaries, drift-detection alarms on production inference distributions). **Self-review checkpoint**: re-read Cat 9 for discipline before proceeding to T-NN-3 (FR-007 part 2)
+- [ ] T022 [US1] Wave 2.3 / **TEAM-LEAD MEDIUM-2 CHECKPOINT T-NN-3**: Edit `.claude/skills/tachi-data-poisoning/references/detection-patterns.md` PART 3 of 3 — append **Pattern Category 10 — Predictive-ML Supply Chain Completeness (Datasets, Feature Stores, MLOps Registry)** after Cat 9 with primary OWASP ML06:2023 (corpus-side facet per ADR-035 D-4), MITRE ATT&CK T1195 + T1195.001 + T1195.002 in references (catalog-resolvable); ≥4 indicators (target 5: dataset repository with no integrity verification + feature store with no IAM-enforced write-audit + MLOps model registry with no signed-artifact policy + missing model-card or datasheet metadata + dataset-checksum manifest absent); ≥1 worked example (training pipeline ingesting from public Kaggle dataset without checksum verification + Feast feature store with no IAM write-audit + MLflow registry promoting models without signed-artifact policy); named mitigations (signed-artifact policy at registry boundary, IAM-enforced write-audit on feature stores, dataset-checksum manifest with reproducibility verification, model-card review gate before promotion to production). **Self-review checkpoint**: re-read Cat 10 for discipline. Apply Pattern Category Disambiguation subsection (Cat 8/9/10 vs Cat 1-7 LLM/RAG poisoning per FR-011); apply Primary Sources extension with ML06:2023 + ML07:2023 + ML08:2023 (FR-007 part 3 + FR-011 + FR-012)
+- [ ] T023 [P] [US1] Author data-poisoning Cat 8 fixture at `tests/scripts/fixtures/ml_top_10_coverage_bundle/valid_category_8_data_poisoning_transfer_learning_finding.yaml` (`references: ["OWASP ML07:2023", "MITRE ATLAS AML.T0018"]`; T0019 prose-only)
+- [ ] T024 [P] [US1] Author data-poisoning Cat 9 fixture at `tests/scripts/fixtures/ml_top_10_coverage_bundle/valid_category_9_data_poisoning_feedback_loop_finding.yaml` (`references: ["OWASP ML08:2023", "MITRE ATLAS AML.T0020"]`; T0031 prose-only)
+- [ ] T025 [P] [US1] Author data-poisoning Cat 10 fixture at `tests/scripts/fixtures/ml_top_10_coverage_bundle/valid_category_10_data_poisoning_corpus_supply_chain_finding.yaml` (`references: ["OWASP ML06:2023", "MITRE ATT&CK T1195", "MITRE ATT&CK T1195.001", "MITRE ATT&CK T1195.002"]`)
+
+**Checkpoint**: Wave 2 complete. data-poisoning agent metadata + Cat 8 + Cat 9 + Cat 10 + Pattern Category Disambiguation subsection + 3 Primary Sources entries authored; 137 → ~290-330 lines; line count verified ≤150 on agent (78 → 84-90); 3 fixtures authored.
+
+### Wave 3 — model-theft Edits + Pattern Categories 12/13/14 (Day 2 AM Thursday 2026-04-30)
+
+- [ ] T026 [US1] Edit `.claude/agents/tachi/model-theft.md` Edit 1: extend metadata YAML `owasp_references` with 4-line append: `"OWASP ML03:2023 — Model Inversion Attack"`, `"OWASP ML04:2023 — Membership Inference Attack"`, `"OWASP ML06:2023 — AI Supply Chain Attacks"` (predictive-ML artifact facet), `"MITRE ATLAS AML.T0024 — Exfiltration via ML Inference API"`; pre-existing entries (LLM03:2025 pre-F-5 + LLM10:2025 from F-5) byte-identical (FR-008)
+- [ ] T027 [US1] Edit `.claude/agents/tachi/model-theft.md` Edit 2: extend `## Purpose` section with 1–3 line additive append naming the predictive-ML extraction (model inversion, membership inference) and predictive-ML artifact supply-chain integrity surfaces alongside existing LLM-extraction and cost-amplification (F-5) surfaces; pre-existing prose byte-identical (FR-009)
+- [ ] T028 [US1] Edit `.claude/agents/tachi/model-theft.md` Edit 3: extend Detection Workflow Step 5 references list with new OWASP ML and MITRE ATLAS citations; existing references byte-identical. Verify post-edit line count ≤150 (target 103-108) (FR-009)
+- [ ] T029 [US1] Edit `.claude/skills/tachi-model-theft/references/detection-patterns.md` PART 1 of 3: append **Pattern Category 12 — Model Inversion (Predictive ML)** after Cat 11 (post-F-5) with primary OWASP ML03:2023, AML.T0024 in references (catalog-resolvable; shared with Cat 13 but disjoint architectural-tells per ADR-035 D-5); ≥4 indicators (target 5: prediction API serving classifier with sensitive training data + DP-SGD on training absent + output-perturbation noise injection absent + query-rate throttling per tenant absent + model-extraction-pattern detection absent); ≥1 worked example (medical-imaging classifier serving `/predict` endpoint without DP-SGD and without per-tenant query throttling; attacker performs gradient-inversion); named mitigations (differential privacy on training with DP-SGD bounded ε, output-perturbation noise injection, query-rate throttling, model-extraction-pattern detection) (FR-010 part 1)
+- [ ] T030 [US1] Edit `.claude/skills/tachi-model-theft/references/detection-patterns.md` PART 2 of 3: append **Pattern Category 13 — Membership Inference (Predictive ML)** after Cat 12 with primary OWASP ML04:2023, AML.T0024 in references (catalog-resolvable; shared with Cat 12); ≥4 indicators (target 5: prediction API returning confidence values + shadow-model attack feasibility + label-only response mode missing + DP-SGD absent + confidence-output truncation absent + training-data minimization not enforced); ≥1 worked example (fraud-detection classifier API returning prediction confidence values; attacker uses confidence-thresholding); named mitigations (DP-SGD, confidence-output truncation or label-only response mode, query-rate throttling, training-data minimization) (FR-010 part 2)
+- [ ] T031 [US1] Edit `.claude/skills/tachi-model-theft/references/detection-patterns.md` PART 3 of 3: append **Pattern Category 14 — Predictive-ML Artifact Supply Chain (Model Registry, Weight Tampering)** after Cat 13 with primary OWASP ML06:2023 (artifact-side facet per ADR-035 D-4), MITRE ATT&CK T1195 + sub-techniques in references; ≥4 indicators (target 5: MLOps model registry with no signed-artifact policy + weight tampering surface mutable artifact storage + missing model-signing or attestation policy + registry IAM with promotion-gate review absent + integrity verification at model-load time absent); ≥1 worked example (MLflow model registry promoting models without signed-artifact policy; attacker compromises registry credentials and pushes backdoored model checkpoint); named mitigations (model-signing with cryptographic attestation — Sigstore-style or KMS-backed, registry IAM with promotion-gate review, integrity verification at model-load time, immutable artifact storage with audit logging) (FR-010 part 3)
+- [ ] T032 [US2] Edit `.claude/skills/tachi-model-theft/references/detection-patterns.md`: append **Pattern Category Disambiguation** subsection after Cat 14 explicitly drawing boundaries: Cat 12 (Model Inversion) vs Cat 13 (Membership Inference) per ADR-035 D-5 disjoint architectural-tells (Cat 12 = white-box gradient inversion + black-box optimization for input reconstruction; Cat 13 = confidence-thresholding + shadow-model attacks for training-set membership determination); Cat 12/13/14 vs Cat 1-9 (LLM-tier extraction — pre-existing); Cat 14 (predictive-ML artifact supply-chain) vs Cat 10/11 (LLM-tier cost-DoW from F-5); same architecture (LLM + predictive-ML hybrid) may surface Cat 10/11 + Cat 14 findings (FR-011)
+- [ ] T033 [US1] Edit `.claude/skills/tachi-model-theft/references/detection-patterns.md`: append Primary Sources extension with `OWASP ML03:2023`, `OWASP ML04:2023`, `OWASP ML06:2023` (FR-012)
+- [ ] T034 [US1] Architect integration walkthrough: re-read model-theft companion Cat 10 → 11 → 12 → 13 → 14 visual continuity (post-F-5 + post-F-6); confirm no narrative gaps or inconsistencies between F-5's Cat 10/11 cost-DoW carve-out and F-6's Cat 12/13/14 predictive-ML surfaces (team-lead C-2)
+- [ ] T035 [P] [US1] Author model-theft Cat 12 fixture at `tests/scripts/fixtures/ml_top_10_coverage_bundle/valid_category_12_model_theft_inversion_finding.yaml` (`references: ["OWASP ML03:2023", "MITRE ATLAS AML.T0024"]`)
+- [ ] T036 [P] [US1] Author model-theft Cat 13 fixture at `tests/scripts/fixtures/ml_top_10_coverage_bundle/valid_category_13_model_theft_membership_inference_finding.yaml` (`references: ["OWASP ML04:2023", "MITRE ATLAS AML.T0024"]`)
+- [ ] T037 [P] [US1] Author model-theft Cat 14 fixture at `tests/scripts/fixtures/ml_top_10_coverage_bundle/valid_category_14_model_theft_artifact_supply_chain_finding.yaml` (`references: ["OWASP ML06:2023", "MITRE ATT&CK T1195", "MITRE ATT&CK T1195.001", "MITRE ATT&CK T1195.002"]`)
+
+**Checkpoint**: Wave 3 complete. model-theft enrichment authored (211 → ~360-400 lines); line count verified ≤150 on agent (97 → 103-108); 3 fixtures authored; Pattern Category Disambiguation subsection appended; visual continuity Cat 10 → 11 → 12 → 13 → 14 verified.
+
+---
+
+## Phase 4: User Story 2 — Three-Agent Enrichment Without New Agents, Schema Bumps, or Orchestrator Changes (Priority: P0)
+
+**Goal**: PR diff shows exactly 6 file edits + ADR-035; 22 detection-tier files unchanged; schema invariant preserved; Pattern Category Disambiguation present on all 3 companions; ML06 + ML03/ML04 disjoint-tells decisions in ADR-035.
+
+**Independent Test**: `git diff --name-only main HEAD -- '.claude/agents/tachi/' '.claude/skills/tachi-*/references/'` returns exactly 6 files; `git diff main HEAD -- schemas/finding.yaml` is empty; `grep -c "Pattern Category Disambiguation" .claude/skills/tachi-{tampering,data-poisoning,model-theft}/references/detection-patterns.md` returns 1/1/1 (3 total).
+
+### Wave 1.0 + Wave 1.1 (already covered T010 ADR-035 above)
+
+ADR-035 D-numbered decisions are authored at T010 — Wave 1.1 fully operationalizes US-2's ADR deliverables:
+- D-1 Heuristic A 3-agent (architect MEDIUM not deferred — full new structure)
+- D-2 Additive-only edit discipline
+- D-3 Canonical 8-row mapping table with severity-hint column
+- D-4 ML06 two-facet disjoint architectural-tells (architect MEDIUM-4)
+- D-5 ML03/ML04 disjoint architectural-tells (architect MEDIUM-5)
+- D-6/7/8 No schema/consumer-list/orchestrator edits
+- D-9 Pattern Category Disambiguation requirement (architect MEDIUM-3)
+- D-10 No source_attribution wiring
+
+### Wave 4 verification of US-2 invariants (Day 2 PM Thursday 2026-04-30)
+
+- [ ] T038 [US2] Verify schema invariant gate (FR-017 / SC-022): `git diff main HEAD -- schemas/finding.yaml` is empty (zero lines)
+- [ ] T039 [US2] Verify 22-file zero-edit invariant (FR-019 / SC-021): `git diff --name-only main HEAD -- '.claude/agents/tachi/' '.claude/skills/tachi-*/references/'` returns exactly the 6 F-6 targets; `git diff main HEAD -- '.claude/agents/tachi/spoofing.md' '.claude/agents/tachi/repudiation.md' '.claude/agents/tachi/info-disclosure.md' '.claude/agents/tachi/denial-of-service.md' '.claude/agents/tachi/privilege-escalation.md' '.claude/agents/tachi/prompt-injection.md' '.claude/agents/tachi/agent-autonomy.md' '.claude/agents/tachi/tool-abuse.md' '.claude/agents/tachi/output-integrity.md' '.claude/agents/tachi/misinformation.md' '.claude/agents/tachi/human-trust-exploitation.md'` is empty
+- [ ] T040 [US2] Verify orchestrator + consumers list zero functional edit (FR-018 + FR-020 / SC-025): `git diff main HEAD -- .claude/skills/tachi-shared/references/finding-format-shared.md .claude/agents/tachi/orchestrator.md .claude/skills/tachi-orchestration/references/dispatch-rules.md` is empty
+- [ ] T041 [US2] Verify Pattern Category Disambiguation header presence on all 3 companions (FR-011 / SC-014): `grep -c "Pattern Category Disambiguation" .claude/skills/tachi-{tampering,data-poisoning,model-theft}/references/detection-patterns.md` returns 1/1/1 (3 total)
+
+**Checkpoint**: Wave 4 verification of US-2 invariants complete. All structural enforceable invariants green.
+
+---
+
+## Phase 5: User Story 3 — Byte-Identical Regeneration on Non-Predictive-ML Baselines + New `predictive-ml-app/` Mutation Target (Priority: P0)
+
+**Goal**: 6 non-predictive-ML baselines regenerate byte-identically; new `predictive-ml-app/` regenerates with ≥6 new ML findings; agentic-app + consumer-agent-app zero-touch.
+
+**Independent Test**: `pytest tests/scripts/test_backward_compatibility.py -k "byte_identity" -v` passes 6/6; `examples/predictive-ml-app/` regen yields ≥6 new ML findings (≥1 per host agent).
+
+### Wave 4.0 — `predictive-ml-app/` End-to-End Regeneration (Day 2 PM Thursday 2026-04-30)
+
+- [ ] T042 [US3] Regenerate `examples/predictive-ml-app/` end-to-end via pipeline: `cd examples/predictive-ml-app && SOURCE_DATE_EPOCH=1700000000 /tachi.threat-model && SOURCE_DATE_EPOCH=1700000000 /tachi.risk-score && SOURCE_DATE_EPOCH=1700000000 /tachi.compensating-controls && SOURCE_DATE_EPOCH=1700000000 /tachi.infographic all && SOURCE_DATE_EPOCH=1700000000 /tachi.security-report` (FR-014)
+- [ ] T043 [US3] Verify aggregate ≥6 new ML findings on `predictive-ml-app/`: `grep -c "^- id: T-" examples/predictive-ml-app/sample-report/threats.md` returns ≥1 (Cat 10); `grep -c "^- id: D-" examples/predictive-ml-app/sample-report/threats.md` returns ≥1 (Cat 8/9/10); `grep -c "^- id: LLM-" examples/predictive-ml-app/sample-report/threats.md` returns ≥1 (Cat 12/13/14); aggregate ≥6 covering 6 closed ML Top 10 items (SC-019)
+- [ ] T044 [US3] Verify references-array carries OWASP ML primaries: `grep -E "OWASP ML0[1-9]:2023|OWASP ML10:2023" examples/predictive-ml-app/sample-report/threats.md` returns ≥6 distinct citations across the 6 closed items (SC-023)
+- [ ] T045 [US3] Commit `examples/predictive-ml-app/sample-report/security-report.pdf.baseline` as F-6 mutation target baseline (excluded from byte-identity loop in `test_backward_compatibility.py` per FR-014; mirrors agentic-app + consumer-agent-app precedent)
+
+### Wave 4.1 — Tester Early-Signal Spot-Check (parallel with Wave 4.0; Day 2 PM Thursday 2026-04-30)
+
+- [ ] T046 [P] [US3] Tester (per FR-025 / team-lead MEDIUM-3): early-signal byte-identity spot-check on `examples/web-app/` — regenerate via pipeline under `SOURCE_DATE_EPOCH=1700000000`; verify `diff -q examples/web-app/sample-report/security-report.pdf examples/web-app/sample-report/security-report.pdf.baseline` returns identical
+- [ ] T047 [P] [US3] Tester: early-signal byte-identity spot-check on `examples/maestro-reference/` — regenerate via pipeline; verify byte-identical against baseline
+
+**Checkpoint**: Wave 4 complete. `predictive-ml-app/` regenerates with ≥6 new ML findings; tester spot-check confirms 2 of 6 baselines byte-identical (early signal).
+
+### Wave 5.0 — Tester Full 6-Baseline Byte-Identity Verification (Day 3 AM Friday 2026-05-01)
+
+**Note**: Per team-lead LOW-1, Day 3 AM is split into AM-1 (tester) + AM-2 (architect) so the two activities don't share a single slot owner.
+
+- [ ] T048 [US3] **TEAM-LEAD LOW-1 Wave 5.0 (AM-1)**: Tester runs full byte-identity verification across all 6 baselines under `SOURCE_DATE_EPOCH=1700000000` per ADR-021: `pytest tests/scripts/test_backward_compatibility.py -k "byte_identity" -v` returns 6/6 passing for `web-app`, `microservices`, `ascii-web-api`, `mermaid-agentic-app`, `free-text-microservice`, `maestro-reference` (SC-018)
+
+### Wave 5.1 — Architect ADR-035 Accepted Transition (parallel with Wave 5.0; Day 3 AM Friday 2026-05-01)
+
+- [ ] T049 [US2] **TEAM-LEAD LOW-1 Wave 5.1 (AM-2)**: Architect transitions ADR-035 Proposed → Accepted at `docs/architecture/02_ADRs/ADR-035-ml-top-10-coverage-bundle.md` Status field; Revision History gains "Accepted: 2026-05-01" line with provisional date (post-merge SHA fill at T060 below)
+
+### Wave 5.2 — Test Infrastructure + Enrichment Test Suite (Day 3 AM Friday 2026-05-01)
+
+- [ ] T050 [P] [US1] Author new `tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py` (~300-400 lines) with tests: (a) line-count caps on all 3 host agents (≤120/150/150); (b) structural-diff byte-identity on Cat 1-9 (T) + Cat 1-7 (D) + Cat 1-11 (LLM model-theft post-F-5) per ADR-023 D3; (c) MAESTRO grep returning 0 matches on all 6 enriched files; (d) Pattern Category Disambiguation header presence test (3 matches across 3 companions); (e) references-array fixture validation for all 7 fixtures (Cat 10 T + Cat 8/9/10 D + Cat 12/13/14 LLM); (f) catalog-resolvability assertions (T0015/T0019/T0031 NOT in any references array; T0018/T0020/T0024/T1195 + sub-techniques present where expected)
+- [ ] T051 [P] [US1] Modify `tests/scripts/test_backward_compatibility.py` infrastructure: `DETECTION_AGENT_PATHS` removes `tampering.md` + `data-poisoning.md` (10 → 8 entries; F-5 already removed `model-theft.md`); `DETECTION_PATTERN_REF_ENRICHMENT_HOSTS` frozenset adds `tachi-tampering` + `tachi-data-poisoning` companions (5 → 7 entries; `tachi-model-theft` already in F-5 set per F-5 precedent)
+- [ ] T052 [US1] Run all tests: `pytest tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py tests/scripts/test_backward_compatibility.py -v` returns all green
+- [ ] T053 [US1] Code-review pass on all 6 file edits + ADR-035 + new example architecture (FR-013 cross-reference completeness, ADR-035 D-numbered decisions complete, Pattern Category content quality on all 7 categories)
+
+**Checkpoint**: Wave 5 AM complete. 6 baselines byte-identical (per tester per FR-025); ADR-035 Accepted (provisional date); new test file + infrastructure update green; code-review pass green.
+
+---
+
+## Phase 6: Wave 5.3 — Coverage Matrix Six-Row Update (Day 3 PM Friday 2026-05-01)
+
+**Goal**: BLP-01 strategy doc reflects six row transitions + coverage milestone update.
+
+- [ ] T054 [US1] Update `_internal/strategy/BLP-01-threat-coverage.md` §6 Coverage Matrix: ML01 Planned → Covered, ML03 Planned → Covered, ML04 Planned → Covered, ML06 Partial → Covered, ML07 Planned → Covered, ML08 Planned → Covered. Closure-feature column populated with "Feature 232 (F-6)" for all 6 rows. Coverage milestones panel updated to OWASP ML Top 10:2023 = 10/10 Covered + OWASP three-framework total = 30/30 (combined post-F-5 OWASP AI top-10 = 20/20). Single commit per F-3/F-4/F-5 precedent (FR-023)
+
+**Checkpoint**: Coverage Matrix six-row transition committed.
+
+---
+
+## Phase 7: Wave 5.4–5.5 — Triple Sign-Off + Close-Out + Delivery Retrospective (Day 3 PM Friday 2026-05-01)
+
+**Goal**: tasks.md triple sign-off, `/aod.deliver` close-out with `feat(232):` Conventional Commits PR title + post-merge release-please verification, delivery retrospective filed.
+
+- [ ] T055 [US1] PM, Architect, Team-Lead apply triple sign-off on tasks.md per `/aod.tasks` triple-sign-off protocol — frontmatter `triad.{pm,architect,techlead}_signoff` populated
+- [ ] T056 [US1] Pre-merge: verify PR title is Conventional-Commit-formatted (`gh pr view 233 --json title --jq .title` returns `feat(232): ML Top 10 Coverage Bundle` or similar `feat(232):` prefix ≤70 chars); if non-conventional, retitle via `gh pr edit 233 --title "feat(232): ML Top 10 Coverage Bundle"` per `.claude/rules/git-workflow.md` Pre-merge enforcement (FR-024 / SC-026)
+- [ ] T057 [US1] `/aod.deliver` close-out: squash-merge PR #233 via `gh pr merge 233 --squash --auto`; pull main; commit final state
+- [ ] T058 [US1] Post-merge: verify release-please PR opens within ~30s via `gh pr list --state open --search "release-please" --limit 3`; if empty, push empty release-marker commit `git commit --allow-empty -m "feat(232): ML Top 10 Coverage Bundle — release marker"` + `git push origin main` per F-212 incident precedent (FR-024)
+- [ ] T059 [US1] Author delivery retrospective at `specs/232-ml-top-10-coverage-bundle/delivery.md` (~150-200 lines) capturing: actual vs estimated effort; **third execution of Heuristic A enrichment branch at three-agent scope** lessons (precedent for F-7 5-agent fan-out); ML06 two-facet split coordination lessons (architect MEDIUM-4 absorbed at ADR-035 D-4); ML03 vs ML04 disjoint-tells coordination lessons (architect MEDIUM-5 absorbed at ADR-035 D-5); Pattern Category Disambiguation lessons across 3 companions (architect MEDIUM-3 absorbed at FR-011 + SC-014 + ADR-035 D-9); team-lead MEDIUM-2 Day 1 PM checkpoint efficacy (T020/T021/T022 sequential rollback capability); team-lead MEDIUM-3 Day 2 PM tester engagement preserved (FR-025 + T046/T047); team-lead LOW-1 Day 3 AM split (T048 tester + T049 architect parallel); byte-identity preservation evidence (FR-019 + FR-016 grep proofs across 6 baselines + new `predictive-ml-app/` ≥6 findings); canonical 8-row mapping table audit-deliverable lessons; ADR-035 Accepted-commit SHA-fill execution; ATLAS catalog gap propagation handling (3 of 6 ATLAS techniques as prose-only at 3x F-5 T1496 precedent scale); any deviations from PRD timeline or scope (FR-026 / SC-026)
+- [ ] T060 [US1] Post-merge ADR-035 SHA fill: capture squash-merge SHA via `git rev-parse HEAD` and update ADR-035 Revision History line "Accepted: 2026-05-01 (squash commit: <SHA>)"; commit `docs(232): ADR-035 Accepted — post-merge SHA fill`
+
+**Checkpoint**: F-6 delivered. PR squash-merged with `feat(232):` title; release-please confirmed firing; delivery retrospective filed; ADR-035 SHA filled.
+
+---
+
+## Phase 8: Polish & Cross-Cutting Concerns
+
+**Purpose**: Optional final polish that affects multiple user stories.
+
+- [ ] T061 [P] Update `CLAUDE.md` Recent Changes section with F-6 (Feature 232) entry: third execution of Heuristic A enrichment branch at three-agent scope; ADR-035 lineage; 6/6 byte-identical baselines; OWASP ML Top 10 = 10/10 + 30/30 three-framework milestone; BLP-01 9/11 features delivered post-F-6
+- [ ] T062 [P] Update memory file `.claude/memory/feedback_blp01_progress.md` (or equivalent project-state memory) with F-6 delivery state per CLAUDE.md auto-memory convention
+- [ ] T063 [P] Run `/aod.deliver 232` close-out flow if not already run during T057; verify all DoD bullets green (line-count caps, byte-identity 6/6, predictive-ml-app baseline, Coverage Matrix transition, ADR-035 Accepted, schema invariant, Pattern Category Disambiguation 3/3, zero MAESTRO refs, PR title Conventional Commit, release-please fired)
+- [ ] T064 [P] Optional buffer-day-only tasks (Mon 2026-05-04 if Day 3 PM residual capacity insufficient): delivery retrospective filing fallback; R5 contingency invocation if triggered (deferral pair: data-poisoning Cat 10 T-022 + model-theft Cat 14 T-031 — ship 5 of 7 categories closing ML01 + ML07 + ML08 + ML03 + ML04; ML06 closure deferred to follow-on PR per spec OoS-15 + plan Wave 5.6)
+
+**Checkpoint**: F-6 fully delivered. All Triad sign-offs recorded. All artifacts in place. Ready for `/aod.run` next-feature kickoff or F-7 PRD authoring.
+
+---
+
+## Dependencies & Execution Order
+
+### Phase Dependencies
+
+- **Phase 1 → Phase 2**: Setup verifications must pass before Wave 0.0 starts
+- **Phase 2 → Phase 3**: Wave 0.0 (predictive-ml-app authored) + Wave 1.0/1.1 (architect re-verification + ADR-035 Proposed + tampering edits) MUST complete before data-poisoning (Wave 2) and model-theft (Wave 3) work begins
+- **Phase 3 (Wave 2 + Wave 3) → Phase 5 Wave 4**: All 6 file edits + Pattern Category Disambiguation on 3 companions complete before regeneration
+- **Phase 5 Wave 4 (regen + spot-check) → Phase 5 Wave 5**: Spot-check signal informs Day 3 AM full verification scope
+- **Phase 5 Wave 5 → Phase 6**: Full byte-identity 6/6 + ADR-035 Accepted before Coverage Matrix update (FR-023 single commit)
+- **Phase 6 → Phase 7**: Coverage Matrix transition committed before triple sign-off + close-out
+
+### Wave Gate Points
+
+| Gate | Wave | Owner | Decision |
+|------|------|-------|----------|
+| Wave 0.0 → Wave 1.0 | architect | Predictive-ml-app architecture exhibits all 5 indicators? Confirm before Day 1 build start. |
+| Wave 1.0 → Wave 1.1 | architect | All 6 baseline assumptions re-verified? Heuristic A protocol intact at three-agent scope? Confirm before pattern-catalog authoring. |
+| Wave 1.1 → Wave 2 | senior-backend-engineer | tampering edits + Cat 10 + Disambiguation byte-identity-clean? ADR-035 Proposed committed with mapping table populated COMPLETE (NOT skeleton)? |
+| Wave 2 → Wave 3 | senior-backend-engineer + team-lead MEDIUM-2 | All 3 category-by-category checkpoints (T-NN-1/2/3) completed cleanly? Wave 2.1, 2.2, 2.3 each self-reviewed? |
+| Wave 3 → Wave 4.0 | architect | Visual continuity Cat 10 → 11 → 12 → 13 → 14 verified? Pattern Category Disambiguation present on all 3 companions? |
+| Wave 4.0 → Wave 4.1 | senior-backend-engineer + tester | predictive-ml-app regen yields ≥6 new ML findings? Tester engaged for early-signal spot-check? |
+| Wave 4.1 → Wave 5.0 | tester | Spot-check on 2 baselines green? |
+| Wave 5.0 → Wave 5.1 | tester (parallel architect) | Full 6-baseline verification 6/6? (Wave 5.1 Architect Accepted-transition runs in parallel) |
+| Wave 5.0/5.1 → Wave 5.2 | tester + architect | Both AM activities complete? |
+| Wave 5.2 → Wave 5.3 | senior-backend-engineer + code-reviewer | All tests + code-review green? |
+| Wave 5.3 → Wave 5.4 | senior-backend-engineer | Coverage Matrix committed? |
+| Wave 5.4 → Wave 5.5 | PM + Architect + Team-Lead | Triple sign-off recorded on tasks.md? |
+| Wave 5.5 → Wave 5.6 (buffer) | senior-backend-engineer + architect | Pre-merge title verified + post-merge release-please fired + retrospective filed? |
+
+### Parallel Opportunities
+
+- **Wave 1.1 parallel**: T010 (ADR-035) + T011 (tampering Edit 1) + T016 (tampering fixture) — three different files, no inter-task dependencies
+- **Wave 2.x sequential**: T020 (T-NN-1) → T021 (T-NN-2) → T022 (T-NN-3) — single file (data-poisoning companion) requires sequential checkpoints per team-lead MEDIUM-2
+- **Wave 3 parallel**: T029 + T030 + T031 (Cat 12 + 13 + 14 in single file model-theft companion) — sequential within file but T035-T037 fixtures parallel
+- **Wave 4.0 + 4.1 weakly parallel**: regen (T042-T045) and spot-check (T046-T047) — tester can begin spot-check on 1–2 baselines before predictive-ml-app regen completes
+- **Wave 5.0 + 5.1 strongly parallel**: tester full 6-baseline verification (T048) + architect ADR-035 Accepted transition (T049) — different owners, different files, fully parallel per team-lead LOW-1
+- **Wave 5.2 parallel**: T050 (new test file) + T051 (test infra modify) — different files
+
+### Critical Path
+
+T007 (predictive-ml-app architecture) → T009 (architect re-verification) → T010 (ADR-035 Proposed) → T011-T015 (tampering enrichment) → T017-T022 (data-poisoning enrichment, sequential T-NN-1/2/3) → T026-T033 (model-theft enrichment) → T042-T045 (predictive-ml-app regen) → T048 (full byte-identity verification) → T049 (ADR-035 Accepted) → T054 (Coverage Matrix) → T055-T058 (close-out + release-please) → T059 (delivery retrospective)
+
+---
+
+## Implementation Strategy
+
+### MVP Path (Baseline — 2.5-day envelope per PRD §Timeline)
+
+**Day 1 AM (Wed 2026-04-29)** — Wave 1.0 + Wave 1.1
+- T009 architect re-verification (15-30 min)
+- T010-T016 tampering enrichment + ADR-035 Proposed + 1 fixture (parallel)
+
+**Day 1 PM (Wed 2026-04-29)** — Wave 2 (densest authoring slot per team-lead MEDIUM-2)
+- T017-T019 data-poisoning agent metadata
+- T020 (T-NN-1: Cat 8) → T021 (T-NN-2: Cat 9) → T022 (T-NN-3: Cat 10) — three sequential ~90-min checkpoints
+- T023-T025 fixtures parallel
+
+**Day 2 AM (Thu 2026-04-30)** — Wave 3
+- T026-T028 model-theft agent metadata
+- T029-T031 Cat 12 + 13 + 14 (sequential within file)
+- T032 Disambiguation
+- T033 Primary Sources
+- T034 architect integration walkthrough (Cat 10 → 11 → 12 → 13 → 14)
+- T035-T037 fixtures parallel
+
+**Day 2 PM (Thu 2026-04-30)** — Wave 4.0 + 4.1 (weak parallel)
+- T042-T045 predictive-ml-app regen (senior-backend-engineer)
+- T046-T047 tester early-signal spot-check (parallel; team-lead MEDIUM-3)
+
+**Day 3 AM (Fri 2026-05-01)** — Wave 5.0 + 5.1 + 5.2 (strong parallel; team-lead LOW-1)
+- T048 tester full 6-baseline verification (AM-1)
+- T049 architect ADR-035 Accepted (AM-2; parallel)
+- T050-T053 test infrastructure + tests + code-review
+
+**Day 3 PM (Fri 2026-05-01)** — Wave 5.3 + 5.4 + 5.5
+- T054 Coverage Matrix six-row transition (single commit)
+- T055-T058 triple sign-off + pre-merge title + squash-merge + post-merge release-please verification
+- T059 delivery retrospective
+- T060 ADR-035 SHA fill
+
+**Buffer Day (Mon 2026-05-04)** — Reserved for slip absorption
+- Priority order: (1) Day 2/3 slip absorption; (2) delivery retrospective if Day 3 PM slot insufficient; (3) post-merge ADR-035 SHA fill + release-please verification; (4) F-7 PRD drafting NOT until F-6 deliver-stage closes
+- T064 R5 contingency invocation if triggered (deferral pair: data-poisoning Cat 10 + model-theft Cat 14 per spec OoS-15)
+
+### Escalation Paths
+
+- **R1 (predictive-ml-app authoring slip)**: Authoring at plan day Tuesday 2026-04-28 PM; if slips, downgrade SC-019 to ≥3 findings on synthetic test fixture under `tests/fixtures/` (PRD R1 contingency). Buffer day absorbs.
+- **R3 (Day 1 PM authoring quality slip)**: Team-lead MEDIUM-2 checkpoints (T020/T021/T022) provide rollback capability per ~90-min unit. If quality slip on T-NN-1 Cat 8, halt before T-NN-2 and re-author Cat 8.
+- **R5 (Heuristic A 3-agent emergent issues)**: Pre-named deferral pair = data-poisoning Cat 10 (T022) + model-theft Cat 14 (T031), both ML06 facets. If R5 triggers at Day 3 AM, ship 5 of 7 categories closing ML01 + ML07 + ML08 + ML03 + ML04; defer ML06 closure to follow-on PR per spec OoS-15.
+- **R6 (baseline drift)**: Day 2 PM early-signal spot-check (T046/T047) catches drift before Day 3 full verification. If drift detected, tighten indicator gate on offending Pattern Category at Day 3 AM; full verification reruns on buffer day.
+- **R10 (ATLAS catalog gap propagation 3x)**: Already absorbed at PRD/plan time (Q3 RESOLVED: T0015/T0019/T0031 prose-only). No mid-build escalation expected.
+- **release-please skip post-merge**: Push empty `feat(232):` release-marker commit per F-212 incident precedent (T058).
+
+---
+
+## Notes
+
+- All paths absolute from repo root `/Users/david/Projects/tachi/`
+- Single-engineer fan-out across three agents (Wave 1.1 + Wave 2 + Wave 3 sequential) prevents authoring quality risk from concurrent multi-agent edits
+- Wave 4.1 + 4.0 weak parallelism (tester + senior-backend-engineer) and Wave 5.0 + 5.1 strong parallelism (tester + architect) are explicit team-lead recommendations per MEDIUM-3 + LOW-1
+- Test infrastructure update (T051) is the **fourth BLP-01 detection feature to extend `DETECTION_PATTERN_REF_ENRICHMENT_HOSTS`** (after F-3 single-host + F-4 + F-5 two-host); F-6 adds 2 more hosts (tampering + data-poisoning) to extend the frozenset to 7 entries
+- Schema `finding.yaml` v1.8 unchanged — F-6 is the third no-schema-bump enrichment after F-3 + F-5 per ADR-034 lines 192-204 forecast
+- 22-file zero-edit invariant covers 11 other detection agents + 11 other companion `detection-patterns.md` files; F-5's `denial-of-service.md` becomes part of F-6's 22-file invariant
+- Conventional Commits PR title `feat(232): ML Top 10 Coverage Bundle` (≤70 chars) enforced at draft PR (already at #233) + pre-merge re-verify + post-merge release-please verification per `.claude/rules/git-workflow.md` two-step Pre-merge + Post-merge enforcement
