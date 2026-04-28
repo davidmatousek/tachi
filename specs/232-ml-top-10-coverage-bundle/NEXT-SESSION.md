@@ -1,77 +1,98 @@
 # Next Session Handoff — F-6 (Feature 232) ML Top 10 Coverage Bundle
 
 **Branch**: `232-ml-top-10-coverage-bundle`
-**Last commit**: `3e28366 feat(232): Wave 2.3 — data-poisoning Cat 10 + Disambiguation + Primary Sources (T022+T025)`
-**Progress**: 25/64 tasks complete (39%)
-**Waves complete this session**: Wave 2.1 + Wave 2.2 + Wave 2.3 (3 sequential team-lead MEDIUM-2 checkpoints)
-**Cumulative waves complete**: Phase 1 verification + Wave 0.0 + Wave 1.0 + Wave 1.1 + Wave 2.1 + Wave 2.2 + Wave 2.3 (7 logical waves; 6 of 18 sequential waves per agent-assignments.md)
-**Status**: Stopped at standalone 3-wave ceiling per `/aod.build` continuation rule
+**Last commit**: `854897c feat(232): Wave 4 invariants — US-2 zero-edit + Disambiguation gate (T038-T041)`
+**Progress**: 41/64 tasks complete (64%)
+**Waves complete this session**: Wave 3 (model-theft enrichment + walkthrough + fixtures) + Wave 4 (US-2 invariant verification)
+**Cumulative waves complete**: Phase 1 verification + Wave 0.0 + Wave 1.0 + Wave 1.1 + Wave 2.1 + Wave 2.2 + Wave 2.3 + Wave 3 + Wave 4 (9 logical waves; 11 of 18 sequential waves per agent-assignments.md)
+**Status**: Stopped before heavy Wave 4.0 pipeline regen at coherent breakpoint (under standalone 3-wave ceiling — 2 of 3 used this conversation)
 
 ---
 
 ## Completed This Session
 
-### Wave 2.1 — Data-Poisoning Metadata + Purpose + Step 5 + Cat 8 Checkpoint T-NN-1 (T017-T020 + T023) ✅
+### Wave 3 — Model-Theft Cat 12/13/14 + Disambiguation + Architect Walkthrough (T026-T037) ✅
 
-- T017: data-poisoning.md metadata 7-line additive append (ML06/07/08 + ATLAS T0018/T0019/T0020/T0031); inline `[A,B,C]` converted to multi-line list per F-5 denial-of-service precedent; pre-existing 3 LLM entries preserved byte-identical
-- T018: data-poisoning.md `## Purpose` extension with 2-line additive paragraph naming transfer-learning supply-chain, feedback-loop skewing, and predictive-ML supply-chain completeness surfaces alongside existing LLM/RAG poisoning categories (1–7)
-- T019: data-poisoning.md Detection Workflow Step 5 references inline parenthetical extension with OWASP ML06:2023/ML07:2023/ML08:2023 + ATLAS AML.T0019/T0031 exemplars; verified post-edit line count = 90 (target 84-90, well under 150 cap)
-- **T020 (T-NN-1 / TEAM-LEAD MEDIUM-2 CHECKPOINT)**: data-poisoning companion Pattern Category 8 — Transfer Learning Supply Chain (Predictive ML) appended after Cat 7. Primary OWASP ML07:2023 + AML.T0018 in references (catalog-resolvable); AML.T0019 prose-only in mitigation (catalog-absent). 5 indicators (fine-tuning step on pretrained weights from public registry + checksum-absent + adapter integrity absent + provenance metadata absent + model-card review missing). Worked example (HuggingFace Hub `from_pretrained` without `revision=` SHA pinning + upstream maintainer compromise + backdoored revision merged into production fraud-detection model). 4 named mitigations (signed-weight-artifact policy, allowlist of trusted sources, fine-tuning hash-pinning, model-card provenance review). Self-review: PASS
-- T023 [P]: Cat 8 fixture `valid_category_8_data_poisoning_transfer_learning_finding.yaml` (D-8). references: [OWASP ML07:2023, AML.T0018]; T0019 prose-only (3 prose mentions, 0 in references array per F-A2 contract)
+- **T026**: model-theft.md metadata 4-line additive append (ML03/ML04/ML06 + AML.T0024); inline `[A,B]` converted to multi-line per F-5 denial-of-service / F-6 Wave 2.1 data-poisoning precedent; pre-existing LLM10:2025 + LLM03:2025 byte-identical
+- **T027**: model-theft.md `## Purpose` extension naming predictive-ML extraction (model inversion, membership inference) + predictive-ML artifact supply-chain integrity surfaces alongside existing LLM-extraction (Cat 1-9) and cost-amplification (Cat 10-11 from F-5) surfaces
+- **T028**: model-theft.md Detection Workflow Step 5 references list extension with OWASP ML03:2023 + ML04:2023 + ML06:2023 + MITRE ATT&CK T1195 + sub-techniques. Post-edit line count = 105 (target 103-108, well under 150 cap)
+- **T029**: Cat 12 — Model Inversion (Predictive ML) authoring. Primary OWASP ML03:2023 + AML.T0024 in references (catalog-resolvable; shared with Cat 13 but disjoint architectural-tells per ADR-035 D-5). 5 indicators (sensitive training data + DP-SGD absent + output-perturbation absent + query-rate throttling absent + extraction-pattern detection absent). Worked example (chest-X-ray classifier black-box optimization). 4 named mitigations (DP-SGD ε ≤ 8.0, output-perturbation noise, query-rate throttling, extraction-pattern detection). Self-review: PASS
+- **T030**: Cat 13 — Membership Inference (Predictive ML) authoring. Primary OWASP ML04:2023 + AML.T0024 in references (catalog-resolvable; shared with Cat 12). 5 indicators (confidence values + shadow-model feasibility + label-only mode missing + DP-SGD/truncation absent + training-data minimization not enforced). Worked example (fraud-detection confidence-thresholding). 4 named mitigations (DP-SGD, confidence-output truncation/label-only, query-rate throttling, training-data minimization). Self-review: PASS
+- **T031**: Cat 14 — Predictive-ML Artifact Supply Chain (Model Registry, Weight Tampering) authoring. Primary OWASP ML06:2023 artifact-side facet per ADR-035 D-4 + MITRE ATT&CK T1195 + T1195.001 + T1195.002 in references (all 4 catalog-resolvable). 5 indicators (no signed-artifact policy + mutable artifact storage + no model-signing + permissive registry IAM + no integrity verification at load). Worked example (MLflow registry compromise via stolen ML-engineering credentials). 4 named mitigations (Sigstore-style attestation, registry IAM with PR review, integrity verification at load time, immutable artifact storage with audit logging). Self-review: PASS
+- **T032 (FR-011)**: Pattern Category Disambiguation extension — 4 boundary draws appended after pre-existing F-5 Cat 6/10/11 paragraph: Cat 12 vs Cat 13 (ADR-035 D-5 disjoint architectural-tells with shared AML.T0024); Cat 12/13/14 vs Cat 1-9 (LLM-tier vs predictive-ML topology with disjoint endpoint shapes); Cat 14 vs data-poisoning Cat 10 (ADR-035 D-4 ML06 disjoint architectural-tells with cross-agent surface coexistence); Cat 14 vs Cat 10/11 (artifact-integrity vs economic-attack disjoint topology)
+- **T033 (FR-012)**: Primary Sources extension at end of file with 6 new entries (OWASP ML03/ML04/ML06:2023 + MITRE ATT&CK T1195 + T1195.001 + T1195.002)
+- **T034 (Architect)**: Integration walkthrough APPROVED — 8 invariants verified PASS at `.aod/results/architect-t034-walkthrough.md` (Cat 10→11→12→13→14 visual continuity post-F-5+post-F-6 confirmed; topology shift from LLM-serving to predictive-ML coherent; ADR-035 D-4 + D-5 carve-outs structurally evident; Heuristic A signal class continuity preserved within model-theft `category: llm` namespace)
+- **T035 [P]**: Cat 12 fixture `valid_category_12_model_theft_inversion_finding.yaml` (LLM-12, references = [OWASP ML03:2023, AML.T0024])
+- **T036 [P]**: Cat 13 fixture `valid_category_13_model_theft_membership_inference_finding.yaml` (LLM-13, references = [OWASP ML04:2023, AML.T0024])
+- **T037 [P]**: Cat 14 fixture `valid_category_14_model_theft_artifact_supply_chain_finding.yaml` (LLM-14, references = [OWASP ML06:2023, T1195, T1195.001, T1195.002])
 
-### Wave 2.2 — Data-Poisoning Cat 9 Checkpoint T-NN-2 (T021 + T024) ✅
+### Wave 4 — US-2 Invariant Verification (T038-T041) ✅
 
-- **T021 (T-NN-2 / TEAM-LEAD MEDIUM-2 CHECKPOINT)**: data-poisoning companion Pattern Category 9 — Feedback-Loop Model Skewing (Active Learning / Online Learning) appended after Cat 8. Primary OWASP ML08:2023 + AML.T0020 in references (catalog-resolvable); AML.T0031 prose-only in mitigation (catalog-absent). 5 indicators (active-learning loopback without integrity controls + HITL labeler-trust absent + online-learning drift injection + recommendation clickstream tamper-detection absent + drift-detection alarms missing). Worked example (content-recommendation platform retraining nightly from clickstream events + bot-network click-stream tampering + 2-week drift toward target product category + held-out evaluation contaminated by same loopback). 4 named mitigations (feedback-data integrity gates with KS/PSI/KL drift detection, labeler-trust scoring with reputation weighting, canary audits with clean baseline anchored outside loopback path, drift-detection alarms on production inference distributions). Self-review: PASS
-- T024 [P]: Cat 9 fixture `valid_category_9_data_poisoning_feedback_loop_finding.yaml` (D-9). references: [OWASP ML08:2023, AML.T0020]; T0031 prose-only (3 prose mentions, 0 in references array per F-A2 contract)
+- **T038 (FR-017 / SC-022)**: schema invariant zero-diff verified — `git diff main HEAD -- schemas/finding.yaml` returns 0 lines (schema_version 1.8 + 12-prefix `id.pattern` alternation byte-identical). F-6 = third BLP-01 detection feature reusing existing prefixes per ADR-035 D-6; second feature with zero schema bump after F-5; first feature with zero schema bump at three-host-file scope
+- **T039 (FR-019 / SC-021)**: 22-file zero-edit invariant verified — diff across `.claude/agents/tachi/` + `.claude/skills/tachi-*/references/` returns exactly the 6 F-6 targets (tampering + data-poisoning + model-theft agent files + 3 companion detection-patterns.md files); the 11 NOT-edit agent files (spoofing + repudiation + info-disclosure + denial-of-service + privilege-escalation + prompt-injection + agent-autonomy + tool-abuse + output-integrity + misinformation + human-trust-exploitation) return zero-line diff
+- **T040 (FR-018 + FR-020 / SC-025)**: orchestrator + consumers-list + dispatch-rules zero functional edit verified — diff across `finding-format-shared.md` + `orchestrator.md` + `dispatch-rules.md` returns 0 lines
+- **T041 (FR-011 / SC-014)**: Pattern Category Disambiguation header presence on all 3 F-6 host companions verified — `^## Pattern Category Disambiguation` grep returns 1/1/1 (data-poisoning + tampering + model-theft companions); FR-011 / SC-014 fully satisfied at three-agent scope
 
-### Wave 2.3 — Data-Poisoning Cat 10 + Disambiguation + Primary Sources Checkpoint T-NN-3 (T022 + T025) ✅
-
-- **T022 (T-NN-3 / TEAM-LEAD MEDIUM-2 CHECKPOINT)**: data-poisoning companion Pattern Category 10 — Predictive-ML Supply Chain Completeness (Datasets, Feature Stores, MLOps Registry) appended after Cat 9. Primary OWASP ML06:2023 corpus-side facet per ADR-035 D-4 disjoint architectural-tells + MITRE ATT&CK T1195 + T1195.001 + T1195.002 in references (all 4 catalog-resolvable). 5 indicators (dataset-repo without checksum manifest + feature-store without IAM-enforced write-audit + MLOps registry without signed-artifact promotion policy + model-card or datasheet metadata absent + dataset-checksum manifest absent). Worked example (predictive-ML team trains fraud-detection classifier from corpus stitched from public Kaggle dataset + Feast feature store + vendor S3 bucket + attacker compromises any one of three surfaces; no single integrity check across the three would catch it). 4 named mitigations (signed-artifact policy at MLOps registry boundary, IAM-enforced feature-store write-audit, dataset-checksum manifest with reproducibility verification, model-card review gate before promotion). Self-review: PASS
-- **T022 cont (FR-011)**: Pattern Category Disambiguation subsection appended explicit boundary between Cat 8/9/10 (predictive-ML training-pipeline surfaces) and Cat 1-7 (LLM/RAG-tier poisoning). Cross-agent disambiguation: Cat 10 (D, corpus-side ML06) vs model-theft Cat 14 (LLM, artifact-side ML06) per ADR-035 D-4 disjoint architectural-tells.
-- **T022 cont (FR-012)**: Primary Sources extension at end of file with 6 new entries (OWASP ML06/07/08:2023 + MITRE ATT&CK T1195 + T1195.001 + T1195.002).
-- T025 [P]: Cat 10 fixture `valid_category_10_data_poisoning_corpus_supply_chain_finding.yaml` (D-10). references: [OWASP ML06:2023, T1195, T1195.001, T1195.002] (all 4 catalog-resolvable per F-A2 contract; no prose-only ATLAS cross-references in this fixture)
-
-**Wave 2.x cumulative invariants verified green**:
-- data-poisoning.md = 90 lines (target 84-90, ≤150 cap) ✅
-- data-poisoning companion = 240 lines (137 → 240, +103 across Cat 8 + Cat 9 + Cat 10 + Disambiguation + Primary Sources extension) ✅
+**Wave 3+4 cumulative invariants verified green**:
+- model-theft.md = 105 lines (target 103-108, ≤150 cap) ✅
+- model-theft companion = 307 lines (211 → 307, +96 across Cat 12 + Cat 13 + Cat 14 + Disambiguation extension + Primary Sources extension) ✅
 - Zero MAESTRO references in agent + companion ✅
-- Pattern Category Disambiguation: 1 grep match (FR-011 / SC-014 partial — tampering + data-poisoning satisfied; model-theft remaining at Wave 3) ✅
-- Cat 8/9/10 headers present with ML07/08/06:2023 markers (12 ML06/07/08:2023 references in companion) ✅
-- 7 ATLAS prose-only references (T0019 + T0031 + T0015) all properly excluded from references arrays per F-A2 contract ✅
-- Schema invariant: 0 lines diff ✅
-- Consumers list: 0 lines diff ✅
-- Orchestrator + dispatch-rules: 0 lines diff ✅
+- 14 Pattern Categories present (Cat 1-14) + 1 Disambiguation header on model-theft companion ✅
+- Pattern Category Disambiguation: 3 grep matches across 3 F-6 host companions (FR-011 / SC-014 fully satisfied) ✅
+- Cat 12/13/14 + Disambiguation + Primary Sources headers all present at correct positions ✅
+- Schema invariant: 0 lines diff (third BLP-01 zero-schema-bump feature) ✅
+- 22-file zero-edit invariant: only the 6 F-6 targets diff'd; 11 NOT-edit agent files all clean ✅
+- Orchestrator + consumers-list + dispatch-rules: 0 lines diff (zero functional edit preserved) ✅
+- All ATLAS + ATT&CK references in 3 new fixtures are catalog-resolvable per F-A2 contract (T0024 catalog-resolvable; T1195 + sub-techniques catalog-resolvable; no prose-only entries in references arrays this wave) ✅
 
 ---
 
-## Next Actions — Resume at Wave 3
+## Next Actions — Resume at Wave 4.0
 
-**Wave 3 — Model-Theft Edits + Pattern Categories 12/13/14 + Architect Walkthrough** (Day 2 AM Thu 2026-04-30, ~4 hours)
+**Wave 4.0 — Predictive-ML-App End-to-End Regen** (Day 2 PM Thu 2026-04-30, ~2 hours)
 
-Tasks (sequential within model-theft files; T035/36/37 fixtures parallel; T034 walkthrough after T033):
+Tasks (T042 sequential pipeline; T043+T044 verification can begin once T042 emits artifacts; T045 sequential after PDF emits):
 
-- T026: model-theft.md metadata 4-line additive append (ML03/ML04/ML06 corpus-side + AML.T0024); pre-existing LLM10:2025 + LLM03:2025 byte-identical. **Note**: model-theft.md currently uses inline format `owasp_references: [OWASP LLM10:2025, OWASP LLM03:2025]` — convert to multi-line per F-5 denial-of-service / F-6 Wave 2.1 data-poisoning precedent.
-- T027: model-theft.md `## Purpose` extension naming predictive-ML extraction (model inversion + membership inference) + predictive-ML artifact supply-chain integrity surfaces alongside existing LLM-extraction + cost-amplification (F-5) surfaces
-- T028: model-theft.md Step 5 references append + line-count cap verify (≤150, target 103-108)
-- T029: Cat 12 — Model Inversion (Predictive ML) authoring. Primary OWASP ML03:2023 + AML.T0024 in references (catalog-resolvable; shared with Cat 13 but disjoint architectural-tells per ADR-035 D-5). 5 indicators (prediction API serving classifier with sensitive training data + DP-SGD on training absent + output-perturbation noise injection absent + query-rate throttling per tenant absent + model-extraction-pattern detection absent). Worked example (medical-imaging classifier serving `/predict` endpoint without DP-SGD and without per-tenant query throttling; attacker performs gradient-inversion). 4 named mitigations (DP-SGD with bounded ε ≤ 8.0, output-perturbation noise injection, query-rate throttling, model-extraction-pattern detection).
-- T030: Cat 13 — Membership Inference (Predictive ML) authoring. Primary OWASP ML04:2023 + AML.T0024 in references (catalog-resolvable; shared with Cat 12). 5 indicators (prediction API returning confidence values + shadow-model attack feasibility + label-only response mode missing + DP-SGD absent + confidence-output truncation absent + training-data minimization not enforced). Worked example (fraud-detection classifier API returning prediction confidence values; attacker uses confidence-thresholding). 4 named mitigations (DP-SGD, confidence-output truncation or label-only response mode, query-rate throttling, training-data minimization).
-- T031: Cat 14 — Predictive-ML Artifact Supply Chain (Model Registry, Weight Tampering) authoring. Primary OWASP ML06:2023 artifact-side facet per ADR-035 D-4 + MITRE ATT&CK T1195 + sub-techniques in references. 5 indicators (MLOps model registry with no signed-artifact policy + weight tampering surface mutable artifact storage + missing model-signing or attestation policy + registry IAM with promotion-gate review absent + integrity verification at model-load time absent). Worked example (MLflow model registry promoting models without signed-artifact policy; attacker compromises registry credentials and pushes backdoored model checkpoint). 4 named mitigations (model-signing with cryptographic attestation — Sigstore-style or KMS-backed, registry IAM with promotion-gate review, integrity verification at model-load time, immutable artifact storage with audit logging).
-- T032: model-theft companion Pattern Category Disambiguation subsection (Cat 12 vs Cat 13 disjoint architectural-tells per ADR-035 D-5; Cat 12/13/14 vs Cat 1-9 LLM-tier extraction; Cat 14 vs Cat 10/11 cost-DoW from F-5)
-- T033: Primary Sources extension on model-theft companion with OWASP ML03:2023 + ML04:2023 + ML06:2023 (FR-012)
-- **T034**: Architect integration walkthrough — re-read model-theft companion Cat 10 → 11 → 12 → 13 → 14 visual continuity (post-F-5 + post-F-6); confirm no narrative gaps or inconsistencies between F-5's Cat 10/11 cost-DoW carve-out and F-6's Cat 12/13/14 predictive-ML surfaces (team-lead C-2)
-- T035 [P]: Cat 12 fixture (`valid_category_12_model_theft_inversion_finding.yaml`); references: [OWASP ML03:2023, AML.T0024]
-- T036 [P]: Cat 13 fixture (`valid_category_13_model_theft_membership_inference_finding.yaml`); references: [OWASP ML04:2023, AML.T0024]
-- T037 [P]: Cat 14 fixture (`valid_category_14_model_theft_artifact_supply_chain_finding.yaml`); references: [OWASP ML06:2023, T1195, T1195.001, T1195.002]
+- **T042 (FR-014)**: Regenerate `examples/predictive-ml-app/` end-to-end via pipeline:
+  ```bash
+  cd examples/predictive-ml-app
+  SOURCE_DATE_EPOCH=1700000000 /tachi.threat-model
+  SOURCE_DATE_EPOCH=1700000000 /tachi.risk-score
+  SOURCE_DATE_EPOCH=1700000000 /tachi.compensating-controls
+  SOURCE_DATE_EPOCH=1700000000 /tachi.infographic all
+  SOURCE_DATE_EPOCH=1700000000 /tachi.security-report
+  ```
+  This is the heavy pipeline operation — 5 slash commands sequentially producing threats.md + risk-scores.md + compensating-controls.md + 6 infographic JPEGs + security-report.pdf. Expected ≥6 new ML findings spanning Cat 8/9/10 (D-prefix) + Cat 10 (T-prefix from tampering) + Cat 12/13/14 (LLM-prefix from model-theft) covering 6 closed ML Top 10 items per US-1 acceptance scenarios.
 
-Reference design at `specs/232-ml-top-10-coverage-bundle/contracts/finding-contract.md` lines 151-244 for Cat 12/13/14 fixture shapes.
+- **T043 [tester]**: Verify aggregate ≥6 new ML findings on `predictive-ml-app/`:
+  ```bash
+  grep -c "^- id: T-" examples/predictive-ml-app/sample-report/threats.md   # ≥1 (Cat 10 tampering)
+  grep -c "^- id: D-" examples/predictive-ml-app/sample-report/threats.md   # ≥1 (Cat 8/9/10 data-poisoning)
+  grep -c "^- id: LLM-" examples/predictive-ml-app/sample-report/threats.md # ≥1 (Cat 12/13/14 model-theft)
+  ```
+  Aggregate ≥6 covering 6 closed ML Top 10 items (SC-019)
 
-After Wave 3, proceed to:
+- **T044 [tester]**: Verify references-array carries OWASP ML primaries:
+  ```bash
+  grep -E "OWASP ML0[1-9]:2023|OWASP ML10:2023" examples/predictive-ml-app/sample-report/threats.md  # ≥6 distinct citations
+  ```
+  ≥6 distinct OWASP ML0X:2023 citations across the 6 closed items (SC-023)
 
-**Wave 4.0 — Predictive-ML-App End-to-End Regen** (Day 2 PM, ~2 hours): T042-T045
-**Wave 4.1 — Tester Spot-Check (parallel)**: T046-T047
-**Wave 5.0 — Tester Full 6-Baseline Verification + Wave 5.1 — ADR-035 Accepted (parallel, Day 3 AM)**: T048-T049
+- **T045**: Commit `examples/predictive-ml-app/sample-report/security-report.pdf.baseline` as F-6 mutation target baseline (excluded from byte-identity loop in `tests/scripts/test_backward_compatibility.py` per FR-014; mirrors agentic-app + consumer-agent-app precedent from F-1/F-4)
 
-Plus US-2 invariant verification waves (T038-T041) interleaved per agent-assignments.md.
+**Wave 4.1 — Tester Early-Signal Spot-Check (parallel with Wave 4.0; ~1 hour)** — T046-T047
+
+- **T046 [P] [tester]**: Early-signal byte-identity spot-check on `examples/web-app/` — regenerate via pipeline under `SOURCE_DATE_EPOCH=1700000000`; verify `diff -q examples/web-app/sample-report/security-report.pdf examples/web-app/sample-report/security-report.pdf.baseline` returns identical (FR-025 / SC-018; team-lead MEDIUM-3)
+- **T047 [P] [tester]**: Early-signal byte-identity spot-check on `examples/maestro-reference/` — regenerate via pipeline; verify byte-identical against baseline (FR-025 / SC-018)
+
+After Wave 4.0 + 4.1, proceed to:
+
+**Wave 5.0 — Tester Full 6-Baseline Verification** (Day 3 AM, ~2 hours) + **Wave 5.1 — Architect ADR-035 Accepted** (~30 min, parallel with 5.0): T048-T049
+
+**Wave 5.2** — Test Infrastructure + Code-Review (~2 hours): T050-T053
+**Wave 5.3** — Coverage Matrix Six-Row Update (~30 min): T054
+**Wave 5.4** — Triple Sign-Off (~30 min): T055-T058
+**Wave 5.5** — Close-Out + Release-Please + Retrospective (~2 hours): T059-T064
 
 ---
 
@@ -80,9 +101,10 @@ Plus US-2 invariant verification waves (T038-T041) interleaved per agent-assignm
 - Branch `232-ml-top-10-coverage-bundle` matches NNN-* pattern ✅
 - All three Triad sign-offs APPROVED in tasks.md frontmatter ✅
 - agent-assignments.md present ✅
-- GitHub Issue #232 stage:build label updated (warning ignored — board move succeeded) ✅
+- GitHub Issue #232 stage:build label set ✅
 - PR #233 (draft) open with `feat(232): ML Top 10 Coverage Bundle` Conventional Commits title ✅
-- 4 incomplete checklist items remain bookkeeping only — work migrated to tasks.md/plan.md (T020/T021/T022 = T-L MEDIUM-2 covered this session, T048/T049 = T-L LOW-1 future, T009 = Architect LOW-1 covered, plan.md Q3 RESOLVED = Architect LOW-2/LOW-3 covered)
+- Wave 0.0 predictive-ml-app architecture description present and verified at Wave 1.0 architect re-verification ✅
+- 4 incomplete checklist items remain bookkeeping only — work migrated to tasks.md/plan.md ✅
 
 ---
 
@@ -91,32 +113,56 @@ Plus US-2 invariant verification waves (T038-T041) interleaved per agent-assignm
 Start a new conversation and run `/aod.build`:
 
 ```bash
-claude "Resume F-6 (Feature 232) ML Top 10 Coverage Bundle implementation (branch: 232-ml-top-10-coverage-bundle). Wave 2.x complete (25/64 tasks, 7 logical waves). Run /aod.build to continue with Wave 3 (model-theft enrichment T026-T034 + T035-T037 fixtures)."
+claude "Resume F-6 (Feature 232) ML Top 10 Coverage Bundle implementation (branch: 232-ml-top-10-coverage-bundle). Wave 3+4 complete (41/64 tasks, 9 logical waves). Run /aod.build to continue with Wave 4.0 (predictive-ml-app pipeline regen T042-T045) + Wave 4.1 (tester spot-checks T046-T047)."
 ```
 
-The command will automatically resume from Wave 3.
+The command will automatically resume from Wave 4.0.
 
 ---
 
 ## Critical Path Status
 
 ```
-T007 ✅ → T009 ✅ → T010 ✅ → T011-T015 ✅ → T017-T022 ✅ → [NEXT: T026-T033] → T042-T045 → T048 → T049 → T054 → T055-T058 → T059
+T007 ✅ → T009 ✅ → T010 ✅ → T011-T015 ✅ → T017-T022 ✅ → T026-T033 ✅ → [NEXT: T042-T045] → T048 → T049 → T054 → T055-T058 → T059
 ```
 
-**5 of 12 critical-path nodes complete** (T007 + T009 + T010 + T011-T015 + T017-T022 grouped).
+**6 of 12 critical-path nodes complete** (T007 + T009 + T010 + T011-T015 + T017-T022 + T026-T033 grouped).
 
 ## Risks Active
 
-- **R3 (Day 1 PM authoring quality slip)**: ✅ MITIGATED — Wave 2.1/2.2/2.3 sequential T-NN-1/2/3 checkpoints with rollback all PASSED; no rollback used; team-lead MEDIUM-2 fully discharged
-- **R5 (Heuristic A 3-agent emergent issues)**: Pre-named deferral pair = data-poisoning Cat 10 (T022) ✅ delivered + model-theft Cat 14 (T031) pending. Architect re-verified Heuristic A protocol distinctness intact at three-agent scope at Wave 1.0; data-poisoning enrichment branch held discipline through 3 sequential category appends.
-- **R10 (ATLAS catalog gap propagation 3x)**: ✅ MITIGATED at fixture-authoring discipline — T0019 (Cat 8 fixture) + T0031 (Cat 9 fixture) + T0015 (tampering Cat 10 fixture from Wave 1.1) all correctly omit catalog-absent ATLAS techniques from references arrays; prose-only fallback consistently applied. T0024 (Cat 12/13 — pending Wave 3) is catalog-resolvable per Q3 matrix.
+- **R3 (Day 1 PM authoring quality slip)**: ✅ FULLY MITIGATED — Wave 2.1/2.2/2.3 sequential T-NN-1/2/3 checkpoints all PASSED (Day 1 PM); Wave 3 T-N-1/2/3 model-theft checkpoints all PASSED (Day 2 AM); zero rollback used; team-lead MEDIUM-2 fully discharged
+- **R5 (Heuristic A 3-agent emergent issues)**: ✅ FULLY MITIGATED — Both pre-named deferral pair items delivered (data-poisoning Cat 10 = T022 ✅ + model-theft Cat 14 = T031 ✅; both ML06:2023 facets with disjoint architectural-tells per ADR-035 D-4); Heuristic A protocol distinctness preserved at three-host-file scope; T034 architect walkthrough APPROVED 8/8 invariants
+- **R10 (ATLAS catalog gap propagation 3x)**: ✅ FULLY MITIGATED — All ATLAS catalog-absent techniques (T0019 + T0031 + T0015) properly omitted from references arrays in 4 fixtures; prose-only fallback consistently applied. Wave 3 fixtures (Cat 12/13/14) used only catalog-resolvable references (T0024 + ML06:2023 + T1195 + sub-techniques) with zero prose-only entries
+- **R11 (Wave 4.0 pipeline regen failure)**: NEW ACTIVE — Wave 4.0 requires running 5 slash commands sequentially against `examples/predictive-ml-app/` baseline; if pipeline emits fewer than 6 new ML findings (T043 gate) or missing OWASP ML primaries (T044 gate), the architecture description may need refinement. Mitigation: predictive-ml-app architecture was Wave 0.0-locked at PRD time covering all 6 closed ML Top 10 items with explicit DFD elements per pattern category
 
 ## Files Modified This Session
 
-- `.claude/agents/tachi/data-poisoning.md` (78 → 90 lines, metadata multi-line + Purpose extension + Step 5 references append)
-- `.claude/skills/tachi-data-poisoning/references/detection-patterns.md` (137 → 240 lines, Cat 8 + Cat 9 + Cat 10 + Disambiguation + Primary Sources extension)
-- `tests/scripts/fixtures/ml_top_10_coverage_bundle/valid_category_8_data_poisoning_transfer_learning_finding.yaml` (new — 32 lines, D-8)
-- `tests/scripts/fixtures/ml_top_10_coverage_bundle/valid_category_9_data_poisoning_feedback_loop_finding.yaml` (new — 31 lines, D-9)
-- `tests/scripts/fixtures/ml_top_10_coverage_bundle/valid_category_10_data_poisoning_corpus_supply_chain_finding.yaml` (new — 33 lines, D-10)
-- `specs/232-ml-top-10-coverage-bundle/tasks.md` ([X] marks for T017-T025; 25 of 64 tasks now complete)
+- `.claude/agents/tachi/model-theft.md` (97 → 105 lines, metadata multi-line + Purpose extension + Step 5 references append)
+- `.claude/skills/tachi-model-theft/references/detection-patterns.md` (211 → 307 lines, Cat 12 + Cat 13 + Cat 14 + Disambiguation extension + Primary Sources extension)
+- `tests/scripts/fixtures/ml_top_10_coverage_bundle/valid_category_12_model_theft_inversion_finding.yaml` (new — 28 lines, LLM-12)
+- `tests/scripts/fixtures/ml_top_10_coverage_bundle/valid_category_13_model_theft_membership_inference_finding.yaml` (new — 28 lines, LLM-13)
+- `tests/scripts/fixtures/ml_top_10_coverage_bundle/valid_category_14_model_theft_artifact_supply_chain_finding.yaml` (new — 30 lines, LLM-14)
+- `specs/232-ml-top-10-coverage-bundle/tasks.md` ([X] marks for T026-T037 + T038-T041; 41 of 64 tasks now complete)
+- `specs/232-ml-top-10-coverage-bundle/NEXT-SESSION.md` (this file)
+
+## Cumulative Files Touched (F-6 to date — Waves 0.0 → 4)
+
+Source files (6 F-6 targets):
+1. `.claude/agents/tachi/tampering.md`
+2. `.claude/agents/tachi/data-poisoning.md`
+3. `.claude/agents/tachi/model-theft.md`
+4. `.claude/skills/tachi-tampering/references/detection-patterns.md`
+5. `.claude/skills/tachi-data-poisoning/references/detection-patterns.md`
+6. `.claude/skills/tachi-model-theft/references/detection-patterns.md`
+
+ADR (Wave 1.0):
+- `docs/architecture/02_ADRs/ADR-035-ml-top-10-coverage-bundle.md`
+
+Fixtures (8 new under `tests/scripts/fixtures/ml_top_10_coverage_bundle/`):
+- T-10 (tampering Cat 10) + D-8/D-9/D-10 (data-poisoning Cat 8/9/10) + LLM-12/LLM-13/LLM-14 (model-theft Cat 12/13/14)
+
+Examples (Wave 0.0):
+- `examples/predictive-ml-app/` (architecture description + DFD)
+
+Specs:
+- `specs/232-ml-top-10-coverage-bundle/` (spec.md + plan.md + tasks.md + agent-assignments.md + research.md + data-model.md + contracts/finding-contract.md + quickstart.md + checklists/requirements.md + NEXT-SESSION.md)
