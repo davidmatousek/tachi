@@ -1,7 +1,9 @@
 # Next Session Handoff — F-6 (Feature 232) ML Top 10 Coverage Bundle
 
-**Branch**: `232-ml-top-10-coverage-bundle`
-**Last commit (pending after this session)**: `feat(232): Wave 5.2 — F-6 enrichment test suite + test infra additive update + code-review APPROVED (T050-T053)`
+**Branch**: `232-build-closeout` (cherry-picked off main after PR #233 partial merge — see "Branch History" below)
+**Last commit**: `3604c3b feat(232): Wave 5.2 — F-6 enrichment test suite + test infra additive update + code-review APPROVED (T050-T053)`
+**Active PR**: #235 (build closeout — Wave 2.1 through Wave 5.2; data-poisoning + model-theft + tests)
+**Prior PR**: #233 MERGED 2026-04-28 at squash commit `b84552a` — contained PRD/plan/tasks + ADR-035 + predictive-ml-app architecture + Wave 1.0+1.1 (tampering/ML01 only, 16/64 tasks)
 **Progress**: 53/64 tasks complete (83%)
 **Waves complete this session**: Wave 4.0 (T042-T045) + Wave 4.1 (T046-T047) + Wave 5.0 (T048) + Wave 5.1 (T049) + Wave 5.2 (T050-T053)
 **Cumulative waves complete**: Phase 1 verification + Wave 0.0 + Wave 1.0 + Wave 1.1 + Wave 2.1 + Wave 2.2 + Wave 2.3 + Wave 3 + Wave 4 + Wave 4.0 + Wave 4.1 + Wave 5.0 + Wave 5.1 + Wave 5.2 (14 logical waves; 16 of 18 sequential waves per agent-assignments.md)
@@ -92,15 +94,25 @@ Architect verified 10/10 D-1 through D-10 PASS against HEAD `83359cc`. Placehold
 
 ---
 
+## Branch History (IMPORTANT — read before resume)
+
+PR #233 (`feat(232): ML Top 10 Coverage Bundle`) was squash-merged on 2026-04-28 at commit `b84552a` from origin branch `232-ml-top-10-coverage-bundle` while only Wave 1.0+1.1 (16/64 tasks) had been pushed to origin. The remaining build work (Wave 2.1 through Wave 5.2 = 37 tasks closing ML03/ML04/ML06/ML07/ML08) had been committed locally but never pushed.
+
+To recover: the 10 unmerged commits were cherry-picked onto a fresh branch `232-build-closeout` (off latest `origin/main` post-PR #233 squash). PR #235 was opened from this new branch with title `feat(232): ML Top 10 build closeout — data-poisoning + model-theft + tests` to land the remaining Wave 2.1+ work cleanly.
+
+**The legacy branch `232-ml-top-10-coverage-bundle` is preserved locally + on origin as a backup until PR #235 merges. Do not push to it.**
+
+When resuming, all subsequent close-out commits (Wave 5.3+) land on `232-build-closeout` and feed PR #235.
+
 ## Resume Instructions
 
 Start a new conversation and run `/aod.build`:
 
 ```bash
-claude "Resume F-6 (Feature 232) ML Top 10 Coverage Bundle implementation (branch: 232-ml-top-10-coverage-bundle). Wave 5.2 complete (53/64 tasks, 14 logical waves). Run /aod.build to continue with Wave 5.3 (T054 Coverage Matrix six-row update) + Wave 5.4 (T055-T058 triple sign-off) + Wave 5.5 (T059-T064 close-out + release-please + retrospective)."
+claude "Resume F-6 (Feature 232) ML Top 10 Coverage Bundle implementation (branch: 232-build-closeout, PR #235). Wave 5.2 complete (53/64 tasks, 14 logical waves). Run /aod.build to continue with Wave 5.3 (T054 Coverage Matrix six-row update) + Wave 5.4 (T055-T058 triple sign-off) + Wave 5.5 (T059-T064 close-out + release-please + retrospective)."
 ```
 
-The command will automatically resume from Wave 5.3.
+The command will automatically resume from Wave 5.3 against branch `232-build-closeout` and PR #235. Note: `/aod.build` Step 1 globs for `specs/232-*/tasks.md` so it will find `specs/232-ml-top-10-coverage-bundle/tasks.md` correctly even though the branch name is now `232-build-closeout`.
 
 ---
 
