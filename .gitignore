@@ -111,6 +111,7 @@ prisma/dev.db*
 .aod/local/
 .aod/*.lock
 .aod/memory/github-project.json
+.aod/memory/.gh-scope-warned
 # Runtime state files (created by /aod.run orchestrator)
 .aod/run-state.json
 .aod/run-state.json.tmp
