@@ -179,6 +179,101 @@ OWASP ML01:2023 (Input Manipulation Attack) names adversarial input manipulation
 
 **Mitigation**: Apply adversarial training on the model side (FGSM / PGD adversarial training, robustness-aware training procedures) so the deployed classifier degrades gracefully against adversarial perturbations rather than catastrophically misclassifying. Install statistical-anomaly detection at the inference Process input boundary (distribution-shift monitoring on feature vectors, input-space outlier detection, prediction-confidence monitoring per feature distribution). Enforce confidence-thresholding with HITL escalation for low-confidence predictions on safety-critical surfaces. Deploy ensemble disagreement detection (≥2 models with disagreement-triggered HITL escalation) for fraud-detection, content-moderation, medical-imaging, and autonomous-vehicle decisions. Cf. MITRE ATLAS AML.T0015 Evade ML Model — text-only cross-reference (NOT in references; T0015 not catalog-resolvable in `schemas/taxonomy/mitre-atlas.yaml`).
 
+## Pattern Category 11 — Mobile Supply Chain Integrity (M2)
+
+OWASP M2:2024 (Inadequate Supply Chain Security) names mobile SDK ingestion and mobile-binary supply-chain integrity as a distinct attack class from generic web/API supply chain (Pattern Category 8). Where Cat 8 covers public-registry dependency confusion, typosquatting, and lockfile-absent CI pipelines, this category targets the **specific architectural-tell** of a mobile client integrating third-party SDKs (analytics, crash-reporting, ad-network, payment SDK) ingested via Gradle / CocoaPods / Swift Package Manager (SPM) without checksum verification, signed-artifact policy, app-store-only distribution, or reproducible-build attestation. The attacker's goal is upstream-SDK compromise — when a third-party SDK source is taken over (compromised maintainer credentials, registry-takeover, dependency confusion via the `latest`/`+` resolution operator), the tampered SDK ships into the production mobile binary and executes inside the app's full security context. MASTG-ARCH and MASVS-PLATFORM describe the mobile-supply-chain-integrity requirements at section-level granularity.
+
+**Indicators**:
+
+- Third-party mobile SDK integration declared (analytics SDK, crash-reporting SDK, ad-network SDK, payment SDK) — primary mobile-supply-chain topology indicator
+- No checksum verification on third-party SDK artifacts at ingestion or update time (no Gradle integrity constraint, no SPM Package.resolved checksum, no CocoaPods Podfile.lock checksum-pinning)
+- No signed-artifact policy on shipped mobile binaries (Android `signingConfig` disabled or relying on default-key reuse; iOS signing not enforced via App Store Connect API gate at upload time)
+- Sideloaded APK distribution allowed in security-critical builds (production APKs installable outside Google Play Store; iOS enterprise-distribution profiles allowed for non-enterprise-managed devices)
+- Missing app-store provenance review (no Google Play Console / App Store Connect security review gate before SDK adoption; SDK additions merge straight into release branches)
+- CocoaPods / Gradle / SPM unsigned sources permitted (no checksum-pinning in the equivalent of `package.resolved`, `Podfile.lock`, or `Gemfile.lock`; resolution accepts `latest` / `+` / `~>` floating ranges that re-resolve at every build)
+- Missing reproducible-build enforcement (no deterministic build pipeline producing byte-identical artifacts; no SLSA Level-3 attestation on shipped APK / IPA artifacts)
+
+**Primary source**:
+
+- OWASP M2:2024 — Inadequate Supply Chain Security: https://owasp.org/www-project-mobile-top-10/2024-risks/m2-inadequate-supply-chain-security
+- OWASP MASTG-ARCH — Mobile Application Security Testing Guide, Architecture Test Cases (section-level granularity)
+- OWASP MASVS-PLATFORM — Mobile Application Security Verification Standard, Platform Interaction Requirements (section-level granularity)
+
+**Example**: A mobile-banking Android app integrates a third-party analytics SDK pulled via Gradle from a private Maven repository. The Gradle build script declares the SDK with `implementation 'com.example.analytics:sdk:+'` (a floating version constraint that resolves to the latest published version on every build), and no checksum verification is configured against the resolved artifact. An attacker compromises the upstream SDK source maintainer's credentials and uploads a tampered version of the analytics SDK as a higher version number; the next CI build resolves the floating version, pulls the tampered artifact without integrity verification, and ships the compromised binary to production banking customers. The malicious code executes inside the app's security context — same trust posture as the banking app itself — exfiltrating session tokens persisted in `SharedPreferences` to an attacker-controlled telemetry endpoint.
+
+**Mitigation**:
+
+- Enforce SDK signature verification at build time on every third-party SDK artifact; pin Gradle dependencies by exact version with `integrity` checksum constraints (Android Studio's `buildscript { dependencyVerification {} }`); pin SPM dependencies by `Package.resolved` SHA; pin CocoaPods dependencies by `Podfile.lock` checksum
+- Require reproducible builds with SLSA Level-3 attestation on shipped APK / IPA artifacts; verify the attestation chain at app-store upload time
+- Adopt an app-store-only distribution policy for security-critical builds (no sideloading on banking, payments, healthcare, or other regulated mobile apps); on Android, configure `android:installLocation="internalOnly"` and reject build outputs that fail Play Console security review
+- Establish a supplier-provenance review gate as part of the SDK adoption review: every new third-party SDK must pass a documented review of the upstream maintainer's signing-key management, vulnerability-disclosure policy, and historical incident record before merge to a release branch
+- Pin container/build-base images and CI-runner toolchain images by digest (mirrors Cat 8 supply-chain hygiene at the build infrastructure layer)
+- Cf. MITRE ATT&CK Mobile T1474 (Supply Chain Compromise) — text-only cross-reference (NOT in references; T1474 not catalog-resolvable in `schemas/taxonomy/mitre-atlas.yaml` — catalog-absent per ADR-036 D-7).
+
+## Pattern Category 12 — Mobile IPC Input Validation (M4)
+
+OWASP M4:2024 (Insufficient Input/Output Validation) on the mobile-platform surface names mobile-IPC-input-validation as a distinct attack class from generic web/API injection (Pattern Categories 1–9) and from mobile supply-chain integrity (Pattern Category 11). **Pattern Category 12 owns mobile-IPC-input-side validation** (Android Intent extras, iOS URL-scheme parameters, deep-link handlers, ContentProvider arguments, pasteboard injections) on declared mobile clients. The companion `output-integrity` agent (F-1 / Feature 201) owns LLM-output-side sanitization on declared LLM-serving architectures. **The two surfaces are architecturally disjoint** — same architecture exhibiting both an exported Activity AND an LLM tool-call output sink may legitimately surface BOTH a tampering Cat 12 finding AND an output-integrity finding without duplication, because the architectural-tells (Intent extras parsing vs. LLM tool-call output rendering) are independent. This carve is formalized in ADR-036 D-5 (cross-axis F-1 boundary annotation). MASTG-CODE and MASVS-PLATFORM describe the mobile-IPC-validation requirements at section-level granularity.
+
+**Indicators**:
+
+- Mobile client component declared — primary mobile-platform topology indicator
+- Android Activity / Service / BroadcastReceiver with `android:exported="true"` and no permission gating (no `android:permission` attribute, or permission set to `null` or `normal` rather than `signature` / `signatureOrSystem`) reaching trusted operations
+- iOS URL-scheme declaration with no parameter validation on the receiving handler — `application(_:open:options:)` or `scene(_:openURLContexts:)` accepting raw URL parameters into trusted operations
+- Deep-link handler reaching trusted operations (money movement, account changes, profile updates) without re-validation, re-authentication, or server-side replay protection on the destination operation
+- Exported ContentProvider with no permission scoping (`android:permission` / `android:readPermission` / `android:writePermission` absent or set to `null`) — third-party apps can `query()` / `update()` the ContentProvider against the app's data
+- Pasteboard-injection paths reaching shared-clipboard handlers without sanitization (Android `ClipboardManager` / iOS `UIPasteboard` consumed into trusted operations without input filtering)
+- Missing Android App Links / iOS Universal Links claim verification (no `assetlinks.json` for Android App Links; no `apple-app-site-association` validation for iOS Universal Links — deep-link handlers can be hijacked by other apps registering the same scheme)
+- Custom URL schemes accepting unrestricted callbacks (no allowlist of return-URL targets — OAuth-style flows accept arbitrary `redirect_uri` values)
+
+**Primary source**:
+
+- OWASP M4:2024 — Insufficient Input/Output Validation: https://owasp.org/www-project-mobile-top-10/2024-risks/m4-insufficient-input-output-validation
+- OWASP MASTG-CODE — Mobile Application Security Testing Guide, Code Quality and Build Test Cases (section-level granularity)
+- OWASP MASVS-PLATFORM — Mobile Application Security Verification Standard, Platform Interaction Requirements (section-level granularity)
+
+**Example**: A mobile-banking Android app declares `MoneyTransferActivity` with `android:exported="true"` and no `android:permission` attribute. The Activity accepts Intent extras `recipient_account` and `amount` directly into the money-transfer business logic without re-authentication, without server-side replay protection, and without a per-Intent caller verification. An attacker installs a malicious Android app on the same device that issues `Intent.setComponent(new ComponentName("com.wellnessbank.mobile", "com.wellnessbank.mobile.MoneyTransferActivity"))` with attacker-chosen extras, bypassing the normal in-app authentication and authorization UI. The `MoneyTransferActivity` initiates a money-movement request to the WellnessBank Backend API under the legitimate user's session, transferring funds to the attacker-controlled account without traversing the standard money-movement auth boundary.
+
+**Mitigation**:
+
+- Use explicit Intent component routing (`Intent.setComponent` over implicit Intent resolution) for any cross-component invocation; reject implicitly-resolved Intents on trusted operation entry points
+- Enforce a URL-scheme parameter allowlist on every deep-link handler with strict parameter validation; reject any deep link whose parameters fall outside the allowlist before the handler reaches trusted operations
+- Require Android App Links claim verification (`assetlinks.json` published at the registered domain; auto-verified intent filters with `android:autoVerify="true"`); require iOS Universal Links claim verification (`apple-app-site-association` published with the registered AppID) so deep links cannot be hijacked by other apps
+- Scope ContentProvider permissions with signature-level Android permissions (`android:permission` set to a custom permission with `signature` protection level); reject `query()` / `update()` calls from non-signature-matching callers
+- Apply allow-list-driven pasteboard handlers — sanitize `UIPasteboard` / `ClipboardManager` content against a strict input schema before consumption into trusted operations
+- Re-authenticate on every high-risk operation reached via deep link / Intent extras / URL scheme — never trust an external caller to have already cleared the auth boundary
+- Note disjoint boundary: the F-1 `output-integrity` agent independently covers LLM-output-side sanitization on LLM-serving architectures; Pattern Category 12 covers mobile-IPC-input-side validation on mobile-platform architectures, and the two findings co-exist on hybrid architectures without duplication per ADR-036 D-5.
+
+## Pattern Category 13 — Insufficient Mobile Binary Protections (M7)
+
+OWASP M7:2024 (Insufficient Binary Protections) names mobile-binary-tier protective controls — root/jailbreak detection, anti-tampering stubs, code obfuscation, symbol stripping, emulator-detection — as a distinct attack class from generic build-pipeline integrity (Pattern Categories 4 and 8) and from mobile supply chain (Pattern Category 11). Where the pre-existing categories cover code-and-configuration tampering and supply-chain ingestion at build time, **Pattern Category 13 targets the runtime hardening of the shipped mobile binary** itself — protections that prevent reverse engineering, instrumentation (Frida hooks), runtime tampering, and rooted/jailbroken-device class attacks against the production app. The attacker's goal is to extract embedded secrets, bypass client-side controls (e.g., the OTP step in money movement), or hook sensitive functions at runtime to manipulate their behavior. MASTG-RESILIENCE and MASVS-RESILIENCE describe the binary-protection requirements at section-level granularity.
+
+**Indicators**:
+
+- Mobile client production build declared (release-channel artifact, not a debug build) — primary mobile-binary-protection topology indicator
+- No root / jailbreak detection in security-critical features (money movement, KYC, payment confirmation) — the app proceeds with sensitive operations on rooted Android / jailbroken iOS without any policy-based response
+- No anti-tampering stubs declared — no RASP (Runtime Application Self-Protection) integration; no integrity self-check (e.g., signature verification of the running APK) before sensitive operations
+- No code obfuscation declared — no ProGuard / R8 rules on Android; no bitcode + symbol-stripping on iOS; release builds ship with class names, method names, and string constants in plaintext
+- Debug symbols (DWARF tables, line numbers, `.debug_info` sections) retained in shipped release binaries — Frida / Hopper / Ghidra reverse-engineering proceeds against full symbolic information
+- No emulator-detection on fraud-sensitive flows (no `Build.FINGERPRINT` / `Build.MODEL` / `sysctl hw.machine` discrimination on payment / KYC / new-device-enrollment flows)
+
+**Primary source**:
+
+- OWASP M7:2024 — Insufficient Binary Protections: https://owasp.org/www-project-mobile-top-10/2024-risks/m7-insufficient-binary-protections
+- OWASP MASTG-RESILIENCE — Mobile Application Security Testing Guide, Resilience Test Cases (section-level granularity)
+- OWASP MASVS-RESILIENCE — Mobile Application Security Verification Standard, Resilience Requirements (section-level granularity)
+
+**Example**: A mobile-banking Android app ships production release builds with debug symbols retained, no ProGuard / R8 obfuscation, and no root-detection on the money-transfer flow. A rooted-device user installs Frida and runs a hook against `transferConfirm()` that bypasses the OTP-validation step inside the client's money-movement flow — the client believes the OTP was entered correctly and submits the transaction to the WellnessBank Backend API under a valid session. Because the backend trusts the client-attested OTP success (a separate authentication-design defect on the same architecture), the fraudulent transfer succeeds without the legitimate user ever entering an OTP. Even where the backend independently re-validates the OTP, the unobfuscated mobile binary leaks endpoint URLs, API keys, and session-handling logic that adversaries reuse for offline social-engineering attacks against customers.
+
+**Mitigation**:
+
+- Implement root / jailbreak detection with policy-based response on security-critical features (block money-movement and KYC on rooted/jailbroken devices; prompt-and-warn on lower-risk surfaces); integrate Play Integrity API (Android) / DeviceCheck + App Attest (iOS) for backend-verifiable device-integrity attestation
+- Integrate RASP (Runtime Application Self-Protection) with anti-tampering stubs and integrity self-checks at app startup and at sensitive-operation entry points (verify the running APK signature matches the expected publisher signature; reject runtime modifications)
+- Enable ProGuard / R8 obfuscation on Android with `minifyEnabled true` and `shrinkResources true` in the release build type; retain mapping files in the build pipeline for crash-symbolication while shipping obfuscated binaries to customers
+- On iOS, enable bitcode + symbol-stripping in the release configuration (`STRIP_INSTALLED_PRODUCT = YES`, `DEBUG_INFORMATION_FORMAT = dwarf`); upload dSYMs to crash-reporting backend separately from the shipped IPA
+- Deploy emulator-detection on fraud-sensitive flows (payment, KYC, new-device enrollment) using a combination of `Build.FINGERPRINT` / `Build.MODEL` / `sysctl hw.machine` heuristics and platform attestation; reject emulator origins on money-movement
+- Adopt a layered defense — root-detection alone is bypassable; combine with attestation, RASP, obfuscation, and backend-side anomaly detection so that defeating any single layer does not yield production-banking control
+- Cf. MITRE ATT&CK Mobile T1626 (Abuse Elevation Control Mechanism) — text-only cross-reference (NOT in references; T1626 not catalog-resolvable in `schemas/taxonomy/mitre-atlas.yaml` — catalog-absent per ADR-036 D-7).
+
 ## Pattern Category Disambiguation
 
 Pattern Category 10 (Adversarial Input Manipulation against deployed predictive ML inference endpoints) and the pre-existing Pattern Categories 1–9 (generic injection, deserialization, supply-chain integrity gaps) share the OWASP A03:2021 / OWASP ML01:2023 family at the OWASP framework level but address distinct architectural-tells and mitigation surfaces:
@@ -186,8 +281,12 @@ Pattern Category 10 (Adversarial Input Manipulation against deployed predictive 
 - **Pattern Categories 1–8** (Input Injection, Data Flow Manipulation, Persistent Data Corruption, Code/Configuration Tampering, API Parameter Manipulation, CSRF, Deserialization Gadget Chains, Software Supply Chain Integrity Failures — pre-existing) detect generic application-tier integrity gaps at any HTTP/API surface. The architectural-tell is a generic API endpoint or data-store boundary without a predictive ML inference surface.
 - **Pattern Category 9** (Injection Attacks Beyond SQL — pre-existing) detects OS command, LDAP, NoSQL, expression-language, server-side template, and header injection at generic API endpoints constructing queries or commands by string concatenation. The architectural-tell is a generic API endpoint constructing a query/command/header from untrusted input without parameterization.
 - **Pattern Category 10** (Adversarial Input Manipulation, Predictive ML — F-6) detects adversarial-evasion attacks against a deployed predictive ML classifier or regressor at inference time. The architectural-tell is a deployed predictive ML inference endpoint ingesting raw user-controlled features without an input-validation barrier or adversarial-defense control.
+- **Pattern Category 11** (Mobile Supply Chain Integrity — F-7 / OWASP M2:2024) detects mobile SDK ingestion gaps on declared mobile clients. The architectural-tell is a mobile client integrating third-party SDKs via Gradle / CocoaPods / SPM without checksum verification, signed-artifact policy, or app-store-only distribution — distinct from the generic build-pipeline supply-chain surface of Cat 8 by the mobile-platform topology indicator.
+- **Pattern Category 12** (Mobile IPC Input Validation — F-7 / OWASP M4:2024) detects mobile-IPC-input-side validation gaps on declared mobile clients — Android Intent extras, iOS URL-scheme parameters, deep-link handlers, ContentProvider arguments, pasteboard injections. The architectural-tell is a mobile client with exported Activities / Services / BroadcastReceivers, URL-scheme handlers, or ContentProviders reaching trusted operations without permission gating, claim verification, or per-Intent caller verification — distinct from generic injection (Cat 9) by the mobile IPC architectural-tell.
+- **Pattern Category 12 cross-link to F-1 `output-integrity` boundary**: The F-1 `output-integrity` agent owns LLM-output-side sanitization on LLM-serving architectures. **Pattern Category 12 owns mobile-IPC-input-side validation on mobile-platform architectures.** The two surfaces are architecturally disjoint per ADR-036 D-5 — same hybrid architecture exhibiting both an exported Activity AND an LLM tool-call output sink may legitimately surface BOTH a tampering Cat 12 finding AND an output-integrity finding without duplication, because the architectural-tells (Intent extras parsing vs. LLM tool-call output rendering) are independent.
+- **Pattern Category 13** (Insufficient Mobile Binary Protections — F-7 / OWASP M7:2024) detects mobile binary-tier runtime hardening gaps on declared mobile-client production builds — root/jailbreak detection, anti-tampering stubs, code obfuscation, symbol stripping, and emulator-detection on fraud-sensitive flows. The architectural-tell is a mobile client production build shipped without these runtime-protection controls — distinct from the build-time code/configuration tampering surface of Cat 4 by the mobile-binary runtime-hardening axis.
 
-Same architecture may legitimately surface Pattern Category 9 + Pattern Category 10 findings if it has both a generic API surface (with a query/command construction surface) and a predictive ML inference endpoint (with a deployed classifier serving raw user-controlled features). They are not duplicates and MUST NOT be merged in `threat-report.md`. Architect formalizes this carve in ADR-035 Decision 9 (Pattern Category Disambiguation requirement on three F-6 companions per FR-011).
+Same hybrid architecture (web + predictive-ML + mobile + LLM) may legitimately surface Pattern Category 9 + Pattern Category 10 + Pattern Categories 11/12/13 findings without duplication, because they target different architectural surfaces (generic API / predictive-ML inference / mobile SDK supply chain / mobile IPC / mobile binary). They are not duplicates and MUST NOT be merged in `threat-report.md`. Architect formalizes the F-6 carve in ADR-035 Decision 9 (three-companion disambiguation requirement) and the F-7 carve plus F-1 cross-axis annotation in ADR-036 D-5 / D-9 (Pattern Category Disambiguation requirement on the F-7 tampering companion with explicit `output-integrity` boundary cross-link).
 
 ## Primary Sources
 
@@ -219,3 +318,6 @@ Same architecture may legitimately surface Pattern Category 9 + Pattern Category
 - CWE-917 Expression Language Injection: https://cwe.mitre.org/data/definitions/917.html
 - OWASP Command Injection Defense Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html
 - OWASP ML01:2023 — Input Manipulation Attack: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML01_2023-Input_Manipulation_Attack
+- OWASP M2:2024 — Inadequate Supply Chain Security: https://owasp.org/www-project-mobile-top-10/2024-risks/m2-inadequate-supply-chain-security
+- OWASP M4:2024 — Insufficient Input/Output Validation: https://owasp.org/www-project-mobile-top-10/2024-risks/m4-insufficient-input-output-validation
+- OWASP M7:2024 — Insufficient Binary Protections: https://owasp.org/www-project-mobile-top-10/2024-risks/m7-insufficient-binary-protections

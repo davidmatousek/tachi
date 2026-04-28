@@ -1,0 +1,30 @@
+# F-7 Cat 13 — Insufficient Mobile Binary Protections (T-{N})
+# Schema: schemas/finding.yaml v1.8 (unchanged in F-7)
+# Category: tampering
+# Severity: HIGH (default per ADR-036 mapping table for M7; production-channel banking
+#                build retaining debug symbols + missing root-detection on the money-
+#                transfer flow on a money-movement-capable mobile client)
+# OWASP M7:2024 cross-reference: included in references array (catalog-resolvable in
+#   schemas/taxonomy/owasp.yaml per Wave 1.0 T012 verification)
+# MASTG-RESILIENCE / MASVS-RESILIENCE cross-reference: prose-only mention in mitigation;
+#   NOT in references array (section-level granularity per Q4 plan-time RESOLVED — not
+#   catalog-resolvable for F-7; F-A1 follow-on owns MASTG taxonomy)
+# MITRE ATT&CK Mobile T1626 cross-reference: prose-only mention in mitigation; NOT in
+#   references array (catalog-absent per ADR-036 D-7 / Q3 plan-time RESOLVED)
+# Worked example: mobile-banking app shipping production release builds with debug symbols
+#                 retained, no ProGuard/R8 obfuscation, and no root-detection on the money-
+#                 transfer flow — rooted-device attacker uses Frida to bypass the OTP step
+id: "T-13"
+category: tampering
+component: "WellnessBank Android Client"
+dfd_element_type: "Process"
+threat: "The WellnessBank Android Client ships production release builds (release-channel artifact, not a debug build) with debug symbols (DWARF tables, line numbers, `.debug_info` sections) retained in the shipped APK. There is no root / jailbreak detection on the money-transfer flow, no anti-tampering stubs (no RASP integration, no integrity self-check before sensitive operations), no code obfuscation (no ProGuard / R8 rules in the release build type; `minifyEnabled false`), and no emulator-detection on payment / KYC / new-device-enrollment flows. A rooted-device user installs Frida and runs a hook against the money-transfer confirmation function that bypasses the OTP-validation step inside the client's money-movement flow — the client believes the OTP was entered correctly and submits the transaction to the WellnessBank Backend API under a valid session. The unobfuscated mobile binary additionally leaks endpoint URLs, API keys, and session-handling logic that adversaries reuse for offline social-engineering attacks against banking customers. This is mobile-specific binary-protection failure on a banking-tier client, distinct from generic build-pipeline integrity (Cat 4) and generic supply chain (Cat 8) by the architectural-tell of a declared mobile client production build shipped without runtime hardening — root/jailbreak detection, anti-tampering stubs, code obfuscation, symbol stripping, and emulator-detection on fraud-sensitive flows."
+likelihood: HIGH
+impact: HIGH
+risk_level: High
+mitigation: "Implement root / jailbreak detection with policy-based response on security-critical features (block money-movement and KYC on rooted/jailbroken devices; prompt-and-warn on lower-risk surfaces); integrate Play Integrity API (Android) / DeviceCheck + App Attest (iOS) for backend-verifiable device-integrity attestation. Integrate RASP (Runtime Application Self-Protection) with anti-tampering stubs and integrity self-checks at app startup and at sensitive-operation entry points (verify the running APK signature matches the expected publisher signature). Enable ProGuard / R8 obfuscation on Android with `minifyEnabled true` and `shrinkResources true` in the release build type; retain mapping files in the build pipeline for crash-symbolication while shipping obfuscated binaries to customers. On iOS, enable bitcode + symbol-stripping in the release configuration (`STRIP_INSTALLED_PRODUCT = YES`, `DEBUG_INFORMATION_FORMAT = dwarf`); upload dSYMs to crash-reporting backend separately from the shipped IPA. Deploy emulator-detection on fraud-sensitive flows using `Build.FINGERPRINT` / `Build.MODEL` / `sysctl hw.machine` heuristics combined with platform attestation. Adopt a layered defense — root-detection alone is bypassable; combine with attestation, RASP, obfuscation, and backend-side anomaly detection. Document the binary-protection controls in mobile threat-modeling artifacts (MASTG-RESILIENCE / MASVS-RESILIENCE section-level cross-reference). Cf. MITRE ATT&CK Mobile T1626 (Abuse Elevation Control Mechanism) — text-only cross-reference (NOT in references; T1626 not catalog-resolvable in `schemas/taxonomy/mitre-atlas.yaml`)."
+references:
+  - "OWASP M7:2024 — Insufficient Binary Protections"
+maestro_layer: "L1"
+agentic_pattern: "none"
+source_attribution: []
