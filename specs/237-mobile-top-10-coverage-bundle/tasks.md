@@ -186,8 +186,8 @@ ADR-036 D-numbered decisions are authored at T013 — Wave 1.0 fully operational
 
 ### Wave 4.1 — Tester Early-Signal Spot-Check (parallel with Wave 4.0/4.0b; Thu 2026-04-30 PM)
 
-- [ ] T059 [P] [US3] Tester (per FR-15 separation-of-duties): early-signal byte-identity spot-check on `examples/web-app/` — regenerate via pipeline under `SOURCE_DATE_EPOCH=1700000000`; verify `diff -q examples/web-app/sample-report/security-report.pdf examples/web-app/sample-report/security-report.pdf.baseline` returns identical
-- [ ] T060 [P] [US3] Tester: early-signal byte-identity spot-check on `examples/maestro-reference/` — regenerate via pipeline; verify byte-identical against baseline
+- [X] T059 [P] [US3] Tester (per FR-15 separation-of-duties): early-signal byte-identity spot-check on `examples/web-app/` — regenerate via pipeline under `SOURCE_DATE_EPOCH=1700000000`; verify `diff -q examples/web-app/sample-report/security-report.pdf examples/web-app/sample-report/security-report.pdf.baseline` returns identical
+- [X] T060 [P] [US3] Tester: early-signal byte-identity spot-check on `examples/maestro-reference/` — regenerate via pipeline; verify byte-identical against baseline
 
 ### Wave 4.2 — `mobile-banking-app/` End-to-End Regeneration (Thu 2026-04-30 PM late)
 
