@@ -175,31 +175,11 @@ def test_unmodified_examples_byte_identical_pdfs(
 # adding a new detection agent file warrants updating both `schemas/coverage-
 # checklists.yaml` and this list in the same change.
 #
-# Feature 219 (F-3 ASI07 enrichment) is the first feature to additively edit
-# an existing detection-tier host file (`tool-abuse.md` + companion
-# `detection-patterns.md`) under ADR-023 Decision 3's additive-only edit
-# discipline. Per F-3 spec FR-015 / SC-013 / ADR-032 Decision 2, F-3's host
-# files are explicitly carved out of the zero-edit invariant.
-#
-# Feature 229 (F-5 LLM10 enrichment) is the second enrichment-branch feature.
-# Per F-5 ADR-034 Decision 2, F-5 additively edits two host pairs:
-# `denial-of-service.md` + companion, and `model-theft.md` + companion. These
-# four files are carved out of the zero-edit invariant. The remaining 22 files
-# (10 other agents + 12 other companions) stay byte-identical.
-#
-# Feature 232 (F-6 ML Top 10 Coverage Bundle) is the third enrichment-branch
-# feature. Per F-6 ADR-035 Decision 2, F-6 additively edits three host pairs:
-# tampering, data-poisoning, and model-theft (model-theft companion already
-# carved out by F-5 and reused).
-#
-# Feature 237 (F-7 Mobile Top 10 Coverage Bundle) is the fourth enrichment-
-# branch feature. Per F-7 ADR-036 Decision 2, F-7 additively edits four host
-# pairs: spoofing, info-disclosure, privilege-escalation, and repudiation
-# (Heuristic A enrichment-branch fourth execution at four-or-five-agent scope;
-# M8 dual-host default). The companion tampering carve-out from F-6 is reused
-# where applicable. When adding a future enrichment branch, both
-# DETECTION_AGENT_PATHS removals and DETECTION_PATTERN_REF_ENRICHMENT_HOSTS
-# additions land in the same change.
+# Heuristic A enrichment branches additively edit existing detection-tier
+# host files under ADR-023 Decision 3. Each carved-out file moves OUT of
+# DETECTION_AGENT_PATHS and (for companions) INTO
+# DETECTION_PATTERN_REF_ENRICHMENT_HOSTS in the same change. Files NOT listed
+# here remain byte-identical on F-142 branches.
 DETECTION_AGENT_PATHS = [
     ".claude/agents/tachi/prompt-injection.md",
     ".claude/agents/tachi/agent-autonomy.md",
@@ -211,17 +191,9 @@ DETECTION_AGENT_PATHS = [
 # `.claude/skills/tachi-<agent>/references/detection-patterns.md`. ADR-026
 # Decision 1 requires these to remain byte-unmodified on the Feature 142
 # feature branch because Feature 142 is a post-hoc synthesis layer and must
-# not touch the detection tier.
-#
-# Carve-outs per Heuristic A enrichment-branch precedent:
-#  - F-3 ADR-032 Decision 2: tool-abuse companion (single host)
-#  - F-5 ADR-034 Decision 2: denial-of-service + model-theft companions (two hosts)
-#  - F-6 ADR-035 Decision 2: tampering + data-poisoning companions (model-theft
-#    companion already carved out by F-5; F-6 reuses that carve-out)
-#  - F-7 ADR-036 Decision 2: spoofing + info-disclosure + privilege-escalation +
-#    repudiation companions (Heuristic A enrichment-branch fourth execution at
-#    four-or-five-agent scope; M8 dual-host default; tampering companion
-#    already carved out by F-6 and reused)
+# not touch the detection tier. Companions modified by a Heuristic A
+# enrichment branch are carved into DETECTION_PATTERN_REF_ENRICHMENT_HOSTS
+# below.
 DETECTION_PATTERN_REF_GLOB = ".claude/skills/tachi-*/references/detection-patterns.md"
 DETECTION_PATTERN_REF_F3_HOST = ".claude/skills/tachi-tool-abuse/references/detection-patterns.md"
 DETECTION_PATTERN_REF_F5_DOS_HOST = ".claude/skills/tachi-denial-of-service/references/detection-patterns.md"

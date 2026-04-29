@@ -1,8 +1,8 @@
-"""Unit tests for the F-7 Mobile Top 10 Coverage Bundle enrichment (T068).
+"""Unit tests for the F-7 Mobile Top 10 Coverage Bundle enrichment.
 
-These tests enforce structural invariants on the **five** enriched STRIDE host
-agent files and their companion pattern catalogs at the **four-or-five-agent
-scope** (M8 dual-host carve-up per ADR-036 D-4 yields five host enrichment):
+These tests enforce structural invariants on the five enriched STRIDE host
+agent files and their companion pattern catalogs (M8 dual-host carve-up per
+ADR-036 D-4 yields five host enrichment):
 
 - ``.claude/agents/tachi/spoofing.md`` (STRIDE tier, <=120 line cap; M1, M3)
 - ``.claude/agents/tachi/tampering.md`` (STRIDE tier, <=120 line cap; M2, M4, M7)
@@ -17,26 +17,18 @@ scope** (M8 dual-host carve-up per ADR-036 D-4 yields five host enrichment):
   carrying the new Pattern Categories per ADR-036 D-3.
 
 Per spec ``specs/237-mobile-top-10-coverage-bundle/spec.md``, this module covers
-F-7 functional requirements FR-2/FR-4/FR-6/FR-8 (line caps), FR-3/FR-5/FR-7/FR-9
-(new Pattern Categories), FR-13 (no schema bump — sweep-tested via MAESTRO grep
-clean across all 10 enriched files), FR-17 (this test layer), and success
-criteria SC-1/SC-4/SC-7/SC-10 (line caps), SC-3/SC-6/SC-9 (Pattern Categories),
-SC-15 (schema invariant), SC-17 (references-array contract + ATT&CK Mobile
-catalog-gap codification).
+F-7 success criteria for line caps, Pattern Categories, MAESTRO grep clean,
+references-array contract, and ATT&CK Mobile catalog-gap codification.
+Byte-identity of pre-existing categories is delegated to
+``tests/scripts/test_backward_compatibility.py`` against the 6 baselines.
 
 This module follows the F-6 enrichment-test precedent in
-``tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py`` (three-agent
-scope) at four-or-five-agent scope. **Section B (structural byte-identity)**
-is intentionally a thin presence check — full byte-identity of pre-existing
-content is delegated to ``tests/scripts/test_backward_compatibility.py``
-against the 6 byte-identity baselines per FR-15 / SC-13 separation-of-duties.
+``tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py``.
 
 Schema regex tests are NOT included — F-7 reuses the existing ``S``, ``T``,
-``I``, ``E``, ``R`` STRIDE prefixes without a schema bump per ADR-036 D-6
-(fourth no-bump enrichment after F-3 / F-5 / F-6; first at four-or-five-agent
-scope). Section G enforces the prose-only invariant for ATT&CK Mobile T1474 /
-T1626 / T1398 — 3-of-3 worst-case catalog-resolvability gap codified in
-ADR-036 D-7.
+``I``, ``E``, ``R`` STRIDE prefixes without a schema bump per ADR-036 D-6.
+Section G enforces the prose-only invariant for ATT&CK Mobile T1474 / T1626 /
+T1398 per ADR-036 D-7.
 """
 
 from __future__ import annotations
@@ -51,7 +43,7 @@ from .conftest import REPO_ROOT
 
 
 # ---------------------------------------------------------------------------
-# File path constants (5 host agents + 5 companions + 11 fixtures)
+# File path constants
 # ---------------------------------------------------------------------------
 
 
@@ -64,7 +56,7 @@ PRIVILEGE_ESCALATION_AGENT = (
 )
 REPUDIATION_AGENT = REPO_ROOT / ".claude" / "agents" / "tachi" / "repudiation.md"
 
-# Companion detection-pattern catalogs (Wave 3 new pattern categories)
+# Companion detection-pattern catalogs
 SPOOFING_COMPANION = (
     REPO_ROOT
     / ".claude"
@@ -106,9 +98,8 @@ REPUDIATION_COMPANION = (
     / "detection-patterns.md"
 )
 
-# Eleven fixtures under tests/scripts/fixtures/mobile_top_10_coverage_bundle/
-# NB: 11 (not 10) because M8 dual-host carve per ADR-036 D-4 yields one
-# fixture per host (privilege-escalation E-{N} + repudiation R-{N}).
+# Per-OWASP-entry fixtures (M8 dual-host carve per ADR-036 D-4 yields one
+# fixture per host: privilege-escalation E-M8 + repudiation R-M8).
 FIXTURE_DIR = (
     REPO_ROOT / "tests" / "scripts" / "fixtures" / "mobile_top_10_coverage_bundle"
 )
@@ -146,7 +137,6 @@ R_M8_FIXTURE = (
     FIXTURE_DIR / "valid_category_9_repudiation_mobile_misconfiguration_finding.yaml"
 )
 
-# All 5 host agents (sweep tuples)
 ALL_F7_HOST_AGENTS = (
     SPOOFING_AGENT,
     TAMPERING_AGENT,
@@ -155,7 +145,6 @@ ALL_F7_HOST_AGENTS = (
     REPUDIATION_AGENT,
 )
 
-# All 5 companions (sweep tuples)
 ALL_F7_COMPANIONS = (
     SPOOFING_COMPANION,
     TAMPERING_COMPANION,
@@ -164,10 +153,8 @@ ALL_F7_COMPANIONS = (
     REPUDIATION_COMPANION,
 )
 
-# All 10 enriched files (5 hosts + 5 companions) for the MAESTRO grep sweep
 ALL_F7_ENRICHED_FILES = ALL_F7_HOST_AGENTS + ALL_F7_COMPANIONS
 
-# All 11 fixtures for the catalog-gap sweep
 ALL_F7_FIXTURES = (
     S_M1_FIXTURE,
     S_M3_FIXTURE,
@@ -184,7 +171,7 @@ ALL_F7_FIXTURES = (
 
 
 # ---------------------------------------------------------------------------
-# Helpers (mirror F-6 verbatim per T068 contract)
+# Helpers
 # ---------------------------------------------------------------------------
 
 
@@ -204,11 +191,12 @@ def _joined_refs(fixture_path: Path) -> str:
     return " | ".join(refs)
 
 
-def _all_fixture_refs_joined() -> str:
-    """Aggregate all 11 F-7 fixtures' references into a single pipe-joined string.
+@pytest.fixture(scope="module")
+def all_fixture_refs_joined() -> str:
+    """Aggregate every F-7 fixture's references into one pipe-joined string.
 
-    Used for catalog-resolvability sweep tests (T1474 / T1626 / T1398 prose-only
-    per ADR-036 D-7 — 3-of-3 worst-case at four-or-five-agent scope).
+    Module-scoped so the YAML parse cost amortizes across the catalog-gap
+    sweep tests (one parse per fixture per pytest session).
     """
     parts = [_joined_refs(fixture) for fixture in ALL_F7_FIXTURES]
     return " | ".join(parts)
@@ -223,9 +211,9 @@ class TestLineCountCaps:
     """STRIDE-tier line-count caps preserved across all 5 host agents.
 
     Per ADR-023 lean-agent line-count discipline, every STRIDE-tier host
-    agent MUST remain <=120 lines post-enrichment. F-7 enriches 5 host
-    agents at four-or-five-agent scope (M8 dual-host carve per ADR-036 D-4);
-    each is independently capped.
+    agent MUST remain <=120 lines post-enrichment. Each host is independently
+    capped (M8 dual-host carve per ADR-036 D-4 places M8 on both
+    ``privilege-escalation`` and ``repudiation``).
     """
 
     def test_spoofing_md_line_cap(self) -> None:
@@ -348,23 +336,20 @@ class TestStructuralByteIdentityPreExisting:
 
 
 class TestMaestroGrepClean:
-    """FR-13 / SC-15 (sweep extension): zero MAESTRO references on all 10
-    enriched files.
+    """FR-13 / SC-15: zero MAESTRO references on every enriched file.
 
-    Consistent with F-1 through F-6 governance constraint — F-7 host files
-    MUST NOT introduce MAESTRO references (MAESTRO layer assignment is
-    orchestrator-owned, not agent-authored). Sweep at four-or-five-agent
-    scope: 10 files (5 hosts + 5 companions).
+    MAESTRO layer assignment is orchestrator-owned, not agent-authored, so
+    F-7 host files and companions MUST NOT introduce MAESTRO references.
     """
 
     @pytest.mark.parametrize("path", ALL_F7_ENRICHED_FILES, ids=lambda p: p.name)
     def test_no_maestro_references_in_enriched_files(self, path: Path) -> None:
-        """No 'maestro' substring (case-insensitive) in any of the 10 F-7 files."""
+        """No 'maestro' substring (case-insensitive) in any enriched file."""
         content = path.read_text(encoding="utf-8").lower()
         assert "maestro" not in content, (
             f"{path.name} MUST contain zero MAESTRO references "
             f"(MAESTRO layer assignment is orchestrator-owned, not agent-authored; "
-            f"FR-13 / SC-15 sweep at four-or-five-agent scope per ADR-036)."
+            f"FR-13 / SC-15)."
         )
 
 
@@ -378,11 +363,7 @@ class TestPatternCategoryDisambiguation:
 
     The Disambiguation subsection maps the new mobile categories' boundary
     against pre-existing categories in the same companion (Q1 SPLIT
-    discipline). At four-or-five-agent dual-host path: 5 companions × 1
-    Disambiguation each = 5 matches sweep total.
-
-    Mirrors F-6 Section C precedent at four-or-five-agent scope (F-6 was
-    three-agent: 3 companions × 1 Disambiguation each = 3 matches).
+    discipline).
     """
 
     @pytest.mark.parametrize(
@@ -410,15 +391,13 @@ class TestPatternCategoryDisambiguation:
 
 class TestNewPatternCategoriesPresent:
     """New mobile-tier Pattern Category headers MUST be present in the
-    corresponding F-7 companion. Eleven assertions, one per F-7 fixture's
-    owning category. Headers verified against authored content as of T068.
+    corresponding F-7 companion (one assertion per F-7 fixture's owning
+    category).
 
-    Header naming convention: F-7 uses long-dash (—) separator ('Pattern
-    Category N+1 — Title') except where a category index slots into existing
-    numeric sequence (Cat 11 / 12 / 13 in tampering; Cat 11 in
-    privilege-escalation; Cat 9 in repudiation) which uses long-dash
-    consistently. Numeric-vs-N+K choice tracks the post-F-6 baseline of each
-    companion.
+    Headers use the long-dash (—) separator. Numeric-vs-N+K naming tracks
+    each companion's pre-existing category sequence (numeric where the new
+    category extends a numbered sequence; N+K where the companion previously
+    had no Pattern Category headers).
     """
 
     def test_spoofing_companion_has_cat_n_plus_1_M1(self) -> None:
@@ -450,24 +429,15 @@ class TestNewPatternCategoriesPresent:
             "## Pattern Category 11 — Mobile Supply Chain Integrity (M2)" in content
         ), (
             "Pattern Category 11 (Mobile Supply Chain Integrity — M2) "
-            "header MUST be present in tampering detection-patterns.md per FR-5. "
-            "Numeric Cat 11 (not N+1) because tampering already carries Cat 1-10 "
-            "post-F-6 baseline (with F-6 Cat 10 Adversarial Input Manipulation)."
+            "header MUST be present in tampering detection-patterns.md per FR-5."
         )
 
     def test_tampering_companion_has_cat_12_M4(self) -> None:
-        """tampering detection-patterns.md MUST contain Cat 12 (Mobile IPC Input Validation).
-
-        ADR-036 D-5 cross-axis annotation: Cat 12 owns mobile-IPC-input-side
-        validation; the F-1 ``output-integrity`` agent independently owns
-        LLM-output-side sanitization on disjoint architectural surfaces.
-        """
+        """tampering detection-patterns.md MUST contain Cat 12 (Mobile IPC Input Validation)."""
         content = TAMPERING_COMPANION.read_text(encoding="utf-8")
         assert "## Pattern Category 12 — Mobile IPC Input Validation (M4)" in content, (
             "Pattern Category 12 (Mobile IPC Input Validation — M4) header MUST be "
-            "present in tampering detection-patterns.md per FR-5. ADR-036 D-5 "
-            "cross-axis boundary: F-1 output-integrity owns disjoint LLM-output-side "
-            "sanitization."
+            "present in tampering detection-patterns.md per FR-5."
         )
 
     def test_tampering_companion_has_cat_13_M7(self) -> None:
@@ -524,13 +494,7 @@ class TestNewPatternCategoriesPresent:
         )
 
     def test_privilege_escalation_companion_has_M8_priv_gain(self) -> None:
-        """privilege-escalation detection-patterns.md MUST contain Cat 11 (M8 Privilege-Gain Variant).
-
-        ADR-036 D-4 dual-host carve: M8 privilege-gain variant lives on
-        ``privilege-escalation`` host; the accountability-loss variant lives
-        on ``repudiation`` host. Same architecture may surface BOTH without
-        duplication; mitigation vocabularies differ.
-        """
+        """privilege-escalation detection-patterns.md MUST contain Cat 11 (M8 Privilege-Gain Variant)."""
         content = PRIVILEGE_ESCALATION_COMPANION.read_text(encoding="utf-8")
         assert (
             "## Pattern Category 11: M8 Privilege-Gain Variant — Mobile Security Misconfiguration"
@@ -542,14 +506,7 @@ class TestNewPatternCategoriesPresent:
         )
 
     def test_repudiation_companion_has_M8_accountability_loss(self) -> None:
-        """repudiation detection-patterns.md MUST contain Cat 9 (M8 Accountability-Loss Variant).
-
-        ADR-036 D-4 dual-host carve: M8 accountability-loss variant lives on
-        ``repudiation`` host; counterpart privilege-gain variant lives on
-        ``privilege-escalation`` host. Disjoint architectural-tells; disjoint
-        mitigation vocabularies (audit-trail completeness + crash-reporting
-        configuration vs authorization-gating + attestation integration).
-        """
+        """repudiation detection-patterns.md MUST contain Cat 9 (M8 Accountability-Loss Variant)."""
         content = REPUDIATION_COMPANION.read_text(encoding="utf-8")
         assert (
             "## Pattern Category 9: M8 Accountability-Loss Variant — Mobile Security Misconfiguration"
@@ -603,14 +560,7 @@ class TestFixtureReferencesContract:
         )
 
     def test_t_M4_fixture_references_array(self) -> None:
-        """T-M4 fixture references MUST contain 'OWASP M4:2024'.
-
-        ADR-036 D-5 cross-axis annotation: M4 OWASP citation lives entirely on
-        ``tampering`` host. The disjoint-tells boundary with F-1
-        ``output-integrity`` is at the architectural-tell axis without catalog
-        overlap (no shared OWASP identifier between Cat 12 mobile-IPC-input and
-        F-1 LLM-output-sanitization).
-        """
+        """T-M4 fixture references MUST contain 'OWASP M4:2024'."""
         joined = _joined_refs(T_M4_FIXTURE)
         assert "OWASP M4:2024" in joined, (
             f"T-M4 (tampering Cat 12) fixture references MUST include "
@@ -662,14 +612,8 @@ class TestFixtureReferencesContract:
         )
 
     def test_e_M8_fixture_references_array(self) -> None:
-        """E-M8 fixture references MUST contain M8 + CWE-732 + MASVS-PLATFORM.
-
-        ADR-036 D-4 privilege-gain variant on ``privilege-escalation`` host;
-        ADR-036 D-3 mapping table row populates references with section-level
-        MASVS-PLATFORM granularity citation. CWE-732 (Incorrect Permission
-        Assignment) is catalog-resolvable per pre-existing tachi-privilege-
-        escalation companion Primary Sources list.
-        """
+        """E-M8 fixture references MUST contain M8 + CWE-732 + MASVS-PLATFORM
+        (privilege-gain variant per ADR-036 D-4)."""
         joined = _joined_refs(E_M8_FIXTURE)
         assert "OWASP M8:2024" in joined, (
             f"E-M8 (privilege-escalation Cat 11; M8 priv-gain variant) fixture "
@@ -686,14 +630,8 @@ class TestFixtureReferencesContract:
         )
 
     def test_r_M8_fixture_references_array(self) -> None:
-        """R-M8 fixture references MUST contain M8 + CWE-778 + MASVS-CODE.
-
-        ADR-036 D-4 accountability-loss variant on ``repudiation`` host; the
-        privilege-gain counterpart is at E-10 on ``privilege-escalation``.
-        Disjoint mitigation vocabularies preserved across the dual-host carve.
-        CWE-778 (Insufficient Logging) catalog-resolvable per pre-existing
-        tachi-repudiation companion Primary Sources list.
-        """
+        """R-M8 fixture references MUST contain M8 + CWE-778 + MASVS-CODE
+        (accountability-loss variant per ADR-036 D-4)."""
         joined = _joined_refs(R_M8_FIXTURE)
         assert "OWASP M8:2024" in joined, (
             f"R-M8 (repudiation Cat 9; M8 accountability-loss variant) fixture "
@@ -716,26 +654,20 @@ class TestFixtureReferencesContract:
 
 
 class TestAttackMobileCatalogResolvabilityGap:
-    """SC-17 / Finding IR Contract Invariant 3: only catalog-resolvable
-    identifiers appear in references arrays. Non-catalog ATT&CK Mobile
-    entries appear ONLY as prose-only cross-references in mitigation
-    narrative.
+    """Finding IR Contract Invariant 3: only catalog-resolvable identifiers
+    appear in references arrays. Non-catalog ATT&CK Mobile entries appear
+    ONLY as prose-only cross-references in mitigation narrative.
 
-    Per ADR-036 D-7 (cross-ref Wave 1.0 T012 / T004 verification), the three
-    cited ATT&CK Mobile techniques **T1474, T1626, T1398** are NOT
-    catalog-resolvable in ``schemas/taxonomy/mitre-attack.yaml`` (verified
-    0/0/0 absent at T004). They appear ONLY in prose mitigation narratives
-    of the relevant Pattern Categories — NEVER in any fixture's references
-    array.
-
-    F-7's 3-of-3 prose-only worst-case at four-or-five-agent scope extends:
-    - F-5 ADR-034 D-6 1-of-1 prose-only T1496 precedent
-    - F-6 ADR-035 D-7 3-of-6 prose-only T0015/T0019/T0031 precedent
+    Per ADR-036 D-7, the three cited ATT&CK Mobile techniques **T1474,
+    T1626, T1398** are NOT catalog-resolvable in
+    ``schemas/taxonomy/mitre-attack.yaml`` (verified 0/0/0 absent at T004).
+    They appear ONLY in prose mitigation narratives of the relevant Pattern
+    Categories — NEVER in any fixture's references array.
     """
 
     @pytest.mark.parametrize("attack_mobile_id", ["T1474", "T1626", "T1398"])
     def test_prose_only_attack_mobile_techniques_absent_from_references(
-        self, attack_mobile_id: str
+        self, attack_mobile_id: str, all_fixture_refs_joined: str
     ) -> None:
         """Non-catalog-resolvable ATT&CK Mobile techniques MUST NOT appear in
         any F-7 fixture references array per Invariant 3 / ADR-036 D-7.
@@ -748,13 +680,11 @@ class TestAttackMobileCatalogResolvabilityGap:
         - T1398 (Boot or Logon Initialization Scripts — Mobile sub-technique)
           is prose-only on repudiation Cat 9 mitigation
         """
-        joined = _all_fixture_refs_joined()
-        assert attack_mobile_id not in joined, (
-            f"ATT&CK Mobile {attack_mobile_id} MUST NOT appear in any F-7 fixture "
-            f"references array per Invariant 3 / ADR-036 D-7 (catalog-absent in "
-            f"schemas/taxonomy/mitre-attack.yaml; prose-only on owning Pattern "
-            f"Category mitigation). 3-of-3 prose-only worst-case at four-or-five-"
-            f"agent scope extends F-5 1-of-1 + F-6 3-of-6 catalog-gap precedent."
+        assert attack_mobile_id not in all_fixture_refs_joined, (
+            f"ATT&CK Mobile {attack_mobile_id} MUST NOT appear in any F-7 "
+            f"fixture references array per Invariant 3 / ADR-036 D-7 "
+            f"(catalog-absent in schemas/taxonomy/mitre-attack.yaml; prose-only "
+            f"on owning Pattern Category mitigation)."
         )
 
 
