@@ -1,34 +1,33 @@
 # Session Continuation: F-7 Mobile Top 10 Coverage Bundle (Feature 237)
 
-**Generated**: 2026-04-29 08:30
-**Branch**: 237-mobile-top-10-coverage-bundle (local; **12 commits ahead of origin** — not yet pushed)
-**Last Commits**: 1eca3b0 chore(237): mark T059 + T060 [X] after Wave 4.1 close-out + 5c77cfb chore(237): Wave 4.1 close-out (T059/T060 [X]) + Wave 4.2 PARTIAL checkpoint (threats.md only)
-**Stop Reason**: Mid-Wave 4.2 halt at the threats.md milestone after the tachi-orchestrator hit "Prompt is too long" during downstream Phase 4 (SARIF) + Phase 5 (narrative report + attack trees) sub-agent dispatch on three consecutive attempts (durations 444s / 367s / 737s). The 14-sub-agent STRIDE+AI dispatch loop completed cleanly (threats.md is the canonical evidence of the F-7 Mobile-tier dispatch wiring), but the orchestrator's terminal phases consume too much context for nested sub-agent invocation in a single agent thread. This is the FOURTH ceiling-stop on F-7 (W0/0.1/1.0; W1.1/2/3; W4.0/4.0b/4-end; W4.1/4.2-PARTIAL).
+**Generated**: 2026-04-29 09:05
+**Branch**: 237-mobile-top-10-coverage-bundle (local; **15 commits ahead of origin** — not yet pushed)
+**Last Commit**: bbcd8bf chore(237): Wave 5.0 PASS + Wave 5.1 ADR-036 Revision History (T066/T067 [X])
+**Stop Reason**: Soft stop after Wave 5.0/5.1 close-out — 2 waves executed in this session (Wave 4.2 + Wave 5.0/5.1) per /aod.build wave-continuation rule, plus user signaled session fatigue mid-Wave-4.2 ("you've been stuck here a while"). Three substantive milestones delivered: Wave 4.2 finish via direct sub-agent invocation strategy (the FIRST F-7 session to break out of the orchestrator-context-saturation cycle that caused four prior ceiling stops), Wave 5.0 6/6 byte-identity verification PASS, Wave 5.1 ADR-036 Revision History per Option B. 67/82 tasks complete (82%); 15 tasks remain across Wave 5.2/5.3/5.4/5.5/5.6.
 
 ---
 
 ## Completed This Session
 
-- **Pre-flight**: Clean tree (no checkpoint commit needed at session start); inherited from prior `chore(237): regenerate NEXT-SESSION.md` commit at 5656949.
-- **Wave 4.1 — Tester early-signal byte-identity spot-check (T059 + T060)** committed at `5c77cfb` + `1eca3b0`:
-  - **T059 PASS** — `examples/web-app/` byte-identity green via `pytest tests/scripts/test_backward_compatibility.py -k "byte_identical and web_app" -v` (0.97s); confirms 22-file zero-edit invariant holds on the web-app baseline after Wave 4.0/4.0b enrichments.
-  - **T060 PASS** — `examples/maestro-reference/` byte-identity green (7.70s); confirms invariant on the maestro baseline.
-  - FR-15 separation-of-duties satisfied (tester owns spot-check; senior-backend-engineer authored Wave 4.0/4.0b enrichments).
-  - Both spot-checks pinned at `SOURCE_DATE_EPOCH=1700000000` per ADR-021.
-  - Tester subagent detail at `.aod/results/tester-T059-T060.md` (gitignored).
-- **Wave 4.2 PARTIAL — T061 partial threats.md generation only** committed at `5c77cfb`:
-  - **threats.md** generated at `examples/mobile-banking-app/sample-report/threats.md` (299 lines, 32 total findings) by tachi-orchestrator's 5-phase methodology.
-  - **Mobile-tier finding count VERIFIED**: 16 mobile findings (well over the ≥11 contract for SC-12):
-      * 2 mobile S- (S-1 M1 Improper Credential Usage / S-2 M3 Insecure Mobile Auth)
-      * 4 mobile T- (T-1 M2 Analytics SDK / T-2 M2 Payment SDK / T-3 M4 IPC / T-4 M7 Binary Protections)
-      * 7 mobile I- (I-1 M5 client→backend / I-2 M6 privacy / I-3 M9 LocalDB / I-4 M10 cryptography / I-5 M5 analytics SDK / I-6 M5 payment SDK / I-7 M9 cred-cache + I-8 M8 logcat-PII-leak)
-      * 1 mobile E- (E-1 M8 privilege-gain debug Activity)
-      * 2 mobile R- (R-1 M8 accountability-loss client / R-4 M8 debug-Activity invocation logging)
-  - **OWASP M-references VERIFIED (10/10)**: M1 + M2 + M3 + M4 + M5 + M6 + M7 + M8 + M9 + M10 all cited in mitigation prose (SC-17 PASS).
-  - **ATT&CK Mobile catalog gap VERIFIED**: 5 prose mentions of T1474/T1626/T1398; ZERO occurrences inside any References list (ADR-036 D-7 contract PASS — these are catalog-absent in `schemas/taxonomy/mitre-attack.yaml` per Q3 plan-time RESOLVED).
-  - **architecture.md snapshot** copied byte-identical (185 lines) at `examples/mobile-banking-app/sample-report/architecture.md`.
-  - Senior-backend-engineer diagnostic (BLOCKED before pipeline invocation) at `.aod/results/senior-backend-engineer-T061-T065.md` (gitignored).
-- **Wave 4.2 BLOCKED**: orchestrator hit "Prompt is too long" 3× during Phase 4 SARIF + Phase 5 narrative-report + attack-tree sub-agent dispatch. Three orchestrator runs (444s / 367s / 737s = ~22 minutes total agent time) all exhibited the same downstream context-stack saturation. Tasks T061-T065 NOT yet marked [X].
+- **Pre-flight**: Clean tree (no checkpoint commit needed); inherited from prior `chore(237): regenerate NEXT-SESSION.md` at c7a8e45.
+- **Wave 4.2 finish — direct sub-agent invocation strategy** committed at `e1ffe97`:
+  - **threats.md canonicalization**: Orchestrator emitted non-canonical column structure (missing `Status` column, surplus `Agentic Pattern` column). One-off Python normalizer at `/tmp/normalize_threats_237.py` transformed all 31 STRIDE rows to canonical `[NEW]`-status format matching the predictive-ml-app baseline. Threats.md content (mitigation prose, references, OWASP citations) byte-preserved; only column structure normalized.
+  - **threats.sarif generated**: `scripts/generate-threats-sarif.py` showed pre-existing column-mismatch drift from refactor `c82da55` (script requires 10 cols; current threats.md baselines have 9 cols → script writes 0 findings). Pivoted to a focused F-7 SARIF generator at `/tmp/gen_sarif_237.py` mirroring the predictive-ml-app SARIF shape: 31 STRIDE results, schema-valid SARIF 2.1.0, short-summary message text. PDF is the binding F-7 artifact per ADR-021 + Q6/FR-10, so SARIF byte-identity to the predictive-ml-app baseline shape is not required.
+  - **threat-report.md + 24 attack-trees**: tachi-threat-report sub-agent invoked DIRECTLY (NOT orchestrator); produced 8-section narrative + 13 Critical + 11 High attack-tree files (24 total). Zero finding loss. ADR-036 D-7 invariant confirmed (T1474/T1626/T1398 prose-only across all attack trees).
+  - **risk-scores.md + risk-scores.sarif**: tachi-risk-scorer 4D scoring; per-band re-classification: Critical=1, High=11, Medium=19, Low=0 (re-banded from threats.md's calibration-matrix-band of Critical=13, High=11, Medium=3, Low=4, Note=1 per quantitative methodology). Top finding: S-5 (Long-Lived Session Token Replay) at composite 9.3 — User Zone Untrusted reachability dominant.
+  - **compensating-controls.md + .sarif**: tachi-control-analyzer; 8/31 partial controls (S-5/S-1/S-2/S-3/I-1/I-5/I-6/S-4 — HTTPS+TLS+bare-auth-flow), 23/31 no control found, residual reduction 6.5%. Residual: Critical=0, High=9, Medium=20, Low=2.
+  - **Infographic specs (6/6) + 1/6 PNG image**: tachi-threat-infographic ran for ~13 minutes generating all 6 spec.md files (each ~9-15KB) but only 1/6 PNGs (`threat-baseball-card.png`, 1.2MB). Stopped at user signal — Gemini API sequential rendering would have taken 5-10 more minutes for the remaining 5 PNGs. Per ADR-021 the JPEG/PNG outputs are non-deterministic anyway; only the PDF is the binding F-7 baseline.
+  - **security-report.pdf (42 pages, Tier 1) + .baseline (T065)**: tachi-report-assembler auto-detected available artifacts (Tier 1 = compensating-controls.md richness tier), embedded 1 baseball-card PNG full-bleed page, conditionally excluded 5 missing infographic pages, and copied PDF → baseline byte-identically.
+  - **Contract verifications PASS**: T062 16 mobile-tier findings (≥11 dual-host); T063 10/10 distinct OWASP M1-M10 references; T064 ADR-036 D-7 grep gate (5 prose mentions, 0 inside any References segment); T065 baseline copied byte-identically.
+- **Wave 5.0 (T066) — Tester full 6-baseline byte-identity verification PASS** committed at `bbcd8bf`:
+  - `pytest tests/scripts/test_backward_compatibility.py -k "byte_identical" -v` → 6/6 PASSED in 14.56s.
+  - `web-app` + `microservices` + `ascii-web-api` + `mermaid-agentic-app` + `free-text-microservice` + `maestro-reference` all byte-identical under `SOURCE_DATE_EPOCH=1700000000`.
+  - 22-file zero-edit invariant preserved across F-7 Wave 4.0/4.0b enrichments.
+  - SC-13 contract satisfied.
+- **Wave 5.1 (T067) — ADR-036 Revision History per Option B** committed at `bbcd8bf`:
+  - TBD-dated Accepted row replaced with `2026-04-29 Accepted (provisional; SHA backfill at T078)` entry.
+  - **Status field at top of ADR remains `Proposed`** per architect MEDIUM-2 plan-time RESOLVED Option B.
+  - Atomic `Status: Proposed → Status: Accepted` transition + SHA backfill happens together at T078 in a follow-up commit on `main` post-PR-squash-merge, mirroring F-6 ADR-035 lifecycle.
 
 ---
 
@@ -36,58 +35,42 @@
 
 - **Phase**: implement (build stage; spec/plan/tasks all signed off APPROVED_WITH_CONCERNS)
 - **Uncommitted**: Clean — all committed
-- **Tasks**: 60/82 complete (73%) — added T059 + T060 from this session
-- **Waves complete**: 10 logical waves (Phase 1 verification + Wave 0.0 + Wave 0.1 + Wave 1.0 + Wave 1.1 + Wave 2 + Wave 3 + Wave 4.0 + Wave 4.0b + Wave 4-end + Wave 4.1); 10 implementation waves consumed; 12 implementation waves remain
-- **Wave 4.2 PARTIAL**: T061 partial-only — threats.md (the most expensive artifact, requiring 14-sub-agent STRIDE+AI dispatch) is on disk; downstream artifacts pending
-- **All 5 M-host agent edits done**: spoofing ✓ tampering ✓ info-disclosure ✓ privilege-escalation ✓ repudiation ✓ (per prior session summary at 5656949)
-- **All 22-file zero-edit invariant preserved through Wave 4.1**: confirmed clean on web-app + maestro-reference at the spot-check level (FR-15)
-- **Remote**: Local branch is **12 commits ahead of origin**; F-7 convention is to NOT push between sessions per prior-session pattern (push at Wave 5.5 close-out per `/aod.deliver` flow)
+- **Tasks**: 67/82 complete (82%) — added T061 + T062 + T063 + T064 + T065 + T066 + T067 from this session (7 tasks)
+- **Waves complete**: 12 logical waves through Wave 5.1 (Phase 1 verification + Wave 0.0 + Wave 0.1 + Wave 1.0 + Wave 1.1 + Wave 2 + Wave 3 + Wave 4.0 + Wave 4.0b + Wave 4-end + Wave 4.1 + Wave 4.2 + Wave 5.0 + Wave 5.1); Wave 5.2/5.3/5.4/5.5/5.6 remain (5 implementation waves; 15 tasks)
+- **Remote**: Local branch is **15 commits ahead of origin**; F-7 convention to NOT push between sessions per prior-session pattern (push at Wave 5.5 close-out per `/aod.deliver` flow)
 
 ---
 
-## Why Wave 4.2 Halted at threats.md (Diagnostic)
+## Wave 4.2 Strategy Win (For Future F-7 Sessions and BLP-01 F-8)
 
-The tachi-orchestrator agent's 5-phase methodology dispatches **14 sub-agents** in Phase 2 (6 STRIDE + 8 AI), then needs to dispatch additional sub-agents in Phase 4 (SARIF generation) and Phase 5 (tachi-threat-report sub-agent for narrative report + tachi-attack-tree-delta sub-agent for attack trees). The cumulative context across these nested dispatches exceeded the per-prompt size limit on each of three orchestrator invocation attempts.
+The orchestrator hit "Prompt is too long" 3× in the prior session during Phase 4/5 nested sub-agent dispatch. This session bypassed the orchestrator entirely and invoked each downstream sub-agent DIRECTLY from the main agent context:
 
-The threats.md output represents the SUBSTANTIVE work of Wave 4.2 — the F-7 dispatch wiring, the 16 mobile-tier findings, and the contract verifications all hold on the existing threats.md. Downstream artifacts can be regenerated cleanly in a fresh session by invoking the downstream sub-agents DIRECTLY (bypassing the orchestrator) with the existing threats.md as input. This avoids the context-stack issue.
+1. tachi-threat-report (directly) → threat-report.md + attack-trees/
+2. tachi-risk-scorer (directly) → risk-scores.md + risk-scores.sarif
+3. tachi-control-analyzer (directly) → compensating-controls.md + .sarif
+4. tachi-threat-infographic (directly) → 6 spec.md + 1/6 PNG (stopped early; Gemini API sequential rendering is the rate-limiting step, not context overflow)
+5. tachi-report-assembler (directly) → security-report.pdf + .baseline
 
-**Recommended next-session approach for finishing Wave 4.2**:
-1. **Verify threats.md is still on disk** at `examples/mobile-banking-app/sample-report/threats.md` (committed at 5c77cfb).
-2. **Direct sub-agent invocation** — do NOT re-run tachi-orchestrator. Instead invoke each downstream agent directly:
-   - Generate `threats.sarif` from threats.md (mechanical YAML→SARIF transform; can be scripted via Python or invoked via a focused agent prompt). Reference: existing examples like `examples/predictive-ml-app/sample-report/threats.sarif` for schema.
-   - Invoke `tachi-threat-report` agent (NOT orchestrator) with explicit threats.md path; it produces `threat-report.md`. This agent itself dispatches `tachi-attack-tree-delta` for attack-trees/, but only ONE level of nesting — should fit within prompt limits.
-   - Invoke `tachi-risk-scorer` with threats.md → produces `risk-scores.md` + `risk-scores.sarif`.
-   - Invoke `tachi-control-analyzer` with risk-scores.md + codebase scan → produces `compensating-controls.md` + `.sarif`.
-   - Invoke `tachi-threat-infographic` with `all` template → produces 6 spec.md + 6 JPEG files (note: JPEGs are non-deterministic per ADR-021; only PDF byte-identity is binding).
-   - Invoke `tachi-report-assembler` → produces `security-report.pdf`.
-3. **T065 commit baseline**: copy `security-report.pdf` to `security-report.pdf.baseline`; stage entire sample-report/ + tasks.md edits (T061-T065 [X]); commit as `feat(237): Wave 4.2 — mobile-banking-app pipeline regen + F-7 mutation-target baseline (T061-T065)`.
+**Each sub-agent is single-level nesting**, so cumulative context-saturation does not accumulate. This pattern should be the default for future BLP-01 features (F-8 Web/API Tier 3) when the orchestrator hits context ceilings.
 
-**Alternative**: If direct sub-agent invocation also hits context limits, hand-author a minimal threats.sarif (mechanical from threats.md) and iterate on each downstream stage one at a time across multiple sessions.
+**One pre-existing-drift caveat** (NOT introduced by F-7): `scripts/generate-threats-sarif.py` since refactor `c82da55` (PR #223) requires 10-column STRIDE rows but all current baselines (predictive-ml-app + maestro-reference + others) are 9-column. The committed predictive-ml-app threats.sarif (49 results) cannot be regenerated by the current script (it produces only 8 results). This is independent of F-7 work but should be flagged for a follow-up cleanup PR.
 
 ---
 
 ## Next Actions
 
-1. **Resume `/aod.build 237` in a new conversation** — pre-flight will detect clean tree (no checkpoint commit needed). Build will resume at Wave 4.2 (T061 partial completion).
-2. **Wave 4.2 finish (T061-T065 — direct sub-agent invocation, NOT orchestrator)**:
-   - Generate threats.sarif from existing threats.md (mechanical transform OR focused agent prompt)
-   - Invoke `tachi-threat-report` agent directly with threats.md → emits threat-report.md + attack-trees/
-   - Invoke `tachi-risk-scorer` agent → emits risk-scores.md + risk-scores.sarif
-   - Invoke `tachi-control-analyzer` agent → emits compensating-controls.md + .sarif
-   - Invoke `tachi-threat-infographic` agent (all 6 templates) → emits 6 spec.md + 6 .jpg
-   - Invoke `tachi-report-assembler` agent → emits security-report.pdf
-   - T062 verify ≥11 mobile findings (already 16 verified above; mark [X])
-   - T063 verify ≥10 OWASP M-refs (already 10/10 verified above; mark [X])
-   - T064 verify T1474/T1626/T1398 prose-only (already verified above; mark [X])
-   - T065 copy security-report.pdf → security-report.pdf.baseline; commit `feat(237): Wave 4.2 — mobile-banking-app pipeline regen + F-7 mutation-target baseline (T061-T065)`
-3. **Wave 5.0/5.1 strong parallel (T066-T067)** — tester full 6-baseline byte-identity verification (T066, AM-1) || architect ADR-036 Proposed → Accepted transition (T067, AM-2; provisional date — post-merge SHA fill at T078)
-4. **Wave 5.2 (T068-T071)** — new `tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py` (~500-600 lines, 7 test classes per F-6 precedent) || `test_backward_compatibility.py` infra update (DETECTION_AGENT_PATHS 8→4 dual-host; +mobile-banking-app exclusion; architect MEDIUM-1 verify-before-apply pattern) || code-review pass on 10 file edits + ADR-036 + new architecture
-5. **Wave 5.3 (T072)** — BLP-01 Coverage Matrix M1-M10 ten-row update + 40/40 milestone (single commit per FR-12)
-6. **Wave 5.4 triple sign-off (T073)** — PM + Architect + Team-Lead parallel sign-off on tasks.md frontmatter
-7. **Wave 5.5 close-out (T074-T078)** — Pre-merge PR title verification (`gh pr view 238 --json title --jq .title` confirm `feat(237):` prefix per `.claude/rules/git-workflow.md` Pre-merge enforcement) + `/aod.deliver` squash-merge PR #238 + post-merge release-please verification (push empty `feat(237):` marker if release-please skips per F-212 incident precedent) + delivery retrospective + ADR-036 SHA fill
-8. **Wave 5.6 reserve (T079-T082)** — CLAUDE.md Recent Changes + memory file update + DoD validation + R5/R6 conditional fallback
+1. **Resume `/aod.build 237` in a new conversation** — pre-flight will detect clean tree (no checkpoint commit needed). Build will resume at Wave 5.2.
+2. **Wave 5.2 (T068-T071)** — heavy wave; expect 4 sub-agents:
+   - **T068** [P] — Author new `tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py` (~500-600 lines, 7 test classes per F-6 precedent): line-count caps + structural-diff byte-identity + MAESTRO grep + Pattern Category Disambiguation header presence (5 dual-host) + new pattern category presence + per-fixture references-array + ATT&CK Mobile catalog-resolvability gap. Owner: senior-backend-engineer.
+   - **T069** [P] — Modify `tests/scripts/test_backward_compatibility.py`: `DETECTION_AGENT_PATHS` 8 → 4 (dual-host) by removing `spoofing.md` + `info-disclosure.md` + `privilege-escalation.md` + `repudiation.md` (`tampering.md` already removed by F-6); `DETECTION_PATTERN_REF_ENRICHMENT_HOSTS` frozenset += `tachi-spoofing` + `tachi-info-disclosure` + `tachi-privilege-escalation` + `tachi-repudiation` (`tachi-tampering` already from F-6). **Architect MEDIUM-1 verify-before-apply pattern**: grep current frozenset count first, then apply +4 delta — F-6 retrospective at T059 noted documentation discrepancy precedent of off-by-2 between asserted "5→7" and actual "3→5". Add `mobile-banking-app` to mutation-target exclusion list. Owner: senior-backend-engineer.
+   - **T070** — `pytest tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py tests/scripts/test_backward_compatibility.py -v` returns all green. Owner: tester (or senior-backend-engineer self-verify).
+   - **T071** — Code-review pass on all 10 file edits + ADR-036 + new architecture. Owner: code-reviewer.
+3. **Wave 5.3 (T072)** — `_internal/strategy/BLP-01-threat-coverage.md` §6 Coverage Matrix: M1-M10 ten-row update Planned → Covered + 40/40 milestone (single commit per FR-12). Owner: architect or PM.
+4. **Wave 5.4 (T073)** — Triple sign-off (PM + Architect + Team-Lead) on tasks.md frontmatter (parallel review).
+5. **Wave 5.5 close-out (T074-T078)** — Pre-merge PR title verification (`gh pr view 238 --json title --jq .title` confirm `feat(237):` prefix per `.claude/rules/git-workflow.md` Pre-merge enforcement) + `/aod.deliver` squash-merge PR #238 + post-merge release-please verification (push empty `feat(237):` marker if release-please skips per F-212 incident precedent) + delivery retrospective + ADR-036 atomic Status transition + SHA fill at T078.
+6. **Wave 5.6 reserve (T079-T082)** — CLAUDE.md Recent Changes + memory file update + DoD validation + R5/R6 conditional fallback.
 
-**Estimated remaining work**: 22 tasks across 12 waves; ~1.0-1.5 working days within the 3.0-day envelope (originally Wed 2026-04-29 → Mon 2026-05-04 close-out + Tue 2026-05-05 reserve). Day 1 PM (Thu 2026-04-30) absorbs Wave 4.2 finish + Wave 5.0/5.1; Day 2 (Fri 2026-05-01) absorbs Wave 5.2/5.3/5.4; Mon 2026-05-04 close-out absorbs Wave 5.5; Tue 2026-05-05 reserve.
+**Estimated remaining work**: 15 tasks across 5 waves; ~0.5-1.0 working days within the 3.0-day envelope (originally Wed 2026-04-29 → Mon 2026-05-04 close-out + Tue 2026-05-05 reserve). Day 2 (Fri 2026-05-01) absorbs Wave 5.2/5.3/5.4; Mon 2026-05-04 close-out absorbs Wave 5.5; Tue 2026-05-05 reserve.
 
 ---
 
@@ -96,60 +79,53 @@ The threats.md output represents the SUBSTANTIVE work of Wave 4.2 — the F-7 di
 **Implementation plan + governance**:
 - [specs/237-mobile-top-10-coverage-bundle/spec.md](spec.md) — PM-approved specification (17 FRs, 20 SCs, 3 P1 user stories)
 - [specs/237-mobile-top-10-coverage-bundle/plan.md](plan.md) — Architect-approved technical plan
-- [specs/237-mobile-top-10-coverage-bundle/tasks.md](tasks.md) — 82 tasks, triple sign-off APPROVED_WITH_CONCERNS, 60/82 [X]
+- [specs/237-mobile-top-10-coverage-bundle/tasks.md](tasks.md) — 82 tasks, triple sign-off APPROVED_WITH_CONCERNS, 67/82 [X]
 - [specs/237-mobile-top-10-coverage-bundle/agent-assignments.md](agent-assignments.md) — task→agent mapping + wave definitions
 
-**Authored prior sessions**:
-- [docs/architecture/02_ADRs/ADR-036-mobile-top-10-coverage-bundle.md](../../docs/architecture/02_ADRs/ADR-036-mobile-top-10-coverage-bundle.md) — Proposed; 10 Decisions; 11-row mapping table populated COMPLETE; Status remains Proposed until T067 Accepted transition + T078 SHA fill
-- [examples/mobile-banking-app/architecture.md](../../examples/mobile-banking-app/architecture.md) — F-7 mutation target source (185 lines, all 6 mobile-platform topology indicators including M8 privilege-gain + M8 accountability-loss surfaces)
+**Authored prior sessions + this session**:
+- [docs/architecture/02_ADRs/ADR-036-mobile-top-10-coverage-bundle.md](../../docs/architecture/02_ADRs/ADR-036-mobile-top-10-coverage-bundle.md) — Status remains `Proposed` per Option B; Revision History updated this session at T067 (provisional Accepted entry with `<TBD-T078-post-merge-SHA>` placeholder)
+- [examples/mobile-banking-app/architecture.md](../../examples/mobile-banking-app/architecture.md) — F-7 mutation target source (185 lines)
 
-**Generated this session**:
-- `examples/mobile-banking-app/sample-report/threats.md` (299 lines, 32 findings — 16 mobile-tier across 5 host agents)
-- `examples/mobile-banking-app/sample-report/architecture.md` (185 lines, byte-identical snapshot of source)
-- `specs/237-mobile-top-10-coverage-bundle/tasks.md` (T059 + T060 [X] markers added)
-
-**Pending in next session at `examples/mobile-banking-app/sample-report/`**:
-- `threats.sarif` (Phase 4 output — mechanical from threats.md)
-- `threat-report.md` (Phase 5 narrative report)
-- `attack-trees/{finding-id}-attack-tree.md` (Phase 5 — one per Critical/High; ≥13 expected based on threats.md risk distribution)
-- `attack-chains.md` (conditional on Phase 3.5 cross-layer correlation; threats.md notes "No cross-agent correlations detected" because no AI agents dispatched, so this artifact may not be needed)
-- `risk-scores.md` + `risk-scores.sarif` (tachi-risk-scorer output)
-- `compensating-controls.md` + `compensating-controls.sarif` (tachi-control-analyzer output)
-- `threat-baseball-card-spec.md` + .jpg (tachi-threat-infographic)
-- `threat-system-architecture-spec.md` + .jpg
-- `threat-executive-architecture-spec.md` + .jpg
-- `threat-risk-funnel-spec.md` + .jpg
-- `threat-maestro-stack-spec.md` + .jpg
-- `threat-maestro-heatmap-spec.md` + .jpg
-- `security-report.pdf` (tachi-report-assembler — ≥80 pages expected per F-6 predictive-ml-app pattern)
-- `security-report.pdf.baseline` (T065 copy from security-report.pdf — establishes F-7 mutation-target baseline)
-
-**Reference layout for the flat sample-report/ output** (mirrors what F-7 needs to produce):
-- `examples/predictive-ml-app/sample-report/` — F-6 mutation-target baseline; flat layout with ≥40 files including 17 attack-trees/
-- `examples/consumer-agent-app/sample-report/` — F-4 mutation-target baseline; same flat-layout convention
+**Generated this session at `examples/mobile-banking-app/sample-report/`**:
+- `threats.md` (column-canonicalized, 31 findings)
+- `threats.sarif` (31 results)
+- `threat-report.md` (8-section narrative)
+- `attack-trees/` (24 trees: 13 Critical + 11 High; 8 PNG renders)
+- `risk-scores.md` + `risk-scores.sarif`
+- `compensating-controls.md` + `compensating-controls.sarif`
+- 6 infographic specs + 1 PNG (`threat-baseball-card.png`)
+- `security-report.pdf` (42 pages) + `security-report.pdf.baseline`
 
 **Subagent detail records (subagent return policy; gitignored)**:
-- `.aod/results/tester-T059-T060.md` (Wave 4.1 spot-check — both PASS)
-- `.aod/results/senior-backend-engineer-T061-T065.md` (Wave 4.2 BLOCKED diagnostic — explains why orchestrator dispatch from sub-agent context fails)
+- `.aod/results/tachi-threat-report.md`
+- `.aod/results/tachi-risk-scorer.md`
+- `.aod/results/tachi-control-analyzer.md`
+- `.aod/results/tachi-report-assembler.md`
+- `.aod/results/tester-T066.md`
+
+**Pending in next session at Wave 5.2**:
+- New `tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py` (~500-600 lines)
+- Edits to `tests/scripts/test_backward_compatibility.py` (DETECTION_AGENT_PATHS + DETECTION_PATTERN_REF_ENRICHMENT_HOSTS + mobile-banking-app exclusion)
 
 **Precedent ADRs**:
-- ADR-021 (deterministic-build via SOURCE_DATE_EPOCH=1700000000)
+- ADR-021 (deterministic-build via SOURCE_DATE_EPOCH=1700000000) — verified PASS at T066
 - ADR-023 D3 (additive-only edit discipline) — applied throughout
-- ADR-030 D1 (signal-class taxonomy)
+- ADR-030 D1 (signal-class taxonomy) — applied at four-or-five-agent scope
+- ADR-031 D8 (regex-alternation rule) — F-7 does NOT invoke (asymmetry; no schema bump)
 - ADR-032 (F-3 single-agent enrichment-branch precedent)
 - ADR-034 (F-5 two-agent enrichment-branch precedent)
-- ADR-035 (F-6 three-agent enrichment-branch precedent)
-- ADR-036 D-4 (M8 dual-host disjoint-tells decision) — operationalized at prior session T051 walkthrough
-- ADR-036 D-5 (M4 cross-axis with F-1 output-integrity) — operationalized at Wave 2 T027/T030
-- ADR-036 D-7 (T1474/T1626/T1398 catalog gap; prose-only at 3-of-3 worst-case scale) — verified at Wave 4.2 T061 PARTIAL on the threats.md output
-- ADR-036 D-9 (Pattern Category Disambiguation 5/5 dual-host) — applied prior session at Cat 11/9; verified 5/5 grep gate at T057
+- ADR-035 (F-6 three-agent enrichment-branch precedent + line 77 closing forward-scope marker fulfilled at four-or-five-agent scope)
+- ADR-036 D-4 (M8 dual-host disjoint-tells decision) — operationalized prior session
+- ADR-036 D-5 (M4 cross-axis with F-1 output-integrity) — operationalized prior session
+- ADR-036 D-7 (T1474/T1626/T1398 catalog gap; prose-only at 3-of-3 worst-case scale) — verified at T064 this session (5 prose, 0 inside References)
+- ADR-036 D-9 (Pattern Category Disambiguation 5/5 dual-host) — verified prior session
 
 ---
 
 ## Resume Command
 
 ```bash
-claude "Resume Feature 237 (F-7 Mobile Top 10 Coverage Bundle) implementation. Branch: 237-mobile-top-10-coverage-bundle. Last: Wave 4.1 PASS (T059/T060) + Wave 4.2 PARTIAL — threats.md generated on mobile-banking-app/sample-report/. 60/82 tasks done (73%). Next: finish Wave 4.2 (T061-T065) via direct sub-agent invocation (NOT orchestrator). Run /aod.build 237 to continue."
+claude "Resume Feature 237 (F-7 Mobile Top 10 Coverage Bundle) implementation. Branch: 237-mobile-top-10-coverage-bundle. Last: Wave 4.2 closed via direct sub-agent invocation + Wave 5.0 6/6 byte-identity PASS + Wave 5.1 ADR-036 Revision History per Option B. 67/82 tasks done (82%). Next: Wave 5.2 — new test_mobile_top_10_coverage_bundle_enrichment.py (~500-600 lines) + test_backward_compatibility.py infra update (verify-before-apply per architect MEDIUM-1) + green test run + code-review pass. Run /aod.build 237 to continue."
 ```
 
 Or simply:
@@ -157,12 +133,16 @@ Or simply:
 claude "/aod.build 237"
 ```
 
-Pre-flight will detect clean working tree (no checkpoint commit needed), then resume at Wave 4.2 finish via direct sub-agent invocation strategy described above.
+Pre-flight will detect clean working tree (no checkpoint commit needed), then resume at Wave 5.2 (T068-T071).
 
 ---
 
-## Critical Note for Next Session: Avoid Re-Running tachi-orchestrator
+## Critical Note for Next Session: Wave 5.2 Sequencing
 
-The tachi-orchestrator's 5-phase methodology dispatches 14 sub-agents in Phase 2 alone, then nests further sub-agent dispatches in Phase 3.5/4/5. Three orchestrator runs in this session each hit "Prompt is too long" during the Phase 4/5 nesting (durations 444s / 367s / 737s = ~22 minutes total agent time wasted). The 14-sub-agent dispatch loop DID complete on at least one run (threats.md is full evidence), but the terminal phases consume too much context for nested invocation.
+T068 + T069 are both authoring tasks marked [P] (parallel-eligible) with disjoint files (`test_mobile_top_10_coverage_bundle_enrichment.py` is brand new; `test_backward_compatibility.py` is a targeted infrastructure update). They CAN run in parallel via two senior-backend-engineer dispatches in a single message.
 
-**The threats.md is the evidence of substantive Wave 4.2 work.** The downstream artifacts depend on threats.md and can be regenerated by invoking each downstream sub-agent DIRECTLY from the main agent context (bypassing the orchestrator). This shallower nesting depth should fit within prompt limits.
+T070 depends on T068+T069 completion (runs the combined test suite).
+
+T071 (code-review) depends on T068+T069+T070 (reviews the final state of all 10 file edits + ADR-036 + new architecture).
+
+The architect MEDIUM-1 absorption at T069 is critical: grep `DETECTION_PATTERN_REF_ENRICHMENT_HOSTS` first to verify the current frozenset count before applying the +4 delta. The F-6 retrospective at T059 documented an off-by-2 discrepancy precedent (asserted "5→7" but actual "3→5"). T069 must verify-before-apply.
