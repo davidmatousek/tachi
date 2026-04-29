@@ -203,11 +203,11 @@ ADR-036 D-numbered decisions are authored at T013 — Wave 1.0 fully operational
 
 **Note**: Per F-6 Wave 5.0/5.1 split precedent, Day 3 AM is split into AM-1 (tester) + AM-2 (architect) so the two activities don't share a single slot owner.
 
-- [ ] T066 [US3] **Wave 5.0 (AM-1)**: Tester runs full byte-identity verification across all 6 baselines under `SOURCE_DATE_EPOCH=1700000000` per ADR-021: `pytest tests/scripts/test_backward_compatibility.py -k "byte_identical" -v` returns 6/6 passing for `web-app`, `microservices`, `ascii-web-api`, `mermaid-agentic-app`, `free-text-microservice`, `maestro-reference` (SC-13)
+- [X] T066 [US3] **Wave 5.0 (AM-1)**: Tester runs full byte-identity verification across all 6 baselines under `SOURCE_DATE_EPOCH=1700000000` per ADR-021: `pytest tests/scripts/test_backward_compatibility.py -k "byte_identical" -v` returns 6/6 passing for `web-app`, `microservices`, `ascii-web-api`, `mermaid-agentic-app`, `free-text-microservice`, `maestro-reference` (SC-13)
 
 ### Wave 5.1 — Architect ADR-036 Accepted Transition (parallel with Wave 5.0; Fri 2026-05-01 AM-2)
 
-- [ ] T067 [US2] **Wave 5.1 (AM-2)**: Architect transitions ADR-036 Proposed → Accepted at `docs/architecture/02_ADRs/ADR-036-mobile-top-10-coverage-bundle.md` Status field; Revision History gains "Accepted: 2026-05-01" line with provisional date (post-merge SHA fill at T078 below per F-1/F-2/F-3/F-4/F-5/F-6 precedent — placeholder SHA strategy = Option B keep `Status: Proposed` until PR squash-merge, atomic transition + SHA fill at T078)
+- [X] T067 [US2] **Wave 5.1 (AM-2)**: Architect transitions ADR-036 Proposed → Accepted at `docs/architecture/02_ADRs/ADR-036-mobile-top-10-coverage-bundle.md` Status field; Revision History gains "Accepted: 2026-05-01" line with provisional date (post-merge SHA fill at T078 below per F-1/F-2/F-3/F-4/F-5/F-6 precedent — placeholder SHA strategy = Option B keep `Status: Proposed` until PR squash-merge, atomic transition + SHA fill at T078)
 
 ### Wave 5.2 — Test Infrastructure + Enrichment Test Suite (Fri 2026-05-01 AM)
 
