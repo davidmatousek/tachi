@@ -133,7 +133,7 @@ OWASP M1:2024 (Improper Credential Usage) names mobile-specific credential stora
 
 **Primary source**:
 
-- OWASP M1:2024 — Improper Credential Usage: https://owasp.org/www-project-mobile-top-10/2024-risks/m1-improper-credential-usage
+- OWASP M1:2024 — Improper Credential Usage: https://owasp.org/www-project-mobile-top-10/2023-risks/m1-improper-credential-usage
 - OWASP MASTG-AUTH — Mobile Application Security Testing Guide, Authentication Test Cases (section-level granularity)
 - OWASP MASVS-CRYPTO — Mobile Application Security Verification Standard, Cryptography Requirements (section-level granularity)
 
@@ -162,7 +162,7 @@ OWASP M3:2024 (Insecure Authentication/Authorization) names mobile-specific auth
 
 **Primary source**:
 
-- OWASP M3:2024 — Insecure Authentication/Authorization: https://owasp.org/www-project-mobile-top-10/2024-risks/m3-insecure-authentication-authorization
+- OWASP M3:2024 — Insecure Authentication/Authorization: https://owasp.org/www-project-mobile-top-10/2023-risks/m3-insecure-authentication-authorization
 - OWASP MASTG-AUTH — Mobile Application Security Testing Guide, Authentication Test Cases (section-level granularity)
 - OWASP MASVS-AUTH — Mobile Application Security Verification Standard, Authentication and Session Management (section-level granularity)
 
@@ -212,5 +212,5 @@ The same architecture (e.g., a hybrid web+mobile system serving both browser use
 - GCP Compute Metadata Server Overview: https://cloud.google.com/compute/docs/metadata/overview
 - Azure Active Directory Managed Identities Overview: https://learn.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview
 - Azure Virtual Machines Instance Metadata Service: https://learn.microsoft.com/en-us/azure/virtual-machines/windows/instance-metadata-service
-- OWASP M1:2024 — Improper Credential Usage: https://owasp.org/www-project-mobile-top-10/2024-risks/m1-improper-credential-usage
-- OWASP M3:2024 — Insecure Authentication/Authorization: https://owasp.org/www-project-mobile-top-10/2024-risks/m3-insecure-authentication-authorization
+- OWASP M1:2024 — Improper Credential Usage: https://owasp.org/www-project-mobile-top-10/2023-risks/m1-improper-credential-usage
+- OWASP M3:2024 — Insecure Authentication/Authorization: https://owasp.org/www-project-mobile-top-10/2023-risks/m3-insecure-authentication-authorization

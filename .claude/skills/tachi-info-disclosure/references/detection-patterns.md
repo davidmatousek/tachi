@@ -178,7 +178,7 @@ OWASP M5:2024 (Insecure Communication) names mobile-specific transport-security 
 
 **Primary source**:
 
-- OWASP M5:2024 — Insecure Communication: https://owasp.org/www-project-mobile-top-10/2024-risks/m5-insecure-communication
+- OWASP M5:2024 — Insecure Communication: https://owasp.org/www-project-mobile-top-10/2023-risks/m5-insecure-communication
 - OWASP MASTG-NETWORK — Mobile Application Security Testing Guide, Network Communication Test Cases (section-level granularity)
 - OWASP MASVS-NETWORK — Mobile Application Security Verification Standard, Network Communication Requirements (section-level granularity)
 
@@ -207,7 +207,7 @@ OWASP M6:2024 (Inadequate Privacy Controls) names mobile-specific privacy weakne
 
 **Primary source**:
 
-- OWASP M6:2024 — Inadequate Privacy Controls: https://owasp.org/www-project-mobile-top-10/2024-risks/m6-inadequate-privacy-controls
+- OWASP M6:2024 — Inadequate Privacy Controls: https://owasp.org/www-project-mobile-top-10/2023-risks/m6-inadequate-privacy-controls
 - OWASP MASTG-PRIVACY — Mobile Application Security Testing Guide, Privacy Test Cases (section-level granularity)
 - OWASP MASVS-PRIVACY — Mobile Application Security Verification Standard, Privacy Requirements (section-level granularity)
 
@@ -237,7 +237,7 @@ OWASP M9:2024 (Insecure Data Storage) names mobile-specific secure-storage weakn
 
 **Primary source**:
 
-- OWASP M9:2024 — Insecure Data Storage: https://owasp.org/www-project-mobile-top-10/2024-risks/m9-insecure-data-storage
+- OWASP M9:2024 — Insecure Data Storage: https://owasp.org/www-project-mobile-top-10/2023-risks/m9-insecure-data-storage
 - OWASP MASTG-STORAGE — Mobile Application Security Testing Guide, Data Storage Test Cases (section-level granularity)
 - OWASP MASVS-STORAGE — Mobile Application Security Verification Standard, Data Storage and Privacy Requirements (section-level granularity)
 
@@ -267,7 +267,7 @@ OWASP M10:2024 (Insufficient Cryptography) names mobile-specific cryptographic-c
 
 **Primary source**:
 
-- OWASP M10:2024 — Insufficient Cryptography: https://owasp.org/www-project-mobile-top-10/2024-risks/m10-insufficient-cryptography
+- OWASP M10:2024 — Insufficient Cryptography: https://owasp.org/www-project-mobile-top-10/2023-risks/m10-insufficient-cryptography
 - OWASP MASTG-CRYPTO — Mobile Application Security Testing Guide, Cryptography Test Cases (section-level granularity)
 - OWASP MASVS-CRYPTO — Mobile Application Security Verification Standard, Cryptography Requirements (section-level granularity)
 
@@ -321,7 +321,7 @@ The same hybrid architecture (e.g., a web + mobile app sharing a backend, where 
 - NIST SP 800-53 AC-3: Access Enforcement
 - NIST SP 800-122: Guide to Protecting the Confidentiality of Personally Identifiable Information (PII)
 - AWS IMDSv2 guidance: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html
-- OWASP M5:2024 — Insecure Communication: https://owasp.org/www-project-mobile-top-10/2024-risks/m5-insecure-communication
-- OWASP M6:2024 — Inadequate Privacy Controls: https://owasp.org/www-project-mobile-top-10/2024-risks/m6-inadequate-privacy-controls
-- OWASP M9:2024 — Insecure Data Storage: https://owasp.org/www-project-mobile-top-10/2024-risks/m9-insecure-data-storage
-- OWASP M10:2024 — Insufficient Cryptography: https://owasp.org/www-project-mobile-top-10/2024-risks/m10-insufficient-cryptography
+- OWASP M5:2024 — Insecure Communication: https://owasp.org/www-project-mobile-top-10/2023-risks/m5-insecure-communication
+- OWASP M6:2024 — Inadequate Privacy Controls: https://owasp.org/www-project-mobile-top-10/2023-risks/m6-inadequate-privacy-controls
+- OWASP M9:2024 — Insecure Data Storage: https://owasp.org/www-project-mobile-top-10/2023-risks/m9-insecure-data-storage
+- OWASP M10:2024 — Insufficient Cryptography: https://owasp.org/www-project-mobile-top-10/2023-risks/m10-insufficient-cryptography

@@ -195,7 +195,7 @@ OWASP M2:2024 (Inadequate Supply Chain Security) names mobile SDK ingestion and 
 
 **Primary source**:
 
-- OWASP M2:2024 — Inadequate Supply Chain Security: https://owasp.org/www-project-mobile-top-10/2024-risks/m2-inadequate-supply-chain-security
+- OWASP M2:2024 — Inadequate Supply Chain Security: https://owasp.org/www-project-mobile-top-10/2023-risks/m2-inadequate-supply-chain-security
 - OWASP MASTG-ARCH — Mobile Application Security Testing Guide, Architecture Test Cases (section-level granularity)
 - OWASP MASVS-PLATFORM — Mobile Application Security Verification Standard, Platform Interaction Requirements (section-level granularity)
 
@@ -208,7 +208,7 @@ OWASP M2:2024 (Inadequate Supply Chain Security) names mobile SDK ingestion and 
 - Adopt an app-store-only distribution policy for security-critical builds (no sideloading on banking, payments, healthcare, or other regulated mobile apps); on Android, configure `android:installLocation="internalOnly"` and reject build outputs that fail Play Console security review
 - Establish a supplier-provenance review gate as part of the SDK adoption review: every new third-party SDK must pass a documented review of the upstream maintainer's signing-key management, vulnerability-disclosure policy, and historical incident record before merge to a release branch
 - Pin container/build-base images and CI-runner toolchain images by digest (mirrors Cat 8 supply-chain hygiene at the build infrastructure layer)
-- Cf. MITRE ATT&CK Mobile T1474 (Supply Chain Compromise) — text-only cross-reference (NOT in references; T1474 not catalog-resolvable in `schemas/taxonomy/mitre-atlas.yaml` — catalog-absent per ADR-036 D-7).
+- Cf. MITRE ATT&CK Mobile T1474 (Supply Chain Compromise) — text-only cross-reference (NOT in references; T1474 not catalog-resolvable in `schemas/taxonomy/mitre-attack.yaml` — catalog-absent per ADR-036 D-7).
 
 ## Pattern Category 12 — Mobile IPC Input Validation (M4)
 
@@ -227,7 +227,7 @@ OWASP M4:2024 (Insufficient Input/Output Validation) on the mobile-platform surf
 
 **Primary source**:
 
-- OWASP M4:2024 — Insufficient Input/Output Validation: https://owasp.org/www-project-mobile-top-10/2024-risks/m4-insufficient-input-output-validation
+- OWASP M4:2024 — Insufficient Input/Output Validation: https://owasp.org/www-project-mobile-top-10/2023-risks/m4-insufficient-input-output-validation
 - OWASP MASTG-CODE — Mobile Application Security Testing Guide, Code Quality and Build Test Cases (section-level granularity)
 - OWASP MASVS-PLATFORM — Mobile Application Security Verification Standard, Platform Interaction Requirements (section-level granularity)
 
@@ -258,7 +258,7 @@ OWASP M7:2024 (Insufficient Binary Protections) names mobile-binary-tier protect
 
 **Primary source**:
 
-- OWASP M7:2024 — Insufficient Binary Protections: https://owasp.org/www-project-mobile-top-10/2024-risks/m7-insufficient-binary-protections
+- OWASP M7:2024 — Insufficient Binary Protections: https://owasp.org/www-project-mobile-top-10/2023-risks/m7-insufficient-binary-protections
 - OWASP MASTG-RESILIENCE — Mobile Application Security Testing Guide, Resilience Test Cases (section-level granularity)
 - OWASP MASVS-RESILIENCE — Mobile Application Security Verification Standard, Resilience Requirements (section-level granularity)
 
@@ -272,7 +272,7 @@ OWASP M7:2024 (Insufficient Binary Protections) names mobile-binary-tier protect
 - On iOS, enable bitcode + symbol-stripping in the release configuration (`STRIP_INSTALLED_PRODUCT = YES`, `DEBUG_INFORMATION_FORMAT = dwarf`); upload dSYMs to crash-reporting backend separately from the shipped IPA
 - Deploy emulator-detection on fraud-sensitive flows (payment, KYC, new-device enrollment) using a combination of `Build.FINGERPRINT` / `Build.MODEL` / `sysctl hw.machine` heuristics and platform attestation; reject emulator origins on money-movement
 - Adopt a layered defense — root-detection alone is bypassable; combine with attestation, RASP, obfuscation, and backend-side anomaly detection so that defeating any single layer does not yield production-banking control
-- Cf. MITRE ATT&CK Mobile T1626 (Abuse Elevation Control Mechanism) — text-only cross-reference (NOT in references; T1626 not catalog-resolvable in `schemas/taxonomy/mitre-atlas.yaml` — catalog-absent per ADR-036 D-7).
+- Cf. MITRE ATT&CK Mobile T1626 (Abuse Elevation Control Mechanism) — text-only cross-reference (NOT in references; T1626 not catalog-resolvable in `schemas/taxonomy/mitre-attack.yaml` — catalog-absent per ADR-036 D-7).
 
 ## Pattern Category Disambiguation
 
@@ -318,6 +318,6 @@ Same hybrid architecture (web + predictive-ML + mobile + LLM) may legitimately s
 - CWE-917 Expression Language Injection: https://cwe.mitre.org/data/definitions/917.html
 - OWASP Command Injection Defense Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html
 - OWASP ML01:2023 — Input Manipulation Attack: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML01_2023-Input_Manipulation_Attack
-- OWASP M2:2024 — Inadequate Supply Chain Security: https://owasp.org/www-project-mobile-top-10/2024-risks/m2-inadequate-supply-chain-security
-- OWASP M4:2024 — Insufficient Input/Output Validation: https://owasp.org/www-project-mobile-top-10/2024-risks/m4-insufficient-input-output-validation
-- OWASP M7:2024 — Insufficient Binary Protections: https://owasp.org/www-project-mobile-top-10/2024-risks/m7-insufficient-binary-protections
+- OWASP M2:2024 — Inadequate Supply Chain Security: https://owasp.org/www-project-mobile-top-10/2023-risks/m2-inadequate-supply-chain-security
+- OWASP M4:2024 — Insufficient Input/Output Validation: https://owasp.org/www-project-mobile-top-10/2023-risks/m4-insufficient-input-output-validation
+- OWASP M7:2024 — Insufficient Binary Protections: https://owasp.org/www-project-mobile-top-10/2023-risks/m7-insufficient-binary-protections

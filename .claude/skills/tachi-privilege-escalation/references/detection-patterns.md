@@ -199,7 +199,7 @@ OWASP M8:2024 (Security Misconfiguration) names mobile-tier configuration weakne
 
 **Primary source**:
 
-- OWASP M8:2024 — Security Misconfiguration: https://owasp.org/www-project-mobile-top-10/2024-risks/m8-security-misconfiguration
+- OWASP M8:2024 — Security Misconfiguration: https://owasp.org/www-project-mobile-top-10/2023-risks/m8-security-misconfiguration
 - CWE-732 — Incorrect Permission Assignment for Critical Resource: https://cwe.mitre.org/data/definitions/732.html
 - OWASP MASVS-PLATFORM — Mobile Application Security Verification Standard, Platform Interaction Requirements (section-level granularity)
 - OWASP MASTG-RESILIENCE — Mobile Application Security Testing Guide, Resilience Test Cases (section-level granularity)

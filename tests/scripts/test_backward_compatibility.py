@@ -12,9 +12,16 @@ convention is honored natively by Typst and pins all timestamp-derived fields.
 This test MUST set the same value used when the baselines were generated,
 otherwise the byte comparison fails inside the metadata region.
 
-The ``agentic-app`` example is excluded because it is the regeneration target
-for the executive-architecture template and is not expected to match the
-pre-existing baseline.
+The following examples are excluded from this baseline list because they are
+regeneration mutation targets for specific features and are not expected to
+match a pre-existing baseline:
+
+- ``agentic-app`` (F-128 / F-2 — executive-architecture template + LLM09 misinformation)
+- ``consumer-agent-app`` (F-4 — human-trust-exploitation)
+- ``predictive-ml-app`` (F-6 — ML Top 10 Coverage Bundle)
+- ``mobile-banking-app`` (F-7 — Mobile Top 10 Coverage Bundle)
+
+These targets are excluded by simply not appearing in ``BASELINE_EXAMPLES``.
 """
 
 import os
@@ -183,14 +190,17 @@ def test_unmodified_examples_byte_identical_pdfs(
 # Feature 232 (F-6 ML Top 10 Coverage Bundle) is the third enrichment-branch
 # feature. Per F-6 ADR-035 Decision 2, F-6 additively edits three host pairs:
 # tampering, data-poisoning, and model-theft (model-theft companion already
-# carved out by F-5 and reused). When adding a future enrichment branch, both
+# carved out by F-5 and reused).
+#
+# Feature 237 (F-7 Mobile Top 10 Coverage Bundle) is the fourth enrichment-
+# branch feature. Per F-7 ADR-036 Decision 2, F-7 additively edits four host
+# pairs: spoofing, info-disclosure, privilege-escalation, and repudiation
+# (Heuristic A enrichment-branch fourth execution at four-or-five-agent scope;
+# M8 dual-host default). The companion tampering carve-out from F-6 is reused
+# where applicable. When adding a future enrichment branch, both
 # DETECTION_AGENT_PATHS removals and DETECTION_PATTERN_REF_ENRICHMENT_HOSTS
 # additions land in the same change.
 DETECTION_AGENT_PATHS = [
-    ".claude/agents/tachi/spoofing.md",
-    ".claude/agents/tachi/repudiation.md",
-    ".claude/agents/tachi/info-disclosure.md",
-    ".claude/agents/tachi/privilege-escalation.md",
     ".claude/agents/tachi/prompt-injection.md",
     ".claude/agents/tachi/agent-autonomy.md",
     ".claude/agents/tachi/output-integrity.md",
@@ -208,18 +218,30 @@ DETECTION_AGENT_PATHS = [
 #  - F-5 ADR-034 Decision 2: denial-of-service + model-theft companions (two hosts)
 #  - F-6 ADR-035 Decision 2: tampering + data-poisoning companions (model-theft
 #    companion already carved out by F-5; F-6 reuses that carve-out)
+#  - F-7 ADR-036 Decision 2: spoofing + info-disclosure + privilege-escalation +
+#    repudiation companions (Heuristic A enrichment-branch fourth execution at
+#    four-or-five-agent scope; M8 dual-host default; tampering companion
+#    already carved out by F-6 and reused)
 DETECTION_PATTERN_REF_GLOB = ".claude/skills/tachi-*/references/detection-patterns.md"
 DETECTION_PATTERN_REF_F3_HOST = ".claude/skills/tachi-tool-abuse/references/detection-patterns.md"
 DETECTION_PATTERN_REF_F5_DOS_HOST = ".claude/skills/tachi-denial-of-service/references/detection-patterns.md"
 DETECTION_PATTERN_REF_F5_MODEL_THEFT_HOST = ".claude/skills/tachi-model-theft/references/detection-patterns.md"
 DETECTION_PATTERN_REF_F6_TAMPERING_HOST = ".claude/skills/tachi-tampering/references/detection-patterns.md"
 DETECTION_PATTERN_REF_F6_DATA_POISONING_HOST = ".claude/skills/tachi-data-poisoning/references/detection-patterns.md"
+DETECTION_PATTERN_REF_F7_SPOOFING_HOST = ".claude/skills/tachi-spoofing/references/detection-patterns.md"
+DETECTION_PATTERN_REF_F7_INFO_DISCLOSURE_HOST = ".claude/skills/tachi-info-disclosure/references/detection-patterns.md"
+DETECTION_PATTERN_REF_F7_PRIVILEGE_ESCALATION_HOST = ".claude/skills/tachi-privilege-escalation/references/detection-patterns.md"
+DETECTION_PATTERN_REF_F7_REPUDIATION_HOST = ".claude/skills/tachi-repudiation/references/detection-patterns.md"
 DETECTION_PATTERN_REF_ENRICHMENT_HOSTS = frozenset({
     DETECTION_PATTERN_REF_F3_HOST,
     DETECTION_PATTERN_REF_F5_DOS_HOST,
     DETECTION_PATTERN_REF_F5_MODEL_THEFT_HOST,
     DETECTION_PATTERN_REF_F6_TAMPERING_HOST,
     DETECTION_PATTERN_REF_F6_DATA_POISONING_HOST,
+    DETECTION_PATTERN_REF_F7_SPOOFING_HOST,
+    DETECTION_PATTERN_REF_F7_INFO_DISCLOSURE_HOST,
+    DETECTION_PATTERN_REF_F7_PRIVILEGE_ESCALATION_HOST,
+    DETECTION_PATTERN_REF_F7_REPUDIATION_HOST,
 })
 
 
@@ -265,8 +287,8 @@ def test_feature_142_zero_edit_invariant_on_detection_agents():
     ]
 
     paths_to_check = DETECTION_AGENT_PATHS + detection_pattern_refs
-    assert len(DETECTION_AGENT_PATHS) == 8, (
-        f"Expected 8 detection agent paths, got {len(DETECTION_AGENT_PATHS)}. "
+    assert len(DETECTION_AGENT_PATHS) == 4, (
+        f"Expected 4 detection agent paths, got {len(DETECTION_AGENT_PATHS)}. "
         "Update DETECTION_AGENT_PATHS when adding a new detection agent."
     )
 
