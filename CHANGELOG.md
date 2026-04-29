@@ -22,6 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.26.0](https://github.com/davidmatousek/tachi/compare/v4.25.0...v4.26.0) (2026-04-29)
+
+
+### Features
+
+* **237:** Mobile Top 10 Coverage Bundle ([#238](https://github.com/davidmatousek/tachi/issues/238)) ([e962a0e](https://github.com/davidmatousek/tachi/commit/e962a0e5b06d69c45aa3aa6217ebf9945b01f09e))
+
 ## [4.25.0](https://github.com/davidmatousek/tachi/compare/v4.24.0...v4.25.0) (2026-04-28)
 
 
