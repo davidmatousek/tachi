@@ -21,6 +21,7 @@ owasp_references:
   - "CWE-223: Omission of Security-Relevant Information"
   - "CWE-117: Improper Output Neutralization for Logs"
   - "MITRE ATT&CK T1070: Indicator Removal"
+  - "OWASP M8:2024 — Security Misconfiguration"
 output_schema: ../../../schemas/finding.yaml
 ```
 
@@ -29,6 +30,8 @@ output_schema: ../../../schemas/finding.yaml
 ## Purpose
 
 Detects threats where a user or system can deny having performed an action and the system lacks sufficient evidence to prove otherwise, undermining accountability, forensic investigation, and compliance obligations. Targets External Entities (where users can deny actions they performed) and Processes (where services fail to produce tamper-evident audit trails of their operations).
+
+Extended for mobile-platform topologies, this agent additionally covers mobile-misconfiguration enabling accountability loss (missing audit logging on auth state transitions / biometric prompts / sensitive transactions, disabled crash reporting in production [Crashlytics / Sentry off or scrubbed too aggressively], debug logs leaking sensitive data via `Log.d` / `NSLog` in release builds, missing tamper-evident timestamping on transaction logs, audit log writers with no integrity protection) when the architecture exhibits mobile-platform topology indicators.
 
 ## Skill References
 
@@ -46,5 +49,5 @@ Detects threats where a user or system can deny having performed an action and t
 2. For each component, match against the loaded pattern catalog (missing audit trails, insufficient log detail, log tampering vulnerability, deniable actions, timestamp manipulation, log injection and evasion, security logging and monitoring coverage gaps, indicator removal and timestomping).
 3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: repudiation`, a sequential `R-N` id, and the target component name.
 4. Assign `likelihood` and `impact` using OWASP factors (attacker motivation to deny actions, log coverage gaps, detection difficulty; accountability loss, compliance violations, financial dispute exposure, forensic investigation capability), then compute `risk_level` via the matrix in `severity-bands-shared.md`.
-5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP, CWE, MITRE ATT&CK) from the pattern catalog's Primary Sources list.
+5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP, CWE, MITRE ATT&CK, OWASP M8:2024, MASTG-CODE, MASVS-CODE) from the pattern catalog's Primary Sources list.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation.
