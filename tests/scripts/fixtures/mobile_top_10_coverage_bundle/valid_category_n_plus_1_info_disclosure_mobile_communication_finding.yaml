@@ -1,0 +1,29 @@
+# F-7 Cat N+1 — Insecure Mobile Communication (I-{N})
+# Schema: schemas/finding.yaml v1.8 (unchanged in F-7)
+# Category: info-disclosure
+# Severity: HIGH (default per ADR-036 mapping table for M5; banking-tier mobile client
+#                with cleartext-permitted staging endpoint and missing certificate pinning
+#                across all environments on a money-movement-capable surface)
+# OWASP M5:2024 cross-reference: included in references array (catalog-resolvable in
+#   schemas/taxonomy/owasp.yaml per Wave 1.0 T012 verification)
+# MASTG-NETWORK / MASVS-NETWORK cross-reference: prose-only mention in mitigation; NOT in
+#   references array (section-level granularity per Q4 plan-time RESOLVED — not
+#   catalog-resolvable for F-7; F-A1 follow-on owns MASTG taxonomy)
+# Worked example: mobile-banking app's network_security_config.xml allows cleartext
+#                 traffic to staging endpoints + missing certificate pinning on production
+#                 endpoints; staging-to-production credential reuse means a MITM on staging
+#                 captures production session tokens
+id: "I-12"
+category: info-disclosure
+component: "WellnessBank Android Client"
+dfd_element_type: "Process"
+threat: "The WellnessBank Android Client establishes outbound TLS sessions to the WellnessBank Backend API and to two third-party SDK providers (analytics, payments) without certificate pinning configured on any host. The mobile binary's `network_security_config.xml` declares `cleartextTrafficPermitted=\"true\"` on staging endpoints (`staging.api.bank.example`) and ships with no `<pin-set>` declarations on either staging or production. The build pipeline reuses session credentials between staging and production environments because the same OAuth issuer underlies both. An attacker on a public Wi-Fi hotspot intercepts the staging endpoint's TLS session via a self-signed certificate the production binary trusts (no pin configured on that host); the attacker captures the user's authentication token. Because staging-to-production credential reuse means the captured token authenticates against the production banking API, the attacker drains the victim's account before the victim notices the device joined the rogue Wi-Fi. This is mobile-specific insecure communication on a banking-tier client, distinct from generic web/API data-in-transit exposure (Cat 1-9) by the architectural-tell of a declared mobile client component with mobile transport-security gaps."
+likelihood: HIGH
+impact: HIGH
+risk_level: High
+mitigation: "Prohibit cleartext traffic across all environments via `usesCleartextTraffic=\"false\"` on the Android `application` manifest and a fully-restrictive `network_security_config.xml` with no `cleartextTrafficPermitted` exceptions; mirror with iOS `NSAppTransportSecurity` set to `NSAllowsArbitraryLoads=false` and zero per-domain exceptions. Enforce certificate pinning with backup-pin rotation across all environments (production, staging, sandbox); use `OkHttp` `CertificatePinner` on Android with at least one primary pin and one backup pin per host; use `URLSession` pinning delegate on iOS with the same primary/backup model; rotate pins on a planned cadence with a deprecation window. Set the minimum TLS version to TLS 1.3 (or TLS 1.2 with strict cipher allowlist as the floor); reject TLS 1.0 / TLS 1.1; configure cipher allowlist to AEAD suites only (AES-GCM, ChaCha20-Poly1305) and reject RC4 / 3DES / NULL / EXPORT cipher suites. Implement HSTS-equivalent enforcement at the app level — maintain a custom preload list of pinned hosts in the mobile binary; reject any unexpected HTTPS-to-HTTP redirect; treat a pin-mismatch event as a fatal connection error and log to the audit trail. Document the mobile transport-security choices in mobile threat-modeling artifacts (MASTG-NETWORK / MASVS-NETWORK section-level cross-reference)."
+references:
+  - "OWASP M5:2024 — Insecure Communication"
+maestro_layer: "L1"
+agentic_pattern: "none"
+source_attribution: []

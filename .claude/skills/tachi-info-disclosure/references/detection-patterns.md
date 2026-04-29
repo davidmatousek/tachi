@@ -163,6 +163,137 @@ Modern architectures aggregate knowledge in internal repositories — Confluence
 - Implement retention and purge policies for archived content — closed tickets, deleted channels, old wiki spaces should be destroyed on a schedule rather than retained indefinitely
 - Require time-bounded, access-reviewed external collaborator access: every vendor grant has an expiry date, and a quarterly review confirms continued business need
 
+## Pattern Category N+1 — Insecure Mobile Communication (M5)
+
+OWASP M5:2024 (Insecure Communication) names mobile-specific transport-security weaknesses as a distinct attack class from generic web/API data-in-transit exposure (Pattern Category Data in Transit Exposure) and from generic SSRF against cloud metadata (Pattern Category 7). Where the pre-existing categories cover server-side and inter-service confidentiality on backend transport, **Pattern Category N+1 targets the mobile client-to-mobile-backend transport surface** — the outbound flows from a declared mobile client process to mobile-backend APIs and to third-party SDK egress endpoints. The attacker's goal is to MITM the mobile client's TLS session via a self-signed or compromised certificate, downgrade the connection to cleartext HTTP, or exploit weak cipher suites to recover session tokens, transaction payloads, or PII in motion. MASTG-NETWORK and MASVS-NETWORK describe the mobile transport-security requirements at section-level granularity.
+
+**Indicators**:
+
+- Mobile client to mobile-backend Data Flow declared — primary mobile-platform topology indicator on the transport surface
+- Cleartext HTTP traffic enabled — no `usesCleartextTraffic="false"` declared on the Android `application` manifest entry; no `NSAppTransportSecurity` exception audit on the iOS `Info.plist` (mixed-content / partial ATS exceptions reach production builds)
+- No TLS certificate pinning — no `OkHttp` `CertificatePinner` declared on the Android client; no `URLSession` pinning delegate on the iOS client; no Network Security Config pinning manifest declared at the app level
+- HTTP-to-HTTPS downgrade attack path — mixed-content allowed on the mobile client; outbound redirects from HTTPS-to-HTTP not validated; user-driven scheme swaps reach trusted operations
+- Weak TLS cipher acceptance — TLS 1.0 / TLS 1.1 permitted on the client transport stack; insecure cipher suites (RC4, 3DES, NULL ciphers) enabled on the platform-default TLS context
+- Missing HSTS-equivalent enforcement at app-level — no preload list of pinned hosts; no Strict-Transport-Security parity (the mobile client trusts whatever certificate the platform CA store accepts, with no app-level continuous-pinning override)
+
+**Primary source**:
+
+- OWASP M5:2024 — Insecure Communication: https://owasp.org/www-project-mobile-top-10/2024-risks/m5-insecure-communication
+- OWASP MASTG-NETWORK — Mobile Application Security Testing Guide, Network Communication Test Cases (section-level granularity)
+- OWASP MASVS-NETWORK — Mobile Application Security Verification Standard, Network Communication Requirements (section-level granularity)
+
+**Example**: A mobile-banking Android app's `network_security_config.xml` declares `cleartextTrafficPermitted="true"` for staging endpoints (`staging.api.bank.example`) and ships with no `<pin-set>` declarations on either staging or production. The build pipeline reuses session credentials between staging and production environments because the same OAuth issuer underlies both. An attacker on a public Wi-Fi hotspot intercepts the staging endpoint's TLS session via a self-signed certificate the production binary trusts (no pin configured on that host); the attacker captures the user's authentication token. Because staging-to-production credential reuse means the captured token authenticates against the production banking API, the attacker drains the victim's account before the victim notices the device joined the rogue Wi-Fi at all. The two architectural defects compound: cleartext-permitted staging plus missing certificate pinning across all environments equals a one-rogue-AP-away production breach.
+
+**Mitigation**:
+
+- Prohibit cleartext traffic across all environments via `usesCleartextTraffic="false"` on the Android `application` manifest and a fully-restrictive `network_security_config.xml` with no `cleartextTrafficPermitted` exceptions; mirror with iOS `NSAppTransportSecurity` set to `NSAllowsArbitraryLoads=false` and zero per-domain exceptions
+- Enforce certificate pinning with backup-pin rotation across **all** environments (production, staging, sandbox); use `OkHttp` `CertificatePinner` on Android with at least one primary pin and one backup pin per host; use `URLSession` pinning delegate on iOS with the same primary/backup model; rotate pins on a planned cadence with a deprecation window
+- Set the minimum TLS version to TLS 1.3 (or TLS 1.2 with strict cipher allowlist as the floor); reject TLS 1.0 / TLS 1.1; configure cipher allowlist to AEAD suites only (AES-GCM, ChaCha20-Poly1305) and reject RC4 / 3DES / NULL / EXPORT cipher suites
+- Implement HSTS-equivalent enforcement at the app level — maintain a custom preload list of pinned hosts in the mobile binary; reject any unexpected HTTPS-to-HTTP redirect; treat a pin-mismatch event as a fatal connection error and log to the audit trail
+- Document the mobile transport-security choices in mobile threat-modeling artifacts (MASTG-NETWORK / MASVS-NETWORK section-level cross-reference)
+
+## Pattern Category N+2 — Inadequate Mobile Privacy Controls (M6)
+
+OWASP M6:2024 (Inadequate Privacy Controls) names mobile-specific privacy weaknesses as a distinct attack class from generic data-at-rest exposure (Pattern Category Data at Rest Exposure) and from generic information-repository data staging (Pattern Category 9). Where the pre-existing categories cover broad-scope confidentiality on backend or repository surfaces, **Pattern Category N+2 targets the mobile-client privacy surface** — PII / PHI handling on declared mobile clients including local cache hygiene, telemetry consent gating, screenshot leakage on sensitive screens, clipboard exposure on credential or transaction fields, and over-broad permission requests at first launch. The attacker's goal is to recover personal information from app caches, recents-screen snapshots, or telemetry payloads that were never gated by user consent. MASTG-PRIVACY and MASVS-PRIVACY describe the mobile privacy-control requirements at section-level granularity.
+
+**Indicators**:
+
+- Mobile client component declared — primary mobile-platform topology indicator on the privacy surface
+- PII / PHI persisted in device-local caches without TTL expiry — account snapshots, transaction history, health records, contact list snapshots, or derived PII fields cached indefinitely until app data is manually cleared
+- Telemetry / analytics SDKs collecting personal data without disclosure or consent gating — embedded analytics SDKs (Firebase Analytics, Mixpanel, Segment, Amplitude) emitting user identifiers, screen views, or event metadata without a privacy-consent gate or opt-out toggle
+- Clipboard exposure on sensitive fields — no `setExtraData(EXTRA_IS_SENSITIVE, true)` on `ClipData` for Android 13+; no `UIPasteboard.setItems(_:options:)` with `.localOnly` for iOS; sensitive fields (account number, PIN, OTP, password) reach the system pasteboard without sensitivity tagging
+- Screenshot leakage on sensitive screens — no `FLAG_SECURE` declared on the Activity `Window` for Android (recents-screen snapshots and screen-recording capture sensitive content); no `obscureWhenInBackground` equivalent on iOS (snapshot taken on app-resign)
+- Over-broad permission requests on first launch — camera, location, contacts, microphone, calendar, or other sensitive runtime permissions requested up-front rather than just-in-time when triggered by user action; no graceful denial path when permission is refused
+
+**Primary source**:
+
+- OWASP M6:2024 — Inadequate Privacy Controls: https://owasp.org/www-project-mobile-top-10/2024-risks/m6-inadequate-privacy-controls
+- OWASP MASTG-PRIVACY — Mobile Application Security Testing Guide, Privacy Test Cases (section-level granularity)
+- OWASP MASVS-PRIVACY — Mobile Application Security Verification Standard, Privacy Requirements (section-level granularity)
+
+**Example**: A mobile-banking Android app caches account-balance data and recent-transaction records in `WellnessBankLocalDB` indefinitely with no TTL expiry — the cache survives until the user manually clears app data, even after long periods of inactivity. The transaction-history Activity ships without `FLAG_SECURE` declared on its `Window`. A user pulls down the recents-screen switcher in a public space (coffee shop, conference, family setting); the recents thumbnail snapshot persists the most recently rendered transaction-history screen including account balance, recipient names, and transfer amounts. Anyone with brief device access — a curious bystander, a partner glancing at the unlocked phone, a shoulder-surfer — captures financial data without ever bypassing the app lock. The same surface also leaves the OTP code visible to recents-screen capture during a pending money-movement confirmation, enabling a co-located adversary to harvest both the balance context and the OTP in a single recents-screen view.
+
+**Mitigation**:
+
+- Apply data-minimization on caches with TTL enforcement — set explicit expiry on each cached PII / PHI field (e.g., balance cache 60s TTL with refresh-on-demand, transaction cache 5-minute TTL, contact-list cache invalidated on app pause); evict cached data on app-lock transition
+- Apply consent-gated telemetry with opt-out — gate every analytics emission behind a documented privacy-consent gate honored on first-launch and reachable in-app at any time; respect platform-tier opt-out signals (iOS App Tracking Transparency, Android Advertising-ID opt-out); honor end-user opt-out within the app's own UI before any telemetry SDK initialization
+- Apply `FLAG_SECURE` (Android `WindowManager.LayoutParams.FLAG_SECURE`) on every Activity `Window` rendering PII / PHI — transaction history, account balance, OTP / 2FA challenge, health records, payment-card-data screens; mirror on iOS by replacing the foreground content with a privacy-blur view in `applicationWillResignActive(_:)` so recents-screen snapshots show no sensitive content
+- Apply just-in-time permission prompts with graceful denial paths — request runtime permissions only when the user-driven flow that needs them begins (e.g., camera permission on the QR-scan flow start, not on app launch); supply graceful denial paths (text input fallback when camera denied, manual address entry when location denied) so a denied permission does not break the app
+- Apply clipboard sensitivity tagging — set `EXTRA_IS_SENSITIVE=true` on `ClipData` for any clipboard write on Android 13+ to prevent clipboard-history capture; use `UIPasteboard` `.localOnly` option on iOS to keep clipboard payloads off the universal-clipboard sync surface
+- Document the mobile privacy choices in mobile threat-modeling artifacts (MASTG-PRIVACY / MASVS-PRIVACY section-level cross-reference)
+
+## Pattern Category N+3 — Insecure Mobile Data Storage (M9)
+
+OWASP M9:2024 (Insecure Data Storage) names mobile-specific secure-storage weaknesses as a distinct attack class from generic data-at-rest exposure (Pattern Category Data at Rest Exposure) and from generic excessive-data-in-responses (Pattern Category Excessive Data in Responses). Where the pre-existing categories cover server-side or backend persistence, **Pattern Category N+3 targets device-resident data stores** on declared mobile clients — unencrypted SQLite / Realm / Room databases, plaintext SharedPreferences / NSUserDefaults stores, cloud-backup leakage to iCloud / Google Drive without exclusion, external-storage writes for sensitive files, and world-readable file permissions on internal storage. The attacker's goal is to recover device-resident sensitive data via root / jailbreak access, device-backup extraction, or cloud-backup-restore to a different device. MASTG-STORAGE and MASVS-STORAGE describe the mobile secure-storage requirements at section-level granularity.
+
+**Indicators**:
+
+- Mobile client component declared — primary mobile-platform topology indicator on the secure-storage surface
+- Unencrypted SQLite / Realm / Room database on device — sensitive tables (transaction history, account snapshots, contact list, message archive) persisted to a Room or Realm database without SQLCipher integration or Realm encryption configuration
+- Unencrypted KeyValue store — `SharedPreferences` (Android) / `NSUserDefaults` (iOS) holding tokens, session identifiers, PII fields, or feature flags relevant to security in plaintext rather than `EncryptedSharedPreferences` / Keychain-stored secrets
+- Cloud-backup leakage — iCloud / Google Drive automatic-backup including sensitive app data without `excludeFromBackup` (iOS) / `allowBackup="false"` (Android) exclusion, or without per-table Backup Rules limiting which data partitions get backed up
+- External SD-card writes for sensitive files — `Environment.getExternalStorageDirectory()` reachable from non-platform-protected code, sensitive files dropped to publicly-readable external storage rather than internal storage
+- World-readable file permissions on Android internal storage — `MODE_WORLD_READABLE` / `MODE_WORLD_WRITEABLE` flags set on file output streams; sensitive files dropped to `Environment.getExternalStoragePublicDirectory(...)` without scoped-storage migration on Android 11+
+
+**Primary source**:
+
+- OWASP M9:2024 — Insecure Data Storage: https://owasp.org/www-project-mobile-top-10/2024-risks/m9-insecure-data-storage
+- OWASP MASTG-STORAGE — Mobile Application Security Testing Guide, Data Storage Test Cases (section-level granularity)
+- OWASP MASVS-STORAGE — Mobile Application Security Verification Standard, Data Storage and Privacy Requirements (section-level granularity)
+
+**Example**: A mobile-banking Android app stores transaction history in an unencrypted SQLite database (`WellnessBankLocalDB`) within the app's internal-storage data partition, with `allowBackup="true"` declared on the application manifest (the platform default) and no per-table `BackupAgent` exclusion rules. The user enables Google Drive auto-backup on the device for normal continuity reasons. Months later, the user's device is lost; the user buys a new device and authenticates with the same Google account; Android's automatic-restore copies the entire `WellnessBankLocalDB` payload from Google Drive backup into the new device. An attacker who later compromises the user's Google account (credential-stuffing, password reuse from a separate breach) can trigger an automatic-restore on an attacker-controlled device and recover the full transaction history without ever bypassing the original device's lock screen, biometric, or app-tier authentication. The breach surface is the cloud-backup channel, not the original device — yet the data leakage is the same.
+
+**Mitigation**:
+
+- Encrypt all device-resident databases via SQLCipher (Android) / Realm encryption (cross-platform) / Core Data with NSFileProtectionComplete (iOS); derive the database key from platform-keyring-bound material (Android Keystore-backed AES wrapping; iOS Keychain with appropriate access-control protection class) rather than from a static or user-PIN-derived key alone
+- Apply `EncryptedSharedPreferences` (Android Jetpack Security) for all KeyValue persistence of tokens, session identifiers, or other security-relevant fields; use Keychain-stored secrets on iOS with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` or stricter
+- Set `allowBackup="false"` on Android with sensitive-data partitioning OR define explicit `<backup-rules>` (Android 12+) that exclude sensitive databases / preferences from cloud-backup; on iOS, set `URL.isExcludedFromBackupKey = true` on the file URLs of sensitive databases / preferences before first write
+- Restrict sensitive file writes to internal storage only (`Context.getFilesDir()` / `Context.getNoBackupFilesDir()` on Android; `FileManager.default.urls(for: .documentDirectory, ...)` with explicit backup exclusion on iOS); reject any path resolution that resolves to external storage on sensitive files
+- Migrate to scoped-storage on Android 11+ (`MediaStore` API or `SAF` for shareable files; private app-specific directories for per-app files); reject `MODE_WORLD_READABLE` / `MODE_WORLD_WRITEABLE` on file streams; reject world-readable POSIX permissions on internal-storage files
+- Document the mobile secure-storage choices in mobile threat-modeling artifacts (MASTG-STORAGE / MASVS-STORAGE section-level cross-reference)
+
+## Pattern Category N+4 — Insufficient Mobile Cryptography (M10)
+
+OWASP M10:2024 (Insufficient Cryptography) names mobile-specific cryptographic-control weaknesses as a distinct attack class from generic data-at-rest exposure (Pattern Category Data at Rest Exposure) and from generic data-in-transit exposure (Pattern Category Data in Transit Exposure). Where the pre-existing categories cover broad-scope confidentiality at backend layers, **Pattern Category N+4 targets the mobile-tier cryptographic primitives** — key derivation from user PINs, custom-rolled crypto algorithms in mobile binaries, hardcoded symmetric keys in shipped binaries, insecure PRNG seeding for security-critical material, and deprecated cipher suites (DES / 3DES / RC4 / MD5 / SHA1) for sensitive operations on the mobile client. The attacker's goal is to brute-force a weak key, recover a hardcoded key from the binary, predict a weak PRNG output, or exploit a deprecated cipher to recover plaintext from ciphertext. MASTG-CRYPTO and MASVS-CRYPTO describe the mobile cryptographic-control requirements at section-level granularity.
+
+**Indicators**:
+
+- Mobile client component declared — primary mobile-platform topology indicator on the cryptographic-control surface
+- Weak key derivation on user PINs — low PBKDF2 iteration counts (anything below the OWASP 600,000-iteration baseline for PBKDF2-HMAC-SHA256), no salting on the PIN-to-key derivation, no per-device entropy mixing into the derivation chain
+- Custom-rolled crypto algorithms in mobile binaries — custom ciphers, non-standard hash functions, "obfuscation" routines mistaken for encryption, XOR-with-constant masquerading as confidentiality control
+- Hardcoded symmetric keys in shipped binaries — AES keys, HMAC keys, signing keys visible via `strings` extraction or `objection` runtime introspection on the production APK / IPA
+- Insecure PRNG seeding for security-critical material — `java.util.Random` (Java) used for cryptographic key generation or token issuance; non-`SecureRandom` paths into key material, IV generation, or salt generation
+- Deprecated cipher suites for sensitive operations — DES / 3DES / RC4 / MD5 / SHA1 used for encryption, MAC, or signing of sensitive payloads (session tokens, transaction signatures, device-bound credentials)
+
+**Primary source**:
+
+- OWASP M10:2024 — Insufficient Cryptography: https://owasp.org/www-project-mobile-top-10/2024-risks/m10-insufficient-cryptography
+- OWASP MASTG-CRYPTO — Mobile Application Security Testing Guide, Cryptography Test Cases (section-level granularity)
+- OWASP MASVS-CRYPTO — Mobile Application Security Verification Standard, Cryptography Requirements (section-level granularity)
+
+**Example**: A mobile-banking app derives the encryption key for its on-device credential vault from the user's 4-digit PIN via PBKDF2-HMAC-SHA1 with an iteration count of 1000 and no salting. The total PIN keyspace is 10,000 values. An attacker recovers a stolen device, dumps the encrypted credential vault from the app's data partition, and runs an offline brute-force against the encrypted vault: PBKDF2-HMAC-SHA1 at 1000 iterations costs roughly a microsecond per candidate on commodity GPU hardware, so the entire 10,000-PIN keyspace is exhausted in under a second. The attacker recovers the vault encryption key, decrypts the persisted refresh tokens, and authenticates against the production banking API as the legitimate user — defeating the entire app-tier credential protection without ever guessing the PIN at the device lock screen. The defect compounds with the unsalted derivation: a precomputed rainbow table for the 1000-iteration PBKDF2-HMAC-SHA1 over the 10,000-PIN space costs trivial storage and reduces the per-device attack to a single table lookup.
+
+**Mitigation**:
+
+- Use platform-provided key derivation primitives at adequate cost — Argon2id (preferred) or scrypt (acceptable) for password / PIN derivation, or PBKDF2-HMAC-SHA256 with at least 600,000 iterations as the floor; salt every derivation with a unique per-account / per-device random salt
+- Use platform crypto APIs only — `AndroidKeyStore` (Android) for key storage and crypto operations bound to hardware-backed keystore where available; `CryptoKit` (iOS) for high-level primitives bound to Secure Enclave; reject any custom-rolled cipher, custom hash, or "obfuscation" routine as a substitute for platform-provided cryptography
+- Derive sensitive keys from platform-keyring-bound material — `StrongBox` (Android Keystore-backed hardware key island) on supported devices; Secure Enclave-bound keys on iOS; combine the user-PIN-derived key with a hardware-bound key in an envelope-encryption scheme so the on-device vault key cannot be recovered offline without the device's hardware module
+- Use `SecureRandom` (Android) / `SecRandomCopyBytes` (iOS) for all cryptographic randomness — keys, IVs, salts, nonces, session-token entropy, challenge-response material; reject any `java.util.Random` / `arc4random` shortcut on a security path
+- Require AES-GCM (preferred) or AES-CCM as the symmetric-encryption baseline; require SHA-256 (preferred) or SHA-512 / SHA-3 as the hash baseline; reject DES / 3DES / RC4 / MD5 / SHA1 in any sensitive path; document the cipher / hash allowlist in mobile threat-modeling artifacts
+- Document the mobile cryptographic-control choices in mobile threat-modeling artifacts (MASTG-CRYPTO / MASVS-CRYPTO section-level cross-reference)
+
+## Pattern Category Disambiguation
+
+Pattern Categories N+1 (Insecure Mobile Communication / OWASP M5:2024), N+2 (Inadequate Mobile Privacy Controls / OWASP M6:2024), N+3 (Insecure Mobile Data Storage / OWASP M9:2024), and N+4 (Insufficient Mobile Cryptography / OWASP M10:2024) and the pre-existing Pattern Categories 1–N (generic confidentiality-leakage signal class — error message exposure, excessive data in responses, data at rest exposure, data in transit exposure, side-channel information leakage, debug and diagnostic exposure, SSRF to cloud metadata, error / debug-output exposure, and data staging from information repositories) share the OWASP A02:2021 Cryptographic Failures / A01:2021 Broken Access Control family at the OWASP framework level but address distinct architectural-tells and mitigation surfaces:
+
+- **Pattern Categories 1–N** (Error Message Exposure, Excessive Data in Responses, Data at Rest Exposure, Data in Transit Exposure, Side-Channel Information Leakage, Debug and Diagnostic Exposure, SSRF to Cloud Metadata and Internal Services, Information Exposure Through Error Messages and Debug Output, Data Staging and Collection from Information Repositories — pre-existing) detect generic web/API/general-software confidentiality gaps at any HTTP/API surface, backend data-store, server-to-server data flow, cloud workload metadata endpoint, or internal information repository. The architectural-tell is a generic API endpoint, server-side data store, backend transport, or productivity-tool repository — NOT a mobile-platform topology.
+- **Pattern Category N+1** (Insecure Mobile Communication — F-7) detects mobile transport-security gaps on declared mobile clients — cleartext HTTP, missing certificate pinning, weak TLS cipher acceptance, HTTP-to-HTTPS downgrade, missing HSTS-equivalent enforcement at the app layer. The architectural-tell is a declared mobile client component with outbound flows to mobile-backend APIs or third-party SDK egress endpoints.
+- **Pattern Category N+2** (Inadequate Mobile Privacy Controls — F-7) detects mobile privacy-control gaps on declared mobile clients — PII / PHI in unbounded local caches, telemetry without consent, screenshot leakage on sensitive screens, clipboard exposure on sensitive fields, over-broad permission requests at first launch. The architectural-tell is a declared mobile client component with PII / PHI handling, telemetry SDK integration, sensitive-screen rendering, or runtime-permission requests.
+- **Pattern Category N+3** (Insecure Mobile Data Storage — F-7) detects mobile secure-storage gaps on declared mobile clients — unencrypted SQLite / Realm / Room, plaintext SharedPreferences / NSUserDefaults, cloud-backup leakage to iCloud / Google Drive without exclusion, external-storage writes for sensitive files, world-readable internal-storage permissions. The architectural-tell is a declared mobile client component with device-resident data persistence outside platform-managed encrypted storage.
+- **Pattern Category N+4** (Insufficient Mobile Cryptography — F-7) detects mobile cryptographic-control gaps on declared mobile clients — weak key derivation on user PINs, custom-rolled crypto algorithms, hardcoded symmetric keys in shipped binaries, insecure PRNG seeding, deprecated cipher suites for sensitive operations. The architectural-tell is a declared mobile client component with cryptographic primitives applied to sensitive payloads outside platform-provided crypto APIs.
+
+The same hybrid architecture (e.g., a web + mobile app sharing a backend, where the web frontend serves browser users and the mobile client serves app users against the same API) may legitimately surface BOTH pre-existing Cat 1–N findings (against the backend / web / cloud surface) AND new Cat N+1 / Cat N+2 / Cat N+3 / Cat N+4 findings (against the mobile-platform surface) without duplication, because they target different architectural surfaces. They are not duplicates and MUST NOT be merged in `threat-report.md`. Architect formalizes this carve in ADR-036 Decision 9 (Pattern Category Disambiguation requirement on the F-7 info-disclosure companion).
+
 ## Primary Sources
 
 - OWASP Top 10 2021 — A01: Broken Access Control: https://owasp.org/Top10/A01_2021-Broken_Access_Control/
@@ -190,3 +321,7 @@ Modern architectures aggregate knowledge in internal repositories — Confluence
 - NIST SP 800-53 AC-3: Access Enforcement
 - NIST SP 800-122: Guide to Protecting the Confidentiality of Personally Identifiable Information (PII)
 - AWS IMDSv2 guidance: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html
+- OWASP M5:2024 — Insecure Communication: https://owasp.org/www-project-mobile-top-10/2024-risks/m5-insecure-communication
+- OWASP M6:2024 — Inadequate Privacy Controls: https://owasp.org/www-project-mobile-top-10/2024-risks/m6-inadequate-privacy-controls
+- OWASP M9:2024 — Insecure Data Storage: https://owasp.org/www-project-mobile-top-10/2024-risks/m9-insecure-data-storage
+- OWASP M10:2024 — Insufficient Cryptography: https://owasp.org/www-project-mobile-top-10/2024-risks/m10-insufficient-cryptography
