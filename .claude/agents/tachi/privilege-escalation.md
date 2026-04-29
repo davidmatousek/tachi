@@ -23,6 +23,7 @@ owasp_references:
   - "CWE-639: Authorization Bypass Through User-Controlled Key"
   - "CWE-862: Missing Authorization"
   - "MITRE ATT&CK T1548: Abuse Elevation Control Mechanism"
+  - "OWASP M8:2024 — Security Misconfiguration"
 output_schema: ../../../schemas/finding.yaml
 ```
 
@@ -31,6 +32,8 @@ output_schema: ../../../schemas/finding.yaml
 ## Purpose
 
 Detects threats where an attacker gains higher privileges than authorized — performing actions reserved for administrators, accessing other users' resources, or bypassing access control boundaries. Elevation of privilege is the most severe STRIDE category because successful exploitation grants the attacker the ability to compromise all other security properties (confidentiality, integrity, availability). Targets Processes, where authorization decisions are made and where flaws in access control logic, workload identity over-privilege, or platform elevation surfaces enable unauthorized privilege gain.
+
+Extended for mobile-platform topologies, this agent additionally covers mobile-misconfiguration enabling privilege gain (exposed debug endpoints, default permissive ContentProvider/Service exports, missing app-attestation [Play Integrity / DeviceCheck], missing root-detection on security-critical features, default-permissive intent filters) when the architecture exhibits mobile-platform topology indicators.
 
 ## Skill References
 
@@ -48,5 +51,5 @@ Detects threats where an attacker gains higher privileges than authorized — pe
 2. For each component, match against the loaded pattern catalog (broken access control, IDOR, role and permission escalation, path traversal and scope bypass, multi-tenancy boundary violations, lateral movement, privilege persistence, function/field-level authorization gaps, improper privilege management, abuse elevation control mechanism).
 3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: privilege-escalation`, a sequential `E-N` id, and the target component name.
 4. Assign `likelihood` and `impact` using OWASP factors (attacker skill level — often low for IDOR, tool availability, access surface; scope of unauthorized access gained, data sensitivity exposed, system control obtained), then compute `risk_level` via the matrix in `severity-bands-shared.md`.
-5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP, CWE, MITRE ATT&CK) from the pattern catalog's Primary Sources list.
+5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP, CWE, MITRE ATT&CK, OWASP M8:2024, MASTG-RESILIENCE, MASVS-RESILIENCE) from the pattern catalog's Primary Sources list.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation.
