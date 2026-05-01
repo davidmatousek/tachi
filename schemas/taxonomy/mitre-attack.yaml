@@ -1,212 +1,4936 @@
 # MITRE ATT&CK Catalog (taxonomy: mitre-attack)
 #
-# Composition per FR-003 / A1 seed list (38 unique techniques + sub-techniques
-# extracted from the 11 threat-detection agents' detection-patterns.md files,
-# frozen at spec time 2026-04-17):
+# Source-discipline (FR-024 primary-source-correction): records sourced verbatim
+# from MITRE's canonical ATT&CK Enterprise STIX 2.1 bundle
+# (https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json).
+# Inventory expanded from 38 -> N records at T041 (Wave 4.2, Feature 241).
 #
-#   T1005, T1039, T1068, T1070 (+ .001/.002/.004/.006/.008), T1078 (+ .004),
-#   T1195 (+ .001/.002), T1213 (+ .001/.002/.003/.005),
-#   T1498 (+ .001/.002), T1499 (+ .001/.002/.003/.004),
-#   T1530, T1548 (+ .001/.003/.005), T1550 (+ .001),
-#   T1556, T1562 (+ .006), T1565
+# Pre-existing 38 records (composition per FR-003 / A1 seed list, frozen at
+# spec time 2026-04-17) are preserved byte-identical on the {id, full_id, name,
+# url, cwe_refs} core fields per F-A2 referential-integrity contract.
 #
-# Record shape per FR-003: {id, full_id, name, url, cwe_refs}.
+# Record shape (extended at T043 / ADR-037 D-7): {id, full_id, name, url,
+# cwe_refs, out_of_scope, out_of_scope_rationale}.
 # `cwe_refs: []` for all records — MITRE ATT&CK does not publish direct CWE
 # cross-references as part of technique definitions. ATT&CK->CWE relationships
 # (where meaningful) live in crosswalk.yaml as edges with curator citations.
+#
+# Out-of-Scope determination (ADR-037 D-5 tactical-grouping; verbatim T040 §2
+# rationale strings applied uniformly to all member items of the seven OOS
+# tactics: TA0005 / TA0007 / TA0008 / TA0009 / TA0010 / TA0011 / TA0040).
+# Six in-scope tactics carry `out_of_scope: false`: TA0001 / TA0002 / TA0003 /
+# TA0004 / TA0006 / TA0042. Per-item OOS within in-scope tactics applied
+# narrowly per T042 (T1078.004 Cloud Accounts only; data-model.md §2 line 110).
 #
 # URL pattern per FR-033: https://attack.mitre.org/techniques/T<N>/ for parent
 # techniques; https://attack.mitre.org/techniques/T<N>/<sub>/ for sub-techniques.
 #
 # Sorted alphabetically by `id` per FR-032.
 
+- id: T1001
+  full_id: ATT&CK-T1001
+  name: Data Obfuscation
+  url: https://attack.mitre.org/techniques/T1001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1001.001
+  full_id: ATT&CK-T1001.001
+  name: Junk Data
+  url: https://attack.mitre.org/techniques/T1001/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1001.002
+  full_id: ATT&CK-T1001.002
+  name: Steganography
+  url: https://attack.mitre.org/techniques/T1001/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1001.003
+  full_id: ATT&CK-T1001.003
+  name: Protocol or Service Impersonation
+  url: https://attack.mitre.org/techniques/T1001/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1003
+  full_id: ATT&CK-T1003
+  name: OS Credential Dumping
+  url: https://attack.mitre.org/techniques/T1003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1003.001
+  full_id: ATT&CK-T1003.001
+  name: LSASS Memory
+  url: https://attack.mitre.org/techniques/T1003/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1003.002
+  full_id: ATT&CK-T1003.002
+  name: Security Account Manager
+  url: https://attack.mitre.org/techniques/T1003/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1003.003
+  full_id: ATT&CK-T1003.003
+  name: NTDS
+  url: https://attack.mitre.org/techniques/T1003/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1003.004
+  full_id: ATT&CK-T1003.004
+  name: LSA Secrets
+  url: https://attack.mitre.org/techniques/T1003/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1003.005
+  full_id: ATT&CK-T1003.005
+  name: Cached Domain Credentials
+  url: https://attack.mitre.org/techniques/T1003/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1003.006
+  full_id: ATT&CK-T1003.006
+  name: DCSync
+  url: https://attack.mitre.org/techniques/T1003/006/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1003.007
+  full_id: ATT&CK-T1003.007
+  name: Proc Filesystem
+  url: https://attack.mitre.org/techniques/T1003/007/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1003.008
+  full_id: ATT&CK-T1003.008
+  name: /etc/passwd and /etc/shadow
+  url: https://attack.mitre.org/techniques/T1003/008/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: T1005
   full_id: ATT&CK-T1005
   name: Data from Local System
   url: https://attack.mitre.org/techniques/T1005/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1006
+  full_id: ATT&CK-T1006
+  name: Direct Volume Access
+  url: https://attack.mitre.org/techniques/T1006/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1007
+  full_id: ATT&CK-T1007
+  name: System Service Discovery
+  url: https://attack.mitre.org/techniques/T1007/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1008
+  full_id: ATT&CK-T1008
+  name: Fallback Channels
+  url: https://attack.mitre.org/techniques/T1008/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1010
+  full_id: ATT&CK-T1010
+  name: Application Window Discovery
+  url: https://attack.mitre.org/techniques/T1010/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1011
+  full_id: ATT&CK-T1011
+  name: Exfiltration Over Other Network Medium
+  url: https://attack.mitre.org/techniques/T1011/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1011.001
+  full_id: ATT&CK-T1011.001
+  name: Exfiltration Over Bluetooth
+  url: https://attack.mitre.org/techniques/T1011/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1012
+  full_id: ATT&CK-T1012
+  name: Query Registry
+  url: https://attack.mitre.org/techniques/T1012/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1014
+  full_id: ATT&CK-T1014
+  name: Rootkit
+  url: https://attack.mitre.org/techniques/T1014/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1016
+  full_id: ATT&CK-T1016
+  name: System Network Configuration Discovery
+  url: https://attack.mitre.org/techniques/T1016/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1016.001
+  full_id: ATT&CK-T1016.001
+  name: Internet Connection Discovery
+  url: https://attack.mitre.org/techniques/T1016/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1016.002
+  full_id: ATT&CK-T1016.002
+  name: Wi-Fi Discovery
+  url: https://attack.mitre.org/techniques/T1016/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1018
+  full_id: ATT&CK-T1018
+  name: Remote System Discovery
+  url: https://attack.mitre.org/techniques/T1018/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1020
+  full_id: ATT&CK-T1020
+  name: Automated Exfiltration
+  url: https://attack.mitre.org/techniques/T1020/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1020.001
+  full_id: ATT&CK-T1020.001
+  name: Traffic Duplication
+  url: https://attack.mitre.org/techniques/T1020/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1021
+  full_id: ATT&CK-T1021
+  name: Remote Services
+  url: https://attack.mitre.org/techniques/T1021/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1021.001
+  full_id: ATT&CK-T1021.001
+  name: Remote Desktop Protocol
+  url: https://attack.mitre.org/techniques/T1021/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1021.002
+  full_id: ATT&CK-T1021.002
+  name: SMB/Windows Admin Shares
+  url: https://attack.mitre.org/techniques/T1021/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1021.003
+  full_id: ATT&CK-T1021.003
+  name: Distributed Component Object Model
+  url: https://attack.mitre.org/techniques/T1021/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1021.004
+  full_id: ATT&CK-T1021.004
+  name: SSH
+  url: https://attack.mitre.org/techniques/T1021/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1021.005
+  full_id: ATT&CK-T1021.005
+  name: VNC
+  url: https://attack.mitre.org/techniques/T1021/005/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1021.006
+  full_id: ATT&CK-T1021.006
+  name: Windows Remote Management
+  url: https://attack.mitre.org/techniques/T1021/006/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1021.007
+  full_id: ATT&CK-T1021.007
+  name: Cloud Services
+  url: https://attack.mitre.org/techniques/T1021/007/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1021.008
+  full_id: ATT&CK-T1021.008
+  name: Direct Cloud VM Connections
+  url: https://attack.mitre.org/techniques/T1021/008/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1025
+  full_id: ATT&CK-T1025
+  name: Data from Removable Media
+  url: https://attack.mitre.org/techniques/T1025/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1027
+  full_id: ATT&CK-T1027
+  name: Obfuscated Files or Information
+  url: https://attack.mitre.org/techniques/T1027/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.001
+  full_id: ATT&CK-T1027.001
+  name: Binary Padding
+  url: https://attack.mitre.org/techniques/T1027/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.002
+  full_id: ATT&CK-T1027.002
+  name: Software Packing
+  url: https://attack.mitre.org/techniques/T1027/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.003
+  full_id: ATT&CK-T1027.003
+  name: Steganography
+  url: https://attack.mitre.org/techniques/T1027/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.004
+  full_id: ATT&CK-T1027.004
+  name: Compile After Delivery
+  url: https://attack.mitre.org/techniques/T1027/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.005
+  full_id: ATT&CK-T1027.005
+  name: Indicator Removal from Tools
+  url: https://attack.mitre.org/techniques/T1027/005/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.006
+  full_id: ATT&CK-T1027.006
+  name: HTML Smuggling
+  url: https://attack.mitre.org/techniques/T1027/006/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.007
+  full_id: ATT&CK-T1027.007
+  name: Dynamic API Resolution
+  url: https://attack.mitre.org/techniques/T1027/007/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.008
+  full_id: ATT&CK-T1027.008
+  name: Stripped Payloads
+  url: https://attack.mitre.org/techniques/T1027/008/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.009
+  full_id: ATT&CK-T1027.009
+  name: Embedded Payloads
+  url: https://attack.mitre.org/techniques/T1027/009/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.010
+  full_id: ATT&CK-T1027.010
+  name: Command Obfuscation
+  url: https://attack.mitre.org/techniques/T1027/010/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.011
+  full_id: ATT&CK-T1027.011
+  name: Fileless Storage
+  url: https://attack.mitre.org/techniques/T1027/011/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.012
+  full_id: ATT&CK-T1027.012
+  name: LNK Icon Smuggling
+  url: https://attack.mitre.org/techniques/T1027/012/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.013
+  full_id: ATT&CK-T1027.013
+  name: Encrypted/Encoded File
+  url: https://attack.mitre.org/techniques/T1027/013/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.014
+  full_id: ATT&CK-T1027.014
+  name: Polymorphic Code
+  url: https://attack.mitre.org/techniques/T1027/014/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.015
+  full_id: ATT&CK-T1027.015
+  name: Compression
+  url: https://attack.mitre.org/techniques/T1027/015/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.016
+  full_id: ATT&CK-T1027.016
+  name: Junk Code Insertion
+  url: https://attack.mitre.org/techniques/T1027/016/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.017
+  full_id: ATT&CK-T1027.017
+  name: SVG Smuggling
+  url: https://attack.mitre.org/techniques/T1027/017/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1027.018
+  full_id: ATT&CK-T1027.018
+  name: Invisible Unicode
+  url: https://attack.mitre.org/techniques/T1027/018/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1029
+  full_id: ATT&CK-T1029
+  name: Scheduled Transfer
+  url: https://attack.mitre.org/techniques/T1029/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1030
+  full_id: ATT&CK-T1030
+  name: Data Transfer Size Limits
+  url: https://attack.mitre.org/techniques/T1030/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1033
+  full_id: ATT&CK-T1033
+  name: System Owner/User Discovery
+  url: https://attack.mitre.org/techniques/T1033/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1036
+  full_id: ATT&CK-T1036
+  name: Masquerading
+  url: https://attack.mitre.org/techniques/T1036/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1036.001
+  full_id: ATT&CK-T1036.001
+  name: Invalid Code Signature
+  url: https://attack.mitre.org/techniques/T1036/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1036.002
+  full_id: ATT&CK-T1036.002
+  name: Right-to-Left Override
+  url: https://attack.mitre.org/techniques/T1036/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1036.003
+  full_id: ATT&CK-T1036.003
+  name: Rename Legitimate Utilities
+  url: https://attack.mitre.org/techniques/T1036/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1036.004
+  full_id: ATT&CK-T1036.004
+  name: Masquerade Task or Service
+  url: https://attack.mitre.org/techniques/T1036/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1036.005
+  full_id: ATT&CK-T1036.005
+  name: Match Legitimate Resource Name or Location
+  url: https://attack.mitre.org/techniques/T1036/005/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1036.006
+  full_id: ATT&CK-T1036.006
+  name: Space after Filename
+  url: https://attack.mitre.org/techniques/T1036/006/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1036.007
+  full_id: ATT&CK-T1036.007
+  name: Double File Extension
+  url: https://attack.mitre.org/techniques/T1036/007/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1036.008
+  full_id: ATT&CK-T1036.008
+  name: Masquerade File Type
+  url: https://attack.mitre.org/techniques/T1036/008/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1036.009
+  full_id: ATT&CK-T1036.009
+  name: Break Process Trees
+  url: https://attack.mitre.org/techniques/T1036/009/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1036.010
+  full_id: ATT&CK-T1036.010
+  name: Masquerade Account Name
+  url: https://attack.mitre.org/techniques/T1036/010/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1036.011
+  full_id: ATT&CK-T1036.011
+  name: Overwrite Process Arguments
+  url: https://attack.mitre.org/techniques/T1036/011/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1036.012
+  full_id: ATT&CK-T1036.012
+  name: Browser Fingerprint
+  url: https://attack.mitre.org/techniques/T1036/012/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1037
+  full_id: ATT&CK-T1037
+  name: Boot or Logon Initialization Scripts
+  url: https://attack.mitre.org/techniques/T1037/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1037.001
+  full_id: ATT&CK-T1037.001
+  name: Logon Script (Windows)
+  url: https://attack.mitre.org/techniques/T1037/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1037.002
+  full_id: ATT&CK-T1037.002
+  name: Login Hook
+  url: https://attack.mitre.org/techniques/T1037/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1037.003
+  full_id: ATT&CK-T1037.003
+  name: Network Logon Script
+  url: https://attack.mitre.org/techniques/T1037/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1037.004
+  full_id: ATT&CK-T1037.004
+  name: RC Scripts
+  url: https://attack.mitre.org/techniques/T1037/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1037.005
+  full_id: ATT&CK-T1037.005
+  name: Startup Items
+  url: https://attack.mitre.org/techniques/T1037/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: T1039
   full_id: ATT&CK-T1039
   name: Data from Network Shared Drive
   url: https://attack.mitre.org/techniques/T1039/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1040
+  full_id: ATT&CK-T1040
+  name: Network Sniffing
+  url: https://attack.mitre.org/techniques/T1040/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1041
+  full_id: ATT&CK-T1041
+  name: Exfiltration Over C2 Channel
+  url: https://attack.mitre.org/techniques/T1041/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1046
+  full_id: ATT&CK-T1046
+  name: Network Service Discovery
+  url: https://attack.mitre.org/techniques/T1046/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1047
+  full_id: ATT&CK-T1047
+  name: Windows Management Instrumentation
+  url: https://attack.mitre.org/techniques/T1047/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1048
+  full_id: ATT&CK-T1048
+  name: Exfiltration Over Alternative Protocol
+  url: https://attack.mitre.org/techniques/T1048/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1048.001
+  full_id: ATT&CK-T1048.001
+  name: Exfiltration Over Symmetric Encrypted Non-C2 Protocol
+  url: https://attack.mitre.org/techniques/T1048/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1048.002
+  full_id: ATT&CK-T1048.002
+  name: Exfiltration Over Asymmetric Encrypted Non-C2 Protocol
+  url: https://attack.mitre.org/techniques/T1048/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1048.003
+  full_id: ATT&CK-T1048.003
+  name: Exfiltration Over Unencrypted Non-C2 Protocol
+  url: https://attack.mitre.org/techniques/T1048/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1049
+  full_id: ATT&CK-T1049
+  name: System Network Connections Discovery
+  url: https://attack.mitre.org/techniques/T1049/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1052
+  full_id: ATT&CK-T1052
+  name: Exfiltration Over Physical Medium
+  url: https://attack.mitre.org/techniques/T1052/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1052.001
+  full_id: ATT&CK-T1052.001
+  name: Exfiltration over USB
+  url: https://attack.mitre.org/techniques/T1052/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1053
+  full_id: ATT&CK-T1053
+  name: Scheduled Task/Job
+  url: https://attack.mitre.org/techniques/T1053/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1053.002
+  full_id: ATT&CK-T1053.002
+  name: At
+  url: https://attack.mitre.org/techniques/T1053/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1053.003
+  full_id: ATT&CK-T1053.003
+  name: Cron
+  url: https://attack.mitre.org/techniques/T1053/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1053.005
+  full_id: ATT&CK-T1053.005
+  name: Scheduled Task
+  url: https://attack.mitre.org/techniques/T1053/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1053.006
+  full_id: ATT&CK-T1053.006
+  name: Systemd Timers
+  url: https://attack.mitre.org/techniques/T1053/006/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1053.007
+  full_id: ATT&CK-T1053.007
+  name: Container Orchestration Job
+  url: https://attack.mitre.org/techniques/T1053/007/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1055
+  full_id: ATT&CK-T1055
+  name: Process Injection
+  url: https://attack.mitre.org/techniques/T1055/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1055.001
+  full_id: ATT&CK-T1055.001
+  name: Dynamic-link Library Injection
+  url: https://attack.mitre.org/techniques/T1055/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1055.002
+  full_id: ATT&CK-T1055.002
+  name: Portable Executable Injection
+  url: https://attack.mitre.org/techniques/T1055/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1055.003
+  full_id: ATT&CK-T1055.003
+  name: Thread Execution Hijacking
+  url: https://attack.mitre.org/techniques/T1055/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1055.004
+  full_id: ATT&CK-T1055.004
+  name: Asynchronous Procedure Call
+  url: https://attack.mitre.org/techniques/T1055/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1055.005
+  full_id: ATT&CK-T1055.005
+  name: Thread Local Storage
+  url: https://attack.mitre.org/techniques/T1055/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1055.008
+  full_id: ATT&CK-T1055.008
+  name: Ptrace System Calls
+  url: https://attack.mitre.org/techniques/T1055/008/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1055.009
+  full_id: ATT&CK-T1055.009
+  name: Proc Memory
+  url: https://attack.mitre.org/techniques/T1055/009/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1055.011
+  full_id: ATT&CK-T1055.011
+  name: Extra Window Memory Injection
+  url: https://attack.mitre.org/techniques/T1055/011/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1055.012
+  full_id: ATT&CK-T1055.012
+  name: Process Hollowing
+  url: https://attack.mitre.org/techniques/T1055/012/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1055.013
+  full_id: ATT&CK-T1055.013
+  name: Process Doppelgänging
+  url: https://attack.mitre.org/techniques/T1055/013/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1055.014
+  full_id: ATT&CK-T1055.014
+  name: VDSO Hijacking
+  url: https://attack.mitre.org/techniques/T1055/014/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1055.015
+  full_id: ATT&CK-T1055.015
+  name: ListPlanting
+  url: https://attack.mitre.org/techniques/T1055/015/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1056
+  full_id: ATT&CK-T1056
+  name: Input Capture
+  url: https://attack.mitre.org/techniques/T1056/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1056.001
+  full_id: ATT&CK-T1056.001
+  name: Keylogging
+  url: https://attack.mitre.org/techniques/T1056/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1056.002
+  full_id: ATT&CK-T1056.002
+  name: GUI Input Capture
+  url: https://attack.mitre.org/techniques/T1056/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1056.003
+  full_id: ATT&CK-T1056.003
+  name: Web Portal Capture
+  url: https://attack.mitre.org/techniques/T1056/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1056.004
+  full_id: ATT&CK-T1056.004
+  name: Credential API Hooking
+  url: https://attack.mitre.org/techniques/T1056/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1057
+  full_id: ATT&CK-T1057
+  name: Process Discovery
+  url: https://attack.mitre.org/techniques/T1057/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1059
+  full_id: ATT&CK-T1059
+  name: Command and Scripting Interpreter
+  url: https://attack.mitre.org/techniques/T1059/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1059.001
+  full_id: ATT&CK-T1059.001
+  name: PowerShell
+  url: https://attack.mitre.org/techniques/T1059/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1059.002
+  full_id: ATT&CK-T1059.002
+  name: AppleScript
+  url: https://attack.mitre.org/techniques/T1059/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1059.003
+  full_id: ATT&CK-T1059.003
+  name: Windows Command Shell
+  url: https://attack.mitre.org/techniques/T1059/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1059.004
+  full_id: ATT&CK-T1059.004
+  name: Unix Shell
+  url: https://attack.mitre.org/techniques/T1059/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1059.005
+  full_id: ATT&CK-T1059.005
+  name: Visual Basic
+  url: https://attack.mitre.org/techniques/T1059/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1059.006
+  full_id: ATT&CK-T1059.006
+  name: Python
+  url: https://attack.mitre.org/techniques/T1059/006/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1059.007
+  full_id: ATT&CK-T1059.007
+  name: JavaScript
+  url: https://attack.mitre.org/techniques/T1059/007/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1059.008
+  full_id: ATT&CK-T1059.008
+  name: Network Device CLI
+  url: https://attack.mitre.org/techniques/T1059/008/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1059.009
+  full_id: ATT&CK-T1059.009
+  name: Cloud API
+  url: https://attack.mitre.org/techniques/T1059/009/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1059.010
+  full_id: ATT&CK-T1059.010
+  name: AutoHotKey & AutoIT
+  url: https://attack.mitre.org/techniques/T1059/010/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1059.011
+  full_id: ATT&CK-T1059.011
+  name: Lua
+  url: https://attack.mitre.org/techniques/T1059/011/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1059.012
+  full_id: ATT&CK-T1059.012
+  name: Hypervisor CLI
+  url: https://attack.mitre.org/techniques/T1059/012/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1059.013
+  full_id: ATT&CK-T1059.013
+  name: Container CLI/API
+  url: https://attack.mitre.org/techniques/T1059/013/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: T1068
   full_id: ATT&CK-T1068
   name: Exploitation for Privilege Escalation
   url: https://attack.mitre.org/techniques/T1068/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1069
+  full_id: ATT&CK-T1069
+  name: Permission Groups Discovery
+  url: https://attack.mitre.org/techniques/T1069/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1069.001
+  full_id: ATT&CK-T1069.001
+  name: Local Groups
+  url: https://attack.mitre.org/techniques/T1069/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1069.002
+  full_id: ATT&CK-T1069.002
+  name: Domain Groups
+  url: https://attack.mitre.org/techniques/T1069/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1069.003
+  full_id: ATT&CK-T1069.003
+  name: Cloud Groups
+  url: https://attack.mitre.org/techniques/T1069/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
 - id: T1070
   full_id: ATT&CK-T1070
   name: Indicator Removal
   url: https://attack.mitre.org/techniques/T1070/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
 - id: T1070.001
   full_id: ATT&CK-T1070.001
   name: Clear Windows Event Logs
   url: https://attack.mitre.org/techniques/T1070/001/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
 - id: T1070.002
   full_id: ATT&CK-T1070.002
   name: Clear Linux or Mac System Logs
   url: https://attack.mitre.org/techniques/T1070/002/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1070.003
+  full_id: ATT&CK-T1070.003
+  name: Clear Command History
+  url: https://attack.mitre.org/techniques/T1070/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
 - id: T1070.004
   full_id: ATT&CK-T1070.004
   name: File Deletion
   url: https://attack.mitre.org/techniques/T1070/004/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1070.005
+  full_id: ATT&CK-T1070.005
+  name: Network Share Connection Removal
+  url: https://attack.mitre.org/techniques/T1070/005/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
 - id: T1070.006
   full_id: ATT&CK-T1070.006
   name: Timestomp
   url: https://attack.mitre.org/techniques/T1070/006/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1070.007
+  full_id: ATT&CK-T1070.007
+  name: Clear Network Connection History and Configurations
+  url: https://attack.mitre.org/techniques/T1070/007/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
 - id: T1070.008
   full_id: ATT&CK-T1070.008
   name: Clear Mailbox Data
   url: https://attack.mitre.org/techniques/T1070/008/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1070.009
+  full_id: ATT&CK-T1070.009
+  name: Clear Persistence
+  url: https://attack.mitre.org/techniques/T1070/009/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1070.010
+  full_id: ATT&CK-T1070.010
+  name: Relocate Malware
+  url: https://attack.mitre.org/techniques/T1070/010/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1071
+  full_id: ATT&CK-T1071
+  name: Application Layer Protocol
+  url: https://attack.mitre.org/techniques/T1071/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1071.001
+  full_id: ATT&CK-T1071.001
+  name: Web Protocols
+  url: https://attack.mitre.org/techniques/T1071/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1071.002
+  full_id: ATT&CK-T1071.002
+  name: File Transfer Protocols
+  url: https://attack.mitre.org/techniques/T1071/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1071.003
+  full_id: ATT&CK-T1071.003
+  name: Mail Protocols
+  url: https://attack.mitre.org/techniques/T1071/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1071.004
+  full_id: ATT&CK-T1071.004
+  name: DNS
+  url: https://attack.mitre.org/techniques/T1071/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1071.005
+  full_id: ATT&CK-T1071.005
+  name: Publish/Subscribe Protocols
+  url: https://attack.mitre.org/techniques/T1071/005/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1072
+  full_id: ATT&CK-T1072
+  name: Software Deployment Tools
+  url: https://attack.mitre.org/techniques/T1072/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1074
+  full_id: ATT&CK-T1074
+  name: Data Staged
+  url: https://attack.mitre.org/techniques/T1074/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1074.001
+  full_id: ATT&CK-T1074.001
+  name: Local Data Staging
+  url: https://attack.mitre.org/techniques/T1074/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1074.002
+  full_id: ATT&CK-T1074.002
+  name: Remote Data Staging
+  url: https://attack.mitre.org/techniques/T1074/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
 - id: T1078
   full_id: ATT&CK-T1078
   name: Valid Accounts
   url: https://attack.mitre.org/techniques/T1078/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1078.001
+  full_id: ATT&CK-T1078.001
+  name: Default Accounts
+  url: https://attack.mitre.org/techniques/T1078/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1078.002
+  full_id: ATT&CK-T1078.002
+  name: Domain Accounts
+  url: https://attack.mitre.org/techniques/T1078/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1078.003
+  full_id: ATT&CK-T1078.003
+  name: Local Accounts
+  url: https://attack.mitre.org/techniques/T1078/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: T1078.004
   full_id: ATT&CK-T1078.004
   name: Cloud Accounts
   url: https://attack.mitre.org/techniques/T1078/004/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Cloud account abuse operates at runtime/IR layer; tachi's design-time threat modeling cannot detect credential validity at the architecture layer."
+- id: T1080
+  full_id: ATT&CK-T1080
+  name: Taint Shared Content
+  url: https://attack.mitre.org/techniques/T1080/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1082
+  full_id: ATT&CK-T1082
+  name: System Information Discovery
+  url: https://attack.mitre.org/techniques/T1082/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1083
+  full_id: ATT&CK-T1083
+  name: File and Directory Discovery
+  url: https://attack.mitre.org/techniques/T1083/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1087
+  full_id: ATT&CK-T1087
+  name: Account Discovery
+  url: https://attack.mitre.org/techniques/T1087/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1087.001
+  full_id: ATT&CK-T1087.001
+  name: Local Account
+  url: https://attack.mitre.org/techniques/T1087/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1087.002
+  full_id: ATT&CK-T1087.002
+  name: Domain Account
+  url: https://attack.mitre.org/techniques/T1087/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1087.003
+  full_id: ATT&CK-T1087.003
+  name: Email Account
+  url: https://attack.mitre.org/techniques/T1087/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1087.004
+  full_id: ATT&CK-T1087.004
+  name: Cloud Account
+  url: https://attack.mitre.org/techniques/T1087/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1090
+  full_id: ATT&CK-T1090
+  name: Proxy
+  url: https://attack.mitre.org/techniques/T1090/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1090.001
+  full_id: ATT&CK-T1090.001
+  name: Internal Proxy
+  url: https://attack.mitre.org/techniques/T1090/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1090.002
+  full_id: ATT&CK-T1090.002
+  name: External Proxy
+  url: https://attack.mitre.org/techniques/T1090/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1090.003
+  full_id: ATT&CK-T1090.003
+  name: Multi-hop Proxy
+  url: https://attack.mitre.org/techniques/T1090/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1090.004
+  full_id: ATT&CK-T1090.004
+  name: Domain Fronting
+  url: https://attack.mitre.org/techniques/T1090/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1091
+  full_id: ATT&CK-T1091
+  name: Replication Through Removable Media
+  url: https://attack.mitre.org/techniques/T1091/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1092
+  full_id: ATT&CK-T1092
+  name: Communication Through Removable Media
+  url: https://attack.mitre.org/techniques/T1092/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1095
+  full_id: ATT&CK-T1095
+  name: Non-Application Layer Protocol
+  url: https://attack.mitre.org/techniques/T1095/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1098
+  full_id: ATT&CK-T1098
+  name: Account Manipulation
+  url: https://attack.mitre.org/techniques/T1098/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1098.001
+  full_id: ATT&CK-T1098.001
+  name: Additional Cloud Credentials
+  url: https://attack.mitre.org/techniques/T1098/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1098.002
+  full_id: ATT&CK-T1098.002
+  name: Additional Email Delegate Permissions
+  url: https://attack.mitre.org/techniques/T1098/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1098.003
+  full_id: ATT&CK-T1098.003
+  name: Additional Cloud Roles
+  url: https://attack.mitre.org/techniques/T1098/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1098.004
+  full_id: ATT&CK-T1098.004
+  name: SSH Authorized Keys
+  url: https://attack.mitre.org/techniques/T1098/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1098.005
+  full_id: ATT&CK-T1098.005
+  name: Device Registration
+  url: https://attack.mitre.org/techniques/T1098/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1098.006
+  full_id: ATT&CK-T1098.006
+  name: Additional Container Cluster Roles
+  url: https://attack.mitre.org/techniques/T1098/006/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1098.007
+  full_id: ATT&CK-T1098.007
+  name: Additional Local or Domain Groups
+  url: https://attack.mitre.org/techniques/T1098/007/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1102
+  full_id: ATT&CK-T1102
+  name: Web Service
+  url: https://attack.mitre.org/techniques/T1102/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1102.001
+  full_id: ATT&CK-T1102.001
+  name: Dead Drop Resolver
+  url: https://attack.mitre.org/techniques/T1102/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1102.002
+  full_id: ATT&CK-T1102.002
+  name: Bidirectional Communication
+  url: https://attack.mitre.org/techniques/T1102/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1102.003
+  full_id: ATT&CK-T1102.003
+  name: One-Way Communication
+  url: https://attack.mitre.org/techniques/T1102/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1104
+  full_id: ATT&CK-T1104
+  name: Multi-Stage Channels
+  url: https://attack.mitre.org/techniques/T1104/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1105
+  full_id: ATT&CK-T1105
+  name: Ingress Tool Transfer
+  url: https://attack.mitre.org/techniques/T1105/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1106
+  full_id: ATT&CK-T1106
+  name: Native API
+  url: https://attack.mitre.org/techniques/T1106/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1110
+  full_id: ATT&CK-T1110
+  name: Brute Force
+  url: https://attack.mitre.org/techniques/T1110/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1110.001
+  full_id: ATT&CK-T1110.001
+  name: Password Guessing
+  url: https://attack.mitre.org/techniques/T1110/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1110.002
+  full_id: ATT&CK-T1110.002
+  name: Password Cracking
+  url: https://attack.mitre.org/techniques/T1110/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1110.003
+  full_id: ATT&CK-T1110.003
+  name: Password Spraying
+  url: https://attack.mitre.org/techniques/T1110/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1110.004
+  full_id: ATT&CK-T1110.004
+  name: Credential Stuffing
+  url: https://attack.mitre.org/techniques/T1110/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1111
+  full_id: ATT&CK-T1111
+  name: Multi-Factor Authentication Interception
+  url: https://attack.mitre.org/techniques/T1111/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1112
+  full_id: ATT&CK-T1112
+  name: Modify Registry
+  url: https://attack.mitre.org/techniques/T1112/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1113
+  full_id: ATT&CK-T1113
+  name: Screen Capture
+  url: https://attack.mitre.org/techniques/T1113/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1114
+  full_id: ATT&CK-T1114
+  name: Email Collection
+  url: https://attack.mitre.org/techniques/T1114/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1114.001
+  full_id: ATT&CK-T1114.001
+  name: Local Email Collection
+  url: https://attack.mitre.org/techniques/T1114/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1114.002
+  full_id: ATT&CK-T1114.002
+  name: Remote Email Collection
+  url: https://attack.mitre.org/techniques/T1114/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1114.003
+  full_id: ATT&CK-T1114.003
+  name: Email Forwarding Rule
+  url: https://attack.mitre.org/techniques/T1114/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1115
+  full_id: ATT&CK-T1115
+  name: Clipboard Data
+  url: https://attack.mitre.org/techniques/T1115/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1119
+  full_id: ATT&CK-T1119
+  name: Automated Collection
+  url: https://attack.mitre.org/techniques/T1119/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1120
+  full_id: ATT&CK-T1120
+  name: Peripheral Device Discovery
+  url: https://attack.mitre.org/techniques/T1120/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1123
+  full_id: ATT&CK-T1123
+  name: Audio Capture
+  url: https://attack.mitre.org/techniques/T1123/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1124
+  full_id: ATT&CK-T1124
+  name: System Time Discovery
+  url: https://attack.mitre.org/techniques/T1124/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1125
+  full_id: ATT&CK-T1125
+  name: Video Capture
+  url: https://attack.mitre.org/techniques/T1125/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1127
+  full_id: ATT&CK-T1127
+  name: Trusted Developer Utilities Proxy Execution
+  url: https://attack.mitre.org/techniques/T1127/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1127.001
+  full_id: ATT&CK-T1127.001
+  name: MSBuild
+  url: https://attack.mitre.org/techniques/T1127/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1127.002
+  full_id: ATT&CK-T1127.002
+  name: ClickOnce
+  url: https://attack.mitre.org/techniques/T1127/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1127.003
+  full_id: ATT&CK-T1127.003
+  name: JamPlus
+  url: https://attack.mitre.org/techniques/T1127/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1129
+  full_id: ATT&CK-T1129
+  name: Shared Modules
+  url: https://attack.mitre.org/techniques/T1129/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1132
+  full_id: ATT&CK-T1132
+  name: Data Encoding
+  url: https://attack.mitre.org/techniques/T1132/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1132.001
+  full_id: ATT&CK-T1132.001
+  name: Standard Encoding
+  url: https://attack.mitre.org/techniques/T1132/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1132.002
+  full_id: ATT&CK-T1132.002
+  name: Non-Standard Encoding
+  url: https://attack.mitre.org/techniques/T1132/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1133
+  full_id: ATT&CK-T1133
+  name: External Remote Services
+  url: https://attack.mitre.org/techniques/T1133/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1134
+  full_id: ATT&CK-T1134
+  name: Access Token Manipulation
+  url: https://attack.mitre.org/techniques/T1134/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1134.001
+  full_id: ATT&CK-T1134.001
+  name: Token Impersonation/Theft
+  url: https://attack.mitre.org/techniques/T1134/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1134.002
+  full_id: ATT&CK-T1134.002
+  name: Create Process with Token
+  url: https://attack.mitre.org/techniques/T1134/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1134.003
+  full_id: ATT&CK-T1134.003
+  name: Make and Impersonate Token
+  url: https://attack.mitre.org/techniques/T1134/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1134.004
+  full_id: ATT&CK-T1134.004
+  name: Parent PID Spoofing
+  url: https://attack.mitre.org/techniques/T1134/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1134.005
+  full_id: ATT&CK-T1134.005
+  name: SID-History Injection
+  url: https://attack.mitre.org/techniques/T1134/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1135
+  full_id: ATT&CK-T1135
+  name: Network Share Discovery
+  url: https://attack.mitre.org/techniques/T1135/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1136
+  full_id: ATT&CK-T1136
+  name: Create Account
+  url: https://attack.mitre.org/techniques/T1136/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1136.001
+  full_id: ATT&CK-T1136.001
+  name: Local Account
+  url: https://attack.mitre.org/techniques/T1136/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1136.002
+  full_id: ATT&CK-T1136.002
+  name: Domain Account
+  url: https://attack.mitre.org/techniques/T1136/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1136.003
+  full_id: ATT&CK-T1136.003
+  name: Cloud Account
+  url: https://attack.mitre.org/techniques/T1136/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1137
+  full_id: ATT&CK-T1137
+  name: Office Application Startup
+  url: https://attack.mitre.org/techniques/T1137/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1137.001
+  full_id: ATT&CK-T1137.001
+  name: Office Template Macros
+  url: https://attack.mitre.org/techniques/T1137/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1137.002
+  full_id: ATT&CK-T1137.002
+  name: Office Test
+  url: https://attack.mitre.org/techniques/T1137/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1137.003
+  full_id: ATT&CK-T1137.003
+  name: Outlook Forms
+  url: https://attack.mitre.org/techniques/T1137/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1137.004
+  full_id: ATT&CK-T1137.004
+  name: Outlook Home Page
+  url: https://attack.mitre.org/techniques/T1137/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1137.005
+  full_id: ATT&CK-T1137.005
+  name: Outlook Rules
+  url: https://attack.mitre.org/techniques/T1137/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1137.006
+  full_id: ATT&CK-T1137.006
+  name: Add-ins
+  url: https://attack.mitre.org/techniques/T1137/006/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1140
+  full_id: ATT&CK-T1140
+  name: Deobfuscate/Decode Files or Information
+  url: https://attack.mitre.org/techniques/T1140/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1176
+  full_id: ATT&CK-T1176
+  name: Software Extensions
+  url: https://attack.mitre.org/techniques/T1176/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1176.001
+  full_id: ATT&CK-T1176.001
+  name: Browser Extensions
+  url: https://attack.mitre.org/techniques/T1176/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1176.002
+  full_id: ATT&CK-T1176.002
+  name: IDE Extensions
+  url: https://attack.mitre.org/techniques/T1176/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1185
+  full_id: ATT&CK-T1185
+  name: Browser Session Hijacking
+  url: https://attack.mitre.org/techniques/T1185/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1187
+  full_id: ATT&CK-T1187
+  name: Forced Authentication
+  url: https://attack.mitre.org/techniques/T1187/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1189
+  full_id: ATT&CK-T1189
+  name: Drive-by Compromise
+  url: https://attack.mitre.org/techniques/T1189/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1190
+  full_id: ATT&CK-T1190
+  name: Exploit Public-Facing Application
+  url: https://attack.mitre.org/techniques/T1190/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: T1195
   full_id: ATT&CK-T1195
   name: Supply Chain Compromise
   url: https://attack.mitre.org/techniques/T1195/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: T1195.001
   full_id: ATT&CK-T1195.001
   name: Compromise Software Dependencies and Development Tools
   url: https://attack.mitre.org/techniques/T1195/001/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: T1195.002
   full_id: ATT&CK-T1195.002
   name: Compromise Software Supply Chain
   url: https://attack.mitre.org/techniques/T1195/002/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1195.003
+  full_id: ATT&CK-T1195.003
+  name: Compromise Hardware Supply Chain
+  url: https://attack.mitre.org/techniques/T1195/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1197
+  full_id: ATT&CK-T1197
+  name: BITS Jobs
+  url: https://attack.mitre.org/techniques/T1197/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1199
+  full_id: ATT&CK-T1199
+  name: Trusted Relationship
+  url: https://attack.mitre.org/techniques/T1199/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1200
+  full_id: ATT&CK-T1200
+  name: Hardware Additions
+  url: https://attack.mitre.org/techniques/T1200/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1201
+  full_id: ATT&CK-T1201
+  name: Password Policy Discovery
+  url: https://attack.mitre.org/techniques/T1201/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1202
+  full_id: ATT&CK-T1202
+  name: Indirect Command Execution
+  url: https://attack.mitre.org/techniques/T1202/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1203
+  full_id: ATT&CK-T1203
+  name: Exploitation for Client Execution
+  url: https://attack.mitre.org/techniques/T1203/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1204
+  full_id: ATT&CK-T1204
+  name: User Execution
+  url: https://attack.mitre.org/techniques/T1204/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1204.001
+  full_id: ATT&CK-T1204.001
+  name: Malicious Link
+  url: https://attack.mitre.org/techniques/T1204/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1204.002
+  full_id: ATT&CK-T1204.002
+  name: Malicious File
+  url: https://attack.mitre.org/techniques/T1204/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1204.003
+  full_id: ATT&CK-T1204.003
+  name: Malicious Image
+  url: https://attack.mitre.org/techniques/T1204/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1204.004
+  full_id: ATT&CK-T1204.004
+  name: Malicious Copy and Paste
+  url: https://attack.mitre.org/techniques/T1204/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1204.005
+  full_id: ATT&CK-T1204.005
+  name: Malicious Library
+  url: https://attack.mitre.org/techniques/T1204/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1205
+  full_id: ATT&CK-T1205
+  name: Traffic Signaling
+  url: https://attack.mitre.org/techniques/T1205/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1205.001
+  full_id: ATT&CK-T1205.001
+  name: Port Knocking
+  url: https://attack.mitre.org/techniques/T1205/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1205.002
+  full_id: ATT&CK-T1205.002
+  name: Socket Filters
+  url: https://attack.mitre.org/techniques/T1205/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1207
+  full_id: ATT&CK-T1207
+  name: Rogue Domain Controller
+  url: https://attack.mitre.org/techniques/T1207/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1210
+  full_id: ATT&CK-T1210
+  name: Exploitation of Remote Services
+  url: https://attack.mitre.org/techniques/T1210/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1211
+  full_id: ATT&CK-T1211
+  name: Exploitation for Stealth
+  url: https://attack.mitre.org/techniques/T1211/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1212
+  full_id: ATT&CK-T1212
+  name: Exploitation for Credential Access
+  url: https://attack.mitre.org/techniques/T1212/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: T1213
   full_id: ATT&CK-T1213
   name: Data from Information Repositories
   url: https://attack.mitre.org/techniques/T1213/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
 - id: T1213.001
   full_id: ATT&CK-T1213.001
   name: Confluence
   url: https://attack.mitre.org/techniques/T1213/001/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
 - id: T1213.002
   full_id: ATT&CK-T1213.002
   name: Sharepoint
   url: https://attack.mitre.org/techniques/T1213/002/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
 - id: T1213.003
   full_id: ATT&CK-T1213.003
   name: Code Repositories
   url: https://attack.mitre.org/techniques/T1213/003/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1213.004
+  full_id: ATT&CK-T1213.004
+  name: Customer Relationship Management Software
+  url: https://attack.mitre.org/techniques/T1213/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
 - id: T1213.005
   full_id: ATT&CK-T1213.005
   name: Messaging Applications
   url: https://attack.mitre.org/techniques/T1213/005/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1213.006
+  full_id: ATT&CK-T1213.006
+  name: Databases
+  url: https://attack.mitre.org/techniques/T1213/006/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1216
+  full_id: ATT&CK-T1216
+  name: System Script Proxy Execution
+  url: https://attack.mitre.org/techniques/T1216/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1216.001
+  full_id: ATT&CK-T1216.001
+  name: PubPrn
+  url: https://attack.mitre.org/techniques/T1216/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1216.002
+  full_id: ATT&CK-T1216.002
+  name: SyncAppvPublishingServer
+  url: https://attack.mitre.org/techniques/T1216/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1217
+  full_id: ATT&CK-T1217
+  name: Browser Information Discovery
+  url: https://attack.mitre.org/techniques/T1217/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1218
+  full_id: ATT&CK-T1218
+  name: System Binary Proxy Execution
+  url: https://attack.mitre.org/techniques/T1218/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1218.001
+  full_id: ATT&CK-T1218.001
+  name: Compiled HTML File
+  url: https://attack.mitre.org/techniques/T1218/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1218.002
+  full_id: ATT&CK-T1218.002
+  name: Control Panel
+  url: https://attack.mitre.org/techniques/T1218/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1218.003
+  full_id: ATT&CK-T1218.003
+  name: CMSTP
+  url: https://attack.mitre.org/techniques/T1218/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1218.004
+  full_id: ATT&CK-T1218.004
+  name: InstallUtil
+  url: https://attack.mitre.org/techniques/T1218/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1218.005
+  full_id: ATT&CK-T1218.005
+  name: Mshta
+  url: https://attack.mitre.org/techniques/T1218/005/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1218.007
+  full_id: ATT&CK-T1218.007
+  name: Msiexec
+  url: https://attack.mitre.org/techniques/T1218/007/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1218.008
+  full_id: ATT&CK-T1218.008
+  name: Odbcconf
+  url: https://attack.mitre.org/techniques/T1218/008/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1218.009
+  full_id: ATT&CK-T1218.009
+  name: Regsvcs/Regasm
+  url: https://attack.mitre.org/techniques/T1218/009/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1218.010
+  full_id: ATT&CK-T1218.010
+  name: Regsvr32
+  url: https://attack.mitre.org/techniques/T1218/010/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1218.011
+  full_id: ATT&CK-T1218.011
+  name: Rundll32
+  url: https://attack.mitre.org/techniques/T1218/011/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1218.012
+  full_id: ATT&CK-T1218.012
+  name: Verclsid
+  url: https://attack.mitre.org/techniques/T1218/012/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1218.013
+  full_id: ATT&CK-T1218.013
+  name: Mavinject
+  url: https://attack.mitre.org/techniques/T1218/013/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1218.014
+  full_id: ATT&CK-T1218.014
+  name: MMC
+  url: https://attack.mitre.org/techniques/T1218/014/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1218.015
+  full_id: ATT&CK-T1218.015
+  name: Electron Applications
+  url: https://attack.mitre.org/techniques/T1218/015/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1219
+  full_id: ATT&CK-T1219
+  name: Remote Access Tools
+  url: https://attack.mitre.org/techniques/T1219/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1219.001
+  full_id: ATT&CK-T1219.001
+  name: IDE Tunneling
+  url: https://attack.mitre.org/techniques/T1219/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1219.002
+  full_id: ATT&CK-T1219.002
+  name: Remote Desktop Software
+  url: https://attack.mitre.org/techniques/T1219/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1219.003
+  full_id: ATT&CK-T1219.003
+  name: Remote Access Hardware
+  url: https://attack.mitre.org/techniques/T1219/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1220
+  full_id: ATT&CK-T1220
+  name: XSL Script Processing
+  url: https://attack.mitre.org/techniques/T1220/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1221
+  full_id: ATT&CK-T1221
+  name: Template Injection
+  url: https://attack.mitre.org/techniques/T1221/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1222
+  full_id: ATT&CK-T1222
+  name: File and Directory Permissions Modification
+  url: https://attack.mitre.org/techniques/T1222/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1222.001
+  full_id: ATT&CK-T1222.001
+  name: Windows Permissions
+  url: https://attack.mitre.org/techniques/T1222/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1222.002
+  full_id: ATT&CK-T1222.002
+  name: Linux and Mac Permissions
+  url: https://attack.mitre.org/techniques/T1222/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1480
+  full_id: ATT&CK-T1480
+  name: Execution Guardrails
+  url: https://attack.mitre.org/techniques/T1480/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1480.001
+  full_id: ATT&CK-T1480.001
+  name: Environmental Keying
+  url: https://attack.mitre.org/techniques/T1480/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1480.002
+  full_id: ATT&CK-T1480.002
+  name: Mutual Exclusion
+  url: https://attack.mitre.org/techniques/T1480/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1482
+  full_id: ATT&CK-T1482
+  name: Domain Trust Discovery
+  url: https://attack.mitre.org/techniques/T1482/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1484
+  full_id: ATT&CK-T1484
+  name: Domain or Tenant Policy Modification
+  url: https://attack.mitre.org/techniques/T1484/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1484.001
+  full_id: ATT&CK-T1484.001
+  name: Group Policy Modification
+  url: https://attack.mitre.org/techniques/T1484/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1484.002
+  full_id: ATT&CK-T1484.002
+  name: Trust Modification
+  url: https://attack.mitre.org/techniques/T1484/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1485
+  full_id: ATT&CK-T1485
+  name: Data Destruction
+  url: https://attack.mitre.org/techniques/T1485/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1485.001
+  full_id: ATT&CK-T1485.001
+  name: Lifecycle-Triggered Deletion
+  url: https://attack.mitre.org/techniques/T1485/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1486
+  full_id: ATT&CK-T1486
+  name: Data Encrypted for Impact
+  url: https://attack.mitre.org/techniques/T1486/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1489
+  full_id: ATT&CK-T1489
+  name: Service Stop
+  url: https://attack.mitre.org/techniques/T1489/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1490
+  full_id: ATT&CK-T1490
+  name: Inhibit System Recovery
+  url: https://attack.mitre.org/techniques/T1490/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1491
+  full_id: ATT&CK-T1491
+  name: Defacement
+  url: https://attack.mitre.org/techniques/T1491/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1491.001
+  full_id: ATT&CK-T1491.001
+  name: Internal Defacement
+  url: https://attack.mitre.org/techniques/T1491/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1491.002
+  full_id: ATT&CK-T1491.002
+  name: External Defacement
+  url: https://attack.mitre.org/techniques/T1491/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1495
+  full_id: ATT&CK-T1495
+  name: Firmware Corruption
+  url: https://attack.mitre.org/techniques/T1495/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1496
+  full_id: ATT&CK-T1496
+  name: Resource Hijacking
+  url: https://attack.mitre.org/techniques/T1496/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1496.001
+  full_id: ATT&CK-T1496.001
+  name: Compute Hijacking
+  url: https://attack.mitre.org/techniques/T1496/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1496.002
+  full_id: ATT&CK-T1496.002
+  name: Bandwidth Hijacking
+  url: https://attack.mitre.org/techniques/T1496/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1496.003
+  full_id: ATT&CK-T1496.003
+  name: SMS Pumping
+  url: https://attack.mitre.org/techniques/T1496/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1496.004
+  full_id: ATT&CK-T1496.004
+  name: Cloud Service Hijacking
+  url: https://attack.mitre.org/techniques/T1496/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1497
+  full_id: ATT&CK-T1497
+  name: Virtualization/Sandbox Evasion
+  url: https://attack.mitre.org/techniques/T1497/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1497.001
+  full_id: ATT&CK-T1497.001
+  name: System Checks
+  url: https://attack.mitre.org/techniques/T1497/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1497.002
+  full_id: ATT&CK-T1497.002
+  name: User Activity Based Checks
+  url: https://attack.mitre.org/techniques/T1497/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1497.003
+  full_id: ATT&CK-T1497.003
+  name: Time Based Checks
+  url: https://attack.mitre.org/techniques/T1497/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
 - id: T1498
   full_id: ATT&CK-T1498
   name: Network Denial of Service
   url: https://attack.mitre.org/techniques/T1498/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
 - id: T1498.001
   full_id: ATT&CK-T1498.001
   name: Direct Network Flood
   url: https://attack.mitre.org/techniques/T1498/001/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
 - id: T1498.002
   full_id: ATT&CK-T1498.002
   name: Reflection Amplification
   url: https://attack.mitre.org/techniques/T1498/002/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
 - id: T1499
   full_id: ATT&CK-T1499
   name: Endpoint Denial of Service
   url: https://attack.mitre.org/techniques/T1499/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
 - id: T1499.001
   full_id: ATT&CK-T1499.001
   name: OS Exhaustion Flood
   url: https://attack.mitre.org/techniques/T1499/001/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
 - id: T1499.002
   full_id: ATT&CK-T1499.002
   name: Service Exhaustion Flood
   url: https://attack.mitre.org/techniques/T1499/002/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
 - id: T1499.003
   full_id: ATT&CK-T1499.003
   name: Application Exhaustion Flood
   url: https://attack.mitre.org/techniques/T1499/003/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
 - id: T1499.004
   full_id: ATT&CK-T1499.004
   name: Application or System Exploitation
   url: https://attack.mitre.org/techniques/T1499/004/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1505
+  full_id: ATT&CK-T1505
+  name: Server Software Component
+  url: https://attack.mitre.org/techniques/T1505/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1505.001
+  full_id: ATT&CK-T1505.001
+  name: SQL Stored Procedures
+  url: https://attack.mitre.org/techniques/T1505/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1505.002
+  full_id: ATT&CK-T1505.002
+  name: Transport Agent
+  url: https://attack.mitre.org/techniques/T1505/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1505.003
+  full_id: ATT&CK-T1505.003
+  name: Web Shell
+  url: https://attack.mitre.org/techniques/T1505/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1505.004
+  full_id: ATT&CK-T1505.004
+  name: IIS Components
+  url: https://attack.mitre.org/techniques/T1505/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1505.005
+  full_id: ATT&CK-T1505.005
+  name: Terminal Services DLL
+  url: https://attack.mitre.org/techniques/T1505/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1505.006
+  full_id: ATT&CK-T1505.006
+  name: vSphere Installation Bundles
+  url: https://attack.mitre.org/techniques/T1505/006/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1518
+  full_id: ATT&CK-T1518
+  name: Software Discovery
+  url: https://attack.mitre.org/techniques/T1518/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1518.001
+  full_id: ATT&CK-T1518.001
+  name: Security Software Discovery
+  url: https://attack.mitre.org/techniques/T1518/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1518.002
+  full_id: ATT&CK-T1518.002
+  name: Backup Software Discovery
+  url: https://attack.mitre.org/techniques/T1518/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1525
+  full_id: ATT&CK-T1525
+  name: Implant Internal Image
+  url: https://attack.mitre.org/techniques/T1525/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1526
+  full_id: ATT&CK-T1526
+  name: Cloud Service Discovery
+  url: https://attack.mitre.org/techniques/T1526/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1528
+  full_id: ATT&CK-T1528
+  name: Steal Application Access Token
+  url: https://attack.mitre.org/techniques/T1528/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1529
+  full_id: ATT&CK-T1529
+  name: System Shutdown/Reboot
+  url: https://attack.mitre.org/techniques/T1529/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
 - id: T1530
   full_id: ATT&CK-T1530
   name: Data from Cloud Storage
   url: https://attack.mitre.org/techniques/T1530/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1531
+  full_id: ATT&CK-T1531
+  name: Account Access Removal
+  url: https://attack.mitre.org/techniques/T1531/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1534
+  full_id: ATT&CK-T1534
+  name: Internal Spearphishing
+  url: https://attack.mitre.org/techniques/T1534/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1535
+  full_id: ATT&CK-T1535
+  name: Unused/Unsupported Cloud Regions
+  url: https://attack.mitre.org/techniques/T1535/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1537
+  full_id: ATT&CK-T1537
+  name: Transfer Data to Cloud Account
+  url: https://attack.mitre.org/techniques/T1537/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1538
+  full_id: ATT&CK-T1538
+  name: Cloud Service Dashboard
+  url: https://attack.mitre.org/techniques/T1538/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1539
+  full_id: ATT&CK-T1539
+  name: Steal Web Session Cookie
+  url: https://attack.mitre.org/techniques/T1539/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1542
+  full_id: ATT&CK-T1542
+  name: Pre-OS Boot
+  url: https://attack.mitre.org/techniques/T1542/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1542.001
+  full_id: ATT&CK-T1542.001
+  name: System Firmware
+  url: https://attack.mitre.org/techniques/T1542/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1542.002
+  full_id: ATT&CK-T1542.002
+  name: Component Firmware
+  url: https://attack.mitre.org/techniques/T1542/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1542.003
+  full_id: ATT&CK-T1542.003
+  name: Bootkit
+  url: https://attack.mitre.org/techniques/T1542/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1542.004
+  full_id: ATT&CK-T1542.004
+  name: ROMMONkit
+  url: https://attack.mitre.org/techniques/T1542/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1542.005
+  full_id: ATT&CK-T1542.005
+  name: TFTP Boot
+  url: https://attack.mitre.org/techniques/T1542/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1543
+  full_id: ATT&CK-T1543
+  name: Create or Modify System Process
+  url: https://attack.mitre.org/techniques/T1543/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1543.001
+  full_id: ATT&CK-T1543.001
+  name: Launch Agent
+  url: https://attack.mitre.org/techniques/T1543/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1543.002
+  full_id: ATT&CK-T1543.002
+  name: Systemd Service
+  url: https://attack.mitre.org/techniques/T1543/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1543.003
+  full_id: ATT&CK-T1543.003
+  name: Windows Service
+  url: https://attack.mitre.org/techniques/T1543/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1543.004
+  full_id: ATT&CK-T1543.004
+  name: Launch Daemon
+  url: https://attack.mitre.org/techniques/T1543/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1543.005
+  full_id: ATT&CK-T1543.005
+  name: Container Service
+  url: https://attack.mitre.org/techniques/T1543/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546
+  full_id: ATT&CK-T1546
+  name: Event Triggered Execution
+  url: https://attack.mitre.org/techniques/T1546/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.001
+  full_id: ATT&CK-T1546.001
+  name: Change Default File Association
+  url: https://attack.mitre.org/techniques/T1546/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.002
+  full_id: ATT&CK-T1546.002
+  name: Screensaver
+  url: https://attack.mitre.org/techniques/T1546/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.003
+  full_id: ATT&CK-T1546.003
+  name: Windows Management Instrumentation Event Subscription
+  url: https://attack.mitre.org/techniques/T1546/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.004
+  full_id: ATT&CK-T1546.004
+  name: Unix Shell Configuration Modification
+  url: https://attack.mitre.org/techniques/T1546/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.005
+  full_id: ATT&CK-T1546.005
+  name: Trap
+  url: https://attack.mitre.org/techniques/T1546/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.006
+  full_id: ATT&CK-T1546.006
+  name: LC_LOAD_DYLIB Addition
+  url: https://attack.mitre.org/techniques/T1546/006/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.007
+  full_id: ATT&CK-T1546.007
+  name: Netsh Helper DLL
+  url: https://attack.mitre.org/techniques/T1546/007/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.008
+  full_id: ATT&CK-T1546.008
+  name: Accessibility Features
+  url: https://attack.mitre.org/techniques/T1546/008/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.009
+  full_id: ATT&CK-T1546.009
+  name: AppCert DLLs
+  url: https://attack.mitre.org/techniques/T1546/009/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.010
+  full_id: ATT&CK-T1546.010
+  name: AppInit DLLs
+  url: https://attack.mitre.org/techniques/T1546/010/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.011
+  full_id: ATT&CK-T1546.011
+  name: Application Shimming
+  url: https://attack.mitre.org/techniques/T1546/011/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.012
+  full_id: ATT&CK-T1546.012
+  name: Image File Execution Options Injection
+  url: https://attack.mitre.org/techniques/T1546/012/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.013
+  full_id: ATT&CK-T1546.013
+  name: PowerShell Profile
+  url: https://attack.mitre.org/techniques/T1546/013/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.014
+  full_id: ATT&CK-T1546.014
+  name: Emond
+  url: https://attack.mitre.org/techniques/T1546/014/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.015
+  full_id: ATT&CK-T1546.015
+  name: Component Object Model Hijacking
+  url: https://attack.mitre.org/techniques/T1546/015/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.016
+  full_id: ATT&CK-T1546.016
+  name: Installer Packages
+  url: https://attack.mitre.org/techniques/T1546/016/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.017
+  full_id: ATT&CK-T1546.017
+  name: Udev Rules
+  url: https://attack.mitre.org/techniques/T1546/017/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1546.018
+  full_id: ATT&CK-T1546.018
+  name: Python Startup Hooks
+  url: https://attack.mitre.org/techniques/T1546/018/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1547
+  full_id: ATT&CK-T1547
+  name: Boot or Logon Autostart Execution
+  url: https://attack.mitre.org/techniques/T1547/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1547.001
+  full_id: ATT&CK-T1547.001
+  name: Registry Run Keys / Startup Folder
+  url: https://attack.mitre.org/techniques/T1547/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1547.002
+  full_id: ATT&CK-T1547.002
+  name: Authentication Package
+  url: https://attack.mitre.org/techniques/T1547/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1547.003
+  full_id: ATT&CK-T1547.003
+  name: Time Providers
+  url: https://attack.mitre.org/techniques/T1547/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1547.004
+  full_id: ATT&CK-T1547.004
+  name: Winlogon Helper DLL
+  url: https://attack.mitre.org/techniques/T1547/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1547.005
+  full_id: ATT&CK-T1547.005
+  name: Security Support Provider
+  url: https://attack.mitre.org/techniques/T1547/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1547.006
+  full_id: ATT&CK-T1547.006
+  name: Kernel Modules and Extensions
+  url: https://attack.mitre.org/techniques/T1547/006/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1547.007
+  full_id: ATT&CK-T1547.007
+  name: Re-opened Applications
+  url: https://attack.mitre.org/techniques/T1547/007/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1547.008
+  full_id: ATT&CK-T1547.008
+  name: LSASS Driver
+  url: https://attack.mitre.org/techniques/T1547/008/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1547.009
+  full_id: ATT&CK-T1547.009
+  name: Shortcut Modification
+  url: https://attack.mitre.org/techniques/T1547/009/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1547.010
+  full_id: ATT&CK-T1547.010
+  name: Port Monitors
+  url: https://attack.mitre.org/techniques/T1547/010/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1547.012
+  full_id: ATT&CK-T1547.012
+  name: Print Processors
+  url: https://attack.mitre.org/techniques/T1547/012/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1547.013
+  full_id: ATT&CK-T1547.013
+  name: XDG Autostart Entries
+  url: https://attack.mitre.org/techniques/T1547/013/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1547.014
+  full_id: ATT&CK-T1547.014
+  name: Active Setup
+  url: https://attack.mitre.org/techniques/T1547/014/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1547.015
+  full_id: ATT&CK-T1547.015
+  name: Login Items
+  url: https://attack.mitre.org/techniques/T1547/015/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: T1548
   full_id: ATT&CK-T1548
   name: Abuse Elevation Control Mechanism
   url: https://attack.mitre.org/techniques/T1548/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: T1548.001
   full_id: ATT&CK-T1548.001
   name: Setuid and Setgid
   url: https://attack.mitre.org/techniques/T1548/001/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1548.002
+  full_id: ATT&CK-T1548.002
+  name: Bypass User Account Control
+  url: https://attack.mitre.org/techniques/T1548/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: T1548.003
   full_id: ATT&CK-T1548.003
   name: Sudo and Sudo Caching
   url: https://attack.mitre.org/techniques/T1548/003/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1548.004
+  full_id: ATT&CK-T1548.004
+  name: Elevated Execution with Prompt
+  url: https://attack.mitre.org/techniques/T1548/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: T1548.005
   full_id: ATT&CK-T1548.005
   name: Temporary Elevated Cloud Access
   url: https://attack.mitre.org/techniques/T1548/005/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1548.006
+  full_id: ATT&CK-T1548.006
+  name: TCC Manipulation
+  url: https://attack.mitre.org/techniques/T1548/006/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: T1550
   full_id: ATT&CK-T1550
   name: Use Alternate Authentication Material
   url: https://attack.mitre.org/techniques/T1550/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
 - id: T1550.001
   full_id: ATT&CK-T1550.001
   name: Application Access Token
   url: https://attack.mitre.org/techniques/T1550/001/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1550.002
+  full_id: ATT&CK-T1550.002
+  name: Pass the Hash
+  url: https://attack.mitre.org/techniques/T1550/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1550.003
+  full_id: ATT&CK-T1550.003
+  name: Pass the Ticket
+  url: https://attack.mitre.org/techniques/T1550/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1550.004
+  full_id: ATT&CK-T1550.004
+  name: Web Session Cookie
+  url: https://attack.mitre.org/techniques/T1550/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1552
+  full_id: ATT&CK-T1552
+  name: Unsecured Credentials
+  url: https://attack.mitre.org/techniques/T1552/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1552.001
+  full_id: ATT&CK-T1552.001
+  name: Credentials In Files
+  url: https://attack.mitre.org/techniques/T1552/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1552.002
+  full_id: ATT&CK-T1552.002
+  name: Credentials in Registry
+  url: https://attack.mitre.org/techniques/T1552/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1552.003
+  full_id: ATT&CK-T1552.003
+  name: Shell History
+  url: https://attack.mitre.org/techniques/T1552/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1552.004
+  full_id: ATT&CK-T1552.004
+  name: Private Keys
+  url: https://attack.mitre.org/techniques/T1552/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1552.005
+  full_id: ATT&CK-T1552.005
+  name: Cloud Instance Metadata API
+  url: https://attack.mitre.org/techniques/T1552/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1552.006
+  full_id: ATT&CK-T1552.006
+  name: Group Policy Preferences
+  url: https://attack.mitre.org/techniques/T1552/006/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1552.007
+  full_id: ATT&CK-T1552.007
+  name: Container API
+  url: https://attack.mitre.org/techniques/T1552/007/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1552.008
+  full_id: ATT&CK-T1552.008
+  name: Chat Messages
+  url: https://attack.mitre.org/techniques/T1552/008/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1553
+  full_id: ATT&CK-T1553
+  name: Subvert Trust Controls
+  url: https://attack.mitre.org/techniques/T1553/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1553.001
+  full_id: ATT&CK-T1553.001
+  name: Gatekeeper Bypass
+  url: https://attack.mitre.org/techniques/T1553/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1553.002
+  full_id: ATT&CK-T1553.002
+  name: Code Signing
+  url: https://attack.mitre.org/techniques/T1553/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1553.003
+  full_id: ATT&CK-T1553.003
+  name: SIP and Trust Provider Hijacking
+  url: https://attack.mitre.org/techniques/T1553/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1553.004
+  full_id: ATT&CK-T1553.004
+  name: Install Root Certificate
+  url: https://attack.mitre.org/techniques/T1553/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1553.005
+  full_id: ATT&CK-T1553.005
+  name: Mark-of-the-Web Bypass
+  url: https://attack.mitre.org/techniques/T1553/005/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1553.006
+  full_id: ATT&CK-T1553.006
+  name: Code Signing Policy Modification
+  url: https://attack.mitre.org/techniques/T1553/006/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1554
+  full_id: ATT&CK-T1554
+  name: Compromise Host Software Binary
+  url: https://attack.mitre.org/techniques/T1554/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1555
+  full_id: ATT&CK-T1555
+  name: Credentials from Password Stores
+  url: https://attack.mitre.org/techniques/T1555/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1555.001
+  full_id: ATT&CK-T1555.001
+  name: Keychain
+  url: https://attack.mitre.org/techniques/T1555/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1555.002
+  full_id: ATT&CK-T1555.002
+  name: Securityd Memory
+  url: https://attack.mitre.org/techniques/T1555/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1555.003
+  full_id: ATT&CK-T1555.003
+  name: Credentials from Web Browsers
+  url: https://attack.mitre.org/techniques/T1555/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1555.004
+  full_id: ATT&CK-T1555.004
+  name: Windows Credential Manager
+  url: https://attack.mitre.org/techniques/T1555/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1555.005
+  full_id: ATT&CK-T1555.005
+  name: Password Managers
+  url: https://attack.mitre.org/techniques/T1555/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1555.006
+  full_id: ATT&CK-T1555.006
+  name: Cloud Secrets Management Stores
+  url: https://attack.mitre.org/techniques/T1555/006/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: T1556
   full_id: ATT&CK-T1556
   name: Modify Authentication Process
   url: https://attack.mitre.org/techniques/T1556/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1556.001
+  full_id: ATT&CK-T1556.001
+  name: Domain Controller Authentication
+  url: https://attack.mitre.org/techniques/T1556/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1556.002
+  full_id: ATT&CK-T1556.002
+  name: Password Filter DLL
+  url: https://attack.mitre.org/techniques/T1556/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1556.003
+  full_id: ATT&CK-T1556.003
+  name: Pluggable Authentication Modules
+  url: https://attack.mitre.org/techniques/T1556/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1556.004
+  full_id: ATT&CK-T1556.004
+  name: Network Device Authentication
+  url: https://attack.mitre.org/techniques/T1556/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1556.005
+  full_id: ATT&CK-T1556.005
+  name: Reversible Encryption
+  url: https://attack.mitre.org/techniques/T1556/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1556.006
+  full_id: ATT&CK-T1556.006
+  name: Multi-Factor Authentication
+  url: https://attack.mitre.org/techniques/T1556/006/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1556.007
+  full_id: ATT&CK-T1556.007
+  name: Hybrid Identity
+  url: https://attack.mitre.org/techniques/T1556/007/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1556.008
+  full_id: ATT&CK-T1556.008
+  name: Network Provider DLL
+  url: https://attack.mitre.org/techniques/T1556/008/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1556.009
+  full_id: ATT&CK-T1556.009
+  name: Conditional Access Policies
+  url: https://attack.mitre.org/techniques/T1556/009/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1557
+  full_id: ATT&CK-T1557
+  name: Adversary-in-the-Middle
+  url: https://attack.mitre.org/techniques/T1557/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1557.001
+  full_id: ATT&CK-T1557.001
+  name: Name Resolution Poisoning and SMB Relay
+  url: https://attack.mitre.org/techniques/T1557/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1557.002
+  full_id: ATT&CK-T1557.002
+  name: ARP Cache Poisoning
+  url: https://attack.mitre.org/techniques/T1557/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1557.003
+  full_id: ATT&CK-T1557.003
+  name: DHCP Spoofing
+  url: https://attack.mitre.org/techniques/T1557/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1557.004
+  full_id: ATT&CK-T1557.004
+  name: Evil Twin
+  url: https://attack.mitre.org/techniques/T1557/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1558
+  full_id: ATT&CK-T1558
+  name: Steal or Forge Kerberos Tickets
+  url: https://attack.mitre.org/techniques/T1558/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1558.001
+  full_id: ATT&CK-T1558.001
+  name: Golden Ticket
+  url: https://attack.mitre.org/techniques/T1558/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1558.002
+  full_id: ATT&CK-T1558.002
+  name: Silver Ticket
+  url: https://attack.mitre.org/techniques/T1558/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1558.003
+  full_id: ATT&CK-T1558.003
+  name: Kerberoasting
+  url: https://attack.mitre.org/techniques/T1558/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1558.004
+  full_id: ATT&CK-T1558.004
+  name: AS-REP Roasting
+  url: https://attack.mitre.org/techniques/T1558/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1558.005
+  full_id: ATT&CK-T1558.005
+  name: Ccache Files
+  url: https://attack.mitre.org/techniques/T1558/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1559
+  full_id: ATT&CK-T1559
+  name: Inter-Process Communication
+  url: https://attack.mitre.org/techniques/T1559/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1559.001
+  full_id: ATT&CK-T1559.001
+  name: Component Object Model
+  url: https://attack.mitre.org/techniques/T1559/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1559.002
+  full_id: ATT&CK-T1559.002
+  name: Dynamic Data Exchange
+  url: https://attack.mitre.org/techniques/T1559/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1559.003
+  full_id: ATT&CK-T1559.003
+  name: XPC Services
+  url: https://attack.mitre.org/techniques/T1559/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1560
+  full_id: ATT&CK-T1560
+  name: Archive Collected Data
+  url: https://attack.mitre.org/techniques/T1560/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1560.001
+  full_id: ATT&CK-T1560.001
+  name: Archive via Utility
+  url: https://attack.mitre.org/techniques/T1560/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1560.002
+  full_id: ATT&CK-T1560.002
+  name: Archive via Library
+  url: https://attack.mitre.org/techniques/T1560/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1560.003
+  full_id: ATT&CK-T1560.003
+  name: Archive via Custom Method
+  url: https://attack.mitre.org/techniques/T1560/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1561
+  full_id: ATT&CK-T1561
+  name: Disk Wipe
+  url: https://attack.mitre.org/techniques/T1561/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1561.001
+  full_id: ATT&CK-T1561.001
+  name: Disk Content Wipe
+  url: https://attack.mitre.org/techniques/T1561/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1561.002
+  full_id: ATT&CK-T1561.002
+  name: Disk Structure Wipe
+  url: https://attack.mitre.org/techniques/T1561/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
 - id: T1562
   full_id: ATT&CK-T1562
   name: Impair Defenses
   url: https://attack.mitre.org/techniques/T1562/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
 - id: T1562.006
   full_id: ATT&CK-T1562.006
   name: Indicator Blocking
   url: https://attack.mitre.org/techniques/T1562/006/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1563
+  full_id: ATT&CK-T1563
+  name: Remote Service Session Hijacking
+  url: https://attack.mitre.org/techniques/T1563/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1563.001
+  full_id: ATT&CK-T1563.001
+  name: SSH Hijacking
+  url: https://attack.mitre.org/techniques/T1563/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1563.002
+  full_id: ATT&CK-T1563.002
+  name: RDP Hijacking
+  url: https://attack.mitre.org/techniques/T1563/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1564
+  full_id: ATT&CK-T1564
+  name: Hide Artifacts
+  url: https://attack.mitre.org/techniques/T1564/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1564.001
+  full_id: ATT&CK-T1564.001
+  name: Hidden Files and Directories
+  url: https://attack.mitre.org/techniques/T1564/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1564.002
+  full_id: ATT&CK-T1564.002
+  name: Hidden Users
+  url: https://attack.mitre.org/techniques/T1564/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1564.003
+  full_id: ATT&CK-T1564.003
+  name: Hidden Window
+  url: https://attack.mitre.org/techniques/T1564/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1564.004
+  full_id: ATT&CK-T1564.004
+  name: NTFS File Attributes
+  url: https://attack.mitre.org/techniques/T1564/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1564.005
+  full_id: ATT&CK-T1564.005
+  name: Hidden File System
+  url: https://attack.mitre.org/techniques/T1564/005/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1564.006
+  full_id: ATT&CK-T1564.006
+  name: Run Virtual Instance
+  url: https://attack.mitre.org/techniques/T1564/006/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1564.007
+  full_id: ATT&CK-T1564.007
+  name: VBA Stomping
+  url: https://attack.mitre.org/techniques/T1564/007/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1564.008
+  full_id: ATT&CK-T1564.008
+  name: Email Hiding Rules
+  url: https://attack.mitre.org/techniques/T1564/008/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1564.009
+  full_id: ATT&CK-T1564.009
+  name: Resource Forking
+  url: https://attack.mitre.org/techniques/T1564/009/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1564.010
+  full_id: ATT&CK-T1564.010
+  name: Process Argument Spoofing
+  url: https://attack.mitre.org/techniques/T1564/010/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1564.011
+  full_id: ATT&CK-T1564.011
+  name: Ignore Process Interrupts
+  url: https://attack.mitre.org/techniques/T1564/011/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1564.012
+  full_id: ATT&CK-T1564.012
+  name: File/Path Exclusions
+  url: https://attack.mitre.org/techniques/T1564/012/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1564.013
+  full_id: ATT&CK-T1564.013
+  name: Bind Mounts
+  url: https://attack.mitre.org/techniques/T1564/013/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1564.014
+  full_id: ATT&CK-T1564.014
+  name: Extended Attributes
+  url: https://attack.mitre.org/techniques/T1564/014/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
 - id: T1565
   full_id: ATT&CK-T1565
   name: Data Manipulation
   url: https://attack.mitre.org/techniques/T1565/
   cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1565.001
+  full_id: ATT&CK-T1565.001
+  name: Stored Data Manipulation
+  url: https://attack.mitre.org/techniques/T1565/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1565.002
+  full_id: ATT&CK-T1565.002
+  name: Transmitted Data Manipulation
+  url: https://attack.mitre.org/techniques/T1565/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1565.003
+  full_id: ATT&CK-T1565.003
+  name: Runtime Data Manipulation
+  url: https://attack.mitre.org/techniques/T1565/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1566
+  full_id: ATT&CK-T1566
+  name: Phishing
+  url: https://attack.mitre.org/techniques/T1566/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1566.001
+  full_id: ATT&CK-T1566.001
+  name: Spearphishing Attachment
+  url: https://attack.mitre.org/techniques/T1566/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1566.002
+  full_id: ATT&CK-T1566.002
+  name: Spearphishing Link
+  url: https://attack.mitre.org/techniques/T1566/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1566.003
+  full_id: ATT&CK-T1566.003
+  name: Spearphishing via Service
+  url: https://attack.mitre.org/techniques/T1566/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1566.004
+  full_id: ATT&CK-T1566.004
+  name: Spearphishing Voice
+  url: https://attack.mitre.org/techniques/T1566/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1567
+  full_id: ATT&CK-T1567
+  name: Exfiltration Over Web Service
+  url: https://attack.mitre.org/techniques/T1567/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1567.001
+  full_id: ATT&CK-T1567.001
+  name: Exfiltration to Code Repository
+  url: https://attack.mitre.org/techniques/T1567/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1567.002
+  full_id: ATT&CK-T1567.002
+  name: Exfiltration to Cloud Storage
+  url: https://attack.mitre.org/techniques/T1567/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1567.003
+  full_id: ATT&CK-T1567.003
+  name: Exfiltration to Text Storage Sites
+  url: https://attack.mitre.org/techniques/T1567/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1567.004
+  full_id: ATT&CK-T1567.004
+  name: Exfiltration Over Webhook
+  url: https://attack.mitre.org/techniques/T1567/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+- id: T1568
+  full_id: ATT&CK-T1568
+  name: Dynamic Resolution
+  url: https://attack.mitre.org/techniques/T1568/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1568.001
+  full_id: ATT&CK-T1568.001
+  name: Fast Flux DNS
+  url: https://attack.mitre.org/techniques/T1568/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1568.002
+  full_id: ATT&CK-T1568.002
+  name: Domain Generation Algorithms
+  url: https://attack.mitre.org/techniques/T1568/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1568.003
+  full_id: ATT&CK-T1568.003
+  name: DNS Calculation
+  url: https://attack.mitre.org/techniques/T1568/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1569
+  full_id: ATT&CK-T1569
+  name: System Services
+  url: https://attack.mitre.org/techniques/T1569/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1569.001
+  full_id: ATT&CK-T1569.001
+  name: Launchctl
+  url: https://attack.mitre.org/techniques/T1569/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1569.002
+  full_id: ATT&CK-T1569.002
+  name: Service Execution
+  url: https://attack.mitre.org/techniques/T1569/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1569.003
+  full_id: ATT&CK-T1569.003
+  name: Systemctl
+  url: https://attack.mitre.org/techniques/T1569/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1570
+  full_id: ATT&CK-T1570
+  name: Lateral Tool Transfer
+  url: https://attack.mitre.org/techniques/T1570/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0008 operates at runtime via post-compromise pivoting; outside tachi's design-time threat-modeling scope."
+- id: T1571
+  full_id: ATT&CK-T1571
+  name: Non-Standard Port
+  url: https://attack.mitre.org/techniques/T1571/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1572
+  full_id: ATT&CK-T1572
+  name: Protocol Tunneling
+  url: https://attack.mitre.org/techniques/T1572/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1573
+  full_id: ATT&CK-T1573
+  name: Encrypted Channel
+  url: https://attack.mitre.org/techniques/T1573/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1573.001
+  full_id: ATT&CK-T1573.001
+  name: Symmetric Cryptography
+  url: https://attack.mitre.org/techniques/T1573/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1573.002
+  full_id: ATT&CK-T1573.002
+  name: Asymmetric Cryptography
+  url: https://attack.mitre.org/techniques/T1573/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1574
+  full_id: ATT&CK-T1574
+  name: Hijack Execution Flow
+  url: https://attack.mitre.org/techniques/T1574/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1574.001
+  full_id: ATT&CK-T1574.001
+  name: DLL
+  url: https://attack.mitre.org/techniques/T1574/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1574.004
+  full_id: ATT&CK-T1574.004
+  name: Dylib Hijacking
+  url: https://attack.mitre.org/techniques/T1574/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1574.005
+  full_id: ATT&CK-T1574.005
+  name: Executable Installer File Permissions Weakness
+  url: https://attack.mitre.org/techniques/T1574/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1574.006
+  full_id: ATT&CK-T1574.006
+  name: Dynamic Linker Hijacking
+  url: https://attack.mitre.org/techniques/T1574/006/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1574.007
+  full_id: ATT&CK-T1574.007
+  name: Path Interception by PATH Environment Variable
+  url: https://attack.mitre.org/techniques/T1574/007/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1574.008
+  full_id: ATT&CK-T1574.008
+  name: Path Interception by Search Order Hijacking
+  url: https://attack.mitre.org/techniques/T1574/008/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1574.009
+  full_id: ATT&CK-T1574.009
+  name: Path Interception by Unquoted Path
+  url: https://attack.mitre.org/techniques/T1574/009/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1574.010
+  full_id: ATT&CK-T1574.010
+  name: Services File Permissions Weakness
+  url: https://attack.mitre.org/techniques/T1574/010/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1574.011
+  full_id: ATT&CK-T1574.011
+  name: Services Registry Permissions Weakness
+  url: https://attack.mitre.org/techniques/T1574/011/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1574.012
+  full_id: ATT&CK-T1574.012
+  name: COR_PROFILER
+  url: https://attack.mitre.org/techniques/T1574/012/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1574.013
+  full_id: ATT&CK-T1574.013
+  name: KernelCallbackTable
+  url: https://attack.mitre.org/techniques/T1574/013/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1574.014
+  full_id: ATT&CK-T1574.014
+  name: AppDomainManager
+  url: https://attack.mitre.org/techniques/T1574/014/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1578
+  full_id: ATT&CK-T1578
+  name: Modify Cloud Compute Infrastructure
+  url: https://attack.mitre.org/techniques/T1578/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1578.001
+  full_id: ATT&CK-T1578.001
+  name: Create Snapshot
+  url: https://attack.mitre.org/techniques/T1578/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1578.002
+  full_id: ATT&CK-T1578.002
+  name: Create Cloud Instance
+  url: https://attack.mitre.org/techniques/T1578/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1578.003
+  full_id: ATT&CK-T1578.003
+  name: Delete Cloud Instance
+  url: https://attack.mitre.org/techniques/T1578/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1578.004
+  full_id: ATT&CK-T1578.004
+  name: Revert Cloud Instance
+  url: https://attack.mitre.org/techniques/T1578/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1578.005
+  full_id: ATT&CK-T1578.005
+  name: Modify Cloud Compute Configurations
+  url: https://attack.mitre.org/techniques/T1578/005/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1580
+  full_id: ATT&CK-T1580
+  name: Cloud Infrastructure Discovery
+  url: https://attack.mitre.org/techniques/T1580/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1583
+  full_id: ATT&CK-T1583
+  name: Acquire Infrastructure
+  url: https://attack.mitre.org/techniques/T1583/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1583.001
+  full_id: ATT&CK-T1583.001
+  name: Domains
+  url: https://attack.mitre.org/techniques/T1583/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1583.002
+  full_id: ATT&CK-T1583.002
+  name: DNS Server
+  url: https://attack.mitre.org/techniques/T1583/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1583.003
+  full_id: ATT&CK-T1583.003
+  name: Virtual Private Server
+  url: https://attack.mitre.org/techniques/T1583/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1583.004
+  full_id: ATT&CK-T1583.004
+  name: Server
+  url: https://attack.mitre.org/techniques/T1583/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1583.005
+  full_id: ATT&CK-T1583.005
+  name: Botnet
+  url: https://attack.mitre.org/techniques/T1583/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1583.006
+  full_id: ATT&CK-T1583.006
+  name: Web Services
+  url: https://attack.mitre.org/techniques/T1583/006/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1583.007
+  full_id: ATT&CK-T1583.007
+  name: Serverless
+  url: https://attack.mitre.org/techniques/T1583/007/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1583.008
+  full_id: ATT&CK-T1583.008
+  name: Malvertising
+  url: https://attack.mitre.org/techniques/T1583/008/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1584
+  full_id: ATT&CK-T1584
+  name: Compromise Infrastructure
+  url: https://attack.mitre.org/techniques/T1584/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1584.001
+  full_id: ATT&CK-T1584.001
+  name: Domains
+  url: https://attack.mitre.org/techniques/T1584/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1584.002
+  full_id: ATT&CK-T1584.002
+  name: DNS Server
+  url: https://attack.mitre.org/techniques/T1584/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1584.003
+  full_id: ATT&CK-T1584.003
+  name: Virtual Private Server
+  url: https://attack.mitre.org/techniques/T1584/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1584.004
+  full_id: ATT&CK-T1584.004
+  name: Server
+  url: https://attack.mitre.org/techniques/T1584/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1584.005
+  full_id: ATT&CK-T1584.005
+  name: Botnet
+  url: https://attack.mitre.org/techniques/T1584/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1584.006
+  full_id: ATT&CK-T1584.006
+  name: Web Services
+  url: https://attack.mitre.org/techniques/T1584/006/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1584.007
+  full_id: ATT&CK-T1584.007
+  name: Serverless
+  url: https://attack.mitre.org/techniques/T1584/007/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1584.008
+  full_id: ATT&CK-T1584.008
+  name: Network Devices
+  url: https://attack.mitre.org/techniques/T1584/008/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1585
+  full_id: ATT&CK-T1585
+  name: Establish Accounts
+  url: https://attack.mitre.org/techniques/T1585/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1585.001
+  full_id: ATT&CK-T1585.001
+  name: Social Media Accounts
+  url: https://attack.mitre.org/techniques/T1585/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1585.002
+  full_id: ATT&CK-T1585.002
+  name: Email Accounts
+  url: https://attack.mitre.org/techniques/T1585/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1585.003
+  full_id: ATT&CK-T1585.003
+  name: Cloud Accounts
+  url: https://attack.mitre.org/techniques/T1585/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1586
+  full_id: ATT&CK-T1586
+  name: Compromise Accounts
+  url: https://attack.mitre.org/techniques/T1586/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1586.001
+  full_id: ATT&CK-T1586.001
+  name: Social Media Accounts
+  url: https://attack.mitre.org/techniques/T1586/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1586.002
+  full_id: ATT&CK-T1586.002
+  name: Email Accounts
+  url: https://attack.mitre.org/techniques/T1586/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1586.003
+  full_id: ATT&CK-T1586.003
+  name: Cloud Accounts
+  url: https://attack.mitre.org/techniques/T1586/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1587
+  full_id: ATT&CK-T1587
+  name: Develop Capabilities
+  url: https://attack.mitre.org/techniques/T1587/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1587.001
+  full_id: ATT&CK-T1587.001
+  name: Malware
+  url: https://attack.mitre.org/techniques/T1587/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1587.002
+  full_id: ATT&CK-T1587.002
+  name: Code Signing Certificates
+  url: https://attack.mitre.org/techniques/T1587/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1587.003
+  full_id: ATT&CK-T1587.003
+  name: Digital Certificates
+  url: https://attack.mitre.org/techniques/T1587/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1587.004
+  full_id: ATT&CK-T1587.004
+  name: Exploits
+  url: https://attack.mitre.org/techniques/T1587/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1588
+  full_id: ATT&CK-T1588
+  name: Obtain Capabilities
+  url: https://attack.mitre.org/techniques/T1588/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1588.001
+  full_id: ATT&CK-T1588.001
+  name: Malware
+  url: https://attack.mitre.org/techniques/T1588/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1588.002
+  full_id: ATT&CK-T1588.002
+  name: Tool
+  url: https://attack.mitre.org/techniques/T1588/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1588.003
+  full_id: ATT&CK-T1588.003
+  name: Code Signing Certificates
+  url: https://attack.mitre.org/techniques/T1588/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1588.004
+  full_id: ATT&CK-T1588.004
+  name: Digital Certificates
+  url: https://attack.mitre.org/techniques/T1588/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1588.005
+  full_id: ATT&CK-T1588.005
+  name: Exploits
+  url: https://attack.mitre.org/techniques/T1588/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1588.006
+  full_id: ATT&CK-T1588.006
+  name: Vulnerabilities
+  url: https://attack.mitre.org/techniques/T1588/006/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1588.007
+  full_id: ATT&CK-T1588.007
+  name: Artificial Intelligence
+  url: https://attack.mitre.org/techniques/T1588/007/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1589
+  full_id: ATT&CK-T1589
+  name: Gather Victim Identity Information
+  url: https://attack.mitre.org/techniques/T1589/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1589.001
+  full_id: ATT&CK-T1589.001
+  name: Credentials
+  url: https://attack.mitre.org/techniques/T1589/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1589.002
+  full_id: ATT&CK-T1589.002
+  name: Email Addresses
+  url: https://attack.mitre.org/techniques/T1589/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1589.003
+  full_id: ATT&CK-T1589.003
+  name: Employee Names
+  url: https://attack.mitre.org/techniques/T1589/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1590
+  full_id: ATT&CK-T1590
+  name: Gather Victim Network Information
+  url: https://attack.mitre.org/techniques/T1590/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1590.001
+  full_id: ATT&CK-T1590.001
+  name: Domain Properties
+  url: https://attack.mitre.org/techniques/T1590/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1590.002
+  full_id: ATT&CK-T1590.002
+  name: DNS
+  url: https://attack.mitre.org/techniques/T1590/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1590.003
+  full_id: ATT&CK-T1590.003
+  name: Network Trust Dependencies
+  url: https://attack.mitre.org/techniques/T1590/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1590.004
+  full_id: ATT&CK-T1590.004
+  name: Network Topology
+  url: https://attack.mitre.org/techniques/T1590/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1590.005
+  full_id: ATT&CK-T1590.005
+  name: IP Addresses
+  url: https://attack.mitre.org/techniques/T1590/005/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1590.006
+  full_id: ATT&CK-T1590.006
+  name: Network Security Appliances
+  url: https://attack.mitre.org/techniques/T1590/006/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1591
+  full_id: ATT&CK-T1591
+  name: Gather Victim Org Information
+  url: https://attack.mitre.org/techniques/T1591/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1591.001
+  full_id: ATT&CK-T1591.001
+  name: Determine Physical Locations
+  url: https://attack.mitre.org/techniques/T1591/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1591.002
+  full_id: ATT&CK-T1591.002
+  name: Business Relationships
+  url: https://attack.mitre.org/techniques/T1591/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1591.003
+  full_id: ATT&CK-T1591.003
+  name: Identify Business Tempo
+  url: https://attack.mitre.org/techniques/T1591/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1591.004
+  full_id: ATT&CK-T1591.004
+  name: Identify Roles
+  url: https://attack.mitre.org/techniques/T1591/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1592
+  full_id: ATT&CK-T1592
+  name: Gather Victim Host Information
+  url: https://attack.mitre.org/techniques/T1592/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1592.001
+  full_id: ATT&CK-T1592.001
+  name: Hardware
+  url: https://attack.mitre.org/techniques/T1592/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1592.002
+  full_id: ATT&CK-T1592.002
+  name: Software
+  url: https://attack.mitre.org/techniques/T1592/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1592.003
+  full_id: ATT&CK-T1592.003
+  name: Firmware
+  url: https://attack.mitre.org/techniques/T1592/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1592.004
+  full_id: ATT&CK-T1592.004
+  name: Client Configurations
+  url: https://attack.mitre.org/techniques/T1592/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1593
+  full_id: ATT&CK-T1593
+  name: Search Open Websites/Domains
+  url: https://attack.mitre.org/techniques/T1593/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1593.001
+  full_id: ATT&CK-T1593.001
+  name: Social Media
+  url: https://attack.mitre.org/techniques/T1593/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1593.002
+  full_id: ATT&CK-T1593.002
+  name: Search Engines
+  url: https://attack.mitre.org/techniques/T1593/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1593.003
+  full_id: ATT&CK-T1593.003
+  name: Code Repositories
+  url: https://attack.mitre.org/techniques/T1593/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1594
+  full_id: ATT&CK-T1594
+  name: Search Victim-Owned Websites
+  url: https://attack.mitre.org/techniques/T1594/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1595
+  full_id: ATT&CK-T1595
+  name: Active Scanning
+  url: https://attack.mitre.org/techniques/T1595/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1595.001
+  full_id: ATT&CK-T1595.001
+  name: Scanning IP Blocks
+  url: https://attack.mitre.org/techniques/T1595/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1595.002
+  full_id: ATT&CK-T1595.002
+  name: Vulnerability Scanning
+  url: https://attack.mitre.org/techniques/T1595/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1595.003
+  full_id: ATT&CK-T1595.003
+  name: Wordlist Scanning
+  url: https://attack.mitre.org/techniques/T1595/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1596
+  full_id: ATT&CK-T1596
+  name: Search Open Technical Databases
+  url: https://attack.mitre.org/techniques/T1596/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1596.001
+  full_id: ATT&CK-T1596.001
+  name: DNS/Passive DNS
+  url: https://attack.mitre.org/techniques/T1596/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1596.002
+  full_id: ATT&CK-T1596.002
+  name: WHOIS
+  url: https://attack.mitre.org/techniques/T1596/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1596.003
+  full_id: ATT&CK-T1596.003
+  name: Digital Certificates
+  url: https://attack.mitre.org/techniques/T1596/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1596.004
+  full_id: ATT&CK-T1596.004
+  name: CDNs
+  url: https://attack.mitre.org/techniques/T1596/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1596.005
+  full_id: ATT&CK-T1596.005
+  name: Scan Databases
+  url: https://attack.mitre.org/techniques/T1596/005/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1597
+  full_id: ATT&CK-T1597
+  name: Search Closed Sources
+  url: https://attack.mitre.org/techniques/T1597/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1597.001
+  full_id: ATT&CK-T1597.001
+  name: Threat Intel Vendors
+  url: https://attack.mitre.org/techniques/T1597/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1597.002
+  full_id: ATT&CK-T1597.002
+  name: Purchase Technical Data
+  url: https://attack.mitre.org/techniques/T1597/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1598
+  full_id: ATT&CK-T1598
+  name: Phishing for Information
+  url: https://attack.mitre.org/techniques/T1598/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1598.001
+  full_id: ATT&CK-T1598.001
+  name: Spearphishing Service
+  url: https://attack.mitre.org/techniques/T1598/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1598.002
+  full_id: ATT&CK-T1598.002
+  name: Spearphishing Attachment
+  url: https://attack.mitre.org/techniques/T1598/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1598.003
+  full_id: ATT&CK-T1598.003
+  name: Spearphishing Link
+  url: https://attack.mitre.org/techniques/T1598/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1598.004
+  full_id: ATT&CK-T1598.004
+  name: Spearphishing Voice
+  url: https://attack.mitre.org/techniques/T1598/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1599
+  full_id: ATT&CK-T1599
+  name: Network Boundary Bridging
+  url: https://attack.mitre.org/techniques/T1599/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1599.001
+  full_id: ATT&CK-T1599.001
+  name: Network Address Translation Traversal
+  url: https://attack.mitre.org/techniques/T1599/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1600
+  full_id: ATT&CK-T1600
+  name: Weaken Encryption
+  url: https://attack.mitre.org/techniques/T1600/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1600.001
+  full_id: ATT&CK-T1600.001
+  name: Reduce Key Space
+  url: https://attack.mitre.org/techniques/T1600/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1600.002
+  full_id: ATT&CK-T1600.002
+  name: Disable Crypto Hardware
+  url: https://attack.mitre.org/techniques/T1600/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1601
+  full_id: ATT&CK-T1601
+  name: Modify System Image
+  url: https://attack.mitre.org/techniques/T1601/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1601.001
+  full_id: ATT&CK-T1601.001
+  name: Patch System Image
+  url: https://attack.mitre.org/techniques/T1601/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1601.002
+  full_id: ATT&CK-T1601.002
+  name: Downgrade System Image
+  url: https://attack.mitre.org/techniques/T1601/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1602
+  full_id: ATT&CK-T1602
+  name: Data from Configuration Repository
+  url: https://attack.mitre.org/techniques/T1602/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1602.001
+  full_id: ATT&CK-T1602.001
+  name: SNMP (MIB Dump)
+  url: https://attack.mitre.org/techniques/T1602/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1602.002
+  full_id: ATT&CK-T1602.002
+  name: Network Device Configuration Dump
+  url: https://attack.mitre.org/techniques/T1602/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0009 operates at runtime via active data harvesting; outside tachi's design-time threat-modeling scope."
+- id: T1606
+  full_id: ATT&CK-T1606
+  name: Forge Web Credentials
+  url: https://attack.mitre.org/techniques/T1606/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1606.001
+  full_id: ATT&CK-T1606.001
+  name: Web Cookies
+  url: https://attack.mitre.org/techniques/T1606/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1606.002
+  full_id: ATT&CK-T1606.002
+  name: SAML Tokens
+  url: https://attack.mitre.org/techniques/T1606/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1608
+  full_id: ATT&CK-T1608
+  name: Stage Capabilities
+  url: https://attack.mitre.org/techniques/T1608/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1608.001
+  full_id: ATT&CK-T1608.001
+  name: Upload Malware
+  url: https://attack.mitre.org/techniques/T1608/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1608.002
+  full_id: ATT&CK-T1608.002
+  name: Upload Tool
+  url: https://attack.mitre.org/techniques/T1608/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1608.003
+  full_id: ATT&CK-T1608.003
+  name: Install Digital Certificate
+  url: https://attack.mitre.org/techniques/T1608/003/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1608.004
+  full_id: ATT&CK-T1608.004
+  name: Drive-by Target
+  url: https://attack.mitre.org/techniques/T1608/004/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1608.005
+  full_id: ATT&CK-T1608.005
+  name: Link Target
+  url: https://attack.mitre.org/techniques/T1608/005/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1608.006
+  full_id: ATT&CK-T1608.006
+  name: SEO Poisoning
+  url: https://attack.mitre.org/techniques/T1608/006/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1609
+  full_id: ATT&CK-T1609
+  name: Container Administration Command
+  url: https://attack.mitre.org/techniques/T1609/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1610
+  full_id: ATT&CK-T1610
+  name: Deploy Container
+  url: https://attack.mitre.org/techniques/T1610/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1611
+  full_id: ATT&CK-T1611
+  name: Escape to Host
+  url: https://attack.mitre.org/techniques/T1611/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1612
+  full_id: ATT&CK-T1612
+  name: Build Image on Host
+  url: https://attack.mitre.org/techniques/T1612/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1613
+  full_id: ATT&CK-T1613
+  name: Container and Resource Discovery
+  url: https://attack.mitre.org/techniques/T1613/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1614
+  full_id: ATT&CK-T1614
+  name: System Location Discovery
+  url: https://attack.mitre.org/techniques/T1614/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1614.001
+  full_id: ATT&CK-T1614.001
+  name: System Language Discovery
+  url: https://attack.mitre.org/techniques/T1614/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1615
+  full_id: ATT&CK-T1615
+  name: Group Policy Discovery
+  url: https://attack.mitre.org/techniques/T1615/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1619
+  full_id: ATT&CK-T1619
+  name: Cloud Storage Object Discovery
+  url: https://attack.mitre.org/techniques/T1619/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1620
+  full_id: ATT&CK-T1620
+  name: Reflective Code Loading
+  url: https://attack.mitre.org/techniques/T1620/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1621
+  full_id: ATT&CK-T1621
+  name: Multi-Factor Authentication Request Generation
+  url: https://attack.mitre.org/techniques/T1621/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1622
+  full_id: ATT&CK-T1622
+  name: Debugger Evasion
+  url: https://attack.mitre.org/techniques/T1622/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1647
+  full_id: ATT&CK-T1647
+  name: Plist File Modification
+  url: https://attack.mitre.org/techniques/T1647/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1648
+  full_id: ATT&CK-T1648
+  name: Serverless Execution
+  url: https://attack.mitre.org/techniques/T1648/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1649
+  full_id: ATT&CK-T1649
+  name: Steal or Forge Authentication Certificates
+  url: https://attack.mitre.org/techniques/T1649/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1650
+  full_id: ATT&CK-T1650
+  name: Acquire Access
+  url: https://attack.mitre.org/techniques/T1650/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1651
+  full_id: ATT&CK-T1651
+  name: Cloud Administration Command
+  url: https://attack.mitre.org/techniques/T1651/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1652
+  full_id: ATT&CK-T1652
+  name: Device Driver Discovery
+  url: https://attack.mitre.org/techniques/T1652/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1653
+  full_id: ATT&CK-T1653
+  name: Power Settings
+  url: https://attack.mitre.org/techniques/T1653/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1654
+  full_id: ATT&CK-T1654
+  name: Log Enumeration
+  url: https://attack.mitre.org/techniques/T1654/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1657
+  full_id: ATT&CK-T1657
+  name: Financial Theft
+  url: https://attack.mitre.org/techniques/T1657/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1659
+  full_id: ATT&CK-T1659
+  name: Content Injection
+  url: https://attack.mitre.org/techniques/T1659/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1665
+  full_id: ATT&CK-T1665
+  name: Hide Infrastructure
+  url: https://attack.mitre.org/techniques/T1665/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+- id: T1666
+  full_id: ATT&CK-T1666
+  name: Modify Cloud Resource Hierarchy
+  url: https://attack.mitre.org/techniques/T1666/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1667
+  full_id: ATT&CK-T1667
+  name: Email Bombing
+  url: https://attack.mitre.org/techniques/T1667/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0040 operates at runtime via active impact actions (data destruction, encryption); outside tachi's design-time threat-modeling scope."
+- id: T1668
+  full_id: ATT&CK-T1668
+  name: Exclusive Control
+  url: https://attack.mitre.org/techniques/T1668/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1669
+  full_id: ATT&CK-T1669
+  name: Wi-Fi Networks
+  url: https://attack.mitre.org/techniques/T1669/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1671
+  full_id: ATT&CK-T1671
+  name: Cloud Application Integration
+  url: https://attack.mitre.org/techniques/T1671/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1673
+  full_id: ATT&CK-T1673
+  name: Virtual Machine Discovery
+  url: https://attack.mitre.org/techniques/T1673/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1674
+  full_id: ATT&CK-T1674
+  name: Input Injection
+  url: https://attack.mitre.org/techniques/T1674/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1675
+  full_id: ATT&CK-T1675
+  name: ESXi Administration Command
+  url: https://attack.mitre.org/techniques/T1675/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1677
+  full_id: ATT&CK-T1677
+  name: Poisoned Pipeline Execution
+  url: https://attack.mitre.org/techniques/T1677/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1678
+  full_id: ATT&CK-T1678
+  name: Delay Execution
+  url: https://attack.mitre.org/techniques/T1678/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1679
+  full_id: ATT&CK-T1679
+  name: Selective Exclusion
+  url: https://attack.mitre.org/techniques/T1679/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1680
+  full_id: ATT&CK-T1680
+  name: Local Storage Discovery
+  url: https://attack.mitre.org/techniques/T1680/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1681
+  full_id: ATT&CK-T1681
+  name: Search Threat Vendor Data
+  url: https://attack.mitre.org/techniques/T1681/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1682
+  full_id: ATT&CK-T1682
+  name: Query Public AI Services
+  url: https://attack.mitre.org/techniques/T1682/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0043 operates at runtime via active pre-compromise reconnaissance; outside tachi's design-time threat-modeling scope."
+- id: T1683
+  full_id: ATT&CK-T1683
+  name: Generate Content
+  url: https://attack.mitre.org/techniques/T1683/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1683.001
+  full_id: ATT&CK-T1683.001
+  name: Written Content
+  url: https://attack.mitre.org/techniques/T1683/001/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1683.002
+  full_id: ATT&CK-T1683.002
+  name: Audio-Visual Content
+  url: https://attack.mitre.org/techniques/T1683/002/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: T1684
+  full_id: ATT&CK-T1684
+  name: Social Engineering
+  url: https://attack.mitre.org/techniques/T1684/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1684.001
+  full_id: ATT&CK-T1684.001
+  name: Impersonation
+  url: https://attack.mitre.org/techniques/T1684/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1684.002
+  full_id: ATT&CK-T1684.002
+  name: Email Spoofing
+  url: https://attack.mitre.org/techniques/T1684/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+- id: T1685
+  full_id: ATT&CK-T1685
+  name: Disable or Modify Tools
+  url: https://attack.mitre.org/techniques/T1685/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1685.001
+  full_id: ATT&CK-T1685.001
+  name: Disable or Modify Windows Event Log
+  url: https://attack.mitre.org/techniques/T1685/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1685.002
+  full_id: ATT&CK-T1685.002
+  name: Disable or Modify Cloud Log
+  url: https://attack.mitre.org/techniques/T1685/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1685.003
+  full_id: ATT&CK-T1685.003
+  name: Modify or Spoof Tool UI
+  url: https://attack.mitre.org/techniques/T1685/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1685.004
+  full_id: ATT&CK-T1685.004
+  name: Disable or Modify Linux Audit System Log
+  url: https://attack.mitre.org/techniques/T1685/004/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1685.005
+  full_id: ATT&CK-T1685.005
+  name: Clear Windows Event Logs
+  url: https://attack.mitre.org/techniques/T1685/005/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1685.006
+  full_id: ATT&CK-T1685.006
+  name: Clear Linux or Mac System Logs
+  url: https://attack.mitre.org/techniques/T1685/006/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1686
+  full_id: ATT&CK-T1686
+  name: Disable or Modify System Firewall
+  url: https://attack.mitre.org/techniques/T1686/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1686.001
+  full_id: ATT&CK-T1686.001
+  name: Cloud Firewall
+  url: https://attack.mitre.org/techniques/T1686/001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1686.002
+  full_id: ATT&CK-T1686.002
+  name: Network Device Firewall
+  url: https://attack.mitre.org/techniques/T1686/002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1686.003
+  full_id: ATT&CK-T1686.003
+  name: Windows Host Firewall
+  url: https://attack.mitre.org/techniques/T1686/003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1687
+  full_id: ATT&CK-T1687
+  name: Exploitation for Defense Impairment
+  url: https://attack.mitre.org/techniques/T1687/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1688
+  full_id: ATT&CK-T1688
+  name: Safe Mode Boot
+  url: https://attack.mitre.org/techniques/T1688/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1689
+  full_id: ATT&CK-T1689
+  name: Downgrade Attack
+  url: https://attack.mitre.org/techniques/T1689/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."
+- id: T1690
+  full_id: ATT&CK-T1690
+  name: Prevent Command History Logging
+  url: https://attack.mitre.org/techniques/T1690/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0112 operates at runtime via active defense-impairment behavior; outside tachi's design-time threat-modeling scope."

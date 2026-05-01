@@ -164,9 +164,9 @@ Wave 2 absorbs +1 day for `prompt-injection` + `agent-autonomy` per Architect HI
 
 ### Wave 4.2 — Stream 3 ATT&CK expansion (Days 18–19, post-Memorial Day)
 
-- [ ] T041 [US1] Expand `schemas/taxonomy/mitre-attack.yaml` from 38 → ~600 records — author full ATT&CK Enterprise inventory; apply Out-of-Scope to TA0005/7/8/9/10/11/40 member items at tactic-group level using rationale strings from T040
-- [ ] T042 [US1] Author per-item Out-of-Scope rationales on individual runtime-only sub-techniques inside in-scope tactics (TA0001 / TA0002 / TA0003 / TA0004 / TA0006 / TA0042) where applicable
-- [ ] T043 [US1] Extend `schemas/taxonomy/mitre-attack.yaml` record shape: confirm `out_of_scope` + `out_of_scope_rationale` present on all ~600 records (with `out_of_scope: false` default on in-scope items)
+- [X] T041 [US1] Expand `schemas/taxonomy/mitre-attack.yaml` from 38 → ~600 records — author full ATT&CK Enterprise inventory; apply Out-of-Scope to TA0005/7/8/9/10/11/40 member items at tactic-group level using rationale strings from T040
+- [X] T042 [US1] Author per-item Out-of-Scope rationales on individual runtime-only sub-techniques inside in-scope tactics (TA0001 / TA0002 / TA0003 / TA0004 / TA0006 / TA0042) where applicable
+- [X] T043 [US1] Extend `schemas/taxonomy/mitre-attack.yaml` record shape: confirm `out_of_scope` + `out_of_scope_rationale` present on all ~600 records (with `out_of_scope: false` default on in-scope items)
 
 ### Wave 4.3 — Stream 4 aggregator extension (Days 20–21)
 
