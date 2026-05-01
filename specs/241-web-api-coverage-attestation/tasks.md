@@ -160,7 +160,7 @@ Wave 2 absorbs +1 day for `prompt-injection` + `agent-autonomy` per Architect HI
 
 ### Wave 4.1 — Stream 3 ATT&CK Enterprise tactical-grouping audit (Day 17)
 
-- [ ] T040 [US1] Begin ATT&CK Enterprise tactical-grouping audit: enumerate Out-of-Scope tactic-level rationales for TA0005 (Defense Evasion), TA0007 (Discovery), TA0008 (Lateral Movement), TA0009 (Collection), TA0010 (Exfiltration), TA0011 (Command and Control), TA0040 (Impact); document rationale strings per data-model.md §5
+- [X] T040 [US1] Begin ATT&CK Enterprise tactical-grouping audit: enumerate Out-of-Scope tactic-level rationales for TA0005 (Defense Evasion), TA0007 (Discovery), TA0008 (Lateral Movement), TA0009 (Collection), TA0010 (Exfiltration), TA0011 (Command and Control), TA0040 (Impact); document rationale strings per data-model.md §5
 
 ### Wave 4.2 — Stream 3 ATT&CK expansion (Days 18–19, post-Memorial Day)
 
