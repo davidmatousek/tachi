@@ -1,104 +1,96 @@
 # NEXT-SESSION Handoff — F-241 Web/API Coverage Attestation + Populator Wiring
 
-**Generated**: 2026-05-01 (post Wave 5.1)
+**Generated**: 2026-05-01 (post Wave 5.2)
 **Branch**: `241-web-api-coverage-attestation`
-**Last Commit**: `3b88290` feat(241): Wave 5.1 — test infrastructure authoring (T049-T052)
+**Last Commit**: `d744c23` feat(241): Wave 5.2 — 8-baseline regen + SC-007/009/015 verification (T053-T058, CHECKPOINT 5)
 **Draft PR**: #242 (`feat(241):` Conventional Commit title verified; pushed at 2026-05-01)
-**User scope**: "Run /aod.build to continue with Wave 5.1 (T049, T050, T051, T052 — 4 parallel tester tasks)" — completed; stopping per established single-wave-per-session pattern (matches Wave 3.1 + Wave 3.2 + Wave 4.1 + Wave 4.2 + Wave 4.3 prior sessions).
+**User scope**: "Run /aod.build to continue with Wave 5.2 (T053-T058 — 8-baseline regen + SC-007/009/015 verification, CHECKPOINT 5)" — completed; stopping per established single-wave-per-session pattern (matches Wave 3.1/3.2/4.1/4.2/4.3/5.1 prior sessions).
 
 ---
 
 ## Progress Snapshot
 
-**Tasks complete**: 51/84 (60.7%)
-**Waves complete**: 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 3.1 + 3.2 + 4.1 + 4.2 + 4.3 + **5.1**
-**Phase 5 progress**: Streams 1 + 2 + 3 + 4 fully closed (taxonomy YAMLs at full inventory, aggregator filter implemented, F-A3 populator wiring complete, test infrastructure authored). Wave 5.2 (8-baseline regen + SC-007/009/015 verification — CHECKPOINT 5) is next.
+**Tasks complete**: 57/84 (67.9%)
+**Waves complete**: 1.1 + 1.2 + 1.3 + 2.1 + 2.2 + 2.3 + 3.1 + 3.2 + 4.1 + 4.2 + 4.3 + 5.1 + **5.2**
+**Phase 5 progress**: Streams 1+2+3+4 fully closed; test infrastructure authored; **8/8 baselines regenerated with populated Coverage Attestation pages**. Wave 5.3 (ADR-037 narrative + ADR-027 cross-link + §6 demotion + Polish parallel start) is next.
 
-### Done This Session — Wave 5.1 (Phase 5 test infrastructure authoring)
+### Done This Session — Wave 5.2 (CHECKPOINT 5 BLOCKER closure)
 
-**T049 — `tests/scripts/test_coverage_percentage_computation.py` (597 lines)**:
-- Independently re-derives coverage % via `|cited_ids| / |taxonomy_ids_not_out_of_scope|` formula and asserts 0 ppt delta vs aggregator output (`build_per_framework_aggregates()` invocation)
-- **Mode (a) deferred parametrization decision** — 30 active cross-check pairs (6 pre-existing baselines × 5 frameworks) + 10 `pytest.skip` markers awaiting Wave 5.2 T054/T055 baselines (`predictive-ml-app` + `mobile-banking-app`); test will auto-expand to 40 pairs once those baselines land
-- Test classes cover: independent re-derivation, 0 ppt delta, `"N/A"` denominator (all-OOS framework), backwards-compat absent-key path
-- Reuses Wave 4.3 T048 fixtures from `tests/scripts/fixtures/web_api_coverage_attestation/stream_4_coverage_percentage/`
-- **Result**: 38 pass / 10 skip / 0 fail
-- Audit-trail: `.aod/results/tester-T049.md`
+**T053 — 6 pre-existing baselines regenerated**:
+- Approach: surgical `## 9. Source Attribution` YAML-block backfill (asymmetric to F-1/F-2/F-4 full-orchestrator regen pattern; codified for ADR-037 D-? at T059)
+- All 6 PASS SC-007 + SC-015 + FR-A2 (referential integrity, 0 validation errors)
+- Coverage spread: web-app/microservices/free-text 13.33% → ascii-web-api/maestro 15.00% → mermaid-agentic-app 26.67% (highest pre-existing baseline)
+- Audit-trail: `.aod/results/sbe-T053-regen.md`
+- Helper scripts: `.aod/results/sbe-T053-{append_section9.py,strip_section9.py,regen_baseline.sh,diff_pdfs.sh}`
 
-**T050 — `tests/scripts/test_pyyaml_deferred_import.py` (311 lines)**:
-- AST walks every Python file in `scripts/` (auto-discovery via glob + filter); asserts each `import yaml` / `from yaml import …` node is nested inside `ast.FunctionDef` or `ast.AsyncFunctionDef` ancestor per KB-037 stdlib-only invariant + F-241 T046 anchor
-- Confirms T046 anchor at `scripts/extract-report-data.py:1095` (deferred `import yaml` inside `_load_framework_yaml_records` function body) is regression-guarded
-- Includes negative-control synthetic AST snippet (`ast.parse("import yaml\n")`) verifying the `_is_inside_function` helper itself isn't broken
-- **Result**: 9/9 pass; **KB-037 invariant HOLDS** (zero module-level yaml imports detected across all `scripts/*.py`)
-- Audit-trail: `.aod/results/tester-F241-T050.md`
+**T054 + T055 — 2 net-new baselines authored**:
+- T054 predictive-ml-app: 43 findings, OWASP 21.67%, canonical path `examples/predictive-ml-app/sample-report/security-report.pdf.baseline` per Architect L-1
+- T055 mobile-banking-app: 31 findings, OWASP 25.00% (HIGHEST single-baseline OWASP coverage in F-241 corpus); M8 dual-host architectural-tells **runtime-validated at per-finding attribution layer** (5 findings cite M8 across privilege-escalation + repudiation hosts — first runtime validation of ADR-036 D-4 contract)
+- Audit-trail: `.aod/results/sbe-T054-T055-net-new.md`
 
-**T051 — `tests/scripts/test_backward_compatibility.py` (frozenset shift)**:
-- Removed `prompt-injection.md` + `agent-autonomy.md` from `DETECTION_AGENT_PATHS` (4→2; the 9 prior F-A3 hosts had already been moved across earlier F-241 waves)
-- Added their companion paths to `DETECTION_PATTERN_REF_ENRICHMENT_HOSTS` frozenset (9→11)
-- Updated `len(...) == 4` → `== 2` sanity-check assertion
-- Added F-241 comment paragraph documenting the transition rationale
-- **Side-effect**: Resolves the carry-forward zero-edit invariant failure flagged in prior NEXT-SESSION Watchlist #2 — the "T051 Wave 5.2" carry-forward fix is **absorbed at Wave 5.1** (Watchlist #2 ambiguity now CLOSED)
+**T056 — SC-007 verified across all 8 baselines**: 8/8 PASS (≥1 per-finding row + non-zero OWASP coverage); ATT&CK/ATLAS/NIST AI RMF/CWE all 0.00% — acceptable per SC-007 ("non-zero on at least 1 framework family") and BLP-01 Tier-2 OWASP-only mapping per ADR-035 D-3 + ADR-036 D-3.
 
-**T052 — `tests/scripts/test_backward_compatibility.py` (mutation-target exclusion)**:
-- **No edit needed** — F-7 commit `e962a0e` (Mobile Top 10 closure at 2026-04-29) already added `predictive-ml-app` + `mobile-banking-app` to the comment-block exclusion list (lines 21-22) and they are correctly absent from `BASELINE_EXAMPLES`
-- T052 marked `[X]` as a verification-only no-op
-- Audit-trail: `.aod/results/tester-T051-T052.md`
+**T057 — SC-009 verified**: 48/48 PASS via `pytest tests/scripts/test_coverage_percentage_computation.py` (40 baseline-framework cross-check pairs at 0 ppt delta + 8 edge-case tests). Mode (a) deferred parametrization lifted (T049 deferral resolved; auto-activation contract honored — 30 active + 10 deferred → 40 active). Test infrastructure update extended `BASELINES` tuple with compensating-controls.md path + Tier-1 vs Tier-3 path selection mirroring `extract-report-data.py` line 2079-2110 runtime tier rule.
 
-### Test Gate (Wave 5.1)
+**T058 — SC-015 verified**: 8/8 PASS, 0 unmatched non-CA pages across corpus. Cross-verified independently via `git show HEAD:` pre-Wave-5.2 reference + footer-stripped pdftotext diff.
 
-| Suite | Pre-Wave-5.1 | Post-Wave-5.1 | Delta | Notes |
+**Audit-trail**: `.aod/results/tester-T056-T058-verification.md` + helper scripts `.aod/results/tester-T056-verify_ca.py` + `.aod/results/tester-T058-diff_pdfs.sh`.
+
+### Test Gate (Wave 5.2)
+
+| Suite | Pre-Wave-5.2 | Post-Wave-5.2 | Delta | Notes |
 |-------|--------------|----------------|-------|-------|
-| `test_backward_compatibility.py` | 12/13 (1 fail) | 13/13 + 1 skip | **+1 pass, -1 fail** | T051 frozenset shift fixed zero-edit failure |
-| `test_coverage_percentage_computation.py` (NEW) | n/a | 38 pass / 10 skip | **+38 pass** | T049 deliverable; Mode (a) deferred |
-| `test_pyyaml_deferred_import.py` (NEW) | n/a | 9/9 pass | **+9 pass** | T050 deliverable; KB-037 invariant guard |
-| `test_coverage_attestation.py` | 46/46 | 46/46 | unchanged | Wave 4.3 baseline carries forward |
-| `test_coverage_attestation_in_scope.py` | 19/19 | 19/19 | unchanged | Wave 4.3 baseline carries forward |
-| `test_taxonomy_integrity.py` | 5/5 | 5/5 | unchanged | Wave 4.2 baseline carries forward |
-| `test_f_a3_populator_wiring.py` | 68/68 | 68/68 | unchanged | Wave 2.3 baseline carries forward |
-| **Full suite** | 639/656 (16 fail / 1 skip) | **682/708 (15 fail / 11 skip)** | **+43 pass, -1 fail, +10 skip** | 0 new regressions |
+| `test_coverage_percentage_computation.py` | 38 pass / 10 skip | **48/48 active** (40 cross-check + 8 edge) | **+10 pass, -10 skip** | Mode (a) lift + Tier-1 path |
+| Full suite | 682/708 (15 fail / 11 skip) | **692/708 (15 fail / 1 skip)** | **+10 pass, 0 new regression, -10 skip** | T049 deferral resolved |
 
-**15 carry-forward failures remaining** (all pre-Wave-5.1, unchanged from prior baselines except for the FIXED zero-edit failure):
-- 5× Mobile Top 10 line-cap (pre-existing F-7)
-- 2× ML Top 10 line-cap (pre-existing F-6)
-- 2× LLM10 line-cap (pre-existing F-5)
-- 3× tool-abuse-enrichment (pre-existing F-3)
-- 2× citation completeness (pre-existing — `test_every_covered_owasp_has_agent_citation` + `test_every_covered_owasp_has_pattern_category_citation`; T070 Wave 6.2 owasp.yaml audit will surface; deferral candidate per FR-008 if not closable)
-- 1× mobile pattern category presence (pre-existing F-7 `test_privilege_escalation_companion_has_M8_priv_gain`)
+**15 carry-forward failures unchanged** (line-cap + citation-completeness + tool-abuse + mobile-pattern-category — pre-existing F-3/F-5/F-6/F-7 close-out items; not in F-241 scope; deferral candidates per FR-008).
 
-**0 new regressions** in Wave 5.1. Test results persisted at `specs/241-web-api-coverage-attestation/test-results/wave-51/results.json` (gitignored ephemeral artifact; build framework data-model.md §5f).
+### CHECKPOINT 5 Architect Review
 
-### F-A3 Closure Status (Detection-tier source_attribution emission)
+**Status**: APPROVED_WITH_CONCERNS (0 BLOCKING / 0 HIGH / 4 MEDIUM / 3 LOW — all narrative/amendment, none blocking)
+**Review path**: `.aod/results/architect-checkpoint-5-241.md`
 
-`grep -l "source_attribution" .claude/agents/tachi/*.md | wc -l` = **14** (target met):
-- 3 pre-existing F-1/F-2/F-4 net-new agents (`output-integrity`, `misinformation`, `human-trust-exploitation`)
-- 11 newly-wired F-A3 hosts (Waves 1.1–2.3, T009–T013 + T016–T021)
+**Top concerns** (all flagged for ADR-037 D-? narrative at T059):
+1. **6 findings missing source_attribution keys** (V6 absent-key semantic) — microservices/R-3, ascii-web-api/R-2, free-text-microservice/{S-3,D-3}, mermaid-agentic-app/{R-2,AG-4}. Recommend T053 amendment OR ADR-037 absent-key doctrine codification.
+2. **ADR-037 D-11 needed**: surgical backfill approach (asymmetric to F-1/F-2/F-4 net-new full-orchestrator pattern)
+3. **ADR-037 D-7 extension**: CWE catalog substitution rule (CWE-307→287, CWE-204→200, CWE-311→522, CWE-913→94, CWE-451→345, CWE-319/311/326→200, CWE-732→285 — parent-CWE abstraction when child absent from 53-record `schemas/taxonomy/cwe.yaml`)
+4. **ADR-037 D-12**: OWASP-only Tier-2 closure rationale (ATT&CK/ATLAS/NIST AI RMF/CWE all 0.00% — multi-framework populator wiring is forward-scope improvement candidate)
+5. **ADR-037 D-13**: auto-activation contract refinement (T049 Mode (a) deferred parametrization → 40/40 active under controlled regen — testable invariant pattern for future BLP features)
 
-`DETECTION_PATTERN_REF_ENRICHMENT_HOSTS` frozenset = **11 entries** (T051 closure)
-`DETECTION_AGENT_PATHS` = **2 entries** (only `output-integrity` + `misinformation` companions remain — these are the canonical "agent.md is the source of truth" zero-edit references)
+### F-A3 Closure Status (unchanged)
+
+`grep -l "source_attribution" .claude/agents/tachi/*.md | wc -l` = **14** (target met; unchanged from Wave 5.1).
 
 ---
 
 ## Next Actions (Resume Here)
 
-### Wave 5.2 (Days 24–25, Wed 6/3 + Thu 6/4) — 8-baseline regen + SC verification (CHECKPOINT 5)
-
-**6 sequential `senior-backend-engineer` + `tester` tasks** (see agent-assignments.md §"Wave 5.2"):
-
-- **T053** [US1] — `senior-backend-engineer` — Regenerate **6 pre-existing baselines** under `SOURCE_DATE_EPOCH=1700000000`: `web-app` + `microservices` + `ascii-web-api` + `mermaid-agentic-app` + `free-text-microservice` + `maestro-reference`. Run `make regenerate` per-baseline. Verify CA-pages populated; verify non-CA pages byte-identical pre/post via `pdftotext` per-page diff. Estimated 4.0h.
-- **T054** [US1] — `senior-backend-engineer` — Author net-new baseline at `examples/predictive-ml-app/sample-report/security-report.pdf.baseline` (canonical path per Architect L-1; mirrors F-6/F-7 convention). Estimated 2.0h.
-- **T055** [US1] — `senior-backend-engineer` — Author net-new baseline at `examples/mobile-banking-app/sample-report/security-report.pdf.baseline` (canonical path per Architect L-1). Estimated 2.0h.
-- **T056** [US1] — `tester` — Verify SC-007 across all 8 baselines (≥1 row in per-finding attribution + non-zero coverage-percentage on at least one served framework family). Estimated 1.5h.
-- **T057** [US1] — `tester` — Verify SC-009 across all 8 baselines (0 ppt delta on 40 cross-check pairs — Mode (a) skips will auto-activate to active once T054 + T055 baselines land). Estimated 1.5h.
-- **T058** [US1] — `tester` — Verify SC-015 across all 8 baselines (non-CA pages byte-identical pre/post Stream 4 regen under fixed `SOURCE_DATE_EPOCH=1700000000`). Estimated 1.5h.
-
-**Critical path**: T053 → T054 → T055 (sequential regen) → T056 → T057 → T058 (sequential verification). Total ~12.5h sequential effort. **CHECKPOINT 5 quality gate at end of Day 25**: 8/8 baselines render Coverage Attestation; aggregator emits accurate coverage percentages with 0 ppt delta on 40 cross-check pairs; non-CA pages byte-identical pre/post regen on the 6 pre-existing baselines under `SOURCE_DATE_EPOCH=1700000000`. **BLOCKER per SC-007 + SC-009 + SC-015.**
-
-**Wave 5.1 → Wave 5.2 enablement**: T049's Mode (a) deferred parametrization will auto-activate from 30 → 40 cross-check pairs once T054 + T055 land. Re-run `pytest tests/scripts/test_coverage_percentage_computation.py -q` after T055 — should report 40/40 pass with 0 skip.
-
 ### Wave 5.3 (Day 26, Fri 6/5) — ADR-037 narrative + ADR-027 cross-link + §6 demotion + Polish parallel start
 
-T059 (`architect`, ADR-037 D-1..D-10 narrative authoring; **consumes T040 + T041 §3.4 + Wave 4.3 D-8 + Wave 5.1 D-? audit-trails**) + T060 (`architect`, ADR-027 forward-pointer addendum / Architect M-1 resolution) + T061 (`senior-backend-engineer`, BLP-01 §6 demotion annotation) + T062 (contingent FR-008 deferral docs).
+**4 sequential cross-cutting tasks** (see agent-assignments.md §"Wave 5.3"):
+
+- **T059** [US3] — `architect` — Author full ADR-037 narrative (D-1..D-10 per plan §"ADR-037 D-numbered Decision Outline"; status: Proposed; 10-row mapping table). **Architect M-? from Wave 5.2 surfacing**: ADR-037 may need to be expanded to D-1..D-13 per Wave 5.2 surfacing items (see Architect Carry-Forwards below). Estimated 4.5h.
+- **T060** [US3] — `architect` — Address Architect M-1: extend ADR-027 with `## Extension History` forward-pointer addendum cross-linking ADR-037 D-7 (bidirectional). Estimated 0.5h.
+- **T061** [US3] — `senior-backend-engineer` — Annotate BLP-01 §6 Coverage Matrix in `_internal/strategy/BLP-01-threat-coverage.md` ("historical — superseded by pipeline-generated attestation" + pointer to F-B section). Estimated 1.0h.
+- **T062** [US3] — `product-manager` (pair `architect`) — (Contingent FR-008) If any item deferred per T034: document each Deferral as ADR-037 D-numbered Decision (D-11+) with rationale + Issue link + §6 annotation. Estimated 1.0h (contingent).
 
 **Polish parallel start (overlaps Wave 5.3)**: T071 ‖ T072 ‖ T073 ‖ T074 ‖ T075.
+
+**Critical path**: T059 → T060 → T061 → T062 (sequential cross-cutting). Total ~7h sequential + parallel polish work.
+
+**Quality Gate (end Day 26)**: ADR-037 status=Proposed with full multi-decision narrative; ADR-027 has bidirectional Extension History addendum; §6 Coverage Matrix carries demotion annotation + pointer; full pytest suite + final regen + 4 invariant audits green.
+
+**T059 inputs to consume** (already persisted as audit-trails — read these BEFORE drafting):
+- `.aod/results/T040-attck-tactical-grouping-audit.md` — D-5 ATT&CK tactical-grouping rationale (Wave 4.1)
+- `.aod/results/T041-T043-attack-expansion.md` — D-5 ATT&CK expansion §3.4 (Wave 4.2)
+- `.aod/results/tester-T048-stream-3-4-fixtures.md` — D-8 filter-insertion-point + dual-emission rationale (Wave 4.3)
+- `.aod/results/tester-T049.md` — D-? Mode (a) deferred parametrization decision (Wave 5.1)
+- `.aod/results/tester-F241-T050.md` — D-? KB-037 invariant guard / T046 anchor (Wave 5.1)
+- `.aod/results/tester-T051-T052.md` — D-? frozenset shift / Watchlist #2 closure (Wave 5.1)
+- `.aod/results/sbe-T053-regen.md` — D-11 surgical backfill (Wave 5.2)
+- `.aod/results/sbe-T054-T055-net-new.md` — D-? mapping derivation extension + M8 dual-host runtime validation (Wave 5.2)
+- `.aod/results/tester-T056-T058-verification.md` — D-? CHECKPOINT 5 evidence package (Wave 5.2)
+- `.aod/results/architect-checkpoint-5-241.md` — D-11/D-7-ext/D-12/D-13 enumeration (Wave 5.2)
 
 ### Wave 6.1 (Day 27, Mon 6/8) — PR title verification + ADR-037 Accepted dual-commit
 
@@ -117,8 +109,9 @@ T067 (PR ready + squash-merge --delete-branch) + T068 (ADR-037 Accepted post-mer
 ## Prerequisites for Next Session
 
 - ✅ Branch `241-web-api-coverage-attestation` is current
-- ✅ Draft PR #242 open with `feat(241):` Conventional Commit title (Wave 5.1 commit pending push)
-- ✅ Wave 5.1 work committed (commit `3b88290`); ready to push to remote
+- ✅ Draft PR #242 open with `feat(241):` Conventional Commit title (commit `d744c23` pending push)
+- ✅ Wave 5.2 work committed (commit `d744c23`); ready to push to remote
+- ✅ Wave 5.1 work committed (commit `3b88290`)
 - ✅ Wave 4.3 work committed (commit `02acd08`)
 - ✅ Wave 4.2 work committed (commit `886e022`)
 - ✅ Wave 4.1 work committed (commit `cbe955d`)
@@ -126,29 +119,26 @@ T067 (PR ready + squash-merge --delete-branch) + T068 (ADR-037 Accepted post-mer
 - ✅ Wave 3.1 work committed (commit `89848ab`)
 - ✅ Wave 2 work committed (commit `3e10019`)
 - ✅ Wave 1 work committed (commit `7ba5447`)
-- ✅ T049 audit-trail file persisted at `.aod/results/tester-T049.md` (Mode (a) deferred decision rationale; consumed by T059 / Wave 5.3 if ADR-037 D-? needs the deferred-parametrization narrative)
-- ✅ T050 audit-trail file persisted at `.aod/results/tester-F241-T050.md` (KB-037 invariant guard; T046 anchor regression-guarded; consumed by T059 if ADR-037 D-? needs the stdlib-only-invariant defensibility narrative)
-- ✅ T051+T052 audit-trail file persisted at `.aod/results/tester-T051-T052.md` (frozenset shift + Watchlist #2 closure; consumed by T059 if ADR-037 D-? needs the enrichment-frozenset-extension precedent narrative)
-- ✅ T048 audit-trail file persisted at `.aod/results/tester-T048-stream-3-4-fixtures.md` (consumed by T059 / Wave 5.3 for ADR-037 D-8)
-- ✅ T041 audit-trail file persisted at `.aod/results/T041-T043-attack-expansion.md` (consumed by T059 / Wave 5.3 for ADR-037 D-5)
-- ✅ T040 audit-trail file persisted at `.aod/results/T040-attck-tactical-grouping-audit.md` (consumed by T059 / Wave 5.3)
-- ✅ ADR-037 stub at status: Proposed (full narrative deferred to T059 / Wave 5.3)
-- ✅ All 11 newly-wired Wave 1+2 STRIDE+AI hosts under 200-line cap
-- ✅ `test_taxonomy_integrity.py` 5/5 passing on 701-record `mitre-attack.yaml`
-- ✅ `test_f_a3_populator_wiring.py` 68/68 passing (Wave 2.3 baseline)
-- ✅ `test_coverage_attestation.py` 46/46 passing (Wave 4.3 baseline)
-- ✅ `test_coverage_attestation_in_scope.py` 19/19 passing (Wave 4.3 baseline)
-- ✅ `test_coverage_percentage_computation.py` 38/38 active + 10 deferred (Wave 5.1 T049 net-new)
-- ✅ `test_pyyaml_deferred_import.py` 9/9 passing (Wave 5.1 T050 net-new)
-- ✅ `test_backward_compatibility.py` 13/13 + 1 skip passing (Wave 5.1 T051 zero-edit fix landed)
-- ✅ Stream 1 closure milestone: 14/14 detection-tier agents emit `source_attribution`; 11 hosts moved to `DETECTION_PATTERN_REF_ENRICHMENT_HOSTS` frozenset
-- ✅ Stream 3 closure milestone: 3 of 3 taxonomy YAMLs at full inventory (owasp 60 + mitre-atlas 30 + mitre-attack 701 = 791 records carrying +2 fields)
-- ✅ Stream 4 closure milestone: filter at line 1073 / dual-emission contract / partition invariant against in-scope denominator / Architect M-2 RESOLVED
-- ✅ Test infrastructure milestone: 4 new test scripts (3 net-new + 1 modified) green; 0 new regressions; SC-009 cross-check driver (T049) in place ready for Wave 5.2 baseline activation
+- ✅ T053 audit-trail file persisted at `.aod/results/sbe-T053-regen.md` (consumed by T059 / Wave 5.3 for ADR-037 D-11 surgical-backfill narrative)
+- ✅ T054+T055 audit-trail file persisted at `.aod/results/sbe-T054-T055-net-new.md` (consumed by T059 for D-? mapping derivation + M8 dual-host runtime validation narrative)
+- ✅ T056-T058 audit-trail file persisted at `.aod/results/tester-T056-T058-verification.md` (BLOCKER quality-gate evidence package)
+- ✅ CHECKPOINT 5 architect review persisted at `.aod/results/architect-checkpoint-5-241.md` (D-11/D-7-ext/D-12/D-13 enumeration)
+- ✅ Helper scripts persisted at `.aod/results/sbe-T053-*.{py,sh}` + `.aod/results/sbe-T054-T055-*.{py,sh}` + `.aod/results/tester-T056-*.py` + `.aod/results/tester-T058-*.sh` (regen pipeline + verification reproducible if Wave 5.2 needs replay)
+- ✅ All 8 baselines render Coverage Attestation pages with non-empty per-finding rows + non-zero OWASP coverage (SC-007 BLOCKER green)
+- ✅ `test_coverage_percentage_computation.py` 48/48 active (was 38 pass + 10 skip; T049 Mode (a) deferral resolved)
+- ✅ `test_coverage_attestation.py` 46/46 unchanged (Wave 4.3 baseline carries forward)
+- ✅ `test_coverage_attestation_in_scope.py` 19/19 unchanged
+- ✅ `test_taxonomy_integrity.py` 5/5 unchanged
+- ✅ `test_f_a3_populator_wiring.py` 68/68 unchanged
+- ✅ `test_pyyaml_deferred_import.py` 9/9 unchanged
+- ✅ `test_backward_compatibility.py` 13/13 + 1 skip unchanged
+- ✅ Stream 4 closure milestone: aggregator emits `in-scope-record-count` + `yaml-record-count` dual fields; per-baseline coverage % computed against in-scope denominator; 40 cross-check pairs at 0 ppt delta
+- ✅ ADR-037 stub at status: Proposed (full narrative authoring is the T059 deliverable at Wave 5.3)
+- ✅ 22-file budget per Watchlist #4 not exceeded: F-241 cumulative file modifications = 11 host agents + 2 Stream 2 companion catalogs + 3 taxonomy YAMLs + 1 script (`extract-report-data.py`) + 5 test files = **22 files within scope** + Wave 5.2 added 18 baseline files (within `examples/` budget — separate accounting from detection-tier 22-file budget)
 
 **Suggested resume command**:
 ```
-claude "Resume F-241 Web/API Coverage Attestation. Branch: 241-web-api-coverage-attestation. Waves 1.1-1.3 + 2.1-2.3 + 3.1 + 3.2 + 4.1 + 4.2 + 4.3 + 5.1 complete (51/84 tasks); Streams 1+2+3+4 fully closed; test infrastructure authored (T049 30 active + 10 deferred / T050 KB-037 invariant guard / T051+T052 frozenset shift). Run /aod.build to continue with Wave 5.2 (T053-T058 — 8-baseline regen + SC-007/009/015 verification, CHECKPOINT 5)."
+claude "Resume F-241 Web/API Coverage Attestation. Branch: 241-web-api-coverage-attestation. Waves 1.1-1.3 + 2.1-2.3 + 3.1 + 3.2 + 4.1 + 4.2 + 4.3 + 5.1 + 5.2 complete (57/84 tasks); Streams 1+2+3+4 fully closed; 8/8 baselines regenerated with populated Coverage Attestation pages; CHECKPOINT 5 BLOCKER green (SC-007 + SC-009 + SC-015 all PASS). Run /aod.build to continue with Wave 5.3 (T059-T062 — ADR-037 Proposed narrative + ADR-027 cross-link + §6 demotion + Polish parallel start, BLOCKER per PRD Stage 6 entry)."
 ```
 
 ---
@@ -157,29 +147,34 @@ claude "Resume F-241 Web/API Coverage Attestation. Branch: 241-web-api-coverage-
 
 - **M-1**: ADR-027 forward-pointer addendum cross-linking ADR-037 D-7 (T060 + T083, **Wave 5.3**) — unchanged
 - **M-2**: ✅ **RESOLVED at Wave 4.3** (filter at `_load_framework_yaml_records()` line 1073; T084 sanity-check pending Wave 6.1 polish)
-- **L-1**: Canonical baseline paths for predictive-ml-app + mobile-banking-app (T054 + T055 + T081, **Wave 5.2**) — unchanged
-- **MEDIUM-B (Wave 5.1 surfacing)**: ✅ **GUARDED at Wave 5.1 T050** (`test_pyyaml_deferred_import.py` AST walks all `scripts/*.py`; KB-037 invariant regression-guarded; T046 anchor at `extract-report-data.py:1095` validated)
-- **NEW (Wave 4.2 surfacing)**: data-model.md §5 should be extended with +2 entries enumerating TA0112 Defense Impairment + TA0043 Reconnaissance; non-breaking spec additive recommended before delivery (or absorbed into ADR-037 D-5 narrative at T059). Documented at `.aod/results/T041-T043-attack-expansion.md` §3.4.
-- **NEW (Wave 4.3 surfacing)**: ADR-037 D-8 narrative should explicitly cite line 1073 insertion point + dual-emission rationale. Documented in commit `02acd08` + `.aod/results/tester-T048-stream-3-4-fixtures.md`.
-- **NEW (Wave 5.1 surfacing)**: ADR-037 D-? narrative may want to capture the **Mode (a) deferred parametrization decision** (T049 30 active + 10 deferred) as an explicit auditor-facing rationale; auto-activation pattern from skip → pass on T054/T055 baseline landing is testable. Optional ADR enhancement; documented at `.aod/results/tester-T049.md`.
+- **L-1**: ✅ **RESOLVED at Wave 5.2** (canonical baseline paths `examples/predictive-ml-app/sample-report/security-report.pdf.baseline` + `examples/mobile-banking-app/sample-report/security-report.pdf.baseline` populated by T054 + T055; T081 sanity-check pending Wave 6.1 polish)
+- **MEDIUM-B (Wave 5.1 surfacing)**: ✅ **GUARDED at Wave 5.1 T050** (`test_pyyaml_deferred_import.py` AST walks all `scripts/*.py`; KB-037 invariant regression-guarded)
+- **NEW (Wave 4.2 surfacing)**: data-model.md §5 should be extended with +2 entries enumerating TA0112 Defense Impairment + TA0043 Reconnaissance; non-breaking spec additive recommended before delivery (or absorbed into ADR-037 D-5 narrative at T059)
+- **NEW (Wave 4.3 surfacing)**: ADR-037 D-8 narrative should explicitly cite line 1073 insertion point + dual-emission rationale
+- **NEW (Wave 5.1 surfacing)**: ADR-037 D-? narrative may want to capture the **Mode (a) deferred parametrization decision** (T049 30 active + 10 deferred → 40 active auto-activation pattern). **Auto-activation tested at Wave 5.2 T057 → 48/48 PASS confirms contract.**
+- **NEW (Wave 5.2 surfacing — 4 items per Architect CHECKPOINT 5 review)**:
+  - **D-11** (surgical backfill approach): asymmetric to F-1/F-2/F-4 full-orchestrator regen pattern; codify the parser-side Section 9 extraction path (`tachi_parsers._extract_source_attribution_block`) as a legitimate alternative to host-agent re-dispatch when finding content is preserved byte-identical; document the trade-off (faster regen but doesn't exercise host-agent populator wiring at runtime)
+  - **D-7 extension** (CWE substitution rule): codify parent-CWE abstraction when child-CWE absent from 53-record `schemas/taxonomy/cwe.yaml` (CWE-307→287, CWE-204→200, CWE-311→522, CWE-913→94, CWE-451→345, CWE-319/311/326→200, CWE-732→285); document substitution rationale + future-scope plan to expand cwe.yaml inventory if abstraction loses signal
+  - **D-12** (OWASP-only Tier-2 closure rationale): ATT&CK/ATLAS/NIST AI RMF/CWE all 0.00% across 8 baselines is acceptable per SC-007 + BLP-01 Tier-2 OWASP-only mapping per ADR-035 D-3 + ADR-036 D-3; multi-framework populator wiring is forward-scope improvement candidate (potential F-9 in BLP-02 envelope)
+  - **D-13** (auto-activation contract): T049 Mode (a) deferred parametrization (30 active + 10 deferred → 40 active under controlled regen) is a testable invariant pattern; codify the auto-activation contract for future BLP features that author baselines incrementally
+  - **V6** (absent-key semantic doctrine): 6 findings (microservices/R-3, ascii-web-api/R-2, free-text-microservice/{S-3,D-3}, mermaid-agentic-app/{R-2,AG-4}) lack `## 9. Source Attribution` keys. Either amend T053 to backfill these or codify the V6 absent-key semantic in ADR-037 (e.g., "absent-key findings are intentional Out-of-Scope at the per-finding-attribution layer; coverage % calculation is unaffected since they don't contribute to numerator")
 
 ---
 
 ## Out-of-Session Risks & Watchlist
 
-1. **Wave 5.2 = CHECKPOINT 5 (BLOCKER per SC-007 + SC-009 + SC-015)** — 8-baseline regen + verification is the gating quality milestone before Wave 5.3 ADR narrative can begin. If ANY baseline fails to render Coverage Attestation OR coverage % delta is ≠ 0 ppt OR non-CA pages byte-differ, the wave is blocked until resolved. Pre-emptive verification: `make regenerate` per-baseline serially under `SOURCE_DATE_EPOCH=1700000000`; `pdftotext` per-page diff for byte-identity check; `pytest tests/scripts/test_coverage_percentage_computation.py -q` for 0-ppt-delta validation.
-2. **T049 Mode (a) auto-activation** — once T054 + T055 land, the 10 currently-skipped pairs in `test_coverage_percentage_computation.py` will auto-activate. Re-run to confirm 40/40 active. **If any of the 10 newly-active pairs fail**, the failure is a real Wave 5.2 baseline-quality issue (not a Mode (a) deferral artifact).
-3. **8-baseline byte-identity discipline (T053–T058 Wave 5.2)** — non-CA pages on 8 pre-existing baselines must remain byte-identical under `SOURCE_DATE_EPOCH=1700000000` post Stream 4 aggregator change. Wave 4.3 implementation affects ONLY Coverage Attestation page (added in F-A1 ADR-027). Pre-emptive verification approach: `diff <(pdftotext old) <(pdftotext new)` per page; fail fast if any non-CA page byte-differs.
-4. **F-7 28-file zero-edit invariant** — F-241 has now modified: 11 host agents + 2 Stream 2 companion catalogs + 3 taxonomy YAMLs + `scripts/extract-report-data.py` + 5 test files (within scope). T075 will verify final compliance at Wave 6.1; current count: 11 + 2 + 3 + 1 + 5 = **22 files modified** within budget (test file edits do not count against detection-tier zero-edit invariant; Wave 5.1 added 2 net-new test files + 1 modification).
-5. **Schema unchanged at v1.8** — confirmed at T008; no `id.pattern` regex extension needed. F-241 reuses S/T/I/E/R + LLM/AG/AGP prefixes. Wave 5.1 added no schema changes.
-6. **Tactical-grouping defensibility (ADR-037 D-5 at T059)** — T040 documents 7 rationale strings for the spec-enumerated tactics; T041 §3.4 surfaces 2 derived strings for post-spec STIX-update tactics (TA0112 + TA0043); Wave 4.3 contributes the filter-insertion-point + dual-emission rationale (D-8). T059 (Wave 5.3) authors the formal external-auditor-facing justification narrative consuming all three audit-trails.
-7. **Pre-existing test failures (15 carry-forward, was 16 pre-Wave-5.1)** — line-cap + citation-completeness + tool-abuse + mobile-pattern-category failures persist:
+1. **Wave 5.3 ADR-037 narrative scope creep** — T059 estimated 4.5h, but Wave 5.2 surfaced 4 net-new D-? items (D-11/D-7-ext/D-12/D-13) + V6 absent-key doctrine. Effective ADR-037 scope expansion: ~30% over baseline 10-decision estimate. Plan accordingly: if T059 takes >6h, consider deferring D-12 (OWASP-only Tier-2 closure) to a follow-on ADR-038 or BLP-02 envelope per Risk 1.
+2. **6 absent-key findings (V6) decision** — Two paths: (a) Amend T053 to backfill the 6 missing source_attribution entries (1-2h overhead), or (b) Codify V6 absent-key semantic in ADR-037. Path (a) closes the gap definitively; path (b) declares it intentional. **Architect strong preference: path (a) for cleanliness, but path (b) is acceptable if it's properly justified per `data-model.md` §2 backwards-compat semantic.**
+3. **CWE catalog substitution rule** — 12 distinct CWE substitutions applied across T053+T054/T055. If ADR-037 D-7 extension codifies the rule, it should also propose forward-scope work to expand `schemas/taxonomy/cwe.yaml` inventory beyond 53 records (current set focuses on Top 25 + a few selected child-CWEs). Forward-scope candidate for BLP-02 envelope.
+4. **ATT&CK/ATLAS/NIST/CWE 0.00% coverage** — Acceptable per SC-007 wording ("non-zero on at least 1 framework family"), but the visual impact of 4 frameworks at 0.00% may concern reviewers. ADR-037 D-12 should preemptively address this and frame multi-framework populator wiring as forward-scope. Consider whether T059 should extend §6 Coverage Matrix annotation to make the OWASP-only-Tier-2 framing explicit.
+5. **F-7 28-file zero-edit invariant** — F-241 has now modified: 11 host agents + 2 Stream 2 companion catalogs + 3 taxonomy YAMLs + `scripts/extract-report-data.py` + 5 test files = **22 detection-tier-budget files within scope** + 18 `examples/` baseline files (Wave 5.2 — separate accounting). T075 will verify final compliance at Wave 6.1.
+6. **Schema unchanged at v1.8** — confirmed; no `id.pattern` regex extension needed. F-241 reuses S/T/I/E/R + LLM/AG/AGP prefixes. Wave 5.2 added no schema changes.
+7. **Pre-existing test failures (15 carry-forward, was 15 pre-Wave-5.2)** — line-cap + citation-completeness + tool-abuse + mobile-pattern-category failures persist:
    - T070 Wave 6.2: owasp.yaml audit completeness verification (may surface citation-completeness root cause)
    - Other line-cap failures: pre-existing fixture metadata; not F-241 scope (deferral candidates per FR-008)
-   - Wave 5.1 NET FIX: zero-edit invariant on `agent-autonomy.md` + `prompt-injection.md` resolved by T051 frozenset shift (Watchlist #2 ambiguity from prior NEXT-SESSION now CLOSED — the carry-forward fix WAS Wave 5.1 T051 itself, not a separate Wave 5.2 task)
-8. **Wave 4.3 dual-emission Typst contract** — both `yaml-record-count` (raw) AND `in-scope-record-count` (filtered) emit on the same per-framework aggregate dict. The Typst report-template can render either or both; current default consumes `yaml-record-count` for top-line display + `in-scope-record-count` for denominator math. Confirm template renders correctly on Wave 5.2 baseline regen — if any template rendering edits are needed, those land in Wave 5.2 alongside T053.
-9. **Wave 5.2 estimated effort = 12.5h sequential** — heavier than typical wave; plan for full session dedicated to T053-T058. If `make regenerate` runs hit unexpected errors on any of the 8 baselines, those become BLOCKING per SC-007/SC-015 — pre-flight `make regenerate` on `web-app` baseline alone first to validate the regen toolchain end-to-end before committing the full T053 sequential run.
+8. **mobile-banking-app + predictive-ml-app `security-report.pdf` (non-baseline) tracked artifacts** — These F-6/F-7 invariant artifacts are byte-identical to `.baseline` (verified via `md5 -q`); no action needed. Just be aware they're now updated alongside `.baseline` post-Wave-5.2 and may show as separate diffs in some `git diff` flows.
+9. **Wave 5.3 estimated effort = 7h sequential + parallel polish** — Lighter than Wave 5.2's 12.5h. Should fit comfortably in a single session. If T059 alone takes >6h due to Wave 5.2 D-11/D-7-ext/D-12/D-13 expansion, consider deferring T060/T061/T062 to Wave 5.3b sub-session.
 
 ---
 
-**End of NEXT-SESSION handoff** — 51/84 tasks complete (60.7%); Streams 1+2+3+4 fully closed; test infrastructure authored at Wave 5.1; resuming at Wave 5.2 (T053–T058 — 8-baseline regen + SC-007/009/015 verification, CHECKPOINT 5 BLOCKER).
+**End of NEXT-SESSION handoff** — 57/84 tasks complete (67.9%); Streams 1+2+3+4 fully closed; 8/8 baselines regenerated with populated Coverage Attestation pages; CHECKPOINT 5 BLOCKER green (SC-007 + SC-009 + SC-015 all PASS); resuming at Wave 5.3 (T059–T062 — ADR-037 Proposed narrative + ADR-027 cross-link + §6 demotion + Polish parallel start, BLOCKER per PRD Stage 6 entry).
