@@ -297,3 +297,108 @@ No cross-agent correlations detected. No AI agents were dispatched for this arch
 | D-4 | WellnessBankCredentialCache | Credential store corruption leading to denial of service | Low | HMAC integrity validation on cached credentials; clear recovery path |
 | I-9 | WellnessBank Backend API | Backend API verbose error response exposure | Low | Centralized error handling returning generic codes to client; log full context server-side only |
 | D-3 | WellnessBankLocalDB | Local database saturation | Note | Cache eviction policies with max row count and TTL expiry; monitor DB size via analytics |
+
+---
+
+## 9. Source Attribution
+
+
+Per-finding attribution to external taxonomy frameworks (OWASP, CWE, MITRE ATT&CK, MITRE ATLAS, NIST AI RMF). Populated by F-241 Wave 5.2 / T054-T055 net-new baseline regen. Each entry resolves against `schemas/taxonomy/*.yaml` per F-A2 referential-integrity contract.
+
+
+```yaml
+D-1:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-400, relationship: related}
+D-2:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-400, relationship: related}
+D-3:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-4:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-400, relationship: related}
+E-1:
+  - {taxonomy: owasp, id: M8, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+E-2:
+  - {taxonomy: owasp, id: M8, relationship: primary}
+  - {taxonomy: cwe, id: CWE-862, relationship: related}
+E-3:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-862, relationship: related}
+I-1:
+  - {taxonomy: owasp, id: M5, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-2:
+  - {taxonomy: owasp, id: M6, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-3:
+  - {taxonomy: owasp, id: M9, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-4:
+  - {taxonomy: owasp, id: M10, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-5:
+  - {taxonomy: owasp, id: M5, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-6:
+  - {taxonomy: owasp, id: M5, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-7:
+  - {taxonomy: owasp, id: M9, relationship: primary}
+  - {taxonomy: cwe, id: CWE-522, relationship: related}
+I-8:
+  - {taxonomy: owasp, id: M8, relationship: primary}
+  - {taxonomy: cwe, id: CWE-532, relationship: related}
+I-9:
+  - {taxonomy: owasp, id: A05, relationship: primary}
+  - {taxonomy: cwe, id: CWE-209, relationship: related}
+R-1:
+  - {taxonomy: owasp, id: M8, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+R-2:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+R-3:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+R-4:
+  - {taxonomy: owasp, id: M8, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+S-1:
+  - {taxonomy: owasp, id: M1, relationship: primary}
+  - {taxonomy: cwe, id: CWE-522, relationship: related}
+S-2:
+  - {taxonomy: owasp, id: M3, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+S-3:
+  - {taxonomy: owasp, id: M1, relationship: primary}
+  - {taxonomy: cwe, id: CWE-522, relationship: related}
+S-4:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+S-5:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-613, relationship: related}
+T-1:
+  - {taxonomy: owasp, id: M2, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-2:
+  - {taxonomy: owasp, id: M2, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-3:
+  - {taxonomy: owasp, id: M4, relationship: primary}
+  - {taxonomy: cwe, id: CWE-20, relationship: related}
+T-4:
+  - {taxonomy: owasp, id: M7, relationship: primary}
+  - {taxonomy: cwe, id: CWE-94, relationship: related}
+T-5:
+  - {taxonomy: owasp, id: M9, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-6:
+  - {taxonomy: owasp, id: M1, relationship: primary}
+  - {taxonomy: cwe, id: CWE-522, relationship: related}
+```
+

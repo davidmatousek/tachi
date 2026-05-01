@@ -109,29 +109,53 @@ STREAM_4_FIXTURES = (
 FRAMEWORKS = ("owasp", "mitre-attack", "mitre-atlas", "nist-ai-rmf", "cwe")
 
 # All 8 F-241 baselines per spec.md FR-015.
-# Each entry: (baseline_name, threats_md_relative_path, deferral_reason_or_None)
-# deferral_reason set => pytest.skip the parametrized pair with that reason
-# (Mode (a) DEFERRED — see AUTHOR'S NOTE in module docstring).
-BASELINES: tuple[tuple[str, str, "str | None"], ...] = (
-    ("web-app", "examples/web-app/threats.md", None),
-    ("microservices", "examples/microservices/threats.md", None),
-    ("ascii-web-api", "examples/ascii-web-api/threats.md", None),
-    ("mermaid-agentic-app", "examples/mermaid-agentic-app/threats.md", None),
-    ("free-text-microservice", "examples/free-text-microservice/threats.md", None),
-    ("maestro-reference", "examples/maestro-reference/threats.md", None),
+# Each entry: (baseline_name, threats_md_relative_path,
+#             compensating_controls_md_relative_path_or_None,
+#             deferral_reason_or_None)
+#
+# When ``compensating_controls_md_relative_path`` is set, the baseline is
+# Tier-1 (findings sourced from compensating-controls.md) and the test
+# mirrors the production aggregator path at extract-report-data.py
+# line ~2081-2110 (parse_compensating_controls_md → _merge_source_attribution
+# from threats.md Section 9). When None, the baseline is Tier-3
+# (parse_threats_findings reads Section 7 directly + injects source_attribution
+# inline).
+#
+# T057 status (Wave 5.2 closure): all 8 baselines active. The 2 net-new
+# baselines (predictive-ml-app, mobile-banking-app) auto-activated when
+# T054 + T055 landed — their canonical baselines now exist at
+# examples/<arch>/sample-report/security-report.pdf.baseline. Both are
+# Tier-1 (cc.md present) → flagged accordingly so the test traverses the
+# same Tier-1 merge path the aggregator uses at runtime.
+BASELINES: tuple[
+    tuple[str, str, "str | None", "str | None"], ...
+] = (
+    ("web-app", "examples/web-app/threats.md", None, None),
+    ("microservices", "examples/microservices/threats.md", None, None),
+    ("ascii-web-api", "examples/ascii-web-api/threats.md", None, None),
+    ("mermaid-agentic-app", "examples/mermaid-agentic-app/threats.md", None, None),
+    ("free-text-microservice", "examples/free-text-microservice/threats.md", None, None),
+    (
+        "maestro-reference",
+        "examples/maestro-reference/threats.md",
+        # maestro-reference is Tier-1 (cc.md present) but Tier-3 parser
+        # also produces a finding set from its Section 7 markdown table
+        # — match the aggregator's runtime selection (Tier-1 wins when
+        # cc.md is detected) per extract-report-data.py line 2079-2086.
+        "examples/maestro-reference/compensating-controls.md",
+        None,
+    ),
     (
         "predictive-ml-app",
         "examples/predictive-ml-app/sample-report/threats.md",
-        "predictive-ml-app canonical baseline authored at Wave 5.2 T054 "
-        "(examples/predictive-ml-app/sample-report/security-report.pdf.baseline). "
-        "Cross-check pair will auto-activate when T054 lands.",
+        "examples/predictive-ml-app/sample-report/compensating-controls.md",
+        None,
     ),
     (
         "mobile-banking-app",
         "examples/mobile-banking-app/sample-report/threats.md",
-        "mobile-banking-app canonical baseline authored at Wave 5.2 T055 "
-        "(examples/mobile-banking-app/sample-report/security-report.pdf.baseline). "
-        "Cross-check pair will auto-activate when T055 lands.",
+        "examples/mobile-banking-app/sample-report/compensating-controls.md",
+        None,
     ),
 )
 
@@ -262,7 +286,7 @@ class TestBaselineFrameworkCrossCheck:
         ids=lambda n: f"framework={n}",
     )
     @pytest.mark.parametrize(
-        "baseline_name,threats_path,deferral_reason",
+        "baseline_name,threats_path,compensating_controls_path,deferral_reason",
         BASELINES,
         ids=lambda b: f"baseline={b}" if isinstance(b, str) else "",
     )
@@ -270,6 +294,7 @@ class TestBaselineFrameworkCrossCheck:
         self,
         baseline_name,
         threats_path,
+        compensating_controls_path,
         deferral_reason,
         framework_name,
         tachi_parsers_module,
@@ -287,8 +312,37 @@ class TestBaselineFrameworkCrossCheck:
         )
 
         # ----- Step 1: parse findings from baseline -----
+        # Mirror the runtime aggregator's tier-selection rule at
+        # extract-report-data.py line 2079-2110: if compensating-controls.md
+        # exists, parse Tier-1 (cc.md → findings + merge source_attribution
+        # from threats.md Section 9). Otherwise, parse Tier-3
+        # (parse_threats_findings reads Section 7 markdown table + inline
+        # source_attribution injection). This matches the production
+        # decision tree byte-for-byte.
         content = threats_md.read_text(encoding="utf-8")
-        findings = tachi_parsers_module.parse_threats_findings(content)
+        if compensating_controls_path is not None:
+            cc_md = REPO_ROOT / compensating_controls_path
+            assert cc_md.is_file(), (
+                f"Tier-1 baseline {baseline_name!r} expects "
+                f"compensating-controls.md at {cc_md} — both files must be "
+                f"present for the Tier-1 merge path to operate. The "
+                f"aggregator's runtime fallback at extract-report-data.py "
+                f"line ~2081 reads cc.md FIRST, then merges Section 9 from "
+                f"threats.md via _merge_source_attribution."
+            )
+            cc_content = cc_md.read_text(encoding="utf-8")
+            cc_data = tachi_parsers_module.parse_compensating_controls_md(cc_content)
+            findings = cc_data["findings"]
+            block = tachi_parsers_module._extract_source_attribution_block(content)
+            if block is not None:
+                for finding in findings:
+                    attribution = tachi_parsers_module._extract_source_attribution(
+                        finding["id"], block
+                    )
+                    if attribution is not None:
+                        finding["source_attribution"] = attribution
+        else:
+            findings = tachi_parsers_module.parse_threats_findings(content)
 
         # ----- Step 2: independently re-derive coverage_percentage -----
         in_scope_records = _independent_load_in_scope_records(framework_name)

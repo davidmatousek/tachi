@@ -555,3 +555,345 @@ Note: Deduplicated counts reflect 6 correlation groups (CG-1 through CG-6) contr
 | D-12 | Medical Literature Vector Index | Excessive retrieval queries degrade Medical Literature Vector Index availability | Low | Implement retrieval rate limits per session. Apply result caching. |
 | I-17 | HIPAA RBAC + Policy Engine | RBAC engine leaks access control policies through error messages | Low | Sanitize all RBAC API error responses to prevent policy enumeration. |
 | LLM-3 | Clinical LLM | Adversary extracts Clinical LLM clinical knowledge through targeted query patterns | Low | Implement query rate limiting and anomaly detection for systematic extraction patterns. |
+
+---
+
+## 9. Source Attribution
+
+
+Per-finding attribution to external taxonomy frameworks (OWASP, CWE, MITRE ATT&CK, MITRE ATLAS, NIST AI RMF). Populated by F-241 Wave 5.2 / T053 baseline regen. Each entry resolves against `schemas/taxonomy/*.yaml` per F-A2 referential-integrity contract.
+
+
+```yaml
+S-1:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+S-5:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+S-6:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+T-3:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-7:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-10:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-11:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-16:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+I-3:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-7:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-10:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+E-7:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+AG-1:
+  - {taxonomy: owasp, id: ASI01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-94, relationship: related}
+AG-2:
+  - {taxonomy: owasp, id: ASI01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-94, relationship: related}
+AG-7:
+  - {taxonomy: owasp, id: ASI01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-94, relationship: related}
+LLM-1:
+  - {taxonomy: owasp, id: LLM01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-20, relationship: related}
+AGP-01:
+  - {taxonomy: owasp, id: ASI06, relationship: primary}
+  - {taxonomy: cwe, id: CWE-94, relationship: related}
+S-2:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+S-3:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+S-7:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+S-8:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+S-9:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+T-1:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-2:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-4:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-5:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-6:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-8:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-9:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-12:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-14:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-15:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+R-5:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+R-6:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+R-9:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+I-1:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-2:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-4:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-5:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-6:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-8:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-9:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-13:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-14:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-15:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-16:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+D-1:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-3:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-4:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-5:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-7:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-8:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-10:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-13:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+E-1:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+E-2:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+E-3:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+E-4:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+E-5:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+E-6:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+E-8:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+AG-3:
+  - {taxonomy: owasp, id: ASI01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-94, relationship: related}
+AG-4:
+  - {taxonomy: owasp, id: ASI01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-94, relationship: related}
+AG-5:
+  - {taxonomy: owasp, id: ASI01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-94, relationship: related}
+AG-6:
+  - {taxonomy: owasp, id: ASI01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-94, relationship: related}
+AG-8:
+  - {taxonomy: owasp, id: ASI01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-94, relationship: related}
+LLM-2:
+  - {taxonomy: owasp, id: LLM01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-20, relationship: related}
+LLM-4:
+  - {taxonomy: owasp, id: LLM01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-20, relationship: related}
+LLM-5:
+  - {taxonomy: owasp, id: LLM01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-20, relationship: related}
+LLM-6:
+  - {taxonomy: owasp, id: LLM01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-20, relationship: related}
+AGP-02:
+  - {taxonomy: owasp, id: ASI06, relationship: primary}
+  - {taxonomy: cwe, id: CWE-94, relationship: related}
+AGP-03:
+  - {taxonomy: owasp, id: ASI06, relationship: primary}
+  - {taxonomy: cwe, id: CWE-94, relationship: related}
+S-4:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+S-10:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+S-11:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+S-12:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+S-13:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+S-14:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+T-13:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-17:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-18:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+R-1:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+R-3:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+R-7:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+R-8:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+R-10:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+R-11:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+R-12:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+R-13:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+I-17:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-18:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+D-2:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-6:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-9:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-14:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-15:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-16:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-17:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-18:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+E-9:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+E-10:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+E-11:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+E-12:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+R-2:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+R-4:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+I-11:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+I-12:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+D-11:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-12:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+LLM-3:
+  - {taxonomy: owasp, id: LLM01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-20, relationship: related}
+```
+

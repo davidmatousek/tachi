@@ -217,3 +217,48 @@ All findings sorted by risk level descending. Critical and High findings should 
 | T-2 | NEW | — | Auth Service | JWT payload tampering over unencrypted internal HTTP | Medium | Mutual TLS or signed JWTs with integrity verification between Gateway and Auth Service |
 | D-2 | NEW | — | User Database | Resource-exhaustive SQL queries consuming connection pool | Medium | PostgreSQL statement_timeout; connection limits per user; query complexity analysis |
 | R-2 | NEW | — | API Gateway | Missing correlation IDs in access logs preventing attribution | Low | Log authenticated user identity and correlation ID; centralized SIEM with tamper protection |
+
+---
+
+## 9. Source Attribution
+
+
+Per-finding attribution to external taxonomy frameworks (OWASP, CWE, MITRE ATT&CK, MITRE ATLAS, NIST AI RMF). Populated by F-241 Wave 5.2 / T053 baseline regen. Each entry resolves against `schemas/taxonomy/*.yaml` per F-A2 referential-integrity contract.
+
+
+```yaml
+S-1:
+  - {taxonomy: owasp, id: API2, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+S-2:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+T-1:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-89, relationship: related}
+T-2:
+  - {taxonomy: owasp, id: A05, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+R-1:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+I-1:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-522, relationship: related}
+I-2:
+  - {taxonomy: owasp, id: A05, relationship: primary}
+  - {taxonomy: cwe, id: CWE-209, relationship: related}
+D-1:
+  - {taxonomy: owasp, id: API4, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-2:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-400, relationship: related}
+E-1:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+E-2:
+  - {taxonomy: owasp, id: API1, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+```
+

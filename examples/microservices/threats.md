@@ -322,3 +322,87 @@ Mapping of findings to the OWASP Top 10 Web 2025 framework categories.
 | A08:2025 | Software or Data Integrity Failures | 2 |
 | A09:2025 | Security Logging and Alerting Failures | 3 |
 | A10:2025 | Mishandling of Exceptional Conditions | 2 |
+
+---
+
+## 9. Source Attribution
+
+
+Per-finding attribution to external taxonomy frameworks (OWASP, CWE, MITRE ATT&CK, MITRE ATLAS, NIST AI RMF). Populated by F-241 Wave 5.2 / T053 baseline regen. Each entry resolves against `schemas/taxonomy/*.yaml` per F-A2 referential-integrity contract.
+
+
+```yaml
+S-1:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+S-2:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+S-3:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+S-4:
+  - {taxonomy: owasp, id: A07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+T-1:
+  - {taxonomy: owasp, id: A03, relationship: primary}
+  - {taxonomy: cwe, id: CWE-89, relationship: related}
+T-2:
+  - {taxonomy: owasp, id: A08, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+T-3:
+  - {taxonomy: owasp, id: A05, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+T-4:
+  - {taxonomy: owasp, id: A05, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+R-1:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-778, relationship: related}
+R-2:
+  - {taxonomy: owasp, id: A09, relationship: primary}
+  - {taxonomy: cwe, id: CWE-223, relationship: related}
+I-1:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-522, relationship: related}
+I-2:
+  - {taxonomy: owasp, id: A05, relationship: primary}
+  - {taxonomy: cwe, id: CWE-209, relationship: related}
+I-3:
+  - {taxonomy: owasp, id: A02, relationship: primary}
+  - {taxonomy: cwe, id: CWE-522, relationship: related}
+I-4:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-200, relationship: related}
+D-1:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-770, relationship: related}
+D-2:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-400, relationship: related}
+D-3:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-400, relationship: related}
+D-4:
+  - {taxonomy: owasp, id: A04, relationship: primary}
+  - {taxonomy: cwe, id: CWE-400, relationship: related}
+E-1:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-639, relationship: related}
+E-2:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+E-3:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-269, relationship: related}
+E-4:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+E-5:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-269, relationship: related}
+E-6:
+  - {taxonomy: owasp, id: A01, relationship: primary}
+  - {taxonomy: cwe, id: CWE-285, relationship: related}
+```
+
