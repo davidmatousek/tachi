@@ -42,7 +42,7 @@ This agent additionally covers the inter-agent channel surface — A2A communica
 2. For each component, walk through the pattern categories in the reference file (unauthorized tool invocation, capability escalation via composition, parameter injection, tool chain manipulation, tool poisoning, LLM plugin compromise, unauthorized invocation via instruction hijack, MCP server poisoning) and collect every indicator present.
 3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: agentic`, a sequential `AG-N` id, and the target component name.
 4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of confidentiality, integrity, availability, intent alignment), then compute `risk_level` via the matrix in `severity-bands-shared.md`.
-5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (ASI-02, ASI-04, MCP-03, MCP-05, OWASP LLM06:2025, MITRE ATLAS AML.T0058/T0061/T0062, CWE-77, CWE-89, ASI-07, MITRE ATLAS AML.T0060, CWE-287, CWE-345) from the reference file's Primary Sources list.
+5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (ASI-02, ASI-04, MCP-03, MCP-05, OWASP LLM06:2025, MITRE ATLAS AML.T0058/T0061/T0062, CWE-77, CWE-89, ASI-07, MITRE ATLAS AML.T0060, CWE-287, CWE-345) from the reference file's Primary Sources list. Populate `source_attribution` with one `relationship: primary` taxonomy entry (typically OWASP ASI-02 / ASI-04 / MCP-03 / MCP-05 for single-agent tool-abuse Pattern Categories 1–8, or OWASP ASI-07 for inter-agent communication Pattern Categories 9–10 per F-3 ADR-032 lineage) plus ≥1 `relationship: related` CWE entry, mirroring the F-1/F-2/F-4 net-new agent precedent per ADR-037 D-3.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation. If no components match any trigger keyword, return zero findings; do not speculate about tool abuse on architectures without agentic tool invocation.
 
 ## Example Findings
@@ -61,6 +61,14 @@ mitigation: "Implement per-agent tool allowlists at the MCP server level. Each a
 references:
   - "ASI-02"
   - "MCP-03"
+  - "CWE-285"
+source_attribution:
+  - taxonomy: owasp
+    id: ASI-02
+    relationship: primary
+  - taxonomy: cwe
+    id: CWE-285
+    relationship: related
 dfd_element_type: "Process"
 ```
 
@@ -78,6 +86,14 @@ mitigation: "Implement a tool chain policy engine that evaluates composite effec
 references:
   - "ASI-04"
   - "MCP-03"
+  - "CWE-269"
+source_attribution:
+  - taxonomy: owasp
+    id: ASI-04
+    relationship: primary
+  - taxonomy: cwe
+    id: CWE-269
+    relationship: related
 dfd_element_type: "Process"
 ```
 
@@ -96,5 +112,41 @@ references:
   - "MCP-05"
   - "MCP-03"
   - "CWE-89"
+source_attribution:
+  - taxonomy: owasp
+    id: MCP-05
+    relationship: primary
+  - taxonomy: cwe
+    id: CWE-89
+    relationship: related
+dfd_element_type: "Process"
+```
+
+**Insecure Inter-Agent Communication via Unauthenticated MCP-to-MCP Bridge**:
+
+```yaml
+id: "AG-4"
+category: agentic
+component: "Inter-Agent Communication Channel"
+threat: "Two specialized agent processes (Code Review Agent and Deployment Agent) communicate via an MCP-to-MCP bridge that propagates tool capabilities across the channel without per-message authentication or per-bridge capability scoping. An attacker who compromises the lower-trust agent (Code Review Agent — exposed to untrusted user input via PR diffs) can issue tool-invocation messages over the bridge that the higher-trust agent (Deployment Agent — holds production deployment credentials) accepts as authentic peer requests. This violates the trust assumption that agent-to-agent channels enforce per-message identity binding — the channel propagates capabilities transitively, enabling an attacker who breaches one agent to invoke deployment tools through the bridge that no individual agent's authorization model would permit. Per OWASP ASI07:2026, multi-hop MCP trust chains compound this risk when intermediary bridges relay messages without re-validating sender identity at each hop."
+likelihood: MEDIUM
+impact: HIGH
+risk_level: High
+mitigation: "Enforce per-message authentication on inter-agent channels — sign each MCP-to-MCP message with a peer-bound HMAC or mTLS-derived signature; verify the signature server-side before processing the tool invocation. Apply per-bridge capability scoping — declare an explicit allowlist of tools the bridge can propagate; reject tool invocations outside the scoped capability set. Implement multi-hop trust-chain validation — at each MCP-to-MCP hop, the receiver re-validates the original sender's identity rather than trusting the immediate-upstream bridge. Log all cross-agent tool invocations with full provenance chain for audit and anomaly detection."
+references:
+  - "OWASP ASI-07"
+  - "MITRE ATLAS AML.T0060"
+  - "CWE-287"
+  - "CWE-345"
+source_attribution:
+  - taxonomy: owasp
+    id: ASI-07
+    relationship: primary
+  - taxonomy: cwe
+    id: CWE-287
+    relationship: related
+  - taxonomy: cwe
+    id: CWE-345
+    relationship: related
 dfd_element_type: "Process"
 ```

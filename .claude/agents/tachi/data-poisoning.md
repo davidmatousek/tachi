@@ -52,7 +52,7 @@ For predictive-ML deployments, also covers training-pipeline integrity threats a
 2. For each component, match against the loaded pattern catalog (training data manipulation, RAG index poisoning, knowledge base corruption, fine-tuning supply chain, context window contamination, RAG/vector store poisoning, backdoor triggers).
 3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: llm`, a sequential `LLM-N` id, and the target component name.
 4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of integrity, availability, accountability), then compute `risk_level` via the matrix in `severity-bands-shared.md`.
-5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP LLM03/LLM04/LLM08, ATLAS AML.T0018/T0020/T0010, CWE-345, CWE-1395, OWASP ML06:2023/ML07:2023/ML08:2023, ATLAS AML.T0019/T0031) from the pattern catalog's Primary Sources list.
+5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP LLM03/LLM04/LLM08, ATLAS AML.T0018/T0020/T0010, CWE-345, CWE-1395, OWASP ML06:2023/ML07:2023/ML08:2023, ATLAS AML.T0019/T0031) from the pattern catalog's Primary Sources list. Populate `source_attribution` with one `relationship: primary` taxonomy entry (typically OWASP LLM03:2025 / LLM04:2025 / LLM08:2025 for LLM/RAG poisoning surfaces, or OWASP ML06:2023 / ML07:2023 / ML08:2023 for predictive-ML training-pipeline surfaces per F-6 ADR-035 corpus-side lineage) plus ≥1 `relationship: related` CWE entry, mirroring the F-1/F-2/F-4 net-new agent precedent per ADR-037 D-3.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation. If no components match any trigger keyword, return zero findings; do not speculate.
 
 ## Example Findings
@@ -70,6 +70,18 @@ risk_level: Critical
 mitigation: "Implement content validation and adversarial content detection on all documents before indexing. Apply document-level access controls so that user-uploaded content is retrievable only within the uploader's trust boundary. Add provenance metadata to indexed documents so the model can distinguish source trustworthiness. Monitor retrieval patterns for anomalous document frequency spikes."
 references:
   - "OWASP LLM03:2025"
+  - "CWE-345"
+  - "CWE-1395"
+source_attribution:
+  - taxonomy: owasp
+    id: LLM03:2025
+    relationship: primary
+  - taxonomy: cwe
+    id: CWE-345
+    relationship: related
+  - taxonomy: cwe
+    id: CWE-1395
+    relationship: related
 dfd_element_type: "Data Store"
 ```
 
@@ -86,5 +98,46 @@ risk_level: Medium
 mitigation: "Implement immutable training data snapshots with cryptographic hash verification. Restrict write access to the training data bucket to a dedicated data engineering role. Validate dataset integrity before each training run by comparing checksums against a signed manifest. Add anomaly detection on training data distributions to flag unexpected content changes."
 references:
   - "OWASP LLM03:2025"
+  - "CWE-494"
+  - "CWE-345"
+source_attribution:
+  - taxonomy: owasp
+    id: LLM03:2025
+    relationship: primary
+  - taxonomy: cwe
+    id: CWE-494
+    relationship: related
+  - taxonomy: cwe
+    id: CWE-345
+    relationship: related
 dfd_element_type: "Data Flow"
+```
+
+**Predictive-ML Public Dataset Supply Chain Completeness Gap**:
+
+```yaml
+id: "LLM-3"
+category: llm
+component: "Public Dataset Repository"
+threat: "The fraud-detection ML training pipeline ingests labeled-transaction data from a public dataset repository (e.g., Kaggle `credit-card-fraud-2023` corpus) without dataset-integrity verification — no checksum manifest, no signed-publisher attestation, no integrity check on the dataset version. An attacker who compromises the public-repository account (via credential phishing or registry takeover) can publish a poisoned version of the dataset that introduces bias toward specific transaction patterns the attacker plans to exploit (e.g., labeling certain merchant-amount-window combinations as legitimate when they should be flagged as fraud). The training pipeline silently consumes the poisoned corpus at the next training run, producing a fraud-detection model that systematically allows the attacker's fraud pattern through. Per OWASP ML06:2023 (AI Supply Chain Attacks) and MITRE ATLAS AML.T0019 (Publish Poisoned Datasets), the supply-chain integrity gap manifests at corpus-source-of-truth, distinct from artifact-side model-registry supply chain (covered by `model-theft` Cat 14)."
+likelihood: MEDIUM
+impact: HIGH
+risk_level: High
+mitigation: "Treat all public-dataset ingestion as supply-chain integrity surface — pin dataset versions by content-hash digest (e.g., SHA-256 manifest covering all CSV / Parquet files), verify the manifest at training-job start before consumption. Adopt signed-publisher attestation (sigstore for dataset publishers, Hugging Face Datasets signed-commit policy) where available. For high-stakes ML pipelines (fraud, credit risk, healthcare), prefer internal-curated corpora over public-repository corpora; for unavoidable public sourcing, run anomaly-detection over corpus statistics (label-distribution drift detection, feature-distribution drift) on every ingest to catch poisoning before training. Maintain a versioned audit log of all corpus ingestions tied to model-training runs."
+references:
+  - "OWASP ML06:2023"
+  - "MITRE ATLAS AML.T0019"
+  - "CWE-494"
+  - "CWE-1395"
+source_attribution:
+  - taxonomy: owasp
+    id: ML06:2023
+    relationship: primary
+  - taxonomy: cwe
+    id: CWE-494
+    relationship: related
+  - taxonomy: cwe
+    id: CWE-1395
+    relationship: related
+dfd_element_type: "Data Store"
 ```

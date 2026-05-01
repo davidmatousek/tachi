@@ -93,9 +93,9 @@ Untrusted object deserialization is a distinct class of tampering that string-le
 - Pin serialization formats to the safe variants (`yaml.safe_load`, Jackson without default typing, XStream with `XStream.setupDefaultSecurity`)
 - Treat any serialized object crossing a trust boundary as executable code for threat-modeling purposes; subject its source to the same controls as code pulled from an external registry
 
-## Pattern Category 8: Software Supply Chain Integrity Failures
+## Pattern Category 8: Software Supply Chain Integrity Failures (OWASP A08:2021 + A06:2021)
 
-Modern applications pull code, models, and container layers from public registries at build and runtime. This category detects build/deploy pipelines and runtime Processes that fetch dependencies from external registries without lockfile verification, signature validation, or attestation — creating opportunities for dependency confusion, typosquatting, and registry-takeover attacks to inject tampered code into production before any application input is even accepted.
+Modern applications pull code, models, and container layers from public registries at build and runtime. This category detects build/deploy pipelines and runtime Processes that fetch dependencies from external registries without lockfile verification, signature validation, or attestation — creating opportunities for dependency confusion, typosquatting, and registry-takeover attacks to inject tampered code into production before any application input is even accepted. The category also covers the OWASP A06:2021 "Vulnerable and Outdated Components" surface: production runtimes carrying components with known CVEs, end-of-life or unmaintained dependencies, and the absence of automated CVE scanning or dependency-update cadence in the CI/CD pipeline. A06 differs from A08 architectural-tell in source — A08 names integrity-verification gaps at install time (lockfile / signature / digest), A06 names the *vulnerability-exposure* gap of running known-bad versions in production — but both manifest at the same supply-chain surface (dependency manifests, CI/CD pipeline, container build configuration) and share the same mitigation taxonomy (SCA tooling + lockfile discipline + automated upgrades).
 
 **Indicators**:
 
@@ -107,16 +107,22 @@ Modern applications pull code, models, and container layers from public registri
 - Private package names do not reserve placeholder stubs on public registries (enables typosquatting to grab an unregistered public name)
 - ML model weights fetched from HuggingFace or similar without SHA-256 digest pinning or signature verification
 - No hash verification step between artifact fetch and runtime load
+- Software Composition Analysis (SCA) tooling absent from CI pipeline — no automated CVE scanning of dependencies (e.g., npm audit, pip-audit, Snyk, OWASP Dependency-Check, Trivy on container images), no SBOM generation step, no policy gate that fails the build on Critical / High CVEs in production-shipping dependencies
+- End-of-life or unmaintained dependencies in production runtime — Python 2.x interpreter, Node.js 12.x or earlier, unsupported framework versions (e.g., Spring Boot 1.x, Django 2.x), database drivers no longer receiving security patches, base OS images past their EOL date (e.g., `debian:9` after end-of-life)
+- Long-lived dependency versions without an automated version-bump cadence — no Dependabot / Renovate / Mend bot configured on the repository, dependency manifests last touched >12 months ago, no scheduled CI job that re-evaluates lockfiles for newly-disclosed CVEs
 
 **Primary source**:
 
 - MITRE ATT&CK T1195: Supply Chain Compromise: https://attack.mitre.org/techniques/T1195/
 - MITRE ATT&CK T1195.001: Compromise Software Dependencies and Development Tools: https://attack.mitre.org/techniques/T1195/001/
 - MITRE ATT&CK T1195.002: Compromise Software Supply Chain: https://attack.mitre.org/techniques/T1195/002/
-- OWASP Top 10 2021 A08: Software and Data Integrity Failures: https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/
+- OWASP Top 10 2021 A08:2021 Software and Data Integrity Failures: https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/
+- OWASP Top 10 2021 A06:2021 Vulnerable and Outdated Components: https://owasp.org/Top10/A06_2021-Vulnerable_and_Outdated_Components/
 - CWE-494: Download of Code Without Integrity Check: https://cwe.mitre.org/data/definitions/494.html
+- CWE-1104: Use of Unmaintained Third Party Components: https://cwe.mitre.org/data/definitions/1104.html
+- CWE-937: OWASP Top 10 2013: Using Components with Known Vulnerabilities: https://cwe.mitre.org/data/definitions/937.html
 
-**Example**: A data-pipeline service installs a Python package named `internal-analytics-utils` from a requirements.txt with no lockfile. The name is intended to resolve against an internal PyPI mirror, but the `pip` index order lists public PyPI first. An attacker registers a same-named package on public PyPI with a higher version number and a post-install hook that reads environment variables and POSTs them to an attacker endpoint. Next build pulls the malicious package, the CI runner's IAM session token and database connection string exfiltrate to the attacker, and the tampered code then ships to production.
+**Example**: A data-pipeline service installs a Python package named `internal-analytics-utils` from a requirements.txt with no lockfile. The name is intended to resolve against an internal PyPI mirror, but the `pip` index order lists public PyPI first. An attacker registers a same-named package on public PyPI with a higher version number and a post-install hook that reads environment variables and POSTs them to an attacker endpoint. Next build pulls the malicious package, the CI runner's IAM session token and database connection string exfiltrate to the attacker, and the tampered code then ships to production. A separate but related OWASP A06:2021 incident on the same service: the application runtime carries `urllib3==1.25.0` (released 2019), pinned in the lockfile but never bumped despite multiple disclosed CVEs (CVE-2020-26137, CVE-2021-33503) affecting authentication header handling and ReDoS, because the repository has no Dependabot configuration and no scheduled SCA pipeline. An attacker with knowledge of the pinned version exploits the ReDoS vector against an internet-facing API endpoint.
 
 **Mitigation**:
 
@@ -125,6 +131,9 @@ Modern applications pull code, models, and container layers from public registri
 - Pin container base images by digest, not by tag; re-verify the digest on every build
 - Adopt SLSA build provenance and sigstore attestation verification for first-party artifacts; require attestation on any dependency flagged critical by the software bill of materials
 - Bake dependencies into the container image at build time; treat runtime `pip install` / `npm install` as a blocking security finding
+- For OWASP A06:2021 closure, integrate Software Composition Analysis (SCA) into the CI pipeline — run `npm audit` / `pip-audit` / `cargo audit` / OWASP Dependency-Check / Snyk / Trivy on every PR; configure a policy gate that fails the build on Critical or High CVEs in production-shipping dependencies; emit an SBOM (CycloneDX or SPDX) per build and archive it for supply-chain provenance audits
+- Configure automated dependency-upgrade tooling — Dependabot or Renovate or Mend bot with weekly cadence on the main branch, opening PRs against the lockfile for security advisories; pair with a CI policy that auto-merges patch-level upgrades on green tests and surfaces minor / major upgrades for human review
+- Track end-of-life schedules for runtime + base OS + framework versions — maintain a centralized registry of upstream EOL dates; emit alerts when a production-shipping dependency enters its end-of-life window; budget a quarterly dependency-modernization rotation to upgrade dependencies before they exit support
 
 ## Pattern Category 9: Injection Attacks Beyond SQL
 

@@ -40,7 +40,7 @@ Detects threats arising from autonomous agent systems that operate with insuffic
 2. For each component, walk through the pattern categories in the reference file (excessive autonomy, goal misalignment, unconstrained action scope, missing human-in-the-loop, cascading multi-agent failures, autonomous resource consumption, OWASP LLM06:2025 Excessive Agency sub-categories, ATLAS AML.T0058 agent context poisoning runtime view, NIST AI 600-1 + LLM10:2025 goal drift and unbounded planning loops, OWASP AI Exchange multi-agent delegation cycles) and collect every indicator present.
 3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: agentic`, a sequential `AG-N` id, and the target component name.
 4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of confidentiality, integrity, availability, intent alignment), then compute `risk_level` via the matrix in `severity-bands-shared.md`.
-5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (ASI-01, ASI-06, ASI-08, ASI-09, ASI-10, OWASP LLM06:2025, OWASP LLM10:2025, OWASP AI Exchange, NIST AI 600-1, MITRE ATLAS AML.T0058 runtime-context view) from the reference file's Primary Sources list.
+5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (ASI-01, ASI-06, ASI-08, ASI-09, ASI-10, OWASP LLM06:2025, OWASP LLM10:2025, OWASP AI Exchange, NIST AI 600-1, MITRE ATLAS AML.T0058 runtime-context view) from the reference file's Primary Sources list. Populate `source_attribution` with one `relationship: primary` taxonomy entry (typically OWASP ASI-01 / ASI-06 / ASI-08 / ASI-10 / LLM06:2025 for autonomy-axis surfaces — excessive autonomy, multi-agent cascading failures, irreversible-action authorization, unbounded resource consumption, and excessive agency respectively; ASI-09 autonomy-axis remains attributed here per F-4 ADR-033 D-2) plus ≥1 `relationship: related` CWE entry, mirroring the F-1/F-2/F-4 net-new agent precedent per ADR-037 D-3.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation. If no components match any trigger keyword, return zero findings; do not speculate about agent autonomy threats on architectures without autonomous agent capabilities.
 
 ## Example Findings
@@ -57,8 +57,19 @@ impact: MEDIUM
 risk_level: High
 mitigation: "Implement mandatory termination constraints: maximum iteration count (e.g., 25 iterations), execution timeout (e.g., 10 minutes), and cumulative cost cap (e.g., $5 per task). Add a circuit breaker that halts execution if the agent repeats the same action pattern for 3 consecutive iterations. Log each iteration with action taken and reasoning for post-hoc analysis."
 references:
-  - "ASI-01"
   - "ASI-10"
+  - "ASI-01"
+  - "CWE-693"
+source_attribution:
+  - taxonomy: owasp
+    id: ASI-10
+    relationship: primary
+  - taxonomy: owasp
+    id: ASI-01
+    relationship: related
+  - taxonomy: cwe
+    id: CWE-693
+    relationship: related
 dfd_element_type: "Process"
 ```
 
@@ -74,8 +85,19 @@ impact: HIGH
 risk_level: High
 mitigation: "Classify all agent-accessible actions into reversibility tiers: Tier 1 (read-only, auto-approve), Tier 2 (reversible writes, require confirmation), Tier 3 (irreversible actions, require human approval with mandatory wait period). Implement a pre-execution review step for Tier 2 and Tier 3 actions that presents the planned action, its justification, and its reversibility status to a human operator."
 references:
-  - "ASI-01"
   - "ASI-08"
+  - "ASI-01"
+  - "CWE-285"
+source_attribution:
+  - taxonomy: owasp
+    id: ASI-08
+    relationship: primary
+  - taxonomy: owasp
+    id: ASI-01
+    relationship: related
+  - taxonomy: cwe
+    id: CWE-285
+    relationship: related
 dfd_element_type: "Process"
 ```
 
@@ -91,8 +113,19 @@ impact: MEDIUM
 risk_level: Medium
 mitigation: "Implement inter-agent output validation at each delegation boundary. Add independent verification checks that compare agent outputs against the original user intent, not just the upstream agent's instructions. Deploy a circuit breaker that halts the delegation chain if any agent reports low confidence or if intermediate outputs diverge significantly from the original task specification. Add end-to-end observability across the agent chain."
 references:
-  - "ASI-01"
   - "ASI-06"
+  - "ASI-01"
+  - "CWE-345"
+source_attribution:
+  - taxonomy: owasp
+    id: ASI-06
+    relationship: primary
+  - taxonomy: owasp
+    id: ASI-01
+    relationship: related
+  - taxonomy: cwe
+    id: CWE-345
+    relationship: related
 dfd_element_type: "Process"
 ```
 
@@ -110,5 +143,16 @@ mitigation: "Define multi-dimensional success criteria that include both the tar
 references:
   - "ASI-01"
   - "ASI-09"
+  - "CWE-693"
+source_attribution:
+  - taxonomy: owasp
+    id: ASI-01
+    relationship: primary
+  - taxonomy: owasp
+    id: ASI-09
+    relationship: related
+  - taxonomy: cwe
+    id: CWE-693
+    relationship: related
 dfd_element_type: "Process"
 ```

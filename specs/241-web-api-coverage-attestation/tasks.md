@@ -95,18 +95,18 @@ Per Team-Lead MEDIUM-R1: Days 1–4 pair-author with security-analyst to keep se
 
 Wave 2 absorbs +1 day for `prompt-injection` + `agent-autonomy` per Architect HIGH-A.
 
-- [ ] T016 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/denial-of-service.md` — same pattern; line count ≤200 (currently 56); cite LLM10 primary per F-5 ADR-034 lineage
-- [ ] T017 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/tool-abuse.md` — same pattern; line count ≤200 (currently 100); cite ASI07 primary per F-3 ADR-032 lineage
-- [ ] T018 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/data-poisoning.md` — same pattern; line count ≤200 (currently 90); cite ML06 primary per F-6 ADR-035 corpus-side lineage
-- [ ] T019 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/model-theft.md` — same pattern; line count ≤200 (currently 105); cite ML03 / ML06 artifact-side per F-6 ADR-035 lineage
-- [ ] T020 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/prompt-injection.md` (per Architect HIGH-A) — same pattern; line count ≤200 (currently 96); cite LLM01 primary
-- [ ] T021 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/agent-autonomy.md` (per Architect HIGH-A) — same pattern; line count ≤200 (currently 114); cite ASI01/06/08/10 + LLM06 primaries
-- [ ] T022 [US4] Author Stream 1 Wave 2 fixture findings under `tests/scripts/fixtures/web_api_coverage_attestation/stream_1_f_a3_wiring/`: 6 fixture files (`valid_denial_of_service_llm10_finding.yaml`, `valid_tool_abuse_asi07_finding.yaml`, `valid_data_poisoning_ml06_finding.yaml`, `valid_model_theft_ml03_finding.yaml`, `valid_prompt_injection_llm01_finding.yaml`, `valid_agent_autonomy_asi01_finding.yaml`) (depends on T016–T021)
+- [X] T016 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/denial-of-service.md` — same pattern; line count ≤200 (currently 56); cite LLM10 primary per F-5 ADR-034 lineage
+- [X] T017 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/tool-abuse.md` — same pattern; line count ≤200 (currently 100); cite ASI07 primary per F-3 ADR-032 lineage
+- [X] T018 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/data-poisoning.md` — same pattern; line count ≤200 (currently 90); cite ML06 primary per F-6 ADR-035 corpus-side lineage
+- [X] T019 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/model-theft.md` — same pattern; line count ≤200 (currently 105); cite ML03 / ML06 artifact-side per F-6 ADR-035 lineage
+- [X] T020 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/prompt-injection.md` (per Architect HIGH-A) — same pattern; line count ≤200 (currently 96); cite LLM01 primary
+- [X] T021 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/agent-autonomy.md` (per Architect HIGH-A) — same pattern; line count ≤200 (currently 114); cite ASI01/06/08/10 + LLM06 primaries
+- [X] T022 [US4] Author Stream 1 Wave 2 fixture findings under `tests/scripts/fixtures/web_api_coverage_attestation/stream_1_f_a3_wiring/`: 6 fixture files (`valid_denial_of_service_llm10_finding.yaml`, `valid_tool_abuse_asi07_finding.yaml`, `valid_data_poisoning_ml06_finding.yaml`, `valid_model_theft_ml03_finding.yaml`, `valid_prompt_injection_llm01_finding.yaml`, `valid_agent_autonomy_asi01_finding.yaml`) (depends on T016–T021)
 
 ### Stream 1 Verification Test
 
-- [ ] T023 [US4] Author `tests/scripts/test_f_a3_populator_wiring.py` — assertions: (a) `grep -l "source_attribution" .claude/agents/tachi/*.md` returns 14 paths; (b) each newly-wired host file contains at least one `source_attribution:` YAML block; (c) line-count ≤200 on each newly-wired host (depends on T009–T021)
-- [ ] T024 [US4] Run F-A3 closure verification across all 8 baselines per spec FR-005 — invoke each example architecture, confirm `threats.md` Section 9 YAML emits `source_attribution` arrays for all newly-wired host findings; document baseline-by-baseline `source_attribution` count in T024 notes (Day 11 deliverable)
+- [X] T023 [US4] Author `tests/scripts/test_f_a3_populator_wiring.py` — assertions: (a) `grep -l "source_attribution" .claude/agents/tachi/*.md` returns 14 paths; (b) each newly-wired host file contains at least one `source_attribution:` YAML block; (c) line-count ≤200 on each newly-wired host (depends on T009–T021)
+- [X] T024 [US4] Run F-A3 closure verification across all 8 baselines per spec FR-005 — invoke each example architecture, confirm `threats.md` Section 9 YAML emits `source_attribution` arrays for all newly-wired host findings; document baseline-by-baseline `source_attribution` count in T024 notes (Day 11 deliverable)
 
 **Phase 3 Checkpoint** (end Day 11): 11/11 hosts wired (14/14 detection-tier total); F-A3 deferral debt fully cleared. US4 is independently testable: `pytest tests/scripts/test_f_a3_populator_wiring.py` passes green.
 
@@ -120,14 +120,14 @@ Wave 2 absorbs +1 day for `prompt-injection` + `agent-autonomy` per Architect HI
 
 ### Stream 2 Wave 1 — A05 + A06 closures (Days 6–7, parallel with Wave 2.x)
 
-- [ ] T025 [P] [US2] Close A05 Security Misconfiguration on `tachi-privilege-escalation` Pattern Category 11 — add Primary Source block + non-mobile Indicator extension to `.claude/skills/tachi-privilege-escalation/references/detection-patterns.md`
-- [ ] T026 [P] [US2] Close A06 Vulnerable and Outdated Components on `tachi-tampering` Pattern Category 8 (Software Supply Chain Integrity Failures) — add Primary Source block to `.claude/skills/tachi-tampering/references/detection-patterns.md`
-- [ ] T027 [US2] Author `valid_a05_security_misconfiguration_finding.yaml` and `valid_a06_vulnerable_components_finding.yaml` fixtures under `tests/scripts/fixtures/web_api_coverage_attestation/stream_2_partial_closures/` (depends on T025, T026)
+- [X] T025 [P] [US2] Close A05 Security Misconfiguration on `tachi-privilege-escalation` Pattern Category 11 — add Primary Source block + non-mobile Indicator extension to `.claude/skills/tachi-privilege-escalation/references/detection-patterns.md`
+- [X] T026 [P] [US2] Close A06 Vulnerable and Outdated Components on `tachi-tampering` Pattern Category 8 (Software Supply Chain Integrity Failures) — add Primary Source block to `.claude/skills/tachi-tampering/references/detection-patterns.md`
+- [X] T027 [US2] Author `valid_a05_security_misconfiguration_finding.yaml` and `valid_a06_vulnerable_components_finding.yaml` fixtures under `tests/scripts/fixtures/web_api_coverage_attestation/stream_2_partial_closures/` (depends on T025, T026)
 
 ### Stream 2 Wave 2 — API6 + API8 + API9 + API10 closures (Days 8–13)
 
 - [ ] T028 [P] [US2] Close API6 Unrestricted Access to Sensitive Business Flows per Q-Plan-1 RESOLVED → `tachi-tool-abuse` — author NEW Indicator category in `.claude/skills/tachi-tool-abuse/references/detection-patterns.md` with citation evidence (Primary Source block, ≥4 indicators, ≥1 worked example, named mitigations)
-- [ ] T029 [P] [US2] Close API8 Security Misconfiguration on `tachi-privilege-escalation` Pattern Category 11 — extend with API-specific Indicator extension (consolidates with A05 file modified in T025)
+- [X] T029 [P] [US2] Close API8 Security Misconfiguration on `tachi-privilege-escalation` Pattern Category 11 — extend with API-specific Indicator extension (consolidates with A05 file modified in T025)
 - [ ] T030 [P] [US2] Close API9 Improper Inventory Management per Q-Plan-2 RESOLVED → `tachi-info-disclosure` — author NEW Indicator category in `.claude/skills/tachi-info-disclosure/references/detection-patterns.md` with citation evidence
 - [ ] T031 [P] [US2] Close API10 Unsafe Consumption of APIs — add Primary Source on `tachi-tampering` Pattern Category 9 (Injection) AND cross-reference on `tachi-info-disclosure` Pattern Category 7 (SSRF); modifies both `tachi-tampering` and `tachi-info-disclosure` companion catalogs (consolidates with API9 in info-disclosure file modified in T030)
 - [ ] T032 [US2] Author Wave 2 fixtures under `tests/scripts/fixtures/web_api_coverage_attestation/stream_2_partial_closures/`: `valid_api6_business_flow_abuse_finding.yaml`, `valid_api8_security_misconfiguration_finding.yaml`, `valid_api9_inventory_management_finding.yaml`, `valid_api10_unsafe_consumption_finding.yaml` (depends on T028–T031)

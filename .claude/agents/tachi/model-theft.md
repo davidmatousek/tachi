@@ -50,7 +50,7 @@ For predictive-ML deployments, also covers extraction and artifact-integrity thr
 2. For each component, walk through the pattern categories in the reference file (direct weight exfiltration, API-based extraction, artifact exposure, side-channel reconstruction, fine-tuned model theft, unbounded consumption, supply chain compromise, ATLAS inference-API exfiltration, system prompt leakage) and collect every indicator present.
 3. For each match, construct a finding using the canonical schema defined in `finding-format-shared.md`, assigning `category: llm`, a sequential `LLM-N` id, and the target component name.
 4. Assign `likelihood` and `impact` using OWASP factors (attacker skill, opportunity, detection difficulty; loss of confidentiality, integrity, intellectual property), then compute `risk_level` via the matrix in `severity-bands-shared.md`.
-5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP LLM10/LLM07/LLM03, OWASP AI Exchange, MITRE ATLAS AML.T0024/T0057, MITRE ATT&CK T1005, CWE-200/209/522, OWASP ML03:2023/ML04:2023/ML06:2023, MITRE ATT&CK T1195/T1195.001/T1195.002) from the reference file's Primary Sources list.
+5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP LLM10/LLM07/LLM03, OWASP AI Exchange, MITRE ATLAS AML.T0024/T0057, MITRE ATT&CK T1005, CWE-200/209/522, OWASP ML03:2023/ML04:2023/ML06:2023, MITRE ATT&CK T1195/T1195.001/T1195.002) from the reference file's Primary Sources list. Populate `source_attribution` with one `relationship: primary` taxonomy entry (typically OWASP LLM03:2025 / LLM10:2025 / LLM07:2025 for LLM extraction and cost-amplification surfaces, or OWASP ML03:2023 / ML04:2023 / ML06:2023 for predictive-ML model-inversion / membership-inference / artifact-side supply-chain surfaces per F-6 ADR-035 lineage) plus ≥1 `relationship: related` CWE entry, mirroring the F-1/F-2/F-4 net-new agent precedent per ADR-037 D-3.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation. If no components match any trigger keyword, return zero findings; do not speculate about model theft on architectures without model hosting or inference components.
 
 ## Example Findings
@@ -67,7 +67,19 @@ impact: HIGH
 risk_level: High
 mitigation: "Restrict S3 bucket access to the model serving role and ML engineering team using least-privilege IAM policies. Enable S3 server-side encryption with customer-managed keys (SSE-KMS). Enable S3 access logging and configure alerts for unusual download patterns. Implement a model asset inventory that tracks all stored model artifacts and their access policies."
 references:
-  - "OWASP LLM10:2025"
+  - "OWASP LLM03:2025"
+  - "CWE-732"
+  - "CWE-200"
+source_attribution:
+  - taxonomy: owasp
+    id: LLM03:2025
+    relationship: primary
+  - taxonomy: cwe
+    id: CWE-732
+    relationship: related
+  - taxonomy: cwe
+    id: CWE-200
+    relationship: related
 dfd_element_type: "Data Store"
 ```
 
@@ -83,7 +95,16 @@ impact: HIGH
 risk_level: High
 mitigation: "Restrict API output to top-k predictions only (k <= 5) rather than full vocabulary logprobs. Implement per-API-key query budgets with alerts at threshold crossings. Deploy query pattern analysis that detects systematic probing (uniform input distributions, grid sampling patterns). Add watermarking to model outputs to enable downstream detection of extracted copies."
 references:
-  - "OWASP LLM10:2025"
+  - "OWASP ML03:2023"
+  - "MITRE ATLAS AML.T0024"
+  - "CWE-200"
+source_attribution:
+  - taxonomy: owasp
+    id: ML03:2023
+    relationship: primary
+  - taxonomy: cwe
+    id: CWE-200
+    relationship: related
 dfd_element_type: "Process"
 ```
 
@@ -99,7 +120,43 @@ impact: LOW
 risk_level: Medium
 mitigation: "Implement generic error responses that do not expose model architecture details. Return standardized error codes (e.g., 'input too long', 'service unavailable') without framework-specific information. Route detailed error logging to internal monitoring systems only. Audit all API response schemas for unintended metadata disclosure."
 references:
-  - "OWASP LLM10:2025"
+  - "OWASP LLM03:2025"
   - "CWE-209"
+source_attribution:
+  - taxonomy: owasp
+    id: LLM03:2025
+    relationship: primary
+  - taxonomy: cwe
+    id: CWE-209
+    relationship: related
 dfd_element_type: "Process"
+```
+
+**Predictive-ML Artifact Supply Chain — Unsigned Weight Promotion to Production Registry**:
+
+```yaml
+id: "LLM-4"
+category: llm
+component: "MLflow Model Registry"
+threat: "The MLflow model registry promotes weight checkpoints from staging to production via a manual UI button-click without signed-artifact policy — no cryptographic signature on the weight binary, no checksum manifest tying the production-promoted weights to the training-run lineage that produced them, no policy gate that fails the promotion when the artifact's provenance is unverifiable. An attacker who compromises a staging-environment ML engineer's credential (via phishing or credential reuse) can substitute a poisoned weight checkpoint at the staging-stage and trigger the manual promotion to production, replacing the legitimate fraud-detection model with a weight set that exhibits attacker-engineered backdoor behavior on specific transaction patterns. Per OWASP ML06:2023 (AI Supply Chain Attacks) artifact-side coverage and ADR-035 D-4 (corpus-side vs artifact-side decomposition), the supply-chain integrity gap manifests at model-registry-promotion-time, distinct from corpus-side dataset poisoning (covered by `data-poisoning` Cat 10)."
+likelihood: MEDIUM
+impact: HIGH
+risk_level: High
+mitigation: "Adopt signed-artifact promotion policy on the model registry — every weight checkpoint is signed at training-run completion (e.g., sigstore cosign signing the weight binary with a training-run-bound certificate); the registry's promotion gate verifies the signature against an allowlist of trusted training-run signers and rejects unsigned or signature-mismatch artifacts. Maintain a versioned audit log of all model promotions tied to the originating training-run ID, the training corpus version-hash, and the promoting engineer's identity. For high-stakes ML deployments, require dual-control on production promotion (one engineer initiates, a second approves) with the registry enforcing the dual-signature requirement."
+references:
+  - "OWASP ML06:2023"
+  - "MITRE ATT&CK T1195.002"
+  - "CWE-494"
+  - "CWE-345"
+source_attribution:
+  - taxonomy: owasp
+    id: ML06:2023
+    relationship: primary
+  - taxonomy: cwe
+    id: CWE-494
+    relationship: related
+  - taxonomy: cwe
+    id: CWE-345
+    relationship: related
+dfd_element_type: "Data Store"
 ```
