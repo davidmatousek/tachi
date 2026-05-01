@@ -178,10 +178,10 @@ Wave 2 absorbs +1 day for `prompt-injection` + `agent-autonomy` per Architect HI
 
 ### Wave 5.1 — Tests (Days 22–23)
 
-- [ ] T049 [P] [US1] Author `tests/scripts/test_coverage_percentage_computation.py` — independently computes `% coverage = |cited_ids| / |taxonomy_ids_not_out_of_scope|` from synthetic fixtures; asserts equality with aggregator output (0 ppt delta); cross-check against all 8 baselines × 5 frameworks = 40 cross-check pairs (depends on T048)
-- [ ] T050 [P] [US1] Author `tests/scripts/test_pyyaml_deferred_import.py` — asserts `import yaml` remains inside function bodies in `extract-report-data.py` (parses module AST, walks `import yaml` nodes, asserts each is inside a function definition); aligns with KB-037 stdlib-only module-load invariant per Architect MEDIUM-B
-- [ ] T051 [P] [US1] Update `tests/scripts/test_backward_compatibility.py` — remove all 11 newly-wired hosts from `DETECTION_AGENT_PATHS` constant; add all 11 to `DETECTION_PATTERN_REF_ENRICHMENT_HOSTS` frozenset (extending F-3/F-5/F-6/F-7 multi-host enrichment-branch pattern)
-- [ ] T052 [P] [US1] Update `tests/scripts/test_backward_compatibility.py` — add `predictive-ml-app` and `mobile-banking-app` to mutation-target exclusion list (alongside agentic-app + consumer-agent-app + maestro-reference precedent); preserve 6-baseline byte-identity loop on the pre-existing baselines
+- [X] T049 [P] [US1] Author `tests/scripts/test_coverage_percentage_computation.py` — independently computes `% coverage = |cited_ids| / |taxonomy_ids_not_out_of_scope|` from synthetic fixtures; asserts equality with aggregator output (0 ppt delta); cross-check against all 8 baselines × 5 frameworks = 40 cross-check pairs (depends on T048)
+- [X] T050 [P] [US1] Author `tests/scripts/test_pyyaml_deferred_import.py` — asserts `import yaml` remains inside function bodies in `extract-report-data.py` (parses module AST, walks `import yaml` nodes, asserts each is inside a function definition); aligns with KB-037 stdlib-only module-load invariant per Architect MEDIUM-B
+- [X] T051 [P] [US1] Update `tests/scripts/test_backward_compatibility.py` — remove all 11 newly-wired hosts from `DETECTION_AGENT_PATHS` constant; add all 11 to `DETECTION_PATTERN_REF_ENRICHMENT_HOSTS` frozenset (extending F-3/F-5/F-6/F-7 multi-host enrichment-branch pattern)
+- [X] T052 [P] [US1] Update `tests/scripts/test_backward_compatibility.py` — add `predictive-ml-app` and `mobile-banking-app` to mutation-target exclusion list (alongside agentic-app + consumer-agent-app + maestro-reference precedent); preserve 6-baseline byte-identity loop on the pre-existing baselines
 
 ### Wave 5.2 — 8-baseline regen (Days 24–25)
 

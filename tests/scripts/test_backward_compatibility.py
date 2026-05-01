@@ -180,9 +180,21 @@ def test_unmodified_examples_byte_identical_pdfs(
 # DETECTION_AGENT_PATHS and (for companions) INTO
 # DETECTION_PATTERN_REF_ENRICHMENT_HOSTS in the same change. Files NOT listed
 # here remain byte-identical on F-142 branches.
+#
+# Feature 241 (F-8 + F-A3 Web/API Coverage Attestation + Populator Wiring) is
+# the closure feature for the BLP-01 11-feature initiative. Its Stream 1
+# (F-A3 populator wiring) additively edits 11 host agents to emit
+# `source_attribution` — `prompt-injection` + `agent-autonomy` (the last
+# two host-agent files that lived in DETECTION_AGENT_PATHS) move OUT to
+# DETECTION_PATTERN_REF_ENRICHMENT_HOSTS via their companion paths, joining
+# the nine enrichment-branch hosts already carved out by F-3/F-5/F-6/F-7.
+# Per FR-005 the post-F-241 invariant is `grep -l "source_attribution"
+# .claude/agents/tachi/*.md` returns 14 of 14 detection-tier files. The
+# only F-A3 host files remaining in DETECTION_AGENT_PATHS are the F-1 and
+# F-2 net-new agents (`output-integrity` + `misinformation`), which are
+# untouched on the F-241 branch and continue to honor the F-142 zero-edit
+# invariant.
 DETECTION_AGENT_PATHS = [
-    ".claude/agents/tachi/prompt-injection.md",
-    ".claude/agents/tachi/agent-autonomy.md",
     ".claude/agents/tachi/output-integrity.md",
     ".claude/agents/tachi/misinformation.md",
 ]
@@ -204,6 +216,8 @@ DETECTION_PATTERN_REF_F7_SPOOFING_HOST = ".claude/skills/tachi-spoofing/referenc
 DETECTION_PATTERN_REF_F7_INFO_DISCLOSURE_HOST = ".claude/skills/tachi-info-disclosure/references/detection-patterns.md"
 DETECTION_PATTERN_REF_F7_PRIVILEGE_ESCALATION_HOST = ".claude/skills/tachi-privilege-escalation/references/detection-patterns.md"
 DETECTION_PATTERN_REF_F7_REPUDIATION_HOST = ".claude/skills/tachi-repudiation/references/detection-patterns.md"
+DETECTION_PATTERN_REF_F241_PROMPT_INJECTION_HOST = ".claude/skills/tachi-prompt-injection/references/detection-patterns.md"
+DETECTION_PATTERN_REF_F241_AGENT_AUTONOMY_HOST = ".claude/skills/tachi-agent-autonomy/references/detection-patterns.md"
 DETECTION_PATTERN_REF_ENRICHMENT_HOSTS = frozenset({
     DETECTION_PATTERN_REF_F3_HOST,
     DETECTION_PATTERN_REF_F5_DOS_HOST,
@@ -214,6 +228,8 @@ DETECTION_PATTERN_REF_ENRICHMENT_HOSTS = frozenset({
     DETECTION_PATTERN_REF_F7_INFO_DISCLOSURE_HOST,
     DETECTION_PATTERN_REF_F7_PRIVILEGE_ESCALATION_HOST,
     DETECTION_PATTERN_REF_F7_REPUDIATION_HOST,
+    DETECTION_PATTERN_REF_F241_PROMPT_INJECTION_HOST,
+    DETECTION_PATTERN_REF_F241_AGENT_AUTONOMY_HOST,
 })
 
 
@@ -259,8 +275,8 @@ def test_feature_142_zero_edit_invariant_on_detection_agents():
     ]
 
     paths_to_check = DETECTION_AGENT_PATHS + detection_pattern_refs
-    assert len(DETECTION_AGENT_PATHS) == 4, (
-        f"Expected 4 detection agent paths, got {len(DETECTION_AGENT_PATHS)}. "
+    assert len(DETECTION_AGENT_PATHS) == 2, (
+        f"Expected 2 detection agent paths, got {len(DETECTION_AGENT_PATHS)}. "
         "Update DETECTION_AGENT_PATHS when adding a new detection agent."
     )
 
