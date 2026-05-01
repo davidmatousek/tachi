@@ -1070,17 +1070,27 @@ TAXONOMY_REF_GROUPS = (
 )
 
 
-def _load_framework_yaml_records(framework_name: str) -> list:
+def _load_framework_yaml_records(
+    framework_name: str, in_scope_only: bool = False
+) -> list:
     """Return the list of top-level records from schemas/taxonomy/{framework_name}.yaml.
 
     Wraps yaml.safe_load with a fail-loud RuntimeError that names the offending
     framework + path. Empty YAML yields an empty list (zero-denominator case).
 
-    yaml is imported lazily so the module loads without pyyaml installed —
-    required by the stdlib-only module-load invariant in sibling tachi_parsers
-    (which uses regex `_load_catalog_ids` for the ids-only case). An ids-only
-    caller should prefer `tachi_parsers._load_catalog_ids`; this helper returns
-    full record dicts in YAML order, which is what the aggregator needs.
+    yaml is imported lazily inside the function body (T046 / FR-014) so the
+    module loads without pyyaml installed — required by the stdlib-only
+    module-load invariant in sibling tachi_parsers (which uses regex
+    `_load_catalog_ids` for the ids-only case). An ids-only caller should
+    prefer `tachi_parsers._load_catalog_ids`; this helper returns full record
+    dicts in YAML order, which is what the aggregator needs.
+
+    When ``in_scope_only=True`` (F-241 Stream 4 / FR-024 / Architect M-2):
+    records carrying ``out_of_scope: true`` are filtered out before return.
+    Records that omit the ``out_of_scope`` key (pre-F-241 records) are treated
+    as in-scope (default ``False`` per data-model.md §2 Backwards-compat). The
+    filter is applied here at the lowest level so the in-scope-record-count
+    semantic flows uniformly through every downstream aggregator code path.
     """
     import yaml
 
@@ -1095,18 +1105,46 @@ def _load_framework_yaml_records(framework_name: str) -> list:
         ) from exc
     if data is None:
         return []
-    return list(data)
+    records = list(data)
+    if in_scope_only:
+        records = [
+            r for r in records
+            if not (isinstance(r, dict) and r.get("out_of_scope", False))
+        ]
+    return records
 
 
 def load_framework_yaml_record_counts() -> dict:
     """Return ``{framework_name: top_level_record_count}`` for the 5 external frameworks.
 
-    The denominator of every coverage percentage is
-    ``len(yaml.safe_load(schemas/taxonomy/{framework}.yaml))`` at invocation
-    time. Tests monkeypatch this function to inject zero-denominator scenarios
+    Returns RAW counts (including ``out_of_scope: true`` records) for
+    traceability. The Typst data contract emits this value as
+    ``yaml-record-count`` so external auditors can inspect the full taxonomy
+    inventory size against the in-scope-only denominator (emitted as
+    ``in-scope-record-count``).
+
+    Tests monkeypatch this function to inject zero-denominator scenarios
     without touching disk.
     """
     return {fw: len(_load_framework_yaml_records(fw)) for fw in ORDERED_FRAMEWORKS}
+
+
+def load_framework_yaml_in_scope_record_counts() -> dict:
+    """Return ``{framework_name: in_scope_record_count}`` for the 5 external frameworks.
+
+    F-241 Stream 4 / FR-024: the coverage-percentage denominator filters out
+    ``out_of_scope: true`` records so the aggregator measures real-world
+    detectability rather than penalizing tachi for STIX taxonomy entries that
+    the design-time threat-modeling layer cannot reach (runtime tactics,
+    cloud account abuse, etc — see data-model.md §5 for tactic enumeration).
+
+    Tests monkeypatch this function to inject zero-denominator scenarios
+    (entirely-Out-of-Scope framework) without touching disk.
+    """
+    return {
+        fw: len(_load_framework_yaml_records(fw, in_scope_only=True))
+        for fw in ORDERED_FRAMEWORKS
+    }
 
 
 def classify_framework_items(
@@ -1141,28 +1179,39 @@ def classify_framework_items(
 
 
 def _build_per_framework_aggregate(
-    framework_name: str, items: list, yaml_record_count: int
+    framework_name: str,
+    items: list,
+    yaml_record_count: int,
+    in_scope_yaml_record_count: int,
 ) -> dict:
-    """Combine classified items + denominator into a Per-Framework Aggregate Record.
+    """Combine classified items + denominators into a Per-Framework Aggregate Record.
 
-    Partition invariant: ``covered_count + partial_count + gap_count ==
-    yaml_record_count``.
+    Partition invariant (post-F-241 Stream 4): ``covered_count + partial_count +
+    gap_count == in_scope_yaml_record_count``. The ``items`` list is filtered
+    to in-scope records only by the upstream caller (see
+    ``build_per_framework_aggregates``), so the partition holds against the
+    in-scope denominator. The raw ``yaml_record_count`` is preserved on the
+    record for external-auditor traceability (data-model.md §3 / FR-024 /
+    Architect M-2).
 
     Coverage percentage formatting:
-      - "X.XX%" when yaml_record_count > 0 (numerator = covered_count only)
-      - "N/A"   when yaml_record_count == 0 (zero-denominator edge case)
+      - "X.XX%" when in_scope_yaml_record_count > 0 (numerator = covered_count only)
+      - "N/A"   when in_scope_yaml_record_count == 0 (entirely-Out-of-Scope edge case)
     Zero-numerator with non-zero denominator yields "0.00%" via normal arithmetic.
     """
     covered_count = sum(1 for it in items if it["classification"] == "covered")
     partial_count = sum(1 for it in items if it["classification"] == "partial")
     gap_count = sum(1 for it in items if it["classification"] == "gap")
-    if yaml_record_count == 0:
+    if in_scope_yaml_record_count == 0:
         coverage_percentage = "N/A"
     else:
-        coverage_percentage = f"{(covered_count / yaml_record_count) * 100:.2f}%"
+        coverage_percentage = (
+            f"{(covered_count / in_scope_yaml_record_count) * 100:.2f}%"
+        )
     return {
         "framework": framework_name,
         "yaml_record_count": yaml_record_count,
+        "in_scope_yaml_record_count": in_scope_yaml_record_count,
         "covered_count": covered_count,
         "partial_count": partial_count,
         "gap_count": gap_count,
@@ -1175,20 +1224,39 @@ def build_per_framework_aggregates(findings: list) -> list:
     """Emit exactly 5 Per-Framework Aggregate Records in fixed framework order.
 
     Order: owasp, mitre-attack, mitre-atlas, nist-ai-rmf, cwe.
-    Calls ``load_framework_yaml_record_counts`` for the authoritative denominator;
-    classification skips when the count is zero so the partition invariant holds.
+    Calls ``load_framework_yaml_record_counts`` for the raw denominator
+    (preserved as ``yaml_record_count`` for external-auditor traceability) and
+    ``load_framework_yaml_in_scope_record_counts`` for the in-scope-only
+    denominator (used as the coverage-percentage divisor per FR-024 /
+    Architect M-2). Classification iterates the in-scope-only record set so
+    the partition invariant holds against ``in_scope_yaml_record_count``.
+
+    Per F-241 T046 edge case: findings citing Out-of-Scope items still render
+    on the per-finding attribution table (built separately in
+    ``build_per_finding_rows`` from ``finding.source_attribution``) but those
+    OOS records do NOT appear in the per-framework matrix items list and do
+    NOT increment ``covered_count``.
     """
-    counts = load_framework_yaml_record_counts()
+    raw_counts = load_framework_yaml_record_counts()
+    in_scope_counts = load_framework_yaml_in_scope_record_counts()
     aggregates = []
     for framework_name in ORDERED_FRAMEWORKS:
-        yaml_record_count = counts.get(framework_name, 0)
-        if yaml_record_count == 0:
+        yaml_record_count = raw_counts.get(framework_name, 0)
+        in_scope_count = in_scope_counts.get(framework_name, 0)
+        if in_scope_count == 0:
             items = []
         else:
-            records = _load_framework_yaml_records(framework_name)
+            records = _load_framework_yaml_records(
+                framework_name, in_scope_only=True
+            )
             items = classify_framework_items(findings, framework_name, records)
         aggregates.append(
-            _build_per_framework_aggregate(framework_name, items, yaml_record_count)
+            _build_per_framework_aggregate(
+                framework_name,
+                items,
+                yaml_record_count,
+                in_scope_count,
+            )
         )
     return aggregates
 
@@ -1811,6 +1879,9 @@ def generate_report_data_typ(data: dict) -> str:
         for agg in per_framework_aggregates:
             framework = escape_typst_string(agg.get("framework", ""))
             yaml_count = int(agg.get("yaml_record_count", 0))
+            in_scope_count = int(
+                agg.get("in_scope_yaml_record_count", yaml_count)
+            )
             covered = int(agg.get("covered_count", 0))
             partial = int(agg.get("partial_count", 0))
             gap = int(agg.get("gap_count", 0))
@@ -1827,6 +1898,7 @@ def generate_report_data_typ(data: dict) -> str:
                 items_typst = "()"
             lines.append(
                 f'  (framework: "{framework}", yaml-record-count: {yaml_count}, '
+                f'in-scope-record-count: {in_scope_count}, '
                 f'covered-count: {covered}, partial-count: {partial}, '
                 f'gap-count: {gap}, coverage-percentage: "{pct}", '
                 f'items: {items_typst}),'

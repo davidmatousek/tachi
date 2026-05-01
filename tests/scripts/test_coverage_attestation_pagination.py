@@ -186,7 +186,18 @@ def _synthesize_report_data_typ(
     agg_lines = ["#let per-framework-aggregates = ("]
     for agg in per_framework_aggregates:
         framework = _typst_escape(agg.get("framework", ""))
+        # ``yaml_record_count`` (raw) is read here for layout fidelity with
+        # production: pagination smoke layout depends on the rendered
+        # "Covered: X / Y = Z%" line which uses the raw denominator (the
+        # Typst template at coverage-attestation.typ:164 reads
+        # ``yaml-record-count``). Production also emits
+        # ``in-scope-record-count`` (per F-241 Stream 4 / T045 / data-model.md
+        # §3) so we mirror that here for synthesizer fidelity even though the
+        # current Typst template binding doesn't read it yet.
         yaml_count = int(agg.get("yaml_record_count", 0))
+        in_scope_count = int(
+            agg.get("in_scope_yaml_record_count", yaml_count)
+        )
         covered = int(agg.get("covered_count", 0))
         partial = int(agg.get("partial_count", 0))
         gap = int(agg.get("gap_count", 0))
@@ -203,6 +214,7 @@ def _synthesize_report_data_typ(
             items_typst = "()"
         agg_lines.append(
             f'  (framework: "{framework}", yaml-record-count: {yaml_count}, '
+            f'in-scope-record-count: {in_scope_count}, '
             f'covered-count: {covered}, partial-count: {partial}, '
             f'gap-count: {gap}, coverage-percentage: "{pct}", '
             f'items: {items_typst}),'

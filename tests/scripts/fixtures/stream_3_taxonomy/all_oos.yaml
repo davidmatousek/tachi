@@ -1,0 +1,40 @@
+# Stream 3 fixture: All-Out-of-Scope framework (F-241 T048).
+#
+# Purpose: verify that an entirely-Out-of-Scope framework (every record
+# carries `out_of_scope: true`) yields `coverage_percentage: "N/A"` per
+# data-model.md §3 line 165. This is the "non-empty raw inventory but
+# zero in-scope" edge case — distinct from the truly-empty `empty_yaml.yaml`
+# fixture above. Both yield "N/A" but via different code paths.
+#
+# Expected behavior:
+#   - `_load_framework_yaml_records('synthetic_all_oos', in_scope_only=False)` → 3 records
+#   - `_load_framework_yaml_records('synthetic_all_oos', in_scope_only=True)`  → []
+#   - `load_framework_yaml_record_counts()['synthetic_all_oos']`               → 3
+#   - `load_framework_yaml_in_scope_record_counts()['synthetic_all_oos']`      → 0
+#   - Aggregator emits `coverage_percentage: "N/A"` and items: [] (the
+#     classification iterates the in-scope-only record set per
+#     `build_per_framework_aggregates` line 1247).
+
+- id: T0001
+  full_id: ATT&CK-T0001
+  name: Synthetic All-OOS Record A
+  url: https://example.test/T0001/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0005 operates at runtime via active-malware behavior; outside tachi's design-time threat-modeling scope."
+
+- id: T0002
+  full_id: ATT&CK-T0002
+  name: Synthetic All-OOS Record B
+  url: https://example.test/T0002/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0007 operates at runtime via active reconnaissance; outside tachi's design-time threat-modeling scope."
+
+- id: T0003
+  full_id: ATT&CK-T0003
+  name: Synthetic All-OOS Record C
+  url: https://example.test/T0003/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."

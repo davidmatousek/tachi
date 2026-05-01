@@ -1,0 +1,48 @@
+# Stream 3 fixture: Pre-F-241 backward-compat — records omit out_of_scope (F-241 T048).
+#
+# Purpose: verify that records authored BEFORE F-241 (and therefore omitting
+# both `out_of_scope` and `out_of_scope_rationale`) parse correctly under
+# the in-scope filter — they must be treated as `out_of_scope: false`
+# (in-scope) per data-model.md §2 Backward Compatibility.
+#
+# This fixture mirrors the F-A1 ADR-027 D1 record shape verbatim — 5 fields
+# per record, NO `out_of_scope` keys. Records use OWASP-shaped IDs.
+#
+# Expected behavior:
+#   - `_load_framework_yaml_records('synthetic_compat', in_scope_only=False)` → 4 records
+#   - `_load_framework_yaml_records('synthetic_compat', in_scope_only=True)`  → 4 records (all default-in-scope)
+#   - `load_framework_yaml_record_counts()['synthetic_compat']`               → 4
+#   - `load_framework_yaml_in_scope_record_counts()['synthetic_compat']`      → 4
+
+- id: A01
+  full_id: OWASP-2021-A01
+  name: Broken Access Control
+  url: https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/
+  cwe_refs:
+    - CWE-22
+    - CWE-200
+    - CWE-285
+
+- id: A02
+  full_id: OWASP-2021-A02
+  name: Cryptographic Failures
+  url: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
+  cwe_refs:
+    - CWE-261
+    - CWE-310
+
+- id: A03
+  full_id: OWASP-2021-A03
+  name: Injection
+  url: https://owasp.org/Top10/2021/A03_2021-Injection/
+  cwe_refs:
+    - CWE-79
+    - CWE-89
+
+- id: A05
+  full_id: OWASP-2021-A05
+  name: Security Misconfiguration
+  url: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
+  cwe_refs:
+    - CWE-2
+    - CWE-16

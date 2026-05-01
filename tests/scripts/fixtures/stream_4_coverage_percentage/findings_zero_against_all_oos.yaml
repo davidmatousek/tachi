@@ -1,0 +1,20 @@
+# Stream 4 fixture: Zero findings against all-OOS framework (F-241 T048).
+#
+# Purpose: verify the "N/A" coverage_percentage edge case at
+# data-model.md §3 line 165 — when the in_scope_yaml_record_count is 0
+# (entirely-Out-of-Scope framework), the aggregator returns "N/A" rather
+# than dividing by zero.
+#
+# This is a degenerate fixture: zero findings exist (so the gate predicate
+# is `False` and the report omits the Coverage Attestation section
+# entirely), AND we monkeypatch the in-scope count to 0 for at least one
+# framework. The aggregator's "N/A" branch must execute regardless of
+# whether the gate is open.
+#
+# Used in the test suite via monkeypatch on
+# `load_framework_yaml_in_scope_record_counts` to inject the zero in-scope
+# scenario; the live taxonomy YAMLs are never modified per architect M-3.
+#
+# This fixture is intentionally an empty list — no findings.
+
+[]

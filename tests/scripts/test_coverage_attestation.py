@@ -306,13 +306,20 @@ def test_per_framework_aggregates_emits_exactly_5_records(
      "multi_mixed_attribution.yaml"],
 )
 def test_partition_invariant(extract_report_data, fixture_name):
-    """T018 — covered + partial + gap == yaml_record_count per framework.
+    """T018 — covered + partial + gap == in_scope_yaml_record_count per framework.
 
     The partition invariant (data-model.md §Per-Framework Aggregate Record)
-    states that every framework item classifies as exactly one of Covered /
-    Partial / Gap — no overlap, no omission. The aggregator post-condition
-    is ``covered_count + partial_count + gap_count == yaml_record_count``
-    for every framework, across every fixture.
+    states that every IN-SCOPE framework item classifies as exactly one of
+    Covered / Partial / Gap — no overlap, no omission. The aggregator
+    post-condition is ``covered_count + partial_count + gap_count ==
+    in_scope_yaml_record_count`` for every framework, across every fixture.
+
+    Post-F-241 Stream 4 (T044/T045/T047): Out-of-Scope records are filtered
+    out of the items list at ``build_per_framework_aggregates`` (line ~1241
+    of ``extract-report-data.py``), so the partition holds against the
+    in-scope denominator — NOT the raw ``yaml_record_count`` (which now
+    differs from the in-scope count for ``mitre-attack`` post-T041 expansion:
+    701 raw / 323 in-scope).
     """
     _skip_if_missing(extract_report_data, "build_per_framework_aggregates", "T026/T027")
 
@@ -323,11 +330,12 @@ def test_partition_invariant(extract_report_data, fixture_name):
         total = (
             agg["covered_count"] + agg["partial_count"] + agg["gap_count"]
         )
-        assert total == agg["yaml_record_count"], (
+        assert total == agg["in_scope_yaml_record_count"], (
             f"Partition invariant violated for framework {agg['framework']!r} "
             f"on fixture {fixture_name!r}: covered({agg['covered_count']}) + "
             f"partial({agg['partial_count']}) + gap({agg['gap_count']}) = "
-            f"{total} != yaml_record_count({agg['yaml_record_count']})"
+            f"{total} != in_scope_yaml_record_count("
+            f"{agg['in_scope_yaml_record_count']})"
         )
 
 
@@ -386,17 +394,35 @@ def test_classification_rules_q1_a(extract_report_data):
 def test_coverage_percentage_arithmetic(
     extract_report_data, multi_mixed_fixture
 ):
-    """T020 — coverage percentages match hand-computed values.
+    """T020 — coverage percentages match hand-computed values (post Stream 3/4).
 
     Hand-computed against ``multi_mixed_attribution.yaml`` and the live
-    taxonomy YAML record counts at F-A1 delivery time:
+    taxonomy YAML record counts post-F-241 Stream 3 expansion + Stream 4
+    in-scope-only denominator filter:
 
-    - OWASP: 2 primary citations (LLM05 in LLM-1, A03 in I-4) / 60 records
-      → 3.33%
-    - CWE: 1 primary (CWE-200 in I-4) / 53 records → 1.89%
-    - MITRE-ATTACK: 1 primary (T1070.001 in R-2) / 38 → 2.63%
-    - MITRE-ATLAS: 0 primary / 12 → 0.00%
-    - NIST-AI-RMF: 0 primary / 72 → 0.00%
+    - OWASP: 2 primary citations (LLM05 in LLM-1, A03 in I-4) / 60 in-scope
+      records → 3.33% (no OOS filtering — owasp.yaml has 0 OOS records)
+    - CWE: 1 primary (CWE-200 in I-4) / 53 in-scope → 1.89% (no OOS records)
+    - MITRE-ATTACK: 0 primary / 323 in-scope → 0.00%
+        Rationale: the fixture's only `primary` ATT&CK citation, T1070.001
+        (Clear Windows Event Logs), is now Out-of-Scope per T041 tactical
+        grouping (TA0005 Defense Evasion runs at runtime/IR layer, outside
+        tachi's design-time scope). The aggregator filters T1070.001 out of
+        the in-scope record set, so it doesn't appear in the items list and
+        cannot increment ``covered_count``. The fixture also cites T1078
+        (Valid Accounts, in-scope, TA0006 Credential Access) but only as
+        ``related`` — that classifies T1078 as ``partial`` (covered_count=0,
+        partial_count=1, gap_count=322; 0+1+322 = 323 in-scope partition).
+        Pre-Stream-3/4 expected was 2.63% (1/38, raw denominator); the
+        Stream 4 in-scope filter + Stream 3 expansion (38 → 701 raw / 323
+        in-scope) jointly produce the 0.00% post-fix expected. Per T046
+        edge case, T1070.001 still renders on the per-finding attribution
+        table for traceability — it's only excluded from the per-framework
+        coverage-percentage denominator.
+    - MITRE-ATLAS: 0 primary / 30 in-scope → 0.00% (Stream 3 expansion 12 →
+      30; the fixture's mitre-atlas citations are all `related`/`derived`
+      so this classifies them all as `partial`, 0% covered)
+    - NIST-AI-RMF: 0 primary / 72 in-scope → 0.00% (no OOS records)
     """
     _skip_if_missing(extract_report_data, "build_per_framework_aggregates", "T026/T027")
 
@@ -408,7 +434,7 @@ def test_coverage_percentage_arithmetic(
     expected_pct = {
         "owasp": "3.33%",
         "cwe": "1.89%",
-        "mitre-attack": "2.63%",
+        "mitre-attack": "0.00%",
         "mitre-atlas": "0.00%",
         "nist-ai-rmf": "0.00%",
     }
@@ -431,9 +457,14 @@ def test_coverage_percentage_na_on_zero_denominator(
     aggregator MUST render ``coverage_percentage: "N/A"`` — not ``0/0`` and
     not a ``ZeroDivisionError``.
 
-    Injects a zero-item record count for the owasp framework via
-    monkeypatch on ``load_framework_yaml_record_counts`` so the live YAML
-    on disk is not modified (architect M-3).
+    Injects zero-item record counts for the owasp framework via
+    monkeypatch on BOTH ``load_framework_yaml_record_counts`` (raw) and
+    ``load_framework_yaml_in_scope_record_counts`` (in-scope-only, post
+    F-241 Stream 4 / T044/T045) so the live YAML on disk is not modified
+    (architect M-3). Post-F-241 the coverage-percentage denominator reads
+    the in-scope helper, so monkeypatching only the raw helper would leave
+    the in-scope path returning live disk values and the assertion would
+    fall through.
     """
     _skip_if_missing(
         extract_report_data, "build_per_framework_aggregates", "T026/T027"
@@ -441,12 +472,28 @@ def test_coverage_percentage_na_on_zero_denominator(
     _skip_if_missing(
         extract_report_data, "load_framework_yaml_record_counts", "T024"
     )
+    _skip_if_missing(
+        extract_report_data,
+        "load_framework_yaml_in_scope_record_counts",
+        "T045",
+    )
 
-    def _stub_zero_owasp():
+    # Use post-F-241 Stream 3 inventory counts in the stub (701 raw /
+    # 323 in-scope for mitre-attack; other frameworks unchanged).
+    def _stub_zero_owasp_raw():
         return {
             "owasp": 0,
-            "mitre-attack": 38,
-            "mitre-atlas": 12,
+            "mitre-attack": 701,
+            "mitre-atlas": 30,
+            "nist-ai-rmf": 72,
+            "cwe": 53,
+        }
+
+    def _stub_zero_owasp_in_scope():
+        return {
+            "owasp": 0,
+            "mitre-attack": 323,
+            "mitre-atlas": 30,
             "nist-ai-rmf": 72,
             "cwe": 53,
         }
@@ -454,7 +501,12 @@ def test_coverage_percentage_na_on_zero_denominator(
     monkeypatch.setattr(
         extract_report_data,
         "load_framework_yaml_record_counts",
-        _stub_zero_owasp,
+        _stub_zero_owasp_raw,
+    )
+    monkeypatch.setattr(
+        extract_report_data,
+        "load_framework_yaml_in_scope_record_counts",
+        _stub_zero_owasp_in_scope,
     )
 
     # Non-empty finding set so the gate predicate is True.

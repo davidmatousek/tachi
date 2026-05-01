@@ -170,11 +170,11 @@ Wave 2 absorbs +1 day for `prompt-injection` + `agent-autonomy` per Architect HI
 
 ### Wave 4.3 — Stream 4 aggregator extension (Days 20–21)
 
-- [ ] T044 [US1] Read `scripts/extract-report-data.py` lines 1070–1175 to confirm filter insertion path per Architect M-2 — final placement: filter applied at `_load_framework_yaml_records()` (line 1073) OR `load_framework_yaml_record_counts()` (line 1101) so that the denominator reaching `_build_per_framework_aggregate()` excludes Out-of-Scope records (NOT applied at line 1144 where count is pre-frozen)
-- [ ] T045 [US1] Implement Out-of-Scope-aware filter at the chosen insertion point per T044 — `in_scope_records = [r for r in records if not r.get("out_of_scope", False)]`; emit `in-scope-record-count` to Typst data contract alongside existing `yaml-record-count`
-- [ ] T046 [US1] Preserve stdlib-only module-load invariant: confirm `import yaml` remains inside function bodies (not module-level) post-edit; comment at line ~1080 documenting the discipline
-- [ ] T047 [US1] Update `_build_per_framework_aggregate()` (line 1144) caller to pass `in_scope_count` as the denominator argument; preserve `(covered_count / in_scope_count) * 100` formula; preserve "N/A" return on `in_scope_count == 0`
-- [ ] T048 [US1] Author Stream 3 + Stream 4 fixtures under `tests/scripts/fixtures/web_api_coverage_attestation/stream_3_taxonomy/` and `stream_4_coverage_percentage/`: synthetic OWASP/ATT&CK/ATLAS subsets (5–10 records each, mixed in-scope/out-of-scope), synthetic findings citing in-scope + out-of-scope items, expected coverage_pct values (depends on T044–T047)
+- [X] T044 [US1] Read `scripts/extract-report-data.py` lines 1070–1175 to confirm filter insertion path per Architect M-2 — final placement: filter applied at `_load_framework_yaml_records()` (line 1073) OR `load_framework_yaml_record_counts()` (line 1101) so that the denominator reaching `_build_per_framework_aggregate()` excludes Out-of-Scope records (NOT applied at line 1144 where count is pre-frozen)
+- [X] T045 [US1] Implement Out-of-Scope-aware filter at the chosen insertion point per T044 — `in_scope_records = [r for r in records if not r.get("out_of_scope", False)]`; emit `in-scope-record-count` to Typst data contract alongside existing `yaml-record-count`
+- [X] T046 [US1] Preserve stdlib-only module-load invariant: confirm `import yaml` remains inside function bodies (not module-level) post-edit; comment at line ~1080 documenting the discipline
+- [X] T047 [US1] Update `_build_per_framework_aggregate()` (line 1144) caller to pass `in_scope_count` as the denominator argument; preserve `(covered_count / in_scope_count) * 100` formula; preserve "N/A" return on `in_scope_count == 0`
+- [X] T048 [US1] Author Stream 3 + Stream 4 fixtures under `tests/scripts/fixtures/web_api_coverage_attestation/stream_3_taxonomy/` and `stream_4_coverage_percentage/`: synthetic OWASP/ATT&CK/ATLAS subsets (5–10 records each, mixed in-scope/out-of-scope), synthetic findings citing in-scope + out-of-scope items, expected coverage_pct values (depends on T044–T047)
 
 ### Wave 5.1 — Tests (Days 22–23)
 
