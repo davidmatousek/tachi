@@ -126,12 +126,12 @@ Wave 2 absorbs +1 day for `prompt-injection` + `agent-autonomy` per Architect HI
 
 ### Stream 2 Wave 2 — API6 + API8 + API9 + API10 closures (Days 8–13)
 
-- [ ] T028 [P] [US2] Close API6 Unrestricted Access to Sensitive Business Flows per Q-Plan-1 RESOLVED → `tachi-tool-abuse` — author NEW Indicator category in `.claude/skills/tachi-tool-abuse/references/detection-patterns.md` with citation evidence (Primary Source block, ≥4 indicators, ≥1 worked example, named mitigations)
+- [X] T028 [P] [US2] Close API6 Unrestricted Access to Sensitive Business Flows per Q-Plan-1 RESOLVED → `tachi-tool-abuse` — author NEW Indicator category in `.claude/skills/tachi-tool-abuse/references/detection-patterns.md` with citation evidence (Primary Source block, ≥4 indicators, ≥1 worked example, named mitigations)
 - [X] T029 [P] [US2] Close API8 Security Misconfiguration on `tachi-privilege-escalation` Pattern Category 11 — extend with API-specific Indicator extension (consolidates with A05 file modified in T025)
-- [ ] T030 [P] [US2] Close API9 Improper Inventory Management per Q-Plan-2 RESOLVED → `tachi-info-disclosure` — author NEW Indicator category in `.claude/skills/tachi-info-disclosure/references/detection-patterns.md` with citation evidence
-- [ ] T031 [P] [US2] Close API10 Unsafe Consumption of APIs — add Primary Source on `tachi-tampering` Pattern Category 9 (Injection) AND cross-reference on `tachi-info-disclosure` Pattern Category 7 (SSRF); modifies both `tachi-tampering` and `tachi-info-disclosure` companion catalogs (consolidates with API9 in info-disclosure file modified in T030)
-- [ ] T032 [US2] Author Wave 2 fixtures under `tests/scripts/fixtures/web_api_coverage_attestation/stream_2_partial_closures/`: `valid_api6_business_flow_abuse_finding.yaml`, `valid_api8_security_misconfiguration_finding.yaml`, `valid_api9_inventory_management_finding.yaml`, `valid_api10_unsafe_consumption_finding.yaml` (depends on T028–T031)
-- [ ] T033 [US2] Verify Stream 2 byte-identity invariant: `tachi-repudiation/references/detection-patterns.md` and `tachi-spoofing/references/detection-patterns.md` remain byte-identical (Q-Plan-2 routed API9 to info-disclosure, not repudiation; Stream 2 has no spoofing-host items)
+- [X] T030 [P] [US2] Close API9 Improper Inventory Management per Q-Plan-2 RESOLVED → `tachi-info-disclosure` — author NEW Indicator category in `.claude/skills/tachi-info-disclosure/references/detection-patterns.md` with citation evidence
+- [X] T031 [P] [US2] Close API10 Unsafe Consumption of APIs — add Primary Source on `tachi-tampering` Pattern Category 9 (Injection) AND cross-reference on `tachi-info-disclosure` Pattern Category 7 (SSRF); modifies both `tachi-tampering` and `tachi-info-disclosure` companion catalogs (consolidates with API9 in info-disclosure file modified in T030)
+- [X] T032 [US2] Author Wave 2 fixtures under `tests/scripts/fixtures/web_api_coverage_attestation/stream_2_partial_closures/`: `valid_api6_business_flow_abuse_finding.yaml`, `valid_api8_security_misconfiguration_finding.yaml`, `valid_api9_inventory_management_finding.yaml`, `valid_api10_unsafe_consumption_finding.yaml` (depends on T028–T031)
+- [X] T033 [US2] Verify Stream 2 byte-identity invariant: `tachi-repudiation/references/detection-patterns.md` and `tachi-spoofing/references/detection-patterns.md` remain byte-identical (Q-Plan-2 routed API9 to info-disclosure, not repudiation; Stream 2 has no spoofing-host items)
 
 ### Stream 2 Deferral Path (FR-008)
 
@@ -139,7 +139,7 @@ Wave 2 absorbs +1 day for `prompt-injection` + `agent-autonomy` per Architect HI
 
 ### Stream 2 Audit Test
 
-- [ ] T035 [US2] Author `tests/scripts/test_coverage_attestation_audit.py` — walks `schemas/taxonomy/owasp.yaml` post-Stream 3, resolves each Covered citation to ≥1 agent file + ≥1 detection-pattern category per BLP-01 §8 Quality Bar (depends on T025–T032 + Stream 3 owasp.yaml audit T070)
+- [X] T035 [US2] Author `tests/scripts/test_coverage_attestation_audit.py` — walks `schemas/taxonomy/owasp.yaml` post-Stream 3, resolves each Covered citation to ≥1 agent file + ≥1 detection-pattern category per BLP-01 §8 Quality Bar (depends on T025–T032 + Stream 3 owasp.yaml audit T070)
 
 **Phase 4 Checkpoint** (end Day 13): 6/6 Partial items closed (or any non-closing item surfaces with Deferral ADR rationale + follow-on Issue). US2 is independently testable: `pytest tests/scripts/test_coverage_attestation_audit.py` passes green.
 

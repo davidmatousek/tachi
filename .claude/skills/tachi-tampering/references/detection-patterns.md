@@ -168,6 +168,29 @@ Existing patterns call out SQL injection but under-cover the broader injection f
 - Treat template source as code: user input is template data, never template source; sandbox template engines that must accept user templates (e.g., Jinja2 `SandboxedEnvironment`)
 - Strip newline and null bytes from any value used to construct SMTP, LDAP, or HTTP headers; prefer header-builder APIs that enforce this
 
+**Indicators (consumed-API-response trust / OWASP API10:2023)**:
+
+OWASP API Security Top 10 2023 API10:2023 (Unsafe Consumption of APIs) names the specific case where an injection vector enters the application through the response payload of a "trusted" third-party upstream API the consumer integrates with — the trust-provenance variant of the broader injection family above. The architectural-tell is the consumer-to-upstream outbound call coupled with use of the upstream response in injection-prone sinks without re-validation at the trust boundary.
+
+- Application makes outbound HTTP calls to third-party APIs and uses response payloads in SQL queries, template rendering, shell commands, or `eval` contexts without re-validation at the response-ingest boundary
+- Component follows redirects from upstream third-party APIs without re-applying egress policy to the redirect target (could be redirected to cloud metadata or to an attacker-controlled host)
+- No declared schema validation on upstream API responses (no JSON-Schema check, no Pydantic-style runtime validation, no contract-tested client) — responses are deserialized and consumed as if they conform to expectations
+- Upstream API authentication is fail-open — when the upstream returns 401, 5xx, or an unexpected payload shape, the code path proceeds with empty/null defaults instead of refusing to continue
+- Trust boundary not declared between application code and the consumed third-party API — payloads from external services are treated as internal-zone data rather than crossing an explicit trust transition
+
+**Primary source (API10:2023)**:
+
+- OWASP API Security Top 10 2023 API10:2023 — Unsafe Consumption of APIs: https://owasp.org/API-Security/editions/2023/en/0xaa-unsafe-consumption-of-apis/
+
+**Example (consumed-API trust → injection)**: An order-management service queries a partner-supplier API to fetch shipping rates and product descriptions. The supplier API returns JSON with a `description` field that the order service stores in a quoted SQL `INSERT` to display in customer order summaries. A supplier-side compromise (or a malicious supplier whose authentication was never treated as a trust boundary) returns a `description` value containing a SQL injection payload (`'; DROP TABLE orders; --`). The application trusts the upstream response and concatenates the value into the `INSERT`, executing the attacker's SQL with the order-service database role. The injection vector entered through a "trusted" upstream API the application consumed without schema validation or output encoding at the response-ingest boundary — the textbook OWASP API10:2023 unsafe-consumption pattern, distinguished from generic Cat 9 injection by the trust-provenance of the payload.
+
+**Mitigation (API10:2023 specific)**:
+
+- Apply an egress allowlist + per-route response schema validation for every consumed third-party API; reject any response that doesn't match the declared contract (JSON-Schema, Pydantic model, OpenAPI-validated client) before the response payload reaches downstream sinks
+- Treat consumed API responses as untrusted by default — apply parameterized SQL, output encoding, and template-engine auto-escaping at the boundary between consumed-API-response data and any injection-prone sink (SQL, shell, template, eval)
+- Disable redirect-following on outbound third-party API clients OR re-apply the egress allowlist + DNS-resolved-IP denylist (RFC1918 + link-local) to every redirect hop before issuing the next request
+- Declare every third-party API integration as a distinct trust boundary in architecture documentation; require fail-closed behavior on upstream auth/contract violations (refuse to continue, do not default to empty/null)
+
 ## Pattern Category 10: Adversarial Input Manipulation (Predictive ML) (OWASP ML01:2023)
 
 OWASP ML01:2023 (Input Manipulation Attack) names adversarial input manipulation against deployed predictive ML classifiers and regressors as a distinct attack class from generic web-application injection (Pattern Category 9). Where Cat 9 covers OS command, LDAP, NoSQL, expression-language, and template injection at generic API endpoints, this category targets the **specific architectural-tell** of a deployed predictive ML inference endpoint (classifier or regressor) ingesting raw user-controlled features into model evaluation without an input-validation barrier and without adversarial-defense controls. The attacker's goal is inference-time evasion through small-perturbation adversarial examples (FGSM, PGD-style attacks), decision-boundary attacks, and physical-world adversarial patches against computer-vision deployments. Same Heuristic A signal class as Cat 9 (untrusted-input → execution-sink) but with attacker intent shifted from arbitrary code execution to model output evasion, and with the architectural-tell shifted from generic query/command construction to deployed predictive ML inference.
