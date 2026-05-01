@@ -1,11 +1,12 @@
 # PRD Index
 
-**Last Updated**: 2026-04-29 (Feature 237 delivered — F-7 Mobile Top 10 Coverage Bundle [Tier 2] / five-agent enrichment of `spoofing` + `tampering` + `info-disclosure` + `privilege-escalation` + `repudiation` / fourth execution of Heuristic A enrichment branch after F-3 single-agent / F-5 two-agent / F-6 three-agent / first at four-or-five-agent scope / closes OWASP Mobile Top 10:2024 to 10/10 Covered and completes the OWASP four-framework total at 40/40 Covered — second framework family closure milestone after the AI-security family)
+**Last Updated**: 2026-04-29 (PRD #241 drafted — F-8 + F-A3 Web/API Coverage Attestation + Populator Wiring [Tier 3] / final BLP-01 attestation pass closing the 11-feature initiative / F-A3 populator-wiring debt cleared across 11 host agents per Architect HIGH-A / four coordinated work streams over 5–6 weeks / pipeline-generated coverage percentages replace hand-curated §6 Coverage Matrix)
 **Legend**: ✓=APPROVED, ⚠=APPROVED_WITH_CONCERNS, 🔄=CHANGES_REQUESTED, ⛔=BLOCKED, ⚠⚡=OVERRIDDEN
 
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 241 | [F-8 + F-A3 Web/API Coverage Attestation + Populator Wiring [Tier 3]](241-web-api-coverage-attestation-2026-04-29.md) | ✓ | ⚠ | ⚠ | Approved with Concerns | 2026-04-29 |
 | 237 | [F-7 Mobile Top 10 Coverage Bundle [Tier 2]](237-mobile-top-10-coverage-bundle-2026-04-28.md) ([PR #238](https://github.com/davidmatousek/tachi/pull/238)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-29 |
 | 232 | [F-6 ML Top 10 Coverage Bundle [Tier 2]](232-ml-top-10-coverage-bundle-2026-04-27.md) ([PR #235](https://github.com/davidmatousek/tachi/pull/235)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-28 |
 | 229 | [F-5 LLM10 Unbounded Consumption Verification](229-llm10-unbounded-consumption-verification-2026-04-27.md) ([PR #230](https://github.com/davidmatousek/tachi/pull/230)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-27 |
