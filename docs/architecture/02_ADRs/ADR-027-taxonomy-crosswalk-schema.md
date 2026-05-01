@@ -331,6 +331,33 @@ The catalogs and crosswalk ship in JSON (or richer semantic formats like JSON-LD
 
 ---
 
+## Extension History
+
+The 8-Decision contract above (Decisions 1–8 from Feature 180 / 2026-04-17) is the foundational ADR-027 schema. Subsequent features may extend this contract through additive-compatibility decisions documented in their own ADRs. This section serves as the bidirectional forward-pointer index — readers consulting ADR-027 to understand the current state of the `schemas/taxonomy/` contract MUST consult the extending ADRs listed below.
+
+### ADR-037 D-7 — Out-of-Scope Field Pair Extension (Feature 241 / 2026-05-01)
+
+**Extending ADR**: [ADR-037 D-7](ADR-037-web-api-coverage-attestation-and-populator-wiring.md) — Web/API Coverage Attestation + Populator Wiring (BLP-01 Tier 3 closure).
+
+**Extension scope**: Adds two optional fields to the per-item record shape from Decision 1 of this ADR:
+
+```yaml
+out_of_scope: <bool>                  # default: false; new in F-241 D-7
+out_of_scope_rationale: <string>      # default: ""; new in F-241 D-7
+```
+
+**Compatibility**: Backward compatible by construction. Pre-F-241 records render identically when the new fields are absent (YAML defaults: `false` / `""`). The integrity test suite under `tests/schemas/test_taxonomy_integrity.py` continues to pass on all pre-F-241 records without modification. Schema invariant from Decision 1 (per-item shape) is preserved as a strict subset of the F-241-extended shape.
+
+**Consumer of the extension**: F-241's aggregator at `scripts/extract-report-data.py:1073` (`_load_framework_yaml_records()`) filters the framework denominator on `out_of_scope == false` so that the Coverage Attestation page coverage-percentage formula `(covered_count / in_scope_record_count) * 100` excludes runtime-only / IR-only / design-time-irrelevant records (e.g., 7 ATT&CK Enterprise tactics TA0005/7/8/9/10/11/40 per ADR-037 D-5).
+
+**CWE substitution rule (ADR-037 D-7 inline extension)**: ADR-037 D-7 also codifies a parent-CWE abstraction substitution rule applied across F-241 baseline regen (T053+T054+T055): when a child-CWE is absent from the 53-record `cwe.yaml` inventory authored under Decision 1 of this ADR, the populator substitutes the closest parent-CWE that IS catalog-resolvable (e.g., CWE-307 → CWE-287, CWE-913 → CWE-94). The substitution rule does NOT modify `cwe.yaml`; catalog growth beyond 53 records is reserved for follow-on features in the BLP-02 envelope.
+
+**Cross-reference assertion**: ADR-037 explicitly cites ADR-027 in its `Related ADRs` header (line 9 of ADR-037) with the qualifier "F-A1 taxonomy crosswalk — F-241 D-7 extends owasp.yaml + mitre-atlas.yaml + mitre-attack.yaml record-shape with `out_of_scope` + `out_of_scope_rationale` fields; ADR-027 receives forward-pointer addendum cross-linking D-7 per M-1 carry-forward". This Extension History section is the matching back-pointer that closes the bidirectional cross-link required by Architect M-1 carry-forward at F-241 plan-day.
+
+**Forward-scope**: Future features extending the per-item record shape further (e.g., MAESTRO layer annotation, AIVSS scoring fields, machine-readable severity hints) MUST author a new D-numbered Decision in their own ADR AND append a new Extension History subsection below this one — preserving the bidirectional cross-link discipline.
+
+---
+
 ## Revision History
 
 **2026-04-17 (Proposed — Feature 180, Wave 1.1 schema lock)**: Records the `schemas/taxonomy/` schema decisions for the F-A1 Taxonomy Crosswalk Collection feature. Documents 8 numbered decisions covering per-item record shape (with unidirectional OWASP→CWE `cwe_refs` rule), per-edge record shape, 7-value `taxonomy` enum, 3-value `edge_type` enum (with follow-on `related`/`superseded` authorization), 3-value `confidence` enum (with anti-drift rule), citation non-empty-and-resolvable rule, Interpretation C single-feature cadence exception (bounded to foundation-data features), and Proposed→Accepted dual-commit governance protocol. Authored at end of Day 1 after schema freeze and preceding parallel catalog authoring in Wave 1.2. Status transitions to Accepted at PR merge per Decision 8 (spec FR-041).
