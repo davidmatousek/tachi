@@ -49,10 +49,10 @@ The following Architect APPROVED_WITH_CONCERNS items from plan-day are addressed
 
 **Purpose**: Project initialization, fixture scaffolding, and ADR-037 stub authoring.
 
-- [ ] T001 Confirm feature branch `241-web-api-coverage-attestation` is current (`git branch --show-current`)
-- [ ] T002 Confirm draft PR #242 exists with `feat(241):` Conventional Commit title (`gh pr view 242`)
-- [ ] T003 [P] Create test fixture directory `tests/scripts/fixtures/web_api_coverage_attestation/` with subdirectories `stream_1_f_a3_wiring/`, `stream_2_partial_closures/`, `stream_3_taxonomy/`, `stream_4_coverage_percentage/`
-- [ ] T004 [P] Author ADR-037 stub at `docs/architecture/02_ADRs/ADR-037-web-api-coverage-attestation-and-populator-wiring.md` with frontmatter `status: Proposed`, 10-decision skeleton (D-1..D-10), placeholder narrative for each decision
+- [X] T001 Confirm feature branch `241-web-api-coverage-attestation` is current (`git branch --show-current`)
+- [X] T002 Confirm draft PR #242 exists with `feat(241):` Conventional Commit title (`gh pr view 242`)
+- [X] T003 [P] Create test fixture directory `tests/scripts/fixtures/web_api_coverage_attestation/` with subdirectories `stream_1_f_a3_wiring/`, `stream_2_partial_closures/`, `stream_3_taxonomy/`, `stream_4_coverage_percentage/`
+- [X] T004 [P] Author ADR-037 stub at `docs/architecture/02_ADRs/ADR-037-web-api-coverage-attestation-and-populator-wiring.md` with frontmatter `status: Proposed`, 10-decision skeleton (D-1..D-10), placeholder narrative for each decision
 
 ---
 
@@ -62,10 +62,10 @@ The following Architect APPROVED_WITH_CONCERNS items from plan-day are addressed
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T005 Verify aggregator filter insertion point per Architect M-2 resolution: read `scripts/extract-report-data.py` lines 1070–1175, document which function is the correct extension point in T044 task notes (expected: `_load_framework_yaml_records()` line 1073 OR `load_framework_yaml_record_counts()` line 1101 — NOT `_build_per_framework_aggregate()` line 1144 where the count is already pre-computed)
-- [ ] T006 Verify canonical baseline path per Architect L-1: confirm `examples/predictive-ml-app/sample-report/security-report.pdf.baseline` and `examples/mobile-banking-app/sample-report/security-report.pdf.baseline` are the correct paths (NOT `examples/{arch}/security-report.pdf.baseline`); document chosen path in T101 + T102 task notes
-- [ ] T007 [P] Read existing F-1/F-2/F-4 net-new agent populator templates at `.claude/agents/tachi/output-integrity.md`, `.claude/agents/tachi/misinformation.md`, `.claude/agents/tachi/human-trust-exploitation.md`; document the canonical `## Example Findings` section structure for use across all 11 F-A3 wiring tasks
-- [ ] T008 [P] Read `schemas/finding.yaml` v1.8 to confirm `source_attribution` field shape (5-value taxonomy enum + 3-value relationship enum at lines 235–270); confirm v1.8 is the version pre-F-241
+- [X] T005 Verify aggregator filter insertion point per Architect M-2 resolution: read `scripts/extract-report-data.py` lines 1070–1175, document which function is the correct extension point in T044 task notes (expected: `_load_framework_yaml_records()` line 1073 OR `load_framework_yaml_record_counts()` line 1101 — NOT `_build_per_framework_aggregate()` line 1144 where the count is already pre-computed)
+- [X] T006 Verify canonical baseline path per Architect L-1: confirm `examples/predictive-ml-app/sample-report/security-report.pdf.baseline` and `examples/mobile-banking-app/sample-report/security-report.pdf.baseline` are the correct paths (NOT `examples/{arch}/security-report.pdf.baseline`); document chosen path in T101 + T102 task notes
+- [X] T007 [P] Read existing F-1/F-2/F-4 net-new agent populator templates at `.claude/agents/tachi/output-integrity.md`, `.claude/agents/tachi/misinformation.md`, `.claude/agents/tachi/human-trust-exploitation.md`; document the canonical `## Example Findings` section structure for use across all 11 F-A3 wiring tasks
+- [X] T008 [P] Read `schemas/finding.yaml` v1.8 to confirm `source_attribution` field shape (5-value taxonomy enum + 3-value relationship enum at lines 235–270); confirm v1.8 is the version pre-F-241
 
 **Checkpoint**: Foundation ready — user story implementation can now begin.
 
@@ -81,13 +81,13 @@ The following Architect APPROVED_WITH_CONCERNS items from plan-day are addressed
 
 Per Team-Lead MEDIUM-R1: Days 1–4 pair-author with security-analyst to keep senior-backend-engineer load within 80%/day cap.
 
-- [ ] T009 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/spoofing.md` — add `## Example Findings` section block (or extend Detection Workflow Step 5) with one `primary` OWASP citation + ≥1 `related` CWE per pattern category; line count must remain ≤200 (currently 55)
-- [ ] T010 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/tampering.md` — same pattern; line count ≤200 (currently 60)
-- [ ] T011 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/info-disclosure.md` — same pattern; line count ≤200 (currently 60)
-- [ ] T012 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/privilege-escalation.md` — same pattern; line count ≤200 (currently 55)
-- [ ] T013 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/repudiation.md` — same pattern; line count ≤200 (currently 53)
-- [ ] T014 [US4] Author Stream 1 Wave 1 fixture findings under `tests/scripts/fixtures/web_api_coverage_attestation/stream_1_f_a3_wiring/`: 5 fixture files (`valid_spoofing_a07_finding.yaml`, `valid_tampering_a03_finding.yaml`, `valid_info_disclosure_a01_finding.yaml`, `valid_privilege_escalation_a01_finding.yaml`, `valid_repudiation_a09_finding.yaml`) demonstrating canonical wiring pattern (depends on T009–T013)
-- [ ] T015 [US4] Run F-A3 wiring smoke test on three baselines per Team-Lead MEDIUM-R2: `web-app` (STRIDE-heavy), `agentic-app` (AI-tier), `predictive-ml-app` (ML-tier); manually verify `source_attribution` arrays render in generated `threats.md` Section 9 YAML output (Day 5 deliverable)
+- [X] T009 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/spoofing.md` — add `## Example Findings` section block (or extend Detection Workflow Step 5) with one `primary` OWASP citation + ≥1 `related` CWE per pattern category; line count must remain ≤200 (currently 55)
+- [X] T010 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/tampering.md` — same pattern; line count ≤200 (currently 60)
+- [X] T011 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/info-disclosure.md` — same pattern; line count ≤200 (currently 60)
+- [X] T012 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/privilege-escalation.md` — same pattern; line count ≤200 (currently 55)
+- [X] T013 [P] [US4] Wire `source_attribution` populator in `.claude/agents/tachi/repudiation.md` — same pattern; line count ≤200 (currently 53)
+- [X] T014 [US4] Author Stream 1 Wave 1 fixture findings under `tests/scripts/fixtures/web_api_coverage_attestation/stream_1_f_a3_wiring/`: 5 fixture files (`valid_spoofing_a07_finding.yaml`, `valid_tampering_a03_finding.yaml`, `valid_info_disclosure_a01_finding.yaml`, `valid_privilege_escalation_a01_finding.yaml`, `valid_repudiation_a09_finding.yaml`) demonstrating canonical wiring pattern (depends on T009–T013)
+- [X] T015 [US4] Run F-A3 wiring smoke test on three baselines per Team-Lead MEDIUM-R2: `web-app` (STRIDE-heavy), `agentic-app` (AI-tier), `predictive-ml-app` (ML-tier); manually verify `source_attribution` arrays render in generated `threats.md` Section 9 YAML output (Day 5 deliverable)
 
 **Wave 1 Checkpoint** (end Day 5): 5/11 hosts wired; smoke test green on 3 baselines surfacing STRIDE/AI/ML coverage early.
 
