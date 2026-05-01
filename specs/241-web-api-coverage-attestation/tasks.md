@@ -153,10 +153,10 @@ Wave 2 absorbs +1 day for `prompt-injection` + `agent-autonomy` per Architect HI
 
 ### Wave 3.2 — Stream 3 OWASP audit + ATLAS expansion (Days 14–16)
 
-- [ ] T036 [P] [US1] Audit `schemas/taxonomy/owasp.yaml` for citation completeness — confirm each of 60 Covered records (A01–A10, API1–API10, ASI01–ASI10, LLM01–LLM10, M1–M10, ML01–ML10) attests ≥1 agent + ≥1 detection-pattern category per BLP-01 §8 Quality Bar; document citation chain in audit-trail comment per record
-- [ ] T037 [P] [US1] Extend `schemas/taxonomy/owasp.yaml` record shape: add `out_of_scope: false` (default) + `out_of_scope_rationale: ""` (default) to all 60 records per ADR-027 D1 record-shape extension (Architect MEDIUM-A acknowledged)
-- [ ] T038 [P] [US1] Expand `schemas/taxonomy/mitre-atlas.yaml` from 12 → ~30 records — add ~18 new ATLAS records (Reconnaissance / Resource Development / Initial Access / ML Model Access / Execution / Persistence / Defense Evasion / Discovery / Collection / Exfiltration / Impact phases per ATLAS taxonomy)
-- [ ] T039 [P] [US1] Extend `schemas/taxonomy/mitre-atlas.yaml` record shape: add `out_of_scope` + `out_of_scope_rationale` to all records (with per-item Out-of-Scope annotations where ATLAS technique operates at runtime/IR layer rather than design-time)
+- [X] T036 [P] [US1] Audit `schemas/taxonomy/owasp.yaml` for citation completeness — confirm each of 60 Covered records (A01–A10, API1–API10, ASI01–ASI10, LLM01–LLM10, M1–M10, ML01–ML10) attests ≥1 agent + ≥1 detection-pattern category per BLP-01 §8 Quality Bar; document citation chain in audit-trail comment per record
+- [X] T037 [P] [US1] Extend `schemas/taxonomy/owasp.yaml` record shape: add `out_of_scope: false` (default) + `out_of_scope_rationale: ""` (default) to all 60 records per ADR-027 D1 record-shape extension (Architect MEDIUM-A acknowledged)
+- [X] T038 [P] [US1] Expand `schemas/taxonomy/mitre-atlas.yaml` from 12 → ~30 records — add ~18 new ATLAS records (Reconnaissance / Resource Development / Initial Access / ML Model Access / Execution / Persistence / Defense Evasion / Discovery / Collection / Exfiltration / Impact phases per ATLAS taxonomy)
+- [X] T039 [P] [US1] Extend `schemas/taxonomy/mitre-atlas.yaml` record shape: add `out_of_scope` + `out_of_scope_rationale` to all records (with per-item Out-of-Scope annotations where ATLAS technique operates at runtime/IR layer rather than design-time)
 
 ### Wave 4.1 — Stream 3 ATT&CK Enterprise tactical-grouping audit (Day 17)
 

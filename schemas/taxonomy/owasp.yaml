@@ -19,7 +19,28 @@
 # in crosswalk.yaml (where A-category<->CWE edges carry 'citation: URL').
 #
 # Sorted alphabetically by `id` per FR-032.
+#
+# F-241 Wave 3.2 record-shape extension (per ADR-037 D-7, acknowledged by
+# Architect MEDIUM-A): every record now carries two additional optional
+# fields — `out_of_scope: bool` (default `false`) and
+# `out_of_scope_rationale: string` (default `""`). All 60 OWASP records are
+# IN-SCOPE for tachi design-time threat modeling — none are runtime/IR-only —
+# so all 60 records carry `out_of_scope: false` defaults. Backward-compat
+# preserved via YAML defaults: pre-F-241 readers that omit these fields parse
+# correctly. The Out-of-Scope exclusion mechanism applies primarily to
+# `mitre-attack.yaml` tactical groupings (TA0005 / TA0007 / TA0008 / TA0009 /
+# TA0010 / TA0011 / TA0040 — Wave 4.1+4.2 scope) and to per-item runtime-only
+# `mitre-atlas.yaml` techniques (Wave 3.2 T039 scope).
+#
+# F-241 Wave 3.2 citation-completeness audit-trail (per ADR-037 D-6, BLP-01
+# §8 Quality Bar): the `# citation:` comment immediately above each record
+# attests at least one tachi detection-tier host agent + at least one
+# detection-pattern category covering the OWASP entry. Citation chains
+# follow the F-1 .. F-7 ADR closures (ADR-030 / ADR-031 / ADR-032 / ADR-033 /
+# ADR-034 / ADR-035 / ADR-036) and the F-241 Wave 2.1-3.1 closures (T025 /
+# T026 / T028 / T029 / T030 / T031). See ADR-037 §Audit-trail.
 
+# citation: tachi-privilege-escalation Pattern Cat 1-10 (Broken Access Control / IDOR / role-escalation / path-traversal / multi-tenancy / lateral-movement / privilege-persistence / function-field-auth / improper-priv-mgmt / abuse-elevation) + tachi-info-disclosure Pattern Cat 1-7 (BAC-driven data exposure)
 - id: A01
   full_id: OWASP-2021-A01
   name: Broken Access Control
@@ -41,6 +62,9 @@
     - CWE-668
     - CWE-862
     - CWE-863
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-info-disclosure Pattern Cat 6 "Cryptographic Failures and Data-at-Rest Exposure" (A02:2021 weak-crypto + cleartext-transport + insufficient-cipher surfaces)
 - id: A02
   full_id: OWASP-2021-A02
   name: Cryptographic Failures
@@ -75,6 +99,9 @@
     - CWE-780
     - CWE-818
     - CWE-916
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-tampering Pattern Cat 1-9 (Injection — SQL/OS-command/LDAP/NoSQL/expression-language/template/CSRF surfaces; A03:2021 canonical injection family)
 - id: A03
   full_id: OWASP-2021-A03
   name: Injection
@@ -112,6 +139,9 @@
     - CWE-644
     - CWE-652
     - CWE-917
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-denial-of-service Pattern Cat 11 "Cascade Failures and Noisy Neighbor in Microservice Architectures (OWASP A04:2021)"
 - id: A04
   full_id: OWASP-2021-A04
   name: Insecure Design
@@ -135,6 +165,9 @@
     - CWE-430
     - CWE-434
     - CWE-444
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-privilege-escalation Pattern Cat 11 "Security Misconfiguration Privilege-Gain Variant — Mobile (M8:2024) + Server-Side (A05:2021) + API-Specific (API8:2023)"; F-241 Wave 2.1 T025 (server-side variant closure) + Wave 3.1 extension
 - id: A05
   full_id: OWASP-2021-A05
   name: Security Misconfiguration
@@ -160,6 +193,9 @@
     - CWE-1004
     - CWE-1032
     - CWE-1174
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-tampering Pattern Cat 8 "Software Supply Chain Integrity Failures (OWASP A08:2021 + A06:2021)"; F-241 Wave 2.1 T026 (A06 closure via Cat 8 dual-attribution with A08)
 - id: A06
   full_id: OWASP-2021-A06
   name: Vulnerable and Outdated Components
@@ -168,6 +204,9 @@
     - CWE-937
     - CWE-1035
     - CWE-1104
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-spoofing Pattern Cat 1-7 (cross-service authentication bypass / web-tier credential theft / federated token replay / OAuth-OIDC token replay / cloud IAM role-assumption); A07:2021 canonical authentication-failure family
 - id: A07
   full_id: OWASP-2021-A07
   name: Identification and Authentication Failures
@@ -195,6 +234,9 @@
     - CWE-798
     - CWE-940
     - CWE-1216
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-tampering Pattern Cat 8 "Software Supply Chain Integrity Failures (OWASP A08:2021 + A06:2021)" (lockfile / signature / digest integrity-verification gaps at install time)
 - id: A08
   full_id: OWASP-2021-A08
   name: Software and Data Integrity Failures
@@ -210,6 +252,9 @@
     - CWE-829
     - CWE-830
     - CWE-915
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-repudiation Pattern Cat 1-8 (missing audit trails / insufficient log detail / log tampering / deniable actions / timestamp manipulation / log injection-evasion / security-logging-monitoring coverage gaps / indicator removal); A09:2021 canonical logging-monitoring family
 - id: A09
   full_id: OWASP-2021-A09
   name: Security Logging and Monitoring Failures
@@ -219,259 +264,414 @@
     - CWE-223
     - CWE-532
     - CWE-778
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-info-disclosure Pattern Cat 7 "SSRF to Cloud Metadata and Internal Services" (A10:2021 canonical SSRF family); cross-ref tachi-tampering Pattern Cat 9 (consumer-API redirect-target trust)
 - id: A10
   full_id: OWASP-2021-A10
   name: Server-Side Request Forgery (SSRF)
   url: https://owasp.org/Top10/2021/A10_2021-Server-Side_Request_Forgery_%28SSRF%29/
   cwe_refs:
     - CWE-918
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-privilege-escalation Pattern Cat 2 "Insecure Direct Object Reference (IDOR)" / Pattern Cat 1-10 (object-level authorization gaps); API1:2023 canonical BOLA family
 - id: API1
   full_id: OWASP-API-2023-API1
   name: Broken Object Level Authorization
   url: https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-tampering Pattern Cat 9 "Injection Attacks Beyond SQL — extended for consumed-API-response trust"; F-241 Wave 3.1 T031 (API10 unsafe-consumption closure); cross-ref tachi-info-disclosure Pattern Cat 7 (redirect-target trust failure)
 - id: API10
   full_id: OWASP-API-2023-API10
   name: Unsafe Consumption of APIs
   url: https://owasp.org/API-Security/editions/2023/en/0xaa-unsafe-consumption-of-apis/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-spoofing Pattern Cat 1-7 (cross-service authentication bypass / token replay / federated identity / OAuth-OIDC); API2:2023 canonical broken-authentication surface
 - id: API2
   full_id: OWASP-API-2023-API2
   name: Broken Authentication
   url: https://owasp.org/API-Security/editions/2023/en/0xa2-broken-authentication/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-info-disclosure Pattern Cat 1-5 (Excessive Data in Responses / data-classification gaps / object-property exposure); API3:2023 canonical broken-property-level-auth + excessive-data-exposure
 - id: API3
   full_id: OWASP-API-2023-API3
   name: Broken Object Property Level Authorization
   url: https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-denial-of-service Pattern Cat 1-10 (rate-limiting / quota / resource-consumption); API4:2023 canonical Unrestricted Resource Consumption surface
 - id: API4
   full_id: OWASP-API-2023-API4
   name: Unrestricted Resource Consumption
   url: https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-privilege-escalation Pattern Cat 8 "Function/Field-Level Authorization Gaps" + Pattern Cat 1-10 (function-level RBAC); API5:2023 canonical Broken Function Level Authorization
 - id: API5
   full_id: OWASP-API-2023-API5
   name: Broken Function Level Authorization
   url: https://owasp.org/API-Security/editions/2023/en/0xa5-broken-function-level-authorization/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-tool-abuse Pattern Cat 11 "Business Flow Abuse via Automated Tool Composition (OWASP API6:2023)"; F-241 Wave 3.1 T028 (API6 closure via new agentic-tier Pattern Cat 11)
 - id: API6
   full_id: OWASP-API-2023-API6
   name: Unrestricted Access to Sensitive Business Flows
   url: https://owasp.org/API-Security/editions/2023/en/0xa6-unrestricted-access-to-sensitive-business-flows/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-tampering Pattern Cat 7 "Server-Side Request Forgery (SSRF)" / Pattern Cat 1-9 injection family (API7:2023 SSRF surface); cross-ref tachi-info-disclosure Pattern Cat 7 (cloud-metadata / internal-service SSRF)
 - id: API7
   full_id: OWASP-API-2023-API7
   name: Server Side Request Forgery
   url: https://owasp.org/API-Security/editions/2023/en/0xa7-server-side-request-forgery/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-privilege-escalation Pattern Cat 11 "Security Misconfiguration Privilege-Gain Variant" (API-specific variant — GraphQL introspection / Swagger UI / CORS / API gateway misconfiguration); F-241 Wave 2.2 T029 (API8 closure via Cat 11 API-specific extension)
 - id: API8
   full_id: OWASP-API-2023-API8
   name: Security Misconfiguration
   url: https://owasp.org/API-Security/editions/2023/en/0xa8-security-misconfiguration/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-info-disclosure Pattern Cat 10 "API Surface Inventory and Documentation Exposure (OWASP API9:2023)"; F-241 Wave 3.1 T030 (API9 closure via new Pattern Cat 10)
 - id: API9
   full_id: OWASP-API-2023-API9
   name: Improper Inventory Management
   url: https://owasp.org/API-Security/editions/2023/en/0xa9-improper-inventory-management/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-agent-autonomy Pattern Cat 2 "Goal Misalignment" + agent-autonomy.md owasp_references attests ASI-01; ADR-037 §Audit-trail (agent-tier ASI bundle)
 - id: ASI01
   full_id: OWASP-AGENTIC-2026-ASI01
   name: Agent Goal Hijack
   url: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-tool-abuse Pattern Cat 1-8 (Unauthorized Tool Invocation / Capability Escalation / Tool Parameter Injection / Tool Chain Manipulation / Tool Poisoning / LLM Plugin & Tool Supply Chain / Per-Request Hijack / MCP Server Poisoning); tool-abuse.md owasp_references attests ASI-02
 - id: ASI02
   full_id: OWASP-AGENTIC-2026-ASI02
   name: Tool Misuse and Exploitation
   url: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-privilege-escalation Pattern Cat 1-10 (agentic privilege-management surface — agent-identity over-privilege, role-escalation across agent-to-agent calls, function-field auth on agentic action plans)
 - id: ASI03
   full_id: OWASP-AGENTIC-2026-ASI03
   name: Identity and Privilege Abuse
   url: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-tool-abuse Pattern Cat 11 (agentic-resource overload via business-flow abuse); tool-abuse.md owasp_references attests ASI-04 (Resource Overload)
 - id: ASI04
   full_id: OWASP-AGENTIC-2026-ASI04
   name: Agentic Supply Chain Vulnerabilities
   url: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-tool-abuse Pattern Cat 3 "Tool Parameter Injection" + Pattern Cat 5 "Tool Poisoning" (agent-RCE via tool-parameter / tool-poisoning surfaces); tachi-tampering Pattern Cat 1-9 injection family (RCE surface)
 - id: ASI05
   full_id: OWASP-AGENTIC-2026-ASI05
   name: Unexpected Code Execution (RCE)
   url: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-agent-autonomy Pattern Cat 8 "Agent Context Poisoning (Runtime Memory and Cross-Session State)"; agent-autonomy.md owasp_references attests ASI-06 (Memory and Context Poisoning)
 - id: ASI06
   full_id: OWASP-AGENTIC-2026-ASI06
   name: Memory and Context Poisoning
   url: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-tool-abuse Pattern Cat 9 "Insecure Inter-Agent Communication (A2A)" + Pattern Cat 10 "MCP-to-MCP Trust Propagation" (F-3 ADR-032 enrichment closure)
 - id: ASI07
   full_id: OWASP-AGENTIC-2026-ASI07
   name: Insecure Inter-Agent Communication
   url: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-agent-autonomy Pattern Cat 5 "Cascading Failures in Multi-Agent Systems" + Pattern Cat 10 "Multi-Agent Delegation Cycles" (delegation-cycle / cascading-failure surfaces); agent-autonomy.md owasp_references attests ASI-08
 - id: ASI08
   full_id: OWASP-AGENTIC-2026-ASI08
   name: Cascading Failures
   url: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-human-trust-exploitation Pattern Cat 1-5 (Undisclosed AI Authorship / Authority-Claim Emission / Persuasive-Tone Manipulation / Persona-Boundary Violations / Synthetic-Relationship Exploitation) — F-4 ADR-033 communication-axis closure; cross-ref tachi-agent-autonomy autonomy-axis (ADR-033 D-2 dual-host carve)
 - id: ASI09
   full_id: OWASP-AGENTIC-2026-ASI09
   name: Human-Agent Trust Exploitation
   url: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-agent-autonomy Pattern Cat 1 "Excessive Autonomy" + Pattern Cat 4 "Missing Human-in-the-Loop" + Pattern Cat 7 "Excessive Agency Sub-Categories (Functionality / Permissions / Autonomy)"; agent-autonomy.md owasp_references attests ASI-10
 - id: ASI10
   full_id: OWASP-AGENTIC-2026-ASI10
   name: Rogue Agents
   url: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-prompt-injection Pattern Cat 1-8 (Direct Injection / Jailbreaks / Indirect Injection / Encoding-Obfuscation evasion); prompt-injection.md owasp_references attests OWASP LLM01:2025
 - id: LLM01
   full_id: OWASP-LLM-2025-01
   name: Prompt Injection
   url: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-info-disclosure Pattern Cat 1-10 (Sensitive Information Disclosure surfaces — PII/PHI/secrets exposure on LLM-serving architectures via prompt context, system-prompt leakage adjacency, embedding leakage)
 - id: LLM02
   full_id: OWASP-LLM-2025-02
   name: Sensitive Information Disclosure
   url: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-data-poisoning Pattern Cat 1-7 (LLM corpus / fine-tuning / vector-store poisoning) + tachi-model-theft Pattern Cat 7 "Model Supply Chain Compromise"; data-poisoning.md and model-theft.md owasp_references attest OWASP LLM03:2025
 - id: LLM03
   full_id: OWASP-LLM-2025-03
   name: Supply Chain
   url: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-data-poisoning Pattern Cat 1-7 (Training-Time Poisoning / Fine-Tuning Poisoning / RAG-Vector-Store Poisoning / Backdoor Triggers); data-poisoning.md owasp_references attests OWASP LLM04:2025
 - id: LLM04
   full_id: OWASP-LLM-2025-04
   name: Data and Model Poisoning
   url: https://genai.owasp.org/llmrisk/llm042025-data-and-model-poisoning/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-output-integrity Pattern Cat 1-N (LLM-output-side sanitization — browser/SQL/shell sink trust); F-1 ADR-030 net-new-agent closure; output-integrity.md owasp_references attests OWASP LLM05:2025
 - id: LLM05
   full_id: OWASP-LLM-2025-05
   name: Improper Output Handling
   url: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-tool-abuse Pattern Cat 7 "Unauthorized Tool Invocation via Instruction Hijack (Per-Request)" + tachi-agent-autonomy Pattern Cat 7 "Excessive Agency Sub-Categories (LLM06:2025)"; both agents' owasp_references attest LLM06:2025
 - id: LLM06
   full_id: OWASP-LLM-2025-06
   name: Excessive Agency
   url: https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-prompt-injection Pattern Cat 6-8 (system-prompt extraction / leakage via direct injection + indirect injection + encoding-obfuscation evasion); prompt-injection.md owasp_references attests OWASP LLM07:2025; cross-ref tachi-model-theft Pattern Cat 9 "System Prompt and Configuration Leakage (OWASP LLM07:2025)"
 - id: LLM07
   full_id: OWASP-LLM-2025-07
   name: System Prompt Leakage
   url: https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-data-poisoning Pattern Cat 6 "RAG and Vector Store Poisoning at Retrieval Time" (LLM08:2025 vector / embedding weaknesses surface — runtime retrieval-index contamination); data-poisoning.md owasp_references attests OWASP LLM08:2025
 - id: LLM08
   full_id: OWASP-LLM-2025-08
   name: Vector and Embedding Weaknesses
   url: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-misinformation Pattern Cat 1-5 (Ungrounded Factual Emission / Citation Fabrication / Overreliance-Missing-HITL / Retrieval-Grounding Gap / Confidence-Calibration Absence); F-2 ADR-031 net-new-agent closure; misinformation.md owasp_references attests OWASP LLM09:2025
 - id: LLM09
   full_id: OWASP-LLM-2025-09
   name: Misinformation
   url: https://genai.owasp.org/llmrisk/llm092025-misinformation/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-denial-of-service Pattern Cat 12 "LLM Inference-Request Flooding and Token Exhaustion (OWASP LLM10:2025)" + Pattern Cat 13 "Context-Window Exhaustion — Latency-Driven Variant (Q1 SPLIT Vector A)" + tachi-model-theft Pattern Cat 10 + 11 "Cost Amplification + Denial-of-Wallet (Q1 SPLIT Vector B)"; F-5 ADR-034 dual-agent closure
 - id: LLM10
   full_id: OWASP-LLM-2025-10
   name: Unbounded Consumption
   url: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-spoofing Pattern Cat N+1 "Improper Mobile Credential Usage (M1:2024)"; F-7 ADR-036 closure (M1 → spoofing host); spoofing.md owasp_references attests OWASP M1:2024
 - id: M1
   full_id: OWASP-MOBILE-2024-M1
   name: Improper Credential Usage
   url: https://owasp.org/www-project-mobile-top-10/2023-risks/m1-improper-credential-usage
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-info-disclosure Pattern Cat N+4 "Insufficient Mobile Cryptography (M10:2024)"; F-7 ADR-036 closure (M10 → info-disclosure host)
 - id: M10
   full_id: OWASP-MOBILE-2024-M10
   name: Insufficient Cryptography
   url: https://owasp.org/www-project-mobile-top-10/2023-risks/m10-insufficient-cryptography
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-tampering Pattern Cat 11 "Mobile Supply Chain Integrity (M2:2024)"; F-7 ADR-036 closure (M2 → tampering host)
 - id: M2
   full_id: OWASP-MOBILE-2024-M2
   name: Inadequate Supply Chain Security
   url: https://owasp.org/www-project-mobile-top-10/2023-risks/m2-inadequate-supply-chain-security
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-spoofing Pattern Cat N+2 "Insecure Mobile Authentication/Authorization (M3:2024)"; F-7 ADR-036 closure (M3 → spoofing host); spoofing.md owasp_references attests OWASP M3:2024
 - id: M3
   full_id: OWASP-MOBILE-2024-M3
   name: Insecure Authentication/Authorization
   url: https://owasp.org/www-project-mobile-top-10/2023-risks/m3-insecure-authentication-authorization
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-tampering Pattern Cat 12 "Mobile IPC Input Validation (M4:2024)"; F-7 ADR-036 closure (M4 → tampering host with cross-axis F-1 boundary D-5)
 - id: M4
   full_id: OWASP-MOBILE-2024-M4
   name: Insufficient Input/Output Validation
   url: https://owasp.org/www-project-mobile-top-10/2023-risks/m4-insufficient-input-output-validation
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-info-disclosure Pattern Cat N+1 "Insecure Mobile Communication (M5:2024)"; F-7 ADR-036 closure (M5 → info-disclosure host)
 - id: M5
   full_id: OWASP-MOBILE-2024-M5
   name: Insecure Communication
   url: https://owasp.org/www-project-mobile-top-10/2023-risks/m5-insecure-communication
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-info-disclosure Pattern Cat N+2 "Inadequate Mobile Privacy Controls (M6:2024)"; F-7 ADR-036 closure (M6 → info-disclosure host)
 - id: M6
   full_id: OWASP-MOBILE-2024-M6
   name: Inadequate Privacy Controls
   url: https://owasp.org/www-project-mobile-top-10/2023-risks/m6-inadequate-privacy-controls
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-tampering Pattern Cat 13 "Insufficient Mobile Binary Protections (M7:2024)"; F-7 ADR-036 closure (M7 → tampering host)
 - id: M7
   full_id: OWASP-MOBILE-2024-M7
   name: Insufficient Binary Protections
   url: https://owasp.org/www-project-mobile-top-10/2023-risks/m7-insufficient-binary-protection
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-privilege-escalation Pattern Cat 11 "Security Misconfiguration Privilege-Gain Variant (M8:2024)" + tachi-repudiation Pattern Cat 9 "M8 Accountability-Loss Variant"; F-7 ADR-036 D-4 dual-host carve (priv-gain + accountability-loss)
 - id: M8
   full_id: OWASP-MOBILE-2024-M8
   name: Security Misconfiguration
   url: https://owasp.org/www-project-mobile-top-10/2023-risks/m8-security-misconfiguration
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-info-disclosure Pattern Cat N+3 "Insecure Mobile Data Storage (M9:2024)"; F-7 ADR-036 closure (M9 → info-disclosure host)
 - id: M9
   full_id: OWASP-MOBILE-2024-M9
   name: Insecure Data Storage
   url: https://owasp.org/www-project-mobile-top-10/2023-risks/m9-insecure-data-storage
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-tampering Pattern Cat 10 "Adversarial Input Manipulation (Predictive ML) (OWASP ML01:2023)"; F-6 ADR-035 closure (ML01 → tampering host); tampering.md owasp_references attests OWASP ML01:2023
 - id: ML01
   full_id: OWASP-ML-2023-ML01
   name: Input Manipulation Attack
   url: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML01_2023-Input_Manipulation_Attack.html
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-data-poisoning Pattern Cat 1-5 (Training-Time Data Poisoning surfaces — labeled-corpus contamination, supervised-learning poisoning) + Pattern Cat 7 "Backdoor Triggers in Training and Fine-Tuning Data" (predictive-ML training-tier surface; pre-existing closure prior to F-6)
 - id: ML02
   full_id: OWASP-ML-2023-ML02
   name: Data Poisoning Attack
   url: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML02_2023-Data_Poisoning_Attack.html
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-model-theft Pattern Cat 12 "Model Inversion (Predictive ML) (OWASP ML03:2023)"; F-6 ADR-035 closure (ML03 → model-theft host); model-theft.md owasp_references attests OWASP ML03:2023
 - id: ML03
   full_id: OWASP-ML-2023-ML03
   name: Model Inversion Attack
   url: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML03_2023-Model_Inversion_Attack.html
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-model-theft Pattern Cat 13 "Membership Inference (Predictive ML) (OWASP ML04:2023)"; F-6 ADR-035 closure (ML04 → model-theft host with ADR-035 D-5 disjoint-tells from Cat 12); model-theft.md owasp_references attests OWASP ML04:2023
 - id: ML04
   full_id: OWASP-ML-2023-ML04
   name: Membership Inference Attack
   url: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML04_2023-Membership_Inference_Attack.html
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-model-theft Pattern Cat 1 "Direct Weight Exfiltration" + Pattern Cat 2 "API-Based Model Extraction" + Pattern Cat 3 "Model Artifact Exposure" + Pattern Cat 8 "Exfiltration via ML Inference API (ATLAS AML.T0024)" (canonical model-theft surface; pre-existing closure prior to F-6)
 - id: ML05
   full_id: OWASP-ML-2023-ML05
   name: Model Theft
   url: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML05_2023-Model_Theft.html
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-data-poisoning Pattern Cat 10 "Predictive-ML Supply Chain Completeness (corpus-side)" + tachi-model-theft Pattern Cat 14 "Predictive-ML Artifact Supply Chain (artifact-side)"; F-6 ADR-035 D-4 two-facet cross-agent decomposition (corpus + artifact)
 - id: ML06
   full_id: OWASP-ML-2023-ML06
   name: AI Supply Chain Attacks
   url: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML06_2023-AI_Supply_Chain_Attacks.html
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-data-poisoning Pattern Cat 8 "Transfer Learning Supply Chain (Predictive ML) (OWASP ML07:2023)"; F-6 ADR-035 closure (ML07 → data-poisoning host); data-poisoning.md owasp_references attests OWASP ML07:2023
 - id: ML07
   full_id: OWASP-ML-2023-ML07
   name: Transfer Learning Attack
   url: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML07_2023-Transfer_Learning_Attack.html
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-data-poisoning Pattern Cat 9 "Feedback-Loop Model Skewing (Active Learning / Online Learning) (OWASP ML08:2023)"; F-6 ADR-035 closure (ML08 → data-poisoning host); data-poisoning.md owasp_references attests OWASP ML08:2023
 - id: ML08
   full_id: OWASP-ML-2023-ML08
   name: Model Skewing
   url: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML08_2023-Model_Skewing.html
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-output-integrity Pattern Cat 1-N (LLM/ML output sanitization on prediction-pipeline downstream sinks); F-1 ADR-030 documentation-only bundle (LLM05:2025 + ML09:2023 share output-handling signal class); output-integrity.md owasp_references attests OWASP ML09:2023
 - id: ML09
   full_id: OWASP-ML-2023-ML09
   name: Output Integrity Attack
   url: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML09_2023-Output_Integrity_Attack.html
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-data-poisoning Pattern Cat 1-7 (Model Poisoning surfaces — adversarial weight tampering at training, post-training poisoning; pre-existing closure prior to F-6) + Pattern Cat 8 "Transfer Learning Supply Chain" (model-weight tier overlap with ML07)
 - id: ML10
   full_id: OWASP-ML-2023-ML10
   name: Model Poisoning
   url: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML10_2023-Model_Poisoning.html
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""

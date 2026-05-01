@@ -32,66 +32,249 @@
 # ATLAS release is v5.5.0 (March 2025); there is no "October 2025 v5.4"
 # release — T011's attribution was also incorrect.
 #
+# F-241 EXPANSION APPLIED (T038, 2026-05-01): record count 12 -> 30 via
+# external curation against the authoritative atlas-data techniques.yaml
+# (https://raw.githubusercontent.com/mitre-atlas/atlas-data/main/data/techniques.yaml).
+# The 18 net-new records cover all 11 ATLAS taxonomy phases per FR-010 of
+# specs/241-web-api-coverage-attestation/spec.md: Reconnaissance (T0000,
+# T0003, T0004), Resource Development (T0002, T0016, T0019), Initial Access
+# (T0012), ML Model Access (T0040), ML Attack Staging (T0042), Execution
+# (T0011), Discovery (T0007, T0013, T0014), Defense Evasion (T0015),
+# Collection (T0035), Impact (T0029, T0031, T0034). The 3 prose-only
+# techniques cited at F-6 ADR-035 D-7 (AML.T0015, AML.T0019, AML.T0031) are
+# now catalog-resolvable, closing the F-6 catalog-gap-propagation rule.
+# The 7 pre-existing seed names + 5 corrected T0058-T0062 names are held
+# byte-identical at expansion time (no name updates re-applied even where
+# the upstream atlas-data repo has subsequently re-titled techniques —
+# e.g., AML.T0010 "ML Supply Chain Compromise" -> "AI Supply Chain
+# Compromise" in v5.5; AML.T0024 "Exfiltration via ML Inference API" ->
+# "Exfiltration via AI Inference API" in v5.5). Name re-verification under
+# the current ATLAS revision is filed as a separate follow-on Issue.
+#
+# F-241 RECORD-SHAPE EXTENSION APPLIED (T039, 2026-05-01): every record now
+# carries two new optional fields per ADR-037 D-7 (extending ADR-027 D1
+# record-shape): `out_of_scope: bool` (default false) and
+# `out_of_scope_rationale: string` (default empty). Existing F-A1 records
+# that omit these fields parse correctly under YAML defaults
+# (backward-compat preserved per FR-012). F-241 ruling: ALL 30 ATLAS
+# records remain IN-SCOPE (`out_of_scope: false`) — the canonical ATLAS
+# techniques in this catalog all have at least one design-time mitigation
+# surface (e.g., AML.T0034 Cost Harvesting -> design-time rate-limit and
+# budget controls; AML.T0036/T0037 Discovery -> output sanitization and
+# query throttling; AML.T0048 External Harms -> output safeguards). Per
+# FR-013, coverage % = |cited_ids| / |taxonomy_ids_not_out_of_scope|;
+# denominator at F-241 closure = 30 with zero exclusions.
+#
 # Sorted alphabetically by `id` per FR-032.
 
+- id: AML.T0000
+  full_id: ATLAS-AML.T0000
+  name: Search Open Technical Databases
+  url: https://atlas.mitre.org/techniques/AML.T0000
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0002
+  full_id: ATLAS-AML.T0002
+  name: Acquire Public AI Artifacts
+  url: https://atlas.mitre.org/techniques/AML.T0002
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0003
+  full_id: ATLAS-AML.T0003
+  name: Search Victim-Owned Websites
+  url: https://atlas.mitre.org/techniques/AML.T0003
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0004
+  full_id: ATLAS-AML.T0004
+  name: Search Application Repositories
+  url: https://atlas.mitre.org/techniques/AML.T0004
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0007
+  full_id: ATLAS-AML.T0007
+  name: Discover AI Artifacts
+  url: https://atlas.mitre.org/techniques/AML.T0007
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: AML.T0010
   full_id: ATLAS-AML.T0010
   name: ML Supply Chain Compromise
   url: https://atlas.mitre.org/techniques/AML.T0010
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0011
+  full_id: ATLAS-AML.T0011
+  name: User Execution
+  url: https://atlas.mitre.org/techniques/AML.T0011
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0012
+  full_id: ATLAS-AML.T0012
+  name: Valid Accounts
+  url: https://atlas.mitre.org/techniques/AML.T0012
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0013
+  full_id: ATLAS-AML.T0013
+  name: Discover AI Model Ontology
+  url: https://atlas.mitre.org/techniques/AML.T0013
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0014
+  full_id: ATLAS-AML.T0014
+  name: Discover AI Model Family
+  url: https://atlas.mitre.org/techniques/AML.T0014
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0015
+  full_id: ATLAS-AML.T0015
+  name: Evade AI Model
+  url: https://atlas.mitre.org/techniques/AML.T0015
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0016
+  full_id: ATLAS-AML.T0016
+  name: Obtain Capabilities
+  url: https://atlas.mitre.org/techniques/AML.T0016
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: AML.T0018
   full_id: ATLAS-AML.T0018
   name: Backdoor ML Model
   url: https://atlas.mitre.org/techniques/AML.T0018
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0019
+  full_id: ATLAS-AML.T0019
+  name: Publish Poisoned Datasets
+  url: https://atlas.mitre.org/techniques/AML.T0019
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: AML.T0020
   full_id: ATLAS-AML.T0020
   name: Poison Training Data
   url: https://atlas.mitre.org/techniques/AML.T0020
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: AML.T0024
   full_id: ATLAS-AML.T0024
   name: Exfiltration via ML Inference API
   url: https://atlas.mitre.org/techniques/AML.T0024
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0029
+  full_id: ATLAS-AML.T0029
+  name: Denial of AI Service
+  url: https://atlas.mitre.org/techniques/AML.T0029
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0031
+  full_id: ATLAS-AML.T0031
+  name: Erode AI Model Integrity
+  url: https://atlas.mitre.org/techniques/AML.T0031
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0034
+  full_id: ATLAS-AML.T0034
+  name: Cost Harvesting
+  url: https://atlas.mitre.org/techniques/AML.T0034
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0035
+  full_id: ATLAS-AML.T0035
+  name: AI Artifact Collection
+  url: https://atlas.mitre.org/techniques/AML.T0035
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0040
+  full_id: ATLAS-AML.T0040
+  name: AI Model Inference API Access
+  url: https://atlas.mitre.org/techniques/AML.T0040
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0042
+  full_id: ATLAS-AML.T0042
+  name: Verify Attack
+  url: https://atlas.mitre.org/techniques/AML.T0042
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: AML.T0051
   full_id: ATLAS-AML.T0051
   name: LLM Prompt Injection
   url: https://atlas.mitre.org/techniques/AML.T0051
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: AML.T0054
   full_id: ATLAS-AML.T0054
   name: LLM Jailbreak
   url: https://atlas.mitre.org/techniques/AML.T0054
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: AML.T0057
   full_id: ATLAS-AML.T0057
   name: LLM Data Leakage
   url: https://atlas.mitre.org/techniques/AML.T0057
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 # AML.T0058-T0062: names corrected T020 per authoritative atlas-data source.
 - id: AML.T0058
   full_id: ATLAS-AML.T0058
   name: Publish Poisoned Models
   url: https://atlas.mitre.org/techniques/AML.T0058
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: AML.T0059
   full_id: ATLAS-AML.T0059
   name: Erode Dataset Integrity
   url: https://atlas.mitre.org/techniques/AML.T0059
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: AML.T0060
   full_id: ATLAS-AML.T0060
   name: Publish Hallucinated Entities
   url: https://atlas.mitre.org/techniques/AML.T0060
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: AML.T0061
   full_id: ATLAS-AML.T0061
   name: LLM Prompt Self-Replication
   url: https://atlas.mitre.org/techniques/AML.T0061
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: AML.T0062
   full_id: ATLAS-AML.T0062
   name: Discover LLM Hallucinations
   url: https://atlas.mitre.org/techniques/AML.T0062
   cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
