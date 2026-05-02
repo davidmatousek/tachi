@@ -567,9 +567,12 @@ def test_aggregator_fails_loud_on_malformed_yaml(extract_report_data):
 
     # Patch yaml.safe_load on the yaml module directly. extract-report-data.py
     # imports yaml lazily inside _load_framework_yaml_records (stdlib-only
-    # module-load invariant per tachi_parsers.py:646/804), so the patch target
-    # is the shared yaml module rather than a module-level attribute of
-    # extract_report_data.
+    # module-load invariant), so the patch target is the shared yaml module
+    # rather than a module-level attribute of extract_report_data. The loader
+    # is lru_cached for hot-path performance; clear the cache so this test
+    # actually exercises yaml.safe_load rather than returning cached records
+    # populated by a prior test in the same session.
+    extract_report_data._load_framework_yaml_records.cache_clear()
     with patch.object(yaml, "safe_load", _raise_yaml_error):
         with pytest.raises((yaml.YAMLError, RuntimeError, OSError)) as exc_info:
             extract_report_data.load_framework_yaml_record_counts()

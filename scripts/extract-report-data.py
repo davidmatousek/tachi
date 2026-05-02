@@ -12,6 +12,7 @@ Exit codes:
 """
 
 import argparse
+import functools
 import os
 import re
 import concurrent.futures
@@ -1070,27 +1071,34 @@ TAXONOMY_REF_GROUPS = (
 )
 
 
+@functools.lru_cache(maxsize=None)
 def _load_framework_yaml_records(
     framework_name: str, in_scope_only: bool = False
 ) -> list:
-    """Return the list of top-level records from schemas/taxonomy/{framework_name}.yaml.
+    """Return top-level records from schemas/taxonomy/{framework_name}.yaml.
 
     Wraps yaml.safe_load with a fail-loud RuntimeError that names the offending
     framework + path. Empty YAML yields an empty list (zero-denominator case).
 
-    yaml is imported lazily inside the function body (T046 / FR-014) so the
-    module loads without pyyaml installed — required by the stdlib-only
-    module-load invariant in sibling tachi_parsers (which uses regex
-    `_load_catalog_ids` for the ids-only case). An ids-only caller should
-    prefer `tachi_parsers._load_catalog_ids`; this helper returns full record
+    yaml is imported lazily inside the function body so the module loads
+    without pyyaml installed — required by the stdlib-only module-load
+    invariant in sibling tachi_parsers (which uses regex `_load_catalog_ids`
+    for the ids-only case). An ids-only caller should prefer
+    `tachi_parsers._load_catalog_ids`; this helper returns full record
     dicts in YAML order, which is what the aggregator needs.
 
-    When ``in_scope_only=True`` (F-241 Stream 4 / FR-024 / Architect M-2):
-    records carrying ``out_of_scope: true`` are filtered out before return.
-    Records that omit the ``out_of_scope`` key (pre-F-241 records) are treated
-    as in-scope (default ``False`` per data-model.md §2 Backwards-compat). The
-    filter is applied here at the lowest level so the in-scope-record-count
-    semantic flows uniformly through every downstream aggregator code path.
+    Result is memoized via ``functools.lru_cache`` so repeated calls within
+    the same process return the cached records without re-parsing the YAML
+    file. The returned list is shared across callers — do not mutate it.
+    Tests that need to bypass the cache (e.g. the YAMLError fail-loud test
+    that patches ``yaml.safe_load``) must call
+    ``_load_framework_yaml_records.cache_clear()`` explicitly.
+
+    When ``in_scope_only=True``: records carrying ``out_of_scope: true`` are
+    filtered out before return. Records that omit the ``out_of_scope`` key are
+    treated as in-scope (default ``False`` per backward-compat). The filter is
+    applied here at the lowest level so the in-scope-record-count semantic
+    flows uniformly through every downstream aggregator code path.
     """
     import yaml
 
