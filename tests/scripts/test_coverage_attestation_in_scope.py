@@ -1,32 +1,27 @@
-"""F-241 Stream 3 + Stream 4 in-scope-only coverage-percentage tests (T048).
+"""In-scope-only coverage-percentage aggregator tests.
 
-Validates the post-T044/T045/T047 aggregator behavior:
+Validates that:
 
 1. ``_load_framework_yaml_records(in_scope_only=True)`` filters records
-   carrying ``out_of_scope: true`` (T044) — records that omit the field
-   are treated as in-scope per data-model.md §2 backward-compat.
+   carrying ``out_of_scope: true``; records that omit the field are
+   treated as in-scope (backward-compat).
 2. ``load_framework_yaml_in_scope_record_counts()`` returns the filtered
-   counts (T045 sibling helper of ``load_framework_yaml_record_counts``).
-3. ``_build_per_framework_aggregate()`` emits BOTH ``yaml_record_count``
-   (raw) AND ``in_scope_yaml_record_count`` (filtered) on the per-framework
-   aggregate dict (T045/T047).
-4. Coverage percentage uses ``in_scope_yaml_record_count`` as denominator
-   per data-model.md §3 lines 156-161 + finding-contract.md §2.
-5. The Typst data emission at line ~1899 of ``extract-report-data.py`` carries
-   ``in-scope-record-count: <int>`` alongside the existing ``yaml-record-count``
-   field (FR-024 / data-model.md §3).
-6. Findings citing Out-of-Scope items (T046 edge case): the aggregator
-   filters OOS records out of the items list, so they DO NOT appear as
-   covered/partial/gap. The finding itself still emits on the per-finding
-   attribution table (preserves F-A2 referential-integrity contract; that
-   surface is exercised separately by ``test_per_finding_row_*`` tests).
+   counts.
+3. ``_build_per_framework_aggregate()`` emits both ``yaml_record_count``
+   (raw) and ``in_scope_yaml_record_count`` (filtered) on the per-framework
+   aggregate dict.
+4. Coverage percentage uses ``in_scope_yaml_record_count`` as denominator.
+5. The Typst data emission carries ``in-scope-record-count: <int>``
+   alongside the existing ``yaml-record-count`` field.
+6. Findings citing out-of-scope items: the aggregator filters OOS records
+   out of the items list, so they do not appear as covered/partial/gap.
+   The finding itself still emits on the per-finding attribution table
+   (preserves F-A2 referential-integrity).
 
 Fixtures consumed:
 - ``tests/scripts/fixtures/stream_3_taxonomy/`` — synthetic taxonomy YAML subsets
 - ``tests/scripts/fixtures/stream_4_coverage_percentage/`` — finding fixture +
   expected aggregate-shape pairs (live taxonomy YAMLs)
-
-Tasks referenced: T044 / T045 / T046 / T047 / T048.
 """
 
 from __future__ import annotations
@@ -160,44 +155,44 @@ class TestStream3FixtureShape:
 class TestStream3LoaderFilter:
     """Exercise ``_load_framework_yaml_records`` filter semantics.
 
-    The loader signature gained an ``in_scope_only`` kwarg in T044. When True,
-    records carrying ``out_of_scope: true`` are filtered. Records that omit
-    the field are treated as in-scope (pre-F-241 backward-compat per
-    data-model.md §2).
+    The loader filters records carrying ``out_of_scope: true`` when
+    ``in_scope_only=True``. Records that omit the field are treated as
+    in-scope per backward-compat.
 
-    These tests monkeypatch the on-disk path resolution via injection of a
-    synthetic fixture into ``SCHEMAS_TAXONOMY_DIR`` lookup — the cleanest way
-    to exercise the filter against synthetic content without touching the
-    live ``schemas/taxonomy/*.yaml`` files (architect M-3 / FR-014).
+    Tests monkeypatch ``SCHEMAS_TAXONOMY_DIR`` to point at synthetic Stream 3
+    fixtures so the filter is exercised against controlled content without
+    touching the live ``schemas/taxonomy/*.yaml`` files. The lru_cache on
+    ``_load_framework_yaml_records`` is cleared before each call so the
+    monkeypatched directory takes effect on disk reads rather than returning
+    records cached from a prior test or production code path.
     """
 
-    def _stub_load(self, fixture_name: str, in_scope_only: bool, monkeypatch):
-        """Run ``_load_framework_yaml_records`` against a Stream 3 fixture.
+    def _stub_load(
+        self, fixture_name: str, in_scope_only: bool, monkeypatch, extract_report_data
+    ):
+        """Load ``_load_framework_yaml_records`` against a Stream 3 fixture.
 
-        Patches the module-level ``SCHEMAS_TAXONOMY_DIR`` to point at the
-        Stream 3 fixtures directory so the loader resolves
-        ``<framework>.yaml`` to our synthetic content. The framework name
-        used in the call is the fixture filename minus the ``.yaml``
-        extension.
+        Uses the session-scoped ``extract_report_data`` fixture rather than
+        re-importing the module per call. Clears the loader's lru_cache so
+        the monkeypatched ``SCHEMAS_TAXONOMY_DIR`` takes effect on disk read
+        instead of returning cached entries from a prior call.
         """
-        import importlib.util
-
-        spec = importlib.util.spec_from_file_location(
-            "extract_report_data", REPO_ROOT / "scripts" / "extract-report-data.py"
-        )
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-
         monkeypatch.setattr(
-            module, "SCHEMAS_TAXONOMY_DIR", STREAM_3_FIXTURES
+            extract_report_data, "SCHEMAS_TAXONOMY_DIR", STREAM_3_FIXTURES
         )
-        return module._load_framework_yaml_records(
+        extract_report_data._load_framework_yaml_records.cache_clear()
+        return extract_report_data._load_framework_yaml_records(
             fixture_name, in_scope_only=in_scope_only
         )
 
-    def test_raw_call_returns_all_records_including_oos(self, monkeypatch):
+    def test_raw_call_returns_all_records_including_oos(
+        self, monkeypatch, extract_report_data
+    ):
         records = self._stub_load(
-            "mixed_in_scope_and_oos", in_scope_only=False, monkeypatch=monkeypatch
+            "mixed_in_scope_and_oos",
+            in_scope_only=False,
+            monkeypatch=monkeypatch,
+            extract_report_data=extract_report_data,
         )
         ids = [r["id"] for r in records]
         # All 5 IDs (in-scope + OOS) must appear in raw return.
@@ -206,9 +201,12 @@ class TestStream3LoaderFilter:
             f"(both in-scope and OOS). Got: {ids!r}"
         )
 
-    def test_in_scope_only_filters_oos_records(self, monkeypatch):
+    def test_in_scope_only_filters_oos_records(self, monkeypatch, extract_report_data):
         records = self._stub_load(
-            "mixed_in_scope_and_oos", in_scope_only=True, monkeypatch=monkeypatch
+            "mixed_in_scope_and_oos",
+            in_scope_only=True,
+            monkeypatch=monkeypatch,
+            extract_report_data=extract_report_data,
         )
         ids = [r["id"] for r in records]
         # Exactly the 3 in-scope IDs (T1190, T1078, T1195) must remain.
@@ -217,40 +215,59 @@ class TestStream3LoaderFilter:
             f"(T1071, T1041). Got: {ids!r}"
         )
 
-    def test_in_scope_only_treats_missing_field_as_in_scope(self, monkeypatch):
-        """Pre-F-241 backward-compat: records without out_of_scope key are kept."""
+    def test_in_scope_only_treats_missing_field_as_in_scope(
+        self, monkeypatch, extract_report_data
+    ):
+        """Records without out_of_scope key are kept (backward-compat)."""
         records = self._stub_load(
-            "omits_oos_field", in_scope_only=True, monkeypatch=monkeypatch
+            "omits_oos_field",
+            in_scope_only=True,
+            monkeypatch=monkeypatch,
+            extract_report_data=extract_report_data,
         )
         # All 4 records lack the out_of_scope field; all 4 must be returned.
         assert len(records) == 4, (
             f"in_scope_only=True must keep all 4 records that omit "
-            f"out_of_scope (treated as default-in-scope per data-model.md "
-            f"§2). Got: {len(records)}"
+            f"out_of_scope (treated as default-in-scope). Got: {len(records)}"
         )
 
-    def test_in_scope_only_on_empty_yaml_returns_empty(self, monkeypatch):
+    def test_in_scope_only_on_empty_yaml_returns_empty(
+        self, monkeypatch, extract_report_data
+    ):
         records = self._stub_load(
-            "empty_yaml", in_scope_only=True, monkeypatch=monkeypatch
+            "empty_yaml",
+            in_scope_only=True,
+            monkeypatch=monkeypatch,
+            extract_report_data=extract_report_data,
         )
         assert records == [], (
             f"in_scope_only=True on empty YAML must return []. "
             f"Got: {records!r}"
         )
 
-    def test_in_scope_only_on_all_oos_returns_empty(self, monkeypatch):
+    def test_in_scope_only_on_all_oos_returns_empty(
+        self, monkeypatch, extract_report_data
+    ):
         records = self._stub_load(
-            "all_oos", in_scope_only=True, monkeypatch=monkeypatch
+            "all_oos",
+            in_scope_only=True,
+            monkeypatch=monkeypatch,
+            extract_report_data=extract_report_data,
         )
         assert records == [], (
             f"in_scope_only=True on all-OOS YAML must filter every record "
             f"and return []. Got: {records!r}"
         )
 
-    def test_raw_call_on_all_oos_returns_full_inventory(self, monkeypatch):
+    def test_raw_call_on_all_oos_returns_full_inventory(
+        self, monkeypatch, extract_report_data
+    ):
         """All-OOS edge case: raw call returns 3 records (in_scope returns 0)."""
         records = self._stub_load(
-            "all_oos", in_scope_only=False, monkeypatch=monkeypatch
+            "all_oos",
+            in_scope_only=False,
+            monkeypatch=monkeypatch,
+            extract_report_data=extract_report_data,
         )
         assert len(records) == 3, (
             f"raw _load_framework_yaml_records on all-OOS must return all "

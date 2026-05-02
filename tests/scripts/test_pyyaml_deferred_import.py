@@ -1,4 +1,4 @@
-"""Enforce the KB-037 stdlib-only module-load invariant on tachi pipeline scripts.
+"""Enforce the stdlib-only module-load invariant on tachi pipeline scripts.
 
 The tachi pipeline must remain importable in stdlib-only environments (no
 PyYAML installed) so the public-facing CLI scaffolding does not fail at
@@ -8,35 +8,22 @@ function body that actually parses YAML — when no YAML-parsing code path
 fires, PyYAML is never loaded.
 
 This test parses every Python source file under ``scripts/`` with
-``ast.parse``, walks every ``ast.Import`` / ``ast.ImportFrom`` node that names
-``yaml`` (or ``yaml.<sub>``), and asserts that every such node has at least
-one ancestor that is an ``ast.FunctionDef`` or ``ast.AsyncFunctionDef``. A
-module-level ``import yaml`` (i.e. zero function ancestors) fails the test
-with a precise ``file:line`` error message.
+``ast.parse``, walks every ``ast.Import`` / ``ast.ImportFrom`` node that
+names ``yaml`` (or ``yaml.<sub>``), and asserts that every such node has at
+least one ancestor that is an ``ast.FunctionDef`` or ``ast.AsyncFunctionDef``.
+A module-level ``import yaml`` fails with a precise ``file:line`` message.
 
-References:
-- KB-037 stdlib-only module-load invariant (Feature 128 lineage)
-- F-241 Architect MEDIUM-B
-- F-241 Wave 4.3 task T046 (commit ``02acd08``) — preserved the discipline
-  by importing yaml inside ``_load_framework_yaml_records`` (line ~1095) of
-  ``scripts/extract-report-data.py`` rather than at module top.
-- F-241 plan.md line 148 (FR-014) — "any new YAML / library imports remain
-  inside function bodies (deferred imports), not at module level."
-
-This is the F-241 Wave 5.1 task T050 test that codifies the invariant.
+Reference: KB-037 stdlib-only module-load invariant.
 
 Test design notes:
-- Auto-discovery (``_discover_pipeline_scripts``) globs ``scripts/*.py`` and
-  retains only the files whose source text actually mentions ``yaml`` so the
-  test stays correct when future scripts add YAML usage. Scripts that never
-  reference yaml are silently dropped (vacuously satisfy the invariant).
-- A negative-control test (``test_helper_detects_module_level_yaml_import``)
-  parses synthetic source containing a top-level ``import yaml`` and asserts
-  the helper correctly flags it, proving the helper itself isn't broken.
-- The check looks at AST parent ancestry (not lexical scope), so an
-  ``import yaml`` inside a class body is treated as module-level (no function
-  ancestor) — this matches the runtime semantics, since class bodies execute
-  at import time exactly like module-level code.
+- Auto-discovery globs ``scripts/*.py`` and retains only files whose source
+  mentions ``yaml`` so the test stays correct as new yaml-using scripts are
+  added.
+- A negative-control test parses synthetic source containing a top-level
+  ``import yaml`` and asserts the helper correctly flags it.
+- Parent ancestry (not lexical scope) is checked so ``import yaml`` inside a
+  class body is treated as module-level — class bodies execute at import time
+  exactly like module-level code.
 """
 
 from __future__ import annotations
@@ -171,17 +158,15 @@ def test_discovery_finds_at_least_one_pipeline_script() -> None:
 def test_known_yaml_consumer_is_in_scope() -> None:
     """Anchor: extract-report-data.py is the canonical yaml consumer.
 
-    F-241 Wave 4.3 T046 explicitly preserved the deferred-import discipline
-    in this file (yaml imported inside ``_load_framework_yaml_records``, line
-    ~1095). If discovery ever drops it from the in-scope list, the deferred-
-    import invariant becomes untested for the very file that proved the
-    pattern. Fail loudly in that case.
+    The deferred-import discipline is preserved here by importing yaml
+    inside ``_load_framework_yaml_records``. If discovery ever drops this
+    file from the in-scope list, the invariant becomes untested for the
+    very file that proved the pattern. Fail loudly in that case.
     """
     expected = SCRIPTS_DIR / "extract-report-data.py"
     assert expected in PIPELINE_SCRIPTS, (
-        f"{expected} dropped out of pipeline-script discovery. T046 "
-        "(F-241 Wave 4.3, commit 02acd08) preserved the deferred-import "
-        "discipline here; the test must keep watching it."
+        f"{expected} dropped out of pipeline-script discovery — the "
+        f"deferred-import discipline test must keep watching it."
     )
 
 

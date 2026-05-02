@@ -1,52 +1,16 @@
-"""F-241 Wave 5.1 / T049 — SC-009 coverage-percentage cross-check driver.
+"""SC-009 coverage-percentage cross-check driver.
 
 Independently re-derives the coverage-percentage formula from synthetic
 fixtures + live taxonomy YAMLs and asserts byte-identical equality with
 ``extract-report-data.py``'s ``build_per_framework_aggregates`` output.
 
-Formula (per data-model.md §3 lines 156-161 + finding-contract §2):
+Formula:
 
     in_scope_records = [r for r in records if not r.get("out_of_scope", False)]
     denominator      = len(in_scope_records)
     covered_count    = number of records with >=1 primary citation
     coverage_pct     = (covered_count / denominator) * 100  if denominator else "N/A"
                        formatted as "X.XX%"  (zero-numerator yields "0.00%")
-
-The test is the SC-009 verification driver landing at Wave 5.1 — its
-arithmetic results stay valid through Wave 5.2 (T053/T054/T055 baseline
-regen) without any source change. Once Wave 5.2 lands, the same
-parametrized pairs run against richer ``source_attribution``-populated
-baselines and the equality assertion still holds (independent
-re-derivation walks the SAME finding source as the aggregator does).
-
-# AUTHOR'S NOTE — WATCHLIST decision (T049 prompt §"WATCHLIST decision")
-# ----------------------------------------------------------------------
-# Mode (a) DEFERRED chosen.
-#
-# Background: T049 mandates "8 baselines x 5 frameworks = 40 cross-check
-# pairs". Of the 8 baselines, only 6 carry canonical-path baselines today:
-# ``web-app``, ``microservices``, ``ascii-web-api``,
-# ``mermaid-agentic-app``, ``free-text-microservice``, ``maestro-reference``
-# — all at ``examples/<arch>/threats.md``. The 2 net-new baselines for
-# ``predictive-ml-app`` + ``mobile-banking-app`` land at Wave 5.2 (T054 +
-# T055) under the canonical path
-# ``examples/<arch>/sample-report/security-report.pdf.baseline`` per
-# Architect L-1. Their ``sample-report/threats.md`` artifacts exist today
-# but were authored under the pre-F-241 detection-tier inventory (no
-# Section 9 source_attribution), so they're tracked as Wave 5.2 deferrals.
-#
-# Decision: parametrize across the 6 pre-existing baselines x 5 frameworks
-# = 30 ACTIVE cross-check pairs today. The 2 deferred baselines x 5
-# frameworks = 10 SKIPPED pairs are emitted as ``pytest.skip(...)`` markers
-# with a reason naming T054/T055 explicitly. When Wave 5.2 lands, the
-# skip markers can be lifted with no other source change — the test
-# auto-expands to the documented 40-pair matrix.
-#
-# Asymmetry to T048: T048 (test_coverage_attestation_in_scope.py) uses
-# synthetic fixtures only — its arithmetic invariants are independent of
-# baseline state. T049 (this file) couples the cross-check to live
-# baseline ``threats.md`` content so it exercises the full parser ->
-# aggregator -> formula chain on real data.
 
 Cross-check shape (per parametrized pair):
 
@@ -67,25 +31,15 @@ Cross-check shape (per parametrized pair):
 Edge cases (parametrized as separate test classes — exercise the same
 formula on synthetic findings against live YAMLs):
 
-  - Mixed in-scope/OOS taxonomy records cited (reuses
-    ``stream_4_coverage_percentage/findings_mixed.yaml``).
-  - All-Out-of-Scope citations (``findings_oos_only.yaml``) — independent
-    computation returns covered=0; aggregator agrees.
-  - Pre-F-241 backward-compat — taxonomy records that lack the
-    ``out_of_scope`` key entirely are treated as in-scope by both paths.
-  - Zero-denominator (entirely-Out-of-Scope framework) — independent
+  - Mixed in-scope/OOS taxonomy records cited.
+  - All-out-of-scope citations — independent computation returns covered=0.
+  - Records that lack the ``out_of_scope`` key entirely are treated as
+    in-scope by both paths (backward-compat).
+  - Zero-denominator (entirely out-of-scope framework) — independent
     computation returns ``"N/A"``; aggregator agrees (monkeypatched).
 
-Pre-flight (T049 prompt §"Pre-flight"):
-``pytest tests/scripts/test_coverage_attestation_in_scope.py -q`` must
-pass 19/19 before this test is run; that suite validates the aggregator
-path THIS test cross-checks against.
-
-Stdlib-only invariant: ``import yaml`` is permitted in test files (KB-037
-applies to production scripts only). No new top-level dependencies.
-
-Tasks referenced: T049 (this file). Depends on T048 fixtures (consumed
-verbatim from ``tests/scripts/fixtures/stream_4_coverage_percentage/``).
+``import yaml`` is permitted in test files (the stdlib-only invariant
+applies to production scripts only).
 """
 
 from __future__ import annotations

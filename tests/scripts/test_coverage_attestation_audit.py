@@ -1,22 +1,8 @@
-"""F-241 Coverage Attestation Audit Test (T035 / Wave 3.1 / SC-005 BLOCKER).
+"""Coverage Attestation Audit Test (BLP-01 Section 8 Quality Bar).
 
 Walks ``schemas/taxonomy/owasp.yaml`` (60 records) and resolves each Covered
-citation to >=1 agent file + >=1 detection-pattern category per BLP-01 Section 8
-Quality Bar.
-
-TDD-Red status:
-
-- ``TestOwaspYamlRecordShape``: +2-field tests SKIP until Stream 3 task T037
-  lands the ``out_of_scope`` / ``out_of_scope_rationale`` record-shape
-  extension; 60-record count + 5-field shape PASS now.
-- ``TestCitationCompleteness``: walk tests SKIP until T037 lands the
-  partition field; static partial-item-deferral check PASSes now.
-- ``TestKnownPartialItemClosure``: PASSes now on Wave 3.1 via static grep
-  verification of the 6 closures (T025/T026/T028/T029/T030/T031).
-
-Reference precedent: ``tests/scripts/test_coverage_attestation.py`` — uses
-``pytest.skip()`` (not ``xfail``) for not-yet-implemented fields so failure
-vs skip semantics stay clean across Wave transitions.
+citation to >=1 agent file + >=1 detection-pattern category. Out-of-scope
+records are exempt from the citation requirement.
 """
 
 from __future__ import annotations
@@ -114,23 +100,13 @@ class TestOwaspYamlRecordShape:
             )
 
     def test_owasp_yaml_records_have_out_of_scope_field(self):
-        """T037 / ADR-027 D1: every record carries ``out_of_scope`` (default False).
-
-        SKIPs now (T037 not landed). Flips to PASS once T037 extends the
-        record shape with ``out_of_scope: false`` defaults across all 60.
-        """
+        """Every record carries ``out_of_scope`` (default False)."""
         records = _load_owasp()
-        if records and "out_of_scope" not in records[0]:
-            pytest.skip(
-                "out_of_scope field not yet present on owasp.yaml records — "
-                "Stream 3 task T037 (ADR-027 D1 record-shape extension) "
-                "has not landed. Test flips to PASS once T037 lands."
-            )
         for idx, rec in enumerate(records):
             assert "out_of_scope" in rec, (
                 f"OWASP record idx={idx} (id={rec.get('id')!r}) missing "
-                f"``out_of_scope``. Per T037 / ADR-027 D1, all 60 records "
-                f"must carry the field with default False."
+                f"``out_of_scope``. All 60 records must carry the field "
+                f"with default False."
             )
             assert isinstance(rec["out_of_scope"], bool), (
                 f"OWASP id={rec.get('id')!r} ``out_of_scope`` must be bool. "
@@ -138,22 +114,13 @@ class TestOwaspYamlRecordShape:
             )
 
     def test_owasp_yaml_records_have_out_of_scope_rationale_field(self):
-        """T037 / ADR-027 D1: every record carries ``out_of_scope_rationale``.
-
-        SKIPs now (T037 not landed). Flips to PASS once T037 extends shape.
-        """
+        """Every record carries ``out_of_scope_rationale``."""
         records = _load_owasp()
-        if records and "out_of_scope_rationale" not in records[0]:
-            pytest.skip(
-                "out_of_scope_rationale field not yet present on owasp.yaml "
-                "records — Stream 3 task T037 has not landed. Test flips "
-                "to PASS once T037 lands."
-            )
         for idx, rec in enumerate(records):
             assert "out_of_scope_rationale" in rec, (
                 f"OWASP record idx={idx} (id={rec.get('id')!r}) missing "
-                f"``out_of_scope_rationale``. Per T037 / ADR-027 D1, all "
-                f"60 records must carry the field with default empty str."
+                f"``out_of_scope_rationale``. All 60 records must carry "
+                f"the field with default empty str."
             )
             assert isinstance(rec["out_of_scope_rationale"], str), (
                 f"OWASP id={rec.get('id')!r} ``out_of_scope_rationale`` "
@@ -176,18 +143,8 @@ class TestCitationCompleteness:
     """
 
     def test_every_covered_owasp_has_agent_citation(self):
-        """BLP-01 Section 8: each Covered (in-scope) record cited by >=1 agent.
-
-        SKIPs now (depends on T037 partition field). Flips to PASS post-T037
-        + Stream 4 audit closure.
-        """
+        """BLP-01 Section 8: each Covered (in-scope) record cited by >=1 agent."""
         records = _load_owasp()
-        if records and "out_of_scope" not in records[0]:
-            pytest.skip(
-                "Cannot enumerate Covered records until ``out_of_scope`` "
-                "field exists on owasp.yaml — Stream 3 task T037 has not "
-                "landed. Flips to PASS post-T037 + Stream 4 audit closure."
-            )
         for rec in records:
             if rec.get("out_of_scope", False):
                 continue
@@ -201,18 +158,8 @@ class TestCitationCompleteness:
             )
 
     def test_every_covered_owasp_has_pattern_category_citation(self):
-        """BLP-01 Section 8: each Covered record cited by >=1 Pattern Category.
-
-        SKIPs now (depends on T037 partition field). Flips to PASS post-T037
-        + Stream 4 audit closure.
-        """
+        """BLP-01 Section 8: each Covered record cited by >=1 Pattern Category."""
         records = _load_owasp()
-        if records and "out_of_scope" not in records[0]:
-            pytest.skip(
-                "Cannot enumerate Covered records until ``out_of_scope`` "
-                "field exists on owasp.yaml — Stream 3 task T037 has not "
-                "landed. Flips to PASS post-T037 + Stream 4 audit closure."
-            )
         for rec in records:
             if rec.get("out_of_scope", False):
                 continue
