@@ -24,6 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.27.0](https://github.com/davidmatousek/tachi/compare/v4.26.0...v4.27.0) (2026-05-02)
+
+
+### Features
+
+* **241:** F-8 + F-A3 Web/API Coverage Attestation + Populator Wiring [Tier 3] ([#242](https://github.com/davidmatousek/tachi/issues/242)) ([e8a5370](https://github.com/davidmatousek/tachi/commit/e8a5370a7eb8598717af1fe2b718bb8d811c891a))
+
 ## [4.26.0](https://github.com/davidmatousek/tachi/compare/v4.25.0...v4.26.0) (2026-04-29)
 
 
