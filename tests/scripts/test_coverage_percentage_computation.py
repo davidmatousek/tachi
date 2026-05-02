@@ -96,10 +96,15 @@ from pathlib import Path
 import pytest
 import yaml
 
+from .conftest import (
+    REPO_ROOT,
+    TAXONOMY_DIR as SCHEMAS_TAXONOMY_DIR,
+    load_yaml_or_empty,
+    monkeypatch_framework_record_counts,
+)
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+
 SCRIPTS_DIR = REPO_ROOT / "scripts"
-SCHEMAS_TAXONOMY_DIR = REPO_ROOT / "schemas" / "taxonomy"
 
 STREAM_4_FIXTURES = (
     Path(__file__).parent / "fixtures" / "stream_4_coverage_percentage"
@@ -605,33 +610,12 @@ class TestZeroDenominatorEdgeCase:
         stub owasp's in-scope count to 0, verify aggregator emits "N/A",
         verify our independent ``_independent_format_pct`` agrees.
         """
-        def _stub_raw():
-            return {
-                "owasp": 3,
-                "mitre-attack": 701,
-                "mitre-atlas": 30,
-                "nist-ai-rmf": 72,
-                "cwe": 53,
-            }
-
-        def _stub_in_scope():
-            return {
-                "owasp": 0,
-                "mitre-attack": 323,
-                "mitre-atlas": 30,
-                "nist-ai-rmf": 72,
-                "cwe": 53,
-            }
-
-        monkeypatch.setattr(
+        # owasp: raw=3, in_scope=0 (all-OOS); other frameworks unchanged.
+        monkeypatch_framework_record_counts(
+            monkeypatch,
             extract_report_data,
-            "load_framework_yaml_record_counts",
-            _stub_raw,
-        )
-        monkeypatch.setattr(
-            extract_report_data,
-            "load_framework_yaml_in_scope_record_counts",
-            _stub_in_scope,
+            raw={"owasp": 3, "mitre-attack": 701, "mitre-atlas": 30, "nist-ai-rmf": 72, "cwe": 53},
+            in_scope={"owasp": 0, "mitre-attack": 323, "mitre-atlas": 30, "nist-ai-rmf": 72, "cwe": 53},
         )
 
         aggregates = extract_report_data.build_per_framework_aggregates([])

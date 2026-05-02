@@ -34,10 +34,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-import yaml
+
+from .conftest import REPO_ROOT, load_yaml_or_empty, monkeypatch_framework_record_counts
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
 STREAM_3_FIXTURES = (
     Path(__file__).parent / "fixtures" / "stream_3_taxonomy"
 )
@@ -51,26 +51,19 @@ STREAM_4_FIXTURES = (
 # ---------------------------------------------------------------------------
 
 
-def _load_yaml(path: Path):
-    """Return the parsed YAML document at ``path`` (or empty list on None)."""
-    with path.open(encoding="utf-8") as fh:
-        data = yaml.safe_load(fh)
-    return data if data is not None else []
-
-
 def _stream_3_records(name: str) -> list:
     """Return the list of records in the named Stream 3 fixture."""
-    return _load_yaml(STREAM_3_FIXTURES / f"{name}.yaml")
+    return load_yaml_or_empty(STREAM_3_FIXTURES / f"{name}.yaml")
 
 
 def _stream_4_findings(name: str) -> list:
     """Return the list of findings in the named Stream 4 fixture."""
-    return _load_yaml(STREAM_4_FIXTURES / f"{name}.yaml")
+    return load_yaml_or_empty(STREAM_4_FIXTURES / f"{name}.yaml")
 
 
 def _stream_4_expected(name: str) -> dict:
     """Return the expected aggregate-shape dict for the named Stream 4 fixture."""
-    return _load_yaml(STREAM_4_FIXTURES / f"{name}.expected.yaml")
+    return load_yaml_or_empty(STREAM_4_FIXTURES / f"{name}.expected.yaml")
 
 
 # ===========================================================================
@@ -456,34 +449,12 @@ class TestStream4ZeroInScopeDenominator:
         self, extract_report_data, monkeypatch
     ):
         """All-OOS framework: in_scope=0, raw>0, expected = "N/A"."""
-        # Stub raw = 3, in_scope = 0 for owasp; preserve other frameworks.
-        def _stub_raw():
-            return {
-                "owasp": 3,
-                "mitre-attack": 701,
-                "mitre-atlas": 30,
-                "nist-ai-rmf": 72,
-                "cwe": 53,
-            }
-
-        def _stub_in_scope():
-            return {
-                "owasp": 0,
-                "mitre-attack": 323,
-                "mitre-atlas": 30,
-                "nist-ai-rmf": 72,
-                "cwe": 53,
-            }
-
-        monkeypatch.setattr(
+        # owasp: raw=3, in_scope=0 (all-OOS); other frameworks unchanged.
+        monkeypatch_framework_record_counts(
+            monkeypatch,
             extract_report_data,
-            "load_framework_yaml_record_counts",
-            _stub_raw,
-        )
-        monkeypatch.setattr(
-            extract_report_data,
-            "load_framework_yaml_in_scope_record_counts",
-            _stub_in_scope,
+            raw={"owasp": 3, "mitre-attack": 701, "mitre-atlas": 30, "nist-ai-rmf": 72, "cwe": 53},
+            in_scope={"owasp": 0, "mitre-attack": 323, "mitre-atlas": 30, "nist-ai-rmf": 72, "cwe": 53},
         )
 
         findings = _stream_4_findings("findings_zero_against_all_oos")

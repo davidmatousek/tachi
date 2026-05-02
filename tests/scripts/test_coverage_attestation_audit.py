@@ -21,17 +21,19 @@ vs skip semantics stay clean across Wave transitions.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 import pytest
-import yaml
+
+from .conftest import (
+    AGENTS_DIR,
+    SKILLS_DIR,
+    TAXONOMY_DIR,
+    load_yaml_or_empty,
+)
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-OWASP_YAML = REPO_ROOT / "schemas" / "taxonomy" / "owasp.yaml"
-AGENTS_DIR = REPO_ROOT / ".claude" / "agents" / "tachi"
-SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
+OWASP_YAML = TAXONOMY_DIR / "owasp.yaml"
 
 
 # ---------------------------------------------------------------------------
@@ -41,9 +43,7 @@ SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 
 def _load_owasp() -> list[dict[str, Any]]:
     """Load owasp.yaml and return the list of 60 OWASP records."""
-    with OWASP_YAML.open("r", encoding="utf-8") as fh:
-        data = yaml.safe_load(fh)
-    return data if data is not None else []
+    return load_yaml_or_empty(OWASP_YAML)
 
 
 def _grep_pattern_file(skill_name: str, needle: str) -> bool:

@@ -47,8 +47,9 @@ from typing import Iterable
 
 import pytest
 
+from .conftest import REPO_ROOT
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 
 
