@@ -90,6 +90,7 @@ verbatim from ``tests/scripts/fixtures/stream_4_coverage_percentage/``).
 
 from __future__ import annotations
 
+import functools
 import sys
 from pathlib import Path
 
@@ -171,7 +172,8 @@ BASELINES: tuple[
 # ---------------------------------------------------------------------------
 
 
-def _independent_load_in_scope_records(framework_name: str) -> list:
+@functools.lru_cache(maxsize=None)
+def _independent_load_in_scope_records(framework_name: str) -> tuple:
     """Load the in-scope record list for a framework directly from disk.
 
     Uses ``yaml.safe_load`` and the same ``not r.get("out_of_scope", False)``
@@ -179,15 +181,19 @@ def _independent_load_in_scope_records(framework_name: str) -> list:
     code path (no import of ``extract-report-data``). The whole point of
     this test is to compare two independent computations and assert
     they agree byte-identically.
+
+    Result is memoized via ``functools.lru_cache`` so the 40-pair
+    parametrized cross-check at ``TestBaselineFrameworkCrossCheck`` reads
+    each framework YAML once per session (5 reads) instead of 40 (one per
+    baseline-framework pair). Returns a tuple to discourage mutation.
     """
     path = SCHEMAS_TAXONOMY_DIR / f"{framework_name}.yaml"
     with path.open(encoding="utf-8") as fh:
         data = yaml.safe_load(fh)
     if data is None:
-        return []
-    # Backward-compat: records that omit ``out_of_scope`` default to in-scope
-    # per data-model.md §2 line 91 (``out_of_scope absent -> treated as false``).
-    return [r for r in data if not r.get("out_of_scope", False)]
+        return ()
+    # Records that omit ``out_of_scope`` default to in-scope.
+    return tuple(r for r in data if not r.get("out_of_scope", False))
 
 
 def _independent_count_covered(

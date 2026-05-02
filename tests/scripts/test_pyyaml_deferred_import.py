@@ -121,6 +121,9 @@ def _yaml_import_nodes(tree: ast.AST) -> Iterable[ast.AST]:
 # ---------------------------------------------------------------------------
 
 
+_SOURCE_CACHE: dict[Path, str] = {}
+
+
 def _discover_pipeline_scripts() -> list[Path]:
     """Return every ``scripts/*.py`` file whose source text references ``yaml``.
 
@@ -129,11 +132,16 @@ def _discover_pipeline_scripts() -> list[Path]:
     drop it from parametrization. Reading the source as text (rather than
     parsing) is fast and good enough — the ast-walk runs only on retained
     files. Future scripts that add YAML usage are picked up automatically.
+
+    Side effect: populates ``_SOURCE_CACHE`` with the source text of every
+    discovered file so the downstream parametrized test can ``ast.parse``
+    without re-reading from disk.
     """
     selected: list[Path] = []
     for path in sorted(SCRIPTS_DIR.glob("*.py")):
         source = path.read_text(encoding="utf-8")
         if "yaml" in source:
+            _SOURCE_CACHE[path] = source
             selected.append(path)
     return selected
 
@@ -195,7 +203,7 @@ def test_yaml_import_is_function_scoped(script_path: Path) -> None:
     module-level ``import yaml`` would break that invariant and fail
     ``python -c 'import scripts.extract_report_data'`` in stdlib-only CI.
     """
-    source = script_path.read_text(encoding="utf-8")
+    source = _SOURCE_CACHE.get(script_path) or script_path.read_text(encoding="utf-8")
     tree = ast.parse(source, filename=str(script_path))
     parent_map = _build_parent_map(tree)
 

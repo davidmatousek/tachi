@@ -14,7 +14,9 @@ Test surface:
 
 from __future__ import annotations
 
+import functools
 import re
+from pathlib import Path
 
 import pytest
 
@@ -48,7 +50,9 @@ ALL_DETECTION_HOSTS = F241_WIRED_HOSTS + PRE_EXISTING_WIRED_HOSTS
 LINE_CAP = 200
 
 
+@functools.lru_cache(maxsize=None)
 def _read(path: Path) -> str:
+    """Read a file once and memoize. Same host is read by 6+ parametrized tests."""
     return path.read_text(encoding="utf-8")
 
 
