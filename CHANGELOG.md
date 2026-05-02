@@ -24,6 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.27.1](https://github.com/davidmatousek/tachi/compare/v4.27.0...v4.27.1) (2026-05-02)
+
+
+### Bug Fixes
+
+* restore Apache 2.0 license overwritten by /aod.update bug ([f8f3c2e](https://github.com/davidmatousek/tachi/commit/f8f3c2e8cc6759e86c790d0bd9e093df712e9a2d))
+
 ## [4.27.0](https://github.com/davidmatousek/tachi/compare/v4.26.0...v4.27.0) (2026-05-02)
 
 
