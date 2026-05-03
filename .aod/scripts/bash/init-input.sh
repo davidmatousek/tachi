@@ -91,20 +91,20 @@ aod_init_read_validated() {
         read -r -p "$prompt" answer
 
         reason=""
-        # Order-sensitive ladder: more-specific to less-specific so the error
-        # message names the most-specific class. Newline check must precede
-        # control-character check because \n is also a control character.
+        # Order-sensitive ladder: newline check fires first with a specific
+        # message; remaining control chars (0x01-0x1F, 0x7F) and NUL fall
+        # through to the cntrl-class check below.
+        #
+        # Note on NUL: bash scalar strings CANNOT contain NUL bytes. If a
+        # NUL was on the wire, bash truncates the string at the NUL during
+        # `read`. We deliberately do NOT add an explicit `*$'\0'*` case
+        # because $'\0' expands to a literal NUL which terminates the C
+        # string of the case pattern, collapsing it to `**` and matching
+        # all input. The cntrl-class check below catches any NUL that
+        # somehow survives bash string semantics (defense-in-depth).
         case "$answer" in
             *$'\n'*)
                 reason="newline not allowed"
-                ;;
-            *$'\0'*)
-                # Note: bash scalar strings cannot contain NUL bytes; the
-                # value would already be truncated at the C-string level
-                # before this check. We keep the case for defense-in-depth
-                # in the rare path where bash builtins may surface a NUL
-                # via terminal raw-mode reads.
-                reason="NUL byte not allowed"
                 ;;
         esac
 
