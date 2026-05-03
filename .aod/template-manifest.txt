@@ -19,7 +19,7 @@
 # Valid categories (6):
 #   owned         Template content. Overwritten verbatim from upstream on
 #                 /aod.update. Adopters MUST NOT hand-edit these files.
-#   personalized  Template content with {{PLACEHOLDER}} tokens. Overwritten
+#   personalized  Template content with {{ PLACEHOLDER }} tokens. Overwritten
 #                 from upstream and then re-substituted from
 #                 .aod/personalization.env. Adopters MUST NOT hand-edit.
 #   user          Adopter-owned. Never touched by /aod.update (hidden from
@@ -156,7 +156,7 @@ owned|MIGRATION.md
 owned|.gitattributes
 
 # -----------------------------------------------------------------------------
-# personalized — template content with {{PLACEHOLDER}} tokens; re-substituted
+# personalized — template content with {{ PLACEHOLDER }} tokens; re-substituted
 # -----------------------------------------------------------------------------
 # CLAUDE.md is `merge|` below (agent-context document — both sides edit).
 # scope.md, git-workflow.md, commands.md are `user|` below (adopter-owned
