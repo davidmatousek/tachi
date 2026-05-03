@@ -182,3 +182,20 @@ Ask the user: "Would you like me to suggest concrete remediation edits for the t
 ## Context
 
 $ARGUMENTS
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I'll skip `/aod.analyze` — tasks.md already passed Triple sign-off" | The Triad signs each artifact in isolation; Step 4 detection passes A-F catch cross-artifact issues per-artifact reviews miss. Run before `/aod.build`. |
+| "I'll have `/aod.analyze` fix the issues it finds" | Operating Constraints (line 19) bind `/aod.analyze` as STRICTLY READ-ONLY. Step 8 OFFERS remediation; it does not apply edits. Edit artifacts manually after reading. |
+| "CRITICAL findings are too strict — I'll proceed to `/aod.build` anyway" | Step 7 recommends resolving CRITICALs before `/aod.build`. Constitution violations are always CRITICAL (line 178) and require artifact adjustment, not dilution. |
+| "I'll run `/aod.analyze` before `/aod.tasks` completes to get a head start" | Goal (line 15) requires `/aod.tasks` to produce a complete `tasks.md` first. Step 1 aborts if any of spec/plan/tasks is missing. |
+
+## Red Flags
+
+- Agent invokes `/aod.build` with CRITICAL issues remaining in the `/aod.analyze` report.
+- Agent expects `/aod.analyze` to silently auto-fix findings without user approval after Step 8.
+- Agent runs `/aod.analyze` before `/aod.tasks` completes (no `tasks.md` present).
+- Agent edits `.aod/memory/constitution.md` to remove a principle that triggered a CRITICAL Constitution Alignment finding.
+- Agent reports "/aod.analyze passed" without emitting the Step 6 "Specification Analysis Report" table.

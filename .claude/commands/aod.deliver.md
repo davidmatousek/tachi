@@ -76,7 +76,7 @@ Launch 3 agents simultaneously. Each reads `docs/DOCS_TO_UPDATE_AFTER_NEW_FEATUR
 | Agent | Checklist Section | Key Files |
 |-------|-------------------|-----------|
 | product-manager | Section 1: Product | STATUS.md, completed-features.md, roadmap files, PRD INDEX |
-| architect | Section 2: Architecture | architecture/README.md, tech-stack.md, CLAUDE.md |
+| architect | Section 2: Architecture | architecture/README.md, tech-stack.md |
 | devops | Section 3: DevOps | devops/README.md, CI_CD_GUIDE.md, environment-variables.md, env configs |
 
 **Agent prompt template:**
@@ -174,20 +174,33 @@ Run the `~aod-deliver` skill's retrospective and validation flow (Steps 2-9 from
 
 ## Step 8: Upstream Sync (Template Repo Only)
 
-This step applies ONLY to the template project (product-led-spec-kit). Consumer projects will never have `scripts/extract.sh` — skip this step entirely with NO output, NO message, and NO mention in the closure report.
+This step applies ONLY to the upstream template project. Consumer projects will never have `scripts/extract.sh` — skip this step entirely with NO output, NO message, and NO mention in the closure report.
 
 1. Check if `scripts/extract.sh` exists **and** `../agentic-oriented-development-kit/` exists
 2. **If both found**:
    - **If `autonomous == true`**: Auto-select `"Yes"`. Display: `"Auto-selected: Run upstream sync (autonomous mode)"`. Run the sync.
    - Ask the user: "Run upstream sync?"
-     - (A) Yes — run `scripts/extract.sh --sync` (or invoke `/aod.sync-upstream` if available)
+     - (A) Yes — run `scripts/extract.sh --sync`
      - (B) Skip — continue without syncing
 3. **If either is missing**: Skip with ZERO output — do not print any message, warning, or status. Proceed directly to Step 9.
 4. Only include the "AOD-kit upstream sync" line in the closure report (Step 12) if `scripts/extract.sh` exists
 
 ## Step 9: Commit and Push
 
-Stage `docs/`, `deployment/`, `CLAUDE.md` and commit:
+### 9a: Regenerate Snapshots (Prevent CI Divergence)
+
+Before staging, regenerate the file-coverage snapshots so any new files added during the retrospective (ADR, delivery.md, KB entries, PRD updates) are acknowledged. This closes the recurring class of "CI fails on extract/manifest coverage after /aod.deliver commits" captured in KB Entries 38 and 39.
+
+Only run these when the corresponding infrastructure is present in the repo:
+
+1. **Extract-classification snapshot**: If `scripts/check-extract-coverage.sh` exists, run `make extract-classify` (or `bash scripts/check-extract-coverage.sh --regenerate > scripts/extract-classification.txt`). Skip silently if the script is absent.
+2. **Manifest coverage check**: If `scripts/check-manifest-coverage.sh` exists, run it. If it reports uncategorized paths, STOP and ask the user how to categorize them — new top-level directories need an explicit category decision (`owned|`, `user|`, `ignore|`, etc.) in `.aod/template-manifest.txt`. Skip silently if the script is absent.
+
+Both snapshots, if regenerated, are staged alongside the docs in Step 9b.
+
+### 9b: Stage and Commit
+
+Stage `docs/`, `deployment/`, `CLAUDE.md`, and any regenerated snapshots from Step 9a, then commit:
 
 ```
 docs: close Feature {NUMBER} - update all documentation
@@ -273,3 +286,21 @@ Run `/aod.document` now? (Y/n)
 | Tasks incomplete | List incomplete, prompt for resolution |
 | Agent fails | Show results table, prompt for retry/proceed/abort |
 | Git push fails | Report error, suggest manual push |
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Feature is merged — I'll skip `/aod.deliver`" | Step 6 retrospective, Step 9 commit, and Step 10 Issue close → `stage:done` are required. Skipping leaves Issues stuck at `stage:build`. |
+| "Tests are flaky — I'll run with `--autonomous` to auto-bypass them" | `--autonomous` (Step 0 line 19) auto-selects defaults. Step 6 sub-step 7 still invokes the E2E gate and halts in autonomous mode. Not a test bypass. |
+| "I'll run `/aod.deliver` while the PR is still open and unmerged" | Step 1 expects branch deleted (PR merged). Lines 40-48 auto-handle uncommitted/unpushed/un-PR'd states via `gh pr merge --squash --delete-branch`. Hand-fix only on conflict. |
+| "I'll select `n` at Step 13 — `/aod.document` is optional anyway" | Step 13 names `/aod.document` as the next lifecycle step. Skipping defers CHANGELOG, KB review, and OpenAPI sync. Run it now or schedule a follow-up. |
+
+## Red Flags
+
+- Agent invokes `/aod.deliver` with the feature branch unmerged and bypasses the Step 1 lines 40-48 auto-merge flow.
+- Agent runs `--autonomous` interactively (not via `aod.run` orchestrator) and accepts every Step 4 / Step 6 / Step 13 prompt without review.
+- Agent uses `--require-tests` and overrides the Step 6 sub-step 7 hard halt instead of fixing the failing tests.
+- Agent reports "delivery complete" before Step 10 closes the GitHub Issue — Issue stuck at `stage:deliver` rather than `stage:done`.
+- Agent skips Step 13 (`/aod.document` prompt) and reports "delivery complete" with no scheduling of the post-delivery quality review.
+- Agent runs `/aod.deliver` in `--autonomous` mode and overrides a `BLOCKED` retrospective gate instead of halting (per skill Step 9d gate behavior).

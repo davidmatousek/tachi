@@ -174,3 +174,20 @@ Behavior rules:
  - If quota reached with unresolved high-impact categories remaining, explicitly flag them under Deferred with rationale.
 
 Context for prioritization: $ARGUMENTS
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I'll skip `/aod.clarify` — the spec looks fine to me" | Outline note (line 17) flags `/aod.clarify` as expected before `/aod.project-plan`; skipping accepts downstream rework risk. "No ambiguities detected" passes. |
+| "I'll keep running `/aod.clarify` until every ambiguity is resolved in this session" | Step 4 caps each session at 5 asked questions (line 170). The loop stops at the quota by design. Re-run later if Outstanding categories remain. |
+| "I'll edit `spec.md` directly to add clarifications instead of running `/aod.clarify`" | Step 5 enforces the `## Clarifications` structure and atomically rewrites FR/AC sections. Manual edits skip the Step 2 scan and Step 6 validation. |
+| "I'll pass the answers as `$ARGUMENTS` so `/aod.clarify` doesn't ask interactively" | `$ARGUMENTS` (line 176) supplies prioritization context for Step 3, not pre-filled answers. Step 4 ("Sequential questioning loop (interactive)") still prompts. Run interactively. |
+
+## Red Flags
+
+- Agent invokes `/aod.project-plan` immediately after `/aod.spec` with no `/aod.clarify` step in the trace.
+- Agent invokes `/aod.clarify` back-to-back trying to drain more than 5 answers per session.
+- Agent appends a `## Clarifications` block to `spec.md` directly without running `/aod.clarify`.
+- Agent accepts "yes" / "recommended" on every Step 4 question without reading the recommended option's reasoning.
+- Agent reports "no clarifications needed" without producing the Step 8 coverage summary table.

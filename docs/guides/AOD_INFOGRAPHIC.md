@@ -4,7 +4,7 @@
 
 **Related**:
 - [AOD Quickstart](AOD_QUICKSTART.md) -- Quick onboarding guide
-- [AOD Lifecycle Guide](AOD_LIFECYCLE_GUIDE.md) -- Stage-by-stage deep reference
+- [AOD Lifecycle Reference](AOD_LIFECYCLE.md) -- Full stage reference, governance tiers, end-to-end example
 - [SDLC Triad Reference](../AOD_TRIAD.md) -- Governance layer documentation
 
 ---
@@ -154,4 +154,17 @@
 
   GitHub Issue --> PRD --> spec.md --> plan.md --> tasks.md --> CODE --> Retrospective --> Quality Review
      Discover     Define    Plan       Plan       Plan       Build      Deliver          Document
+
+================================================================================================
+  OUTSIDE-THE-LIFECYCLE COMMANDS
+================================================================================================
+
+  PRE-LIFECYCLE    /aod.foundation       Guided workshop: product vision + design identity
+                   /aod.kickstart        POC kickstart: consumer guide + seed features
+                   /aod.blueprint        Multi-feature story generation from consumer guide
+
+  ORCHESTRATION    /aod.run              Full lifecycle orchestrator (chains stages 1-5)
+                   /aod.orchestrate      Multi-feature parallel wave execution (P0/P1/P2)
+
+  TEMPLATE SYNC    /aod.update           Adopter pulls upstream template updates (F129)
 ```

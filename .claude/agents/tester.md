@@ -14,7 +14,7 @@ description: >
 
 color: "#EAB308"
 
-expertise: [bdd-testing, cucumber-gherkin, playwright-automation, api-testing, ui-testing, e2e-testing]
+expertise: [bdd-testing, cucumber-gherkin, e2e-automation, api-testing, ui-testing, e2e-testing]
 
 boundaries: >
   Writes tests only - does not implement application features or fix bugs.
@@ -62,7 +62,7 @@ Create behavior-driven tests that:
 | Feature testing | "Write tests for the login feature" |
 | BDD scenarios | "Create Gherkin scenarios for user registration" |
 | API validation | "Test the /api/v1/users endpoint" |
-| UI automation | "Write Playwright tests for the dashboard" |
+| UI automation | "Write E2E tests for the dashboard using the declared stack runner" |
 | E2E journeys | "Test the complete checkout flow" |
 
 ## 4. Workflow Steps
@@ -92,6 +92,16 @@ When tests fail unexpectedly:
 - Tests readable by non-technical stakeholders
 - Scenarios follow template structure (see below)
 
+### AC-Identifier Tag Contract
+
+Generated scenarios MUST carry AC-identifier tags so the delivery AC-coverage gate can map specs to scenarios:
+
+- **Tag format**: `@US-{NN}-AC-{N}` (e.g., `@US-001-AC-1`). `NN` is the user story number zero-padded to 2-3 digits per project convention; `N` is the AC ordinal within that story.
+- **`.feature` files (Cucumber/Gherkin)**: tag appears on the line directly above the `Scenario:` line.
+- **`.test.ts` / `.test.js` files**: tag appears either in a comment directly above the `test(...)` / `it(...)` block, or embedded in the test description string (e.g., `test('@US-001-AC-1 logs in with valid creds', ...)`).
+- **Invocation contract**: tester receives an AC list as input — an array of AC objects `[{id, given, when, then, manual_only, manual_reason}]` — and MUST produce at least one scenario per non-manual-only AC.
+- **Manual-only ACs**: ACs with `manual_only: true` do NOT require a generated scenario. Tester emits a skipped placeholder (e.g., a tagged `Scenario:` marked `@manual-only` with a pending step) or excludes them from output entirely.
+
 ## 6. Triad Governance
 
 No direct Triad sign-off participation. Receives specifications from PM-approved spec.md and validates implementation meets acceptance criteria.
@@ -120,6 +130,69 @@ npm run test:dry-run             # Validate syntax
 | Scenario independence | Zero cross-test dependencies |
 | Documentation currency | tests/README.md updated per feature |
 
+## 9. Operating Modes
+
+The tester agent supports multiple invocation modes. The **default mode** (scenario generation per the AC-tag contract in Section 5) is active unless the caller passes an explicit `mode=<name>` parameter.
+
+### Mode: heal (auto-fix proposer)
+
+#### Purpose
+
+When E2E tests fail in `/aod.deliver`'s auto-fix loop, the tester is invoked in `mode: heal` to propose a diff that resolves the failure. The loop applies the diff, re-runs tests, and either continues or escalates to heal-PR on exhaustion.
+
+#### Input contract
+
+- `failing_scenario` — object with `{name, file, line, error_message}`
+- `runner_log_tail` — string (last 50 lines of runner output)
+- `test_paths` — array of glob patterns (from active stack pack or defaults)
+- `framework` — enum `playwright` | `cypress` | `jest` | `unknown`
+- `max_timeout_multiplier` — float (from `.aod/config.json`)
+- `attempt_number` — integer (1 through `heal_attempts`)
+
+#### Output contract
+
+- **Exactly ONE unified diff** in valid `git diff` format
+- The diff MUST be scoped to files matching `test_paths` globs — any diff touching production source will be rejected by scope-guard
+- The diff MUST NOT modify assertions (`expect(`, `assert(`, `should.`, etc.) — rejected by scope-guard Rule 1
+- The diff MUST NOT skip or delete tests (`it.skip`, `xit(`, etc.) — rejected by Rule 2
+- Timeout increases MUST stay within `max_timeout_multiplier` — rejected by Rule 3 if exceeded
+- The diff MUST NOT touch `spec.md` or AC files — rejected by Rule 4
+- Output format: stdout contains the diff; stderr contains a human-readable description of the proposed change (e.g., "Updated selector `[data-testid=old-name]` to `[data-testid=new-name]` based on component rename")
+
+#### Workflow
+
+1. Parse the failing scenario's file and line context
+2. Identify the root cause (selector drift, timing, test data drift, import path, etc.) by cross-referencing the runner log
+3. Propose the MINIMAL diff that fixes the scenario
+4. Emit diff on stdout; description on stderr
+5. Exit 0 on successful diff generation; non-zero if no safe fix can be proposed (scope-guard will escalate to heal-PR)
+
+#### Constraints
+
+- **Staged, not committed** — the caller (SKILL.md Step 9c.5) applies the diff with `git apply`, not the tester
+- **No speculation** — if the failure is ambiguous, exit non-zero with stderr explanation; do NOT guess
+- **Determinism not required, but preferred** — same input should yield the same diff when the failure root cause is clear
+
+#### Examples of ALLOWED fixes (guidance)
+
+- Selector update after component rename: `[data-testid="old-button"]` → `[data-testid="new-button"]`
+- Wait condition tightening within multiplier: `{ timeout: 3000 }` → `{ timeout: 4500 }` (if `max_timeout_multiplier = 1.5`)
+- Test data drift: update expected fixture value to match new seed data
+- Import path fix after refactor: update import specifier to new module location
+- Typo fix in test description or variable name
+
+#### Examples of BANNED fixes (scope-guard will reject)
+
+- Changing `toBe(expected)` to `toBeDefined()` (assertion weakening — Rule 1)
+- Adding `test.skip(...)` or `xit(...)` (test skip — Rule 2)
+- Changing `timeout: 5000` to `timeout: 15000` when multiplier is 1.5 (timeout blowup — Rule 3)
+- Modifying `spec.md` or acceptance-criteria files (Rule 4)
+- Touching production code outside `test_paths` globs (Layer 1 path check)
+
+#### Preservation clause
+
+**Default mode unchanged**: The existing Gherkin-generation behavior (the tester's primary role) is preserved. `mode: heal` is activated only when the caller passes `mode=heal` explicitly. Absent this flag, the tester continues generating scenarios per the AC-tag contract documented in Section 5 (added in T029).
+
 ---
 
 ## Test Type Reference
@@ -131,7 +204,7 @@ npm run test:dry-run             # Validate syntax
 
 ### Frontend (UI Tests)
 - **Location**: `tests/features/frontend/`
-- **Tool**: `TestWorld.page` (Playwright)
+- **Tool**: Declared E2E runner from the active pack's STACK.md contract (e.g., Playwright, pytest-playwright, XCTest UI)
 - **Focus**: User interactions, forms, navigation
 
 ### E2E (Integration Tests)

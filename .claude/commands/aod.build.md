@@ -665,3 +665,23 @@ When `orchestrated == false` (standalone): no change — keep current display fo
 - [ ] Coverage data captured when tooling available, skipped gracefully when not
 
 Note: This command requires a complete task breakdown in tasks.md with Triad sign-offs. If tasks are incomplete or missing, run `/aod.tasks` first to generate the task list with governance approval. After build and delivery, run `/aod.document` for code quality review (simplification, docstrings, CHANGELOG, API docs).
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Architect checkpoint is overkill for this small change" | Small changes accumulate. The checkpoint catches drift, not the change. |
+| "Test failure is flaky, I'll just re-run" | F139 was built to prevent this. Use `--no-tests` (build) or `--no-tests=<reason>` (deliver) only with audit log if you really need to skip. |
+| "I'll skip Step 7 security scan — small change, no auth/secrets touched" | Step 7a records `Skipped (--no-security)` in `security-scan.md` only when the flag is explicit. Skipping silently leaves no audit trail. Pass `--no-security` (Step 0a) if intentional. |
+| "I'll bump past the 3-wave ceiling so I can finish in one session" | Step 4 sub-step 7 caps standalone runs at 3 waves to prevent context overflow. `--orchestrated` (Step 0b) lifts the ceiling for `aod.run` only. |
+| "tasks.md is mostly approved — I'll start `/aod.build` and let the last sign-off catch up" | Step 1 sub-step 3 verifies all three Triad sign-offs are APPROVED before any wave runs. Missing sign-offs error and exit before Wave 1 dispatches. |
+
+## Red Flags
+
+- Agent skips a per-wave Architect checkpoint at the P0 / P1 / P2 boundary (Step 4 sub-step 6) without recording an APPROVED status.
+- Agent runs more than 3 waves in a single conversation while `orchestrated == false` (violates Step 4 sub-step 7 ceiling).
+- Agent uses `--no-tests` (line 55) without `summary.json` reflecting `waves_tested: 0` (line 613) — silent skip, no audit trail.
+- Agent invokes `/aod.build` while `tasks.md` has any of the three Triad sign-offs missing or set to CHANGES_REQUESTED.
+- Agent re-runs `/aod.build` from Wave 1 instead of resuming from the last unmarked task per Step 1 sub-step 6 ("RESUMING: Waves 1-N complete").
+- Agent uses `--autonomous` interactively (not via `aod.run` orchestrator) and rubber-stamps every checkpoint, security-scan, and design-quality finding without review.
+- Agent's Step 8 completion summary omits the Test Execution, Design Quality Gate, or Security Scan sections.

@@ -212,6 +212,18 @@ tsconfig.json                 # TypeScript strict mode configuration
 
 ## Testing Conventions
 
+<!-- BEGIN: aod-test-contract -->
+```yaml
+test_command: "npm run test"
+e2e_command: "npx playwright test"
+test_paths:
+  - "tests/"
+  - "e2e/"
+  - "**/*.test.ts"
+  - "**/*.spec.ts"
+```
+<!-- END: aod-test-contract -->
+
 ### Framework Stack
 
 | Level | Framework | Purpose |

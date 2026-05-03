@@ -62,3 +62,20 @@ Follow the workflow defined in the ~aod-discover skill (`.claude/skills/~aod-dis
 - [ ] BACKLOG.md regenerated
 - [ ] Result reported with next step guidance
 
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I'll use `--seed` to skip ICE scoring — it's faster" | `--seed` auto-assigns I:8 C:7 E:7 = 22 (P1) and skips PM validation. Step 2 auto-defer gate cannot triage unvetted ideas. Use only for pre-vetted items. |
+| "I'll run `/aod.discover` with no arguments and describe the idea later" | Step 1 aborts on empty `$ARGUMENTS` and asks the user to describe the idea. Pass the idea as an argument; do not run blind. |
+| "I'll pass `--autonomous` so I don't have to answer the prompts" | `--autonomous` is for `aod.run` orchestrator use. Outside that context, it fills source/ICE/evidence with synthetic defaults and runs the auto-defer gate on fake data. |
+| "ICE total came back Deferred — I'll re-invoke with bigger numbers" | The auto-defer gate (< 12) is the triage signal. Inflated re-runs bypass it. Use `/aod.score` to re-score with new evidence; do not re-discover. |
+
+## Red Flags
+
+- Agent invokes `/aod.discover --seed` for a fresh unvetted idea instead of a pre-vetted seed item.
+- Agent runs `/aod.discover` with empty `$ARGUMENTS` and accepts the Step 1 abort without re-prompting the user.
+- Agent re-invokes `/aod.discover` with higher ICE inputs after a Deferred result on the same idea.
+- Agent uses `--autonomous` outside an `aod.run` orchestrator context.
+- Agent advances a Deferred-tier idea to `/aod.define` without re-scoring via `/aod.score`.
+

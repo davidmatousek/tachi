@@ -170,3 +170,24 @@ If the user previously completed spec.md and plan.md (both approved) and runs `/
 
 ### Updates
 - None (orchestrator reads artifact state, sub-commands write artifacts)
+
+---
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I know what's done, I'll skip re-reading state between sub-steps" | Step 5 Loop point 3 mandates re-read after each sub-step — assumed-state advancement misses lost approvals. |
+| "This branch is small, I'll commit straight to main" | Step 1 point 2 auto-creates the feature branch on main — bypassing it skips the draft PR opened in point 3. |
+| "spec.md exists, the gate must already be green" | Step 4 decision table requires `pm_signoff.status` approved per Step 2 — existence alone routes back to `/aod.spec`. |
+| "Light tier means skip triple sign-off on tasks too" | Step 4 invariant (line 100) keeps tasks.md triple sign-off as the floor for ALL tiers, including Light. |
+| "Approved with concerns is close enough — I'll fix later" | Step 4 recognized list (line 52) treats it as approved, but the concerns must still be addressed before delivery. |
+
+## Red Flags
+
+- Agent advances past an approved sub-step without re-running Step 4's decision table.
+- Agent invokes `/aod.tasks` directly when plan.md lacks dual sign-off per the Step 4 plan row.
+- Agent skips the draft PR open in Step 1 point 3 because `gh` "felt slow."
+- Agent treats a missing `triad:` block as approved instead of `not_approved` per Step 3 rule 3.
+- Agent reports "Plan stage complete" without all three artifacts hitting the Step 4 final row.
+- Agent ignores the Light-tier note in Step 4 and re-runs `/aod.spec` for a PM sign-off the tier doesn't require.

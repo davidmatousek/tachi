@@ -1,5 +1,5 @@
 version=
-sha=a1680abbfbe7fac33755edcb3809851aba7e671b
-updated_at=2026-04-20T03:57:09Z
+sha=895c24909972163ef88cfb0dac041aaf82cc6976
+updated_at=2026-05-03T00:08:10Z
 upstream_url=https://github.com/davidmatousek/agentic-oriented-development-kit.git
-manifest_sha256=16fa49cb48f855d47250fe778d1f93d74c38b19e5246d398cf761cacd7765814
+manifest_sha256=22f42dedb900db0a4aa3cbdb795cdad69a7746a61de06baa483a7df15cdcb87c

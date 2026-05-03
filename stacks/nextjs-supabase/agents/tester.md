@@ -42,6 +42,14 @@ Vitest as the test runner (not Jest). Testing Library (`@testing-library/react`)
 - NEVER call real Supabase endpoints in unit/integration tests — use mocks or MSW
 - NEVER use `act()` manually — Testing Library wraps interactions in `act()` automatically
 
+## Stack-Specific E2E Conventions
+
+- Test directory: `e2e/*.test.ts` at the repo root; one spec file per user flow
+- Fixture pattern: reuse `storageState` JSON for authenticated runs — sign in once in a setup project, then load state in dependent specs
+- Fixture pattern: encapsulate repeated screen interactions as page object classes under `e2e/pages/` (constructor takes `page: Page`)
+- Query precedence (highest first): `getByRole()` → `getByLabel()` → `getByTestId()` → CSS selectors (last resort)
+- Prefer `page.getByRole('button', { name: /submit/i })` over raw selectors so tests double as accessibility checks
+
 ## Guardrails
 
 - Unit/component test naming: `*.test.ts` (utilities), `*.test.tsx` (components)

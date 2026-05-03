@@ -239,3 +239,24 @@ diff -u <(grep "^- \*\*FR-" spec.md | cut -d: -f1) \
 - **Constitution Validation**: Ensures all 7 principles addressed
 - **Quality Focus**: Prevents incomplete designs from proceeding
 - **Read-Only**: No modifications, only validation
+
+---
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Architect can sign off later — PM approval is what matters" | plan.md requires both PM AND Architect sign-off (CLAUDE.md governance); Architect-pending blocks `/aod.tasks`. |
+| "Constitution Check is boilerplate, I'll just write 'pass' for all 7" | Step 2 (line 38) requires evidence per principle; Example 2 NOT READY shows missing evidence on Principle VI fails. |
+| "Security architecture lives in code review, not the plan" | Step 5 (line 65) requires auth, authz, secrets, and API security documented; absence returns NOT READY. |
+| "data-model.md is overkill for this feature" | Step 3 (line 53) treats data-model.md as a design artifact; missing entities show in the report's Design Artifacts row. |
+| "Spec alignment is implicit if the plan addresses the feature" | Step 4 (line 58) cross-checks every spec FR against plan; unaddressed FRs flag a quality-check failure. |
+
+## Red Flags
+
+- Agent reports READY without confirming all 7 constitutional principles per Step 2 Constitution Check.
+- Agent skips Step 5 Security Architecture review because "no user-facing auth in this feature."
+- Agent's report omits the Design Artifacts block (data-model.md, contracts/, research.md) defined in Step 6.
+- Agent declares dual sign-off complete with only one signoff present in the plan.md frontmatter.
+- Agent invokes `/aod.tasks` while plan.md status is NOT READY from Step 6's report.
+- Agent fills Constitution Check rows with empty evidence and reports 7/7 pass per Step 2 (line 36).

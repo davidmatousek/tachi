@@ -797,6 +797,27 @@ Product Manager validates tasks.md ensures:
 
 ---
 
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Strategic Alignment is fluff — I'll skip vision and OKR links" | Step 1 (line 595) requires reading product-vision.md and OKRs; the PRD structure (line 73) reserves a section for both. |
+| "I drafted from scratch — the GitHub Issue body is just a summary" | Step 1b (line 626) treats Issue stories, ACs, and DoD as primary input; do NOT regenerate or summarize away detail. |
+| "Sign-offs can land asynchronously after hand-off to /aod.spec" | Step 4 (line 712) requires sign-offs before approval; Step 5 (line 721) gates handoff on approved status. |
+| "Open Questions belong in spec.md — I'll leave the PRD section empty" | PRD Structure (line 480) reserves the Open Questions section; Quality Checklist (line 677) requires capturing them. |
+| "Architect baseline review is for infrastructure PRDs only — I'll skip" | Step 1 (line 607) mandates reading architecture/README and deployment-environments docs before drafting the PRD. |
+
+## Red Flags
+
+- Agent invokes Triad review without loading `.aod/memory/constitution.md` per Step 4 (line 707).
+- Agent's PRD lacks the Approval Status table (line 555) populated for all three Triad roles.
+- Agent skips Step 1 git log search (line 610) for recent feature completions and reinvents existing work.
+- Agent declares the PRD READY while Quality Checklist Alignment items (line 679) remain unchecked.
+- Agent omits source.idea_id from frontmatter despite a backlog Issue selection per Step 1 (line 619).
+- Agent maps PRD → Spec sections without consulting the table at line 734, dropping required sections.
+
+---
+
 ## Templates & Examples
 
 ### Quick-Start PRD Template

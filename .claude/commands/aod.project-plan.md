@@ -244,3 +244,21 @@ Next: /aod.plan
 - [ ] Blockers handled (resolved, overridden, or aborted)
 - [ ] Frontmatter injected with PM + Architect sign-offs
 - [ ] Completion summary displayed
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I'll run `/aod.project-plan` before the spec's PM sign-off lands — save a step" | Step 1 ("Validate Prerequisites") parses spec frontmatter and requires `triad.pm_signoff.status` ∈ {APPROVED, APPROVED_WITH_CONCERNS, BLOCKED_OVERRIDDEN}. Without PM sign-off, Step 1 errors and exits. |
+| "Architect BLOCKED the plan — I'll re-run with `--autonomous` to push past it" | Step 4 with `autonomous == true` HALTS (line 155) — does NOT auto-override. Override requires interactive justification ≥20 chars. Run interactively or address the veto. |
+| "I'll regenerate the plan from scratch after CHANGES_REQUESTED instead of using `--revision`" | Step 0y `--revision` reads `.aod/revision-context.md` and applies targeted edits to flagged sections only. Regenerating discards reviewer feedback and reruns Phase 0. |
+| "I'll edit the `Next:` line in Step 8 to point at `/aod.tasks`" | Step 8 (line 228) binds `Next:` to `/aod.plan`. The router re-evaluates artifact states and routes to the correct sub-step. Substituting breaks resume-from-rejection. |
+
+## Red Flags
+
+- Agent invokes `/aod.project-plan` while `spec.md` has no `triad.pm_signoff` frontmatter or status is null.
+- Agent overrides a BLOCKED architect verdict while `autonomous == true` instead of halting per Step 4.
+- Agent's Step 8 completion summary shows `Next: /aod.tasks` (or any other command) instead of `Next: /aod.plan`.
+- Agent dispatches Phase 1 design (data-model.md, contracts/) while `research.md` still contains unresolved `NEEDS CLARIFICATION` markers.
+- Agent runs PM and Architect reviews sequentially (two separate messages with one Task each) instead of one message with two parallel Task calls per Step 3.
+- Agent regenerates `plan.md` from scratch after a CHANGES_REQUESTED stop without invoking `/aod.project-plan --revision`.

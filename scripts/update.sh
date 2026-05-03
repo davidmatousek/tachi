@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# scripts/update.sh — Adopter-facing CLI for PLSK → user template updates
+# scripts/update.sh — Adopter-facing CLI for upstream → downstream template updates
 # =============================================================================
 # Part of feature 129 (downstream template update mechanism).
 #
@@ -9,8 +9,7 @@
 #
 #   preflight → fetch → plan → validate → stage → preview → apply → cleanup
 #
-# Direction of data flow: PLSK (upstream template) → user (adopter project).
-# Contrast with scripts/sync-upstream.sh which is user → PLSK.
+# Direction of data flow: upstream template → downstream adopter project.
 #
 # Bash 3.2 compatible (macOS default `/bin/bash`).
 #
@@ -98,7 +97,6 @@ readonly USER_OWNED_GUARD=(
   'roadmap.md'
   'okrs.md'
   'CHANGELOG.md'
-  'LICENSE'
 )
 
 # -----------------------------------------------------------------------------
@@ -313,10 +311,8 @@ aod_update_print_usage() {
     cat <<'EOF'
 Usage: scripts/update.sh [flags]
 
-Apply upstream template updates from PLSK (product-led-spec-kit) to this
-adopter project. Direction: PLSK → user.
-
-This is the opposite direction of scripts/sync-upstream.sh (user → PLSK).
+Apply upstream template updates to this adopter project.
+Direction: upstream → downstream.
 
 Flags:
   --dry-run, -n          Fetch + preview only. No writes outside staging dir.
@@ -833,9 +829,21 @@ aod_update_plan() {
 
         # Resolve winning category via precedence. Pipe stderr to /dev/null
         # so coverage-violation path emits ONE error from the collector below.
+        # Bracket with set +e / set -e so rc=5 (uncategorized) and rc=1
+        # (helper-internal error) are captured in cat_rc instead of aborting
+        # the script via errexit. Matches check-manifest-coverage.sh:115-118.
+        set +e
         winning="$(aod_template_category_for_path "$path" "$upstream_manifest" 2>/dev/null)"
         local cat_rc=$?
-        if [ "$cat_rc" = "5" ] || [ -z "$winning" ]; then
+        set -e
+        # Route rc=5 (uncategorized) to the coverage-violation collector below.
+        # Route any OTHER non-zero rc (helper-internal error: malformed manifest,
+        # library not sourced, missing args) to the defensive error branch — this
+        # is checked BEFORE the `-z "$winning"` fallback so the rc=1 diagnostic
+        # fires instead of being silently treated as uncategorized (FR-002).
+        # rc=0 with empty winning is a degenerate "helper succeeded but returned
+        # nothing" case handled as uncategorized for safety.
+        if [ "$cat_rc" = "5" ]; then
             uncategorized_count=$((uncategorized_count + 1))
             if [ -z "$uncategorized_list" ]; then
                 uncategorized_list="$path"
@@ -847,6 +855,15 @@ $path"
         elif [ "$cat_rc" != "0" ]; then
             echo "[aod] ERROR: category lookup failed for $path (rc=$cat_rc)" >&2
             exit 1
+        elif [ -z "$winning" ]; then
+            uncategorized_count=$((uncategorized_count + 1))
+            if [ -z "$uncategorized_list" ]; then
+                uncategorized_list="$path"
+            else
+                uncategorized_list="$uncategorized_list
+$path"
+            fi
+            continue
         fi
 
         category="${winning%%|*}"
@@ -1126,7 +1143,7 @@ _aod_update_category_counts() {
 # Render the human-readable preview per contracts/cli-contract.md §Stdout/Stderr.
 #
 # Sections (in order):
-#   1. Header banner — `AOD-kit update: PLSK → user`
+#   1. Header banner — `AOD-kit update: upstream → downstream`
 #   2. Current pin + Target lines with version, sha, manifest sha256
 #   3. (optional) Manifest-drift banner
 #   4. Category summary table — owned / personalized / scaffold / merge, plus
@@ -1146,7 +1163,7 @@ aod_update_preview_human() {
     # Short-cut: no pending writes → "already up to date".
     if [ "$writes" = "0" ]; then
         cat <<EOF
-AOD-kit update: PLSK → user
+AOD-kit update: upstream → downstream
 
 Current pin:  ${AOD_VERSION_VERSION:-<untagged>}  (sha ${AOD_VERSION_SHA}, manifest sha256 ${AOD_VERSION_MANIFEST_SHA256})
 Target:       ${UPDATE_NEW_TAG:-<untagged>}  (sha ${UPDATE_NEW_SHA}, manifest sha256 ${UPDATE_NEW_MANIFEST_SHA})
@@ -1157,7 +1174,7 @@ EOF
     fi
 
     cat <<EOF
-AOD-kit update: PLSK → user
+AOD-kit update: upstream → downstream
 
 Current pin:  ${AOD_VERSION_VERSION:-<untagged>}  (sha ${AOD_VERSION_SHA}, manifest sha256 ${AOD_VERSION_MANIFEST_SHA256})
 Target:       ${UPDATE_NEW_TAG:-<untagged>}  (sha ${UPDATE_NEW_SHA}, manifest sha256 ${UPDATE_NEW_MANIFEST_SHA})
@@ -1697,9 +1714,127 @@ aod_update_main() {
     echo "[done ] Update complete in ${duration}s."
 }
 
+# =============================================================================
+# Feature 134 subcommand dispatch (--bootstrap, --check-placeholders)
+# =============================================================================
+# Per FR-001, scripts/update.sh recognizes two additional subcommand entry
+# points that are routed to dedicated library modules BEFORE the main F129
+# update pipeline runs.
+#
+# Mutual exclusivity (FR-001):
+#   - --bootstrap and --check-placeholders cannot appear together
+#   - Neither can be combined with --dry-run / --apply / --json (which are
+#     flags of the existing `make update` pipeline, not these subcommands)
+#
+# Violations exit 1 with a specific stderr message naming the conflicting
+# flags. All other flag parsing (including --yes, --upstream-url=<url>) is
+# delegated to the subcommand module's own parser.
+#
+# See: specs/134-update-bootstrap-placeholder-migration/contracts/cli-contract.md
+# -----------------------------------------------------------------------------
+
+aod_update_feature134_dispatch() {
+    # Scan caller-forwarded args for the four flag classes we care about.
+    # This is a pre-scan: it does NOT consume the args; the subcommand's
+    # own parser (or aod_update_parse_flags for the default path) handles
+    # that.
+    local has_bootstrap=0
+    local has_check_placeholders=0
+    local has_dry_run=0
+    local has_apply=0
+    local has_json=0
+
+    local arg
+    for arg in "$@"; do
+        case "$arg" in
+            --bootstrap)               has_bootstrap=1 ;;
+            --check-placeholders)      has_check_placeholders=1 ;;
+            --dry-run|-n)              has_dry_run=1 ;;
+            --apply)                   has_apply=1 ;;
+            --json)                    has_json=1 ;;
+        esac
+    done
+
+    # If neither subcommand flag present, fall through to the default F129
+    # update pipeline (aod_update_main).
+    if [ "$has_bootstrap" -eq 0 ] && [ "$has_check_placeholders" -eq 0 ]; then
+        return 0
+    fi
+
+    # Mutex 1: --bootstrap + --check-placeholders
+    if [ "$has_bootstrap" -eq 1 ] && [ "$has_check_placeholders" -eq 1 ]; then
+        printf 'Error: --bootstrap and --check-placeholders are mutually exclusive.\n' >&2
+        printf 'Usage: scripts/update.sh --bootstrap | --check-placeholders | --apply | --dry-run ...\n' >&2
+        exit 1
+    fi
+
+    # Mutex 2: --bootstrap + any of --dry-run / --apply / --json
+    if [ "$has_bootstrap" -eq 1 ]; then
+        if [ "$has_dry_run" -eq 1 ]; then
+            printf 'Error: --bootstrap and --dry-run are mutually exclusive.\n' >&2
+            exit 1
+        fi
+        if [ "$has_apply" -eq 1 ]; then
+            printf 'Error: --bootstrap and --apply are mutually exclusive.\n' >&2
+            exit 1
+        fi
+        if [ "$has_json" -eq 1 ]; then
+            printf 'Error: --bootstrap and --json are mutually exclusive.\n' >&2
+            exit 1
+        fi
+    fi
+
+    # Mutex 3: --check-placeholders + any of --dry-run / --apply / --json
+    if [ "$has_check_placeholders" -eq 1 ]; then
+        if [ "$has_dry_run" -eq 1 ]; then
+            printf 'Error: --check-placeholders and --dry-run are mutually exclusive.\n' >&2
+            exit 1
+        fi
+        if [ "$has_apply" -eq 1 ]; then
+            printf 'Error: --check-placeholders and --apply are mutually exclusive.\n' >&2
+            exit 1
+        fi
+        if [ "$has_json" -eq 1 ]; then
+            printf 'Error: --check-placeholders and --json are mutually exclusive.\n' >&2
+            exit 1
+        fi
+    fi
+
+    # ---- Dispatch to the appropriate library module ----
+    if [ "$has_bootstrap" -eq 1 ]; then
+        # T015: source bootstrap.sh and invoke aod_bootstrap_main. Library
+        # path is relative to scripts/update.sh via the already-resolved
+        # AOD_UPDATE_LIB_DIR.
+        # shellcheck disable=SC1091
+        . "$AOD_UPDATE_LIB_DIR/bootstrap.sh"
+        aod_bootstrap_main "$@"
+        exit $?
+    fi
+
+    if [ "$has_check_placeholders" -eq 1 ]; then
+        # T023: source check-placeholders.sh and invoke aod_check_placeholders_main.
+        # Library path is relative to scripts/update.sh via the already-resolved
+        # AOD_UPDATE_LIB_DIR.
+        # shellcheck disable=SC1091
+        . "$AOD_UPDATE_LIB_DIR/check-placeholders.sh"
+        aod_check_placeholders_main "$@"
+        exit $?
+    fi
+
+    # Unreachable.
+    return 0
+}
+
 # -----------------------------------------------------------------------------
 # Entry — only dispatch when executed directly (not when sourced by tests).
 # -----------------------------------------------------------------------------
 if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+    # Feature 134 subcommand dispatch runs BEFORE the default F129 pipeline
+    # so --bootstrap / --check-placeholders can intercept and short-circuit.
+    # On mutex violation this calls exit 1; on successful subcommand routing
+    # it calls exit $? (either exit 0 for success or the subcommand's own
+    # failure code). If neither flag present, this returns 0 and the default
+    # pipeline runs.
+    aod_update_feature134_dispatch "$@"
     aod_update_main "$@"
 fi

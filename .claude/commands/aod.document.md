@@ -246,3 +246,20 @@ Results:
   API Sync: {N mismatches resolved / skipped / in sync / no spec}
   KB Review: {N entries reviewed / no entries}
 ```
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "Feature is delivered — I'll skip `/aod.document` and let the user run it later" | Without it, the Step 3 CHANGELOG, Step 4 OpenAPI sync, and Step 5 KB review drift from merged code. Run immediately after `/aod.deliver`. |
+| "I'll pause between Step 1 (simplify) and Step 2 (docs-lint) to let the user verify" | Important note (line 29) requires steps 0-7 to execute sequentially without stops. The AskUserQuestion at each step IS the gate; pausing stalls the flow. |
+| "I'll run `/aod.document --autonomous` to skip the AskUserQuestion prompts" | `--autonomous` (Step 0a) auto-accepts decisions at Steps 1c, 2b, 3b, 4b, 5, and 6. Reserved for `aod.run` orchestrator runs; pause at each gate interactively. |
+| "I'll run `/aod.document` directly on the feature branch instead of `{NNN}-document-stage`" | Step 0b creates `{NNN}-document-stage` from main (line 45). Feature-branch use mixes build and post-delivery commits and breaks the Step 6 squash-merge. |
+
+## Red Flags
+
+- Agent invokes `/aod.document` on a feature branch whose build commits are not yet merged to main.
+- Agent stops mid-flow between Steps 0-7 waiting for instructions despite the line 29 "Do not stop" rule.
+- Agent runs `--autonomous` outside an `aod.run` orchestrator context and rubber-stamps every Step 1-5 change.
+- Agent skips Step 0b branch creation and commits directly on the feature branch.
+- Agent reports "DOCUMENT STAGE COMPLETE" without producing the Step 7 per-stage Results breakdown.

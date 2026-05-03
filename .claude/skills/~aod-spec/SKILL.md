@@ -190,3 +190,24 @@ grep -E "[0-9]+%" spec.md  # Measurable success criteria
 - **Specification-Driven**: Enforces spec completion before proceeding (Principle II)
 - **Quality Focus**: Ensures high-quality specifications for better outcomes
 - **Read-Only**: No modifications to specs, only validation
+
+---
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "A few [NEEDS CLARIFICATION] markers won't fail the report" | Step 3 (line 46) flags every marker; the report status drops to NOT READY until each one is resolved. |
+| "Out of Scope is obvious — I can skip the section" | Step 5 (line 56) requires the explicit Out of Scope section; missing it returns NOT READY with bounded-scope failure. |
+| "This requirement is testable enough — adding numbers is pedantic" | Step 4 (line 53) checks for measurable values; vague criteria fail the testable-criteria gate. |
+| "Success Criteria can be added at plan time" | Step 2 (line 33) lists Success Criteria as mandatory; absence returns NOT READY before plan even starts. |
+| "Edge cases live in tasks.md, not spec.md" | Step 2 (line 27) requires Edge Cases under User Scenarios — the validator expects them at spec time. |
+
+## Red Flags
+
+- Agent reports READY while `grep -n "\[NEEDS CLARIFICATION\]"` (Step 3) still returns matches.
+- Agent skips Step 5 scope-boundary check by treating "everything reasonable is in scope" as sufficient.
+- Agent's report omits the Quality Checks block defined in Step 6's report format.
+- Agent invokes Step 4 without verifying acceptance scenarios per user story (Step 2 line 26).
+- Agent suggests proceeding to `/aod.project-plan` despite NOT READY status from Step 6.
+- Agent treats optional sections (Assumptions, Dependencies — line 40) as mandatory and blocks on their absence.

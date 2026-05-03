@@ -225,12 +225,34 @@ Which gates activate at each stage, per tier.
 
 | Command | Purpose |
 |---------|---------|
-| `/aod.score` | Re-score an existing idea (stays in Discover stage) |
-| `/aod.status` | Regenerate BACKLOG.md on demand, show stage summary |
-| `/aod.analyze` | Cross-artifact consistency check |
-| `/aod.clarify` | Resolve spec ambiguities |
-| `/aod.checklist` | Generate quality checklist (Definition of Done) |
-| `/aod.constitution` | View or update governance constitution |
+| `/aod.score` | Re-score an existing idea (stays in Discover stage). See [`aod.score.md`](../../.claude/commands/aod.score.md). |
+| `/aod.status` | Regenerate BACKLOG.md on demand, show stage summary. See [`aod.status.md`](../../.claude/commands/aod.status.md). |
+| `/aod.analyze` | Cross-artifact consistency check. See [`aod.analyze.md`](../../.claude/commands/aod.analyze.md). |
+| `/aod.clarify` | Resolve spec ambiguities. See [`aod.clarify.md`](../../.claude/commands/aod.clarify.md). |
+| `/aod.checklist` | Generate quality checklist (Definition of Done). See [`aod.checklist.md`](../../.claude/commands/aod.checklist.md). |
+| `/aod.constitution` | View or update governance constitution. See [`aod.constitution.md`](../../.claude/commands/aod.constitution.md). |
+
+### Bootstrap & Orchestration Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/aod.run` | Full lifecycle orchestrator — chains stages 1-5 with session-resilient state and governance gates at every boundary. See [`aod.run.md`](../../.claude/commands/aod.run.md). |
+| `/aod.orchestrate` | Multi-feature parallel wave execution from `/aod.blueprint` output; groups GitHub Issues into P0/P1/P2 waves and spawns batch sessions. |
+| `/aod.kickstart` | POC kickstart — transforms a raw project idea into a sequenced consumer guide with 6-10 seed features. See [`aod.kickstart.md`](../../.claude/commands/aod.kickstart.md). |
+| `/aod.blueprint` | Generate ICE-scored, dependency-ordered GitHub Issues from a consumer guide; feeds `/aod.orchestrate`. See [`aod.blueprint.md`](../../.claude/commands/aod.blueprint.md). |
+
+### Scaffolding Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/aod.roadmap` | Scaffold a quarterly roadmap document from completed PRDs with PM sign-off. See [`aod.roadmap.md`](../../.claude/commands/aod.roadmap.md). |
+| `/aod.okrs` | Scaffold an OKR document with standard template and PM sign-off. See [`aod.okrs.md`](../../.claude/commands/aod.okrs.md). |
+
+### Template Maintenance Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/aod.update` | Apply upstream template updates to this project (F129, shipped 2026-04-19). See [DOWNSTREAM_UPDATE.md](DOWNSTREAM_UPDATE.md) and [`aod.update.md`](../../.claude/commands/aod.update.md). |
 
 ### Minimum Feature Sequence
 
@@ -288,6 +310,119 @@ Long-lived product artifacts that span features.
 
 ---
 
-**Last Updated**: 2026-03-15
+## Traceability Model
+
+The complete chain from idea to delivery:
+
+```
+GitHub Issue #21 (type:idea label, stage:discover)
+  └── US-001 (User Story)
+        └── PRD 005 (docs/product/02_PRD/005-*.md)
+              └── spec.md (specs/005-*/spec.md)
+                    └── plan.md (specs/005-*/plan.md)
+                          └── tasks.md (specs/005-*/tasks.md)
+                                └── Implementation files
+```
+
+Each artifact references its source:
+
+- User Story -> links to GitHub Issue #NNN via Source column
+- PRD -> links to GitHub Issue #NNN and US-NNN via `source` frontmatter
+- Spec -> links to PRD via `prd_reference` frontmatter
+- Plan -> links to Spec via `spec_reference`
+- Tasks -> links to Plan via `plan_reference`
+
+---
+
+## Status Flow Diagram
+
+### Idea Status (GitHub Issues)
+
+```
+[Capture] -> stage:discover (>= 12) -> stage:define (PRD started)
+                |
+                +-> Deferred (< 12) -> Re-scored (>= 12) -> stage:define
+                |
+                +-> Rejected (PM rejected)
+```
+
+### Feature Lifecycle (GitHub Issue labels)
+
+```
+stage:discover -> stage:define -> stage:plan -> stage:build -> stage:deliver -> stage:document
+```
+
+---
+
+## End-to-End Example
+
+A dark-mode feature walked through all 6 stages.
+
+### Step 1: Discover
+
+```bash
+/aod.discover "Add dark mode support for the dashboard"
+```
+
+- GitHub Issue **#21** created with `type:idea` and `stage:discover` labels
+- ICE Score: 24 (I:9 C:9 E:6) -- P1 (High)
+- Evidence: "Customer feedback -- 12 requests in last quarter"
+- PM agent reviews: APPROVED
+
+### Step 2: Define
+
+```bash
+/aod.define dark-mode-support
+```
+
+- PRD created with `source.github_issue: 21`
+- GitHub Issue label updated to `stage:define`
+
+### Step 3: Plan (3 sub-steps)
+
+```bash
+/aod.plan    # Invocation 1: generates spec.md (PM sign-off)
+/aod.plan    # Invocation 2: generates plan.md (PM + Architect sign-off)
+/aod.plan    # Invocation 3: generates tasks.md (Triple sign-off)
+```
+
+- GitHub Issue label updated to `stage:plan`
+
+### Step 4: Build
+
+```bash
+/aod.build
+```
+
+- Tasks executed with Architect checkpoints
+- GitHub Issue label updated to `stage:build`
+
+### Step 5: Deliver
+
+```bash
+/aod.deliver
+```
+
+- DoD validated, retrospective captured, KB entry created
+- GitHub Issue label updated to `stage:deliver`
+- New ideas from retrospective -> new GitHub Issues with `stage:discover`
+
+### Step 6: Document
+
+```bash
+/aod.document
+```
+
+- Code simplification reviewed and approved
+- Docstrings added to complex undocumented functions
+- CHANGELOG updated with feature entries
+- API docs synced (if OpenAPI spec exists)
+- KB entries validated
+
+Feature delivered and documented with full traceability from original idea to shipped code.
+
+---
+
+**Last Updated**: 2026-04-20
 **Maintained By**: Product Manager (lifecycle governance)
-**Source**: Feature 010 -- AOD Lifecycle Formalization
+**Source**: Feature 010 -- AOD Lifecycle Formalization (consolidated with former AOD_LIFECYCLE_GUIDE.md on 2026-04-20)

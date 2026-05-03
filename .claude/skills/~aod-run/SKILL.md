@@ -251,7 +251,7 @@ Each lifecycle stage maps to an existing AOD skill invoked via the Skill tool. T
 | Plan | project_plan | Architecture plan | `aod.project-plan` | `--autonomous` (if autonomous_mode) or no args |
 | Plan | tasks | Task breakdown | `aod.tasks` | `--autonomous` (if autonomous_mode) or no args |
 | Build | — | Implementation | `aod.build` | `--orchestrated --autonomous` (if autonomous_mode) or `--orchestrated` only |
-| Deliver | — | Delivery retrospective | `aod.deliver` | `--autonomous "FEATURE: {NNN} - {name}"` (if autonomous_mode) or feature info only |
+| Deliver | — | Delivery retrospective | `aod.deliver` | `--autonomous "FEATURE: {NNN} - {name}" {deliver_flags...}` (if autonomous_mode) or `"FEATURE: {NNN} - {name}" {deliver_flags...}` (interactive). `{deliver_flags...}` expands the per-feature flags forwarded from `/aod.orchestrate` via the Task description (e.g. `--no-tests="<reason>"`). When `/aod.run` is invoked standalone (not via `/aod.orchestrate`), `{deliver_flags...}` is empty. See aod-orchestrate SKILL.md Step 4.7 and Step 7.1.1 step 2.5 for the upstream contract. |
 | Document | — | Documentation review | `aod.document` | `--autonomous` (if autonomous_mode) or no args |
 
 **Invocation pattern**: Use the Skill tool with `skill: "{skill_name}"` and pass arguments as `args: "{arguments}"`.
@@ -273,7 +273,7 @@ When `autonomous_mode == true`, prepend `--autonomous` to all skill args:
 - **Define**: `args: "--autonomous {feature_title}"` — pass flag + feature title/topic
 - **Plan stages**: `args: "--autonomous"` — flag only; skills read context from branch
 - **Build**: `args: "--orchestrated --autonomous"` — both flags enable orchestrated + autonomous modes
-- **Deliver**: `args: "--autonomous FEATURE: {NNN} - {feature_name}"` — flag + feature info
+- **Deliver**: `args: "--autonomous FEATURE: {NNN} - {feature_name} {deliver_flags...}"` — flag + feature info + optional per-feature deliver flags forwarded from `/aod.orchestrate` (e.g. `--no-tests="<reason>"`). When `/aod.run` is invoked standalone (not via orchestrator), `{deliver_flags...}` is empty. See `aod-orchestrate` SKILL.md Step 4.7 + 7.1.1 step 2.5 for the upstream contract.
 - **Document**: `args: "--autonomous"` — flag only; skill reads context from branch
 
 When `autonomous_mode == false` (interactive), omit `--autonomous`:
@@ -282,7 +282,7 @@ When `autonomous_mode == false` (interactive), omit `--autonomous`:
 - **Define**: `args: "{feature_title}"`
 - **Plan stages**: no args
 - **Build**: `args: "--orchestrated"`
-- **Deliver**: `args: "FEATURE: {NNN} - {feature_name}"`
+- **Deliver**: `args: "FEATURE: {NNN} - {feature_name} {deliver_flags...}"` — `{deliver_flags...}` expansion is empty unless forwarded from `/aod.orchestrate` (see Stage Skill Mapping table note)
 - **Document**: no args
 
 ### Post-Stage Context Extraction
@@ -393,8 +393,82 @@ After recording Plan:tasks artifacts and before the Core Loop advances to Build,
 **After Deliver completes**:
 
 1. The deliver stage produces a delivery summary
-2. Record artifacts: Add `"delivery complete"` to `stages.deliver.artifacts`
-3. Write updated state atomically
+2. **Check for halt record** (FR-024, FR-025) — before marking Deliver as completed, inspect `.aod/state/deliver-{NNN}.halt.json` (where `NNN` is the zero-padded `feature_id` from state). The `/aod.deliver` skill writes this file when it halts for review per the three-channel halt protocol. Schema and exit-code taxonomy are documented in [`specs/139-delivery-verified-not-documented/contracts/halt-record.md`](../../../specs/139-delivery-verified-not-documented/contracts/halt-record.md).
+
+   **Exit-code taxonomy** (from halt-record contract §Channel 3):
+
+   | Code | Meaning | `/aod.run` policy |
+   |------|---------|-------------------|
+   | 0 | Success | Proceed to Document stage |
+   | 10 | Halted for review (E2E fail, AC-coverage fail, or abandoned heal) | Halt lifecycle; emit halt record to operator; do NOT advance to Document |
+   | 11 | Lockfile conflict (concurrent `/aod.deliver` live) | Halt lifecycle; log holding PID from lockfile; operator resolves |
+   | 12 | Abandoned heal sentinel (crash-recovery) | Halt lifecycle; emit manual-cleanup prompt; do NOT auto-retry |
+   | 1-9 | Pre-existing delivery errors | Handle per existing stage_error logic (log, surface to operator) |
+
+   **Inspection algorithm**:
+
+   1. Derive the halt-record path: `halt_record_path = ".aod/state/deliver-{NNN}.halt.json"`
+   2. Check existence via Bash: `test -f "$halt_record_path" && echo EXISTS`
+   3. If the file does NOT exist: assume Deliver succeeded; proceed to step 3 below (record artifacts, continue to Document).
+   4. If the file exists, parse it via `jq`:
+
+      ```bash
+      jq -r '[.reason, .recovery_status, (.heal_pr_url // "null"), (.heal_pr_number // "null"), (.failing_scenarios | tostring), .timestamp] | @tsv' "$halt_record_path"
+      ```
+
+   5. Extract fields: `reason`, `recovery_status`, `heal_pr_url`, `heal_pr_number`, `failing_scenarios`, `timestamp`.
+
+   6. **Emit human-readable halt summary to the operator** (surfaced in stdout via the skill's output):
+
+      ```
+      =====================================================
+      LIFECYCLE HALT — Deliver stage halted for review
+      =====================================================
+      Feature: {feature_id} — {feature_name}
+      Reason: {reason}
+      Recovery Status: {recovery_status}
+      Heal-PR: {heal_pr_url} (#{heal_pr_number})
+      Failing Scenarios:
+        - {scenario_1}
+        - {scenario_2}
+        ...
+      Halted At: {timestamp}
+      =====================================================
+
+      Next steps:
+      - Review the heal-PR for failure context and attempted fixes
+      - Fix the underlying failure and merge the heal-PR (requires human approval — no auto-merge per FR-023)
+      - Re-run /aod.run --resume to retry Deliver after the fix is merged
+      ```
+
+   7. **Mark Deliver as halted** in state:
+
+      ```
+      bash -c 'source .aod/scripts/bash/run-state.sh && aod_state_write '"'"'{"stages":{"deliver":{"status":"failed","halt_record":{"reason":"{reason}","recovery_status":"{recovery_status}","heal_pr_url":"{heal_pr_url}","heal_pr_number":{heal_pr_number},"failing_scenarios":{failing_scenarios_json},"timestamp":"{timestamp}"}}}}'"'"''
+      ```
+
+   8. **Append to error_log** (per Error Logging contract) with `type: "stage_error"` and a summary message.
+
+   9. **Autonomous mode policy**: If `autonomous_mode == true`, the halt is non-recoverable within the current run — the lifecycle stops here. Do NOT advance to Document. The operator resolves via manual heal-PR review, then re-runs `/aod.run --resume` to re-invoke the Deliver stage. Emit an additional line:
+
+      ```
+      Autonomous mode: lifecycle halted. Manual intervention required before --resume.
+      ```
+
+   10. **Interactive mode policy**: If `autonomous_mode == false`, display the halt summary and prompt:
+
+       ```
+       Deliver stage halted for review. Options:
+         [Pause / Abort]
+       ```
+
+       - **Pause**: Save state, exit cleanly. Operator resumes after fix via `/aod.run --resume`.
+       - **Abort**: Save state with `aborted` status, exit.
+
+   11. **Exit the Core Loop** — do NOT advance to Document. The halt is terminal for the current session.
+
+3. Record artifacts: Add `"delivery complete"` to `stages.deliver.artifacts` (only when no halt record is present)
+4. Write updated state atomically
 
 **After Document completes**:
 

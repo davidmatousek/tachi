@@ -314,3 +314,24 @@ A: Verify CHECKPOINTS_README.md exists in output directory
 **Skill Version**: 1.0.0
 **Last Updated**: 2025-11-20
 **Maintainer**: Team Lead Agent
+
+---
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I'll skip the checkpoint — I'm only mid-phase" | Step 1 (line 17) lists critical milestones too; mid-phase pause without report leaves no resume artifact. |
+| "KB entries can wait until after delivery" | Line 307 directs capturing knowledge fresh; deferred entries miss the gotchas described in lines 121-126. |
+| "Achievements like 'made progress' are fine" | Line 308 requires specific achievements; vague entries violate the KB DON'T list (line 130). |
+| "I can hand-write achievements without the script" | Quick Usage (line 27) requires `generate_checkpoint.py` — manual reports skip the auto progress percentage from line 109. |
+| "Resume commands are documentation, not testing" | Line 311 requires testing resume commands before distributing; untested commands break next session. |
+
+## Red Flags
+
+- Agent creates a checkpoint without running `analyze_tasks.py` per the metrics block (lines 162-183).
+- Agent's KB entries match the DON'T list (line 128): "obvious facts," "generic statements," "implementation progress."
+- Agent skips line 310 (validate metrics): publishes auto-calculated percentages without sanity-checking them.
+- Agent omits the Required Sections list (line 96) — Quality Metrics, Resume Instructions, or Files Created.
+- Agent uses arbitrary checkpoint numbering instead of the auto-detected `{NN}` from the script (line 78).
+- Agent's report contains template variables like `{NEXT_TASK}` unsubstituted — Troubleshooting Q3 (line 298) flags this.

@@ -83,6 +83,8 @@ STACK.md is the central document of each pack. It is loaded as agent context on 
 | 6 | **Coding Standards** | Always-use patterns and never-use anti-patterns | Deterministic choices that eliminate ad-hoc decisions |
 | 7 | **Testing Conventions** | Framework, location, naming, coverage, mocking | Define what to test at each level (unit, integration, E2E) |
 
+Section 7 must also declare a machine-readable **stack pack test contract block** — see [`docs/stacks/TEST_COMMAND_CONTRACT.md`](../docs/stacks/TEST_COMMAND_CONTRACT.md) for the canonical reference on its schema, canonical examples, and lint exit codes.
+
 ### Optional Sections (after required)
 
 - **Design Principles** — Philosophy behind technology choices

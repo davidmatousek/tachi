@@ -1,5 +1,15 @@
 # Tester — Python FastAPI + React Supplement
 
+## Stack-Specific E2E Conventions
+
+- **Location**: E2E specs live at `frontend/e2e/*.spec.ts`; shared fixtures at `frontend/e2e/fixtures.ts`; adopter starter templates at `frontend/e2e/_templates/*.template.ts` (excluded from runs via `testIgnore: /\.template\.ts$/`).
+- **Fixture pattern**: Playwright `webServer` array form — backend runs `bash -c "alembic upgrade head && uvicorn app.main:app --host 127.0.0.1 --port 8001"`; frontend runs `npm run dev -- --host 127.0.0.1 --port 5173`. Both bind `127.0.0.1` explicitly (not `localhost`) to avoid IPv6 drift on CI.
+- **Query precedence**: prefer `getByRole(...)` first, `getByLabel(...)` when role is ambiguous, `getByText(...)` as last resort. Do not start with CSS selectors or `getByTestId`.
+- **Flake tolerance**: `retries: 2` is set per the #130 declaration contract. Use Playwright's auto-waiting (`expect(...).toBeVisible()`) and `expect().toPass()` rather than `setTimeout`/`sleep`. Consistent two-retries-to-pass often signals a real race worth fixing upstream.
+- **DB isolation**: the Postgres fixture REQUIRES `TEST_DATABASE_URL` in the environment and fails fast with clear errors unless it (a) is set, (b) differs from `DATABASE_URL` (the dev DSN), and (c) has a database name containing `test_` or `_test`. See `frontend/.env.test.example`.
+- **Trace redaction**: `fixtures.ts` installs a `page.route()` hook that strips `Authorization` / `Cookie` from requests AND `Set-Cookie` from responses before the trace recorder captures them. PRESERVE this hook — removing it exposes JWTs and session cookies in CI trace artifacts.
+- **Adopter templates**: `frontend/e2e/_templates/auth-crud.template.ts` is a copy-ready auth + CRUD reference. Rename the extension to `.spec.ts` and fill in the `TODO` placeholders once your app implements those flows.
+
 ## Stack Context
 
 Backend: pytest + pytest-asyncio (auto mode) as the test runner. httpx `AsyncClient` with `ASGITransport(app=app)` for API integration tests. `create_async_engine` with `NullPool` for test database engines. SQLAlchemy async sessions with transaction rollback per test. Frontend: Vitest as the test runner. React Testing Library (`@testing-library/react`) for component tests. `@testing-library/jest-dom` for DOM matchers. `@testing-library/user-event` for realistic interaction simulation. `renderHook` from `@testing-library/react` for custom hook tests. TypeScript strict mode throughout.

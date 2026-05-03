@@ -188,6 +188,13 @@ ALWAYS use SwiftUI for all user interface code. ONLY bridge to UIKit (`UIViewRep
 
 ## Testing Conventions
 
+<!-- BEGIN: aod-test-contract -->
+```yaml
+test_command: "xcodebuild test -scheme <App>"
+e2e_opt_out: "XCTest command substitution (scheme/destination placeholders) requires schema extension — tracked in #140"
+```
+<!-- END: aod-test-contract -->
+
 ### Framework Stack
 
 | Level | Framework | Purpose |

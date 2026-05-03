@@ -276,3 +276,21 @@ Next: /aod.plan PRD: {prd_number} - {topic}
 - [ ] Frontmatter injected with all three sign-offs
 - [ ] INDEX.md updated with new row
 - [ ] Completion summary displayed
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I'll run `/aod.define` first and link a GitHub Issue later" | Step 1 (line 130) blocks PRD creation without a backing Issue. Auto-create runs `bash .aod/scripts/bash/create-issue.sh`; the PRD number IS the Issue number per Step 5. |
+| "I'll pass `--autonomous` so the Triad reviews skip themselves" | `--autonomous` (Step 0) auto-selects defaults at vision/duplicate/workflow gates only. Triad reviews still run; Step 4 HALTS on BLOCKED in autonomous mode. Not a Triad bypass. |
+| "Architect BLOCKED on technical grounds — I'll override since I think it's fine" | Step 4 binds Architect to technical and Team-Lead to timeline (line 198). Override requires justification ≥20 chars and marks BLOCKED_OVERRIDDEN. Address the concern instead. |
+| "I'll edit the Step 8 `Next:` line to point at `/aod.spec`" | Step 8 (line 249) binds `Next:` to `/aod.plan PRD: {prd_number}`. The orchestrator routes to the correct sub-step. Substituting strips PRD-aware routing. |
+
+## Red Flags
+
+- Agent invokes `/aod.define` and proceeds past Step 1 with no backing GitHub Issue resolved.
+- Agent overrides a BLOCKED Architect or Team-Lead verdict while `autonomous == true` instead of halting per Step 4 line 199.
+- Agent's Step 8 completion summary shows `Next: /aod.spec`, `Next: /aod.project-plan`, or any non-`/aod.plan` command.
+- Agent runs Architect and Team-Lead reviews for a Feature-type PRD sequentially instead of parallel per Step 3 ("Feature workflow", line 168).
+- Agent writes a PRD whose `prd.number` differs from the linked GitHub Issue number (Step 5 binds them).
+- Agent skips the Step 0 vision check without confirming `docs/product/01_Product_Vision/product-vision.md` exists.

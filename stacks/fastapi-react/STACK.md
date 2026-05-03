@@ -272,6 +272,19 @@ docker-compose.yml            # PostgreSQL 16, backend, frontend services
 
 ## Testing Conventions
 
+<!-- BEGIN: aod-test-contract -->
+```yaml
+test_command: "pytest && npm --prefix frontend run test"
+e2e_command: "npm --prefix frontend run test:e2e"
+test_paths:
+  - "backend/tests/"
+  - "frontend/e2e/"
+  - "frontend/tests/"
+  - "**/*.test.tsx"
+  - "**/*.spec.tsx"
+```
+<!-- END: aod-test-contract -->
+
 ### Backend — pytest + pytest-asyncio
 
 **Configuration** (`pyproject.toml`):

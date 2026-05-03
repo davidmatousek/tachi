@@ -564,3 +564,24 @@ Next: Run `/aod.define {topic}` to create a PRD, or continue seeding with `/aod.
 - [ ] PM override documented if idea was auto-deferred
 - [ ] BACKLOG.md regenerated after validation
 - [ ] Result reported with next step guidance
+
+---
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I'll just use `gh issue create` directly — same result" | Critical Constraints (line 34) require `create-issue.sh`; direct `gh` bypasses board sync per the line 38 warning. |
+| "Score 11 is close enough — I'll skip the auto-defer gate" | Step 5 (line 162) hard-codes < 12 as Deferred and stops the full flow before PM review. |
+| "Evidence is optional, I'll mark it 'No evidence provided'" | Step 6 PM prompt (line 336) flags empty evidence; PM may approve but documents the gap in rationale. |
+| "Seed mode skips ICE — I can use it for any quick idea" | Seed Mode (line 481) is for pre-vetted consumer-guide stories only; defaults Impact=8, Confidence=7 per line 493. |
+| "Light tier means PM validation is permanently disabled" | Step 5c (line 261) skips PM in full flow only; line 267 confirms `/aod.validate` always runs PM regardless. |
+
+## Red Flags
+
+- Agent calls `gh issue create` directly, bypassing `aod_gh_add_to_board` per line 36 KB Entry #20.
+- Agent advances an auto-deferred idea to PM validation without `/aod.validate` override per Step 5 (line 167).
+- Agent skips Step 5b BACKLOG.md regeneration after Issue creation, leaving the snapshot stale per line 248.
+- Agent assigns a separate `IDEA-NNN` ID instead of using the GitHub Issue number per Step 2 (line 73).
+- Agent ignores legacy `IDEA-NNN` format support in Step 6 (line 276) and rejects valid input.
+- Agent submits the user story without the AskUserQuestion confirmation step per Step 7 (line 375).

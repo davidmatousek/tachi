@@ -4,10 +4,9 @@
 **Read Time**: ~5 minutes
 
 **Related**:
-- [AOD Lifecycle Reference](AOD_LIFECYCLE.md) -- Stage-by-stage deep reference
-- AOD Infographic -- (Infographic coming soon)
+- [AOD Lifecycle Reference](AOD_LIFECYCLE.md) -- Full stage reference, governance tiers, end-to-end example
+- [AOD Infographic](AOD_INFOGRAPHIC.md) -- Visual at-a-glance lifecycle diagram
 - [SDLC Triad Reference](../AOD_TRIAD.md) -- Governance layer documentation
-- [AOD Migration Guide](AOD_MIGRATION.md) -- Old command mapping
 
 ---
 
@@ -84,10 +83,17 @@ The fastest path from idea to implementation:
 | `/aod.constitution` | View or update governance constitution |
 | `/aod.kickstart` | POC kickstart — generate consumer guide with seed features |
 | `/aod.blueprint` | Multi-feature story generation from consumer guide |
+| `/aod.orchestrate` | Multi-feature parallel wave execution from `/aod.blueprint` output |
 | `/aod.roadmap` | Scaffold quarterly roadmap from completed PRDs |
 | `/aod.okrs` | Scaffold OKR document with standard template |
 | `/aod.stack` | Manage stack packs (activate, remove, list, scaffold) |
 | `/aod.run` | Full lifecycle orchestrator — chains stages 1-5 |
+
+### Template Maintenance Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/aod.update` | Apply upstream template updates to this project. F129, shipped 2026-04-19. See [DOWNSTREAM_UPDATE.md](DOWNSTREAM_UPDATE.md) and [`aod.update.md`](../../.claude/commands/aod.update.md). |
 
 ### Choosing Your Entry Point
 
@@ -205,4 +211,4 @@ Use `/aod.plan` (which invokes `/aod.spec`) instead of creating spec.md manually
 Split the feature into smaller, independently deliverable pieces, or escalate to the user for scope clarification.
 
 **"Command not found"**
-All lifecycle commands use the `/aod.*` prefix. Run `/help` to see all available commands. See [AOD Migration Guide](AOD_MIGRATION.md) for old-to-new command mapping.
+All lifecycle commands use the `/aod.*` prefix. Run `/help` to see all available commands. Old `/pdl.*` and `/triad.*` namespaces were removed in Feb 2026 — see [archive/AOD_MIGRATION.md](archive/AOD_MIGRATION.md) if you need the historical mapping.

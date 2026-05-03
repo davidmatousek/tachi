@@ -329,3 +329,21 @@ Next: /aod.plan SPEC: {feature_number} - {feature_name}
 - [ ] Blockers handled (resolved, overridden, or aborted)
 - [ ] Frontmatter injected with PM sign-off
 - [ ] Completion summary displayed
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I already know what to build, the spec is just paperwork" | The spec is the artifact PM signs off on. Without it, the gate has nothing to gate. |
+| "I'll fill in the [NEEDS CLARIFICATION] markers later" | Markers fail validation at /aod.spec Step 3.4 Quality Validation (.claude/commands/aod.spec.md:177); spec is not ready if any remain. Resolve now or run /aod.clarify. |
+| "I'll skip Step 2 research — I know enough about this feature already" | Step 2 grounds the spec in current code (Explore agent), KB lessons, architecture, and external research. Skipping risks invented gates and pattern drift. |
+| "I'll regenerate `spec.md` from scratch after CHANGES_REQUESTED instead of using `--revision`" | Step 0y `--revision` applies targeted edits to flagged sections only and reuses prior research. Regenerating discards PM feedback context and reruns Step 2. |
+
+## Red Flags
+
+- Agent accepts a spec with more than 3 `[NEEDS CLARIFICATION]` markers (Step 3.2 line 159 caps at 3).
+- Agent runs the four Step 2 research areas sequentially instead of one message with four parallel Task calls (line 62: "Launch all four research tasks simultaneously").
+- Agent's Step 7 completion summary shows `Next: /aod.project-plan` (or any other command) instead of `Next: /aod.plan SPEC: {feature_number} - {feature_name}` (line 305 / 317).
+- Agent regenerates `spec.md` from scratch after CHANGES_REQUESTED instead of running `/aod.spec --revision`.
+- Agent overrides a BLOCKED PM verdict while `autonomous == true` instead of halting per Step 5 line 279.
+- Agent skips the Step 1 GitHub Issue stage update (lines 41-49) when `gh` CLI is available.

@@ -1,5 +1,15 @@
 # Tester — Python FastAPI + React (Local / SQLite) Supplement
 
+## Stack-Specific E2E Conventions
+
+- **Location**: E2E specs live at `frontend/e2e/*.spec.ts`; shared fixtures at `frontend/e2e/fixtures.ts`; adopter starter templates at `frontend/e2e/_templates/*.template.ts` (excluded from runs via `testIgnore: /\.template\.ts$/`).
+- **Fixture pattern**: Playwright `webServer` array form — backend runs `bash -c "alembic upgrade head && uvicorn app.main:app --host 127.0.0.1 --port 8001"`; frontend runs `npm run dev -- --host 127.0.0.1 --port 5173`. Both bind `127.0.0.1` explicitly (not `localhost`) to avoid IPv6 drift on CI.
+- **Query precedence**: prefer `getByRole(...)` first, `getByLabel(...)` when role is ambiguous, `getByText(...)` as last resort. Do not start with CSS selectors or `getByTestId`.
+- **Flake tolerance**: `retries: 2` is set per the #130 declaration contract. Use Playwright's auto-waiting (`expect(...).toBeVisible()`) and `expect().toPass()` rather than `setTimeout`/`sleep`. Consistent two-retries-to-pass often signals a real race worth fixing upstream.
+- **DB isolation**: NO env-var configuration is required. `playwright.config.ts` generates a per-run ephemeral SQLite file at `/tmp/e2e-<uuid>.db` and passes it to the backend as `DATABASE_URL=sqlite+aiosqlite:///${path}`. A fresh UUID per run prevents cross-run state pollution; `globalTeardown` deletes the file (best-effort).
+- **Trace redaction**: `fixtures.ts` installs a `page.route()` hook that strips `Authorization` / `Cookie` from requests AND `Set-Cookie` from responses before the trace recorder captures them. PRESERVE this hook — removing it exposes JWTs and session cookies in CI trace artifacts.
+- **Adopter templates**: `frontend/e2e/_templates/auth-crud.template.ts` is a copy-ready auth + CRUD reference. Rename the extension to `.spec.ts` and fill in the `TODO` placeholders once your app implements those flows.
+
 ## Stack Context
 
 Backend testing with pytest + pytest-asyncio against in-memory SQLite (aiosqlite driver, StaticPool). Frontend testing with Vitest + React Testing Library in jsdom environment. All tests run locally with zero external dependencies -- no Docker, no PostgreSQL, no network services.

@@ -1,24 +1,21 @@
 ---
-description: Apply upstream template updates from PLSK (product-led-spec-kit) to this adopter project
+description: Apply upstream template updates to this adopter project
 ---
 
 ## Purpose
 
 Run the downstream template update pipeline: fetch the latest AOD-kit template from the pinned upstream, compute a categorized diff, preview what will change, and apply the approved set of changes atomically.
 
-**Update direction is always**: `product-led-spec-kit (PLSK) → user`
-
-This is the OPPOSITE direction of `/aod.sync-upstream`, which pushes adopter template edits back upstream (`user → PLSK`).
+**Update direction is always**: `upstream → downstream`
 
 ## When to Use
 
 - Periodic check for upstream template improvements (new commands, skills, docs).
-- After a notable PLSK release — confirm whether anything safe-to-adopt has landed.
+- After a notable upstream release — confirm whether anything safe-to-adopt has landed.
 - Before running `/aod.deliver` on a large feature if you want the latest tooling.
 
 ## When NOT to Use
 
-- To push your local edits upstream — use `/aod.sync-upstream` for that.
 - During an in-flight feature branch if you're worried about merge noise — do it between features.
 - On a dirty working tree with uncommitted changes you care about — commit or stash first.
 
@@ -68,7 +65,7 @@ The pipeline uses a stable exit-code contract (see `specs/129-downstream-templat
 | 2    | Lock contention (another /aod.update is running) | "Another update in progress — wait or inspect holder PID" |
 | 3    | Missing prerequisites | Point at `scripts/init.sh` bootstrap |
 | 4    | Cross-filesystem staging | Suggest unsetting `AOD_UPDATE_TMP_DIR` |
-| 5    | Manifest coverage violation | Upstream bug — escalate to PLSK maintainers |
+| 5    | Manifest coverage violation | Upstream bug — escalate to upstream maintainers |
 | 6    | Guard-list violation | Likely malicious manifest; review diff carefully |
 | 7    | Retag detected without --force-retag | Review upstream tag history; re-run with --force-retag if intentional |
 | 8    | Residual placeholder | Upstream introduced new `{{KEY}}`; escalate or edit personalization.env |
@@ -90,7 +87,7 @@ Display a brief summary:
 ```
 UPDATE COMPLETE
 
-Direction: PLSK → user
+Direction: upstream → downstream
 Mode:      <apply | dry-run>
 Outcome:   <success | already up to date | declined | failed>
 ```
@@ -113,4 +110,3 @@ Outcome:   <success | already up to date | declined | failed>
 - Manifest schema: `specs/129-downstream-template-update/contracts/manifest-schema.md`
 - Version pin schema: `specs/129-downstream-template-update/contracts/version-schema.md`
 - Adopter walkthrough: `docs/guides/DOWNSTREAM_UPDATE.md` (Wave 6)
-- Opposite direction: `.claude/commands/aod.sync-upstream.md` (user → PLSK)

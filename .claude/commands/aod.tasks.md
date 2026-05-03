@@ -311,3 +311,21 @@ Next: /aod.build {feature_number}
 - [ ] Frontmatter injected with all three sign-offs
 - [ ] agent-assignments.md generated
 - [ ] Completion summary displayed
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "I'll run `/aod.tasks` before the architect signs off the plan" | Step 1 ("Validate Prerequisites") requires `triad.architect_signoff.status` ∈ {APPROVED, APPROVED_WITH_CONCERNS, BLOCKED_OVERRIDDEN} (line 39). Without architect sign-off, Step 1 errors and exits. |
+| "Team-Lead BLOCKED on timeline grounds — I'll override since I think we can hit it" | Step 4 binds Team-Lead to timeline (line 206). In `autonomous == true`, Step 4 HALTS (line 207). Compress scope or timeline. |
+| "I'll let team-lead invent agent names like `file-agent` for clarity" | Step 6 (line 252) requires exact names from the 12-agent Agent Roster. Invented names break `/aod.build`'s `subagent_type` lookup; the wave never runs. |
+| "I'll edit Step 7's `Next:` line to `/aod.deliver` since the user knows what to run" | Step 7 Re-ground rule (line 287) binds `Next:` to `/aod.build {feature_number}`. The build orchestrator depends on this resume contract. |
+
+## Red Flags
+
+- Agent invokes `/aod.tasks` while `plan.md` has only PM sign-off (architect_signoff null or CHANGES_REQUESTED).
+- Agent's `agent-assignments.md` uses agent names not in the Step 6 Agent Roster (e.g., `file-agent`, `doc-agent`, `qa-agent`).
+- Agent's Step 7 completion summary shows `Next: /aod.deliver` or any non-`/aod.build` command.
+- Agent runs the three Triad reviews sequentially (three messages with one Task each) instead of one message with three parallel Task calls per Step 3.
+- Agent overrides a Multiple-BLOCKED cross-domain conflict while `autonomous == true` instead of halting per Step 4 line 215.
+- Agent regenerates `tasks.md` from scratch after CHANGES_REQUESTED instead of running `/aod.tasks --revision` (Step 0y).
