@@ -22,6 +22,17 @@ else
   exit 1
 fi
 
+# Source the input validation helper (F-248 T023). Provides aod_init_read_validated
+# which wraps `read -r -p` with a rejection ladder (newline / NUL / control char
+# / over-length) per FR-005.
+if [ -f ".aod/scripts/bash/init-input.sh" ]; then
+  # shellcheck disable=SC1091
+  source .aod/scripts/bash/init-input.sh
+else
+  echo -e "${RED}ERROR: .aod/scripts/bash/init-input.sh not found — required for prompt input validation${NC}" >&2
+  exit 1
+fi
+
 echo -e "${BLUE}🚀 Agentic-Oriented-Development-Kit - Project Initialization${NC}"
 echo ""
 
@@ -45,11 +56,12 @@ if [ -f ".aod/personalization.env" ]; then
   exit 1
 fi
 
-# Interactive prompts
-read -p "Project Name: " PROJECT_NAME
-read -p "Project Description: " PROJECT_DESCRIPTION
-read -p "GitHub Organization: " GITHUB_ORG
-read -p "GitHub Repository [$PROJECT_NAME]: " GITHUB_REPO
+# Interactive prompts (F-248 T024-T027 — wrapped with aod_init_read_validated
+# per FR-005 input validation contract; max_len limits per spec quickstart §C2)
+aod_init_read_validated "Project Name: " PROJECT_NAME 100
+aod_init_read_validated "Project Description: " PROJECT_DESCRIPTION 300
+aod_init_read_validated "GitHub Organization: " GITHUB_ORG 39
+aod_init_read_validated "GitHub Repository [$PROJECT_NAME]: " GITHUB_REPO 100
 GITHUB_REPO=${GITHUB_REPO:-$PROJECT_NAME}
 
 echo ""
@@ -287,20 +299,32 @@ else
   BOARD_STATUS="skipped_no_gh"
 fi
 
-# Clean up instructional text from constitution (contains literal {{ examples)
+# F-248 T032 (FR-008): replace the previous sed-based instructional-block
+# cleanup with `cp` from the pre-stripped clean template. This eliminates the
+# OSTYPE branching (macOS BSD sed vs GNU sed) and removes a metachar-sensitive
+# transformation. Both the substitution loop above and `aod.update` produce
+# identical post-substitution constitution bytes by sourcing the same clean
+# template. See ADR-038 §Decision item 3 for the dual-template rationale.
 CONSTITUTION=".aod/memory/constitution.md"
-if [ -f "$CONSTITUTION" ]; then
-  echo -e "${YELLOW}🔄 Cleaning up constitution template instructions...${NC}"
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    # Remove HTML comment block at top (lines starting with <!-- through -->)
-    sed -i '' '/^<!--$/,/^-->$/d' "$CONSTITUTION"
-    # Remove "Template Instructions" section at bottom (## Template Instructions to EOF)
-    sed -i '' '/^## Template Instructions$/,$d' "$CONSTITUTION"
+CONSTITUTION_TEMPLATE=".aod/templates/constitution-clean.md"
+if [ -f "$CONSTITUTION_TEMPLATE" ]; then
+  echo -e "${YELLOW}🔄 Installing post-substitution constitution from clean template...${NC}"
+  if cp "$CONSTITUTION_TEMPLATE" "$CONSTITUTION"; then
+    # The clean template ships with literal {{KEY}} placeholders that the
+    # whole-tree substitution loop above already replaced when it walked
+    # `.aod/templates/`. Re-substitute here for safety in case the template
+    # was added post-substitution (e.g., via /aod.update).
+    if ! aod_template_substitute_placeholders "$CONSTITUTION" "$CONSTITUTION"; then
+      echo -e "${RED}ERROR: failed to substitute placeholders in $CONSTITUTION${NC}" >&2
+      exit 1
+    fi
+    echo -e "${GREEN}✓ Constitution installed from .aod/templates/constitution-clean.md${NC}"
   else
-    sed -i '/^<!--$/,/^-->$/d' "$CONSTITUTION"
-    sed -i '/^## Template Instructions$/,$d' "$CONSTITUTION"
+    echo -e "${RED}ERROR: failed to install constitution from $CONSTITUTION_TEMPLATE${NC}" >&2
+    exit 1
   fi
-  echo -e "${GREEN}✓ Constitution template instructions removed${NC}"
+else
+  echo -e "${YELLOW}⚠  $CONSTITUTION_TEMPLATE not present; constitution unchanged.${NC}" >&2
 fi
 
 # ── Version pin: write .aod/aod-kit-version BEFORE self-delete ──────
@@ -386,6 +410,10 @@ rm -f scripts/init.sh
 
 echo ""
 echo -e "${GREEN}🎉 Project initialized successfully!${NC}"
+echo ""
+echo -e "  ${GREEN}✓${NC} Personalization snapshot: .aod/personalization.env (local-only by default per F-248)"
+echo "    → Re-personalization on /aod.update reads from this snapshot."
+echo "    → Gitignored by default; opt-in commit via 'git rm --cached' + edit .gitignore."
 echo ""
 # Board status
 case "$BOARD_STATUS" in
