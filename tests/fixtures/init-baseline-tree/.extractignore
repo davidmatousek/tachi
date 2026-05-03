@@ -1,0 +1,81 @@
+# .extractignore — Files excluded from upstream extraction
+#
+# These files live in product-led-spec-kit but must NOT ship to the
+# public agentic-oriented-development-kit template repo.
+#
+# Works like .gitignore: one path per line, # for comments, blank lines ignored.
+# Paths are relative to repo root. Supports exact paths and glob patterns (e.g., docs/FEATURE-*).
+#
+# NOTE: The extract manifest (scripts/extract.sh) is opt-in — only directories
+# and files explicitly listed in MANIFEST_DIRS and MANIFEST_FILES get copied.
+# This file is only needed for files that live INSIDE a copied directory but
+# should not ship upstream. If a directory isn't in the manifest at all
+# (e.g., docs/planning/), it's already excluded by default.
+
+# Private commands
+.claude/commands/aod.sync-upstream.md
+
+# Consumer test guides (private testing artifacts)
+docs/guides/STACK_PACK_CONSUMER_TEST_NEXTJS.md
+docs/guides/STACK_PACK_CONSUMER_TEST_SWIFTUI.md
+
+# AOD Orchestrator consumer guide (orchestrator-specific, not template content)
+docs/guides/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md
+
+# Kickstarter / consumer guides (project-specific, private — built for specific adopters)
+# All content under docs/guides/kickstarter/ is private by construction.
+docs/guides/kickstarter/
+
+# PLSK maintainer guide (private — only the template author syncs PLSK → AOD-kit)
+docs/guides/PLSK_MAINTAINER_GUIDE.md
+
+# Upstream sync tooling (maintainer-only — documents and implements user → PLSK flow)
+docs/architecture/01_system_design/upstream-sync-architecture.md
+scripts/sync-upstream.sh
+
+# Guide archive (private, not template content)
+docs/guides/archive/
+
+# Project-specific architecture artifacts (not template content)
+# FEATURE closure summaries are created per-project during /aod.deliver
+docs/architecture/FEATURE-*
+# Closure summaries relocated to .aod/closures/ (Feature 089)
+.aod/closures/
+# ADRs beyond baseline (ADR-000 through ADR-011) are project-specific
+# Baseline ADRs ship with the template; project-created ADRs must not leak upstream
+
+# Numbered PRDs and ADRs (private; preserve 000-example/ADR-000-template only)
+# PRD 128 FR-002, FR-004, FR-005 — numeric prefixes 001+ are private by construction.
+# Patterns split by decade to cover the full 001-999 range without matching 000:
+#   - 001-009: 00[1-9]
+#   - 010-099: 0[1-9][0-9]
+#   - 100-999: [1-9][0-9][0-9]
+docs/architecture/02_ADRs/ADR-00[1-9]-*
+docs/architecture/02_ADRs/ADR-0[1-9][0-9]-*
+docs/architecture/02_ADRs/ADR-[1-9][0-9][0-9]-*
+docs/product/02_PRD/00[1-9]-*.md
+docs/product/02_PRD/0[1-9][0-9]-*.md
+docs/product/02_PRD/[1-9][0-9][0-9]-*.md
+
+# Project-specific product docs (private; created per-adopter)
+docs/product/01_Product_Vision/product-vision.md
+docs/product/02_PRD/INDEX.md
+docs/product/02_PRD/gemini-review.md
+docs/product/_backlog/BACKLOG.md
+# Year-prefixed OKR documents are project-specific quarterly artifacts
+# Pattern matches OKRs with a 4-digit year prefix; the OKR README.md ships as scaffolding
+docs/product/06_OKRs/[12][0-9][0-9][0-9]-*.md
+docs/product/06_OKRs/booking-log.md
+
+# Maintainer-only scripts (PRD 128 — scripts/ ships for adopter init/check/update,
+# but the upstream extraction tooling itself stays private)
+scripts/check-extract-coverage.sh
+scripts/check-manifest-coverage.sh
+scripts/extract-classification.txt
+scripts/extract.sh
+scripts/reset-templates/
+
+# This project's own CHANGELOG (contains PR URLs + feature history specific
+# to the private product-led-spec-kit repo). The upstream template starts
+# its own CHANGELOG from scratch.
+CHANGELOG.md

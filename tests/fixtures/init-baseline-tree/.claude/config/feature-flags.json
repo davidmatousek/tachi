@@ -1,0 +1,43 @@
+{
+  "_meta": {
+    "description": "Feature flags for Claude Code version-dependent features",
+    "created": "2026-01-24",
+    "feature": "002-anthropic-updates-integration",
+    "version": "1.0.0"
+  },
+  "features": {
+    "context_forking": {
+      "description": "Enable isolated context forks for parallel agent reviews",
+      "minimum_version": "2.1.0",
+      "default": false,
+      "flag_key": "AOD_CONTEXT_FORKING"
+    },
+    "parallel_execution": {
+      "description": "Enable parallel Task calls in single message",
+      "minimum_version": "2.1.16",
+      "default": false,
+      "flag_key": "AOD_PARALLEL_EXECUTION"
+    },
+    "task_dependencies": {
+      "description": "Enable custom dependency tracking wrapper for tasks.md",
+      "minimum_version": "2.1.16",
+      "default": false,
+      "flag_key": "AOD_TASK_DEPENDENCIES"
+    },
+    "graceful_degradation": {
+      "description": "Enable version-aware feature degradation messaging",
+      "minimum_version": "2.1.15",
+      "default": true,
+      "flag_key": "AOD_GRACEFUL_DEGRADATION"
+    }
+  },
+  "version_thresholds": {
+    "minimum_supported": "2.1.15",
+    "full_features": "2.1.16",
+    "recommended": "2.1.16"
+  },
+  "fallback_behavior": {
+    "on_detection_failure": "assume_minimum",
+    "on_feature_unavailable": "sequential_fallback"
+  }
+}

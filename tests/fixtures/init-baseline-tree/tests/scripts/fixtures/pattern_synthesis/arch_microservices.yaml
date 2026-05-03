@@ -1,0 +1,35 @@
+# Synthetic Phase 1 abstract for microservices baseline.
+# Expected: multi-agent gate predicate FALSE (no agentic components).
+
+name: microservices
+description: >
+  A microservices architecture with an API gateway routing requests
+  across an orders service, a catalog service, and a billing service.
+  Services communicate over HTTP and share a relational database per
+  bounded context.
+
+components:
+  - name: API Gateway
+    category: process
+  - name: Orders Service
+    category: process
+  - name: Catalog Service
+    category: process
+  - name: Billing Service
+    category: process
+  - name: Orders DB
+    category: data_store
+  - name: Catalog DB
+    category: data_store
+
+data_flows:
+  - source: API Gateway
+    target: Orders Service
+  - source: API Gateway
+    target: Catalog Service
+  - source: API Gateway
+    target: Billing Service
+  - source: Orders Service
+    target: Orders DB
+  - source: Catalog Service
+    target: Catalog DB

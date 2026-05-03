@@ -1,0 +1,27 @@
+# F-6 Cat 9 — Feedback-Loop Model Skewing (Active Learning / Online Learning) (D-{N})
+# Schema: schemas/finding.yaml v1.8 (unchanged in F-6)
+# Category: data-poisoning
+# Severity: HIGH (default per spec assumptions)
+# AML.T0031 cross-reference: prose-only mention in mitigation; NOT in references array
+#   (T0031 absent from schemas/taxonomy/mitre-atlas.yaml — not catalog-resolvable;
+#    mirrors F-5 Cat 10/11 T1496 prose-only handling at 3x scale per ADR-035 D-3
+#    Q3 catalog-resolvability matrix)
+# Worked example: content-recommendation platform retraining ranking model nightly
+#                 from clickstream events without bot-detection or canary-set
+#                 anomaly detection on click-distribution drift; attacker bot
+#                 network drifts model toward over-recommending target product category
+id: "D-9"
+category: data-poisoning
+component: "ContentRecommendation Active-Learning Pipeline"
+dfd_element_type: "Data Flow"
+threat: "The content-recommendation platform retrains its ranking model nightly from the previous day's clickstream events. The retraining pipeline reads (user_id, item_id, click, dwell_time) tuples from a Kafka topic without bot-detection on the originating user accounts and without anomaly detection on click-distribution drift. The HITL labeling tool that handles content-moderation labels accepts label contributions without labeler-trust scoring or reputation-based weighting. Drift-detection alarms are missing on production inference distributions. An attacker who operates a bot network can systematically click and dwell on items associated with a target product category, generating fabricated engagement signal at scale. Over the course of two weeks, the recommendation model drifts toward over-recommending the target category to organic users (attacker-favorable skew). The drift survives held-out evaluation because the held-out set is sampled from the same contaminated clickstream; no canary set anchored to a clean baseline is in place. Business KPIs (click-through rate on the target category) appear to improve, masking the skew until a content-quality complaint surfaces six weeks later."
+likelihood: HIGH
+impact: HIGH
+risk_level: Critical
+mitigation: "Install feedback-data integrity gates with anomaly detection on label distribution drift: compare incoming labeled batches against a clean held-out canary set before each retraining cycle, and reject batches whose label distribution diverges beyond a calibrated threshold. Apply labeler-trust scoring with reputation-based weighting in HITL labeling tools: weight label contributions by historical accuracy on gold-standard examples, require multi-labeler consensus on safety-critical samples, and quarantine new labelers below a reputation floor. Run periodic retraining-data audit with held-out canaries: maintain a clean baseline test set anchored outside the loopback path and verify retrained models maintain accuracy on it; failures block promotion. Add drift-detection alarms on production inference distributions (KS statistic / population stability index / KL divergence on per-feature distributions, with paging thresholds tuned to baseline drift rate). Cf. MITRE ATLAS AML.T0031 Erode ML Model Integrity — text-only cross-reference (NOT in references; T0031 not catalog-resolvable in schemas/taxonomy/mitre-atlas.yaml)."
+references:
+  - "OWASP ML08:2023 — Model Skewing"
+  - "MITRE ATLAS AML.T0020 — Poison Training Data"
+maestro_layer: "L1"
+agentic_pattern: "none"
+source_attribution: []

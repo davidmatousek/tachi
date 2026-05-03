@@ -1,0 +1,1157 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Tachi",
+          "semanticVersion": "1.4",
+          "informationUri": "https://github.com/davidmatousek/tachi",
+          "rules": [
+            {
+              "id": "tachi/stride/spoofing",
+              "shortDescription": {
+                "text": "Identity spoofing threats"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "spoofing"
+                ],
+                "security-severity": "9.0"
+              }
+            },
+            {
+              "id": "tachi/stride/tampering",
+              "shortDescription": {
+                "text": "Data and integrity tampering threats"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "tampering"
+                ],
+                "security-severity": "9.0"
+              }
+            },
+            {
+              "id": "tachi/stride/repudiation",
+              "shortDescription": {
+                "text": "Action repudiation threats"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "repudiation"
+                ],
+                "security-severity": "5.0"
+              }
+            },
+            {
+              "id": "tachi/stride/info-disclosure",
+              "shortDescription": {
+                "text": "Information disclosure threats"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "info-disclosure"
+                ],
+                "security-severity": "7.0"
+              }
+            },
+            {
+              "id": "tachi/stride/dos",
+              "shortDescription": {
+                "text": "Denial of service threats"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "dos"
+                ],
+                "security-severity": "7.0"
+              }
+            },
+            {
+              "id": "tachi/stride/elevation",
+              "shortDescription": {
+                "text": "Privilege elevation threats"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "elevation"
+                ],
+                "security-severity": "9.0"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "S-1: WellnessBank Android Client \u2014 Improper Mobile Credential Usage (M1) \u2014 Auth token and username persisted in Android SharedPreferences MODE_PRIVATE without EncryptedSharedPreferences or Android Keystore binding."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBank Android Client",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "S-1",
+            "category": "spoofing",
+            "component": "WellnessBank Android Client",
+            "risk_level": "Critical",
+            "likelihood": "HIGH",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "S-2: WellnessBank Android Client \u2014 Insecure Mobile Authentication/Authorization (M3) \u2014 No biometric step-up on money-movement operations; no per-session token re-authentication on sensitive actions; no challenge-response on transaction confirmation; no risk-based MFA."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBank Android Client",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "S-2",
+            "category": "spoofing",
+            "component": "WellnessBank Android Client",
+            "risk_level": "Critical",
+            "likelihood": "HIGH",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "S-3: WellnessBank Android Client \u2014 Credential Theft via SharedPreferences Extraction \u2014 Long-lived auth tokens stored in MODE_PRIVATE SharedPreferences are accessible to an attacker who roots the device or uses ADB backup on pre-Android-12 devices."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBank Android Client",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "S-3",
+            "category": "spoofing",
+            "component": "WellnessBank Android Client",
+            "risk_level": "High",
+            "likelihood": "MEDIUM",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "ruleIndex": 0,
+          "level": "warning",
+          "message": {
+            "text": "S-4: WellnessBank Backend API \u2014 Missing Token Binding on Backend Session \u2014 The backend API accepts HTTPS bearer tokens without certificate pinning on the client side, enabling token replay from intercepted sessions."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBank Backend API",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "S-4",
+            "category": "spoofing",
+            "component": "WellnessBank Backend API",
+            "risk_level": "Medium",
+            "likelihood": "MEDIUM",
+            "impact": "MEDIUM"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "S-5: Mobile Banking Customer \u2014 Long-Lived Session Token Replay \u2014 Auth tokens persisted on device without rotation policy or revocation trigger."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Mobile Banking Customer",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "S-5",
+            "category": "spoofing",
+            "component": "Mobile Banking Customer",
+            "risk_level": "High",
+            "likelihood": "MEDIUM",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "T-1: WellnessAnalyticsSDK \u2014 Mobile Supply Chain Integrity (M2) \u2014 Analytics SDK \u2014 No checksum verification on WellnessAnalyticsSDK artifact at Gradle ingestion; floating version constraint."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessAnalyticsSDK",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "T-1",
+            "category": "tampering",
+            "component": "WellnessAnalyticsSDK",
+            "risk_level": "High",
+            "likelihood": "MEDIUM",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "T-2: WellnessPaySDK \u2014 Mobile Supply Chain Integrity (M2) \u2014 Payment SDK \u2014 No checksum verification on WellnessPaySDK artifact; floating version constraint."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessPaySDK",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "T-2",
+            "category": "tampering",
+            "component": "WellnessPaySDK",
+            "risk_level": "High",
+            "likelihood": "MEDIUM",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "T-3: MoneyTransferActivity \u2014 Mobile IPC Input Validation (M4) \u2014 Intent Hijacking into Money Movement \u2014 Exported MoneyTransferActivity with android:exported=\"true\" and no android:permission accepts Intent extras (recipient_account, amount) from any installed app or ADB shell directly into the money-movement flow without re-authentication, schema validation, or per-Intent caller verification."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "MoneyTransferActivity",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "T-3",
+            "category": "tampering",
+            "component": "MoneyTransferActivity",
+            "risk_level": "Critical",
+            "likelihood": "HIGH",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "T-4: WellnessBank Android Client \u2014 Insufficient Mobile Binary Protections (M7) \u2014 No ProGuard/R8 obfuscation in release build; no root-detection on security-critical features; no anti-tampering integrity check at startup; no debugger detection at sensitive-flow boundaries."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBank Android Client",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "T-4",
+            "category": "tampering",
+            "component": "WellnessBank Android Client",
+            "risk_level": "Critical",
+            "likelihood": "HIGH",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "T-5: WellnessBankLocalDB \u2014 Unencrypted Local Database Tampering \u2014 Plain SQLite database with no SQLCipher encryption."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBankLocalDB",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "T-5",
+            "category": "tampering",
+            "component": "WellnessBankLocalDB",
+            "risk_level": "High",
+            "likelihood": "MEDIUM",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "T-6: WellnessBankCredentialCache \u2014 Credential Cache Tampering via SharedPreferences Overwrite \u2014 SharedPreferences MODE_PRIVATE file is writable on a rooted device."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBankCredentialCache",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "T-6",
+            "category": "tampering",
+            "component": "WellnessBankCredentialCache",
+            "risk_level": "High",
+            "likelihood": "MEDIUM",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "ruleIndex": 2,
+          "level": "error",
+          "message": {
+            "text": "R-1: WellnessBank Android Client \u2014 M8 Accountability-Loss \u2014 Mobile Audit Log Gaps: No structured audit logging on login, logout, step-up, or money-movement events; debug Log."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBank Android Client",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "R-1",
+            "category": "repudiation",
+            "component": "WellnessBank Android Client",
+            "risk_level": "Critical",
+            "likelihood": "HIGH",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "ruleIndex": 2,
+          "level": "error",
+          "message": {
+            "text": "R-2: WellnessBank Backend API \u2014 Missing Backend Audit Trail on Transaction Operations \u2014 No declared audit event emission on money-movement, account-read, or account-write operations at the backend API."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBank Backend API",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "R-2",
+            "category": "repudiation",
+            "component": "WellnessBank Backend API",
+            "risk_level": "High",
+            "likelihood": "MEDIUM",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "ruleIndex": 2,
+          "level": "warning",
+          "message": {
+            "text": "R-3: Mobile Banking Customer \u2014 Deniable Financial Transactions \u2014 No non-repudiation controls on money-movement operations."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Mobile Banking Customer",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "R-3",
+            "category": "repudiation",
+            "component": "Mobile Banking Customer",
+            "risk_level": "Medium",
+            "likelihood": "MEDIUM",
+            "impact": "MEDIUM"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "ruleIndex": 2,
+          "level": "error",
+          "message": {
+            "text": "R-4: WellnessBankDebugActivity \u2014 Unlogged Debug Activity Invocations \u2014 Debug Activity invocations via adb shell am start or external Intent are not audit logged."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBankDebugActivity",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "R-4",
+            "category": "repudiation",
+            "component": "WellnessBankDebugActivity",
+            "risk_level": "High",
+            "likelihood": "MEDIUM",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/info-disclosure",
+          "ruleIndex": 3,
+          "level": "error",
+          "message": {
+            "text": "I-1: WellnessBank Android Client \u2014 Insecure Mobile Communication (M5) \u2014 Client-to-Backend \u2014 TLS to WellnessBank Backend API without certificate pinning (no OkHttp CertificatePinner, no Network Security Config pin-set)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBank Android Client",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "I-1",
+            "category": "info-disclosure",
+            "component": "WellnessBank Android Client",
+            "risk_level": "Critical",
+            "likelihood": "HIGH",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/info-disclosure",
+          "ruleIndex": 3,
+          "level": "error",
+          "message": {
+            "text": "I-2: WellnessBank Android Client \u2014 Inadequate Mobile Privacy Controls (M6) \u2014 No FLAG_SECURE on transaction-history Activity Window; recents-screen screenshots and screen-recording capture account balances, transaction amounts, and recipient names."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBank Android Client",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "I-2",
+            "category": "info-disclosure",
+            "component": "WellnessBank Android Client",
+            "risk_level": "Critical",
+            "likelihood": "HIGH",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/info-disclosure",
+          "ruleIndex": 3,
+          "level": "error",
+          "message": {
+            "text": "I-3: WellnessBankLocalDB \u2014 Insecure Mobile Data Storage (M9) \u2014 Local Database \u2014 Unencrypted SQLite database with allowBackup=\"true\" exposes full transaction history and account snapshots to Google Drive cloud backup."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBankLocalDB",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "I-3",
+            "category": "info-disclosure",
+            "component": "WellnessBankLocalDB",
+            "risk_level": "Critical",
+            "likelihood": "HIGH",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/info-disclosure",
+          "ruleIndex": 3,
+          "level": "error",
+          "message": {
+            "text": "I-4: WellnessBank Android Client \u2014 Insufficient Mobile Cryptography (M10) \u2014 Custom key derivation from 4-digit PIN via PBKDF2-HMAC-SHA1 with 1000 iterations and no salting."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBank Android Client",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "I-4",
+            "category": "info-disclosure",
+            "component": "WellnessBank Android Client",
+            "risk_level": "Critical",
+            "likelihood": "HIGH",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/info-disclosure",
+          "ruleIndex": 3,
+          "level": "warning",
+          "message": {
+            "text": "I-5: WellnessAnalyticsSDK \u2014 Insecure Mobile Communication (M5) \u2014 Analytics SDK Egress \u2014 TLS from WellnessAnalyticsSDK to Third-Party Analytics Provider without certificate pinning."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessAnalyticsSDK",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "I-5",
+            "category": "info-disclosure",
+            "component": "WellnessAnalyticsSDK",
+            "risk_level": "Medium",
+            "likelihood": "MEDIUM",
+            "impact": "MEDIUM"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/info-disclosure",
+          "ruleIndex": 3,
+          "level": "error",
+          "message": {
+            "text": "I-6: WellnessPaySDK \u2014 Insecure Mobile Communication (M5) \u2014 Payment SDK Egress \u2014 TLS from WellnessPaySDK to Third-Party Payment Provider without certificate pinning."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessPaySDK",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "I-6",
+            "category": "info-disclosure",
+            "component": "WellnessPaySDK",
+            "risk_level": "High",
+            "likelihood": "MEDIUM",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/info-disclosure",
+          "ruleIndex": 3,
+          "level": "error",
+          "message": {
+            "text": "I-7: WellnessBankCredentialCache \u2014 Insecure Mobile Data Storage (M9) \u2014 Credential Cache \u2014 Auth tokens stored in plaintext SharedPreferences MODE_PRIVATE accessible to any process with root access or via ADB backup on older Android versions."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBankCredentialCache",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "I-7",
+            "category": "info-disclosure",
+            "component": "WellnessBankCredentialCache",
+            "risk_level": "Critical",
+            "likelihood": "HIGH",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/info-disclosure",
+          "ruleIndex": 3,
+          "level": "error",
+          "message": {
+            "text": "I-8: WellnessBank Android Client \u2014 Debug Log PII Leakage via Logcat \u2014 Debug Log."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBank Android Client",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "I-8",
+            "category": "info-disclosure",
+            "component": "WellnessBank Android Client",
+            "risk_level": "Critical",
+            "likelihood": "HIGH",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/info-disclosure",
+          "ruleIndex": 3,
+          "level": "note",
+          "message": {
+            "text": "I-9: WellnessBank Backend API \u2014 Backend API Verbose Error Response Exposure \u2014 Mobile-backend REST APIs without declared error sanitization may return stack traces, internal service names, database field names, or configuration details in error responses visible to the mobile client."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBank Backend API",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "I-9",
+            "category": "info-disclosure",
+            "component": "WellnessBank Backend API",
+            "risk_level": "Low",
+            "likelihood": "LOW",
+            "impact": "MEDIUM"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/dos",
+          "ruleIndex": 4,
+          "level": "note",
+          "message": {
+            "text": "D-1: WellnessBank Android Client \u2014 Client-Side Resource Exhaustion via Unconstrained SDK I/O \u2014 Third-party analytics and payment SDKs perform unconstrained outbound network I/O with no rate limiting, circuit breaker, or battery-aware scheduling."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBank Android Client",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "D-1",
+            "category": "dos",
+            "component": "WellnessBank Android Client",
+            "risk_level": "Low",
+            "likelihood": "LOW",
+            "impact": "MEDIUM"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/dos",
+          "ruleIndex": 4,
+          "level": "error",
+          "message": {
+            "text": "D-2: WellnessBank Backend API \u2014 Missing Rate Limiting on Backend Transaction API \u2014 No declared rate limiting or request throttling on the mobile backend REST API."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBank Backend API",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "D-2",
+            "category": "dos",
+            "component": "WellnessBank Backend API",
+            "risk_level": "High",
+            "likelihood": "MEDIUM",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/dos",
+          "ruleIndex": 4,
+          "level": "note",
+          "message": {
+            "text": "D-3: WellnessBankLocalDB \u2014 Local Database Saturation \u2014 Uncontrolled caching in WellnessBankLocalDB can grow without bound, saturating device storage and causing application crashes or OS-level storage exhaustion."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBankLocalDB",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "D-3",
+            "category": "dos",
+            "component": "WellnessBankLocalDB",
+            "risk_level": "Note",
+            "likelihood": "LOW",
+            "impact": "LOW"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/dos",
+          "ruleIndex": 4,
+          "level": "note",
+          "message": {
+            "text": "D-4: WellnessBankCredentialCache \u2014 Credential Store Corruption Leading to Denial of Service \u2014 Targeted corruption of SharedPreferences credential cache can trigger authentication failures and re-login loops, effectively locking out the legitimate user."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBankCredentialCache",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "D-4",
+            "category": "dos",
+            "component": "WellnessBankCredentialCache",
+            "risk_level": "Low",
+            "likelihood": "LOW",
+            "impact": "MEDIUM"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation",
+          "ruleIndex": 5,
+          "level": "error",
+          "message": {
+            "text": "E-1: WellnessBankDebugActivity \u2014 M8 Privilege-Gain \u2014 Exported Debug Activity Bypassing Auth Boundary: WellnessBankDebugActivity retained in production release build with android:exported=\"true\"; accessible via `adb shell am start`; no BuildConfig."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBankDebugActivity",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "E-1",
+            "category": "elevation",
+            "component": "WellnessBankDebugActivity",
+            "risk_level": "Critical",
+            "likelihood": "HIGH",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation",
+          "ruleIndex": 5,
+          "level": "error",
+          "message": {
+            "text": "E-2: MoneyTransferActivity \u2014 Unauthorized Money Transfer via Intent Hijacking and Privilege Escalation \u2014 Exported MoneyTransferActivity with no android:permission allows any installed app to invoke the money-movement flow."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "MoneyTransferActivity",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "E-2",
+            "category": "elevation",
+            "component": "MoneyTransferActivity",
+            "risk_level": "Critical",
+            "likelihood": "HIGH",
+            "impact": "HIGH"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation",
+          "ruleIndex": 5,
+          "level": "error",
+          "message": {
+            "text": "E-3: WellnessBank Backend API \u2014 Server-Side Authorization Gap for Debug-Initiated Operations \u2014 Backend API may accept operations initiated via the debug Activity's privileged-action flow relying solely on the client's authenticated session token, without verifying whether the invoking context represents a legitimate in-app user action or a debug-channel bypass."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "WellnessBank Backend API",
+                  "kind": "component"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "id": "E-3",
+            "category": "elevation",
+            "component": "WellnessBank Backend API",
+            "risk_level": "High",
+            "likelihood": "MEDIUM",
+            "impact": "HIGH"
+          }
+        }
+      ]
+    }
+  ]
+}

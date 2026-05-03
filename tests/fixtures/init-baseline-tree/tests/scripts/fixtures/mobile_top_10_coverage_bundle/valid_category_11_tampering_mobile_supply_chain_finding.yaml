@@ -1,0 +1,31 @@
+# F-7 Cat 11 — Mobile Supply Chain Integrity (T-{N})
+# Schema: schemas/finding.yaml v1.8 (unchanged in F-7)
+# Category: tampering
+# Severity: HIGH (default per ADR-036 mapping table for M2; banking-tier mobile client
+#                integrating third-party SDKs without checksum verification or signed-
+#                artifact policy on a money-movement-capable surface)
+# OWASP M2:2024 cross-reference: included in references array (catalog-resolvable in
+#   schemas/taxonomy/owasp.yaml per Wave 1.0 T012 verification)
+# MASTG-ARCH / MASVS-PLATFORM cross-reference: prose-only mention in mitigation; NOT in
+#   references array (section-level granularity per Q4 plan-time RESOLVED — not
+#   catalog-resolvable for F-7; F-A1 follow-on owns MASTG taxonomy)
+# MITRE ATT&CK Mobile T1474 cross-reference: prose-only mention in mitigation; NOT in
+#   references array (catalog-absent per ADR-036 D-7 / Q3 plan-time RESOLVED)
+# Worked example: mobile-banking app integrating third-party analytics SDK (WellnessAnalyticsSDK)
+#                 pulled via Gradle from a private Maven repository with a floating version
+#                 constraint and no checksum verification — upstream SDK source compromise
+#                 ships a tampered artifact straight into the production banking binary
+id: "T-11"
+category: tampering
+component: "WellnessAnalyticsSDK"
+dfd_element_type: "Process"
+threat: "The WellnessBank Android Client integrates the WellnessAnalyticsSDK and the WellnessPaySDK as third-party in-process SDKs pulled via Gradle from a private Maven repository. The Gradle build script declares the analytics SDK with a floating version constraint (`implementation 'com.example.analytics:sdk:+'`) that resolves to the latest published version on every CI build, and no checksum verification is configured against the resolved artifact. There is no signed-artifact policy on the shipped APK beyond the default Android signing config, no CocoaPods/Gradle pinning manifest with cryptographic checksum, no allowlist of trusted SDK source providers, no SDK update review gate at ingestion, no provenance metadata captured at install, and no reproducible-build attestation (no SLSA Level-3 attestation chain) on the APK shipped to Google Play. An attacker compromising the upstream SDK source maintainer's credentials uploads a tampered version of the analytics SDK as a higher version number; the next CI build resolves the floating version, pulls the tampered artifact without integrity verification, and ships the compromised binary into the production banking customer base. The malicious code executes inside the WellnessBank Android Client's full security context — same trust posture as the banking app itself — exfiltrating session tokens persisted in the WellnessBankCredentialCache (Cat N+1 cross-reference) to an attacker-controlled telemetry endpoint. This is mobile-specific supply-chain integrity failure on a banking-tier client, distinct from generic web/API supply-chain failures (Cat 8) by the architectural-tell of a declared mobile client integrating third-party SDKs without checksum verification, signed-artifact policy, or app-store-only distribution controls."
+likelihood: HIGH
+impact: HIGH
+risk_level: High
+mitigation: "Enforce SDK signature verification at build time on every third-party SDK artifact; pin Gradle dependencies by exact version with `integrity` checksum constraints (Android Studio's `buildscript { dependencyVerification {} }`); pin SPM dependencies by `Package.resolved` SHA; pin CocoaPods dependencies by `Podfile.lock` checksum. Require reproducible builds with SLSA Level-3 attestation on shipped APK / IPA artifacts and verify the attestation chain at app-store upload time. Adopt an app-store-only distribution policy for security-critical builds (no sideloading on banking, payments, healthcare, or other regulated apps); on Android, configure `android:installLocation=\"internalOnly\"` and reject build outputs that fail Play Console security review. Establish a supplier-provenance review gate as part of SDK adoption: every new third-party SDK passes a documented review of the upstream maintainer's signing-key management, vulnerability-disclosure policy, and historical incident record before merge to a release branch. Document the mobile-supply-chain controls in mobile threat-modeling artifacts (MASTG-ARCH / MASVS-PLATFORM section-level cross-reference). Cf. MITRE ATT&CK Mobile T1474 (Supply Chain Compromise) — text-only cross-reference (NOT in references; T1474 not catalog-resolvable in `schemas/taxonomy/mitre-atlas.yaml`)."
+references:
+  - "OWASP M2:2024 — Inadequate Supply Chain Security"
+maestro_layer: "L1"
+agentic_pattern: "none"
+source_attribution: []

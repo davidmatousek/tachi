@@ -1,0 +1,63 @@
+# Synthetic Phase 1 abstract for the Feature-142-extended agentic-app
+# (post-T020 Path 1 extension per plan.md Component 7).
+#
+# Expected: multi-agent gate predicate TRUE via ALL three conditions:
+#   (a) 3 agentic/llm components (Orchestrator, Specialist, Learning Loop)
+#   (b) inter-agent data flow: Orchestrator <-> Specialist via Inter-Agent Channel
+#   (c) architecture description contains "multi-agent" keyword
+#
+# Expected: non-`none` patterns for ≥3 previously-uncovered patterns
+# (Agent Collusion, Temporal Attack, Emergent Behavior) + net-new
+# AGP-NN finding emission for each of those three patterns.
+
+name: agentic-app-extended
+description: >
+  A multi-agent agentic application. An LLM Agent Orchestrator
+  coordinates with a Specialist Agent (peer LLM) through an
+  inter-agent communication channel to plan and execute user tasks.
+  A long-running learning loop periodically fine-tunes both agents
+  from Audit Logger output (RLHF feedback loop). The Audit Logger
+  records agent outputs, and a persistent agent memory store retains
+  conversation context across sessions.
+
+components:
+  - name: LLM Agent Orchestrator
+    category: agentic
+  - name: Specialist Agent
+    category: agentic
+  - name: Learning Loop
+    category: agentic
+  - name: Inter-Agent Channel
+    category: process
+  - name: Audit Logger
+    category: data_store
+  - name: Agent Memory Store
+    category: data_store
+  - name: User Interface
+    category: process
+
+data_flows:
+  - source: User Interface
+    target: LLM Agent Orchestrator
+  - source: LLM Agent Orchestrator
+    target: Inter-Agent Channel
+  - source: Inter-Agent Channel
+    target: Specialist Agent
+  - source: Specialist Agent
+    target: Inter-Agent Channel
+  - source: Inter-Agent Channel
+    target: LLM Agent Orchestrator
+  - source: LLM Agent Orchestrator
+    target: Audit Logger
+  - source: Specialist Agent
+    target: Audit Logger
+  - source: Audit Logger
+    target: Learning Loop
+  - source: Learning Loop
+    target: LLM Agent Orchestrator
+  - source: Learning Loop
+    target: Specialist Agent
+  - source: LLM Agent Orchestrator
+    target: Agent Memory Store
+  - source: Specialist Agent
+    target: Agent Memory Store

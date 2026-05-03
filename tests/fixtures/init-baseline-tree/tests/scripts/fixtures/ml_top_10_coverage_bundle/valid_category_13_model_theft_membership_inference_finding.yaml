@@ -1,0 +1,25 @@
+# F-6 Cat 13 — Membership Inference (LLM-{N})
+# Schema: schemas/finding.yaml v1.8 (unchanged in F-6)
+# Category: llm (single-namespace within model-theft across Cat 1–14)
+# Severity: MEDIUM-HIGH default
+# ML04:2023 + AML.T0024 both catalog-resolvable per ADR-035 D-5 disjoint architectural-tells:
+#   Cat 13 = training-set membership determination (confidence-thresholding + shadow-model)
+#   Cat 12 = input reconstruction
+# Worked example: fraud-detection classifier API returning prediction confidence values;
+#                 attacker uses confidence-thresholding to determine which of a candidate
+#                 transaction list was in the original training set
+id: "LLM-13"
+category: llm
+component: "FraudDetectionClassifier Prediction API"
+dfd_element_type: "Process"
+threat: "The bank's fraud-detection classifier is deployed behind a /score-transaction endpoint that returns a fraud probability score (0.0–1.0) for each submitted transaction. The classifier was trained on a labeled dataset of historical transactions including a small subset of confirmed fraudulent transactions linked to specific account-holder identities. DP-SGD was not applied; the endpoint returns full-precision confidence scores; no label-only response mode exists; training-data minimization was not enforced. An attacker who possesses a list of candidate transactions (obtained from a separate breach) submits each candidate to the /score-transaction endpoint and observes the returned confidence value — transactions in the original training set return characteristic high-confidence scores, allowing a confidence-thresholding attack to identify which candidates were in the training set with high accuracy, exposing private investigation status of specific account-holders. Distinguished from Cat 12 (Model Inversion) by disjoint architectural-tells per ADR-035 Decision 5: Cat 13 = training-set membership determination; Cat 12 = input reconstruction. Same architecture may surface both Cat 12 + Cat 13 findings without duplication."
+likelihood: MEDIUM
+impact: HIGH
+risk_level: High
+mitigation: "Apply differential privacy on training (DP-SGD) with bounded ε ≤ 8.0 to bound confidence-leak per training example. Use confidence-output truncation (round confidence values to 1–2 decimal places) or enable label-only response mode for sensitive endpoints — attackers cannot perform confidence-thresholding without graded confidence signal. Enforce query-rate throttling per tenant on the prediction endpoint to prevent large-scale candidate enumeration. Apply training-data minimization: do not retain training examples unnecessary for production performance in the deployed model; redact or aggregate sensitive subsets where the per-example signal is not load-bearing."
+references:
+  - "OWASP ML04:2023 — Membership Inference Attack"
+  - "MITRE ATLAS AML.T0024 — Exfiltration via ML Inference API"
+maestro_layer: "L1"
+agentic_pattern: "none"
+source_attribution: []

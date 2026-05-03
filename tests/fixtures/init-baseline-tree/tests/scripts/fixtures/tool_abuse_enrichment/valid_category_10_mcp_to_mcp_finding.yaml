@@ -1,0 +1,21 @@
+# F-3 test fixture — valid Category-10 MCP-to-MCP finding
+# Feature 219 / Pattern Category 10: MCP-to-MCP Trust Propagation
+# Conforms to schemas/finding.yaml v1.7 + F-A2 source_attribution contract per ADR-028
+# This fixture MUST pass F-A2 validate_source_attribution() at orchestrator Phase 4
+id: "AG-10"
+category: "agentic"
+component: "MCP Relay: MCP-A → MCP-B"
+threat: "An agent dispatches to a remote MCP-A server which transparently relays the request to a secondary MCP-B server without validating MCP-A's authority over MCP-B. A compromised or rogue MCP-A injects responses purporting to come from MCP-B; the agent has no per-hop attestation and accepts the response as authoritative. Cross-MCP supply-chain assumptions remain undeclared, so the agent treats MCP-B's outputs as authoritative without inheriting MCP-A's trust-inheritance reasoning."
+likelihood: MEDIUM
+impact: HIGH
+risk_level: High
+mitigation: "Per-hop MCP attestation with signed capability descriptors + signed-capability handoff (MCP-A signs the delegated scope; MCP-B validates the signature before accepting) + MCP-trust-chain validator that walks the multi-hop chain end-to-end before invocation."
+references:
+  - "OWASP ASI07:2026"
+  - "https://cwe.mitre.org/data/definitions/345.html"
+  - "OWASP LLM03:2025"
+source_attribution:
+  - {taxonomy: owasp, id: ASI07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-345, relationship: related}
+  - {taxonomy: owasp, id: LLM03, relationship: related}
+dfd_element_type: "Process"

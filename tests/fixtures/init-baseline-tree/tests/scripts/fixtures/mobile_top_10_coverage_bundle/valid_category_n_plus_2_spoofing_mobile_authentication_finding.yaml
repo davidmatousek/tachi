@@ -1,0 +1,27 @@
+# F-7 Cat N+2 — Insecure Mobile Authentication / Authorization (S-{N})
+# Schema: schemas/finding.yaml v1.8 (unchanged in F-7)
+# Category: spoofing
+# Severity: HIGH (default per ADR-036 mapping table for M3; missing biometric step-up on
+#                money-movement combined with selective certificate pinning leaves
+#                production-grade banking sessions reachable from unprotected hosts)
+# OWASP M3:2024 cross-reference: included in references array (catalog-resolvable in
+#   schemas/taxonomy/owasp.yaml per Wave 1.0 T012 verification)
+# MASTG-AUTH / MASVS-AUTH cross-reference: prose-only mention in mitigation; NOT in
+#   references array (section-level granularity per Q4 plan-time RESOLVED)
+# Worked example: mobile-banking app missing biometric step-up on money-movement
+#                 transactions + certificate pinning enabled only on production domain
+#                 leaving staging environment exposed to MITM
+id: "S-9"
+category: spoofing
+component: "WellnessBank Android Client"
+dfd_element_type: "Process"
+threat: "The WellnessBank Android Client ships with certificate pinning enabled only on the production domain (api.wellnessbank.example) and not on staging.api.wellnessbank.example, leaving staging-bound traffic from production builds reachable via runtime configuration flags. The money-transfer flow accepts a session bearer token without re-prompting for biometric authentication at confirmation time — the user-experience team marked biometric step-up as friction, so MoneyTransferActivity executes high-risk operations under a single-factor session. Refresh tokens are not bound to the device fingerprint and are not rotated on use; client-side authorization decisions hide UI elements but are not re-validated by the WellnessBank Backend API. An attacker on a public Wi-Fi hotspot intercepts a staging-bound TLS session, replays the captured session cookie against the production money-movement endpoint, and executes a fraudulent transfer without the device's biometric vault ever being consulted. This is mobile-specific insecure authentication / authorization on a banking-tier client, distinct from generic web/API authentication-bypass (Cat 1-7) and from improper mobile credential usage (Cat N+1) by the architectural-tell of mobile session-handling code paths missing certificate pinning, biometric step-up, refresh-token binding, and server-side authorization re-validation."
+likelihood: HIGH
+impact: HIGH
+risk_level: High
+mitigation: "Enforce server-side authorization on every endpoint — never trust client-side UI hiding to act as an authorization decision; every API call re-validates user role and operation eligibility before performing the operation. Configure certificate pinning with backup-pin rotation across all environments (production, staging, sandbox); fail closed on pin mismatch and review the Network Security Config / NSAppTransportSecurity exception lists in CI. Bind refresh tokens to device fingerprint (Android getAndroidId + Play Integrity attestation; iOS DeviceCheck) and rotate on every refresh with server-side revocation on logout, password change, or suspicious-device signals. Require biometric step-up via BiometricPrompt (Android) / LAContext (iOS) on all high-risk operations: money movement, profile changes, KYC updates, password reset, new-device enrollment. Document the mobile session-handling and step-up policy in mobile threat-modeling artifacts (MASTG-AUTH / MASVS-AUTH section-level cross-reference)."
+references:
+  - "OWASP M3:2024 — Insecure Authentication/Authorization"
+maestro_layer: "L1"
+agentic_pattern: "none"
+source_attribution: []

@@ -1,0 +1,146 @@
+# Test-local classification rule table mirror.
+#
+# Canonical source of truth:
+#   .claude/skills/tachi-shared/references/maestro-agentic-patterns-shared.md
+#   Section 3 (Classification Rule Table).
+#
+# This file mirrors R-01 through R-06 so the test suite can exercise
+# tied-priority cases (R-TIE-A / R-TIE-B) and synthesis logic without
+# editing the shared reference. The test suite includes a consistency
+# check that re-parses the shared reference YAML block and asserts
+# field-equivalence (rule_id, pattern, priority, generates_finding_when_no_match)
+# against this mirror.
+
+rules:
+  - rule_id: R-01
+    pattern: agent_collusion
+    priority: 10
+    match_conditions:
+      category_in:
+        - agentic
+        - llm
+      architecture_has:
+        topology:
+          - inter_agent_data_flow
+      description_contains:
+        - coordinate
+        - joint
+        - collude
+        - cross-agent
+        - inter-agent
+        - shared channel
+        - shared memory
+    generates_finding_when_no_match: true
+    generation_template: |
+      Two or more agentic components in {component} coordinate over an inter-agent
+      data flow, creating a potential for coordinated malicious action. Compromised
+      agents could jointly exfiltrate data, split prohibited actions across peers,
+      or issue coordinated tool calls that individually fall below per-agent
+      detection thresholds. Recommended controls: inter-agent rate limits,
+      coordination throttles, and per-flow audit logging.
+
+  - rule_id: R-02
+    pattern: temporal_attack
+    priority: 20
+    match_conditions:
+      architecture_has:
+        topology:
+          - persistent_state
+    generates_finding_when_no_match: true
+    generation_template: |
+      The architecture includes {component} — a persistent-state component
+      (fine-tuning pipeline, persistent agent memory, or long-running learning
+      loop) that enables temporal attacks: sleeper agents activated by delayed
+      triggers, gradual corruption below detection thresholds, and seasonal
+      exploitation patterns. Recommended controls: training-data provenance
+      attestation, memory-write audit trails, and periodic behavioral
+      baselining against pre-training snapshots.
+
+  - rule_id: R-03
+    pattern: emergent_behavior
+    priority: 30
+    match_conditions:
+      category_in:
+        - agentic
+        - llm
+      architecture_has:
+        topology:
+          - multi_agent
+      description_contains:
+        - cascade
+        - unpredictable
+        - interaction
+        - emergent
+    generates_finding_when_no_match: true
+    generation_template: |
+      Multi-agent interactions in {component} exhibit the potential for emergent
+      behavior — cascading failures, feedback amplification, or collective
+      optimization that bypasses per-agent safety evaluation. Recommended
+      controls: fail-safe shutdown circuits, bounded action scopes per agent,
+      and behavioral baselining of the collective agent system.
+
+  - rule_id: R-04
+    pattern: trust_exploitation
+    priority: 40
+    match_conditions:
+      category_in:
+        - spoofing
+        - agentic
+      architecture_has:
+        topology:
+          - multi_agent
+    generates_finding_when_no_match: false
+
+  - rule_id: R-05
+    pattern: communication_vulnerability
+    priority: 50
+    match_conditions:
+      category_in:
+        - tool-abuse
+        - info-disclosure
+      architecture_has:
+        topology:
+          - inter_agent_channel
+    generates_finding_when_no_match: false
+
+  - rule_id: R-06
+    pattern: resource_competition
+    priority: 60
+    match_conditions:
+      category_in:
+        - denial-of-service
+        - agentic
+      architecture_has:
+        topology:
+          - multi_agent
+      description_contains:
+        - resource
+        - monopol
+        - competition
+        - priority
+    generates_finding_when_no_match: false
+
+  # Synthetic rules that share a priority — used exclusively by the
+  # tied-priority `multiple` assignment test. The test loads a MUTATED
+  # rule table with these two entries to force the tie path. The
+  # canonical tachi rule table R-01 through R-06 is total-ordered by
+  # priority per maestro-agentic-patterns-shared.md Section 3.
+  - rule_id: R-TIE-A
+    pattern: agent_collusion
+    priority: 100
+    match_conditions:
+      category_in:
+        - agentic
+      description_contains:
+        - synthetic_tie_marker
+    generates_finding_when_no_match: false
+
+  - rule_id: R-TIE-B
+    pattern: emergent_behavior
+    priority: 100
+    match_conditions:
+      category_in:
+        - agentic
+      description_contains:
+        - synthetic_tie_marker
+    generates_finding_when_no_match: false

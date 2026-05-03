@@ -1,0 +1,71 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:ba390e43-68fd-4627-b3c4-92e79c24141a",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-04-10T04:55:26Z",
+    "tools": [
+      {
+        "vendor": "aod-security",
+        "name": "aod-security",
+        "version": "1.0.0"
+      }
+    ],
+    "component": {
+      "type": "application",
+      "name": "tachi",
+      "version": "01d3e8587191"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "setuptools",
+      "version": ">=61",
+      "purl": "pkg:pypi/setuptools@61",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "pyproject.toml"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=61 (build-system requirement; resolved version may differ)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "pytest",
+      "version": ">=8.0",
+      "purl": "pkg:pypi/pytest@8.0",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "requirements-dev.txt"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=8.0 (dev-only; resolved version may differ)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "pytest-cov",
+      "version": ">=4.1",
+      "purl": "pkg:pypi/pytest-cov@4.1",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "requirements-dev.txt"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=4.1 (dev-only; resolved version may differ)"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,201 @@
+# Compensating Controls Schema
+#
+# Extends the scored finding IR (risk-scoring.yaml) with control
+# detection fields, evidence collection, residual risk calculation,
+# and remediation guidance.
+#
+# Producers: agents/tachi/control-analyzer.md
+# Consumers: templates/compensating-controls.md,
+#            templates/compensating-controls.sarif,
+#            /tachi.compensating-controls command output
+#
+# Version: 1.0
+
+schema_version: "1.1"
+
+controlled_finding:
+  extends: scored_finding  # All fields from finding.yaml + risk-scoring.yaml, plus:
+
+  control_status:
+    type: string
+    enum: [found, partial, missing]
+    required: true
+    description: "Detection classification for the compensating control"
+
+  control_evidence:
+    type: list[object]
+    description: >
+      Evidence entries for detected controls. Must contain >= 1 entry
+      when control_status is "found" or "partial". Must be empty
+      when control_status is "missing".
+    item_schema:
+      file:
+        type: string
+        description: "Relative file path from target root"
+      line:
+        type: number
+        description: "Line number where control is detected"
+      snippet:
+        type: string
+        description: "Code snippet demonstrating the control (max 5 lines)"
+
+  control_category:
+    type: string
+    enum:
+      - authentication
+      - input-validation
+      - rate-limiting
+      - encryption
+      - logging-audit
+      - csrf-protection
+      - csp-security-headers
+      - access-control
+    description: "Which of the 8 control categories matched the threat"
+
+  control_effectiveness:
+    type: string
+    enum: [strong, moderate, weak, none]
+    description: >
+      P1: Effectiveness rating based on control quality.
+      P0: Derived from control_status (not explicitly set).
+
+  reduction_factor:
+    type: number
+    range: [0.00, 1.00]
+    description: "Risk reduction multiplier applied to composite_score"
+
+  residual_score:
+    type: number
+    range: [0.0, 10.0]
+    description: "composite_score * (1 - reduction_factor), clamped to [0.0, 10.0]"
+
+  residual_severity_band:
+    type: string
+    enum: [Critical, High, Medium, Low]
+    description: >
+      Mapped from residual_score using the same thresholds as
+      severity_band (see severity_bands below).
+
+  recommendation:
+    type: string
+    nullable: true
+    description: >
+      Remediation guidance for improving or implementing the control.
+      Null when control_status is "found".
+
+  effort_estimate:
+    type: string
+    enum: [Low, Medium, High]
+    nullable: true
+    description: >
+      Implementation effort for the recommendation.
+      Null when control_status is "found".
+
+  # Baseline-Aware Fields (v1.1)
+
+  control_carry_forward:
+    type: boolean
+    required: true
+    default: false
+    description: >
+      True if control status was inherited from baseline.
+      True for UNCHANGED findings — control_status, control_evidence,
+      reduction_factor, and residual_score are copied from baseline.
+      False for NEW, UPDATED, and RESOLVED findings.
+
+  rescan_scope:
+    type: string
+    enum:
+      - full
+      - incremental
+    required: true
+    default: "full"
+    description: >
+      Determines the scope of control re-scanning.
+      full: first run or when all findings changed — scan entire codebase.
+      incremental: only NEW and UPDATED findings are re-scanned,
+      UNCHANGED findings inherit control status from baseline.
+
+# Reduction Factor Mapping — P0 (Binary)
+#
+# Status-only mapping used when control_effectiveness is not assessed.
+#
+# | control_status | reduction_factor |
+# |----------------|------------------|
+# | found          | 0.50             |
+# | partial        | 0.25             |
+# | missing        | 0.00             |
+reduction_factor_p0:
+  found:   0.50
+  partial: 0.25
+  missing: 0.00
+
+# Reduction Factor Mapping — P1 (Effectiveness-aware)
+#
+# Two-dimensional mapping using control_status + control_effectiveness.
+#
+# | control_status | control_effectiveness | reduction_factor |
+# |----------------|-----------------------|------------------|
+# | found          | strong                | 0.80             |
+# | found          | moderate              | 0.50             |
+# | found          | weak                  | 0.20             |
+# | partial        | strong                | 0.50             |
+# | partial        | moderate              | 0.30             |
+# | partial        | weak                  | 0.10             |
+# | missing        | none                  | 0.00             |
+reduction_factor_p1:
+  found:
+    strong:   0.80
+    moderate: 0.50
+    weak:     0.20
+  partial:
+    strong:   0.50
+    moderate: 0.30
+    weak:     0.10
+  missing:
+    none:     0.00
+
+# STRIDE-to-Control Category Mapping
+#
+# Maps each STRIDE threat category to its primary compensating
+# control categories for detection scanning.
+#
+# | STRIDE Category      | Primary Control Categories                          |
+# |----------------------|-----------------------------------------------------|
+# | spoofing             | authentication, access-control                      |
+# | tampering            | input-validation                                    |
+# | repudiation          | logging-audit                                       |
+# | info-disclosure      | encryption                                          |
+# | denial-of-service    | rate-limiting                                        |
+# | privilege-escalation | access-control                                      |
+# | agentic              | all 8 (P0); ai-specific (P1)                        |
+# | llm                  | input-validation, logging-audit (P0); ai-specific (P1) |
+stride_control_mapping:
+  spoofing:              [authentication, access-control]
+  tampering:             [input-validation]
+  repudiation:           [logging-audit]
+  info-disclosure:       [encryption]
+  denial-of-service:     [rate-limiting]
+  privilege-escalation:  [access-control]
+  agentic:               [authentication, input-validation, rate-limiting, encryption, logging-audit, csrf-protection, csp-security-headers, access-control]
+  llm:                   [input-validation, logging-audit]
+
+# Severity Bands (aligned with schemas/risk-scoring.yaml and schemas/output.yaml)
+#
+# Used for both residual_severity_band and severity_band mapping.
+severity_bands:
+  Critical: { min: 9.0, max: 10.0 }
+  High:     { min: 7.0, max: 8.9 }
+  Medium:   { min: 4.0, max: 6.9 }
+  Low:      { min: 0.0, max: 3.9 }
+
+# Validation Rules
+#
+# 1. control_status is required for every controlled_finding
+# 2. control_evidence must have >= 1 entry when control_status is "found" or "partial"
+# 3. control_evidence must be empty when control_status is "missing"
+# 4. recommendation must be non-null when control_status is "partial" or "missing"
+# 5. effort_estimate must be non-null when recommendation is non-null
+# 6. residual_score = composite_score * (1 - reduction_factor), clamped to [0.0, 10.0]
+# 7. residual_severity_band follows same thresholds as severity_band (see severity_bands)
+# 8. When multiple controls address the same threat, use the control with highest reduction_factor

@@ -1,0 +1,222 @@
+# Infographic Output Schema
+#
+# Defines the complete structure of a threat infographic specification
+# (threat-infographic-spec.md). Validates that generated specifications
+# contain all required sections with correct structure.
+#
+# Producers: Infographic agent (agents/threat-infographic.md)
+# Consumers: Validation phase, orchestrator output checks, designers
+#
+# Version: 1.0
+
+schema_version: "1.0"
+
+infographic:
+  output_file: threat-infographic-spec.md
+  optional_output_file: threat-infographic.jpg
+
+  frontmatter:
+    required: true
+    fields:
+      schema_version:
+        type: string
+        value: "1.0"
+      date:
+        type: string
+        format: "YYYY-MM-DD"
+      source_file:
+        type: string
+        description: >
+          Path to input threats.md used as the basis for
+          this infographic specification.
+      finding_count:
+        type: integer
+        description: >
+          Total findings from input threats.md (sum across
+          all STRIDE and AI agent categories).
+      image_generated:
+        type: boolean
+        description: >
+          Whether threat-infographic.jpg was successfully
+          produced via Gemini API.
+
+  required_sections:
+    - name: "Metadata"
+      heading: "## 1. Metadata"
+      required_fields:
+        - project_name
+        - scan_date
+        - agent_count
+        - finding_count
+        - risk_posture
+
+    - name: "Risk Distribution"
+      heading: "## 2. Risk Distribution"
+      required_fields:
+        - severity_counts
+        - percentages
+        - chart_format
+      accuracy_rule: >
+        Counts must match threats.md Section 6 exactly —
+        zero discrepancy.
+
+    - name: "Coverage Heat Map"
+      heading: "## 3. Coverage Heat Map"
+      required_fields:
+        - component_severity_matrix
+        - cell_level_grid
+        - row_ordering
+      max_rows: 8
+      overflow_rule: >
+        Aggregate remaining components as "Other" row
+        with combined counts.
+      cell_level_grid_rule: >
+        Cell-Level Grid sub-section maps each component x STRIDE+AI
+        category to its highest severity label. Used to populate
+        {heat_map_cell_grid} in Gemini prompt. Finding ID prefixes
+        determine category mapping (S-*→S, T-*→T, etc.).
+
+    - name: "Top Critical Findings"
+      heading: "## 4. Top Critical Findings"
+      required_fields:
+        - finding_id
+        - component
+        - threat_summary
+        - risk_level
+      max_entries: 5
+      selection_rule: "Critical first, then High"
+
+    - name: "Architecture Threat Overlay"
+      heading: "## 5. Architecture Threat Overlay"
+      required_fields:
+        - component_risk_annotations
+        - visual_weight_guidance
+
+    - name: "Visual Design Directives"
+      heading: "## 6. Visual Design Directives"
+      required_fields:
+        - color_palette
+        - layout_structure
+        - aspect_ratio
+        - font_hierarchy
+
+  color_palette:
+    critical: "#DC2626"
+    high: "#F97316"
+    medium: "#EAB308"
+    low: "#4169E1"
+    info: "#6B7280"
+
+  layout:
+    aspect_ratio: "16:9"
+    orientation: landscape
+    zones:
+      - header
+      - distribution
+      - findings
+
+  attack_tree_naming:
+    description: >
+      Attack tree references in Top Critical Findings use
+      the finding ID format from schemas/finding.yaml
+      (e.g., "AG-1", "S-3").
+
+  # Completeness Rule
+  #
+  # Risk distribution counts in the specification must exactly
+  # match the aggregate counts in threats.md Section 6 (Risk
+  # Summary). Component names must match threats.md verbatim.
+  completeness_rule: >
+    Risk distribution counts must match threats.md Section 6.
+    Component names must match threats.md exactly.
+
+# ---
+# Template Enumeration (added by F-128, additive — no schema version bump)
+#
+# Enumerates all infographic templates dispatched by
+# scripts/extract-infographic-data.py and rendered by the
+# tachi-threat-infographic agent. Templates above executive-architecture
+# (baseball-card, system-architecture, risk-funnel, maestro-stack,
+# maestro-heatmap) are omitted here because they predate this enumeration;
+# future schema cleanup may add them for parity.
+templates:
+  - name: executive-architecture
+    alias: exec
+    purpose: >
+      Executive-audience layered architecture diagram with narrative
+      threat callouts. Designed for placement on early pages of the
+      PDF security report so CISOs and other executive readers see
+      the most critical threat visualization within the first few
+      pages they actually read.
+    positioning_in_pdf: >
+      When generated, the executive-architecture image is placed
+      immediately after the Executive Summary page and immediately
+      before the Attack Path Analysis section in the compiled PDF
+      report. Conditional on the has-executive-architecture boolean
+      flag in report-data.typ.
+    output_artifacts:
+      spec_file: threat-executive-architecture-spec.md
+      image_file: threat-executive-architecture.jpg
+    required_sections:
+      - name: Metadata
+        purpose: >
+          Template name, tier source, source file, timestamp,
+          qualifying layer count, total filtered count, skip-image flag.
+        required: true
+      - name: Architecture Layers
+        purpose: >
+          Ordered list of architectural layers (trust zones or DFD
+          type fallback) with component names and counts.
+        required: true
+      - name: Threat Callouts
+        purpose: >
+          One callout per layer that has a Critical/High finding;
+          each callout contains finding ID, severity, raw description,
+          optional composite score.
+        required: true
+      - name: Severity Distribution
+        purpose: >
+          Critical and High counts only (filtered from full
+          distribution); total qualifying and total after layer dedup.
+        required: true
+      - name: Visual Layout Directives
+        purpose: >
+          Portrait orientation, layer order (untrusted at top),
+          pastel layer fills, red dashed-border callouts with
+          warning icons, large readable typography.
+        required: true
+      - name: Gemini Prompt Construction Notes
+        purpose: >
+          Guidance for the agent on how to instruct Gemini to render
+          the layered diagram with overlay callouts and rewrite raw
+          descriptions to ≤25 words plain English.
+        required: true
+    visual_directives:
+      orientation: portrait
+      page_aspect_ratio: "8.5:11"
+      layer_visualization:
+        style: horizontal_bands
+        fill: pastel_per_layer
+        border: thin_solid
+        label_position: left_aligned
+      callout_visualization:
+        border: red_dashed_2pt
+        icon: warning_triangle
+        fill: white_with_alpha
+        connection_to_layer: leader_line_or_anchor
+        text_max_words: 25
+        text_style: plain_english_no_jargon
+      color_palette:
+        critical: "#DC2626"
+        high: "#F97316"
+        layer_fills_pastel:
+          - "#F0F4FF"
+          - "#FFF4F0"
+          - "#F0FFF4"
+          - "#FFF0F8"
+          - "#F8F0FF"
+      typography:
+        title_size: large
+        callout_text_size: medium
+        layer_label_size: medium_bold
+        intent: readable_for_projection_or_print

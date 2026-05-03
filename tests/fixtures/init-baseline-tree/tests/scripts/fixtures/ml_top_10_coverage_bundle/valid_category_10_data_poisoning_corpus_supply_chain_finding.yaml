@@ -1,0 +1,31 @@
+# F-6 Cat 10 — Predictive-ML Supply Chain Completeness (D-{N})
+# Schema: schemas/finding.yaml v1.8 (unchanged in F-6)
+# Category: data-poisoning
+# Severity: HIGH (default per spec assumptions)
+# ML06:2023 corpus-side facet per ADR-035 D-4 disjoint architectural-tells:
+#   Cat 10 (D) owns dataset-repo / feature-store / MLOps-registry training-pipeline
+#   path; Cat 14 (LLM) owns model-registry / weight-artifact / serving-time facet.
+#   Same architecture may surface BOTH Cat 10 (D) and Cat 14 (LLM) without duplication.
+# All references are catalog-resolvable (T1195 + T1195.001 + T1195.002 in
+#   schemas/taxonomy/mitre-attack.yaml; ML06:2023 in schemas/taxonomy/owasp.yaml)
+# Worked example: predictive-ML team trains fraud-detection classifier from
+#                 corpus stitched from public Kaggle dataset + Feast feature
+#                 store + vendor S3 bucket; no checksum manifest, no IAM-enforced
+#                 write-audit, no MLflow signed-artifact promotion policy
+id: "D-10"
+category: data-poisoning
+component: "FraudDetectionML Training Corpus / Feast Feature Store / MLflow Registry"
+dfd_element_type: "Data Store"
+threat: "The predictive-ML team trains a fraud-detection classifier from a corpus stitched from a public Kaggle fraud-detection dataset, an internal transaction history table queried from a Feast feature store, and a third-party labeled-fraud dataset pulled from a vendor S3 bucket. The training pipeline pulls the Kaggle dataset by URL without a checksum manifest. The Feast feature store accepts writes from any service account in the team's IAM group without per-write audit logging. The MLflow model registry accepts promotion from staging to production via a single API call with no signed-artifact policy and no pull-request review. Model-card and datasheet metadata are missing on training datasets and registered models. An attacker who compromises any one of these three surfaces — by publishing a poisoned-update of the Kaggle dataset, mutating a feature-store feature value, or promoting a backdoored model artifact through the MLflow staging-to-production gate — can inject biased or backdoored training signal into the production fraud-detection classifier. No single integrity check across the three surfaces would have caught the compromise. This is the corpus-side facet of OWASP ML06:2023 per ADR-035 D-4 disjoint architectural-tells; the artifact-side facet (model-registry serving-time integrity) is owned by tachi-model-theft Pattern Category 14."
+likelihood: HIGH
+impact: HIGH
+risk_level: Critical
+mitigation: "Enforce a signed-artifact policy at the MLOps registry boundary: require Sigstore-style or KMS-backed cryptographic attestation on every model promoted from staging to production, and reject promotion requests lacking attestation. Apply IAM-enforced write-audit on feature stores: log every feature-value mutation with actor identity, before/after values, and timestamp; require pull-request review for write-access grants on production feature tables; alert on anomalous write volume from a single service account. Maintain a dataset-checksum manifest with reproducibility verification: every training run records the SHA-256 digest of every input corpus, the manifest is committed to version control, and CI verifies digest match on every retraining cycle. Require model-card review as a promotion gate: every model entering production must have an accompanying model card describing training data provenance, evaluation harness, known biases, and intended deployment scope; the team signs off on the model card before promotion. See MITRE ATT&CK T1195 (Supply Chain Compromise) and sub-techniques T1195.001 / T1195.002 for the broader supply-chain taxonomy."
+references:
+  - "OWASP ML06:2023 — AI Supply Chain Attacks"
+  - "MITRE ATT&CK T1195 — Supply Chain Compromise"
+  - "MITRE ATT&CK T1195.001 — Compromise Software Dependencies and Development Tools"
+  - "MITRE ATT&CK T1195.002 — Compromise Software Supply Chain"
+maestro_layer: "L1"
+agentic_pattern: "none"
+source_attribution: []

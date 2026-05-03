@@ -1,0 +1,19 @@
+/**
+ * Tailwind CSS v4 — CSS-first configuration.
+ *
+ * Tailwind v4 replaces tailwind.config.js with the @theme directive.
+ * All design tokens (colors, fonts, spacing) are defined here as
+ * CSS custom properties. No JavaScript config file is needed.
+ *
+ * Key v4 changes:
+ * - Use @import "tailwindcss" (not @tailwind directives)
+ * - Use @theme for design tokens (not tailwind.config.js)
+ * - Use bg-linear-to-* for gradients (not bg-gradient-to-*)
+ * - Use bg-(--var) for CSS variables (not bg-[--var])
+ */
+@import "tailwindcss";
+
+@theme {
+  --color-brand: oklch(55% 0.2 250);
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}

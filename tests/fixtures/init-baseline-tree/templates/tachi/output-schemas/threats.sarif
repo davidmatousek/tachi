@@ -1,0 +1,150 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Tachi",
+          "semanticVersion": "1.1",
+          "informationUri": "https://github.com/owner/tachi",
+          "rules": [
+            {
+              "id": "tachi/stride/spoofing",
+              "shortDescription": {
+                "text": "Identity spoofing threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker pretends to be something or someone else, such as forging authentication credentials, replaying tokens, or impersonating trusted components to gain unauthorized access."
+              },
+              "help": {
+                "text": "Detect identity spoofing threats by reviewing authentication mechanisms, token validation, credential storage, and session management. Verify that all trust boundaries enforce identity verification.",
+                "markdown": "## Detection Guidance\n\nReview authentication mechanisms for weaknesses:\n- Token signing algorithms (prefer RS256 over HS256)\n- Credential storage (hashed, salted, not plaintext)\n- Session management (secure, HttpOnly, SameSite cookies)\n\n## Framework References\n\n- [OWASP Top 10: A07 Identification and Authentication Failures](https://owasp.org/Top10/A07_2021/)\n- [CWE-287: Improper Authentication](https://cwe.mitre.org/data/definitions/287.html)"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "spoofing",
+                  "authentication"
+                ],
+                "security-severity": "8.0"
+              }
+            },
+            {
+              "id": "tachi/ai/agentic-threats",
+              "shortDescription": {
+                "text": "AI agent autonomy and misuse threats"
+              },
+              "fullDescription": {
+                "text": "Threats arising from autonomous agent behavior, including uncontrolled tool use, excessive autonomy, agent-to-agent trust violations, and lack of human oversight in high-impact operations."
+              },
+              "help": {
+                "text": "Detect agentic threats by reviewing agent autonomy boundaries, tool access controls, human-in-the-loop gates for destructive operations, and inter-agent trust assumptions.",
+                "markdown": "## Detection Guidance\n\nReview agent autonomy controls:\n- Tool allowlists and per-tool permission scopes\n- Human-in-the-loop gates for destructive operations\n- Agent-to-agent trust boundaries and delegation limits\n- Scope confinement and output filtering\n\n## Framework References\n\n- [OWASP Agentic Security Initiative: ASI-01](https://owasp.org/www-project-agentic-security-initiative/)\n- [MITRE ATLAS: Abuse of Agent Capabilities](https://atlas.mitre.org/)"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "ai",
+                  "agentic",
+                  "autonomy",
+                  "tool-use"
+                ],
+                "security-severity": "8.0"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "<threat-description-from-finding-IR-threat-field>",
+            "markdown": "<mitigation-recommendation-from-finding-IR-mitigation-field>"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<input-architecture-file-path>"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "<component-name-from-finding-IR>",
+                  "fullyQualifiedName": "<trust-zone>/<component-name>",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "<correlated-peer-finding-id-and-threat-summary>"
+              },
+              "logicalLocations": [
+                {
+                  "name": "<peer-component-name>",
+                  "fullyQualifiedName": "<trust-zone>/<peer-component-name>",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "a1b2c3d4e5f67890",
+            "findingId/v1": "S-1",
+            "correlationGroup": "CG-1",
+            "baselineRunId": "<baseline-run-id-or-empty-for-first-run>"
+          },
+          "properties": {
+            "baselineState": "<new|unchanged|updated|absent>"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "<threat-description-from-finding-IR-threat-field>",
+            "markdown": "<mitigation-recommendation-from-finding-IR-mitigation-field>"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<input-architecture-file-path>"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "<component-name-from-finding-IR>",
+                  "fullyQualifiedName": "<trust-zone>/<component-name>",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f0e9d8c7b6a54321",
+            "findingId/v1": "AG-1",
+            "baselineRunId": "<baseline-run-id-or-empty-for-first-run>"
+          },
+          "properties": {
+            "baselineState": "<new|unchanged|updated|absent>"
+          }
+        }
+      ]
+    }
+  ]
+}

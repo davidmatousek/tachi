@@ -1,0 +1,1071 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Tachi",
+          "semanticVersion": "1.4",
+          "informationUri": "https://github.com/example/tachi",
+          "supportedTaxonomies": [
+            { "name": "OWASP", "index": 0 },
+            { "name": "CWE", "index": 1 }
+          ],
+          "rules": [
+            {
+              "id": "tachi/stride/spoofing",
+              "shortDescription": { "text": "Identity spoofing threats" },
+              "fullDescription": { "text": "Threats where an attacker assumes the identity of a legitimate user, service, or component. Covers credential theft, session hijacking, identity forgery, and impersonation of trusted agents or services." },
+              "help": {
+                "text": "Review authentication mechanisms, certificate validation, session management, and identity attestation across all inter-component communication paths.",
+                "markdown": "**Detection Guidance**: Review authentication mechanisms, certificate validation, session management, and identity attestation.\n\n**References**: OWASP A07 (Identification and Authentication Failures), CWE-287 (Improper Authentication)"
+              },
+              "properties": {
+                "tags": ["security", "stride", "spoofing", "authentication", "owasp", "cwe"],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                { "target": { "id": "A07", "toolComponent": { "name": "OWASP" } }, "kinds": ["relevant"] },
+                { "target": { "id": "CWE-287", "toolComponent": { "name": "CWE" } }, "kinds": ["relevant"] }
+              ]
+            },
+            {
+              "id": "tachi/stride/tampering",
+              "shortDescription": { "text": "Data tampering threats" },
+              "fullDescription": { "text": "Threats where an attacker modifies data, code, or configuration. Covers data corruption, message tampering in transit, audit log manipulation, and training data poisoning." },
+              "help": {
+                "text": "Review data integrity controls, message signing, audit log append-only enforcement, and training data provenance.",
+                "markdown": "**Detection Guidance**: Review data integrity controls, message signing, audit log append-only enforcement, and training data provenance.\n\n**References**: OWASP A08 (Software and Data Integrity Failures), CWE-345 (Insufficient Verification of Data Authenticity)"
+              },
+              "properties": {
+                "tags": ["security", "stride", "tampering", "integrity", "owasp", "cwe"],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                { "target": { "id": "A08", "toolComponent": { "name": "OWASP" } }, "kinds": ["relevant"] },
+                { "target": { "id": "CWE-345", "toolComponent": { "name": "CWE" } }, "kinds": ["relevant"] }
+              ]
+            },
+            {
+              "id": "tachi/stride/repudiation",
+              "shortDescription": { "text": "Repudiation threats" },
+              "fullDescription": { "text": "Threats where an attacker denies performing actions. Covers missing audit trails, insufficient logging, and accountability gaps in clinical AI workflows." },
+              "help": {
+                "text": "Review audit logging coverage, non-repudiable audit trail enforcement, and identity binding on all clinical actions.",
+                "markdown": "**Detection Guidance**: Review audit logging coverage, non-repudiable audit trail enforcement, and identity binding.\n\n**References**: OWASP A09 (Security Logging and Monitoring Failures), CWE-778 (Insufficient Logging)"
+              },
+              "properties": {
+                "tags": ["security", "stride", "repudiation", "audit", "logging", "owasp", "cwe"],
+                "security-severity": "8.0"
+              },
+              "relationships": [
+                { "target": { "id": "A09", "toolComponent": { "name": "OWASP" } }, "kinds": ["relevant"] },
+                { "target": { "id": "CWE-778", "toolComponent": { "name": "CWE" } }, "kinds": ["relevant"] }
+              ]
+            },
+            {
+              "id": "tachi/stride/information-disclosure",
+              "shortDescription": { "text": "Information disclosure threats" },
+              "fullDescription": { "text": "Threats where sensitive data is exposed to unauthorized parties. Covers PHI leakage, model training data extraction, inter-agent channel eavesdropping, and inference request log exposure." },
+              "help": {
+                "text": "Review encryption at rest and in transit, access controls on sensitive data, PHI de-identification, and output filtering.",
+                "markdown": "**Detection Guidance**: Review encryption at rest and in transit, access controls, PHI de-identification, and output filtering.\n\n**References**: OWASP A01 (Broken Access Control), CWE-200 (Exposure of Sensitive Information)"
+              },
+              "properties": {
+                "tags": ["security", "stride", "information-disclosure", "data-exposure", "phi", "owasp", "cwe"],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                { "target": { "id": "A01", "toolComponent": { "name": "OWASP" } }, "kinds": ["relevant"] },
+                { "target": { "id": "CWE-200", "toolComponent": { "name": "CWE" } }, "kinds": ["relevant"] }
+              ]
+            },
+            {
+              "id": "tachi/stride/denial-of-service",
+              "shortDescription": { "text": "Denial of service threats" },
+              "fullDescription": { "text": "Threats where availability is degraded or disrupted. Covers request floods, resource exhaustion, queue saturation, and multi-agent resource starvation." },
+              "help": {
+                "text": "Review rate limiting, circuit breakers, resource quotas, and capacity monitoring across all components.",
+                "markdown": "**Detection Guidance**: Review rate limiting, circuit breakers, resource quotas, and capacity monitoring.\n\n**References**: OWASP A05 (Security Misconfiguration), CWE-400 (Uncontrolled Resource Consumption)"
+              },
+              "properties": {
+                "tags": ["security", "stride", "denial-of-service", "availability", "owasp", "cwe"],
+                "security-severity": "8.0"
+              },
+              "relationships": [
+                { "target": { "id": "A05", "toolComponent": { "name": "OWASP" } }, "kinds": ["relevant"] },
+                { "target": { "id": "CWE-400", "toolComponent": { "name": "CWE" } }, "kinds": ["relevant"] }
+              ]
+            },
+            {
+              "id": "tachi/stride/elevation-of-privilege",
+              "shortDescription": { "text": "Privilege escalation threats" },
+              "fullDescription": { "text": "Threats where an attacker gains higher access than authorized. Covers RBAC bypass, FHIR scope escalation, orchestrator privilege abuse, and tool chain escalation." },
+              "help": {
+                "text": "Review per-component authorization, least-privilege enforcement, FHIR resource scoping, and tool call permission boundaries.",
+                "markdown": "**Detection Guidance**: Review per-component authorization, least-privilege enforcement, FHIR resource scoping, and tool call permission boundaries.\n\n**References**: OWASP A01 (Broken Access Control), CWE-269 (Improper Privilege Management)"
+              },
+              "properties": {
+                "tags": ["security", "stride", "privilege-escalation", "authorization", "owasp", "cwe"],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                { "target": { "id": "A01", "toolComponent": { "name": "OWASP" } }, "kinds": ["relevant"] },
+                { "target": { "id": "CWE-269", "toolComponent": { "name": "CWE" } }, "kinds": ["relevant"] }
+              ]
+            },
+            {
+              "id": "tachi/ai/agentic-threats",
+              "shortDescription": { "text": "AI agent autonomy and misuse threats" },
+              "fullDescription": { "text": "Threats from autonomous AI agent behavior, tool abuse, and multi-agent coordination exploitation. Covers unconstrained autonomous actions, MCP tool chain attacks, inter-agent message flooding, and agentic pattern exploitation." },
+              "help": {
+                "text": "Review agent action scope limits, tool call authorization, inter-agent authentication, and human-in-the-loop gates for high-consequence actions.",
+                "markdown": "**Detection Guidance**: Review agent action scope limits, tool call authorization, inter-agent authentication, and HITL gates.\n\n**References**: OWASP Agentic Security Initiative (ASI), MITRE ATLAS, CWE-693 (Protection Mechanism Failure)"
+              },
+              "properties": {
+                "tags": ["security", "ai", "agentic", "autonomy", "tool-use", "multi-agent", "cwe"],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                { "target": { "id": "CWE-693", "toolComponent": { "name": "CWE" } }, "kinds": ["relevant"] }
+              ]
+            },
+            {
+              "id": "tachi/ai/llm-threats",
+              "shortDescription": { "text": "LLM-specific threats" },
+              "fullDescription": { "text": "Threats specific to large language model components. Covers prompt injection, training data poisoning via feedback loops, model extraction, and membership inference attacks on fine-tuned clinical models." },
+              "help": {
+                "text": "Review prompt sanitization, training data provenance, model output validation, membership inference defenses, and fine-tuning pipeline integrity.",
+                "markdown": "**Detection Guidance**: Review prompt sanitization, training data provenance, model output validation, and fine-tuning pipeline integrity.\n\n**References**: OWASP LLM01:2025 (Prompt Injection), OWASP LLM03:2025 (Training Data Poisoning), OWASP LLM10:2025 (Model Theft), CWE-74 (Improper Neutralization of Special Elements in Output)"
+              },
+              "properties": {
+                "tags": ["security", "ai", "llm", "prompt-injection", "data-poisoning", "model-theft", "cwe"],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                { "target": { "id": "CWE-74", "toolComponent": { "name": "CWE" } }, "kinds": ["relevant"] }
+              ]
+            }
+          ]
+        }
+      },
+      "taxonomies": [
+        {
+          "name": "OWASP",
+          "version": "2021",
+          "informationUri": "https://owasp.org/Top10/",
+          "organization": "OWASP Foundation",
+          "shortDescription": { "text": "OWASP Top 10 Web Application Security Risks" }
+        },
+        {
+          "name": "CWE",
+          "version": "4.13",
+          "informationUri": "https://cwe.mitre.org/",
+          "organization": "MITRE",
+          "shortDescription": { "text": "Common Weakness Enumeration" }
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": { "text": "An attacker may impersonate a legitimate physician by replaying or forging clinical query credentials, gaining unauthorized access to clinical recommendation views and patient data.", "markdown": "Implement mutual TLS authentication and short-lived signed JWT tokens with physician identity binding. Enforce step-up authentication for high-sensitivity clinical queries." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Physician", "fullyQualifiedName": "External Zone/Physician", "kind": "external-entity" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "3f7a1c9e2d4b8051", "findingId/v1": "S-1" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "tags": ["security", "stride", "spoofing", "maestro-layer:L7"] }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": { "text": "An attacker may submit fraudulent EHR update events by spoofing a patient identity, injecting false patient records into the ingestion pipeline.", "markdown": "Validate EHR update events against an authoritative patient identity registry before enqueuing. Use cryptographic patient identity tokens on all ingestion events." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Patient", "fullyQualifiedName": "External Zone/Patient", "kind": "external-entity" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "a2b4c6d8e0f21345", "findingId/v1": "S-2" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "tags": ["security", "stride", "spoofing", "maestro-layer:L7"] }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": { "text": "An attacker may spoof the Physician Clinical Portal to intercept clinical recommendation responses from the Supervisor Orchestrator, receiving sensitive patient data intended for legitimate physicians.", "markdown": "Enforce server certificate pinning and signed response tokens. Validate portal origin on all supervisor-to-portal responses." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Physician Clinical Portal", "fullyQualifiedName": "User Interface Zone (L7)/Physician Clinical Portal", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c3d5e7f9a1b24356", "findingId/v1": "S-3" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "tags": ["security", "stride", "spoofing", "maestro-layer:L7"] }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": { "text": "An attacker may spoof the Patient Summary Generator endpoint to intercept patient-facing summaries containing sensitive clinical recommendations.", "markdown": "Enforce HTTPS with TLS certificate validation. Require signed summary payloads to prevent interception and tampering." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Patient Summary Generator", "fullyQualifiedName": "User Interface Zone (L7)/Patient Summary Generator", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d4e6f8a0b2c35467", "findingId/v1": "S-4" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "tags": ["security", "stride", "spoofing", "maestro-layer:L7"] }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": { "text": "An attacker who gains access to the inter-agent message bus may spoof supervisor delegation messages, causing specialist agents to act on forged orchestration commands.", "markdown": "Authenticate all inter-agent messages with HMAC signatures using per-session keys. Implement message source validation before specialist agents process delegation commands." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Inter-Agent Communication Channel", "fullyQualifiedName": "Agent Ecosystem Zone (L7)/Inter-Agent Communication Channel", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "e5f7a9b1c3d46578", "findingId/v1": "S-5" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "maestro-pattern": "trust_exploitation", "tags": ["security", "stride", "spoofing", "maestro-layer:L7", "maestro-pattern:trust_exploitation"] }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": { "text": "An attacker may impersonate the Supervisor Orchestrator to issue unauthorized delegation commands to specialist agents, bypassing orchestration controls and routing fabricated clinical tasks.", "markdown": "Require cryptographic attestation of supervisor identity on all delegation messages. Implement zero-trust peer authentication between orchestrator and specialist agents." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Supervisor Orchestrator", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Supervisor Orchestrator", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f6a8b0c2d4e57689", "findingId/v1": "S-6" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "maestro-pattern": "trust_exploitation", "tags": ["security", "stride", "spoofing", "maestro-layer:L3", "maestro-pattern:trust_exploitation"] }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": { "text": "An attacker may spoof the Diagnostic Agent's identity to inject fraudulent diagnostic results into the Inter-Agent Communication Channel, polluting the treatment planning process.", "markdown": "Sign all inter-agent result messages with agent-specific identity keys. Implement result origin validation at the Inter-Agent Communication Channel." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Diagnostic Agent", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Diagnostic Agent", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "a7b9c1d3e5f6789a", "findingId/v1": "S-7" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "maestro-pattern": "trust_exploitation", "tags": ["security", "stride", "spoofing", "maestro-layer:L3", "maestro-pattern:trust_exploitation"] }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": { "text": "An attacker may spoof Treatment Planner Agent responses to inject malicious treatment plans into the inter-agent coordination flow.", "markdown": "Sign all treatment plan outputs with agent-specific identity keys. Implement origin verification at the Inter-Agent Communication Channel." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Treatment Planner Agent", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Treatment Planner Agent", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "b8c0d2e4f6a789ab", "findingId/v1": "S-8" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "maestro-pattern": "trust_exploitation", "tags": ["security", "stride", "spoofing", "maestro-layer:L3", "maestro-pattern:trust_exploitation"] }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": { "text": "An attacker may spoof the Clinical MCP Tool Server to return malicious tool results to Diagnostic Agent or Treatment Planner Agent, corrupting clinical decision inputs.", "markdown": "Authenticate MCP Tool Server responses with server-side identity tokens. Implement response integrity checks on agent-side before consuming tool results." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical MCP Tool Server", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Clinical MCP Tool Server", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c9d1e3f5a7b89abc", "findingId/v1": "S-9" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "spoofing", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": { "text": "An attacker may spoof Clinical LLM completion responses by intercepting the API Gateway channel, returning fabricated clinical reasoning outputs.", "markdown": "Enforce TLS with mutual authentication on the API Gateway to Clinical LLM path. Implement response integrity signatures for all completion payloads." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical LLM", "fullyQualifiedName": "Foundation Models Zone (L1)/Clinical LLM", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d0e2f4a6b8c9abcd", "findingId/v1": "S-10" },
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "stride", "spoofing", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": { "text": "An attacker may spoof Risk Stratification Model outputs to inject false risk stratification results, causing the Diagnostic Agent to base decisions on falsified patient risk levels.", "markdown": "Sign all risk stratification outputs with model service credentials. Implement Diagnostic Agent-side signature verification before consuming risk scores." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Risk Stratification Model", "fullyQualifiedName": "Foundation Models Zone (L1)/Risk Stratification Model", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "e1f3a5b7c9d0bcde", "findingId/v1": "S-11" },
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "stride", "spoofing", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": { "text": "An attacker may spoof the Model Inference API Gateway to intercept inference requests and return fabricated completions, bypassing the real foundation models.", "markdown": "Enforce gateway identity verification with server certificates. Require mutual TLS on all agent-to-gateway connections." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Model Inference API Gateway", "fullyQualifiedName": "Deployment Infrastructure Zone (L4)/Model Inference API Gateway", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f2a4b6c8d0e1cdef", "findingId/v1": "S-12" },
+          "properties": { "baselineState": "new", "maestro-layer": "L4 — Deployment Infrastructure", "tags": ["security", "stride", "spoofing", "maestro-layer:L4"] }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": { "text": "An attacker may spoof the HIPAA RBAC + Policy Engine to issue false access-grant decisions to the Physician Clinical Portal, enabling unauthorized clinical data access.", "markdown": "Sign all RBAC policy decisions with the policy engine's identity key. Implement portal-side verification of signed access decisions before granting access." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "HIPAA RBAC + Policy Engine", "fullyQualifiedName": "Security and Compliance Zone (L6)/HIPAA RBAC + Policy Engine", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "a3b5c7d9e1f2def0", "findingId/v1": "S-13" },
+          "properties": { "baselineState": "new", "maestro-layer": "L6 — Security and Compliance", "tags": ["security", "stride", "spoofing", "maestro-layer:L6"] }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": { "text": "An attacker may spoof the Consent and De-identification Guardrail response, returning raw PHI to components that expected de-identified data, bypassing consent enforcement.", "markdown": "Authenticate all guardrail responses with service-level credentials. Upstream components must verify guardrail response integrity before processing returned data." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Consent and De-identification Guardrail", "fullyQualifiedName": "Security and Compliance Zone (L6)/Consent and De-identification Guardrail", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "b4c6d8e0f2a3ef01", "findingId/v1": "S-14" },
+          "properties": { "baselineState": "new", "maestro-layer": "L6 — Security and Compliance", "tags": ["security", "stride", "spoofing", "maestro-layer:L6"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker may tamper with clinical recommendation responses in transit between Supervisor Orchestrator and the Physician Clinical Portal, altering displayed recommendations without physician awareness.", "markdown": "Implement end-to-end message signing for recommendation responses. Use Content Security Policy and sub-resource integrity to detect tampering at the portal layer." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Physician Clinical Portal", "fullyQualifiedName": "User Interface Zone (L7)/Physician Clinical Portal", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c5d7e9f1a3b4f012", "findingId/v1": "T-1" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "tags": ["security", "stride", "tampering", "maestro-layer:L7"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker with access to the summary generation pipeline may tamper with patient-facing summaries, injecting dangerous or false clinical guidance into patient communications.", "markdown": "Implement integrity verification of summary content before delivery. Use signed summary payloads and audit all summary generation events." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Patient Summary Generator", "fullyQualifiedName": "User Interface Zone (L7)/Patient Summary Generator", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d6e8f0a2b4c5f123", "findingId/v1": "T-2" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "tags": ["security", "stride", "tampering", "maestro-layer:L7"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker with access to the inter-agent message bus may tamper with delegation messages or specialist results in transit, corrupting clinical reasoning across the multi-agent pipeline.", "markdown": "Implement message-level integrity (HMAC or digital signatures) on all inter-agent messages. Use tamper-evident logging for all channel activity." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Inter-Agent Communication Channel", "fullyQualifiedName": "Agent Ecosystem Zone (L7)/Inter-Agent Communication Channel", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "e7f9a1b3c5d6f234", "findingId/v1": "T-3" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "maestro-pattern": "communication_vulnerability", "tags": ["security", "stride", "tampering", "maestro-layer:L7", "maestro-pattern:communication_vulnerability"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker who compromises the Supervisor Orchestrator may tamper with the delegation logic, routing clinical tasks to adversary-controlled specialist implementations or corrupting aggregated outputs.", "markdown": "Implement immutable audit logging of all orchestration decisions. Use runtime integrity monitoring for orchestrator process state. Apply least-privilege access for orchestrator configuration changes." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Supervisor Orchestrator", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Supervisor Orchestrator", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f8a0b2c4d6e7f345", "findingId/v1": "T-4" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "tampering", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker may tamper with the Diagnostic Agent's tool call requests to Clinical MCP Tool Server, injecting malicious FHIR operations or corrupting guideline retrieval queries.", "markdown": "Validate and sanitize all outgoing tool call parameters. Implement allowlist-based tool call schemas enforced by the MCP Tool Server before execution." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Diagnostic Agent", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Diagnostic Agent", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "a9b1c3d5e7f80456", "findingId/v1": "T-5" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "tampering", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker may tamper with the Treatment Planner Agent's literature retrieval queries or tool calls, injecting adversarially crafted inputs that corrupt treatment plan generation.", "markdown": "Apply strict input validation to all retrieval queries. Implement schema-enforced tool call validation before MCP Tool Server execution." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Treatment Planner Agent", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Treatment Planner Agent", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "b0c2d4e6f8a91567", "findingId/v1": "T-6" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "tampering", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker who compromises the Clinical MCP Tool Server may tamper with FHIR read/write operations, modifying patient records without authorization or returning corrupted data to agents.", "markdown": "Enforce signed FHIR operation requests from authorized agents only. Implement FHIR resource integrity checksums and audit all write operations with non-repudiable logs." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical MCP Tool Server", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Clinical MCP Tool Server", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c1d3e5f7a9b02678", "findingId/v1": "T-7" },
+          "relatedLocations": [
+            { "id": 0, "message": { "text": "AG-7: A malicious agent may exploit the Clinical MCP Tool Server to perform privilege escalation via tool chaining" }, "logicalLocations": [{ "name": "Clinical MCP Tool Server", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Clinical MCP Tool Server", "kind": "process" }] }
+          ],
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "tampering", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker may tamper with the Clinical LLM prompt inputs forwarded by the API Gateway, injecting adversarial tokens that corrupt the clinical reasoning completion.", "markdown": "Implement prompt input validation and sanitization at the API Gateway layer. Log all prompt inputs for forensic review." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical LLM", "fullyQualifiedName": "Foundation Models Zone (L1)/Clinical LLM", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d2e4f6a8b0c13789", "findingId/v1": "T-8" },
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "stride", "tampering", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker may tamper with fine-tuning data or inference inputs to the Risk Stratification Model, causing systematically biased risk scores that lead to incorrect clinical decisions.", "markdown": "Implement training data provenance attestation and integrity checks. Validate all inference inputs against a canonical schema before forwarding." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Risk Stratification Model", "fullyQualifiedName": "Foundation Models Zone (L1)/Risk Stratification Model", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "e3f5a7b9c1d2489a", "findingId/v1": "T-9" },
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "stride", "tampering", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker with access to the FHIR Resource Store may tamper with patient records, injecting false clinical data that corrupts all downstream clinical decision processes.", "markdown": "Implement row-level integrity checksums on FHIR resources. Enforce write access via the Consent and De-identification Guardrail only. Audit all write operations." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "FHIR Resource Store", "fullyQualifiedName": "Data Operations Zone (L2)/FHIR Resource Store", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f4a6b8c0d2e359ab", "findingId/v1": "T-10" },
+          "properties": { "baselineState": "new", "maestro-layer": "L2 — Data Operations", "tags": ["security", "stride", "tampering", "maestro-layer:L2"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker may poison the Clinical Guideline RAG Corpus by injecting adversarially crafted guideline embeddings, causing the RAG retrieval to surface malicious clinical guidance to the Diagnostic Agent.", "markdown": "Implement provenance verification for all corpus documents before indexing. Deploy adversarial embedding detection and monitor retrieval patterns for anomalous queries." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical Guideline RAG Corpus", "fullyQualifiedName": "Data Operations Zone (L2)/Clinical Guideline RAG Corpus", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "a5b7c9d1e3f46abc", "findingId/v1": "T-11" },
+          "properties": { "baselineState": "new", "maestro-layer": "L2 — Data Operations", "tags": ["security", "stride", "tampering", "maestro-layer:L2"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker may inject malicious vector embeddings into the Medical Literature Vector Index, causing Treatment Planner Agent to retrieve and incorporate adversarial literature recommendations.", "markdown": "Implement document provenance attestation before indexing. Apply anomaly detection on retrieval patterns and validate retrieved content before agent consumption." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Medical Literature Vector Index", "fullyQualifiedName": "Data Operations Zone (L2)/Medical Literature Vector Index", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "b6c8d0e2f4a57bcd", "findingId/v1": "T-12" },
+          "properties": { "baselineState": "new", "maestro-layer": "L2 — Data Operations", "tags": ["security", "stride", "tampering", "maestro-layer:L2"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker may tamper with the Model Inference API Gateway configuration, rerouting inference requests to adversary-controlled model endpoints or modifying prompts before forwarding.", "markdown": "Enforce infrastructure-as-code for gateway configuration with change auditing. Apply gateway integrity monitoring and alert on configuration deviations." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Model Inference API Gateway", "fullyQualifiedName": "Deployment Infrastructure Zone (L4)/Model Inference API Gateway", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c7d9e1f3a5b68cde", "findingId/v1": "T-13" },
+          "properties": { "baselineState": "new", "maestro-layer": "L4 — Deployment Infrastructure", "tags": ["security", "stride", "tampering", "maestro-layer:L4"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker may tamper with EHR update events in the ingestion queue before normalization, injecting false patient data that propagates into the FHIR Resource Store.", "markdown": "Implement message integrity signatures on all enqueued EHR events. Validate event integrity at dequeue time before FHIR normalization." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "EHR Ingestion Queue", "fullyQualifiedName": "Deployment Infrastructure Zone (L4)/EHR Ingestion Queue", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d8e0f2a4b6c79def", "findingId/v1": "T-14" },
+          "properties": { "baselineState": "new", "maestro-layer": "L4 — Deployment Infrastructure", "tags": ["security", "stride", "tampering", "maestro-layer:L4"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker who gains write access to the Clinical Audit Log may tamper with decision log entries, covering tracks for unauthorized actions or injecting false audit evidence.", "markdown": "Implement append-only audit log storage with cryptographic chaining. Apply write-access restrictions limiting audit log writes to authenticated service identities only." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical Audit Log", "fullyQualifiedName": "Evaluation and Observability Zone (L5)/Clinical Audit Log", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "e9f1a3b5c7d80ef0", "findingId/v1": "T-15" },
+          "properties": { "baselineState": "new", "maestro-layer": "L5 — Evaluation and Observability", "tags": ["security", "stride", "tampering", "maestro-layer:L5"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker may tamper with the Outcomes Telemetry and Physician Override Audit Store, injecting adversarial physician-override signals that corrupt the learning loop re-training process and cause model drift toward attacker-preferred outputs.", "markdown": "Implement provenance attestation on all physician-override records before ingestion into the learning loop. Apply behavioral baselining to detect drift in model outputs after re-training cycles. Restrict write access to verified physician identity tokens." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Outcomes Telemetry and Physician Override Audit Store", "fullyQualifiedName": "Evaluation and Observability Zone (L5)/Outcomes Telemetry and Physician Override Audit Store", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f0a2b4c6d8e91f01", "findingId/v1": "T-16" },
+          "properties": { "baselineState": "new", "maestro-layer": "L5 — Evaluation and Observability", "maestro-pattern": "temporal_attack", "tags": ["security", "stride", "tampering", "maestro-layer:L5", "maestro-pattern:temporal_attack"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker may tamper with RBAC policy rules in the policy engine, granting unauthorized access to clinical data or escalating privileges for compromised accounts.", "markdown": "Enforce policy-as-code with immutable policy history. Implement change approval workflow for all RBAC policy modifications with dual-control signing." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "HIPAA RBAC + Policy Engine", "fullyQualifiedName": "Security and Compliance Zone (L6)/HIPAA RBAC + Policy Engine", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "a1b3c5d7e9f00112", "findingId/v1": "T-17" },
+          "properties": { "baselineState": "new", "maestro-layer": "L6 — Security and Compliance", "tags": ["security", "stride", "tampering", "maestro-layer:L6"] }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": { "text": "An attacker may tamper with the de-identification guardrail configuration, disabling or weakening de-identification rules to expose raw PHI to downstream components.", "markdown": "Enforce immutable guardrail configuration with change auditing. Implement runtime PHI detection alerts downstream to detect guardrail bypass." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Consent and De-identification Guardrail", "fullyQualifiedName": "Security and Compliance Zone (L6)/Consent and De-identification Guardrail", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "b2c4d6e8f0a11223", "findingId/v1": "T-18" },
+          "properties": { "baselineState": "new", "maestro-layer": "L6 — Security and Compliance", "tags": ["security", "stride", "tampering", "maestro-layer:L6"] }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": { "text": "A physician may deny issuing a clinical query or claim that a recommendation view they acted upon was different from what the system recorded, creating liability disputes.", "markdown": "Implement non-repudiable logging of all physician clinical queries and recommendation views with cryptographic timestamps and physician identity binding." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Physician", "fullyQualifiedName": "External Zone/Physician", "kind": "external-entity" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c3d5e7f9a1b22334", "findingId/v1": "R-1" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "tags": ["security", "stride", "repudiation", "maestro-layer:L7"] }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": { "text": "A patient may deny submitting EHR update events that were used as the basis for clinical decisions, complicating audit trails.", "markdown": "Implement signed EHR update event receipts. Log all patient-submitted events with non-repudiable identity binding and timestamps." },
+          "level": "note",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Patient", "fullyQualifiedName": "External Zone/Patient", "kind": "external-entity" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d4e6f8a0b2c33445", "findingId/v1": "R-2" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "tags": ["security", "stride", "repudiation", "maestro-layer:L7"] }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": { "text": "The Physician Clinical Portal may fail to provide non-repudiable records of which clinical recommendations were displayed to a physician, making it impossible to reconstruct the basis for a physician's clinical decision.", "markdown": "Implement tamper-evident session logs capturing every recommendation view with physician identity, timestamp, and recommendation content hash." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Physician Clinical Portal", "fullyQualifiedName": "User Interface Zone (L7)/Physician Clinical Portal", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "e5f7a9b1c3d44556", "findingId/v1": "R-3" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "tags": ["security", "stride", "repudiation", "maestro-layer:L7"] }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": { "text": "The Patient Summary Generator may fail to maintain non-repudiable records of summaries delivered to patients, creating gaps in clinical accountability.", "markdown": "Log all generated summaries with content hash, patient identifier, and delivery timestamp in the Clinical Audit Log." },
+          "level": "note",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Patient Summary Generator", "fullyQualifiedName": "User Interface Zone (L7)/Patient Summary Generator", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f6a8b0c2d4e55667", "findingId/v1": "R-4" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "tags": ["security", "stride", "repudiation", "maestro-layer:L7"] }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": { "text": "The Inter-Agent Communication Channel may fail to provide non-repudiable records of all delegation messages and specialist results, allowing agents to deny actions taken during the coordination flow.", "markdown": "Enforce tamper-evident inter-agent message logging with per-message cryptographic receipts. All delegation commands and specialist results must be logged in the Clinical Audit Log before acting." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Inter-Agent Communication Channel", "fullyQualifiedName": "Agent Ecosystem Zone (L7)/Inter-Agent Communication Channel", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "a7b9c1d3e5f66778", "findingId/v1": "R-5" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "tags": ["security", "stride", "repudiation", "maestro-layer:L7"] }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": { "text": "The Supervisor Orchestrator may fail to maintain non-repudiable records of which delegation commands it issued and which specialist results it aggregated, making agent accountability impossible.", "markdown": "Implement mandatory pre-action audit logging for all orchestration decisions. Use append-only audit storage with cryptographic chaining to prevent retroactive modification." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Supervisor Orchestrator", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Supervisor Orchestrator", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "b8c0d2e4f6a77889", "findingId/v1": "R-6" },
+          "relatedLocations": [
+            { "id": 0, "message": { "text": "AG-1: Supervisor Orchestrator autonomously executes consequential clinical delegation commands without adequate human oversight" }, "logicalLocations": [{ "name": "Supervisor Orchestrator", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Supervisor Orchestrator", "kind": "process" }] }
+          ],
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "repudiation", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": { "text": "The Diagnostic Agent may deny issuing specific tool calls to the Clinical MCP Tool Server or deny the guideline retrieval queries it submitted.", "markdown": "Log all Diagnostic Agent tool calls and retrieval queries with non-repudiable identity binding before execution. Implement agent-level audit trails in the Clinical Audit Log." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Diagnostic Agent", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Diagnostic Agent", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c9d1e3f5a7b8899a", "findingId/v1": "R-7" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "repudiation", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": { "text": "The Treatment Planner Agent may deny issuing specific literature retrieval queries or tool calls that contributed to harmful treatment plans.", "markdown": "Log all Treatment Planner Agent retrievals and tool calls with non-repudiable identity binding. Audit all inputs that contributed to each generated treatment plan." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Treatment Planner Agent", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Treatment Planner Agent", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d0e2f4a6b8c999ab", "findingId/v1": "R-8" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "repudiation", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": { "text": "The Clinical MCP Tool Server may fail to maintain non-repudiable records of which FHIR operations were executed in response to agent tool calls.", "markdown": "Implement mandatory audit logging of all MCP tool calls with requesting agent identity, operation type, and affected FHIR resources." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical MCP Tool Server", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Clinical MCP Tool Server", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "e1f3a5b7c9d0aabc", "findingId/v1": "R-9" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "repudiation", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": { "text": "The Clinical LLM may fail to maintain non-repudiable logs of which prompts were submitted and which completions were returned.", "markdown": "Log all prompt-completion pairs with request ID, timestamp, and submitting agent identity at the API Gateway layer." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical LLM", "fullyQualifiedName": "Foundation Models Zone (L1)/Clinical LLM", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f2a4b6c8d0e1abcd", "findingId/v1": "R-10" },
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "stride", "repudiation", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": { "text": "The Risk Stratification Model may fail to maintain non-repudiable records of which patient inputs produced which risk scores.", "markdown": "Log all inference inputs and outputs with patient context ID and timestamp at the API Gateway layer." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Risk Stratification Model", "fullyQualifiedName": "Foundation Models Zone (L1)/Risk Stratification Model", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "a3b5c7d9e1f2bcde", "findingId/v1": "R-11" },
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "stride", "repudiation", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": { "text": "The Model Inference API Gateway may fail to maintain non-repudiable records of all inference requests forwarded to foundation models.", "markdown": "Implement mandatory access logging at the API Gateway for all inference requests with requesting agent identity, target model, and request/response hashes." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Model Inference API Gateway", "fullyQualifiedName": "Deployment Infrastructure Zone (L4)/Model Inference API Gateway", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "b4c6d8e0f2a3cdef", "findingId/v1": "R-12" },
+          "properties": { "baselineState": "new", "maestro-layer": "L4 — Deployment Infrastructure", "tags": ["security", "stride", "repudiation", "maestro-layer:L4"] }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": { "text": "The HIPAA RBAC + Policy Engine may fail to maintain non-repudiable records of all access decisions.", "markdown": "Implement immutable policy event logging in the Clinical Audit Log for all RBAC access decisions with requestor identity, resource, decision, and timestamp." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "HIPAA RBAC + Policy Engine", "fullyQualifiedName": "Security and Compliance Zone (L6)/HIPAA RBAC + Policy Engine", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c5d7e9f1a3b4def0", "findingId/v1": "R-13" },
+          "properties": { "baselineState": "new", "maestro-layer": "L6 — Security and Compliance", "tags": ["security", "stride", "repudiation", "maestro-layer:L6"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "Sensitive clinical recommendation data including patient PHI may be disclosed through the Physician Clinical Portal via insecure HTTPS configuration, excessive error messages, or missing access controls.", "markdown": "Enforce TLS 1.3 minimum. Sanitize all error messages to prevent PHI leakage. Implement field-level access control on displayed recommendation data." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Physician Clinical Portal", "fullyQualifiedName": "User Interface Zone (L7)/Physician Clinical Portal", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d6e8f0a2b4c5ef01", "findingId/v1": "I-1" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L7"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "Patient-facing summaries may inadvertently include sensitive clinical details beyond authorized disclosure scope, or may be delivered to wrong patients.", "markdown": "Implement patient identity verification before summary delivery. Apply disclosure-scope filtering to summary content. Audit all summary deliveries." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Patient Summary Generator", "fullyQualifiedName": "User Interface Zone (L7)/Patient Summary Generator", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "e7f9a1b3c5d6f012", "findingId/v1": "I-2" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L7"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "Sensitive clinical context including patient PHI and clinical reasoning may be disclosed through the inter-agent message bus if messages are transmitted without encryption or with insufficient access restrictions.", "markdown": "Encrypt all inter-agent messages in transit. Restrict channel access to authenticated specialist agents only. Implement message-level access controls." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Inter-Agent Communication Channel", "fullyQualifiedName": "Agent Ecosystem Zone (L7)/Inter-Agent Communication Channel", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f8a0b2c4d6e70123", "findingId/v1": "I-3" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "maestro-pattern": "communication_vulnerability", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L7", "maestro-pattern:communication_vulnerability"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "The Supervisor Orchestrator aggregates sensitive patient data. A compromise may expose aggregated clinical context that is more sensitive than individual component data.", "markdown": "Implement minimal-exposure context windows. Sanitize aggregated context before logging. Apply memory isolation between clinical sessions." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Supervisor Orchestrator", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Supervisor Orchestrator", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "a9b1c3d5e7f81234", "findingId/v1": "I-4" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "The Diagnostic Agent may expose sensitive patient context retrieved from Clinical Guideline RAG Corpus and risk stratification results through tool call parameters or error responses.", "markdown": "Implement session isolation for each clinical query. Sanitize all tool call parameters and error responses. Apply output filtering before logging diagnostic results." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Diagnostic Agent", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Diagnostic Agent", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "b0c2d4e6f8a92345", "findingId/v1": "I-5" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "The Treatment Planner Agent may disclose sensitive patient data through insufficient session isolation or unfiltered error responses.", "markdown": "Implement session isolation for each treatment planning task. Apply output filtering on all retrieval results before incorporating into treatment plans." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Treatment Planner Agent", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Treatment Planner Agent", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c1d3e5f7a9b03456", "findingId/v1": "I-6" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "The Clinical MCP Tool Server may expose PHI from FHIR read operations to unauthorized agents through insufficient access controls on tool results or overly broad FHIR queries.", "markdown": "Implement resource-level access controls on all FHIR operations. Enforce minimum-necessary data principle on all tool responses. Validate requesting agent authorization before returning PHI." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical MCP Tool Server", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Clinical MCP Tool Server", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d2e4f6a8b0c14567", "findingId/v1": "I-7" },
+          "relatedLocations": [
+            { "id": 0, "message": { "text": "LLM-1: Clinical LLM prompt injection causing harmful and potentially information-disclosing completions" }, "logicalLocations": [{ "name": "Clinical LLM", "fullyQualifiedName": "Foundation Models Zone (L1)/Clinical LLM", "kind": "process" }] }
+          ],
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "The Clinical LLM may memorize and surface sensitive training data including patient records in its completions, disclosing PHI to agents without authorization.", "markdown": "Apply differential privacy techniques during model training. Implement output monitoring for PHI pattern detection in completions. Use data minimization in training set construction." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical LLM", "fullyQualifiedName": "Foundation Models Zone (L1)/Clinical LLM", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "e3f5a7b9c1d25678", "findingId/v1": "I-8" },
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "The Risk Stratification Model may leak patient cohort data from fine-tuning through membership inference attacks or overfitted responses.", "markdown": "Apply differential privacy during fine-tuning. Implement model output monitoring for membership inference signals. Restrict fine-tuning dataset access." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Risk Stratification Model", "fullyQualifiedName": "Foundation Models Zone (L1)/Risk Stratification Model", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f4a6b8c0d2e36789", "findingId/v1": "I-9" },
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "Patient PHI stored in the FHIR Resource Store may be disclosed through unauthorized read operations, SQL/FHIR injection attacks, or missing PHI encryption at rest.", "markdown": "Enforce encryption at rest for all FHIR resources. Apply resource-level RBAC for all read operations. Implement FHIR injection prevention and audit all data access." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "FHIR Resource Store", "fullyQualifiedName": "Data Operations Zone (L2)/FHIR Resource Store", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "a5b7c9d1e3f4789a", "findingId/v1": "I-10" },
+          "properties": { "baselineState": "new", "maestro-layer": "L2 — Data Operations", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L2"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "The Clinical Guideline RAG Corpus may inadvertently index sensitive patient data from clinical guidelines, disclosing it through semantic retrieval.", "markdown": "Sanitize all corpus documents for PHI before indexing. Implement PHI detection scanning on all new corpus additions." },
+          "level": "note",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical Guideline RAG Corpus", "fullyQualifiedName": "Data Operations Zone (L2)/Clinical Guideline RAG Corpus", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "b6c8d0e2f4a589ab", "findingId/v1": "I-11" },
+          "properties": { "baselineState": "new", "maestro-layer": "L2 — Data Operations", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L2"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "The Medical Literature Vector Index may expose sensitive research data or cross-contaminate patient-specific retrieval results if insufficient session isolation is implemented.", "markdown": "Implement strict session isolation for all retrieval operations. Apply content filtering on retrieved vectors before returning to Treatment Planner Agent." },
+          "level": "note",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Medical Literature Vector Index", "fullyQualifiedName": "Data Operations Zone (L2)/Medical Literature Vector Index", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c7d9e1f3a5b69abc", "findingId/v1": "I-12" },
+          "properties": { "baselineState": "new", "maestro-layer": "L2 — Data Operations", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L2"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "The Model Inference API Gateway may expose inference request logs containing patient PHI or clinical context through insufficient log access controls.", "markdown": "Apply PHI-aware log filtering before storing inference request logs. Implement access controls on inference logs. Enforce data retention limits." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Model Inference API Gateway", "fullyQualifiedName": "Deployment Infrastructure Zone (L4)/Model Inference API Gateway", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d8e0f2a4b6c7abcd", "findingId/v1": "I-13" },
+          "properties": { "baselineState": "new", "maestro-layer": "L4 — Deployment Infrastructure", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L4"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "Patient EHR update events in the ingestion queue may be disclosed through insufficient queue access controls.", "markdown": "Encrypt all queued messages. Restrict queue read access to authorized consumers only. Implement queue-level access auditing." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "EHR Ingestion Queue", "fullyQualifiedName": "Deployment Infrastructure Zone (L4)/EHR Ingestion Queue", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "e9f1a3b5c7d8bcde", "findingId/v1": "I-14" },
+          "properties": { "baselineState": "new", "maestro-layer": "L4 — Deployment Infrastructure", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L4"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "The Clinical Audit Log accumulates highly sensitive clinical decision trails. Unauthorized read access could disclose PHI, clinical reasoning, and agent decision patterns.", "markdown": "Restrict audit log read access to authorized compliance personnel only. Encrypt audit log storage. Apply data retention and access audit controls." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical Audit Log", "fullyQualifiedName": "Evaluation and Observability Zone (L5)/Clinical Audit Log", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f0a2b4c6d8e9cdef", "findingId/v1": "I-15" },
+          "properties": { "baselineState": "new", "maestro-layer": "L5 — Evaluation and Observability", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L5"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "Physician override telemetry may contain implicit patient data. Unauthorized access to Outcomes Telemetry could disclose sensitive clinical patterns or enable re-identification.", "markdown": "Restrict access to Outcomes Telemetry to the learning loop and authorized data science personnel. Apply re-identification risk assessment before using telemetry in model updates." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Outcomes Telemetry and Physician Override Audit Store", "fullyQualifiedName": "Evaluation and Observability Zone (L5)/Outcomes Telemetry and Physician Override Audit Store", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "a1b3c5d7e9f0def1", "findingId/v1": "I-16" },
+          "properties": { "baselineState": "new", "maestro-layer": "L5 — Evaluation and Observability", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L5"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "The HIPAA RBAC + Policy Engine may leak access control policies through detailed error messages or API responses, enabling policy enumeration.", "markdown": "Sanitize all RBAC API error responses to prevent policy enumeration. Return generic access-denied messages." },
+          "level": "note",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "HIPAA RBAC + Policy Engine", "fullyQualifiedName": "Security and Compliance Zone (L6)/HIPAA RBAC + Policy Engine", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "b2c4d6e8f0a1ef02", "findingId/v1": "I-17" },
+          "properties": { "baselineState": "new", "maestro-layer": "L6 — Security and Compliance", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L6"] }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": { "text": "The Consent and De-identification Guardrail may disclose raw PHI through implementation flaws in the de-identification process or expose de-identification rule logic enabling re-identification.", "markdown": "Audit de-identification logic against established standards (HIPAA Safe Harbor). Implement output validation to detect residual PHI before releasing de-identified data." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Consent and De-identification Guardrail", "fullyQualifiedName": "Security and Compliance Zone (L6)/Consent and De-identification Guardrail", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c3d5e7f9a1b2f013", "findingId/v1": "I-18" },
+          "properties": { "baselineState": "new", "maestro-layer": "L6 — Security and Compliance", "tags": ["security", "stride", "information-disclosure", "maestro-layer:L6"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker may flood the Physician Clinical Portal with clinical query requests, degrading availability during critical clinical decision periods.", "markdown": "Implement rate limiting on clinical query submission. Apply adaptive throttling. Use circuit breakers to prevent cascade to backend agents." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Physician Clinical Portal", "fullyQualifiedName": "User Interface Zone (L7)/Physician Clinical Portal", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d4e6f8a0b2c3f124", "findingId/v1": "D-1" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L7"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker may flood the Patient Summary Generator with spurious requests, degrading availability for legitimate patient summary delivery.", "markdown": "Implement rate limiting per patient session. Apply queue depth monitoring and alert on abnormal summary generation volume." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Patient Summary Generator", "fullyQualifiedName": "User Interface Zone (L7)/Patient Summary Generator", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "e5f7a9b1c3d4f235", "findingId/v1": "D-2" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L7"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker may flood the Inter-Agent Communication Channel with spurious delegation messages, starving legitimate specialist agent task processing and disrupting multi-agent coordination.", "markdown": "Implement channel capacity limits with per-agent message rate controls. Apply message origin validation before enqueuing. Monitor channel queue depth for anomalous saturation." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Inter-Agent Communication Channel", "fullyQualifiedName": "Agent Ecosystem Zone (L7)/Inter-Agent Communication Channel", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f6a8b0c2d4e5f346", "findingId/v1": "D-3" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "maestro-pattern": "resource_competition", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L7", "maestro-pattern:resource_competition"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker who compromises one specialist agent may flood the Supervisor Orchestrator with high-volume task results or error responses, causing resource exhaustion that renders the orchestrator unable to coordinate clinical queries.", "markdown": "Implement circuit breakers on specialist agent result processing. Apply per-agent response rate limits at the orchestrator. Monitor orchestrator resource utilization." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Supervisor Orchestrator", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Supervisor Orchestrator", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "a7b9c1d3e5f60457", "findingId/v1": "D-4" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "maestro-pattern": "resource_competition", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L3", "maestro-pattern:resource_competition"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker may target the Diagnostic Agent with resource-exhausting tool call floods or retrieval storms, disrupting diagnostic capabilities.", "markdown": "Implement tool call rate limits per clinical session. Apply circuit breakers on guideline retrieval. Monitor Diagnostic Agent resource utilization." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Diagnostic Agent", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Diagnostic Agent", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "b8c0d2e4f6a71568", "findingId/v1": "D-5" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker may exhaust Treatment Planner Agent resources through oversized literature retrieval queries or excessive tool call sequences.", "markdown": "Implement retrieval query size limits and tool call rate limits per session. Apply resource quotas for the Treatment Planner Agent." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Treatment Planner Agent", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Treatment Planner Agent", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c9d1e3f5a7b82679", "findingId/v1": "D-6" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker who compromises an agent may flood the Clinical MCP Tool Server with excessive JSON-RPC tool calls or FHIR operations, exhausting server resources.", "markdown": "Implement per-agent rate limits on MCP tool calls. Apply FHIR operation quotas. Use circuit breakers to isolate runaway agents from the tool server." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical MCP Tool Server", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Clinical MCP Tool Server", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d0e2f4a6b8c9378a", "findingId/v1": "D-7" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker may exhaust Clinical LLM inference capacity through large prompt floods via the API Gateway.", "markdown": "Implement inference request rate limiting at the API Gateway per authenticated session. Apply queue-based load shedding under high-demand conditions." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical LLM", "fullyQualifiedName": "Foundation Models Zone (L1)/Clinical LLM", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "e1f3a5b7c9d0489b", "findingId/v1": "D-8" },
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker may target the Risk Stratification Model with high-volume risk inference requests, saturating the model's inference capacity.", "markdown": "Implement per-session inference rate limiting at the API Gateway. Apply load balancing and auto-scaling for risk inference capacity." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Risk Stratification Model", "fullyQualifiedName": "Foundation Models Zone (L1)/Risk Stratification Model", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f2a4b6c8d0e1599c", "findingId/v1": "D-9" },
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker may execute resource-exhausting FHIR queries or write floods against the FHIR Resource Store.", "markdown": "Implement query complexity limits and rate throttling on FHIR operations. Apply resource monitoring with automated circuit breakers." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "FHIR Resource Store", "fullyQualifiedName": "Data Operations Zone (L2)/FHIR Resource Store", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "a3b5c7d9e1f26aad", "findingId/v1": "D-10" },
+          "properties": { "baselineState": "new", "maestro-layer": "L2 — Data Operations", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L2"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker may issue retrieval floods against the Clinical Guideline RAG Corpus, saturating retrieval capacity.", "markdown": "Implement retrieval rate limits per session. Apply caching for commonly retrieved guidelines to reduce corpus load." },
+          "level": "note",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical Guideline RAG Corpus", "fullyQualifiedName": "Data Operations Zone (L2)/Clinical Guideline RAG Corpus", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "b4c6d8e0f2a37bbe", "findingId/v1": "D-11" },
+          "properties": { "baselineState": "new", "maestro-layer": "L2 — Data Operations", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L2"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker may flood the Medical Literature Vector Index with excessive retrieval queries, degrading vector search availability.", "markdown": "Implement retrieval rate limits per session. Apply result caching to reduce index load under high demand." },
+          "level": "note",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Medical Literature Vector Index", "fullyQualifiedName": "Data Operations Zone (L2)/Medical Literature Vector Index", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c5d7e9f1a3b48ccf", "findingId/v1": "D-12" },
+          "properties": { "baselineState": "new", "maestro-layer": "L2 — Data Operations", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L2"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker may saturate the Model Inference API Gateway through request floods, denying inference access to all agents.", "markdown": "Implement rate limiting and request quotas at the gateway. Apply adaptive load balancing across model inference instances. Use circuit breakers to protect backend model services." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Model Inference API Gateway", "fullyQualifiedName": "Deployment Infrastructure Zone (L4)/Model Inference API Gateway", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d6e8f0a2b4c59dd0", "findingId/v1": "D-13" },
+          "properties": { "baselineState": "new", "maestro-layer": "L4 — Deployment Infrastructure", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L4"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker may flood the EHR Ingestion Queue with malformed or oversized EHR events, causing queue saturation and blocking legitimate patient record ingestion.", "markdown": "Implement queue depth monitoring with automatic backpressure. Apply message size limits and per-source rate controls on ingestion." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "EHR Ingestion Queue", "fullyQualifiedName": "Deployment Infrastructure Zone (L4)/EHR Ingestion Queue", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "e7f9a1b3c5d6aee1", "findingId/v1": "D-14" },
+          "properties": { "baselineState": "new", "maestro-layer": "L4 — Deployment Infrastructure", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L4"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker may flood the Clinical Audit Log with excessive log entries, causing disk exhaustion that prevents legitimate audit log writes.", "markdown": "Implement write rate limiting on audit log ingestion. Apply storage quota monitoring with alerting. Use log rotation and archival to prevent disk exhaustion." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical Audit Log", "fullyQualifiedName": "Evaluation and Observability Zone (L5)/Clinical Audit Log", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f8a0b2c4d6e7bff2", "findingId/v1": "D-15" },
+          "properties": { "baselineState": "new", "maestro-layer": "L5 — Evaluation and Observability", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L5"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker may flood the Outcomes Telemetry store with spurious override signals, degrading the learning loop's ability to incorporate legitimate physician feedback.", "markdown": "Implement rate limiting on physician override ingestion. Apply anomaly detection to flag abnormal override volumes before incorporating into the learning loop." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Outcomes Telemetry and Physician Override Audit Store", "fullyQualifiedName": "Evaluation and Observability Zone (L5)/Outcomes Telemetry and Physician Override Audit Store", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "a9b1c3d5e7f8c003", "findingId/v1": "D-16" },
+          "properties": { "baselineState": "new", "maestro-layer": "L5 — Evaluation and Observability", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L5"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker may flood the HIPAA RBAC + Policy Engine with access decision requests, causing policy engine unavailability and potentially blocking all clinical data access.", "markdown": "Implement access decision caching for recently evaluated policies. Apply rate limiting on policy evaluation requests. Design fallback-deny behavior during policy engine unavailability." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "HIPAA RBAC + Policy Engine", "fullyQualifiedName": "Security and Compliance Zone (L6)/HIPAA RBAC + Policy Engine", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "b0c2d4e6f8a9d114", "findingId/v1": "D-17" },
+          "properties": { "baselineState": "new", "maestro-layer": "L6 — Security and Compliance", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L6"] }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": { "text": "An attacker may flood the Consent and De-identification Guardrail with PHI processing requests, saturating de-identification capacity.", "markdown": "Implement processing rate limits on guardrail requests. Apply queue-based load balancing with circuit breakers." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Consent and De-identification Guardrail", "fullyQualifiedName": "Security and Compliance Zone (L6)/Consent and De-identification Guardrail", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c1d3e5f7a9b0e225", "findingId/v1": "D-18" },
+          "properties": { "baselineState": "new", "maestro-layer": "L6 — Security and Compliance", "tags": ["security", "stride", "denial-of-service", "maestro-layer:L6"] }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": { "text": "An attacker who gains access to a low-privilege physician session may escalate to access clinical data belonging to other physicians or patients by exploiting broken access controls.", "markdown": "Implement strict session isolation and resource-level RBAC enforcement. Apply role-based data filtering on all recommendation views. Audit privilege escalation attempts." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Physician Clinical Portal", "fullyQualifiedName": "User Interface Zone (L7)/Physician Clinical Portal", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d2e4f6a8b0c1f336", "findingId/v1": "E-1" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "tags": ["security", "stride", "privilege-escalation", "maestro-layer:L7"] }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": { "text": "An attacker may exploit the Patient Summary Generator to request summaries for patients other than the authorized recipient, escalating access to unauthorized patient records.", "markdown": "Validate requesting identity against authorized patient scope before generating summaries. Implement patient-scope enforcement at the Supervisor Orchestrator level." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Patient Summary Generator", "fullyQualifiedName": "User Interface Zone (L7)/Patient Summary Generator", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "e3f5a7b9c1d20447", "findingId/v1": "E-2" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "tags": ["security", "stride", "privilege-escalation", "maestro-layer:L7"] }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": { "text": "An attacker who compromises the Inter-Agent Communication Channel may escalate channel access to issue supervisor-level delegation commands to specialist agents, bypassing the Supervisor Orchestrator's authority.", "markdown": "Implement role-based message authorization on the inter-agent channel. Specialist agents must verify delegation command authority level before execution." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Inter-Agent Communication Channel", "fullyQualifiedName": "Agent Ecosystem Zone (L7)/Inter-Agent Communication Channel", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f4a6b8c0d2e31558", "findingId/v1": "E-3" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "maestro-pattern": "trust_exploitation", "tags": ["security", "stride", "privilege-escalation", "maestro-layer:L7", "maestro-pattern:trust_exploitation"] }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": { "text": "A compromised Supervisor Orchestrator may escalate its own privilege to bypass RBAC checks enforced by the HIPAA Policy Engine, or grant escalated permissions to specialist agents.", "markdown": "Enforce external RBAC validation for all Supervisor Orchestrator actions affecting patient data. Apply principle of least privilege for orchestrator service account." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Supervisor Orchestrator", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Supervisor Orchestrator", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "a5b7c9d1e3f42669", "findingId/v1": "E-4" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "privilege-escalation", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": { "text": "A compromised Diagnostic Agent may escalate beyond its authorized scope by issuing FHIR operations that exceed its data access permissions via the Clinical MCP Tool Server.", "markdown": "Enforce resource-level FHIR access scoping for Diagnostic Agent operations via the MCP Tool Server. Apply per-session access tokens with minimal-necessary permissions." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Diagnostic Agent", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Diagnostic Agent", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "b6c8d0e2f4a5377a", "findingId/v1": "E-5" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "privilege-escalation", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": { "text": "A compromised Treatment Planner Agent may escalate its access to FHIR resources beyond the current patient's authorized scope through the Clinical MCP Tool Server.", "markdown": "Apply per-session FHIR access scoping for Treatment Planner Agent tool calls. Enforce resource-level access boundaries at the MCP Tool Server layer." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Treatment Planner Agent", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Treatment Planner Agent", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c7d9e1f3a5b6488b", "findingId/v1": "E-6" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "privilege-escalation", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": { "text": "A compromised agent may exploit the Clinical MCP Tool Server to escalate FHIR access beyond the calling agent's authorized scope, performing privileged FHIR operations not authorized for the requesting agent.", "markdown": "Implement strict per-agent permission checks for each FHIR operation. Enforce operation-level authorization at the MCP Tool Server. Prohibit bulk export and administrative FHIR operations from agent tool calls." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical MCP Tool Server", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Clinical MCP Tool Server", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d8e0f2a4b6c7599c", "findingId/v1": "E-7" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "stride", "privilege-escalation", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": { "text": "An attacker may exploit prompt injection in the Clinical LLM to gain elevated reasoning authority, causing the model to output instructions that the Supervisor Orchestrator interprets as authorized system commands with elevated privilege.", "markdown": "Implement prompt injection detection at the API Gateway layer. Apply output filtering to prevent completions that contain system command patterns. Enforce completion output schema validation." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical LLM", "fullyQualifiedName": "Foundation Models Zone (L1)/Clinical LLM", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "e9f1a3b5c7d86aad", "findingId/v1": "E-8" },
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "stride", "privilege-escalation", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": { "text": "An attacker may manipulate Risk Stratification Model inputs to produce falsely elevated risk scores that trigger automated escalation workflows.", "markdown": "Implement risk score range validation before triggering escalation workflows. Apply anomaly detection on risk score distribution to flag outliers." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Risk Stratification Model", "fullyQualifiedName": "Foundation Models Zone (L1)/Risk Stratification Model", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f0a2b4c6d8e97bbe", "findingId/v1": "E-9" },
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "stride", "privilege-escalation", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": { "text": "An attacker who compromises the Model Inference API Gateway may escalate to access inference endpoints for models not authorized for the requesting agent.", "markdown": "Implement per-agent model access authorization at the gateway. Enforce allowlist-based model routing for each authenticated agent." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Model Inference API Gateway", "fullyQualifiedName": "Deployment Infrastructure Zone (L4)/Model Inference API Gateway", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "a1b3c5d7e9f08ccf", "findingId/v1": "E-10" },
+          "properties": { "baselineState": "new", "maestro-layer": "L4 — Deployment Infrastructure", "tags": ["security", "stride", "privilege-escalation", "maestro-layer:L4"] }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": { "text": "An attacker who exploits a vulnerability in the HIPAA RBAC + Policy Engine may escalate to administrative access, modifying policy rules to grant unauthorized clinical data access.", "markdown": "Apply multi-factor authentication and dual-control approval for all policy engine administrative operations. Enforce immutable audit logging of all policy changes." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "HIPAA RBAC + Policy Engine", "fullyQualifiedName": "Security and Compliance Zone (L6)/HIPAA RBAC + Policy Engine", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "b2c4d6e8f0a19dd0", "findingId/v1": "E-11" },
+          "properties": { "baselineState": "new", "maestro-layer": "L6 — Security and Compliance", "tags": ["security", "stride", "privilege-escalation", "maestro-layer:L6"] }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": { "text": "An attacker who compromises the Consent and De-identification Guardrail may escalate to bypass consent enforcement, accessing raw PHI without patient consent.", "markdown": "Implement strict access controls on guardrail configuration and bypass mechanisms. Apply runtime enforcement of de-identification guarantees with downstream PHI detection monitoring." },
+          "level": "warning",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Consent and De-identification Guardrail", "fullyQualifiedName": "Security and Compliance Zone (L6)/Consent and De-identification Guardrail", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c3d5e7f9a1b2aee1", "findingId/v1": "E-12" },
+          "properties": { "baselineState": "new", "maestro-layer": "L6 — Security and Compliance", "tags": ["security", "stride", "privilege-escalation", "maestro-layer:L6"] }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": { "text": "The Supervisor Orchestrator may autonomously execute consequential clinical delegation commands without adequate human oversight, routing clinical tasks based on AI-generated orchestration logic that bypasses physician review or RBAC compliance checks.", "markdown": "Implement human-in-the-loop confirmation gates for high-consequence clinical delegation decisions. Enforce RBAC compliance checks before all agent delegation commands. Apply maximum action scope limits per orchestration cycle." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Supervisor Orchestrator", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Supervisor Orchestrator", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d4e6f8a0b2c3bff2", "findingId/v1": "AG-1" },
+          "relatedLocations": [
+            { "id": 0, "message": { "text": "R-6: Supervisor Orchestrator fails non-repudiable delegation records, creating accountability gaps for autonomous actions" }, "logicalLocations": [{ "name": "Supervisor Orchestrator", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Supervisor Orchestrator", "kind": "process" }] }
+          ],
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "maestro-pattern": "agent_collusion", "tags": ["security", "ai", "agentic", "maestro-layer:L3", "maestro-pattern:agent_collusion"] }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": { "text": "A compromised Supervisor Orchestrator may abuse its privileged position as the delegation authority to issue unauthorized tool calls or FHIR operations through specialist agents, circumventing per-agent access controls by delegating to agents with broader permissions.", "markdown": "Implement orchestrator-level tool call allowlisting restricting delegation to explicitly authorized agent-tool pairs. Apply cross-agent audit trails linking all delegated tool calls back to the originating orchestration command." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Supervisor Orchestrator", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Supervisor Orchestrator", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d4e6f8a0b2c3bff2", "findingId/v1": "AG-2" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "maestro-pattern": "agent_collusion", "tags": ["security", "ai", "agentic", "maestro-layer:L3", "maestro-pattern:agent_collusion"] }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": { "text": "The Diagnostic Agent may autonomously execute FHIR write operations via the Clinical MCP Tool Server beyond its authorized clinical scope, persisting adversarial or erroneous diagnostic data to patient records without physician authorization.", "markdown": "Restrict Diagnostic Agent FHIR write access to explicitly authorized resource types and patient scope. Apply mandatory physician approval for any Diagnostic Agent FHIR write operations." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Diagnostic Agent", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Diagnostic Agent", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "e5f7a9b1c3d4c003", "findingId/v1": "AG-3" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "ai", "agentic", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": { "text": "A compromised Diagnostic Agent may abuse the Clinical MCP Tool Server as a tool abuse vector, issuing malicious FHIR operations (bulk reads, unauthorized writes) that exceed the agent's authorized scope.", "markdown": "Implement operation-level authorization checks in the MCP Tool Server for all Diagnostic Agent requests. Enforce FHIR resource scope restrictions per session token." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Diagnostic Agent", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Diagnostic Agent", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "e5f7a9b1c3d4c003", "findingId/v1": "AG-4" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "ai", "agentic", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": { "text": "The Treatment Planner Agent may autonomously incorporate adversarially retrieved medical literature into treatment plans without human validation, resulting in dangerous or contraindicated treatment recommendations.", "markdown": "Implement mandatory evidence validation before incorporating retrieved literature into treatment plans. Apply physician review gates for treatment plans flagged as high-consequence." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Treatment Planner Agent", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Treatment Planner Agent", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f6a8b0c2d4e5d114", "findingId/v1": "AG-5" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "ai", "agentic", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": { "text": "A compromised Treatment Planner Agent may abuse the Clinical MCP Tool Server to perform unauthorized FHIR operations, writing false treatment prescriptions or accessing patient records outside the current patient scope.", "markdown": "Enforce patient-scope and resource-type restrictions on all Treatment Planner Agent MCP tool calls. Implement operation-level FHIR access controls at the MCP Tool Server." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Treatment Planner Agent", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Treatment Planner Agent", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f6a8b0c2d4e5d114", "findingId/v1": "AG-6" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "ai", "agentic", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": { "text": "A malicious or compromised agent may exploit the Clinical MCP Tool Server to perform privilege escalation via tool chaining — executing a sequence of individually-permitted FHIR operations that collectively achieves an unauthorized outcome.", "markdown": "Implement tool chain monitoring to detect sequences of permitted operations that collectively violate access policy. Apply transaction-level audit logging for all multi-step FHIR operation sequences. Define and enforce prohibited operation chain patterns." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical MCP Tool Server", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Clinical MCP Tool Server", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "a7b9c1d3e5f6e225", "findingId/v1": "AG-7" },
+          "relatedLocations": [
+            { "id": 0, "message": { "text": "T-7: Clinical MCP Tool Server FHIR operations tampered by compromised agents" }, "logicalLocations": [{ "name": "Clinical MCP Tool Server", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Clinical MCP Tool Server", "kind": "process" }] }
+          ],
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "tags": ["security", "ai", "agentic", "maestro-layer:L3"] }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": { "text": "A compromised or rogue agent may abuse the Inter-Agent Communication Channel to flood specialist agents with excessive delegation messages, executing a resource exhaustion attack that disrupts multi-agent coordination.", "markdown": "Implement per-agent message rate limits on the inter-agent channel. Apply message source validation and circuit breakers to isolate flooding agents from the channel." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Inter-Agent Communication Channel", "fullyQualifiedName": "Agent Ecosystem Zone (L7)/Inter-Agent Communication Channel", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "b8c0d2e4f6a7f336", "findingId/v1": "AG-8" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "maestro-pattern": "communication_vulnerability", "tags": ["security", "ai", "agentic", "maestro-layer:L7", "maestro-pattern:communication_vulnerability"] }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": { "text": "An attacker may inject adversarial prompts into the clinical context window passed to the Clinical LLM via the API Gateway, causing the model to generate harmful, false, or clinically dangerous completions.", "markdown": "Implement prompt injection detection and sanitization at the API Gateway before forwarding to the Clinical LLM. Apply output validation to detect clinically dangerous completions. Use system prompt hardening to resist instruction injection." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical LLM", "fullyQualifiedName": "Foundation Models Zone (L1)/Clinical LLM", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c9d1e3f5a7b80447", "findingId/v1": "LLM-1" },
+          "relatedLocations": [
+            { "id": 0, "message": { "text": "I-7: Clinical MCP Tool Server information disclosure via unauthorized FHIR access" }, "logicalLocations": [{ "name": "Clinical MCP Tool Server", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Clinical MCP Tool Server", "kind": "process" }] }
+          ],
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "ai", "llm", "prompt-injection", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": { "text": "An adversary may poison the training data or fine-tuning feedback incorporated into the Clinical LLM via the Outcomes Telemetry learning loop, causing the model to produce systematically biased or manipulated clinical completions after re-training.", "markdown": "Implement training data provenance attestation and integrity verification before learning loop incorporation. Apply behavioral baselining to detect post-training output drift. Implement emergency model rollback capability." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical LLM", "fullyQualifiedName": "Foundation Models Zone (L1)/Clinical LLM", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c9d1e3f5a7b80447", "findingId/v1": "LLM-2" },
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "ai", "llm", "data-poisoning", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": { "text": "An adversary may extract the Clinical LLM's learned clinical knowledge through repeated targeted queries via the API Gateway, enabling model theft or reconstruction of proprietary medical AI capabilities.", "markdown": "Implement query rate limiting and anomaly detection for systematic extraction patterns. Apply output perturbation to reduce model extraction fidelity." },
+          "level": "note",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Clinical LLM", "fullyQualifiedName": "Foundation Models Zone (L1)/Clinical LLM", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "c9d1e3f5a7b80447", "findingId/v1": "LLM-3" },
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "ai", "llm", "model-theft", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": { "text": "An attacker may craft adversarial patient record inputs passed to the Risk Stratification Model to generate manipulated risk scores, causing incorrect clinical triage and resource allocation decisions.", "markdown": "Implement input validation and anomaly detection for adversarial patient record patterns. Apply ensemble validation by cross-checking risk scores against clinical rules." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Risk Stratification Model", "fullyQualifiedName": "Foundation Models Zone (L1)/Risk Stratification Model", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d0e2f4a6b8c91558", "findingId/v1": "LLM-4" },
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "ai", "llm", "prompt-injection", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": { "text": "An adversary may poison the supervised fine-tuning dataset used to train the Risk Stratification Model, embedding adversarial patterns that cause the model to systematically misclassify high-risk patients as low-risk after re-training.", "markdown": "Implement fine-tuning dataset integrity verification and provenance attestation. Apply behavioral testing against known high-risk cases after each model update. Monitor risk score distribution for systematic drift." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Risk Stratification Model", "fullyQualifiedName": "Foundation Models Zone (L1)/Risk Stratification Model", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d0e2f4a6b8c91558", "findingId/v1": "LLM-5" },
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "ai", "llm", "data-poisoning", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": { "text": "An adversary may conduct membership inference attacks against the Risk Stratification Model to determine which patients were included in the fine-tuning dataset, violating patient privacy.", "markdown": "Apply differential privacy during model fine-tuning to provide formal privacy guarantees. Implement query auditing to detect membership inference attack patterns." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Risk Stratification Model", "fullyQualifiedName": "Foundation Models Zone (L1)/Risk Stratification Model", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d0e2f4a6b8c91558", "findingId/v1": "LLM-6" },
+          "properties": { "baselineState": "new", "maestro-layer": "L1 — Foundation Model", "tags": ["security", "ai", "llm", "model-theft", "maestro-layer:L1"] }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": { "text": "Two or more agentic components in Inter-Agent Communication Channel coordinate over an inter-agent data flow, creating a potential for coordinated malicious action. Compromised agents could jointly exfiltrate data, split prohibited actions across peers, or issue coordinated tool calls that individually fall below per-agent detection thresholds. Recommended controls: inter-agent rate limits, coordination throttles, and per-flow audit logging.", "markdown": "Implement inter-agent rate limits and coordination throttles on the Inter-Agent Communication Channel. Apply per-flow audit logging linking all coordinated messages to originating agents. Monitor for coordination patterns below per-agent detection thresholds." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Inter-Agent Communication Channel", "fullyQualifiedName": "Agent Ecosystem Zone (L7)/Inter-Agent Communication Channel", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "b8c0d2e4f6a7f336", "findingId/v1": "AGP-01" },
+          "properties": { "baselineState": "new", "maestro-layer": "L7 — Agent Ecosystem", "maestro-pattern": "agent_collusion", "tags": ["security", "ai", "agentic", "maestro-layer:L7", "maestro-pattern:agent_collusion"] }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": { "text": "The architecture includes Outcomes Telemetry and Physician Override Audit Store — a persistent-state component (long-running learning loop) that enables temporal attacks: sleeper agents activated by delayed triggers, gradual corruption below detection thresholds, and seasonal exploitation patterns. Recommended controls: training-data provenance attestation, memory-write audit trails, and periodic behavioral baselining against pre-training snapshots.", "markdown": "Implement training-data provenance attestation on all physician-override records before ingestion into the learning loop. Apply memory-write audit trails on all Outcomes Telemetry writes. Perform periodic behavioral baselining of Clinical LLM and Supervisor Orchestrator against pre-training reference snapshots to detect temporal drift." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Outcomes Telemetry and Physician Override Audit Store", "fullyQualifiedName": "Evaluation and Observability Zone (L5)/Outcomes Telemetry and Physician Override Audit Store", "kind": "data-store" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "f0a2b4c6d8e9cdef", "findingId/v1": "AGP-02" },
+          "properties": { "baselineState": "new", "maestro-layer": "L5 — Evaluation and Observability", "maestro-pattern": "temporal_attack", "tags": ["security", "ai", "agentic", "maestro-layer:L5", "maestro-pattern:temporal_attack"] }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": { "text": "Multi-agent interactions in Supervisor Orchestrator exhibit the potential for emergent behavior — cascading failures, feedback amplification, or collective optimization that bypasses per-agent safety evaluation. Recommended controls: fail-safe shutdown circuits, bounded action scopes per agent, and behavioral baselining of the collective agent system.", "markdown": "Implement fail-safe shutdown circuits at the Supervisor Orchestrator that halt delegation on anomalous specialist response patterns. Apply bounded action scopes per agent per clinical session. Perform behavioral baselining of the collective agent system (Supervisor + Diagnostic Agent + Treatment Planner Agent) to detect emergent coordination patterns invisible to per-agent monitoring." },
+          "level": "error",
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "examples/maestro-reference/architecture.md" }, "region": { "startLine": 1 } }, "logicalLocations": [{ "name": "Supervisor Orchestrator", "fullyQualifiedName": "Agent Frameworks Zone (L3)/Supervisor Orchestrator", "kind": "process" }] }],
+          "partialFingerprints": { "primaryLocationLineHash": "d4e6f8a0b2c3bff2", "findingId/v1": "AGP-03" },
+          "properties": { "baselineState": "new", "maestro-layer": "L3 — Agent Framework", "maestro-pattern": "emergent_behavior", "tags": ["security", "ai", "agentic", "maestro-layer:L3", "maestro-pattern:emergent_behavior"] }
+        }
+      ]
+    }
+  ]
+}

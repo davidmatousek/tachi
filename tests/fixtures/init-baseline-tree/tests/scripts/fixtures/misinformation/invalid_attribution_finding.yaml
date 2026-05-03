@@ -1,0 +1,38 @@
+# F-A2 rejection fixture: AML.T0042 is confirmed ABSENT from schemas/taxonomy/mitre-atlas.yaml (PRD-verified 2026-04-23)
+# This fixture is EXPECTED to fail referential-integrity validation
+#
+# Invalid MI-{N} finding fixture — Feature 206 (misinformation threat agent, F-2)
+#
+# Exercises the F-A2 source_attribution referential-integrity rejection path.
+# Citation deliberately uses `mitre-atlas:AML.T0042` which is NOT present in
+# the F-A1 catalog at `schemas/taxonomy/mitre-atlas.yaml` (catalog contains
+# 12 records: AML.T0010, T0018, T0020, T0024, T0051, T0054, T0057, T0058,
+# T0059, T0060, T0061, T0062 — verified 2026-04-23).
+#
+# ISOLATED-FAILURE DESIGN (per architect preference): this fixture cites
+# ONLY the absent AML.T0042 entry — no valid OWASP primary, no valid CWE
+# related — so the rejection test precisely asserts "this fixture is
+# rejected because AML.T0042 is absent from the mitre-atlas catalog", not
+# "this fixture is rejected for some combination of reasons". The
+# rejection SHOULD point at the mitre-atlas:AML.T0042 record specifically.
+#
+# Test surface: test_misinformation.py::TestMisinformationSourceAttribution
+#   - test_invalid_fixture_cites_absent_atlas_id
+#
+# Companion note: the MI-{N} finding contract (specs/206-misinformation-
+# threat-agent/contracts/finding-contract.md §Source Attribution invariants)
+# explicitly lists AML.T0042 as a MUST-NOT inclusion precisely because it
+# is absent from the catalog.
+
+id: MI-99
+category: llm
+severity: medium
+component: "LLM Clinical Summarizer"
+threat: "Ungrounded clinical recommendation from LLM summarizer (fictional example, invalid-attribution variant): the Process component emits factual clinical claims without declared RAG grounding. This fixture exists SOLELY to exercise the referential-integrity rejection path on the source_attribution block — the threat narrative mirrors the valid fixture for shape consistency, but the citation deliberately points at an absent catalog entry."
+mitigation: "Mandatory RAG grounding with per-claim source attribution; reject responses containing unsupported factual claims; require human-in-the-loop confirmation for any clinical recommendation. (Mitigation content is intentionally valid — the invalidity is confined to the source_attribution block below.)"
+references:
+  - "OWASP LLM09:2025 Misinformation"
+source_attribution:
+  - taxonomy: mitre-atlas
+    id: AML.T0042
+    relationship: primary

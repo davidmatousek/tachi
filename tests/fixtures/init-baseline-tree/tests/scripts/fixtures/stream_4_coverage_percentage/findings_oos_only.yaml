@@ -1,0 +1,33 @@
+# Stream 4 fixture: Finding cites only Out-of-Scope taxonomy items (F-241 T048).
+#
+# Purpose: codify the F-241 T046 edge case — findings citing Out-of-Scope
+# items render on the per-finding attribution table for traceability
+# (preserves F-A2 referential-integrity contract) but DO NOT increment
+# `covered_count` for the OOS items in the per-framework aggregator math.
+#
+# This fixture cites:
+#   - mitre-attack T1070.001 (Clear Windows Event Logs)   — OOS, TA0005 Defense Evasion
+#   - mitre-attack T1071     (Application Layer Protocol) — OOS, TA0011 Command and Control
+#   - mitre-attack T1041     (Exfiltration Over C2 Channel) — OOS, TA0010 Exfiltration
+#
+# Expected (per `findings_oos_only.expected.yaml`):
+#   - owasp:        covered=0, partial=0, gap=60,  pct = "0.00%"
+#   - mitre-attack: covered=0, partial=0, gap=323, pct = "0.00%"
+#       (all 3 cited records filtered out of items list at line 1247;
+#        finding still present in per_finding_rows per F-A2 contract)
+#   - mitre-atlas:  covered=0, partial=0, gap=30,  pct = "0.00%"
+#   - nist-ai-rmf:  covered=0, partial=0, gap=72,  pct = "0.00%"
+#   - cwe:          covered=0, partial=0, gap=53,  pct = "0.00%"
+
+- id: R-1
+  component: Audit Log Service
+  threat: Adversary clears Windows event logs to mask credential-theft activity
+  likelihood: "—"
+  impact: "—"
+  risk_level: Critical
+  mitigation: Append-only log shipping to SIEM; alert on audit-trail gaps
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1070.001, relationship: primary}
+    - {taxonomy: mitre-attack, id: T1071, relationship: related}
+    - {taxonomy: mitre-attack, id: T1041, relationship: related}

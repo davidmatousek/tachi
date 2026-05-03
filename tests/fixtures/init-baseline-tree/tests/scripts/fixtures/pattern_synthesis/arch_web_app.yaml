@@ -1,0 +1,26 @@
+# Synthetic Phase 1 abstract for web-app baseline.
+# Expected: multi-agent gate predicate FALSE (no agentic components).
+
+name: web-app
+description: >
+  A traditional three-tier web application with a React frontend,
+  Node.js backend API, and a PostgreSQL database. The backend
+  authenticates users via JWT and writes orders to the database.
+
+components:
+  - name: React Frontend
+    category: process
+  - name: Node API
+    category: process
+  - name: PostgreSQL
+    category: data_store
+  - name: Auth Service
+    category: process
+
+data_flows:
+  - source: React Frontend
+    target: Node API
+  - source: Node API
+    target: PostgreSQL
+  - source: Node API
+    target: Auth Service

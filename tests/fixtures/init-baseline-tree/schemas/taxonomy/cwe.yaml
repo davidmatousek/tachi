@@ -1,0 +1,241 @@
+# CWE Catalog (taxonomy: cwe)
+#
+# Composition per FR-003 / A1 seed + A3 expansion (53 records total):
+#   - 41 seed CWEs (from 11 threat-detection agents' detection-patterns.md,
+#     frozen at spec time 2026-04-17):
+#     CWE-20, CWE-22, CWE-77, CWE-78, CWE-89, CWE-90, CWE-117, CWE-200,
+#     CWE-209, CWE-215, CWE-223, CWE-250, CWE-266, CWE-269, CWE-285, CWE-287,
+#     CWE-290, CWE-306, CWE-345, CWE-352, CWE-384, CWE-400, CWE-407, CWE-494,
+#     CWE-502, CWE-522, CWE-532, CWE-538, CWE-613, CWE-639, CWE-770, CWE-776,
+#     CWE-778, CWE-779, CWE-862, CWE-863, CWE-917, CWE-918, CWE-943, CWE-1333,
+#     CWE-1395
+#   - 11 net-new CWE Top 25 (2025) entries (published 2025-12-11; 14 of the
+#     Top 25 already overlap the 41 seed; 11 new IDs added):
+#     CWE-79, CWE-94, CWE-120, CWE-121, CWE-122, CWE-125, CWE-284, CWE-416,
+#     CWE-434, CWE-476, CWE-787
+#   - 1 additional CWE sourced from OWASP Top 10 A03:2021 / LLM05:2025
+#     cross-references in `owasp.yaml`:
+#     CWE-116 (companion to CWE-79 / output encoding)
+#
+# Record shape per FR-003: {id, full_id, name, url}.
+# NO `cwe_refs` FIELD on CWE records (FR-003 explicit exclusion): CWE->CWE
+# relationships (e.g., superseded, related) live ONLY in `crosswalk.yaml`,
+# NOT as `cwe_refs` on these records.
+#
+# URL pattern: https://cwe.mitre.org/data/definitions/<N>.html
+#
+# Sorted alphabetically by `id` per FR-032 (Python string-sort semantics:
+# `sorted(['CWE-20', 'CWE-100'])` → `['CWE-100', 'CWE-20']`).
+
+- id: CWE-116
+  full_id: CWE-116
+  name: Improper Encoding or Escaping of Output
+  url: https://cwe.mitre.org/data/definitions/116.html
+- id: CWE-117
+  full_id: CWE-117
+  name: Improper Output Neutralization for Logs
+  url: https://cwe.mitre.org/data/definitions/117.html
+- id: CWE-120
+  full_id: CWE-120
+  name: Buffer Copy without Checking Size of Input ('Classic Buffer Overflow')
+  url: https://cwe.mitre.org/data/definitions/120.html
+- id: CWE-121
+  full_id: CWE-121
+  name: Stack-based Buffer Overflow
+  url: https://cwe.mitre.org/data/definitions/121.html
+- id: CWE-122
+  full_id: CWE-122
+  name: Heap-based Buffer Overflow
+  url: https://cwe.mitre.org/data/definitions/122.html
+- id: CWE-125
+  full_id: CWE-125
+  name: Out-of-bounds Read
+  url: https://cwe.mitre.org/data/definitions/125.html
+- id: CWE-1333
+  full_id: CWE-1333
+  name: Inefficient Regular Expression Complexity
+  url: https://cwe.mitre.org/data/definitions/1333.html
+- id: CWE-1395
+  full_id: CWE-1395
+  name: Dependency on Vulnerable Third-Party Component
+  url: https://cwe.mitre.org/data/definitions/1395.html
+- id: CWE-20
+  full_id: CWE-20
+  name: Improper Input Validation
+  url: https://cwe.mitre.org/data/definitions/20.html
+- id: CWE-200
+  full_id: CWE-200
+  name: Exposure of Sensitive Information to an Unauthorized Actor
+  url: https://cwe.mitre.org/data/definitions/200.html
+- id: CWE-209
+  full_id: CWE-209
+  name: Generation of Error Message Containing Sensitive Information
+  url: https://cwe.mitre.org/data/definitions/209.html
+- id: CWE-215
+  full_id: CWE-215
+  name: Insertion of Sensitive Information Into Debugging Code
+  url: https://cwe.mitre.org/data/definitions/215.html
+- id: CWE-22
+  full_id: CWE-22
+  name: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')
+  url: https://cwe.mitre.org/data/definitions/22.html
+- id: CWE-223
+  full_id: CWE-223
+  name: Omission of Security-relevant Information
+  url: https://cwe.mitre.org/data/definitions/223.html
+- id: CWE-250
+  full_id: CWE-250
+  name: Execution with Unnecessary Privileges
+  url: https://cwe.mitre.org/data/definitions/250.html
+- id: CWE-266
+  full_id: CWE-266
+  name: Incorrect Privilege Assignment
+  url: https://cwe.mitre.org/data/definitions/266.html
+- id: CWE-269
+  full_id: CWE-269
+  name: Improper Privilege Management
+  url: https://cwe.mitre.org/data/definitions/269.html
+- id: CWE-284
+  full_id: CWE-284
+  name: Improper Access Control
+  url: https://cwe.mitre.org/data/definitions/284.html
+- id: CWE-285
+  full_id: CWE-285
+  name: Improper Authorization
+  url: https://cwe.mitre.org/data/definitions/285.html
+- id: CWE-287
+  full_id: CWE-287
+  name: Improper Authentication
+  url: https://cwe.mitre.org/data/definitions/287.html
+- id: CWE-290
+  full_id: CWE-290
+  name: Authentication Bypass by Spoofing
+  url: https://cwe.mitre.org/data/definitions/290.html
+- id: CWE-306
+  full_id: CWE-306
+  name: Missing Authentication for Critical Function
+  url: https://cwe.mitre.org/data/definitions/306.html
+- id: CWE-345
+  full_id: CWE-345
+  name: Insufficient Verification of Data Authenticity
+  url: https://cwe.mitre.org/data/definitions/345.html
+- id: CWE-352
+  full_id: CWE-352
+  name: Cross-Site Request Forgery (CSRF)
+  url: https://cwe.mitre.org/data/definitions/352.html
+- id: CWE-384
+  full_id: CWE-384
+  name: Session Fixation
+  url: https://cwe.mitre.org/data/definitions/384.html
+- id: CWE-400
+  full_id: CWE-400
+  name: Uncontrolled Resource Consumption
+  url: https://cwe.mitre.org/data/definitions/400.html
+- id: CWE-407
+  full_id: CWE-407
+  name: Inefficient Algorithmic Complexity
+  url: https://cwe.mitre.org/data/definitions/407.html
+- id: CWE-416
+  full_id: CWE-416
+  name: Use After Free
+  url: https://cwe.mitre.org/data/definitions/416.html
+- id: CWE-434
+  full_id: CWE-434
+  name: Unrestricted Upload of File with Dangerous Type
+  url: https://cwe.mitre.org/data/definitions/434.html
+- id: CWE-476
+  full_id: CWE-476
+  name: NULL Pointer Dereference
+  url: https://cwe.mitre.org/data/definitions/476.html
+- id: CWE-494
+  full_id: CWE-494
+  name: Download of Code Without Integrity Check
+  url: https://cwe.mitre.org/data/definitions/494.html
+- id: CWE-502
+  full_id: CWE-502
+  name: Deserialization of Untrusted Data
+  url: https://cwe.mitre.org/data/definitions/502.html
+- id: CWE-522
+  full_id: CWE-522
+  name: Insufficiently Protected Credentials
+  url: https://cwe.mitre.org/data/definitions/522.html
+- id: CWE-532
+  full_id: CWE-532
+  name: Insertion of Sensitive Information into Log File
+  url: https://cwe.mitre.org/data/definitions/532.html
+- id: CWE-538
+  full_id: CWE-538
+  name: Insertion of Sensitive Information into Externally-Accessible File or Directory
+  url: https://cwe.mitre.org/data/definitions/538.html
+- id: CWE-613
+  full_id: CWE-613
+  name: Insufficient Session Expiration
+  url: https://cwe.mitre.org/data/definitions/613.html
+- id: CWE-639
+  full_id: CWE-639
+  name: Authorization Bypass Through User-Controlled Key
+  url: https://cwe.mitre.org/data/definitions/639.html
+- id: CWE-77
+  full_id: CWE-77
+  name: Improper Neutralization of Special Elements used in a Command ('Command Injection')
+  url: https://cwe.mitre.org/data/definitions/77.html
+- id: CWE-770
+  full_id: CWE-770
+  name: Allocation of Resources Without Limits or Throttling
+  url: https://cwe.mitre.org/data/definitions/770.html
+- id: CWE-776
+  full_id: CWE-776
+  name: Improper Restriction of Recursive Entity References in DTDs ('XML Entity Expansion')
+  url: https://cwe.mitre.org/data/definitions/776.html
+- id: CWE-778
+  full_id: CWE-778
+  name: Insufficient Logging
+  url: https://cwe.mitre.org/data/definitions/778.html
+- id: CWE-779
+  full_id: CWE-779
+  name: Logging of Excessive Data
+  url: https://cwe.mitre.org/data/definitions/779.html
+- id: CWE-78
+  full_id: CWE-78
+  name: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')
+  url: https://cwe.mitre.org/data/definitions/78.html
+- id: CWE-787
+  full_id: CWE-787
+  name: Out-of-bounds Write
+  url: https://cwe.mitre.org/data/definitions/787.html
+- id: CWE-79
+  full_id: CWE-79
+  name: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')
+  url: https://cwe.mitre.org/data/definitions/79.html
+- id: CWE-862
+  full_id: CWE-862
+  name: Missing Authorization
+  url: https://cwe.mitre.org/data/definitions/862.html
+- id: CWE-863
+  full_id: CWE-863
+  name: Incorrect Authorization
+  url: https://cwe.mitre.org/data/definitions/863.html
+- id: CWE-89
+  full_id: CWE-89
+  name: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')
+  url: https://cwe.mitre.org/data/definitions/89.html
+- id: CWE-90
+  full_id: CWE-90
+  name: Improper Neutralization of Special Elements used in an LDAP Query ('LDAP Injection')
+  url: https://cwe.mitre.org/data/definitions/90.html
+- id: CWE-917
+  full_id: CWE-917
+  name: Improper Neutralization of Special Elements used in an Expression Language Statement ('Expression Language Injection')
+  url: https://cwe.mitre.org/data/definitions/917.html
+- id: CWE-918
+  full_id: CWE-918
+  name: Server-Side Request Forgery (SSRF)
+  url: https://cwe.mitre.org/data/definitions/918.html
+- id: CWE-94
+  full_id: CWE-94
+  name: Improper Control of Generation of Code ('Code Injection')
+  url: https://cwe.mitre.org/data/definitions/94.html
+- id: CWE-943
+  full_id: CWE-943
+  name: Improper Neutralization of Special Elements in Data Query Logic
+  url: https://cwe.mitre.org/data/definitions/943.html

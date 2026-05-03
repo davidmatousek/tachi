@@ -1,0 +1,142 @@
+# Input Validation Schema
+#
+# Defines the supported input formats, recognition patterns,
+# and validation rules for architecture descriptions provided
+# to tachi for threat analysis.
+#
+# Producers: Integrators (developers invoking tachi)
+# Consumers: Input parser (F-005), orchestrator (F-002)
+#
+# Version: 1.0
+
+schema_version: "1.0"
+
+input:
+  format:
+    type: string
+    enum:
+      - auto
+      - ascii
+      - free-text
+      - mermaid
+      - plantuml
+      - c4
+    default: auto
+    description: >
+      Explicit format declaration. When set to 'auto', the parser
+      uses heuristic detection based on recognition patterns below.
+
+  content:
+    type: string
+    min_length: 10
+    description: >
+      Architecture description in the specified format. Must contain
+      at least one identifiable component and one data flow or
+      relationship between components.
+
+  context:
+    type: object
+    optional: true
+    description: >
+      Optional metadata providing additional context for threat
+      analysis (project name, sensitivity level, scope constraints).
+
+# Supported Formats (Priority Order)
+#
+# Priority determines the order in which heuristic detection
+# is attempted when format is set to 'auto'.
+
+formats:
+  ascii:
+    priority: 1
+    recognition_patterns:
+      - "Box-drawing characters: +--+, |, [...]"
+      - "Arrow indicators: -->, <--, <-->"
+      - "Component labels enclosed in brackets or boxes"
+    trust_boundary_notation: "Dashed lines (---) or labeled zones"
+    example: |
+      +------------------+
+      |  External User   |
+      +--------+---------+
+               |
+      - - - - -|- - - - - - Trust Boundary
+               |
+      +--------v---------+
+      |   API Gateway    |
+      +--------+---------+
+               |
+      +--------v---------+
+      |  User Database   |
+      +------------------+
+
+  free-text:
+    priority: 2
+    recognition_patterns:
+      - "No diagram syntax detected"
+      - "Prose description of components and relationships"
+      - "Natural language narrative format"
+    trust_boundary_notation: "Section headers or explicit 'Trust boundary:' markers"
+    example: |
+      The system consists of an API gateway that receives requests
+      from external users. The gateway forwards authenticated
+      requests to the backend service, which queries the user
+      database. A trust boundary exists between the external
+      zone and the internal network.
+
+  mermaid:
+    priority: 3
+    recognition_patterns:
+      - "Keywords: graph, flowchart, sequenceDiagram"
+      - "Node definitions: A[Label], B((Label)), C{Label}"
+      - "Edge definitions: -->, --->, -.->,"
+    trust_boundary_notation: "subgraph blocks"
+    example: |
+      flowchart TD
+          A[External User] --> B[API Gateway]
+          subgraph Internal Network
+              B --> C[Auth Service]
+              B --> D[(User DB)]
+          end
+
+  plantuml:
+    priority: 4
+    recognition_patterns:
+      - "Delimiters: @startuml / @enduml"
+      - "Component declarations: [Component], actor, database"
+      - "Relationship arrows: ->, -->, .>"
+    trust_boundary_notation: "boundary or rectangle with <<boundary>> stereotype"
+    example: |
+      @startuml
+      actor User
+      boundary "Trust Boundary" {
+          [API Gateway]
+          database "User DB"
+      }
+      User -> [API Gateway] : HTTPS
+      [API Gateway] -> [User DB] : Query
+      @enduml
+
+  c4:
+    priority: 5
+    recognition_patterns:
+      - "Keywords: Person, System, Container, Component"
+      - "C4 function syntax: Person(...), System(...)"
+      - "Relationship declarations: Rel(...)"
+    trust_boundary_notation: "System_Boundary or Enterprise_Boundary"
+    example: |
+      Person(user, "User", "External user")
+      System_Boundary(sb, "Internal") {
+          Container(api, "API Gateway", "Node.js")
+          ContainerDb(db, "User DB", "PostgreSQL")
+      }
+      Rel(user, api, "Uses", "HTTPS")
+      Rel(api, db, "Queries", "SQL")
+
+# Minimum Input Requirements
+#
+# - At least 1 identifiable component
+# - At least 1 data flow or relationship between components
+#
+# Error Conditions:
+# - Unsupported format: return error listing supported formats
+# - No components found: return error with minimum requirements

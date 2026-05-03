@@ -1,0 +1,608 @@
+{
+  "_comment": "COMPENSATING CONTROLS OUTPUT (compensating-controls.sarif) — the third link in tachi's SARIF supersession chain: threats.sarif → risk-scores.sarif → compensating-controls.sarif. This file extends risk-scores.sarif with per-finding control detection results, residual risk scores, and remediation recommendations. Key distinction: security-severity in risk-scores.sarif is the per-finding composite (inherent) score; in compensating-controls.sarif it is the per-finding RESIDUAL score after applying control reduction factors. Rule-level security-severity reflects the MAX residual score among that rule's findings. Fingerprints (findingId/v1) are preserved unchanged through all three files for GitHub Code Scanning alert continuity. Producers: agents/tachi/control-analyzer.md. Schema: schemas/compensating-controls.yaml.",
+  "_supersession_chain": "threats.sarif (static category severity) → risk-scores.sarif (per-finding composite score) → compensating-controls.sarif (per-finding RESIDUAL score). Uploading this file supersedes risk-scores.sarif alerts in GitHub Code Scanning without creating duplicates, because partialFingerprints are preserved.",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "tachi-control-analyzer",
+          "version": "1.0",
+          "semanticVersion": "1.0",
+          "informationUri": "https://github.com/owner/tachi",
+          "supportedTaxonomies": [
+            { "name": "OWASP", "index": 0 },
+            { "name": "CWE", "index": 1 }
+          ],
+          "rules": [
+            {
+              "id": "tachi/stride/spoofing",
+              "shortDescription": {
+                "text": "Identity spoofing threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker pretends to be something or someone else, such as forging authentication credentials, replaying tokens, or impersonating trusted components to gain unauthorized access."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "spoofing",
+                  "authentication",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "<max-residual-score-for-spoofing-findings>"
+              },
+              "relationships": [
+                {
+                  "target": { "id": "A07", "toolComponent": { "name": "OWASP" } },
+                  "kinds": ["relevant"]
+                },
+                {
+                  "target": { "id": "CWE-287", "toolComponent": { "name": "CWE" } },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/tampering",
+              "shortDescription": {
+                "text": "Data tampering threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker modifies data, code, or configuration without authorization, violating integrity guarantees and causing systems to operate on corrupted inputs or persist falsified records."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "tampering",
+                  "data-integrity",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "<max-residual-score-for-tampering-findings>"
+              },
+              "relationships": [
+                {
+                  "target": { "id": "A08", "toolComponent": { "name": "OWASP" } },
+                  "kinds": ["relevant"]
+                },
+                {
+                  "target": { "id": "CWE-345", "toolComponent": { "name": "CWE" } },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/repudiation",
+              "shortDescription": {
+                "text": "Repudiation threats"
+              },
+              "fullDescription": {
+                "text": "Threats where a user or system can deny having performed an action, and the system lacks sufficient evidence to prove otherwise, undermining accountability and forensic investigation."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "repudiation",
+                  "logging",
+                  "accountability",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "<max-residual-score-for-repudiation-findings>"
+              },
+              "relationships": [
+                {
+                  "target": { "id": "A09", "toolComponent": { "name": "OWASP" } },
+                  "kinds": ["relevant"]
+                },
+                {
+                  "target": { "id": "CWE-778", "toolComponent": { "name": "CWE" } },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/information-disclosure",
+              "shortDescription": {
+                "text": "Information disclosure threats"
+              },
+              "fullDescription": {
+                "text": "Threats where sensitive information is exposed to unauthorized parties through direct data leaks, verbose error messages, side-channel observations, or insufficient access controls on stored data."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "information-disclosure",
+                  "data-exposure",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "<max-residual-score-for-information-disclosure-findings>"
+              },
+              "relationships": [
+                {
+                  "target": { "id": "A01", "toolComponent": { "name": "OWASP" } },
+                  "kinds": ["relevant"]
+                },
+                {
+                  "target": { "id": "CWE-200", "toolComponent": { "name": "CWE" } },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/denial-of-service",
+              "shortDescription": {
+                "text": "Denial of service threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker degrades or eliminates system availability through resource exhaustion, flooding, algorithmic complexity exploitation, or cascading dependency failures."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "denial-of-service",
+                  "availability",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "<max-residual-score-for-denial-of-service-findings>"
+              },
+              "relationships": [
+                {
+                  "target": { "id": "A05", "toolComponent": { "name": "OWASP" } },
+                  "kinds": ["relevant"]
+                },
+                {
+                  "target": { "id": "CWE-400", "toolComponent": { "name": "CWE" } },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/elevation-of-privilege",
+              "shortDescription": {
+                "text": "Privilege escalation threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker gains higher privileges than authorized, performing actions reserved for administrators, accessing other users' resources, or bypassing access control boundaries."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "elevation-of-privilege",
+                  "access-control",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "<max-residual-score-for-elevation-of-privilege-findings>"
+              },
+              "relationships": [
+                {
+                  "target": { "id": "A01", "toolComponent": { "name": "OWASP" } },
+                  "kinds": ["relevant"]
+                },
+                {
+                  "target": { "id": "CWE-269", "toolComponent": { "name": "CWE" } },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/ai/agentic-threats",
+              "shortDescription": {
+                "text": "AI agent autonomy and misuse threats"
+              },
+              "fullDescription": {
+                "text": "Threats arising from autonomous agent behavior, including uncontrolled tool use, excessive autonomy, agent-to-agent trust violations, and lack of human oversight in high-impact operations."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "ai",
+                  "agentic",
+                  "autonomy",
+                  "tool-use",
+                  "mcp"
+                ],
+                "security-severity": "<max-residual-score-for-agentic-findings>"
+              },
+              "relationships": [
+                {
+                  "target": { "id": "CWE-693", "toolComponent": { "name": "CWE" } },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/ai/llm-threats",
+              "shortDescription": {
+                "text": "LLM-specific threats"
+              },
+              "fullDescription": {
+                "text": "Threats from prompt injection vulnerabilities, data poisoning risks, and model theft in LLM-integrated components, covering direct and indirect injection, RAG pipeline manipulation, and model extraction."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "ai",
+                  "llm",
+                  "prompt-injection",
+                  "data-poisoning",
+                  "model-theft"
+                ],
+                "security-severity": "<max-residual-score-for-llm-findings>"
+              },
+              "relationships": [
+                {
+                  "target": { "id": "CWE-74", "toolComponent": { "name": "CWE" } },
+                  "kinds": ["relevant"]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "taxonomies": [
+        {
+          "name": "OWASP",
+          "version": "2021",
+          "informationUri": "https://owasp.org/Top10/",
+          "organization": "OWASP Foundation",
+          "shortDescription": { "text": "OWASP Top 10 Web Application Security Risks" }
+        },
+        {
+          "name": "CWE",
+          "version": "4.13",
+          "informationUri": "https://cwe.mitre.org/",
+          "organization": "MITRE",
+          "shortDescription": { "text": "Common Weakness Enumeration" }
+        }
+      ],
+      "results": [
+        {
+          "_comment": "Example 1: Threat with control found — residual risk is reduced. security-severity reflects RESIDUAL score (inherent * (1 - reduction_factor)), not inherent. relatedLocations contains control evidence (file:line:snippet), NOT correlated peer findings. level is mapped from RESIDUAL severity band.",
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "<threat-description-from-source-finding> [Control: found]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<input-architecture-file-path>"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "<component-name-from-finding>",
+                  "fullyQualifiedName": "<trust-zone>/<component-name>",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: <control-category> detected in <file-path>"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<control-evidence-file-path>"
+                },
+                "region": {
+                  "startLine": "<control-evidence-line-number>"
+                }
+              }
+            },
+            {
+              "id": 1,
+              "message": {
+                "text": "Control evidence: <control-category> detected in <file-path>"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<control-evidence-file-path-2>"
+                },
+                "region": {
+                  "startLine": "<control-evidence-line-number-2>"
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "<preserved-from-source-risk-scores-sarif>",
+            "findingId/v1": "S-1"
+          },
+          "properties": {
+            "security-severity": "<residual-score-as-numeric-string>",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "<control-file-path>",
+                "line": "<line-number>",
+                "snippet": "<code-snippet-up-to-5-lines>"
+              },
+              {
+                "file": "<control-file-path-2>",
+                "line": "<line-number-2>",
+                "snippet": "<code-snippet-2>"
+              }
+            ],
+            "control-carry-forward": "<true|false>",
+            "control-effectiveness": "strong",
+            "inherent-risk": "<original-composite-score-from-risk-scores>",
+            "residual-risk": "<calculated-residual-score>",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "_comment": "Example 2: Threat with partial control — residual risk is partially reduced. Recommendation focuses on hardening the existing control (what is missing, how to extend). relatedLocations contains control evidence for the partial control found.",
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "<threat-description-from-source-finding> [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<input-architecture-file-path>"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "<component-name-from-finding>",
+                  "fullyQualifiedName": "<trust-zone>/<component-name>",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: <control-category> detected in <file-path>"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<control-evidence-file-path>"
+                },
+                "region": {
+                  "startLine": "<control-evidence-line-number>"
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "<preserved-from-source-risk-scores-sarif>",
+            "findingId/v1": "T-2"
+          },
+          "properties": {
+            "security-severity": "<residual-score-as-numeric-string>",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "<partial-control-file-path>",
+                "line": "<line-number>",
+                "snippet": "<code-snippet-showing-partial-control>"
+              }
+            ],
+            "control-carry-forward": "<true|false>",
+            "control-effectiveness": "moderate",
+            "inherent-risk": "<original-composite-score-from-risk-scores>",
+            "residual-risk": "<calculated-residual-score>",
+            "recommendation": "<hardening-guidance-for-partial-control>",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "_comment": "Example 3: Threat with no control found — residual risk equals inherent risk (no reduction). relatedLocations is omitted (no evidence to link). Recommendation provides full remediation guidance. level is mapped from the INHERENT severity band (since residual = inherent).",
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "<threat-description-from-source-finding> [Control: missing]"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<input-architecture-file-path>"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "<component-name-from-finding>",
+                  "fullyQualifiedName": "<trust-zone>/<component-name>",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "<preserved-from-source-risk-scores-sarif>",
+            "findingId/v1": "D-1"
+          },
+          "properties": {
+            "security-severity": "<residual-score-equals-inherent-score-as-numeric-string>",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": "<true|false>",
+            "control-effectiveness": "none",
+            "inherent-risk": "<original-composite-score-from-risk-scores>",
+            "residual-risk": "<same-as-inherent-no-reduction>",
+            "recommendation": "<full-remediation-guidance-what-to-implement-where-and-reference-patterns>",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "_comment": "Example 4: AI agentic threat with control found. Demonstrates AI-category rule with CWE-only taxonomy relationship. relatedLocations contains control evidence. Fingerprint preserved from upstream risk-scores.sarif. P0: control-effectiveness is deterministic from control-status (found=strong).",
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "<threat-description-from-source-finding> [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<input-architecture-file-path>"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "<component-name-from-finding>",
+                  "fullyQualifiedName": "<trust-zone>/<component-name>",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: <control-category> detected in <file-path>"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<control-evidence-file-path>"
+                },
+                "region": {
+                  "startLine": "<control-evidence-line-number>"
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "<preserved-from-source-risk-scores-sarif>",
+            "findingId/v1": "AG-1"
+          },
+          "properties": {
+            "security-severity": "<residual-score-as-numeric-string>",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "<control-file-path>",
+                "line": "<line-number>",
+                "snippet": "<code-snippet>"
+              }
+            ],
+            "control-carry-forward": "<true|false>",
+            "control-effectiveness": "strong",
+            "inherent-risk": "<original-composite-score-from-risk-scores>",
+            "residual-risk": "<calculated-residual-score>",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "_comment": "Example 5: Correlated finding group — primary finding with correlationGroup in fingerprints. In compensating-controls.sarif, relatedLocations serves DUAL purpose: control evidence entries use physicalLocation (file:line), while correlated peer references use logicalLocations (component-level). Distinguish by presence of physicalLocation vs logicalLocations on each entry.",
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "<threat-description-for-correlation-group-primary> [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<input-architecture-file-path>"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "<primary-component-name>",
+                  "fullyQualifiedName": "<trust-zone>/<primary-component-name>",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "_comment": "Control evidence entries — identified by physicalLocation with file:line",
+              "id": 0,
+              "message": {
+                "text": "Control evidence: <control-category> detected in <file-path>"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<control-evidence-file-path>"
+                },
+                "region": {
+                  "startLine": "<control-evidence-line-number>"
+                }
+              }
+            },
+            {
+              "_comment": "Correlated peer entries — identified by logicalLocations with component-level data",
+              "id": 1,
+              "message": {
+                "text": "<correlated-peer-finding-id>: <peer-threat-summary>"
+              },
+              "logicalLocations": [
+                {
+                  "name": "<peer-component-name>",
+                  "fullyQualifiedName": "<trust-zone>/<peer-component-name>",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "<preserved-from-source-risk-scores-sarif>",
+            "findingId/v1": "I-3",
+            "correlationGroup": "CG-1"
+          },
+          "properties": {
+            "security-severity": "<residual-score-as-numeric-string>",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "<control-file-path>",
+                "line": "<line-number>",
+                "snippet": "<code-snippet>"
+              }
+            ],
+            "control-carry-forward": "<true|false>",
+            "control-effectiveness": "moderate",
+            "inherent-risk": "<original-composite-score-from-risk-scores>",
+            "residual-risk": "<calculated-residual-score>",
+            "recommendation": "<hardening-guidance-for-partial-control>",
+            "effort-estimate": "Medium"
+          }
+        }
+      ]
+    }
+  ]
+}

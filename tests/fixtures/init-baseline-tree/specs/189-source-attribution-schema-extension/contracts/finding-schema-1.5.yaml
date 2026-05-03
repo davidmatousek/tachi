@@ -1,0 +1,160 @@
+# Finding Schema Contract v1.5 (F-A2)
+#
+# This contract file captures the Finding schema at version 1.5 after the
+# F-A2 additive extension. The source of truth for the runtime schema
+# remains `schemas/finding.yaml`; this file is authored for F-A3 / F-B /
+# ecosystem-integrator contract-testing reference.
+#
+# Delta from schema 1.4:
+#   - schema_version bumped "1.4" → "1.5"
+#   - NEW optional field: source_attribution (list[SourceAttributionRecord])
+#   - All other fields unchanged
+
+contract_name: finding-schema
+contract_version: "1.5"
+introduced_by_feature: 189  # F-A2 Source Attribution Schema Extension
+supersedes_version: "1.4"   # Feature 142 (agentic_pattern addition)
+
+# Additive-compatibility assertion per ADR-026 + F-A2 ADR:
+#   Complex-Shape Addition Clarifier — list-of-RECORD field.
+#   - (a) additive: yes (new field, no existing field modified)
+#   - (b) has default: yes (default state is absent/omitted per FR-006)
+#   - (c) schema shape unchanged: yes (top-level schema structure unchanged)
+#
+# Minor bump (1.4 → 1.5) warranted under the extended ADR-026 rule.
+
+delta_from_1_4:
+  - added_field:
+      name: source_attribution
+      type: list[record]
+      required: false
+      description: See contracts/source-attribution-record.yaml for the record shape.
+      conditional_key_semantic: true  # Field is absent when no attribution cited
+
+# Full Field Set at v1.5
+#
+# Per-field types match schemas/finding.yaml verbatim. Changes documented
+# in delta_from_1_4 above.
+
+schema_version: "1.5"
+
+finding_fields:
+  - name: id
+    type: string
+    required: true
+    pattern: "^(S|T|R|I|D|E|AG|LLM|AGP)-\\d+$"
+    since_version: "1.0"
+
+  - name: category
+    type: string
+    required: true
+    enum: [spoofing, tampering, repudiation, info-disclosure, denial-of-service, privilege-escalation, agentic, llm]
+    since_version: "1.0"
+
+  - name: component
+    type: string
+    required: true
+    since_version: "1.0"
+
+  - name: threat
+    type: string
+    required: true
+    since_version: "1.0"
+
+  - name: likelihood
+    type: string
+    required: true
+    enum: [LOW, MEDIUM, HIGH]
+    since_version: "1.0"
+
+  - name: impact
+    type: string
+    required: true
+    enum: [LOW, MEDIUM, HIGH]
+    since_version: "1.0"
+
+  - name: risk_level
+    type: string
+    required: true
+    enum: [Critical, High, Medium, Low, Note]
+    since_version: "1.0"
+
+  - name: mitigation
+    type: string
+    required: true
+    since_version: "1.0"
+
+  - name: references
+    type: list[string]
+    required: true  # Required for AI categories; see V1 validation
+    since_version: "1.0"
+
+  - name: dfd_element_type
+    type: string
+    required: true
+    enum: ["External Entity", "Process", "Data Store", "Data Flow"]
+    since_version: "1.0"
+
+  - name: maestro_layer
+    type: string
+    required: false
+    default: "Unclassified"
+    enum:
+      - "L1 — Foundation Model"
+      - "L2 — Data Operations"
+      - "L3 — Agent Framework"
+      - "L4 — Deployment Infrastructure"
+      - "L5 — Evaluation and Observability"
+      - "L6 — Security and Compliance"
+      - "L7 — Agent Ecosystem"
+      - "Unclassified"
+    since_version: "1.2"  # Feature 084 (L5-L7 canonical names corrected in Feature 136 at 1.3)
+
+  - name: agentic_pattern
+    type: string
+    required: false
+    default: none
+    enum: [agent_collusion, emergent_behavior, temporal_attack, trust_exploitation, communication_vulnerability, resource_competition, none, multiple]
+    since_version: "1.4"  # Feature 142 (ADR-026 minor-bump rule origin)
+
+  - name: delta_status
+    type: string
+    required: conditional  # required when baseline_present
+    default: NEW
+    enum: [NEW, UNCHANGED, UPDATED, RESOLVED]
+    since_version: "1.1"  # Feature 104
+
+  - name: baseline_run_id
+    type: string
+    required: false
+    nullable: true
+    since_version: "1.1"
+
+  # NEW in F-A2
+  - name: source_attribution
+    type: list[record]
+    required: false
+    conditional_key: true  # Omitted when absent; no implicit [] default
+    record_contract: contracts/source-attribution-record.yaml
+    since_version: "1.5"  # Feature 189 — this feature
+
+# Validation Rules (unchanged from schema 1.4 unless noted)
+
+validation_rules:
+  - rule: "id prefix must match category"
+    since_version: "1.0"
+    details: "S-* → spoofing, T-* → tampering, ..., AGP-* → agentic (Feature 142)"
+
+  - rule: "risk_level matches OWASP 3x3 (likelihood x impact)"
+    since_version: "1.0"
+
+  - rule: "references contains ≥1 entry for AI categories (agentic, llm)"
+    since_version: "1.0"
+
+  - rule: "source_attribution enum + referential integrity (V1-V5 per data-model.md)"
+    since_version: "1.5"
+    added_by: F-A2
+
+  - rule: "source_attribution conditional-key (absent vs present-but-empty distinction per V6)"
+    since_version: "1.5"
+    added_by: F-A2

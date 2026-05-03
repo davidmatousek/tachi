@@ -1,0 +1,62 @@
+# Stream 3 fixture: Mixed in-scope and Out-of-Scope records (F-241 T048).
+#
+# Purpose: exercise the in-scope filter semantic on a synthetic ATT&CK-shaped
+# subset where 3 of 5 records carry `out_of_scope: false` and 2 carry
+# `out_of_scope: true`. The in-scope-filter at
+# `scripts/extract-report-data.py:_load_framework_yaml_records(in_scope_only=True)`
+# must return exactly the 3 in-scope records; the raw call must return all 5.
+#
+# Records use ATT&CK-shaped IDs but are SYNTHETIC — these IDs do not
+# necessarily match the real ATT&CK catalog. Catalog correctness is exercised
+# elsewhere (`tests/schemas/test_taxonomy_integrity.py`).
+#
+# Expected behavior:
+#   - `_load_framework_yaml_records('synthetic_mixed', in_scope_only=False)` → 5 records
+#   - `_load_framework_yaml_records('synthetic_mixed', in_scope_only=True)`  → 3 records
+#   - `load_framework_yaml_record_counts()['synthetic_mixed']`               → 5
+#   - `load_framework_yaml_in_scope_record_counts()['synthetic_mixed']`      → 3
+
+# Record 1: in-scope (TA0001 Initial Access — design-time relevant)
+- id: T1190
+  full_id: ATT&CK-T1190
+  name: Exploit Public-Facing Application
+  url: https://attack.mitre.org/techniques/T1190/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+
+# Record 2: out-of-scope (TA0011 Command and Control — runtime, T040 verbatim rationale)
+- id: T1071
+  full_id: ATT&CK-T1071
+  name: Application Layer Protocol
+  url: https://attack.mitre.org/techniques/T1071/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0011 operates at runtime via active C2 channels; outside tachi's design-time threat-modeling scope."
+
+# Record 3: in-scope (TA0006 Credential Access — design-time relevant for credential storage surfaces)
+- id: T1078
+  full_id: ATT&CK-T1078
+  name: Valid Accounts
+  url: https://attack.mitre.org/techniques/T1078/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+
+# Record 4: out-of-scope (TA0010 Exfiltration — runtime, T040 verbatim rationale)
+- id: T1041
+  full_id: ATT&CK-T1041
+  name: Exfiltration Over C2 Channel
+  url: https://attack.mitre.org/techniques/T1041/
+  cwe_refs: []
+  out_of_scope: true
+  out_of_scope_rationale: "Tactic TA0010 operates at runtime via active data egress; outside tachi's design-time threat-modeling scope."
+
+# Record 5: in-scope (TA0042 Resource Development — design-time relevant for supply-chain surfaces)
+- id: T1195
+  full_id: ATT&CK-T1195
+  name: Supply Chain Compromise
+  url: https://attack.mitre.org/techniques/T1195/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""

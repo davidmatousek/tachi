@@ -1,0 +1,21 @@
+# F-3 test fixture — valid Category-9 A2A finding
+# Feature 219 / Pattern Category 9: Insecure Inter-Agent Communication (A2A)
+# Conforms to schemas/finding.yaml v1.7 + F-A2 source_attribution contract per ADR-028
+# This fixture MUST pass F-A2 validate_source_attribution() at orchestrator Phase 4
+id: "AG-9"
+category: "agentic"
+component: "Inter-Agent Communication Channel: Orchestrator-to-Worker"
+threat: "An orchestrator agent dispatches workloads to specialized worker agents over plain HTTP without mutual TLS or message signing. A network-positioned attacker on the same compute substrate intercepts and tampers with the orchestrator's instructions; the receiving worker has no authentic-source signal and executes the modified instruction. The relay topology amplifies the surface because no taint propagation carries the upstream sender's authority labels to the worker's downstream actions."
+likelihood: HIGH
+impact: HIGH
+risk_level: Critical
+mitigation: "Mutual TLS (mTLS) on every inter-agent channel + HMAC envelope signing with per-call nonce + inter-agent taint labels for authority propagation across relays."
+references:
+  - "OWASP ASI07:2026"
+  - "https://cwe.mitre.org/data/definitions/287.html"
+  - "https://atlas.mitre.org/techniques/AML.T0060"
+source_attribution:
+  - {taxonomy: owasp, id: ASI07, relationship: primary}
+  - {taxonomy: cwe, id: CWE-287, relationship: related}
+  - {taxonomy: mitre-atlas, id: AML.T0060, relationship: related}
+dfd_element_type: "Process"

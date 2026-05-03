@@ -1,0 +1,157 @@
+# Source Attribution Record Contract (F-A2)
+#
+# This contract file captures the record shape for the new `source_attribution`
+# array field introduced in schemas/finding.yaml schema version 1.5 (Feature 189).
+#
+# This file is authored for F-A3 / F-B / ecosystem-integrator reference. The
+# source of truth for the runtime schema remains `schemas/finding.yaml`.
+# Downstream features requiring contract-testing pinning should copy this file
+# into their own contracts/ directory and diff against this version.
+
+contract_name: source-attribution-record
+contract_version: "1.0"
+introduced_by_feature: 189  # F-A2 Source Attribution Schema Extension
+introduced_in_schema_version: "1.5"
+status: draft  # transitions to accepted at F-A2 PR merge
+
+# Record Shape
+#
+# Each SourceAttributionRecord is a YAML mapping with exactly 2 or 3 keys.
+# When the `relationship` key is omitted on input, the parser injects it with
+# the default value `primary` on emission.
+
+fields:
+  taxonomy:
+    type: string
+    required: true
+    description: >
+      Framework identifier keying into F-A1 catalog YAMLs under
+      schemas/taxonomy/. Closed 5-value enum.
+    enum:
+      - owasp
+      - mitre-attack
+      - mitre-atlas
+      - nist-ai-rmf
+      - cwe
+    rationale: >
+      F-A1 defines 7 taxonomies (5 external + 2 internal); F-A2 restricts
+      citations to the 5 external frameworks. Internal taxonomies
+      (tachi-control-category, tachi-stride-ai-category) are the recipient
+      side of crosswalk edges, not frameworks tachi claims coverage of.
+
+  id:
+    type: string
+    required: true
+    description: >
+      Taxonomy-internal identifier. Must resolve as a top-level `id:` key
+      in schemas/taxonomy/{taxonomy}.yaml. Non-empty.
+    examples:
+      - "A01"          # OWASP 2021 Top 10 (owasp.yaml)
+      - "LLM05"        # OWASP LLM Top 10:2025 (owasp.yaml)
+      - "T1190"        # MITRE ATT&CK (mitre-attack.yaml)
+      - "AML.T0051"    # MITRE ATLAS (mitre-atlas.yaml)
+      - "MEASURE 2.7"  # NIST AI RMF 1.0 (nist-ai-rmf.yaml)
+      - "CWE-1426"     # CWE (cwe.yaml)
+    validation:
+      - "Non-empty string"
+      - "Resolves as top-level id in schemas/taxonomy/{taxonomy}.yaml (checked by validate_source_attribution helper)"
+
+  relationship:
+    type: string
+    required: false
+    default: primary
+    description: >
+      How the finding relates to the cited item. Closed 3-value enum.
+      Default `primary` is injected by the parser when omitted from input.
+    enum:
+      - primary   # Canonical mapping — the finding's principal framework item
+      - related   # Adjacent mapping — the finding touches this item but not canonically
+      - derived   # Derived mapping — inferred via F-A1 crosswalk (e.g., a CWE implied by a primary OWASP citation)
+    rationale: >
+      Closed enum prevents vocabulary drift across populators. Default
+      `primary` respects the common case — most citations will be principal
+      mappings. F-B coverage attestation may weight `primary` differently
+      from `related` or `derived` when computing per-framework coverage
+      percentages.
+
+# Usage Examples
+
+example_single_primary:
+  description: Finding citing one primary OWASP item
+  source_attribution:
+    - taxonomy: owasp
+      id: LLM05
+      relationship: primary
+
+example_multi_framework_primary:
+  description: Finding citing three primary items across three frameworks (US-189-1 canonical example)
+  source_attribution:
+    - taxonomy: owasp
+      id: LLM05
+      relationship: primary
+    - taxonomy: cwe
+      id: CWE-1426
+      relationship: primary
+    - taxonomy: mitre-atlas
+      id: AML.T0051
+      relationship: primary
+
+example_primary_with_derived:
+  description: Finding citing one primary with CWE derived via F-A1 crosswalk
+  source_attribution:
+    - taxonomy: owasp
+      id: LLM05
+      relationship: primary
+    - taxonomy: cwe
+      id: CWE-79
+      relationship: derived  # Derived via owasp→cwe crosswalk edge
+
+example_relationship_omitted:
+  description: Finding relying on parser default-injection of relationship=primary
+  source_attribution:
+    - taxonomy: owasp
+      id: A01
+    # Parser output will have relationship: primary after _extract_source_attribution
+    # (FR-004 default-injection behavior)
+
+example_absent:
+  description: Finding without source_attribution (absent-key semantic)
+  # source_attribution field is OMITTED entirely from the finding mapping
+  # Parser will NOT inject a default [] value (FR-006 conditional-key semantic)
+
+example_empty_array:
+  description: Finding with explicit empty attribution (present-but-empty)
+  source_attribution: []
+  # Parser preserves the empty array verbatim (FR-006 edge case)
+
+# Consumer Contract
+
+consumers:
+  f_a2_parser:
+    name: scripts/tachi_parsers.py::parse_threats_findings
+    behavior: >
+      Round-trips source_attribution per the conditional-key shape
+      (omit when absent; emit verbatim when present). Injects relationship
+      default `primary` on emission. Raises ValueError on parser-tier
+      enum or shape violations.
+
+  f_a2_validator:
+    name: scripts/tachi_parsers.py::validate_source_attribution
+    behavior: >
+      Called from orchestrator Phase 4 (per Q2-B architect preference).
+      Loads schemas/taxonomy/{taxonomy}.yaml per-invocation (cached) and
+      asserts every record's id resolves. Returns structured error list.
+
+  f_a3_populators:
+    name: future feature (F-A3)
+    behavior: >
+      Threat-detection agents will emit source_attribution values during
+      detection. F-A3 will design per-agent populator logic. F-A2 does not
+      wire populators.
+
+  f_b_coverage:
+    name: future feature (F-B Coverage Attestation Report Section)
+    behavior: >
+      Reads source_attribution arrays across all findings, joins against
+      schemas/taxonomy/crosswalk.yaml, produces per-framework coverage
+      narrative.

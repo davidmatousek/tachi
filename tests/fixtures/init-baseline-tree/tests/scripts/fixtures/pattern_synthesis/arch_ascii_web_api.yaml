@@ -1,0 +1,22 @@
+# Synthetic Phase 1 abstract for ascii-web-api baseline.
+# Expected: multi-agent gate predicate FALSE (no agentic components).
+
+name: ascii-web-api
+description: >
+  A REST web API written in Go that exposes CRUD operations on a
+  resource collection backed by a MySQL database. Requests are
+  authenticated via API keys and logged to a file-based audit log.
+
+components:
+  - name: Go API Server
+    category: process
+  - name: MySQL
+    category: data_store
+  - name: Audit Log
+    category: data_store
+
+data_flows:
+  - source: Go API Server
+    target: MySQL
+  - source: Go API Server
+    target: Audit Log

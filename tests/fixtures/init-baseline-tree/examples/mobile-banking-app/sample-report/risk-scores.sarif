@@ -1,0 +1,1568 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "tachi-risk-scorer",
+          "version": "1.0",
+          "semanticVersion": "1.0",
+          "informationUri": "https://github.com/owner/tachi",
+          "supportedTaxonomies": [
+            {
+              "name": "OWASP Top 10 2021",
+              "index": 0,
+              "guid": "bef4cc09-9b1f-4b02-beca-25e3f93686b4",
+              "organization": "OWASP",
+              "shortDescription": {
+                "text": "OWASP Top 10 2021"
+              }
+            },
+            {
+              "name": "CWE",
+              "index": 1,
+              "guid": "25f72d7e-8a92-459d-ad9e-13a458b6f809",
+              "version": "4.13",
+              "organization": "MITRE",
+              "shortDescription": {
+                "text": "Common Weakness Enumeration 4.13"
+              }
+            }
+          ],
+          "rules": [
+            {
+              "id": "tachi/stride/spoofing",
+              "name": "Spoofing",
+              "shortDescription": {
+                "text": "Spoofing threats: identity and authentication attacks"
+              },
+              "fullDescription": {
+                "text": "STRIDE Spoofing threats targeting authentication, credential management, and identity verification weaknesses."
+              },
+              "properties": {
+                "tags": ["security", "stride", "spoofing"],
+                "security-severity": "9.3"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A07",
+                    "guid": "bef4cc09-9b1f-4b02-beca-25e3f93686b4",
+                    "toolComponent": {
+                      "name": "OWASP Top 10 2021",
+                      "guid": "bef4cc09-9b1f-4b02-beca-25e3f93686b4"
+                    }
+                  },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/tampering",
+              "name": "Tampering",
+              "shortDescription": {
+                "text": "Tampering threats: data and code integrity attacks"
+              },
+              "fullDescription": {
+                "text": "STRIDE Tampering threats targeting data integrity, code signing, and input validation weaknesses."
+              },
+              "properties": {
+                "tags": ["security", "stride", "tampering"],
+                "security-severity": "8.1"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A03",
+                    "guid": "bef4cc09-9b1f-4b02-beca-25e3f93686b4",
+                    "toolComponent": {
+                      "name": "OWASP Top 10 2021",
+                      "guid": "bef4cc09-9b1f-4b02-beca-25e3f93686b4"
+                    }
+                  },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/repudiation",
+              "name": "Repudiation",
+              "shortDescription": {
+                "text": "Repudiation threats: audit and accountability gaps"
+              },
+              "fullDescription": {
+                "text": "STRIDE Repudiation threats targeting audit logging, event integrity, and non-repudiation controls."
+              },
+              "properties": {
+                "tags": ["security", "stride", "repudiation"],
+                "security-severity": "7.0"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A09",
+                    "guid": "bef4cc09-9b1f-4b02-beca-25e3f93686b4",
+                    "toolComponent": {
+                      "name": "OWASP Top 10 2021",
+                      "guid": "bef4cc09-9b1f-4b02-beca-25e3f93686b4"
+                    }
+                  },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/information-disclosure",
+              "name": "InformationDisclosure",
+              "shortDescription": {
+                "text": "Information Disclosure threats: data exposure and privacy violations"
+              },
+              "fullDescription": {
+                "text": "STRIDE Information Disclosure threats targeting data confidentiality, encryption, and access control weaknesses."
+              },
+              "properties": {
+                "tags": ["security", "stride", "information-disclosure"],
+                "security-severity": "7.5"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A02",
+                    "guid": "bef4cc09-9b1f-4b02-beca-25e3f93686b4",
+                    "toolComponent": {
+                      "name": "OWASP Top 10 2021",
+                      "guid": "bef4cc09-9b1f-4b02-beca-25e3f93686b4"
+                    }
+                  },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/denial-of-service",
+              "name": "DenialOfService",
+              "shortDescription": {
+                "text": "Denial of Service threats: availability and resource exhaustion attacks"
+              },
+              "fullDescription": {
+                "text": "STRIDE Denial of Service threats targeting service availability, rate limiting, and resource management."
+              },
+              "properties": {
+                "tags": ["security", "stride", "denial-of-service"],
+                "security-severity": "6.2"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A05",
+                    "guid": "bef4cc09-9b1f-4b02-beca-25e3f93686b4",
+                    "toolComponent": {
+                      "name": "OWASP Top 10 2021",
+                      "guid": "bef4cc09-9b1f-4b02-beca-25e3f93686b4"
+                    }
+                  },
+                  "kinds": ["relevant"]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/elevation-of-privilege",
+              "name": "ElevationOfPrivilege",
+              "shortDescription": {
+                "text": "Elevation of Privilege threats: authorization and access control bypasses"
+              },
+              "fullDescription": {
+                "text": "STRIDE Elevation of Privilege threats targeting authorization boundaries, permission models, and access control enforcement."
+              },
+              "properties": {
+                "tags": ["security", "stride", "elevation-of-privilege"],
+                "security-severity": "8.5"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A01",
+                    "guid": "bef4cc09-9b1f-4b02-beca-25e3f93686b4",
+                    "toolComponent": {
+                      "name": "OWASP Top 10 2021",
+                      "guid": "bef4cc09-9b1f-4b02-beca-25e3f93686b4"
+                    }
+                  },
+                  "kinds": ["relevant"]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "taxonomies": [
+        {
+          "name": "OWASP Top 10 2021",
+          "guid": "bef4cc09-9b1f-4b02-beca-25e3f93686b4",
+          "organization": "OWASP",
+          "shortDescription": {
+            "text": "OWASP Top 10 2021"
+          },
+          "taxa": [
+            { "id": "A01", "name": "BrokenAccessControl" },
+            { "id": "A02", "name": "CryptographicFailures" },
+            { "id": "A03", "name": "Injection" },
+            { "id": "A04", "name": "InsecureDesign" },
+            { "id": "A05", "name": "SecurityMisconfiguration" },
+            { "id": "A06", "name": "VulnerableAndOutdatedComponents" },
+            { "id": "A07", "name": "IdentificationAndAuthenticationFailures" },
+            { "id": "A08", "name": "SoftwareAndDataIntegrityFailures" },
+            { "id": "A09", "name": "SecurityLoggingAndMonitoringFailures" },
+            { "id": "A10", "name": "ServerSideRequestForgery" }
+          ]
+        },
+        {
+          "name": "CWE",
+          "guid": "25f72d7e-8a92-459d-ad9e-13a458b6f809",
+          "version": "4.13",
+          "organization": "MITRE",
+          "shortDescription": {
+            "text": "Common Weakness Enumeration 4.13"
+          },
+          "taxa": []
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "Long-Lived Session Token Replay: Auth tokens persisted on device without rotation policy or revocation trigger. An attacker obtaining the token can replay it indefinitely with no expiry enforcement.",
+            "markdown": "Enforce short-lived session tokens (max 15 min TTL); implement refresh token rotation with revocation on suspicious signals (new device, unusual location). References: OWASP A07:2021; CWE-613"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "Mobile Banking Customer",
+                "fullyQualifiedName": "User Zone/Mobile Banking Customer",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "S-5"
+          },
+          "properties": {
+            "security-severity": "9.3",
+            "cvss-base-score": "9.8",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+            "exploitability": "9.0",
+            "scalability": "8.3",
+            "reachability": "9.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Critical",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "24h",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-04-30",
+            "maestro-layer": "L7 — Agent Ecosystem"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "M8 Privilege-Gain: Exported Debug Activity Bypassing Auth Boundary: WellnessBankDebugActivity retained in production release build with android:exported=\"true\"; accessible via adb shell am start; no BuildConfig.DEBUG runtime guard; no Play Integrity attestation gate; privileged-action flow connects directly to WellnessBank Android Client bypassing the standard authentication boundary.",
+            "markdown": "Strip WellnessBankDebugActivity from release builds via Android Gradle build-flavor configuration. Implement build-time validation asserting no *Debug* components ship in release artifacts. Integrate Play Integrity API on all privileged-action paths. References: OWASP M8:2024; CWE-732; OWASP MASVS-PLATFORM; OWASP MASTG-RESILIENCE"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBankDebugActivity",
+                "fullyQualifiedName": "Device Zone/WellnessBankDebugActivity",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "E-1"
+          },
+          "properties": {
+            "security-severity": "8.5",
+            "cvss-base-score": "10.0",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+            "exploitability": "9.5",
+            "scalability": "8.0",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-05-06",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "Unauthorized Money Transfer via Intent Hijacking and Privilege Escalation: Exported MoneyTransferActivity with no android:permission allows any installed app to invoke the money-movement flow. Combined with missing re-authentication at Activity entry, a malicious co-installed app escalates from unprivileged-app context to authenticated-banking-session context, executing fund transfers without any user interaction.",
+            "markdown": "Set android:exported=\"false\" or enforce android:permission with signature protection level. Require re-authentication at every money-movement Activity entry. Implement per-Intent caller verification (getCallingPackage() with package allowlist). References: OWASP M8:2024; OWASP M4:2024; CWE-862; CWE-732"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "MoneyTransferActivity",
+                "fullyQualifiedName": "Device Zone/MoneyTransferActivity",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "E-2"
+          },
+          "properties": {
+            "security-severity": "8.3",
+            "cvss-base-score": "9.3",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:N",
+            "exploitability": "9.5",
+            "scalability": "8.5",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-05-06",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "Mobile IPC Input Validation (M4) — Intent Hijacking into Money Movement: Exported MoneyTransferActivity with android:exported=\"true\" and no android:permission accepts Intent extras (recipient_account, amount) from any installed app or ADB shell directly into the money-movement flow without re-authentication, schema validation, or per-Intent caller verification.",
+            "markdown": "Set android:exported=\"false\" unless cross-app invocation is required. If exported, declare android:permission with signature protection level. Validate all Intent extras against a strict schema; require re-authentication on every money-movement invocation. References: OWASP M4:2024; OWASP MASTG-CODE; OWASP MASVS-PLATFORM; CWE-20; CWE-862"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "MoneyTransferActivity",
+                "fullyQualifiedName": "Device Zone/MoneyTransferActivity",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "T-3"
+          },
+          "properties": {
+            "security-severity": "8.1",
+            "cvss-base-score": "9.3",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:N",
+            "exploitability": "8.8",
+            "scalability": "8.5",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-05-06",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "Insufficient Mobile Binary Protections (M7): No ProGuard/R8 obfuscation in release build; no root-detection on security-critical features; no anti-tampering integrity check at startup; no debugger detection at sensitive-flow boundaries. An attacker can use Frida to hook security-critical functions, bypass client-side controls, and extract embedded API keys and session-handling logic.",
+            "markdown": "Enable ProGuard/R8 (minifyEnabled true, shrinkResources true) in the release build. Integrate Play Integrity API on security-critical flows. Implement RASP with anti-tampering stubs and APK-signature integrity self-check. References: OWASP M7:2024; OWASP MASTG-RESILIENCE; OWASP MASVS-RESILIENCE"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBank Android Client",
+                "fullyQualifiedName": "Device Zone/WellnessBank Android Client",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "T-4"
+          },
+          "properties": {
+            "security-severity": "7.7",
+            "cvss-base-score": "9.3",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:N",
+            "exploitability": "7.8",
+            "scalability": "8.3",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-05-06",
+            "maestro-layer": "L7 — Agent Ecosystem"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Insufficient Mobile Cryptography (M10): Custom key derivation from 4-digit PIN via PBKDF2-HMAC-SHA1 with 1000 iterations and no salting. The 10,000-PIN keyspace is exhausted in under one second on commodity GPU hardware. No platform-managed KMS key wrapping; no envelope encryption on cached credentials; no key rotation policy.",
+            "markdown": "Replace PIN-based KDF with Argon2id or PBKDF2-HMAC-SHA256 at >=600,000 iterations with per-device unique salt. Wrap the PIN-derived key with an Android Keystore-bound hardware key in an envelope-encryption scheme. References: OWASP M10:2024; OWASP MASTG-CRYPTO; OWASP MASVS-CRYPTO; CWE-916; CWE-321"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBank Android Client",
+                "fullyQualifiedName": "Device Zone/WellnessBank Android Client",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "I-4"
+          },
+          "properties": {
+            "security-severity": "7.5",
+            "cvss-base-score": "7.7",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+            "exploitability": "9.0",
+            "scalability": "8.3",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-05-06",
+            "maestro-layer": "L7 — Agent Ecosystem"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "Insecure Mobile Authentication/Authorization (M3): No biometric step-up on money-movement operations; no per-session token re-authentication on sensitive actions; no challenge-response on transaction confirmation; no risk-based MFA. An attacker who obtains a valid session token can execute fund transfers without any biometric or secondary-factor challenge.",
+            "markdown": "Enforce BiometricPrompt step-up authentication on all money-movement, profile-change, and KYC operations. Bind refresh tokens to device fingerprint using Play Integrity API attestation; rotate on every refresh. Enforce server-side re-validation on all sensitive API endpoints. References: OWASP M3:2024; OWASP MASTG-AUTH; OWASP MASVS-AUTH; CWE-308"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBank Android Client",
+                "fullyQualifiedName": "Device Zone/WellnessBank Android Client",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "S-2"
+          },
+          "properties": {
+            "security-severity": "7.3",
+            "cvss-base-score": "8.6",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+            "exploitability": "7.3",
+            "scalability": "8.3",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-05-06",
+            "maestro-layer": "L7 — Agent Ecosystem"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Inadequate Mobile Privacy Controls (M6): No FLAG_SECURE on transaction-history Activity Window; recents-screen screenshots and screen-recording capture account balances, transaction amounts, and recipient names. No privacy-consent gate on analytics emission. PII cached indefinitely in WellnessBankLocalDB with no TTL expiry.",
+            "markdown": "Apply FLAG_SECURE to all Activity Windows rendering PII or financial data. Implement privacy-consent gate before initializing analytics SDK. Apply data-minimization on caches with TTL enforcement. References: OWASP M6:2024; OWASP MASTG-PRIVACY; OWASP MASVS-PRIVACY; CWE-200"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBank Android Client",
+                "fullyQualifiedName": "Device Zone/WellnessBank Android Client",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "I-2"
+          },
+          "properties": {
+            "security-severity": "7.0",
+            "cvss-base-score": "6.2",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+            "exploitability": "8.8",
+            "scalability": "8.5",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-05-06",
+            "maestro-layer": "L7 — Agent Ecosystem"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Insecure Mobile Data Storage (M9) — Credential Cache: Auth tokens stored in plaintext SharedPreferences MODE_PRIVATE accessible to any process with root access or via ADB backup on older Android versions. The credential cache contains long-lived session tokens sufficient for full account access without any PIN or biometric re-challenge.",
+            "markdown": "Migrate WellnessBankCredentialCache to EncryptedSharedPreferences (Jetpack Security) backed by Android Keystore. Enforce allowBackup=\"false\". Implement credential TTL and rotation policy. References: OWASP M1:2024; OWASP M9:2024; CWE-312; CWE-311"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBankCredentialCache",
+                "fullyQualifiedName": "Device Zone/WellnessBankCredentialCache",
+                "kind": "data-store"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "I-7"
+          },
+          "properties": {
+            "security-severity": "7.0",
+            "cvss-base-score": "6.2",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+            "exploitability": "9.0",
+            "scalability": "8.5",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-05-06",
+            "maestro-layer": "L2 — Data Operations"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "Deniable Financial Transactions: No non-repudiation controls on money-movement operations. A customer can plausibly deny initiating any transfer with no cryptographic evidence of user intent available to the bank.",
+            "markdown": "Implement transaction signing at the app layer using BiometricPrompt.CryptoObject (StrongBox-backed). Retain signed transaction records server-side as non-repudiation evidence. References: OWASP A09:2021; CWE-345"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "Mobile Banking Customer",
+                "fullyQualifiedName": "User Zone/Mobile Banking Customer",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "R-3"
+          },
+          "properties": {
+            "security-severity": "7.0",
+            "cvss-base-score": "4.8",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+            "exploitability": "8.3",
+            "scalability": "6.0",
+            "reachability": "9.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-05-06",
+            "maestro-layer": "L7 — Agent Ecosystem"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "Improper Mobile Credential Usage (M1): Auth token and username persisted in Android SharedPreferences MODE_PRIVATE without EncryptedSharedPreferences or Android Keystore binding. Attacker recovering a lost, stolen, or rooted device can dump the app's data partition and extract long-lived credentials, achieving full account impersonation without any PIN or biometric challenge.",
+            "markdown": "Migrate credential storage to Android Keystore + EncryptedSharedPreferences (Jetpack Security). Bind key release to BiometricPrompt.CryptoObject with StrongBox-backed keys. Rotate session and refresh tokens on every use with server-side revocation. References: OWASP M1:2024; OWASP MASTG-AUTH; CWE-287; CWE-312"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBank Android Client",
+                "fullyQualifiedName": "Device Zone/WellnessBank Android Client",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "S-1"
+          },
+          "properties": {
+            "security-severity": "7.0",
+            "cvss-base-score": "7.7",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+            "exploitability": "7.5",
+            "scalability": "7.8",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-05-06",
+            "maestro-layer": "L7 — Agent Ecosystem"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "M8 Accountability-Loss: Mobile Audit Log Gaps: No structured audit logging on login, logout, step-up, or money-movement events; debug Log.d(\"auth\", \"user=\" + username + \" token=\" + token) retained in release build leaks credentials to on-device logcat; no tamper-evident timestamping; no off-device forwarding to immutable store.",
+            "markdown": "Emit structured audit log entries on every auth state transition with outcome, UTC timestamp, and correlation ID. Gate all Log.d/Log.v calls on BuildConfig.DEBUG. Add server-attested timestamps (RFC 3161) to transaction audit records. Forward audit records off-device to an immutable backend audit pipeline. References: OWASP M8:2024; CWE-778; CWE-223; OWASP MASVS-CODE"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBank Android Client",
+                "fullyQualifiedName": "Device Zone/WellnessBank Android Client",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "R-1"
+          },
+          "properties": {
+            "security-severity": "6.9",
+            "cvss-base-score": "6.1",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+            "exploitability": "8.5",
+            "scalability": "8.5",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "L7 — Agent Ecosystem"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Debug Log PII Leakage via Logcat: Debug Log.d(\"auth\", \"user=\" + username + \" token=\" + token) retained in the release build writes authentication material (username and session token) to the device-shared logcat sink accessible to other privileged apps or root shell.",
+            "markdown": "Gate all Log.d/Log.v/Log.w calls on BuildConfig.DEBUG via a logging facade (Timber). Replace sensitive-context logs with redacted structured entries. Run a lint rule (LogDetector) in CI to fail the build on unguarded Log.d usage. References: OWASP M8:2024; CWE-532; OWASP MASTG-CODE"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBank Android Client",
+                "fullyQualifiedName": "Device Zone/WellnessBank Android Client",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "I-8"
+          },
+          "properties": {
+            "security-severity": "6.8",
+            "cvss-base-score": "5.5",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+            "exploitability": "9.0",
+            "scalability": "8.8",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "L7 — Agent Ecosystem"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "Credential Theft via SharedPreferences Extraction: Long-lived auth tokens stored in MODE_PRIVATE SharedPreferences are accessible to an attacker who roots the device or uses ADB backup on pre-Android-12 devices. No live user presence is required for offline credential recovery.",
+            "markdown": "Replace SharedPreferences with EncryptedSharedPreferences backed by Android Keystore. Enforce credential rotation policy; ensure refresh token has short TTL and is bound to device fingerprint. References: OWASP M1:2024; CWE-312"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBank Android Client",
+                "fullyQualifiedName": "Device Zone/WellnessBank Android Client",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "S-3"
+          },
+          "properties": {
+            "security-severity": "6.8",
+            "cvss-base-score": "6.8",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N",
+            "exploitability": "7.8",
+            "scalability": "7.8",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "L7 — Agent Ecosystem"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Insecure Mobile Communication (M5) — Client-to-Backend: TLS to WellnessBank Backend API without certificate pinning (no OkHttp CertificatePinner, no Network Security Config pin-set). An attacker on a rogue Wi-Fi access point can MITM the TLS session, intercepting session tokens, transaction payloads, account balances, and PII in transit.",
+            "markdown": "Configure OkHttp CertificatePinner with primary + backup pins on all backend hosts. Declare pin-set in network_security_config.xml. Set minimum TLS version to TLS 1.3; reject RC4/3DES. References: OWASP M5:2024; OWASP MASTG-NETWORK; OWASP MASVS-NETWORK; CWE-295"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBank Android Client",
+                "fullyQualifiedName": "Device Zone/WellnessBank Android Client",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "I-1"
+          },
+          "properties": {
+            "security-severity": "6.4",
+            "cvss-base-score": "6.8",
+            "cvss-vector": "CVSS:3.1/AV:A/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N",
+            "exploitability": "7.0",
+            "scalability": "6.8",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "L7 — Agent Ecosystem"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "Missing Rate Limiting on Backend Transaction API: No declared rate limiting or request throttling on the mobile backend REST API. High-volume transaction requests from compromised or cloned client apps can saturate backend processing capacity.",
+            "markdown": "Implement per-device rate limiting on all transaction endpoints (max 10 transfers/minute/device). Deploy WAF with DDoS mitigation. Require Play Integrity attestation on transaction requests to reject non-genuine clients. References: OWASP A05:2021; CWE-400"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBank Backend API",
+                "fullyQualifiedName": "Backend Zone/WellnessBank Backend API",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "D-2"
+          },
+          "properties": {
+            "security-severity": "6.2",
+            "cvss-base-score": "7.0",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+            "exploitability": "8.0",
+            "scalability": "7.5",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "L7 — Agent Ecosystem"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "Unlogged Debug Activity Invocations: Debug Activity invocations via adb shell am start or external Intent are not audit logged. Privileged actions executed through the debug channel leave no accountability trail.",
+            "markdown": "Strip WellnessBankDebugActivity from release builds. In the interim, emit a security audit event on every invocation including caller identity and invoked operation. References: OWASP M8:2024; CWE-778"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBankDebugActivity",
+                "fullyQualifiedName": "Device Zone/WellnessBankDebugActivity",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "R-4"
+          },
+          "properties": {
+            "security-severity": "6.1",
+            "cvss-base-score": "4.0",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+            "exploitability": "8.8",
+            "scalability": "8.0",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "Mobile Supply Chain Integrity (M2) — Analytics SDK: No checksum verification on WellnessAnalyticsSDK artifact at Gradle ingestion; floating version constraint. A compromised analytics SDK maintainer can inject malicious code executing inside the app's full security context, exfiltrating session tokens from SharedPreferences.",
+            "markdown": "Pin WellnessAnalyticsSDK to exact version with Gradle integrity constraints. Establish supplier provenance review gate before any SDK upgrade. Require SLSA Level-3 attestation on release APK artifacts. References: OWASP M2:2024; OWASP MASTG-ARCH; MITRE ATT&CK T1195.001; CWE-494"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessAnalyticsSDK",
+                "fullyQualifiedName": "Device Zone/WellnessAnalyticsSDK",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "T-1"
+          },
+          "properties": {
+            "security-severity": "6.1",
+            "cvss-base-score": "8.6",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:H/A:L",
+            "exploitability": "4.5",
+            "scalability": "5.8",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "Mobile Supply Chain Integrity (M2) — Payment SDK: No checksum verification on WellnessPaySDK artifact; floating version constraint. A compromised payment SDK can intercept or modify payment authorization requests before they leave the device.",
+            "markdown": "Pin WellnessPaySDK to exact version with Gradle integrity constraints. Enforce app-store-only distribution. Require signed-artifact policy on payment SDK ingestion. References: OWASP M2:2024; MITRE ATT&CK T1195.002; CWE-494"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessPaySDK",
+                "fullyQualifiedName": "Device Zone/WellnessPaySDK",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "T-2"
+          },
+          "properties": {
+            "security-severity": "6.1",
+            "cvss-base-score": "8.6",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:H/A:L",
+            "exploitability": "4.5",
+            "scalability": "5.8",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Insecure Mobile Data Storage (M9) — Local Database: Unencrypted SQLite database with allowBackup=\"true\" exposes full transaction history and account snapshots to Google Drive cloud backup. Attacker compromising the user's Google account can recover complete financial history without bypassing device authentication.",
+            "markdown": "Encrypt WellnessBankLocalDB via SQLCipher with Keystore-bound key. Set allowBackup=\"false\" or define explicit Android 12+ backup rules excluding the database. Apply database TTL eviction policy. References: OWASP M9:2024; OWASP MASTG-STORAGE; OWASP MASVS-STORAGE; CWE-311; CWE-312"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBankLocalDB",
+                "fullyQualifiedName": "Device Zone/WellnessBankLocalDB",
+                "kind": "data-store"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "I-3"
+          },
+          "properties": {
+            "security-severity": "6.0",
+            "cvss-base-score": "6.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
+            "exploitability": "6.3",
+            "scalability": "7.0",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "L2 — Data Operations"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "Credential Cache Tampering via SharedPreferences Overwrite: SharedPreferences MODE_PRIVATE file is writable on a rooted device. Attacker can overwrite the credential store to inject forged auth tokens or corrupt cached credentials, enabling session hijacking.",
+            "markdown": "Migrate to EncryptedSharedPreferences backed by Android Keystore. Apply file integrity validation at read time. References: OWASP M1:2024; OWASP M9:2024; CWE-312"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBankCredentialCache",
+                "fullyQualifiedName": "Device Zone/WellnessBankCredentialCache",
+                "kind": "data-store"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "T-6"
+          },
+          "properties": {
+            "security-severity": "5.9",
+            "cvss-base-score": "5.5",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:L/PR:H/UI:N/S:U/C:L/I:H/A:L",
+            "exploitability": "6.8",
+            "scalability": "7.0",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "L2 — Data Operations"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Insecure Mobile Communication (M5) — Payment SDK Egress: TLS from WellnessPaySDK to Third-Party Payment Provider without certificate pinning. Payment authorization requests (including payment card data and transaction amounts) can be intercepted via MITM on rogue Wi-Fi.",
+            "markdown": "Configure certificate pinning on WellnessPaySDK egress to payment provider. Enforce minimum TLS 1.3. References: OWASP M5:2024; OWASP MASVS-NETWORK; CWE-295"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessPaySDK",
+                "fullyQualifiedName": "Device Zone/WellnessPaySDK",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "I-6"
+          },
+          "properties": {
+            "security-severity": "5.8",
+            "cvss-base-score": "5.3",
+            "cvss-vector": "CVSS:3.1/AV:A/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
+            "exploitability": "7.0",
+            "scalability": "6.5",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "Unencrypted Local Database Tampering: Plain SQLite database with no SQLCipher encryption. Attacker with root access or ADB access can directly modify transaction records, account snapshots, and cached data, enabling fabricated transaction history or balance manipulation.",
+            "markdown": "Encrypt WellnessBankLocalDB using SQLCipher with a Keystore-bound key. Set allowBackup=\"false\" with explicit Android 12+ backup rules excluding the database. References: OWASP M9:2024; OWASP MASTG-STORAGE; CWE-311"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBankLocalDB",
+                "fullyQualifiedName": "Device Zone/WellnessBankLocalDB",
+                "kind": "data-store"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "T-5"
+          },
+          "properties": {
+            "security-severity": "5.7",
+            "cvss-base-score": "5.0",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:L/PR:H/UI:N/S:U/C:N/I:H/A:L",
+            "exploitability": "6.8",
+            "scalability": "7.0",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "L2 — Data Operations"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "Server-Side Authorization Gap for Debug-Initiated Operations: Backend API may accept operations initiated via the debug Activity's privileged-action flow relying solely on the client's authenticated session token, without verifying whether the invoking context represents a legitimate in-app user action or a debug-channel bypass.",
+            "markdown": "Implement server-side intent-source validation or require step-up authentication tokens for sensitive operations. Reject requests that cannot be traced to a legitimate user-initiated in-app action via Play Integrity API attestation. References: OWASP A01:2021; CWE-862"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBank Backend API",
+                "fullyQualifiedName": "Backend Zone/WellnessBank Backend API",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "E-3"
+          },
+          "properties": {
+            "security-severity": "5.6",
+            "cvss-base-score": "7.4",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:L",
+            "exploitability": "6.3",
+            "scalability": "6.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "L7 — Agent Ecosystem"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Backend API Verbose Error Response Exposure: Mobile-backend REST APIs without declared error sanitization may return stack traces, internal service names, database field names, or configuration details in error responses visible to the mobile client.",
+            "markdown": "Implement centralized error handling that returns generic error codes to clients; log full error context server-side only. Never serialize internal exceptions or ORM error objects in client-facing responses. References: OWASP A05:2021; CWE-209"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBank Backend API",
+                "fullyQualifiedName": "Backend Zone/WellnessBank Backend API",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "I-9"
+          },
+          "properties": {
+            "security-severity": "5.6",
+            "cvss-base-score": "6.0",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+            "exploitability": "7.5",
+            "scalability": "7.0",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "L7 — Agent Ecosystem"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "Missing Backend Audit Trail on Transaction Operations: No declared audit event emission on money-movement, account-read, or account-write operations at the backend API. Privileged operations cannot be forensically reconstructed for dispute resolution or regulatory audit.",
+            "markdown": "Instrument every privileged backend decision point with synchronous structured audit event emission before effect; forward to SIEM or write-once bucket. Include actor identity, action, UTC timestamp, resource URN, outcome. References: OWASP A09:2021; CWE-778; CWE-223"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBank Backend API",
+                "fullyQualifiedName": "Backend Zone/WellnessBank Backend API",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "R-2"
+          },
+          "properties": {
+            "security-severity": "5.6",
+            "cvss-base-score": "4.8",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+            "exploitability": "8.3",
+            "scalability": "8.3",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "L7 — Agent Ecosystem"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "Credential Store Corruption Leading to Denial of Service: Targeted corruption of SharedPreferences credential cache can trigger authentication failures and re-login loops, effectively locking out the legitimate user.",
+            "markdown": "Implement HMAC integrity validation on cached credential entries. Provide clear recovery path (reset credentials via server-side re-auth) when cache integrity check fails. References: OWASP M1:2024; CWE-400"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBankCredentialCache",
+                "fullyQualifiedName": "Device Zone/WellnessBankCredentialCache",
+                "kind": "data-store"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "D-4"
+          },
+          "properties": {
+            "security-severity": "4.9",
+            "cvss-base-score": "5.0",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:L/PR:H/UI:N/S:U/C:N/I:L/A:H",
+            "exploitability": "5.5",
+            "scalability": "4.0",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "L2 — Data Operations"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Insecure Mobile Communication (M5) — Analytics SDK Egress: TLS from WellnessAnalyticsSDK to Third-Party Analytics Provider without certificate pinning. Analytics telemetry (including device identifiers, session metadata, user behavior patterns) can be intercepted on untrusted networks.",
+            "markdown": "Configure certificate pinning on the analytics SDK egress flow. Review SDK telemetry content for PII; apply privacy-consent gate before initialization. References: OWASP M5:2024; CWE-295"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessAnalyticsSDK",
+                "fullyQualifiedName": "Device Zone/WellnessAnalyticsSDK",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "I-5"
+          },
+          "properties": {
+            "security-severity": "4.9",
+            "cvss-base-score": "3.1",
+            "cvss-vector": "CVSS:3.1/AV:A/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N",
+            "exploitability": "6.5",
+            "scalability": "6.5",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "Unclassified"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "Missing Token Binding on Backend Session: The backend API accepts HTTPS bearer tokens without certificate pinning on the client side, enabling token replay from intercepted sessions. No device-binding means a captured token is replayable from any device.",
+            "markdown": "Implement token binding (DPoP or mTLS certificate-bound tokens) on the backend API. Verify device attestation (Play Integrity) server-side on transaction-confirmation calls. References: OWASP A07:2021; CWE-287"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBank Backend API",
+                "fullyQualifiedName": "Backend Zone/WellnessBank Backend API",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "S-4"
+          },
+          "properties": {
+            "security-severity": "4.8",
+            "cvss-base-score": "5.2",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:N",
+            "exploitability": "6.3",
+            "scalability": "5.8",
+            "reachability": "1.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "L7 — Agent Ecosystem"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "Client-Side Resource Exhaustion via Unconstrained SDK I/O: Third-party analytics and payment SDKs perform unconstrained outbound network I/O with no rate limiting, circuit breaker, or battery-aware scheduling. A misbehaving or compromised SDK version can saturate device battery and network resources, degrading app availability for the legitimate user.",
+            "markdown": "Implement circuit breakers and rate limits on SDK I/O calls. Schedule analytics emission in batches during app-idle periods. Monitor SDK network usage against a declared baseline."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBank Android Client",
+                "fullyQualifiedName": "Device Zone/WellnessBank Android Client",
+                "kind": "process"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "D-1"
+          },
+          "properties": {
+            "security-severity": "4.6",
+            "cvss-base-score": "4.0",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+            "exploitability": "5.0",
+            "scalability": "5.5",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "L7 — Agent Ecosystem"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "Local Database Saturation: Uncontrolled caching in WellnessBankLocalDB can grow without bound, saturating device storage and causing application crashes or OS-level storage exhaustion.",
+            "markdown": "Implement cache eviction policies with maximum row count and TTL-based expiry. Monitor local DB size in analytics events."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/mobile-banking-app/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocation": {
+                "name": "WellnessBankLocalDB",
+                "fullyQualifiedName": "Device Zone/WellnessBankLocalDB",
+                "kind": "data-store"
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "findingId/v1": "D-3"
+          },
+          "properties": {
+            "security-severity": "4.3",
+            "cvss-base-score": "3.3",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:L",
+            "exploitability": "5.5",
+            "scalability": "3.8",
+            "reachability": "4.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-05-29",
+            "maestro-layer": "L2 — Data Operations"
+          }
+        }
+      ]
+    }
+  ]
+}

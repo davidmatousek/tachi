@@ -1,0 +1,27 @@
+# Expected aggregate-shape pair for findings_zero_against_all_oos.yaml (F-241 T048).
+#
+# Aggregator behavior when zero findings AND target framework has zero
+# in-scope records:
+#   - covered_count = 0 (no findings → no citations)
+#   - partial_count = 0
+#   - gap_count = 0     (the items list is filtered to in-scope-only,
+#                        which is empty; classify_framework_items returns [])
+#   - coverage_percentage = "N/A" per data-model.md §3 line 165
+#                           (in_scope_yaml_record_count == 0 branch at
+#                            extract-report-data.py line 1205)
+#
+# Used by the test suite under monkeypatch — the live owasp.yaml has 0 OOS
+# records so we can't trigger this scenario without injection. The expected
+# shape applies when both raw and in_scope_yaml_record_count are stubbed to
+# 0 for the target framework. Other frameworks reflect their live in-scope
+# counts (no monkeypatch).
+#
+# Format: per-framework keys; tests assert specific framework values.
+
+owasp:
+  yaml_record_count: 0     # monkeypatched to 0 (entirely-Out-of-Scope)
+  in_scope_yaml_record_count: 0
+  covered_count: 0
+  partial_count: 0
+  gap_count: 0
+  coverage_percentage: "N/A"

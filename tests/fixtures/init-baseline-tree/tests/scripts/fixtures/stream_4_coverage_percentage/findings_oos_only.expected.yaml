@@ -1,0 +1,50 @@
+# Expected aggregate-shape pair for findings_oos_only.yaml (F-241 T048).
+#
+# All citations target Out-of-Scope mitre-attack records. Per F-241 T046
+# edge case + data-model.md §3 line 164: OOS-cited records are filtered
+# from the items list, so they do NOT appear as Covered/Partial/Gap in
+# the per-framework aggregate. The finding ITSELF still emits on the
+# per-finding attribution table (built separately by build_per_finding_rows
+# from finding.source_attribution) — that surface is NOT validated by this
+# fixture pair (the per-finding row count behavior is exercised by
+# `test_per_finding_row_count_matches_finding_count`).
+
+owasp:
+  yaml_record_count: 60
+  in_scope_yaml_record_count: 60
+  covered_count: 0
+  partial_count: 0
+  gap_count: 60
+  coverage_percentage: "0.00%"
+
+mitre-attack:
+  yaml_record_count: 701
+  in_scope_yaml_record_count: 323
+  covered_count: 0     # all 3 cited IDs are OOS, filtered from items
+  partial_count: 0
+  gap_count: 323
+  coverage_percentage: "0.00%"
+
+mitre-atlas:
+  yaml_record_count: 30
+  in_scope_yaml_record_count: 30
+  covered_count: 0
+  partial_count: 0
+  gap_count: 30
+  coverage_percentage: "0.00%"
+
+nist-ai-rmf:
+  yaml_record_count: 72
+  in_scope_yaml_record_count: 72
+  covered_count: 0
+  partial_count: 0
+  gap_count: 72
+  coverage_percentage: "0.00%"
+
+cwe:
+  yaml_record_count: 53
+  in_scope_yaml_record_count: 53
+  covered_count: 0
+  partial_count: 0
+  gap_count: 53
+  coverage_percentage: "0.00%"

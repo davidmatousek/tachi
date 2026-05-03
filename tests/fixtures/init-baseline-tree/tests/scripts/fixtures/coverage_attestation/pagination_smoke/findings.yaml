@@ -1,0 +1,1261 @@
+# Pagination Smoke Fixture — 100 findings × 5 frameworks
+#
+# Feature 194 / T038 (Wave 3.2): synthetic fixture for exercising the
+# per-finding attribution table's pagination behavior. Generated
+# deterministically by tests/scripts/generate_pagination_fixture.py.
+#
+# Regenerate with: python tests/scripts/generate_pagination_fixture.py \
+#   --output tests/scripts/fixtures/coverage_attestation/pagination_smoke/findings.yaml
+
+- id: T-001
+  component: Component-1
+  threat: Synthetic threat 1 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 1
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: MANAGE 1.3, relationship: derived}
+    - {taxonomy: mitre-atlas, id: AML.T0024, relationship: derived}
+    - {taxonomy: cwe, id: CWE-862, relationship: related}
+
+- id: E-002
+  component: Component-2
+  threat: Synthetic threat 2 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 2
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1005, relationship: primary}
+
+- id: I-003
+  component: Component-3
+  threat: Synthetic threat 3 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 3
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0010, relationship: primary}
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.7, relationship: primary}
+
+- id: LLM-004
+  component: Component-4
+  threat: Synthetic threat 4 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 4
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: MANAGE 1.3, relationship: primary}
+    - {taxonomy: mitre-attack, id: T1078, relationship: related}
+
+- id: LLM-005
+  component: Component-5
+  threat: Synthetic threat 5 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 5
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: GOVERN 1.4, relationship: primary}
+    - {taxonomy: cwe, id: CWE-862, relationship: derived}
+    - {taxonomy: mitre-atlas, id: AML.T0048, relationship: derived}
+
+- id: AG-006
+  component: Component-6
+  threat: Synthetic threat 6 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Medium
+  mitigation: Synthetic mitigation 6
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.10, relationship: related}
+    - {taxonomy: mitre-atlas, id: AML.T0024, relationship: related}
+    - {taxonomy: owasp, id: LLM05, relationship: derived}
+
+- id: T-007
+  component: Component-7
+  threat: Synthetic threat 7 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Medium
+  mitigation: Synthetic mitigation 7
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1078, relationship: primary}
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.10, relationship: primary}
+    - {taxonomy: cwe, id: CWE-1333, relationship: related}
+    - {taxonomy: owasp, id: LLM02, relationship: derived}
+
+- id: T-008
+  component: Component-8
+  threat: Synthetic threat 8 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 8
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-352, relationship: derived}
+    - {taxonomy: mitre-atlas, id: AML.T0051, relationship: primary}
+
+- id: E-009
+  component: Component-9
+  threat: Synthetic threat 9 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 9
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1021, relationship: primary}
+
+- id: I-010
+  component: Component-10
+  threat: Synthetic threat 10 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 10
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: MANAGE 1.3, relationship: derived}
+
+- id: R-011
+  component: Component-11
+  threat: Synthetic threat 11 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 11
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: MAP 4.2, relationship: related}
+    - {taxonomy: cwe, id: CWE-1333, relationship: related}
+    - {taxonomy: mitre-attack, id: T1486, relationship: derived}
+    - {taxonomy: owasp, id: LLM04, relationship: primary}
+
+- id: T-012
+  component: Component-12
+  threat: Synthetic threat 12 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 12
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: LLM08, relationship: derived}
+    - {taxonomy: mitre-atlas, id: AML.T0010, relationship: derived}
+    - {taxonomy: nist-ai-rmf, id: GOVERN 1.4, relationship: derived}
+
+- id: I-013
+  component: Component-13
+  threat: Synthetic threat 13 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 13
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-287, relationship: primary}
+
+- id: LLM-014
+  component: Component-14
+  threat: Synthetic threat 14 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 14
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: MAP 4.2, relationship: derived}
+    - {taxonomy: cwe, id: CWE-78, relationship: primary}
+
+- id: S-015
+  component: Component-15
+  threat: Synthetic threat 15 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 15
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: A02, relationship: derived}
+
+- id: T-016
+  component: Component-16
+  threat: Synthetic threat 16 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 16
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0018, relationship: derived}
+
+- id: D-017
+  component: Component-17
+  threat: Synthetic threat 17 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Medium
+  mitigation: Synthetic mitigation 17
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: LLM03, relationship: primary}
+    - {taxonomy: nist-ai-rmf, id: MAP 4.2, relationship: derived}
+    - {taxonomy: cwe, id: CWE-1333, relationship: derived}
+
+- id: D-018
+  component: Component-18
+  threat: Synthetic threat 18 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 18
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: LLM10, relationship: primary}
+    - {taxonomy: nist-ai-rmf, id: MANAGE 1.3, relationship: derived}
+    - {taxonomy: cwe, id: CWE-306, relationship: primary}
+    - {taxonomy: mitre-attack, id: T1486, relationship: derived}
+
+- id: S-019
+  component: Component-19
+  threat: Synthetic threat 19 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 19
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.7, relationship: related}
+    - {taxonomy: mitre-attack, id: T1486, relationship: derived}
+    - {taxonomy: owasp, id: LLM05, relationship: derived}
+    - {taxonomy: mitre-atlas, id: AML.T0018, relationship: derived}
+
+- id: D-020
+  component: Component-20
+  threat: Synthetic threat 20 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 20
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0010, relationship: related}
+    - {taxonomy: mitre-attack, id: T1486, relationship: primary}
+    - {taxonomy: cwe, id: CWE-200, relationship: derived}
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.7, relationship: related}
+
+- id: LLM-021
+  component: Component-1
+  threat: Synthetic threat 21 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 21
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-200, relationship: derived}
+    - {taxonomy: mitre-atlas, id: AML.T0018, relationship: derived}
+
+- id: D-022
+  component: Component-2
+  threat: Synthetic threat 22 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 22
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1005, relationship: related}
+    - {taxonomy: mitre-atlas, id: AML.T0048, relationship: primary}
+    - {taxonomy: cwe, id: CWE-352, relationship: primary}
+    - {taxonomy: owasp, id: LLM03, relationship: primary}
+
+- id: R-023
+  component: Component-3
+  threat: Synthetic threat 23 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Medium
+  mitigation: Synthetic mitigation 23
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-89, relationship: derived}
+    - {taxonomy: nist-ai-rmf, id: MAP 4.2, relationship: related}
+    - {taxonomy: owasp, id: LLM05, relationship: derived}
+    - {taxonomy: mitre-attack, id: T1082, relationship: related}
+
+- id: S-024
+  component: Component-4
+  threat: Synthetic threat 24 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 24
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0048, relationship: derived}
+    - {taxonomy: mitre-attack, id: T1083, relationship: related}
+    - {taxonomy: nist-ai-rmf, id: MAP 4.2, relationship: related}
+
+- id: T-025
+  component: Component-5
+  threat: Synthetic threat 25 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 25
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: A01, relationship: primary}
+    - {taxonomy: mitre-attack, id: T1070.001, relationship: primary}
+    - {taxonomy: cwe, id: CWE-79, relationship: related}
+
+- id: E-026
+  component: Component-6
+  threat: Synthetic threat 26 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 26
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1078, relationship: related}
+    - {taxonomy: cwe, id: CWE-862, relationship: derived}
+
+- id: AG-027
+  component: Component-7
+  threat: Synthetic threat 27 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 27
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-89, relationship: primary}
+    - {taxonomy: mitre-attack, id: T1486, relationship: related}
+    - {taxonomy: mitre-atlas, id: AML.T0051, relationship: related}
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.7, relationship: primary}
+
+- id: S-028
+  component: Component-8
+  threat: Synthetic threat 28 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 28
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0010, relationship: primary}
+    - {taxonomy: mitre-attack, id: T1486, relationship: related}
+    - {taxonomy: cwe, id: CWE-200, relationship: related}
+    - {taxonomy: owasp, id: LLM02, relationship: primary}
+
+- id: T-029
+  component: Component-9
+  threat: Synthetic threat 29 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 29
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-287, relationship: derived}
+    - {taxonomy: owasp, id: A01, relationship: derived}
+
+- id: T-030
+  component: Component-10
+  threat: Synthetic threat 30 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Medium
+  mitigation: Synthetic mitigation 30
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-1333, relationship: derived}
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.10, relationship: derived}
+    - {taxonomy: mitre-attack, id: T1082, relationship: primary}
+
+- id: S-031
+  component: Component-11
+  threat: Synthetic threat 31 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 31
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-79, relationship: related}
+
+- id: E-032
+  component: Component-12
+  threat: Synthetic threat 32 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 32
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1078, relationship: primary}
+    - {taxonomy: nist-ai-rmf, id: GOVERN 1.4, relationship: primary}
+    - {taxonomy: owasp, id: LLM08, relationship: related}
+
+- id: AG-033
+  component: Component-13
+  threat: Synthetic threat 33 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 33
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: A01, relationship: related}
+    - {taxonomy: nist-ai-rmf, id: GOVERN 1.4, relationship: derived}
+
+- id: R-034
+  component: Component-14
+  threat: Synthetic threat 34 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 34
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0024, relationship: primary}
+    - {taxonomy: owasp, id: A01, relationship: primary}
+    - {taxonomy: mitre-attack, id: T1486, relationship: primary}
+    - {taxonomy: nist-ai-rmf, id: MAP 4.2, relationship: primary}
+
+- id: R-035
+  component: Component-15
+  threat: Synthetic threat 35 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 35
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-1333, relationship: derived}
+
+- id: T-036
+  component: Component-16
+  threat: Synthetic threat 36 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 36
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0018, relationship: derived}
+    - {taxonomy: cwe, id: CWE-287, relationship: primary}
+
+- id: T-037
+  component: Component-17
+  threat: Synthetic threat 37 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 37
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: A03, relationship: primary}
+    - {taxonomy: cwe, id: CWE-287, relationship: primary}
+    - {taxonomy: mitre-attack, id: T1486, relationship: related}
+
+- id: AG-038
+  component: Component-18
+  threat: Synthetic threat 38 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 38
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1021, relationship: primary}
+
+- id: R-039
+  component: Component-19
+  threat: Synthetic threat 39 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 39
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0018, relationship: primary}
+    - {taxonomy: mitre-attack, id: T1021, relationship: related}
+
+- id: D-040
+  component: Component-20
+  threat: Synthetic threat 40 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 40
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-611, relationship: related}
+    - {taxonomy: mitre-atlas, id: AML.T0018, relationship: primary}
+
+- id: S-041
+  component: Component-1
+  threat: Synthetic threat 41 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 41
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0018, relationship: primary}
+    - {taxonomy: cwe, id: CWE-306, relationship: related}
+
+- id: AG-042
+  component: Component-2
+  threat: Synthetic threat 42 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Medium
+  mitigation: Synthetic mitigation 42
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: A03, relationship: derived}
+    - {taxonomy: nist-ai-rmf, id: GOVERN 1.4, relationship: primary}
+    - {taxonomy: cwe, id: CWE-306, relationship: related}
+    - {taxonomy: mitre-atlas, id: AML.T0048, relationship: related}
+
+- id: LLM-043
+  component: Component-3
+  threat: Synthetic threat 43 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 43
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-306, relationship: related}
+
+- id: LLM-044
+  component: Component-4
+  threat: Synthetic threat 44 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 44
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0010, relationship: primary}
+
+- id: E-045
+  component: Component-5
+  threat: Synthetic threat 45 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 45
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0010, relationship: primary}
+    - {taxonomy: owasp, id: LLM10, relationship: related}
+
+- id: E-046
+  component: Component-6
+  threat: Synthetic threat 46 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 46
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: MAP 4.2, relationship: derived}
+    - {taxonomy: mitre-atlas, id: AML.T0048, relationship: derived}
+
+- id: AG-047
+  component: Component-7
+  threat: Synthetic threat 47 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 47
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.7, relationship: related}
+    - {taxonomy: owasp, id: LLM09, relationship: derived}
+    - {taxonomy: mitre-attack, id: T1059, relationship: related}
+    - {taxonomy: mitre-atlas, id: AML.T0048, relationship: derived}
+
+- id: D-048
+  component: Component-8
+  threat: Synthetic threat 48 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 48
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0024, relationship: related}
+    - {taxonomy: cwe, id: CWE-611, relationship: derived}
+    - {taxonomy: mitre-attack, id: T1005, relationship: primary}
+
+- id: D-049
+  component: Component-9
+  threat: Synthetic threat 49 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 49
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-200, relationship: primary}
+    - {taxonomy: nist-ai-rmf, id: MANAGE 1.3, relationship: primary}
+    - {taxonomy: mitre-attack, id: T1082, relationship: related}
+    - {taxonomy: mitre-atlas, id: AML.T0010, relationship: related}
+
+- id: S-050
+  component: Component-10
+  threat: Synthetic threat 50 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 50
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0048, relationship: related}
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.10, relationship: primary}
+    - {taxonomy: mitre-attack, id: T1110, relationship: derived}
+
+- id: T-051
+  component: Component-11
+  threat: Synthetic threat 51 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 51
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0010, relationship: primary}
+    - {taxonomy: owasp, id: LLM07, relationship: primary}
+    - {taxonomy: mitre-attack, id: T1059, relationship: derived}
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.10, relationship: primary}
+
+- id: LLM-052
+  component: Component-12
+  threat: Synthetic threat 52 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 52
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1566, relationship: related}
+
+- id: E-053
+  component: Component-13
+  threat: Synthetic threat 53 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 53
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: GOVERN 1.4, relationship: derived}
+    - {taxonomy: mitre-atlas, id: AML.T0051, relationship: primary}
+    - {taxonomy: mitre-attack, id: T1110, relationship: related}
+    - {taxonomy: cwe, id: CWE-862, relationship: related}
+
+- id: S-054
+  component: Component-14
+  threat: Synthetic threat 54 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 54
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: LLM03, relationship: primary}
+    - {taxonomy: nist-ai-rmf, id: GOVERN 1.4, relationship: primary}
+    - {taxonomy: mitre-attack, id: T1078, relationship: related}
+
+- id: I-055
+  component: Component-15
+  threat: Synthetic threat 55 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 55
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: A05, relationship: primary}
+    - {taxonomy: mitre-atlas, id: AML.T0018, relationship: primary}
+    - {taxonomy: cwe, id: CWE-78, relationship: primary}
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.7, relationship: related}
+
+- id: I-056
+  component: Component-16
+  threat: Synthetic threat 56 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 56
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: LLM02, relationship: derived}
+    - {taxonomy: cwe, id: CWE-306, relationship: derived}
+    - {taxonomy: mitre-attack, id: T1082, relationship: derived}
+    - {taxonomy: nist-ai-rmf, id: MANAGE 1.3, relationship: related}
+
+- id: I-057
+  component: Component-17
+  threat: Synthetic threat 57 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Medium
+  mitigation: Synthetic mitigation 57
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: LLM02, relationship: derived}
+    - {taxonomy: mitre-atlas, id: AML.T0051, relationship: derived}
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.10, relationship: primary}
+
+- id: R-058
+  component: Component-18
+  threat: Synthetic threat 58 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Medium
+  mitigation: Synthetic mitigation 58
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: GOVERN 1.4, relationship: derived}
+    - {taxonomy: cwe, id: CWE-78, relationship: related}
+    - {taxonomy: mitre-attack, id: T1083, relationship: derived}
+    - {taxonomy: mitre-atlas, id: AML.T0018, relationship: derived}
+
+- id: LLM-059
+  component: Component-19
+  threat: Synthetic threat 59 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 59
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1059, relationship: related}
+    - {taxonomy: cwe, id: CWE-78, relationship: derived}
+    - {taxonomy: nist-ai-rmf, id: GOVERN 1.4, relationship: derived}
+    - {taxonomy: mitre-atlas, id: AML.T0048, relationship: related}
+
+- id: I-060
+  component: Component-20
+  threat: Synthetic threat 60 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Medium
+  mitigation: Synthetic mitigation 60
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0010, relationship: primary}
+    - {taxonomy: cwe, id: CWE-78, relationship: related}
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.7, relationship: derived}
+    - {taxonomy: owasp, id: A03, relationship: related}
+
+- id: I-061
+  component: Component-1
+  threat: Synthetic threat 61 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 61
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: LLM04, relationship: derived}
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.7, relationship: primary}
+
+- id: E-062
+  component: Component-2
+  threat: Synthetic threat 62 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 62
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-287, relationship: primary}
+
+- id: AG-063
+  component: Component-3
+  threat: Synthetic threat 63 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 63
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1059, relationship: related}
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.10, relationship: derived}
+    - {taxonomy: owasp, id: A04, relationship: related}
+    - {taxonomy: mitre-atlas, id: AML.T0018, relationship: related}
+
+- id: E-064
+  component: Component-4
+  threat: Synthetic threat 64 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 64
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-89, relationship: related}
+    - {taxonomy: nist-ai-rmf, id: MANAGE 1.3, relationship: related}
+
+- id: E-065
+  component: Component-5
+  threat: Synthetic threat 65 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 65
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-352, relationship: derived}
+
+- id: S-066
+  component: Component-6
+  threat: Synthetic threat 66 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 66
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: A04, relationship: primary}
+    - {taxonomy: mitre-attack, id: T1486, relationship: primary}
+    - {taxonomy: cwe, id: CWE-89, relationship: derived}
+    - {taxonomy: mitre-atlas, id: AML.T0048, relationship: related}
+
+- id: I-067
+  component: Component-7
+  threat: Synthetic threat 67 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Medium
+  mitigation: Synthetic mitigation 67
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: GOVERN 1.4, relationship: related}
+    - {taxonomy: mitre-atlas, id: AML.T0048, relationship: primary}
+    - {taxonomy: owasp, id: A04, relationship: related}
+    - {taxonomy: cwe, id: CWE-79, relationship: related}
+
+- id: I-068
+  component: Component-8
+  threat: Synthetic threat 68 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 68
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0018, relationship: primary}
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.7, relationship: primary}
+
+- id: T-069
+  component: Component-9
+  threat: Synthetic threat 69 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 69
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.10, relationship: primary}
+    - {taxonomy: mitre-atlas, id: AML.T0010, relationship: derived}
+    - {taxonomy: owasp, id: LLM09, relationship: derived}
+
+- id: I-070
+  component: Component-10
+  threat: Synthetic threat 70 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 70
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1110, relationship: primary}
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.7, relationship: primary}
+    - {taxonomy: mitre-atlas, id: AML.T0024, relationship: derived}
+
+- id: D-071
+  component: Component-11
+  threat: Synthetic threat 71 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 71
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: A05, relationship: related}
+
+- id: T-072
+  component: Component-12
+  threat: Synthetic threat 72 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 72
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-79, relationship: related}
+    - {taxonomy: nist-ai-rmf, id: MAP 4.2, relationship: derived}
+    - {taxonomy: mitre-attack, id: T1078, relationship: derived}
+    - {taxonomy: mitre-atlas, id: AML.T0024, relationship: related}
+
+- id: I-073
+  component: Component-13
+  threat: Synthetic threat 73 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 73
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: MAP 4.2, relationship: primary}
+
+- id: E-074
+  component: Component-14
+  threat: Synthetic threat 74 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 74
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-862, relationship: related}
+    - {taxonomy: mitre-atlas, id: AML.T0051, relationship: derived}
+    - {taxonomy: nist-ai-rmf, id: GOVERN 1.4, relationship: related}
+
+- id: I-075
+  component: Component-15
+  threat: Synthetic threat 75 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Medium
+  mitigation: Synthetic mitigation 75
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0024, relationship: related}
+    - {taxonomy: mitre-attack, id: T1021, relationship: primary}
+    - {taxonomy: cwe, id: CWE-89, relationship: related}
+
+- id: R-076
+  component: Component-16
+  threat: Synthetic threat 76 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 76
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0018, relationship: related}
+    - {taxonomy: mitre-attack, id: T1059, relationship: related}
+
+- id: D-077
+  component: Component-17
+  threat: Synthetic threat 77 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 77
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: A02, relationship: derived}
+    - {taxonomy: mitre-atlas, id: AML.T0010, relationship: derived}
+
+- id: R-078
+  component: Component-18
+  threat: Synthetic threat 78 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 78
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-89, relationship: related}
+
+- id: T-079
+  component: Component-19
+  threat: Synthetic threat 79 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Medium
+  mitigation: Synthetic mitigation 79
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.7, relationship: derived}
+    - {taxonomy: mitre-atlas, id: AML.T0010, relationship: related}
+    - {taxonomy: cwe, id: CWE-287, relationship: primary}
+    - {taxonomy: owasp, id: LLM05, relationship: related}
+
+- id: I-080
+  component: Component-20
+  threat: Synthetic threat 80 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 80
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1070.001, relationship: primary}
+    - {taxonomy: owasp, id: A05, relationship: derived}
+    - {taxonomy: nist-ai-rmf, id: GOVERN 1.4, relationship: related}
+
+- id: I-081
+  component: Component-1
+  threat: Synthetic threat 81 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 81
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0051, relationship: primary}
+    - {taxonomy: owasp, id: LLM02, relationship: primary}
+
+- id: E-082
+  component: Component-2
+  threat: Synthetic threat 82 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 82
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0048, relationship: derived}
+    - {taxonomy: mitre-attack, id: T1110, relationship: primary}
+    - {taxonomy: nist-ai-rmf, id: MANAGE 1.3, relationship: related}
+
+- id: T-083
+  component: Component-3
+  threat: Synthetic threat 83 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 83
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: LLM01, relationship: related}
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.7, relationship: related}
+    - {taxonomy: mitre-attack, id: T1005, relationship: primary}
+
+- id: T-084
+  component: Component-4
+  threat: Synthetic threat 84 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 84
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: LLM10, relationship: derived}
+    - {taxonomy: mitre-atlas, id: AML.T0048, relationship: primary}
+    - {taxonomy: mitre-attack, id: T1059, relationship: primary}
+
+- id: S-085
+  component: Component-5
+  threat: Synthetic threat 85 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Medium
+  mitigation: Synthetic mitigation 85
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-89, relationship: primary}
+    - {taxonomy: owasp, id: LLM01, relationship: derived}
+
+- id: E-086
+  component: Component-6
+  threat: Synthetic threat 86 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Medium
+  mitigation: Synthetic mitigation 86
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.7, relationship: related}
+    - {taxonomy: owasp, id: A04, relationship: primary}
+    - {taxonomy: mitre-atlas, id: AML.T0024, relationship: primary}
+    - {taxonomy: cwe, id: CWE-611, relationship: related}
+
+- id: AG-087
+  component: Component-7
+  threat: Synthetic threat 87 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Medium
+  mitigation: Synthetic mitigation 87
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1070.001, relationship: primary}
+
+- id: I-088
+  component: Component-8
+  threat: Synthetic threat 88 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 88
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0024, relationship: primary}
+
+- id: S-089
+  component: Component-9
+  threat: Synthetic threat 89 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Medium
+  mitigation: Synthetic mitigation 89
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1021, relationship: derived}
+    - {taxonomy: mitre-atlas, id: AML.T0024, relationship: primary}
+
+- id: T-090
+  component: Component-10
+  threat: Synthetic threat 90 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 90
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1083, relationship: related}
+
+- id: R-091
+  component: Component-11
+  threat: Synthetic threat 91 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 91
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1083, relationship: derived}
+
+- id: R-092
+  component: Component-12
+  threat: Synthetic threat 92 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 92
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0010, relationship: related}
+    - {taxonomy: mitre-attack, id: T1078, relationship: related}
+    - {taxonomy: owasp, id: A02, relationship: derived}
+
+- id: E-093
+  component: Component-13
+  threat: Synthetic threat 93 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 93
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-78, relationship: related}
+
+- id: T-094
+  component: Component-14
+  threat: Synthetic threat 94 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Low
+  mitigation: Synthetic mitigation 94
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.10, relationship: primary}
+    - {taxonomy: mitre-attack, id: T1486, relationship: derived}
+    - {taxonomy: cwe, id: CWE-352, relationship: related}
+    - {taxonomy: owasp, id: LLM06, relationship: related}
+
+- id: LLM-095
+  component: Component-15
+  threat: Synthetic threat 95 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 95
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1082, relationship: related}
+    - {taxonomy: mitre-atlas, id: AML.T0048, relationship: derived}
+
+- id: T-096
+  component: Component-16
+  threat: Synthetic threat 96 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Medium
+  mitigation: Synthetic mitigation 96
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0048, relationship: related}
+    - {taxonomy: nist-ai-rmf, id: MEASURE 2.10, relationship: related}
+
+- id: T-097
+  component: Component-17
+  threat: Synthetic threat 97 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 97
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: cwe, id: CWE-352, relationship: derived}
+    - {taxonomy: mitre-attack, id: T1005, relationship: related}
+
+- id: LLM-098
+  component: Component-18
+  threat: Synthetic threat 98 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: Critical
+  mitigation: Synthetic mitigation 98
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-atlas, id: AML.T0024, relationship: primary}
+
+- id: I-099
+  component: Component-19
+  threat: Synthetic threat 99 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 99
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: nist-ai-rmf, id: GOVERN 1.4, relationship: primary}
+    - {taxonomy: mitre-atlas, id: AML.T0051, relationship: related}
+
+- id: S-100
+  component: Component-20
+  threat: Synthetic threat 100 for pagination smoke test
+  likelihood: —
+  impact: —
+  risk_level: High
+  mitigation: Synthetic mitigation 100
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1082, relationship: primary}

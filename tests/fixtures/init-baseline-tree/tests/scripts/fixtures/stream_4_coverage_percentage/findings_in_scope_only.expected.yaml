@@ -1,0 +1,54 @@
+# Expected aggregate-shape pair for findings_in_scope_only.yaml (F-241 T048).
+#
+# Hand-computed against the LIVE taxonomy YAMLs at
+# `schemas/taxonomy/*.yaml` post-Stream 3 expansion (T037/T038/T041):
+#   - owasp.yaml:        60 records, 0 OOS, 60 in-scope
+#   - mitre-attack.yaml: 701 records, 378 OOS, 323 in-scope
+#   - mitre-atlas.yaml:  30 records, 0 OOS, 30 in-scope
+#   - nist-ai-rmf.yaml:  72 records, 0 OOS, 72 in-scope
+#   - cwe.yaml:          53 records, 0 OOS, 53 in-scope
+#
+# Used by tests under `tests/scripts/test_coverage_attestation.py` to
+# validate the post-T044/T045 in-scope-only coverage-percentage semantic.
+# Every shape field maps 1:1 to a key on the per-framework aggregate dict
+# emitted by `extract_report_data.build_per_framework_aggregates()`.
+
+owasp:
+  yaml_record_count: 60
+  in_scope_yaml_record_count: 60
+  covered_count: 1     # A03 cited primary on T-1
+  partial_count: 0
+  gap_count: 59
+  coverage_percentage: "1.67%"
+
+mitre-attack:
+  yaml_record_count: 701
+  in_scope_yaml_record_count: 323
+  covered_count: 2     # T1190 (S-1) + T1078 (I-1) — both in-scope
+  partial_count: 0
+  gap_count: 321       # 323 - 2
+  coverage_percentage: "0.62%"
+
+mitre-atlas:
+  yaml_record_count: 30
+  in_scope_yaml_record_count: 30
+  covered_count: 0
+  partial_count: 0
+  gap_count: 30
+  coverage_percentage: "0.00%"
+
+nist-ai-rmf:
+  yaml_record_count: 72
+  in_scope_yaml_record_count: 72
+  covered_count: 0
+  partial_count: 0
+  gap_count: 72
+  coverage_percentage: "0.00%"
+
+cwe:
+  yaml_record_count: 53
+  in_scope_yaml_record_count: 53
+  covered_count: 1     # CWE-89 cited primary on T-1
+  partial_count: 0
+  gap_count: 52
+  coverage_percentage: "1.89%"

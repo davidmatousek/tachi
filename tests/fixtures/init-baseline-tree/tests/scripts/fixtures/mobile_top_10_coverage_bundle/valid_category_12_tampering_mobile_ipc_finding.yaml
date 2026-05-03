@@ -1,0 +1,31 @@
+# F-7 Cat 12 — Mobile IPC Input Validation (T-{N})
+# Schema: schemas/finding.yaml v1.8 (unchanged in F-7)
+# Category: tampering
+# Severity: HIGH (default per ADR-036 mapping table for M4; exported MoneyTransferActivity
+#                without permission gating on a money-movement-capable mobile client)
+# OWASP M4:2024 cross-reference: included in references array (catalog-resolvable in
+#   schemas/taxonomy/owasp.yaml per Wave 1.0 T012 verification)
+# MASTG-CODE / MASVS-PLATFORM cross-reference: prose-only mention in mitigation; NOT in
+#   references array (section-level granularity per Q4 plan-time RESOLVED — not
+#   catalog-resolvable for F-7; F-A1 follow-on owns MASTG taxonomy)
+# F-1 disjoint-tells annotation per ADR-036 D-5: explicit cross-axis boundary marker in
+#   the description and mitigation prose — Pattern Category 12 owns mobile-IPC-input-side
+#   validation; the F-1 `output-integrity` agent independently owns LLM-output-side
+#   sanitization on disjoint architectural surfaces
+# Worked example: mobile-banking app exporting MoneyTransferActivity with android:exported="true"
+#                 and no android:permission attribute, accepting Intent extras `recipient_account`
+#                 and `amount` directly into the money-transfer business logic
+id: "T-12"
+category: tampering
+component: "MoneyTransferActivity"
+dfd_element_type: "Process"
+threat: "The MoneyTransferActivity in the WellnessBank Android Client is declared with `android:exported=\"true\"` and no `android:permission` attribute. The Activity accepts Intent extras `recipient_account` and `amount` directly into the money-transfer business logic without re-authentication, without server-side replay protection, without per-Intent caller verification, and without Intent extras schema validation. There is no signature-permission qualifier on the exported Activity, no Android App Links claim verification (`assetlinks.json`) on the destination handler, and no allowlist of return-URL targets. An attacker installs a malicious Android app on the same device that issues `Intent.setComponent(new ComponentName(\"com.wellnessbank.mobile\", \"com.wellnessbank.mobile.MoneyTransferActivity\"))` with attacker-chosen extras, bypassing the normal in-app authentication and authorization UI. The MoneyTransferActivity initiates a money-movement request to the WellnessBank Backend API under the legitimate user's session, transferring funds to an attacker-controlled account without traversing the standard money-movement auth boundary. This finding covers mobile-IPC-input-side validation per Pattern Category 12; the F-1 `output-integrity` agent independently covers LLM-output-side sanitization at a disjoint architectural surface (per ADR-036 D-5 cross-axis boundary annotation), and the two findings co-exist on hybrid architectures without duplication. This is mobile-specific IPC-input validation failure on a banking-tier client, distinct from generic web/API injection (Cat 9) by the architectural-tell of a declared mobile client with exported Activities reaching trusted operations without permission gating, claim verification, or per-Intent caller verification."
+likelihood: HIGH
+impact: HIGH
+risk_level: High
+mitigation: "Use explicit Intent component routing (`Intent.setComponent` over implicit Intent resolution) for every cross-component invocation; reject implicitly-resolved Intents on trusted operation entry points. Enforce a URL-scheme parameter allowlist on every deep-link handler with strict parameter validation; reject any deep link whose parameters fall outside the allowlist before the handler reaches trusted operations. Require Android App Links claim verification (`assetlinks.json` published at the registered domain; auto-verified intent filters with `android:autoVerify=\"true\"`); require iOS Universal Links claim verification (`apple-app-site-association` published with the registered AppID). Scope ContentProvider permissions with signature-level Android permissions (`android:permission` set to a custom permission with `signature` protection level). Re-authenticate on every high-risk operation reached via deep link, Intent extras, or URL scheme — never trust an external caller to have already cleared the auth boundary. Note disjoint boundary per ADR-036 D-5: the F-1 `output-integrity` agent independently covers LLM-output-side sanitization on LLM-serving architectures; Pattern Category 12 covers mobile-IPC-input-side validation on mobile-platform architectures, and the two findings co-exist on hybrid architectures without duplication. Document the mobile-IPC-validation controls in mobile threat-modeling artifacts (MASTG-CODE / MASVS-PLATFORM section-level cross-reference)."
+references:
+  - "OWASP M4:2024 — Insufficient Input/Output Validation"
+maestro_layer: "L1"
+agentic_pattern: "none"
+source_attribution: []

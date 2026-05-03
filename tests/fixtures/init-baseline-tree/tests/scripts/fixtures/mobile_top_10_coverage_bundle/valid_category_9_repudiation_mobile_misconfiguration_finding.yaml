@@ -1,0 +1,43 @@
+# F-7 Cat 9 — M8 Accountability-Loss Variant: Mobile Security Misconfiguration (R-{N})
+# Schema: schemas/finding.yaml v1.8 (unchanged in F-7)
+# Category: repudiation
+# Severity: HIGH (default per ADR-036 mapping table for M8 accountability-loss variant;
+#                disabled Crashlytics + Log.d leakage of PAN/OTP + audit log writer
+#                with no off-device forwarding on a release-build mobile-banking client)
+# OWASP M8:2024 cross-reference: included in references array (catalog-resolvable in
+#   schemas/taxonomy/owasp.yaml per Wave 1.0 T012 verification)
+# CWE-778 cross-reference: included in references array (catalog-resolvable per
+#   pre-existing Primary Sources list in tachi-repudiation companion file)
+# OWASP MASVS-CODE cross-reference: included in references array as section-level
+#   granularity citation per F-7 ADR-036 D-3 mapping table
+# MITRE ATT&CK Mobile T1398 cross-reference: prose-only mention in mitigation; NOT
+#   in references array (catalog-absent per ADR-036 D-7 Q3 RESOLVED 3-of-3
+#   prose-only at four-or-five-agent worst-case scale)
+# Disjoint-tells annotation: this fixture demonstrates the accountability-loss
+#   variant of the M8 dual-host carve per ADR-036 D-4. The privilege-gain variant
+#   counterpart fixture (E-10) targets debug ContentProvider exports + missing
+#   app-attestation on the privilege-escalation host. The architectural-tells are
+#   disjoint: same mobile-banking architecture may legitimately surface BOTH
+#   findings without duplication; mitigation vocabularies differ
+#   (authorization-gating + attestation integration vs audit-trail completeness +
+#   crash-reporting configuration).
+# Worked example: mobile-banking app shipping with Crashlytics disabled in
+#                 release flavor + Log.d statements leaking PAN/OTP/payee in
+#                 transaction-confirmation paths + local audit log writer with no
+#                 off-device forwarding to backend immutable store
+id: "R-10"
+category: repudiation
+component: "WellnessBankAuditLogger"
+dfd_element_type: "Process"
+threat: "The WellnessBank Android Client ships with Firebase Crashlytics disabled in the release build configuration because an early release-flavor Gradle task added `Crashlytics.setCrashlyticsCollectionEnabled(false)` to suppress beta-period false-positive crash spam, and the disable was never reversed for general availability. The same release build retains `Log.d(\"TransferConfirm\", \"user=\" + user.email + \" amount=\" + amount + \" payee=\" + payee.account + \" pan=\" + card.fullPan)` calls in the transaction-confirmation path, with no `BuildConfig.DEBUG` gating — the team intended to strip these via R8 / ProGuard rules but the obfuscation pass was excluded from the release build flavor due to a build-time symbol-mapping conflict. The `WellnessBankAuditLogger` component persists records to a local file in the app's private data partition, writable by the same app identity that produces the events, with no cryptographic chaining and no off-device forwarding to a backend immutable store. Sixty days after a money-transfer event, a customer disputes the transfer claiming the device was lost in a hotel room and the transfer was unauthorized. Forensics has zero evidence: Crashlytics was disabled (no crash trail on any anomalous behavior during the disputed window), the `Log.d` entries with the transaction context were on-device-only and rotated out of the logcat ring buffer days ago, the local audit log records the transfer as completed but the same compromised app identity that may have produced the unauthorized transfer also has write access to the audit log (so the local audit record cannot be trusted as tamper-evident evidence), and there is no server-attested timestamp continuity proving the transfer record was not retroactively manipulated. The platform cannot rebut the customer's repudiation; the dispute is resolved against the platform with full chargeback. This is mobile-specific misconfiguration enabling accountability loss on a banking-tier client (the accountability-loss variant of the M8 dual-host carve per ADR-036 D-4), distinct from generic server-side audit-log gaps / log-tampering (Cat 1-8) by the architectural-tell of declared mobile client components with mobile build-flavor handling, mobile logging API usage (`Log.*` family / `NSLog` / `OSLog`), and mobile crash-reporting SDK integration."
+likelihood: HIGH
+impact: HIGH
+risk_level: Critical
+mitigation: "Emit structured audit log entries on every auth state transition — login (success / failure / lockout), logout (user-initiated / token-expiry / forced), step-up authentication (challenge issued / succeeded / failed / cancelled), token-refresh (rotation succeeded / refused / detected anomalous); forward to a backend audit pipeline with server-side persistence before the client-side flow proceeds; fail the operation if emission fails on a security-critical path. Emit structured audit log entries on every biometric prompt outcome — `BiometricPrompt.AuthenticationCallback` `onAuthenticationSucceeded` / `onAuthenticationFailed` / `onAuthenticationError` outcomes captured into the audit channel as distinct outcome categories. Enable Firebase Crashlytics / Sentry / Bugsnag in release builds with PII scrubbing (NOT disabled) — set explicit `setCustomKeys` policies that include sufficient context (component name, build version, anonymized session ID) without leaking PII (no email, no PAN, no OTP); validate at release-build time that the crash collection toggle is `true` in the shipped binary. Gate every `Log.d` / `Log.v` / `NSLog` call on `BuildConfig.DEBUG` (Android) / `#if DEBUG` (iOS), OR migrate sensitive-context logs to `Log.i` / `OSLog` with explicit redaction of PII fields and structured field tagging — never let a release build emit sensitive raw values into logcat / NSLog / OSLog channels readable by attached tools or other apps. Add server-attested timestamps to every transaction audit record — the transaction-confirmation API response carries a signed server timestamp (e.g., RFC 3161 timestamp token, JWT-signed timestamp claim); the mobile client persists the signed timestamp into the local audit record alongside the transaction details; client-side continuity verification (hash-chained audit entries with a per-entry hash including the previous entry's hash) detects rewriting / backdating / deletion by exposing a chain break. Forward audit log entries off-device to an immutable backend store before retention clocks start — the mobile client posts audit records to an audit-pipeline endpoint with append-only semantics on the backend (S3 with Object Lock, write-once bucket, dedicated logging account); the local on-device audit log is treated as a transient transmission queue, NOT as the canonical audit store. MITRE ATT&CK Mobile T1398 (Boot or Logon Initialization Scripts — Mobile sub-technique) describes accountability-loss surfaces where the audit emission gate is not engaged at the relevant lifecycle moment; defenders should monitor for audit-emission gaps at boot-time, login-time, and release-build crash-reporting initialization paths."
+references:
+  - "OWASP M8:2024 — Security Misconfiguration"
+  - "CWE-778 — Insufficient Logging"
+  - "OWASP MASVS-CODE — Mobile Application Security Verification Standard, Code Quality Requirements"
+maestro_layer: "L1"
+agentic_pattern: "none"
+source_attribution: []

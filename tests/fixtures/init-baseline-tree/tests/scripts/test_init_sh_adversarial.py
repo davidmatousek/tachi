@@ -1,0 +1,258 @@
+"""Test-2: ≥13 adversarial inputs for scripts/init.sh substitution + validation.
+
+Per F-248 §Regression Protection Plan, this test exercises the substitution
+mechanism and prompt-time input validator against a parametrized table of
+adversarial inputs. Cases divide into:
+
+    Cases 1–6   substitution-semantics (metachar values that pass prompt
+                validation but historically broke under sed):
+                  AT&T, foo|bar, \\1\\2 backref, single-quoted, double-quoted,
+                  multibyte UTF-8 (Ⅷ-Ⅸ).
+    Cases 7–8   leading/trailing whitespace preservation.
+    Cases 9–12  prompt-rejection class (multi-line / NUL / over-length /
+                control char). Pre-F-1 these silently passed; post-F-1
+                aod_init_read_validated rejects with a named class.
+    Case 13     trailing-newline edge cases per Architect Pass 1 M-1:
+                  (a) a fixture file with literal 4 bytes `a\\nb` (no LF),
+                  (b) a fixture file ending without a trailing LF.
+                Both must substitute byte-identical.
+
+Test-first per Constitution VI: tests land BEFORE T015–T021. They fail
+against pre-merge baseline (sed corrupts case 1 to ATtachiT;
+prompt-rejection cases silently accept; trailing-newline edge cases drift).
+Post-Stream-1 + T014 the suite passes green on macOS bash 3.2.57 + ubuntu
+bash 5.x.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from init_sh_helpers import (
+    build_canonical_stdin,
+    clone_into_tmpdir,
+    run_init_in_clone,
+)
+
+
+# Each dict describes one adversarial case. `expect` is one of:
+#   "substituted"  — init succeeds; literal value appears in personalized files
+#   "rejected"     — init exits non-zero; named-class message in stderr
+#
+# `marker` is the literal string the personalized tree must contain (for
+# "substituted" cases) or an empty string for rejection cases. `reason_class`
+# is the substring the stderr message must contain for "rejected" cases.
+ADVERSARIAL_CASES: list[dict] = [
+    # Case 1: sed `&` metachar — sed pre-F-1 corrupts this to ATtachiT
+    {"id": 1,  "project_name": "AT&T",                  "expect": "substituted",
+     "marker": "AT&T"},
+    # Case 2: sed `|` delimiter
+    {"id": 2,  "project_name": "foo|bar",               "expect": "substituted",
+     "marker": "foo|bar"},
+    # Case 3: sed backreference `\1`
+    {"id": 3,  "project_name": "\\1\\2 backref",        "expect": "substituted",
+     "marker": "\\1\\2 backref"},
+    # Case 4: shell single-quoting
+    {"id": 4,  "project_name": "'single-quoted'",       "expect": "substituted",
+     "marker": "'single-quoted'"},
+    # Case 5: shell double-quoting + embedded escape
+    {"id": 5,  "project_name": 'double-quoted-test',    "expect": "substituted",
+     "marker": 'double-quoted-test'},
+    # Case 6: multibyte UTF-8 (Roman numerals at U+2160 range)
+    {"id": 6,  "project_name": "Ⅷ-Ⅸ",                  "expect": "substituted",
+     "marker": "Ⅷ-Ⅸ"},
+    # Case 7: leading whitespace preservation
+    {"id": 7,  "project_name": "   foo",                "expect": "substituted",
+     "marker": "   foo"},
+    # Case 8: trailing whitespace preservation
+    {"id": 8,  "project_name": "bar   ",                "expect": "substituted",
+     "marker": "bar   "},
+    # Case 9: prompt-rejection — control character (0x07 BEL) embedded in input
+    # Use NUL (\x00) — bash `read -r` does NOT strip NUL; aod_init_read_validated
+    # catches it via the [[:cntrl:]] check and rejects.
+    {"id": 9,  "project_name": "foo\x07bar",            "expect": "rejected",
+     "reason_class": "control character"},
+    # Case 10: prompt-rejection — NUL byte
+    {"id": 10, "project_name": "foo\x00bar",            "expect": "rejected",
+     "reason_class": "NUL byte"},
+    # Case 11: prompt-rejection — over-length (101 chars; cap is 100)
+    {"id": 11, "project_name": "x" * 101,               "expect": "rejected",
+     "reason_class": "over-length"},
+    # Case 12: prompt-rejection — control character (0x01 SOH)
+    {"id": 12, "project_name": "foo\x01bar",            "expect": "rejected",
+     "reason_class": "control character"},
+]
+
+
+def _ids(cases: list[dict]) -> list[str]:
+    return [f"case-{c['id']:02d}-{c['expect']}" for c in cases]
+
+
+@pytest.fixture
+def adversarial_run(request, tmp_path_factory: pytest.TempPathFactory):
+    """Per-case: clone + run init.sh with the case's adversarial inputs."""
+    case = request.param
+    tmpdir = tmp_path_factory.mktemp(f"init_sh_adv_{case['id']:02d}")
+    clone_root = clone_into_tmpdir(tmpdir)
+
+    project_name = case["project_name"]
+    project_description = case.get("project_description", "threat modeling sidecar")
+    stdin_payload = build_canonical_stdin(
+        clone_root,
+        project_name=project_name,
+        project_description=project_description,
+    )
+    result = run_init_in_clone(clone_root, stdin_payload, timeout_sec=120)
+    return case, result
+
+
+@pytest.mark.parametrize("adversarial_run", ADVERSARIAL_CASES,
+                         indirect=True, ids=_ids(ADVERSARIAL_CASES))
+def test_adversarial_input(adversarial_run):
+    """Each adversarial case: substitution literal OR prompt rejection."""
+    case, result = adversarial_run
+
+    if case["expect"] == "substituted":
+        assert result.returncode == 0, (
+            f"case {case['id']}: expected init.sh to succeed; got {result.returncode}.\n"
+            f"stderr tail:\n{result.stderr[-1500:]}"
+        )
+        marker = case["marker"]
+        # Search for the marker in personalized files. Use the personalization
+        # snapshot as a stable, single-source check (avoids tree-walk noise).
+        snapshot = result.tmpdir / ".aod" / "personalization.env"
+        assert snapshot.is_file(), f"case {case['id']}: personalization.env missing"
+        snapshot_bytes = snapshot.read_bytes()
+        # We compare bytes, not str, to preserve the byte-identity contract.
+        marker_bytes = marker.encode("utf-8")
+        assert marker_bytes in snapshot_bytes, (
+            f"case {case['id']}: literal marker {marker!r} not found in "
+            f"{snapshot}; first 500 bytes:\n{snapshot_bytes[:500]!r}"
+        )
+
+    elif case["expect"] == "rejected":
+        assert result.returncode != 0, (
+            f"case {case['id']}: expected init.sh to exit non-zero (post-F-1 "
+            f"prompt rejection); got 0. stdout tail:\n{result.stdout[-1000:]}"
+        )
+        reason = case["reason_class"]
+        combined = (result.stderr + result.stdout).lower()
+        assert reason.lower() in combined, (
+            f"case {case['id']}: expected rejection reason class {reason!r} in "
+            f"stderr/stdout; got:\n{result.stderr[-800:]}\n---STDOUT---\n{result.stdout[-800:]}"
+        )
+
+    else:
+        pytest.fail(f"unknown expect class: {case['expect']!r}")
+
+
+def test_case_13_file_level_byte_identity(tmp_path_factory: pytest.TempPathFactory):
+    """Case 13a/13b: substitution loop preserves byte-level file identity.
+
+    Per Architect Pass 1 M-1: the substitution loop must not introduce
+    silent encoding shifts on files containing:
+    - the literal 4-byte sequence `a\\nb` (a, backslash, n, b — NOT a LF byte)
+    - content ending without a trailing LF byte
+
+    We seed two fixture files in the cloned tree before running init.sh,
+    then assert both files survive byte-identical (no `{{KEY}}` placeholders
+    in either, so substitution is a no-op for content but the file MUST
+    still be processed by the loop and emerge unchanged).
+    """
+    tmpdir = tmp_path_factory.mktemp("init_sh_case13")
+    clone_root = clone_into_tmpdir(tmpdir)
+
+    # 13a: 4 literal bytes `a\nb`, no trailing LF.
+    fixture_a = clone_root / "test_fixture_case13a.txt"
+    bytes_a = b"a\\nb"  # 4 bytes: 0x61 0x5C 0x6E 0x62
+    fixture_a.write_bytes(bytes_a)
+    assert fixture_a.read_bytes() == bytes_a, "pre-condition: write integrity"
+
+    # 13b: content with trailing LF and content without trailing LF — keep
+    # both shapes to verify the trailing-newline-state preservation.
+    fixture_b_no_lf = clone_root / "test_fixture_case13b_no_lf.txt"
+    bytes_b_no_lf = b"hello world"  # 11 bytes, no LF
+    fixture_b_no_lf.write_bytes(bytes_b_no_lf)
+
+    fixture_b_with_lf = clone_root / "test_fixture_case13b_with_lf.txt"
+    bytes_b_with_lf = b"hello world\n"  # 12 bytes, trailing LF
+    fixture_b_with_lf.write_bytes(bytes_b_with_lf)
+
+    stdin_payload = build_canonical_stdin(clone_root)
+    result = run_init_in_clone(clone_root, stdin_payload)
+    assert result.returncode == 0, (
+        f"init.sh exit {result.returncode}; stderr tail:\n{result.stderr[-1500:]}"
+    )
+
+    # 13a: the 4-byte fixture must be byte-identical post-substitution.
+    actual_a = fixture_a.read_bytes() if fixture_a.exists() else b""
+    assert actual_a == bytes_a, (
+        f"case 13a: byte-identity broken. Expected {bytes_a!r} ({len(bytes_a)} bytes), "
+        f"got {actual_a!r} ({len(actual_a)} bytes)"
+    )
+
+    # 13b: the no-trailing-LF file must NOT gain a LF byte through the loop.
+    actual_b_no_lf = (
+        fixture_b_no_lf.read_bytes() if fixture_b_no_lf.exists() else b""
+    )
+    assert actual_b_no_lf == bytes_b_no_lf, (
+        f"case 13b (no LF): trailing-newline drift. Expected {bytes_b_no_lf!r}, "
+        f"got {actual_b_no_lf!r}"
+    )
+
+    # 13b: the with-trailing-LF file must keep its LF byte.
+    actual_b_with_lf = (
+        fixture_b_with_lf.read_bytes() if fixture_b_with_lf.exists() else b""
+    )
+    assert actual_b_with_lf == bytes_b_with_lf, (
+        f"case 13b (with LF): trailing-newline dropped. Expected {bytes_b_with_lf!r}, "
+        f"got {actual_b_with_lf!r}"
+    )
+
+
+def test_no_residual_placeholders_after_init(tmp_path_factory: pytest.TempPathFactory):
+    """Sanity: after canonical init, no `{{KEY}}` placeholders remain in the tree.
+
+    Post-F-1 this is enforced by the residual scan (FR-004). Pre-F-1 there is
+    no residual scan, so a sed-corrupted PROJECT_NAME=AT&T would leave
+    `tachi` orphans and this test would fail.
+    """
+    import re
+    tmpdir = tmp_path_factory.mktemp("init_sh_residual")
+    clone_root = clone_into_tmpdir(tmpdir)
+    stdin_payload = build_canonical_stdin(clone_root)
+    result = run_init_in_clone(clone_root, stdin_payload)
+    assert result.returncode == 0, (
+        f"init.sh exit {result.returncode}; stderr tail:\n{result.stderr[-1500:]}"
+    )
+    # Walk the tree (excluding the substitution helper file itself, which
+    # legitimately contains `{{` examples in its docstring comments).
+    pattern = re.compile(rb"\{\{[A-Z_]+\}\}")
+    excluded_paths = {
+        Path(".aod/scripts/bash/template-substitute.sh"),
+        Path(".aod/templates/constitution-clean.md"),
+        Path(".aod/templates/constitution-instructional.md"),
+    }
+    residuals: list[str] = []
+    for path in clone_root.rglob("*"):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(clone_root)
+        if any(part in (".git", "node_modules") for part in rel.parts):
+            continue
+        if rel in excluded_paths:
+            continue
+        if path.suffix in {".png", ".jpg", ".ico"}:
+            continue
+        try:
+            data = path.read_bytes()
+        except OSError:
+            continue
+        if pattern.search(data):
+            residuals.append(str(rel))
+    assert not residuals, (
+        f"residual `{{KEY}}` placeholders survived init in {len(residuals)} file(s): "
+        f"{residuals[:10]}"
+    )

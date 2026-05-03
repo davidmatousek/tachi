@@ -1,0 +1,53 @@
+# Stream 4 fixture: Finding cites only in-scope taxonomy items (F-241 T048).
+#
+# Purpose: verify that when a finding's `source_attribution` cites items
+# whose underlying taxonomy YAML records carry `out_of_scope: false`, the
+# coverage_percentage reflects (covered_count / in_scope_record_count) * 100
+# correctly.
+#
+# This fixture cites:
+#   - owasp A03 (Injection)         — in-scope (no OOS in owasp.yaml)
+#   - mitre-attack T1190             — in-scope (TA0001 Initial Access)
+#   - mitre-attack T1078             — in-scope (TA0006 Credential Access)
+#   - cwe CWE-89                     — in-scope (no OOS in cwe.yaml)
+#
+# Expected (per `findings_in_scope_only.expected.yaml`):
+#   - owasp:        covered=1 (A03), in_scope=60,  pct = 1/60  = "1.67%"
+#   - mitre-attack: covered=2 (T1190+T1078), in_scope=323, pct = 2/323 = "0.62%"
+#   - mitre-atlas:  covered=0, in_scope=30,  pct = "0.00%"
+#   - nist-ai-rmf:  covered=0, in_scope=72,  pct = "0.00%"
+#   - cwe:          covered=1 (CWE-89), in_scope=53, pct = 1/53 = "1.89%"
+
+- id: T-1
+  component: User Profile API
+  threat: SQL injection via unsanitized search parameter
+  likelihood: "—"
+  impact: "—"
+  risk_level: Critical
+  mitigation: Use parameterized queries; reject unbound queries at the API gateway
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: owasp, id: A03, relationship: primary}
+    - {taxonomy: cwe, id: CWE-89, relationship: primary}
+
+- id: S-1
+  component: Auth Service
+  threat: Adversary exploits exposed admin endpoint to gain initial access
+  likelihood: "—"
+  impact: "—"
+  risk_level: High
+  mitigation: Network-segregate the admin plane; require mTLS on entry
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1190, relationship: primary}
+
+- id: I-1
+  component: Auth Service
+  threat: Stale service-account credentials remain valid post-offboarding
+  likelihood: "—"
+  impact: "—"
+  risk_level: High
+  mitigation: Quarterly credential rotation; offboarding-driven account disable workflow
+  agentic_pattern: none
+  source_attribution:
+    - {taxonomy: mitre-attack, id: T1078, relationship: primary}

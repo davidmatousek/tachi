@@ -1,0 +1,45 @@
+# Context Loading Configuration
+#
+# This file defines which content loads for each workflow phase.
+# The lazy-load pattern avoids loading everything on every invocation,
+# significantly reducing token usage and improving response quality.
+#
+# How it works:
+# - `always_load`: Loaded on every command invocation (voice + style contract)
+# - `on_demand`: Loaded only when the specific workflow phase is active
+# - `token_budget`: Maximum tokens per invocation (soft limit for planning)
+#
+# Your commands implement the loading logic by reading this configuration
+# and loading only the files relevant to the current workflow phase.
+
+always_load:
+  # These files define the voice and style contract.
+  # They are small enough to load every time and ensure
+  # consistent output regardless of which command runs.
+  - _Global/VoiceProfile.md
+  - _Global/StyleGuide.md
+
+on_demand:
+  # Analyze phase: understanding inputs and selecting content
+  analyze:
+    - _Global/MasterContent/     # Core content for selection
+    - _Config/Terms/             # Domain terminology for comprehension
+
+  # Draft phase: generating output content
+  draft:
+    - _Global/MasterContent/     # Content to draw from
+    - _Global/Narratives/        # Story fragments to embed
+    - _Config/Presets/           # Audience/format preset for this output
+
+  # Review phase: evaluating output quality
+  review:
+    - _Config/ScoringRubric.md   # Quality dimensions and thresholds
+
+  # Export phase: formatting for delivery
+  export:
+    - _Templates/                # Output format templates
+
+# Token budget per invocation (soft limit).
+# Use this to plan context allocation across loaded files.
+# Adjust based on your model's context window and content volume.
+token_budget: 8000
