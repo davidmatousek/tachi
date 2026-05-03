@@ -181,6 +181,7 @@ done < <(find . -type f \
   -not -path "./.git/*" \
   -not -path "./node_modules/*" \
   -not -name "*.png" -not -name "*.jpg" -not -name "*.ico" \
+  -not -name "*.pdf" -not -name "*.baseline" -not -name ".DS_Store" \
   -print0)
 if [ -n "$FAILED_FILES" ]; then
   echo -e "${RED}ERROR: substitution failed on:$FAILED_FILES${NC}" >&2
@@ -203,6 +204,7 @@ done < <(find . -type f \
   -not -path "./.git/*" \
   -not -path "./node_modules/*" \
   -not -name "*.png" -not -name "*.jpg" -not -name "*.ico" \
+  -not -name "*.pdf" -not -name "*.baseline" -not -name ".DS_Store" \
   -print0)
 
 # Write AOD_REPO to .env for explicit GitHub repo targeting
