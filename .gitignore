@@ -220,3 +220,7 @@ venv/
 # Personalization values — remove this line for reproducible installs
 # (committing personalization.env locks substitution values into git history).
 .aod/personalization.env
+
+# Claude Code runtime locks (PID/session state — never commit)
+.claude/scheduled_tasks.lock
+.claude/*.lock
