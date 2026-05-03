@@ -10,6 +10,18 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Source the substitution helper library (F-248 T015 — was a lazy source at
+# snapshot-write time pre-F-248; eager top-level source so that the same
+# helper functions are available to both the substitution loop AND the
+# snapshot-write block. NFR-001: bash 3.2 compatible.
+if [ -f ".aod/scripts/bash/template-substitute.sh" ]; then
+  # shellcheck disable=SC1091
+  source .aod/scripts/bash/template-substitute.sh
+else
+  echo -e "${RED}ERROR: .aod/scripts/bash/template-substitute.sh not found — required for substitution${NC}" >&2
+  exit 1
+fi
+
 echo -e "${BLUE}🚀 Agentic-Oriented-Development-Kit - Project Initialization${NC}"
 echo ""
 
@@ -19,6 +31,19 @@ command -v node >/dev/null 2>&1 || { echo -e "${RED}Node.js is required but not 
 command -v git >/dev/null 2>&1 || { echo -e "${RED}Git is required but not installed.${NC}" >&2; exit 1; }
 echo -e "${GREEN}✓ All prerequisites met${NC}"
 echo ""
+
+# Re-init pre-flight check (F-248 T016, FR-003): if .aod/personalization.env
+# already exists, this project has already been initialized. init.sh self-
+# deletes after a successful run, so seeing the file at this point means
+# either (a) a previous run was interrupted before self-delete, or (b) the
+# operator is running from a non-personalized clone but accidentally pulled
+# in the snapshot. Halt to prevent re-init.
+if [ -f ".aod/personalization.env" ]; then
+  echo -e "${RED}ERROR: .aod/personalization.env already exists.${NC}" >&2
+  echo "       This project has already been initialized. Re-running init.sh on a personalized adopter project is not supported." >&2
+  echo "       (init.sh self-deletes after a successful run; if you are seeing this on a fresh checkout, the previous run was interrupted — delete .aod/personalization.env and retry.)" >&2
+  exit 1
+fi
 
 # Interactive prompts
 read -p "Project Name: " PROJECT_NAME
@@ -111,56 +136,74 @@ if [[ $CONFIRM =~ ^[Nn]$ ]]; then
 fi
 
 echo ""
+
+# ── Personalization snapshot (F-248 T017 reorder per Architect B-2 P1) ──────
+# Snapshot-write MUST happen BEFORE the substitution loop so that
+# aod_template_load_personalization_env can populate AOD_PERSONALIZATION_<KEY>
+# env vars that aod_template_substitute_placeholders consumes. This replaces
+# the previous post-substitution snapshot-write at the bottom of init.sh.
+#
+# RATIFICATION_DATE and CURRENT_DATE are captured above via `date +%Y-%m-%d`.
+# /aod.update reads this file on every run and uses bash parameter expansion
+# (NOT sed) to re-substitute placeholders into personalized-category files.
+echo -e "${YELLOW}🔄 Writing personalization snapshot (.aod/personalization.env)...${NC}"
+if aod_template_init_personalization ".aod/personalization.env"; then
+  echo -e "${GREEN}✓ Personalization snapshot written (.aod/personalization.env)${NC}"
+else
+  echo -e "${RED}ERROR: failed to write .aod/personalization.env${NC}" >&2
+  exit 1
+fi
+
+# Load the snapshot back into the AOD_PERSONALIZATION_<KEY> namespace so the
+# substitute helper can resolve {{KEY}} → value (F-248 T018, FR-002).
+if ! aod_template_load_personalization_env ".aod/personalization.env"; then
+  echo -e "${RED}ERROR: failed to load .aod/personalization.env into AOD_PERSONALIZATION_ namespace${NC}" >&2
+  exit 1
+fi
+
 echo -e "${YELLOW}🔄 Replacing template variables...${NC}"
 
-# Function to replace in files (cross-platform)
-replace_in_files() {
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS
-    find . -type f \
-      -not -path "./.git/*" \
-      -not -path "./node_modules/*" \
-      -not -name "*.png" -not -name "*.jpg" -not -name "*.ico" \
-      -exec sed -i '' \
-        -e "s|{{PROJECT_NAME}}|$PROJECT_NAME|g" \
-        -e "s|{{PROJECT_DESCRIPTION}}|$PROJECT_DESCRIPTION|g" \
-        -e "s|{{GITHUB_ORG}}|$GITHUB_ORG|g" \
-        -e "s|{{GITHUB_REPO}}|$GITHUB_REPO|g" \
-        -e "s|{{AI_AGENT}}|$AI_AGENT|g" \
-        -e "s|{{TECH_STACK}}|$TECH_STACK|g" \
-        -e "s|{{TECH_STACK_DATABASE}}|$TECH_STACK_DATABASE|g" \
-        -e "s|{{TECH_STACK_VECTOR}}|$TECH_STACK_VECTOR|g" \
-        -e "s|{{TECH_STACK_AUTH}}|$TECH_STACK_AUTH|g" \
-        -e "s|{{RATIFICATION_DATE}}|$RATIFICATION_DATE|g" \
-        -e "s|{{CURRENT_DATE}}|$CURRENT_DATE|g" \
-        -e "s|{{CLOUD_PROVIDER}}|$CLOUD_PROVIDER|g" \
-        {} +
-  else
-    # Linux
-    find . -type f \
-      -not -path "./.git/*" \
-      -not -path "./node_modules/*" \
-      -not -name "*.png" -not -name "*.jpg" -not -name "*.ico" \
-      -exec sed -i \
-        -e "s|{{PROJECT_NAME}}|$PROJECT_NAME|g" \
-        -e "s|{{PROJECT_DESCRIPTION}}|$PROJECT_DESCRIPTION|g" \
-        -e "s|{{GITHUB_ORG}}|$GITHUB_ORG|g" \
-        -e "s|{{GITHUB_REPO}}|$GITHUB_REPO|g" \
-        -e "s|{{AI_AGENT}}|$AI_AGENT|g" \
-        -e "s|{{TECH_STACK}}|$TECH_STACK|g" \
-        -e "s|{{TECH_STACK_DATABASE}}|$TECH_STACK_DATABASE|g" \
-        -e "s|{{TECH_STACK_VECTOR}}|$TECH_STACK_VECTOR|g" \
-        -e "s|{{TECH_STACK_AUTH}}|$TECH_STACK_AUTH|g" \
-        -e "s|{{RATIFICATION_DATE}}|$RATIFICATION_DATE|g" \
-        -e "s|{{CURRENT_DATE}}|$CURRENT_DATE|g" \
-        -e "s|{{CLOUD_PROVIDER}}|$CLOUD_PROVIDER|g" \
-        {} +
+# F-248 T019 (FR-001): replace the previous sed-based replace_in_files()
+# function with bash parameter expansion via aod_template_substitute_placeholders.
+# Single bash branch handles BOTH macOS and Linux (no more $OSTYPE split).
+# Process substitution `< <(...)` is bash 3.2 compatible.
+#
+# bash 3.2 hazard: piping to `while read` creates a subshell that masks
+# errors. We use process substitution + a flag variable to capture failures
+# (NOT `set -e` which is already on at script scope and gets confusing in
+# pipe-subshell contexts).
+FAILED_FILES=""
+while IFS= read -r -d '' path; do
+  if ! aod_template_substitute_placeholders "$path" "$path"; then
+    FAILED_FILES="$FAILED_FILES $path"
   fi
-}
-
-replace_in_files
+done < <(find . -type f \
+  -not -path "./.git/*" \
+  -not -path "./node_modules/*" \
+  -not -name "*.png" -not -name "*.jpg" -not -name "*.ico" \
+  -print0)
+if [ -n "$FAILED_FILES" ]; then
+  echo -e "${RED}ERROR: substitution failed on:$FAILED_FILES${NC}" >&2
+  exit 1
+fi
 
 echo -e "${GREEN}✓ Template variables replaced${NC}"
+
+# F-248 T020 (FR-004): post-loop residual scan. Walk the same find filter
+# and call aod_template_assert_no_residual on each file. Halt non-zero on
+# the first match. The closed placeholder contract: every {{KEY}} in any
+# personalized file MUST be in the canonical 12; orphan placeholders fail-
+# fast here rather than fail-silent at run time.
+while IFS= read -r -d '' path; do
+  if ! aod_template_assert_no_residual "$path"; then
+    echo -e "${RED}ERROR: residual {{KEY}} placeholder detected — see file:line above${NC}" >&2
+    exit 8
+  fi
+done < <(find . -type f \
+  -not -path "./.git/*" \
+  -not -path "./node_modules/*" \
+  -not -name "*.png" -not -name "*.jpg" -not -name "*.ico" \
+  -print0)
 
 # Write AOD_REPO to .env for explicit GitHub repo targeting
 # This ensures gh commands in github-lifecycle.sh always target the correct repo.
@@ -314,41 +357,11 @@ else
   exit 1
 fi
 
-# ── Personalization env: write .aod/personalization.env BEFORE self-delete ──
-# Per feature 129 (T046, plan §C5): capture the 12 canonical placeholder
-# values as an init-time snapshot. /aod.update reads this file on every run
-# and uses bash parameter expansion (NOT sed) to re-substitute placeholders
-# into personalized-category files.
-#
-# RATIFICATION_DATE and CURRENT_DATE are captured HERE — init-time snapshots
-# that /aod.update MUST NEVER recompute. If the adopter ever deletes these
-# keys later, /aod.update halts with exit 8 (see tests/integration/
-# init-only-snapshot.bats).
-#
-# ORDER IS LOAD-BEARING — this runs AFTER the version-pin write above and
-# BEFORE the `rm -f scripts/init.sh` self-delete below. Both files must
-# exist when /aod.update first runs.
-echo -e "${YELLOW}🔄 Writing personalization snapshot (.aod/personalization.env)...${NC}"
-
-# Source template-substitute.sh for aod_template_init_personalization.
-if [ -f ".aod/scripts/bash/template-substitute.sh" ]; then
-  # shellcheck disable=SC1091
-  source .aod/scripts/bash/template-substitute.sh
-else
-  echo -e "${RED}ERROR: .aod/scripts/bash/template-substitute.sh not found — cannot write personalization.env${NC}" >&2
-  exit 1
-fi
-
-# The caller-scope vars PROJECT_NAME, PROJECT_DESCRIPTION, ..., CLOUD_PROVIDER
-# have been set by the prompts above. RATIFICATION_DATE and CURRENT_DATE were
-# captured at line 86-87 via `date +%Y-%m-%d`. The helper validates all 12
-# values present + newline-free, then writes atomically (.tmp → mv).
-if aod_template_init_personalization ".aod/personalization.env"; then
-  echo -e "${GREEN}✓ Personalization snapshot written (.aod/personalization.env)${NC}"
-else
-  echo -e "${RED}ERROR: failed to write .aod/personalization.env${NC}" >&2
-  exit 1
-fi
+# ── Personalization env was written + loaded ABOVE (F-248 T017 reorder) ────
+# Per F-248 BLOCKING B-2 pattern P1, the snapshot-write moved to BEFORE the
+# substitution loop so that AOD_PERSONALIZATION_<KEY> env vars populate the
+# loop's lookup. The version-pin write above + the self-delete below remain
+# in their original positions.
 
 # Remove this init script (one-time use)
 rm -f scripts/init.sh

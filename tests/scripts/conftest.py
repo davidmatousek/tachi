@@ -23,6 +23,7 @@ leaving `pytest-xdist` workers isolated.
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +32,10 @@ import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+_THIS_DIR = str(Path(__file__).resolve().parent)
+if _THIS_DIR not in sys.path:
+    sys.path.insert(0, _THIS_DIR)
 SCHEMA_PATH = REPO_ROOT / "schemas" / "finding.yaml"
 TAXONOMY_DIR = REPO_ROOT / "schemas" / "taxonomy"
 AGENTS_DIR = REPO_ROOT / ".claude" / "agents" / "tachi"
