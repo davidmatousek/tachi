@@ -1,0 +1,77 @@
+2026-05-03T20:12:11Z
+
+## T004 Manifest Snapshot (NFR-002 baseline)
+Captured: 2026-05-03T20:12:11Z
+pyproject.toml HEAD sha256: 2c0b511fc7e86d093b2d586e6052edc39138a51b99b4cf473c5dd56839efb555
+requirements.txt: not present in HEAD
+requirements-dev.txt HEAD sha256: e41f5e052f9b6edffd8489ce30044e443f9516ae6ecc270e6b37403ee220cf98
+package.json: not present in HEAD
+
+
+## T005 Internal-Tooling Search (Q-1 Adjudication)
+Captured: 2026-05-03 (Stream 1 Day 1)
+Paths searched: .aod/scripts/, .claude/agents/, .claude/commands/, Makefile, scripts/
+Match count: 0 (zero) in every required path
+Broader sanity check (*.sh, *.md, *.py, *.json, *.yml, *.yaml, Makefile excluding .git/, node_modules/, specs/, docs/): 0 consumer references outside the file itself
+Adjudicated disposition: Option (b) — remove .claude/mcp-config.json (T033)
+Fallback Option (a) NOT triggered. Canonical placeholder set remains locked at 12.
+
+## T008 Stream 1 Day 1 Baseline Benchmark (NFR-004 anchor)
+Captured: 2026-05-03 (Stream 1 Day 1 pre-swap)
+Snapshot source: tmpdir clone of branch=main, HEAD=da42235 (latest commit before 248-substitution-surface-hardening branch)
+Inputs (canonical fixture, stdin-fed):
+  PROJECT_NAME=tachi
+  PROJECT_DESCRIPTION=threat modeling sidecar
+  GITHUB_ORG=benchmark-test-org
+  GITHUB_REPO=(empty → defaults to tachi)
+  AI_AGENT=Claude Code (choice 1)
+  Stack pack=Other (choice 6 of 6 — 5 packs detected + Other)
+  TECH_STACK=Python + FastAPI
+  TECH_STACK_DATABASE=PostgreSQL
+  CLOUD_PROVIDER=(empty → "Not yet defined")
+  Confirm=Y
+Environment: LC_ALL=C, HOME=isolated tmpdir (gh auth state neutralized), bash 3.2.57 (macOS default)
+init.sh exit: 0
+Timing (bash time builtin):
+  real    0m6.690s
+  user    0m5.326s
+  sys     0m0.926s
+
+Note: this baseline captures the full init.sh flow including:
+- prompts (stdin instant), prerequisite checks, AOD_REPO write, vision seeding,
+- BOARD_STATUS gh detection (skipped_no_gh because HOME=isolated),
+- replace_in_files() sed-based substitution loop (Linux-or-macOS branch),
+- constitution sed cleanup at lines 235-241,
+- version pin write, personalization snapshot write, self-delete.
+
+The substitution loop itself is sed-based on macOS via `find ... -exec sed -i '' ...`.
+T021 (post-Stream-1) will measure the same flow with bash parameter expansion via
+aod_template_substitute_placeholders. Delta thresholds per NFR-004:
+  ≤ 5% : holds at 10% (record numbers in ADR-038)
+  5–50%: loosen to 25% with rationale (ADR-038 §Consequences)
+  > 50%: PM escalation pre-merge
+
+## Wave 2 — Test Authorship (T009-T013) — TEST-FIRST per Constitution VI
+Captured: 2026-05-03 (Day 1 EOD per accelerated /aod.build run)
+Deliverables landed:
+  tests/scripts/init_sh_helpers.py             (shared helper module, ~210 LOC)
+  tests/scripts/test_init_sh_substitution.py   (Test-1, 2 tests; skip until baseline regenerated post-Stream-1 / T014)
+  tests/scripts/test_init_sh_adversarial.py    (Test-2, 14 tests = 12 parametrized + case-13 + residual scan)
+  tests/scripts/test_init_sh_constitution.py   (Test-4, 1 test)
+  tests/scripts/test_init_sh_self_delete.py    (Test-5', 3 tests)
+  tests/fixtures/regenerate-baseline.sh        (T013 regen script, executable)
+
+pytest --collect-only: 20 tests collected, 0 errors
+NFR-003 (>=13 adversarial input minimum): SATISFIED (12 parametrized + case-13 = 13 cases)
+
+G2 quality gate (TEST-FIRST per Constitution VI):
+  - All 5 test files committed BEFORE Wave 3 implementation
+  - Tests assert post-F-1 contracts (will fail pre-Stream-1, pass post-Stream-1+T014)
+  - Pre-merge baseline FAIL expected => tests will be exercised at start of Wave 3 to confirm
+
+Helper architecture:
+  - clone_into_tmpdir(): clones REPO_ROOT @ HEAD via file:// + git checkout (reproducible; sees feature branch commits as Wave 3 lands)
+  - run_init_in_clone(): LC_ALL=C + isolated HOME (gh auth neutralized) + PATH minus homebrew dirs
+  - build_canonical_stdin(): pack-count-aware "Other" choice; matches T008 baseline inputs
+  - files_in_tree(): mirrors init.sh find filter (excludes .git/, node_modules/, *.png/jpg/ico)
+

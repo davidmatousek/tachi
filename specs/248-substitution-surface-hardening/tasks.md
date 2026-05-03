@@ -47,10 +47,10 @@ triad:
 
 **Purpose**: Workspace verification and directory scaffolding before implementation begins.
 
-- [ ] T001 Verify feature branch + draft PR state: `git branch --show-current` returns `248-substitution-surface-hardening`; `gh pr view 249` returns draft PR with title `feat(248): substitution surface hardening`; spec.md and plan.md frontmatter contain required sign-offs (PM, Architect)
-- [ ] T002 [P] Create `.aod/templates/` directory if not present (verify `ls -d .aod/templates/` succeeds; create with `mkdir -p .aod/templates/` if missing)
-- [ ] T003 [P] Create `tests/fixtures/` directory if not present (verify `ls -d tests/fixtures/` succeeds; create with `mkdir -p tests/fixtures/` if missing)
-- [ ] T004 [P] Snapshot dependency manifests for NFR-002 verification: capture `git show HEAD:pyproject.toml` and `git show HEAD:requirements*.txt` baselines; record SHA-256 of each in tasks-runlog.txt for end-of-build comparison
+- [X] T001 Verify feature branch + draft PR state: `git branch --show-current` returns `248-substitution-surface-hardening`; `gh pr view 249` returns draft PR with title `feat(248): substitution surface hardening`; spec.md and plan.md frontmatter contain required sign-offs (PM, Architect)
+- [X] T002 [P] Create `.aod/templates/` directory if not present (verify `ls -d .aod/templates/` succeeds; create with `mkdir -p .aod/templates/` if missing)
+- [X] T003 [P] Create `tests/fixtures/` directory if not present (verify `ls -d tests/fixtures/` succeeds; create with `mkdir -p tests/fixtures/` if missing)
+- [X] T004 [P] Snapshot dependency manifests for NFR-002 verification: capture `git show HEAD:pyproject.toml` and `git show HEAD:requirements*.txt` baselines; record SHA-256 of each in tasks-runlog.txt for end-of-build comparison
 
 **Checkpoint**: Workspace is clean and ready for substitution-surface work.
 
@@ -62,10 +62,10 @@ triad:
 
 **CRITICAL**: T005 (internal-tooling search outcome) gates T028 (PROJECT_PATH disposition implementation). T006-T007 gate T027 (constitution cleanup). T008 baseline benchmark gates the post-swap measurement in T015.
 
-- [ ] T005 Internal-tooling search for Q-1 adjudication: grep `mcp-config.json` across `.aod/scripts/`, `.claude/agents/`, `.claude/commands/`, `Makefile`, `scripts/` for any wired consumer reading the file from the project tree (5-minute scope). Record outcome in `specs/248-substitution-surface-hardening/spec.md` §Internal-Tooling Search Outcome (replace "provisional" line with confirmed outcome). Default disposition: Option (b) — remove `.claude/mcp-config.json`. Fallback: Option (a) — add PROJECT_PATH to canonical-13.
-- [ ] T006 [P] Author `.aod/templates/constitution-instructional.md` — full template variant containing HTML comment block at top + `## Template Instructions` section + main constitution body (preserves the current pre-init template content that the existing `sed -i` cleanup operates on)
-- [ ] T007 [P] Author `.aod/templates/constitution-clean.md` — post-strip output variant: byte-equivalent to running the current sed cleanup over `constitution-instructional.md` (remove `<!--...-->` comment block + `## Template Instructions` section to EOF). Validate byte-faithful relationship manually: `sed '/^<!--$/,/^-->$/d; /^## Template Instructions$/,$d' constitution-instructional.md` MUST equal `constitution-clean.md` byte-for-byte
-- [ ] T008 Stream 1 Day 1 baseline benchmark (NFR-004): from a snapshot of pre-merge state, time `./scripts/init.sh` on the canonical fixture inputs (PROJECT_NAME=tachi, PROJECT_DESCRIPTION=threat modeling sidecar, etc.) using the bash `time` builtin. Capture `real`, `user`, `sys` values to tasks-runlog.txt for ADR-038 §Consequences
+- [X] T005 Internal-tooling search for Q-1 adjudication: grep `mcp-config.json` across `.aod/scripts/`, `.claude/agents/`, `.claude/commands/`, `Makefile`, `scripts/` for any wired consumer reading the file from the project tree (5-minute scope). Record outcome in `specs/248-substitution-surface-hardening/spec.md` §Internal-Tooling Search Outcome (replace "provisional" line with confirmed outcome). Default disposition: Option (b) — remove `.claude/mcp-config.json`. Fallback: Option (a) — add PROJECT_PATH to canonical-13.
+- [X] T006 [P] Author `.aod/templates/constitution-instructional.md` — full template variant containing HTML comment block at top + `## Template Instructions` section + main constitution body (preserves the current pre-init template content that the existing `sed -i` cleanup operates on)
+- [X] T007 [P] Author `.aod/templates/constitution-clean.md` — post-strip output variant: byte-equivalent to running the current sed cleanup over `constitution-instructional.md` (remove `<!--...-->` comment block + `## Template Instructions` section to EOF). Validate byte-faithful relationship manually: `sed '/^<!--$/,/^-->$/d; /^## Template Instructions$/,$d' constitution-instructional.md` MUST equal `constitution-clean.md` byte-for-byte
+- [X] T008 Stream 1 Day 1 baseline benchmark (NFR-004): from a snapshot of pre-merge state, time `./scripts/init.sh` on the canonical fixture inputs (PROJECT_NAME=tachi, PROJECT_DESCRIPTION=threat modeling sidecar, etc.) using the bash `time` builtin. Capture `real`, `user`, `sys` values to tasks-runlog.txt for ADR-038 §Consequences
 
 **Checkpoint**: Internal-tooling search outcome committed; constitution templates ready; baseline benchmark recorded. Stream 1 substitution swap can now begin.
 
@@ -83,15 +83,15 @@ triad:
 
 **NOTE: Tests written FIRST per Constitution VI. Test files land before substitution swap; tests fail against pre-merge baseline; tests pass after Stream 1 implementation.**
 
-- [ ] T009 [P] [US1] Author `tests/scripts/test_init_sh_substitution.py` (Test-1 fixture-replay byte-comparison): use `subprocess.run` to invoke `init.sh` against a controlled tmpdir clone with the canonical fixture inputs; walk the resulting personalized tree; for each file, assert `Path.read_bytes()` equality against `tests/fixtures/init-baseline-tree/`; assert mode preservation via `Path.stat().st_mode`. Pass inputs via env vars (preferred) for non-interactive testability
-- [ ] T010 [P] [US1] Author `tests/scripts/test_init_sh_adversarial.py` (Test-2: ≥13 adversarial inputs) using `pytest.mark.parametrize` table:
+- [X] T009 [P] [US1] Author `tests/scripts/test_init_sh_substitution.py` (Test-1 fixture-replay byte-comparison): use `subprocess.run` to invoke `init.sh` against a controlled tmpdir clone with the canonical fixture inputs; walk the resulting personalized tree; for each file, assert `Path.read_bytes()` equality against `tests/fixtures/init-baseline-tree/`; assert mode preservation via `Path.stat().st_mode`. Pass inputs via env vars (preferred) for non-interactive testability
+- [X] T010 [P] [US1] Author `tests/scripts/test_init_sh_adversarial.py` (Test-2: ≥13 adversarial inputs) using `pytest.mark.parametrize` table:
   Cases 1–6 substitution-semantics (env-var injection bypasses prompt): `AT&T` / `foo|bar` / `\1\2 backref` / `'single-quoted'` / `"double-quoted\"escaped"` / multibyte UTF-8 `Ⅷ-Ⅸ` — assert literal substitution survives byte-identical;
   Case 7 leading-whitespace, Case 8 trailing-whitespace — assert preserved per spec;
   Cases 9–12 prompt-rejection (stdin injection): multi-line / NUL / over-length / control char (0x07 BEL) — assert exit non-zero with named-class rejection message;
   Case 13 trailing-newline edge cases (per Architect Pass 1 M-1): fixture file containing literal 4 bytes `a\nb` (backslash-n, no LF) — assert byte-identical preservation; second fixture file ending without trailing LF — assert byte-identical preservation
-- [ ] T011 [P] [US1] Author `tests/scripts/test_init_sh_constitution.py` (Test-4 byte-compare): run `init.sh` end-to-end; assert `Path(".aod/memory/constitution.md").read_bytes() == Path(".aod/templates/constitution-clean.md").read_bytes()`
-- [ ] T012 [P] [US1] Author `tests/scripts/test_init_sh_self_delete.py` (Test-5' self-delete preservation): run `init.sh` end-to-end; assert `not Path("scripts/init.sh").exists()` post-init (replaces original Test-5 re-init parity per Architect M-3 + Team-Lead Q-3 Option b)
-- [ ] T013 [P] [US1] Author `tests/fixtures/regenerate-baseline.sh` script (per Team-Lead Pass 1 M-5): clones tachi fresh into tmpdir, runs `init.sh` with canonical fixture inputs, copies personalized tree to `tests/fixtures/init-baseline-tree/`, includes documentation header explaining when to regenerate (canonical-12 expansion only — never to mask substitution-semantics regression)
+- [X] T011 [P] [US1] Author `tests/scripts/test_init_sh_constitution.py` (Test-4 byte-compare): run `init.sh` end-to-end; assert `Path(".aod/memory/constitution.md").read_bytes() == Path(".aod/templates/constitution-clean.md").read_bytes()`
+- [X] T012 [P] [US1] Author `tests/scripts/test_init_sh_self_delete.py` (Test-5' self-delete preservation): run `init.sh` end-to-end; assert `not Path("scripts/init.sh").exists()` post-init (replaces original Test-5 re-init parity per Architect M-3 + Team-Lead Q-3 Option b)
+- [X] T013 [P] [US1] Author `tests/fixtures/regenerate-baseline.sh` script (per Team-Lead Pass 1 M-5): clones tachi fresh into tmpdir, runs `init.sh` with canonical fixture inputs, copies personalized tree to `tests/fixtures/init-baseline-tree/`, includes documentation header explaining when to regenerate (canonical-12 expansion only — never to mask substitution-semantics regression)
 - [ ] T014 [US1] Run `tests/fixtures/regenerate-baseline.sh` once with the **post-Stream-1 init.sh** to populate `tests/fixtures/init-baseline-tree/` (deferred dependency: must run AFTER T015–T021 substitution swap completes; T014 establishes the baseline reference Test-1 will compare against). Commit the baseline tree
 
 ### Implementation for User Story 1+6 (Stream 1 substitution adoption)
