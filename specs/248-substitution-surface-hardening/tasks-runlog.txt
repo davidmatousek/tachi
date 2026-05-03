@@ -249,3 +249,99 @@ substitution silently no-op'd; the new closed-contract residual scan halts.
 - T021 attempt 1 (bash-param expansion, full tree): >240s STALLED on PDF files
 - T021 attempt 2 (bash + binary skip): real 49.928s exit 8 (residual halt)
 - T021 attempt 3 (bash + binary skip + doc escape): real 50.687s exit 8 (residual halt)
+- T021 attempt 4 (T020 scope fix to manifest personalized files; clean run): real 50.715s, user 23.974s, sys 26.222s **exit 0**
+
+
+## T021 Final Disposition — Defect 1 RESOLVED, Defect 2 PM-flagged
+Captured: 2026-05-03 (post 19e78cd)
+
+### Defect 1 (residual scan over-scope) — RESOLVED in 19e78cd
+T020 implementation re-scoped to walk `.aod/template-manifest.txt` `personalized`
+category only (5 files: .claude/rules/{context-loading,deployment,
+design-context-loader,design-quality,governance}.md). This aligns the implementation
+with FR-004 spec language ("every {{KEY}} in any **personalized file** MUST be in
+canonical 12") rather than the over-scoped whole-tree walk that caught ~110
+legitimate non-canonical tokens used by parallel templating systems (stack
+scaffolds, brand archetypes, deployment-time docs).
+
+The change is in init.sh's CALLER (not in the helper `aod_template_assert_no_residual`).
+The helper's regex `\{\{[A-Z_]+\}\}` is unchanged and remains valid for /aod.update
+which already operates on personalized files only. No architect ADR-038 §Decision
+regex change is needed; M-2 lockstep commitment remains intact.
+
+Result: `init.sh` exits 0 on the canonical fixture. Test suite no longer halts on
+residual orphans during init.sh execution.
+
+### Defect 2 (NFR-004 perf regression) — REMAINS at +658% delta
+Clean run (post-Defect-1-fix): real 50.715s vs T008 baseline 6.690s = **+658.3% delta**.
+
+Root cause is structural (cannot be fixed in init.sh's calling code; requires either
+helper rewrite or PM threshold relaxation):
+- `aod_template_substitute_placeholders` is called once per file (3260 text files
+  post-binary-skip)
+- Each call forks ~6-8 subprocesses: cat, tail, od, tr, mv, dirname, stat, chmod
+- ~20000 subprocess forks at ~1ms macOS fork = ~20s pure fork overhead
+- Plus per-file bash `${content//pat/rep}` × 12 canonical keys × file size scan
+- Old sed used `find ... -exec sed -i '' -e ... -e ... +` with argv batching
+  (~1000 files per sed invocation); ~3-5 sed processes total
+
+The substitute helper is frozen per Wave 3 dispatch ("Do NOT modify
+.aod/scripts/bash/template-substitute.sh — it is final"). Therefore optimization
+options are constrained to:
+1. Manifest-walk for substitution too (drops to 5 files): BREAKS fresh-adopter
+   init flow (README.md / CLAUDE.md / constitution.md / etc. need substitution at
+   init but are `merge`/`owned` category, not `personalized`). REJECTED — would
+   require manifest re-categorization beyond F-248 scope.
+2. PM accepts perf regression with rationale (NFR-004 threshold update from
+   ≤10% → ≤700%, or "best effort" with documented baseline + measured trade-off).
+   ADR-038 §Consequences (T034) captures the trade-off.
+
+### NFR-004 PM disposition — flagged for /aod.deliver gate (NOT a build halt)
+
+Per spec NFR-004 escalation tiers:
+- ≤5%: holds at 10%
+- 5–50%: loosens to 25% with rationale
+- >50%: PM re-scope before merge
+
+The +658% delta requires PM judgment at MERGE time (pre-`/aod.deliver`), not at
+build time. The build can complete and Streams 2-4 can proceed; ADR-038 (T034)
+captures the disposition for PM review during delivery.
+
+Recommended PM judgment input (for /aod.deliver gate):
+1. Old sed approach was fast (6.7s) but had metacharacter corruption defects
+   (FR-001 the spec rationale): values like `AT&T`, `foo\1bar`, sed-active regex
+   metachars would corrupt during sed substitution.
+2. New bash approach is correct (literal substitution survives all metachars
+   per Wave 2 Test-2 cases 1-8) but ~7-8x slower at init time only.
+3. init.sh runs ONCE per adopter project (one-time cost). 50s vs 7s adds ~43s
+   to first-run experience; not a recurring cost.
+4. Recommendation: PM accepts perf regression with documented rationale in
+   ADR-038 §Consequences. Approve threshold relaxation to "no hard ceiling at
+   init.sh; document baseline trade-off; revisit if user complaints surface."
+
+### Stream 1 task disposition — UPDATED entering Wave 5 G3 gate
+- T015 (top-level source): COMPLETE 4ace34a — correct
+- T016 (re-init pre-flight): COMPLETE 4ace34a — correct
+- T017 (snapshot reorder before substitution): COMPLETE 4ace34a — correct
+- T018 (load_personalization_env): COMPLETE 4ace34a — correct
+- T019 (replace_in_files removal + bash-param-expansion loop): COMPLETE 4ace34a + 40e41b6 (binary-skip mitigation)
+- T020 (residual scan): COMPLETE 4ace34a + 19e78cd (FR-004 scope fix)
+- T021 (benchmark + NFR-004 disposition): COMPLETE — final clean number 50.715s
+  (+658% delta); PM judgment flagged for /aod.deliver gate; ADR-038 §Consequences
+  captures trade-off rationale.
+
+### Wave 3 G3 quality gate — UNBLOCKED for Streams 2-4 progression
+With Defect 1 resolved (T020 scope fix) and Defect 2 documented for PM judgment
+(not a build halt), Wave 3 can proceed to Streams 2-4. The G3 gate exit
+criteria are met EXCEPT for the perf-acceptance flag, which is handled at
+/aod.deliver per NFR-004 escalation contract.
+
+Streams 2-4 entry conditions (all met):
+- replace_in_files() removed: ✓
+- aod_template_substitute_placeholders integrated: ✓
+- Residual scan in place (FR-004 scoped correctly): ✓
+- T020 functional defect resolved: ✓
+- ADR-038 Proposed authorship pending in T034 (Stream 4): captures Defect 2 rationale
+
+### Commits added since BLOCKED documentation
+- 19e78cd fix(248): T020 residual scan scope — walk personalized category from template-manifest.txt (FR-004 alignment)
