@@ -1,11 +1,12 @@
 # PRD Index
 
-**Last Updated**: 2026-05-01 (Feature 241 delivered — F-8 + F-A3 Web/API Coverage Attestation + Populator Wiring [Tier 3] / fifth execution of Heuristic A enrichment branch at 11-host scope (full F-A3 closure across all detection-tier hosts) / six Partial OWASP items closed (A05 + A06 + API6 + API8 + API9 + API10) / pipeline-generated `9. Coverage Attestation` page emitted on all 8 baselines / **OWASP five-framework total = 50/50 Covered** combined with F-2..F-7 closures (LLM 10/10 + Agentic 10/10 + ML 10/10 + Mobile 10/10 + Web/API 10/10) — third framework family closure milestone / **BLP-01 11-feature initiative CLOSES at 11/11 features delivered** / F-A3 deferral debt cleared across ADR-032 + ADR-034 D-8 + ADR-035 D-10 + ADR-036 D-10 / fifth BLP-01 detection feature with zero schema bump / 29-day envelope collapsed to single-day delivery)
+**Last Updated**: 2026-05-03 (PRD 248 — F-1 Substitution Surface Hardening drafted with PM ✓ Architect ⚠ Team-Lead ⚠; first feature of BLP-02 enterprise hardening initiative; visible response to Daniel Wood's 2026-05-02 LinkedIn note; closes 5 /security vulns (1 HIGH + 2 MEDIUM + 2 LOW) in single PR with public ADR-038)
 **Legend**: ✓=APPROVED, ⚠=APPROVED_WITH_CONCERNS, 🔄=CHANGES_REQUESTED, ⛔=BLOCKED, ⚠⚡=OVERRIDDEN
 
 
 | # | Feature | PM | Architect | Team-Lead | Status | Date |
 |---|---------|----|-----------|-----------| -------|------|
+| 248 | [F-1 Substitution Surface Hardening (BLP-02 Wave 1)](248-substitution-surface-hardening-2026-05-03.md) | ✓ | ⚠ | ⚠ | Approved with Concerns | 2026-05-03 |
 | 241 | [F-8 + F-A3 Web/API Coverage Attestation + Populator Wiring [Tier 3]](241-web-api-coverage-attestation-2026-04-29.md) ([PR #242](https://github.com/davidmatousek/tachi/pull/242)) | ✓ | ⚠ | ⚠ | Delivered | 2026-05-01 |
 | 237 | [F-7 Mobile Top 10 Coverage Bundle [Tier 2]](237-mobile-top-10-coverage-bundle-2026-04-28.md) ([PR #238](https://github.com/davidmatousek/tachi/pull/238)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-29 |
 | 232 | [F-6 ML Top 10 Coverage Bundle [Tier 2]](232-ml-top-10-coverage-bundle-2026-04-27.md) ([PR #235](https://github.com/davidmatousek/tachi/pull/235)) | ✓ | ⚠ | ⚠ | Delivered | 2026-04-28 |

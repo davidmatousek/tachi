@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-05-02T02:30:54Z.
+> Auto-generated from GitHub Issues on 2026-05-03T18:56:58Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -19,7 +19,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| — | *No items in this stage* | | |
+| #248 | Substitution Surface Hardening | — | 2026-05-03 |
 
 ## Plan
 
