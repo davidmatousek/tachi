@@ -190,22 +190,38 @@ fi
 
 echo -e "${GREEN}✓ Template variables replaced${NC}"
 
-# F-248 T020 (FR-004): post-loop residual scan. Walk the same find filter
-# and call aod_template_assert_no_residual on each file. Halt non-zero on
-# the first match. The closed placeholder contract: every {{KEY}} in any
-# personalized file MUST be in the canonical 12; orphan placeholders fail-
-# fast here rather than fail-silent at run time.
-while IFS= read -r -d '' path; do
-  if ! aod_template_assert_no_residual "$path"; then
-    echo -e "${RED}ERROR: residual {{KEY}} placeholder detected — see file:line above${NC}" >&2
-    exit 8
-  fi
-done < <(find . -type f \
-  -not -path "./.git/*" \
-  -not -path "./node_modules/*" \
-  -not -name "*.png" -not -name "*.jpg" -not -name "*.ico" \
-  -not -name "*.pdf" -not -name "*.baseline" -not -name ".DS_Store" \
-  -print0)
+# F-248 T020 (FR-004): post-loop residual scan, scoped to PERSONALIZED files
+# per .aod/template-manifest.txt. The closed placeholder contract applies to
+# personalized-category files (those that re-substitute on /aod.update), NOT
+# to the whole tree which contains legitimate non-canonical tokens used by
+# parallel templating systems (stack-pack scaffolds, brand archetypes,
+# deployment-time docs). Halt on first orphan canonical placeholder.
+if [ -f ".aod/template-manifest.txt" ]; then
+  while IFS= read -r line; do
+    # Skip comments and blank lines (with optional leading whitespace).
+    case "$line" in
+      '') continue ;;
+    esac
+    stripped="${line#"${line%%[![:space:]]*}"}"
+    case "$stripped" in
+      ''|'#'*) continue ;;
+    esac
+    # Match `personalized|<path>` lines; skip everything else.
+    case "$line" in
+      'personalized|'*)
+        rel_path="${line#personalized|}"
+        # Strip trailing carriage return if any (CRLF tolerance).
+        rel_path="${rel_path%$'\r'}"
+        if [ -f "./$rel_path" ]; then
+          if ! aod_template_assert_no_residual "./$rel_path"; then
+            echo -e "${RED}ERROR: residual {{KEY}} placeholder detected in personalized file — see file:line above${NC}" >&2
+            exit 8
+          fi
+        fi
+        ;;
+    esac
+  done < .aod/template-manifest.txt
+fi
 
 # Write AOD_REPO to .env for explicit GitHub repo targeting
 # This ensures gh commands in github-lifecycle.sh always target the correct repo.
