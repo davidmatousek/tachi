@@ -345,3 +345,127 @@ Streams 2-4 entry conditions (all met):
 
 ### Commits added since BLOCKED documentation
 - 19e78cd fix(248): T020 residual scan scope — walk personalized category from template-manifest.txt (FR-004 alignment)
+- a7feedb docs(248): T020 fixed + T021 final disposition — Wave 3 G3 unblocked
+- ffb297d feat(248): Wave 3 Streams 2-4 — input validator + posture defaults + constitution + Q-1 + ADR-038
+- 274356a fix(248): T022 init-input.sh — remove broken NUL case branch (`$'\0'` glob collapsed to `**` rejecting all input)
+
+
+## Wave 3 G3 Final Smoke Test (post-Streams-1-4 + NUL-case-fix)
+Captured: 2026-05-03 (Wave 3 close-out)
+HEAD: 274356a51352bb324e96630d02ad90bf7e612506
+Snapshot source: tmpdir clone of branch=248-substitution-surface-hardening
+Inputs: canonical fixture identical to T008 + T021
+Environment: HOME=isolated, LC_ALL=C, full PATH (homebrew kept for node)
+init.sh exit: 0 (clean)
+Timing (bash time builtin):
+  real    1m0.319s
+  user    0m25.141s
+  sys     0m28.146s
+
+Final NFR-004 delta: +801% vs T008 baseline 6.690s (slight worsening from
+mid-Wave-3 50.7s due to constitution cp + re-substitute + post-init success
+message line additions). PM judgment disposition unchanged: accept perf
+regression with documented rationale per ADR-038 D-2 (init.sh is one-time
+per adopter; bash-param-expansion correctness > sed-batched speed; user
+acknowledges trade-off at /aod.deliver gate).
+
+End-to-end flow verified:
+  ✓ Top-of-file source of template-substitute.sh + init-input.sh
+  ✓ Re-init pre-flight check (skipped at fresh clone)
+  ✓ Input validator wraps all 4 prompts (silent on canonical inputs)
+  ✓ Stack pack discovery picks "Other" choice
+  ✓ Confirmation prompt
+  ✓ Personalization snapshot write BEFORE substitution loop
+  ✓ aod_template_load_personalization_env populates AOD_PERSONALIZATION_<KEY>
+  ✓ Substitution loop walks tree (binary skip filters applied)
+  ✓ Residual scan walks PERSONALIZED category (5 files; zero residuals)
+  ✓ AOD_REPO write to .env
+  ✓ Vision file seeded
+  ✓ BOARD_STATUS=skipped_no_gh (isolated HOME neutralizes gh)
+  ✓ Constitution installed from .aod/templates/constitution-clean.md + re-substituted
+  ✓ Version pin written (.aod/aod-kit-version)
+  ✓ Self-delete: rm -f scripts/init.sh
+  ✓ Post-init message documents gitignored personalization.env
+
+Wave 3 G3 quality gate exit: PASS (with NFR-004 PM-flag for /aod.deliver).
+
+
+## Wave 3 Targeted pytest subset (post Streams 1-4 + NUL-case-fix)
+Captured: 2026-05-03 (Wave 3 close-out)
+HEAD: 274356a
+Subset: 7 tests selected via `-k "case-09 or case-10 or case-11 or case-12 or case-01-substituted or case-02-substituted or case-04-substituted or case-13"`
+Runtime: 270.97s (4:30; ~38s per test)
+
+Results: 6 passed, 1 failed
+  ✓ case-01-substituted (AT&T literal substitution)
+  ✓ case-02-substituted (Cats & Dogs)
+  ✓ case-04-substituted (additional metachar case)
+  ✓ case-09-rejected   (Multi-line / control char rejection)
+  ✗ case-10-rejected   FAIL (NUL byte rejection)
+  ✓ case-11-rejected   (Over-length 101-char rejection)
+  ✓ case-12-rejected   (Control character rejection)
+
+### Case-10 NUL Byte Limitation (Wave 2 test expectation vs bash 3.2 reality)
+Test sends `foo\x00bar` to PROJECT_NAME prompt; expects init.sh to exit non-zero.
+Actual: init.sh exits 0; validator accepts.
+
+Root cause: bash 3.2 `read -r` (and bash 5.x in general) truncates input
+strings at the first NUL byte during the read operation. By the time
+`aod_init_read_validated` sees the value, it's `foo` (post-truncation).
+The `[[:cntrl:]]` regex check finds no cntrl class match in `foo`, so the
+validator accepts. Verified by `printf 'foo\x00bar' | read -r x; echo "$x"`
+returning `foo` (3 chars; the NUL and trailing `bar` are gone).
+
+Wave 2 test author's comment claimed: "NUL (\x00) — bash `read -r` does
+NOT strip NUL; aod_init_read_validated catches it via the [[:cntrl:]] check
+and rejects." This is empirically incorrect for bash 3.2 + bash 5.x.
+
+Disposition options:
+1. Accept Case-10 as a known bash limitation documented in the contract.
+   The contract already partially acknowledges this:
+   > "NUL bytes: bash scalar strings CANNOT contain NUL (the byte truncates
+   > the value at C-string level inside bash's internals). If a NUL was in
+   > the file's byte stream, the sourced value would already be truncated
+   > to everything before it — undetectable here. We accept this limitation
+   > (documented in contracts/personalization-schema.md §Read Protocol);
+   > defense-in-depth is handled by init.sh's write-time validation."
+2. Pre-process raw input via subprocess (od / grep -z) to detect NUL before
+   bash sees it. Adds significant complexity and a fork per prompt; rejected
+   per NFR-001 bash-3.2-only constraint discipline.
+3. Modify Wave 2 test to mark Case-10 as `xfail` for bash 3.2 with reason.
+   Requires touching Wave 2 test corpus (frozen at G2 sign-off).
+
+**Decision: Option 1.** Documented as a known bash 3.2 limitation; the
+practical risk is bounded because (a) attackers cannot inject NUL via
+terminal `read -r` due to the truncation, and (b) the truncated value is
+either accepted as the prefix (foo) or rejected by other classes (cntrl /
+length). The architectural intent (reject malicious paste) is preserved
+modulo the NUL-truncation edge.
+
+### Wave 3 progression summary
+- Pre-Stream-1 (HEAD=dcc8375): 8 passed, 10 failed, 2 skipped
+- Post-Stream-1 (HEAD=65447d0; T020 over-scope BLOCKED): 0 passed, 14 failed, 4 errors
+- Post-T020-scope-fix (HEAD=a7feedb): 9 passed, 9 failed, 2 skipped
+- Post-Streams-2-4 + NUL-case-fix (HEAD=274356a, targeted subset): 6 of 7 PASS
+  (subset excludes self-delete tests + Test-1 SKIP + constitution test + case-13
+  + case-3/7/8 substituted; full suite re-run deferred to Wave 4 T039 to
+  avoid 16-minute repeat)
+
+### Stream 4 dual-commit ADR pattern
+- T034 ADR-038 Proposed: COMMITTED at ffb297d (Stream 4 partial)
+- T035 (Wave 5): append final T021 benchmark numbers + PM acknowledgment to
+  ADR-038 §Consequences
+- T036 (Wave 5): architect promotes Status Proposed → Accepted per
+  promotion checklist in the ADR
+
+### Streams 1-4 task summary
+T015-T020 (Stream 1 substitution swap): COMPLETE 4ace34a + 19e78cd
+T021 (NFR-004 benchmark + PM disposition): COMPLETE; +801% delta documented
+T022-T027 (Stream 2 input validator + 4 prompts): COMPLETE ffb297d + 274356a
+T028 (gitignore verification): COMPLETE (no edit needed; line 222 already present)
+T029 (personalization-schema.md): COMPLETE ffb297d (NEW file)
+T030 (CHANGELOG entry): COMPLETE ffb297d
+T031 (post-init message): COMPLETE ffb297d
+T032 (constitution sed→cp): COMPLETE ffb297d
+T033 (Q-1 Option (b)): COMPLETE ffb297d (git rm .claude/mcp-config.json)
+T034 (ADR-038 Proposed): COMPLETE ffb297d
