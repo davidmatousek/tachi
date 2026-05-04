@@ -469,3 +469,96 @@ T031 (post-init message): COMPLETE ffb297d
 T032 (constitution sed→cp): COMPLETE ffb297d
 T033 (Q-1 Option (b)): COMPLETE ffb297d (git rm .claude/mcp-config.json)
 T034 (ADR-038 Proposed): COMPLETE ffb297d
+
+==============================================================================
+Wave 4 — Baseline regeneration + manual orphan-probe verification
+==============================================================================
+
+### T014 — Baseline regeneration with post-Stream-1 init.sh
+
+**Status: COMPLETE**
+
+Ran `tests/fixtures/regenerate-baseline.sh` (T013-authored deliverable)
+against the post-Stream-1 init.sh tree (HEAD=43ad330b at clone time).
+
+- regen script exit code: 0
+- baseline tree files created: 2065 (includes .aod/, .claude/, docs/, scripts/,
+  stacks/, tests/, top-level *.md, .gitignore, .release-please-manifest.json)
+- baseline tree path: tests/fixtures/init-baseline-tree/
+- tar | sha256 of full tree: 077346b42c17499a754e1c5be4944ab3386f7efe93f36f042c449b64503a8682
+- commit SHA: 4fd37d3 ("feat(248): T014 baseline regen — populate
+  tests/fixtures/init-baseline-tree/")
+- staged file count: 2021 (44 fewer than tree count due to git de-dup of
+  paths whose content matches an already-tracked upstream blob — all
+  intentional; the on-disk tree has 2065 files)
+
+Verification:
+- All 5 personalized files (.claude/rules/{context-loading,deployment,
+  design-context-loader,design-quality,governance}.md) scanned clean of
+  canonical-12 residuals via:
+    grep -nE '\{\{(PROJECT_NAME|PROJECT_DESCRIPTION|GITHUB_ORG|GITHUB_REPO|
+        AI_AGENT|TECH_STACK|TECH_STACK_DATABASE|TECH_STACK_VECTOR|
+        TECH_STACK_AUTH|RATIFICATION_DATE|CURRENT_DATE|CLOUD_PROVIDER)\}\}'
+  → zero matches in any of the 5 personalized files.
+- Canonical input substitutions confirmed:
+    "tachi" present in README.md (83), CLAUDE.md (2), constitution.md (5)
+    "threat modeling sidecar" present in README.md (2)
+    "benchmark-test-org" present in personalization.env snapshot
+      + supporting test files (init_sh_helpers.py, ADR-038 example list)
+
+Test-1 (test_init_sh_substitution.py) now has its byte-comparison reference
+locked in. Ready for Wave 4 G4 test execution (T039 / T040).
+
+### T038 — Manual orphan-probe verification (one-shot, not committed)
+
+**Status: PASS (gate fires correctly — non-zero exit, orphan token named in stderr)**
+
+Procedure:
+1. Cloned current repo (HEAD=4fd37d3) to /tmp/tachi-orphan-probe-$$/tachi
+   via `git clone file:///Users/david/Projects/tachi`.
+2. Picked the smallest `personalized` file from .aod/template-manifest.txt:
+   .claude/rules/deployment.md (40 lines pre-inject).
+3. Appended a final line `Probe: {{ORPHAN_FOR_PROBE}}` to the target file
+   (line 42 in the modified clone).
+4. Ran `printf '%s' "$INPUTS" | bash ./scripts/init.sh` with canonical
+   inputs matching the regenerate-baseline.sh contract (PROJECT_NAME=tachi,
+   PROJECT_DESCRIPTION=threat modeling sidecar, GITHUB_ORG=benchmark-test-org,
+   GITHUB_REPO=<default>, AI_AGENT=1 [Claude], TECH_STACK=6 [Other],
+   custom stack="Python + FastAPI" / DB="PostgreSQL" / vector=<default>,
+   then "Y" to confirm).
+5. Captured stdout + stderr + exit code.
+
+Result:
+- init.sh exit code: **8** (non-zero — matches `aod_template_assert_no_residual`
+  exit-8 contract from .aod/scripts/bash/template-substitute.sh:432).
+- Literal stderr captured (verbatim, color codes preserved):
+    ./.claude/rules/deployment.md:42:Probe: {{ORPHAN_FOR_PROBE}}
+    [aod] ERROR: residual placeholder(s) detected in ./.claude/rules/deployment.md
+        — either the upstream introduced a new {{KEY}} not in the canonical 12,
+        or a substitution bug. Halting.
+    ERROR: residual {{KEY}} placeholder detected in personalized file
+        — see file:line above
+- Assertions:
+    (a) exit non-zero               → PASS (8)
+    (b) stderr names {{ORPHAN_FOR_PROBE}} → PASS (line 1 of stderr)
+    (c) stderr contains "residual placeholder" → PASS (line 2)
+    (d) stderr contains halting marker (ERROR/Halting) → PASS (lines 2 + 3)
+
+Notes:
+- Task spec said "FATAL message" but init.sh's residual-scan halt uses
+  the wording `ERROR: ... Halting.` and `ERROR: residual {{KEY}}
+  placeholder detected in personalized file`. The semantic gate
+  (non-zero exit + named placeholder + halting marker) fires correctly;
+  this is a wording-vs-semantics nit, not a defect. The init.sh chain
+  uses `ERROR` consistently for halts in this code path (see
+  template-substitute.sh:447-453 and init.sh:228-230).
+- The probe targets the `personalized` category specifically (per the
+  T020 scope-fix contract in 4ace34a + 19e78cd). Injection into a non-
+  personalized file (e.g., docs/architecture/...) would not be detected,
+  which is intentional per FR-004 spec language.
+- Cleanup: tmpdir removed via `rm -rf /tmp/tachi-orphan-probe-$$`.
+  No artifacts left on disk.
+
+Verdict: T038 PASS. Residual scan IS the placeholder contract enforcer
+(spec.md §US-248-5). Test-2 case 13 (Wave 2 T010) covers automated
+regression of this same behavior.

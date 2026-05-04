@@ -92,7 +92,7 @@ triad:
 - [X] T011 [P] [US1] Author `tests/scripts/test_init_sh_constitution.py` (Test-4 byte-compare): run `init.sh` end-to-end; assert `Path(".aod/memory/constitution.md").read_bytes() == Path(".aod/templates/constitution-clean.md").read_bytes()`
 - [X] T012 [P] [US1] Author `tests/scripts/test_init_sh_self_delete.py` (Test-5' self-delete preservation): run `init.sh` end-to-end; assert `not Path("scripts/init.sh").exists()` post-init (replaces original Test-5 re-init parity per Architect M-3 + Team-Lead Q-3 Option b)
 - [X] T013 [P] [US1] Author `tests/fixtures/regenerate-baseline.sh` script (per Team-Lead Pass 1 M-5): clones tachi fresh into tmpdir, runs `init.sh` with canonical fixture inputs, copies personalized tree to `tests/fixtures/init-baseline-tree/`, includes documentation header explaining when to regenerate (canonical-12 expansion only — never to mask substitution-semantics regression)
-- [ ] T014 [US1] Run `tests/fixtures/regenerate-baseline.sh` once with the **post-Stream-1 init.sh** to populate `tests/fixtures/init-baseline-tree/` (deferred dependency: must run AFTER T015–T021 substitution swap completes; T014 establishes the baseline reference Test-1 will compare against). Commit the baseline tree
+- [X] T014 [US1] Run `tests/fixtures/regenerate-baseline.sh` once with the **post-Stream-1 init.sh** to populate `tests/fixtures/init-baseline-tree/` (deferred dependency: must run AFTER T015–T021 substitution swap completes; T014 establishes the baseline reference Test-1 will compare against). Commit the baseline tree
 
 ### Implementation for User Story 1+6 (Stream 1 substitution adoption)
 
@@ -181,7 +181,7 @@ triad:
 
 ### Implementation for User Story 5
 
-- [ ] T038 [US5] Manual verification (one-shot, not committed): create temp file `/tmp/orphan-probe.txt` with content `{{ORPHAN_FOR_PROBE}}`; copy into a fresh `init.sh` test environment; run `init.sh`; assert non-zero exit with message naming `{{ORPHAN_FOR_PROBE}}`. Record outcome in tasks-runlog.txt (Test-2 case 13 covers automated regression of this behavior; T038 is a one-time manual gating check)
+- [X] T038 [US5] Manual verification (one-shot, not committed): create temp file `/tmp/orphan-probe.txt` with content `{{ORPHAN_FOR_PROBE}}`; copy into a fresh `init.sh` test environment; run `init.sh`; assert non-zero exit with message naming `{{ORPHAN_FOR_PROBE}}`. Record outcome in tasks-runlog.txt (Test-2 case 13 covers automated regression of this behavior; T038 is a one-time manual gating check)
 
 **Checkpoint**: Placeholder contract closure verified. The residual scan IS the contract enforcer.
 

@@ -182,20 +182,32 @@ def files_in_tree(root: Path, *, include_dotfiles: bool = True) -> list[Path]:
     Excludes:
     - .git/, node_modules/
     - *.png, *.jpg, *.ico
+    - tests/fixtures/init-baseline-tree/ (the baseline path itself — when
+      walking a live clone this directory contains the previously-committed
+      baseline as committed-tree content, not post-init substituted output;
+      including it would double-count the baseline on the "actual" side and
+      cause spurious file-set drift)
 
     Returns paths relative to <root> for stable byte-comparison.
     """
     excluded_dirs = {".git", "node_modules"}
     excluded_suffixes = {".png", ".jpg", ".ico"}
+    excluded_path_prefix = Path("tests") / "fixtures" / "init-baseline-tree"
     out: list[Path] = []
     for path in root.rglob("*"):
         if not path.is_file():
             continue
-        if any(part in excluded_dirs for part in path.relative_to(root).parts):
+        rel = path.relative_to(root)
+        if any(part in excluded_dirs for part in rel.parts):
             continue
         if path.suffix in excluded_suffixes:
             continue
-        out.append(path.relative_to(root))
+        try:
+            rel.relative_to(excluded_path_prefix)
+            continue
+        except ValueError:
+            pass
+        out.append(rel)
     return sorted(out)
 
 

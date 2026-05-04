@@ -55,7 +55,16 @@ def init_run(tmp_path_factory: pytest.TempPathFactory):
     ),
 )
 def test_personalized_tree_bytes_match_baseline(init_run):
-    """Every file in the personalized tree byte-equals the recorded baseline."""
+    """Every file in the personalized tree byte-equals the recorded baseline,
+    EXCEPT files known to contain non-deterministic content (timestamps, the
+    clone HEAD SHA captured by init.sh).
+
+    Drift exclusions:
+    - `.aod/aod-kit-version`: contains `updated_at` (UTC second-precision
+      timestamp) and `sha` (cloned HEAD SHA). Both legitimately differ between
+      the moment T014 regenerated the baseline and any subsequent test run.
+      File-mode parity is still asserted in the modes test below.
+    """
     clone_root = init_run.tmpdir
     actual_files = files_in_tree(clone_root)
     baseline_files = files_in_tree(BASELINE_DIR)
@@ -68,8 +77,11 @@ def test_personalized_tree_bytes_match_baseline(init_run):
         f"  in baseline but not actual: {sorted(set(baseline_files) - set(actual_files))[:20]}"
     )
 
+    DRIFT_ALLOWED = {Path(".aod/aod-kit-version")}
     mismatches: list[str] = []
     for rel in actual_files:
+        if rel in DRIFT_ALLOWED:
+            continue
         actual_bytes = (clone_root / rel).read_bytes()
         baseline_bytes = (BASELINE_DIR / rel).read_bytes()
         if actual_bytes != baseline_bytes:

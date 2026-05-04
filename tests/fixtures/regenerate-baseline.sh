@@ -100,11 +100,13 @@ if command -v rsync >/dev/null 2>&1; then
         --exclude='*.png' \
         --exclude='*.jpg' \
         --exclude='*.ico' \
+        --exclude='tests/fixtures/init-baseline-tree/' \
         "${CLONE_ROOT}/" "${BASELINE_DIR}/"
 else
     (cd "$CLONE_ROOT" && find . -type f \
         -not -path './.git/*' \
         -not -path './node_modules/*' \
+        -not -path './tests/fixtures/init-baseline-tree/*' \
         -not -name '*.png' -not -name '*.jpg' -not -name '*.ico' \
         -print0 | while IFS= read -r -d '' f; do
             mkdir -p "${BASELINE_DIR}/$(dirname "$f")"
