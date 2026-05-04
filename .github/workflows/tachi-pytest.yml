@@ -85,13 +85,16 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install pytest + pytest-timeout
-        # Both are required by the suite: pytest as the runner, pytest-timeout
-        # for the per-test wall-clock cap. We pin minimum-major versions only
-        # to allow runner-image-bundled wheels to satisfy the requirement.
+      - name: Install pytest + pytest-timeout + pyyaml
+        # Required by the suite + tests/scripts/conftest.py:
+        # - pytest: runner
+        # - pytest-timeout: per-test wall-clock cap (--timeout=300)
+        # - pyyaml: conftest.py imports `yaml` at module scope (cross-suite
+        #   shared with BLP-01 + F-241 detection-agent attestation tests
+        #   which load schemas/finding.yaml + .claude/agents/tachi/*.yml)
         run: |
           python -m pip install --upgrade pip
-          python -m pip install 'pytest>=8' 'pytest-timeout>=2'
+          python -m pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
 
       - name: Diagnostic — bash version (NFR-001 compatibility gate)
         # Make the matrix runner's bash version visible in CI logs. macOS
