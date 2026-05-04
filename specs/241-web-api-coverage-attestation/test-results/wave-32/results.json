@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "wave": "3.2",
+  "timestamp": "2026-05-01T00:00:00Z",
+  "test_runner": "python3 -m pytest tests/scripts/ tests/schemas/",
+  "execution_duration_ms": 50630,
+  "gate_mode": "soft",
+  "gate_decision": "warn",
+  "totals": {
+    "pass": 620,
+    "fail": 16,
+    "skip": 1
+  },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 2,
+    "pre_existing": 14
+  },
+  "regressions": [],
+  "new_failures": [
+    "test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_agent_citation",
+    "test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_pattern_category_citation"
+  ],
+  "pre_existing": [
+    "test_backward_compatibility.py::test_feature_142_zero_edit_invariant_on_detection_agents",
+    "test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_dos_agent_line_count_within_cap",
+    "test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_model_theft_agent_line_count_within_cap",
+    "test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_model_theft_md_line_cap",
+    "test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_spoofing_md_line_cap",
+    "test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_info_disclosure_md_line_cap",
+    "test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_privilege_escalation_md_line_cap",
+    "test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_repudiation_md_line_cap",
+    "test_mobile_top_10_coverage_bundle_enrichment.py::TestNewPatternCategoriesPresent::test_privilege_escalation_companion_has_M8_priv_gain",
+    "test_tool_abuse_enrichment.py::test_tool_abuse_line_count_within_cap",
+    "test_tool_abuse_enrichment.py::test_categories_1_8_byte_identity_against_main",
+    "test_tool_abuse_enrichment.py::test_validate_source_attribution_on_regen"
+  ],
+  "f241_own_tests": {
+    "test_taxonomy_integrity.py": "5/5 passed (T036+T037+T038+T039 ADR-027 contract preserved)",
+    "test_f_a3_populator_wiring.py": "68 passed (Wave 2.3 baseline preserved)",
+    "test_coverage_attestation_audit.py": "12 passed, 2 failed — record-shape tests (TestOwaspYamlRecordShape) flipped SKIP→PASS at T037; citation-walk tests (TestCitationCompleteness) flipped SKIP→FAIL — expected interim state per docstring 'Flips to PASS post-T037 + Stream 4 audit closure'"
+  },
+  "new_failure_classification": {
+    "kind": "tdd_red_to_green_transition",
+    "designed_red_window": "post-T037 (Wave 3.2) until Stream 4 audit closure (Wave 4.3 T044-T048+)",
+    "trigger": "T037 added out_of_scope field, enabling test enumeration of Covered records",
+    "gap_class": "documentation-precision (citation format mismatch — YAML id 'ASI01' vs agent metadata 'ASI-01' / pattern catalogs 'A01:2021')",
+    "gate_decision_rationale": "Per Step 4.5d: 'Only new failures or pre-existing failures (no regressions): Continue with informational message. Gate does not trigger on non-regression failures.' Wave-31 baseline had these as SKIPs; SKIP→FAIL is not a regression per gate semantics.",
+    "follow_on_remediation": "Add bare-form OWASP id citations (without hyphen/year suffix) to host agent owasp_references arrays + Pattern Category headings during Stream 4 closure or follow-on audit-trail expansion sweep — 13 IDs missing from pattern catalogs, 18 from agent metadata. Documented in .aod/results/T036-T037-owasp-audit-and-extension.md."
+  },
+  "notes": "Wave 3.2 closes T036 (60/60 audit-trail comments) + T037 (60/60 +2 fields) + T038 (12→30 ATLAS expansion) + T039 (30/30 +2 fields). 2 new failures are designed TDD-Red interim state per docstring contract, not Wave 3.2 regressions; documented for follow-on remediation. F-241 own tests all green where contract is met. ADR-027 taxonomy integrity contract preserved (5/5 PASS)."
+}

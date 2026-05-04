@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "wave": 42,
+  "timestamp": "2026-05-01T00:00:00Z",
+  "test_runner": "python3 -m pytest tests/",
+  "execution_duration_ms": 59280,
+  "gate_mode": "soft",
+  "gate_decision": "skip",
+  "totals": { "pass": 619, "fail": 17, "skip": 1 },
+  "classification": {
+    "regressions": 1,
+    "new_failures": 0,
+    "pre_existing": 16
+  },
+  "regressions": [
+    "tests/scripts/test_coverage_attestation.py::test_coverage_percentage_arithmetic"
+  ],
+  "new_failures": [],
+  "pre_existing": [
+    "tests/scripts/test_backward_compatibility.py::test_feature_142_zero_edit_invariant_on_detection_agents",
+    "tests/scripts/test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_agent_citation",
+    "tests/scripts/test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_pattern_category_citation",
+    "tests/scripts/test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_dos_agent_line_count_within_cap",
+    "tests/scripts/test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_model_theft_agent_line_count_within_cap",
+    "tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_model_theft_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_spoofing_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_info_disclosure_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_privilege_escalation_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_repudiation_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestNewPatternCategoriesPresent::test_privilege_escalation_companion_has_M8_priv_gain",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_tool_abuse_line_count_within_cap",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_categories_1_8_byte_identity_against_main",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_validate_source_attribution_on_regen"
+  ],
+  "regression_classification": {
+    "test_coverage_percentage_arithmetic": {
+      "category": "expected_interim_TDD-Red",
+      "rationale": "Wave 4.2 expanded mitre-attack.yaml from 38 to 701 records per spec FR-003 + data-model.md §5 tactical-grouping methodology. Test fixture asserts 'mitre-attack: 2.63%' against the F-A1 baseline (1/38). Post-expansion denominator is 701 (raw) or 323 (in-scope-only post-T044/T045 filter). Resolution scheduled at Wave 4.3 T048 (fixture deltas) after T044/T045 (aggregator filter) lands. This is an expected TDD-progression artifact, not a harmful regression.",
+      "scheduled_fix_task": "T048 (Wave 4.3, Days 20-21)",
+      "expected_post_fix_value": "0.31% (1/323) under T044/T045 in-scope-only filter, replacing the stale 2.63% (1/38) F-A1-baseline assertion"
+    }
+  },
+  "wave_4_2_artifacts": {
+    "yaml_change": "schemas/taxonomy/mitre-attack.yaml: 38 → 701 records (+663 net new); +2 fields (out_of_scope, out_of_scope_rationale) on all 701",
+    "byte_identity_preservation": "38/38 existing records preserved byte-identical on core fields {id, full_id, name, url, cwe_refs}",
+    "out_of_scope_distribution": "in-scope: 323 (46.1%); OOS: 378 (53.9%); 10 distinct rationale strings (7 verbatim T040 + 2 derived TA0112/TA0043 post-spec STIX update + 1 per-item T1078.004)",
+    "task_marks": ["T041 [X]", "T042 [X]", "T043 [X]"],
+    "audit_trail": ".aod/results/T041-T043-attack-expansion.md (gitignored ephemeral working artifact)"
+  }
+}

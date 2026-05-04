@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "wave": 51,
+  "timestamp": "2026-05-01T00:00:00Z",
+  "test_runner": "python3 -m pytest tests/scripts/",
+  "execution_duration_ms": 164000,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 682, "fail": 15, "skip": 11 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 15
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [
+    "test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_agent_citation",
+    "test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_pattern_category_citation",
+    "test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_dos_agent_line_count_within_cap",
+    "test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_model_theft_agent_line_count_within_cap",
+    "test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_model_theft_md_line_cap",
+    "test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_spoofing_md_line_cap",
+    "test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_info_disclosure_md_line_cap",
+    "test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_privilege_escalation_md_line_cap",
+    "test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_repudiation_md_line_cap",
+    "test_mobile_top_10_coverage_bundle_enrichment.py::TestNewPatternCategoriesPresent::test_privilege_escalation_companion_has_M8_priv_gain",
+    "test_tool_abuse_enrichment.py::test_tool_abuse_line_count_within_cap",
+    "test_tool_abuse_enrichment.py::test_categories_1_8_byte_identity_against_main",
+    "test_tool_abuse_enrichment.py::test_validate_source_attribution_on_regen"
+  ],
+  "delta_vs_previous_wave": {
+    "previous_baseline": "wave-43 (639 pass / 16 fail / 1 skip)",
+    "delta_pass": 43,
+    "delta_fail": -1,
+    "delta_skip": 10,
+    "fix_origin": "T051 frozenset shift removed prompt-injection.md + agent-autonomy.md from DETECTION_AGENT_PATHS, resolving the carry-forward zero-edit invariant failure (Watchlist #2 ambiguity now closed)."
+  },
+  "new_tests_generated": {
+    "T049": "tests/scripts/test_coverage_percentage_computation.py (38 pass, 10 skip Mode-(a) deferred for Wave 5.2 T054/T055 baselines)",
+    "T050": "tests/scripts/test_pyyaml_deferred_import.py (9 pass; KB-037 invariant regression-guarded; T046 anchor preserved)",
+    "T051+T052": "tests/scripts/test_backward_compatibility.py (13 pass, 1 skip; frozenset 9->11 + DETECTION_AGENT_PATHS 4->2; predictive-ml-app + mobile-banking-app already in exclusion list per F-7 commit e962a0e)"
+  }
+}

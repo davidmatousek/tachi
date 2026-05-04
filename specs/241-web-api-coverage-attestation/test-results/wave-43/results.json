@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "wave": 43,
+  "timestamp": "2026-05-01T18:17:44Z",
+  "test_runner": "python3 -m pytest tests/scripts/ tests/schemas/ -q",
+  "execution_duration_ms": 71070,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 639, "fail": 16, "skip": 1 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 16
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [
+    "tests/scripts/test_backward_compatibility.py::test_feature_142_zero_edit_invariant_on_detection_agents",
+    "tests/scripts/test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_agent_citation",
+    "tests/scripts/test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_pattern_category_citation",
+    "tests/scripts/test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_dos_agent_line_count_within_cap",
+    "tests/scripts/test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_model_theft_agent_line_count_within_cap",
+    "tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_model_theft_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_spoofing_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_info_disclosure_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_privilege_escalation_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_repudiation_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestNewPatternCategoriesPresent::test_privilege_escalation_companion_has_M8_priv_gain",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_tool_abuse_line_count_within_cap",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_categories_1_8_byte_identity_against_main",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_validate_source_attribution_on_regen"
+  ],
+  "wave_summary": {
+    "tasks": ["T044", "T045", "T046", "T047", "T048"],
+    "delta_vs_wave_42_baseline": {
+      "wave_42_pass_fail_skip": [619, 17, 1],
+      "wave_43_pass_fail_skip": [639, 16, 1],
+      "net_passing_delta": 20,
+      "fail_delta": -1,
+      "fixed": ["test_coverage_percentage_arithmetic (1/38=2.63% → 1/323=0.31% post-Stream-4 filter)"],
+      "new_tests_added": 19,
+      "new_tests_source": "T048 Stream 3+4 fixture authoring (test_coverage_attestation_in_scope.py + Stream 3/4 fixture suites)"
+    },
+    "stream_4_aggregator_implementation": {
+      "filter_insertion_point": "_load_framework_yaml_records() at line 1073 (Architect M-2 carry-forward verbatim)",
+      "new_helper": "load_framework_yaml_in_scope_record_counts() at line 1131",
+      "extended_signature": "_build_per_framework_aggregate(framework_name, items, yaml_record_count, in_scope_yaml_record_count)",
+      "typst_field_added": "in-scope-record-count",
+      "yaml_lazy_import_preserved": true,
+      "partition_invariant": "covered + partial + gap == in_scope_yaml_record_count (replaces == yaml_record_count)",
+      "verified_arithmetic": "mitre-attack 1/323=0.31% (was 1/38=2.63% pre-Stream-3-expansion)"
+    }
+  }
+}
