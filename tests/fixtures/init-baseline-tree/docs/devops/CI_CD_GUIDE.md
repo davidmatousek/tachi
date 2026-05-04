@@ -23,15 +23,17 @@ Add CI/CD after you have:
 
 ## Reference Patterns: Template-Maintenance CI Workflows
 
-This section documents three reference CI workflows that the upstream template uses to protect its own release-tooling integrity. **None ship to adopter projects** — adopt them only if you extend the template and want the same guarantees.
+This section documents the reference CI workflows that the upstream template uses to protect its own release-tooling integrity. **None ship to adopter projects** — adopt them only if you extend the template and want the same guarantees.
 
 | Workflow | Feature | Protects |
 |----------|---------|----------|
 | `.github/workflows/manifest-coverage.yml` | F129 (downstream template update) | File-ownership invariant for `.aod/template-manifest.txt` |
 | `.github/workflows/extract-coverage.yml` | F128 (directory-based extraction manifest) | Classification-snapshot invariant for `scripts/extract-classification.txt` |
 | `.github/workflows/stack-contract.yml` | F130 (Stack Pack Test Contract) | Test contract invariant for every `stacks/*/STACK.md` (excluding content-pack allowlist) |
+| `.github/workflows/tachi-mmdc-preflight.yml` | F145 (Mermaid CLI hard-prerequisite) | Loud-failure path when `mmdc` is absent on the runner (ADR-022) |
+| `.github/workflows/tachi-pytest.yml` | F-248 (Substitution surface hardening) | `scripts/init.sh` substitution behaviour on a macOS+Ubuntu pytest matrix (ADR-038) |
 
-All three workflows share the same CI pattern (bash:3.2 Docker, SHA-pinned checkout action, `contents: read` permissions, cancel-in-progress concurrency). Use any as a template when adding a new maintenance workflow.
+The first three workflows share the bash:3.2 Docker pattern, SHA-pinned checkout action, `contents: read` permissions, and cancel-in-progress concurrency. The latter two (`tachi-mmdc-preflight.yml`, `tachi-pytest.yml`) follow a different pattern — direct host-runner execution with path-filtered triggers — because their workloads (`mmdc` Node binary preflight, Python+bash subprocess tests) do not benefit from container isolation. Use any of the first three as a template when adding a new maintenance workflow that needs the bash:3.2 floor; use `tachi-pytest.yml` as a template when adding a new path-filtered Python test job.
 
 ### Shared Workflow Conventions
 
@@ -133,6 +135,106 @@ In `--all` mode the script exits with the **numerically lowest non-zero code** a
 **Full contract**: `specs/130-e2e-hard-gate/contracts/stack-contract-lint.md` and `docs/stacks/TEST_COMMAND_CONTRACT.md`. The STACK.md block schema is defined in `specs/130-e2e-hard-gate/data-model.md` §1, §2, §5.
 
 **Feature 142 Update (2026-04-23)**: The workflow itself (`.github/workflows/stack-contract.yml`) and the validator (`.aod/scripts/bash/stack-contract-lint.sh`) are **unchanged** by F142 (PR #151) — the exit-code contract (0–5) was already strict as of F130. F142 only removes the grace-period fallback that previously lived inside `/aod.deliver` Step 9a, which translated a lint exit 5 (MISSING_BLOCK) into a silent skip. Post-F142, `/aod.deliver` surfaces exit 5 as an explicit error with the lint stderr diagnostic shown verbatim in the delivery report. **Effective impact on CI consumers**: any pipeline that parses delivery.md rendered by `/aod.deliver` should read `e2e_validation.status` (`error` vs. `skipped` vs. `success`) from the payload rather than pattern-matching grace-period language in the human-readable rendering. The stack-contract CI workflow continues to fail any PR that would have tripped its exit 5 anyway — F142 closes the same gap at the `/aod.deliver` boundary for branches not guarded by the CI workflow. PRD: `docs/product/02_PRD/142-remove-grace-period-fallback-2026-04-23.md`.
+
+### Tachi Pytest Workflow (F-248)
+
+**Added in Feature 248** (Substitution Surface Hardening), merged via PR #249 (squash commit `6db9a25`) on 2026-05-04.
+
+`.github/workflows/tachi-pytest.yml` runs the F-248 init.sh substitution test suite on a 2-runner cross-platform matrix (`macos-latest` + `ubuntu-latest`) to catch bash-version regressions in `scripts/init.sh`, `.aod/scripts/bash/template-substitute.sh`, `.aod/scripts/bash/init-input.sh`, and the constitution templates. The macOS leg is the strictest gate because it ships bash 3.2.57 (Apple's bundled `/bin/bash`, GPLv3-pinned) — a green macOS run on top of a green Ubuntu run proves the substitution surface is portable, not bash-3.2-quirk-locked.
+
+| Property | Value |
+|----------|-------|
+| Workflow file | `.github/workflows/tachi-pytest.yml` |
+| Trigger | `pull_request` only (path-filtered — see below) |
+| Runners | `macos-latest`, `ubuntu-latest` (matrix, `fail-fast: false`) |
+| Python version | 3.11 (matches `tachi-mmdc-preflight.yml` baseline) |
+| Permissions | `contents: read` |
+| Pip dependencies | `pytest>=8`, `pytest-timeout>=2`, `pyyaml>=6` |
+| Inner subprocess timeout | 300s (in `tests/scripts/init_sh_helpers.run_init_in_clone`) |
+| Outer pytest timeout | 360s (per-test wall-clock cap, ~60s fixture-teardown slack) |
+| Job ID | `init-sh-suite` |
+| Job name | `pytest init.sh suite — ${{ matrix.os }}` |
+
+**Test files covered** (20 tests total per ADR-038 §Test Coverage — 8 substitution + 4 rejection + 1 case-13 + 1 residual + 1 constitution + 3 self-delete + 2 fixture-replay):
+
+- `tests/scripts/test_init_sh_substitution.py`
+- `tests/scripts/test_init_sh_adversarial.py`
+- `tests/scripts/test_init_sh_constitution.py`
+- `tests/scripts/test_init_sh_self_delete.py`
+
+**Path filter (NFR-005 — scope discipline)**: The workflow ONLY fires when files in the F-248 substitution surface change. Pure docs edits, ADR text, or unrelated agent-tier changes do NOT trigger this job. Mirrors the narrow-scope pattern of `tachi-mmdc-preflight.yml` and avoids burning CI minutes on edits that cannot affect substitution behaviour. The complete trigger set is:
+
+```yaml
+paths:
+  - scripts/init.sh
+  - .aod/scripts/bash/init-input.sh
+  - .aod/scripts/bash/template-substitute.sh
+  - .aod/scripts/bash/template-validate.sh
+  - .aod/scripts/bash/template-git.sh
+  - .aod/templates/constitution-clean.md
+  - .aod/templates/constitution-instructional.md
+  - .aod/template-manifest.txt
+  - tests/scripts/test_init_sh_substitution.py
+  - tests/scripts/test_init_sh_adversarial.py
+  - tests/scripts/test_init_sh_constitution.py
+  - tests/scripts/test_init_sh_self_delete.py
+  - tests/scripts/init_sh_helpers.py
+  - tests/scripts/conftest.py
+  - tests/fixtures/init-baseline-tree/**
+  - tests/fixtures/regenerate-baseline.sh
+  - .github/workflows/tachi-pytest.yml
+```
+
+Edits to other shell scripts, agent files, ADRs, or documentation will not invoke this workflow even if the PR also includes substitution-surface changes — GitHub Actions evaluates the path filter at the PR level, so the workflow fires when at least one matching path is in the diff.
+
+**pyyaml dependency**: `tests/scripts/conftest.py` imports `yaml` at module scope. The dependency is cross-suite — shared with the BLP-01 + F-241 detection-agent attestation tests that load `schemas/finding.yaml` and `.claude/agents/tachi/*.yml` schemas. Bumping `pyyaml` in this workflow MUST be coordinated with those suites.
+
+**Baseline fixture**: `tests/fixtures/init-baseline-tree/` contains the canonical post-init filesystem snapshot that `test_init_sh_substitution.py` and `test_init_sh_adversarial.py` diff against. The accompanying `tests/fixtures/regenerate-baseline.sh` script is the **only** supported way to regenerate the baseline — it pins the deterministic substitution inputs (`AOD_RATIFICATION_DATE_OVERRIDE`, `AOD_CURRENT_DATE_OVERRIDE`) and drives `scripts/init.sh` against a clean clone. Run it whenever the canonical placeholder set expands (e.g., new `{{...}}` token added) or upstream template content additions land. See `docs/devops/environment-variables.md` for the full env-var contract.
+
+**Performance characteristics (macOS leg)**: macOS runners take 30–40 minutes per CI invocation due to bash 3.2.57 forking overhead on arm64 — significantly slower than the Ubuntu leg's bash 5.x reference run. A flake was observed at the 300s subprocess timeout during F-248 close-out (Issue #250 covers a hot-patch landing same-day). The tuned 300s inner / 360s outer timeout pair leaves ~60s of fixture-teardown headroom on the slowest observed runs while keeping unrelated regressions visible as timeouts rather than masking them with overly generous caps.
+
+**F-248 closeout (2026-05-04)**: PR #249 merged via admin-override squash-merge. Ubuntu leg passed green; macOS leg tripped the timeout flake during the final pre-merge run. The decision to merge despite the flake (vs. blocking on a deterministic green) was scoped to F-248 close-out and is followed up by Issue #250's perf hot-patch. The flake is **observed**, **bounded**, and **non-falsifying** — the underlying substitution behaviour was verified green on multiple prior runs, and the timeout is a CI-runner cost, not a substitution-surface defect.
+
+**Diagnostic step** — every run prints `bash --version` for both `/bin/bash` and the default `bash` so the macOS 3.2 vs. Ubuntu 5.x split is visible in CI logs without parsing the matrix metadata.
+
+**Local invocation** (matches CI exactly):
+
+```bash
+# Install dependencies (matches CI versions)
+python -m pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
+
+# Run the full F-248 suite
+python -m pytest \
+  tests/scripts/test_init_sh_substitution.py \
+  tests/scripts/test_init_sh_adversarial.py \
+  tests/scripts/test_init_sh_constitution.py \
+  tests/scripts/test_init_sh_self_delete.py \
+  -v --timeout=360
+```
+
+**Full contract**: `specs/248-substitution-surface-hardening/spec.md` (FR-001..FR-011, NFR-001 bash floor, NFR-005 scope discipline). ADR: `docs/architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md`. Tasks T039 (workflow authoring) + T040 (CI matrix verification) + T041 (close-out attestation).
+
+---
+
+### Tachi Mermaid Preflight Workflow (F145)
+
+**Added in Feature 145** (Maestro Canonical Worked Example, ADR-022 hard-prerequisite of `mmdc`).
+
+`.github/workflows/tachi-mmdc-preflight.yml` runs on `ubuntu-latest` (which does NOT have `mmdc` preinstalled) and asserts the loud-failure path when the Mermaid CLI is absent. Guards ADR-022's "no silent fallback" invariant — if `mmdc` is missing, the threat-modelling pipeline MUST fail explicitly rather than silently degrading to text-only output.
+
+| Property | Value |
+|----------|-------|
+| Workflow file | `.github/workflows/tachi-mmdc-preflight.yml` |
+| Runner | `ubuntu-latest` (no preinstalled `mmdc`) |
+| Trigger | `pull_request` against `main` (path-filtered) |
+| Permissions | `contents: read` |
+| Validates | Loud-failure exit code + stderr message when `mmdc` is missing |
+
+The workflow is intentionally minimal — it does NOT install `mmdc`; the absence is the point. A separate workflow that exercises the success path (`mmdc` present + diagram rendering) is the responsibility of any feature that uses `mmdc` in CI; F145's preflight only asserts the failure mode is observable.
+
+**Full contract**: `docs/architecture/02_ADRs/ADR-022-mmdc-hard-prerequisite.md`.
+
+---
 
 ### Why bash:3.2 in Docker
 

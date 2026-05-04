@@ -1,8 +1,0 @@
-Prompt length: 8058 chars
-
---- gemini-3-pro-image-preview ---
-Status: HTTP 200 OK in 26.9s
-Image saved: /Users/david/Projects/tachi/specs/212-improve-executive-architecture-infographic/artifacts/iteration-1/threat-executive-architecture.jpg
-MIME: image/jpeg
-Size: 626155 bytes
-Model used: gemini-3-pro-image-preview

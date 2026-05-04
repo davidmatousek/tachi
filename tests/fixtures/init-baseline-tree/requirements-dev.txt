@@ -1,5 +1,0 @@
-# Development dependencies for tachi
-# Install with: pip install -r requirements-dev.txt
-pytest>=8.0
-pytest-cov>=4.1
-pyyaml>=6.0

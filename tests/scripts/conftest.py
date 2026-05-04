@@ -90,3 +90,45 @@ def schema() -> dict:
 @pytest.fixture(scope="module")
 def id_pattern(schema: dict) -> re.Pattern:
     return re.compile(schema["finding"]["id"]["pattern"])
+
+
+@pytest.fixture(scope="session")
+def init_run(tmp_path_factory: pytest.TempPathFactory):
+    """One canonical scripts/init.sh run, shared across all test_init_sh_* modules.
+
+    Promoted from 4 duplicate module-scoped fixtures (substitution, constitution,
+    self_delete) plus an inline function-scoped pattern in adversarial. The
+    macos-latest CI runner is 3-4x slower than dev hardware on init.sh cold-
+    cache scans (workflow comment in tachi-pytest.yml); each module-scoped
+    fixture historically forced its own clone-and-init cycle, multiplying the
+    cold-cache cost across modules.
+
+    By promoting to session scope, the suite invokes init.sh once for all
+    canonical post-init assertions. The function-scoped pattern in
+    test_init_sh_adversarial.test_case_13 is preserved separately because
+    that test SEEDS pre-init fixture files into the clone before init.sh
+    runs — it cannot share the canonical clone.
+
+    Sharing is safe because every consuming test asserts READ-ONLY properties
+    of the post-init clone (file existence, byte content, mode bits). No
+    consumer mutates state. The session-scoped tmpdir is cleaned up by
+    pytest at session end.
+
+    Returns an InitRun dataclass (returncode, stdout, stderr, tmpdir).
+    """
+    from init_sh_helpers import (
+        build_canonical_stdin,
+        clone_into_tmpdir,
+        run_init_in_clone,
+    )
+
+    tmpdir = tmp_path_factory.mktemp("init_sh_canonical")
+    clone_root = clone_into_tmpdir(tmpdir)
+    stdin_payload = build_canonical_stdin(clone_root)
+    result = run_init_in_clone(clone_root, stdin_payload)
+    if result.returncode != 0:
+        pytest.fail(
+            f"canonical init.sh exited {result.returncode}; stderr tail:\n"
+            f"{result.stderr[-1500:]}"
+        )
+    return result

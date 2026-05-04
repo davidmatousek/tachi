@@ -59,6 +59,9 @@ on:
       - tests/scripts/test_init_sh_adversarial.py
       - tests/scripts/test_init_sh_constitution.py
       - tests/scripts/test_init_sh_self_delete.py
+      - tests/scripts/test_template_substitute_unit.py
+      - tests/scripts/test_init_input_unit.py
+      - tests/scripts/test_substitute_shim_canary.py
       - tests/scripts/init_sh_helpers.py
       - tests/scripts/conftest.py
       - tests/fixtures/init-baseline-tree/**
@@ -107,16 +110,28 @@ jobs:
 
       - name: Run F-248 init.sh pytest suite
         # Direct invocation: `pytest` resolves to the venv-installed binary.
-        # `--timeout=360` is the OUTER pytest per-test cap; the helper's
-        # subprocess `run_init_in_clone(timeout_sec=300)` is the INNER cap on
+        # `--timeout=1080` is the OUTER pytest per-test cap; the helper's
+        # subprocess `run_init_in_clone(timeout_sec=900)` is the INNER cap on
         # a single init.sh invocation. macos-latest GitHub Actions runners
         # are notoriously ~3-4× slower than dev machines for arm64 bash work
-        # (T040 first-run measured >180s; bumped 180→300s + outer 300→360s
-        # to leave ~60s pytest-fixture slack). Verbose output preserved.
+        # (~140-175s on dev → ~560-700s cold-cache on macos-latest at the
+        # 4× worst-case multiplier). F-250 promoted `init_run` to a session-
+        # scoped fixture in conftest.py so the macos cold-cache cost is paid
+        # ONCE per session instead of once per module — the outer/inner
+        # timeouts give ~200s/180s slack on the worst observed scenario.
+        #
+        # The 3 unit modules (test_template_substitute_unit, test_init_input_unit,
+        # test_substitute_shim_canary) are sub-second per case — they sit in
+        # the same pytest invocation so their changes also trigger CI on the
+        # F-248 substitution surface. Their timeouts are bound by the outer
+        # `--timeout=1080` pytest cap and finish in milliseconds.
         run: |
           python -m pytest \
             tests/scripts/test_init_sh_substitution.py \
             tests/scripts/test_init_sh_adversarial.py \
             tests/scripts/test_init_sh_constitution.py \
             tests/scripts/test_init_sh_self_delete.py \
-            -v --timeout=360
+            tests/scripts/test_template_substitute_unit.py \
+            tests/scripts/test_init_input_unit.py \
+            tests/scripts/test_substitute_shim_canary.py \
+            -v --timeout=1080

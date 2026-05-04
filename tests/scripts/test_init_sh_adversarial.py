@@ -104,7 +104,7 @@ def test_case_13_file_level_byte_identity(tmp_path_factory: pytest.TempPathFacto
     )
 
 
-def test_no_residual_placeholders_after_init(tmp_path_factory: pytest.TempPathFactory):
+def test_no_residual_placeholders_after_init(init_run):
     """Sanity: after canonical init, no `{{KEY}}` placeholders remain in
     PERSONALIZED-category files.
 
@@ -117,15 +117,13 @@ def test_no_residual_placeholders_after_init(tmp_path_factory: pytest.TempPathFa
 
     This test must align with the implementation scope: read the manifest,
     walk only personalized files, assert zero residual canonical placeholders.
+
+    Uses the session-scoped `init_run` fixture from conftest.py — the
+    canonical post-init clone is shared with the other init_sh_* test modules
+    to avoid multiplying the macos cold-cache cost.
     """
     import re
-    tmpdir = tmp_path_factory.mktemp("init_sh_residual")
-    clone_root = clone_into_tmpdir(tmpdir)
-    stdin_payload = build_canonical_stdin(clone_root)
-    result = run_init_in_clone(clone_root, stdin_payload)
-    assert result.returncode == 0, (
-        f"init.sh exit {result.returncode}; stderr tail:\n{result.stderr[-1500:]}"
-    )
+    clone_root = init_run.tmpdir
 
     # Parse the manifest to get the list of personalized-category files.
     manifest = clone_root / ".aod" / "template-manifest.txt"

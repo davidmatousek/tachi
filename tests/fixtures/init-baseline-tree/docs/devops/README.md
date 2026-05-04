@@ -45,7 +45,7 @@ CI/CD setup instructions for common platforms. Also documents reference template
 
 The patterns below describe CI that the upstream template uses to protect its own release-tooling integrity. **They do not ship to adopter projects** — adopt them only if you extend the template or want the same guarantees in your own repo.
 
-All three workflows share the same bash:3.2 Docker pattern, SHA-pinned checkout action, `contents: read` permissions, and cancel-in-progress concurrency. See `docs/devops/CI_CD_GUIDE.md` for the reusable pattern including the `apk add git` + `safe.directory` setup.
+The bash-pattern workflows (manifest-coverage, extract-coverage, stack-contract) share the same bash:3.2 Docker pattern, SHA-pinned checkout action, `contents: read` permissions, and cancel-in-progress concurrency. See `docs/devops/CI_CD_GUIDE.md` for the reusable pattern including the `apk add git` + `safe.directory` setup. The host-runner workflows (`tachi-pytest.yml`, `tachi-mmdc-preflight.yml`) follow a different shape — direct host execution with path-filtered triggers — because their workloads (Python+bash subprocess, mmdc Node binary preflight) do not benefit from container isolation.
 
 ### Reference: Manifest Coverage Workflow (F129)
 
@@ -133,7 +133,8 @@ Production ({{PRODUCTION_PLATFORM}}):
 - [Local Setup](01_Local/README.md)
 - [Staging Deployment](02_Staging/README.md)
 - [Production Deployment](03_Production/README.md)
-- [CI/CD Guide](CI_CD_GUIDE.md) — includes manifest-coverage + extract-coverage + stack-contract workflows, bash:3.2 Docker pattern, BATS harness, update-script env vars
+- [CI/CD Guide](CI_CD_GUIDE.md) — includes manifest-coverage + extract-coverage + stack-contract workflows, tachi-pytest (F-248) + tachi-mmdc-preflight (F145) host-runner workflows, bash:3.2 Docker pattern, BATS harness, update-script env vars
+- [Environment Variables Contract](environment-variables.md) — test-only and CI-only env vars (F-248 date overrides, F129 BATS overrides) — adopter-facing env vars are documented in CI_CD_GUIDE.md
 - [Downstream Template Update Guide](../guides/DOWNSTREAM_UPDATE.md) — authoritative adopter walkthrough for `make update` / `/aod.update`
 - [PLSK Maintainer Guide](../guides/PLSK_MAINTAINER_GUIDE.md) — authoritative walkthrough for extraction + sync-upstream (feature 128)
 - [Stack Pack Test Contract Guide](../stacks/TEST_COMMAND_CONTRACT.md) — authoring guide for the `<!-- BEGIN: aod-test-contract -->` block guarded by `stack-contract.yml` (feature 130)
@@ -302,6 +303,25 @@ The **Anti-Rationalization Tables for AOD Command/Skill Files** feature (PR #159
 - **CI parity verified post-merge**: `bash scripts/check-extract-coverage.sh` returns rc=0 against `main` at commit `75004cd`, confirming the regenerated classification snapshot remains consistent with the merged tree.
 
 **Adopter action**: none at the DevOps layer. The `## Common Rationalizations` and `## Red Flags` sections improve LLM decision quality during command execution but do not alter any CI gate, exit-code taxonomy, or environment configuration. PRD: `docs/product/02_PRD/158-anti-rationalization-tables-2026-04-30.md`. Spec + retro: `specs/158-anti-rationalization-tables/`.
+
+---
+
+## Feature 248 Additions (2026-05-04)
+
+The **Substitution Surface Hardening** feature (PR #249, feature branch `248-substitution-surface-hardening` squash-merged on 2026-05-04, merge commit `6db9a25`) shipped a new pytest CI workflow, a baseline-regeneration tooling script, and two test-only environment-variable contracts to lock down the `scripts/init.sh` placeholder-substitution surface against bash-version drift. The feature is **template-maintenance only** — adopters see zero runtime impact, but anyone extending the upstream template MUST understand the new contracts:
+
+- **New CI workflow**: `.github/workflows/tachi-pytest.yml` runs the F-248 init.sh substitution suite (4 test files, 20 tests per ADR-038 §Test Coverage) on a 2-runner pytest matrix (`macos-latest` + `ubuntu-latest`, `fail-fast: false`). The macOS leg is the strictest gate — bash 3.2.57 (Apple GPLv3 floor) — and the Ubuntu leg is the modern reference at bash 5.x. Both legs MUST pass for the workflow to close green. Trigger: `pull_request` only, path-filtered to the substitution surface (per NFR-005). Full walkthrough in `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow (F-248)".
+- **Path filter discipline (NFR-005)**: the workflow does NOT fire on unrelated edits (docs, ADR text, agent-tier files). The 17-path trigger set is enumerated in `tachi-pytest.yml` and copied into `CI_CD_GUIDE.md`. Any future changes to the substitution surface MUST add the new file path to this filter; otherwise the gate silently bypasses the change.
+- **New baseline-regeneration script**: `tests/fixtures/regenerate-baseline.sh` is the **only** supported way to regenerate `tests/fixtures/init-baseline-tree/`. It pins deterministic substitution inputs via two test-only env vars (see below) and drives `scripts/init.sh` against a clean clone. Run it whenever the canonical placeholder set expands (new `{{...}}` token added) or upstream template content additions land. Manual edits to the baseline tree are explicitly prohibited — the regen script is the contract.
+- **New pyyaml dependency in CI**: `tests/scripts/conftest.py` imports `yaml` at module scope. The CI workflow installs `pyyaml>=6` alongside `pytest>=8` and `pytest-timeout>=2`. The dependency is **cross-suite**: shared with the BLP-01 + F-241 detection-agent attestation tests that load `schemas/finding.yaml` and `.claude/agents/tachi/*.yml` schemas. Bumping `pyyaml` MUST be coordinated across all three suites.
+- **Test-only environment variables** (see `docs/devops/environment-variables.md` for the full contract):
+  - `AOD_RATIFICATION_DATE_OVERRIDE` — pins the constitution `RATIFICATION_DATE` substitution. Used by `regenerate-baseline.sh` and ad-hoc test runs to make output byte-deterministic. Read by `scripts/init.sh:123`. NOT for production use.
+  - `AOD_CURRENT_DATE_OVERRIDE` — pins the `CURRENT_DATE` substitution. Same pattern as above. Read by `scripts/init.sh:124`. NOT for production use.
+- **Performance characteristic on macOS**: the matrix's macOS leg takes 30–40 minutes per CI invocation due to bash 3.2.57 forking overhead on arm64. The 300s inner subprocess timeout (in `init_sh_helpers.run_init_in_clone`) and 360s outer pytest timeout were tuned to leave ~60s of fixture-teardown headroom on the slowest observed runs. A flake was observed at the 300s timeout during F-248 close-out — Issue #250 covers the same-day perf hot-patch.
+- **F-248 closeout admin override (2026-05-04)**: PR #249 merged via admin-override squash-merge. Ubuntu leg green; macOS leg tripped the timeout flake on the final pre-merge run. The merge decision is scoped to F-248 close-out — the underlying substitution behaviour was verified green on multiple prior runs, and the timeout is a CI-runner cost, not a substitution-surface defect. Issue #250's perf hot-patch is the deterministic fix.
+- **No staging/production deployment changes, no secret changes, no monitoring changes**: F-248 is a CI/test-tooling feature. Runtime deployment targets, adopter scaffolds, and any production environment surfaces are unchanged.
+
+**Adopter action**: none. F-248 is template-maintenance only. Maintainers extending the substitution surface (new `{{...}}` placeholder, new shell helper under `.aod/scripts/bash/`) MUST: (a) add the new file path to the workflow's path filter, (b) extend the test suite if the new path introduces case logic in `template-substitute.sh`, and (c) regenerate the baseline tree via `tests/fixtures/regenerate-baseline.sh`. PRD: `docs/product/02_PRD/248-substitution-surface-hardening-2026-05-03.md`. Spec + tasks: `specs/248-substitution-surface-hardening/`. ADR: `docs/architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md`. Workflow walkthrough: `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow (F-248)". Env-var contracts: `docs/devops/environment-variables.md`.
 
 ---
 

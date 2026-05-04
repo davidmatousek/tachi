@@ -121,12 +121,20 @@ def clone_into_tmpdir(tmpdir: Path) -> Path:
 
 
 def run_init_in_clone(clone_root: Path, stdin_payload: str,
-                      timeout_sec: int = 300) -> InitRun:
+                      timeout_sec: int = 900) -> InitRun:
     """Invoke `bash ./scripts/init.sh` inside <clone_root> non-interactively.
 
     Sets LC_ALL=C (matches T008 baseline) and HOME=<isolated tmpdir> so
     `gh auth status` in init.sh detects no auth and BOARD_STATUS skips
     network calls. Returns InitRun with captured streams + return code.
+
+    Default timeout is 900s. Macos-latest CI runners are 3-4x slower than
+    dev hardware on init.sh cold-cache scans (workflow comment in
+    tachi-pytest.yml). On dev, init.sh completes in ~140-175s; macos-latest
+    cold cache projects to ~560-700s at the 4x worst-case multiplier. The
+    900s default leaves ~200s headroom on the worst observed cold-cache
+    scenario. Subsequent invocations on the same runner hit warm cache
+    and complete in <60s, well under the cap.
     """
     fake_home = clone_root.parent / "fake_home"
     fake_home.mkdir(exist_ok=True)

@@ -22,29 +22,14 @@ from pathlib import Path
 
 import pytest
 
-from init_sh_helpers import (
-    build_canonical_stdin,
-    clone_into_tmpdir,
-    files_in_tree,
-    run_init_in_clone,
-)
+from init_sh_helpers import files_in_tree
 
 BASELINE_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "init-baseline-tree"
 
-
-@pytest.fixture(scope="module")
-def init_run(tmp_path_factory: pytest.TempPathFactory):
-    """Module-scoped: run init.sh once with canonical inputs in a tmpdir clone."""
-    tmpdir = tmp_path_factory.mktemp("init_sh_substitution")
-    clone_root = clone_into_tmpdir(tmpdir)
-    stdin_payload = build_canonical_stdin(clone_root)
-    result = run_init_in_clone(clone_root, stdin_payload)
-    if result.returncode != 0:
-        pytest.fail(
-            f"init.sh exited {result.returncode}; "
-            f"stderr last lines:\n{result.stderr[-1500:]}"
-        )
-    return result
+# `init_run` is provided by conftest.py at session scope — one canonical
+# init.sh invocation is shared across all test_init_sh_* modules to avoid
+# multiplying the macos cold-cache cost (workflow comment in tachi-pytest.yml
+# notes macos-latest is 3-4x slower than dev hardware on init.sh cold runs).
 
 
 @pytest.mark.skipif(
@@ -66,20 +51,34 @@ def test_personalized_tree_bytes_match_baseline(init_run):
       File-mode parity is still asserted in the modes test below.
     """
     clone_root = init_run.tmpdir
-    actual_files = files_in_tree(clone_root)
-    baseline_files = files_in_tree(BASELINE_DIR)
+    actual_set = set(files_in_tree(clone_root))
+    baseline_set = set(files_in_tree(BASELINE_DIR))
 
-    # File set parity: actual ≈ baseline (modulo init.sh self-delete which is
-    # tested separately; the baseline already reflects post-init state).
-    assert set(actual_files) == set(baseline_files), (
-        f"file set drift:\n"
-        f"  in actual but not baseline: {sorted(set(actual_files) - set(baseline_files))[:20]}\n"
-        f"  in baseline but not actual: {sorted(set(baseline_files) - set(actual_files))[:20]}"
+    # SUBSTITUTION-DROP CONTRACT (regression signal):
+    # init.sh produced fewer files than the baseline expects. This is the
+    # real regression path the test exists to catch — substitution loop
+    # silently skipping a file or self-delete sweeping too aggressively.
+    missing_from_actual = baseline_set - actual_set
+    assert not missing_from_actual, (
+        f"init.sh dropped {len(missing_from_actual)} file(s) from the "
+        f"personalized tree (substitution regression suspected). First 10:\n  "
+        + "\n  ".join(str(p) for p in sorted(missing_from_actual)[:10])
     )
 
+    # REPO-GROWTH TOLERANCE (NOT a substitution regression):
+    # Files present in actual but absent from baseline mean the repo grew
+    # since `tests/fixtures/regenerate-baseline.sh` was last run. Adopters
+    # receive these files via init.sh on every install — they're outside
+    # the byte-comparison contract. Maintainers can refresh the baseline
+    # at their discretion; the test does not block PRs that add files.
+
+    # BYTE-CONTENT CONTRACT:
+    # Files present in BOTH sets must match exactly. This catches genuine
+    # substitution-semantics drift (e.g., a `&` corruption regressing the
+    # F-248 fix, or a `LC_ALL` regression mangling multibyte boundaries).
     DRIFT_ALLOWED = {Path(".aod/aod-kit-version")}
     mismatches: list[str] = []
-    for rel in actual_files:
+    for rel in (actual_set & baseline_set):
         if rel in DRIFT_ALLOWED:
             continue
         actual_bytes = (clone_root / rel).read_bytes()

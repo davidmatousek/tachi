@@ -16,22 +16,9 @@ T015–T021).
 
 from __future__ import annotations
 
-import pytest
-
-from init_sh_helpers import build_canonical_stdin, clone_into_tmpdir, run_init_in_clone
-
-
-@pytest.fixture(scope="module")
-def init_run(tmp_path_factory: pytest.TempPathFactory):
-    tmpdir = tmp_path_factory.mktemp("init_sh_self_delete")
-    clone_root = clone_into_tmpdir(tmpdir)
-    stdin_payload = build_canonical_stdin(clone_root)
-    result = run_init_in_clone(clone_root, stdin_payload)
-    if result.returncode != 0:
-        pytest.fail(
-            f"init.sh exited {result.returncode}; stderr tail:\n{result.stderr[-1500:]}"
-        )
-    return result
+# `init_run` is provided by conftest.py at session scope — see that fixture's
+# docstring for the rationale (one shared init.sh invocation across all
+# test_init_sh_* modules to avoid multiplying macos cold-cache cost).
 
 
 def test_init_sh_does_not_exist_after_success(init_run):

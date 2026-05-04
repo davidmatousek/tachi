@@ -1,24 +1,43 @@
 #!/usr/bin/env bash
 # tests/fixtures/regenerate-baseline.sh — F-248 BLP-02 Wave 1 deliverable (T013)
+#                                         + F-250 substitution-target restriction
 #
 # Regenerates `tests/fixtures/init-baseline-tree/` by running scripts/init.sh
 # against a tmpdir clone of the current repo with the canonical fixture
-# inputs. The resulting personalized tree is the byte-comparison baseline
-# consumed by `test_init_sh_substitution.py` (Test-1).
+# inputs. The resulting baseline is the byte-comparison contract consumed
+# by `test_init_sh_substitution.py` (Test-1).
+#
+# F-250 SCOPE RESTRICTION
+# ───────────────────────
+# The baseline now captures ONLY files that are SUBSTITUTION TARGETS — i.e.,
+# files whose source content (pre-substitution) contains at least one of
+# the canonical `{{KEY}}` placeholders. The full source tree (~600 files)
+# is NOT copied; only ~5-10 files containing canonical placeholders.
+#
+# Rationale: pre-F-250, the baseline copied the full tree, so ANY content
+# edit to ANY file (docs, specs, generated artifacts) caused a stale-baseline
+# CI failure on the next PR. The recurring "regenerate baseline" maintenance
+# tax conflated two distinct contracts — substitution semantics vs. file
+# bag parity — neither of which the broad scope served well. Restricting
+# to substitution targets:
+#   - Catches genuine substitution regressions (case_1 ampersand, multibyte,
+#     locale issues) on the small set of files that actually get substituted.
+#   - Tolerates routine repo growth (new docs, specs, test artifacts) without
+#     fail-on-every-PR drift.
+#   - Reduces baseline size from ~600 files to ~5-10, making `git diff`
+#     review trivial and regen runs fast.
 #
 # WHEN to regenerate
 # ──────────────────
-# Regenerate ONLY when the canonical placeholder set legitimately expands
-# (e.g., AOD_CANONICAL_PLACEHOLDERS gains a 13th key under Q-1 Option a
-# fallback) or when an upstream content change in `tachi` legitimately
-# alters the expected output bytes (new docs file added, existing doc
-# edited intentionally).
+# Regenerate when:
+#   - A new file with canonical `{{KEY}}` placeholders is added to the repo.
+#   - An existing placeholder-bearing file is intentionally edited.
+#   - The canonical placeholder set itself changes
+#     (AOD_CANONICAL_PLACEHOLDERS in template-substitute.sh).
 #
 # DO NOT regenerate to mask a substitution-semantics regression. If a
-# Test-1 byte-comparison fails after a code change, investigate whether
-# the substitution mechanism itself drifted before regenerating. The
-# baseline is the contract; regeneration is the rare, deliberate update
-# of that contract.
+# byte-comparison fails after a code change, investigate whether the
+# substitution mechanism itself drifted before regenerating.
 #
 # WHEN NOT to regenerate (anti-patterns)
 # ─────────────────────────────────────────
@@ -29,6 +48,12 @@
 #   → Update the canonical-12 array in template-substitute.sh, then
 #     update personalization-schema.md, THEN regenerate this baseline
 #     in lockstep. Skipping the schema/contract updates is a violation.
+# - "I edited a non-placeholder file (README.md, docs, specs) and CI
+#   complains about baseline drift."
+#   → This should NOT happen post-F-250. The baseline only includes
+#     substitution targets; non-target edits are tolerated. If you do see
+#     a drift fail on a non-target file, the baseline restriction logic
+#     below is broken — investigate.
 #
 # Inputs
 # ──────
@@ -100,32 +125,59 @@ echo "[regen] running scripts/init.sh with canonical inputs (LC_ALL=C, HOME isol
     exit 1
 }
 
-echo "[regen] copying personalized tree → ${BASELINE_DIR}"
+# F-250 SUBSTITUTION-TARGET RESTRICTION
+# ─────────────────────────────────────
+# Identify SUBSTITUTION TARGETS — files in the SOURCE tree (REPO_ROOT)
+# that contain at least one canonical `{{KEY}}` placeholder. Only these
+# files participate in the byte-comparison contract; non-target files
+# pass through init.sh as a copy and are not part of this baseline.
+#
+# Scan the SOURCE (REPO_ROOT), not the post-init CLONE_ROOT, because
+# init.sh has already substituted away the placeholders in the clone —
+# the clone's `{{KEY}}` markers are gone after the substitution loop runs.
+
+PLACEHOLDER_REGEX='\{\{(PROJECT_NAME|PROJECT_DESCRIPTION|GITHUB_ORG|GITHUB_REPO|AI_AGENT|TECH_STACK|TECH_STACK_DATABASE|TECH_STACK_VECTOR|TECH_STACK_AUTH|RATIFICATION_DATE|CURRENT_DATE|CLOUD_PROVIDER)\}\}'
+
+TARGET_LIST=$(mktemp)
+trap 'rm -rf "$TMPDIR" "$TARGET_LIST"' EXIT
+
+echo "[regen] scanning source for substitution targets (canonical placeholders)…"
+(cd "$REPO_ROOT" && find . -type f \
+    -not -path './.git/*' \
+    -not -path './node_modules/*' \
+    -not -path './tests/fixtures/init-baseline-tree/*' \
+    -not -name '*.png' -not -name '*.jpg' -not -name '*.ico' \
+    -print0 | xargs -0 grep -lE "$PLACEHOLDER_REGEX" 2>/dev/null \
+    | sed 's|^\./||' \
+    | sort) > "$TARGET_LIST" || true
+
+TARGET_COUNT=$(grep -c '' "$TARGET_LIST" 2>/dev/null || echo 0)
+if [ "$TARGET_COUNT" -lt 1 ]; then
+    echo "[regen] FATAL: no substitution targets found in source." >&2
+    echo "[regen]        The placeholder regex or source scan logic is broken." >&2
+    exit 1
+fi
+echo "[regen] found $TARGET_COUNT substitution target(s):"
+sed 's/^/[regen]   /' "$TARGET_LIST"
+
+echo "[regen] copying post-substitution bytes → ${BASELINE_DIR}"
 rm -rf "$BASELINE_DIR"
 mkdir -p "$BASELINE_DIR"
 
-# Mirror init.sh's find filter: exclude .git/, node_modules/, *.png/jpg/ico.
-# Use rsync if available (preserves modes); fall back to find+cp.
-if command -v rsync >/dev/null 2>&1; then
-    rsync -a \
-        --exclude='.git/' \
-        --exclude='node_modules/' \
-        --exclude='*.png' \
-        --exclude='*.jpg' \
-        --exclude='*.ico' \
-        --exclude='tests/fixtures/init-baseline-tree/' \
-        "${CLONE_ROOT}/" "${BASELINE_DIR}/"
-else
-    (cd "$CLONE_ROOT" && find . -type f \
-        -not -path './.git/*' \
-        -not -path './node_modules/*' \
-        -not -path './tests/fixtures/init-baseline-tree/*' \
-        -not -name '*.png' -not -name '*.jpg' -not -name '*.ico' \
-        -print0 | while IFS= read -r -d '' f; do
-            mkdir -p "${BASELINE_DIR}/$(dirname "$f")"
-            cp -p "$f" "${BASELINE_DIR}/$f"
-        done)
-fi
+MISSING_COUNT=0
+while IFS= read -r rel; do
+    [ -z "$rel" ] && continue
+    src="${CLONE_ROOT}/${rel}"
+    dst="${BASELINE_DIR}/${rel}"
+    if [ ! -f "$src" ]; then
+        echo "[regen]   note: target $rel removed by init.sh (e.g., self-delete) — skipping" >&2
+        MISSING_COUNT=$((MISSING_COUNT + 1))
+        continue
+    fi
+    mkdir -p "$(dirname "$dst")"
+    cp -p "$src" "$dst"
+done < "$TARGET_LIST"
 
-echo "[regen] baseline regenerated. Files: $(find "$BASELINE_DIR" -type f | wc -l | tr -d ' ')"
+FINAL_COUNT=$(find "$BASELINE_DIR" -type f | wc -l | tr -d ' ')
+echo "[regen] baseline regenerated. Files: ${FINAL_COUNT} (skipped ${MISSING_COUNT} init.sh-removed)"
 echo "[regen] commit the diff under ${BASELINE_DIR}/"

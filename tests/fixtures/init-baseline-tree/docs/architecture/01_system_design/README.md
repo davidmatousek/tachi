@@ -3327,3 +3327,109 @@ PDF Output — byte-identical on 5 baselines when gate=false.
 **Strategic significance — first execution of the Heuristic A enrichment branch validates the consolidation pattern**: F-3 is the **first** execution of the Heuristic A enrichment branch (vs. the new-agent branch validated by F-1 + F-2). SDR-001 Decision 4 specified the rule but no prior feature had operationalized the enrichment path — F-3 sets the precedent for future Heuristic A consolidations beyond BLP-01 Tier 1 (ASI06/ASI08 enrichment, Tier 2 ML+Mobile bundles which may also use enrichment). The pattern's structural advantages over the new-agent branch are demonstrated in F-3's 5/5-dimension reduction in edit surface vs. F-2: no schema bump (reuses host's ID space), no consumers list edit (host already in consumers list), no functional orchestrator edit (host already fully registered), no new agent file, no new skill directory. F-3 closes OWASP ASI07:2026 on the BLP-01 Coverage Matrix (Planned → Covered); OWASP Agentic Top 10:2026 framework coverage advances from 5/10 (post-F-2) to 6/10 (post-F-3) — ASI07 joins ASI-01, ASI-02, ASI-04, MCP-03, MCP-05, with F-4 (ASI09) and post-Tier-1 features tracking the remaining 4. Heuristic A discipline is now **operationalized across two branches**: new-agent (F-1 + F-2 within LLM tier) and enrichment (F-3 within AG tier) — disjointness verifiable at signal-class level (different application of same rule). Source attribution contract (F-A2) is now validated across **two agent classes** — LLM new (F-1 OI + F-2 MI) plus AG enrichment (F-3) — beyond the two-agent-new validation already established by F-1 + F-2.
 
 **Cross-references**: [ADR-032](../02_ADRs/ADR-032-asi07-tool-abuse-enrichment.md) (this feature's decision record — 6-7 numbered decisions; lands at Wave 1.1 Proposed and Wave 4 Accepted) · [ADR-031](../02_ADRs/ADR-031-misinformation-agent.md) (F-2 direct precedent — Decision 8 regex-alternation minor-bump rule cross-referenced as the **asymmetry**: F-3 does NOT invoke this rule because Heuristic A enrichment reuses the existing host's ID space) · [ADR-030](../02_ADRs/ADR-030-output-integrity-agent.md) (F-1 indirect precedent — Decision 1 signal-class taxonomy in LLM tier cross-referenced as the precedent for the same rule applied to AG tier) · [ADR-023](../02_ADRs/ADR-023-threat-agent-skill-references-pattern.md) (lean-agent + Decision 3 additive-only shared-reference edit discipline — F-3 follows Decision 3 in its purest form, additive-only edits to existing files with byte-identity preservation on existing content) · [ADR-028](../02_ADRs/ADR-028-source-attribution-schema-extension.md) (F-A2 schema contract — F-3 is 3rd net-new producer flow after F-1 + F-2; first **enrichment** of existing populator) · [ADR-027](../02_ADRs/ADR-027-taxonomy-crosswalk-schema.md) (F-A1 catalog vocabulary — OWASP ASI07 + LLM03 + CWE-287 + CWE-345 + AML.T0060 all catalog-resolvable PRD-time verified, distinct from F-2's confirmed-absent AML.T0042) · [ADR-021](../02_ADRs/ADR-021-source-date-epoch-for-deterministic-pdf-comparison.md) (SC-010 byte-identity baseline gate on 5 non-multi-agent baselines) · Feature 206 (F-2 direct precedent — plan/spec template re-applied; wave structure compressed from F-2's 6-wave / 2-day to F-3's 4-wave / 1-day reflecting smaller edit surface) · Feature 201 (F-1 indirect precedent — first new-agent execution of Heuristic A; F-3 is first **enrichment** execution of Heuristic A) · Feature 142 (multi-agent component types: `Inter-agent Communication Channel` introduced in this feature is the architectural surface on which Categories 9 + 10 fire) · Feature 082 (lean-agent refactor precedent; F-3 inherits ≤150 line cap on `tool-abuse.md`) · Feature 194 (F-B downstream rendering consumer — third TRUE trigger on `has-source-attribution` post-F-3 regen).
+
+### Feature 250: adversarial-unit-extraction-hotfix
+
+## Components
+
+This hot-fix lives entirely in the test tree. No bash helper is modified; `init_sh_helpers.py` is untouched. Reference: [plan.md](../../../specs/250-adversarial-unit-extraction-hotfix/plan.md) §Components.
+
+| Component | Type | File Path | Change Type | Rationale |
+|-----------|------|-----------|-------------|-----------|
+| `test_template_substitute_unit.py` | New pytest module | `tests/scripts/test_template_substitute_unit.py` | Create | Spec FR-001 — covers adversarial substitution-semantics cases 1-8 by invoking `aod_template_substitute_placeholders` directly via `subprocess.run`; `tmp_path`-only fixture; zero `init_sh_helpers` import |
+| `test_init_input_unit.py` | New pytest module | `tests/scripts/test_init_input_unit.py` | Create | Spec FR-002, FR-006, FR-007 — covers adversarial input-rejection cases 9-12 via process substitution `< <(printf ...)`; first test is positive-path canary guarding against R-1 pipe-subshell trap; zero filesystem touch |
+| `test_init_sh_adversarial.py` | Existing integration module | `tests/scripts/test_init_sh_adversarial.py` | Modify (delete-only) | Spec FR-004, AC-6 — delete contiguous block lines 41-162 (`ADVERSARIAL_CASES` table + `_ids` + `adversarial_run` fixture + `test_adversarial_input`); preserve lines 1-39 (imports), 165-227 (case 13), 229-288 (`test_no_residual_placeholders_after_init`) byte-unchanged |
+| Bash helpers + `init_sh_helpers.py` + `pyproject.toml` + `conftest.py` + CI workflow | Existing files | `.aod/scripts/bash/{template-substitute,init-input}.sh`, `tests/scripts/init_sh_helpers.py`, `pyproject.toml`, `tests/scripts/conftest.py`, `.github/workflows/tachi-pytest.yml` | UNCHANGED | Spec FR-005, FR-019, FR-021, TC-4 — hot-fix is test-tree-only; helper-extraction shape and CI matrix are out of scope |
+
+**Architectural posture**: test-tree-only reorganisation. No application surface, no runtime dependency change, no schema change, no ADR change. ADR-038 (Placeholder Substitution Strategy, Accepted 2026-05-04) defines the helper contracts being re-tested at unit level; F-250 does not amend it. Two new pytest modules + one delete-block in one existing module = the entire change surface.
+
+## Data Flow
+
+**No runtime data flow changes.** F-250 reorganises how tests invoke existing helpers — production code paths are byte-identical. The data flow below is the **per-case test invocation**, not a runtime flow.
+
+### Per-case test invocation flow (test_template_substitute_unit.py)
+
+```mermaid
+sequenceDiagram
+    participant Pytest
+    participant Subprocess
+    participant Bash as bash 3.2/5.x
+    participant Helper as aod_template_substitute_placeholders
+    participant TmpFS as tmp_path
+
+    Pytest->>Pytest: parametrize → case dict (env, src_content, expected)
+    Pytest->>TmpFS: write src file (tachi\n)
+    Pytest->>Subprocess: run(bash -c "source helper; aod_template_substitute_placeholders src dest", env=..., timeout=15)
+    Subprocess->>Bash: spawn shell with LC_ALL=C, PATH, AOD_PERSONALIZATION_*
+    Bash->>Bash: shopt -u patsub_replacement (no-op on 3.2)
+    Bash->>Helper: source template-substitute.sh
+    Helper->>TmpFS: read src
+    Helper->>Helper: bash parameter expansion ${content//tachi/AT&T}
+    Helper->>TmpFS: write dest
+    Bash->>Subprocess: exit 0
+    Subprocess->>Pytest: stdout, stderr, returncode
+    Pytest->>TmpFS: read dest
+    Pytest->>Pytest: assert dest == expected (byte-identical)
+```
+
+### Per-case test invocation flow (test_init_input_unit.py)
+
+```mermaid
+sequenceDiagram
+    participant Pytest
+    participant Subprocess
+    participant Bash as bash 3.2/5.x
+    participant Helper as aod_init_read_validated
+    participant Stdin as process-substitution stdin
+
+    Pytest->>Pytest: parametrize → case dict (input, expected_result, expected_rc, expected_reason)
+    Pytest->>Subprocess: run(bash -c "source helper; aod_init_read_validated 'P: ' result 100 < <(printf '%s\n' \"$INPUT\"); declare -p result", env={LC_ALL=C, INPUT=...}, timeout=15)
+    Subprocess->>Bash: spawn shell
+    Bash->>Helper: source init-input.sh
+    Helper->>Stdin: read line via process substitution
+    Note over Helper,Stdin: Process substitution keeps Helper in parent shell;<br/>printf -v "$var_name" assignment IS observable.<br/>Pipe would lose the assignment (R-1 trap).
+    Helper->>Helper: validate via regex; reject or printf -v result
+    alt input accepted
+        Helper->>Bash: declare -p result → "declare -- result=<value>"
+        Bash->>Subprocess: exit 0
+    else 3 strikes rejected
+        Helper->>Bash: stderr "ERR: <reason class>"
+        Bash->>Subprocess: exit 1
+    end
+    Subprocess->>Pytest: stdout, stderr, returncode
+    Pytest->>Pytest: assert returncode == expected_rc
+    Pytest->>Pytest: assert <result value> in stdout (positive) or <reason class> in stderr (negative)
+```
+
+### Atomic-PR delivery flow (TC-3)
+
+```mermaid
+flowchart LR
+    A[branch: 250-adversarial-unit-extraction-hotfix] --> B[Step 1: add test_template_substitute_unit.py]
+    B --> C[Step 2: add test_init_input_unit.py]
+    C --> D[Step 3: delete lines 41-162 from test_init_sh_adversarial.py]
+    D --> E[push to draft PR #253]
+    E --> F[mark PR ready]
+    F --> G[squash-merge with title fix(250): ...]
+    G --> H[release-please opens patch-bump PR within ~30s]
+    H --> I[v4.28.X released]
+```
+
+**Critical invariant**: all three steps merge as **one** PR. Intermediate states (Step 1+2 without Step 3, or Step 3 without Steps 1+2) leave the test tree in an incoherent doubled-CI or zero-coverage state.
+
+## Tech Stack
+
+| Layer | Choice | Version | Rationale |
+|-------|--------|---------|-----------|
+| Test runner | pytest | ≥8.0 (already CI-installed) | Project standard; supports parametrize + `--timeout` + `--durations=0` |
+| Test invocation | `subprocess.run` (Python stdlib) | Python 3.9+ stdlib | Zero new dependency; mirrors existing pattern at `init_sh_helpers.run_init_in_clone:135` |
+| Per-test timeout | `pytest-timeout` outer + per-call `timeout=15` inner | Already CI-installed | Two-layer fast-fail; 15s vs 180-258s integration baseline = ~12× headroom on macos-latest 4× slowdown |
+| Locale | `LC_ALL=C` per call | n/a | Matches `init_sh_helpers.run_init_in_clone:135` baseline; prevents locale drift on multibyte case 6 |
+| Shell | bash 3.2.57 (macOS) + bash 5.x (Linux) | Existing CI image | Process substitution (bash 2.04+) and `printf -v` (bash 3.1+) safe on both; `shopt -u patsub_replacement` already guarded with `2>/dev/null \|\| true` |
+| Helper invocation pattern | `< <(printf ...)` (process substitution) | bash 2.04+ | Only sanctioned pattern that preserves `printf -v` caller-scope assignment for `aod_init_read_validated` (R-1 mitigation, FR-006) |
+| Release tooling | release-please | already configured | `fix(250):` PR-title prefix triggers patch-bump release |
+| CI matrix | GitHub Actions: `[macos-latest, ubuntu-latest]` | unchanged | Both legs must be green; matrix unchanged from F-248 baseline |
+
+**No new dependencies. No new toolchain. No new CI step.** The hot-fix obeys the existing dependency surface and tooling.
+
+**Cross-references**: [ADR-038](../02_ADRs/ADR-038-placeholder-substitution-strategy.md) (helper contracts under test) · [Feature 248](#feature-248-substitution-surface-hardening) (predecessor — introduced the `shopt -u patsub_replacement` shim and authored the original 13-case adversarial table this hot-fix reorganises; PR #249 squash-merged 2026-05-04 commit `6db9a25`) · CI run `25314246672` (F-248 closing run, baseline for ≥25-min savings target — to be URL+SHA pinned in tasks.md per TC-2).
