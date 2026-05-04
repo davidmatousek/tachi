@@ -99,6 +99,45 @@ echo "[regen] cloning ${REPO_ROOT} HEAD=${HEAD_SHA:0:8} → ${CLONE_ROOT}"
 git clone --quiet "file://${REPO_ROOT}" "$CLONE_ROOT"
 (cd "$CLONE_ROOT" && git checkout --quiet "$HEAD_SHA")
 
+# F-250 amendment: overlay uncommitted working-tree changes onto the clone.
+#
+# Without this overlay, regen reflects ONLY the committed HEAD state — so a
+# maintainer iterating with edits in flight (e.g., during /aod.build) gets a
+# baseline that doesn't match their working tree. CI then fails on the next
+# push because the freshly-committed source diverges from the stale baseline.
+#
+# Three working-tree mutation classes are overlaid:
+#   - Modified tracked files (M)   → cp from REPO_ROOT to CLONE_ROOT
+#   - New untracked-not-ignored (?) → cp + mkdir parent
+#   - Deleted tracked files (D)    → rm from CLONE_ROOT
+# Gitignored files (.aod/update-tmp/, .aod/results/, etc.) are excluded
+# automatically because `git ls-files --others --exclude-standard` honors
+# .gitignore.
+UNCOMMITTED=$(cd "$REPO_ROOT" && git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+if [ "$UNCOMMITTED" -gt 0 ]; then
+    echo "[regen] overlaying $UNCOMMITTED uncommitted working-tree change(s) onto clone…"
+    # Modified tracked files
+    while IFS= read -r f; do
+        [ -z "$f" ] && continue
+        if [ -f "${REPO_ROOT}/${f}" ]; then
+            cp "${REPO_ROOT}/${f}" "${CLONE_ROOT}/${f}" 2>/dev/null || true
+        fi
+    done < <(cd "$REPO_ROOT" && git diff HEAD --name-only --diff-filter=M 2>/dev/null)
+    # New untracked-not-ignored files
+    while IFS= read -r f; do
+        [ -z "$f" ] && continue
+        if [ -f "${REPO_ROOT}/${f}" ]; then
+            mkdir -p "${CLONE_ROOT}/$(dirname "$f")"
+            cp "${REPO_ROOT}/${f}" "${CLONE_ROOT}/${f}" 2>/dev/null || true
+        fi
+    done < <(cd "$REPO_ROOT" && git ls-files --others --exclude-standard 2>/dev/null)
+    # Deleted tracked files
+    while IFS= read -r f; do
+        [ -z "$f" ] && continue
+        rm -f "${CLONE_ROOT}/${f}"
+    done < <(cd "$REPO_ROOT" && git diff HEAD --name-only --diff-filter=D 2>/dev/null)
+fi
+
 FAKE_HOME="${TMPDIR}/fake_home"
 mkdir -p "$FAKE_HOME"
 
