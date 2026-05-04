@@ -589,4 +589,71 @@ fixes, then full re-run green. Full log: specs/248-substitution-surface-hardenin
 Wave 4 G4 quality gate (test execution green) is satisfied for the local-pass leg.
 T040 (CI matrix verification on macos-latest + ubuntu-latest) remains for the CI leg.
 
+
+## T040 Outcome — Push + CI Matrix Verification (BLOCKED)
+Captured: 2026-05-03 (Wave 4 — devops agent execution)
+
+### Push
+HEAD pushed: 5b3a9a857b93ad6e464d0f04919473d026bf4b77
+Range:       dcc8375..5b3a9a8 (17 commits)
+Push result: origin/248-substitution-surface-hardening updated successfully
+PR #249 head verification: matched (headRefOid=5b3a9a857b93ad6e464d0f04919473d026bf4b77, isDraft=true, state=OPEN)
+
+### CI Verification — NO CHECKS EXIST
+gh pr checks 249       → "no checks reported on the '248-substitution-surface-hardening' branch"
+gh pr view 249 rollup → statusCheckRollup: []  (empty)
+gh run list --branch  → []  (empty array)
+
+Wait time: ~3 minutes post-push, then snapshot. No async workflow registered.
+
+### Root Cause: No PR-triggered python test matrix exists in this repository
+Repository has only two GitHub Actions workflows:
+  - .github/workflows/release-please.yml      → triggers only on push:main + workflow_dispatch (NOT PR branches)
+  - .github/workflows/tachi-mmdc-preflight.yml → triggers on PR with narrow paths: filter (extract-report-data.py,
+                                                  attack-path.typ, install.sh, tachi.security-report.md, README.md,
+                                                  the workflow file itself). F-248 touches NONE of those paths.
+
+F-248 modified test files outside the preflight paths filter:
+  tests/scripts/test_init_sh_adversarial.py
+  tests/scripts/test_init_sh_constitution.py
+  tests/scripts/test_init_sh_self_delete.py
+  tests/scripts/test_init_sh_substitution.py
+  tests/scripts/conftest.py
+  tests/scripts/init_sh_helpers.py
+  tests/fixtures/regenerate-baseline.sh
+  (plus baseline-tree mirror under tests/fixtures/init-baseline-tree/)
+
+pyproject.toml defines [tool.pytest.ini_options]; Makefile has a `test:` target. But no GitHub Actions
+workflow invokes `make test` or `pytest` on PR branches. Cross-validation against last 30 workflow runs
+(all branches): only `release-please` (main pushes) and `tachi mmdc preflight` (narrow PR paths) ever
+fire. No pytest matrix has ever executed in this repo.
+
+### CI Run URLs — N/A (no runs triggered)
+macos-latest: N/A — workflow does not exist
+ubuntu-latest: N/A — workflow does not exist
+Total CI duration: 0s (no runs)
+
+### Disposition
+T040 cannot be marked [X]. The task's premise (CI matrix exists) is false. Per devops agent
+instruction "Do NOT modify CI workflow files" and "Do NOT attempt to fix CI failures — surface and
+stop", the agent has surfaced and stopped. Owner decision required before T040 can advance:
+  Option A — Author new .github/workflows/test.yml matrix workflow (scope expansion)
+  Option B — Re-scope T040 to local-only attestation + manual Docker ubuntu run
+  Option C — Defer T040 to F-248 close-out / Wave 5 (pattern matches T035/T036 deferral in f5278b4)
+Recommendation: Option C — track as systemic gap warranting dedicated PRD, not F-248 scope creep.
+
+Full devops findings: .aod/results/devops.md
+T040 status in tasks.md: NOT MARKED [X] (remains [ ]).
+
+
 HEAD at T039 PASS: 3bdad25
+
+================================================================================
+T035 + T044 + T045 OUTCOME (2026-05-04)
+================================================================================
+
+T035 PRE-COMPLETED: ADR-038 §Consequences already contains T021 +658% benchmark + NFR-004 disposition (added in T034 commit ffb297d). Dual-commit pattern collapsed because measurement and authoring landed in same wave.
+
+T044 PASS: `git diff main..HEAD -- pyproject.toml requirements*.txt package.json` returns empty. NFR-002 satisfied. Note: tachi-pytest.yml workflow installs pyyaml at CI runtime (not in repo manifests).
+
+T045 PASS: `git diff main..HEAD -- schemas/finding.yaml` returns empty. NFR-005 satisfied; F-241 detection-tier zero-edit invariant preserved.
