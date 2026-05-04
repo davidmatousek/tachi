@@ -687,3 +687,13 @@ PROMOTION ACTIONS:
   - Architect sign-off authority exercised per Triad governance G6 gate
 
 FINAL DISPOSITION: PROMOTED
+
+================================================================================
+T037 + T043 OUTCOME (2026-05-04)
+================================================================================
+
+T037: PR #249 title updated from `feat(248): substitution surface hardening` to
+    `feat(248): harden init.sh substitution surface — sed → bash param expansion + input validation + gitignore default`
+via `gh pr edit 249 --title "..."`. URL: https://github.com/davidmatousek/tachi/pull/249
+
+T043 (R12 belt-and-suspenders): immediate re-verification via `gh pr view 249 --json title` returned the canonical title verbatim. PASS. Release-please will trigger on squash-merge per repo's release-please-config.json (`feat:` is in the major-bump+release-trigger set).
