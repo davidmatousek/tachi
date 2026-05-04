@@ -45,6 +45,10 @@ coverage/
 .nyc_output/
 *.lcov
 test-results/
+# Exception: spec-scoped wave test artifacts ARE tracked (audit trail per
+# /aod.build Step 4 sub-step 5f). See specs/*/test-results/wave-NN/.
+!specs/*/test-results/
+!specs/*/test-results/**
 playwright-report/
 playwright/.cache/
 

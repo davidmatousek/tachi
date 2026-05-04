@@ -563,3 +563,30 @@ Verdict: T038 PASS. Residual scan IS the placeholder contract enforcer
 (spec.md §US-248-5). Test-2 case 13 (Wave 2 T010) covers automated
 regression of this same behavior.
 
+
+================================================================================
+T039 OUTCOME (2026-05-04, macOS bash 3.2.57)
+================================================================================
+
+bash --version: GNU bash, version 3.2.57(1)-release (arm64-apple-darwin25)
+
+Pytest summary (after 4 surgical fixes — commits f6e3ff6, a1eee3f, cef00bc, 3bdad25):
+
+  ======================= 20 passed in 1553.74s (0:25:53) ========================
+
+Per-file results:
+  test_init_sh_substitution.py   2 passed (bytes_match_baseline + modes_match_baseline)
+  test_init_sh_adversarial.py   16 passed (cases 1-12 parametrize + case 13 byte identity + no-residual + 3 helpers)
+  test_init_sh_constitution.py   1 passed (constitution byte-equality vs clean template)
+  test_init_sh_self_delete.py    3 passed (self-delete + snapshot persistence + version pin persistence)
+
+Test-2 case 13 (trailing-newline edge: 4-byte `a\nb` literal + with/without trailing LF) executed and PASSED.
+
+Initial run (commit a7feedb baseline): 6 failed, 8 passed, 6 errors. The 6 ERRORs were 60s
+test-infra timeouts (init.sh ~50s post-Stream-1 per T021 benchmark, no headroom). 4 surgical
+fixes, then full re-run green. Full log: specs/248-substitution-surface-hardening/test-results/wave-04/pytest-final.log
+
+Wave 4 G4 quality gate (test execution green) is satisfied for the local-pass leg.
+T040 (CI matrix verification on macos-latest + ubuntu-latest) remains for the CI leg.
+
+HEAD at T039 PASS: 3bdad25
