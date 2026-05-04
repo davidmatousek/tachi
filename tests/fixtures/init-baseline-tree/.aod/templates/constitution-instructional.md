@@ -710,7 +710,7 @@ The tier is configured **per project**, not per feature. The default tier is `st
 
 This constitution is a living document that evolves with the project. When principles conflict with practical needs, the constitution should be amended rather than ignored.
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-05-03
+**Version**: 1.0.0 | **Ratified**: 2026-05-04 | **Last Amended**: 2026-05-04
 
 ---
 
@@ -728,7 +728,7 @@ This constitution is a living document that evolves with the project. When princ
 - `Not yet defined`: Your authentication approach (JWT, OAuth2, Auth0, etc.)
 
 **Step 3: Replace Dates**
-- `2026-05-03`: Date you deploy this constitution (YYYY-MM-DD format)
+- `2026-05-04`: Date you deploy this constitution (YYYY-MM-DD format)
 
 **Step 4: Review System Architecture Constraints**
 - Adjust performance targets based on your requirements

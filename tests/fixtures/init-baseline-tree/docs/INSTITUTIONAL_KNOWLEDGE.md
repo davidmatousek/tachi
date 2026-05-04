@@ -3,10 +3,10 @@
 **Project**: tachi - threat modeling sidecar
 **Purpose**: Capture learnings, patterns, and solutions to prevent repeated mistakes
 **Created**: {{PROJECT_START_DATE}}
-**Last Updated**: 2026-05-03
+**Last Updated**: 2026-05-04
 
 **Entry Count**: 0 / 20 (KB System Upgrade triggers at 20 — schedule review)
-**Last Review**: 2026-05-03
+**Last Review**: 2026-05-04
 **Status**: ✅ Manual mode (file-based)
 
 ---

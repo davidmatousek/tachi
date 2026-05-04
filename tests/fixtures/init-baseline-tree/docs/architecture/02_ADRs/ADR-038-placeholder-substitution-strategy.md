@@ -12,7 +12,7 @@
 
 ## Context
 
-`scripts/init.sh:117-159` previously substituted the canonical 12 placeholder set (`tachi`, `threat modeling sidecar`, `benchmark-test-org`, `tachi`, `claude`, `Python + FastAPI`, `PostgreSQL`, `Not yet defined`, `Not yet defined`, `2026-05-03`, `2026-05-03`, `Not yet defined`) into the personalized template tree using `find ... -exec sed -i '' -e ... +` (macOS) or `find ... -exec sed -i -e ... +` (Linux). This approach has three structural defects identified during BLP-02 Wave 1 scoping:
+`scripts/init.sh:117-159` previously substituted the canonical 12 placeholder set (`tachi`, `threat modeling sidecar`, `benchmark-test-org`, `tachi`, `claude`, `Python + FastAPI`, `PostgreSQL`, `Not yet defined`, `Not yet defined`, `2026-05-04`, `2026-05-04`, `Not yet defined`) into the personalized template tree using `find ... -exec sed -i '' -e ... +` (macOS) or `find ... -exec sed -i -e ... +` (Linux). This approach has three structural defects identified during BLP-02 Wave 1 scoping:
 
 1. **Metacharacter corruption** — sed interprets `&` as match-substitution and `\1`–`\9` as backreferences. Adversarial-but-legitimate values like `AT&T`, `Cats & Dogs`, `\1\2 backref`, regex metachars `.*+?^$()`, and pipe-bearing values get corrupted at substitution time, producing post-init files that misrepresent adopter intent. (FR-001 Test-2 Cases 1–8 cover these.)
 

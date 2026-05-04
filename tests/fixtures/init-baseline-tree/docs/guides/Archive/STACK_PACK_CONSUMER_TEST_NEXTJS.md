@@ -63,7 +63,7 @@ Confirm that `make init` replaced all template placeholders:
 grep -rn '{{' .aod/memory/constitution.md
 ```
 
-> **Note**: When a stack pack is selected during init, its `defaults.env` automatically fills `PostgreSQL`, `Not yet defined`, `Not yet defined`, and `2026-05-03`. No manual editing should be required.
+> **Note**: When a stack pack is selected during init, its `defaults.env` automatically fills `PostgreSQL`, `Not yet defined`, `Not yet defined`, and `2026-05-04`. No manual editing should be required.
 
 ---
 

@@ -693,6 +693,6 @@ The tier is configured **per project**, not per feature. The default tier is `st
 
 This constitution is a living document that evolves with the project. When principles conflict with practical needs, the constitution should be amended rather than ignored.
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-05-03
+**Version**: 1.0.0 | **Ratified**: 2026-05-04 | **Last Amended**: 2026-05-04
 
 ---
