@@ -181,13 +181,17 @@ TARGET_LIST=$(mktemp)
 trap 'rm -rf "$TMPDIR" "$TARGET_LIST"' EXIT
 
 echo "[regen] scanning source for substitution targets (canonical placeholders)…"
-(cd "$REPO_ROOT" && find . -type f \
-    -not -path './.git/*' \
-    -not -path './node_modules/*' \
-    -not -path './tests/fixtures/init-baseline-tree/*' \
-    -not -name '*.png' -not -name '*.jpg' -not -name '*.ico' \
-    -print0 | xargs -0 grep -lE "$PLACEHOLDER_REGEX" 2>/dev/null \
-    | sed 's|^\./||' \
+# Use `git ls-files` (cached + others-not-ignored) to honor .gitignore
+# automatically. A bare `find` would match gitignored files like
+# `.aod/results/*.md` (review artifacts that mention canonical placeholders
+# in agent docs) and inflate TARGET_COUNT with files init.sh never sees.
+# The init-baseline-tree itself is gitignored via tests/fixtures/.gitignore
+# (or excluded explicitly below), and binary assets like *.png are out-of-
+# scope for substitution by definition.
+(cd "$REPO_ROOT" && git ls-files -z --cached --others --exclude-standard \
+    | xargs -0 grep -lE "$PLACEHOLDER_REGEX" 2>/dev/null \
+    | grep -vE '^tests/fixtures/init-baseline-tree/' \
+    | grep -vE '\.(png|jpg|ico)$' \
     | sort) > "$TARGET_LIST" || true
 
 TARGET_COUNT=$(grep -c '' "$TARGET_LIST" 2>/dev/null || echo 0)

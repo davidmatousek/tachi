@@ -109,7 +109,7 @@ INPUT_CASES: list[dict] = [
     # test_init_sh_adversarial.py:76. Helper's [[:cntrl:]] ladder catches
     # this and rejects with "control character not allowed".
     {
-        "id": "case_9_empty_input",
+        "id": "case_9_control_char_bel",
         "input": "foo\x07bar",
         "expected_rc": 1,
         "expected_result": None,
@@ -127,7 +127,7 @@ INPUT_CASES: list[dict] = [
     # the bash subprocess where Python's env-validation can no longer
     # interfere.
     {
-        "id": "case_10_multiline_input",
+        "id": "case_10_nul_byte",
         "input": "foo\\x00bar",
         "expected_rc": 1,
         "expected_result": None,
@@ -138,7 +138,7 @@ INPUT_CASES: list[dict] = [
     # from test_init_sh_adversarial.py:82. Helper's length check rejects
     # with "over-length (max 100 chars)".
     {
-        "id": "case_11_disallowed_char_class_a",
+        "id": "case_11_over_length",
         "input": "x" * 101,
         "expected_rc": 1,
         "expected_result": None,
@@ -150,7 +150,7 @@ INPUT_CASES: list[dict] = [
     # from case_9 (different control byte) to confirm the [[:cntrl:]]
     # check covers the full 0x01-0x1F range, not just 0x07.
     {
-        "id": "case_12_disallowed_char_class_b",
+        "id": "case_12_control_char_soh",
         "input": "foo\x01bar",
         "expected_rc": 1,
         "expected_result": None,
