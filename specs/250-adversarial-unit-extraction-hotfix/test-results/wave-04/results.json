@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "wave": 4,
+  "timestamp": "2026-05-04T10:00:00Z",
+  "test_runner": "python3 -m pytest",
+  "execution_duration_ms": 420,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 14, "fail": 0, "skip": 0 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "tests": [
+    {"name": "test_template_substitute_unit.py::test_template_substitute[case_1_ampersand]", "status": "pass", "duration_ms": 40},
+    {"name": "test_template_substitute_unit.py::test_template_substitute[case_2_pipe]", "status": "pass", "duration_ms": 30},
+    {"name": "test_template_substitute_unit.py::test_template_substitute[case_3_backref]", "status": "pass", "duration_ms": 30},
+    {"name": "test_template_substitute_unit.py::test_template_substitute[case_4_single_quoted]", "status": "pass", "duration_ms": 50},
+    {"name": "test_template_substitute_unit.py::test_template_substitute[case_5_double_quoted]", "status": "pass", "duration_ms": 30},
+    {"name": "test_template_substitute_unit.py::test_template_substitute[case_6_multibyte]", "status": "pass", "duration_ms": 40},
+    {"name": "test_template_substitute_unit.py::test_template_substitute[case_7_newline_in_value]", "status": "pass", "duration_ms": 30},
+    {"name": "test_template_substitute_unit.py::test_template_substitute[case_8_empty_value]", "status": "pass", "duration_ms": 30},
+    {"name": "test_init_input_unit.py::test_init_input[case_0_canary_positive]", "status": "pass", "duration_ms": 10},
+    {"name": "test_init_input_unit.py::test_init_input[case_9_empty_input]", "status": "pass", "duration_ms": 10},
+    {"name": "test_init_input_unit.py::test_init_input[case_10_multiline_input]", "status": "pass", "duration_ms": 10},
+    {"name": "test_init_input_unit.py::test_init_input[case_11_disallowed_char_class_a]", "status": "pass", "duration_ms": 20},
+    {"name": "test_init_input_unit.py::test_init_input[case_12_disallowed_char_class_b]", "status": "pass", "duration_ms": 10},
+    {"name": "test_substitute_shim_canary.py::test_template_substitute_shim_present", "status": "pass", "duration_ms": 1}
+  ]
+}

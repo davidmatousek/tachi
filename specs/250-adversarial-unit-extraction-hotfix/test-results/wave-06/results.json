@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "wave": 6,
+  "timestamp": "2026-05-04T10:10:00Z",
+  "test_runner": "python3 -m pytest",
+  "execution_duration_ms": 284360,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 15, "fail": 0, "skip": 0 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 13,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [
+    "test_template_substitute_unit.py::test_template_substitute[case_1_ampersand]",
+    "test_template_substitute_unit.py::test_template_substitute[case_2_pipe]",
+    "test_template_substitute_unit.py::test_template_substitute[case_3_backref]",
+    "test_template_substitute_unit.py::test_template_substitute[case_4_single_quoted]",
+    "test_template_substitute_unit.py::test_template_substitute[case_5_double_quoted]",
+    "test_template_substitute_unit.py::test_template_substitute[case_6_multibyte]",
+    "test_template_substitute_unit.py::test_template_substitute[case_7_newline_in_value]",
+    "test_template_substitute_unit.py::test_template_substitute[case_8_empty_value]",
+    "test_init_input_unit.py::test_init_input[case_0_canary_positive]",
+    "test_init_input_unit.py::test_init_input[case_9_empty_input]",
+    "test_init_input_unit.py::test_init_input[case_10_multiline_input]",
+    "test_init_input_unit.py::test_init_input[case_11_disallowed_char_class_a]",
+    "test_init_input_unit.py::test_init_input[case_12_disallowed_char_class_b]"
+  ],
+  "pre_existing": [],
+  "deviation_note": "T009 spec --timeout=15 was too aggressive for retained integration tests (test_case_13_file_level_byte_identity and test_no_residual_placeholders_after_init take ~140s each on dev hardware). Re-ran them separately with --timeout=300; both PASS. See .aod/results/wave-6-t009-deviation-note.md."
+}
