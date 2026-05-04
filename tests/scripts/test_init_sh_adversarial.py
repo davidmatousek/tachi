@@ -222,11 +222,18 @@ def test_case_13_file_level_byte_identity(tmp_path_factory: pytest.TempPathFacto
 
 
 def test_no_residual_placeholders_after_init(tmp_path_factory: pytest.TempPathFactory):
-    """Sanity: after canonical init, no `{{KEY}}` placeholders remain in the tree.
+    """Sanity: after canonical init, no `{{KEY}}` placeholders remain in
+    PERSONALIZED-category files.
 
-    Post-F-1 this is enforced by the residual scan (FR-004). Pre-F-1 there is
-    no residual scan, so a sed-corrupted PROJECT_NAME=AT&T would leave
-    `{{PROJECT_NAME}}` orphans and this test would fail.
+    Post-F-1 (T020 fix) the residual scan in init.sh is scoped to the
+    `personalized` category from `.aod/template-manifest.txt`, NOT the whole
+    tree. Non-personalized files (`scripts/check-placeholders.sh` examples,
+    spec files that discuss `{{KEY}}` tokens by name, stack-pack scaffolds
+    using their own templating systems, etc.) are allowed to retain `{{KEY}}`
+    tokens and the implementation deliberately leaves them alone.
+
+    This test must align with the implementation scope: read the manifest,
+    walk only personalized files, assert zero residual canonical placeholders.
     """
     import re
     tmpdir = tmp_path_factory.mktemp("init_sh_residual")
@@ -236,24 +243,33 @@ def test_no_residual_placeholders_after_init(tmp_path_factory: pytest.TempPathFa
     assert result.returncode == 0, (
         f"init.sh exit {result.returncode}; stderr tail:\n{result.stderr[-1500:]}"
     )
-    # Walk the tree (excluding the substitution helper file itself, which
-    # legitimately contains `{{` examples in its docstring comments).
-    pattern = re.compile(rb"\{\{[A-Z_]+\}\}")
-    excluded_paths = {
-        Path(".aod/scripts/bash/template-substitute.sh"),
-        Path(".aod/templates/constitution-clean.md"),
-        Path(".aod/templates/constitution-instructional.md"),
-    }
+
+    # Parse the manifest to get the list of personalized-category files.
+    manifest = clone_root / ".aod" / "template-manifest.txt"
+    assert manifest.is_file(), f"template-manifest.txt missing in clone: {manifest}"
+    personalized_paths: list[Path] = []
+    for line in manifest.read_text().splitlines():
+        stripped = line.lstrip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if line.startswith("personalized|"):
+            rel = line[len("personalized|"):].rstrip("\r")
+            personalized_paths.append(Path(rel))
+    assert personalized_paths, "no personalized-category entries in manifest"
+
+    # Restrict canonical-placeholder pattern to the 12 known keys (per
+    # AOD_CANONICAL_PLACEHOLDERS in template-substitute.sh). Other `{{KEY}}`
+    # tokens on the tree (e.g., from documentation about the placeholder
+    # mechanism itself) are not in scope here.
+    pattern = re.compile(
+        rb"\{\{(PROJECT_NAME|PROJECT_DESCRIPTION|GITHUB_ORG|GITHUB_REPO"
+        rb"|AI_AGENT|TECH_STACK|TECH_STACK_DATABASE|TECH_STACK_VECTOR"
+        rb"|TECH_STACK_AUTH|RATIFICATION_DATE|CURRENT_DATE|CLOUD_PROVIDER)\}\}"
+    )
     residuals: list[str] = []
-    for path in clone_root.rglob("*"):
+    for rel in personalized_paths:
+        path = clone_root / rel
         if not path.is_file():
-            continue
-        rel = path.relative_to(clone_root)
-        if any(part in (".git", "node_modules") for part in rel.parts):
-            continue
-        if rel in excluded_paths:
-            continue
-        if path.suffix in {".png", ".jpg", ".ico"}:
             continue
         try:
             data = path.read_bytes()
