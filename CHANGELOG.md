@@ -26,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.28.0](https://github.com/davidmatousek/tachi/compare/v4.27.1...v4.28.0) (2026-05-04)
+
+
+### Features
+
+* **248:** harden init.sh substitution surface — sed → bash param expansion + input validation + gitignore default ([#249](https://github.com/davidmatousek/tachi/issues/249)) ([6db9a25](https://github.com/davidmatousek/tachi/commit/6db9a2590ba458964db93f8627272962d22abf70))
+
 ## [4.27.1](https://github.com/davidmatousek/tachi/compare/v4.27.0...v4.27.1) (2026-05-02)
 
 
