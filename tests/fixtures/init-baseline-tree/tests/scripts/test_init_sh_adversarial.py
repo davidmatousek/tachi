@@ -105,7 +105,12 @@ def adversarial_run(request, tmp_path_factory: pytest.TempPathFactory):
         project_name=project_name,
         project_description=project_description,
     )
-    result = run_init_in_clone(clone_root, stdin_payload, timeout_sec=120)
+    # 300s mirrors run_init_in_clone's default; macos-latest CI is ~3-4× slower
+    # than dev macOS for arm64 bash work (T040 measured >180s init.sh on the
+    # runner); pre-CI default of 120s here was a leftover from when local
+    # benchmarks measured ~50s. Substituted cases run init.sh end-to-end;
+    # rejection cases exit early at the prompt and don't approach this cap.
+    result = run_init_in_clone(clone_root, stdin_payload, timeout_sec=300)
     return case, result
 
 

@@ -120,8 +120,8 @@ TECH_STACK_DATABASE=${TECH_STACK_DATABASE:-"Not yet defined"}
 TECH_STACK_VECTOR=${TECH_STACK_VECTOR:-"Not yet defined"}
 TECH_STACK_AUTH=${TECH_STACK_AUTH:-"Not yet defined"}
 CLOUD_PROVIDER=${CLOUD_PROVIDER:-"Not yet defined"}
-RATIFICATION_DATE=$(date +%Y-%m-%d)
-CURRENT_DATE=$(date +%Y-%m-%d)
+RATIFICATION_DATE="${AOD_RATIFICATION_DATE_OVERRIDE:-$(date +%Y-%m-%d)}"
+CURRENT_DATE="${AOD_CURRENT_DATE_OVERRIDE:-$(date +%Y-%m-%d)}"
 
 # Confirmation
 echo ""

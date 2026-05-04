@@ -77,10 +77,17 @@ git clone --quiet "file://${REPO_ROOT}" "$CLONE_ROOT"
 FAKE_HOME="${TMPDIR}/fake_home"
 mkdir -p "$FAKE_HOME"
 
-echo "[regen] running scripts/init.sh with canonical inputs (LC_ALL=C, HOME isolated)"
+echo "[regen] running scripts/init.sh with canonical inputs (LC_ALL=C, HOME isolated, dates pinned to 2026-05-04)"
 (
     cd "$CLONE_ROOT"
+    # AOD_*_DATE_OVERRIDE pin RATIFICATION_DATE + CURRENT_DATE to the same
+    # wall-clock value used by the test harness (init_sh_helpers.py). Without
+    # this, the baseline captures the regen-time local date (e.g., dev EDT
+    # 2026-05-03) which Test-1 then byte-compares against the test-time
+    # date (e.g., ubuntu CI UTC 2026-05-04) → false drift on every TZ-edge run.
     LC_ALL=C HOME="$FAKE_HOME" \
+        AOD_RATIFICATION_DATE_OVERRIDE=2026-05-04 \
+        AOD_CURRENT_DATE_OVERRIDE=2026-05-04 \
         printf '%s' "$CANONICAL_INPUTS" | bash ./scripts/init.sh > /dev/null 2>&1
 ) || {
     echo "[regen] FATAL: init.sh failed in tmpdir clone — baseline NOT regenerated" >&2

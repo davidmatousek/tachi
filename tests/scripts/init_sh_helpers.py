@@ -138,6 +138,16 @@ def run_init_in_clone(clone_root: Path, stdin_payload: str,
         # + /bin for git/node/bash. Tests run on dev macs and CI runners
         # which both have those in /usr/bin or /bin.
         "PATH": _safe_path(),
+        # Pin the dates that init.sh substitutes into RATIFICATION_DATE +
+        # CURRENT_DATE so the personalized tree is byte-deterministic across
+        # runners (Test-1 fixture-replay byte-comparison would otherwise
+        # false-fail on CI/dev TZ skew — e.g., dev EDT shows 2026-05-03 while
+        # ubuntu UTC shows 2026-05-04 for the same wall-clock instant).
+        # The override ENV vars are read by scripts/init.sh as
+        # `${AOD_*_OVERRIDE:-$(date +%Y-%m-%d)}` so production runs are
+        # unaffected (no override set → live date).
+        "AOD_RATIFICATION_DATE_OVERRIDE": "2026-05-04",
+        "AOD_CURRENT_DATE_OVERRIDE": "2026-05-04",
     }
     completed = subprocess.run(
         ["bash", "./scripts/init.sh"],
