@@ -26,6 +26,7 @@ bash 5.x.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -120,16 +121,24 @@ def test_adversarial_input(adversarial_run):
             f"stderr tail:\n{result.stderr[-1500:]}"
         )
         marker = case["marker"]
-        # Search for the marker in personalized files. Use the personalization
-        # snapshot as a stable, single-source check (avoids tree-walk noise).
+        # Verify the byte-identity contract on the SOURCED value, not the raw
+        # file bytes. The snapshot uses bash-double-quote escaping for shell-
+        # special characters (e.g., backslashes get doubled), so checking raw
+        # file bytes would false-fail for inputs containing \, $, ", or `.
+        # Sourcing the file and printing the resolved variable proves the
+        # round-trip preserves the original bytes.
         snapshot = result.tmpdir / ".aod" / "personalization.env"
         assert snapshot.is_file(), f"case {case['id']}: personalization.env missing"
-        snapshot_bytes = snapshot.read_bytes()
-        # We compare bytes, not str, to preserve the byte-identity contract.
+        verify = subprocess.run(
+            ["bash", "-c", f"source '{snapshot}' && printf '%s' \"$PROJECT_NAME\""],
+            capture_output=True, check=True,
+        )
         marker_bytes = marker.encode("utf-8")
-        assert marker_bytes in snapshot_bytes, (
-            f"case {case['id']}: literal marker {marker!r} not found in "
-            f"{snapshot}; first 500 bytes:\n{snapshot_bytes[:500]!r}"
+        assert verify.stdout == marker_bytes, (
+            f"case {case['id']}: round-tripped PROJECT_NAME bytes mismatch.\n"
+            f"  expected: {marker_bytes!r}\n"
+            f"  got:      {verify.stdout!r}\n"
+            f"  snapshot file (first 500 bytes):\n{snapshot.read_bytes()[:500]!r}"
         )
 
     elif case["expect"] == "rejected":
