@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-05-04T16:56:14Z.
+> Auto-generated from GitHub Issues on 2026-05-04T16:58:03Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -37,7 +37,7 @@
 
 | # | Title | Delivered | Retro | Updated |
 |---|-------|-----------|-------|---------|
-| #250 | Test-1 baseline scope refactor + perf — read template-manifest categories, reduce 30-40min CI runtime | 2026-05-04 | — | 2026-05-04 |
+| — | *No items in this stage* | | |
 
 ## Document
 
