@@ -697,3 +697,40 @@ T037: PR #249 title updated from `feat(248): substitution surface hardening` to
 via `gh pr edit 249 --title "..."`. URL: https://github.com/davidmatousek/tachi/pull/249
 
 T043 (R12 belt-and-suspenders): immediate re-verification via `gh pr view 249 --json title` returned the canonical title verbatim. PASS. Release-please will trigger on squash-merge per repo's release-please-config.json (`feat:` is in the major-bump+release-trigger set).
+
+================================================================================
+T042 OUTCOME (2026-05-04) — Adversarial Smoke Test Manual Gate (G7)
+================================================================================
+
+Owner: security-analyst
+Branch: 248-substitution-surface-hardening @ 622c885
+Smoke environment: /tmp/tachi-smoke (cloned from file:///Users/david/Projects/tachi)
+
+PROCEDURE:
+  Cloned fresh checkout via local file:// URL to capture latest committed branch state (not stale remote main). Discovered quickstart.md §Adversarial Smoke Test env-var pattern (PROJECT_NAME='AT&T' ./scripts/init.sh) is out of date post-F-248: init.sh now uses aod_init_read_validated (interactive read -p), which ignores env vars. Switched to canonical stdin piping pattern matching tests/scripts/init_sh_helpers.py::build_canonical_stdin. Adversarial input: `AT&T\nDescription with literal & character\nmy-org\nAT&T\n1\n6\nPython + FastAPI\nPostgreSQL\n\nY\n` (PACK_COUNT=5, OTHER_INDEX=6). Invocation: `HOME="/tmp/tachi-smoke-fakehome" LC_ALL=C bash ./scripts/init.sh <<< "$INPUT"`. Init exit code: 0.
+
+INVARIANT VERDICTS:
+
+  (a) AT&T literal substitution count > 0:
+      PASS. 16 files contain literal `AT&T` across .aod/, docs/, scripts/. Sample: .aod/personalization.env, .aod/memory/constitution.md, docs/INSTITUTIONAL_KNOWLEDGE.md, docs/devops/CI_CD_GUIDE.md. Bash param expansion preserved the `&` metacharacter; no `AT{{PROJECT_NAME}}T` sed-corruption regression.
+
+  (b) Zero residual {{KEY}} placeholders in personalized files:
+      PASS. Walked the `personalized|` rows of .aod/template-manifest.txt (per T020 fix scope) and grepped each file for regex `\{\{[A-Z_]+\}\}`. Zero residuals. T020 manifest-driven scoping verified at runtime.
+
+  (c) .aod/personalization.env gitignored by default:
+      PASS. File exists locally (523 bytes) but `git status --porcelain` does NOT list it. `git check-ignore -v .aod/personalization.env` returns `.gitignore:226:.aod/personalization.env`. Local-only-by-default invariant from F-248 confirmed.
+
+  (d) Constitution byte-equality:
+      PASS. `diff -q .aod/memory/constitution.md .aod/templates/constitution-clean.md` produced no output (files byte-identical). Q-1 wholesale-copy decision verified at runtime — render-time templating is fully removed for the constitution surface.
+
+SMOKE GATE G7: SATISFIED — all 4 adversarial invariants verified on a fresh checkout of HEAD 622c885.
+
+DOC-ONLY FOLLOW-UP (NOT FIXED IN T042):
+  specs/248-substitution-surface-hardening/quickstart.md §Adversarial Smoke Test (lines 109-145) shows the env-var-prefixed invocation pattern, which pre-dates F-248's input validation layer. Post-F-248, aod_init_read_validated reads from STDIN; the env-var pattern hangs on the first prompt. Canonical post-F-248 invocation is stdin piping (matches tests/scripts/init_sh_helpers.py::build_canonical_stdin).
+
+  This is a DOCUMENTATION-ONLY discrepancy, separate from F-248 closure. Recommend filing a follow-up GitHub issue or quick doc PR after F-248 ships to update quickstart.md to use the stdin-piping pattern. Not a regression in production code; not a blocker for /aod.deliver.
+
+CLEANUP:
+  /tmp/tachi-smoke, /tmp/tachi-smoke-fakehome, /tmp/smoke-stdout.log, /tmp/smoke-stderr.log all removed.
+
+FINAL DISPOSITION: PASS — G7 satisfied; F-248 implementation complete; ready for /aod.deliver.
