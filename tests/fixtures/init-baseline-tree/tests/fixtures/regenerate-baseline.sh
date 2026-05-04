@@ -85,10 +85,16 @@ echo "[regen] running scripts/init.sh with canonical inputs (LC_ALL=C, HOME isol
     # this, the baseline captures the regen-time local date (e.g., dev EDT
     # 2026-05-03) which Test-1 then byte-compares against the test-time
     # date (e.g., ubuntu CI UTC 2026-05-04) → false drift on every TZ-edge run.
-    LC_ALL=C HOME="$FAKE_HOME" \
+    #
+    # IMPORTANT: env-var prefixes apply to the FIRST command in a pipeline
+    # only, so they MUST be on the `bash` invocation (consumer), NOT the
+    # `printf` (producer). Putting them on printf was a bug that silently
+    # used the regen-machine's wall-clock date instead.
+    printf '%s' "$CANONICAL_INPUTS" | \
+        LC_ALL=C HOME="$FAKE_HOME" \
         AOD_RATIFICATION_DATE_OVERRIDE=2026-05-04 \
         AOD_CURRENT_DATE_OVERRIDE=2026-05-04 \
-        printf '%s' "$CANONICAL_INPUTS" | bash ./scripts/init.sh > /dev/null 2>&1
+        bash ./scripts/init.sh > /dev/null 2>&1
 ) || {
     echo "[regen] FATAL: init.sh failed in tmpdir clone — baseline NOT regenerated" >&2
     exit 1
