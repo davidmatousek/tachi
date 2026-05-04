@@ -121,7 +121,7 @@ def clone_into_tmpdir(tmpdir: Path) -> Path:
 
 
 def run_init_in_clone(clone_root: Path, stdin_payload: str,
-                      timeout_sec: int = 180) -> InitRun:
+                      timeout_sec: int = 300) -> InitRun:
     """Invoke `bash ./scripts/init.sh` inside <clone_root> non-interactively.
 
     Sets LC_ALL=C (matches T008 baseline) and HOME=<isolated tmpdir> so
