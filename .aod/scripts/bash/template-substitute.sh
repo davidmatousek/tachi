@@ -39,6 +39,31 @@ fi
 readonly AOD_TEMPLATE_SUBSTITUTE_SH_SOURCED=1
 
 # -----------------------------------------------------------------------------
+# bash 5.2+ patsub_replacement compatibility shim (CRITICAL for FR-001)
+# -----------------------------------------------------------------------------
+# Bash 5.2 added `shopt -s patsub_replacement` (ENABLED BY DEFAULT) which
+# makes `&` in the replacement string of `${var//pat/repl}` expand to the
+# matched text — exact sed-style behavior. This DEFEATS the whole point of
+# moving from sed to bash parameter expansion (ADR-038): adversarial values
+# like `AT&T` get re-substituted to `AT<matched_text>T`, producing
+# corrupt residuals like `AT{{PROJECT_NAME}}T` that fail FR-001 + the
+# residual scan (FR-004).
+#
+# Discovered via T040 CI matrix: macOS bash 3.2.57 has no such option, all
+# tests pass; ubuntu-latest bash 5.x has patsub_replacement on by default,
+# case-01 (AT&T) fails identically to the pre-F-248 sed regression.
+#
+# Fix: explicitly DISABLE patsub_replacement at source-time. The shopt is
+# unknown on bash 3.2 (returns non-zero) — the `2>/dev/null || true`
+# preserves bash 3.2 compatibility per NFR-001.
+#
+# This affects every callsite that sources template-substitute.sh:
+# scripts/init.sh, scripts/update.sh, and the test suite. All require
+# literal-substitution semantics; none rely on `&` reference behavior.
+# -----------------------------------------------------------------------------
+shopt -u patsub_replacement 2>/dev/null || true
+
+# -----------------------------------------------------------------------------
 # CANONICAL_PLACEHOLDERS — the fixed 12 keys this mechanism knows how to
 # substitute. Order mirrors contracts/personalization-schema.md §Fields and
 # plan.md §C5. Adding a new placeholder requires updating BOTH this array AND

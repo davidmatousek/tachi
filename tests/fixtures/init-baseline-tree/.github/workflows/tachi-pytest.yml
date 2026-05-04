@@ -107,16 +107,13 @@ jobs:
 
       - name: Run F-248 init.sh pytest suite
         # Direct invocation: `pytest` resolves to the venv-installed binary.
-        # `--timeout=360` is the OUTER pytest per-test cap; the helper's
-        # subprocess `run_init_in_clone(timeout_sec=300)` is the INNER cap on
-        # a single init.sh invocation. macos-latest GitHub Actions runners
-        # are notoriously ~3-4× slower than dev machines for arm64 bash work
-        # (T040 first-run measured >180s; bumped 180→300s + outer 300→360s
-        # to leave ~60s pytest-fixture slack). Verbose output preserved.
+        # `--timeout=300` matches what we run locally (300s caps even the
+        # slowest module-scoped Test-1 fixture which runs init.sh end-to-end
+        # at ~50s post-Stream-1). Verbose output is preserved for CI logs.
         run: |
           python -m pytest \
             tests/scripts/test_init_sh_substitution.py \
             tests/scripts/test_init_sh_adversarial.py \
             tests/scripts/test_init_sh_constitution.py \
             tests/scripts/test_init_sh_self_delete.py \
-            -v --timeout=360
+            -v --timeout=300

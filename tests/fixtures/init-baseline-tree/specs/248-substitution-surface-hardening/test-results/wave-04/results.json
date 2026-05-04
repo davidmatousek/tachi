@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "wave": 4,
+  "timestamp": "2026-05-04T00:00:00Z",
+  "test_runner": "python3 -m pytest tests/scripts/test_init_sh_*.py -v --timeout=300",
+  "execution_duration_ms": 1553740,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 20, "fail": 0, "skip": 0 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "tests": [
+    { "name": "test_init_sh_substitution.py::test_personalized_tree_bytes_match_baseline", "status": "pass" },
+    { "name": "test_init_sh_substitution.py::test_personalized_tree_modes_match_baseline", "status": "pass" },
+    { "name": "test_init_sh_adversarial.py::test_adversarial_input[case-01-substituted]", "status": "pass" },
+    { "name": "test_init_sh_adversarial.py::test_adversarial_input[case-02-substituted]", "status": "pass" },
+    { "name": "test_init_sh_adversarial.py::test_adversarial_input[case-03-substituted]", "status": "pass" },
+    { "name": "test_init_sh_adversarial.py::test_adversarial_input[case-04-substituted]", "status": "pass" },
+    { "name": "test_init_sh_adversarial.py::test_adversarial_input[case-05-substituted]", "status": "pass" },
+    { "name": "test_init_sh_adversarial.py::test_adversarial_input[case-06-substituted]", "status": "pass" },
+    { "name": "test_init_sh_adversarial.py::test_adversarial_input[case-07-substituted]", "status": "pass" },
+    { "name": "test_init_sh_adversarial.py::test_adversarial_input[case-08-substituted]", "status": "pass" },
+    { "name": "test_init_sh_adversarial.py::test_adversarial_input[case-09-rejected]", "status": "pass" },
+    { "name": "test_init_sh_adversarial.py::test_adversarial_input[case-10-rejected]", "status": "pass" },
+    { "name": "test_init_sh_adversarial.py::test_adversarial_input[case-11-rejected]", "status": "pass" },
+    { "name": "test_init_sh_adversarial.py::test_adversarial_input[case-12-rejected]", "status": "pass" },
+    { "name": "test_init_sh_adversarial.py::test_case_13_file_level_byte_identity", "status": "pass" },
+    { "name": "test_init_sh_adversarial.py::test_no_residual_placeholders_after_init", "status": "pass" },
+    { "name": "test_init_sh_constitution.py::test_constitution_byte_equals_clean_template", "status": "pass" },
+    { "name": "test_init_sh_self_delete.py::test_init_sh_does_not_exist_after_success", "status": "pass" },
+    { "name": "test_init_sh_self_delete.py::test_personalization_snapshot_persists_after_init", "status": "pass" },
+    { "name": "test_init_sh_self_delete.py::test_aod_kit_version_persists_after_init", "status": "pass" }
+  ]
+}

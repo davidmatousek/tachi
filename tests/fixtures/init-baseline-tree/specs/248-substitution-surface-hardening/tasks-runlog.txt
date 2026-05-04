@@ -562,3 +562,175 @@ Notes:
 Verdict: T038 PASS. Residual scan IS the placeholder contract enforcer
 (spec.md §US-248-5). Test-2 case 13 (Wave 2 T010) covers automated
 regression of this same behavior.
+
+
+================================================================================
+T039 OUTCOME (2026-05-04, macOS bash 3.2.57)
+================================================================================
+
+bash --version: GNU bash, version 3.2.57(1)-release (arm64-apple-darwin25)
+
+Pytest summary (after 4 surgical fixes — commits f6e3ff6, a1eee3f, cef00bc, 3bdad25):
+
+  ======================= 20 passed in 1553.74s (0:25:53) ========================
+
+Per-file results:
+  test_init_sh_substitution.py   2 passed (bytes_match_baseline + modes_match_baseline)
+  test_init_sh_adversarial.py   16 passed (cases 1-12 parametrize + case 13 byte identity + no-residual + 3 helpers)
+  test_init_sh_constitution.py   1 passed (constitution byte-equality vs clean template)
+  test_init_sh_self_delete.py    3 passed (self-delete + snapshot persistence + version pin persistence)
+
+Test-2 case 13 (trailing-newline edge: 4-byte `a\nb` literal + with/without trailing LF) executed and PASSED.
+
+Initial run (commit a7feedb baseline): 6 failed, 8 passed, 6 errors. The 6 ERRORs were 60s
+test-infra timeouts (init.sh ~50s post-Stream-1 per T021 benchmark, no headroom). 4 surgical
+fixes, then full re-run green. Full log: specs/248-substitution-surface-hardening/test-results/wave-04/pytest-final.log
+
+Wave 4 G4 quality gate (test execution green) is satisfied for the local-pass leg.
+T040 (CI matrix verification on macos-latest + ubuntu-latest) remains for the CI leg.
+
+
+## T040 Outcome — Push + CI Matrix Verification (BLOCKED)
+Captured: 2026-05-03 (Wave 4 — devops agent execution)
+
+### Push
+HEAD pushed: 5b3a9a857b93ad6e464d0f04919473d026bf4b77
+Range:       dcc8375..5b3a9a8 (17 commits)
+Push result: origin/248-substitution-surface-hardening updated successfully
+PR #249 head verification: matched (headRefOid=5b3a9a857b93ad6e464d0f04919473d026bf4b77, isDraft=true, state=OPEN)
+
+### CI Verification — NO CHECKS EXIST
+gh pr checks 249       → "no checks reported on the '248-substitution-surface-hardening' branch"
+gh pr view 249 rollup → statusCheckRollup: []  (empty)
+gh run list --branch  → []  (empty array)
+
+Wait time: ~3 minutes post-push, then snapshot. No async workflow registered.
+
+### Root Cause: No PR-triggered python test matrix exists in this repository
+Repository has only two GitHub Actions workflows:
+  - .github/workflows/release-please.yml      → triggers only on push:main + workflow_dispatch (NOT PR branches)
+  - .github/workflows/tachi-mmdc-preflight.yml → triggers on PR with narrow paths: filter (extract-report-data.py,
+                                                  attack-path.typ, install.sh, tachi.security-report.md, README.md,
+                                                  the workflow file itself). F-248 touches NONE of those paths.
+
+F-248 modified test files outside the preflight paths filter:
+  tests/scripts/test_init_sh_adversarial.py
+  tests/scripts/test_init_sh_constitution.py
+  tests/scripts/test_init_sh_self_delete.py
+  tests/scripts/test_init_sh_substitution.py
+  tests/scripts/conftest.py
+  tests/scripts/init_sh_helpers.py
+  tests/fixtures/regenerate-baseline.sh
+  (plus baseline-tree mirror under tests/fixtures/init-baseline-tree/)
+
+pyproject.toml defines [tool.pytest.ini_options]; Makefile has a `test:` target. But no GitHub Actions
+workflow invokes `make test` or `pytest` on PR branches. Cross-validation against last 30 workflow runs
+(all branches): only `release-please` (main pushes) and `tachi mmdc preflight` (narrow PR paths) ever
+fire. No pytest matrix has ever executed in this repo.
+
+### CI Run URLs — N/A (no runs triggered)
+macos-latest: N/A — workflow does not exist
+ubuntu-latest: N/A — workflow does not exist
+Total CI duration: 0s (no runs)
+
+### Disposition
+T040 cannot be marked [X]. The task's premise (CI matrix exists) is false. Per devops agent
+instruction "Do NOT modify CI workflow files" and "Do NOT attempt to fix CI failures — surface and
+stop", the agent has surfaced and stopped. Owner decision required before T040 can advance:
+  Option A — Author new .github/workflows/test.yml matrix workflow (scope expansion)
+  Option B — Re-scope T040 to local-only attestation + manual Docker ubuntu run
+  Option C — Defer T040 to F-248 close-out / Wave 5 (pattern matches T035/T036 deferral in f5278b4)
+Recommendation: Option C — track as systemic gap warranting dedicated PRD, not F-248 scope creep.
+
+Full devops findings: .aod/results/devops.md
+T040 status in tasks.md: NOT MARKED [X] (remains [ ]).
+
+
+HEAD at T039 PASS: 3bdad25
+
+================================================================================
+T035 + T044 + T045 OUTCOME (2026-05-04)
+================================================================================
+
+T035 PRE-COMPLETED: ADR-038 §Consequences already contains T021 +658% benchmark + NFR-004 disposition (added in T034 commit ffb297d). Dual-commit pattern collapsed because measurement and authoring landed in same wave.
+
+T044 PASS: `git diff main..HEAD -- pyproject.toml requirements*.txt package.json` returns empty. NFR-002 satisfied. Note: tachi-pytest.yml workflow installs pyyaml at CI runtime (not in repo manifests).
+
+T045 PASS: `git diff main..HEAD -- schemas/finding.yaml` returns empty. NFR-005 satisfied; F-241 detection-tier zero-edit invariant preserved.
+
+
+================================================================================
+T036 OUTCOME (2026-05-04) — ARCHITECT PROMOTION GATE
+================================================================================
+
+T036 PROMOTED: ADR-038 Status `Proposed` → `Accepted` after architect verification of both review surfaces named in Team-Lead APPROVED_WITH_CONCERNS sign-off (commit ffb297d).
+
+SURFACE 1 — §Decision D-6 + §Constraints residual-scan regex character class lockstep commitment (Architect Pass 1 M-2):
+  Verified at ADR-038 lines 29 (§Constraints), 109 (§D-6), and 111 (§D-6 lockstep clause).
+  Verbatim quote (line 29): "Closed canonical-12 lockstep contract — adding a new placeholder requires updating BOTH `AOD_CANONICAL_PLACEHOLDERS` in `.aod/scripts/bash/template-substitute.sh` AND the `personalization-schema.md` contract in lockstep (Architect M-2 commitment)."
+  Verbatim quote (line 109): "The helper `aod_template_assert_no_residual` regex `\{\{[A-Z_]+\}\}` is unchanged; only the CALLER scope in `init.sh` is constrained"
+  Verbatim quote (line 111): "Lockstep with Architect M-2 commitment: any future change to the helper's regex (e.g., narrowing to `\{\{(PROJECT_NAME|...|CLOUD_PROVIDER)\}\}` canonical-12 alternation) requires a new ADR. The current decision keeps the regex permissive but constrains where it runs."
+  Disposition: VERIFIED — character class `[A-Z_]+` documented; lockstep update protocol explicit; canonical-12 alternation narrowing path named with new-ADR gate.
+
+SURFACE 2 — §Decision D-5 + §Consequences §Neutral/Migration F-1→F-2 pattern-vs-function reuse contract (Team-Lead Pass 1 H-2):
+  Verified at ADR-038 lines 81-95 (§D-5) and 142 (§Consequences §Neutral/Migration).
+  Verbatim quote (lines 91-93): "F-2 (`defaults.env` strict-KV parser) reuses the **VALIDATION TRIPLET PATTERN**, NOT the `aod_init_read_validated` function. The function is interactive `read -p`-only; F-2 is non-interactive file-parse. F-2 will introduce a new helper (e.g., `aod_defaults_parse_validated`) following the same regex-validate → reject-on-mismatch → `printf -v` discipline but operating on file content rather than terminal input."
+  Verbatim quote (line 95): "Architect re-confirmation required at T036 promotion (Wave 5): before promoting Status `Proposed → Accepted`, the architect MUST re-confirm this paragraph reflects the F-1 → F-2 reuse boundary. The lockstep contract: any future deviation (e.g., F-2 attempts to call `aod_init_read_validated` directly) requires a new ADR."
+  Verbatim quote (line 142): "F-2 BLP-02 Wave 2 reuse contract (D-5) is a forward-looking commitment. The pattern-vs-function boundary will be re-verified during F-2 plan-day architect review."
+  Disposition: VERIFIED — PATTERN vs FUNCTION distinction explicit; interactive-vs-file-parse boundary named; new helper name `aod_defaults_parse_validated` suggested; deviation gate (new ADR) and F-2-plan-day re-verification gate both present.
+
+PROMOTION ACTIONS:
+  - ADR-038 Status field: `Proposed` → `Accepted` (line 3)
+  - ADR-038 Date line: replaced `Accepted: pending (Wave 5 T036 architect promotion after T035 benchmark amendment)` with `Accepted: 2026-05-04 (Wave 5 T036 architect promotion after T035 verification)` (line 4)
+  - NO other ADR content modified — status-only promotion per architect dual-commit contract
+  - tasks.md T036 marked [X] with ACCEPTED annotation
+  - Architect sign-off authority exercised per Triad governance G6 gate
+
+FINAL DISPOSITION: PROMOTED
+
+================================================================================
+T037 + T043 OUTCOME (2026-05-04)
+================================================================================
+
+T037: PR #249 title updated from `feat(248): substitution surface hardening` to
+    `feat(248): harden init.sh substitution surface — sed → bash param expansion + input validation + gitignore default`
+via `gh pr edit 249 --title "..."`. URL: https://github.com/davidmatousek/tachi/pull/249
+
+T043 (R12 belt-and-suspenders): immediate re-verification via `gh pr view 249 --json title` returned the canonical title verbatim. PASS. Release-please will trigger on squash-merge per repo's release-please-config.json (`feat:` is in the major-bump+release-trigger set).
+
+================================================================================
+T042 OUTCOME (2026-05-04) — Adversarial Smoke Test Manual Gate (G7)
+================================================================================
+
+Owner: security-analyst
+Branch: 248-substitution-surface-hardening @ 622c885
+Smoke environment: /tmp/tachi-smoke (cloned from file:///Users/david/Projects/tachi)
+
+PROCEDURE:
+  Cloned fresh checkout via local file:// URL to capture latest committed branch state (not stale remote main). Discovered quickstart.md §Adversarial Smoke Test env-var pattern (PROJECT_NAME='AT&T' ./scripts/init.sh) is out of date post-F-248: init.sh now uses aod_init_read_validated (interactive read -p), which ignores env vars. Switched to canonical stdin piping pattern matching tests/scripts/init_sh_helpers.py::build_canonical_stdin. Adversarial input: `AT&T\nDescription with literal & character\nmy-org\nAT&T\n1\n6\nPython + FastAPI\nPostgreSQL\n\nY\n` (PACK_COUNT=5, OTHER_INDEX=6). Invocation: `HOME="/tmp/tachi-smoke-fakehome" LC_ALL=C bash ./scripts/init.sh <<< "$INPUT"`. Init exit code: 0.
+
+INVARIANT VERDICTS:
+
+  (a) AT&T literal substitution count > 0:
+      PASS. 16 files contain literal `AT&T` across .aod/, docs/, scripts/. Sample: .aod/personalization.env, .aod/memory/constitution.md, docs/INSTITUTIONAL_KNOWLEDGE.md, docs/devops/CI_CD_GUIDE.md. Bash param expansion preserved the `&` metacharacter; no `ATtachiT` sed-corruption regression.
+
+  (b) Zero residual {{KEY}} placeholders in personalized files:
+      PASS. Walked the `personalized|` rows of .aod/template-manifest.txt (per T020 fix scope) and grepped each file for regex `\{\{[A-Z_]+\}\}`. Zero residuals. T020 manifest-driven scoping verified at runtime.
+
+  (c) .aod/personalization.env gitignored by default:
+      PASS. File exists locally (523 bytes) but `git status --porcelain` does NOT list it. `git check-ignore -v .aod/personalization.env` returns `.gitignore:226:.aod/personalization.env`. Local-only-by-default invariant from F-248 confirmed.
+
+  (d) Constitution byte-equality:
+      PASS. `diff -q .aod/memory/constitution.md .aod/templates/constitution-clean.md` produced no output (files byte-identical). Q-1 wholesale-copy decision verified at runtime — render-time templating is fully removed for the constitution surface.
+
+SMOKE GATE G7: SATISFIED — all 4 adversarial invariants verified on a fresh checkout of HEAD 622c885.
+
+DOC-ONLY FOLLOW-UP (NOT FIXED IN T042):
+  specs/248-substitution-surface-hardening/quickstart.md §Adversarial Smoke Test (lines 109-145) shows the env-var-prefixed invocation pattern, which pre-dates F-248's input validation layer. Post-F-248, aod_init_read_validated reads from STDIN; the env-var pattern hangs on the first prompt. Canonical post-F-248 invocation is stdin piping (matches tests/scripts/init_sh_helpers.py::build_canonical_stdin).
+
+  This is a DOCUMENTATION-ONLY discrepancy, separate from F-248 closure. Recommend filing a follow-up GitHub issue or quick doc PR after F-248 ships to update quickstart.md to use the stdin-piping pattern. Not a regression in production code; not a blocker for /aod.deliver.
+
+CLEANUP:
+  /tmp/tachi-smoke, /tmp/tachi-smoke-fakehome, /tmp/smoke-stdout.log, /tmp/smoke-stderr.log all removed.
+
+FINAL DISPOSITION: PASS — G7 satisfied; F-248 implementation complete; ready for /aod.deliver.

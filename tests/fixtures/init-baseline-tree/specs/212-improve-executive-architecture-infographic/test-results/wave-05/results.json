@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "wave": 5,
+  "timestamp": "2026-04-25T16:55:00Z",
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "tasks": {
+    "T031": {
+      "title": "PDF byte-identity regression on zero-finding fixture (post-US3)",
+      "status": "PASS",
+      "method": "cmp -s vs baseline-zero-finding.pdf with SOURCE_DATE_EPOCH=1700000000",
+      "result_sha256_baseline": "1ff48532f301114c463bd39babbff726a3857d9a71a7c37103fde835b625d458",
+      "result_sha256_regen":    "1ff48532f301114c463bd39babbff726a3857d9a71a7c37103fde835b625d458",
+      "result_bytes_baseline": 1107679,
+      "result_bytes_regen":    1107679,
+      "artifact": "specs/212-improve-executive-architecture-infographic/artifacts/t031-pdf-regression.md"
+    },
+    "T032": {
+      "title": "Extractor runtime re-measurement on reference dataset (post-US3)",
+      "status": "PASS",
+      "method": "5 timed runs of /usr/bin/time -p extract-infographic-data.py with SOURCE_DATE_EPOCH=1700000000",
+      "post_us3_per_run_seconds": [0.08, 0.04, 0.04, 0.04, 0.04],
+      "post_us3_mean_all_runs_ms": 48,
+      "post_us3_mean_warm_runs_ms": 40,
+      "post_us3_median_ms": 40,
+      "wave3_baseline_mean_all_runs_ms": 44,
+      "wave3_baseline_mean_warm_runs_ms": 40,
+      "delta_pct_all_runs":  9.1,
+      "delta_pct_warm_runs": 0.0,
+      "delta_pct_median":    0.0,
+      "sc_212_8_gate": "PASS — within +10% of Wave 3 operative baseline",
+      "artifact": "specs/212-improve-executive-architecture-infographic/artifacts/runtime-post-us3.txt"
+    }
+  },
+  "wave_5_gate": {
+    "t031_byte_identity": true,
+    "t032_runtime_within_gate": true,
+    "all_8_success_criteria_pass": true,
+    "f128_contracts_preserved": true
+  },
+  "checkpoint": {
+    "id": "P1",
+    "status": "PASS — Waves 3, 4, 5 closed; pending architect review at next session start"
+  }
+}

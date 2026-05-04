@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "wave": 2,
+  "timestamp": "2026-04-25T15:05:00Z",
+  "test_runner": "/Users/david/Library/Python/3.9/bin/pytest tests/scripts/test_extract_infographic_data.py tests/scripts/test_executive_architecture_payload.py",
+  "execution_duration_ms": 2100,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": {"pass": 23, "fail": 16, "skip": 0},
+  "classification": {
+    "regressions": 0,
+    "new_failures": 16,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [
+    "test_extract_infographic_data.py::test_per_layer_floor_invariant[single-layer]",
+    "test_extract_infographic_data.py::test_per_layer_floor_invariant[two-layer]",
+    "test_extract_infographic_data.py::test_per_layer_floor_invariant[three-layer]",
+    "test_extract_infographic_data.py::test_per_layer_floor_invariant[all-layers-qualifying]",
+    "test_executive_architecture_payload.py::test_flow_edges_absent",
+    "test_executive_architecture_payload.py::test_flow_edges_empty",
+    "test_executive_architecture_payload.py::test_flow_edges_single",
+    "test_executive_architecture_payload.py::test_flow_edges_multi_sorted",
+    "test_executive_architecture_payload.py::test_flow_edges_truncation",
+    "test_executive_architecture_payload.py::test_clusters_absent",
+    "test_executive_architecture_payload.py::test_clusters_multi_sorted",
+    "test_executive_architecture_payload.py::test_clusters_members_sorted",
+    "test_executive_architecture_payload.py::test_clusters_trust_level_rename",
+    "test_executive_architecture_payload.py::test_destination_field_name_lock",
+    "test_executive_architecture_payload.py::test_determinism",
+    "test_executive_architecture_payload.py::test_prompt_co_landing"
+  ],
+  "pre_existing": []
+}

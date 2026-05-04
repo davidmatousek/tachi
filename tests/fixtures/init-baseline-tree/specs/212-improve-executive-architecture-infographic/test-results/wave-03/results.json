@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "wave": 3,
+  "timestamp": "2026-04-25T15:32:33Z",
+  "test_runner": "/Users/david/Library/Python/3.9/bin/pytest tests/scripts/ -v",
+  "execution_duration_ms": 48550,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": {"pass": 366, "fail": 12, "skip": 1},
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 12
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [
+    "test_executive_architecture_payload.py::test_flow_edges_absent",
+    "test_executive_architecture_payload.py::test_flow_edges_empty",
+    "test_executive_architecture_payload.py::test_flow_edges_single",
+    "test_executive_architecture_payload.py::test_flow_edges_multi_sorted",
+    "test_executive_architecture_payload.py::test_flow_edges_truncation",
+    "test_executive_architecture_payload.py::test_clusters_absent",
+    "test_executive_architecture_payload.py::test_clusters_multi_sorted",
+    "test_executive_architecture_payload.py::test_clusters_members_sorted",
+    "test_executive_architecture_payload.py::test_clusters_trust_level_rename",
+    "test_executive_architecture_payload.py::test_destination_field_name_lock",
+    "test_executive_architecture_payload.py::test_determinism",
+    "test_executive_architecture_payload.py::test_prompt_co_landing"
+  ],
+  "turned_green_since_wave_2": [
+    "test_extract_infographic_data.py::test_per_layer_floor_invariant[single-layer]",
+    "test_extract_infographic_data.py::test_per_layer_floor_invariant[two-layer]",
+    "test_extract_infographic_data.py::test_per_layer_floor_invariant[three-layer]",
+    "test_extract_infographic_data.py::test_per_layer_floor_invariant[all-layers-qualifying]"
+  ],
+  "notes": [
+    "Wave 3 (US2 implementation) gate: T016 + T017 landed in commit c575894. The Largest Remainder Method allocator with per-layer floor=1 / ceiling=4 / total-cap=8 turned 4 of Wave 2's 16 red-bar failures green.",
+    "12 remaining failures all in test_executive_architecture_payload.py — these are Wave 4 / US3 (L3 payload schema: flow_edges, clusters) territory and will be addressed by T023-T029. They are NOT regressions.",
+    "Per_layer_floor_invariant[absent], test_callouts_deterministic, and test_superset_invariant also pass (these were not in Wave 2's failure list because they passed in Wave 2 as well, but they are critical Wave 3 invariants).",
+    "test_extract_infographic_data.py: 27/27 passed. tests/scripts/ overall: 366 passed, 12 failed (US3 expected), 1 skipped (F-130 backward-compat carve-out unchanged).",
+    "Renamed test test_executive_architecture_one_callout_per_layer -> test_executive_architecture_per_layer_ceiling_and_tie_break is included in the 27/27 pass count (it tests the new per-layer-ceiling=4 contract; the old name described the pre-F-212 behavior).",
+    "Classification rule: pre_existing[] contains tests that failed in Wave 2 baseline AND continue to fail in Wave 3 (no green-bar transition)."
+  ]
+}
