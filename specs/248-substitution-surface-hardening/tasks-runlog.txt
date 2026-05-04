@@ -657,3 +657,33 @@ T035 PRE-COMPLETED: ADR-038 §Consequences already contains T021 +658% benchmark
 T044 PASS: `git diff main..HEAD -- pyproject.toml requirements*.txt package.json` returns empty. NFR-002 satisfied. Note: tachi-pytest.yml workflow installs pyyaml at CI runtime (not in repo manifests).
 
 T045 PASS: `git diff main..HEAD -- schemas/finding.yaml` returns empty. NFR-005 satisfied; F-241 detection-tier zero-edit invariant preserved.
+
+
+================================================================================
+T036 OUTCOME (2026-05-04) — ARCHITECT PROMOTION GATE
+================================================================================
+
+T036 PROMOTED: ADR-038 Status `Proposed` → `Accepted` after architect verification of both review surfaces named in Team-Lead APPROVED_WITH_CONCERNS sign-off (commit ffb297d).
+
+SURFACE 1 — §Decision D-6 + §Constraints residual-scan regex character class lockstep commitment (Architect Pass 1 M-2):
+  Verified at ADR-038 lines 29 (§Constraints), 109 (§D-6), and 111 (§D-6 lockstep clause).
+  Verbatim quote (line 29): "Closed canonical-12 lockstep contract — adding a new placeholder requires updating BOTH `AOD_CANONICAL_PLACEHOLDERS` in `.aod/scripts/bash/template-substitute.sh` AND the `personalization-schema.md` contract in lockstep (Architect M-2 commitment)."
+  Verbatim quote (line 109): "The helper `aod_template_assert_no_residual` regex `\{\{[A-Z_]+\}\}` is unchanged; only the CALLER scope in `init.sh` is constrained"
+  Verbatim quote (line 111): "Lockstep with Architect M-2 commitment: any future change to the helper's regex (e.g., narrowing to `\{\{(PROJECT_NAME|...|CLOUD_PROVIDER)\}\}` canonical-12 alternation) requires a new ADR. The current decision keeps the regex permissive but constrains where it runs."
+  Disposition: VERIFIED — character class `[A-Z_]+` documented; lockstep update protocol explicit; canonical-12 alternation narrowing path named with new-ADR gate.
+
+SURFACE 2 — §Decision D-5 + §Consequences §Neutral/Migration F-1→F-2 pattern-vs-function reuse contract (Team-Lead Pass 1 H-2):
+  Verified at ADR-038 lines 81-95 (§D-5) and 142 (§Consequences §Neutral/Migration).
+  Verbatim quote (lines 91-93): "F-2 (`defaults.env` strict-KV parser) reuses the **VALIDATION TRIPLET PATTERN**, NOT the `aod_init_read_validated` function. The function is interactive `read -p`-only; F-2 is non-interactive file-parse. F-2 will introduce a new helper (e.g., `aod_defaults_parse_validated`) following the same regex-validate → reject-on-mismatch → `printf -v` discipline but operating on file content rather than terminal input."
+  Verbatim quote (line 95): "Architect re-confirmation required at T036 promotion (Wave 5): before promoting Status `Proposed → Accepted`, the architect MUST re-confirm this paragraph reflects the F-1 → F-2 reuse boundary. The lockstep contract: any future deviation (e.g., F-2 attempts to call `aod_init_read_validated` directly) requires a new ADR."
+  Verbatim quote (line 142): "F-2 BLP-02 Wave 2 reuse contract (D-5) is a forward-looking commitment. The pattern-vs-function boundary will be re-verified during F-2 plan-day architect review."
+  Disposition: VERIFIED — PATTERN vs FUNCTION distinction explicit; interactive-vs-file-parse boundary named; new helper name `aod_defaults_parse_validated` suggested; deviation gate (new ADR) and F-2-plan-day re-verification gate both present.
+
+PROMOTION ACTIONS:
+  - ADR-038 Status field: `Proposed` → `Accepted` (line 3)
+  - ADR-038 Date line: replaced `Accepted: pending (Wave 5 T036 architect promotion after T035 benchmark amendment)` with `Accepted: 2026-05-04 (Wave 5 T036 architect promotion after T035 verification)` (line 4)
+  - NO other ADR content modified — status-only promotion per architect dual-commit contract
+  - tasks.md T036 marked [X] with ACCEPTED annotation
+  - Architect sign-off authority exercised per Triad governance G6 gate
+
+FINAL DISPOSITION: PROMOTED

@@ -1,7 +1,7 @@
 # ADR-038: Placeholder Substitution Strategy — bash Parameter Expansion vs sed
 
-**Status**: Proposed
-**Date**: Proposed: 2026-05-03 (Wave 3 Stream 4 T034 dual-commit initial); Accepted: pending (Wave 5 T036 architect promotion after T035 benchmark amendment)
+**Status**: Accepted
+**Date**: Proposed: 2026-05-03 (Wave 3 Stream 4 T034 dual-commit initial); Accepted: 2026-05-04 (Wave 5 T036 architect promotion after T035 verification)
 **Deciders**: Architect (tachi project)
 **Feature**: [248-substitution-surface-hardening](../../../specs/248-substitution-surface-hardening/spec.md)
 **Supersedes**: None
