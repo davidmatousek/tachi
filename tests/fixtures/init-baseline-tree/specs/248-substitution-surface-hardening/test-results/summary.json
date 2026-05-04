@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "feature": "248-substitution-surface-hardening",
+  "total_waves": 7,
+  "waves_tested": 1,
+  "waves_skipped": 6,
+  "totals": { "pass": 20, "fail": 0, "skip": 0 },
+  "total_regressions": 0,
+  "coverage_trend": null,
+  "gate_decisions": [
+    { "wave": 4, "decision": "pass" }
+  ],
+  "notes": "Wave 4 ran T039 (local pytest 20/20 PASS on macOS bash 3.2.57) + T040 (CI matrix 20/20 PASS on macos-latest + ubuntu-latest). Other waves (0-3 in prior conversations, 5 in this conversation) are implementation/documentation-only and did not produce code changes warranting per-wave test gates beyond Wave 4. Coverage tooling not detected; coverage_trend null per data-model spec."
+}

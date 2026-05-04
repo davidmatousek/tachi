@@ -734,3 +734,39 @@ CLEANUP:
   /tmp/tachi-smoke, /tmp/tachi-smoke-fakehome, /tmp/smoke-stdout.log, /tmp/smoke-stderr.log all removed.
 
 FINAL DISPOSITION: PASS — G7 satisfied; F-248 implementation complete; ready for /aod.deliver.
+
+================================================================================
+T040 OUTCOME (2026-05-04 — 5 CI iterations, all surfaced cross-platform bugs)
+================================================================================
+
+GitHub Actions run 25300565476 — BOTH MATRIX LEGS GREEN.
+- macos-latest: https://github.com/davidmatousek/tachi/actions/runs/25300565476/job/74166665813
+- ubuntu-latest: https://github.com/davidmatousek/tachi/actions/runs/25300565476/job/74166665808
+
+The CI matrix did not previously exist in this repo (only release-please.yml on main + tachi-mmdc-preflight.yml with narrow path filter). T040's first execution required authoring `.github/workflows/tachi-pytest.yml` from scratch — modeled after the existing mmdc preflight workflow, with paths-filter scoped to substitution-relevant files only.
+
+5 distinct cross-platform issues surfaced only via the matrix (all invisible on local macOS bash 3.2.57 where T039 ran 20/20 green):
+
+1. **Missing pyyaml dependency** — conftest.py imports yaml at module scope (BLP-01 + F-241 cross-suite shared). CI runners are bare; local dev had system pyyaml. Fix: add `pyyaml>=6` to the workflow's pip install step.
+
+2. **bash 5.2+ patsub_replacement (CRITICAL)** — bash 5.2 added `shopt -s patsub_replacement` ENABLED BY DEFAULT, which makes `&` in `${var//pat/repl}` replacement string expand to the matched text. Exact sed-style behavior that ADR-038 was designed to eliminate. Adversarial value `AT&T` became `AT<matched>T` → `ATtachiT` orphans on ubuntu. Fix: explicit `shopt -u patsub_replacement 2>/dev/null || true` at template-substitute.sh source-time. No-op on bash 3.2 (option unknown).
+
+3. **macos-latest GH Actions runner is 3-4× slower than dev macOS** for arm64 bash work — init.sh runs >180s on the runner vs ~50s locally. Bumps:
+   - run_init_in_clone(timeout_sec=...) default 60 → 180 → 300s (after CI feedback)
+   - test_adversarial_input override 120 → 300s
+   - pytest --timeout 300 → 360s
+
+4. **Baseline file-set drift due to nested .gitignore** — The baseline tree at `tests/fixtures/init-baseline-tree/` is itself a snapshot of a personalized tachi tree, including its own `.gitignore` that excludes `.aod/logs/`, `.aod/results/`, `.aod/personalization.env`. Standard `git add` respected the nested .gitignore, silently dropping these files from the committed baseline. Live clones recreate them → file-set parity FAIL. Fix: `git add -f tests/fixtures/init-baseline-tree/` once; subsequent commits track normally.
+
+5. **TZ-skew date drift** — RATIFICATION/CURRENT_DATE substituted from `date +%Y-%m-%d` (LOCAL time). Dev EDT showed 2026-05-03 while ubuntu UTC showed 2026-05-04 for the same wall-clock instant; 17 files with date substitution drifted byte-by-byte. Fix:
+   - scripts/init.sh: `${AOD_*_DATE_OVERRIDE:-$(date +%Y-%m-%d)}` accepts env-var override
+   - tests/scripts/init_sh_helpers.py: pass `AOD_*_DATE_OVERRIDE=2026-05-04` to subprocess.run env
+   - tests/fixtures/regenerate-baseline.sh: same overrides + pipeline-env-prefix bug fix
+     (env vars MUST be on the bash invocation, not the printf — pipeline prefix
+     applies to first command only)
+
+Final iteration count: 5 CI runs (25298191110 fail, 25298223293 partial-fail, 25299200472 partial-fail, 25300009074 fail, 25300565476 GREEN).
+
+Wave 4 G4 quality gate (CI matrix green) NOW SATISFIED.
+
+HEAD at T040 PASS: e2a9279
