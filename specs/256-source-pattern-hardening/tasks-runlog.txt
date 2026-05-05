@@ -275,3 +275,23 @@ Day-5 slip-watch impact:
 
 These numbers will be folded into ADR-040 §Consequences at T054 (final
 Architect/Team-Lead approval recorded in spec.md per Q-5 Option a).
+
+## PM Disposition: Q-5 Option a (Accept-and-Document) — APPROVED 2026-05-05
+
+**Decision authority**: PM (user, davidmatousek@me.com)
+**Trigger**: T013 NFR-004 >50% tier (per-file p50 deltas +178% to +260%; absolute cost ~30-37ms p50)
+**Disposition**: Q-5 Option a — accept-and-document with ADR-040 §Consequences elaborations to be folded in at T054.
+
+**Required ADR-040 elaborations (T054)**:
+1. Document the methodology asymmetry — the per-call benchmark fork-execs `bash -c` per invocation, attributing one-time-per-process library-source overhead (~13ms) to each call. Real adopter usage sources the library ONCE per script run; marginal per-call cost in production converges toward T005 baseline + ~15ms function execution.
+2. Loosen NFR-004 to permit the >50% delta with security tradeoff rationale (architecturally the library is the right place to be; per-process source cost is the dominant component; absolute cost ~30-37ms is sub-perception and well below the ~100ms human threshold).
+3. Record the cost decomposition: library-source ~13ms + function execution ~15-25ms = ~28-37ms post-impl per fork-exec.
+4. Maintain awk micro-opt path REJECTED (Q-5 ruling) — BSD vs GNU awk variance + audit-readability concerns dominate the marginal performance gain.
+
+**Collateral findings to fold into ADR-040 (T054)**:
+- §Decision Item 1 clarification: the original "regex implicitly rejects NUL" mechanism is unsound (bash command substitution silently truncates at the first NUL). The library uses an explicit Step 2b NUL pre-check via `wc -c` vs `tr -d '\000' | wc -c` size comparison. Behavior unchanged (NUL → exit 8); only the mechanism description needs updating.
+
+**Day-5 slip-watch impact**: NONE. Performance disposition is a Day-8/Day-10 ADR consideration (T054), not a Day-5 blocking concern. Condition 1 is GREEN at 29/29 unit tests pass on macOS bash 3.2.57.
+
+**Wave 3 unblocked**: proceed.
+
