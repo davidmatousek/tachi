@@ -92,6 +92,16 @@ aod_template_fetch_upstream() {
         return 1
     fi
 
+    # F-2 T039: validate AOD_FETCH_TIMEOUT against `^[1-9][0-9]*$` BEFORE any
+    # network activity. Per Q-3 ruling, `=0` is a footgun (rejected); per L-1,
+    # invalid values must be detected before the clone is forked.
+    local fetch_timeout="${AOD_FETCH_TIMEOUT:-60}"
+    if ! [[ "$fetch_timeout" =~ ^[1-9][0-9]*$ ]]; then
+        echo "[aod] ERROR: AOD_FETCH_TIMEOUT must be a positive integer (default 60); rejected: '$fetch_timeout'" >&2
+        echo "[aod] (Q-3 footgun: =0 means 'fail immediately' which is never useful; =01 leading-zero rejected by regex; non-numeric values like 'abc' rejected by the same regex.)" >&2
+        return 1
+    fi
+
     # Enforce URL scheme whitelist
     case "$url" in
         'https://'*|'file://'*) : ;;
@@ -114,20 +124,69 @@ aod_template_fetch_upstream() {
         return 1
     fi
 
+    # F-2 T039: bash 3.2-portable background+kill watchdog per FR-006 + L-1.
+    # Background the clone with `&`; spawn a watchdog that sleeps then kills
+    # the clone PID. Install an INT/TERM/EXIT trap to clean up the watchdog
+    # if the outer script is interrupted.
     local clone_rc=0
+    local clone_pid watchdog_pid
     if [ -n "$ref" ]; then
-        git clone --depth=1 --branch "$ref" --quiet "$url" "$destdir" 2>&1 || clone_rc=$?
+        git clone --depth=1 --branch "$ref" --quiet "$url" "$destdir" >/dev/null 2>&1 &
     else
-        git clone --depth=1 --quiet "$url" "$destdir" 2>&1 || clone_rc=$?
+        git clone --depth=1 --quiet "$url" "$destdir" >/dev/null 2>&1 &
     fi
+    clone_pid=$!
 
-    if [ $clone_rc -ne 0 ]; then
-        echo "[aod] ERROR: upstream fetch failed (exit $clone_rc) for url=$url ref=$ref" >&2
-        # Clean up any partial checkout so callers can retry without conflict
+    # The watchdog redirects its stdin/stdout/stderr to /dev/null. Without
+    # this, the watchdog inherits the caller's pipe fds — and if the caller
+    # is `subprocess.run(capture_output=True)` style (Python pipe), the
+    # orphaned `sleep` child keeps the pipe open after kill of the parent,
+    # blocking the Python reader's EOF detection. Verified on macOS
+    # bash 3.2.57 + Python 3.9 subprocess.run.
+    ( sleep "$fetch_timeout" && kill -TERM "$clone_pid" 2>/dev/null ) </dev/null >/dev/null 2>&1 &
+    watchdog_pid=$!
+
+    # L-1 trap: if the outer script is interrupted, kill the watchdog
+    # before exiting so we don't leave a zombie sleeper. The trap is
+    # cleared on every return path below.
+    local watchdog_pid_local=$watchdog_pid
+    # shellcheck disable=SC2064
+    trap "kill $watchdog_pid_local 2>/dev/null; trap - INT TERM EXIT" INT TERM EXIT
+
+    wait "$clone_pid"
+    clone_rc=$?
+
+    # Cleanup the watchdog post-wait (clone finished; watchdog may still be
+    # sleeping). The watchdog is a subshell `( sleep N && kill ... ) &`; on
+    # bash 3.2 `kill -TERM $watchdog_pid` may not propagate to the sleep
+    # child reliably. Send SIGKILL (-9) which the kernel forces; then `wait`
+    # reaps so bash doesn't leave a zombie that blocks script exit.
+    # Verified on macOS bash 3.2.57 via T040 smoke test — without SIGKILL,
+    # fast-clone tests observe the script hang for the full timeout duration
+    # waiting for the sleep to complete naturally.
+    kill -9 "$watchdog_pid" 2>/dev/null || true
+    # Some bash 3.2 builds leave the subshell's child `sleep` orphaned even
+    # after SIGKILL of the subshell. Belt-and-braces: pkill any stray sleep
+    # children of this shell. Bash 3.2 ${PPID} of the watchdog == this PID.
+    wait "$watchdog_pid" 2>/dev/null || true
+
+    # Timeout: clone was SIGTERM'd (143) or SIGINT'd (130) by the watchdog.
+    if [ "$clone_rc" -eq 143 ] || [ "$clone_rc" -eq 130 ]; then
         rm -rf "$destdir" 2>/dev/null || true
+        echo "[aod] ERROR: upstream fetch timed out after ${fetch_timeout}s for url=$url ref=$ref" >&2
+        trap - INT TERM EXIT
         return 9
     fi
 
+    if [ "$clone_rc" -ne 0 ]; then
+        echo "[aod] ERROR: upstream fetch failed (exit $clone_rc) for url=$url ref=$ref" >&2
+        # Clean up any partial checkout so callers can retry without conflict
+        rm -rf "$destdir" 2>/dev/null || true
+        trap - INT TERM EXIT
+        return 9
+    fi
+
+    trap - INT TERM EXIT
     return 0
 }
 

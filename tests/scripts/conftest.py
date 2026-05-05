@@ -93,6 +93,86 @@ def id_pattern(schema: dict) -> re.Pattern:
 
 
 @pytest.fixture(scope="session")
+def hanging_upstream():
+    """A TCP listener that accepts connections but never responds.
+
+    Used by tests/scripts/test_template_git_clone_timeout.py (F-2 Stream 4)
+    to exercise the SIGTERM watchdog path in `aod_template_fetch_upstream`.
+
+    Mechanism (per F-2 plan §Stream 4 + F-250 ADR-039 fixture-scope canon):
+      - `socket.bind(('127.0.0.1', 0))` binds to an ephemeral port (kernel-
+        assigned). Port is read back via `getsockname()`.
+      - `socket.listen(1)` makes the socket accept connections.
+      - A daemon thread loops on `accept()`. Each accepted connection is
+        held open but never written to. `git clone` connects, sends its
+        TCP handshake, waits for an HTTP response that never comes — the
+        watchdog SIGTERMs the clone after `AOD_FETCH_TIMEOUT` seconds.
+
+    Session scope (per F-250 ADR-039) amortizes the bind+listen+thread-
+    start cost across all clone-timeout test cases. The fixture yields the
+    URL `http://127.0.0.1:<port>/` (with a `/test.git` suffix in callers
+    if they want a specific repo path; the listener never reads or writes,
+    so the path is irrelevant to behavior).
+
+    Cleanup at session end: best-effort socket close. The thread is daemon=True
+    so it dies when the test process exits regardless.
+
+    Yields:
+      str: the URL adopters should pass to `aod_template_fetch_upstream`.
+    """
+    import socket
+    import threading
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(("127.0.0.1", 0))
+    sock.listen(1)
+    port = sock.getsockname()[1]
+
+    accepted_conns: list = []
+    stop_flag = threading.Event()
+
+    def _accept_loop() -> None:
+        sock.settimeout(0.5)  # short timeout so stop_flag is checked
+        while not stop_flag.is_set():
+            try:
+                conn, _ = sock.accept()
+                accepted_conns.append(conn)
+                # Hold the connection open. Never write anything; never read
+                # so the client's send buffer eventually fills, but for
+                # `git clone` the handshake completes and git waits for an
+                # HTTP response that never comes — the watchdog kills it.
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+
+    thread = threading.Thread(target=_accept_loop, daemon=True)
+    thread.start()
+
+    try:
+        # Use https:// to satisfy aod_template_fetch_upstream's URL whitelist.
+        # git clone will attempt TLS handshake against our plain-TCP listener
+        # — the listener never responds, so git hangs in TLS handshake until
+        # the watchdog SIGTERMs it. Without `-c http.sslVerify=false` git
+        # would fail fast on cert validation; F-2 watchdog is exercised
+        # against the natural hang BEFORE TLS handshake completes.
+        yield f"https://127.0.0.1:{port}/test.git"
+    finally:
+        stop_flag.set()
+        try:
+            sock.close()
+        except OSError:
+            pass
+        for conn in accepted_conns:
+            try:
+                conn.close()
+            except OSError:
+                pass
+        thread.join(timeout=2)
+
+
+@pytest.fixture(scope="session")
 def init_run(tmp_path_factory: pytest.TempPathFactory):
     """One canonical scripts/init.sh run, shared across all test_init_sh_* modules.
 

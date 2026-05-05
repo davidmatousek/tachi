@@ -426,3 +426,54 @@ F-1 contract amendment lands as B-2 Path R-2 ripple.
 **TACHI-VULN-4dc6cf8f88ea (MEDIUM) closed**: TOCTOU race window collapsed to
 single `cat` (per H-2 framing); race-test asserts caller-scope value matches
 ONE snapshot (initial OR swapped, never partial).
+
+## Wave 3 Stream 4: clone timeout watchdog (T037-T041, Date: 2026-05-05)
+
+**Files modified**:
+- `.aod/scripts/bash/template-git.sh:68-150` — `aod_template_fetch_upstream`
+  wrapped with bash 3.2-portable background+kill watchdog per FR-006 + L-1:
+  - Validate `AOD_FETCH_TIMEOUT` against regex `^[1-9][0-9]*$` (default 60).
+    Reject `=0` (Q-3 footgun), `=abc` (non-numeric), `=01` (leading zero).
+  - Background `git clone &`; capture clone_pid.
+  - Spawn `( sleep $TIMEOUT && kill -TERM $clone_pid ) </dev/null >/dev/null 2>&1 &`;
+    capture watchdog_pid. The fd redirection is REQUIRED — without it, the
+    orphaned `sleep` child keeps the caller's stdout/stderr pipe open,
+    blocking subprocess.run's EOF detection (verified on macOS bash 3.2.57
+    + Python 3.9 subprocess).
+  - Install L-1 trap `INT TERM EXIT` that kills the watchdog on outer
+    interrupt; cleared on every return path.
+  - `wait $clone_pid; clone_rc=$?`.
+  - Cleanup post-wait: `kill -9 $watchdog_pid 2>/dev/null; wait $watchdog_pid
+    2>/dev/null` (SIGKILL because bash 3.2 SIGTERM-of-subshell may not
+    propagate to sleep child reliably).
+  - On `clone_rc 143` (SIGTERM) or `130` (SIGINT) → `rm -rf $destdir`,
+    timeout error message, `trap - INT TERM EXIT`, return 9.
+  - On any other rc → propagate (return rc) and clear trap.
+
+**Files added**:
+- `tests/scripts/test_template_git_clone_timeout.py` — 6 cases:
+  - case_1_timeout_3s: hanging fixture + AOD_FETCH_TIMEOUT=3 → exit 9 in ~3-4s
+  - case_2_timeout_10s: hanging fixture + AOD_FETCH_TIMEOUT=10 → exit 9 at ~10s
+  - case_3_zero_footgun: AOD_FETCH_TIMEOUT=0 → exit 1 (Q-3)
+  - case_4_non_numeric: AOD_FETCH_TIMEOUT=abc → exit 1
+  - case_5_leading_zero: AOD_FETCH_TIMEOUT=01 → exit 1
+  - case_6_fast_clone_succeeds: synthetic upstream + AOD_FETCH_TIMEOUT=60
+    → exit 0 + no zombie watchdog (elapsed <10s confirms no fd leak)
+- `tests/scripts/conftest.py` (modified): `hanging_upstream` session-scoped
+  pytest fixture per F-250 ADR-039 fixture-scope canon. `socket.bind(0)`
+  ephemeral port + listen + accept-loop daemon thread that holds connections
+  open without responding.
+
+**T040 macOS bash 3.2.57 smoke test** (Day-5 GREEN-LIGHT condition 4):
+- Hanging clone with timeout=3 → exit 9 at 3.0-3.4s ✓
+- Hanging clone with timeout=10 → exit 9 at 10.0-10.5s ✓
+- Fast clone with timeout=60 → exit 0 in <2s + no zombie watchdog ✓
+- Invalid AOD_FETCH_TIMEOUT (=0, =abc, =01) → exit 1 + named footgun message ✓
+
+All 6/6 cases pass on `BASH=/bin/bash` (3.2.57). Linux verification deferred
+to CI per T012 pattern.
+
+**TACHI-VULN-851fd6a21ba9 (LOW) closed**: clone timeout enforced; L-1
+trap eliminates watchdog process-leak window.
+
+**Day-5 slip-watch GREEN-LIGHT condition 4: GREEN.**

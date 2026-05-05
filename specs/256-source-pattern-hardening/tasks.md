@@ -308,7 +308,7 @@ triad:
 
 ### Tests for Stream 4 (Stream 5)
 
-- [ ] T037 [P] [US4] Author `tests/scripts/test_template_git_clone_timeout.py` (Test-3) — clone timeout behavior:
+- [X] T037 [P] [US4] Author `tests/scripts/test_template_git_clone_timeout.py` (Test-3) — clone timeout behavior:
   Case 1 hanging fixture with AOD_FETCH_TIMEOUT=3 → exit 9 within ~3-4s + destdir removed + stderr error;
   Case 2 same hanging fixture with AOD_FETCH_TIMEOUT=10 → exit 9 at ~10s, not 60s;
   Case 3 AOD_FETCH_TIMEOUT=0 → exit 1 with Q-3 footgun error message;
@@ -316,12 +316,12 @@ triad:
   Case 5 AOD_FETCH_TIMEOUT=01 (leading zero) → exit 1 (regex `^[1-9][0-9]*$` rejects);
   Case 6 fast clone (succeeds normally) with AOD_FETCH_TIMEOUT=60 → exit 0 + no zombie watchdog process.
   Use the session-scoped `hanging_upstream` fixture (T038)
-- [ ] T038 [P] [US4] Modify `tests/scripts/conftest.py` — add session-scoped `hanging_upstream` pytest fixture (per M-3 + F-250 ADR-039 fixture-scope canon):
+- [X] T038 [P] [US4] Modify `tests/scripts/conftest.py` — add session-scoped `hanging_upstream` pytest fixture (per M-3 + F-250 ADR-039 fixture-scope canon):
   Use Python `socket.socket(AF_INET, SOCK_STREAM)`, `bind(('127.0.0.1', 0))` (ephemeral port), `listen(1)`, accept connections in a thread but never respond. Tear down at session end. Yield the URL `http://127.0.0.1:<port>/`. Session-scoped to amortize the bind/listen cost across all clone-timeout test cases.
 
 ### Implementation for Stream 4
 
-- [ ] T039 [US4] Modify `aod_template_fetch_upstream` in `.aod/scripts/bash/template-git.sh:102-104` — wrap the existing `git clone --depth=1 ...` invocation with the watchdog pattern per FR-006 + L-1:
+- [X] T039 [US4] Modify `aod_template_fetch_upstream` in `.aod/scripts/bash/template-git.sh:102-104` — wrap the existing `git clone --depth=1 ...` invocation with the watchdog pattern per FR-006 + L-1:
   - Validate `AOD_FETCH_TIMEOUT` against `^[1-9][0-9]*$` (default 60 if unset; reject with exit 1 if invalid per Q-3).
   - Background the clone with `&`; capture `clone_pid=$!`.
   - Spawn watchdog `( sleep "$fetch_timeout" && kill -TERM "$clone_pid" 2>/dev/null ) &`; capture `watchdog_pid=$!`.
@@ -330,8 +330,8 @@ triad:
   - Cleanup watchdog post-wait: `kill "$watchdog_pid" 2>/dev/null`.
   - On `clone_rc` 143 (SIGTERM) or 130 (SIGINT) → `rm -rf "$destdir"`, emit `[aod] ERROR: upstream fetch timed out after ${fetch_timeout}s for url=$url ref=$ref`, `trap - INT TERM EXIT`, return 9.
   - On any other `clone_rc` → propagate (return rc) and `trap - INT TERM EXIT`.
-- [ ] T040 [US4] Smoke test the watchdog pattern locally on macOS bash 3.2.57 — fast clone (any reachable repo) + hanging fixture (T038). Capture results in tasks-runlog.txt for Day-5 slip-watch GREEN-LIGHT condition 4
-- [ ] T041 [US4] Run T037 cases on macOS + Linux CI. All 6 cases MUST pass
+- [X] T040 [US4] Smoke test the watchdog pattern locally on macOS bash 3.2.57 — fast clone (any reachable repo) + hanging fixture (T038). Capture results in tasks-runlog.txt for Day-5 slip-watch GREEN-LIGHT condition 4
+- [X] T041 [US4] Run T037 cases on macOS + Linux CI. All 6 cases MUST pass
 
 **Checkpoint**: Stream 4 complete + green. TACHI-VULN-851fd6a21ba9 closed. Day-5 slip-watch GREEN-LIGHT condition 4 met. L-1 watchdog process-leak window closed.
 
