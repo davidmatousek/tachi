@@ -48,10 +48,10 @@ triad:
 
 **Purpose**: Workspace verification and directory scaffolding before implementation begins.
 
-- [ ] T001 Verify feature branch + draft PR state: `git branch --show-current` returns `256-source-pattern-hardening`; `gh pr view 257` returns draft PR with title `feat(256): harden source-pattern surface — bash source/eval → KV parser + clone timeout`; spec.md and plan.md frontmatter contain required sign-offs (PM + Architect)
-- [ ] T002 [P] Create `tests/fixtures/config-load/valid/` directory: `mkdir -p tests/fixtures/config-load/valid/`
-- [ ] T003 [P] Create `tests/fixtures/config-load/adversarial/` directory: `mkdir -p tests/fixtures/config-load/adversarial/`
-- [ ] T004 [P] Snapshot dependency manifests for NFR-002 verification: capture `git show HEAD:pyproject.toml` and `git show HEAD:requirements*.txt` (and any `package.json` if present) baselines; record SHA-256 of each in `specs/256-source-pattern-hardening/tasks-runlog.txt` for end-of-build comparison
+- [X] T001 Verify feature branch + draft PR state: `git branch --show-current` returns `256-source-pattern-hardening`; `gh pr view 257` returns draft PR with title `feat(256): harden source-pattern surface — bash source/eval → KV parser + clone timeout`; spec.md and plan.md frontmatter contain required sign-offs (PM + Architect)
+- [X] T002 [P] Create `tests/fixtures/config-load/valid/` directory: `mkdir -p tests/fixtures/config-load/valid/`
+- [X] T003 [P] Create `tests/fixtures/config-load/adversarial/` directory: `mkdir -p tests/fixtures/config-load/adversarial/`
+- [X] T004 [P] Snapshot dependency manifests for NFR-002 verification: capture `git show HEAD:pyproject.toml` and `git show HEAD:requirements*.txt` (and any `package.json` if present) baselines; record SHA-256 of each in `specs/256-source-pattern-hardening/tasks-runlog.txt` for end-of-build comparison
 
 **Checkpoint**: Workspace is clean and ready for library bring-up.
 
@@ -63,10 +63,10 @@ triad:
 
 **CRITICAL**: T005 baseline benchmark gates the post-swap measurement in T013 (Stream 1 Day-1 perf comparison). T006-T007 contract authoring is a Stream 1 deliverable that the library implementation (Phase 3) and Site A refactor (Phase 4) depend on for the canonical key set.
 
-- [ ] T005 Stream 1 Day-1 baseline benchmark (NFR-004 + SC-010): from a snapshot of pre-merge state, time the existing `source` paths against the canonical fixture set (`stacks/nextjs-supabase/defaults.env`, `stacks/fastapi-react/defaults.env`, recorded-valid `.aod/aod-kit-version`, recorded-valid `.aod/personalization.env`). Methodology per SC-010: 100 invocations × 4 fixtures × p50/p95; per-file delta (NOT aggregate); warm-cache + cold-cache reported separately. Capture timings to tasks-runlog.txt for ADR-040 §Consequences (Phase 9)
-- [ ] T006 [P] Move and finalize `contracts/stack-pack-defaults-schema.md` (NEW lockstep contract for stack-pack `defaults.env` files): currently authored in `specs/256-source-pattern-hardening/contracts/`; move to repo-root `contracts/` directory at Stream 1 commit time. Documents the canonical 5 keys (`TECH_STACK`, `TECH_STACK_DATABASE`, `TECH_STACK_VECTOR`, `TECH_STACK_AUTH`, `CLOUD_PROVIDER`), value-shape rules, and lockstep update procedure (per FR-002 + plan §Stream 1 deliverables)
-- [ ] T007 [P] Verify `contracts/config-load-helper-contract.md` is complete (specs-internal contract for `aod_template_load_kv_file` API surface); reviewers reference this during Phase 3 implementation review
-- [ ] T008 [P] Append CHANGELOG.md placeholder entry under v4.x heading for F-2 changes (final wording lands in T053 once implementation is complete; the placeholder reserves the space and ensures the entry is not forgotten)
+- [X] T005 Stream 1 Day-1 baseline benchmark (NFR-004 + SC-010): from a snapshot of pre-merge state, time the existing `source` paths against the canonical fixture set (`stacks/nextjs-supabase/defaults.env`, `stacks/fastapi-react/defaults.env`, recorded-valid `.aod/aod-kit-version`, recorded-valid `.aod/personalization.env`). Methodology per SC-010: 100 invocations × 4 fixtures × p50/p95; per-file delta (NOT aggregate); warm-cache + cold-cache reported separately. Capture timings to tasks-runlog.txt for ADR-040 §Consequences (Phase 9)
+- [X] T006 [P] Move and finalize `contracts/stack-pack-defaults-schema.md` (NEW lockstep contract for stack-pack `defaults.env` files): currently authored in `specs/256-source-pattern-hardening/contracts/`; move to repo-root `contracts/` directory at Stream 1 commit time. Documents the canonical 5 keys (`TECH_STACK`, `TECH_STACK_DATABASE`, `TECH_STACK_VECTOR`, `TECH_STACK_AUTH`, `CLOUD_PROVIDER`), value-shape rules, and lockstep update procedure (per FR-002 + plan §Stream 1 deliverables)
+- [X] T007 [P] Verify `contracts/config-load-helper-contract.md` is complete (specs-internal contract for `aod_template_load_kv_file` API surface); reviewers reference this during Phase 3 implementation review
+- [X] T008 [P] Append CHANGELOG.md placeholder entry under v4.x heading for F-2 changes (final wording lands in T053 once implementation is complete; the placeholder reserves the space and ensures the entry is not forgotten)
 
 **Checkpoint**: Baseline benchmark recorded; contracts ready; CHANGELOG slot reserved. Library bring-up can now begin.
 

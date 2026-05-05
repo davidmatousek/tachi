@@ -4,7 +4,7 @@
 **Status**: Specification (FR-001 + FR-002)
 **Date**: 2026-05-04
 **Implementation files**: `stacks/<pack>/defaults.env` (per stack pack); `STACK_PACK_ALLOWED_KEYS` array in `scripts/init.sh` (Stream 2 deliverable)
-**Final location**: `contracts/stack-pack-defaults-schema.md` (Stream 1 — moved from `specs/256-source-pattern-hardening/contracts/`)
+**Location**: `contracts/stack-pack-defaults-schema.md` (canonical repo-root contract; moved from `specs/256-source-pattern-hardening/contracts/` at T006 of Stream 1)
 
 ---
 
@@ -168,9 +168,9 @@ Test-2 (`tests/scripts/test_template_config_load_integration.py`) and Test-4 (`t
 
 ## Cross-References
 
-- F-1 personalization contract: [contracts/personalization-schema.md](../../../contracts/personalization-schema.md) (existing — the precedent for canonical-key + lockstep contract pattern)
-- Loader contract: [config-load-helper-contract.md](config-load-helper-contract.md)
-- Spec FR-002: [spec.md FR-002](../spec.md#functional-requirements)
-- Plan Stream 2 Site A: [plan.md §Stream 2 Site A](../plan.md#stream-2--refactor-4-call-sites-critical-path-25-275-days-per-h-2-blocks-on-stream-1)
-- ADR-040 (post-Stream-3 commit): TBD `docs/architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md`
+- F-1 personalization contract: [specs/248-substitution-surface-hardening/contracts/personalization-schema.md](../specs/248-substitution-surface-hardening/contracts/personalization-schema.md) (existing — the precedent for canonical-key + lockstep contract pattern; expected to migrate to the canonical repo-root `contracts/` directory in a follow-on tidy-up; not in F-2 scope)
+- Loader contract (specs-internal): [specs/256-source-pattern-hardening/contracts/config-load-helper-contract.md](../specs/256-source-pattern-hardening/contracts/config-load-helper-contract.md)
+- Spec FR-002: [specs/256-source-pattern-hardening/spec.md §Functional Requirements](../specs/256-source-pattern-hardening/spec.md#functional-requirements)
+- Plan Stream 2 Site A: [specs/256-source-pattern-hardening/plan.md §Stream 2 Site A](../specs/256-source-pattern-hardening/plan.md#stream-2--refactor-4-call-sites-critical-path-25-275-days-per-h-2-blocks-on-stream-1)
+- ADR-040 (post-Stream-3 commit): TBD [docs/architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md](../docs/architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md)
 - vuln_id closed: TACHI-VULN-6f5a95085056 (HIGH)

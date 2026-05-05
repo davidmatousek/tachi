@@ -1,0 +1,5 @@
+version='4.28.0'
+sha=abc123def456abc123def456abc123def456abcd
+updated_at=2026-05-04T12:00:00Z
+upstream_url=https://github.com/example/upstream
+manifest_sha256=abc123def456abc123def456abc123def456abc123def456abc123def456abcd

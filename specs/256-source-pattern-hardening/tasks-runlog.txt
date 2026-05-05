@@ -1,0 +1,91 @@
+# F-2 (256) Source-Pattern Hardening — Build Run Log
+
+This file accumulates per-task numerical evidence for Wave 1..Wave 11 of the
+Source-Pattern Hardening feature build. Each section is appended in order; do
+not edit prior sections. Sections are referenced from ADR-040 §Consequences and
+the Day-5/Day-8 slip-watch checkpoints.
+
+## T004: NFR-002 Dependency Manifest Baseline (Date: 2026-05-05)
+
+Captured at branch `256-source-pattern-hardening`, HEAD `5879074` (commit
+"chore(256): checkpoint before build resume"). T050 will re-snapshot at
+end-of-build and assert the diff against this baseline is empty.
+
+Manifests present at repo root:
+- `pyproject.toml` — Python project metadata (dev deps live in
+  requirements-dev.txt)
+- `requirements-dev.txt` — pinned Python dev/test dependencies
+- `package.json` — NOT PRESENT (verified absent at repo root); no Node runtime
+  dependencies in this template-only repo
+
+SHA-256 baselines (`git show HEAD:<file> | shasum -a 256`):
+
+2c0b511fc7e86d093b2d586e6052edc39138a51b99b4cf473c5dd56839efb555  pyproject.toml
+e41f5e052f9b6edffd8489ce30044e443f9516ae6ecc270e6b37403ee220cf98  requirements-dev.txt
+
+NFR-002 verification at T050 MUST re-compute these two hashes against
+end-of-build HEAD and assert byte-identical equality. If `package.json` is
+introduced by F-2 work, that itself is a NFR-002 violation.
+
+## T005: Stream 1 Day-1 Baseline Benchmark (Pre-Refactor) (Date: 2026-05-05)
+
+Methodology per SC-010: 100 invocations × 4 fixtures × p50/p95; per-file delta
+(NOT aggregate); warm-cache + cold-cache reported separately. Each invocation
+forks a fresh `bash -c 'source <fixture>'` so timings include process-fork +
+bash-startup + source-parse + return — i.e., the end-to-end cost an adopter
+incurs at /aod.update or init.sh time. Two warm-up invocations precede each
+fixture's 100-run timing window to amortize first-run JIT/cache effects.
+
+Environment:
+- Host: Darwin 25.3.0 (macOS)
+- Bash (local): GNU bash 5.3.9(1)-release (aarch64-apple-darwin25.1.0)
+- Note: T011/T012 will run identical numbers on macOS bash 3.2.57 in CI
+  (Day-5 slip-watch GREEN-LIGHT condition 1) — local 5.3.9 timings here
+  represent steady-state developer-loop numbers. The relative per-file delta
+  vs T013 post-refactor is what matters; absolute numbers will shift modestly
+  on bash 3.2 but the comparison axis is held constant.
+
+Fixtures benchmarked:
+- Site A (init.sh:106) → stacks/nextjs-supabase/defaults.env
+- Site A (init.sh:106) → stacks/fastapi-react/defaults.env
+- Site B (template-git.sh:561) → tests/fixtures/config-load/valid/aod-kit-version-valid
+- Site D (template-substitute.sh:209) → tests/fixtures/config-load/valid/personalization-env-valid
+
+Note: Site C (template-substitute.sh:217/249/536/558) is `eval` removal — not
+a `source` site — so no T005 baseline applies. T005 covers source-file load
+sites only; Site C's measurement is "eval removed" (binary), not timing.
+
+WARM CACHE (steady-state, post page-cache priming):
+
+| Fixture                              | Site                          | p50 (ms) | p95 (ms) | mean (ms) | min (ms) | max (ms) | σ (ms) |
+|--------------------------------------|-------------------------------|----------|----------|-----------|----------|----------|--------|
+| stacks/nextjs-supabase/defaults.env  | A (init.sh:106)               |    8.892 |   18.938 |    10.378 |    5.658 |   27.994 |  4.531 |
+| stacks/fastapi-react/defaults.env    | A (init.sh:106)               |   10.040 |   21.753 |    11.324 |    5.520 |   28.447 |  5.373 |
+| aod-kit-version-valid (fixture)      | B (template-git.sh:561)       |   10.224 |   24.135 |    12.264 |    5.852 |   32.179 |  6.149 |
+| personalization-env-valid (fixture)  | D (template-substitute.sh:209)|   10.408 |   21.458 |    12.241 |    6.023 |   40.185 |  5.780 |
+
+All four fixtures cluster within ~1.5ms p50 of each other (8.9-10.4ms),
+indicating the dominant cost is bash-process-startup (~5-6ms baseline)
+amortized over a small parse pass — file-content size at ≤300 bytes is below
+the noise floor of process-fork variance. This means NFR-004's 25% threshold
+(≤2.5ms p50 increase) will be tight; the post-refactor library MUST keep
+per-call cost bounded by ~2-3ms over the existing source path to stay green.
+
+COLD CACHE: N/A
+- `sudo purge` (macOS) requires elevated privileges that are not available in
+  this autonomous build session. Cold-cache measurement is deferred to T013
+  (post-refactor benchmark) where the same constraint will apply equally to
+  both pre- and post-refactor numbers; the per-file delta remains meaningful
+  even with warm-cache-only data because both sides of the comparison sit on
+  the same OS cache state. Warm-cache numbers above represent the steady-state
+  path that adopters experience after a single config-load operation primes
+  the page cache (the dominant case for /aod.update + init.sh runs).
+
+NFR-004 escalation thresholds (applied in T013 against these baselines):
+- ≤5% delta: proceed; no PRD update.
+- 5-25% delta: proceed; loosen NFR-004 to 25% in ADR-040 §Consequences.
+- 25-50% delta: Team-Lead approval required + security tradeoff rationale in ADR-040.
+- >50% delta: escalate to PM for re-scope (Q-5 Option c levers).
+
+These numbers will be folded into ADR-040 §Consequences at T054 (final).
+
