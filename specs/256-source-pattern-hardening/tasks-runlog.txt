@@ -668,3 +668,31 @@ BASH=/bin/bash python3 -m pytest tests/scripts/test_template_config_load_integra
 All 11 integration cases (Site B + Site D) + 4 Site A cases GREEN — fixture regen is byte-stable; no test broke.
 
 
+## T048 Day-8 Secondary Checkpoint (Date: 2026-05-05)
+
+**Decision**: APPROVED — all 3 conditions met. Proceed to Wave 6.
+
+**HEAD verified**: f9e3259 (Wave 5 T045-T046 fixture regen + baselines)
+
+| # | Condition | Status | Evidence |
+|---|---|---|---|
+| 1 | All Stream 1+2 sites refactored + green; 5 vuln_ids closed pending REMEDIATED at /aod.deliver | GREEN | All 5 site refactors verified live in source: Site A (`scripts/init.sh:125-126` aod_template_load_kv_file + STACK_PACK_ALLOWED_KEYS); Site B-primary (`template-git.sh:642`); Site B-roundtrip (`template-git.sh:576`); Site C (grep eval=0 verified live); Site D (`template-substitute.sh:185-208` 7-line library delegation); Stream 4 (`template-git.sh:95+` AOD_FETCH_TIMEOUT regex + L-1 trap line 154). 64/64 fast suite + 4/4 Site A e2e + 15/15 Wave 5 integration pass on macOS bash 3.2.57. |
+| 2 | Stream 5 tests authored ≥80% case coverage | GREEN | 51 cases authored vs 50-case FR-009 target = **102% coverage** (well above 80% threshold). Breakdown: unit 27 + integration 10 (Site B 4 + Site D 6) + init.sh-defaults 4 + clone-timeout 6 + lint-no-eval 1 + F-1 metachar augmentation 3. |
+| 3 | Stream 3 ADR-040 transitioning to Accepted; structurally complete | GREEN | All 7 §Decision Items present (cd1ae4a); 6 §Alternatives Considered present; 5 §Related Findings enumerated; §Consequences carries T013 per-file p50 delta table + methodology asymmetry rationale + PM Q-5 Option a disposition. T054 promotion is mechanical (§Status flip + benchmark fold-in only). |
+
+**Soak-day fallback**: NOT activated. None of the 3 conditions warrant Day-9 soak per plan.md:336-337 trigger criteria. Build proceeds directly to Wave 6.
+
+**Outstanding T054 work** (queued, NOT a blocker):
+1. ADR-040 §Status: Proposed → Accepted (single-line edit at line 3)
+2. Replace `[BENCHMARK NUMBERS — full p95/cold-cache table folded in at T054]` placeholder at line 211 with full p95/cold-cache table
+3. Record final NFR-004 disposition tier in §Consequences (Q-5 Option a already inline at line 222 — T054 formalizes the fold-in)
+
+**Architectural observations** (non-blocking, fold into T054 per detailed review):
+- Step 2b NUL pre-check mechanism clarification (already in ADR-040 line 59; ensure contracts file mirrors)
+- Performance methodology asymmetry framing must survive Proposed → Accepted promotion
+- Internal eval carve-out forward-looking note (bash 4+ `local -n` replacement path) preserved at line 198
+
+**Approval**: architect
+**Authority**: per plan.md §Critical Path & Slip-Watch (Day-8 secondary checkpoint, lines 334-337) + tasks.md line 381
+**Detailed review**: `.aod/results/architect-day-8-checkpoint.md`
+
