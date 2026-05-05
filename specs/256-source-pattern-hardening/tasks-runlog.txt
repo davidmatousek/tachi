@@ -696,3 +696,71 @@ All 11 integration cases (Site B + Site D) + 4 Site A cases GREEN — fixture re
 **Authority**: per plan.md §Critical Path & Slip-Watch (Day-8 secondary checkpoint, lines 334-337) + tasks.md line 381
 **Detailed review**: `.aod/results/architect-day-8-checkpoint.md`
 
+
+## Wave 6 — T049-T056 (Final Verification + Polish)
+
+**Date**: 2026-05-05
+**Agent**: senior-backend-engineer
+
+### T049 — Full pytest suite on macOS
+
+**Command**: `BASH=/bin/bash python3 -m pytest tests/scripts/ --tb=line -q`
+**Wall time**: 483.46s (8m 03s)
+**Result**: **768 passed, 15 failed, 1 skipped**
+
+Comparison vs Wave 3 baseline (767 passed, 16 failed, 1 skipped):
+- pass: +1 (the expected drift `test_personalized_tree_bytes_match_baseline` now resolves due to T045 baseline regen)
+- fail: -1 (drift class collapsed)
+- skip: unchanged (pre-existing F-142 mermaid-agentic-app limitation)
+
+**Regression analysis**: All 15 failures match the Wave 3 `pre_existing` list by name (re-verified against `specs/256-source-pattern-hardening/test-results/wave-03/results.json`). Zero regressions; zero new failures.
+
+Pre-existing failure inventory (independent of F-2):
+- 2× `test_coverage_attestation_audit.py` — BLP-01 Section 8 Quality Bar (A05/API7 citation gaps)
+- 2× `test_llm10_unbounded_consumption_enrichment.py` line count caps (denial-of-service.md 143, model-theft.md 162)
+- 2× `test_ml_top_10_coverage_bundle_enrichment.py` line count caps (tampering.md 138, model-theft.md 162)
+- 5× `test_mobile_top_10_coverage_bundle_enrichment.py` line count caps (spoofing/tampering/info-disclosure/privilege-escalation/repudiation)
+- 1× `test_mobile_top_10_coverage_bundle_enrichment.py` Pattern Category 11 presence
+- 3× `test_tool_abuse_enrichment.py` (line count + Categories 1-8 byte-identity + source_attribution regen)
+
+**CI Linux status**: pending /aod.deliver — CI runs on PR merge; Linux verification deferred per the T012 pattern established in Wave 2.
+
+**Artifacts**:
+- `specs/256-source-pattern-hardening/test-results/wave-06/full-suite.log` (full pytest output)
+- `specs/256-source-pattern-hardening/test-results/wave-06/results.json` (machine-readable summary)
+
+### T050 — NFR-002 dependency-diff verification
+
+Re-snapshot at Wave 6 HEAD vs T004 baseline (HEAD `5879074`):
+
+| Manifest | T004 SHA-256 | Wave 6 SHA-256 | Diff |
+|---|---|---|---|
+| `pyproject.toml` | `2c0b511fc7e86d093b2d586e6052edc39138a51b99b4cf473c5dd56839efb555` | `2c0b511fc7e86d093b2d586e6052edc39138a51b99b4cf473c5dd56839efb555` | **byte-identical** |
+| `requirements-dev.txt` | `e41f5e052f9b6edffd8489ce30044e443f9516ae6ecc270e6b37403ee220cf98` | `e41f5e052f9b6edffd8489ce30044e443f9516ae6ecc270e6b37403ee220cf98` | **byte-identical** |
+| `package.json` | NOT PRESENT | NOT PRESENT | unchanged absent |
+| `requirements.txt` | NOT PRESENT | NOT PRESENT | unchanged absent |
+| `requirements-pinned.txt` | NOT PRESENT | NOT PRESENT | unchanged absent |
+
+**NFR-002 PASS** — zero new runtime dependencies introduced across the 30-task F-2 build (Waves 1-5). The bash 3.2 + GNU coreutils + pure-bash regex implementation honored the constraint by construction.
+
+### T051 — NFR-005 finding.yaml schema-diff verification
+
+**Command**: `git diff main..HEAD -- schemas/finding.yaml`
+**Output**: empty
+**NFR-005 PASS** — `schemas/finding.yaml` is byte-identical to main. F-2 closes 5 vuln_ids without any schema change (the vuln_ids are detection-tier findings of an existing surface; F-2 fixes the surface, not the schema).
+
+### T052 — SC-005 lint rule verification
+
+**Command**: `grep -c '\beval\b' .aod/scripts/bash/template-substitute.sh`
+**Output**: `0`
+**SC-005 PASS** — zero eval invocations remain in the post-F-2 file. Site C's four eval invocations (`:217`, `:249`, `:536`, `:558`) all replaced with `${!var}` indirect expansion + `printf -v` dynamic assignment per Wave 3 T027-T030. Library `template-config-load.sh` retains exactly ONE eval at the Step 6 prep boundary (per ADR-040 Decision Item 7 carve-out for bash 3.2 indirect array access; `template-substitute.sh` itself contains zero eval).
+
+### T053 — CHANGELOG.md v4.x F-2 entry finalization
+
+Replaced the Wave 1 placeholder (T008-reserved slot) under `## Unreleased` heading with the final F-2 entry covering:
+- Library `aod_template_load_kv_file` introduction (canonical KV parser; bash 3.2-compatible; 7-step contract; internal eval carve-out per ADR-040 Decision Item 7)
+- Four refactored sites (Site A init.sh:106 + Site B template-git.sh reader+writer + Site C template-substitute.sh four eval removal + Site D 47-line body collapse to 7-line library delegation)
+- New `AOD_FETCH_TIMEOUT` env var (default 60s; positive integer regex `^[1-9][0-9]*$`) for clone watchdog (Stream 4)
+- F-1 contract amendment ripple — `aod_init_read_validated` now rejects `$`, `\`, backtick at prompt boundary (B-2 Path R-2); migration guidance for adopters
+- ADR-040 reference + 5 closed vuln_ids enumeration (TACHI-VULN-6f5a95085056 HIGH, bf5496e9fcdf HIGH, 9a7512071b4a MEDIUM, 4dc6cf8f88ea MEDIUM, 851fd6a21ba9 LOW)
+

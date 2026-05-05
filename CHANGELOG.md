@@ -9,12 +9,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Hardened config-file load (BLP-02 F-2) — placeholder
-- Library `aod_template_load_kv_file` introduced (canonical KV-file load primitive)
-- 4 source/eval call sites refactored to library invocation
-- Clone timeout via `AOD_FETCH_TIMEOUT` env var (default 60s)
-- F-1 contract amendment: `aod_init_read_validated` now rejects `$`, `\`, backtick at prompt boundary
-- Final wording lands in T053 (this is a placeholder)
+### Hardened config-file load (BLP-02 F-2)
+
+Replaced four bash `source`/`eval` config-file load sites with a hardened
+`aod_template_load_kv_file` library (KV parser; bash 3.2-compatible).
+
+**New library**: `.aod/scripts/bash/template-config-load.sh` — canonical
+config-load primitive. 7-step contract: arg validation → file existence →
+single-cat TOCTOU mitigation → per-line iteration → regex validation →
+whitelist enforcement → defensive identifier check + `printf -v` assignment.
+Internal `eval` carve-out: ONE invocation for bash 3.2 indirect array access
+(per ADR-040 Decision Item 7).
+
+**Refactored sites**:
+- `scripts/init.sh:106` — defaults.env load (Site A; closes
+  TACHI-VULN-6f5a95085056 HIGH). New variables prefixed `STACK_*`
+  (e.g., `STACK_TECH_STACK`).
+- `.aod/scripts/bash/template-git.sh` reader+writer round-trip
+  (Site B; closes TACHI-VULN-bf5496e9fcdf HIGH). Uses
+  `<key_case>=lower` mode for aod-kit-version field naming.
+- `.aod/scripts/bash/template-substitute.sh` 4× `eval` removal
+  (Site C; closes TACHI-VULN-9a7512071b4a MEDIUM). Replaced with
+  `${!var}` / `printf -v`.
+- `.aod/scripts/bash/template-substitute.sh` `aod_template_load_personalization_env`
+  47-line body collapsed to 7-line library delegation (Site D;
+  closes TACHI-VULN-4dc6cf8f88ea MEDIUM).
+
+**New env var**: `AOD_FETCH_TIMEOUT` (default 60s; positive integer regex
+`^[1-9][0-9]*$`) for `aod_template_fetch_upstream` clone watchdog
+(Stream 4; closes TACHI-VULN-851fd6a21ba9 LOW).
+
+**Adopter migration — F-1 contract amendment**: `aod_init_read_validated`
+in `.aod/scripts/bash/init-input.sh` now additionally rejects `$`,
+`\`, and backtick at the prompt boundary (per B-2 Path R-2). If your
+deployment relies on these characters in personalization values, you
+must migrate before adopting this release. New error message:
+`[init] Input rejected: metachar ($, \, backtick) not allowed; please re-enter.`
+
+**Reference**: ADR-040 (config file parsing hardening). Closes 5 vuln_ids:
+TACHI-VULN-6f5a95085056 (HIGH), TACHI-VULN-bf5496e9fcdf (HIGH),
+TACHI-VULN-9a7512071b4a (MEDIUM), TACHI-VULN-4dc6cf8f88ea (MEDIUM),
+TACHI-VULN-851fd6a21ba9 (LOW).
 
 ### Bug Fixes
 

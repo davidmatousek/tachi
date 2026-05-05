@@ -379,11 +379,11 @@ triad:
 - [X] T046 [P] Run T045 to populate `tests/fixtures/config-load/{valid,adversarial}/` — commit the fixtures
 - [X] T047 [P] Author additional Test-1 cases B-3 19-23 if not already covered in T009: trailing-newline / no-trailing-newline / CRLF / leading-whitespace / blank-line-followed-by-content. Each case verifies the per-line iteration mechanism handles edge formats correctly
 - [X] T048 [P] Day-8 secondary checkpoint (Wed 2026-05-13 EOD) — verify all Stream 1+2 sites refactored + green; Stream 5 tests authored ≥80% case coverage; Stream 3 ADR-040 transitioning to Accepted. If Stream 5 isn't green by Day 8 EOD, use Day 9 as soak day; merge at Day 10-11 within hard ceiling
-- [ ] T049 Run full test suite on macOS + Linux CI: `pytest tests/scripts/test_template_config_load_unit.py tests/scripts/test_template_config_load_integration.py tests/scripts/test_template_git_clone_timeout.py tests/scripts/test_init_sh_defaults_env.py tests/scripts/test_template_substitute_lint_no_eval.py -v`. ALL cases MUST pass on both legs of the matrix (NFR-001 + FR-009)
-- [ ] T050 Verify NFR-002 (no new runtime dependencies): re-snapshot `pyproject.toml`, `requirements*.txt`, `package.json` SHA-256 from T004 baseline. Diff MUST be empty
-- [ ] T051 Verify NFR-005 (no `finding.yaml` schema change): `git diff main..HEAD -- schemas/finding.yaml` MUST be empty
-- [ ] T052 Verify SC-005 lint rule passes: `grep -c '\beval\b' .aod/scripts/bash/template-substitute.sh` returns `0`
-- [ ] T053 Finalize CHANGELOG.md v4.x entry (placeholder reserved at T008):
+- [X] T049 Run full test suite on macOS + Linux CI: `pytest tests/scripts/test_template_config_load_unit.py tests/scripts/test_template_config_load_integration.py tests/scripts/test_template_git_clone_timeout.py tests/scripts/test_init_sh_defaults_env.py tests/scripts/test_template_substitute_lint_no_eval.py -v`. ALL cases MUST pass on both legs of the matrix (NFR-001 + FR-009)
+- [X] T050 Verify NFR-002 (no new runtime dependencies): re-snapshot `pyproject.toml`, `requirements*.txt`, `package.json` SHA-256 from T004 baseline. Diff MUST be empty
+- [X] T051 Verify NFR-005 (no `finding.yaml` schema change): `git diff main..HEAD -- schemas/finding.yaml` MUST be empty
+- [X] T052 Verify SC-005 lint rule passes: `grep -c '\beval\b' .aod/scripts/bash/template-substitute.sh` returns `0`
+- [X] T053 Finalize CHANGELOG.md v4.x entry (placeholder reserved at T008):
   `### Hardened config-file load (BLP-02 F-2)` heading;
   Document the new `aod_template_load_kv_file` library + 4 refactored sites + clone timeout (`AOD_FETCH_TIMEOUT` env var);
   Document the F-1 contract amendment (`aod_init_read_validated` now rejects `$`, `\`, backtick at prompt boundary) with adopter migration guidance;

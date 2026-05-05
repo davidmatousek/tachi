@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "wave": 6,
+  "timestamp": "2026-05-05T15:00:00Z",
+  "test_runner": "BASH=/bin/bash python3 -m pytest tests/scripts/ --tb=line -q",
+  "execution_duration_ms": 483460,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 768, "fail": 15, "skip": 1 },
+  "delta_vs_wave_03": { "pass": "+1", "fail": "-1", "skip": "0" },
+  "delta_explanation": "Wave 3 had 767 passed + 16 failed (including 1 expected drift on test_personalized_tree_bytes_match_baseline). Wave 5 T045 regenerated the byte-identity baseline; Wave 6 T049 confirms that test now PASSES (drift resolved), bringing pass count to 768 and fail count down to 15 (the original 15 pre-existing).",
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 15,
+    "expected_drift": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [
+    "tests/scripts/test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_agent_citation",
+    "tests/scripts/test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_pattern_category_citation",
+    "tests/scripts/test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_dos_agent_line_count_within_cap",
+    "tests/scripts/test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_model_theft_agent_line_count_within_cap",
+    "tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_model_theft_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_spoofing_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_info_disclosure_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_privilege_escalation_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_repudiation_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestNewPatternCategoriesPresent::test_privilege_escalation_companion_has_M8_priv_gain",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_tool_abuse_line_count_within_cap",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_categories_1_8_byte_identity_against_main",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_validate_source_attribution_on_regen"
+  ],
+  "expected_drift": [],
+  "ci_linux_status": "pending /aod.deliver — CI runs on PR merge; Linux verification deferred per project pattern (see T012)",
+  "pre_existing_classification_method": "All 15 failures match the Wave 3 pre_existing list by name (re-confirmed against Wave 3 results.json). All 15 fail identically on main. They are independent of F-2 (threat modeling pipeline coverage attestation + line count caps + byte identity assertions on threat-modeling agents)."
+}
