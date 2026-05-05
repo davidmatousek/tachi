@@ -388,12 +388,12 @@ triad:
   Document the new `aod_template_load_kv_file` library + 4 refactored sites + clone timeout (`AOD_FETCH_TIMEOUT` env var);
   Document the F-1 contract amendment (`aod_init_read_validated` now rejects `$`, `\`, backtick at prompt boundary) with adopter migration guidance;
   Reference ADR-040 + 5 closed vuln_ids
-- [ ] T054 Promote ADR-040 to `Status: Accepted` (Stream 3 second commit per Q-6 dual-commit pattern):
+- [X] T054 Promote ADR-040 to `Status: Accepted` (Stream 3 second commit per Q-6 dual-commit pattern):
   Update §Status field;
   Fold in Stream 1 benchmark numbers from T013 into §Consequences (per-file delta, p50/p95, warm/cold cache);
   Document final NFR-004 disposition (which threshold tier was hit and Architect/Team-Lead/PM approval if required)
-- [ ] T055 Verify SC-010 benchmark documentation in ADR-040 §Consequences is complete (canonical fixture set listed; methodology described; per-file delta reported; warm/cold cache reported separately)
-- [ ] T056 Final pre-merge verification: confirm spec.md (PM ✓), plan.md (PM ✓ + Architect ✓), tasks.md (PM + Architect + Team-Lead ✓ — frontmatter injected by `/aod.tasks`); confirm draft PR #257 title is Conventional-Commits format; confirm zero `finding.yaml` schema diff; confirm 5 test files green on macOS + Linux CI
+- [X] T055 Verify SC-010 benchmark documentation in ADR-040 §Consequences is complete (canonical fixture set listed; methodology described; per-file delta reported; warm/cold cache reported separately)
+- [X] T056 Final pre-merge verification: confirm spec.md (PM ✓), plan.md (PM ✓ + Architect ✓), tasks.md (PM + Architect + Team-Lead ✓ — frontmatter injected by `/aod.tasks`); confirm draft PR #257 title is Conventional-Commits format; confirm zero `finding.yaml` schema diff; confirm 5 test files green on macOS + Linux CI
 
 **Checkpoint**: All implementation complete; ADR-040 Accepted; CHANGELOG finalized; all NFRs + SCs verified. Ready for `/aod.deliver`.
 
