@@ -72,6 +72,13 @@ TACHI-VULN-851fd6a21ba9 (LOW).
 
 ---
 
+## [4.30.0](https://github.com/davidmatousek/tachi/compare/v4.29.0...v4.30.0) (2026-05-05)
+
+
+### Features
+
+* **256:** file-size cap + regular-file check on KV loader ([#258](https://github.com/davidmatousek/tachi/issues/258)) ([9964a72](https://github.com/davidmatousek/tachi/commit/9964a72316db748a702ff996262026b3de05484a))
+
 ## [4.29.0](https://github.com/davidmatousek/tachi/compare/v4.28.0...v4.29.0) (2026-05-05)
 
 
