@@ -72,6 +72,18 @@ TACHI-VULN-851fd6a21ba9 (LOW).
 
 ---
 
+## [4.29.0](https://github.com/davidmatousek/tachi/compare/v4.28.0...v4.29.0) (2026-05-05)
+
+
+### Features
+
+* **256:** harden source-pattern surface — bash source/eval → KV parser + clone timeout ([#257](https://github.com/davidmatousek/tachi/issues/257)) ([f959622](https://github.com/davidmatousek/tachi/commit/f959622d4ce765f68aa55906a12f8c20185c3539))
+
+
+### Bug Fixes
+
+* **250:** permanent CI test process hardening ([#253](https://github.com/davidmatousek/tachi/issues/253)) ([75866d9](https://github.com/davidmatousek/tachi/commit/75866d9662842aff319e66853b2351dd9e95d983))
+
 ## [4.28.0](https://github.com/davidmatousek/tachi/compare/v4.27.1...v4.28.0) (2026-05-04)
 
 
