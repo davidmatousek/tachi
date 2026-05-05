@@ -110,9 +110,19 @@ aod_template_load_kv_file() {
         return 1
     fi
 
-    # ---- Step 2: file existence -----------------------------------------
-    if [ ! -f "$path" ]; then
+    # ---- Step 2: file existence + regular-file check --------------------
+    # `[ ! -e ]` covers truly-absent paths; `[ ! -f ]` rejects sockets,
+    # FIFOs, character/block devices, and directories that would otherwise
+    # blow up later (`cat` on a FIFO would block; `cat` on a directory
+    # exits with "Is a directory" via stderr but Step 3 only inspects
+    # cat's rc + the empty buffer). Splitting the two cases gives the
+    # caller a direct diagnostic for each.
+    if [ ! -e "$path" ]; then
         echo "[aod] ERROR: config file does not exist: $path" >&2
+        return 3
+    fi
+    if [ ! -f "$path" ]; then
+        echo "[aod] ERROR: config path is not a regular file: $path" >&2
         return 3
     fi
 
@@ -142,6 +152,18 @@ aod_template_load_kv_file() {
     _nonnul_size=$(LC_ALL=C tr -d '\000' < "$path" | wc -c)
     if [ "$_raw_size" != "$_nonnul_size" ]; then
         echo "[aod] ERROR: file contains NUL byte (rejected): $path" >&2
+        return 8
+    fi
+
+    # ---- Step 2c: file-size cap (DoS mitigation) ------------------------
+    # Default 64 KiB matches the typical knip.jsonc / personalization.env
+    # ceiling by an order of magnitude. Override via env for one-off cases
+    # (CI fixtures with large allow-list arrays, etc.). The intent is to
+    # bound the memory footprint of the Step 3 `cat` buffer + Step 4 line
+    # iteration on adversarial fixtures (multi-MB "configs").
+    local _max_bytes="${AOD_KV_MAX_BYTES:-65536}"
+    if [ "$_raw_size" -gt "$_max_bytes" ] 2>/dev/null; then
+        echo "[aod] ERROR: config file exceeds AOD_KV_MAX_BYTES=$_max_bytes (size=$_raw_size): $path" >&2
         return 8
     fi
 

@@ -506,6 +506,42 @@ KV_CASES: list[dict] = [
         "expected_stderr_substr": "key_case",
         "marker": "<key_case>=mixed rejected exit 1 (Q-2.5)",
     },
+    # -----------------------------------------------------------------
+    # Case 28: file-size cap — fixture exceeds AOD_KV_MAX_BYTES default
+    # 65536. DoS hardening: caps the Step 3 cat buffer to a reasonable
+    # ceiling for the typical knip.jsonc / personalization.env workloads.
+    # 9000 lines of "K####=v\n" (~72 KB) trips the default cap.
+    # -----------------------------------------------------------------
+    {
+        "id": "case_28_size_cap_returns_8",
+        "fixture": b"".join(
+            f"K{i:04d}=v\n".encode() for i in range(9000)
+        ),
+        "var_prefix": "T_",
+        "allowed_keys": None,
+        "key_case": None,
+        "expected_rc": 8,
+        "expected_assignments": None,
+        "expected_stderr_substr": "AOD_KV_MAX_BYTES",
+        "marker": "fixture > AOD_KV_MAX_BYTES default 65536 → exit 8",
+    },
+    # -----------------------------------------------------------------
+    # Case 29: directory at <path> — the tmp_path itself is passed (it's
+    # a directory, not a regular file). [ ! -f ] catches it and emits a
+    # distinct "not a regular file" diagnostic separate from "does not
+    # exist" so the caller can distinguish the two failure modes.
+    # -----------------------------------------------------------------
+    {
+        "id": "case_29_directory_path_returns_3",
+        "fixture": "__USE_DIRECTORY_PATH__",
+        "var_prefix": "T_",
+        "allowed_keys": None,
+        "key_case": None,
+        "expected_rc": 3,
+        "expected_assignments": None,
+        "expected_stderr_substr": "not a regular file",
+        "marker": "directory <path> → exit 3 with regular-file diagnostic",
+    },
 ]
 
 
@@ -613,6 +649,8 @@ def test_template_config_load(case: dict, tmp_path: Path) -> None:
         fixture_path = ""
     elif case["fixture"] == "__USE_NONEXISTENT_PATH__":
         fixture_path = str(tmp_path / "does_not_exist.env")
+    elif case["fixture"] == "__USE_DIRECTORY_PATH__":
+        fixture_path = str(tmp_path)
     else:
         fixture_path = _write_fixture(tmp_path, case["fixture"])
 
