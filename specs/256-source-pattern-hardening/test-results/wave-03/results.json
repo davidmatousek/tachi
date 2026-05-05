@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "wave": 3,
+  "timestamp": "2026-05-05T13:55:00Z",
+  "test_runner": "BASH=/bin/bash python3 -m pytest tests/scripts/ --tb=line -q",
+  "execution_duration_ms": 385430,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 767, "fail": 16, "skip": 1 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 15,
+    "expected_drift": 1
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [
+    "tests/scripts/test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_agent_citation",
+    "tests/scripts/test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_pattern_category_citation",
+    "tests/scripts/test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_dos_agent_line_count_within_cap",
+    "tests/scripts/test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_model_theft_agent_line_count_within_cap",
+    "tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_model_theft_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_spoofing_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_info_disclosure_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_privilege_escalation_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_repudiation_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestNewPatternCategoriesPresent::test_privilege_escalation_companion_has_M8_priv_gain",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_tool_abuse_line_count_within_cap",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_categories_1_8_byte_identity_against_main",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_validate_source_attribution_on_regen"
+  ],
+  "expected_drift": [
+    "tests/scripts/test_init_sh_substitution.py::test_personalized_tree_bytes_match_baseline"
+  ],
+  "expected_drift_notes": "F-2 legitimately modified 5 stacks/*/defaults.env (added TECH_STACK) + .aod/scripts/bash/template-substitute.sh (eval removal + escape pass removal). The byte-identity baseline needs regeneration before merge — natural place is T056 (Wave 6 final pre-merge verification) or the fixture regen script T045-T046 (Wave 5).",
+  "pre_existing_classification_method": "Re-ran the 15 unrelated failing tests on main (commit 46c61e5 prior to F-2 work) — all 15 fail identically on main. They are independent of F-2 (threat modeling pipeline coverage attestation + line count caps + byte identity assertions on threat-modeling agents)."
+}
