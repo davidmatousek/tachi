@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "feature": "256-source-pattern-hardening",
+  "total_waves": 6,
+  "waves_tested": 2,
+  "waves_skipped": 4,
+  "totals": {
+    "pass": 1535,
+    "fail": 31,
+    "skip": 2
+  },
+  "total_regressions": 0,
+  "coverage_trend": null,
+  "gate_decisions": [
+    { "wave": 3, "decision": "pass" },
+    { "wave": 6, "decision": "pass" }
+  ],
+  "notes": "Waves 1, 2, 4, 5 had no test execution (Wave 1+2 covered by Wave 3 aggregate; Wave 4 was the T044 slip-watch checkpoint with no code changes; Wave 5 had no .py/.ts/.js etc. source code changes — bash + fixtures + markdown only). Waves 3 and 6 ran the full pytest suite. Wave 6 totals (768/15/1) include zero regressions vs Wave 3 baseline (767/16/1); the 1-fail delta resolves an expected drift on test_personalized_tree_bytes_match_baseline (Wave 5 T045 regenerated the byte-identity baseline). The 15 remaining failures are unrelated pre-existing failures on main (threat modeling pipeline coverage attestation + line count caps) — verified pre-existing in Wave 3 results.json."
+}
