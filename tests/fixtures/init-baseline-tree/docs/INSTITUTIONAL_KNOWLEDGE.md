@@ -123,6 +123,57 @@ Captured during structured delivery retrospective. Mid-build CI run `25325616748
 
 ---
 
+### Entry 3: F-256 Source-Pattern Hardening — Delivery Retrospective
+
+## [CI architecture] - Path-filter and pytest invocation must be updated lock-step when adding new test files to a tracked workflow
+
+**Date**: 2026-05-05
+**Feature**: F-256 / F-2 (Source-Pattern Hardening — BLP-02 Wave 2)
+**Category**: CI architecture / workflow drift
+**Severity**: Medium (test files exist but never run in CI; silent gap until next deliver)
+
+### Symptom
+
+PR #257 shipped 5 new pytest test modules (`test_init_sh_defaults_env.py`, `test_template_config_load_unit.py`, `test_template_config_load_integration.py`, `test_template_git_clone_timeout.py`, `test_template_substitute_lint_no_eval.py`) and 1 new bash helper (`.aod/scripts/bash/template-config-load.sh`) but did NOT update `.github/workflows/tachi-pytest.yml` to wire them into the workflow. The path-filter trigger list and the `python -m pytest ...` invocation both omitted every F-256 file. Build waves passed locally and on PR CI (because the original F-248 file paths were touched, triggering the workflow on the F-248 test set), but the F-256-specific tests would not have run on subsequent PRs that touched only F-256 files. Caught at `/aod.deliver` Step 3 by the devops agent.
+
+### Root Cause (5 Whys validated)
+
+The `tachi-pytest.yml` workflow uses a narrow `paths:` filter (NFR-005 alignment + scope discipline) to avoid burning CI minutes on doc-only edits. When F-256 added a fifth call site (the canonical KV-load primitive), neither the spec/plan/tasks artifacts nor the build waves required that the workflow file be updated as part of the feature. The implicit assumption was "the existing path filter catches the F-256 surface" — partially true (`scripts/init.sh` and `.aod/scripts/bash/template-substitute.sh` are listed), but the new test modules and the new helper file are NOT listed. Lock-step parity between `paths:` and the pytest invocation was an undocumented invariant — F-250 fixed it for the F-248 surface but did not generalize the rule.
+
+### Solution
+
+**Immediate (this delivery)**: devops agent updated `tachi-pytest.yml` during `/aod.deliver` Step 3 to add (a) all 5 F-256 test files + the new helper to the `paths:` filter, (b) `stacks/*/defaults.env` glob (F-256 Site A whitelist surface), (c) the F-256 fixture directories, and (d) all 5 F-256 test modules to the `python -m pytest` invocation. Header comment generalizes the lock-step invariant explicitly: *"when adding a new test file or refactoring a new bash library file, update BOTH the `paths:` trigger list AND the `python -m pytest ...` command in the same commit."*
+
+**Long-term**: future features that add tests covered by an existing tracked workflow should treat the workflow file as a first-class spec artifact. Either (a) name the workflow file in tasks.md as a required edit during the test-authoring task, or (b) add a pre-merge pytest-discovery diff check that asserts every `tests/scripts/test_*.py` referenced by the spec also appears in the pytest invocation of every workflow whose path-filter could match the test file's source-of-truth.
+
+### Prevention
+
+1. **Diagnostic question for any feature that adds tests**: which CI workflows track this code? For each, is the new test file in the `paths:` filter AND the runner invocation? Treat both as one atomic edit.
+
+2. **Pattern**: a `paths:` filter and the runner invocation it gates are coupled. Adding files to one without the other creates a silent gap (path-filter-only addition: tests run but never trigger; invocation-only addition: tests trigger but never run). Both must be in lock-step.
+
+3. **Spec/plan ergonomics**: when a feature adds a new test module covered by an existing workflow, the tasks.md test-authoring task should explicitly enumerate the workflow file edits as a sub-step, not leave it implicit.
+
+4. **Workflow header comments matter**: the F-248 `tachi-pytest.yml` header comment was already informative (NFR-001 bash compatibility, F-250 timeout lock-step). Adding the lock-step parity rule to the header makes future additions self-documenting — devops noticed during `/aod.deliver` because the existing header signaled the invariant intent.
+
+### Related Files
+
+- `.github/workflows/tachi-pytest.yml` (the workflow file fixed)
+- `specs/256-source-pattern-hardening/tasks.md` (the build plan that omitted the workflow edit)
+- `tests/scripts/test_template_config_load_unit.py` + 4 sibling test modules (the affected tests)
+- `.aod/scripts/bash/template-config-load.sh` (the affected helper)
+- `docs/architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md` (F-256 ADR — references the test surface)
+- F-250 lock-step ancestry: `specs/250-adversarial-unit-extraction-hotfix/spec.md` (where the lock-step invariant was first surfaced for F-248)
+
+### Cross-References
+
+- **Sibling**: Entry 1 (F-248) — F-256 inherits the same source-pattern-hardening pattern (Site A-D refactor) but introduces a new helper file class (canonical KV-load primitive). The lock-step invariant generalizes from F-250's hot-fix scope.
+- **Ancestor**: Entry 2 (F-250) — F-250 fixed lock-step for the F-248 surface (`paths:` + pytest invocation parity). F-256 demonstrates the rule needed generalization, not just per-feature application.
+- **Pattern class**: "CI workflow drift across features that share a tracked surface" — Entries 1, 2, 3 all involve the same workflow (`tachi-pytest.yml`). Each successive feature reveals a new way the workflow can drift; each retrospective tightens the invariant. F-256's lesson promotes the rule from a per-incident fix to a documented pre-merge check.
+- **Pattern**: "agent-accelerated build compresses estimated 9.5d to ~1d wall-clock" — F-256's ~1-day delivery against a 9.5d PRD estimate is an artifact of the agent-orchestrated build cadence (parallel waves, automated test authoring, multi-stream gating). Future PRD timeline estimates should distinguish "agent-orchestrated wall-clock" from "human-equivalent engineering effort."
+
+---
+
 ## Bug Fixes
 
 *No entries yet. Use `/kb-create` to add the first bug fix.*

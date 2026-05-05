@@ -136,11 +136,11 @@ In `--all` mode the script exits with the **numerically lowest non-zero code** a
 
 **Feature 142 Update (2026-04-23)**: The workflow itself (`.github/workflows/stack-contract.yml`) and the validator (`.aod/scripts/bash/stack-contract-lint.sh`) are **unchanged** by F142 (PR #151) — the exit-code contract (0–5) was already strict as of F130. F142 only removes the grace-period fallback that previously lived inside `/aod.deliver` Step 9a, which translated a lint exit 5 (MISSING_BLOCK) into a silent skip. Post-F142, `/aod.deliver` surfaces exit 5 as an explicit error with the lint stderr diagnostic shown verbatim in the delivery report. **Effective impact on CI consumers**: any pipeline that parses delivery.md rendered by `/aod.deliver` should read `e2e_validation.status` (`error` vs. `skipped` vs. `success`) from the payload rather than pattern-matching grace-period language in the human-readable rendering. The stack-contract CI workflow continues to fail any PR that would have tripped its exit 5 anyway — F142 closes the same gap at the `/aod.deliver` boundary for branches not guarded by the CI workflow. PRD: `docs/product/02_PRD/142-remove-grace-period-fallback-2026-04-23.md`.
 
-### Tachi Pytest Workflow (F-248)
+### Tachi Pytest Workflow (F-248 + F-250 + F-256)
 
-**Added in Feature 248** (Substitution Surface Hardening), merged via PR #249 (squash commit `6db9a25`) on 2026-05-04.
+**Added in Feature 248** (Substitution Surface Hardening), merged via PR #249 (squash commit `6db9a25`) on 2026-05-04. Re-tuned and re-scoped by Feature 250 (PR #253, squash `75866d9`) on 2026-05-04 (timeouts + session-scoped fixture). Extended by Feature 256 (PR #257, squash `f959622`) on 2026-05-05 to cover the source-pattern-hardening surface.
 
-`.github/workflows/tachi-pytest.yml` runs the F-248 init.sh substitution test suite on a 2-runner cross-platform matrix (`macos-latest` + `ubuntu-latest`) to catch bash-version regressions in `scripts/init.sh`, `.aod/scripts/bash/template-substitute.sh`, `.aod/scripts/bash/init-input.sh`, and the constitution templates. The macOS leg is the strictest gate because it ships bash 3.2.57 (Apple's bundled `/bin/bash`, GPLv3-pinned) — a green macOS run on top of a green Ubuntu run proves the substitution surface is portable, not bash-3.2-quirk-locked.
+`.github/workflows/tachi-pytest.yml` runs the combined F-248 substitution test suite + F-256 source-pattern-hardening test suite on a 2-runner cross-platform matrix (`macos-latest` + `ubuntu-latest`) to catch bash-version regressions across the full bash surface area: `scripts/init.sh`, `.aod/scripts/bash/template-substitute.sh`, `.aod/scripts/bash/init-input.sh`, `.aod/scripts/bash/template-git.sh`, `.aod/scripts/bash/template-config-load.sh` (F-256 canonical KV-load primitive), the constitution templates, and the shipped stack-pack `defaults.env` files (F-256 Site A whitelist surface). The macOS leg is the strictest gate because it ships bash 3.2.57 (Apple's bundled `/bin/bash`, GPLv3-pinned) — a green macOS run on top of a green Ubuntu run proves the entire hardening surface is portable, not bash-3.2-quirk-locked.
 
 | Property | Value |
 |----------|-------|
@@ -155,17 +155,30 @@ In `--all` mode the script exits with the **numerically lowest non-zero code** a
 | Job ID | `init-sh-suite` |
 | Job name | `pytest init.sh suite — ${{ matrix.os }}` |
 
-**Test files covered** (20 substitution-suite tests per ADR-038 §Test Coverage — 8 substitution + 4 rejection + 1 case-13 + 1 residual + 1 constitution + 3 self-delete + 2 fixture-replay; plus the 3 F-250 unit modules listed below):
+**Test files covered** (F-248 substitution suite + F-250 unit modules + F-256 source-pattern-hardening suite, all wired into the same pytest invocation per the path-filter completeness pattern):
+
+F-248 substitution suite (per ADR-038 §Test Coverage — 8 substitution + 4 rejection + 1 case-13 + 1 residual + 1 constitution + 3 self-delete + 2 fixture-replay = 20 tests):
 
 - `tests/scripts/test_init_sh_substitution.py`
 - `tests/scripts/test_init_sh_adversarial.py`
 - `tests/scripts/test_init_sh_constitution.py`
 - `tests/scripts/test_init_sh_self_delete.py`
-- `tests/scripts/test_template_substitute_unit.py` (F-250 — sub-second unit cases)
-- `tests/scripts/test_init_input_unit.py` (F-250 — sub-second unit cases)
-- `tests/scripts/test_substitute_shim_canary.py` (F-250 — sub-second canary)
 
-**Path filter (NFR-005 — scope discipline)**: The workflow ONLY fires when files in the F-248 substitution surface change. Pure docs edits, ADR text, or unrelated agent-tier changes do NOT trigger this job. Mirrors the narrow-scope pattern of `tachi-mmdc-preflight.yml` and avoids burning CI minutes on edits that cannot affect substitution behaviour. The complete trigger set is:
+F-250 unit modules (sub-second per case — adversarial extraction + canary):
+
+- `tests/scripts/test_template_substitute_unit.py`
+- `tests/scripts/test_init_input_unit.py`
+- `tests/scripts/test_substitute_shim_canary.py`
+
+F-256 source-pattern-hardening suite (per ADR-040 §Test Coverage — Sites A-D + Stream 4 watchdog + lint guard):
+
+- `tests/scripts/test_init_sh_defaults_env.py` — Site A integration: `scripts/init.sh` against `stacks/*/defaults.env` (positive packs + malicious-pack rejection + missing-key rejection)
+- `tests/scripts/test_template_config_load_unit.py` — Canonical `aod_template_load_kv_file` primitive surface (29 parametrized cases — comments, blanks, trailing newline, NUL-byte rejection, key-case enforcement, allowlist enforcement, indirect array access)
+- `tests/scripts/test_template_config_load_integration.py` — Full-library round-trip: writer-reader semantic equivalence with the deprecated `source` pattern across personalization-env + aod-kit-version + defaults.env fixtures
+- `tests/scripts/test_template_git_clone_timeout.py` — Stream 4 watchdog + `AOD_FETCH_TIMEOUT` adopter env-var contract (hanging-upstream timeout, validation-rejection footguns, fast-clone happy-path + zombie-watchdog assertion)
+- `tests/scripts/test_template_substitute_lint_no_eval.py` — Lint guard: asserts post-F-256 `template-substitute.sh` contains zero `eval` invocations (closes TACHI-VULN-9a7512071b4a regression-resistance)
+
+**Path filter (NFR-005 — scope discipline)**: The workflow ONLY fires when files in the combined F-248 substitution surface + F-256 source-pattern surface change. Pure docs edits, ADR text, or unrelated agent-tier changes do NOT trigger this job. Mirrors the narrow-scope pattern of `tachi-mmdc-preflight.yml` and avoids burning CI minutes on edits that cannot affect substitution or config-loading behaviour. The complete trigger set is:
 
 ```yaml
 paths:
@@ -174,9 +187,11 @@ paths:
   - .aod/scripts/bash/template-substitute.sh
   - .aod/scripts/bash/template-validate.sh
   - .aod/scripts/bash/template-git.sh
+  - .aod/scripts/bash/template-config-load.sh   # F-256
   - .aod/templates/constitution-clean.md
   - .aod/templates/constitution-instructional.md
   - .aod/template-manifest.txt
+  - stacks/*/defaults.env                       # F-256 — Site A whitelist surface
   - tests/scripts/test_init_sh_substitution.py
   - tests/scripts/test_init_sh_adversarial.py
   - tests/scripts/test_init_sh_constitution.py
@@ -184,14 +199,21 @@ paths:
   - tests/scripts/test_template_substitute_unit.py    # F-250
   - tests/scripts/test_init_input_unit.py             # F-250
   - tests/scripts/test_substitute_shim_canary.py      # F-250
+  - tests/scripts/test_init_sh_defaults_env.py            # F-256
+  - tests/scripts/test_template_config_load_unit.py       # F-256
+  - tests/scripts/test_template_config_load_integration.py # F-256
+  - tests/scripts/test_template_git_clone_timeout.py      # F-256
+  - tests/scripts/test_template_substitute_lint_no_eval.py # F-256
   - tests/scripts/init_sh_helpers.py
   - tests/scripts/conftest.py
   - tests/fixtures/init-baseline-tree/**
   - tests/fixtures/regenerate-baseline.sh
+  - tests/fixtures/regenerate-config-load-baseline.sh     # F-256
+  - tests/fixtures/config-load/**                         # F-256
   - .github/workflows/tachi-pytest.yml
 ```
 
-**Path-filter completeness pattern (F-250 lesson)**: The `paths:` filter and the `pytest` invocation MUST be kept in lock-step. F-250 hot-fixed an asymmetry where 3 unit modules were added to the test invocation but omitted from `paths:`, so edits scoped to those modules silently bypassed CI. When adding a new test file to the suite, update BOTH the `paths:` trigger list AND the `python -m pytest ...` command in the same commit — and verify the file appears in both.
+**Path-filter completeness pattern (F-250 lesson, reinforced by F-256)**: The `paths:` filter and the `pytest` invocation MUST be kept in lock-step. F-250 hot-fixed an asymmetry where 3 unit modules were added to the test invocation but omitted from `paths:`, so edits scoped to those modules silently bypassed CI. F-256 added 5 new test modules + 1 new bash library file (`template-config-load.sh`) + a new fixture tree (`tests/fixtures/config-load/`) — all wired through both the trigger list and the pytest invocation in a single commit. When adding a new test file or library file in future work, update BOTH the `paths:` trigger list AND the `python -m pytest ...` command in the same commit — and verify the file appears in both.
 
 Edits to other shell scripts, agent files, ADRs, or documentation will not invoke this workflow even if the PR also includes substitution-surface changes — GitHub Actions evaluates the path filter at the PR level, so the workflow fires when at least one matching path is in the diff.
 
@@ -245,7 +267,11 @@ python -m pytest \
 
 On dev hardware the suite finishes in ~3-4 minutes (vs. the 5-7 minute cold-cache band on `macos-latest`). The 1080s `--timeout` is sized for the worst-case CI runner, not for local; on a fast workstation, no test approaches the cap.
 
-**Full contract**: `specs/248-substitution-surface-hardening/spec.md` (FR-001..FR-011, NFR-001 bash floor, NFR-005 scope discipline). F-250 hot-fix: `specs/250-adversarial-unit-extraction-hotfix/spec.md`. ADR: `docs/architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md`. Tasks T039 (workflow authoring) + T040 (CI matrix verification) + T041 (close-out attestation) for F-248; F-250 tasks T001-T029 for the hot-fix.
+**Full contract**: `specs/248-substitution-surface-hardening/spec.md` (FR-001..FR-011, NFR-001 bash floor, NFR-005 scope discipline). F-250 hot-fix: `specs/250-adversarial-unit-extraction-hotfix/spec.md`. F-256 source-pattern hardening: `specs/256-source-pattern-hardening/spec.md` (FR-1..FR-9, NFR-1..NFR-6, SC-1..SC-15). ADRs: `docs/architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md` (F-248) + `docs/architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md` (F-256). Tasks T039 (workflow authoring) + T040 (CI matrix verification) + T041 (close-out attestation) for F-248; F-250 tasks T001-T029 for the hot-fix; F-256 covers Sites A-D + Stream 4 (T014-T041) + Stream 5 lint (T046).
+
+### F-256 Adopter-Facing Environment Variable
+
+F-256 introduces one adopter-facing environment variable, `AOD_FETCH_TIMEOUT`, read by `.aod/scripts/bash/template-git.sh:98` to bound `git clone` wall-clock cost during `/aod.update` / `make update`. Default 60 seconds; positive-integer validation against `^[1-9][0-9]*$` (rejects `0`, leading-zero forms, non-numeric values); exit `9` on timeout (with partial-checkout cleanup), exit `1` on invalid value. Full contract — including the watchdog process-leak invariant and the Q-3 footgun-rejection ruling — is documented in `docs/devops/environment-variables.md` → "F-256 Source-Pattern-Hardening Adopter Variable".
 
 ---
 
