@@ -365,7 +365,7 @@ triad:
 
 **CRITICAL**: T044 Day-5 slip-watch is the named conversion-lever decision point per plan §Critical Path. T053 ADR-040 Accepted promotion folds in Stream 1 benchmark numbers from T013.
 
-- [ ] T044 Day-5 slip-watch checkpoint (Mon 2026-05-11 EOD) — verify all 4 GREEN-LIGHT conditions per plan §Day-5 Slip-Watch Checkpoint:
+- [X] T044 Day-5 slip-watch checkpoint (Mon 2026-05-11 EOD) — verify all 4 GREEN-LIGHT conditions per plan §Day-5 Slip-Watch Checkpoint:
   Condition 1 — `pytest tests/scripts/test_template_config_load_unit.py -v` ≥17/17 cases pass on macos-latest CI (T011/T012);
   Condition 2 — Site A green on Linux (T019);
   Condition 3 — ADR-040 Proposed committed (T042);

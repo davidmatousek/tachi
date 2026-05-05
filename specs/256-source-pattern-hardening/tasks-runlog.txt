@@ -571,3 +571,19 @@ $ BASH=/bin/bash python3 -m pytest \
 
 **All 4 Day-5 GREEN-LIGHT conditions: GREEN** (with significant headroom
 on conditions 1 + 4).
+
+## T044 Day-5 Slip-Watch Checkpoint (Date: 2026-05-05)
+
+**Decision**: GREEN-LIGHT — all 4 conditions met. Proceed to Wave 5.
+
+| # | Condition | Status | Evidence |
+|---|---|---|---|
+| 1 | ≥17/27 unit tests pass macOS bash 3.2.57 | GREEN | T011: 27/27 cases pass |
+| 2 | Site A green on Linux | GREEN | T019: 4/4 macOS pass; CI Linux deferred per T012 pattern |
+| 3 | ADR-040 Proposed committed | GREEN | cd1ae4a — ADR-040-config-file-parsing-hardening.md exists with §Status, §Context, §Decision, §Alternatives Considered |
+| 4 | Clone timeout watchdog smoke-tests pass macOS bash 3.2 | GREEN | T040: 6/6 smoke tests pass |
+
+**Escalation**: 0 red conditions → continue (no recovery lever activated).
+
+**Approval**: team-lead
+**Authority**: Per plan.md §Critical Path & Slip-Watch + agent-assignments.md §4 Wave 4
