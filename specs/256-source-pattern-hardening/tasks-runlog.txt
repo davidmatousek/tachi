@@ -477,3 +477,46 @@ to CI per T012 pattern.
 trap eliminates watchdog process-leak window.
 
 **Day-5 slip-watch GREEN-LIGHT condition 4: GREEN.**
+
+## Wave 3 Stream 3: ADR-040 Proposed (T042-T043, Date: 2026-05-05)
+
+**Files added**:
+- `docs/architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md` —
+  Status: Proposed (first commit per Q-6 dual-commit pattern). Sections:
+  - Status (Proposed) + dual-commit lifecycle marker
+  - Context (4 source/eval sites enumerated; F-1 ADR-038 precedent;
+    LinkedIn web archive snapshot URL)
+  - Decision Items 1-7:
+    1. Pattern: replace caller-side bash source/eval with library invocation
+       (Step 2b NUL pre-check mechanism clarification documented)
+    2. Regex: upper/lower mode with B-1 `*` quantifier
+    3. Q-1 ruling: single-PR delivery (no F-2/F-2b split unless slip-watch fires)
+    4. Q-3 ruling: AOD_FETCH_TIMEOUT=0 rejected as footgun
+    5. H-2 TOCTOU framing: single-cat-into-buffer collapses race to ~1 syscall
+    6. F-1 contract amendment per B-2 Path R-2 (lands in F-2's PR)
+    7. Internal eval carve-out: ONE invocation in library Step 6 prep for
+       bash 3.2 indirect array access (audit-clarity rationale)
+  - Alternatives Considered (6): JSON, TOML, point-fixes, set -r, bash -r -c,
+    source-then-declare-p diff (M-5)
+  - Consequences:
+    - One canonical pattern; bash 3.2 preserved; 5 vuln_ids closed
+    - Performance disposition: per-file p50 deltas table populated from T013
+      benchmark numbers; methodology asymmetry note documented; cost
+      decomposition recorded; awk micro-opt rejected; PM Q-5 Option a
+      disposition pending T054 finalization
+    - NUL-byte mechanism clarification (folds into Decision Item 1 at T054)
+    - TOCTOU residual race window framing per H-2
+    - F-1 contract amendment relationship + adopter migration guidance
+  - Related Findings (5 vuln_ids: 6f5a95085056 HIGH, bf5496e9fcdf HIGH,
+    9a7512071b4a MEDIUM, 4dc6cf8f88ea MEDIUM, 851fd6a21ba9 LOW)
+  - References (LinkedIn web archive URL placeholder, F-1 ADR-038, F-250 ADR-039)
+  - Placeholder marker `[BENCHMARK NUMBERS — full p95/cold-cache table folded
+    in at T054]` for the post-T054 fold-in
+
+**T043 PR title verification**:
+- `gh pr view 257 --json title --jq .title` returns:
+  `feat(256): harden source-pattern surface — bash source/eval → KV parser + clone timeout`
+- Verified Conventional-Commits format (FR-008 AC-8.1 satisfied).
+
+**Day-5 slip-watch GREEN-LIGHT condition 3: GREEN** (ADR-040 Proposed
+committed; §Context + §Decision + §Alternatives Considered drafted).

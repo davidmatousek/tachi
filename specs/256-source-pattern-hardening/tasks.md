@@ -347,13 +347,13 @@ triad:
 
 ### Implementation for Stream 3
 
-- [ ] T042 [US6] Author `docs/architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md` first commit (Status: Proposed) per Q-6 dual-commit pattern. Sections per FR-007 + plan §Stream 3:
+- [X] T042 [US6] Author `docs/architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md` first commit (Status: Proposed) per Q-6 dual-commit pattern. Sections per FR-007 + plan §Stream 3:
   Status (Proposed); Context (4 source/eval sites + F-1 precedent + LinkedIn note); Decision Items 1-7 (pattern; regex; Q-1 single-PR; Q-3 footgun; H-2 TOCTOU framing; F-1 amendment per B-2 Path R-2; internal eval carve-out per ADR-040 Decision Item 7);
   Alternatives Considered (6 alternatives — JSON, TOML, point-fixes, set -r, bash -r -c, source-then-declare-p-diff per M-5);
   Consequences (one canonical pattern; bash 3.2 preserved; perf benchmark per SC-010 with canonical fixture set + methodology; awk micro-opt rejected; ADR-038 relationship; F-1 contract amendment;
   TOCTOU residual race window framing);
   Related findings (5 vuln_ids); References (LinkedIn web archive snapshot URL, F-1 ADR-038, F-250 ADR-039)
-- [ ] T043 [US6] Verify PR #257 title: `gh pr view 257 --json title --jq .title` returns `feat(256): harden source-pattern surface — bash source/eval → KV parser + clone timeout`. If not, retitle via `gh pr edit 257 --title "..."` (per FR-008 AC-8.1)
+- [X] T043 [US6] Verify PR #257 title: `gh pr view 257 --json title --jq .title` returns `feat(256): harden source-pattern surface — bash source/eval → KV parser + clone timeout`. If not, retitle via `gh pr edit 257 --title "..."` (per FR-008 AC-8.1)
 
 **Checkpoint**: ADR-040 Proposed (first commit) committed; PR title verified. Day-5 slip-watch GREEN-LIGHT condition 3 met (ADR-040 §Context + §Decision + §Alternatives Considered drafted).
 
