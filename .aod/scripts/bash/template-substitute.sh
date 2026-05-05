@@ -323,8 +323,13 @@ aod_template_substitute_placeholders() {
     if [ -s "$src" ]; then
         local last_byte
         last_byte="$(tail -c 1 "$src" 2>/dev/null | od -An -c 2>/dev/null | tr -d ' ' || true)"
+        # `od -An -c` renders a trailing newline byte as the two characters
+        # backslash-n. The pattern `*\\n*` matches that literal sequence in
+        # the bash glob context (single-quoted `*'\n'*` is equivalent — both
+        # match a literal backslash followed by `n`; ShellCheck SC2221/SC2222
+        # flagged the original duplicate).
         case "$last_byte" in
-            *\\n*|*'\n'*)
+            *\\n*)
                 src_had_trailing_newline=1
                 ;;
         esac

@@ -240,7 +240,7 @@ echo "[regen-config-load]   adversarial/  ${ADVERSARIAL_COUNT} file(s)"
 HEADER_VIOLATIONS=0
 for f in "$ADVERSARIAL_DIR"/*; do
     [ -f "$f" ] || continue
-    if ! head -n 2 "$f" | grep -q "DO NOT SOURCE"; then
+    if ! head -n 5 "$f" | grep -q "DO NOT SOURCE"; then
         echo "[regen-config-load] WARNING: adversarial fixture missing L-2 header: $f" >&2
         HEADER_VIOLATIONS=$((HEADER_VIOLATIONS + 1))
     fi

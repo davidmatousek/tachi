@@ -127,9 +127,19 @@ aod_template_load_kv_file() {
     # is bash 3.2 + BSD coreutils compatible (no `grep -q $'\x00'` which
     # silently matches everywhere because bash collapses an embedded
     # NUL in argv to an empty string).
+    #
+    # `LC_ALL=C` pins byte-counting (not character-counting) semantics on
+    # `wc -c`. In multibyte locales, `wc -c` is platform-dependent — the C
+    # locale guarantees a portable byte count across macOS BSD coreutils
+    # and Linux GNU coreutils.
+    #
+    # The redirect form `wc -c < "$path"` (vs `wc -c "$path"` with a
+    # filename argument) emits only the count without leading whitespace
+    # or the filename suffix on both BSD and GNU coreutils — no `tr -d`
+    # post-processing required.
     local _raw_size _nonnul_size
-    _raw_size=$(LC_ALL=C wc -c < "$path" | tr -d ' ')
-    _nonnul_size=$(LC_ALL=C tr -d '\000' < "$path" | wc -c | tr -d ' ')
+    _raw_size=$(LC_ALL=C wc -c < "$path")
+    _nonnul_size=$(LC_ALL=C tr -d '\000' < "$path" | wc -c)
     if [ "$_raw_size" != "$_nonnul_size" ]; then
         echo "[aod] ERROR: file contains NUL byte (rejected): $path" >&2
         return 8
