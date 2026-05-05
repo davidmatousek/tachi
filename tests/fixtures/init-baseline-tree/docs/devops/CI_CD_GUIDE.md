@@ -150,17 +150,20 @@ In `--all` mode the script exits with the **numerically lowest non-zero code** a
 | Python version | 3.11 (matches `tachi-mmdc-preflight.yml` baseline) |
 | Permissions | `contents: read` |
 | Pip dependencies | `pytest>=8`, `pytest-timeout>=2`, `pyyaml>=6` |
-| Inner subprocess timeout | 300s (in `tests/scripts/init_sh_helpers.run_init_in_clone`) |
-| Outer pytest timeout | 360s (per-test wall-clock cap, ~60s fixture-teardown slack) |
+| Inner subprocess timeout | 900s (in `tests/scripts/init_sh_helpers.run_init_in_clone`, F-250) |
+| Outer pytest timeout | 1080s (per-test wall-clock cap, ~180s fixture-teardown slack, F-250) |
 | Job ID | `init-sh-suite` |
 | Job name | `pytest init.sh suite — ${{ matrix.os }}` |
 
-**Test files covered** (20 tests total per ADR-038 §Test Coverage — 8 substitution + 4 rejection + 1 case-13 + 1 residual + 1 constitution + 3 self-delete + 2 fixture-replay):
+**Test files covered** (20 substitution-suite tests per ADR-038 §Test Coverage — 8 substitution + 4 rejection + 1 case-13 + 1 residual + 1 constitution + 3 self-delete + 2 fixture-replay; plus the 3 F-250 unit modules listed below):
 
 - `tests/scripts/test_init_sh_substitution.py`
 - `tests/scripts/test_init_sh_adversarial.py`
 - `tests/scripts/test_init_sh_constitution.py`
 - `tests/scripts/test_init_sh_self_delete.py`
+- `tests/scripts/test_template_substitute_unit.py` (F-250 — sub-second unit cases)
+- `tests/scripts/test_init_input_unit.py` (F-250 — sub-second unit cases)
+- `tests/scripts/test_substitute_shim_canary.py` (F-250 — sub-second canary)
 
 **Path filter (NFR-005 — scope discipline)**: The workflow ONLY fires when files in the F-248 substitution surface change. Pure docs edits, ADR text, or unrelated agent-tier changes do NOT trigger this job. Mirrors the narrow-scope pattern of `tachi-mmdc-preflight.yml` and avoids burning CI minutes on edits that cannot affect substitution behaviour. The complete trigger set is:
 
@@ -178,6 +181,9 @@ paths:
   - tests/scripts/test_init_sh_adversarial.py
   - tests/scripts/test_init_sh_constitution.py
   - tests/scripts/test_init_sh_self_delete.py
+  - tests/scripts/test_template_substitute_unit.py    # F-250
+  - tests/scripts/test_init_input_unit.py             # F-250
+  - tests/scripts/test_substitute_shim_canary.py      # F-250
   - tests/scripts/init_sh_helpers.py
   - tests/scripts/conftest.py
   - tests/fixtures/init-baseline-tree/**
@@ -185,34 +191,61 @@ paths:
   - .github/workflows/tachi-pytest.yml
 ```
 
+**Path-filter completeness pattern (F-250 lesson)**: The `paths:` filter and the `pytest` invocation MUST be kept in lock-step. F-250 hot-fixed an asymmetry where 3 unit modules were added to the test invocation but omitted from `paths:`, so edits scoped to those modules silently bypassed CI. When adding a new test file to the suite, update BOTH the `paths:` trigger list AND the `python -m pytest ...` command in the same commit — and verify the file appears in both.
+
 Edits to other shell scripts, agent files, ADRs, or documentation will not invoke this workflow even if the PR also includes substitution-surface changes — GitHub Actions evaluates the path filter at the PR level, so the workflow fires when at least one matching path is in the diff.
 
 **pyyaml dependency**: `tests/scripts/conftest.py` imports `yaml` at module scope. The dependency is cross-suite — shared with the BLP-01 + F-241 detection-agent attestation tests that load `schemas/finding.yaml` and `.claude/agents/tachi/*.yml` schemas. Bumping `pyyaml` in this workflow MUST be coordinated with those suites.
 
 **Baseline fixture**: `tests/fixtures/init-baseline-tree/` contains the canonical post-init filesystem snapshot that `test_init_sh_substitution.py` and `test_init_sh_adversarial.py` diff against. The accompanying `tests/fixtures/regenerate-baseline.sh` script is the **only** supported way to regenerate the baseline — it pins the deterministic substitution inputs (`AOD_RATIFICATION_DATE_OVERRIDE`, `AOD_CURRENT_DATE_OVERRIDE`) and drives `scripts/init.sh` against a clean clone. Run it whenever the canonical placeholder set expands (e.g., new `{{...}}` token added) or upstream template content additions land. See `docs/devops/environment-variables.md` for the full env-var contract.
 
-**Performance characteristics (macOS leg)**: macOS runners take 30–40 minutes per CI invocation due to bash 3.2.57 forking overhead on arm64 — significantly slower than the Ubuntu leg's bash 5.x reference run. A flake was observed at the 300s subprocess timeout during F-248 close-out (Issue #250 covers a hot-patch landing same-day). The tuned 300s inner / 360s outer timeout pair leaves ~60s of fixture-teardown headroom on the slowest observed runs while keeping unrelated regressions visible as timeouts rather than masking them with overly generous caps.
+**Performance characteristics (macOS leg)**: macOS runners are notoriously ~3-4× slower than dev hardware for arm64 bash work — a single `scripts/init.sh` invocation that takes ~140-175s on a developer workstation can take ~560-700s cold-cache on `macos-latest` at the 4× worst-case multiplier. F-248 originally tuned a 300s/360s inner/outer pair that worked on the Ubuntu leg but flaked the macOS leg during close-out. F-250 (PR #253, 2026-05-04) re-tuned the timeout budget and restructured the fixture topology to fit the observed cold-cache budget without masking real regressions.
 
-**F-248 closeout (2026-05-04)**: PR #249 merged via admin-override squash-merge. Ubuntu leg passed green; macOS leg tripped the timeout flake during the final pre-merge run. The decision to merge despite the flake (vs. blocking on a deterministic green) was scoped to F-248 close-out and is followed up by Issue #250's perf hot-patch. The flake is **observed**, **bounded**, and **non-falsifying** — the underlying substitution behaviour was verified green on multiple prior runs, and the timeout is a CI-runner cost, not a substitution-surface defect.
+**F-250 timeout philosophy (current)**: The timeout pair is sized to the slowest reasonable cold-cache scenario plus deliberate slack, NOT the fastest happy-path scenario.
+
+| Layer | Value | Rationale |
+|-------|-------|-----------|
+| Inner subprocess (`run_init_in_clone(timeout_sec=)` default) | 900s | Caps a single `scripts/init.sh` invocation. Headroom over the 560-700s observed worst case so that the timeout fires only on a genuine hang, not on cold-cache compounding. |
+| Outer pytest (`--timeout=1080`) | 1080s | Per-test wall-clock cap = inner cap + ~180s fixture-teardown slack. Aligns with the inner cap so a subprocess timeout surfaces as the inner exception (preserving diagnostic stderr) before the outer cap fires. |
+
+The 1080s outer cap is intentional: it MUST be > the inner 900s cap to ensure the helper's `subprocess.TimeoutExpired` raises with stderr captured rather than being preempted by a pytest-level timeout that drops the subprocess output.
+
+**F-250 fixture restructure**: F-248 originally declared the `init_run` fixture at module scope across 5 separate test modules — every module paid the cold-cache cost on first use, summing to 5×300s+ on the macOS leg. F-250 promoted `init_run` to a session-scoped fixture in `tests/scripts/conftest.py` so the macOS cold-cache cost is paid ONCE per pytest session instead of once per module. Combined with the new timeout budget, observed wall time on the macOS leg dropped from the 30-40 minute band into a 5-7 minute band on the post-merge CI run.
+
+**KPIs observed on PR #253 (F-250 merge run, 2026-05-04)**:
+
+| Runner | Wall time | Status | Baseline (pre-F-250) |
+|--------|-----------|--------|----------------------|
+| `ubuntu-latest` | 1m29s | green | unchanged |
+| `macos-latest` | 5m19s | green | 30-40 min flaky band |
+
+Both legs green on first attempt; release-please PR #254 auto-opened ~35s post-merge. The macos-latest run is now well under the 15-minute target informally adopted as the upper bound for CI-test feedback loop tolerance.
+
+**F-248 closeout addendum (now superseded by F-250)**: F-248 PR #249 merged via admin-override squash-merge with the macOS leg flaking on the 300s timeout. F-250 — landed same day — converts that scoped exception back into a deterministic green by re-budgeting the timeouts and restructuring the fixture topology. The substitution surface itself was never the regression; the CI-runner cost was.
 
 **Diagnostic step** — every run prints `bash --version` for both `/bin/bash` and the default `bash` so the macOS 3.2 vs. Ubuntu 5.x split is visible in CI logs without parsing the matrix metadata.
 
-**Local invocation** (matches CI exactly):
+**Local invocation** (matches CI exactly post-F-250):
 
 ```bash
 # Install dependencies (matches CI versions)
 python -m pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
 
-# Run the full F-248 suite
+# Run the full F-248 substitution suite plus the F-250 unit modules
 python -m pytest \
   tests/scripts/test_init_sh_substitution.py \
   tests/scripts/test_init_sh_adversarial.py \
   tests/scripts/test_init_sh_constitution.py \
   tests/scripts/test_init_sh_self_delete.py \
-  -v --timeout=360
+  tests/scripts/test_template_substitute_unit.py \
+  tests/scripts/test_init_input_unit.py \
+  tests/scripts/test_substitute_shim_canary.py \
+  -v --timeout=1080
 ```
 
-**Full contract**: `specs/248-substitution-surface-hardening/spec.md` (FR-001..FR-011, NFR-001 bash floor, NFR-005 scope discipline). ADR: `docs/architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md`. Tasks T039 (workflow authoring) + T040 (CI matrix verification) + T041 (close-out attestation).
+On dev hardware the suite finishes in ~3-4 minutes (vs. the 5-7 minute cold-cache band on `macos-latest`). The 1080s `--timeout` is sized for the worst-case CI runner, not for local; on a fast workstation, no test approaches the cap.
+
+**Full contract**: `specs/248-substitution-surface-hardening/spec.md` (FR-001..FR-011, NFR-001 bash floor, NFR-005 scope discipline). F-250 hot-fix: `specs/250-adversarial-unit-extraction-hotfix/spec.md`. ADR: `docs/architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md`. Tasks T039 (workflow authoring) + T040 (CI matrix verification) + T041 (close-out attestation) for F-248; F-250 tasks T001-T029 for the hot-fix.
 
 ---
 

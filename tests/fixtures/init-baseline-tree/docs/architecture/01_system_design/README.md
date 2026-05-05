@@ -3332,16 +3332,34 @@ PDF Output — byte-identical on 5 baselines when gate=false.
 
 ## Components
 
-This hot-fix lives entirely in the test tree. No bash helper is modified; `init_sh_helpers.py` is untouched. Reference: [plan.md](../../../specs/250-adversarial-unit-extraction-hotfix/plan.md) §Components.
+This hot-fix lives entirely in the test tree. No bash helper is modified; `template-substitute.sh` and `init-input.sh` are `git diff main` empty post-merge (FR-019/FR-020 verified at T029). Reference: [plan.md](../../../specs/250-adversarial-unit-extraction-hotfix/plan.md) §Components.
 
 | Component | Type | File Path | Change Type | Rationale |
 |-----------|------|-----------|-------------|-----------|
 | `test_template_substitute_unit.py` | New pytest module | `tests/scripts/test_template_substitute_unit.py` | Create | Spec FR-001 — covers adversarial substitution-semantics cases 1-8 by invoking `aod_template_substitute_placeholders` directly via `subprocess.run`; `tmp_path`-only fixture; zero `init_sh_helpers` import |
 | `test_init_input_unit.py` | New pytest module | `tests/scripts/test_init_input_unit.py` | Create | Spec FR-002, FR-006, FR-007 — covers adversarial input-rejection cases 9-12 via process substitution `< <(printf ...)`; first test is positive-path canary guarding against R-1 pipe-subshell trap; zero filesystem touch |
-| `test_init_sh_adversarial.py` | Existing integration module | `tests/scripts/test_init_sh_adversarial.py` | Modify (delete-only) | Spec FR-004, AC-6 — delete contiguous block lines 41-162 (`ADVERSARIAL_CASES` table + `_ids` + `adversarial_run` fixture + `test_adversarial_input`); preserve lines 1-39 (imports), 165-227 (case 13), 229-288 (`test_no_residual_placeholders_after_init`) byte-unchanged |
-| Bash helpers + `init_sh_helpers.py` + `pyproject.toml` + `conftest.py` + CI workflow | Existing files | `.aod/scripts/bash/{template-substitute,init-input}.sh`, `tests/scripts/init_sh_helpers.py`, `pyproject.toml`, `tests/scripts/conftest.py`, `.github/workflows/tachi-pytest.yml` | UNCHANGED | Spec FR-005, FR-019, FR-021, TC-4 — hot-fix is test-tree-only; helper-extraction shape and CI matrix are out of scope |
+| `test_substitute_shim_canary.py` | New pytest module | `tests/scripts/test_substitute_shim_canary.py` | Create | Spec TC-1 closure — permanent CI canary asserting the `shopt -u patsub_replacement` shim stays in `template-substitute.sh`; sub-second per case; bound by the bumped 1080s outer pytest cap |
+| `test_init_sh_adversarial.py` | Existing integration module | `tests/scripts/test_init_sh_adversarial.py` | Modify (delete-only original scope; consume session-scoped `init_run` Phase 6) | Spec FR-004, AC-6 — delete contiguous block (`ADVERSARIAL_CASES` table + `_ids` + `adversarial_run` fixture + `test_adversarial_input`); preserve case 13 (function-scoped, pre-seeds fixtures) and `test_no_residual_placeholders_after_init` (now consumes session-scoped `init_run`) |
+| `conftest.py` (session-scoped `init_run` fixture) | Existing test config (Phase 6 expansion) | `tests/scripts/conftest.py` | Modify (additive) | F-250 Phase 6 Option Z D-1 — promote `init_run` to session scope; one canonical `init.sh` invocation shared across all read-only consumers (substitution, constitution, self_delete, residual-scan); function-scoped carve-out preserved for `test_case_13` |
+| `test_init_sh_substitution.py` (asymmetric file-set check) | Existing integration module (Phase 6 expansion) | `tests/scripts/test_init_sh_substitution.py` | Modify | F-250 Phase 6 Option Z D-3 — convert file-set check from strict equality to ASYMMETRIC (drops FAIL, additions TOLERATED); consume session-scoped `init_run` |
+| `test_init_sh_constitution.py` + `test_init_sh_self_delete.py` | Existing integration modules (Phase 6 expansion) | `tests/scripts/test_init_sh_constitution.py`, `tests/scripts/test_init_sh_self_delete.py` | Modify | F-250 Phase 6 Option Z D-1 — delete duplicate module-scoped `init_run` fixtures; consume the shared session-scoped fixture from `conftest.py` |
+| `regenerate-baseline.sh` (53-file substitution-target restriction) | Existing fixture-regen script (Phase 6 expansion) | `tests/fixtures/regenerate-baseline.sh` | Modify | F-250 Phase 6 Option Z D-4 — capture ONLY substitution-target files (those containing canonical `{{KEY}}` placeholders pre-substitution); restricts baseline from ~600 files to ~53; eliminates the recurring "regenerate baseline on every doc edit" maintenance tax |
+| `init_sh_helpers.py` (timeout bump 300s → 900s) | Existing helper module (Phase 6 expansion) | `tests/scripts/init_sh_helpers.py` | Modify (default-arg only) | F-250 Phase 6 Option Z D-5 — bump `run_init_in_clone(timeout_sec=)` default 300s → 900s; macos-latest cold-cache projection ~560-700s with ~200s headroom |
+| `tachi-pytest.yml` (paths/pytest/timeout completeness) | Existing CI workflow (Phase 6 expansion) | `.github/workflows/tachi-pytest.yml` | Modify | F-250 Phase 6 Option Z D-5 + D-6 — (a) add 3 new unit modules to `paths:` filter; (b) add same 3 modules to `pytest` invocation; (c) bump `pytest --timeout` 360s → 1080s to align with bumped inner subprocess cap |
+| Bash helpers (`template-substitute.sh`, `init-input.sh`) | Existing helpers | `.aod/scripts/bash/template-substitute.sh`, `.aod/scripts/bash/init-input.sh` | UNCHANGED | F-250 D-7 / FR-019 / FR-020 — `git diff main` empty post-merge; ADR-038 helper contracts byte-preserved across F-250 |
 
-**Architectural posture**: test-tree-only reorganisation. No application surface, no runtime dependency change, no schema change, no ADR change. ADR-038 (Placeholder Substitution Strategy, Accepted 2026-05-04) defines the helper contracts being re-tested at unit level; F-250 does not amend it. Two new pytest modules + one delete-block in one existing module = the entire change surface.
+**Architectural posture**: test-tree-only reorganisation + Phase 6 Option Z test-architecture decision. No application surface, no runtime dependency change, no schema change. ADR-038 (Placeholder Substitution Strategy, Accepted 2026-05-04) defines the helper contracts being re-tested at unit level; F-250 does NOT amend ADR-038. F-250's test-architecture decisions (session-scoped fixture promotion + asymmetric baseline) are recorded in [ADR-039](../02_ADRs/ADR-039-test-architecture-fixture-scope-and-asymmetric-baseline.md) (Accepted 2026-05-04 same-day single-commit). Three new pytest modules + one delete-block + four modifications (conftest, substitution, constitution+self_delete consumer refactor, regenerate-baseline.sh + init_sh_helpers.py + tachi-pytest.yml) = the entire change surface.
+
+**Phase 6 Option Z (mid-build scope expansion, maintainer-authorized 2026-05-04)**: original F-250 scope was a surgical hot-fix to extract 12 adversarial cases to unit-level pytest modules. After the F-248 closing run `25314246672` exposed two recurring CI-stability issues (macos cold-cache 300s subprocess timeouts on 5 module-scoped fixtures × ~25 min cumulative; baseline file-set drift on every PR that edited any file) plus 3 issues discovered during investigation (workflow `paths:` filter excluded the 3 new unit modules; workflow `pytest` invocation excluded the 3 new unit modules; `init_sh_helpers.py` 300s subprocess timeout too tight for macos cold cache), the maintainer authorized expanding F-250 to address all 5 root causes correctly within F-250's atomic-PR ship. Phase 6 added 8 tasks (T022-T029) covering the session-scoped fixture, asymmetric baseline, restricted baseline scope, timeout bump pair, workflow completeness, and final-state verification. TC-4 scope fences (FR-019/FR-020 helper byte-unchanged invariants) were preserved through Phase 6 expansion — `git diff main` empty for both bash helpers verified at T029. See [ADR-039](../02_ADRs/ADR-039-test-architecture-fixture-scope-and-asymmetric-baseline.md) §Decisions D-1 through D-7 for the eight structural choices.
+
+**KPI outcomes (closing run)**:
+
+| KPI | Target | Result |
+|---|---|---|
+| macos-latest wall time (SC-002) | ≤15 min | 5m 19s |
+| `init.sh` invocations per CI run (SC-003) | ≤5 | 5 (down from 17) |
+| Helper byte-unchanged invariant (FR-019/FR-020) | `git diff main` empty | Empty |
+| CI savings vs F-248 baseline `25314246672` (SC-005) | ≥25 min | ~25-35 min savings |
 
 ## Data Flow
 
@@ -3432,4 +3450,84 @@ flowchart LR
 
 **No new dependencies. No new toolchain. No new CI step.** The hot-fix obeys the existing dependency surface and tooling.
 
-**Cross-references**: [ADR-038](../02_ADRs/ADR-038-placeholder-substitution-strategy.md) (helper contracts under test) · [Feature 248](#feature-248-substitution-surface-hardening) (predecessor — introduced the `shopt -u patsub_replacement` shim and authored the original 13-case adversarial table this hot-fix reorganises; PR #249 squash-merged 2026-05-04 commit `6db9a25`) · CI run `25314246672` (F-248 closing run, baseline for ≥25-min savings target — to be URL+SHA pinned in tasks.md per TC-2).
+**Cross-references**: [ADR-038](../02_ADRs/ADR-038-placeholder-substitution-strategy.md) (helper contracts under test — byte-unchanged across F-250) · [ADR-039](../02_ADRs/ADR-039-test-architecture-fixture-scope-and-asymmetric-baseline.md) (F-250 Phase 6 Option Z test-architecture decisions — session-scoped fixture promotion, asymmetric baseline file-set check, baseline scope restriction to substitution-target files, subprocess+pytest timeout pair bump, workflow completeness; Accepted 2026-05-04 same-day single-commit per atomic-PR TC-3) · [Session-Scoped init.sh Fixture pattern](../03_patterns/README.md#pattern-session-scoped-init-sh-fixture) and [Asymmetric Baseline File-Set Check pattern](../03_patterns/README.md#pattern-asymmetric-baseline-file-set-check) (reusable patterns documented at 03_patterns) · [Feature 248](#feature-248-substitution-surface-hardening) (predecessor — introduced the `shopt -u patsub_replacement` shim and authored the original 13-case adversarial table this hot-fix reorganises; PR #249 squash-merged 2026-05-04 commit `6db9a25`) · CI run `25314246672` (F-248 closing run, baseline for ≥25-min savings target — pinned in tasks.md per TC-2). PR #253 squash-merged 2026-05-04T16:39:23Z commit `75866d9`; release-please patch-bump v4.28.X published from `fix(250):` Conventional-Commit prefix.
+
+---
+
+### Feature 256: F-2 Source-Pattern Hardening (BLP-02 Wave 2)
+
+## Components
+
+The post-F-2 architecture surface adds one new bash library and modifies four existing files:
+
+```mermaid
+graph TD
+    init["scripts/init.sh<br/>(MODIFIED — Site A refactor)"] -->|sources at top| substitute[".aod/scripts/bash/<br/>template-substitute.sh<br/>(EXISTING; MODIFIED Sites C+D)"]
+    init -->|sources at top| inputvalidate[".aod/scripts/bash/<br/>init-input.sh<br/>(F-1; MODIFIED prompt validator)"]
+    init -->|sources at top| configload[".aod/scripts/bash/<br/>template-config-load.sh<br/>(NEW — Stream 1)"]
+    init -->|line 106 calls| configload
+    update["/aod.update<br/>(uses template-git.sh)"] --> templategit[".aod/scripts/bash/<br/>template-git.sh<br/>(EXISTING; MODIFIED Site B + clone timeout)"]
+    templategit -->|line 561 + :501 call| configload
+    substitute -->|TOCTOU collapse calls| configload
+    configload -->|reads| stackdefaults["stacks/&lt;pack&gt;/defaults.env<br/>(EXISTING)"]
+    configload -->|reads| versionfile[".aod/aod-kit-version<br/>(EXISTING)"]
+    configload -->|reads| personalization[".aod/personalization.env<br/>(EXISTING; gitignored)"]
+```
+
+**New library responsibility**: `aod_template_load_kv_file` is the **sole entry point** for config-file loading post-F-2. Future config-load sites adopt this function rather than inventing per-site validation (US-2 acceptance contract).
+
+## Data Flow
+
+```mermaid
+sequenceDiagram
+    participant Caller as init.sh / template-git.sh / template-substitute.sh
+    participant Lib as aod_template_load_kv_file
+    participant File as Config file (defaults.env / aod-kit-version / personalization.env)
+    participant Scope as Caller scope
+
+    Caller->>Lib: aod_template_load_kv_file(path, prefix, [whitelist], [key_case])
+    Lib->>Lib: validate args (path / prefix / key_case)
+    alt args invalid
+        Lib-->>Caller: exit 1
+    end
+    Lib->>File: cat $path (single read; TOCTOU mitigation per H-2)
+    alt file absent
+        Lib-->>Caller: exit 3
+    end
+    Lib->>Lib: per-line iteration (CRLF strip, leading-whitespace strip, skip blank/comment)
+    loop for each line
+        Lib->>Lib: regex match (upper or lower mode per key_case)
+        alt regex fail
+            Lib-->>Caller: exit 8 + truncated content
+        end
+        alt whitelist provided
+            Lib->>Lib: check key in whitelist
+            alt key not in whitelist
+                Lib-->>Caller: exit 8 + disallowed key
+            end
+        end
+        Lib->>Lib: stage (key, value) pair (no caller-scope mutation yet)
+    end
+    alt whitelist completeness check fails
+        Lib-->>Caller: exit 8 + missing key
+    end
+    Lib->>Lib: defensive identifier check on (prefix + key)
+    Lib->>Scope: printf -v "${prefix}${key}" '%s' "$value" (for each pair)
+    Lib-->>Caller: exit 0
+```
+
+**Key invariants**:
+- File is opened once (`cat`); attacker race window collapsed to "before cat opens".
+- No partial assignment — all validation must pass before any caller-scope mutation.
+- File content is treated as data, not code (no bash interpretation at any point).
+
+## Tech Stack
+
+- **Language**: bash 3.2.57+ (macOS default) AND bash 4+ (Linux); Python 3.x (existing) for tests.
+- **Primary tools**: bash builtins (`cat`, `printf -v`, `[[`, `=~`, `${!var}`, here-strings `<<<`, `&`, `wait`, `kill`, `sleep`, `trap`).
+- **Testing**: pytest (existing) via subprocess; pytest fixtures (session-scoped `hanging_upstream` per F-250 ADR-039).
+- **CI**: GitHub Actions matrix (macos-latest bash 3.2.57 + ubuntu-latest bash 5.x); existing workflow file; F-2 adds tests to the already-running matrix.
+- **No new runtime deps**: empty diff on `pyproject.toml`, `requirements*.txt`, `package.json` per NFR-002.
+- **Documentation**: Markdown ADR (ADR-040 dual-commit Proposed → Accepted); CHANGELOG.md entry; new `contracts/stack-pack-defaults-schema.md`.
+
+**Cross-references**: [Spec 256](../../../specs/256-source-pattern-hardening/spec.md) · [Plan 256](../../../specs/256-source-pattern-hardening/plan.md) · ADR-040 (config-file parsing hardening — TBD post-Stream-3 commit) · [ADR-038](../02_ADRs/ADR-038-placeholder-substitution-strategy.md) (F-1 substitution canon — F-2 reuses validation-triplet pattern) · [ADR-039](../02_ADRs/ADR-039-test-architecture-fixture-scope-and-asymmetric-baseline.md) (F-250 test-architecture canon — session-scoped fixture pattern adopted for `hanging_upstream`) · [Feature 248](#feature-248-substitution-surface-hardening) (predecessor BLP-02 Wave 1; F-2 amends F-1's `aod_init_read_validated` per B-2 Path R-2)

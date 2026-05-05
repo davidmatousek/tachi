@@ -1,0 +1,5 @@
+TECH_STACK="nextjs"
+TECH_STACK_DATABASE="PostgreSQL (Supabase)"
+TECH_STACK_VECTOR="pgvector"
+TECH_STACK_AUTH="Supabase Auth"
+CLOUD_PROVIDER="Vercel"

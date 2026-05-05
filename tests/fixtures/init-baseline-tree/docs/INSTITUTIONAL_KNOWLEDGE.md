@@ -89,6 +89,40 @@ Compounding: the test fixture is the entire 2071-file personalized tachi tree (8
 
 ---
 
+### Entry 2: F-250 Adversarial Unit Extraction Hot-Fix — Delivery Retrospective
+
+## [Process improvement] - Mid-build CI signal authorizes scope-fence relaxation when original PRD root cause is contradicted
+
+**Date**: 2026-05-04
+**Context**: Delivery retrospective for F-250 (Adversarial Unit Extraction Hot-Fix). Estimated: 4-6 hours active. Actual: ~4h11m wall clock (first commit 08:28 EDT → merge 12:39 EDT).
+
+**Problem**:
+The original F-250 PRD assumed that extracting 12 adversarial cases from `init.sh` integration runs to direct bash helper invocations would eliminate the `macos-latest` cold-cache 300s timeout class entirely. Mid-build CI run `25325616748` exposed that the assumption was incomplete: the retained 5 init.sh integration invocations (case 13 + 4 other tests) STILL hit the 300s timeout class through module-scoped fixture duplication, and a separate baseline-file-set drift was failing CI on every PR that touched any documentation file.
+
+**Solution**:
+Authorize a documented mid-build scope expansion (Phase 6 "Option Z") rather than papering over with retry loops or quick patches. The Phase 6 header in `tasks.md` named the relaxed scope fences explicitly (TC-4 RELAXED for the expansion; FR-019/FR-020 byte-unchanged invariants on `template-substitute.sh` and `init-input.sh` PRESERVED). Eight new tasks (T022-T029) addressed the root causes: session-scoped `init_run` fixture in `tests/scripts/conftest.py` (5 module-scoped duplicates → 1 canonical clone), asymmetric file-set check in `test_init_sh_substitution.py` (drops are FAIL, additions are TOLERATED), substitution-target-only baseline restricted ~600 → ~53 files, `run_init_in_clone` timeout 300s → 900s, pytest `--timeout` 360s → 1080s, workflow `paths:` filter and `pytest` invocation completeness for the 3 new modules. The maintainer directive ("fix ALL issues correctly and completely, no quick patches") served as the explicit authorization.
+
+**Why This Matters**:
+Captured during structured delivery retrospective. Mid-build CI run `25325616748` exposed that the original F-250 scope was necessary but insufficient: the retained 5 init.sh integration invocations on `macos-latest` STILL hit the 300s cold-cache timeout class through module-scoped fixture duplication, and a separate baseline-file-set drift was failing CI on every PR that touched any documentation file. Phase 6 Option Z scope expansion was authorized mid-build to address the recurring root cause — TC-4 scope fences explicitly relaxed for the expansion while FR-019/FR-020 byte-unchanged invariants on the bash helpers were preserved.
+
+**Pattern**: When CI evidence contradicts a PRD's root-cause assumption mid-build, the right move is a *documented* scope expansion (named in tasks.md with explicit fence relaxation) rather than (a) retry loops, (b) quick patches that defer the recurrence, or (c) shipping the original scope and filing a follow-up. The audit trail (Phase 6 header) plus preserved byte-unchanged invariants (FR-019/FR-020) makes the relaxation reviewable and bounded — reviewers can confirm the expansion stayed inside the bash-helper scope fence while widening the test-architecture scope.
+
+**Tags**: #retrospective #delivery #process #workflow #ci-architecture
+
+### Related Files:
+- `specs/250-adversarial-unit-extraction-hotfix/spec.md` — Feature specification
+- `specs/250-adversarial-unit-extraction-hotfix/tasks.md` — Task breakdown including Phase 6 Option Z header
+- `specs/250-adversarial-unit-extraction-hotfix/delivery.md` — Delivery retrospective
+- `docs/architecture/02_ADRs/ADR-039-test-architecture-fixture-scope-and-asymmetric-baseline.md` — Architecture decision record for the new test-architecture canon
+
+### Cross-References
+
+- Sibling: F-248 Substitution Surface Hardening (Entry 1) — F-250 is the hot-fix that closes the residual flake class F-248 left behind on `macos-latest`. Both features share the bash-helper extraction shape (ADR-038); F-250 adds the test-architecture canon (ADR-039).
+- Pattern: "PRD root-cause assumption contradicted by mid-build CI signal" — first instance recorded in this KB. If recurrence is observed, a structured "scope-fence relaxation" template should be added to the AOD playbook.
+- Sustained tracking: T021 KPI window (2026-05-04 → 2026-05-18) records the 5-merge sustained green-rate sample.
+
+---
+
 ## Bug Fixes
 
 *No entries yet. Use `/kb-create` to add the first bug fix.*

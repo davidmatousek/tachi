@@ -1,0 +1,5 @@
+TECH_STACK="fastapi-react"
+TECH_STACK_DATABASE="PostgreSQL"
+TECH_STACK_VECTOR="N/A"
+TECH_STACK_AUTH="JWT (httpOnly cookies)"
+CLOUD_PROVIDER="Docker (local)"

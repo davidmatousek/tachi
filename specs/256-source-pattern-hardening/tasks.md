@@ -371,13 +371,13 @@ triad:
   Condition 3 — ADR-040 Proposed committed (T042);
   Condition 4 — clone timeout watchdog smoke-tests pass on macOS bash 3.2 (T040).
   If 0-1 conditions red: continue. 2 conditions red: Team-Lead escalates to PM with recovery levers (Q-1 split / drop key_case / drop clone timeout). 3+ conditions red: structural slip; escalate immediately. Record outcome in tasks-runlog.txt
-- [ ] T045 [P] Author `tests/fixtures/regenerate-config-load-baseline.sh` (per F-1 M-5 precedent) — fixture regeneration script:
+- [X] T045 [P] Author `tests/fixtures/regenerate-config-load-baseline.sh` (per F-1 M-5 precedent) — fixture regeneration script:
   Generate the canonical fixture set from current contracts;
   Generate `tests/fixtures/config-load/valid/{defaults-env-nextjs-supabase, defaults-env-fastapi-react, aod-kit-version-valid, personalization-env-valid}` from real config files in repo;
   Generate `tests/fixtures/config-load/adversarial/*` corpus per Test-1/Test-2 enumeration;
   Documentation header: regenerate when STACK_PACK_ALLOWED_KEYS or AOD_CANONICAL_PLACEHOLDERS change; do NOT regenerate to mask a regex regression
-- [ ] T046 [P] Run T045 to populate `tests/fixtures/config-load/{valid,adversarial}/` — commit the fixtures
-- [ ] T047 [P] Author additional Test-1 cases B-3 19-23 if not already covered in T009: trailing-newline / no-trailing-newline / CRLF / leading-whitespace / blank-line-followed-by-content. Each case verifies the per-line iteration mechanism handles edge formats correctly
+- [X] T046 [P] Run T045 to populate `tests/fixtures/config-load/{valid,adversarial}/` — commit the fixtures
+- [X] T047 [P] Author additional Test-1 cases B-3 19-23 if not already covered in T009: trailing-newline / no-trailing-newline / CRLF / leading-whitespace / blank-line-followed-by-content. Each case verifies the per-line iteration mechanism handles edge formats correctly
 - [ ] T048 [P] Day-8 secondary checkpoint (Wed 2026-05-13 EOD) — verify all Stream 1+2 sites refactored + green; Stream 5 tests authored ≥80% case coverage; Stream 3 ADR-040 transitioning to Accepted. If Stream 5 isn't green by Day 8 EOD, use Day 9 as soak day; merge at Day 10-11 within hard ceiling
 - [ ] T049 Run full test suite on macOS + Linux CI: `pytest tests/scripts/test_template_config_load_unit.py tests/scripts/test_template_config_load_integration.py tests/scripts/test_template_git_clone_timeout.py tests/scripts/test_init_sh_defaults_env.py tests/scripts/test_template_substitute_lint_no_eval.py -v`. ALL cases MUST pass on both legs of the matrix (NFR-001 + FR-009)
 - [ ] T050 Verify NFR-002 (no new runtime dependencies): re-snapshot `pyproject.toml`, `requirements*.txt`, `package.json` SHA-256 from T004 baseline. Diff MUST be empty
