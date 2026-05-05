@@ -3451,3 +3451,83 @@ flowchart LR
 **No new dependencies. No new toolchain. No new CI step.** The hot-fix obeys the existing dependency surface and tooling.
 
 **Cross-references**: [ADR-038](../02_ADRs/ADR-038-placeholder-substitution-strategy.md) (helper contracts under test — byte-unchanged across F-250) · [ADR-039](../02_ADRs/ADR-039-test-architecture-fixture-scope-and-asymmetric-baseline.md) (F-250 Phase 6 Option Z test-architecture decisions — session-scoped fixture promotion, asymmetric baseline file-set check, baseline scope restriction to substitution-target files, subprocess+pytest timeout pair bump, workflow completeness; Accepted 2026-05-04 same-day single-commit per atomic-PR TC-3) · [Session-Scoped init.sh Fixture pattern](../03_patterns/README.md#pattern-session-scoped-init-sh-fixture) and [Asymmetric Baseline File-Set Check pattern](../03_patterns/README.md#pattern-asymmetric-baseline-file-set-check) (reusable patterns documented at 03_patterns) · [Feature 248](#feature-248-substitution-surface-hardening) (predecessor — introduced the `shopt -u patsub_replacement` shim and authored the original 13-case adversarial table this hot-fix reorganises; PR #249 squash-merged 2026-05-04 commit `6db9a25`) · CI run `25314246672` (F-248 closing run, baseline for ≥25-min savings target — pinned in tasks.md per TC-2). PR #253 squash-merged 2026-05-04T16:39:23Z commit `75866d9`; release-please patch-bump v4.28.X published from `fix(250):` Conventional-Commit prefix.
+
+---
+
+### Feature 256: F-2 Source-Pattern Hardening (BLP-02 Wave 2)
+
+## Components
+
+The post-F-2 architecture surface adds one new bash library and modifies four existing files:
+
+```mermaid
+graph TD
+    init["scripts/init.sh<br/>(MODIFIED — Site A refactor)"] -->|sources at top| substitute[".aod/scripts/bash/<br/>template-substitute.sh<br/>(EXISTING; MODIFIED Sites C+D)"]
+    init -->|sources at top| inputvalidate[".aod/scripts/bash/<br/>init-input.sh<br/>(F-1; MODIFIED prompt validator)"]
+    init -->|sources at top| configload[".aod/scripts/bash/<br/>template-config-load.sh<br/>(NEW — Stream 1)"]
+    init -->|line 106 calls| configload
+    update["/aod.update<br/>(uses template-git.sh)"] --> templategit[".aod/scripts/bash/<br/>template-git.sh<br/>(EXISTING; MODIFIED Site B + clone timeout)"]
+    templategit -->|line 561 + :501 call| configload
+    substitute -->|TOCTOU collapse calls| configload
+    configload -->|reads| stackdefaults["stacks/&lt;pack&gt;/defaults.env<br/>(EXISTING)"]
+    configload -->|reads| versionfile[".aod/aod-kit-version<br/>(EXISTING)"]
+    configload -->|reads| personalization[".aod/personalization.env<br/>(EXISTING; gitignored)"]
+```
+
+**New library responsibility**: `aod_template_load_kv_file` is the **sole entry point** for config-file loading post-F-2. Future config-load sites adopt this function rather than inventing per-site validation (US-2 acceptance contract).
+
+## Data Flow
+
+```mermaid
+sequenceDiagram
+    participant Caller as init.sh / template-git.sh / template-substitute.sh
+    participant Lib as aod_template_load_kv_file
+    participant File as Config file (defaults.env / aod-kit-version / personalization.env)
+    participant Scope as Caller scope
+
+    Caller->>Lib: aod_template_load_kv_file(path, prefix, [whitelist], [key_case])
+    Lib->>Lib: validate args (path / prefix / key_case)
+    alt args invalid
+        Lib-->>Caller: exit 1
+    end
+    Lib->>File: cat $path (single read; TOCTOU mitigation per H-2)
+    alt file absent
+        Lib-->>Caller: exit 3
+    end
+    Lib->>Lib: per-line iteration (CRLF strip, leading-whitespace strip, skip blank/comment)
+    loop for each line
+        Lib->>Lib: regex match (upper or lower mode per key_case)
+        alt regex fail
+            Lib-->>Caller: exit 8 + truncated content
+        end
+        alt whitelist provided
+            Lib->>Lib: check key in whitelist
+            alt key not in whitelist
+                Lib-->>Caller: exit 8 + disallowed key
+            end
+        end
+        Lib->>Lib: stage (key, value) pair (no caller-scope mutation yet)
+    end
+    alt whitelist completeness check fails
+        Lib-->>Caller: exit 8 + missing key
+    end
+    Lib->>Lib: defensive identifier check on (prefix + key)
+    Lib->>Scope: printf -v "${prefix}${key}" '%s' "$value" (for each pair)
+    Lib-->>Caller: exit 0
+```
+
+**Key invariants**:
+- File is opened once (`cat`); attacker race window collapsed to "before cat opens".
+- No partial assignment — all validation must pass before any caller-scope mutation.
+- File content is treated as data, not code (no bash interpretation at any point).
+
+## Tech Stack
+
+- **Language**: bash 3.2.57+ (macOS default) AND bash 4+ (Linux); Python 3.x (existing) for tests.
+- **Primary tools**: bash builtins (`cat`, `printf -v`, `[[`, `=~`, `${!var}`, here-strings `<<<`, `&`, `wait`, `kill`, `sleep`, `trap`).
+- **Testing**: pytest (existing) via subprocess; pytest fixtures (session-scoped `hanging_upstream` per F-250 ADR-039).
+- **CI**: GitHub Actions matrix (macos-latest bash 3.2.57 + ubuntu-latest bash 5.x); existing workflow file; F-2 adds tests to the already-running matrix.
+- **No new runtime deps**: empty diff on `pyproject.toml`, `requirements*.txt`, `package.json` per NFR-002.
+- **Documentation**: Markdown ADR (ADR-040 dual-commit Proposed → Accepted); CHANGELOG.md entry; new `contracts/stack-pack-defaults-schema.md`.
+
+**Cross-references**: [Spec 256](../../../specs/256-source-pattern-hardening/spec.md) · [Plan 256](../../../specs/256-source-pattern-hardening/plan.md) · ADR-040 (config-file parsing hardening — TBD post-Stream-3 commit) · [ADR-038](../02_ADRs/ADR-038-placeholder-substitution-strategy.md) (F-1 substitution canon — F-2 reuses validation-triplet pattern) · [ADR-039](../02_ADRs/ADR-039-test-architecture-fixture-scope-and-asymmetric-baseline.md) (F-250 test-architecture canon — session-scoped fixture pattern adopted for `hanging_upstream`) · [Feature 248](#feature-248-substitution-surface-hardening) (predecessor BLP-02 Wave 1; F-2 amends F-1's `aod_init_read_validated` per B-2 Path R-2)
