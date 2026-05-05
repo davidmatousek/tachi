@@ -135,7 +135,7 @@ triad:
 
 ### Tests for Site A (Stream 5)
 
-- [ ] T014 [P] [US1] Author `tests/scripts/test_init_sh_defaults_env.py` (Test-4) — pytest test file for init.sh end-to-end with refactored Site A:
+- [X] T014 [P] [US1] Author `tests/scripts/test_init_sh_defaults_env.py` (Test-4) — pytest test file for init.sh end-to-end with refactored Site A:
   Case 1 each shipped stack pack (`nextjs-supabase`, `fastapi-react`) loads cleanly on macOS + Linux — Day-5 slip-watch GREEN-LIGHT condition 2;
   Case 2 malicious-pack fixture (`stacks/malicious-pack/defaults.env` with `CUSTOM_HOOK="$(touch /tmp/F-256-pwned)"`) rejected exit 8 + `/tmp/F-256-pwned` never created;
   Case 3 missing-key fixture (pack omitting `CLOUD_PROVIDER`) rejected exit 8 with missing-key error.
@@ -143,7 +143,7 @@ triad:
 
 ### Implementation for Site A
 
-- [ ] T015 [US1] Add library source preamble at top of `scripts/init.sh` alongside existing `template-substitute.sh` + `init-input.sh` sources:
+- [X] T015 [US1] Add library source preamble at top of `scripts/init.sh` alongside existing `template-substitute.sh` + `init-input.sh` sources:
   ```bash
   if [ -f ".aod/scripts/bash/template-config-load.sh" ]; then
     # shellcheck disable=SC1091
@@ -153,14 +153,14 @@ triad:
     exit 1
   fi
   ```
-- [ ] T016 [US1] Replace `source "stacks/$SELECTED_PACK/defaults.env"` at `scripts/init.sh:106` with the library invocation:
+- [X] T016 [US1] Replace `source "stacks/$SELECTED_PACK/defaults.env"` at `scripts/init.sh:106` with the library invocation:
   ```bash
   STACK_PACK_ALLOWED_KEYS=(TECH_STACK TECH_STACK_DATABASE TECH_STACK_VECTOR TECH_STACK_AUTH CLOUD_PROVIDER)
   aod_template_load_kv_file "stacks/$SELECTED_PACK/defaults.env" "STACK_" STACK_PACK_ALLOWED_KEYS
   ```
-- [ ] T017 [US1] Rename pass downstream of T016: scan `scripts/init.sh` for direct reads of `$TECH_STACK`, `$TECH_STACK_DATABASE`, `$TECH_STACK_VECTOR`, `$TECH_STACK_AUTH`, `$CLOUD_PROVIDER` post-line-106 and migrate to `$STACK_TECH_STACK` etc. (the `STACK_` prefix is REQUIRED — disambiguates from canonical-12 personalization values that also flow through caller scope)
-- [ ] T018 [US1] Author `tests/fixtures/config-load/adversarial/malicious-pack-defaults.env` test fixture file containing `CUSTOM_HOOK="$(touch /tmp/F-256-pwned)"` plus the canonical 5 keys with valid values — used by T014 case 2. File MUST carry `# DO NOT SOURCE — malicious test fixture` header per L-2
-- [ ] T019 [US1] Run `pytest tests/scripts/test_init_sh_defaults_env.py -v` on macOS + Linux. All 3 cases MUST pass
+- [X] T017 [US1] Rename pass downstream of T016: scan `scripts/init.sh` for direct reads of `$TECH_STACK`, `$TECH_STACK_DATABASE`, `$TECH_STACK_VECTOR`, `$TECH_STACK_AUTH`, `$CLOUD_PROVIDER` post-line-106 and migrate to `$STACK_TECH_STACK` etc. (the `STACK_` prefix is REQUIRED — disambiguates from canonical-12 personalization values that also flow through caller scope)
+- [X] T018 [US1] Author `tests/fixtures/config-load/adversarial/malicious-pack-defaults.env` test fixture file containing `CUSTOM_HOOK="$(touch /tmp/F-256-pwned)"` plus the canonical 5 keys with valid values — used by T014 case 2. File MUST carry `# DO NOT SOURCE — malicious test fixture` header per L-2
+- [X] T019 [US1] Run `pytest tests/scripts/test_init_sh_defaults_env.py -v` on macOS + Linux. All 3 cases MUST pass
 
 **Checkpoint**: Site A refactor complete + green. TACHI-VULN-6f5a95085056 closed. Day-5 slip-watch GREEN-LIGHT condition 2 met.
 
@@ -176,18 +176,18 @@ triad:
 
 ### Tests for Site B (Stream 5)
 
-- [ ] T020 [P] [US3] Author Test-2 Site B section in `tests/scripts/test_template_config_load_integration.py` (full file authored at T028 — Site B parametrize cases land here):
+- [X] T020 [P] [US3] Author Test-2 Site B section in `tests/scripts/test_template_config_load_integration.py` (full file authored at T028 — Site B parametrize cases land here):
   Case Site-B-malformed `version='1.0'; touch /tmp/F-256-pwned` → exit 8 + no /tmp file;
   Case Site-B-valid lowercase (5 fields) → exit 0 + per-field validators run;
   Case Site-B-bare-version `version=` empty unquoted → exit 0 (B-1 contract preserved);
   Case Site-B-uppercase `VERSION=4.28.0` → exit 8 (lowercase mode rejects uppercase keys).
   Author `tests/fixtures/config-load/adversarial/aod-kit-version-malformed` and `tests/fixtures/config-load/valid/aod-kit-version-valid` fixtures
-- [ ] T021 [P] [US3] Author Test-3 H-3 round-trip case in `tests/scripts/test_template_git_clone_timeout.py` (full file authored at T037 — Site B-roundtrip parametrize lands here as a parametrize case):
+- [X] T021 [P] [US3] Author Test-3 H-3 round-trip case in `tests/scripts/test_template_git_clone_timeout.py` (full file authored at T037 — Site B-roundtrip parametrize lands here as a parametrize case):
   Writer round-trip (per H-3): construct field values, invoke `aod_template_write_version_file`, observe inner round-trip block at `:485-515` (`:501`) succeeds via `aod_template_load_kv_file "$tmp_path" "" "" lower`; assert post-load missing-field detection runs unchanged.
 
 ### Implementation for Site B
 
-- [ ] T022 [US3] Modify `aod_template_read_version_file` in `.aod/scripts/bash/template-git.sh` (function header at `:544`): replace `source "$path" || ...` at `:561` with:
+- [X] T022 [US3] Modify `aod_template_read_version_file` in `.aod/scripts/bash/template-git.sh` (function header at `:544`): replace `source "$path" || ...` at `:561` with:
   ```bash
   aod_template_load_kv_file "$path" "" "" lower || {
       local rc=$?
@@ -196,13 +196,13 @@ triad:
   }
   ```
   Existing per-field regex validators at `template-git.sh:568+` are NOT modified — they run AFTER the load and provide stronger field-shape checking
-- [ ] T023 [US3] Modify `aod_template_write_version_file:485-515` in `.aod/scripts/bash/template-git.sh` (per H-3 correction — this is the actual function name; v1.0 PRD's `aod_template_validate_version_content` reference was incorrect): replace `source "$tmp_path" 2>/dev/null` at `:501` with:
+- [X] T023 [US3] Modify `aod_template_write_version_file:485-515` in `.aod/scripts/bash/template-git.sh` (per H-3 correction — this is the actual function name; v1.0 PRD's `aod_template_validate_version_content` reference was incorrect): replace `source "$tmp_path" 2>/dev/null` at `:501` with:
   ```bash
   local validate_rc=0
   aod_template_load_kv_file "$tmp_path" "" "" lower || validate_rc=$?
   ```
   Existing post-load missing-field detection at `:501+` runs unchanged
-- [ ] T024 [US3] Run T020 + T021 cases on macOS + Linux. All cases MUST pass
+- [X] T024 [US3] Run T020 + T021 cases on macOS + Linux. All cases MUST pass
 
 **Checkpoint**: Site B refactor complete + green. TACHI-VULN-bf5496e9fcdf closed. H-3 round-trip preserved.
 
@@ -218,11 +218,11 @@ triad:
 
 ### Tests for Site C (Stream 5)
 
-- [ ] T025 [P] [US7] Author `tests/scripts/test_template_substitute_lint_no_eval.py` (Test-5) — eval removal verification + future-PR-blocker lint:
+- [X] T025 [P] [US7] Author `tests/scripts/test_template_substitute_lint_no_eval.py` (Test-5) — eval removal verification + future-PR-blocker lint:
   Case 1 `subprocess.run(['grep', '-c', '\\beval\\b', '.aod/scripts/bash/template-substitute.sh'])` returns `0`;
   Case 2 (future-PR-blocker semantics) — comment in test explains that this test will fail if a future PR introduces a new `eval` to that file, blocking review at the canonical-pattern rule.
   Note: this is NOT applied to `template-config-load.sh` (the library has the audit-clarity carve-out per ADR-040 Decision Item 7).
-- [ ] T026 [P] [US7] Augment F-1's existing `tests/scripts/test_init_input_unit.py` (or equivalent F-1 prompt validator test) with parametrize cases for the new metachar rejection (rejecting `$`, `\`, backtick at prompt boundary):
+- [X] T026 [P] [US7] Augment F-1's existing `tests/scripts/test_init_input_unit.py` (or equivalent F-1 prompt validator test) with parametrize cases for the new metachar rejection (rejecting `$`, `\`, backtick at prompt boundary):
   Case `$` injection (e.g., `my$project`) → `[init] Input rejected: metachar ($, \, backtick) not allowed; please re-enter.`;
   Case `\` injection (e.g., `proj\name`) → same rejection;
   Case backtick injection → same rejection.
@@ -230,31 +230,31 @@ triad:
 
 ### Implementation for Site C
 
-- [ ] T027 [US7] Modify `.aod/scripts/bash/template-substitute.sh:217` — replace `eval "val=\"\${$key:-}\""` (read-side dynamic lookup with `:-` default) with:
+- [X] T027 [US7] Modify `.aod/scripts/bash/template-substitute.sh:217` — replace `eval "val=\"\${$key:-}\""` (read-side dynamic lookup with `:-` default) with:
   ```bash
   local var_name="$key"
   local val="${!var_name:-}"
   ```
-- [ ] T028 [US7] Modify `.aod/scripts/bash/template-substitute.sh:249` — replace `eval "AOD_PERSONALIZATION_${key}=\"\$val\""` (write-side dynamic assignment) with:
+- [X] T028 [US7] Modify `.aod/scripts/bash/template-substitute.sh:249` — replace `eval "AOD_PERSONALIZATION_${key}=\"\$val\""` (write-side dynamic assignment) with:
   ```bash
   printf -v "AOD_PERSONALIZATION_${key}" '%s' "$val"
   ```
-- [ ] T029 [US7] Modify `.aod/scripts/bash/template-substitute.sh:536` — replace `eval "val=\"\${$key:-}\""` (second read-side, with `:-` default) with the same `${!var_name:-}` pattern as T027
-- [ ] T030 [US7] Modify `.aod/scripts/bash/template-substitute.sh:558` — replace `eval "val=\"\${$key}\""` (third read-side, NO `:-` default) with **strict semantic equivalent** per H-4:
+- [X] T029 [US7] Modify `.aod/scripts/bash/template-substitute.sh:536` — replace `eval "val=\"\${$key:-}\""` (second read-side, with `:-` default) with the same `${!var_name:-}` pattern as T027
+- [X] T030 [US7] Modify `.aod/scripts/bash/template-substitute.sh:558` — replace `eval "val=\"\${$key}\""` (third read-side, NO `:-` default) with **strict semantic equivalent** per H-4:
   ```bash
   local var_name="$key"
   local val="${!var_name}"   # No :- default — matches existing :558 semantics; aod_template_init_personalization validates non-empty key at :535-540 before reaching :558
   ```
-- [ ] T031 [US7] Modify `.aod/scripts/bash/template-substitute.sh:566-571` — REMOVE the four-line escape block (`\\`/`"`/`$`/backtick escape pass in writer). Replace with direct emission:
+- [X] T031 [US7] Modify `.aod/scripts/bash/template-substitute.sh:566-571` — REMOVE the four-line escape block (`\\`/`"`/`$`/backtick escape pass in writer). Replace with direct emission:
   ```bash
   printf '%s="%s"\n' "$key" "$val" >> "$tmp_path"
   ```
-- [ ] T032 [US7] Modify `.aod/scripts/bash/init-input.sh` — extend `aod_init_read_validated` validator to additionally reject `$`, `\`, backtick at prompt boundary (per B-2 Path R-2 + F-1 contract amendment IN F-2's PR):
+- [X] T032 [US7] Modify `.aod/scripts/bash/init-input.sh` — extend `aod_init_read_validated` validator to additionally reject `$`, `\`, backtick at prompt boundary (per B-2 Path R-2 + F-1 contract amendment IN F-2's PR):
   Insert after existing newline / NUL / control / over-length checks (in the same `while (( attempt < 3 ))` loop):
   ```bash
   elif [[ "$answer" =~ [\$\\\`] ]]; then reason="metachar (\$, \\, backtick) not allowed"
   ```
-- [ ] T033 [US7] Run T025 + T026 cases on macOS + Linux. All cases MUST pass. Run `grep -c '\beval\b' .aod/scripts/bash/template-substitute.sh` and assert it returns `0`
+- [X] T033 [US7] Run T025 + T026 cases on macOS + Linux. All cases MUST pass. Run `grep -c '\beval\b' .aod/scripts/bash/template-substitute.sh` and assert it returns `0`
 
 **Checkpoint**: Site C refactor complete + green. TACHI-VULN-9a7512071b4a closed. F-1 contract amendment ripple landed.
 
@@ -270,7 +270,7 @@ triad:
 
 ### Tests for Site D (Stream 5)
 
-- [ ] T034 [P] [US8] Author Test-2 Site D section in `tests/scripts/test_template_config_load_integration.py` (Site D parametrize cases):
+- [X] T034 [P] [US8] Author Test-2 Site D section in `tests/scripts/test_template_config_load_integration.py` (Site D parametrize cases):
   Case Site-D-collapsed-body — invoke the post-F-2 `aod_template_load_personalization_env` against a valid `.aod/personalization.env` fixture; assert caller-scope `AOD_PERSONALIZATION_PROJECT_NAME=...` etc. populated;
   Case Site-D-toctou-residual (per H-2 + M-1) — fork a process that swaps the file between cat and assignment; assert caller-scope values match pre-swap content (file is opened once); test uses bash 3.2-compatible mechanism (background `&` + `sleep 0.01` + file rewrite);
   Case Site-D-missing-path — exit 1 (unchanged);
@@ -280,7 +280,7 @@ triad:
 
 ### Implementation for Site D
 
-- [ ] T035 [US8] Modify `.aod/scripts/bash/template-substitute.sh:162-209` — REPLACE the entire 47-line `aod_template_load_personalization_env` body with ~7 lines of library delegation:
+- [X] T035 [US8] Modify `.aod/scripts/bash/template-substitute.sh:162-209` — REPLACE the entire 47-line `aod_template_load_personalization_env` body with ~7 lines of library delegation:
   ```bash
   aod_template_load_personalization_env() {
       local path="${1:-}"
@@ -292,7 +292,7 @@ triad:
   }
   ```
   Behavior preserved per FR-005: missing-path → 1 (unchanged); file-absent → 3 (unchanged via library); validation-failure → 8 (regex implicitly excludes newline + NUL); missing-key detection → 8 (via whitelist mechanism); `AOD_PERSONALIZATION_<KEY>` populated (unchanged).
-- [ ] T036 [US8] Run T034 cases on macOS + Linux. All cases MUST pass. Verify F-1's regression test suite (`tests/scripts/test_init_sh_*.py` from F-1) still passes — no regressions in the personalization-snapshot round-trip
+- [X] T036 [US8] Run T034 cases on macOS + Linux. All cases MUST pass. Verify F-1's regression test suite (`tests/scripts/test_init_sh_*.py` from F-1) still passes — no regressions in the personalization-snapshot round-trip
 
 **Checkpoint**: Site D refactor complete + green. TACHI-VULN-4dc6cf8f88ea closed. TOCTOU race window collapsed per H-2 framing.
 

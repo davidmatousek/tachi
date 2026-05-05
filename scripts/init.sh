@@ -24,12 +24,25 @@ fi
 
 # Source the input validation helper (F-248 T023). Provides aod_init_read_validated
 # which wraps `read -r -p` with a rejection ladder (newline / NUL / control char
-# / over-length) per FR-005.
+# / over-length / metacharacters per F-2 amendment) per FR-005.
 if [ -f ".aod/scripts/bash/init-input.sh" ]; then
   # shellcheck disable=SC1091
   source .aod/scripts/bash/init-input.sh
 else
   echo -e "${RED}ERROR: .aod/scripts/bash/init-input.sh not found — required for prompt input validation${NC}" >&2
+  exit 1
+fi
+
+# Source the canonical KV-file load primitive (F-2 T015). Provides
+# aod_template_load_kv_file which replaces caller-side `source` of config
+# files with regex-validated, whitelist-enforced caller-scope assignment.
+# Used by Site A (defaults.env), Site B (aod-kit-version), Site D
+# (personalization.env) per ADR-040. NFR-001: bash 3.2 compatible.
+if [ -f ".aod/scripts/bash/template-config-load.sh" ]; then
+  # shellcheck disable=SC1091
+  source .aod/scripts/bash/template-config-load.sh
+else
+  echo -e "${RED}ERROR: .aod/scripts/bash/template-config-load.sh not found — required for safe config-file load${NC}" >&2
   exit 1
 fi
 
@@ -99,11 +112,31 @@ STACK_CHOICE=${STACK_CHOICE:-$OTHER_INDEX}
 
 if [ "$STACK_CHOICE" -ge 1 ] 2>/dev/null && [ "$STACK_CHOICE" -lt "$OTHER_INDEX" ] 2>/dev/null; then
   SELECTED_PACK="${STACK_PACKS[$((STACK_CHOICE - 1))]}"
-  # Extract display name for TECH_STACK placeholder
-  TECH_STACK=$(head -1 "stacks/$SELECTED_PACK/STACK.md" | sed 's/^# //' | sed 's/ Stack$//')
+  # Extract display name for downstream prompts (substituted into STACK_TECH_STACK
+  # below if defaults.env doesn't override).
+  TECH_STACK_DISPLAY=$(head -1 "stacks/$SELECTED_PACK/STACK.md" | sed 's/^# //' | sed 's/ Stack$//')
   # Load all defaults from pack (database, auth, vector, cloud provider, etc.)
+  # F-2 T016: replace `source defaults.env` with the canonical library load
+  # primitive. STACK_PACK_ALLOWED_KEYS enforces the canonical 5-key surface
+  # per contracts/stack-pack-defaults-schema.md. The "STACK_" prefix
+  # disambiguates from canonical-12 personalization values that flow through
+  # the same caller scope downstream.
   if [ -f "stacks/$SELECTED_PACK/defaults.env" ]; then
-    source "stacks/$SELECTED_PACK/defaults.env"
+    STACK_PACK_ALLOWED_KEYS=(TECH_STACK TECH_STACK_DATABASE TECH_STACK_VECTOR TECH_STACK_AUTH CLOUD_PROVIDER)
+    if ! aod_template_load_kv_file "stacks/$SELECTED_PACK/defaults.env" "STACK_" STACK_PACK_ALLOWED_KEYS; then
+      echo -e "${RED}ERROR: failed to load stack pack defaults: stacks/$SELECTED_PACK/defaults.env${NC}" >&2
+      echo -e "${RED}       (the file must contain the canonical 5 keys per contracts/stack-pack-defaults-schema.md)${NC}" >&2
+      exit 1
+    fi
+    # Map STACK_-prefixed library outputs into the canonical-12 placeholder
+    # variables expected downstream (init-personalization, etc.). The
+    # STACK_TECH_STACK from defaults.env wins; fall back to the STACK.md
+    # display name only if the pack omitted TECH_STACK (legacy path).
+    TECH_STACK="${STACK_TECH_STACK:-$TECH_STACK_DISPLAY}"
+    TECH_STACK_DATABASE="$STACK_TECH_STACK_DATABASE"
+    TECH_STACK_VECTOR="$STACK_TECH_STACK_VECTOR"
+    TECH_STACK_AUTH="$STACK_TECH_STACK_AUTH"
+    CLOUD_PROVIDER="$STACK_CLOUD_PROVIDER"
     echo -e "  ${GREEN}✓ Loaded defaults from $SELECTED_PACK pack${NC}"
   fi
 else

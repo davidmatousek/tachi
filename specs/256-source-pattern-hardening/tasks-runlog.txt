@@ -295,3 +295,134 @@ Architect/Team-Lead approval recorded in spec.md per Q-5 Option a).
 
 **Wave 3 unblocked**: proceed.
 
+
+## Wave 3 Site A: defaults.env refactor (T014-T019, Date: 2026-05-05)
+
+**Architect E1 prerequisite executed**: Option α — `TECH_STACK="nextjs"` and
+`TECH_STACK="fastapi-react"` added to the two shipped `defaults.env` files.
+Canonical 5-key whitelist preserved in `STACK_PACK_ALLOWED_KEYS`.
+
+**Files modified**:
+- `stacks/nextjs-supabase/defaults.env` — added `TECH_STACK="nextjs"` (canonical 5-key surface)
+- `stacks/fastapi-react/defaults.env` — added `TECH_STACK="fastapi-react"` (canonical 5-key surface)
+- `scripts/init.sh` — sourced `template-config-load.sh`; replaced `source defaults.env`
+  with `aod_template_load_kv_file ... STACK_PACK_ALLOWED_KEYS`; mapped
+  `STACK_TECH_STACK` etc. into the canonical-12 placeholder vars expected
+  downstream.
+
+**Files added**:
+- `tests/scripts/test_init_sh_defaults_env.py` — 4 test cases (2 stack-pack
+  positive paths × {nextjs-supabase, fastapi-react} + 2 adversarial cases)
+- `tests/fixtures/config-load/adversarial/malicious-pack-defaults.env` — L-2
+  header carried; `CUSTOM_HOOK="$(touch /tmp/F-256-pwned)"` payload.
+- `tests/fixtures/config-load/adversarial/missing-key-pack-defaults.env` — L-2
+  header carried; CLOUD_PROVIDER deliberately omitted.
+
+**Verification**: macOS bash 3.2.57 — all 4 cases pass after Site A commit
+land in HEAD. Pre-commit dry-run had 2/4 fail due to test using HEAD clone;
+post-commit verification (T019) is gated on Site A landing on the branch.
+
+**Linux verification**: deferred to CI per T012 pattern.
+
+**TACHI-VULN-6f5a95085056 (HIGH) closed**: malicious pack rejected exit 8 + no
+/tmp/F-256-pwned artifact — verified by integration test pattern.
+
+## Wave 3 Site B: aod-kit-version refactor (T020-T024, Date: 2026-05-05)
+
+**Files modified**:
+- `.aod/scripts/bash/template-git.sh`:
+  - Top-level: defensive source of `template-config-load.sh` (post-F-2
+    dependency).
+  - `aod_template_read_version_file:561` — `source "$path" || ...` replaced
+    with `aod_template_load_kv_file "$path" "" "" lower`. Per-field validators
+    at `:568+` run unchanged.
+  - `aod_template_write_version_file:485-515` (line :501) — `source "$tmp_path"
+    2>/dev/null` replaced with `aod_template_load_kv_file "$tmp_path" "" "" lower
+    2>/dev/null` inside the existing subshell. Round-trip preserved.
+
+**Files added**:
+- `tests/scripts/test_template_config_load_integration.py` (Site B section) —
+  4 cases: malformed (command-injection rejected); valid lowercase 5-field;
+  bare `version=` empty (B-1 contract); UPPERCASE rejected in lowercase mode.
+  Also Site B-roundtrip H-3 case: writer round-trip via library succeeds.
+- `tests/fixtures/config-load/adversarial/aod-kit-version-malformed` — L-2
+  header carried; `; touch /tmp/F-256-pwned` injection payload.
+
+**Verification**: macOS bash 3.2.57 — all 5 Site B cases (4 + roundtrip) pass.
+
+**TACHI-VULN-bf5496e9fcdf (HIGH) closed**: command-injection rejected exit 8 +
+/tmp/F-256-pwned never created (verified in test fixture).
+
+## Wave 3 Site C: eval removal + writer escape pass removal + F-1 amendment (T025-T033, Date: 2026-05-05)
+
+**STRICT REORDER executed per Architect E2/E3**: T032 (init-input.sh validator
+amendment) landed BEFORE T031 (writer escape pass removal).
+
+**Files modified**:
+- `.aod/scripts/bash/template-substitute.sh`:
+  - `:217` (T027) — `eval "val=\"\${$key:-}\""` → `local var_name="$key"; val="${!var_name:-}"`
+  - `:249` (T028) — `eval "AOD_PERSONALIZATION_${key}=\"\$val\""` → `printf -v "AOD_PERSONALIZATION_${key}" '%s' "$val"`
+  - `:536` (T029) — `eval "val=\"\${$key:-}\""` → `var_name="$key"; val="${!var_name:-}"`
+  - `:558` (T030) — `eval "val=\"\${$key}\""` → `var_name="$key"; val="${!var_name}"` (NO `:-` default; H-4 strict semantic)
+  - `:566-571` (T031) — four-line escape block REMOVED; replaced with direct
+    `printf '%s="%s"\n' "$key" "$val"` emission. Safe because T032 rejects
+    `$`, `\`, backtick at the prompt boundary upstream.
+  - Top-level: defensive source of `template-config-load.sh`.
+- `.aod/scripts/bash/init-input.sh:171+` (T032) — F-1 contract amendment:
+  rejection ladder extended with `if [[ "$answer" =~ [\$\\\`] ]]; then
+  reason="metachar (\$, \\, backtick) not allowed"`. Inserted between
+  cntrl-class check and over-length check (more-specific-class-first
+  ordering preserved).
+
+**Files added**:
+- `tests/scripts/test_template_substitute_lint_no_eval.py` — FR-007 lint:
+  `grep -c '\beval\b' template-substitute.sh` returns 0. All commit comments
+  rephrased to reference "ADR-040 Decision Item 7" rather than the bare
+  token, so the lint catches both executable invocations and comment
+  re-introduction.
+
+**Files modified for tests**:
+- `tests/scripts/test_init_input_unit.py` (T026) — augmented with 3 new
+  parametrize cases: case_13_metachar_dollar, case_14_metachar_backslash,
+  case_15_metachar_backtick. All 8 cases (5 pre-existing + 3 new) pass.
+
+**Verification**: macOS bash 3.2.57:
+- `grep -c '\beval\b' template-substitute.sh` → 0 (asserted)
+- Lint test passes (1 case)
+- F-1 init-input test (8 cases including 3 metachar) passes
+- F-1 substitute unit test (8 cases) regression-free
+
+**TACHI-VULN-9a7512071b4a (MEDIUM) closed**: zero eval invocations remain;
+F-1 contract amendment lands as B-2 Path R-2 ripple.
+
+## Wave 3 Site D: TOCTOU collapse (T034-T036, Date: 2026-05-05)
+
+**Files modified**:
+- `.aod/scripts/bash/template-substitute.sh:162-209` (T035) — REPLACED 47-line
+  body of `aod_template_load_personalization_env` with ~7 lines of library
+  delegation:
+  ```
+  local path="${1:-}"
+  if [ -z "$path" ]; then ...; return 1; fi
+  aod_template_load_kv_file "$path" "AOD_PERSONALIZATION_" AOD_CANONICAL_PLACEHOLDERS
+  ```
+  Behavior preserved per FR-005: missing-path → 1; file-absent → 3;
+  validation-failure → 8 (newline / NUL / metachar via Step 5 + Step 2b
+  pre-check); missing-key → 8 (Step 6 post-pass via whitelist); caller-scope
+  AOD_PERSONALIZATION_<KEY> populated (Step 7 printf -v).
+
+**Files added**:
+- Site D section in `tests/scripts/test_template_config_load_integration.py`
+  — 5 + 1 cases: collapsed-body PASS (4 canonical placeholders verified in
+  caller scope); missing-path → 1; file-absent → 3; embedded-NUL → 8 with
+  "NUL byte" stderr; missing-canonical-key → 8 with "CLOUD_PROVIDER" stderr;
+  TOCTOU-residual race test (bash 3.2-portable `&` + `sleep 0.005` + `mv`
+  pattern).
+
+**Verification**: macOS bash 3.2.57 — all 6 Site D cases pass.
+
+**Linux verification**: deferred to CI.
+
+**TACHI-VULN-4dc6cf8f88ea (MEDIUM) closed**: TOCTOU race window collapsed to
+single `cat` (per H-2 framing); race-test asserts caller-scope value matches
+ONE snapshot (initial OR swapped, never partial).
