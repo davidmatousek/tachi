@@ -520,3 +520,54 @@ trap eliminates watchdog process-leak window.
 
 **Day-5 slip-watch GREEN-LIGHT condition 3: GREEN** (ADR-040 Proposed
 committed; §Context + §Decision + §Alternatives Considered drafted).
+
+## Wave 3 Site A T019 verification (Date: 2026-05-05, post cc18e84)
+
+**Re-run after defaults.env extension** (cc18e84 added TECH_STACK to all 5
+shipped packs + fixed test pack-index calculation):
+
+```
+$ BASH=/bin/bash python3 -m pytest tests/scripts/test_init_sh_defaults_env.py -v
+tests/scripts/test_init_sh_defaults_env.py::test_shipped_stack_pack_loads_cleanly[nextjs-supabase] PASSED
+tests/scripts/test_init_sh_defaults_env.py::test_shipped_stack_pack_loads_cleanly[fastapi-react] PASSED
+tests/scripts/test_init_sh_defaults_env.py::test_malicious_pack_rejected PASSED
+tests/scripts/test_init_sh_defaults_env.py::test_missing_key_pack_rejected PASSED
+======================== 4 passed in 485.75s (0:08:05) =========================
+```
+
+**T019 PASS** on macOS bash 3.2.57. Linux verification deferred to CI per
+T012 pattern.
+
+**Day-5 slip-watch GREEN-LIGHT condition 2: GREEN** (Site A passes both
+positive paths AND adversarial rejection paths AND missing-key rejection).
+
+## Wave 3 Test Suite Aggregate (Date: 2026-05-05)
+
+**All Wave 2/3 unit + integration tests on macOS bash 3.2.57**:
+
+```
+$ BASH=/bin/bash python3 -m pytest \
+  tests/scripts/test_template_config_load_unit.py \
+  tests/scripts/test_template_config_load_integration.py \
+  tests/scripts/test_template_substitute_lint_no_eval.py \
+  tests/scripts/test_init_input_unit.py \
+  tests/scripts/test_template_substitute_unit.py \
+  tests/scripts/test_template_git_clone_timeout.py \
+  tests/scripts/test_substitute_shim_canary.py
+============================== 64 passed in 17.23s ==============================
+```
+
+**Site A end-to-end (4 cases × ~120s clone-and-init each)**: 4/4 passed in 485.75s.
+
+**TOTAL Wave 2 + Wave 3 fast suite**: 64/64 passed.
+**TOTAL Wave 3 e2e Site A**: 4/4 passed.
+
+**All 5 vuln_ids closed** in Wave 3:
+- TACHI-VULN-6f5a95085056 (HIGH, Site A)
+- TACHI-VULN-bf5496e9fcdf (HIGH, Site B)
+- TACHI-VULN-9a7512071b4a (MEDIUM, Site C)
+- TACHI-VULN-4dc6cf8f88ea (MEDIUM, Site D)
+- TACHI-VULN-851fd6a21ba9 (LOW, Stream 4)
+
+**All 4 Day-5 GREEN-LIGHT conditions: GREEN** (with significant headroom
+on conditions 1 + 4).
