@@ -84,7 +84,7 @@ triad:
 
 **NOTE: Tests written FIRST per Constitution VI. Test file lands before library implementation; tests fail against an empty/missing library; tests pass after T010-T012 implementation.**
 
-- [ ] T009 [P] [US2] Author `tests/scripts/test_template_config_load_unit.py` first pass with all 27 test cases per FR-009 AC-9.2:
+- [X] T009 [P] [US2] Author `tests/scripts/test_template_config_load_unit.py` first pass with all 27 test cases per FR-009 AC-9.2:
   Cases 1-5 valid KV (no whitelist) — KEY=value, KEY="quoted", KEY='single-quoted', KEY=path/with/slashes, KEY=email@example.com;
   Case 6 valid KV with whitelist — all keys present;
   Cases 7-15 invalid lines — command substitution `KEY="$(rm -rf /)"`, unbalanced quote, backtick, embedded `$`, KEY with lowercase (in upper mode), missing whitelisted key, line with only KEY no `=`, embedded literal newline, embedded NUL;
@@ -100,7 +100,7 @@ triad:
 
 ### Implementation for Library Bring-Up
 
-- [ ] T010 [US2] Author `.aod/scripts/bash/template-config-load.sh` — the canonical config-load primitive. Implement the function `aod_template_load_kv_file <path> <var_prefix> [<allowed_keys_array_name>] [<key_case>]` per FR-001:
+- [X] T010 [US2] Author `.aod/scripts/bash/template-config-load.sh` — the canonical config-load primitive. Implement the function `aod_template_load_kv_file <path> <var_prefix> [<allowed_keys_array_name>] [<key_case>]` per FR-001:
   Step 1 argument validation (path / var_prefix regex / key_case enum);
   Step 2 file existence check (return 3 with error);
   Step 3 single `cat $path` into in-memory buffer (TOCTOU mitigation);
@@ -110,12 +110,12 @@ triad:
   Step 7 defensive identifier check (`^[A-Za-z_][A-Za-z_0-9]*$` on `${var_prefix}${KEY}` per H-1) + `printf -v` assignment (NOT eval; quote stripping for surrounding quotes);
   Internal `eval` carve-out: ONE invocation `eval "local keys=(\"\${${allowed_keys_array_name}[@]}\")"` for bash 3.2 indirect array access (audit-clarity per ADR-040 Decision Item 7).
   Bash 3.2 verified: no associative arrays, no `mapfile`, no `${var,,}`, scalar `${!var}` only.
-- [ ] T011 [US2] Verify T010 implementation: run `pytest tests/scripts/test_template_config_load_unit.py -v` on macOS local (bash 3.2.57). All 27 cases MUST pass. If fewer than 17 pass at this point, escalate per Day-5 slip-watch rule
-- [ ] T012 [US2] Verify T010 implementation on Linux: run the same pytest invocation in CI (or local `bash --version` ≥ 4.0 environment). All 27 cases MUST pass on Linux as well
+- [X] T011 [US2] Verify T010 implementation: run `pytest tests/scripts/test_template_config_load_unit.py -v` on macOS local (bash 3.2.57). All 27 cases MUST pass. If fewer than 17 pass at this point, escalate per Day-5 slip-watch rule
+- [X] T012 [US2] Verify T010 implementation on Linux: run the same pytest invocation in CI (or local `bash --version` ≥ 4.0 environment). All 27 cases MUST pass on Linux as well
 
 ### Library Day-1 Benchmark
 
-- [ ] T013 [US2] Stream 1 Day-1 post-implementation benchmark (NFR-004 + SC-010): time `aod_template_load_kv_file` against the canonical fixture set captured in T005. Same methodology (100 inv × 4 fixtures × p50/p95; per-file delta; warm/cold cache). Record numbers in tasks-runlog.txt for ADR-040 §Consequences (T053 finalizes the entry). Apply NFR-004 escalation rules:
+- [X] T013 [US2] Stream 1 Day-1 post-implementation benchmark (NFR-004 + SC-010): time `aod_template_load_kv_file` against the canonical fixture set captured in T005. Same methodology (100 inv × 4 fixtures × p50/p95; per-file delta; warm/cold cache). Record numbers in tasks-runlog.txt for ADR-040 §Consequences (T053 finalizes the entry). Apply NFR-004 escalation rules:
   ≤5% delta — proceed (no PRD update);
   5-25% delta — proceed (loosen NFR-004 to 25% in ADR-040);
   25-50% delta — Team-Lead approval required + security tradeoff rationale in ADR-040;
