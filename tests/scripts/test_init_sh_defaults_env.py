@@ -102,14 +102,28 @@ def _install_pack(clone_root: Path, pack_name: str, defaults_env_src: Path) -> i
     (pack_dir / "STACK.md").write_text(f"# {pack_name} Stack\n\nSynthetic test pack.\n", encoding="utf-8")
     shutil.copy2(defaults_env_src, pack_dir / "defaults.env")
 
-    # Compute the menu index by listing stacks/ directories with STACK.md
-    # in alphabetical order (matches init.sh discovery loop).
+    return _compute_pack_index(clone_root, pack_name)
+
+
+def _compute_pack_index(clone_root: Path, pack_name: str) -> int:
+    """Compute init.sh's 1-based menu index for `pack_name`.
+
+    init.sh enumerates packs via `for pack_dir in stacks/*/`. Bash glob
+    expansion in C locale sorts paths byte-by-byte INCLUDING the trailing
+    `/`. This means `stacks/fastapi-react-local/` sorts BEFORE
+    `stacks/fastapi-react/` because `-` (0x2D) < `/` (0x2F) at the
+    comparison position. Python's `sorted()` on bare names produces
+    different ordering. We replicate bash glob order by sorting
+    `<name>/` strings.
+    """
     stacks_dir = clone_root / "stacks"
-    pack_dirs = sorted(
+    candidates = [
         d.name for d in stacks_dir.iterdir()
         if d.is_dir() and (d / "STACK.md").is_file()
-    )
-    return pack_dirs.index(pack_name) + 1
+    ]
+    # Sort by `<name>/` so `-` vs `/` ordering matches bash glob.
+    pack_dirs_sorted_like_bash = sorted(candidates, key=lambda n: n + "/")
+    return pack_dirs_sorted_like_bash.index(pack_name) + 1
 
 
 def _build_stdin_for_pack(pack_index: int, *,
@@ -170,15 +184,12 @@ def test_shipped_stack_pack_loads_cleanly(tmp_path: Path, pack_name: str) -> Non
     """
     clone_root = _clone_for_init(tmp_path)
 
-    # Determine the menu index for this pack (alphabetical order in stacks/).
+    # Determine the menu index for this pack (matches init.sh `for stacks/*/`
+    # bash glob C-locale ordering — see _compute_pack_index docstring).
     stacks_dir = clone_root / "stacks"
-    pack_dirs = sorted(
-        d.name for d in stacks_dir.iterdir()
-        if d.is_dir() and (d / "STACK.md").is_file()
-    )
-    if pack_name not in pack_dirs:
+    if not (stacks_dir / pack_name).is_dir():
         pytest.skip(f"pack {pack_name} not present in clone tree")
-    pack_index = pack_dirs.index(pack_name) + 1
+    pack_index = _compute_pack_index(clone_root, pack_name)
 
     stdin_payload = _build_stdin_for_pack(pack_index)
     result = _run_init_in_clone(clone_root, stdin_payload)
