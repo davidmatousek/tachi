@@ -41,6 +41,23 @@ if [ -n "${AOD_TEMPLATE_GIT_SH_SOURCED:-}" ]; then
 fi
 readonly AOD_TEMPLATE_GIT_SH_SOURCED=1
 
+# F-2 T022/T023: aod_template_read_version_file + aod_template_write_version_file
+# delegate the file-load step to aod_template_load_kv_file from
+# template-config-load.sh. Source defensively here so callers (init.sh,
+# update.sh, integration tests) don't have to remember the dependency.
+# The library itself guards against double-sourcing.
+if [ -z "${AOD_TEMPLATE_CONFIG_LOAD_SH_SOURCED:-}" ]; then
+  _AOD_TEMPLATE_GIT_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  if [ -f "$_AOD_TEMPLATE_GIT_SCRIPT_DIR/template-config-load.sh" ]; then
+    # shellcheck disable=SC1091
+    . "$_AOD_TEMPLATE_GIT_SCRIPT_DIR/template-config-load.sh"
+  else
+    echo "[aod] ERROR: template-config-load.sh not found in $_AOD_TEMPLATE_GIT_SCRIPT_DIR — required by template-git.sh post-F-2" >&2
+    return 1
+  fi
+  unset _AOD_TEMPLATE_GIT_SCRIPT_DIR
+fi
+
 # -----------------------------------------------------------------------------
 # aod_template_fetch_upstream <url> <ref> <destdir>
 # -----------------------------------------------------------------------------
@@ -481,12 +498,12 @@ aod_template_write_version_file() {
         return 3
     fi
 
-    # ---- belt-and-braces: re-parse the tmp file ----
-    # Guard against the shell-injection-of-values case by checking that the
-    # round-tripped values match what we just wrote. Sourcing in a subshell
-    # avoids polluting the caller's scope (SC2030/SC2031 info warnings about
-    # the subshell-local vars are intentional — we specifically WANT the
-    # variables to be isolated inside the $( ... ) subshell).
+    # ---- belt-and-braces: re-parse the tmp file via library ----
+    # F-2 T023: replace `source "$tmp_path"` with aod_template_load_kv_file
+    # in lowercase mode. The library performs regex-validated load with no
+    # bash interpretation of file content; subshell isolation is preserved
+    # via the explicit `set +e/+u` and local-variable assignment inside the
+    # $( ... ) subshell scope.
     local roundtrip_output rc
     # shellcheck disable=SC2030,SC2031
     roundtrip_output="$(
@@ -497,8 +514,7 @@ aod_template_write_version_file() {
         updated_at=''
         upstream_url=''
         manifest_sha256=''
-        # shellcheck disable=SC1090
-        source "$tmp_path" 2>/dev/null
+        aod_template_load_kv_file "$tmp_path" "" "" lower 2>/dev/null
         printf '%s|%s|%s|%s|%s' \
             "$version" "$sha" "$updated_at" "$upstream_url" "$manifest_sha256"
     )"
@@ -554,12 +570,19 @@ aod_template_read_version_file() {
         return 3
     fi
 
-    # Source in the caller's scope, but reset the 5 names first so a
-    # malformed file can't leak stale values from the environment.
+    # Reset the 5 names first so a malformed file can't leak stale values
+    # from the environment.
     local version='' sha='' updated_at='' upstream_url='' manifest_sha256=''
-    # shellcheck disable=SC1090
-    source "$path" || {
-        echo "[aod] ERROR: failed to source version file: $path" >&2
+    # F-2 T022: replace `source "$path"` with the canonical KV-file load
+    # primitive. Empty <var_prefix> + no whitelist + key_case=lower
+    # matches the version-file contract (lowercase keys per
+    # contracts/version-schema.md). Per-field validators below run AFTER
+    # the load and provide stronger field-shape checking than the regex
+    # alone (e.g., 40-char sha length, ISO 8601 updated_at, https://
+    # upstream_url scheme).
+    aod_template_load_kv_file "$path" "" "" lower || {
+        local rc=$?
+        echo "[aod] ERROR: failed to parse version file: $path (exit $rc)" >&2
         return 3
     }
 

@@ -1,0 +1,12 @@
+# DO NOT SOURCE — malicious test fixture (L-2 header)
+# Adversarial fixture used by tests/scripts/test_template_config_load_integration.py
+# Site-B-malformed case. A pre-F-2 `source` call would execute the
+# `; touch /tmp/F-256-pwned` injection AFTER assigning version='1.0'.
+# The post-F-2 library MUST reject this file with exit 8 (regex rejects
+# ; / $ in unquoted values; even quoted values reject ; via the strict
+# value class).
+version='1.0'; touch /tmp/F-256-pwned
+sha=abc123def456abc123def456abc123def456abcd
+updated_at=2026-05-04T12:00:00Z
+upstream_url=https://github.com/example/upstream
+manifest_sha256=abc123def456abc123def456abc123def456abc123def456abc123def456abcd

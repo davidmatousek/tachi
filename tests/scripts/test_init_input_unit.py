@@ -157,6 +157,41 @@ INPUT_CASES: list[dict] = [
         "expected_reason_class": "control character",
         "marker": "control-character rejection after 3 strikes (SOH 0x01)",
     },
+    # F-2 BLP-02 Wave 2 amendment per B-2 Path R-2 (T026 + T032):
+    # extend the rejection ladder to additionally reject `$`, `\`, backtick
+    # at the prompt boundary. This complements the existing newline / NUL /
+    # control / over-length rejections and forms the upstream defense for
+    # the writer escape pass removal at template-substitute.sh:566-571
+    # (T031). CHANGELOG migration guidance lands at T053.
+    {
+        "id": "case_13_metachar_dollar",
+        "input": "my$project",
+        "expected_rc": 1,
+        "expected_result": None,
+        "expected_reason_class": "metachar",
+        "marker": "F-2 amendment — reject `$` at prompt boundary",
+    },
+    {
+        "id": "case_14_metachar_backslash",
+        # Use a single backslash followed by name; bash printf %b will
+        # interpret backslash escapes, so we deliberately use a raw
+        # backslash that is NOT a recognized escape sequence. `\\n` would
+        # become a newline; `\\m` is left as-is by `printf '%b'`. To pass
+        # a literal backslash through, send `\\\\` (printf %b → `\\`).
+        "input": "proj\\\\name",
+        "expected_rc": 1,
+        "expected_result": None,
+        "expected_reason_class": "metachar",
+        "marker": "F-2 amendment — reject `\\` at prompt boundary",
+    },
+    {
+        "id": "case_15_metachar_backtick",
+        "input": "proj`name`",
+        "expected_rc": 1,
+        "expected_result": None,
+        "expected_reason_class": "metachar",
+        "marker": "F-2 amendment — reject backtick at prompt boundary",
+    },
 ]
 
 

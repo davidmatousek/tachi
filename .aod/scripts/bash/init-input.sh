@@ -173,6 +173,22 @@ aod_init_read_validated() {
             fi
         fi
 
+        # F-2 BLP-02 Wave 2 amendment per B-2 Path R-2 (T032): reject
+        # shell metacharacters `$`, `\`, backtick at the prompt boundary.
+        # This is the UPSTREAM defense that lets template-substitute.sh
+        # remove its writer escape pass (T031): if the prompt rejects
+        # these characters, the writer never sees them and the
+        # snapshot file is bash-sourceable without escape.
+        # CHANGELOG migration guidance for adopters whose existing
+        # PROJECT_NAME / PROJECT_DESCRIPTION contains these chars lands
+        # at T053. Order matters: this MUST land BEFORE the over-length
+        # check so the more-specific class is named first.
+        if [ -z "$reason" ]; then
+            if [[ "$answer" =~ [\$\\\`] ]]; then
+                reason="metachar (\$, \\, backtick) not allowed"
+            fi
+        fi
+
         if [ -z "$reason" ] && [ "${#answer}" -gt "$max_len" ]; then
             reason="over-length (max $max_len chars)"
         fi
