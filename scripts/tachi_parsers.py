@@ -62,6 +62,20 @@ VALID_AGENTIC_PATTERNS = (
     "multiple",
 )
 
+# Closed asset-sensitivity tag enum consumed by the risk-scorer's CVSS impact-bit
+# floor pass (see schemas/risk-scoring.yaml -> asset_modifiers and
+# .claude/skills/tachi-risk-scoring/references/asset-modifiers.md). Tags are
+# normalized to lowercase before comparison; unknown tags are dropped with a
+# stderr warning and never reach the modifier table.
+VALID_ASSET_TAGS = (
+    "pii",
+    "phi",
+    "auth",
+    "secrets",
+    "financial",
+    "safety",
+)
+
 
 # =============================================================================
 # Utility Functions
@@ -1449,3 +1463,142 @@ def _parse_chain_breaking_controls(section_text: str) -> list:
         controls.append(current)
 
     return controls
+
+
+# =============================================================================
+# Asset-Sensitivity Tag Parser (Issue #260 prototype)
+# =============================================================================
+#
+# Extracts inline [asset:tag1,tag2] annotations from Mermaid node labels in an
+# architecture description, producing a component-to-asset-tag mapping
+# consumed by the risk-scorer's CVSS impact-bit floor pass. Mirrors the
+# component_zone_map shape produced by Trust Zone Extraction so the modifier
+# pass can join the two on display name.
+#
+# Recognized syntax (the asset block lives inside a quoted Mermaid label):
+#
+#     PostgresDB[("Postgres DB<br/>[asset:pii,auth]")]
+#     SecretsVault["Secrets Vault<br/>[asset:secrets]"]
+#
+# Unknown tags are dropped with a stderr warning. Components without tags are
+# omitted from the result entirely (absent == default behavior, no modifier).
+
+_ASSET_BLOCK_PATTERN = re.compile(r"\[asset:\s*([^\]]+?)\s*\]", re.IGNORECASE)
+_QUOTED_NODE_WITH_ASSET_PATTERN = re.compile(
+    r'\b([A-Za-z_]\w*)\s*[\[\(\{]+\s*"([^"]*\[asset:[^\]]+\][^"]*)"',
+    re.IGNORECASE,
+)
+_BR_TAG_PATTERN = re.compile(r"<br\s*/?>", re.IGNORECASE)
+
+
+def parse_component_asset_map(content: str) -> dict:
+    """Extract component-to-asset-tag mapping from a Mermaid architecture file.
+
+    Scans Mermaid node declarations inside `````mermaid`` fenced
+    blocks (or the whole content when no fence is present) for the
+    ``[asset:tag1,tag2]`` pattern embedded in a quoted node label. Returns a
+    dict keyed by the component's display name (label content with the asset
+    block and ``<br/>`` removed) mapping to a sorted list of valid tag
+    strings drawn from :data:`VALID_ASSET_TAGS`.
+
+    Parsing is intentionally permissive about Mermaid bracket shape (rectangle,
+    rounded, cylinder, subroutine all accepted) and case-insensitive on tag
+    names. Asset tags MUST be embedded inside quoted labels — unquoted labels
+    with bracket-style asset blocks are not parsed because Mermaid's bracket
+    grammar already uses ``[`` / ``]`` and disambiguating without a full
+    parser is fragile.
+
+    Returns an empty dict when ``content`` is empty, when no ``[asset:...]``
+    block is present, or when every tag is unknown. Unknown tags produce a
+    stderr warning per occurrence; valid tags from the same node are still
+    retained.
+    """
+    result: dict = {}
+    if not content:
+        return result
+
+    scan_blocks = _select_mermaid_scan_blocks(content)
+
+    for block in scan_blocks:
+        for match in _QUOTED_NODE_WITH_ASSET_PATTERN.finditer(block):
+            node_id = match.group(1)
+            label_content = match.group(2)
+
+            asset_match = _ASSET_BLOCK_PATTERN.search(label_content)
+            if asset_match is None:
+                continue
+
+            tags = _normalize_asset_tags(asset_match.group(1), node_id)
+            if not tags:
+                continue
+
+            display_name = _extract_display_name(label_content)
+            if not display_name:
+                display_name = node_id
+
+            existing = result.get(display_name)
+            if existing is None:
+                result[display_name] = tags
+                continue
+
+            merged = sorted(set(existing) | set(tags))
+            if merged != existing:
+                print(
+                    f"Warning: component {display_name!r} has multiple asset "
+                    f"declarations; merged tags: {merged}",
+                    file=sys.stderr,
+                )
+            result[display_name] = merged
+
+    return result
+
+
+def _select_mermaid_scan_blocks(content: str) -> list:
+    """Return the substrings of ``content`` that should be scanned for nodes.
+
+    When at least one fenced `````mermaid`` block is present,
+    only those blocks are scanned (avoiding false matches on prose that
+    happens to contain ``[asset:...]``). When no fence is present, the entire
+    content is scanned as-is so callers passing raw Mermaid still work.
+    """
+    fences = re.findall(r"```mermaid\s*\n(.*?)\n```", content, re.DOTALL)
+    if fences:
+        return fences
+    return [content]
+
+
+def _normalize_asset_tags(raw: str, node_id: str) -> list:
+    """Split a raw ``[asset:...]`` body into a sorted list of valid tags.
+
+    Tags are lowercased and stripped. Unknown tags (not in
+    :data:`VALID_ASSET_TAGS`) are dropped with a per-occurrence stderr warning.
+    Empty tag lists collapse to ``[]``.
+    """
+    candidates = [t.strip().lower() for t in raw.split(",")]
+    candidates = [t for t in candidates if t]
+
+    valid: list = []
+    for tag in candidates:
+        if tag in VALID_ASSET_TAGS:
+            valid.append(tag)
+        else:
+            print(
+                f"Warning: unknown asset tag {tag!r} on node {node_id!r}; "
+                f"valid tags: {list(VALID_ASSET_TAGS)}",
+                file=sys.stderr,
+            )
+
+    return sorted(set(valid))
+
+
+def _extract_display_name(label_content: str) -> str:
+    """Return the human-readable component name from a quoted Mermaid label.
+
+    Strips the ``[asset:...]`` block, ``<br/>`` line breaks, and surrounding
+    whitespace so the result joins cleanly against the component_zone_map
+    keys produced from threats.md Section 2 (which also uses display names).
+    """
+    cleaned = _ASSET_BLOCK_PATTERN.sub("", label_content)
+    cleaned = _BR_TAG_PATTERN.sub(" ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned.strip()

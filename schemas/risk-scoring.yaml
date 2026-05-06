@@ -118,6 +118,50 @@ category_defaults:
   agentic:             "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L"   # Agent misuse (PR:L to avoid ceiling effect)
   llm:                 "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N"   # Prompt injection
 
+# Asset-Sensitivity Modifiers (Issue #260 prototype, additive, opt-in)
+#
+# Applied during risk-scorer Section 3 (CVSS base scoring) AFTER the
+# score_bounds +/-1.0 clamp. Each tag forces the named CVSS impact bit(s) to
+# `H` when the finding's target component carries the tag in its
+# component_asset_map entry. Modifiers are floor-only — they raise impact
+# bits but never lower a category default. Components with no tag preserve
+# the existing scoring behavior exactly.
+#
+# Tag vocabulary is closed at the prototype stage (per Issue #260 direction
+# from davidmatousek 2026-05-05): "Hardcoded enum first. Extensibility is
+# YAGNI until a real custom-tag use case shows up." Widening the enum is a
+# minor schema bump per ADR-026 Complex-Shape Addition Clarifier.
+#
+# Modifier ceiling: the recomputed cvss_base after impact-bit elevation is
+# clamped at `modifier_ceiling` so a single tag cannot push a finding to
+# 10.0 — pinned during architect review, prototype default 9.5.
+#
+# See .claude/skills/tachi-risk-scoring/references/asset-modifiers.md for
+# the per-tag rationale, parsing rules, and worked examples.
+
+asset_modifiers:
+  modifier_ceiling: 9.5
+
+  tags:
+    pii:
+      forces: ["C:H"]
+      rationale: "Personally Identifiable Information loss is a confidentiality-high event regardless of category default."
+    phi:
+      forces: ["C:H"]
+      rationale: "Protected Health Information attracts the same confidentiality floor as PII (HIPAA, GDPR-special-category)."
+    auth:
+      forces: ["C:H", "I:H"]
+      rationale: "Authentication material loss compromises both confidentiality (credential disclosure) and integrity (impersonation)."
+    secrets:
+      forces: ["C:H", "I:H"]
+      rationale: "Long-lived secrets (API keys, signing keys, vault contents) carry the same C:H + I:H floor as auth material."
+    financial:
+      forces: ["I:H"]
+      rationale: "Financial data integrity is the dominant impact axis — unauthorized modification drives losses regardless of confidentiality posture."
+    safety:
+      forces: ["A:H"]
+      rationale: "Safety-critical components (life-safety, control loops) treat availability loss as the dominant impact axis."
+
 # Composite Weights
 weights:
   cvss_base: 0.35

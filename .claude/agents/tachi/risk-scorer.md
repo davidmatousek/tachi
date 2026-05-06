@@ -30,6 +30,7 @@ Load domain knowledge on-demand from the `tachi-risk-scoring` skill using the Re
 | Severity bands | `.claude/skills/tachi-risk-scoring/references/severity-bands.md` | Composite calculation, governance (Sections 7-8) |
 | Trust zones | `.claude/skills/tachi-risk-scoring/references/trust-zones.md` | Trust zone extraction (Section 2) |
 | Reachability | `.claude/skills/tachi-risk-scoring/references/reachability-analysis.md` | Reachability assessment (Section 6) |
+| Asset modifiers | `.claude/skills/tachi-risk-scoring/references/asset-modifiers.md` | Asset-sensitivity impact-bit floor pass (Section 3.5, prototype per Issue #260) |
 | Output formatting | `.claude/skills/tachi-risk-scoring/references/output-formatting.md` | Markdown output generation (Section 9) |
 | Severity bands (shared) | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | Composite scoring / severity assignment |
 | Finding format (shared) | `.claude/skills/tachi-shared/references/finding-format-shared.md` | Input parsing / output formatting |
@@ -42,7 +43,7 @@ The scoring pipeline processes threat findings through six sequential phases:
 
 1. **Threat Parsing** -- Extract findings from input (threats.md or threats.sarif)
 2. **Trust Zone Extraction** -- Map components to trust zones for reachability scoring
-3. **Dimensional Scoring** -- Assess each finding on four dimensions (CVSS, exploitability, scalability, reachability)
+3. **Dimensional Scoring** -- Assess each finding on four dimensions (CVSS, exploitability, scalability, reachability). When the architecture description carries `[asset:...]` tags, an asset-sensitivity modifier pass (Section 3.5, prototype per Issue #260) elevates CVSS impact bits after the bounded-scoring clamp.
 4. **Composite Calculation** -- Compute weighted composite score and map to severity band
 5. **Governance Fields** -- Attach remediation tracking metadata based on severity
 6. **Output Generation** -- Produce risk-scores.md and risk-scores.sarif
@@ -268,6 +269,30 @@ When a finding has `delta_status: NEW` (discovered in Phase 2 of a baseline-awar
 **When bounding applies**: Only to `NEW` findings from Phase 2 isolated discovery. `UPDATED` findings are re-scored fresh without bounding (they have established context). `UNCHANGED` and `RESOLVED` findings inherit scores verbatim.
 
 **When no baseline is present**: Bounding does not apply. All findings are scored using the standard CVSS assessment without constraints.
+
+### 3.5. Asset-Sensitivity Modifier (Prototype, Issue #260)
+
+**MANDATORY**: Read `.claude/skills/tachi-risk-scoring/references/asset-modifiers.md` for the full modifier specification including tag vocabulary, floor-only semantics, modifier ceiling, parsing rules, and worked examples.
+
+After the bounded-scoring clamp completes, apply optional asset-sensitivity modifiers when the architecture description carries `[asset:tag1,tag2]` annotations on its components. The modifier pass closes the asset-value gap in the four-dimensional composite — reachability scores how exposed a component is, asset modifiers score what would be lost if it were compromised.
+
+**Inputs**:
+
+1. `component_asset_map` (optional): produced by scanning the architecture description for inline `[asset:tag1,tag2]` annotations on Mermaid node labels. The reference parser is `parse_component_asset_map()` in `scripts/tachi_parsers.py`. When the architecture description contains no asset blocks, the map is empty and this phase is a no-op.
+2. `asset_modifiers` table from `schemas/risk-scoring.yaml`: closed six-tag enum (`pii | phi | auth | secrets | financial | safety`) with per-tag impact-bit floors (`C:H`, `I:H`, `A:H`) and a `modifier_ceiling` cap on the recomputed `cvss_base`.
+
+**Order**: Apply modifiers **after** the `score_bounds` +/-1.0 clamp from Section 3. The clamp encodes "average" category behavior; the modifier's purpose is to elevate when the target component carries high-value assets. Clamping after the modifier would defeat its purpose.
+
+For each finding:
+
+1. Look up the finding's target component in `component_asset_map` using the same case-insensitive + fuzzy-match cascade as Reachability Analysis Section 6f. If no match, skip — the finding is unmodified.
+2. Union the forced impact bits across every tag the component carries.
+3. Elevate the assessed CVSS vector by taking the per-bit max with the forced bits (`H > L > N`, floor-only).
+4. Recompute `cvss_base` from the elevated vector.
+5. Clamp the recomputed score at `asset_modifiers.modifier_ceiling`.
+6. Overwrite the finding's `cvss_vector` and `cvss_base` with the elevated values. Record the original (pre-modifier) score in the dimensional breakdown narrative (Section 9d) so the modifier's effect is auditable.
+
+**When this phase is skipped**: `UNCHANGED` and `RESOLVED` findings inherit baseline scores verbatim and never re-enter dimensional scoring. Only `NEW` and `UPDATED` findings receive modifier treatment.
 
 ---
 
