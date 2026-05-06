@@ -8,7 +8,7 @@ version: 1.0.0
 
 Apply optional CVSS impact-bit floors to a finding based on tags declared on its target component in the architecture description. Closes the asset-value gap in the four-dimensional composite — the existing reachability dimension scores how exposed a component is, and this dimension scores what would be lost if it were compromised.
 
-> **Status**: prototype for [Issue #260](https://github.com/davidmatousek/tachi/issues/260). The tag vocabulary, modifier ceiling, and exact application order are pinned during architect review when the formal spec opens. Until then, treat this as illustrative.
+> **Status**: prototype for [Issue #260](https://github.com/davidmatousek/tachi/issues/260). The tag vocabulary and exact application order are pinned during architect review when the formal spec opens. Modifier ceiling pinned at `9.2` during PR #262 architect review (2026-05-06). Until the formal spec opens, treat the rest as illustrative.
 
 ## Where This Sits in the Pipeline
 
@@ -50,7 +50,7 @@ Modifiers raise impact bits but never lower them. If a category default already 
 
 ## Modifier Ceiling
 
-After bit elevation and CVSS base recomputation, clamp the result at `asset_modifiers.modifier_ceiling` (prototype default `9.5`) so a single tag cannot push a finding to `10.0`. The ceiling is pinned during architect review when the spec opens.
+After bit elevation and CVSS base recomputation, clamp the result at `asset_modifiers.modifier_ceiling` (architect-pinned at `9.2` during PR #262 review, 2026-05-06) so a single tag cannot push a finding to `10.0`. The ceiling pin is defensive: it preserves modifier band-crossing for genuinely-elevated findings while requiring non-CVSS signal for Critical-band entry. The full rationale lives in the schema comment block above `asset_modifiers` in `schemas/risk-scoring.yaml`.
 
 ```
 cvss_base_after_modifier = min(modifier_ceiling, recompute_cvss(elevated_vector))

@@ -134,13 +134,19 @@ category_defaults:
 #
 # Modifier ceiling: the recomputed cvss_base after impact-bit elevation is
 # clamped at `modifier_ceiling` so a single tag cannot push a finding to
-# 10.0 — pinned during architect review, prototype default 9.5.
+# 10.0. Architect review (PR #262, 2026-05-06) pinned modifier_ceiling: 9.2 —
+# defensive default for the prototype phase. Retains modifier band-crossing
+# for genuinely-elevated findings while requiring non-CVSS signal for
+# Critical-band entry; 9.5 was rejected as too aggressive (lets a single
+# tag mint Critical findings on near-boundary composites), 9.0 as too
+# conservative (defeats modifier participation in band crossings even when
+# CVSS-after-elevation organically exceeds 9.0 for auth/secrets cases).
 #
 # See .claude/skills/tachi-risk-scoring/references/asset-modifiers.md for
 # the per-tag rationale, parsing rules, and worked examples.
 
 asset_modifiers:
-  modifier_ceiling: 9.5
+  modifier_ceiling: 9.2
 
   tags:
     pii:
