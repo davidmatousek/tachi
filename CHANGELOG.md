@@ -72,6 +72,13 @@ TACHI-VULN-851fd6a21ba9 (LOW).
 
 ---
 
+## [4.31.0](https://github.com/davidmatousek/tachi/compare/v4.30.0...v4.31.0) (2026-05-06)
+
+
+### Features
+
+* **260:** asset-sensitivity tag prototype ([#262](https://github.com/davidmatousek/tachi/issues/262)) ([3dfe6a7](https://github.com/davidmatousek/tachi/commit/3dfe6a7295c37d2685ec41ff4180742a6ceb7eb5))
+
 ## [4.30.0](https://github.com/davidmatousek/tachi/compare/v4.29.0...v4.30.0) (2026-05-05)
 
 
