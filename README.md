@@ -1,6 +1,10 @@
 # tachi
 
-**Automated threat modeling sidecar for your projects.**
+**Threat Modeling and Vulnerability Detection Harness for Claude Code.**
+
+*AI-Reasoning Scanner — STRIDE + AI + MAESTRO.*
+
+![tachi cycle outcomes — Threat Modeling and Vulnerability Detection Harness for Claude Code, AI-Reasoning Scanner across STRIDE + AI + MAESTRO](brand/posters/2026-05-08-cycle-outcomes-poster.jpg)
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/davidmatousek/tachi)](https://github.com/davidmatousek/tachi/releases)
@@ -12,7 +16,14 @@
 
 ## What is tachi?
 
-tachi is a threat modeling sidecar that you add to any project. It dispatches 14 specialized threat agents against your architecture description and produces a complete threat model in one command. Five post-pipeline commands enrich your results: `/tachi.risk-score` for quantitative scoring, `/tachi.compensating-controls` for codebase control analysis, `/tachi.infographic` for visual risk diagrams, `/tachi.security-report` for a professional PDF assessment booklet, and `/tachi.architecture` for automated architecture description generation.
+tachi is a threat modeling and AI-reasoning vulnerability detection harness for Claude Code. SAST catches syntax-level bugs; the harness reasons over your architecture description to catch logic-level ones — broken authentication flows, missing privilege boundaries, prompt injection paths, agent autonomy gaps, cross-layer attack chains.
+
+It runs as a new scanning column alongside SAST / SCA / Secrets, with two views of one engine:
+
+- **Threat modeling view** — structured artifacts: `threats.md`, SARIF, narrative report, attack trees, MAESTRO classification.
+- **Vulnerability scanning view** — per-finding logic-level risks surfaced from the architecture, scored, and mapped to OWASP / MITRE ATT&CK / ATLAS / NIST AI RMF / CWE.
+
+One command (`/tachi.threat-model`) dispatches 14 specialized agents and produces a complete threat model. Five post-pipeline commands enrich the results: `/tachi.risk-score` for quantitative scoring, `/tachi.compensating-controls` for codebase control analysis, `/tachi.infographic` for visual risk diagrams, `/tachi.security-report` for a professional PDF assessment booklet, and `/tachi.architecture` for automated architecture description generation.
 
 - **14 threat categories**: 6 STRIDE + 5 LLM-specific + 3 Agentic
 - **OWASP coverage**: 50/50 across five frameworks (LLM Top 10:2025, Agentic Top 10:2026, ML Top 10:2023, Mobile Top 10:2024, Web/API Top 10:2021/2023)
@@ -20,11 +31,9 @@ tachi is a threat modeling sidecar that you add to any project. It dispatches 14
 - **5 input formats**: Mermaid, free-text, ASCII, PlantUML, C4
 - **6 commands, 20+ artifacts**: structured findings, SARIF, narrative report, attack trees, risk scores, compensating controls, 5 infographic templates, PDF security report
 - **Baseline delta tracking**: Compare runs to track new, resolved, and unchanged findings over time
-- **Works with any stack**: tachi analyzes architecture, not code
+- **Works with any stack**: the harness analyzes architecture, not code
 
 tachi is built with the [Agentic Oriented Development Kit (AOD Kit)](https://github.com/davidmatousek/agentic-oriented-development-kit), a governance framework for AI agent-assisted development.
-
-![Threat Risk Funnel](examples/agentic-app/sample-report/threat-risk-funnel.jpg)
 
 ---
 

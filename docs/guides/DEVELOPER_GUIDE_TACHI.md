@@ -1,4 +1,4 @@
-# Tachi Developer Guide: Automated Threat Modeling for Your Architecture
+# Tachi Developer Guide: Threat Modeling and AI-Reasoning Vulnerability Detection Harness
 
 > **Quick Links**
 > - [Step 1: /tachi.threat-model](#step-5-run-your-first-analysis)
