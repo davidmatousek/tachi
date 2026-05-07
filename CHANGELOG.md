@@ -72,6 +72,19 @@ TACHI-VULN-851fd6a21ba9 (LOW).
 
 ---
 
+## [4.32.0](https://github.com/davidmatousek/tachi/compare/v4.31.0...v4.32.0) (2026-05-07)
+
+
+### Features
+
+* **264:** adopt dual-frame public positioning (harness reframe) ([#265](https://github.com/davidmatousek/tachi/issues/265)) ([b558025](https://github.com/davidmatousek/tachi/commit/b558025fefe5f5afd90683248523673283e8329e)), closes [#264](https://github.com/davidmatousek/tachi/issues/264)
+
+
+### Bug Fixes
+
+* **266:** retitle CONTRIBUTING.md for tachi ([#267](https://github.com/davidmatousek/tachi/issues/267)) ([abde9cd](https://github.com/davidmatousek/tachi/commit/abde9cd13197689bf245435de48c753fcc225989)), closes [#266](https://github.com/davidmatousek/tachi/issues/266)
+* **268:** disentangle tachi-scanner from AOD-Kit positioning in scope.md ([#271](https://github.com/davidmatousek/tachi/issues/271)) ([b2bef11](https://github.com/davidmatousek/tachi/commit/b2bef1178961e66d86ee525c1d0ef1407e14317c)), closes [#268](https://github.com/davidmatousek/tachi/issues/268)
+
 ## [4.31.0](https://github.com/davidmatousek/tachi/compare/v4.30.0...v4.31.0) (2026-05-06)
 
 
