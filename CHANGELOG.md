@@ -90,6 +90,13 @@ A05 Security Misconfiguration). BLP-02 Wave 3.
 
 ---
 
+## [4.33.0](https://github.com/davidmatousek/tachi/compare/v4.32.0...v4.33.0) (2026-05-08)
+
+
+### Features
+
+* **272:** SECURITY.md and private disclosure channel ([#273](https://github.com/davidmatousek/tachi/issues/273)) ([7b1cc53](https://github.com/davidmatousek/tachi/commit/7b1cc53e6f57486b356b72b978a86920d7663480))
+
 ## [4.32.0](https://github.com/davidmatousek/tachi/compare/v4.31.0...v4.32.0) (2026-05-07)
 
 
