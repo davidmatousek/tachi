@@ -159,7 +159,7 @@ triad:
 
 ### Branch + draft PR
 
-- [ ] T015 Stage all three changed files and commit on the `272-security-md-disclosure` branch with a conventional-commit message: `git add SECURITY.md CHANGELOG.md README.md && git commit -m "$(cat <<'EOF'
+- [X] T015 Stage all three changed files and commit on the `272-security-md-disclosure` branch with a conventional-commit message: `git add SECURITY.md CHANGELOG.md README.md && git commit -m "$(cat <<'EOF'
 feat(272): SECURITY.md and private disclosure channel
 
 Restructure SECURITY.md to GitHub-canonical 5-section form (Supported
@@ -168,8 +168,8 @@ GitHub Private Vulnerability Reporting toggle, and add README pointer.
 Closes TACHI-VULN-05abc41ad4cc (INFO, A05 Security Misconfiguration).
 BLP-02 Wave 3.
 EOF
-)"`. Verify with `git log --oneline -1` that the commit subject begins with `feat(272):` (release-please trigger).
-- [ ] T016 Push the branch to origin and open a **draft PR** via `git push -u origin 272-security-md-disclosure && gh pr create --draft --title "feat(272): SECURITY.md and private disclosure channel" --body-file <(cat <<'EOF'
+)"`. Verify with `git log --oneline -1` that the commit subject begins with `feat(272):` (release-please trigger). **Result 2026-05-08**: Commit `ae9c334` created with subject `feat(272): SECURITY.md and private disclosure channel`. `git log --oneline -1` confirms feat(272): prefix at HEAD — release-please trigger preserved per FR-014 + R12 first-surface enforcement. SECURITY.md `git add` was a no-op (file already committed in earlier `a86e485 chore(272): waves 4-6 complete` checkpoint per architect P2 N-5 prediction); feat() commit contains CHANGELOG.md + README.md only (2 files, +19 lines). Squash-merge at T019 will collapse all branch commits (chore + feat) into a single `feat(272):` commit on `main` per `gh pr merge --squash` semantics.
+- [X] T016 Push the branch to origin and open a **draft PR** via `git push -u origin 272-security-md-disclosure && gh pr create --draft --title "feat(272): SECURITY.md and private disclosure channel" --body-file <(cat <<'EOF'
 ## Summary
 
 BLP-02 Wave 3. Restructures SECURITY.md to GitHub-canonical sections,
@@ -194,7 +194,7 @@ Tasks: specs/272-security-md-disclosure/tasks.md
 - [ ] Advisory submission URL form loads
 - [ ] release-please PR opens within ~30s of squash-merge
 EOF
-)` per FR-014. Confirm the PR title begins with `feat(272):` to ensure release-please will trigger on squash-merge.
+)` per FR-014. Confirm the PR title begins with `feat(272):` to ensure release-please will trigger on squash-merge. **Result 2026-05-08**: Branch `272-security-md-disclosure` pushed to origin (new remote branch, upstream tracking set). Draft PR **#273** created at https://github.com/davidmatousek/tachi/pull/273 with title `feat(272): SECURITY.md and private disclosure channel` (verified via `gh pr view 273 --json title,isDraft` → title prefix `feat(272):` ✅, isDraft `true` ✅). FR-014 first-surface enforcement satisfied per `.claude/rules/git-workflow.md` Conventional-Commit-PR-Titles. PR# **273** captured for downstream T017 (PR-description-edit) + T018 (gh pr ready) + T019 (squash-merge) + T020 (release-please verify).
 
 ### Toggle evidence + PR-ready
 
