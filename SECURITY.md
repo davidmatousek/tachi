@@ -1,39 +1,51 @@
 # Security Policy
 
+## Supported Versions
+
+Only the latest minor of `v4.x` receives security updates. Older minors are deprecated immediately on the next minor release.
+
+**Worked example**: `v4.32.0` is the current latest minor (released 2026-05-07). Once `v4.33.0` ships, `v4.32.x` will be deprecated for security purposes immediately. Adopters consuming via `make update` should pin to the major line (`v4.x`) rather than a specific minor; adopters who require longer-than-rolling support windows for a specific minor should fork or adopt the same backport pattern themselves.
+
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in Tachi, please report it through [GitHub's private vulnerability reporting](https://github.com/davidmatousek/tachi/security/advisories/new).
+Use the **Report a vulnerability** button on the [Security tab](https://github.com/davidmatousek/tachi/security) of this repo.
 
-**Do not open a public issue for security vulnerabilities.**
+Or navigate directly to `https://github.com/davidmatousek/tachi/security/advisories/new` to open a private advisory.
+
+Please do not open a public GitHub Issue for security vulnerabilities — public Issues broadcast the vulnerability before a fix is available.
 
 ### What to include
 
 - Description of the vulnerability
 - Steps to reproduce
-- Affected components (agents, commands, schemas, templates)
+- Affected components (agents, commands, schemas, templates, scripts)
 - Potential impact
 
-### What to expect
+> **Maintainers: this channel relies on the GitHub Private Vulnerability Reporting toggle being enabled in repo Settings → Security.**
 
-- **Acknowledgment** within 48 hours
-- **Assessment** within 1 week
-- **Fix or mitigation** timeline communicated after assessment
-- **Credit** in the fix commit and release notes (unless you prefer anonymity)
+## What to expect
+
+- **Acknowledgment** within 5 business days.
+- **Assessment** within 1 week of acknowledgment.
+- **Fix or mitigation** timeline communicated after assessment.
+- **Credit** in the fix commit and release notes by default; anonymity available on request.
 
 ## Scope
 
-Tachi is a threat modeling toolkit that produces security analysis reports. Its security surface includes:
+In-scope for private vulnerability reports:
 
-- **Agent prompt definitions** that could be manipulated to produce misleading threat assessments
-- **Schema definitions** that validate input/output contracts
+- **tachi codebase paths**: `.aod/scripts/bash/`, `.claude/agents/`, `.claude/commands/`, `.claude/skills/`, `stacks/`
+- **Stack-pack scaffolds as shipped**: `stacks/*/scaffold/` — vulnerabilities in tachi's default scaffolded templates are in-scope.
+- **Schema definitions**: `contracts/`, `schemas/`
 - **Template content** that shapes report generation
-- **Configuration files** that reference external services or credentials
+- **tachi-shipped configuration files** that reference external services or credentials
 
-Tachi does not run application code, manage databases, or handle user authentication. Findings related to the threat models Tachi *produces* (false positives, missed threats) are quality issues, not security vulnerabilities -- please file those as regular issues.
+## Out-of-scope
 
-## Supported Versions
+The following are not handled through this private disclosure channel:
 
-| Version | Supported |
-|---------|-----------|
-| Latest release | Yes |
-| Older releases | Best effort |
+- **Claude Code itself** → report to Anthropic.
+- **Third-party MCP servers** → report to their maintainers.
+- **Adopter personalization data** (`.aod/personalization.env`, `brands/*/`) → adopter's responsibility.
+- **Adopter-modified scaffold output** (post-`make scaffold` customizations) → adopter's responsibility.
+- **Threat-model accuracy concerns** (false positives, missed threats) → file as regular [GitHub Issues](https://github.com/davidmatousek/tachi/issues), not security advisories.
