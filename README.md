@@ -42,6 +42,7 @@ tachi is built with the [Agentic Oriented Development Kit (AOD Kit)](https://git
 - **Questions, ideas, and feature requests** → [GitHub Discussions](https://github.com/davidmatousek/tachi/discussions)
 - **Reproducible bugs** → [GitHub Issues](https://github.com/davidmatousek/tachi/issues)
 - **Security vulnerabilities** → [private advisory](https://github.com/davidmatousek/tachi/security/advisories/new) (do not post publicly)
+- **Full security policy** → [SECURITY.md](SECURITY.md) (supported versions, response SLA, scope)
 - **Real-world usage** → [In the Wild](https://github.com/davidmatousek/tachi/discussions/categories/in-the-wild) — tell me how you're using tachi, anonymized is fine
 
 If you're new here, start with the [Welcome thread](https://github.com/davidmatousek/tachi/discussions) for how the board is organized.
