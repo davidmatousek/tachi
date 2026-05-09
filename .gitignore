@@ -228,3 +228,9 @@ venv/
 # Claude Code runtime locks (PID/session state — never commit)
 .claude/scheduled_tasks.lock
 .claude/*.lock
+
+# Claude Code adopter personal settings (never commit — adopter overrides only)
+# Per FR-003 (BLP-02 F-4): settings.local.json holds personal allows/denies
+# that should not be tracked. Project-level .claude/settings.json is the
+# committed baseline; settings.local.json is per-developer, per-machine.
+.claude/settings.local.json

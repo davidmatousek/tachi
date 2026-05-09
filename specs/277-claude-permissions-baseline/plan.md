@@ -185,6 +185,7 @@ chore(main): release 4.33.0  (PR #274 — F-3 in flight)
 | Artifact | Action | LOC delta | Spec FR | Verification |
 |----------|--------|-----------|---------|--------------|
 | `.claude/settings.json` | Rewrite (26-rule allow-only → ~80 LOC categorized) | +50 net | FR-001, FR-002, FR-004, FR-007, FR-009 | `jq empty` JSON validity; AC-2 cross-check; FR-009 absolute-path grep; AC-6 git-status auto-approve + rm -rf deny prompt smoke-tests; AC-7 subdomain-matching probe; AC-12 cross-file deny-precedence smoke-test |
+| `.gitignore` | Append `.claude/settings.local.json` to ensure adopter-customization-survival per FR-003 (build-stage discovery: project .gitignore previously did not list the file; only maintainer's global gitignore covered it) | +6 (5 LOC + section comment) | FR-003 | `git check-ignore -v --no-index .claude/settings.local.json` returns project `.gitignore:NNN:` match (not global ignore); adopters cloning tachi inherit the gitignore without needing personal global config |
 | `docs/standards/CLAUDE_PERMISSIONS.md` | Create (new file ~250 LOC) | +250 | FR-005, FR-011, FR-012 | Reviewer diff inspection; section presence check (framing / categories / precedence / table / built-ins / opt-outs / limitations); two worked examples present (within-file + cross-file); ≥3 opt-out paths documented |
 | `docs/architecture/02_ADRs/ADR-041-claude-permissions-baseline.md` | Create (new file ~100 LOC) | +100 | FR-008 | Reviewer diff; ADR-040 structure parity (Status / Context / Decision / Alternatives Considered / Consequences / Related Findings / References); ≥6 alternatives with Pros/Cons/Why-Not-Chosen sections; status set to "Accepted" with date 2026-05-08 |
 | `CHANGELOG.md` | Append entry to `## Unreleased → ### Features` | +10 | FR-010 | Reviewer diff; entry style matches F-2 + F-3 precedent (subsection header + bullet body + ADR cross-reference + adopter migration note) |
@@ -280,6 +281,11 @@ accepted `ADR-041`.
   paths, known limitations.
 - **`docs/architecture/02_ADRs/ADR-041`** (~100 LOC, Accepted): six
   alternatives-considered with Pros / Cons / Why-Not-Chosen sections.
+- **`.gitignore`** (+6 LOC): append `.claude/settings.local.json` to ensure
+  FR-003 adopter-customization-survival is enforced by project gitignore (build-
+  stage T013 discovery: file was previously only covered by maintainer global
+  gitignore, not by project; adopters without that global pattern could
+  accidentally commit personal allows/denies).
 
 **Adopter migration note**: Existing `.claude/settings.local.json` customizations
 continue to work for adding personal allows for operations not denied at the
