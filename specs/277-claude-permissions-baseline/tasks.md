@@ -189,7 +189,7 @@ triad:
 
 ### Branch + draft PR
 
-- [ ] T019 Stage all five changed files and commit on the `277-claude-permissions-baseline` branch with a conventional-commit message:
+- [X] T019 Stage all five changed files and commit on the `277-claude-permissions-baseline` branch with a conventional-commit message:
   ```bash
   git add .claude/settings.json docs/standards/CLAUDE_PERMISSIONS.md docs/architecture/02_ADRs/ADR-041-claude-permissions-baseline.md CHANGELOG.md .gitignore
   git commit -m "$(cat <<'EOF'
@@ -213,9 +213,9 @@ triad:
   EOF
   )"
   ```
-  Verify with `git log --oneline -1` that the commit subject begins with `feat(277):` (release-please trigger). If absent (e.g., commit subject got rewritten by a hook), revise per `.claude/rules/git-workflow.md` §Conventional-Commit-PR-Titles.
+  Verify with `git log --oneline -1` that the commit subject begins with `feat(277):` (release-please trigger). If absent (e.g., commit subject got rewritten by a hook), revise per `.claude/rules/git-workflow.md` §Conventional-Commit-PR-Titles. **Build-stage capture**: PASS with deviation. Commit `998a128` created with subject `feat(277): claude permissions baseline — W9 (T017 CHANGELOG + T018 AC-7 probe)` on branch `277-claude-permissions-baseline`. Subject begins with `feat(277):` (release-please trigger preserved). **Deviation from T019 strict wording**: T019 specified a single combined commit staging all 5 files with the canonical "feat(277): claude permissions baseline (BLP-02 F-4)" subject. Actual flow: 4 of 5 files (`.claude/settings.json`, `docs/standards/CLAUDE_PERMISSIONS.md`, `docs/architecture/02_ADRs/ADR-041-claude-permissions-baseline.md`, `.gitignore`) were already committed in W2-W3 (`b4ac0fa`), W4 (`e368922`), and W7 (`381febe`) per the wave-incremental commit cadence established on this branch. T019 commit therefore staged only the W9 outputs (CHANGELOG.md +49 LOC + tasks.md T017/T018 captures). Branch now has 4 `feat(277):` commits; squash-merge to main (T022) will collapse all into a single commit on main with the canonical T020 PR title `"feat(277): claude permissions baseline (BLP-02 F-4)"` as the subject. Per `.claude/rules/git-workflow.md` §Conventional-Commit-PR-Titles, only the squash subject matters for release-please; intermediate branch commits are squashed away. T019 deviation does NOT affect Gate D (release-please trigger fires on T022 squash subject). FR-010 satisfied (CHANGELOG entry committed).
 
-- [ ] T020 Push the branch to origin and open a **draft PR** via:
+- [X] T020 Push the branch to origin and open a **draft PR** via:
   ```bash
   git push -u origin 277-claude-permissions-baseline
   gh pr create --draft --title "feat(277): claude permissions baseline (BLP-02 F-4)" --body-file <(cat <<'EOF'
@@ -264,7 +264,7 @@ triad:
   EOF
   )
   ```
-  per FR-013. Confirm the PR title begins with `feat(277):` to ensure release-please will trigger on squash-merge. Capture the PR# for downstream tasks.
+  per FR-013. Confirm the PR title begins with `feat(277):` to ensure release-please will trigger on squash-merge. Capture the PR# for downstream tasks. **Build-stage capture**: PASS. Branch `277-claude-permissions-baseline` pushed to origin (4 commits ahead of main: b4ac0fa W2-W3, e368922 W4-W5, 381febe W6-W8, 998a128 W9). **PR #278** created as draft via `gh pr create --draft --title "feat(277): claude permissions baseline (BLP-02 F-4)" --body-file /tmp/pr-body-277.md`. Verified state via `gh pr view 278 --json title,isDraft,state,mergeable`: title=`feat(277): claude permissions baseline (BLP-02 F-4)` (release-please trigger preserved), isDraft=true, state=OPEN, mergeable=MERGEABLE. URL: https://github.com/davidmatousek/tachi/pull/278. **PR body refinements vs T020 strict template**: (a) added ADR-041 LOC note to Summary section per architect P1 Minor #3 acceptance ("195 LOC vs FR-008 ~150 advisory ceiling — accepted with this note; trim would degrade SecOps audit value"); (b) refined the AC-7 verification line to "PROBE-INCONCLUSIVE-FOR-TRANSITIVITY — see *Side observations* below" rather than the generic "AC-7 subdomain probe outcome (T018)"; (c) added new "Side observations (non-blocking)" section between Test plan and Adopter migration documenting the AC-7 INCONCLUSIVE finding with mechanism explanation (both `WebFetch(domain:github.com)` AND `WebFetch(domain:api.github.com)` are present in `.permissions.allow[]` — auto-approve almost certainly matched the explicit `api.github.com` rule under "first match wins", NOT subdomain transitive collapse) + suggested future probe target (`gist.github.com`, unlisted) for definitive disambiguation; (d) added "Files in this PR (5)" enumeration with annotations. Pre-commit Verification checklist has 10 items (T013 entry included per W7 expansion). Test plan (post-merge) checklist now has 6 items including T027/T028 follow-up Issue filing tasks. **PR ready for T021** at /aod.build resume time after Gate C confirmation (all pre-commit verifications green; T021 in next session). FR-013 satisfied (release-please trigger via PR title `feat(277):` prefix preserved at draft creation; T022 squash-merge will inherit if title is preserved at merge time).
 
 ### PR-ready + squash-merge
 
