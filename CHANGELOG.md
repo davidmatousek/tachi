@@ -69,6 +69,55 @@ vulnerability* button surfaces on the Security tab.
 Closes [TACHI-VULN-05abc41ad4cc](.aod/results/security-scan.md) (INFO,
 A05 Security Misconfiguration). BLP-02 Wave 3.
 
+### Claude Code permissions baseline (BLP-02 F-4)
+
+Replaced tachi's 26-rule allow-only `.claude/settings.json` with a curated,
+categorized, fully-documented permissions baseline. Added
+`docs/standards/CLAUDE_PERMISSIONS.md` (operator handbook with per-rule
+rationale + opt-out paths) and accepted ADR-041.
+
+The new baseline materializes a four-category model — read-only auto-approve,
+local-state auto-approve, destructive `deny`+`ask`, and network host-allowlist
+with 19 explicit per-subdomain entries — replacing the prior allow-only posture
+that surfaced an unconditionally-permitted `Edit` / `Write` surface and zero
+deny rules. Cross-file deny precedence (Claude Code documented behavior) is
+honestly documented in the new operator handbook with two worked examples
+(within-file rule + cross-file rule).
+
+- **`.claude/settings.json`** — full rewrite, 93 rules (23 deny / 13 ask /
+  57 allow across Categories 1/2/4); replaces the prior 26-rule allow-only
+  file. Strict JSON (RFC 8259; no JSONC), all rationale lives out-of-line in
+  CLAUDE_PERMISSIONS.md so the JSON file stays minimal.
+- **`docs/standards/CLAUDE_PERMISSIONS.md`** — new 7-section operator
+  handbook (~289 LOC). Covers the four-category model, settings precedence
+  (within-file + cross-file with worked examples), per-rule rationale table,
+  built-in read-only set, three opt-out paths, and known limitations
+  (Bash-pattern fragility R-8, process-wrapper bypass R-9, built-in shadow
+  R-10, subdomain non-transitive matching).
+- **`docs/architecture/02_ADRs/ADR-041-claude-permissions-baseline.md`** —
+  new ADR (~195 LOC, 6 alternatives evaluated with Pros / Cons /
+  Why-Not-Chosen sections). ADR-041 LOC slightly exceeds the FR-008 ~150
+  advisory ceiling — accepted with PR-description note per architect P1
+  review on the trade-off that trimming would degrade SecOps audit value.
+- **`.gitignore`** — FR-003 enforcement fix; appended
+  `.claude/settings.local.json` to the project gitignore at line 236
+  (T013 build-stage discovery — adopters cloning tachi without the
+  maintainer's personal global gitignore would have lacked the pattern,
+  risking accidental commits of personal allows/denies).
+
+**Adopter migration note**: Existing `.claude/settings.local.json`
+customizations continue to work for adding personal allows on operations
+that are not denied at the project level — no breaking change for current
+adopters. However, `.claude/settings.local.json` does NOT override project
+denies (Claude Code cross-file deny precedence holds across files).
+Adopters who relied on local `.claude/settings.local.json` to override a
+baseline-denied operation must migrate to the load-bearing override path:
+fork-and-edit `.claude/settings.json` directly per CLAUDE_PERMISSIONS.md
+§Opt-Out-Paths Path 2.
+
+Reference: [ADR-041](docs/architecture/02_ADRs/ADR-041-claude-permissions-baseline.md)
+(claude permissions baseline). BLP-02 Wave 4 of 5.
+
 ### Bug Fixes
 
 * **250:** Adversarial Unit Extraction Hot-Fix + Permanent CI Test Process Hardening — eliminates the cold-cache 300s subprocess timeout class on `macos-latest` that admin-overrode F-248's closing CI run (`25314246672`). **Three new pytest modules** at `tests/scripts/`: `test_template_substitute_unit.py` (8 substitution-semantics cases extracted from integration to unit-level), `test_init_input_unit.py` (5 input-rejection cases incl. positive-path canary FR-007), `test_substitute_shim_canary.py` (TC-1 closure asserting `shopt -u patsub_replacement` shim stays in `template-substitute.sh`). Process-substitution invocation pattern (`< <(printf '%s\n' "$INPUT")`) replaces shell pipe to avoid pipe-subshell `printf -v` caller-scope assignment loss (R-1 mitigation, FR-006). `LC_ALL=C` pinned in every per-case subprocess invocation to defend the multibyte UTF-8 case (R-4, FR-008). 12 init.sh integration invocations dropped to 5 (FR-014 / SC-003) — case 13 trailing-newline byte-identity + `test_no_residual_placeholders_after_init` + 3 retained integration modules. **Phase 6 Option Z scope expansion** (mid-build, authorized after CI run `25325616748` exposed recurring root causes the original F-250 PRD scope did not address; TC-4 fences explicitly relaxed; FR-019/FR-020 byte-unchanged invariants on `template-substitute.sh` and `init-input.sh` PRESERVED): session-scoped `init_run` fixture in `tests/scripts/conftest.py` collapses 5 module-scoped duplicates → 1 canonical clone (drops macos cold-cache cost from 5×300s+ to 2×300s+); asymmetric file-set check in `test_init_sh_substitution.py` (drops are FAIL — substitution regression; additions are TOLERATED — repo growth not a regression); substitution-target-only baseline restricted ~600 → ~53 files via refactored `tests/fixtures/regenerate-baseline.sh`; `run_init_in_clone(timeout_sec=)` default bumped 300s → 900s; pytest `--timeout` 360s → 1080s; `tachi-pytest.yml` `paths:` filter and `pytest` invocation extended to include the 3 new unit modules (workflow filter completeness gap). **Observed KPIs on PR #253 own merge**: `macos-latest` 5m19s wall time (target ≤15 min — FAR under; baseline band 30-40 min), `ubuntu-latest` 1m29s (unchanged), CI savings vs baseline `25314246672` ≈ 25-35 min per run (SC-005 ≥25 min target ✓). Both legs green; release-please PR #254 (`chore(main): release 4.28.1`) auto-opened ~35s post-merge. **ADR-039** (Test Architecture: Fixture Scope and Asymmetric Baseline, Accepted 2026-05-04) records the new test-architecture canon repo-wide. **KB Entry 2** captures the meta-lesson: when CI evidence contradicts a PRD's root-cause assumption mid-build, authorize a documented scope expansion (Phase 6 header naming relaxed fences) rather than papering over with retry loops or quick patches; preserved byte-unchanged invariants keep the relaxation reviewable. **Sustained tracking window** (T021) 2026-05-04 → 2026-05-18 captures the next 5 merges to confirm SC-002/SC-004/SC-005 hold under multi-merge load. Helper contracts (ADR-038) byte-unchanged: `git diff main -- .aod/scripts/bash/template-substitute.sh .aod/scripts/bash/init-input.sh` empty post-merge. 29/29 tasks complete (T020 release-please verification + T021 initial KPI sample closed by `/aod.deliver` retrospective). PR #253 squash-merged 2026-05-04 with `fix(250):` Conventional Commit title per R12 belt-and-suspenders enforcement. See `specs/250-adversarial-unit-extraction-hotfix/` for spec/plan/tasks/delivery.
