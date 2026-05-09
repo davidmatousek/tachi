@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-05-08T21:47:33Z.
+> Auto-generated from GitHub Issues on 2026-05-08T22:05:22Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -25,7 +25,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| #277 | Claude Permissions Baseline | — | 2026-05-08 |
+| — | *No items in this stage* | | |
 
 ## Plan
 
@@ -57,6 +57,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #277 | Claude Permissions Baseline | OPEN | 2026-05-08 |
 | #276 | [chore] release-please manifest-vs-tag discrepancy investigation (post-F-3 follow-up) | OPEN | 2026-05-08 |
 | #275 | [chore] PVR-toggle posture probe (post-F-3 follow-up) | OPEN | 2026-05-08 |
 | #268 | fix: disentangle tachi-scanner from AOD-Kit positioning in .claude/rules/scope.md | CLOSED | 2026-05-07 |
