@@ -139,6 +139,13 @@ Reference: [ADR-041](docs/architecture/02_ADRs/ADR-041-claude-permissions-baseli
 
 ---
 
+## [4.34.0](https://github.com/davidmatousek/tachi/compare/v4.33.0...v4.34.0) (2026-05-09)
+
+
+### Features
+
+* **277:** claude permissions baseline (BLP-02 F-4) ([#278](https://github.com/davidmatousek/tachi/issues/278)) ([896588b](https://github.com/davidmatousek/tachi/commit/896588bc739d4760d36ff64b1b3f313498b4befa))
+
 ## [4.33.0](https://github.com/davidmatousek/tachi/compare/v4.32.0...v4.33.0) (2026-05-08)
 
 
