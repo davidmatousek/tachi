@@ -184,7 +184,7 @@ chore(main): release 4.33.0  (PR #274 — F-3 in flight)
 
 | Artifact | Action | LOC delta | Spec FR | Verification |
 |----------|--------|-----------|---------|--------------|
-| `.claude/settings.json` | Rewrite (26-rule allow-only → ~80 LOC categorized) | +50 net | FR-001, FR-002, FR-004, FR-007, FR-009 | `jq -e empty` JSON validity; AC-2 cross-check; FR-009 absolute-path grep; AC-6 git-status auto-approve + rm -rf deny prompt smoke-tests; AC-7 subdomain-matching probe; AC-12 cross-file deny-precedence smoke-test |
+| `.claude/settings.json` | Rewrite (26-rule allow-only → ~80 LOC categorized) | +50 net | FR-001, FR-002, FR-004, FR-007, FR-009 | `jq empty` JSON validity; AC-2 cross-check; FR-009 absolute-path grep; AC-6 git-status auto-approve + rm -rf deny prompt smoke-tests; AC-7 subdomain-matching probe; AC-12 cross-file deny-precedence smoke-test |
 | `docs/standards/CLAUDE_PERMISSIONS.md` | Create (new file ~250 LOC) | +250 | FR-005, FR-011, FR-012 | Reviewer diff inspection; section presence check (framing / categories / precedence / table / built-ins / opt-outs / limitations); two worked examples present (within-file + cross-file); ≥3 opt-out paths documented |
 | `docs/architecture/02_ADRs/ADR-041-claude-permissions-baseline.md` | Create (new file ~100 LOC) | +100 | FR-008 | Reviewer diff; ADR-040 structure parity (Status / Context / Decision / Alternatives Considered / Consequences / Related Findings / References); ≥6 alternatives with Pros/Cons/Why-Not-Chosen sections; status set to "Accepted" with date 2026-05-08 |
 | `CHANGELOG.md` | Append entry to `## Unreleased → ### Features` | +10 | FR-010 | Reviewer diff; entry style matches F-2 + F-3 precedent (subsection header + bullet body + ADR cross-reference + adopter migration note) |
@@ -293,9 +293,15 @@ Reference: ADR-041 (claude permissions baseline). BLP-02 Wave 4.
 ### Verification recipe (pre-commit + post-merge)
 
 1. **Pre-commit at /aod.build implementation time**:
-   1. `jq -e empty .claude/settings.json` returns exit 0 (FR-001 / AC-6 sub-check a)
+   1. `jq empty .claude/settings.json` returns exit 0 (FR-001 / AC-6 sub-check a)
    2. `grep -E '/(Users|home)/|^[A-Z]:\\\\' .claude/settings.json` returns zero matches (FR-009)
-   3. AC-2 cross-check script: every non-built-in rule in `.claude/settings.json` appears in CLAUDE_PERMISSIONS.md per-rule table; every table row references a rule in `.claude/settings.json` or is flagged as a built-in (FR-002 / AC-2)
+   3. AC-2 cross-check script (refined per architect P1 Minor #2): every non-built-in rule in `.claude/settings.json` appears in CLAUDE_PERMISSIONS.md per-rule table; every table row references a rule in `.claude/settings.json` or is flagged as a built-in (FR-002 / AC-2). Extraction restricted to §4 (Per-rule rationale table) via awk section-marker delimiters to avoid §5/§6/§7 illustrative-example false positives; final markdown-pipe unescape ensures clean diff against JSON-literal rules. Reference command:
+      ```bash
+      jq -r '.permissions.deny[], .permissions.ask[], .permissions.allow[]' .claude/settings.json | sort -u > /tmp/f4-rules.txt
+      awk '/^## 4\./,/^## 5\./' docs/standards/CLAUDE_PERMISSIONS.md | grep -E '^\| `' | sed -E 's/^\| `([^`]+)` \|.*/\1/' | sed 's/\\|/|/g' | sort -u > /tmp/f4-doc-rules.txt
+      diff /tmp/f4-rules.txt /tmp/f4-doc-rules.txt
+      ```
+      Empty diff = AC-2 PASS.
    4. AC-6 sub-check b: Claude Code in a fresh session auto-approves `git status` (built-in read-only regression check)
    5. AC-6 sub-check c: Claude Code in a fresh session presents a deny prompt for `Bash(rm -rf <transient-test-path>)` (deny-tier verification)
    6. AC-7 subdomain-matching manual probe: `WebFetch(api.github.com/repos/davidmatousek/tachi)` surfaces a prompt (per Issues #15260 / #11972 / #1217 expected outcome)
