@@ -15,6 +15,7 @@
 | [FIVE_WHYS_METHODOLOGY.md](FIVE_WHYS_METHODOLOGY.md) | Root cause analysis methodology |
 | [GIT_WORKFLOW.md](GIT_WORKFLOW.md) | Git branching, commits, and PR standards |
 | [NAMING_GUIDELINES.md](NAMING_GUIDELINES.md) | Naming conventions for files and code |
+| [PRECOMMIT_HOOKS.md](PRECOMMIT_HOOKS.md) | Pre-commit secret-scanning configuration, gitleaks rule customization for tachi conventions, install/opt-out/bypass paths, and adopter troubleshooting (Feature 282 — F-5 Pre-commit Secret-Scanning Defaults, BLP-02 Wave 4+). Companion to [ADR-042](../architecture/02_ADRs/ADR-042-pre-commit-secret-scanning-default.md). |
 | [PRODUCT_SPEC_ALIGNMENT.md](PRODUCT_SPEC_ALIGNMENT.md) | Product-specification alignment process |
 | [SDLC_ORCHESTRATION.md](SDLC_ORCHESTRATION.md) | Development lifecycle coordination |
 | [TRIAD_COLLABORATION.md](TRIAD_COLLABORATION.md) | PM/Architect/Team-Lead governance |

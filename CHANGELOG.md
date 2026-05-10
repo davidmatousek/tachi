@@ -118,6 +118,102 @@ fork-and-edit `.claude/settings.json` directly per CLAUDE_PERMISSIONS.md
 Reference: [ADR-041](docs/architecture/02_ADRs/ADR-041-claude-permissions-baseline.md)
 (claude permissions baseline). BLP-02 Wave 4 of 5.
 
+### Pre-commit secret-scanning defaults (BLP-02 F-5)
+
+Shipped a default-secure pre-commit secret-scanning hook (gitleaks via the
+`pre-commit` framework) with a tachi-authored wrapper that augments the
+refused-commit stderr to a four-item structured contract (rule ID + file:line
++ `SKIP=gitleaks` bypass + docs link). Added the operator handbook
+`docs/standards/PRECOMMIT_HOOKS.md` (per-rule rationale catalog +
+installation paths + bypass mechanisms + known limitations) and the architecture
+decision record ADR-042. Closes the BLP-02 enterprise-hardening initiative
+(5/5 — final feature alongside F-1 substitution surface, F-2 config-file
+parsing, F-3 SECURITY.md / private disclosure, F-4 Claude Code permissions
+baseline).
+
+The hook runs `gitleaks git --pre-commit --redact --staged --verbose
+--config=.gitleaks.toml` on every `git commit`, scanning **staged content
+only**. Coverage: ~150+ default credential patterns (AWS / GitHub /
+OpenAI / Anthropic / Stripe / private key blocks) inherited via `useDefault =
+true`, plus three tachi-additive allow-lists (env-var placeholders, convention
+paths, vendored/generated/archived content) and two warn-only custom rules
+(`tachi-personalization-env`, `tachi-security-exceptions-jsonl`). Adopter
+opt-in posture is split: **new adopters** receive a default-Y prompt during
+`scripts/init.sh` first-run (skipped silently in non-TTY contexts; flag
+overrides `--precommit` and `--no-precommit`); **existing adopters do NOT
+auto-receive the local hook on `git pull`** (FR-010) — to enable, run
+`pre-commit install` from the repo root after `git pull`.
+
+- **`.pre-commit-config.yaml`** — new pre-commit framework config pinning
+  gitleaks v8.30.1 via the wrapper script. The `rev` field carries the tag
+  for human readability and is replaced with a pinned commit SHA via
+  `pre-commit autoupdate --freeze` at install time (per ADR-042 §Decision
+  Item 6 supply-chain hygiene).
+- **`.gitleaks.toml`** — new gitleaks v8.30.1+ config inheriting the upstream
+  default ruleset (`[extend] useDefault = true`), adding three allow-lists
+  scoped to tachi conventions, and adding two warn-only custom rules for
+  defense-in-depth on `.aod/personalization.env` value leakage and manual
+  edits to `.security/exceptions.jsonl`.
+- **`.aod/scripts/bash/precommit-wrap.sh`** — new ~50 LOC bash 3.2-compatible
+  wrapper that invokes gitleaks and augments the refused-commit stderr with
+  the four-item contract (rule ID + file:line + bypass guidance + docs
+  link). Preserves gitleaks' exit code verbatim (Pre-Mortem FM-5 pattern:
+  capture rc BEFORE augmentation). LOCAL-ONLY scope — the CI parity workflow
+  invokes gitleaks directly to preserve native SARIF output.
+- **`.aod/personalization.env.example`** — new opt-in template documenting
+  the `AOD_PERSONALIZATION_*` keys consumed by `scripts/init.sh` and the F-2
+  substitution pipeline. Allow-listed in `.gitleaks.toml` so the placeholder
+  values do not trip the secret-scanning hook.
+- **`docs/standards/PRECOMMIT_HOOKS.md`** — new ~250 LOC operator handbook
+  with 9 sections: Why this hook ships / Installation paths (3) / What gets
+  scanned with per-rule rationale catalog / Bypass mechanisms / Refused-commit
+  error message contract / CI parity / Re-init behavior / Known limitations
+  (7 items including the v3.5.0 framework floor justification per Architect
+  CONCERN-3) / Adopter customization (per-rule additions, merge conflict
+  guidance, tool swap path, directory-rename considerations).
+- **`docs/architecture/02_ADRs/ADR-042-pre-commit-secret-scanning-default.md`**
+  — new ADR (~265 LOC, 9 alternatives evaluated with Pros / Cons /
+  Why-Not-Chosen sections including the corrected note that **trufflehog v3
+  runtime is Go, not Python** as the original PRD comparison matrix had it).
+  Status `Proposed` at branch HEAD; flips to `Accepted` at squash-merge per
+  /aod.deliver T034.
+- **`.github/workflows/gitleaks.yml`** — new CI parity workflow running
+  gitleaks against full-repo content on every PR as a back-stop for
+  `git commit --no-verify` deliberate bypass. Downloads the gitleaks binary
+  directly with SHA256 verification (NOT the proprietary `gitleaks-action@v2`
+  which requires a paid `GITLEAKS_LICENSE` for org repos). SARIF upload to
+  GitHub Code Scanning surfaces findings inline on the PR Files-changed tab.
+- **`scripts/init.sh`** — delta: new prompt phase `Install pre-commit
+  secret-scanning hook? [Y/n]` with default-Y in TTY contexts, silently
+  skipped in non-TTY. Two flag overrides: `--precommit` forces install
+  regardless of TTY/answer; `--no-precommit` forces skip. The flags affect
+  **first-run only** (init.sh is one-shot per F-1 #248). Pre-commit framework
+  v3.5.0 floor check emits a `WARN` (not abort) if the system version is
+  below the floor.
+- **`README.md`** — delta: one-line pointer to
+  `docs/standards/PRECOMMIT_HOOKS.md` adjacent to the F-3 SECURITY.md
+  pointer. Single-line addition; the security/community section is otherwise
+  unchanged.
+
+**Synthetic-fixture rule-interaction test**: `tests/fixtures/gitleaks-rule-interaction/`
+ships 16 synthetic fixtures (6 should-fire real-format credentials + 10
+should-NOT-fire allow-listed/excluded paths) with a co-located runner
+(`run.sh`) and a pytest matrix (`tests/scripts/test_init_precommit_matrix.py`)
+that exercises the init.sh prompt-flag combinations. Catches schema breaks
+at gitleaks pin-bump time and accidental allow-list misconfigurations on
+adopter-driven `.gitleaks.toml` modifications (Architect C-4 preventive
+verification).
+
+**Existing-adopter opt-in path**: pulling the F-5 update does NOT install
+`.git/hooks/pre-commit`. **To enable, run `pre-commit install` from the repo
+root after `git pull`.** Three opt-out paths cover the legitimate scenarios
+(`SKIP=gitleaks` per-commit, `# gitleaks:allow` inline comment,
+`pre-commit uninstall` full opt-out); `git commit --no-verify` is honestly
+disclosed as a one-flag bypass with the CI parity workflow as the back-stop.
+
+Reference: [ADR-042](docs/architecture/02_ADRs/ADR-042-pre-commit-secret-scanning-default.md)
+(pre-commit secret-scanning default). BLP-02 Wave 4+ of 5 — initiative complete.
+
 ### Bug Fixes
 
 * **250:** Adversarial Unit Extraction Hot-Fix + Permanent CI Test Process Hardening — eliminates the cold-cache 300s subprocess timeout class on `macos-latest` that admin-overrode F-248's closing CI run (`25314246672`). **Three new pytest modules** at `tests/scripts/`: `test_template_substitute_unit.py` (8 substitution-semantics cases extracted from integration to unit-level), `test_init_input_unit.py` (5 input-rejection cases incl. positive-path canary FR-007), `test_substitute_shim_canary.py` (TC-1 closure asserting `shopt -u patsub_replacement` shim stays in `template-substitute.sh`). Process-substitution invocation pattern (`< <(printf '%s\n' "$INPUT")`) replaces shell pipe to avoid pipe-subshell `printf -v` caller-scope assignment loss (R-1 mitigation, FR-006). `LC_ALL=C` pinned in every per-case subprocess invocation to defend the multibyte UTF-8 case (R-4, FR-008). 12 init.sh integration invocations dropped to 5 (FR-014 / SC-003) — case 13 trailing-newline byte-identity + `test_no_residual_placeholders_after_init` + 3 retained integration modules. **Phase 6 Option Z scope expansion** (mid-build, authorized after CI run `25325616748` exposed recurring root causes the original F-250 PRD scope did not address; TC-4 fences explicitly relaxed; FR-019/FR-020 byte-unchanged invariants on `template-substitute.sh` and `init-input.sh` PRESERVED): session-scoped `init_run` fixture in `tests/scripts/conftest.py` collapses 5 module-scoped duplicates → 1 canonical clone (drops macos cold-cache cost from 5×300s+ to 2×300s+); asymmetric file-set check in `test_init_sh_substitution.py` (drops are FAIL — substitution regression; additions are TOLERATED — repo growth not a regression); substitution-target-only baseline restricted ~600 → ~53 files via refactored `tests/fixtures/regenerate-baseline.sh`; `run_init_in_clone(timeout_sec=)` default bumped 300s → 900s; pytest `--timeout` 360s → 1080s; `tachi-pytest.yml` `paths:` filter and `pytest` invocation extended to include the 3 new unit modules (workflow filter completeness gap). **Observed KPIs on PR #253 own merge**: `macos-latest` 5m19s wall time (target ≤15 min — FAR under; baseline band 30-40 min), `ubuntu-latest` 1m29s (unchanged), CI savings vs baseline `25314246672` ≈ 25-35 min per run (SC-005 ≥25 min target ✓). Both legs green; release-please PR #254 (`chore(main): release 4.28.1`) auto-opened ~35s post-merge. **ADR-039** (Test Architecture: Fixture Scope and Asymmetric Baseline, Accepted 2026-05-04) records the new test-architecture canon repo-wide. **KB Entry 2** captures the meta-lesson: when CI evidence contradicts a PRD's root-cause assumption mid-build, authorize a documented scope expansion (Phase 6 header naming relaxed fences) rather than papering over with retry loops or quick patches; preserved byte-unchanged invariants keep the relaxation reviewable. **Sustained tracking window** (T021) 2026-05-04 → 2026-05-18 captures the next 5 merges to confirm SC-002/SC-004/SC-005 hold under multi-merge load. Helper contracts (ADR-038) byte-unchanged: `git diff main -- .aod/scripts/bash/template-substitute.sh .aod/scripts/bash/init-input.sh` empty post-merge. 29/29 tasks complete (T020 release-please verification + T021 initial KPI sample closed by `/aod.deliver` retrospective). PR #253 squash-merged 2026-05-04 with `fix(250):` Conventional Commit title per R12 belt-and-suspenders enforcement. See `specs/250-adversarial-unit-extraction-hotfix/` for spec/plan/tasks/delivery.
