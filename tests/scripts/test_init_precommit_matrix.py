@@ -1,20 +1,15 @@
-"""F-5 init.sh prompt-flag matrix test (CONCERN-2 / Pre-Mortem FM-3).
+"""init.sh pre-commit prompt-flag matrix test (F-5).
 
 Tests the 6-case matrix `[TTY/no-TTY] × [no-flag/--no-precommit/--precommit]`
-introduced by T015 (init.sh delta inserting an opt-in pre-commit prompt at
-the line 177-185 region after personalization confirmation).
+covering the opt-in pre-commit prompt inserted after personalization
+confirmation in scripts/init.sh.
 
 Each test asserts:
   - Whether the pre-commit prompt was emitted to the user
   - Whether init.sh attempted `pre-commit install` (success or graceful WARN)
 
-Per F-256 KB Entry 3 (lock-step pattern): this test file's path is added to
-`.github/workflows/tachi-pytest.yml` `paths:` AND the pytest invocation in
-the same commit (T014a, paired with T014).
-
-Auto-skip pattern: until T015 lands in the cloned tree's `scripts/init.sh`,
-the cases auto-skip with a clear reason. Once T015 lands (Wave 3), the tests
-auto-activate. No manual unskip step required.
+Auto-skip pattern: if the cloned tree's scripts/init.sh lacks the pre-commit
+prompt block, cases auto-skip with a clear reason.
 """
 
 from __future__ import annotations

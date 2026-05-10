@@ -94,12 +94,16 @@ scan_case() {
     findings=$count
   fi
 
+  local passed=0
   if [ "$expected" = "fire" ] && [ "$findings" -ge 1 ]; then
-    PASS=$((PASS + 1))
-    printf "%sPASS%s %s (expected fire, got %s finding(s))\n" "$GREEN" "$NC" "$case_id" "$findings"
+    passed=1
   elif [ "$expected" = "nofire" ] && [ "$findings" -eq 0 ]; then
+    passed=1
+  fi
+
+  if [ "$passed" -eq 1 ]; then
     PASS=$((PASS + 1))
-    printf "%sPASS%s %s (expected nofire, got %s finding(s))\n" "$GREEN" "$NC" "$case_id" "$findings"
+    printf "%sPASS%s %s (expected %s, got %s finding(s))\n" "$GREEN" "$NC" "$case_id" "$expected" "$findings"
   else
     FAIL=$((FAIL + 1))
     printf "%sFAIL%s %s (expected %s, got %s finding(s))\n" "$RED" "$NC" "$case_id" "$expected" "$findings"
