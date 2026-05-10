@@ -37,3 +37,28 @@ repos:
         # the gitleaks binary into a managed Go env on first invocation.
         pass_filenames: false
         stages: [pre-commit]
+
+  # ---------------------------------------------------------------------------
+  # Local hooks — F-4 verification recipe (jq + AC-2 cross-check) per Issue #280
+  # ---------------------------------------------------------------------------
+  # Triggered only when `.claude/settings.json` or
+  # `docs/standards/CLAUDE_PERMISSIONS.md` are touched, so day-to-day commits
+  # pay zero hook cost. AC-7 (subdomain probe) and AC-12 (cross-file deny
+  # precedence) sub-checks remain `[MANUAL-ONLY]` because they require an
+  # interactive Claude Code session — see Issue #281 for the CI port plan.
+  - repo: local
+    hooks:
+      - id: claude-settings-jq-validity
+        name: claude/settings.json — jq parse (F-4 AC-1 / FR-001)
+        entry: jq empty .claude/settings.json
+        language: system
+        files: ^\.claude/settings\.json$
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: claude-permissions-ac2-crosscheck
+        name: claude/settings.json ↔ CLAUDE_PERMISSIONS.md §4 cross-check (F-4 AC-2 / FR-002)
+        entry: .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh
+        language: system
+        files: ^(\.claude/settings\.json|docs/standards/CLAUDE_PERMISSIONS\.md)$
+        pass_filenames: false
+        stages: [pre-commit]
