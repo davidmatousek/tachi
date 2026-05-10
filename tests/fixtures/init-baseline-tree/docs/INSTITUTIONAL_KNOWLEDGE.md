@@ -174,6 +174,123 @@ The `tachi-pytest.yml` workflow uses a narrow `paths:` filter (NFR-005 alignment
 
 ---
 
+### Entry 4: F-3 SECURITY.md and Private Disclosure Channel — Delivery Retrospective
+
+## [Technical pattern] - Documentation-only DoD via Principle VII §Exceptions; GitHub-canonical SECURITY.md template; CHANGELOG sibling-h3 BLP-02-cluster placement
+
+**Date**: 2026-05-08
+**Feature**: F-3 (SECURITY.md and Private Disclosure Channel — BLP-02 Wave 3)
+**Category**: Technical pattern / governance / documentation discipline
+**Severity**: Informational (no incident — pattern capture)
+
+### Context
+
+F-3 closed TACHI-VULN-05abc41ad4cc (INFO, A05 Security Misconfiguration) by rewriting `SECURITY.md` to GitHub-canonical 5-section structure, enabling the Private Vulnerability Reporting toggle, adding a `README.md` pointer, and appending a `CHANGELOG.md` `## Unreleased` entry. Pure docs + repo-setting; zero code change. Estimated ≤4h active maintainer time per PRD SC-008; delivered same-day with 23/25 tasks complete (T024 + T025 are `/aod.deliver`-time only). Build report flagged two carry-forward IK notes: N-2 (D-6 sequence variance) and N-4 (CHANGELOG blueprint placement deviation).
+
+### Pattern 1: Documentation-only DoD via Principle VII §Exceptions
+
+**Problem**: tachi's Constitution Principle VI mandates testing-excellence coverage thresholds, but a feature that touches no source code has nothing to test in the unit/integration sense. Principle VII §Exceptions allows the exemption ("Documentation-only changes may not require production deployment"), but the application path needs to be demonstrable.
+
+**Solution**: F-3's plan.md Constitution Check section explicitly invokes the §Exceptions clause and maps all three Principle VII §Non-Negotiable Validation Steps to non-test verification: (1) ✅ Pushed via squash-merge; (2) ✅ Tested via post-merge `/security` re-scan + manual UI inspections (FR-010 toggle, FR-011 button, FR-012 URL form); (3) ✅ User-validated via PR review + post-merge button-visible check. The build's `test-results/summary.json` records `waves_skipped: 15` with rationale citing "Constitution Principle VII §Exceptions and Principle VI testing-excellence exemption noted in plan.md."
+
+**Apply when**: A feature is markdown/policy/repo-setting only, has no executable surface, and cannot be tested by unit/integration runners. Document the exemption in plan.md Constitution Check; map verification to post-merge instrumentation (`/security` re-scan for A05 closures; manual UI inspections for repo-setting changes); record `waves_tested: 0` with explicit `skip_reason` in `test-results/summary.json`. Do NOT silently bypass — the rationale-as-data is the auditable trail.
+
+### Pattern 2: GitHub-canonical SECURITY.md 5-section template
+
+**Problem**: Pre-F-3 `SECURITY.md` was 40 LOC, used non-canonical section names, and lacked procurement-defensible content (vendor disclosure policy, SLA, scope/out-of-scope, supported-versions worked example). Procurement reviewers running CAIQ/SIG-Lite rubrics couldn't mark the disclosure-policy + supported-versions line items GREEN without manual interpretation.
+
+**Solution**: F-3 rewrites `SECURITY.md` to the GitHub-canonical 5-section structure: **Supported Versions** → **Reporting a Vulnerability** → **What to expect** → **Scope** → **Out-of-scope**. Section names match GitHub Docs verbatim where prescribed. Section 1 includes a worked example referencing the latest tag (verified at write-time per FR-003 cross-check command). Section 2 surfaces the *Report a vulnerability* button as primary affordance with URL fallback + public-Issue prohibition + R-2 toggle-dependency footer. Section 3 contains the 5-business-day SLA verbatim + assessment-within-1-week + fix-timeline-after-assessment + credit clause. Section 4 enumerates in-scope tachi paths; Section 5 enumerates out-of-scope routing (Claude Code → Anthropic; third-party MCP → maintainers; adopter personalization → adopter; etc.). Total: 51 LOC (more compact than initial 80 LOC estimate).
+
+**Apply when**: Any tachi-derivative or AOD-Kit-derivative project needs a procurement-defensible SECURITY.md. Reuse the section ordering verbatim. Substitute the project-specific in-scope path enumeration (Section 4) and out-of-scope routing (Section 5). Preserve the 5-business-day SLA as the single-maintainer floor; raise voluntarily for critical reports without contractually committing.
+
+### Pattern 3: CHANGELOG sibling-h3 BLP-02-cluster placement (N-4 carry-forward)
+
+**Problem**: The plan.md blueprint placed the F-3 CHANGELOG entry under `## Unreleased → ### Features` as a top-level subsection. The F-2 precedent (Entry 3 sibling) instead used a sibling `### {Feature title} (BLP-02 F-N)` heading at the same level as `### Features` and `### Bug Fixes`, grouping all BLP-02 features as a cluster. The build T013 result deviated from the blueprint and matched the F-2 precedent: F-3's `### SECURITY.md and private disclosure channel (BLP-02 F-3)` heading sits between `### Hardened config-file load (BLP-02 F-2)` and `### Bug Fixes` rather than under `### Features`. Architect P2 checkpoint flagged this as N-4 minor.
+
+**Solution**: Sibling-h3 placement is the correct pattern for multi-feature initiatives like BLP-02 — it visually clusters related work in CHANGELOG and avoids fragmenting BLP-02 entries across `### Features` (where BLP-02 F-1 + F-3 would land) and `### Bug Fixes` (where the F-250 hot-fix landed). The blueprint placement was the deviation; the build's actual placement is the keeper.
+
+**Apply when**: Adding a CHANGELOG entry for any feature in a multi-feature initiative (BLP-02, BLP-03, future BLPs). Use a sibling h3 heading `### {Feature title} ({INITIATIVE} F-N)` at the same level as `### Features`/`### Bug Fixes`. Group consecutive same-initiative entries together. Future blueprints in plan.md should specify sibling-h3-cluster placement explicitly to avoid re-flagging this deviation.
+
+### Why This Matters
+
+Captured during structured `/aod.deliver` retrospective for F-3. Smooth — no major surprises. The three patterns are reusable: Pattern 1 unblocks future docs-only features (e.g., LICENSE updates, contributing-guide refreshes) from spurious test-coverage gates. Pattern 2 establishes the procurement-defensible SECURITY.md baseline reusable across tachi/AOD-Kit/derivative projects. Pattern 3 clarifies the CHANGELOG-cluster convention for the remaining BLP-02 features (Wave 4 + Wave 5) and future BLPs, removing the architect-N-4-style deviation from the next plan.md blueprint.
+
+**Tags**: #retrospective #delivery #architecture #pattern #docs-only #governance #security #changelog
+
+### Related Files
+
+- `specs/272-security-md-disclosure/spec.md` — Feature specification (5 user stories, 14 FRs, 12/12 ACs)
+- `specs/272-security-md-disclosure/plan.md` — Implementation plan (Constitution Check Principle VII §Exceptions invocation)
+- `specs/272-security-md-disclosure/tasks.md` — Task breakdown (T001–T025; T024+T025 deferred to /aod.deliver)
+- `specs/272-security-md-disclosure/test-results/summary.json` — Documented skip rationale for Principle VII §Exceptions
+- `SECURITY.md` — The 51-LOC GitHub-canonical 5-section rewrite
+- `CHANGELOG.md` — F-3 sibling-h3 BLP-02-cluster placement (the N-4 keeper pattern)
+- `README.md` — `## Community` section AC-12 one-line pointer
+- `.aod/results/security-scan.md` — Post-merge `/security` re-scan recording `TACHI-VULN-05abc41ad4cc → REMEDIATED`
+
+### Cross-References
+
+- **Sibling**: Entry 3 (F-2 / F-256 Source-Pattern Hardening) — F-3 follows F-2 in BLP-02 Wave sequence; CHANGELOG sibling-h3 placement (Pattern 3) was first established by F-2's entry style and is now codified as the BLP-02-cluster convention.
+- **Ancestor**: Entry 1 (F-248) — F-3 closes the LinkedIn-disclosure-pattern that F-248's RCA implicitly depended on (private channel availability); F-3 surfaces the channel as a procurement-defensible artifact.
+- **Pattern class**: "Documentation-as-feature" — F-3 demonstrates that a docs-only delivery can satisfy DoD, close a `/security` finding (TACHI-VULN-05abc41ad4cc), trigger a release-please cycle (#274 chore(main): release 4.33.0), and yield procurement-rubric value — without writing a single line of code.
+- **Initiative**: BLP-02 enterprise-hardening Wave 3 (3-of-5 features delivered). Predecessors: F-1 (#248) Wave 1 + F-250 hot-fix follow-on; F-2 (#256) Wave 2.
+- **Follow-up Issues**: #275 (AC-13 PVR-toggle posture probe), #276 (AC-14 release-please manifest-vs-tag investigation) — both filed at /aod.tasks-time, traced through delivery.
+
+---
+
+### Entry 5: F-4 Claude Permissions Baseline — Delivery Retrospective
+
+## [Technical pattern] - Cross-list precedence + transitive subdomain collapse pattern; built-in read-only auto-approve preserved without explicit allow
+
+**Date**: 2026-05-09
+**Feature**: F-4 (Claude Permissions Baseline — BLP-02 Wave 4)
+**Category**: Technical pattern / permissions design / verification recipe
+**Severity**: Informational (no incident — pattern capture; posture-gap closure not vuln closure)
+
+### Context
+
+F-4 closed a posture gap (no documented permissions baseline + permissive default ruleset) named in Daniel Wood's 2026-05-02 LinkedIn enterprise-developer-environments thread as a load-bearing prerequisite for SecOps-reviewed managed environments. Zero `/security` `vuln_id` was closed by F-4 — this is posture-gap closure, NOT vulnerability closure (a class distinction worth preserving). Deliverables: curated `.claude/settings.json` baseline (~80 LOC after Cat-1 dedup) + `docs/standards/CLAUDE_PERMISSIONS.md` self-contained policy decision log (~250 LOC) + ADR-041 (~100 LOC, 6 alternatives-considered) + CHANGELOG sibling-h3 BLP-02-cluster entry. PRD estimate: ~8-9h active envelope / next-day wall-clock target. Actual: branch created 2026-05-08T22:04:54Z (PRD landing), squash-merged 2026-05-09T16:24:37Z → ~22h22m wall-clock, on target. Release-please PR #279 `chore(main): release 4.34.0` opened ~23s post-squash-merge (within FR-013 ~30s SLO; F-212 recovery flow not triggered). Post-merge `/security` re-scan PASSED (zero new HIGH/MEDIUM; F-4 change set has zero SAST-eligible files and zero SCA-eligible manifests). Two follow-up Issues filed at /aod.tasks-time per AC-15/AC-16 nice-to-haves: #280 (pre-commit hook for `.claude/settings.json` jq-validity + AC-2 cross-check, ICE I:5 C:7 E:8) and #281 (CI integration for the F-4 verification recipe, ICE I:6 C:6 E:7).
+
+### Pattern 1: Cross-list deny → ask → allow first-match-wins precedence
+
+**Problem**: A naive permissions baseline either makes every rule explicit (verbose, brittle to maintain) or relies on broad allow patterns that silently approve narrower destructive operations. The PRD's R-1 risk explicitly flagged the case where `Bash(git push:*)` allow could shadow a narrower `Bash(git push --force:*)` deny intent — a classic ordering-vs-specificity tension.
+
+**Solution**: Claude Code permissions evaluate as `deny → ask → allow` first-match-wins across both project `.claude/settings.json` AND local `.claude/settings.local.json` (cross-file). The narrower `Bash(git push --force:*)` deny rule fires before evaluation reaches the broader `Bash(git push:*)` allow — verified at T011 [MANUAL-ONLY] enumeration pre-commit and re-verified at T026 post-merge defense-in-depth probe. AC-12 cross-file probe at T015 further confirms a project-level deny rule shadows any local `.claude/settings.local.json` allow that conflicts (the "settings.local.json cannot override a project deny" mechanic). The permissions table in `docs/standards/CLAUDE_PERMISSIONS.md` documents this precedence with two worked examples so adopters understand the override path is fork-and-edit (Path 2) or explicit project-rule edit (Path 3), not local-file allow.
+
+**Apply when**: Authoring or auditing any `.claude/settings.json` baseline. Always include at least one paired `Bash(<broad-pattern>:*)` allow + `Bash(<narrower-destructive-variant>:*)` deny to test the precedence at probe time. Document the precedence in a §Settings-Precedence section with at least one cross-list (deny shadows allow) + one cross-file (project deny shadows local allow) worked example.
+
+### Pattern 2: WebFetch transitive subdomain collapse (AC-7 ANOMALY)
+
+**Problem**: When designing a network host-allowlist, the intuitive expectation is that `WebFetch(domain:github.com)` matches *only* `github.com` and that subdomains require their own explicit rules (`WebFetch(domain:gist.github.com)`, etc.). The PRD's R-7 risk hypothesized the *opposite* mechanic — that subdomains might require explicit entries. T018 verification probed this directly with `WebFetch https://gist.github.com/...` and confirmed the surprising mechanic: gist.github.com auto-approved under the parent rule, demonstrating that `WebFetch(domain:X)` matches transitively on subdomains. The architect's HIGH-2 v1.1 cascade incorporated this by removing 7 redundant github-family explicit entries and adding an inline AC-7 ANOMALY note. Issues #15260, #11972, and #1217 in the Claude Code GitHub repo reference this same behavior.
+
+**Solution**: Document the transitive-collapse mechanic INLINE in `docs/standards/CLAUDE_PERMISSIONS.md` §AC-7-ANOMALY so future maintainers don't mistake it for a regression. The 19-domain WebFetch host-allowlist relies on this mechanic — `github.com` covers `gist.github.com` + `raw.githubusercontent.com` + `api.github.com` + similar — which keeps the rule count tight (19) instead of bloated (40+). Compaction option per W11 T018 Option A: 7 github-family explicit entries can be subsumed by the parent `WebFetch(domain:github.com)` rule via transitive collapse; F-4 ships the compacted form.
+
+**Apply when**: Designing any `WebFetch(domain:*)` allowlist. Test transitive collapse with at least one parent + subdomain pair before sizing the allowlist. Document the AC-7 ANOMALY mechanic inline next to the WebFetch section so adopters considering subdomain-explicit rules understand the parent rule subsumes them. When upstream Claude Code releases change subdomain-matching behavior, this section is the regression-detection hook.
+
+### Pattern 3: Built-in read-only auto-approve preserved without explicit allow
+
+**Problem**: A defensive instinct is to add explicit allow rules for every read-only operation (`Bash(git status)`, `Bash(ls)`, `Bash(cat:*)`, etc.) to ensure they auto-approve in agentic mode. This bloats the baseline (potentially 50+ extra entries) and risks divergence between the explicit list and Claude Code's actual built-in read-only set as upstream releases evolve.
+
+**Solution**: Claude Code maintains a built-in read-only auto-approve list that operates OUTSIDE the explicit `permissions.allow` array. `Bash(git status)` auto-approves with NO matching rule in `.claude/settings.json` — confirmed at T009 pre-commit no-rule probe (executed `git status` in a session loaded with the curated baseline; harness returned the output directly with no permission prompt) AND at T025 post-merge defense-in-depth re-run (same probe, same outcome on a fresh post-merge clone). The PRD's R-10 risk hypothesized that explicit allow rules might *shadow* built-in read-only auto-approve — but the no-rule probe disproves that: built-in auto-approve fires when no explicit rule matches (allow OR deny). The permissions baseline therefore EXCLUDES read-only operations from the explicit allow array and lets the built-in mechanic handle them, keeping the baseline at ~80 LOC instead of 130+.
+
+**Apply when**: Building any `.claude/settings.json` baseline. Verify built-in read-only preservation with an explicit no-rule probe at /aod.build verification time AND post-merge defense-in-depth (T009 + T025 pattern). When upstream Claude Code changes the built-in read-only set, the no-rule probe is the regression-detection hook. Adopters who want to *deny* a normally-built-in read-only operation must add it explicitly to `permissions.deny` (the deny→ask→allow precedence applies; built-in auto-approve does NOT shadow explicit deny).
+
+### Lessons from Estimation vs. Reality
+
+- PRD estimate ~8-9h active / next-day wall-clock held within ~1h. ICE I:8 C:7 E:7 was accurate.
+- Single biggest scope risk was R-7 (subdomain matching) — flipped from "explicit subdomains required" to "transitive collapse" at T018, but the architect's v1.1 cascade had already preemptively reconciled the rule set, so the build-stage flip was zero-cost.
+- The W11 T018 AC-7 ANOMALY confirmation opened the AC-15 + AC-16 follow-up surface (Issues #280 + #281) — reuse the same pattern when probing for hidden mechanics: capture the anomaly, file an Issue at task-time with ICE rough-estimate, and don't expand the current feature scope to absorb it.
+
+### Cross-References
+
+- **Sibling**: Entry 4 (F-3 SECURITY.md and Private Disclosure Channel) — F-4 follows F-3 in BLP-02 Wave sequence; both close BLP-02 enterprise-hardening posture gaps named in the same 2026-05-02 Daniel Wood thread; F-3 closes the *disclosure-channel* half, F-4 closes the *deployment-readiness* half. Both reuse the docs-only DoD pattern (Entry 4 Pattern 1) — F-4's Constitution Check invokes the same Principle VII §Exceptions clause that F-3 codified.
+- **Ancestor**: Entry 4 (F-3) — Pattern 3 (CHANGELOG sibling-h3 BLP-02-cluster placement) carry-forward from N-4. F-4's CHANGELOG entry was authored at /aod.build W9 T017 with the sibling-h3 BLP-02-cluster placement preserved per N-4.
+- **Pattern class**: "Posture-gap closure" — F-4 closes ZERO `/security` `vuln_id` (this is the new pattern class introduced in BLP-02). The class distinction matters for retrospective rubric metrics: not every BLP-02 feature closes a vuln_id, but every BLP-02 feature closes an audit-policy-relevant posture gap. Procurement-defensible rubric value = vuln_id closure UNION posture-gap closure.
+- **Initiative**: BLP-02 enterprise-hardening Wave 4 (4-of-5 features delivered). Predecessors: F-1 (#248) Wave 1 + F-250 hot-fix follow-on; F-2 (#256) Wave 2; F-3 (#272) Wave 3. Sole remaining: F-5 Pre-commit Secret-Scanning + ADR-042. ADRs accepted: 038, 040, 041 (041 from this feature).
+- **Follow-up Issues**: #280 (AC-15 pre-commit hook for `.claude/settings.json` jq-validity + AC-2 cross-check; ICE I:5 C:7 E:8) and #281 (AC-16 CI integration for the F-4 verification recipe; ICE I:6 C:6 E:7) — both filed at /aod.tasks-time, traced through delivery.
+
+---
+
 ## Bug Fixes
 
 *No entries yet. Use `/kb-create` to add the first bug fix.*
