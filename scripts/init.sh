@@ -46,6 +46,20 @@ else
   exit 1
 fi
 
+# F-5 (T015): parse --no-precommit / --precommit flag overrides for the
+# opt-in pre-commit secret-scanning hook prompt. These flags affect ONLY
+# the first-run init.sh invocation; post-init opt-out is `pre-commit
+# uninstall` from the repo root (per docs/standards/PRECOMMIT_HOOKS.md
+# §Re-init-Behavior). Default behavior: TTY check baseline (prompt fires
+# if interactive; auto-skipped otherwise).
+PRECOMMIT_FLAG=""  # "" = TTY-default; "skip" = --no-precommit; "force" = --precommit
+for arg in "$@"; do
+  case "$arg" in
+    --no-precommit) PRECOMMIT_FLAG="skip" ;;
+    --precommit)    PRECOMMIT_FLAG="force" ;;
+  esac
+done
+
 echo -e "${BLUE}🚀 Agentic-Oriented-Development-Kit - Project Initialization${NC}"
 echo ""
 
@@ -178,6 +192,39 @@ read -p "Proceed with initialization? [Y/n]: " CONFIRM
 if [[ $CONFIRM =~ ^[Nn]$ ]]; then
   echo "Initialization cancelled."
   exit 0
+fi
+
+# F-5 (T015 + T016): opt-in pre-commit secret-scanning hook prompt + install.
+# Default Y in TTY contexts; auto-skipped in non-TTY (CI / piped stdin).
+# Flag overrides (--no-precommit / --precommit) bypass the TTY check.
+# T016 (Architect CONCERN-3): pre-commit framework v3.5.0 floor — below
+# this version, hook install may silently partial-install or runtime-crash
+# (see docs/standards/PRECOMMIT_HOOKS.md §Known-Limitations).
+PRECOMMIT_DECISION="skip"
+if [ "$PRECOMMIT_FLAG" = "force" ]; then
+  PRECOMMIT_DECISION="install"
+elif [ "$PRECOMMIT_FLAG" != "skip" ] && [ -t 0 ]; then
+  read -p "Install pre-commit secret-scanning hook (gitleaks)? [Y/n] " response
+  if [[ "${response:-Y}" =~ ^[Yy]$ ]]; then
+    PRECOMMIT_DECISION="install"
+  fi
+fi
+
+if [ "$PRECOMMIT_DECISION" = "install" ]; then
+  if command -v pre-commit >/dev/null 2>&1; then
+    PRECOMMIT_VER_NUM="$(pre-commit --version 2>/dev/null | awk '{print $2}')"
+    PRECOMMIT_MAJOR="$(echo "$PRECOMMIT_VER_NUM" | awk -F'.' '{print $1}')"
+    PRECOMMIT_MINOR="$(echo "$PRECOMMIT_VER_NUM" | awk -F'.' '{print $2}')"
+    case "$PRECOMMIT_MAJOR" in *[!0-9]*|"") PRECOMMIT_MAJOR=0 ;; esac
+    case "$PRECOMMIT_MINOR" in *[!0-9]*|"") PRECOMMIT_MINOR=0 ;; esac
+    if [ "$PRECOMMIT_MAJOR" -gt 3 ] || { [ "$PRECOMMIT_MAJOR" -eq 3 ] && [ "$PRECOMMIT_MINOR" -ge 5 ]; }; then
+      pre-commit install || echo "WARN: pre-commit install failed; install pre-commit framework manually and run 'pre-commit install'" >&2
+    else
+      echo "WARN: pre-commit framework version < 3.5.0 detected ($PRECOMMIT_VER_NUM); minimum supported is 3.5.0; please upgrade via 'pip install --upgrade pre-commit' or 'brew upgrade pre-commit'" >&2
+    fi
+  else
+    echo "WARN: pre-commit framework not installed; secret-scanning hook NOT installed. Install pre-commit (e.g., 'pip install pre-commit' or 'brew install pre-commit') and re-run 'pre-commit install' from the repo root" >&2
+  fi
 fi
 
 echo ""

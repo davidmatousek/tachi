@@ -1,0 +1,76 @@
+# =============================================================================
+# tachi gitleaks CI parity workflow
+# =============================================================================
+# Purpose: full-repo gitleaks scan on pull-request events as a back-stop for
+# the local pre-commit hook (in case a developer bypasses with `git commit
+# --no-verify` or the hook is uninstalled). Findings are uploaded to GitHub
+# Code Scanning via the SARIF format so PR reviewers see them inline.
+#
+# CRITICAL: this workflow downloads the gitleaks binary directly from the
+# GitHub release tarball (NOT the proprietary `gitleaks-action@v2`, which
+# requires a paid `GITLEAKS_LICENSE` secret for org repos). Native invocation
+# preserves SARIF compatibility and avoids the org-wide license trap (per
+# research finding + ADR-042 §Alternatives).
+#
+# Pin: gitleaks v8.30.1, verified by SHA256 checksum from the upstream
+# release `gitleaks_8.30.1_checksums.txt`. Bump cadence: each minor release
+# of gitleaks with empirical re-test against
+# `tests/fixtures/gitleaks-rule-interaction/` before merging the bump (per
+# ADR-042 §Consequences).
+#
+# Scope: full-repo scan per Q5 (PR-diff scanning would miss pre-existing
+# un-scanned credentials in older commits; full-repo catches them at merge
+# time). Runtime budget: <30s for a tachi-sized tree.
+# =============================================================================
+
+name: gitleaks (CI parity)
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  security-events: write   # required by github/codeql-action/upload-sarif
+
+jobs:
+  gitleaks:
+    name: gitleaks full-repo scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so `gitleaks git` can scan it
+
+      - name: Download gitleaks v8.30.1 binary (with SHA256 verification)
+        run: |
+          set -euo pipefail
+          GITLEAKS_VERSION="8.30.1"
+          GITLEAKS_TARBALL="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          GITLEAKS_SHA256="551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+          curl -sSLO "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${GITLEAKS_TARBALL}"
+          echo "${GITLEAKS_SHA256}  ${GITLEAKS_TARBALL}" | sha256sum --check --status
+          tar -xzf "${GITLEAKS_TARBALL}" gitleaks
+          chmod +x gitleaks
+          ./gitleaks version
+
+      - name: Run gitleaks (full-repo scan, SARIF output)
+        # Continue past non-zero exit so the SARIF upload step always runs;
+        # the SARIF report carries findings for inline PR review.
+        continue-on-error: true
+        run: |
+          ./gitleaks git \
+            --config=.gitleaks.toml \
+            --report-format=sarif \
+            --report-path=gitleaks.sarif \
+            --no-banner \
+            --verbose
+
+      - name: Upload SARIF to GitHub Code Scanning
+        if: always()   # upload even if scan exited non-zero
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: gitleaks.sarif
+          category: gitleaks
