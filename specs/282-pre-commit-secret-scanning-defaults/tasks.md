@@ -87,7 +87,7 @@ triad:
 
 - [X] T015 [US1] Modify `scripts/init.sh` (~10-20 LOC delta) — insert opt-in prompt block after personalization-confirmation block (line 177-185 region per research). Block structure: (a) parse `--no-precommit` and `--precommit` flags from `$@` at script start (early exit/skip variables), (b) `[ -t 0 ]` TTY check, (c) raw `read -p "Install pre-commit secret-scanning hook (gitleaks)? [Y/n] " response` with `${response:-Y}` default-Y fallback, (d) on Y match (`[[ "${response:-Y}" =~ ^[Yy]$ ]]`), invoke `pre-commit install || echo "WARN: pre-commit install failed; install pre-commit framework manually and run 'pre-commit install'" >&2`, (e) flag overrides: `--no-precommit` skips prompt + skip install regardless of TTY; `--precommit` skips prompt + force-install regardless of TTY. Use raw `read -p` per Q10 (waiver in ADR-042 §Consequences).
 - [X] T016 [US1] Add `pre-commit --version` floor check to init.sh per Architect CONCERN-3 (MEDIUM): before invoking `pre-commit install` in T015, check `pre-commit --version` output parses to >= 3.5.0; if `pre-commit` command is missing or returns lower version, log a one-line WARN to stderr (`WARN: pre-commit framework version < 3.5.0 detected; minimum supported is 3.5.0; please upgrade via `pip install --upgrade pre-commit` or `brew upgrade pre-commit``) and continue without installing. Depends on T015.
-- [ ] T017 [US1] Verify FR-004 acceptance scenarios empirically per AC-6 + AC-7: (a) TTY no-flag default-Y → `pre-commit install` invoked; (b) `</dev/null` non-TTY → prompt skipped; (c) TTY `--no-precommit` → prompt skipped; (d) `--precommit </dev/null` → install invoked without prompting; (e) `pre-commit` missing → WARN logged, init.sh continues. Use a fresh tachi clone for each scenario. Depends on T015 + T016.
+- [X] T017 [US1] Verify FR-004 acceptance scenarios empirically per AC-6 + AC-7: (a) TTY no-flag default-Y → `pre-commit install` invoked; (b) `</dev/null` non-TTY → prompt skipped; (c) TTY `--no-precommit` → prompt skipped; (d) `--precommit </dev/null` → install invoked without prompting; (e) `pre-commit` missing → WARN logged, init.sh continues. Use a fresh tachi clone for each scenario. Depends on T015 + T016.
 
 **Checkpoint**: User Story 1 fully functional. Hook installed via init.sh prompt; refusal contract verified end-to-end. Wave 1 + Wave 2 + Wave 3 (init.sh delta) all consumed.
 
@@ -101,7 +101,7 @@ triad:
 
 ### Implementation for User Story 2
 
-- [ ] T018 [US2] Verify FR-002 acceptance scenarios via T013 runner: run `bash tests/fixtures/gitleaks-rule-interaction/run.sh`; confirm fixtures #1 (GitHub PAT) + #2 (AWS access key) + #3 (OpenAI key) + #4 (Anthropic key) + #5 (private-key block) all fire and the runner exits 0 with all-pass. Depends on T013.
+- [X] T018 [US2] Verify FR-002 acceptance scenarios via T013 runner: run `bash tests/fixtures/gitleaks-rule-interaction/run.sh`; confirm fixtures #1 (GitHub PAT) + #2 (AWS access key) + #3 (OpenAI key) + #4 (Anthropic key) + #5 (private-key block) all fire and the runner exits 0 with all-pass. Depends on T013.
 
 **Checkpoint**: Default-deny ruleset inheritance verified.
 
@@ -115,7 +115,7 @@ triad:
 
 ### Implementation for User Story 3
 
-- [ ] T019 [US3] Empirically verify FR-010 / AC-9: clone tachi to a fresh location BEFORE F-5 changes are merged (or check out main); confirm no `.git/hooks/pre-commit`. Apply F-5 changes via `git pull origin 282-pre-commit-secret-scanning-defaults` (or equivalent). Inspect `.git/hooks/pre-commit` post-pull — must NOT exist. Document the pre/post state in `.aod/results/ac9-existing-adopter-verification.md`. [MANUAL-ONLY] verification — depends on git environment fidelity.
+- [X] T019 [US3] Empirically verify FR-010 / AC-9: clone tachi to a fresh location BEFORE F-5 changes are merged (or check out main); confirm no `.git/hooks/pre-commit`. Apply F-5 changes via `git pull origin 282-pre-commit-secret-scanning-defaults` (or equivalent). Inspect `.git/hooks/pre-commit` post-pull — must NOT exist. Document the pre/post state in `.aod/results/ac9-existing-adopter-verification.md`. [MANUAL-ONLY] verification — depends on git environment fidelity.
 
 **Checkpoint**: Existing-adopter no-surprise flow verified.
 
@@ -129,8 +129,8 @@ triad:
 
 ### Implementation for User Story 4
 
-- [ ] T020 [US4] Empirically verify FR-002 acceptance scenario 1 (AC-4): from F-5 branch with all Wave 1 files in place, run `pre-commit install && pre-commit run --all-files`. Confirm zero findings. If any findings appear: investigate (a) is it a legitimate credential we should remove from the tree? (b) is it a tachi-specific allow-list gap we should add to `.gitleaks.toml`? (c) is it gitleaks default-rule overreach we need to suppress? Apply Five Whys per Constitution Principle VIII. Document outcome in `.aod/results/ac4-baseline-zero-findings.md`. Depends on T003-T006 (Wave 1 files).
-- [ ] T021 [US4] Verify placeholder + path-allow-list cases via T013 runner: confirm fixtures #7-#16 all produce zero findings as expected. Depends on T013.
+- [X] T020 [US4] Empirically verify FR-002 acceptance scenario 1 (AC-4): from F-5 branch with all Wave 1 files in place, run `pre-commit install && pre-commit run --all-files`. Confirm zero findings. If any findings appear: investigate (a) is it a legitimate credential we should remove from the tree? (b) is it a tachi-specific allow-list gap we should add to `.gitleaks.toml`? (c) is it gitleaks default-rule overreach we need to suppress? Apply Five Whys per Constitution Principle VIII. Document outcome in `.aod/results/ac4-baseline-zero-findings.md`. Depends on T003-T006 (Wave 1 files).
+- [X] T021 [US4] Verify placeholder + path-allow-list cases via T013 runner: confirm fixtures #7-#16 all produce zero findings as expected. Depends on T013.
 
 **Checkpoint**: False-positive rate verified zero on tachi's pre-F-5 baseline.
 
@@ -163,7 +163,7 @@ triad:
 ### Implementation for User Story 6
 
 - [X] T027 [US6] Create `.github/workflows/gitleaks.yml` (~25-40 LOC) per FR-007: triggers on `pull_request` events; uses `runs-on: ubuntu-latest`; downloads gitleaks binary directly from GitHub release tarball at the version pinned in `.pre-commit-config.yaml` (v8.30.1 initially); verifies tarball SHA256 checksum; invokes `gitleaks git --config=.gitleaks.toml --report-format=sarif --report-path=gitleaks.sarif`; uploads SARIF to GitHub Code Scanning via `github/codeql-action/upload-sarif@v3` (or equivalent action). Native gitleaks output ONLY — does NOT invoke `.aod/scripts/bash/precommit-wrap.sh` (LOCAL-ONLY per PM-5). Full-repo scan per Q5. Avoids proprietary `gitleaks-action@v2` license trap per research finding. Depends on T003 (`.gitleaks.toml` exists).
-- [ ] T028 [US6] Empirically verify FR-007 acceptance scenarios via PR test: on this F-5 feature branch, temporarily commit a deliberately-bad credential file (e.g., `tests/fixtures/_DELETE_ME_GITHUB_PAT.txt` containing `ghp_<random40chars>`) using `git commit --no-verify` to bypass local hook; push to remote; observe the gitleaks GHA check fail with rule ID + file:line matching local hook output. Then `git rm tests/fixtures/_DELETE_ME_GITHUB_PAT.txt && git commit && git push`; observe GHA check pass. Per Architect A-10 (PRD): cleanup discipline — the bad-credential commit MUST be removed before /aod.deliver merge. Depends on T027.
+- [X] T028 [US6] Empirically verify FR-007 acceptance scenarios via PR test: on this F-5 feature branch, temporarily commit a deliberately-bad credential file (e.g., `tests/fixtures/_DELETE_ME_GITHUB_PAT.txt` containing `ghp_<random40chars>`) using `git commit --no-verify` to bypass local hook; push to remote; observe the gitleaks GHA check fail with rule ID + file:line matching local hook output. Then `git rm tests/fixtures/_DELETE_ME_GITHUB_PAT.txt && git commit && git push`; observe GHA check pass. Per Architect A-10 (PRD): cleanup discipline — the bad-credential commit MUST be removed before /aod.deliver merge. Depends on T027.
 
 **Checkpoint**: CI parity verified end-to-end.
 
@@ -175,7 +175,7 @@ triad:
 
 ### Implementation (cross-cutting; no story label)
 
-- [ ] T029 Pre-merge final verification suite: (a) re-run `pre-commit run --all-files` from F-5 branch — confirm zero findings (AC-4 / FR-002 / SC-001); (b) re-run `bash tests/fixtures/gitleaks-rule-interaction/run.sh` — confirm 16/16 fixtures pass (AC-SPEC-1 / FR-013); (c) re-run `pytest tests/scripts/test_init_precommit_matrix.py` — confirm 6/6 matrix cases pass; (d) confirm CI workflow green on PR (T028 already-verified); (e) confirm reviewers can cross-check `.gitleaks.toml` rule IDs against PRECOMMIT_HOOKS.md per-rule rationale catalog (AC-10 / FR-005). Document in `.aod/results/wave5-pre-merge-verification.md`. [MANUAL-ONLY] reviewer cross-check on (e). Depends on all prior tasks.
+- [X] T029 Pre-merge final verification suite: (a) re-run `pre-commit run --all-files` from F-5 branch — confirm zero findings (AC-4 / FR-002 / SC-001); (b) re-run `bash tests/fixtures/gitleaks-rule-interaction/run.sh` — confirm 16/16 fixtures pass (AC-SPEC-1 / FR-013); (c) re-run `pytest tests/scripts/test_init_precommit_matrix.py` — confirm 6/6 matrix cases pass; (d) confirm CI workflow green on PR (T028 already-verified); (e) confirm reviewers can cross-check `.gitleaks.toml` rule IDs against PRECOMMIT_HOOKS.md per-rule rationale catalog (AC-10 / FR-005). Document in `.aod/results/wave5-pre-merge-verification.md`. [MANUAL-ONLY] reviewer cross-check on (e). Depends on all prior tasks.
 - [ ] T030 At /aod.deliver time: pre-merge title verification per `.claude/rules/git-workflow.md` §Conventional-Commit-PR-Titles — confirm PR title is `feat(282): pre-commit secret-scanning defaults`; if not, retitle via `gh pr edit <PR> --title "feat(282): pre-commit secret-scanning defaults"`. Mark draft PR ready via `gh pr ready`. Squash-merge via `gh pr merge --squash`.
 - [ ] T031 At /aod.deliver time: post-merge release-please verification per FR-015 / SC-006 — within 30 seconds of squash-merge, run `gh pr list --state open --search "release-please" --limit 3`. If empty, push an empty release-marker commit: `git commit --allow-empty -m "feat(282): pre-commit secret-scanning defaults — release marker" && git push origin main`. Document in `.aod/results/release-please-verification-282.md`. [MANUAL-ONLY] verification — depends on actual release-please cadence.
 - [ ] T032 At /aod.deliver time: post-merge `/security` re-scan per FR-014 / AC-16 — run `/security` against main post-F-5-merge; confirm zero NEW findings on F-5 file surface (`scripts/init.sh`, `.pre-commit-config.yaml`, `.gitleaks.toml`, `.aod/personalization.env.example`, `docs/standards/PRECOMMIT_HOOKS.md`, ADR-042, `.github/workflows/gitleaks.yml`, `.aod/scripts/bash/precommit-wrap.sh`). Document in `.aod/results/security-rescan-282.md`. [MANUAL-ONLY] runs at /aod.deliver time.
