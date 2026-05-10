@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "feature": "282-pre-commit-secret-scanning-defaults",
+  "total_waves": 5,
+  "waves_tested": 0,
+  "waves_skipped": 5,
+  "totals": {
+    "pass": 0,
+    "fail": 0,
+    "skip": 0
+  },
+  "total_regressions": 0,
+  "coverage_trend": null,
+  "gate_decisions": [],
+  "note": "Per-wave automated test gate (skill Step 4.5) did not fire in this /aod.build invocation. The build resumed at Wave 5 (verification-focused) with prior waves already complete from prior sessions. CI-level regression coverage is provided by the tachi pytest workflow on every push, which is GREEN at Wave 5 close-out (run 25635050102 + 25635117861, both ubuntu + macos PASS on commit 4230497). Wave 5 verification activities (T017-T021, T028, T029) are documented in the per-task .aod/results/ artifacts and the T029 consolidation."
+}
