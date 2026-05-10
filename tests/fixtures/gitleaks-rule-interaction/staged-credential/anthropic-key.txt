@@ -1,0 +1,7 @@
+# F-5 fixture #4 (T009 — should-fire)
+# Expected gitleaks rule ID (v8.30.1): anthropic-api-key
+# Pattern: `sk-ant-api03-` + exactly 93 chars from [a-zA-Z0-9_-] + `AA` + delimiter
+# (the gitleaks v8.30.1 regex: `\b(sk-ant-api03-[a-zA-Z0-9_\-]{93}AA)(?:[\x60\'"\s;]|\\[nr]|$)`).
+# PM-PLAN-1: if upstream renames this rule OR changes the secret-length anchor,
+# update both this fixture AND tests/fixtures/gitleaks-rule-interaction/run.sh.
+ANTHROPIC_API_KEY = "sk-ant-api03-zX9Yt7VkR3WpQ2NmJ8LhG6FdC5BaA1ZyXwVuTsRqPoNmLkJiHgFeDcBaZyXwVuTsRqPoNmLkJiHgFeDcBaZyXwVuTsXyZAA"

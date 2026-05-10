@@ -1,0 +1,5 @@
+# F-5 fixture #1 (T009 — should-fire)
+# Expected gitleaks rule ID (v8.30.1): github-pat
+# Pattern: ghp_ + 36 hex chars (legacy classic PAT format)
+# PM-PLAN-1: if upstream renames this rule, update tests/fixtures/gitleaks-rule-interaction/run.sh
+github_token = "ghp_a4f9d2e7b1c83f5e6d0a9b8c7d6e5f4a3b2c"

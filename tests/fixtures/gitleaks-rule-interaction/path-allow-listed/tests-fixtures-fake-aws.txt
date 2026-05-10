@@ -1,0 +1,7 @@
+# F-5 fixture #12 (T011 — should-NOT-fire)
+# Allow-list mechanism: path regex `tests/fixtures/.*` in `.gitleaks.toml` allow-list 2
+# Simulated path: tests/fixtures/<filename> (matches the path-allow-list)
+# Why this exists: synthetic AWS-key-like content under tests/fixtures/ should NEVER fire
+# (other tests can carry credential-shaped fixtures legitimately)
+AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
+AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"

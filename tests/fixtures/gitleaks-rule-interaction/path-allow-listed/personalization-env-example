@@ -1,0 +1,8 @@
+# F-5 fixture #11 (T011 — should-NOT-fire)
+# Allow-list mechanism: path regex `\.aod/personalization\.env\.example` in `.gitleaks.toml` allow-list 2
+# Simulated path: .aod/personalization.env.example (the actual F-5 template path)
+# Why this exists: defensive snapshot of the personalization template — runner copies
+# this fixture to TMPDIR/.aod/personalization.env.example for path-allow-list verification
+AOD_PERSONALIZATION_PROJECT_NAME=PLACEHOLDER
+AOD_PERSONALIZATION_GITHUB_ORG=PLACEHOLDER
+AOD_PERSONALIZATION_AI_AGENT=PLACEHOLDER

@@ -1,0 +1,6 @@
+# F-5 fixture #7 (T010 — should-NOT-fire)
+# Allow-list mechanism: regex `\$[A-Z_]+` (env-var reference) in `.gitleaks.toml` allow-list 1
+# Pattern: shell-style env-var reference
+# Why this exists: documenting how to reference credentials WITHOUT inlining
+password = "$DATABASE_PASSWORD"
+api_key = "$OPENAI_API_KEY"

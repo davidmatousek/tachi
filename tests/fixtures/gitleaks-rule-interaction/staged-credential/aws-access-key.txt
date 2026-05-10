@@ -1,0 +1,8 @@
+# F-5 fixture #2 (T009 — should-fire)
+# Expected gitleaks rule ID (v8.30.1): aws-access-token
+# Pattern: AKIA + 16 alphanumeric (AWS access key ID format).
+# CRITICAL: do NOT end with "EXAMPLE" — gitleaks default `aws-access-token`
+# allow-lists `.+EXAMPLE$` (the AWS docs sample-key suppression). Ending in
+# any other suffix exercises the rule honestly.
+# PM-PLAN-1: if upstream renames this rule, update tests/fixtures/gitleaks-rule-interaction/run.sh
+AWS_ACCESS_KEY_ID = "AKIAJSIE27KKMHXI3BJQ"

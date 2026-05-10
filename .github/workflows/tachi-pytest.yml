@@ -84,6 +84,7 @@ on:
       - tests/scripts/test_template_config_load_integration.py # F-256
       - tests/scripts/test_template_git_clone_timeout.py      # F-256
       - tests/scripts/test_template_substitute_lint_no_eval.py # F-256
+      - tests/scripts/test_init_precommit_matrix.py            # F-5 (282)
       - tests/scripts/init_sh_helpers.py
       - tests/scripts/conftest.py
       - tests/fixtures/init-baseline-tree/**
@@ -173,4 +174,5 @@ jobs:
             tests/scripts/test_template_config_load_integration.py \
             tests/scripts/test_template_git_clone_timeout.py \
             tests/scripts/test_template_substitute_lint_no_eval.py \
+            tests/scripts/test_init_precommit_matrix.py \
             -v --timeout=1080
