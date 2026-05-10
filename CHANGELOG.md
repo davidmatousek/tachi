@@ -235,6 +235,13 @@ Reference: [ADR-042](docs/architecture/02_ADRs/ADR-042-pre-commit-secret-scannin
 
 ---
 
+## [4.35.0](https://github.com/davidmatousek/tachi/compare/v4.34.0...v4.35.0) (2026-05-10)
+
+
+### Features
+
+* **282:** pre-commit secret-scanning defaults ([#283](https://github.com/davidmatousek/tachi/issues/283)) ([18378bd](https://github.com/davidmatousek/tachi/commit/18378bd406a5633f1d13b443d1d1ea7a28a0d295))
+
 ## [4.34.0](https://github.com/davidmatousek/tachi/compare/v4.33.0...v4.34.0) (2026-05-09)
 
 
