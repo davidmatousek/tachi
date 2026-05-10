@@ -1,0 +1,39 @@
+# =============================================================================
+# .pre-commit-config.yaml — tachi pre-commit hook configuration
+# =============================================================================
+# Single-hook config running gitleaks via the wrapper script at
+# `.aod/scripts/bash/precommit-wrap.sh`. The wrapper preserves gitleaks' exit
+# code while augmenting refused-commit stderr with the four-item structured
+# contract (rule ID + file:line + bypass guidance + docs link).
+#
+# Activation paths:
+#   - First-time adopters: `scripts/init.sh` prompts (default Y in TTY contexts;
+#     skipped in non-TTY; flag overrides `--no-precommit` / `--precommit`).
+#   - Existing adopters:   `pre-commit install` from repo root after `git pull`
+#     (the F-5 update is opt-in per FR-010 — no auto-install on `git pull`).
+#
+# Pin strategy: the `rev` field below starts as a tag for human readability
+# and is replaced with a pinned commit SHA via `pre-commit autoupdate --freeze`
+# at install time (per ADR-042 §Decision and PRD §R-3 supply-chain hygiene).
+# Bump cadence: each gitleaks minor release with empirical re-test against
+# `tests/fixtures/gitleaks-rule-interaction/` before merging the bump.
+#
+# CI parity: `.github/workflows/gitleaks.yml` runs gitleaks against PR content
+# directly (NOT via this wrapper) to preserve native SARIF output for GitHub
+# Code Scanning compatibility.
+#
+# See docs/standards/PRECOMMIT_HOOKS.md for installation paths, bypass
+# mechanisms, and the refused-commit-error-message contract.
+# =============================================================================
+
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1  # `pre-commit autoupdate --freeze` will replace with pinned SHA
+    hooks:
+      - id: gitleaks
+        name: gitleaks (tachi-wrapped)
+        entry: .aod/scripts/bash/precommit-wrap.sh
+        # language: golang inherited from upstream — pre-commit installs
+        # the gitleaks binary into a managed Go env on first invocation.
+        pass_filenames: false
+        stages: [pre-commit]

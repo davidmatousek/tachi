@@ -1,0 +1,118 @@
+# =============================================================================
+# .gitleaks.toml — tachi pre-commit secret-scanning configuration
+# =============================================================================
+# Loaded by gitleaks v8.30.1+ via the pre-commit hook (.pre-commit-config.yaml)
+# and the CI parity workflow (.github/workflows/gitleaks.yml). Inherits the
+# upstream default ruleset (covers AWS access keys, GitHub PATs, OpenAI/
+# Anthropic API keys, generic high-entropy strings, etc.) and adds tachi-
+# specific allow-list entries plus two warn-only custom rules.
+#
+# Schema: gitleaks v8.25.0+ `[[allowlists]]` array-of-tables.
+# Pin: `.pre-commit-config.yaml` carries the gitleaks rev. Bump cadence:
+# each gitleaks minor release with empirical re-test against
+# tests/fixtures/gitleaks-rule-interaction/ (per ADR-042 §Consequences).
+#
+# See docs/standards/PRECOMMIT_HOOKS.md for the per-rule rationale catalog
+# (1:1 cross-link from each rule below) and the bypass / opt-out matrix.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Inherit upstream default ruleset
+# -----------------------------------------------------------------------------
+# `useDefault = true` pulls in gitleaks' canonical credential patterns. Our
+# additions are purely additive: allow-list entries scope down false-positives
+# for tachi conventions; custom `[[rules]]` block tachi-specific patterns the
+# upstream defaults don't cover.
+[extend]
+useDefault = true
+
+# -----------------------------------------------------------------------------
+# Allow-list 1: env-var placeholders that look like credentials
+# -----------------------------------------------------------------------------
+# Suppresses default-rule firings on documentation/template content. Tachi's
+# docs/, examples/, and personalization.env.example carry these patterns
+# intentionally (didactic placeholders, env-var references in shell snippets).
+[[allowlists]]
+description = "env-var placeholders and didactic stand-ins"
+regexes = [
+  '''\$[A-Z_]+''',                  # `password = "$ENV_VAR"` shell-style
+  '''<placeholder>''',              # `key = "<placeholder>"` angle-bracket
+  '''PLACEHOLDER''',                # `OPENAI_API_KEY=PLACEHOLDER` literal
+  '''your-api-key-here''',          # tutorial-style placeholder
+  '''sk-PLACEHOLDER\.\.\.''',       # OpenAI-style ellipsis placeholder
+  '''sk-test-\.\.\.''',             # Stripe test-key ellipsis placeholder
+]
+
+# -----------------------------------------------------------------------------
+# Allow-list 2: tachi convention paths (placeholder/fixture/docs content)
+# -----------------------------------------------------------------------------
+# Paths where placeholder/fixture/docs content lives intentionally. Suppressing
+# these prevents false-positive flood (R-1) on tachi's own tree.
+[[allowlists]]
+description = "tachi convention paths where placeholder/fixture content lives"
+paths = [
+  '''tests/fixtures/.*''',                  # synthetic test fixtures (incl. F-5 rule-interaction set)
+  '''examples/.*''',                        # example/demo content for adopters
+  '''docs/.*''',                            # docs with placeholder values
+  '''\.aod/personalization\.env\.example''', # the F-5 opt-in template (T004)
+]
+
+# -----------------------------------------------------------------------------
+# Allow-list 3: vendored / generated / archived content (excluded from scan)
+# -----------------------------------------------------------------------------
+# These trees are not subject to scan: they're not authored content and may
+# carry credentials/keys from upstream sources we don't control.
+[[allowlists]]
+description = "vendored, generated, or archived content not subject to scan"
+paths = [
+  '''node_modules/.*''',
+  '''\.git/.*''',
+  '''archive/.*''',
+]
+
+# -----------------------------------------------------------------------------
+# Custom rule 1: tachi-personalization-env (WARN-ONLY per spec Q1)
+# -----------------------------------------------------------------------------
+# Defense-in-depth: catches a copy of `.aod/personalization.env` content
+# (populated, non-placeholder values) being committed somewhere outside the
+# gitignored canonical path. `.aod/personalization.env` itself is in
+# `.gitignore` (F-1 #248); this rule guards against accidental copies pasted
+# into other locations.
+#
+# Tagged warn-only because the most likely false-positive is a legitimate
+# AOD_PERSONALIZATION_* documentation reference. Bypass: `SKIP=gitleaks` for
+# the legitimate case OR add the path to allowlist 2 above.
+[[rules]]
+id = "tachi-personalization-env"
+description = "[WARN-ONLY] Populated AOD_PERSONALIZATION_* value detected outside .aod/personalization.env (which is gitignored). Tachi-additive defense-in-depth."
+regex = '''AOD_PERSONALIZATION_[A-Z_]+=(\S+)'''
+secretGroup = 1
+tags = ["warn-only", "tachi-additive"]
+[rules.allowlist]
+paths = [
+  '''\.aod/personalization\.env\.example''',   # legitimate template
+  '''tests/fixtures/.*''',                     # F-5 rule-interaction fixtures
+  '''docs/.*''',                               # documentation references
+  '''specs/.*''',                              # historical spec/plan references
+]
+
+# -----------------------------------------------------------------------------
+# Custom rule 2: tachi-security-exceptions-jsonl (WARN-ONLY per spec Q2)
+# -----------------------------------------------------------------------------
+# Defense-in-depth: `.security/exceptions.jsonl` is auto-generated by the
+# tachi compensating-controls pipeline. Manual edits should be flagged for
+# review (an entry without `"auto_generated":true` indicates a manual edit).
+#
+# Tagged warn-only because legitimate manual edits CAN occur (governance
+# overrides). Bypass: `SKIP=gitleaks` after review, or add `"auto_generated":
+# true` to the entry if appropriate.
+[[rules]]
+id = "tachi-security-exceptions-jsonl"
+description = "[WARN-ONLY] Entry in .security/exceptions.jsonl without `\"auto_generated\":true` marker — likely a manual edit. Tachi-additive defense-in-depth."
+regex = '''.+'''
+path = '''\.security/exceptions\.jsonl$'''
+tags = ["warn-only", "tachi-additive"]
+[rules.allowlist]
+regexes = [
+  '''"auto_generated"\s*:\s*true''',          # auto-generated marker
+]
