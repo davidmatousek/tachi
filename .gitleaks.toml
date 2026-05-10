@@ -92,6 +92,7 @@ tags = ["warn-only", "tachi-additive"]
 paths = [
   '''\.aod/personalization\.env\.example''',   # legitimate template
   '''tests/fixtures/.*''',                     # F-5 rule-interaction fixtures
+  '''tests/scripts/.*''',                      # integration tests for substitution mechanism (T020 Wave-5 carry-forward)
   '''docs/.*''',                               # documentation references
   '''specs/.*''',                              # historical spec/plan references
 ]
