@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-05-09T18:42:42Z.
+> Auto-generated from GitHub Issues on 2026-05-10T14:45:26Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -57,6 +57,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #282 | F-5 — Pre-commit Secret-Scanning Defaults | OPEN | 2026-05-10 |
 | #281 | [chore] CI integration for F-4 verification recipe (post-F-4 follow-up) | OPEN | 2026-05-09 |
 | #280 | [chore] Pre-commit hook for .claude/settings.json + CLAUDE_PERMISSIONS.md AC-2 cross-check (post-F-4 follow-up) | OPEN | 2026-05-09 |
 | #276 | [chore] release-please manifest-vs-tag discrepancy investigation (post-F-3 follow-up) | OPEN | 2026-05-08 |

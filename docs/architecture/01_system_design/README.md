@@ -3531,3 +3531,108 @@ sequenceDiagram
 - **Documentation**: Markdown ADR (ADR-040 dual-commit Proposed → Accepted); CHANGELOG.md entry; new `contracts/stack-pack-defaults-schema.md`.
 
 **Cross-references**: [Spec 256](../../../specs/256-source-pattern-hardening/spec.md) · [Plan 256](../../../specs/256-source-pattern-hardening/plan.md) · [ADR-040](../02_ADRs/ADR-040-config-file-parsing-hardening.md) (config-file parsing hardening — Accepted 2026-05-05; bash `source`/`eval` → `aod_template_load_kv_file` KV parser across 4 sites + clone timeout + F-1 prompt-boundary contract amendment) · [ADR-038](../02_ADRs/ADR-038-placeholder-substitution-strategy.md) (F-1 substitution canon — F-2 reuses validation-triplet pattern) · [ADR-039](../02_ADRs/ADR-039-test-architecture-fixture-scope-and-asymmetric-baseline.md) (F-250 test-architecture canon — session-scoped fixture pattern adopted for `hanging_upstream`) · [Feature 248](#feature-248-substitution-surface-hardening) (predecessor BLP-02 Wave 1; F-2 amends F-1's `aod_init_read_validated` per B-2 Path R-2)
+
+---
+
+### Feature 282: Pre-commit Secret-Scanning Defaults (BLP-02 F-5)
+
+## Components
+
+This feature ships 8 new files and 3 deltas to introduce a `gitleaks`-via-`pre-commit-framework` default-deny gate against accidental credential exposure. All components are local-host or CI-host scaffolding — no SaaS API surface, no application state.
+
+| Component | Type | File Path | Change Type | Rationale |
+|-----------|------|-----------|-------------|-----------|
+| Pre-commit framework configuration | New scaffold | `.pre-commit-config.yaml` (~30-50 LOC) | Create | FR-001 — pinned commit-SHA reference to gitleaks repo (via `pre-commit autoupdate --freeze` post-install); hook entry invokes `precommit-wrap.sh`; opt-in (file-presence does NOT auto-install) |
+| Gitleaks ruleset | New scaffold | `.gitleaks.toml` (~50-80 LOC) | Create | FR-002 — `[extend] useDefault = true` + `[[allowlists]]` (TOML array of tables, gitleaks v8.25.0+ schema) for env-var placeholders + fixture/docs/example paths + `.aod/personalization.env.example` + 2 `[[rules]]` (`tachi-personalization-env` warn-only, `tachi-security-exceptions-jsonl` warn-only); excluded paths `node_modules/`, `.git/`, `archive/` |
+| Personalization template | New template | `.aod/personalization.env.example` (~10-20 LOC) | Create | FR-003 (per PRD C-1 resolution) — adopter-keys template; path-allow-listed in `.gitleaks.toml`; populated `.aod/personalization.env` remains gitignored per F-1 #248 |
+| Local-only wrapper script | New helper | `.aod/scripts/bash/precommit-wrap.sh` (~30-60 LOC) | Create | FR-008 (consolidates FR-009 per PM-3) — invoked by local pre-commit hook ONLY (per PM-5 LOCAL-ONLY decision); captures gitleaks exit code BEFORE stderr augmentation (Pre-Mortem FM-5 mitigation); augments stderr with rule ID + file:line + `SKIP=gitleaks` bypass + docs link; CI parity invokes gitleaks binary directly to preserve native SARIF output for GitHub Code Scanning |
+| Init.sh opt-in prompt | Delta | `scripts/init.sh` (~10-20 LOC) | Modify | FR-004 — TTY-gated (`[ -t 0 ]`) prompt block + `--no-precommit`/`--precommit` flag handling; raw `read -p` (Q10 waiver in ADR-042 §Consequences); inserts after personalization-confirmation block (line ~177 region) |
+| Pre-commit operator handbook | New documentation | `docs/standards/PRECOMMIT_HOOKS.md` (~150-250 LOC) | Create | FR-005 — self-contained 9-section operator handbook; per-rule rationale catalog cross-linked one-to-one to `.gitleaks.toml`; documents installation/opt-out/bypass paths, refused-commit error contract, CI parity, re-init behavior, known limitations, adopter customization |
+| Architecture decision record | New ADR | `docs/architecture/02_ADRs/ADR-042-pre-commit-secret-scanning-default.md` (~130-180 LOC) | Create (Proposed→Accepted) | FR-006 — Status `Accepted` after Architect sign-off; sections Context / Decision (gitleaks-vs-trufflehog rationale + opt-in posture + pin-bump cadence per A-2 + raw-read-p waiver per C-3 + wrapper-script per C-2) / Alternatives (9 evaluated: trufflehog, detect-secrets, GitHub native push-protection, custom regex hook, opt-out flag, tier the hooks, GitGuardian, SecretLint, git-secrets) / Consequences / References. Trufflehog runtime correction (Go not Python) per research finding |
+| CI parity workflow | New CI workflow | `.github/workflows/gitleaks.yml` (~25-40 LOC) | Create | FR-007 — dedicated single-purpose workflow on `pull_request`; downloads gitleaks binary directly with checksum verification (avoids proprietary `gitleaks-action@v2` paid `GITLEAKS_LICENSE` for org repos); full-repo scan per Q5; SARIF upload to GitHub Code Scanning; native gitleaks output (no wrapper) |
+| AC-SPEC-1 synthetic-fixture catalog | New test surface | `tests/fixtures/gitleaks-rule-interaction/` (16 fixture cases) | Create | FR-013 (per PRD AC-SPEC-1 + Architect C-4 preventive resolution) — 4 subdirectories (`staged-credential/` ×6, `placeholder/` ×4, `path-allow-listed/` ×4, `path-excluded/` ×2); each fixture verifies expected gitleaks rule firing OR allow-list precedence; preventive false-positive verification before merge |
+| Test runner | New test harness | `tests/fixtures/gitleaks-rule-interaction/run.sh` OR pytest equivalent (~30-50 LOC) | Create | Architect CONCERN-1 resolution at /aod.tasks — co-locate runner with fixtures (preferred) OR pytest-wrap to fit existing `tests/scripts/` convention; final location decided at /aod.tasks |
+| CHANGELOG entry | Delta | `CHANGELOG.md` (~3-5 LOC) | Modify | FR-011 — sibling-h3 BLP-02-cluster placement (`### Pre-commit secret-scanning defaults (BLP-02 F-5)`) per N-4 carry-forward through F-2/F-3/F-4 |
+| README pointer | Delta | `README.md` (~1 LOC) | Modify | FR-012 — one-line pointer in existing "Security" subsection per Q7; consistent with F-3 SECURITY.md and F-4 CLAUDE_PERMISSIONS.md placement |
+
+**Architectural posture**: scaffold + config + bash-script-delta only. No new agent, no new schema, no `finding.yaml` shape change (12-feature streak preserved). No outbound HTTP at hook execution time (gitleaks pattern-match-only; binary download in CI is one-time per workflow run, not per-commit metadata phone-home). Existing-adopter no-auto-install posture preserves backward compatibility (Constitution Principle III) — opt-in via explicit `pre-commit install` after `git pull`.
+
+## Data Flow
+
+### Local pre-commit hook flow (US-1, US-2, US-4)
+
+```
+1. Developer: git add <file>
+2. Developer: git commit -m "..."
+3. git invokes: .git/hooks/pre-commit (installed via `pre-commit install`)
+4. pre-commit framework reads: .pre-commit-config.yaml (pinned gitleaks SHA)
+5. pre-commit framework invokes hook entry: .aod/scripts/bash/precommit-wrap.sh
+6. precommit-wrap.sh invokes: gitleaks git --staged --config=.gitleaks.toml
+7. gitleaks scans staged content against:
+   a. gitleaks default rules (extended via [extend] useDefault=true)
+   b. tachi custom rules (tachi-personalization-env warn-only,
+      tachi-security-exceptions-jsonl warn-only)
+   c. tachi allowlist ([[allowlists]] env-var placeholders, fixture/docs paths,
+      .aod/personalization.env.example, node_modules/, archive/)
+8a. gitleaks exits 0 (no findings) → wrapper exits 0 silently → commit proceeds.
+8b. gitleaks exits 1 (rule fired) → wrapper captures exit code →
+    augments stderr with (rule ID + file:line + SKIP guidance + docs link) →
+    wrapper exits with gitleaks' captured exit code (FM-5 pattern: rc=$?
+    BEFORE augmentation) → commit refused.
+9. Developer remediation: fix the credential, add `# gitleaks:allow`,
+   add path to `.gitleaks.toml` allowlist, OR `SKIP=gitleaks git commit ...`.
+```
+
+### CI parity flow (US-6, FR-007)
+
+```
+1. Developer: git push origin <feature-branch>
+2. Developer: gh pr create
+3. GitHub triggers .github/workflows/gitleaks.yml on pull_request event.
+4. Workflow:
+   a. checkout repo (full history per Q5 full-repo scan resolution)
+   b. download gitleaks binary release tarball + verify checksum
+   c. invoke: gitleaks git --config=.gitleaks.toml
+       --report-format=sarif --report-path=gitleaks.sarif
+       (NATIVE invocation — NO wrapper; preserves SARIF compatibility)
+   d. upload-sarif action publishes to GitHub Code Scanning
+5a. gitleaks exits 0 → workflow check passes → PR proceeds.
+5b. gitleaks exits 1 → workflow check fails → PR blocked from merge.
+```
+
+### Init.sh prompt flow (FR-004)
+
+| TTY | Flag | Prompt | pre-commit install |
+|-----|------|--------|---------------------|
+| TTY | (none) | Fires, default Y | Invoked on Y |
+| TTY | `--no-precommit` | Skipped | NOT invoked |
+| TTY | `--precommit` | Skipped | Invoked unconditionally |
+| no-TTY | (none) | Skipped | NOT invoked |
+| no-TTY | `--no-precommit` | Skipped | NOT invoked (no-op flag) |
+| no-TTY | `--precommit` | Skipped | Invoked unconditionally |
+
+### Existing-adopter no-surprise flow (US-3, FR-010)
+
+```
+1. Existing adopter: cd <existing-tachi-clone>; git pull
+2. git pull pulls F-5 changes (.pre-commit-config.yaml + .gitleaks.toml +
+   delta to scripts/init.sh — but init.sh self-deleted on previous run!)
+3. .git/hooks/pre-commit: NOT WRITTEN (file-presence does NOT auto-install).
+4. Adopter reads CHANGELOG sibling-h3 entry: "to enable, run pre-commit install".
+5. Adopter chooses: ignore (no opt-in) OR explicit `pre-commit install` (opt-in).
+```
+
+## Tech Stack
+
+| Component | Technology | Version | License | Pinning |
+|-----------|-----------|---------|---------|---------|
+| Pre-commit framework | `pre-commit` | >= 3.5.0 (R-10 floor; current upstream v4.6.0) | MIT | adopter-installed; not vendored by tachi |
+| Secret scanner | `gitleaks` | v8.30.1 (commit SHA via `pre-commit autoupdate --freeze`) | MIT | pinned commit SHA in `.pre-commit-config.yaml` |
+| Bash | `bash` | 3.2+ (macOS native compat) | GPL-3.0 (system; not redistributed) | system-provided |
+| TOML parser | `gitleaks` internal (Go `toml` package) | bundled | MIT (bundled) | bundled |
+| GitHub Actions runner | `ubuntu-latest` | GitHub-managed | N/A | GitHub-managed |
+| YAML parser | `pre-commit` framework + GitHub Actions | bundled | MIT / various | bundled |
+
+**No new runtime dependencies** for tachi's own codebase (dev or production). Pre-commit framework + gitleaks are adopter-installed external tooling; `precommit-wrap.sh` uses bash builtins only.
+
+**Cross-references**: [Spec 282](../../../specs/282-pre-commit-secret-scanning-defaults/spec.md) · [Plan 282](../../../specs/282-pre-commit-secret-scanning-defaults/plan.md) · [ADR-042](../02_ADRs/ADR-042-pre-commit-secret-scanning-default.md) (pre-commit secret-scanning default — pending Architect Acceptance at /aod.deliver) · [ADR-038](../02_ADRs/ADR-038-placeholder-substitution-strategy.md) (F-1 substitution surface — F-5 builds on `.gitignore:226` baseline) · [ADR-040](../02_ADRs/ADR-040-config-file-parsing-hardening.md) (F-2 config-file parsing — F-5 raw `read -p` waiver references this precedent) · [ADR-041](../02_ADRs/ADR-041-claude-permissions-baseline.md) (F-4 permissions baseline — F-5 closes BLP-02 LinkedIn-thread punch-list 3/3)
