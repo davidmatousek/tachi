@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-05-10T18:38:05Z.
+> Auto-generated from GitHub Issues on 2026-05-14T15:32:12Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -57,10 +57,15 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
-| #281 | [chore] CI integration for F-4 verification recipe (post-F-4 follow-up) | OPEN | 2026-05-09 |
+| #292 | Output-Integrity Cross-Sink Refinement | OPEN | 2026-05-14 |
+| #289 | chore: BLP-02 initiative closure tracker (post-5/5 outstanding items + follow-up Issues) | CLOSED | 2026-05-11 |
+| #287 | chore(282): post-merge follow-up — gitleaks pin-bump cadence accountability (CONCERN-4) | OPEN | 2026-05-10 |
+| #286 | chore(282): post-merge follow-up — AC-19 adopter-extensibility template | OPEN | 2026-05-10 |
+| #285 | chore(282): post-merge follow-up — AC-18 rule-coverage probe | OPEN | 2026-05-10 |
+| #281 | [chore] CI integration for F-4 verification recipe (post-F-4 follow-up) | OPEN | 2026-05-10 |
 | #280 | [chore] Pre-commit hook for .claude/settings.json + CLAUDE_PERMISSIONS.md AC-2 cross-check (post-F-4 follow-up) | OPEN | 2026-05-09 |
-| #276 | [chore] release-please manifest-vs-tag discrepancy investigation (post-F-3 follow-up) | OPEN | 2026-05-08 |
-| #275 | [chore] PVR-toggle posture probe (post-F-3 follow-up) | OPEN | 2026-05-08 |
+| #276 | [chore] release-please manifest-vs-tag discrepancy investigation (post-F-3 follow-up) | CLOSED | 2026-05-10 |
+| #275 | [chore] PVR-toggle posture probe (post-F-3 follow-up) | CLOSED | 2026-05-10 |
 | #268 | fix: disentangle tachi-scanner from AOD-Kit positioning in .claude/rules/scope.md | CLOSED | 2026-05-07 |
 | #266 | fix: retitle CONTRIBUTING.md for tachi (currently labeled 'AOD Kit' with stale clone URL) | CLOSED | 2026-05-07 |
 | #264 | feat: adopt dual-frame public positioning (harness reframe) | CLOSED | 2026-05-07 |
