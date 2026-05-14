@@ -2,10 +2,12 @@
 
 **Feature**: 292 — Output-Integrity Cross-Sink Refinement
 **Branch**: `292-output-integrity-cross-sink-refinement`
-**Commit**: `d72ac2bf6d6c`
-**Scan ID**: `81f2eb2d-0e96-4130-a956-d7f4cd264937`
-**Timestamp**: 2026-05-14T16:05:02Z UTC
+**Commit**: `0b5528d0f72d`
+**Scan ID**: `94ef844e-c976-4f20-be20-cb543b12ae14`
+**Timestamp**: 2026-05-14T16:52:36Z UTC
 **Status**: PASSED
+
+> **Note**: This is the SECOND scan on this branch. The first scan (`81f2eb2d-0e96-4130-a956-d7f4cd264937`, commit `d72ac2bf6d6c`, 2026-05-14T16:05:02Z) ran before the T035 carve-out commit added `tests/scripts/test_backward_compatibility.py` to the diff. This rescan brings SAST into scope on the 1 newly-added code file.
 
 ---
 
@@ -13,7 +15,7 @@
 
 | Category | Count |
 |---|---|
-| Files scanned (SAST) | 0 |
+| Files scanned (SAST) | 1 |
 | Manifests audited (SCA) | 0 |
 | CRITICAL findings | 0 |
 | HIGH findings | 0 |
@@ -21,9 +23,9 @@
 | LOW findings | 0 |
 | INFO findings | 0 |
 
-**SAST**: SKIPPED — No code files changed on this branch. The feature is a docs-only refinement (markdown additions to `.claude/skills/tachi-output-integrity/references/detection-patterns.md`, `.claude/agents/tachi/output-integrity.md`, a new `docs/architecture/02_ADRs/ADR-045-*.md`, a new `examples/multi-tenant-rag-app/architecture.md`, and an `examples/README.md` table-row update).
+**SAST**: PASSED — 1 file scanned (`tests/scripts/test_backward_compatibility.py`). The F-292 carve-out edits (move `output-integrity.md` out of `DETECTION_AGENT_PATHS`; add `DETECTION_PATTERN_REF_F292_OUTPUT_INTEGRITY_HOST` to `DETECTION_PATTERN_REF_ENRICHMENT_HOSTS`; update assert count from 2 to 1; add docblock paragraph) modify only data-structure literals and docblock prose. Zero matches against OWASP P0 patterns (A01 Broken Access Control, A02 Cryptographic Failures, A03 Injection, A05 Security Misconfiguration, A07 Identification & Authentication Failures). Existing `subprocess.run()` calls in the file (lines 98, 114, 261, 278) are unchanged by the F-292 diff and continue to pass argument-vector form (`shell=False` implicit), which is injection-safe.
 
-**SCA**: SKIPPED — No dependency manifests changed (no `requirements.txt`, `pyproject.toml`, `package.json`, `go.mod`, etc. in the branch diff).
+**SCA**: SKIPPED — No dependency manifests changed on this branch.
 
 ---
 
@@ -41,7 +43,7 @@ No acknowledgment decisions made in this scan.
 
 ## Artifacts
 
-- Scan log: `.security/scan-log.jsonl`
+- Scan log: `.security/scan-log.jsonl` (2 entries this feature: scan_id `81f2eb2d-...` at commit `d72ac2bf6d6c`, scan_id `94ef844e-...` at commit `0b5528d0f72d`)
 - Vulnerability events: `.security/vulnerabilities.jsonl` (no new entries this scan)
 - Risk acceptances: `.security/exceptions.jsonl` (no acceptances)
 
