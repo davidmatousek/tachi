@@ -26,6 +26,8 @@ Detects OWASP LLM05:2025 Improper Output Handling vulnerabilities in LLM-integra
 
 Scope is the **encoding/sanitization signal class** per ADR-030 Decision 2 (Heuristic A Outcome B): bytes, strings, and syntax primitives on machine-victim output handling. **Out of scope**: the psychology/linguistics signal class (manipulative tone, fabricated authority, absence of uncertainty disclaimers pushing human users to harmful actions — OWASP ASI09:2026) is forward-referenced to the future `trust-exploitation` agent (F-4 under BLP-01 §8).
 
+**Cross-agent handoff scope (navigational, no emission)**: When LLM output flows into a tool-call argument (MCP call, function-calling middleware, plugin API), the detection surface is owned by `tool-abuse` (Pattern Categories 9–10). When LLM output flows into a durable memory write (RAG corpus, agent memory, knowledge base), the detection surface is owned by `data-poisoning` (OWASP ASI06 Memory & Context Poisoning). This agent does NOT detect those handoff cases — it owns the encoding/sanitization signal class only, per ADR-030 Decision 2. See the Cross-Agent Handoff Sinks subsection in `detection-patterns.md` for the boundary framing and the Memory-Promotion Rules mitigation pattern.
+
 ## Skill References
 
 | Reference | File | Load When | Purpose |
