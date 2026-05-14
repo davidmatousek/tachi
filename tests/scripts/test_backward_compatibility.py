@@ -194,8 +194,20 @@ def test_unmodified_examples_byte_identical_pdfs(
 # F-2 net-new agents (`output-integrity` + `misinformation`), which are
 # untouched on the F-241 branch and continue to honor the F-142 zero-edit
 # invariant.
+#
+# Feature 292 (Output-Integrity Cross-Sink Refinement) is the 8th Heuristic A
+# enrichment execution at the finer-grained scope of *same-agent* enrichment
+# within F-1's host (`output-integrity`). Per ADR-045 D2 (additive-only edit
+# discipline) the host agent file gains a ≤10-line navigational cross-link
+# prose in the Purpose section (FR-009), and the companion `tachi-output-
+# integrity/references/detection-patterns.md` gains Cat 6 + Cat 2 keyword
+# extension + Cross-Agent Handoff Sinks subsection. Following the documented
+# carve-out pattern above, `output-integrity.md` MOVES OUT of
+# DETECTION_AGENT_PATHS and the companion JOINS DETECTION_PATTERN_REF_
+# ENRICHMENT_HOSTS. Post-F-292 the only host file remaining in
+# DETECTION_AGENT_PATHS is the F-2 net-new agent (`misinformation`), which
+# is untouched on the F-292 branch.
 DETECTION_AGENT_PATHS = [
-    ".claude/agents/tachi/output-integrity.md",
     ".claude/agents/tachi/misinformation.md",
 ]
 
@@ -218,6 +230,7 @@ DETECTION_PATTERN_REF_F7_PRIVILEGE_ESCALATION_HOST = ".claude/skills/tachi-privi
 DETECTION_PATTERN_REF_F7_REPUDIATION_HOST = ".claude/skills/tachi-repudiation/references/detection-patterns.md"
 DETECTION_PATTERN_REF_F241_PROMPT_INJECTION_HOST = ".claude/skills/tachi-prompt-injection/references/detection-patterns.md"
 DETECTION_PATTERN_REF_F241_AGENT_AUTONOMY_HOST = ".claude/skills/tachi-agent-autonomy/references/detection-patterns.md"
+DETECTION_PATTERN_REF_F292_OUTPUT_INTEGRITY_HOST = ".claude/skills/tachi-output-integrity/references/detection-patterns.md"
 DETECTION_PATTERN_REF_ENRICHMENT_HOSTS = frozenset({
     DETECTION_PATTERN_REF_F3_HOST,
     DETECTION_PATTERN_REF_F5_DOS_HOST,
@@ -230,6 +243,7 @@ DETECTION_PATTERN_REF_ENRICHMENT_HOSTS = frozenset({
     DETECTION_PATTERN_REF_F7_REPUDIATION_HOST,
     DETECTION_PATTERN_REF_F241_PROMPT_INJECTION_HOST,
     DETECTION_PATTERN_REF_F241_AGENT_AUTONOMY_HOST,
+    DETECTION_PATTERN_REF_F292_OUTPUT_INTEGRITY_HOST,
 })
 
 
@@ -275,8 +289,9 @@ def test_feature_142_zero_edit_invariant_on_detection_agents():
     ]
 
     paths_to_check = DETECTION_AGENT_PATHS + detection_pattern_refs
-    assert len(DETECTION_AGENT_PATHS) == 2, (
-        f"Expected 2 detection agent paths, got {len(DETECTION_AGENT_PATHS)}. "
+    assert len(DETECTION_AGENT_PATHS) == 1, (
+        f"Expected 1 detection agent path (post-F-292 carve-out — only F-2 "
+        f"`misinformation` remains protected), got {len(DETECTION_AGENT_PATHS)}. "
         "Update DETECTION_AGENT_PATHS when adding a new detection agent."
     )
 
