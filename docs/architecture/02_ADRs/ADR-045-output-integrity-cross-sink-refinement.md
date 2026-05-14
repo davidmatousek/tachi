@@ -1,7 +1,7 @@
 # ADR-045: Output-Integrity Cross-Sink Refinement (F-292)
 
-**Status**: Proposed
-**Date**: 2026-05-14
+**Status**: Accepted
+**Date**: 2026-05-14 (Proposed) → 2026-05-14 (Accepted, provisional pre-PR; final commit-SHA filled post-merge)
 **Accepted-commit-SHA**: `<pending-post-merge-fill>`
 **Feature**: F-292 (PRD #292)
 **Lineage**: Heuristic A enrichment branch, same-agent enrichment within F-1 `output-integrity` (8th BLP-01 execution)
