@@ -235,6 +235,13 @@ Reference: [ADR-042](docs/architecture/02_ADRs/ADR-042-pre-commit-secret-scannin
 
 ---
 
+## [4.36.0](https://github.com/davidmatousek/tachi/compare/v4.35.0...v4.36.0) (2026-05-14)
+
+
+### Features
+
+* **292:** output-integrity cross-sink refinement ([#293](https://github.com/davidmatousek/tachi/issues/293)) ([0629fa2](https://github.com/davidmatousek/tachi/commit/0629fa2622b412eff1ec3f3f34e6bc8e3d1142ee))
+
 ## [4.35.0](https://github.com/davidmatousek/tachi/compare/v4.34.0...v4.35.0) (2026-05-10)
 
 
