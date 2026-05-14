@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "feature": "292-output-integrity-cross-sink-refinement",
+  "total_waves": 3,
+  "waves_tested": 0,
+  "waves_skipped": 3,
+  "totals": {
+    "pass": 0,
+    "fail": 0,
+    "skip": 0
+  },
+  "total_regressions": 0,
+  "coverage_trend": null,
+  "gate_decisions": [],
+  "skip_reason": "No code file changes across all waves — docs-only refinement (markdown + YAML schema example only). Post-wave test execution per /aod.build Step 4.5a skipped uniformly."
+}
