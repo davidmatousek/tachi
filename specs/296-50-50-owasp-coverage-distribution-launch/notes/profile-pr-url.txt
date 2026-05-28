@@ -1,7 +1,9 @@
 https://github.com/davidmatousek/davidmatousek/pull/1
 
-# T020 profile refresh PR (OPEN — not yet merged).
-# Opened: 2026-05-28 (Wave 3).
-# Branch: refresh-tachi-flagship-50-50 → master (davidmatousek/davidmatousek).
-# Delta: flagship "## Flagship project: tachi" block (first viewport) + Security Tooling row refresh. AOD-Kit secondary/visible. Minimal (no "Now" section) per Q7 lean.
-# REMAINING (T021, MANUAL-ONLY): ≥24h hold → before/after render review on github.com (R4) → self-merge → update this file with merged-state URL.
+# T020/T021 profile refresh — MERGED 2026-05-28 (squash; merge commit 13c03b5). LIVE on master.
+# Scope: full CISO/VP repositioning (8 commits) — "Cybersecurity Leader · App/AI/Cloud · Risk & Compliance" lead;
+#   "I don't just advise on security — I build it" hook; tachi + AOD co-flagships (OWASP 50/50 + STRIDE+AI+MAESTRO);
+#   retired "LinkedIn Top Voice" credential removed; AOD launch (agentic-oriented-development.com) wired as canonical link.
+# T021 (self-merge) COMPLETE — cooling-off hold waived by maintainer after extensive in-session review.
+# Branch refresh-tachi-flagship-50-50 deleted post-merge.
+# Open (optional, maintainer): keep/drop side projects (GitHubDevOps, StockWatcher); confirm Cybersecurity Content repo link.
