@@ -1,7 +1,26 @@
-# GitHub Profile Refresh — DRAFT (T020)
+# GitHub Profile Refresh — SHIPPED IN PR #1 (T020)
 
-**Status**: DRAFT (Wave 3, 2026-05-28) — ready for PR open against `davidmatousek/davidmatousek`.
-**Scope**: minimal per PRD Q7 lean — flagship project surface only, **no "Now" section**.
+**Status**: PR #1 OPEN (https://github.com/davidmatousek/davidmatousek/pull/1) — content finalized 2026-05-28; pending maintainer self-merge (T021, ≥24h cooling-off).
+**Canonical content**: PR #1 (8 commits) is the source of truth. The minimal draft below is the original proposal, retained for history.
+
+## Final shipped direction (supersedes the minimal draft below)
+
+Per explicit maintainer direction, T020 was reframed from the minimal Q7 flagship-row delta into a **full profile repositioning for a CISO / VP Cybersecurity audience**:
+
+- **Lead**: "Cybersecurity Leader · Application, AI & Cloud Security · Risk & Compliance" (no longer "fractional CISO"-led; fractional CISO kept as a supporting credential).
+- **Hook**: "I don't just advise on security — I build it. Creator of [tachi] and [AOD]."
+- **What I build**: tachi (flagship, OWASP 50/50 tagline + STRIDE+AI+MAESTRO one-liner) + AOD — Agentic Oriented Development (newly launched, agentic-oriented-development.com, repo secondary).
+- **Tone**: confident, not soliciting (rejected "If you're hiring…"); CISO/VP keywords kept in the capstone as the operating level.
+- **Removed**: retired "LinkedIn Top Voice in Cybersecurity" credential (program discontinued).
+- **US-4 AC mapping**: AC-1 (tachi first viewport) — met via hook; detailed flagship block is mid-page under "What I build". AC-2 (50/50 tagline) ✓. AC-3 (STRIDE+AI one-liner) ✓. AC-4 (AOD visible) ✓ — AOD elevated to co-flagship.
+- **Exceeds** PRD Q7 "minimal" lean by maintainer choice — the profile now serves David's career positioning, with tachi/AOD as proof-of-building. See project memory `user_career_positioning.md` + `feedback_no_linkedin_top_voice.md`.
+
+**Open (maintainer)**: self-merge after cooling-off (T021); optional — keep/drop side projects (GitHubDevOps, StockWatcher); confirm the Cybersecurity Content repo link (`DavidMatousek-Cybersecurity-Content`).
+
+---
+
+_[original minimal draft retained below for history]_
+
 **Discipline**: `[MANUAL-ONLY]` — PR open + ≥24h hold + self-merge (T021) are maintainer actions (R4 mitigation).
 **URL capture target**: `specs/296-50-50-owasp-coverage-distribution-launch/notes/profile-pr-url.txt`.
 
