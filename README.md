@@ -14,6 +14,25 @@
 
 ---
 
+## OWASP Coverage
+
+**50/50 across five frameworks** — every catalogued threat in each framework
+has a tachi detection agent.
+
+| Framework | Coverage | Anchor |
+|---|---|---|
+| OWASP LLM Top 10 (2025) | 10/10 | [LLM 2025](https://genai.owasp.org/resource/owasp-top-10-for-llm-applications-2025/) |
+| OWASP Agentic Top 10 (2026) | 10/10 | [Agentic 2026](https://genai.owasp.org/2025/12/09/owasp-top-10-for-agentic-applications-the-benchmark-for-agentic-security-in-the-age-of-autonomous-ai/) |
+| OWASP ML Security Top 10 (2023) | 10/10 | [ML 2023](https://owasp.org/www-project-machine-learning-security-top-10/) |
+| OWASP Mobile Top 10 (2024) | 10/10 | [Mobile 2024](https://owasp.org/www-project-mobile-top-10/) |
+| OWASP Web/API\* (2021 + 2023) | 10/10 | [Web 2021](https://owasp.org/Top10/) · [API 2023](https://owasp.org/API-Security/) |
+
+\* Web/API combined slot: OWASP Web Top 10:2021 (A01–A10) + OWASP API
+Security Top 10:2023 (API1–API10) — 20 items, 20/20.
+
+Canonical matrix: [`docs/standards/OWASP_COVERAGE.md`](docs/standards/OWASP_COVERAGE.md) ·
+Byte-deterministic Coverage Attestation: [examples/*/sample-report/](examples/)
+
 ## What is tachi?
 
 tachi is a threat modeling and AI-reasoning vulnerability detection harness for Claude Code. SAST catches syntax-level bugs; the harness reasons over your architecture description to catch logic-level ones — broken authentication flows, missing privilege boundaries, prompt injection paths, agent autonomy gaps, cross-layer attack chains.

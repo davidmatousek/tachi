@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-05-14T18:00:40Z.
+> Auto-generated from GitHub Issues on 2026-05-28T14:13:24Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -26,7 +26,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| — | *No items in this stage* | | |
+| #296 | 50/50 OWASP Coverage Distribution Launch (BLP-04 F-1) | — | 2026-05-28 |
 
 ## Plan
 
