@@ -1,0 +1,7 @@
+https://github.com/davidmatousek/davidmatousek/pull/1
+
+# T020 profile refresh PR (OPEN — not yet merged).
+# Opened: 2026-05-28 (Wave 3).
+# Branch: refresh-tachi-flagship-50-50 → master (davidmatousek/davidmatousek).
+# Delta: flagship "## Flagship project: tachi" block (first viewport) + Security Tooling row refresh. AOD-Kit secondary/visible. Minimal (no "Now" section) per Q7 lean.
+# REMAINING (T021, MANUAL-ONLY): ≥24h hold → before/after render review on github.com (R4) → self-merge → update this file with merged-state URL.
