@@ -4,7 +4,7 @@
 
 *AI-Reasoning Scanner — STRIDE + AI + MAESTRO.*
 
-![tachi cycle outcomes — Threat Modeling and Vulnerability Detection Harness for Claude Code, AI-Reasoning Scanner across STRIDE + AI + MAESTRO](brand/posters/2026-05-08-cycle-outcomes-poster.jpg)
+![tachi — Threat Modeling and Vulnerability Detection Harness for Claude Code. AI-Reasoning Scanner (STRIDE + AI + MAESTRO) with 50/50 OWASP Top 10 coverage across five frameworks, a 3-step install, and a 5-step security-report workflow.](brand/posters/2026-05-29-owasp-coverage-poster.jpg)
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/davidmatousek/tachi)](https://github.com/davidmatousek/tachi/releases)
