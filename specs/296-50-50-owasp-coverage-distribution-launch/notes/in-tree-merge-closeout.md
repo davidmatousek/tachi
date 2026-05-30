@@ -26,10 +26,7 @@ Verified objectively via GitHub's own renderer (`POST /markdown` mode=gfm): the 
 
 Verified against `docs/product/_internal/strategy/BLP-04-adoption-push.md`: [a] §1 4-feature sequencing ✓; [b] §2 BLP-03 trigger + enterprise-buyer-signal acceptance (US7) ✓; [c] §3 Sequencing Discipline ✓; [d] §4 F-2 kickoff targets (Fri 2026-06-05 / Mon 2026-06-08; ship 2026-06-11) ✓; [e] §5 F-2 no-pre-draft ✓.
 
-> ⚠ **DUPLICATE STRATEGY DOC FLAG (maintainer):** two BLP-04 docs exist —
-> `docs/product/_internal/strategy/BLP-04-adoption-push.md` (10.9 KB, T027-created, the planned path) and
-> `_internal/strategy/BLP-04-adoption-push.md` (37.6 KB, repo-root, pre-existing — opened in IDE this session).
-> Decide which is canonical before T034 cross-links it in the Issue #296 close.
+> ✅ **DUPLICATE RESOLVED (2026-05-29):** canonical is `_internal/strategy/BLP-04-adoption-push.md` (repo-root, per `_internal/CLAUDE.md`). The F-296 stray copy at `docs/product/_internal/strategy/` was deleted and its unique F-296 execution bindings folded into the canonical doc's Scope History. Issue #296 close + CHANGELOG cross-link use the canonical path. (T033 verification above was performed against the stray copy before consolidation; the same 5 items hold in the canonical doc.)
 
 ## T030 — Post-merge `/security` regression — PASS (docs-only determination)
 

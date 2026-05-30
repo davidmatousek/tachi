@@ -1,35 +1,33 @@
 # Discussion #179 Closing Comment — DRAFT
 
-**Status**: DRAFT (Day 1 PM, 2026-05-28) — for 4-day incubation period per Team-Lead L-3 + R5 attribution-tone discipline mitigation.
-**Target publish date**: Day 5 AM (≤2026-06-04 per FR-005 7-day SLA + SC-005).
-**Target close**: same Day 5 AM via `gh discussion close 179 --reason resolved`.
+**Status**: DRAFT — **maintainer-updated 2026-05-29: de-personalized (no contributor @-mention or name).**
+**Target publish**: ≤2026-06-04 (FR-005 7-day SLA + SC-005).
+**Target close**: same session, via the Discussions UI (or GraphQL API).
 **URL**: https://github.com/davidmatousek/tachi/discussions/179
 
-## Tone discipline anchor (spec US-5 AC-3; PRD H-1 framing)
+## Tone discipline anchor (maintainer-updated)
 
-@armorer-labs is the **gap-analysis commenter**, NOT "the requester" or "discussion-opener". Lead sentence MUST start verbatim:
+Per maintainer direction, this closing comment does **NOT** `@`-mention or name the external contributor. Credit the **gap-analysis contribution** generically ("a community gap-analysis comment"); the focus is the technical work that shipped, not an individual call-out. Frame it as gap-analysis-driven, not "a request." No sycophancy.
 
-> "Thanks to @armorer-labs's gap-analysis comment surfacing three pattern-catalog gaps, we shipped F-292"
+> **Deviation note**: original spec US-5 AC-2/AC-3/AC-5 called for a verbatim `@armorer-labs` `@`-mention attribution. This de-personalization is a deliberate, maintainer-directed change from that spec — to be recorded in the F-296 close-out.
 
-Do NOT use: "Thanks to @armorer-labs's request" / "Thanks @armorer-labs for opening this" / "Per @armorer-labs's discussion".
-
-## Closing-comment body (draft for publication on Day 5 AM)
+## Closing-comment body (post the content between the `---` markers)
 
 ---
 
 **Shipped:** F-292 Output-Integrity Cross-Sink Refinement (v4.36.0, 2026-05-14, PR #293).
 
-Thanks to @armorer-labs's gap-analysis comment (2026-05-12) surfacing three pattern-catalog gaps, we shipped a refinement of the `output-integrity` agent that addresses each:
+Thanks to a community gap-analysis comment (2026-05-12) surfacing three pattern-catalog gaps, we shipped a refinement of the `output-integrity` agent that addresses each:
 
 1. **Vector-filter / search-DSL injection**: new Cat 6 pattern in `.claude/skills/tachi-output-integrity/references/detection-patterns.md`, CWE-943, OWASP LLM08:2025.
 2. **Package-manager / CI-workflow execution sinks**: trigger-keyword extension on existing Cat 1; mitigations include registry allowlist + sandbox isolation + Sigstore signature verification.
 3. **Cross-agent handoff sinks** (tool-call argument + durable-memory write): new Gap 3 subsection with Memory-Promotion Rules schema example; cross-linked to `tool-abuse` and `data-poisoning` agents.
 
-Architectural decisions documented in ADR-045 (`docs/architecture/02_ADRs/ADR-045-output-integrity-cross-sink-refinement.md`, line 133 attributes @armorer-labs's gap-analysis contribution).
+Architectural decisions documented in ADR-045 (`docs/architecture/02_ADRs/ADR-045-output-integrity-cross-sink-refinement.md`).
 
-CHANGELOG: see [v4.36.0](https://github.com/davidmatousek/tachi/releases/tag/v4.36.0) entry (also attributes @armorer-labs).
+CHANGELOG: see the [v4.36.0](https://github.com/davidmatousek/tachi/releases/tag/v4.36.0) entry.
 
-The community-merge precedent is the F-260 (@north-echo, PR #262, v4.31.0) contribution chain — comment-first-give-choice → maintainer gap-analysis → PRD → spec → plan → tasks → ADR → implementation → CHANGELOG attribution. F-292 followed the same chain.
+This followed tachi's community-merge pattern — gap analysis → PRD → spec → plan → tasks → ADR → implementation → CHANGELOG attribution — the same chain as the earlier F-260 asset-sensitivity-tag contribution (PR #262, v4.31.0).
 
 Closing as **shipped**.
 
@@ -37,35 +35,28 @@ Subsequent distribution (50/50 OWASP coverage milestone, BLP-04 Wave 1) ships in
 
 ---
 
-## Pre-publication checklist (re-run Day 5 AM before posting)
+## Pre-publication checklist (re-run before posting)
 
-- [ ] Lead sentence matches verbatim spec US-5 AC-3 framing ("Thanks to @armorer-labs's gap-analysis comment surfacing three pattern-catalog gaps").
-- [ ] All 5 anchors render correctly (PR #293, v4.36.0 release notes, ADR-045 line 133, F-260 PR #262, v4.31.0 release notes — verify each loads on github.com).
-- [ ] @armorer-labs handle renders as a notification-triggering @-mention (US-5 AC-5).
+- [ ] Lead credits the **community gap-analysis** without `@`-mentioning or naming any contributor (maintainer direction).
+- [ ] No `@`-mention anywhere in the comment (neither the gap-analysis contributor nor the F-260 contributor).
+- [ ] Anchors render: PR #293, v4.36.0 release notes, ADR-045, F-260 PR #262, v4.31.0 release notes.
 - [ ] F-296 cross-reference resolves to Issue #296 (this F-1 parent).
 - [ ] No asset-tag mention present (FR-007 sequencing guard).
-- [ ] No sycophancy / no "thanks for the suggestion" filler — gap-analysis attribution is technical, not interpersonal.
+- [ ] No sycophancy / no "thanks for the suggestion" filler — the credit is to the technical gap analysis, not interpersonal.
 
-## Publication command (Day 5 AM)
+## Publication (manual)
+
+`gh` has no `discussion` subcommand, so post + close via the **Discussions UI** (simplest), or the GraphQL API (`addDiscussionComment` + `closeDiscussion` mutations). After closing, record the URL:
 
 ```bash
-# Publish the closing comment (manual via Discussions UI preferred for @-mention rendering verification;
-# or via gh CLI if Discussions API supports comment body):
-gh discussion comment 179 --repo davidmatousek/tachi --body-file specs/296-50-50-owasp-coverage-distribution-launch/notes/discussion-179-draft.md
-# (Strip frontmatter + section headers before posting — comment body only is the content between the --- markers above.)
-
-# Then close as shipped:
-gh discussion close 179 --repo davidmatousek/tachi --reason resolved
-
-# Record close URL with comment anchor:
 echo "https://github.com/davidmatousek/tachi/discussions/179#discussioncomment-<NEW_ID>" > \
   specs/296-50-50-owasp-coverage-distribution-launch/notes/discussion-179-close-url.txt
 ```
 
-## F-260 community-merge precedent (cited inline)
+## F-260 community-merge precedent (de-personalized; internal note)
 
-- @north-echo's asset-sensitivity tag prototype merged in PR #262 (v4.31.0, 2026-05-06).
-- Chain: external comment → maintainer gap-analysis → PRD → spec → plan → tasks → ADR-040 → implementation → CHANGELOG attribution.
-- F-292 (@armorer-labs's contribution) followed the identical chain → ADR-045 + v4.36.0 + CHANGELOG attribution.
+- The asset-sensitivity tag prototype merged in PR #262 (v4.31.0, 2026-05-06).
+- Chain: external comment → maintainer gap-analysis → PRD → spec → plan → tasks → ADR-040 → implementation → CHANGELOG.
+- F-292 followed the identical chain → ADR-045 + v4.36.0.
 
-This precedent demonstrates the comment-first-give-choice path (project memory `feedback_external_contributor_collisions.md`) — the discussion closing here is the natural endpoint of that pathway.
+This reflects the comment-first-give-choice path (project memory `feedback_external_contributor_collisions.md`) — the discussion closing here is the natural endpoint of that pathway.

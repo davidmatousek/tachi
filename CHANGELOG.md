@@ -222,7 +222,7 @@ Adds a five-framework OWASP coverage hero block to `README.md` (50/50; LLM 2025 
 - Canonical anchor `docs/standards/OWASP_COVERAGE.md` — matrix + reproducibility + anti-claims.
 - Standards index entry in `docs/standards/README.md`.
 
-**Release-cadence note (NFR-005)**: F-296 ships `docs:` (PR title `docs(296):`); release-please correctly skips per `docs:` mapping in `release-please-config.json` — this is EXPECTED, not a release-please skip incident (do NOT invoke the F-212 empty-`feat(NNN):` marker-commit recovery flow). F-2 (F-260b @north-echo asset-tag wiring) restores release cadence by 2026-06-11 per BLP-04 strategy at [`docs/product/_internal/strategy/BLP-04-adoption-push.md`](docs/product/_internal/strategy/BLP-04-adoption-push.md).
+**Release-cadence note (NFR-005)**: F-296 ships `docs:` (PR title `docs(296):`); release-please correctly skips per `docs:` mapping in `release-please-config.json` — this is EXPECTED, not a release-please skip incident (do NOT invoke the F-212 empty-`feat(NNN):` marker-commit recovery flow). F-2 (F-260b @north-echo asset-tag wiring) restores release cadence by 2026-06-11 per the BLP-04 strategy doc (`_internal/strategy/BLP-04-adoption-push.md`, internal/gitignored).
 
 Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
