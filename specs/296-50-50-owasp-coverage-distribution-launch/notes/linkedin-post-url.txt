@@ -1,0 +1,6 @@
+https://www.linkedin.com/posts/davidmatousek_most-owasp-coverage-claims-age-badly-a-activity-7466143603090788352-NDJ9
+
+# T018/T019 — LinkedIn post PUBLISHED 2026-05-29 (Fri). Verified public (SC-002): opens "Most OWASP-coverage claims age badly."
+# Format (T019, US-2 AC-3): native-content-first; statement-style close (no question CTA, per maintainer voice system); links in the T+60 first-comment edit (tachi repo + docs/standards/OWASP_COVERAGE.md), NOT in body; no hashtags.
+# Standalone post — does NOT link a long-form article (article not pursued; see Issue #296 close). Daniel Wood thread reference omitted (maintainer editorial choice; US-2 AC-1 deviation noted in Issue #296 close).
+# Reach metrics: deferred to F-3 (BLP-04 Wave 2 adoption-signal capture).
