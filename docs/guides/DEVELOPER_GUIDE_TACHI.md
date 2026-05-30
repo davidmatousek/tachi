@@ -144,7 +144,17 @@ ls brand/final/                                 # tachi logo PNGs (optional, for
 
 ## Step 4: Create Your Architecture File
 
-You need a `docs/security/architecture.md` file that describes your system's components, data flows, and trust boundaries. You can ask Claude Code to create it for you:
+You need a `docs/security/architecture.md` file that describes your system's components, data flows, and trust boundaries. There are three ways to create it, easiest first.
+
+**Option A: Generate it with `/tachi.architecture` (recommended).** Tachi ships a purpose-built command for exactly this step. It explores your codebase (source, config, infrastructure definitions, existing docs) and writes the file for you:
+
+```
+/tachi.architecture
+```
+
+By default it writes to `docs/security/architecture.md`, capturing components, data flows, trust boundaries, and external entities, and it detects LLM/agent/tool components so the AI threat agents activate. Re-running it archives the previous version and walks you through what changed (guided update mode), so it is safe to regenerate as your system evolves. When it finishes it points you straight at `/tachi.threat-model`.
+
+**Option B: Ask Claude Code with a custom prompt.** If you want to steer the analysis yourself, describe what you want directly:
 
 ```
 Investigate this repository's architecture — source code, config files, infrastructure
@@ -161,7 +171,7 @@ docs/security/architecture.md as a Mermaid flowchart that includes:
 
 Claude Code will explore your codebase and produce an architecture description tailored to your actual system.
 
-**If you prefer to write it yourself**, here is a minimal 3-component example in Mermaid format:
+**Option C: Write it yourself.** Here is a minimal 3-component example in Mermaid format:
 
 ~~~markdown
 ```mermaid
