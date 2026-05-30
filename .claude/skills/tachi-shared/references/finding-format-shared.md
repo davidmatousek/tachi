@@ -233,3 +233,96 @@ Each entry in the `references` field should be a self-contained identifier resol
 - **NIST**: `NIST SP 800-63B §5.1.1`, `NIST AI 600-1 §2.1`
 
 CSA MAESTRO is NOT emitted as a reference — the MAESTRO layer is a separate `maestro_layer` field populated during orchestrator Phase 1, not by the producer.
+
+---
+
+## `affected_assets` Block (Asset-Sensitivity Tags)
+
+> Source of truth for the per-finding `affected_assets` field across **all**
+> tachi output surfaces (`threats.md` appended block, `*.sarif`
+> `properties.affected_assets[]`). The deterministic populator, the shared
+> extractor, and the SARIF authoring contracts all serialize this field exactly
+> as specified here. This block is **additive** — it does not alter any
+> existing finding field, table, or column.
+
+### Definition
+
+`affected_assets` records the asset-sensitivity tags a finding inherits from its
+**target component** (the finding's `component`). A component's asset tags are
+declared upstream (per F-260, `[asset:...]` inline tags); the populator joins
+each finding to the component asset map and takes **all** of that component's
+tags — `affected_assets = component_asset_map.get(component, [])`. The field
+answers: *"what classes of sensitive data or capability does a successful
+exploit of this finding put at risk?"* It records asset *exposure*, not modifier
+deltas: a tag that produced no CVSS change still appears.
+
+### Serialization Contract (normative)
+
+The `affected_assets` field is governed by five hard rules. Every surface MUST
+satisfy all five identically:
+
+1. **Per-finding, keyed by finding ID.** The field is scoped to a single
+   finding and is associated with that finding's stable ID — the canonical
+   prefix-and-number form from the ID Prefix Table above (`S-1`, `T-2`, `AG-2`,
+   `LLM-3`; regex `^(S|T|R|I|D|E|AG|LLM)-\d+$`). There is exactly one
+   `affected_assets` value per finding. Findings carry the same ID they hold in
+   the STRIDE/AI tables, including baseline-aware (`NEW`/`UNCHANGED`/`UPDATED`)
+   findings.
+
+2. **Always present.** Every finding MUST emit the field. It is never omitted,
+   never `null`, and never absent. A consumer can rely on the key existing for
+   100% of findings.
+
+3. **`[]` when the component carries no tags.** When the finding's target
+   component carries no asset-sensitivity tags — including the unmatched-join
+   case — the value is the **empty list** `[]` — not omitted, not `null`, not
+   `"none"`. Empty is a first-class, explicitly serialized state.
+
+4. **Closed 6-value enum.** Every element MUST be drawn from the frozen
+   enumeration below. No other value is valid; the set is closed and is not
+   extended by this contract:
+
+   | Tag | Asset class |
+   |-----|-------------|
+   | `pii` | Personally identifiable information |
+   | `phi` | Protected health information |
+   | `auth` | Authentication / authorization material |
+   | `secrets` | Credentials, keys, tokens, connection strings |
+   | `financial` | Financial / payment data |
+   | `safety` | Safety-critical / physical-harm surfaces |
+
+5. **Sorted, de-duplicated.** Elements MUST be emitted in **ascending
+   lexicographic (ASCII) order** and MUST be unique (`parse_component_asset_map`
+   already returns sorted, deduped, lowercase lists — the populator copies that
+   order verbatim). Two findings with the same effective tag set therefore
+   produce byte-identical `affected_assets` output, which makes the field
+   deterministic and diff-stable across runs.
+
+   The lexicographic order of the frozen enum is fixed:
+
+   ```
+   auth, financial, pii, phi, safety, secrets
+   ```
+
+### Canonical examples
+
+```
+# finding on a component tagged [asset:pii,auth]
+S-1    affected_assets: [auth, pii]
+
+# finding whose target component carries no tags
+T-2    affected_assets: []
+
+# finding on a component tagged [asset:secrets,phi,financial]
+LLM-3  affected_assets: [financial, phi, secrets]
+```
+
+### Surface mapping
+
+| Surface | Representation |
+|---------|----------------|
+| `threats.md` | Appended **Affected Assets** block, one row per finding keyed by finding ID, value rendered as a bracketed sorted list (`[]` when empty). Existing STRIDE/AI tables are unchanged. |
+| `*.sarif` | `result.properties.affected_assets` as a JSON array of strings, sorted and de-duplicated per the rules above, `[]` when empty. |
+
+Any divergence between a surface and these five rules is a contract violation,
+not a surface-specific liberty.

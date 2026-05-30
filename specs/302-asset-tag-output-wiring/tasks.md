@@ -46,9 +46,9 @@ triad:
 
 **CRITICAL**: No user-story work begins until this phase is complete.
 
-- [ ] T002 [P] Add optional always-present `affected_assets` enum-array field (default `[]`, 6-value enum) to `schemas/finding.yaml`; bump `schema_version` 1.8 → 1.9; add the inline comment per the file convention citing ADR-026/028/037 + PR #262 + always-present-default note + cross-ref to frozen `risk-scoring.yaml` (FR-001).
-- [ ] T003 [P] Author thin `docs/architecture/02_ADRs/ADR-046-asset-tag-output-wiring.md` recording the LLM-vs-Python tier-boundary decision, production-tier election, the deterministic-value rationale (FR-2 literal), test-checked (not structural) production NFR-3, and the deferred structural ideal (Q2 / plan AD-1).
-- [ ] T004 [P] Define the always-present per-finding `affected_assets` block contract (new structure — `threats.md` has no detail block; tables stay byte-stable) in `.claude/skills/tachi-shared/references/finding-format-shared.md` and `templates/tachi/output-schemas/threats.md` (FR-003 surface; the contract the populator + extractor + SARIF authors implement).
+- [X] T002 [P] Add optional always-present `affected_assets` enum-array field (default `[]`, 6-value enum) to `schemas/finding.yaml`; bump `schema_version` 1.8 → 1.9; add the inline comment per the file convention citing ADR-026/028/037 + PR #262 + always-present-default note + cross-ref to frozen `risk-scoring.yaml` (FR-001).
+- [X] T003 [P] Author thin `docs/architecture/02_ADRs/ADR-046-asset-tag-output-wiring.md` recording the LLM-vs-Python tier-boundary decision, production-tier election, the deterministic-value rationale (FR-2 literal), test-checked (not structural) production NFR-3, and the deferred structural ideal (Q2 / plan AD-1).
+- [X] T004 [P] Define the always-present per-finding `affected_assets` block contract (new structure — `threats.md` has no detail block; tables stay byte-stable) in `.claude/skills/tachi-shared/references/finding-format-shared.md` and `templates/tachi/output-schemas/threats.md` (FR-003 surface; the contract the populator + extractor + SARIF authors implement).
 
 **Checkpoint**: Schema field + block contract fixed → populator and SARIF work can begin.
 
