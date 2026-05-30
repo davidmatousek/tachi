@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-05-28T14:13:24Z.
+> Auto-generated from GitHub Issues on 2026-05-30T17:03:01Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -26,7 +26,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| #296 | 50/50 OWASP Coverage Distribution Launch (BLP-04 F-1) | — | 2026-05-28 |
+| — | *No items in this stage* | | |
 
 ## Plan
 
@@ -58,6 +58,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #299 | docs: surface /tachi.architecture as the recommended Step 4 path in the Developer Guide | CLOSED | 2026-05-30 |
 | #289 | chore: BLP-02 initiative closure tracker (post-5/5 outstanding items + follow-up Issues) | CLOSED | 2026-05-11 |
 | #287 | chore(282): post-merge follow-up — gitleaks pin-bump cadence accountability (CONCERN-4) | OPEN | 2026-05-10 |
 | #286 | chore(282): post-merge follow-up — AC-19 adopter-extensibility template | OPEN | 2026-05-10 |

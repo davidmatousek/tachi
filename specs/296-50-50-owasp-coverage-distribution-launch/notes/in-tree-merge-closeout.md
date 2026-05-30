@@ -14,9 +14,11 @@ Verified objectively via GitHub's own renderer (`POST /markdown` mode=gfm): the 
 - (c) Web/API combined-slot footnote text exact: "OWASP Web Top 10:2021 (A01–A10) + OWASP API Security Top 10:2023 (API1–API10) — 20 items, 20/20". ✓
 - (d) `docs/standards/OWASP_COVERAGE.md` link resolves (file exists, T005). ✓
 
-## T031 — SC-007 sequencing-hold binary check — PASS (run 1 of 2)
+## T031 — SC-007 sequencing-hold binary check — PASS (2 of 2)
 
-`git log --all --grep="F-2\|F-260b\|asset-tag wiring" --since="2026-05-28"` → **zero** substantive commits. Sequencing hold maintained (FR-007 / US6). Re-run at final close (run 2 of 2) per task.
+**Run 1 of 2** (2026-05-28, pre-merge): `git log --all --grep="F-2\|F-260b\|asset-tag wiring" --since="2026-05-28"` → zero substantive commits. Sequencing hold maintained (FR-007 / US6).
+
+**Run 2 of 2** (2026-05-30, at `/aod.deliver` close): the same query now returns 4 matches — `102dc03`, `d4df2ae`, `014f216`, `4e762b7` — **all false positives** carved out per Architect L1. The literal `F-2` matches the substring inside `F-296`, and the commit bodies reference F-2 only to assert the *sequencing hold* (do-not-start), never to initiate F-2 / F-260b / asset-tag-wiring work. **Zero substantive F-2-initiating commits; SC-007 PASS confirmed end-to-end.**
 
 ## T032 — SC-010 file-allowlist — PASS
 
@@ -30,4 +32,4 @@ Verified against `docs/product/_internal/strategy/BLP-04-adoption-push.md`: [a] 
 
 ## T030 — Post-merge `/security` regression — PASS (docs-only determination)
 
-NFR-004 = no source code / schema modified. The F-296 changeset (T032 file list) contains **zero** code files and **zero** dependency manifests — only Markdown/text docs + notes. The `/security` skill self-skips when no code/manifest files changed (its Step 7a), so a post-merge scan has zero regression surface by construction. Expected delta vs the last clean `main` snapshot: **zero new findings**. Formal post-merge re-confirmation + this artifact's promotion to `post-merge-security-scan.md` to be finalized at `/aod.deliver`.
+NFR-004 = no source code / schema modified. The F-296 changeset (T032 file list) contains **zero** code files and **zero** dependency manifests — only Markdown/text docs + notes. The `/security` skill self-skips when no code/manifest files changed (its Step 7a), so a post-merge scan has zero regression surface by construction. Expected delta vs the last clean `main` snapshot: **zero new findings**. ✅ **Finalized at `/aod.deliver` (2026-05-30):** promoted to `notes/post-merge-security-scan.md`; zero-regression determination confirmed against merged `main` (`9d8f17d`).

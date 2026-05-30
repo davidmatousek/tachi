@@ -442,6 +442,20 @@ F-292 reused F-260's community-merge precedent (4 mechanical artifacts: CHANGELO
 
 ---
 
+### Entry 8: F-296 50/50 OWASP Coverage Distribution Launch (BLP-04 F-1) — Delivery Retrospective
+
+**Date**: 2026-05-30 | **Category**: Process / Release Discipline | **Feature**: F-296 (BLP-04 Wave 1) | **Issue**: #296 (closed)
+
+**Context**: F-296 packaged and distributed the already-achieved 50/50 five-framework OWASP coverage milestone (README 50/50 hero + canonical `docs/standards/OWASP_COVERAGE.md`, evergreen poster, LinkedIn post, CISO/VP profile refresh, Discussion #179 close). 37/37 tasks; closed 2026-05-29, ~6 days ahead of the 2026-06-04 target, zero slips.
+
+**Lesson 1 — Internal strategy docs have exactly one canonical home.** Per `_internal/CLAUDE.md`, internal strategy/planning docs live only in the repo-root `_internal/` directory. A feature-scoped copy created under `docs/product/_internal/strategy/BLP-04-adoption-push.md` during the build became a duplicate that had to be detected and consolidated into the canonical path at closeout (the stray copy's unique execution bindings were folded into the canonical doc's Scope History before deletion). **Prevention**: when a build step needs an internal strategy doc, write/extend the canonical `_internal/` file directly — never create a feature-namespaced copy under `docs/`.
+
+**Lesson 2 — Distribution-launch features are docs-only by design; a skipped release is correct, not a defect.** Every F-296 PR used `docs(296):` (a hidden-bump type). Release-please correctly opened no release PR (T029). The F-212 empty-`feat(NNN):` marker-commit recovery flow was deliberately **not** invoked, and the carve-out was recorded in project memory (`feedback_aod_deliver_release_gate.md`, T028). **Prevention**: before forcing a release marker at `/aod.deliver`, confirm the changeset actually contains user-visible code/functionality — a docs/distribution feature that ships zero code/manifest files (NFR-004) *should* skip the release.
+
+**Evidence**: `specs/296-50-50-owasp-coverage-distribution-launch/{delivery.md, notes/in-tree-merge-closeout.md, notes/post-merge-security-scan.md}`; Issue #296 closing comment.
+
+---
+
 ## Bug Fixes
 
 *No entries yet. Use `/kb-create` to add the first bug fix.*
