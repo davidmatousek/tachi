@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-05-30T17:03:01Z.
+> Auto-generated from GitHub Issues on 2026-05-30T17:36:55Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -26,7 +26,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| — | *No items in this stage* | | |
+| #302 | F-260b Asset-Tag Output Wiring (SARIF + threats.md + risk-scorer) | — | 2026-05-30 |
 
 ## Plan
 
