@@ -118,6 +118,13 @@ Single-command entry point for tachi threat modeling. Validates prerequisites, i
    - threat-report.md
    - attack-trees/ (one file per Critical/High finding)
 
+   Write threats.md (the finding tables) FIRST. A deterministic populator step
+   runs immediately after you emit threats.md and appends an always-present
+   `## Affected Assets` block (per-finding asset-sensitivity tags). When you
+   author threats.sarif, copy each finding's `affected_assets` value VERBATIM
+   from that block into `result.properties.affected_assets` (snake_case, flat
+   array, `[]` when none) per the SARIF authoring contract.
+
    Baseline: {baseline_path or "none (first run — stateless mode)"}
 
    Architecture input:
@@ -128,6 +135,41 @@ Single-command entry point for tachi threat modeling. Validates prerequisites, i
    ```
 
 3. Wait for the orchestrator to complete all 5 phases.
+
+## Step 2.5: Populate Affected Assets (deterministic)
+
+Wire the deterministic `affected_assets` value authority into the pipeline
+**after** the orchestrator emits `threats.md`'s finding tables and **before**
+the SARIF surfaces source the block (plan AD-1 M-2). The populator joins the
+architecture's inline `[asset:...]` tags to each finding by component and
+upserts an always-present `## Affected Assets` block into `threats.md`. It is
+deterministic, idempotent (re-running is byte-stable), and records provenance
+only — it never re-scores.
+
+1. Run the populator against the architecture snapshot (Step 1.4) and the
+   just-emitted `threats.md`, writing the block back into `threats.md` in place:
+
+```bash
+# Append/upsert the deterministic affected_assets block into threats.md
+python3 scripts/populate-affected-assets.py \
+  --architecture {output_dir}/architecture.md \
+  --threats {output_dir}/threats.md
+```
+
+2. The block is **always written**, even when the architecture carries no asset
+   tags (every finding then lists `[]`), so the `affected_assets` surface is
+   always present for the SARIF authors to copy (FR-005 / SC-005). The step is
+   safe to re-run — an existing block is replaced in place, not duplicated.
+
+3. If `{output_dir}/architecture.md` was not produced (Step 1.4 skipped because
+   the source architecture file did not exist), skip this step — Step 2's
+   validation already halts on a missing architecture file, so this branch is
+   not reached in normal runs.
+
+> **Sequencing note**: `threats.sarif` (authored by the orchestrator) and any
+> downstream SARIF surface MUST source `affected_assets` from the block this
+> step writes — not re-derive it. This keeps the deterministic populator the
+> single value authority across `threats.md` and SARIF (plan AD-1; NFR-3).
 
 ## Step 3: Report Results
 

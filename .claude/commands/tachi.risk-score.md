@@ -72,6 +72,34 @@ Single-command entry point for tachi quantitative risk scoring. Validates prereq
    - If found: set `architecture_path` to the resolved path (used for reachability scoring)
    - If not found: set `architecture_path = null` (reachability will use trust zone data only, or default to 5.0)
 
+## Step 1.5: Ensure Affected Assets Block (idempotent)
+
+`risk-scores.sarif` carries `result.properties.affected_assets` copied verbatim
+from the `## Affected Assets` block in the input `threats.md` (plan AD-1; the
+deterministic populator is the single value authority). In the normal flow that
+block already exists — the prior `/threat-model` run wrote it. Re-assert it here,
+before the risk-scorer authors `risk-scores.sarif`, so the dependency is explicit
+and idempotent. The populator is deterministic, byte-stable on re-run (an existing
+block is replaced, not duplicated), and records provenance only — it never
+re-scores (§3.5 + the 9.2 ceiling are untouched).
+
+1. Run this step ONLY when `input_format == markdown` AND `architecture_path` was
+   resolved (Step 1 item 5) — the populator upserts a markdown `threats.md` from
+   the architecture's inline `[asset:...]` tags:
+
+```bash
+# Re-assert the deterministic affected_assets block (idempotent, byte-stable)
+python3 scripts/populate-affected-assets.py \
+  --architecture {architecture_path} \
+  --threats {input_file}
+```
+
+2. Skip this step (do NOT fail) when `input_format == sarif` (no markdown
+   `threats.md` to populate) or when `architecture_path == null` (no architecture
+   snapshot to source tags from). In both cases the block written by the prior
+   `/threat-model` run is already present in `threats.md`/`threats.sarif` for the
+   risk-scorer to copy. Proceed to Step 2.
+
 ## Step 2: Run Risk Scoring
 
 **IMPORTANT**: Do NOT read or embed the input files in the agent prompt. The risk-scorer agent has Read tool access and will load files on-demand to manage its own context window. Pass file **paths**, not file **contents**.
@@ -92,6 +120,13 @@ Single-command entry point for tachi quantitative risk scoring. Validates prereq
    Read the input file yourself using the Read tool. For large threat models,
    read in sections: parse finding tables (Sections 3, 4, 4a) and trust zones
    (Section 2) first. You do not need to load the full file at once.
+
+   When you author risk-scores.sarif, copy each finding's `affected_assets`
+   value VERBATIM from the `## Affected Assets` block in the input threats.md
+   into `result.properties.affected_assets` (snake_case key, flat array, `[]`
+   when none) per the SARIF authoring contract. Do NOT re-derive it from the
+   architecture and do NOT let it change any score — `affected_assets` is
+   provenance only (§3.5 scoring and the 9.2 ceiling are unchanged).
 
    Write output files:
    - risk-scores.md
