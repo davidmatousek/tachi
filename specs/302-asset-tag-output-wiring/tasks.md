@@ -62,7 +62,7 @@ triad:
 
 - [X] T005 [US2] Implement the deterministic populator (value authority) in `scripts/` (e.g. `scripts/populate-affected-assets.py`): join `parse_component_asset_map(architecture)` to each finding by target component (same case-insensitive/fuzzy cascade as risk-scorer §3.5), `affected_assets = component_asset_map.get(component, [])` (sorted, verbatim), and write the `affected_assets` block into `threats.md`. Pure function, no LLM, no scoring change (FR-002). Depends on T002, T004.
 - [X] T006 [US2] Wire the populator into the production pipeline as a sequencing step that runs **after** the orchestrator emits `threats.md` and **before** SARIF authoring, in `.claude/commands/tachi.threat-model.md` and `.claude/commands/tachi.risk-score.md` (AD-1 M-2). Depends on T005.
-- [ ] T007 [P] [US2] Unit tests for the populator in `tests/scripts/test_affected_assets_wiring.py`: all 6 tags propagate (SC-003), empty-default `[]` present (SC-005), fuzzy component match, no-op-modifier-with-present-tag still lists the tag (Q4 semantic), sorted/deduped output, `UNCHANGED`/`RESOLVED` findings still carry the field. Depends on T005.
+- [X] T007 [P] [US2] Unit tests for the populator in `tests/scripts/test_affected_assets_wiring.py`: all 6 tags propagate (SC-003), empty-default `[]` present (SC-005), fuzzy component match, no-op-modifier-with-present-tag still lists the tag (Q4 semantic), sorted/deduped output, `UNCHANGED`/`RESOLVED` findings still carry the field. Depends on T005.
 
 **Checkpoint**: `threats.md` carries deterministic `affected_assets` — US-2 independently testable.
 
@@ -74,7 +74,7 @@ triad:
 
 **Independent Test**: SARIF for the tagged example shows `properties.affected_assets` per result (`["phi","pii"]` sorted for tagged components, `[]` for untagged), byte-identical between the two emitters.
 
-- [ ] T008 [US1] Add the shared `parse_affected_assets(threats_content) -> dict[finding_id, list[str]]` extractor to `scripts/sarif_common.py` (single source for the regeneration/verification tier; mirrors the `parse_component_metadata` desync-fix precedent). Depends on T004.
+- [X] T008 [US1] Add the shared `parse_affected_assets(threats_content) -> dict[finding_id, list[str]]` extractor to `scripts/sarif_common.py` (single source for the regeneration/verification tier; mirrors the `parse_component_metadata` desync-fix precedent). Depends on T004.
 - [ ] T009 [P] [US1] Add `result.properties.affected_assets` (literal **snake_case** key, flat array — Q3) to `scripts/generate-threats-sarif.py`, sourced from the extractor; do NOT inherit the surrounding key-casing drift (FR-004 verification tier). Depends on T008.
 - [ ] T010 [P] [US1] Add `result.properties.affected_assets` (snake_case, flat array) to `scripts/generate-risk-scores-sarif.py`, sourced from the extractor (FR-004 verification tier). Depends on T008.
 - [ ] T011 [US1] Update the production LLM authoring contract in `.claude/skills/tachi-orchestration/references/sarif-specification.md`: orchestrator emits `threats.sarif` `result.properties.affected_assets` (snake_case) copied verbatim from the `threats.md` block (FR-004 production). Depends on T004.
