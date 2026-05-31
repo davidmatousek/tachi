@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "wave": 5,
+  "timestamp": "2026-05-31T22:10:31Z",
+  "test_runner": "python3 -m pytest tests/scripts/",
+  "execution_duration_ms": 666100,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": {
+    "pass": 856,
+    "fail": 16,
+    "skip": 2
+  },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 16
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [
+    "tests/scripts/test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_agent_citation",
+    "tests/scripts/test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_pattern_category_citation",
+    "tests/scripts/test_init_sh_substitution.py::test_personalized_tree_bytes_match_baseline",
+    "tests/scripts/test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_dos_agent_line_count_within_cap",
+    "tests/scripts/test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_model_theft_agent_line_count_within_cap",
+    "tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_model_theft_md_line_cap",
+    "tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_info_disclosure_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_privilege_escalation_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_repudiation_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_spoofing_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestNewPatternCategoriesPresent::test_privilege_escalation_companion_has_M8_priv_gain",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_categories_1_8_byte_identity_against_main",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_tool_abuse_line_count_within_cap",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_validate_source_attribution_on_regen"
+  ],
+  "generated_tests_step_4_6": {
+    "dispatched": false,
+    "rationale": "Wave 5 produced no production code \u2014 T013 is a test (the SC-006 gate itself), T014/T015 are markdown docs. Step 4.6 6a 'no code to generate tests for' applies."
+  },
+  "notes": "Wave 5 = T013 (SC-006 cross-format equality test, +4 cases, the NFR-3 correctness gate \u2014 per-finding byte-identity + snake_case key-string identity across threats.md block + both SARIF surfaces incl. untagged []) + T014 (asset-modifiers.md Output Contract section + stale 9.5->9.2 fix at T-2 example, score 8.3<=9.2 so 'no clamp' still holds) + T015 (schemas/README affected_assets pointer). ZERO regressions: failure set BYTE-IDENTICAL to wave-04/wave-03 (comm diff empty both ways). Pass 852->856 = +4 SC-006 cases. Frozen integrity: git diff main on tachi_parsers.py + risk-scoring.yaml EMPTY (SC-011); risk-scoring.yaml untouched by T014. The 16 failures remain F-302-independent (15 wave-02 cluster + 1 stale init baseline)."
+}

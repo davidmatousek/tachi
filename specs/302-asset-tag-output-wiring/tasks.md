@@ -79,7 +79,7 @@ triad:
 - [X] T010 [P] [US1] Add `result.properties.affected_assets` (snake_case, flat array) to `scripts/generate-risk-scores-sarif.py`, sourced from the extractor (FR-004 verification tier). Depends on T008.
 - [X] T011 [US1] Update the production LLM authoring contract in `.claude/skills/tachi-orchestration/references/sarif-specification.md`: orchestrator emits `threats.sarif` `result.properties.affected_assets` (snake_case) copied verbatim from the `threats.md` block (FR-004 production). Depends on T004.
 - [X] T012 [US1] Update the production LLM authoring contract in `.claude/agents/tachi/risk-scorer.md` SARIF section: risk-scorer emits `risk-scores.sarif` `result.properties.affected_assets` (snake_case) copied verbatim from the `threats.md` block; **§3.5 scoring + 9.2 ceiling UNCHANGED** (frozen). Depends on T004.
-- [ ] T013 [US1] Cross-format consistency test (SC-006) in `tests/scripts/test_affected_assets_wiring.py`: multi-finding worked example (≥2 differently-tagged components + ≥1 untagged) asserting a per-finding equality table across the `threats.md` block, `generate-threats-sarif.py`, and `generate-risk-scores-sarif.py` — every finding (incl. untagged `[]`) byte-identical value + identical `affected_assets` key string. Depends on T009, T010.
+- [X] T013 [US1] Cross-format consistency test (SC-006) in `tests/scripts/test_affected_assets_wiring.py`: multi-finding worked example (≥2 differently-tagged components + ≥1 untagged) asserting a per-finding equality table across the `threats.md` block, `generate-threats-sarif.py`, and `generate-risk-scores-sarif.py` — every finding (incl. untagged `[]`) byte-identical value + identical `affected_assets` key string. Depends on T009, T010.
 
 **Checkpoint**: Both SARIF surfaces carry `affected_assets`; cross-format equality enforced.
 
@@ -91,8 +91,8 @@ triad:
 
 **Independent Test**: Schema doc matches emitted output; baseline diff is additive-only; a real `tachi.threat-model` run on the worked example shows tags in all three surfaces.
 
-- [ ] T014 [P] [US4] Extend `.claude/skills/tachi-risk-scoring/references/asset-modifiers.md` with an "Output Contract" section (enum, empty-default, per-format representation) **and correct the stale "9.5" in the T-2 worked example to the frozen `9.2`** (FR-007, Q7). Must NOT touch `schemas/risk-scoring.yaml`. Depends on T004.
-- [ ] T015 [P] [US4] Add a pointer to the `affected_assets` contract in `schemas/README.md` (FR-007).
+- [X] T014 [P] [US4] Extend `.claude/skills/tachi-risk-scoring/references/asset-modifiers.md` with an "Output Contract" section (enum, empty-default, per-format representation) **and correct the stale "9.5" in the T-2 worked example to the frozen `9.2`** (FR-007, Q7). Must NOT touch `schemas/risk-scoring.yaml`. Depends on T004.
+- [X] T015 [P] [US4] Add a pointer to the `affected_assets` contract in `schemas/README.md` (FR-007).
 - [ ] T016 [US4] Regenerate the no-tag example baselines under `SOURCE_DATE_EPOCH=1700000000`; verify `git diff` shows ONLY the additive `affected_assets` block/property, all existing table rows byte-identical (SC-002, AD-2). Depends on T005, T006, T011, T012.
 - [ ] T017 [US4] Schema-doc accuracy test (SC-007) + ceiling-preservation test (SC-004: a tagged finding clamps at 9.2, `affected_assets` populated regardless) in `tests/scripts/test_affected_assets_wiring.py` (serializes on the shared test file with T007/T013 — not `[P]`). Depends on T014.
 - [ ] T018 [US4] Live-pipeline verification (R9 / architect Pre-Mortem #1): run the real `tachi.threat-model` on `examples/agentic-app/architecture-with-asset-tags.md` and confirm `affected_assets` appears in `threats.md`, `threats.sarif`, AND `risk-scores.sarif` — not just the regeneration scripts. `[MANUAL-ONLY] live LLM-pipeline run requires a human/agent invocation, not a unit test`. Depends on T006, T011, T012.

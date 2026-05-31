@@ -14,6 +14,10 @@ Schemas serve as the single source of truth for data structures exchanged betwee
 | `input.yaml` | Input validation — supported formats and recognition patterns | Integrators | Input parser, orchestrator |
 | `output.yaml` | Output structure — required sections and field definitions | Template engine | Integrators, downstream exporters |
 
+### `affected_assets` field (F-260b)
+
+`finding.yaml` (`schema_version` `1.9`) carries the optional, always-present `affected_assets` field — an enum array (`pii | phi | auth | secrets | financial | safety`) defaulting to `[]`. The same value crosses all three output surfaces (schema, `threats.md` block, and SARIF `result.properties.affected_assets`). The authoritative cross-format contract is [`specs/302-asset-tag-output-wiring/contracts/affected-assets-contract.md`](../specs/302-asset-tag-output-wiring/contracts/affected-assets-contract.md). See also the Output Contract section in [`.claude/skills/tachi-risk-scoring/references/asset-modifiers.md`](../.claude/skills/tachi-risk-scoring/references/asset-modifiers.md).
+
 ## Schema Relationships
 
 ```

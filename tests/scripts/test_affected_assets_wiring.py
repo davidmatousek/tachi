@@ -483,3 +483,524 @@ def test_populate_preserves_existing_tables_byte_stable():
     for line in threats.splitlines():
         if line.strip():
             assert line in out, f"original line not preserved verbatim: {line!r}"
+
+
+# =============================================================================
+# ===== SC-006 cross-format equality (T013) =====
+# =============================================================================
+#
+# The single most important correctness invariant of F-260b (NFR-3). Enforces
+# the affected-assets-contract §3 + §4 equality table: for EVERY finding ID
+# (including untagged ``[]``), the value rendered in the threats.md
+# ``## Affected Assets`` block is byte-identical to the value emitted in
+# ``threats.sarif`` AND ``risk-scores.sarif`` ``result.properties.affected_assets``
+# — same elements, same order — and the literal property key is exactly
+# ``affected_assets`` (snake_case) in BOTH SARIF surfaces.
+#
+# This section replicates the PRODUCTION sequence verbatim: populate (the single
+# deterministic value authority) → THEN emit each SARIF surface, with both
+# generators sourcing the value from the shared
+# ``sarif_common.parse_affected_assets`` extractor (NOT re-derived from
+# ``component_asset_map``). The threats-sarif path calls the generator's
+# ``build_sarif`` exactly as its ``main()`` does; the risk-scores path calls the
+# generator's ``build_result`` per finding exactly as its ``main()`` does
+# (``generate-risk-scores-sarif.py::main`` is path-hardcoded with an >=80-finding
+# production guard, so the worked example invokes the result-builder directly —
+# the same code path that emits ``properties.affected_assets``).
+#
+# Hyphenated generator filenames are not importable by name; loaded via
+# ``importlib.util.spec_from_file_location`` (the same precedent the module
+# header uses for the populator).
+
+import json  # noqa: E402  -- stdlib; cross-format SARIF surfaces are JSON
+
+from sarif_common import parse_affected_assets  # noqa: E402  -- shared value extractor
+
+
+def _load_script_module(filename: str, modname: str):
+    """Load a hyphenated ``scripts/<filename>`` module by file location.
+
+    The generator filenames (``generate-threats-sarif.py``,
+    ``generate-risk-scores-sarif.py``) contain hyphens and so are not importable
+    via ``import``; this mirrors the module-header populator loader. ``scripts/``
+    is already on ``sys.path`` (module header), so each generator's own
+    ``from sarif_common import ...`` / ``from tachi_parsers import ...`` resolve.
+    """
+    path = REPO_ROOT / "scripts" / filename
+    spec = importlib.util.spec_from_file_location(modname, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_gen_threats = _load_script_module("generate-threats-sarif.py", "generate_threats_sarif")
+_gen_risk = _load_script_module("generate-risk-scores-sarif.py", "generate_risk_scores_sarif")
+
+
+# -----------------------------------------------------------------------------
+# Cross-format worked-example fixture builders
+# -----------------------------------------------------------------------------
+#
+# The populator reads the Section 7 table (parse_threats_findings); the
+# threats-sarif generator reads the Section 3 STRIDE table (its own
+# parse_findings, which requires the "## 3. STRIDE Threat Tables" .. "## 5."
+# boundaries and 10-column rows with a bracketed [STATUS]). A single cross-format
+# threats.md must therefore carry BOTH tables, keyed on the same finding IDs and
+# components, so that one populate→emit pass feeds all three surfaces from one
+# document. ``_arch`` (T007) is reused verbatim for the architecture input.
+
+
+def _xfmt_stride_row(fid: str, component: str, status: str = "NEW") -> str:
+    """One 10-column Section 3 STRIDE row (the shape generator.parse_findings reads).
+
+    Columns: ``Finding ID | [STATUS] | Component | MAESTRO | Pattern | Threat |
+    Likelihood | Impact | Risk Level | Mitigation`` — exactly the 10 fields
+    ``generate-threats-sarif.py::parse_findings`` unpacks for a STRIDE prefix.
+    """
+    return (
+        f"| {fid} | [{status}] | {component} | L7 — Agent Ecosystem | — | "
+        f"Threat narrative for {fid} | HIGH | HIGH | High | Mitigation for {fid} |"
+    )
+
+
+def _xfmt_section7_row(fid: str, component: str, status: str = "NEW") -> str:
+    """One Section 7 Recommended Actions row (the shape the populator reads).
+
+    Columns: ``Finding ID | Status | Component | Threat | Risk Level |
+    Mitigation`` — ``parse_threats_findings`` keys by column name, so this subset
+    joins the same ``fid``/``component`` the STRIDE row above declares.
+    """
+    return (
+        f"| {fid} | [{status}] | {component} | Threat narrative for {fid} | "
+        f"High | Mitigation for {fid} |"
+    )
+
+
+def _xfmt_threats(findings: "list[tuple[str, str]]") -> str:
+    """Assemble a cross-format threats.md from ``(finding_id, component)`` pairs.
+
+    Emits Section 1 (Components), Section 3 (STRIDE table — read by the
+    threats-sarif generator), Section 5 (boundary marker the generator requires),
+    and Section 7 (Recommended Actions — read by the populator). Every finding
+    appears in BOTH the Section 3 and Section 7 tables so the populator and the
+    threats-sarif generator key on an identical finding set.
+    """
+    components = []
+    seen = set()
+    for _fid, comp in findings:
+        if comp not in seen:
+            seen.add(comp)
+            components.append(comp)
+
+    comp_table = (
+        "## 1. Components\n\n"
+        "| Name | Type |\n"
+        "|------|------|\n"
+        + "".join(f"| {c} | Process |\n" for c in components)
+    )
+
+    stride = (
+        "## 3. STRIDE Threat Tables\n\n"
+        "| Finding ID | Status | Component | MAESTRO Layer | Agentic Pattern | "
+        "Threat | Likelihood | Impact | Risk Level | Mitigation |\n"
+        "|---|---|---|---|---|---|---|---|---|---|\n"
+        + "".join(_xfmt_stride_row(fid, comp) + "\n" for fid, comp in findings)
+    )
+
+    # Section 5 boundary marker — parse_findings slices Section 3 .. Section 5.
+    coverage = "## 5. Coverage Matrix\n\nCoverage details elided for the fixture.\n"
+
+    section7 = (
+        "## 7. Recommended Actions\n\n"
+        "| Finding ID | Status | Component | Threat | Risk Level | Mitigation |\n"
+        "|---|---|---|---|---|---|\n"
+        + "".join(_xfmt_section7_row(fid, comp) + "\n" for fid, comp in findings)
+    )
+
+    return (
+        "# Threat Model Report\n\n"
+        + comp_table
+        + "\n"
+        + stride
+        + "\n"
+        + coverage
+        + "\n"
+        + section7
+    )
+
+
+def _threats_sarif_assets_by_id(populated_threats_md: str) -> dict:
+    """Emit threats.sarif from the populated threats.md and return id→assets.
+
+    Replicates ``generate-threats-sarif.py::main`` exactly: parse component
+    metadata, parse the shared ``affected_assets`` block, parse Section 3/4
+    findings, then ``build_sarif``. Returns the per-result
+    ``properties.affected_assets`` keyed by finding ID (``findingId/v1``
+    fingerprint) — and, importantly, asserts the literal snake_case key is
+    present in each result's raw ``properties`` dict (contract §3 key-string
+    identity, architect LOW advisory).
+    """
+    md_path = _write_threats(populated_threats_md, "threats-xfmt.md")
+    component_meta = _gen_threats.parse_component_metadata(populated_threats_md)
+    affected_by_id = parse_affected_assets(populated_threats_md)
+    findings = _gen_threats.parse_findings(md_path)
+    sarif = _gen_threats.build_sarif(findings, component_meta, affected_by_id)
+
+    out: dict = {}
+    for result in sarif["runs"][0]["results"]:
+        props = result["properties"]
+        # Key-string identity: the literal snake_case key MUST be present (not
+        # ``affected-assets`` / ``affectedAssets``). Inspect the raw dict keys.
+        assert "affected_assets" in props, (
+            "threats.sarif result.properties missing literal 'affected_assets' key; "
+            f"keys present: {sorted(props)}"
+        )
+        assert "affected-assets" not in props and "affectedAssets" not in props, (
+            "threats.sarif adopted kebab/camel key-casing drift for affected_assets"
+        )
+        fid = result["partialFingerprints"]["findingId/v1"]
+        out[fid] = props["affected_assets"]
+    return out
+
+
+def _risk_scores_sarif_assets_by_id(populated_threats_md: str, findings: list) -> dict:
+    """Emit risk-scores.sarif results from the populated threats.md; return id→assets.
+
+    ``generate-risk-scores-sarif.py::main`` is path-hardcoded (reads a fixed
+    ``examples/...`` risk-scores.md + threats.md) and guards on >=80 findings, so
+    the worked example invokes the generator's ``build_result`` directly — the
+    same call ``main`` makes per finding, sourcing ``affected_assets_by_id`` from
+    the SAME shared ``parse_affected_assets`` extractor. This exercises the real
+    ``properties.affected_assets`` emission path on the risk-scores surface.
+
+    ``findings`` is the ordered ``[(finding_id, component)]`` worked-example list;
+    each is shaped into the minimal Section-2 finding dict ``build_result``
+    consumes (scoring fields are placeholders — they do not affect the
+    affected_assets value, which is copied verbatim from the extractor).
+    """
+    affected_by_id = parse_affected_assets(populated_threats_md)
+    component_meta = _gen_risk.parse_component_metadata(populated_threats_md)
+    threats_status = _gen_risk.parse_threats_status(populated_threats_md)
+    threats_full = _gen_risk.parse_threats_full_text(populated_threats_md)
+    source_attribution = _gen_risk.parse_source_attribution(populated_threats_md)
+
+    out: dict = {}
+    for fid, component in findings:
+        finding = {
+            "id": fid,
+            "component": component,
+            "threat_summary": f"Threat narrative for {fid}",
+            "cvss_base": 7.0,
+            "exploitability": 7.0,
+            "scalability": 7.0,
+            "reachability": 7.0,
+            "composite": 7.0,
+            "severity_band": "High",
+            "sla_days": "30",
+            "disposition": "Open",
+        }
+        result = _gen_risk.build_result(
+            finding,
+            {},  # s3 (Section 3 dimensional breakdown) — absent in the fixture
+            {},  # s4 (Section 4 governance) — absent in the fixture
+            threats_status,
+            threats_full,
+            source_attribution,
+            component_meta,
+            affected_by_id,
+        )
+        props = result["properties"]
+        # Key-string identity on the risk-scores surface too (contract §3).
+        assert "affected_assets" in props, (
+            "risk-scores.sarif result.properties missing literal 'affected_assets' "
+            f"key; keys present: {sorted(props)}"
+        )
+        assert "affected-assets" not in props and "affectedAssets" not in props, (
+            "risk-scores.sarif adopted kebab/camel key-casing drift for affected_assets"
+        )
+        out[result["partialFingerprints"]["findingId/v1"]] = props["affected_assets"]
+    return out
+
+
+# ``tmp_path``-scoped writer — every generated artifact lives under the test's
+# temporary directory; nothing is written into ``examples/`` or committed. Set by
+# the fixture-driven tests below before calling the SARIF emitters.
+_TMP_DIR: Path | None = None
+
+
+def _write_threats(content: str, name: str) -> Path:
+    """Write ``content`` to ``_TMP_DIR/name`` and return the path (tmp-scoped)."""
+    assert _TMP_DIR is not None, "_TMP_DIR not set — call inside a tmp_path test"
+    path = _TMP_DIR / name
+    path.write_text(content, encoding="utf-8")
+    return path
+
+
+# -----------------------------------------------------------------------------
+# SC-006 — per-finding cross-format equality table (the core invariant)
+# -----------------------------------------------------------------------------
+
+
+def test_sc006_cross_format_equality_table(tmp_path):
+    """block == threats.sarif == risk-scores.sarif for EVERY finding (incl. ``[]``).
+
+    SC-006 / contract §3+§4 (NFR-3): a multi-finding worked example with two
+    differently-tagged components (one ``[asset:phi,pii]``, one ``[asset:auth]``)
+    plus an untagged component. Runs the PRODUCTION sequence — populate THEN emit
+    both SARIF surfaces — and asserts the per-finding equality table:
+
+        block[id] == threats_sarif[id] == risk_scores_sarif[id]
+
+    for every finding ID, with the untagged-component finding yielding ``[]`` in
+    all three surfaces (present, not missing), and identical element order (no
+    re-sort / dedup divergence between surfaces).
+    """
+    global _TMP_DIR
+    _TMP_DIR = tmp_path
+
+    # Two differently-tagged components + one untagged component.
+    arch = _arch(
+        'DB[("Records Store<br/>[asset:phi,pii]")]',
+        'Auth["Auth Service<br/>[asset:auth]"]',
+        'Web["Public Web Frontend"]',  # untagged → must yield []
+    )
+    # >=1 finding per component, including an untagged-component finding ([]).
+    worked = [
+        ("S-1", "Records Store"),     # → [phi, pii]
+        ("I-2", "Records Store"),     # → [phi, pii] (second finding, same tagged comp)
+        ("S-3", "Auth Service"),      # → [auth]
+        ("I-4", "Public Web Frontend"),  # → []  (untagged component)
+    ]
+    raw_threats = _xfmt_threats(worked)
+
+    # Production step 1: populate (the single deterministic value authority).
+    populated = populator.populate(arch, raw_threats)
+    # The block must now be present and carry every worked-example finding.
+    block = parse_affected_assets(populated)
+
+    # Production step 2: emit BOTH SARIF surfaces from the SAME populated doc.
+    threats_sarif = _threats_sarif_assets_by_id(populated)
+    risk_sarif = _risk_scores_sarif_assets_by_id(populated, worked)
+
+    expected = {
+        "S-1": ["phi", "pii"],
+        "I-2": ["phi", "pii"],
+        "S-3": ["auth"],
+        "I-4": [],  # untagged component → present-with-default empty list
+    }
+
+    for fid, want in expected.items():
+        # Every finding present in all three surfaces (FR-005: never omitted).
+        assert fid in block, f"{fid} missing from threats.md block"
+        assert fid in threats_sarif, f"{fid} missing from threats.sarif results"
+        assert fid in risk_sarif, f"{fid} missing from risk-scores.sarif results"
+
+        # The equality table: same elements, same order across all three.
+        assert block[fid] == want, f"block[{fid}] = {block[fid]!r}, want {want!r}"
+        assert threats_sarif[fid] == block[fid], (
+            f"threats.sarif[{fid}] = {threats_sarif[fid]!r} != block {block[fid]!r}"
+        )
+        assert risk_sarif[fid] == block[fid], (
+            f"risk-scores.sarif[{fid}] = {risk_sarif[fid]!r} != block {block[fid]!r}"
+        )
+        # Spell out the three-way identity explicitly (no re-sort/dedup drift).
+        assert block[fid] == threats_sarif[fid] == risk_sarif[fid]
+
+    # The untagged finding is the [] one in all three surfaces — present, empty.
+    assert block["I-4"] == [] and threats_sarif["I-4"] == [] and risk_sarif["I-4"] == []
+
+
+def test_sc006_untagged_finding_is_present_not_missing(tmp_path):
+    """The untagged-component finding emits ``[]`` (present) on every surface.
+
+    FR-005 guard, isolated: a finding on an untagged component must surface as
+    ``"affected_assets": []`` in the block and BOTH SARIF surfaces — never an
+    omitted key. Asserts membership before value so an omission fails loudly.
+    """
+    global _TMP_DIR
+    _TMP_DIR = tmp_path
+
+    arch = _arch(
+        'DB[("Records Store<br/>[asset:pii]")]',
+        'Web["Public Web Frontend"]',  # untagged
+    )
+    worked = [
+        ("S-1", "Records Store"),         # → [pii]
+        ("I-2", "Public Web Frontend"),   # → []
+    ]
+    populated = populator.populate(arch, _xfmt_threats(worked))
+
+    block = parse_affected_assets(populated)
+    threats_sarif = _threats_sarif_assets_by_id(populated)
+    risk_sarif = _risk_scores_sarif_assets_by_id(populated, worked)
+
+    for surface_name, surface in (
+        ("block", block),
+        ("threats.sarif", threats_sarif),
+        ("risk-scores.sarif", risk_sarif),
+    ):
+        assert "I-2" in surface, f"untagged finding I-2 omitted from {surface_name}"
+        assert surface["I-2"] == [], f"{surface_name}[I-2] = {surface['I-2']!r}, want []"
+        # And the tagged finding still carries its tag on the same surface.
+        assert surface["S-1"] == ["pii"], f"{surface_name}[S-1] = {surface['S-1']!r}"
+
+
+def test_sc006_key_string_is_snake_case_in_both_sarif_surfaces(tmp_path):
+    """The literal property key is exactly ``affected_assets`` in BOTH emitters.
+
+    Contract §3 key-string identity (architect LOW advisory): inspect the RAW
+    ``result.properties`` dict keys (not just the value) of both ``threats.sarif``
+    and ``risk-scores.sarif`` and assert the snake_case ``affected_assets`` key is
+    present and that the kebab (``affected-assets``) / camel (``affectedAssets``)
+    variants are absent — for every result, including the untagged ``[]`` one.
+
+    This re-runs the emitters and re-asserts the key on the raw envelopes here so
+    the key-string check is a first-class test, not only an internal helper guard.
+    """
+    global _TMP_DIR
+    _TMP_DIR = tmp_path
+
+    arch = _arch(
+        'DB[("Records Store<br/>[asset:phi,pii]")]',
+        'Web["Public Web Frontend"]',  # untagged → [] result must still carry the key
+    )
+    worked = [
+        ("S-1", "Records Store"),
+        ("I-2", "Public Web Frontend"),
+    ]
+    populated = populator.populate(arch, _xfmt_threats(worked))
+
+    # threats.sarif — inspect the raw envelope's result.properties keys.
+    md_path = _write_threats(populated, "threats-keycheck.md")
+    component_meta = _gen_threats.parse_component_metadata(populated)
+    affected_by_id = parse_affected_assets(populated)
+    t_findings = _gen_threats.parse_findings(md_path)
+    threats_sarif = _gen_threats.build_sarif(t_findings, component_meta, affected_by_id)
+
+    t_results = threats_sarif["runs"][0]["results"]
+    assert t_results, "threats.sarif produced no results for the worked example"
+    for result in t_results:
+        keys = set(result["properties"].keys())
+        assert "affected_assets" in keys, (
+            f"threats.sarif result missing snake_case key; keys: {sorted(keys)}"
+        )
+        assert "affected-assets" not in keys, "threats.sarif used kebab-case key"
+        assert "affectedAssets" not in keys, "threats.sarif used camelCase key"
+
+    # risk-scores.sarif — build a result directly and inspect its raw properties.
+    risk_status = _gen_risk.parse_threats_status(populated)
+    risk_full = _gen_risk.parse_threats_full_text(populated)
+    risk_attr = _gen_risk.parse_source_attribution(populated)
+    risk_meta = _gen_risk.parse_component_metadata(populated)
+
+    seen_results = 0
+    for fid, component in worked:
+        finding = {
+            "id": fid,
+            "component": component,
+            "threat_summary": f"Threat narrative for {fid}",
+            "cvss_base": 7.0,
+            "exploitability": 7.0,
+            "scalability": 7.0,
+            "reachability": 7.0,
+            "composite": 7.0,
+            "severity_band": "High",
+            "sla_days": "30",
+            "disposition": "Open",
+        }
+        result = _gen_risk.build_result(
+            finding, {}, {}, risk_status, risk_full, risk_attr, risk_meta, affected_by_id
+        )
+        keys = set(result["properties"].keys())
+        assert "affected_assets" in keys, (
+            f"risk-scores.sarif result missing snake_case key; keys: {sorted(keys)}"
+        )
+        assert "affected-assets" not in keys, "risk-scores.sarif used kebab-case key"
+        assert "affectedAssets" not in keys, "risk-scores.sarif used camelCase key"
+        seen_results += 1
+    assert seen_results == len(worked)
+
+
+def test_sc006_emitted_sarif_serializes_to_valid_json(tmp_path):
+    """Both emitted SARIF envelopes round-trip through JSON with the field intact.
+
+    Structural guard mirroring the production write step (both generators write
+    ``json.dumps(sarif, indent=2)``): serialize each envelope and re-parse it,
+    confirming the snake_case ``affected_assets`` value survives JSON encoding
+    byte-for-byte (same list, same order) on both surfaces. Written under
+    ``tmp_path`` only.
+    """
+    global _TMP_DIR
+    _TMP_DIR = tmp_path
+
+    arch = _arch(
+        'DB[("Records Store<br/>[asset:auth,phi,pii]")]',
+        'Web["Public Web Frontend"]',
+    )
+    worked = [("S-1", "Records Store"), ("I-2", "Public Web Frontend")]
+    populated = populator.populate(arch, _xfmt_threats(worked))
+    affected_by_id = parse_affected_assets(populated)
+
+    # threats.sarif → JSON file → re-parse.
+    md_path = _write_threats(populated, "threats-json.md")
+    t_findings = _gen_threats.parse_findings(md_path)
+    t_meta = _gen_threats.parse_component_metadata(populated)
+    t_sarif = _gen_threats.build_sarif(t_findings, t_meta, affected_by_id)
+    t_out = tmp_path / "threats.sarif"
+    t_out.write_text(json.dumps(t_sarif, indent=2) + "\n", encoding="utf-8")
+    t_reloaded = json.loads(t_out.read_text(encoding="utf-8"))
+
+    t_by_id = {
+        r["partialFingerprints"]["findingId/v1"]: r["properties"]["affected_assets"]
+        for r in t_reloaded["runs"][0]["results"]
+    }
+    assert t_by_id["S-1"] == ["auth", "phi", "pii"]
+    assert t_by_id["I-2"] == []
+
+    # risk-scores.sarif → assemble an envelope → JSON file → re-parse.
+    risk_results = []
+    for fid, component in worked:
+        finding = {
+            "id": fid,
+            "component": component,
+            "threat_summary": f"Threat narrative for {fid}",
+            "cvss_base": 7.0,
+            "exploitability": 7.0,
+            "scalability": 7.0,
+            "reachability": 7.0,
+            "composite": 7.0,
+            "severity_band": "High",
+            "sla_days": "30",
+            "disposition": "Open",
+        }
+        risk_results.append(
+            _gen_risk.build_result(
+                finding,
+                {},
+                {},
+                _gen_risk.parse_threats_status(populated),
+                _gen_risk.parse_threats_full_text(populated),
+                _gen_risk.parse_source_attribution(populated),
+                _gen_risk.parse_component_metadata(populated),
+                affected_by_id,
+            )
+        )
+    risk_sarif = _gen_risk.build_sarif_envelope(
+        {"name": "tachi-risk-scorer", "rules": []},
+        [],
+        risk_results,
+    )
+    r_out = tmp_path / "risk-scores.sarif"
+    r_out.write_text(json.dumps(risk_sarif, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    r_reloaded = json.loads(r_out.read_text(encoding="utf-8"))
+
+    r_by_id = {
+        r["partialFingerprints"]["findingId/v1"]: r["properties"]["affected_assets"]
+        for r in r_reloaded["runs"][0]["results"]
+    }
+    assert r_by_id["S-1"] == ["auth", "phi", "pii"]
+    assert r_by_id["I-2"] == []
+
+    # Cross-surface: the JSON-round-tripped values match each other too.
+    assert t_by_id["S-1"] == r_by_id["S-1"]
+    assert t_by_id["I-2"] == r_by_id["I-2"]
