@@ -36,7 +36,7 @@ triad:
 
 **Purpose**: Capture the pre-change reference state needed for the SC-002 byte-identity gate.
 
-- [ ] T001 Capture pre-change baseline snapshot of the no-tag example outputs (`threats.md`, `threats.sarif`, `risk-scores.sarif`) under `SOURCE_DATE_EPOCH=1700000000` and confirm `examples/agentic-app/architecture-with-asset-tags.md` carries the expected `pii`/`phi`/`auth`/`safety` tags across 4 components (records the SC-002 "before" for the additive-only diff).
+- [X] T001 Capture pre-change baseline snapshot of the no-tag example outputs (`threats.md`, `threats.sarif`, `risk-scores.sarif`) under `SOURCE_DATE_EPOCH=1700000000` and confirm `examples/agentic-app/architecture-with-asset-tags.md` carries the expected `pii`/`phi`/`auth`/`safety` tags across 4 components (records the SC-002 "before" for the additive-only diff).
 
 ---
 
@@ -60,7 +60,7 @@ triad:
 
 **Independent Test**: Run the pipeline on the tagged worked example → `threats.md` carries an `affected_assets` field on every finding (populated where the component is tagged, `[]` otherwise).
 
-- [ ] T005 [US2] Implement the deterministic populator (value authority) in `scripts/` (e.g. `scripts/populate-affected-assets.py`): join `parse_component_asset_map(architecture)` to each finding by target component (same case-insensitive/fuzzy cascade as risk-scorer §3.5), `affected_assets = component_asset_map.get(component, [])` (sorted, verbatim), and write the `affected_assets` block into `threats.md`. Pure function, no LLM, no scoring change (FR-002). Depends on T002, T004.
+- [X] T005 [US2] Implement the deterministic populator (value authority) in `scripts/` (e.g. `scripts/populate-affected-assets.py`): join `parse_component_asset_map(architecture)` to each finding by target component (same case-insensitive/fuzzy cascade as risk-scorer §3.5), `affected_assets = component_asset_map.get(component, [])` (sorted, verbatim), and write the `affected_assets` block into `threats.md`. Pure function, no LLM, no scoring change (FR-002). Depends on T002, T004.
 - [ ] T006 [US2] Wire the populator into the production pipeline as a sequencing step that runs **after** the orchestrator emits `threats.md` and **before** SARIF authoring, in `.claude/commands/tachi.threat-model.md` and `.claude/commands/tachi.risk-score.md` (AD-1 M-2). Depends on T005.
 - [ ] T007 [P] [US2] Unit tests for the populator in `tests/scripts/test_affected_assets_wiring.py`: all 6 tags propagate (SC-003), empty-default `[]` present (SC-005), fuzzy component match, no-op-modifier-with-present-tag still lists the tag (Q4 semantic), sorted/deduped output, `UNCHANGED`/`RESOLVED` findings still carry the field. Depends on T005.
 

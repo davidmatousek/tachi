@@ -1,0 +1,28 @@
+=== SNAPSHOT VERIFY ===
+SRC=examples/agentic-app/sample-report
+SNAP=specs/302-asset-tag-output-wiring/test-results/wave-00-baseline-before
+--- source sha256 ---
+a0907a35e45daafdf79e5496704908ac65d9b792a5a0e6b26c6fa2c515d7f4d7  examples/agentic-app/sample-report/threats.md
+478aa8ac217b28fd2949790eeb61ade8ced543ee2bacdc94a5eacc3d7d7c0f6e  examples/agentic-app/sample-report/threats.sarif
+33f55e0c53d4c6a15f0500c4d01eca90e3b0709231dc4db9351651afbae3ca51  examples/agentic-app/sample-report/risk-scores.sarif
+--- snapshot sha256 ---
+a0907a35e45daafdf79e5496704908ac65d9b792a5a0e6b26c6fa2c515d7f4d7  specs/302-asset-tag-output-wiring/test-results/wave-00-baseline-before/threats.md
+478aa8ac217b28fd2949790eeb61ade8ced543ee2bacdc94a5eacc3d7d7c0f6e  specs/302-asset-tag-output-wiring/test-results/wave-00-baseline-before/threats.sarif
+33f55e0c53d4c6a15f0500c4d01eca90e3b0709231dc4db9351651afbae3ca51  specs/302-asset-tag-output-wiring/test-results/wave-00-baseline-before/risk-scores.sarif
+--- snapshot listing ---
+total 1128
+drwxr-xr-x@ 6 david  staff     192 May 31 15:30 .
+drwxr-xr-x@ 3 david  staff      96 May 31 15:30 ..
+-rw-r--r--@ 1 david  staff    1010 May 31 15:30 SNAPSHOT_VERIFY.txt
+-rw-r--r--@ 1 david  staff  227450 Apr 27 16:49 risk-scores.sarif
+-rw-r--r--@ 1 david  staff  131734 Apr 27 16:49 threats.md
+-rw-r--r--@ 1 david  staff  208340 Apr 27 16:49 threats.sarif
+--- byte counts ---
+  131734 specs/302-asset-tag-output-wiring/test-results/wave-00-baseline-before/threats.md
+  208340 specs/302-asset-tag-output-wiring/test-results/wave-00-baseline-before/threats.sarif
+  227450 specs/302-asset-tag-output-wiring/test-results/wave-00-baseline-before/risk-scores.sarif
+  567524 total
+--- affected_assets pre-check (must be ABSENT) ---
+specs/302-asset-tag-output-wiring/test-results/wave-00-baseline-before/SNAPSHOT_VERIFY.txt
+WARN: affected_assets ALREADY PRESENT
+=== END ===
