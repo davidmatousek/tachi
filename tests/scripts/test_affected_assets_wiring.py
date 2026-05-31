@@ -1004,3 +1004,301 @@ def test_sc006_emitted_sarif_serializes_to_valid_json(tmp_path):
     # Cross-surface: the JSON-round-tripped values match each other too.
     assert t_by_id["S-1"] == r_by_id["S-1"]
     assert t_by_id["I-2"] == r_by_id["I-2"]
+
+
+# =============================================================================
+# ===== SC-007 / SC-004 (T017) =====
+# =============================================================================
+#
+# SC-007 (schema-doc accuracy): the schema-doc surface
+# ``.claude/skills/tachi-risk-scoring/references/asset-modifiers.md`` — section
+# "Output Contract — ``affected_assets`` Provenance Field" — DOCUMENTS the
+# frozen 6-value enum, the always-present ``[]`` empty-default, and a per-format
+# representation table (IR/schema, threats.md ``S-1: [phi, pii]``, SARIF flat
+# array). These tests assert the DOC matches REALITY: the documented enum equals
+# the frozen ``VALID_ASSET_TAGS`` the populator imports; the empty-default and
+# per-format threats.md shape match what the populator actually emits; and the
+# T-2 worked example carries no stale ``9.5`` ceiling (regression guard for T014
+# — the example was corrected to ``9.2``).
+#
+# SC-004 (ceiling preservation): "a tagged finding whose modified cvss_base
+# would exceed 9.2 caps at 9.2; affected_assets is populated regardless of
+# clamp." HONESTY CONSTRAINT — the populator is provenance-only (NFR-2): it does
+# NOT compute or clamp CVSS (that is FROZEN, LLM-authored risk-scorer logic).
+# So these tests pin the TWO testable invariants without overclaiming a unit
+# test exercises the LLM scoring path: (1) the frozen ``modifier_ceiling: 9.2``
+# constant is intact in ``schemas/risk-scoring.yaml`` (the "caps at 9.2"
+# invariant in testable form — the clamp itself is enforced by the frozen
+# risk-scoring path, verified structurally by SC-011/T021); and (2)
+# ``affected_assets`` is fully populated for a finding whose high-impact tags
+# would drive a modifier to/over the ceiling — proving the provenance field is
+# recorded independent of any score clamp.
+#
+# Both reference files are read in-test (stdlib only); neither frozen file is
+# modified.
+
+ASSET_MODIFIERS_DOC = (
+    REPO_ROOT
+    / ".claude"
+    / "skills"
+    / "tachi-risk-scoring"
+    / "references"
+    / "asset-modifiers.md"
+)
+RISK_SCORING_SCHEMA = REPO_ROOT / "schemas" / "risk-scoring.yaml"
+
+
+def _output_contract_section(doc_text: str) -> str:
+    """Return the "Output Contract — ``affected_assets`` Provenance Field" section.
+
+    Slices from the ``## Output Contract`` heading to the next top-level ``## ``
+    heading (or end of file), so enum/empty-default/per-format assertions are
+    scoped to the provenance-field contract and never pick up the earlier
+    CVSS-modifier "Tag Vocabulary" table (which documents the same six tokens for
+    a different purpose).
+    """
+    start = doc_text.find("## Output Contract")
+    assert start != -1, "asset-modifiers.md missing 'Output Contract' section heading"
+    rest = doc_text[start + len("## Output Contract"):]
+    nxt = rest.find("\n## ")
+    return doc_text[start:] if nxt == -1 else doc_text[start: start + len("## Output Contract") + nxt]
+
+
+def _doc_enum_values(doc_text: str) -> "list[str]":
+    """Extract the documented FROZEN enum values from the Output Contract section.
+
+    Locates the ``### Enum`` subsection and parses its backtick-wrapped,
+    pipe-delimited list line (``\\`pii | phi | auth | secrets | financial |
+    safety\\``.``). Returns the tokens in documented order.
+    """
+    section = _output_contract_section(doc_text)
+    enum_idx = section.find("### Enum")
+    assert enum_idx != -1, "Output Contract section missing '### Enum' subsection"
+    enum_region = section[enum_idx:]
+    # The enum line is the first line carrying a backtick-wrapped pipe list.
+    for line in enum_region.splitlines():
+        if "|" in line and "`" in line:
+            first = line.index("`")
+            last = line.index("`", first + 1)
+            inner = line[first + 1: last]
+            return [tok.strip() for tok in inner.split("|") if tok.strip()]
+    raise AssertionError(f"no backtick-wrapped enum line found under '### Enum':\n{enum_region}")
+
+
+# -----------------------------------------------------------------------------
+# SC-007.1 — enum agreement: doc enum == frozen VALID_ASSET_TAGS
+# -----------------------------------------------------------------------------
+
+
+def test_sc007_doc_enum_matches_frozen_valid_asset_tags():
+    """The 6 enum values DOCUMENTED in asset-modifiers.md equal ``VALID_ASSET_TAGS``.
+
+    SC-007: parse the FROZEN enum line from the Output Contract section's
+    ``### Enum`` subsection and assert it is exactly the set of values the
+    populator imports from ``tachi_parsers`` — proving the schema-doc surface and
+    the code authority agree on the closed 6-value vocabulary.
+    """
+    doc_text = ASSET_MODIFIERS_DOC.read_text(encoding="utf-8")
+    documented = _doc_enum_values(doc_text)
+
+    assert set(documented) == set(VALID_ASSET_TAGS)
+    assert len(documented) == len(VALID_ASSET_TAGS) == 6
+    # No stray/extra token slipped into the documented list.
+    assert sorted(documented) == sorted(VALID_ASSET_TAGS)
+
+
+def test_sc007_doc_enum_declares_frozen_six_count():
+    """The Output Contract ``### Enum`` subsection labels the enum FROZEN at 6.
+
+    Light structural guard: the subsection heading advertises the count, so a
+    future widening that changes the value set without updating this label is
+    caught. Asserts both the ``FROZEN`` marker and the literal ``6`` appear in the
+    enum subsection.
+    """
+    doc_text = ASSET_MODIFIERS_DOC.read_text(encoding="utf-8")
+    section = _output_contract_section(doc_text)
+    enum_idx = section.find("### Enum")
+    assert enum_idx != -1
+    enum_heading_line = section[enum_idx:].splitlines()[0]
+
+    assert "FROZEN" in enum_heading_line
+    assert "6" in enum_heading_line
+
+
+# -----------------------------------------------------------------------------
+# SC-007.2 — empty-default agreement: untagged finding renders [] (doc claim)
+# -----------------------------------------------------------------------------
+
+
+def test_sc007_empty_default_matches_doc_always_present_claim():
+    """An untagged-component finding emits ``[]`` — matching the doc's FR-005 claim.
+
+    SC-007: the Output Contract's "Empty-default" subsection states ``[]`` is
+    "always present ... never omitted (FR-005)". Run the populator on a no-tag
+    architecture (a finding on an untagged component) and assert the emitted block
+    value is exactly ``[]`` — the doc's claim made executable against real output.
+    """
+    # First, the doc actually makes the claim we are validating against.
+    doc_text = ASSET_MODIFIERS_DOC.read_text(encoding="utf-8")
+    section = _output_contract_section(doc_text)
+    assert "Empty-default" in section
+    assert "always present" in section
+    assert "FR-005" in section
+
+    # Then reality: an untagged component yields the documented [] empty form.
+    arch = _arch('Web["Public Web Frontend"]')  # no [asset:...] block
+    threats = _threats("I-1 | NEW | Public Web Frontend | Low | Log")
+
+    out = populator.populate(arch, threats)
+
+    assert _assets_for(out, "I-1") == "[]"
+
+
+# -----------------------------------------------------------------------------
+# SC-007.3 — per-format shape agreement: threats.md cell renders [phi, pii]
+# -----------------------------------------------------------------------------
+
+
+def test_sc007_threats_md_shape_matches_doc_representation_cell():
+    """The threats.md block renders ``[phi, pii]`` — matching the doc's format cell.
+
+    SC-007: the Output Contract per-format table documents the ``threats.md``
+    representation as ``S-1: [phi, pii]`` (sorted enum array). Run the populator on
+    a ``[asset:phi,pii]`` component and assert the rendered block value is exactly
+    the documented sorted form ``[phi, pii]`` — and that ``render_affected_assets_block``
+    / ``parse_affected_assets`` agree on that value.
+    """
+    # The doc's per-format table documents `S-1: [phi, pii]` for threats.md.
+    doc_text = ASSET_MODIFIERS_DOC.read_text(encoding="utf-8")
+    section = _output_contract_section(doc_text)
+    assert "[phi, pii]" in section, "doc per-format table missing threats.md '[phi, pii]' cell"
+
+    arch = _arch('DB[("Records Store<br/>[asset:phi,pii]")]')
+    threats = _threats("S-1 | NEW | Records Store | High | Fix")
+
+    out = populator.populate(arch, threats)
+
+    # Block cell renders the documented sorted form.
+    assert _assets_for(out, "S-1") == "[phi, pii]"
+
+    # render_affected_assets_block / parse_affected_assets produce the same value
+    # the doc's per-format cells describe (block string `[phi, pii]`; SARIF/IR
+    # array `["phi", "pii"]`).
+    rendered_block = populator.render_affected_assets_block([("S-1", ["phi", "pii"])])
+    assert "| S-1 | [phi, pii] |" in rendered_block
+    assert parse_affected_assets(out)["S-1"] == ["phi", "pii"]
+
+
+def test_sc007_render_value_helper_matches_doc_sorted_array_form():
+    """``_render_assets_value`` emits the documented bracketed-sorted string form.
+
+    Pins the rendering primitive directly: the documented representation for a
+    tagged finding is a sorted, comma-space-joined bracketed list (``[phi, pii]``),
+    and the documented empty form is ``[]``. Asserts both shapes straight from the
+    value renderer so the per-format "Representation"/"Empty form" cells are pinned
+    at the helper level, not only end-to-end.
+    """
+    assert populator._render_assets_value(["phi", "pii"]) == "[phi, pii]"
+    assert populator._render_assets_value([]) == "[]"
+
+
+# -----------------------------------------------------------------------------
+# SC-007.4 — no stale ceiling: asset-modifiers.md has no 9.5, only 9.2
+# -----------------------------------------------------------------------------
+
+
+def test_sc007_doc_has_no_stale_95_ceiling_only_92():
+    """asset-modifiers.md contains NO stale ``9.5`` ceiling — only ``9.2`` (T014 guard).
+
+    SC-007 regression guard: the T-2 worked example (and the modifier-ceiling
+    prose) were corrected to ``9.2`` in T014. Assert the schema-doc surface
+    contains no ``9.5`` token anywhere and that the ceiling value it does cite is
+    ``9.2``. (The frozen ``schemas/risk-scoring.yaml`` legitimately mentions ``9.5``
+    in its rejection rationale; this guard is scoped to the doc surface only.)
+    """
+    doc_text = ASSET_MODIFIERS_DOC.read_text(encoding="utf-8")
+
+    assert "9.5" not in doc_text, "stale 9.5 ceiling present in asset-modifiers.md (T014 regressed)"
+    assert "9.2" in doc_text, "asset-modifiers.md no longer cites the 9.2 modifier ceiling"
+    # The corrected T-2 worked example explicitly states the 9.2 ceiling.
+    assert "**Ceiling**: `9.2`" in doc_text
+
+
+# -----------------------------------------------------------------------------
+# SC-004.1 — ceiling constant intact: schemas/risk-scoring.yaml == 9.2
+# -----------------------------------------------------------------------------
+
+
+def test_sc004_modifier_ceiling_constant_is_92():
+    """``schemas/risk-scoring.yaml`` still declares ``modifier_ceiling: 9.2``.
+
+    SC-004: the "caps at 9.2" invariant in its testable form. The populator is
+    score-neutral (provenance only, NFR-2) and does NOT clamp — the 9.2 clamp is
+    enforced by the FROZEN, LLM-authored risk-scoring path (binary-diffed by
+    SC-011/T021). This test pins the frozen ceiling CONSTANT (not the clamp
+    arithmetic): the ``asset_modifiers.modifier_ceiling`` declaration reads exactly
+    ``9.2``, and no drifted ``9.5``/``9.0`` declaration has replaced it.
+    """
+    schema_text = RISK_SCORING_SCHEMA.read_text(encoding="utf-8")
+
+    # The active declaration (not the surrounding rationale comments) is `9.2`.
+    declaration_lines = [
+        ln for ln in schema_text.splitlines()
+        if ln.strip().startswith("modifier_ceiling:")
+    ]
+    assert declaration_lines == ["  modifier_ceiling: 9.2"], (
+        f"modifier_ceiling declaration drifted: {declaration_lines!r}"
+    )
+
+
+# -----------------------------------------------------------------------------
+# SC-004.2 — affected_assets populated regardless of clamp
+# -----------------------------------------------------------------------------
+
+
+def test_sc004_affected_assets_populated_for_ceiling_pushing_tags():
+    """High-impact tags that would drive a modifier to/over 9.2 still populate the field.
+
+    SC-004: ``affected_assets`` is populated regardless of clamp. NOTE — the
+    populator is score-NEUTRAL: it records provenance only and never computes or
+    clamps CVSS (the 9.2 clamp is enforced by the frozen risk-scoring path,
+    verified structurally by SC-011/T021). So this test proves provenance-
+    independence: a finding whose component carries ``[asset:auth,secrets]``
+    (each forcing ``C:H`` + ``I:H`` — the kind that pushes CVSS toward the
+    ceiling) has its ``affected_assets`` FULLY populated (``[auth, secrets]``),
+    i.e. the field is recorded independent of any score clamp.
+    """
+    # auth + secrets each force C:H+I:H — the impact profile most likely to drive
+    # the modifier-recomputed cvss_base to/over the 9.2 ceiling in the scorer.
+    arch = _arch('Vault["Identity Vault<br/>[asset:auth,secrets]"]')
+    threats = _threats("S-1 | NEW | Identity Vault | Critical | Rotate + isolate")
+
+    out = populator.populate(arch, threats)
+
+    # Provenance fully recorded (sorted ascending) — independent of any clamp.
+    assert _assets_for(out, "S-1") == "[auth, secrets]"
+    # And byte-equivalent on the SARIF-facing extractor.
+    assert parse_affected_assets(out)["S-1"] == ["auth", "secrets"]
+
+
+def test_sc004_affected_assets_independent_of_score_fields():
+    """The field is recorded with no dependence on any score/severity input.
+
+    Reinforces provenance-independence: the populator never reads CVSS, composite,
+    or severity-band fields (NFR-2). A ``Critical``-risk finding and a ``Low``-risk
+    finding on the SAME high-impact-tagged component both surface the identical
+    fully-populated ``affected_assets`` — confirming the provenance value is a pure
+    projection of component tags, unaffected by the (frozen, separately-enforced)
+    9.2 clamp or any risk-level signal.
+    """
+    arch = _arch('Vault["Identity Vault<br/>[asset:auth,secrets]"]')
+    threats = _threats(
+        "S-1 | NEW | Identity Vault | Critical | Rotate",   # would push toward ceiling
+        "D-2 | NEW | Identity Vault | Low | Monitor",        # low risk, same component
+    )
+
+    out = populator.populate(arch, threats)
+
+    # Identical provenance regardless of the (ignored) Risk Level column.
+    assert _assets_for(out, "S-1") == "[auth, secrets]"
+    assert _assets_for(out, "D-2") == "[auth, secrets]"

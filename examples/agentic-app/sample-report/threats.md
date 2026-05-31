@@ -709,3 +709,94 @@ Sorted by risk level descending, then by table appearance order:
 - CG-8: D-10 + D-11 + LLM-15 + LLM-16 → LLM Agent Orchestrator (LLM10 Unbounded Consumption cluster — all four F-5 LLM10 vectors share inference endpoint and fan-out topology)
 
 **UNCHANGED findings** (84): All 84 prior findings carried forward as UNCHANGED. Architecture and component inventory unchanged between runs.
+
+## Affected Assets
+
+| Finding ID | Affected Assets |
+|------------|-----------------|
+| S-1 | [] |
+| S-3 | [] |
+| S-5 | [] |
+| S-6 | [] |
+| S-7 | [] |
+| S-9 | [] |
+| T-2 | [] |
+| T-3 | [] |
+| T-4 | [] |
+| T-5 | [] |
+| T-8 | [] |
+| T-9 | [] |
+| R-3 | [] |
+| I-2 | [] |
+| I-4 | [] |
+| I-7 | [] |
+| I-9 | [] |
+| D-1 | [] |
+| D-2 | [] |
+| D-5 | [] |
+| D-10 | [] |
+| D-11 | [] |
+| E-1 | [] |
+| E-2 | [] |
+| E-4 | [] |
+| E-5 | [] |
+| E-6 | [] |
+| E-7 | [] |
+| AG-1 | [] |
+| AG-2 | [] |
+| AG-3 | [] |
+| AG-4 | [] |
+| AG-5 | [] |
+| AG-7 | [] |
+| AG-8 | [] |
+| LLM-1 | [] |
+| LLM-2 | [] |
+| LLM-4 | [] |
+| LLM-5 | [] |
+| LLM-6 | [] |
+| LLM-8 | [] |
+| LLM-9 | [] |
+| LLM-11 | [] |
+| LLM-13 | [] |
+| LLM-14 | [] |
+| LLM-15 | [] |
+| OI-1 | [] |
+| OI-2 | [] |
+| MI-1 | [] |
+| MI-2 | [] |
+| MI-3 | [] |
+| S-2 | [] |
+| S-4 | [] |
+| S-8 | [] |
+| T-1 | [] |
+| T-6 | [] |
+| T-7 | [] |
+| R-4 | [] |
+| R-6 | [] |
+| R-7 | [] |
+| R-9 | [] |
+| I-3 | [] |
+| I-5 | [] |
+| I-6 | [] |
+| I-8 | [] |
+| D-3 | [] |
+| D-4 | [] |
+| D-7 | [] |
+| D-9 | [] |
+| E-3 | [] |
+| AG-6 | [] |
+| LLM-3 | [] |
+| LLM-7 | [] |
+| LLM-10 | [] |
+| LLM-12 | [] |
+| LLM-16 | [] |
+| OI-3 | [] |
+| OI-4 | [] |
+| AGP-01 | [] |
+| R-1 | [] |
+| R-2 | [] |
+| I-1 | [] |
+| D-6 | [] |
+| D-8 | [] |
+| R-5 | [] |
+| R-8 | [] |

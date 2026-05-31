@@ -93,8 +93,8 @@ triad:
 
 - [X] T014 [P] [US4] Extend `.claude/skills/tachi-risk-scoring/references/asset-modifiers.md` with an "Output Contract" section (enum, empty-default, per-format representation) **and correct the stale "9.5" in the T-2 worked example to the frozen `9.2`** (FR-007, Q7). Must NOT touch `schemas/risk-scoring.yaml`. Depends on T004.
 - [X] T015 [P] [US4] Add a pointer to the `affected_assets` contract in `schemas/README.md` (FR-007).
-- [ ] T016 [US4] Regenerate the no-tag example baselines under `SOURCE_DATE_EPOCH=1700000000`; verify `git diff` shows ONLY the additive `affected_assets` block/property, all existing table rows byte-identical (SC-002, AD-2). Depends on T005, T006, T011, T012.
-- [ ] T017 [US4] Schema-doc accuracy test (SC-007) + ceiling-preservation test (SC-004: a tagged finding clamps at 9.2, `affected_assets` populated regardless) in `tests/scripts/test_affected_assets_wiring.py` (serializes on the shared test file with T007/T013 — not `[P]`). Depends on T014.
+- [X] T016 [US4] Regenerate the no-tag example baselines under `SOURCE_DATE_EPOCH=1700000000`; verify `git diff` shows ONLY the additive `affected_assets` block/property, all existing table rows byte-identical (SC-002, AD-2). Depends on T005, T006, T011, T012.
+- [X] T017 [US4] Schema-doc accuracy test (SC-007) + ceiling-preservation test (SC-004: a tagged finding clamps at 9.2, `affected_assets` populated regardless) in `tests/scripts/test_affected_assets_wiring.py` (serializes on the shared test file with T007/T013 — not `[P]`). Depends on T014.
 - [ ] T018 [US4] Live-pipeline verification (R9 / architect Pre-Mortem #1): run the real `tachi.threat-model` on `examples/agentic-app/architecture-with-asset-tags.md` and confirm `affected_assets` appears in `threats.md`, `threats.sarif`, AND `risk-scores.sarif` — not just the regeneration scripts. `[MANUAL-ONLY] live LLM-pipeline run requires a human/agent invocation, not a unit test`. Depends on T006, T011, T012.
 
 **Checkpoint**: Contract documented + baselines clean + live propagation proven.
