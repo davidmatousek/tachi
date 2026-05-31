@@ -19,10 +19,13 @@ FIXTURE_DIR = Path(__file__).parent / "fixtures" / "output_integrity"
 
 class TestSchemaIdPatternRegex:
 
-    def test_schema_version_is_1_8(self, schema: dict) -> None:
+    def test_schema_version_is_1_9(self, schema: dict) -> None:
+        # Feature 302 (F-260b) bumped finding.yaml 1.8 -> 1.9 (additive
+        # affected_assets field; minor bump per ADR-026). This pin moves with
+        # the schema; the OI-prefix regex contract below is unaffected.
         schema_version = schema["schema_version"]
-        assert schema_version == "1.8", (
-            f"Schema version MUST be 1.8. Got: {schema_version!r}"
+        assert schema_version == "1.9", (
+            f"Schema version MUST be 1.9. Got: {schema_version!r}"
         )
 
     @pytest.mark.parametrize(

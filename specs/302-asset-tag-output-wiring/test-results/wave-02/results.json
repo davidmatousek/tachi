@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "wave": 2,
+  "timestamp": "2026-05-31T00:00:00Z",
+  "test_runner": "python3 -m pytest tests/scripts/",
+  "execution_duration_ms": 94810,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 773, "fail": 16, "skip": 1, "deselected_note": "full-suite counts; 28 deselected in the fast classification run only" },
+  "classification": {
+    "regressions": 1,
+    "regressions_fixed": 1,
+    "new_failures": 0,
+    "pre_existing": 15
+  },
+  "regressions": [
+    "tests/scripts/test_output_integrity.py::TestSchemaIdPatternRegex::test_schema_version_is_1_8"
+  ],
+  "regressions_resolution": "FIXED in-wave: T002 bumped finding.yaml schema_version 1.8->1.9 (FR-001/SC-001 mandate); the pre-existing test hard-pinned 1.8. Updated the assertion+name to 1.9 (test_schema_version_is_1_9), matching house exact-pin convention (cf. human_trust/misinformation version-named tests). Not a frozen file (SC-011 covers only risk-scoring.yaml + tachi_parsers.py). Re-run: test_output_integrity.py 28/28 PASS. This was a task-breakdown gap — no T0xx enumerated this existing pin; the schema bump obligates it.",
+  "new_failures": [],
+  "pre_existing": [
+    "tests/scripts/test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_agent_citation",
+    "tests/scripts/test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_pattern_category_citation",
+    "tests/scripts/test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_dos_agent_line_count_within_cap",
+    "tests/scripts/test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_model_theft_agent_line_count_within_cap",
+    "tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_model_theft_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_spoofing_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_info_disclosure_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_privilege_escalation_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_repudiation_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestNewPatternCategoriesPresent::test_privilege_escalation_companion_has_M8_priv_gain",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_tool_abuse_line_count_within_cap",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_categories_1_8_byte_identity_against_main",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_validate_source_attribution_on_regen"
+  ],
+  "pre_existing_rationale": "All 15 reference agent .md files (denial-of-service.md, model-theft.md, tampering.md, spoofing.md, info-disclosure.md, privilege-escalation.md, repudiation.md, tool-abuse.md) or detection-patterns.md / OWASP coverage-attestation surfaces. `git diff main --name-only` lists NONE of these files on the F-302 branch — they are byte-identical to main, therefore fail identically on main. Pre-existing repo line-cap/coverage debt from prior enrichment features (ADR-023 lean-agent caps), mechanically independent of F-260b. The F-260b-relevant suite test_asset_sensitivity_tags.py passes 26/26.",
+  "gate_decision_rationale": "Soft gate (require_tests=false). The single true regression was caused by and fixed within this wave (mandatory schema-bump pin update). Zero unresolved regressions remain attributable to F-302. Pre-existing failures do not trigger the gate (build sub-step 5e: gate triggers on regressions only). Proceed to P0 checkpoint."
+}
