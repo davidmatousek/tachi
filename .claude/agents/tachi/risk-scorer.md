@@ -506,6 +506,27 @@ Each result's `properties` object carries scoring dimensions (`security-severity
 
 **Numeric string formatting**: All numeric properties MUST be formatted as strings with exactly one decimal place. Trailing zeros are preserved (e.g., `"4.0"` not `"4"`).
 
+### 10g.1. Affected Assets Provenance Property (Feature 260b)
+
+In addition to the scoring, composite, governance, and MAESTRO fields above, **every** result object MUST carry an `affected_assets` property in its `properties` bag. This is a provenance pass-through, not a computed value:
+
+```json
+"properties": {
+  "affected_assets": ["phi", "pii"]
+}
+```
+
+**Value source — copy verbatim, never re-derive**: Read the value from the `## Affected Assets` block in the input `threats.md` (the deterministic populator is the single authority for this block). Key the block row by the finding's ID (e.g., `S-1`, `AG-2`, `LLM-3`) and copy that row's tag array into the result's `affected_assets` property **byte-for-byte**. Do NOT recompute it from `component_asset_map`, the Section 3.5 modifier pass, or any other source — the risk-scorer copies, it does not derive.
+
+**Emission rules**:
+
+- **Literal snake_case key**: The property key MUST be the literal string `affected_assets`. Do NOT adopt the hyphen-case convention of the surrounding property keys (Section 10g) for this one property — it is byte-identical to the key emitted in `threats.sarif` (orchestrator) and the `threats.md` block.
+- **Present on every result**: Emit `affected_assets` on every result object. A finding whose `threats.md` block row is `[]` (target component carries no tags) MUST emit `"affected_assets": []` — present, never omitted.
+- **Flat sorted enum array**: The value is a flat JSON array of strings drawn only from the frozen six-value enum (`auth | financial | pii | phi | safety | secrets`), in ascending lexicographic order with no duplicates — exactly as it appears in the `threats.md` block. Do not re-sort or re-format beyond copying.
+- **Property bag placement only**: Place `affected_assets` inside `result.properties`. It MUST NOT collide with or be written to the reserved `tags` key.
+
+**Provenance only — does NOT affect scoring (NFR-2)**: Recording `affected_assets` is provenance metadata. It MUST NOT alter `cvss_base`, `cvss_vector`, the composite score, the severity band, or any governance field, and it is entirely independent of the Section 3.5 asset-sensitivity modifier pass and its `9.2` ceiling. The Section 3.5 modifier logic and the `9.2` ceiling are unchanged by this property — `affected_assets` is copied alongside the score, never folded into it.
+
 ### 10h. Correlation Group Handling in SARIF
 
 Primary findings appear as top-level results with full scoring. Peer findings do NOT appear as separate top-level results -- they are referenced via `relatedLocations[]` on the primary result, each containing the peer's ID, threat summary, and logical location.

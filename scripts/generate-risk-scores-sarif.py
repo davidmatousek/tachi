@@ -29,6 +29,7 @@ from sarif_common import (
     PREFIX_TO_RULE,
     build_sarif_envelope,
     level_for_band,
+    parse_affected_assets,
     parse_component_metadata,
     prefix_for,
 )
@@ -269,6 +270,7 @@ def build_result(
     threats_full: dict[str, tuple[str, str]],
     source_attribution: dict[str, list[dict]],
     component_meta: dict[str, dict[str, str]],
+    affected_assets_by_id: dict[str, list[str]],
 ) -> dict:
     """Build one SARIF 2.1.0 result entry from a scored finding plus correlated context.
 
@@ -309,6 +311,14 @@ def build_result(
         "remediation-sla": s4.get("sla_days", finding["sla_days"]),
         "risk-disposition": s4.get("disposition", finding["disposition"]),
     }
+
+    # FR-004 verification tier: provenance property sourced verbatim from the
+    # shared extractor (`sarif_common.parse_affected_assets`), keyed by the same
+    # finding ID this result fingerprints. Snake_case key is byte-identical to
+    # the threats-sarif emitter; default [] keeps it present on every result and
+    # avoids colliding with the reserved SARIF `tags` key. Order is the
+    # extractor's (already sorted by the populator — not re-sorted/deduped here).
+    props["affected_assets"] = affected_assets_by_id.get(fid, [])
 
     score_source_raw = s3.get("score_source_raw", "")
     if "fresh" in score_source_raw:
@@ -520,6 +530,7 @@ def main() -> int:
     threats_status = parse_threats_status(threats_md)
     threats_full = parse_threats_full_text(threats_md)
     source_attribution = parse_source_attribution(threats_md)
+    affected_assets_by_id = parse_affected_assets(threats_md)
 
     if len(findings) < 80:
         print(
@@ -541,6 +552,7 @@ def main() -> int:
                 threats_full,
                 source_attribution,
                 component_meta,
+                affected_assets_by_id,
             )
         )
 

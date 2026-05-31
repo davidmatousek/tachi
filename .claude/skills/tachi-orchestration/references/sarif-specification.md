@@ -132,6 +132,8 @@ For each finding collected in Phase 3, create a SARIF `result` object using this
    - Add `"maestro-layer"` key to `properties` with the full layer name as value (e.g., `"L3 — Agent Framework"`). Set to `"Unclassified"` when the finding's component matched no layer keywords.
    - These properties are **additive** — they occupy distinct keys from existing baseline properties (`delta_status`, `baselineState`) and existing tags (`security`, `stride`, `ai`). No conflict with any existing SARIF properties.
 
+8. **`properties.affected_assets`**: Add the asset-sensitivity tags to the result's `properties` object. See the Affected Assets Property section below for the full contract. In brief: copy the finding's `affected_assets` value **verbatim** from the `## Affected Assets` block in `threats.md` (matched by finding ID), emit it under the snake_case key `affected_assets` as a sorted enum array, and emit `[]` when the finding has no tags. Present on **every** result.
+
 **Complete field mapping reference**:
 
 | Finding IR Field | SARIF Object Path | Notes |
@@ -146,8 +148,51 @@ For each finding collected in Phase 3, create a SARIF `result` object using this
 | `dfd_element_type` | `result.locations[].logicalLocations[].kind` | Custom kinds: `external-entity`, `process`, `data-store`, `data-flow` |
 | `references` | Rule `help.markdown` + `properties.tags` | OWASP, CWE, MITRE framework identifiers |
 | `maestro_layer` | `result.properties.tags[]` + `result.properties["maestro-layer"]` | Tag: `"maestro-layer:{layer-id}"`, Property: full layer name |
+| `affected_assets` | `result.properties.affected_assets` | Copied verbatim from the `threats.md` Affected Assets block, matched by finding ID. Sorted enum array; `[]` when none |
 | Input file | `result.locations[].physicalLocation.artifactLocation.uri` | Architecture input file path |
 | (fixed) | `result.locations[].physicalLocation.region.startLine` | Always `1` |
+
+## Affected Assets Property
+
+Every SARIF result MUST include an `affected_assets` key in its `properties` object recording the asset-sensitivity tags the finding inherits from its target component. This field carries asset-exposure context into SARIF consumers; GitHub Code Scanning ignores unknown properties gracefully, while richer viewers surface them.
+
+**The `threats.md` Affected Assets block is the single value authority.** The block is authored deterministically by the populator (not by the orchestrator). During SARIF generation the orchestrator **copies** each finding's value verbatim from that block — it MUST NOT re-derive the tags from the component asset map or any other source. Authoritative serialization contract: `.claude/skills/tachi-shared/references/finding-format-shared.md` → *`affected_assets` Block*.
+
+**Per-result rules**:
+
+- **Literal snake_case key**: The property key MUST be exactly `affected_assets` (snake_case). Do NOT adopt the kebab/camel casing used by neighboring keys (e.g., `maestro-layer`), and MUST NOT place the values in the reserved SARIF `tags` key.
+- **Copied verbatim, matched by finding ID**: Look up the result's finding ID (the `findingId/v1` value, e.g. `"S-1"`, `"AG-2"`, `"LLM-3"`) in the `threats.md` Affected Assets block and copy that row's array exactly — same elements, same order.
+- **Flat sorted enum array**: The value is a JSON array of strings drawn only from the frozen 6-value enum (`pii | phi | auth | secrets | financial | safety`), emitted in ascending lexicographic order (the block is already sorted; copy that order). Lexicographic order of the enum is fixed: `auth, financial, pii, phi, safety, secrets`.
+- **Present on every result, `[]` when none**: The key is emitted for 100% of results. A finding whose target component carries no tags emits `"affected_assets": []` — never omitted, never `null`, never `"none"`.
+- **Additive**: This key occupies a distinct slot from existing `properties` keys (`maestro-layer`, `baselineState`) and from `properties.tags[]`. No conflict with any existing SARIF property.
+
+This is the production authoring contract for `threats.sarif`. The risk-scorer applies the identical rule when authoring `risk-scores.sarif`, and the `threats.md` block, both `.sarif` surfaces, and the `finding.yaml` schema shape MUST carry byte-identical `affected_assets` values per finding (cross-format equality invariant — verified downstream).
+
+**Example — result with affected_assets (and surrounding properties)**:
+
+```json
+{
+  "ruleId": "tachi/stride/spoofing",
+  "partialFingerprints": {
+    "primaryLocationLineHash": "a1b2c3d4e5f67890",
+    "findingId/v1": "S-1"
+  },
+  "properties": {
+    "maestro-layer": "L4 — Deployment Infrastructure",
+    "affected_assets": ["auth", "pii"]
+  }
+}
+```
+
+**Example — untagged finding emits an empty array**:
+
+```json
+{
+  "properties": {
+    "affected_assets": []
+  }
+}
+```
 
 ## Correlated Finding Mapping
 
@@ -536,6 +581,7 @@ Before writing the `threats.sarif` file, run the following validation checklist.
 - [ ] **Rule-result consistency**: Every `ruleId` referenced by a result has a corresponding entry in `tool.driver.rules[]`. No orphan rule IDs.
 - [ ] **Security-severity format**: Every `security-severity` value in `tool.driver.rules[].properties` is a numeric string (e.g., `"8.0"`) matching the Severity Mapping Table values.
 - [ ] **MAESTRO layer properties**: Every result has `"maestro-layer"` in `properties` (full layer name or "Unclassified") and a `"maestro-layer:{layer-id}"` entry in `properties.tags[]`.
+- [ ] **Affected assets property**: Every result has `affected_assets` (snake_case) in `properties` — a sorted enum array copied verbatim from the matching `threats.md` Affected Assets block row, or `[]` when the finding has no tags. The key is never omitted and never placed in `properties.tags[]`.
 - [ ] **Result count**: The number of top-level results equals the expected deduplicated finding count. If the STRIDE and AI tables contain N findings after deduplication, the `results` array MUST contain exactly N entries.
 
 If any check fails, correct the error before proceeding. Do not produce a `threats.sarif` file that fails any of these structural checks.
