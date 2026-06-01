@@ -109,7 +109,7 @@ triad:
 
 **Independent Test**: CHANGELOG names @north-echo as PR #262's prototype author (never "surfaced by") and references Discussion #246.
 
-- [ ] T019 [US3] Add the `CHANGELOG.md` `feat(302):` entry — `feat(302): wire asset-sensitivity tags through finding IR + threats.md + SARIF (F-260b)` — with the @north-echo attribution line (prototype author of PR #262, NEVER "surfaced by"; credit is recognition, not a work assignment — declined follow-on) referencing Discussion #246 (FR-010 + FR-011a/d). Reuse the trailer `Co-Authored-By: Christopher Lusk <122107484+north-echo@users.noreply.github.com>` on the feature commit.
+- [X] T019 [US3] Add the `CHANGELOG.md` `feat(302):` entry — `feat(302): wire asset-sensitivity tags through finding IR + threats.md + SARIF (F-260b)` — with the @north-echo attribution line (prototype author of PR #262, NEVER "surfaced by"; credit is recognition, not a work assignment — declined follow-on) referencing Discussion #246 (FR-010 + FR-011a/d). Reuse the trailer `Co-Authored-By: Christopher Lusk <122107484+north-echo@users.noreply.github.com>` on the feature commit.
 
 > **Delivery-time (`/aod.deliver`, not feature-branch tasks)**: FR-011c Discussion #246 acknowledgment comment + offered `Co-Authored-By`; FR-012 close Issue #302 (cite PR + release + credit URL) and parent #260 (link F-260b PR + credit @north-echo) — completing the #246 → #262 → #260 → #302 chain.
 
@@ -129,7 +129,7 @@ triad:
 
 **Purpose**: CI protection, frozen-constraint gate, full validation.
 
-- [ ] T020 [P] CI wiring (FR-008): add `tests/scripts/test_asset_sensitivity_tags.py` (existing 26-case suite — 23 defs + 1 parametrize → 26) AND `tests/scripts/test_affected_assets_wiring.py` to BOTH the `paths:` filter and the `pytest` invocation in `.github/workflows/tachi-pytest.yml` (lock-step — Entry 3 / F-256 lesson).
+- [X] T020 [P] CI wiring (FR-008): add `tests/scripts/test_asset_sensitivity_tags.py` (existing 26-case suite — 23 defs + 1 parametrize → 26) AND `tests/scripts/test_affected_assets_wiring.py` to BOTH the `paths:` filter and the `pytest` invocation in `.github/workflows/tachi-pytest.yml` (lock-step — Entry 3 / F-256 lesson). Also added the source surfaces (`populate-affected-assets.py`, `sarif_common.py`, `schemas/finding.yaml`) to `paths:` so the suite triggers on F-260b code changes; YAML validated, lock-step audited (both files in paths + invocation).
 - [ ] T021 Frozen-constraint gate (SC-011): verify `git diff main -- schemas/risk-scoring.yaml scripts/tachi_parsers.py` shows NO change to `VALID_ASSET_TAGS`, `modifier_ceiling: 9.2`, the modifier-after-clamp ordering, or `risk-scoring.yaml` `schema_version` (stays 1.1).
 - [ ] T022 Run full `quickstart.md` validation (SC-001…SC-012); confirm the 26-case suite + `test_affected_assets_wiring.py` are green in CI; NFR-2 score-equivalence vs the v4.31.0 worked example holds.
 

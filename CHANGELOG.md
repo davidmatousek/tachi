@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Asset-sensitivity tags wired through finding IR + threats.md + SARIF (F-260b)
+
+Wired the `affected_assets` provenance field end-to-end across every tachi output
+surface, completing the asset-sensitivity tag prototype into a first-class,
+machine-readable finding attribute. A downstream consumer (GitHub Code Scanning,
+SAST aggregators) can now read which sensitive assets each finding's component
+exposes — not just the finding's score.
+
+**What shipped**:
+- **Schema** (`schemas/finding.yaml` → `1.9`): optional, always-present
+  `affected_assets` enum-array field (6-value enum `pii | phi | auth | secrets |
+  financial | safety`, default `[]`).
+- **`threats.md`**: a new always-present `## Affected Assets` block, keyed per
+  finding ID, authored by a deterministic non-LLM populator
+  (`scripts/populate-affected-assets.py`) — the single value authority. Existing
+  finding tables are byte-stable (additive-only).
+- **SARIF**: `result.properties.affected_assets` (snake_case) on every result in
+  **both** `threats.sarif` and `risk-scores.sarif`, copied verbatim from the
+  `threats.md` block (cross-format byte-equivalence per finding).
+- **Pipeline wiring**: the populator runs at the orchestrator's Phase 3→4 boundary
+  (before SARIF authoring), so the deterministic block is the cross-format source
+  of truth across all three surfaces.
+
+**Provenance only — no scoring change**: the CVSS impact-bit asset modifier and the
+`9.2` modifier ceiling (`schemas/risk-scoring.yaml`) are untouched (frozen). This
+field records exposure; it never alters `cvss_base`, the composite, or the severity
+band.
+
+**Credit**: the asset-sensitivity tag prototype was authored by **@north-echo
+(Christopher Lusk)** in [PR #262](https://github.com/davidmatousek/tachi/pull/262)
+(merged in v4.31.0), originating from
+[Discussion #246](https://github.com/davidmatousek/tachi/discussions/246). F-260b
+builds on that prototype to wire the tags through the finding IR and output surfaces.
+
+**Reference**: [ADR-046](docs/architecture/02_ADRs/ADR-046-asset-tag-output-wiring.md)
+(asset-tag output wiring). Issue #302; prototype PR #262; Discussion #246.
+
 ### Hardened config-file load (BLP-02 F-2)
 
 Replaced four bash `source`/`eval` config-file load sites with a hardened
