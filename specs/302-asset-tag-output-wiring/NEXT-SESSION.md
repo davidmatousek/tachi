@@ -1,22 +1,25 @@
 # NEXT-SESSION — Feature 302 (Asset-Tag Output Wiring, F-260b)
 
 **Branch**: `302-asset-tag-output-wiring` | **Draft PR**: #303
-**Handoff written**: 2026-05-31 | **Reason**: standalone 3-wave ceiling reached (build Step 4 sub-step 7) — Waves 6, 7, 8 executed this session.
-**Progress**: 21 / 23 tasks complete (T001–T020 + T023). **P0 + P1 + P2 checkpoints all APPROVED.**
+**Updated**: 2026-06-01 | **Status**: ✅ **BUILD COMPLETE** — all 23 tasks (T001–T023) done; build Steps 5–8 done. **P0 + P1 + P2 + Final Validation all APPROVED.**
 
 ---
 
-## Next Actions (resume here)
+## Next Actions (build done → deliver)
 
-Run `/aod.build 302` in a fresh conversation. It auto-resumes at the first unchecked task.
-The next wave is **Wave 9** (the final gates), then build **Steps 5–8**:
+The build is finished. Wave 9 (T021+T022) cleared both final gates and Steps 5–8 (final reviews + security scan) all passed. **Next: run `/aod.deliver FEATURE: 302 - Asset-Tag Output Wiring`**, then `/aod.document`.
 
-- **T021** [Polish] — **SC-011 frozen-constraint binary diff gate**: verify `git diff main -- schemas/risk-scoring.yaml scripts/tachi_parsers.py` shows NO change to `VALID_ASSET_TAGS`, `modifier_ceiling: 9.2`, the modifier-after-clamp ordering, or `risk-scoring.yaml` `schema_version` (stays `1.1`). Agent: **tester**. (Independent — run first.)
-- **T022** [Polish] — **full `quickstart.md` acceptance** (SC-001…SC-012): confirm the 26-case suite + `test_affected_assets_wiring.py` are green in CI; NFR-2 score-equivalence vs the v4.31.0 worked example holds. Agent: **tester**. Depends on everything incl. T020's CI wiring. **Closing acceptance gate.**
+Carry the **Delivery-time tails** below into `/aod.deliver` (FR-011c Discussion ack, FR-012 issue closes #246→#262→#260→#302, FR-010/SC-009 release-please verify, P0 schema-pin grep).
 
-T021 → T022 are serial (T022 is the closing gate). After Wave 9: run build **Steps 5–8** (final Architect + Code + Security reviews; **Design Gate is N/A** — no UI; **Security Scan Step 7 applies** to the populator/extractor; completion report) → `/aod.deliver` → `/aod.document`.
+**Wave 9 result (2026-06-01)** — both gates PASS (`.aod/results/tester-wave9.md`):
+- **T021 (G6, SC-011)**: `git diff main -- schemas/risk-scoring.yaml scripts/tachi_parsers.py` = empty diff; all 4 frozen invariants untouched (6-value enum, ceiling 9.2, clamp ordering, schema_version 1.1). Commit `fadd21c`.
+- **T022 (G7, closing acceptance)**: SC-001…SC-008 + SC-011 verified; SC-002 additive-only (262 insertions / 0 deletions); both F-260b suites **61/61 green**; R9 cited PASS from T018 (NOT re-run); SC-009/010/012 deferred to `/aod.deliver`. Commit `fadd21c`.
 
-> **R9 note for T022**: the live-pipeline R9 gate (T018) is **already done + PASS** this session (see below) — T022 should cite it, not re-run the expensive live pipeline. The full agentic-app threat-model overflows the orchestrator's context (~17–18 min, "Prompt is too long"); a scoped run (skip Phase 5) is the workaround if a re-run is ever needed.
+**Build Steps 5–8 (2026-06-01)** — all APPROVED:
+- **Step 5 Final Validation**: Architect APPROVED (SHIP; 1 LOW carried L-3), Code-reviewer APPROVED (0 CRITICAL/WARNING, 3 SUGGESTION), Security-analyst APPROVED (0 CRIT/HIGH/MED, 1 non-exploitable LOW). See `.aod/results/{architect,code-reviewer,security-analyst}.md`.
+- **Step 6 Design Gate**: Skipped — no UI files changed.
+- **Step 7 Security Scan**: PASSED — 7 Python files, 0 findings; SCA skipped (no manifests). Commit `b267825`. See `security-scan.md`.
+- **Step 8**: `test-results/summary.json` written.
 
 ---
 
