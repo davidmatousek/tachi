@@ -118,12 +118,23 @@ Single-command entry point for tachi threat modeling. Validates prerequisites, i
    - threat-report.md
    - attack-trees/ (one file per Critical/High finding)
 
-   Write threats.md (the finding tables) FIRST. A deterministic populator step
-   runs immediately after you emit threats.md and appends an always-present
-   `## Affected Assets` block (per-finding asset-sensitivity tags). When you
-   author threats.sarif, copy each finding's `affected_assets` value VERBATIM
-   from that block into `result.properties.affected_assets` (snake_case, flat
-   array, `[]` when none) per the SARIF authoring contract.
+   Write threats.md (the finding tables) FIRST. Then, AFTER threats.md's finding
+   tables are written and BEFORE you author threats.sarif, you MUST run the
+   deterministic populator yourself to write the authoritative, always-present
+   `## Affected Assets` block (per-finding asset-sensitivity tags) into threats.md:
+
+       python3 scripts/populate-affected-assets.py \
+         --architecture {output_dir}/architecture.md \
+         --threats {output_dir}/threats.md
+
+   The populator is the single value authority — do NOT author the
+   `## Affected Assets` block or guess/assign any finding's `affected_assets`
+   values yourself. THEN author threats.sarif, copying each finding's
+   `affected_assets` value VERBATIM (matched by finding ID) from the block the
+   populator just wrote into `result.properties.affected_assets` (snake_case, flat
+   sorted enum array, `[]` when none, present on every result) per the SARIF
+   authoring contract. (If no architecture.md snapshot exists in {output_dir},
+   skip the populator; threats.sarif then emits `[]` for every result.)
 
    Baseline: {baseline_path or "none (first run — stateless mode)"}
 
@@ -136,18 +147,23 @@ Single-command entry point for tachi threat modeling. Validates prerequisites, i
 
 3. Wait for the orchestrator to complete all 5 phases.
 
-## Step 2.5: Populate Affected Assets (deterministic)
+## Step 2.5: Re-assert Affected Assets Block (idempotent safety net)
 
-Wire the deterministic `affected_assets` value authority into the pipeline
-**after** the orchestrator emits `threats.md`'s finding tables and **before**
-the SARIF surfaces source the block (plan AD-1 M-2). The populator joins the
-architecture's inline `[asset:...]` tags to each finding by component and
-upserts an always-present `## Affected Assets` block into `threats.md`. It is
-deterministic, idempotent (re-running is byte-stable), and records provenance
-only — it never re-scores.
+The orchestrator already runs the deterministic populator during its own pass —
+at the Phase 3 → Phase 4 boundary, after it writes `threats.md`'s finding tables
+and before it authors `threats.sarif` (Step 2 prompt above; orchestrator Phase
+3.7). This command-level step is the **idempotent safety re-assert**: it
+guarantees the authoritative `## Affected Assets` block is present and
+byte-stable in `threats.md` regardless of orchestrator behavior. The populator is
+the single value authority (plan AD-1 M-2): it joins the architecture's inline
+`[asset:...]` tags to each finding by component and upserts an always-present
+`## Affected Assets` block into `threats.md`. It is deterministic, idempotent
+(re-running replaces the block in place — never duplicates it, byte-stable), and
+records provenance only — it never re-scores.
 
 1. Run the populator against the architecture snapshot (Step 1.4) and the
-   just-emitted `threats.md`, writing the block back into `threats.md` in place:
+   `threats.md` produced by Step 2, writing the block back into `threats.md` in
+   place (a no-op replacement if the orchestrator already wrote an identical block):
 
 ```bash
 # Append/upsert the deterministic affected_assets block into threats.md
@@ -166,10 +182,15 @@ python3 scripts/populate-affected-assets.py \
    validation already halts on a missing architecture file, so this branch is
    not reached in normal runs.
 
-> **Sequencing note**: `threats.sarif` (authored by the orchestrator) and any
-> downstream SARIF surface MUST source `affected_assets` from the block this
-> step writes — not re-derive it. This keeps the deterministic populator the
-> single value authority across `threats.md` and SARIF (plan AD-1; NFR-3).
+> **Sequencing note**: `threats.sarif` is authored by the orchestrator AFTER the
+> Phase 3.7 populator run (orchestrator Phase 3.7 + Step 2 prompt), so it sources
+> `affected_assets` from a block that already exists — it never re-derives the
+> values. This Step 2.5 re-assert guarantees that block is present and
+> byte-stable even if the orchestrator's in-pass populator run did not occur, and
+> it likewise establishes the deterministic block for any downstream SARIF surface
+> (e.g., `risk-scores.sarif`, whose own `/risk-score` Step 1.5 re-asserts it again
+> before scoring). This keeps the deterministic populator the single value
+> authority across `threats.md` and every SARIF surface (plan AD-1; NFR-3).
 
 ## Step 3: Report Results
 

@@ -74,6 +74,12 @@ Single-command entry point for tachi quantitative risk scoring. Validates prereq
 
 ## Step 1.5: Ensure Affected Assets Block (idempotent)
 
+> **Pre-SARIF populator gate**: This step is the `/risk-score` equivalent of the
+> `/threat-model` Phase 3.7 / Step 2.5 gate — it guarantees the deterministic
+> `## Affected Assets` block exists in the input `threats.md` BEFORE Step 2
+> authors `risk-scores.sarif`, so the SARIF sources from a deterministic block
+> rather than re-deriving it. (Already correctly sequenced — no fix needed here.)
+
 `risk-scores.sarif` carries `result.properties.affected_assets` copied verbatim
 from the `## Affected Assets` block in the input `threats.md` (plan AD-1; the
 deterministic populator is the single value authority). In the normal flow that

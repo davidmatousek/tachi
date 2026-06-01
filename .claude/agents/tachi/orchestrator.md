@@ -596,7 +596,7 @@ Evaluate the predicate EXACTLY ONCE per architecture (cached for Phase 3.6 durat
 - Assign `agentic_pattern: none` to every finding in the IR.
 - Set `has-agentic-patterns = false`.
 - Skip Steps 2 and 3 entirely (no rule evaluation, no net-new finding generation).
-- Exit Phase 3.6; proceed to Phase 4: Assess.
+- Exit Phase 3.6; proceed to Phase 3.7: Populate Affected Assets Block (the populator still runs so the `## Affected Assets` block exists before Phase 4 SARIF generation).
 
 **If `result == true`** (at least one condition holds):
 - Continue to Process Step 2.
@@ -669,7 +669,29 @@ This boolean is consumed by:
 - **Phase 5 threat-report agent**: gates the conditional Agentic Pattern Analysis section — the section is rendered only when `has-agentic-patterns == true`, and is omitted entirely when `false`.
 - **threats.md Section 4b (Findings by Agentic Pattern)**: gates the conditional Section 4b — suppressed entirely when `has-agentic-patterns == false`; rendered with pattern-grouped finding listings when `true`. The Pattern column in the Section 7 findings table renders unconditionally (showing `—` for all `none` values) to preserve consistent table shape across architectures.
 
-After Phase 3.6 completes, proceed to Phase 4: Assess.
+After Phase 3.6 completes, proceed to Phase 3.7: Populate Affected Assets Block.
+
+---
+
+## Phase 3.7: Populate Affected Assets Block (deterministic, pre-SARIF)
+
+This step runs at the **Phase 3 → Phase 4 boundary**: after `threats.md`'s finding tables (Sections 3, 4, 4a, and any net-new `AGP-` findings from Phase 3.6) are assembled and written, and **before** Phase 4 authors `threats.sarif`. Its sole job is to make the authoritative `## Affected Assets` block **exist in `threats.md`** so that Phase 4 SARIF generation has a deterministic block to copy from.
+
+**The populator — not you — is the value authority.** The deterministic populator (`scripts/populate-affected-assets.py`) joins the architecture's inline `[asset:...]` tags to each finding by component and upserts an always-present `## Affected Assets` block into `threats.md`. You MUST NOT author the `## Affected Assets` block yourself, and you MUST NOT guess, infer, or assign any finding's `affected_assets` values (FR-2; plan AD-1; `sarif-specification.md` → *Affected Assets Property*). Your only action here is to invoke the populator via Bash; Phase 4 then copies each finding's value **verbatim** from the block the populator writes.
+
+**Action** — run the populator against the architecture snapshot and the just-written `threats.md` in the output directory you were told to write to (the same `{output_dir}` that holds `threats.md`, `threats.sarif`, etc.):
+
+```bash
+python3 scripts/populate-affected-assets.py \
+  --architecture <output_dir>/architecture.md \
+  --threats <output_dir>/threats.md
+```
+
+The populator is deterministic and idempotent — re-running replaces the block in place, never duplicates it. The block is **always written**, even when the architecture carries no asset tags (every finding then lists `[]`), so the `affected_assets` surface is always present for Phase 4 to copy (FR-005 always-present default).
+
+**Edge case — no architecture snapshot**: If no `architecture.md` snapshot exists in `{output_dir}` (the command's Step 1.4 was skipped because the source architecture file did not exist), skip the populator. Phase 4 then emits `affected_assets: []` for every result per the FR-005 always-present default. In normal runs the snapshot exists (command Step 1.4), so this branch is not reached.
+
+After the block is written (or skipped per the edge case), proceed to Phase 4: Assess.
 
 ---
 
@@ -710,6 +732,8 @@ Before finalizing the output document, run the output structural validation chec
 After the `threats.md` output is structurally validated, produce a `threats.sarif` file in the same output directory. **MANDATORY**: Read `.claude/skills/tachi-orchestration/references/sarif-specification.md` before executing SARIF generation.
 
 Phase 4 already has all finding data from Phase 3. The SARIF generation step transforms that data into a JSON file -- no additional analysis or agent invocation is needed. Follow the instructions in the SARIF specification reference to produce the `threats.sarif` file.
+
+For each finding result, set `result.properties.affected_assets` by copying that finding's value **verbatim** (matched by finding ID) from the `## Affected Assets` block that Phase 3.7 wrote into `threats.md` — snake_case key, flat sorted enum array, `[]` when the finding has no tags, present on every result. Do NOT re-derive `affected_assets` from the component asset map or any other source, and do NOT author the values yourself: the populator that ran in Phase 3.7 is the single value authority (plan AD-1; `sarif-specification.md` → *Affected Assets Property*). This keeps `threats.sarif` byte-identical to the `threats.md` block (cross-format equality invariant / NFR-3).
 
 For each finding result in the SARIF output, include MAESTRO layer metadata in the result's `properties` object:
 

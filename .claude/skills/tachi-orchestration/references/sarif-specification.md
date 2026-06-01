@@ -156,7 +156,7 @@ For each finding collected in Phase 3, create a SARIF `result` object using this
 
 Every SARIF result MUST include an `affected_assets` key in its `properties` object recording the asset-sensitivity tags the finding inherits from its target component. This field carries asset-exposure context into SARIF consumers; GitHub Code Scanning ignores unknown properties gracefully, while richer viewers surface them.
 
-**The `threats.md` Affected Assets block is the single value authority.** The block is authored deterministically by the populator (not by the orchestrator). During SARIF generation the orchestrator **copies** each finding's value verbatim from that block — it MUST NOT re-derive the tags from the component asset map or any other source. Authoritative serialization contract: `.claude/skills/tachi-shared/references/finding-format-shared.md` → *`affected_assets` Block*.
+**The `threats.md` Affected Assets block is the single value authority.** The block is authored deterministically by the populator (not by the orchestrator), written into `threats.md` at the Phase 3 → Phase 4 boundary (orchestrator Phase 3.7) so it already exists when Phase 4 SARIF generation runs. During SARIF generation the orchestrator **copies** each finding's value verbatim from that block — it MUST NOT re-derive the tags from the component asset map or any other source. Authoritative serialization contract: `.claude/skills/tachi-shared/references/finding-format-shared.md` → *`affected_assets` Block*.
 
 **Per-result rules**:
 
