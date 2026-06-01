@@ -130,30 +130,28 @@ From `specs/305-adoption-signal-capture/test-results/summary.json`:
 
 ---
 
-## Post-Merge Maintainer Tail (NOT YET DONE)
+## Post-Merge Tail — Resolved (2026-06-01)
 
-These 7 `[POST-MERGE]` tasks are **maintainer-executed** (real GitHub identity / repo-admin clicks / real outreach to real people) and cannot be performed by the delivery agent. They remain open and are tracked on the reopened **Issue #305**:
+The post-merge tail was worked the same day. Platform tasks completed; the outreach send was deferred by maintainer decision. **Issue #305 closed (`stage:done`) 2026-06-01.**
 
-| Task | Action | Owner |
-|------|--------|-------|
-| T019 | Merge + release-please verify | ✅ **DONE** (PR #306 merged `b89cf46`; #307 release 4.38.0 opened) |
-| T007/T008 | Publish "In the Wild" welcome post + **category-level pin** (In-the-Wild's own 0→1/4 pool; global pins stay 3/4) + update category description; verify live + links resolve | maintainer |
-| T013/T014 | Post AIVSS v1.0 partial-scope tracking comment on **Issue #168** + apply issue pin (0→1/3); reference Feature 143 / ADR-024; verify | maintainer |
-| T020 | Select ≥3 **previously-engaged** contacts (prior Discussion comment / issue / PR / direct reply / prior logged inbound — NO cold or first-degree-network sends), send the tone-reviewed message (drafted in #305), log recipients privately in #305 (public handles only) — **endogenous SC-005, close-gate** | maintainer |
-| T021 | Close Issue #305 with deliverable URLs (template, index, channel) + `_internal/` signal-log cross-link — **only after T020's recipients-logged gate is met** | maintainer |
+| Task | Action | Status |
+|------|--------|--------|
+| T019 | Merge + release-please verify | ✅ **DONE** — PR #306 merged `b89cf46`; #307 release 4.38.0 opened |
+| T007/T008 | Publish "In the Wild" welcome post; verify links | ✅ **DONE** — [Discussion #309](https://github.com/davidmatousek/tachi/discussions/309); links resolve. *(Pin + category-description are UI-only — GitHub exposes no `pinDiscussion`/category-description API; left as optional maintainer clicks.)* |
+| T013/T014 | AIVSS v1.0 tracking comment + pin on **#168** | ✅ **DONE** — comment posted, #168 pinned (`pinIssue`) |
+| T020 | ≥3 warm-outreach sends (endogenous SC-005) | ⏸️ **DEFERRED (maintainer decision)** — descoped from the close gate; it is an optional activation step, not delivered infrastructure. Tone-gated message copy + enumerable candidate set (@north-echo, @armorer-labs, @maorkuriel, @ChrisJr404) preserved in #305 for optional later use |
+| T021 | Close #305 with deliverable URLs | ✅ **DONE** — #305 closed `stage:done` with deliverable URLs + `_internal/` signal-log cross-link |
 
-**Close gate**: F-3 closes on endogenous SC-001…SC-009. SC-001/002/003/007/008/009 are met by the merged MVP; **SC-005 (≥3 outreach sends) is the remaining endogenous gate** and is the maintainer's to complete. The ≥1-case-study / ≥3-inbound *capture* (SC-010) is exogenous and is the BLP-04 initiative-level DoD, NOT an F-3 close gate.
-
-**Calendar guard**: keep platform/outreach on weekdays (avoids the #292 weekend-placement defect). Outer bound Mon 2026-06-08.
+**Close model (as resolved)**: the receiving infrastructure (SC-001/002/003/004/006/007/008/009) is delivered. SC-005 (outreach sends) was consciously **deferred**, not completed — recorded honestly rather than claimed. SC-010 (inbound capture) stays exogenous (BLP-04 initiative-level DoD, never an F-3 gate).
 
 ---
 
 ## Cleanup
 
 - [x] Feature branch deleted (local + remote, pruned)
-- [x] In-repo MVP tasks complete (14/21; remaining 7 are the post-merge maintainer tail above)
+- [x] In-repo MVP delivered (14/21 build tasks); platform tail (T007/T008, T013/T014, T019) completed; T020 outreach deferred
 - [x] No new TBD/TODO in committed docs
 - [x] Committed and pushed (delivery docs → main)
-- [ ] GitHub Issue closed (`stage:done`) — **deliberately deferred**: #305 reopened as the tracking anchor; closes at T021 after the ≥3 outreach sends (SC-005)
+- [x] GitHub Issue #305 closed (`stage:done`) — outreach (SC-005) deferred by maintainer decision, copy + candidates preserved in-issue
 
-**Feature 305 in-repo MVP is DELIVERED and RELEASING (v4.38.0 via #307). The feature is NOT fully closed — the post-merge maintainer tail (outreach + platform config) remains, tracked on the reopened Issue #305.**
+**Feature 305 is DELIVERED and RELEASED (v4.38.0 via #307); Issue #305 CLOSED 2026-06-01. The adopter receiving-infrastructure (template, index, "In the Wild" welcome post, AIVSS watch, signal log) is live; the ≥3-send outreach (SC-005) was deferred by maintainer decision as an optional activation step.**

@@ -19,6 +19,8 @@ triad:
 
 # Tasks: Adoption Signal Capture (F-3, BLP-04 Wave 3)
 
+> **CLOSE-OUT (2026-06-01) — Issue #305 CLOSED (`stage:done`).** In-repo MVP (T001–T006, T009–T012, T015–T018) + platform tail all DONE: T019 merge/release (PR #306 → v4.38.0 via #307), T007/T008 "In the Wild" welcome post ([Discussion #309](https://github.com/davidmatousek/tachi/discussions/309); links verified), T013/T014 AIVSS comment + pin on #168, T021 close. **T020 (≥3 outreach sends, SC-005) DEFERRED by maintainer decision** — descoped from the close gate as an optional activation step; tone-gated copy + enumerable candidate set (@north-echo, @armorer-labs, @maorkuriel, @ChrisJr404) preserved in #305 for optional later use. The `[ ]`/`[X]` checkboxes below reflect the pre-close build state; see `delivery.md` §Post-Merge Tail — Resolved for the authoritative final disposition.
+
 **Input**: Design documents from `specs/305-adoption-signal-capture/`
 **Prerequisites**: plan.md ✓ (PM + Architect signed), spec.md ✓ (PM signed), research.md, data-model.md, quickstart.md
 
