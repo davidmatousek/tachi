@@ -284,6 +284,13 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
+## [4.37.0](https://github.com/davidmatousek/tachi/compare/v4.36.0...v4.37.0) (2026-06-01)
+
+
+### Features
+
+* **302:** asset-tag output wiring (F-260b, BLP-04 Wave 2) ([#303](https://github.com/davidmatousek/tachi/issues/303)) ([3d3d29f](https://github.com/davidmatousek/tachi/commit/3d3d29f494730c52695b326900f9b451407e0043))
+
 ## [4.36.0](https://github.com/davidmatousek/tachi/compare/v4.35.0...v4.36.0) (2026-05-14)
 
 
