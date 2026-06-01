@@ -472,6 +472,22 @@ F-292 reused F-260's community-merge precedent (4 mechanical artifacts: CHANGELO
 
 ---
 
+### Entry 10: F-305 Adoption Signal Capture — Delivery Retrospective
+
+**Date**: 2026-06-01 | **Category**: Process Improvement | **Feature**: F-305 / F-3 (BLP-04 Wave 3) | **Issue**: #305 (reopened as post-merge tracking anchor)
+
+**Context**: Built the *receiving infrastructure* for adoption signals — adopter case-study template (`docs/adopters/case-study-template.md`, 5 required + 3 optional sections + a required default-deny consent block), adopters index (`docs/adopters/README.md`), reuse of the existing "In the Wild" Discussions category, a gitignored internal append-only signal log, AIVSS v1.0 release watch, and a warm-outreach scaffold. Docs + GitHub-platform-config, no application code (FR-012); `waves_tested: 0` recorded with an explicit skip_reason. Same-day define→plan→build→deliver; estimated 1-2 days, actual ~1 day. All three Triad sign-offs APPROVED_WITH_CONCERNS (0 blocking) and the pre-merge acceptance gate (Gate C: privacy/consent + positioning-neutrality) passed with 0 findings. 14/21 tasks complete = the mergeable in-repo MVP; the remaining 7 are post-merge maintainer-tail tasks by design.
+
+**Lesson — For docs/outreach features with a post-merge maintainer tail, merge the in-repo MVP first and split success criteria into endogenous (close-gate) vs exogenous (measurability-only).**
+
+- **Problem**: Several of F-305's deliverable tasks are platform/human actions that cannot complete at or before the squash-merge — publishing + category-pinning a Discussions welcome post (T007/T008), an AIVSS tracking comment + issue pin (T013/T014), and ≥3 warm-outreach sends to previously-engaged contacts (T020). Treating them as ordinary pre-merge tasks would have stalled the merge indefinitely; conversely, gating the feature's close on the *inbound* those actions might generate (≥1 case study / ≥3 signals, SC-010) would make the feature un-closeable since inbound is exogenous and may never arrive.
+- **What we learned**: Model the tail explicitly as `[POST-MERGE]` tasks in tasks.md, and partition the success criteria — **endogenous** SCs (the maintainer controls: the ≥3 outreach *sends*, SC-005) are the close gate; **exogenous** capture (SC-010, the inbound response) is a measurability assertion, never a close gate. Note also that GitHub auto-closes the feature issue the instant the linked PR merges — which fires *before* the post-merge tail runs, so the auto-close is not the deliberate T021 close-out and must be reversed if the tail is still pending.
+- **How to apply**: (1) In tasks.md, tag platform/outreach work `[POST-MERGE] [MANUAL-ONLY]` and put a hard "recipients-logged-in-#NNN" acceptance check on the outreach task so it can't be hand-waved. (2) Merge the in-repo MVP on its own — release-please fires on the `feat(NNN):` squash regardless of the pending tail. (3) If GitHub auto-closes the issue on merge, reopen it as the tracking anchor and close it deliberately (T021) only once the endogenous gate is met. (4) Keep the strategic "why" (buyer-signal / initiative framing) in the gitignored `_internal/` log + specs/, never the public artifacts — the positioning-neutrality gate (Gate C) enforces this over `docs/adopters/*`, CHANGELOG, the README cross-link, and the auto-appended system-design section.
+
+**Evidence**: `specs/305-adoption-signal-capture/{delivery.md, NEXT-SESSION.md, tasks.md, test-results/summary.json}`; squash-merge `b89cf46`; release-please PR #307 (`chore(main): release 4.38.0`); Issue #305 (reopened, delivery-status comment). Related: KB Entry 8 (F-296 distribution-launch docs-only / release-skip discipline).
+
+---
+
 ## Bug Fixes
 
 *No entries yet. Use `/kb-create` to add the first bug fix.*
