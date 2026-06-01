@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-01T22:40:46Z.
+> Auto-generated from GitHub Issues on 2026-06-01T23:31:25Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -24,7 +24,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| #98 | MAESTRO coverage matrix — show all 7 layers including zero-finding layers | — | 2026-06-01 |
+| — | *No items in this stage* | | |
 
 ## Plan
 
@@ -68,3 +68,4 @@
 | #268 | fix: disentangle tachi-scanner from AOD-Kit positioning in .claude/rules/scope.md | CLOSED | 2026-05-07 |
 | #266 | fix: retitle CONTRIBUTING.md for tachi (currently labeled 'AOD Kit' with stale clone URL) | CLOSED | 2026-05-07 |
 | #264 | feat: adopt dual-frame public positioning (harness reframe) | CLOSED | 2026-05-07 |
+| #98 | MAESTRO coverage matrix — show all 7 layers including zero-finding layers | OPEN | 2026-06-01 |
