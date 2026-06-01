@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-01T12:57:11Z.
+> Auto-generated from GitHub Issues on 2026-06-01T14:43:55Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -9,7 +9,6 @@
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
 | #295 | F-292 post-merge tachi.threat-model verification runs (T017 + T026) | Impact: 3 (closes empirical verification of SC-003 + SC-015), Confidence: 5 (mechanical execution), Effort: 2 (two `tachi.threat-model` runs + 1 commit) = **30 / Tier 2 (Medium)** | — | 2026-05-14 |
-| #260 | Asset-sensitivity tags as a CVSS impact modifier in the risk-scorer | Impact: 8, Confidence: 7, Effort: 7 = **22** | Community feature request #246 by @north-echo (2026-05-02... | 2026-05-05 |
 | #217 | detect_images leaves duplicate .jpg/.png pair after recovery write | — | — | 2026-05-05 |
 | #186 | F-A1.3 follow-on: MITRE ATT&CK + ATLAS catalog expansion | — | — | 2026-05-05 |
 | #185 | F-A1.2 follow-on: cwe.yaml expansion — add CWE records discovered in T029 drift analysis | — | — | 2026-05-05 |
@@ -26,7 +25,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| — | *No items in this stage* | | |
+| #305 | Adoption Signal Capture | — | 2026-06-01 |
 
 ## Plan
 
