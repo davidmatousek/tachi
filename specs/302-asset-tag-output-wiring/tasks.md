@@ -130,8 +130,8 @@ triad:
 **Purpose**: CI protection, frozen-constraint gate, full validation.
 
 - [X] T020 [P] CI wiring (FR-008): add `tests/scripts/test_asset_sensitivity_tags.py` (existing 26-case suite — 23 defs + 1 parametrize → 26) AND `tests/scripts/test_affected_assets_wiring.py` to BOTH the `paths:` filter and the `pytest` invocation in `.github/workflows/tachi-pytest.yml` (lock-step — Entry 3 / F-256 lesson). Also added the source surfaces (`populate-affected-assets.py`, `sarif_common.py`, `schemas/finding.yaml`) to `paths:` so the suite triggers on F-260b code changes; YAML validated, lock-step audited (both files in paths + invocation).
-- [ ] T021 Frozen-constraint gate (SC-011): verify `git diff main -- schemas/risk-scoring.yaml scripts/tachi_parsers.py` shows NO change to `VALID_ASSET_TAGS`, `modifier_ceiling: 9.2`, the modifier-after-clamp ordering, or `risk-scoring.yaml` `schema_version` (stays 1.1).
-- [ ] T022 Run full `quickstart.md` validation (SC-001…SC-012); confirm the 26-case suite + `test_affected_assets_wiring.py` are green in CI; NFR-2 score-equivalence vs the v4.31.0 worked example holds.
+- [X] T021 Frozen-constraint gate (SC-011): verify `git diff main -- schemas/risk-scoring.yaml scripts/tachi_parsers.py` shows NO change to `VALID_ASSET_TAGS`, `modifier_ceiling: 9.2`, the modifier-after-clamp ordering, or `risk-scoring.yaml` `schema_version` (stays 1.1). **RESULT**: G6 PASS — empty diff; all 4 frozen invariants untouched (verified on-branch: 6-value enum, ceiling 9.2, clamp ordering, schema_version 1.1). See `.aod/results/tester-wave9.md`.
+- [X] T022 Run full `quickstart.md` validation (SC-001…SC-012); confirm the 26-case suite + `test_affected_assets_wiring.py` are green in CI; NFR-2 score-equivalence vs the v4.31.0 worked example holds. **RESULT**: G7 PASS — SC-001…SC-008 + SC-011 verified; SC-002 additive-only (262 insertions / 0 deletions); both F-260b suites 61/61 green (35 wiring + 26 sensitivity); R9 cited PASS from T018 (not re-run); SC-009/010/012 deferred to `/aod.deliver`. See `.aod/results/tester-wave9.md`.
 
 ---
 
