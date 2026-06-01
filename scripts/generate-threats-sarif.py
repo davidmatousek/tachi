@@ -20,6 +20,7 @@ from sarif_common import (
     PREFIX_TO_RULE,
     SEVERITY_TO_LEVEL,
     build_sarif_envelope,
+    parse_affected_assets,
     parse_component_metadata,
 )
 
@@ -400,6 +401,7 @@ def line_hash_for(fid: str) -> str:
 def build_result(
     finding: dict,
     component_meta: dict[str, dict[str, str]],
+    affected_assets_by_id: dict[str, list[str]],
     run_id_baseline: str = "2026-04-19T03-20-30",
 ) -> dict:
     """Build one SARIF 2.1.0 result entry from a parsed finding row.
@@ -448,6 +450,11 @@ def build_result(
         "severity": finding["risk_level"],
         "likelihood": finding["likelihood"],
         "impact": finding["impact"],
+        # F-260b (T009): asset-sensitivity tags sourced verbatim from the shared
+        # extractor (sarif_common.parse_affected_assets), keyed by finding ID.
+        # Snake_case literal key per contract §3; always present (default []),
+        # order preserved (already sorted by the populator — no re-sort/dedup).
+        "affected_assets": affected_assets_by_id.get(finding["id"], []),
     }
     if finding["agentic_pattern"]:
         properties["maestro-pattern"] = finding["agentic_pattern"]
@@ -511,8 +518,12 @@ _TAXONOMIES = [
 ]
 
 
-def build_sarif(findings: list[dict], component_meta: dict[str, dict[str, str]]) -> dict:
-    results = [build_result(f, component_meta) for f in findings]
+def build_sarif(
+    findings: list[dict],
+    component_meta: dict[str, dict[str, str]],
+    affected_assets_by_id: dict[str, list[str]],
+) -> dict:
+    results = [build_result(f, component_meta, affected_assets_by_id) for f in findings]
     driver = {
         "name": "Tachi",
         "semanticVersion": "1.7",
@@ -538,8 +549,9 @@ def main() -> int:
 
     threats_md = args.input.read_text(encoding="utf-8")
     component_meta = parse_component_metadata(threats_md)
+    affected_assets_by_id = parse_affected_assets(threats_md)
     findings = parse_findings(args.input)
-    sarif = build_sarif(findings, component_meta)
+    sarif = build_sarif(findings, component_meta, affected_assets_by_id)
 
     args.output.write_text(json.dumps(sarif, indent=2) + "\n", encoding="utf-8")
 

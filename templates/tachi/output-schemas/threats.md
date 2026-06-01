@@ -711,3 +711,46 @@ This section provides an aggregate lifecycle breakdown of all findings relative 
 | Date | 2026-03-25 |
 | Baseline Findings | 20 |
 | Run ID | 2026-03-25T12-53-57 |
+
+---
+
+## Affected Assets Block (appended)
+
+> **Additive surface.** This block is a **new structure appended after** the
+> STRIDE and AI finding tables above. It introduces no new column and changes no
+> existing row — the prior tables remain byte-for-byte unchanged. Consumers that
+> only parse the STRIDE/AI tables are unaffected; consumers that need
+> asset-sensitivity context read this block.
+
+The **Affected Assets** block records, per finding, the asset-sensitivity tags
+the finding inherits from its target component (`affected_assets =
+component_asset_map.get(component, [])`). It is keyed by finding ID so each row
+maps 1:1 to a finding in the STRIDE (Section 3) and AI (Section 4) tables above.
+
+**Serialization rules** (authoritative definition:
+`.claude/skills/tachi-shared/references/finding-format-shared.md` →
+*`affected_assets` Block*):
+
+- **Always present** — every finding in the tables above appears here exactly once.
+- **`[]` when none** — a finding whose target component carries no tags renders `[]`.
+- **Closed enum** — values are drawn only from `auth | financial | pii | phi | safety | secrets`.
+- **Sorted & de-duplicated** — values are emitted in ascending lexicographic order with no repeats, so the block is deterministic across runs.
+
+### Rendered shape
+
+```markdown
+## Affected Assets
+
+| Finding ID | Affected Assets |
+|------------|-----------------|
+| S-1 | [auth, pii] |
+| T-2 | [] |
+| LLM-3 | [financial, phi, secrets] |
+```
+
+### Field notes
+
+| Column | Description |
+|--------|-------------|
+| `Finding ID` | Stable finding identifier in canonical `{PREFIX}-{N}` form (`S-1`, `AG-2`, `LLM-3`); MUST match a finding ID present in the STRIDE/AI tables above. |
+| `Affected Assets` | Bracketed, comma-separated, ascending-lexicographic list of asset-sensitivity tags inherited from the finding's target component; `[]` when the component carries no tags (or the component did not join). |

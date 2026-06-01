@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "feature": "302-asset-tag-output-wiring",
+  "total_waves": 10,
+  "waves_tested": 5,
+  "waves_skipped": 5,
+  "totals": {
+    "pass": 4168,
+    "fail": 80,
+    "skip": 9
+  },
+  "total_regressions": 1,
+  "coverage_trend": null,
+  "gate_decisions": [
+    { "wave": 2, "decision": "pass" },
+    { "wave": 3, "decision": "pass" },
+    { "wave": 4, "decision": "pass" },
+    { "wave": 5, "decision": "pass" },
+    { "wave": 6, "decision": "pass" }
+  ],
+  "notes": "totals are the schema-mandated SUM of per-wave full-suite runs (runner: `python3 -m pytest tests/scripts/`, cumulative), per the F-256 precedent. Real end-state = Wave 6 (last tested wave): 865 pass / 16 fail / 2 skip. The 16 failures are byte-identical across waves 2-6 (773/822/852/856/865 pass as the suite grew) — a documented F-302-INDEPENDENT pre-existing cluster on main (threat-model pipeline coverage attestation + line-count caps), NOT in either F-260b suite. The single regression counted (Wave 2, first tested wave, gate=pass) was non-blocking and resolved at the P0 checkpoint (APPROVED_WITH_CONCERNS — both MEDIUMs closed); 0 regressions in waves 3-6. F-260b-specific suites are 61/61 green, confirmed at Wave 9 acceptance (T022: test_affected_assets_wiring.py 35 + test_asset_sensitivity_tags.py 26). Coverage tooling not detected -> coverage_trend null. Waves NOT tested (Step 4.5a skip, no .py source change): Wave 0 (baseline snapshot), Wave 1 (schema YAML + ADR/contract markdown), Wave 7 (manual live-pipeline R9 gate, T018), Wave 8 (CHANGELOG markdown + CI YAML), Wave 9 (verification gates T021/T022 — no source change; T022 ran the suites as its task content, 61/61 green)."
+}

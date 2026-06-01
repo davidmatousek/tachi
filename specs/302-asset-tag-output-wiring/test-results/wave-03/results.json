@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0",
+  "wave": 3,
+  "timestamp": "2026-05-31T21:19:58Z",
+  "test_runner": "python3 -m pytest tests/scripts/",
+  "execution_duration_ms": 728270,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": {
+    "pass": 822,
+    "fail": 16,
+    "skip": 2
+  },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 1,
+    "pre_existing": 15
+  },
+  "regressions": [],
+  "new_failures": [
+    "tests/scripts/test_init_sh_substitution.py::test_personalized_tree_bytes_match_baseline"
+  ],
+  "pre_existing": [
+    "tests/scripts/test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_agent_citation",
+    "tests/scripts/test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_pattern_category_citation",
+    "tests/scripts/test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_dos_agent_line_count_within_cap",
+    "tests/scripts/test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps::test_model_theft_agent_line_count_within_cap",
+    "tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_model_theft_md_line_cap",
+    "tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_info_disclosure_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_privilege_escalation_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_repudiation_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_spoofing_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestLineCountCaps::test_tampering_md_line_cap",
+    "tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py::TestNewPatternCategoriesPresent::test_privilege_escalation_companion_has_M8_priv_gain",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_categories_1_8_byte_identity_against_main",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_tool_abuse_line_count_within_cap",
+    "tests/scripts/test_tool_abuse_enrichment.py::test_validate_source_attribution_on_regen"
+  ],
+  "notes": "Wave 3 = T007 (populator unit tests, 22 new GREEN) + T008 (parse_affected_assets extractor in sarif_common.py). ZERO regressions. The 15 pre_existing are the wave-02 cluster (agent-.md line-caps + OWASP attestation + tool_abuse; test files byte-identical to main). The 1 new_failure (test_personalized_tree_bytes_match_baseline) is a SLOW init.sh test DESELECTED at wave-02 (one of 28); it fails on a stale tests/fixtures/init-baseline-tree/ snapshot \u2014 5 drifted docs (4 byte-identical to main; 1 = docs/architecture/01_system_design/README.md appended at F-302 PLANNING stage, commit 265ae0e). NOT caused by Wave 3 code: sarif_common.py is not in the init byte-compare set and the new test file is repo-growth-tolerated. Out of F-302 scope (T016 regenerates EXAMPLE baselines, not the init baseline).",
+  "generated_tests": {
+    "count": 30,
+    "pass": 30,
+    "fail": 0,
+    "file": "tests/scripts/test_sarif_common_affected_assets.py",
+    "note": "Step 4.6 extractor edge-case units (separate file \u2014 serialize-on-write rule keeps test_affected_assets_wiring.py for T013/T017)"
+  }
+}

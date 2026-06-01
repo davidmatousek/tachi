@@ -41,7 +41,10 @@
 # update BOTH the `paths:` trigger list AND the `python -m pytest ...`
 # command in the same commit. F-256 added 5 new test modules and a new
 # canonical helper (`template-config-load.sh`); all are now wired through
-# both paths and invocation below.
+# both paths and invocation below. F-302 (260b) added 2 asset-tag test
+# modules (`test_asset_sensitivity_tags.py`, `test_affected_assets_wiring.py`)
+# plus their source surfaces (`populate-affected-assets.py`, `sarif_common.py`,
+# `schemas/finding.yaml`) — wired through both paths and invocation in lock-step.
 #
 # References:
 #   - specs/248-substitution-surface-hardening/spec.md (FR-001..FR-011, NFR-001)
@@ -85,6 +88,11 @@ on:
       - tests/scripts/test_template_git_clone_timeout.py      # F-256
       - tests/scripts/test_template_substitute_lint_no_eval.py # F-256
       - tests/scripts/test_init_precommit_matrix.py            # F-5 (282)
+      - tests/scripts/test_asset_sensitivity_tags.py           # F-302 (260b) — 26-case asset-tag suite
+      - tests/scripts/test_affected_assets_wiring.py           # F-302 (260b) — populator + SARIF affected_assets wiring
+      - scripts/populate-affected-assets.py                    # F-302 (260b) — deterministic populator (value authority)
+      - scripts/sarif_common.py                                # F-302 (260b) — affected_assets extractor (verification tier)
+      - schemas/finding.yaml                                   # F-302 (260b) — affected_assets schema contract (1.9)
       - tests/scripts/init_sh_helpers.py
       - tests/scripts/conftest.py
       - tests/fixtures/init-baseline-tree/**
@@ -175,4 +183,6 @@ jobs:
             tests/scripts/test_template_git_clone_timeout.py \
             tests/scripts/test_template_substitute_lint_no_eval.py \
             tests/scripts/test_init_precommit_matrix.py \
+            tests/scripts/test_asset_sensitivity_tags.py \
+            tests/scripts/test_affected_assets_wiring.py \
             -v --timeout=1080

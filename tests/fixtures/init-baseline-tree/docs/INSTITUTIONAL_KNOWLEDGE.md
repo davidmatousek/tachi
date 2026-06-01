@@ -291,6 +291,171 @@ F-4 closed a posture gap (no documented permissions baseline + permissive defaul
 
 ---
 
+### Entry 6: F-292 Output-Integrity Cross-Sink Refinement — Delivery Retrospective
+
+## [Process improvement] - Enrichment-branch features that modify detection-tier files MUST update the F-142 zero-edit invariant test in the same change
+
+**Date**: 2026-05-14
+**Feature**: F-292 (Output-Integrity Cross-Sink Refinement — 8th Heuristic A enrichment execution at same-agent scope within F-1's host)
+**Category**: TEST infrastructure / planning gap
+**Severity**: Medium (caught pre-merge by pytest; would have failed CI if merged unchanged)
+
+### Symptom
+
+`pytest tests/scripts/test_backward_compatibility.py::test_feature_142_zero_edit_invariant_on_detection_agents` failed mid-build with:
+
+```
+AssertionError: Zero-edit invariant violated (ADR-026 Decision 1). The following
+detection-tier files were modified on branch '292-output-integrity-cross-sink-refinement'
+relative to main: ['.claude/agents/tachi/output-integrity.md',
+'.claude/skills/tachi-output-integrity/references/detection-patterns.md'].
+```
+
+The two modified files were the exact same surfaces F-292 was designed to edit (Heuristic A enrichment of F-1's `output-integrity` agent host + companion detection-patterns.md). The implementation was correct; the test was unintentionally fencing the implementation out.
+
+### Root Cause (5 Whys validated)
+
+1. **Why did the test fire on F-292's branch?** Because `DETECTION_AGENT_PATHS` still contained `output-integrity.md` (the F-1 agent file) as a protected zero-edit target, and `DETECTION_PATTERN_REF_ENRICHMENT_HOSTS` did not yet contain the companion `tachi-output-integrity/references/detection-patterns.md`.
+2. **Why were those carve-outs missing?** Because F-292's spec, plan, tasks, and architect review all focused on the new content (Cat 6, Cross-Agent Handoff Sinks, ADR-045, baseline) and did not enumerate the test-list update as a build deliverable.
+3. **Why did planning miss it?** Because the prior 7 Heuristic A enrichments (F-3, F-5, F-6, F-7, F-241 Stream 1) had each updated the test list, but only F-241's update is *documented in the test file's docblock* (lines 184-196). F-292 was the first enrichment to touch F-1's host specifically — and the docblock at lines 191-200 explicitly named F-1 + F-2 as "remaining protected" without flagging that F-292 would need to carve out F-1.
+4. **Why did the architect review miss it?** Because the architect's review scope (codified in `.aod/results/architect-final.md`) focused on plan-to-implementation fidelity, ADR structural soundness, and cross-link emission risk — not on cross-cutting test infrastructure that gates the F-142 invariant.
+5. **Why was the cross-cutting test infrastructure not in the plan checklist?** Because the AOD plan template lacks a "test-list updates required for detection-tier modifications" prompt. The carve-out pattern is documented in the test file's own docblock, but adopters reading spec.md / plan.md / tasks.md do not necessarily read the test file.
+
+### Solution
+
+**Immediate (in this build)**: F-292 build session added the carve-out commit `test(292): F-292 carve-out in zero-edit invariant test [T035]`:
+
+1. Moved `.claude/agents/tachi/output-integrity.md` OUT of `DETECTION_AGENT_PATHS` (now contains only `misinformation.md`).
+2. Added `DETECTION_PATTERN_REF_F292_OUTPUT_INTEGRITY_HOST` constant and added it to the `DETECTION_PATTERN_REF_ENRICHMENT_HOSTS` frozenset.
+3. Updated assert from `== 2` to `== 1` with explanatory message.
+4. Added docblock comment documenting F-292 as the 8th Heuristic A enrichment execution at same-agent scope.
+
+Verification: pytest now reports 13 passed / 1 documented skip; SC-004 (5 non-qualifying baselines byte-identical) empirically satisfied.
+
+**Pattern (for future enrichment branches)**: Any branch that edits a file in `DETECTION_AGENT_PATHS` MUST in the same change:
+1. Remove that path from `DETECTION_AGENT_PATHS`.
+2. Add a new `DETECTION_PATTERN_REF_F{NNN}_<HOST>_HOST` constant for the companion `.md`.
+3. Add the new constant to `DETECTION_PATTERN_REF_ENRICHMENT_HOSTS`.
+4. Update the assert count and the docblock.
+
+### Prevention
+
+1. **Plan-checklist amendment**: Add to `/aod.plan` and `/aod.tasks` checklist for features that touch `.claude/agents/tachi/<agent>.md` or `.claude/skills/tachi-<agent>/references/<*>.md`: "Does this feature need a `DETECTION_AGENT_PATHS` / `DETECTION_PATTERN_REF_ENRICHMENT_HOSTS` carve-out task in `tests/scripts/test_backward_compatibility.py`?" Default answer for any Heuristic A enrichment: YES.
+
+2. **Architect review heuristic**: When reviewing a plan/tasks that touches `.claude/agents/tachi/` or `.claude/skills/tachi-*/`, the architect should explicitly check whether the F-142 zero-edit invariant test needs a carve-out task — even if the agent file edit is "navigational only" (≤10 line diff).
+
+3. **Test-file docblock improvement**: The docblock at `test_backward_compatibility.py:178-196` should explicitly say "When adding a new Heuristic A enrichment that touches F-1 (`output-integrity`) or F-2 (`misinformation`), move the host file OUT of `DETECTION_AGENT_PATHS` and ADD the companion to `DETECTION_PATTERN_REF_ENRICHMENT_HOSTS` — same pattern as F-241 for prompt-injection / agent-autonomy."
+
+4. **Build-stage signal**: `/aod.build` should run `tests/scripts/test_backward_compatibility.py` as part of the post-wave test execution, not just when `.py` source files changed. The "no code files changed" precondition for skipping post-wave tests (per /aod.build Step 4.5a) should NOT apply to backward-compat regression tests — those guard *the whole repo*, not just the changed code files.
+
+## Patterns
+
+### Pattern 1: Cat 6 (new top-level pattern category) when CWE differs from parent category primary
+
+**Problem**: When a new pattern surface fits broadly within an existing category but has a distinct primary CWE pinning, the natural instinct is to extend the existing category as a sub-class. Doing so masks the CWE distinction and creates downstream confusion when adopters reconcile findings against industry taxonomies.
+
+**Solution**: Promote the new pattern surface to its own top-level category when the primary CWE differs from the existing category's primary CWE. F-292 Cat 6 (Vector / Search-DSL Injection) has CWE-943 (Improper Neutralization of Special Elements in Data Query Logic) as primary — distinct from Cat 2's CWE-89 (SQL Injection). The cleaner category boundary at the CWE-pinning level enables future expansion to additional structured-query languages (GraphQL injection, NoSQL operator injection, LDAP, XQuery, XPath, DQL — all CWE-943 family) without compounding the Cat 2 sub-class structure.
+
+**Apply when**: Designing a new pattern surface that broadly fits within an existing category. If the primary CWE you would pin differs from the existing category's primary CWE, default to a new top-level category. Document the disambiguation in an ADR D7-style "Pattern Category Disambiguation" decision (see ADR-045 D7 Invariant A).
+
+### Pattern 2: Cross-link prose as navigational-only signal-class boundary disambiguation
+
+**Problem**: Multi-agent architectures surface findings from multiple threat agents on overlapping flows. When LLM output flows into a tool-call argument or durable memory write, three different agents may legitimately emit findings (`output-integrity` on encoding/sanitization, `tool-abuse` on tool-argument injection, `data-poisoning` on durable-memory writes). Adopters reading three disjoint findings on the same architectural surface need a way to reason about the boundary.
+
+**Solution**: Add a Cross-Agent Handoff Sinks navigational subsection to the *source* agent's pattern catalog with these required elements:
+1. A boundary phrase that makes the principle explicit (e.g., "harmless as text, dangerous as tool argument or memory entry").
+2. Cross-link prose to each adjacent agent's owning file, naming the OWASP framework anchor each agent owns (LLM06 / ASI04 for tool-abuse; ASI06 NOT LLM04 for data-poisoning).
+3. An explicit no-emission statement: "This agent does NOT emit findings on those handoff flows."
+4. A one-way navigational invariant lock-paragraph stating that the subsection adds NO new trigger keywords and NO new downstream-sink-indicators — the existing both-signal workflow enforces zero emissions from the prose alone.
+5. A mitigation pattern with a worked schema example (when applicable). F-292's Memory-Promotion Rules schema (`promotable_keys` + `value_schema` + `tenant_scope`) is the institutional-knowledge seed for any future agent introducing a durable-write surface.
+
+The cross-link target agents remain unmodified — the navigational pointer flows one direction only (OUT of the source agent's catalog).
+
+**Apply when**: A pattern catalog surfaces a signal class that has adjacent-agent overlap. Confirm the cross-link is navigational only by re-running an existing multi-agent baseline (e.g., `agentic-app/`) under `SOURCE_DATE_EPOCH=1700000000` and verifying zero new findings emerge from the source agent on the prose alone (SC-003 byte-identity check).
+
+### Pattern 3: Memory-Promotion Rules as institutional-knowledge seed
+
+**Problem**: Future agents introducing durable-write surfaces will need a canonical mitigation pattern for LLM-output → durable-memory promotion. Each agent reinventing the pattern fragments the institutional knowledge and risks divergent schemas.
+
+**Solution**: F-292's Memory-Promotion Rules worked schema example codifies the canonical three-field structure:
+- `promotable_keys`: allowlist enum of which memory-store keys the agent may write
+- `value_schema`: reference to a JSON-schema validating the shape of permitted values
+- `tenant_scope`: pin binding the write to the requesting tenant's namespace
+
+Plus optional layered controls:
+- `staging_buffer` (A-MEMGUARD pattern, arXiv 2510.02373)
+- `human_approval_gate` (high-trust memory categories)
+
+Industry anchors (OWASP ASI06 Memory & Context Poisoning, OWASP Agent Memory Guard, AWS Bedrock AgentCore Memory, Vertex AI Memory Bank) are explicit citations. The pattern is currently inline in `detection-patterns.md` Cross-Agent Handoff Sinks subsection per ADR-045 D4 (single-use surface today); future reuse from adjacent agents can lift it to a separate skill-reference file at that point.
+
+**Apply when**: Designing a new agent or feature that introduces a durable-memory-write surface. Cite OWASP ASI06 (NOT LLM04 — LLM04 is training-time data poisoning, a distinct surface). Reference the F-292 schema as the starting point; extend with additional optional layered controls if needed.
+
+### Lessons from Estimation vs. Reality
+
+- PRD/plan/tasks estimate ~1.5 working days active; build session completed implementation in a single session.
+- The biggest miss was the F-241-precedent test-list carve-out (T035 retrospective task added). Estimated 0 effort, actual ~15 min — caught by pytest mid-build, fixed cleanly. The 5-Whys analysis above traces back to a plan-checklist gap that the prevention section proposes amending.
+- The 8th Heuristic A enrichment execution is the FIRST same-agent enrichment within F-1's host (vs F-3 / F-5 / F-6 / F-7 / F-241 which were cross-agent enrichments hitting other hosts). This finer-grained scope is structurally novel — future same-agent enrichments on F-2 (`misinformation`) host can follow ADR-045's structure and reuse the same test-list carve-out pattern.
+
+### Cross-References
+
+- **Direct precedent**: Entry 1-5 (BLP-02 Wave 1–4 enrichments). F-292 is structurally a Heuristic A enrichment at the same scope as those, BUT — distinct from BLP-02 features which closed enterprise-hardening posture gaps — F-292 closes coverage gaps in F-1's pattern catalog surfaced by a first-time community contributor (@armorer-labs, discussion #179).
+- **Ancestor**: F-1 / ADR-030 (`output-integrity` agent baseline). F-292 enriches the same agent additively per ADR-023 D3 + ADR-030 D2 + ADR-045 D1.
+- **Sibling**: F-241 Stream 1 (F-A3 populator wiring). Same `DETECTION_AGENT_PATHS` carve-out pattern (F-241 carved out `prompt-injection` + `agent-autonomy`; F-292 carves out `output-integrity`).
+- **Pattern class**: "Community-merge precedent enrichment" — F-260 (@north-echo PR #262, v4.31.0) was the canonical 7-stage attribution playbook (comment → maintainer gap-analysis → PRD → spec → plan → tasks → ADR → implementation → CHANGELOG → discussion delivery comment). F-292 reuses the playbook verbatim with @armorer-labs attribution.
+- **Follow-ups**: 4 plan-checklist amendments proposed in Prevention section above (architect heuristic, test-file docblock, build-stage signal, plan-checklist prompt for detection-tier touches).
+
+---
+
+### Entry 7: F-292 Delivery — Post-Merge Task Accountability
+
+## [Process improvement] - Move post-merge community-engagement and SLA-driven tasks into a dedicated follow-up issue at /aod.deliver time
+
+**Date**: 2026-05-14
+**Context**: Delivery retrospective for F-292 Output-Integrity Cross-Sink Refinement. Estimated: 1-2 days. Actual: 1 day (same-day spec → plan → build → deliver). Surprise: "a lot of postponed tasks" — 11 of 36 tasks remained `[ ]` at /aod.deliver entry, all MANUAL-ONLY post-merge or SLA-driven (T005, T017, T019–T024, T026, T031, T034).
+
+**Problem**:
+tasks.md mixed two distinct task classes — (a) build-time technical work that /aod.build must complete, and (b) post-merge / SLA-driven / community-engagement work that can only execute after squash-merge or on a future calendar date (T+5d courtesy nudge, T+7d SLA breach checkpoint). At /aod.deliver entry, /aod.build's "10/36 tasks unchecked" signal looked like incomplete work, when the real status was "build phase done, community phase pending". This forced manual judgment at deliver-time about which incomplete tasks were genuine blockers vs. expected post-merge follow-ups.
+
+**Solution**:
+At /aod.deliver time, generate a dedicated follow-up GitHub Issue that captures every remaining `[ ]` task with MANUAL-ONLY, [POST-MERGE], or calendar-anchored markers, and link it from the closing feature's delivery document. This:
+1. Keeps the closing feature's Issue cleanly transitioning to `stage:done` without ambiguity about residual work.
+2. Creates real accountability for SLA-driven actions (T+5d nudge, T+7d SLA breach) via a tracked Issue rather than a buried tasks.md checkbox.
+3. Enables /schedule or cron follow-ups against a stable Issue number for calendar-bound work.
+4. Surfaces the "post-merge tail" pattern as a first-class deliverable category, not as residual debt.
+
+**Why This Matters**:
+F-292 reused F-260's community-merge precedent (4 mechanical artifacts: CHANGELOG form, 7-day SLA, comment-first-give-choice, Co-Authored-By trailer) and inherited F-260's "long post-merge tail" pattern. Every future community-merge feature will have the same tail. Codifying the follow-up-issue pattern at /aod.deliver time prevents the surprise from recurring and makes the SLA-driven work tractable.
+
+**Tags**: #retrospective #delivery #process #workflow #community-merge
+
+### Related Files:
+- `specs/292-output-integrity-cross-sink-refinement/spec.md` — Feature specification
+- `specs/292-output-integrity-cross-sink-refinement/tasks.md` — Task breakdown (T005, T017, T019–T024, T026, T031 marked MANUAL-ONLY or POST-MERGE)
+- `docs/architecture/02_ADRs/ADR-045-output-integrity-cross-sink-refinement.md` — Architecture decision (8th Heuristic A enrichment)
+- KB Entry 6 — F-292 carve-out planning gap (the build-time twin of this delivery-time lesson)
+
+### Lineage
+
+- **Direct precedent**: F-260 (@north-echo, v4.31.0) — first community-merge feature; same post-merge tail (CHANGELOG sync, attribution, discussion delivery comment, SLA tracking). F-260's tail was handled ad-hoc; F-292 surfaces the pattern explicitly.
+- **Pattern class**: "Post-merge tail as first-class deliverable category" — applies to any feature with community-attribution, SLA-driven actions, release-please verification, or calendar-anchored follow-ups.
+- **Follow-up proposal**: Amend the /aod.deliver skill to auto-generate the follow-up Issue when residual `[ ]` tasks remain and any are marked MANUAL-ONLY, [POST-MERGE], or contain calendar-anchored markers (e.g., "T+5d", "T+7d", "within 24h").
+
+---
+
+### Entry 8: F-296 50/50 OWASP Coverage Distribution Launch (BLP-04 F-1) — Delivery Retrospective
+
+**Date**: 2026-05-30 | **Category**: Process / Release Discipline | **Feature**: F-296 (BLP-04 Wave 1) | **Issue**: #296 (closed)
+
+**Context**: F-296 packaged and distributed the already-achieved 50/50 five-framework OWASP coverage milestone (README 50/50 hero + canonical `docs/standards/OWASP_COVERAGE.md`, evergreen poster, LinkedIn post, CISO/VP profile refresh, Discussion #179 close). 37/37 tasks; closed 2026-05-29, ~6 days ahead of the 2026-06-04 target, zero slips.
+
+**Lesson 1 — Internal strategy docs have exactly one canonical home.** Per `_internal/CLAUDE.md`, internal strategy/planning docs live only in the repo-root `_internal/` directory. A feature-scoped copy created under `docs/product/_internal/strategy/BLP-04-adoption-push.md` during the build became a duplicate that had to be detected and consolidated into the canonical path at closeout (the stray copy's unique execution bindings were folded into the canonical doc's Scope History before deletion). **Prevention**: when a build step needs an internal strategy doc, write/extend the canonical `_internal/` file directly — never create a feature-namespaced copy under `docs/`.
+
+**Lesson 2 — Distribution-launch features are docs-only by design; a skipped release is correct, not a defect.** Every F-296 PR used `docs(296):` (a hidden-bump type). Release-please correctly opened no release PR (T029). The F-212 empty-`feat(NNN):` marker-commit recovery flow was deliberately **not** invoked, and the carve-out was recorded in project memory (`feedback_aod_deliver_release_gate.md`, T028). **Prevention**: before forcing a release marker at `/aod.deliver`, confirm the changeset actually contains user-visible code/functionality — a docs/distribution feature that ships zero code/manifest files (NFR-004) *should* skip the release.
+
+**Evidence**: `specs/296-50-50-owasp-coverage-distribution-launch/{delivery.md, notes/in-tree-merge-closeout.md, notes/post-merge-security-scan.md}`; Issue #296 closing comment.
+
+---
+
 ## Bug Fixes
 
 *No entries yet. Use `/kb-create` to add the first bug fix.*

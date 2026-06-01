@@ -1,0 +1,22 @@
+===== FINAL VERIFY (1780255889) =====
+--- snapshot dir listing ---
+total 1136
+drwxr-xr-x@ 7 david  staff     224 May 31 15:31 .
+drwxr-xr-x@ 3 david  staff      96 May 31 15:30 ..
+-rw-r--r--@ 1 david  staff      67 May 31 15:31 FINAL_VERIFY.txt
+-rw-r--r--@ 1 david  staff    1887 May 31 15:30 SNAPSHOT_VERIFY.txt
+-rw-r--r--@ 1 david  staff  227450 Apr 27 16:49 risk-scores.sarif
+-rw-r--r--@ 1 david  staff  131734 Apr 27 16:49 threats.md
+-rw-r--r--@ 1 david  staff  208340 Apr 27 16:49 threats.sarif
+--- source vs snapshot diff (expect 3x identical) ---
+IDENTICAL: threats.md
+IDENTICAL: threats.sarif
+IDENTICAL: risk-scores.sarif
+--- affected_assets pre-check (expect ABSENT in all 3 snapshot files) ---
+OK: no affected_assets in snapshot (clean pre-change baseline)
+--- results file present ---
+tester.md OK (    6084 bytes)
+--- guardrail: confirm NO source/example/schema/script modified by this task ---
+?? scripts/populate-affected-assets.py
+[end guardrail — lines above (if any) are NON-snapshot/NON-results changes; expect none from T001]
+===== END FINAL VERIFY =====

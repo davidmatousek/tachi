@@ -131,10 +131,40 @@ Now consider finding `T-2`, a tampering threat against the same `Knowledge Base`
 - **Asset tags**: `["pii"]` -> forces `{C:H}`.
 - **Elevated vector**: `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:L`.
 - **Recomputed `cvss_base`**: `8.3` (CVSS 3.1 calculator).
-- **Ceiling**: `9.5` — no clamp needed.
+- **Ceiling**: `9.2` — no clamp needed.
 - **Final `cvss_base`**: `8.3`. Tampering on a PII store now scores higher than tampering on the same component without the tag, reflecting the asset value.
 
 The composite score (Section 7) reflects this elevated CVSS base via the `0.35` weight, which propagates to the severity band and SARIF `security-severity` per finding.
+
+## Output Contract — `affected_assets` Provenance Field
+
+Separate from the CVSS impact-bit modifier above, every finding also carries an `affected_assets` provenance field (Feature 260b). The modifier *changes the score*; this field *records the exposure* and changes nothing. Keep the two mental models distinct: the asset-MODIFIER logic documented in the sections above stays exactly where it is; this Output Contract describes the standalone provenance field that rides alongside each finding.
+
+`affected_assets` records **all** asset tags on the finding's target component (`component_asset_map.get(target_component, [])`) — the full exposure set, not only the tags that elevated a CVSS bit. A `financial` tag on a finding already at `I:H` (a no-op modifier) still appears in `affected_assets`.
+
+### Enum (FROZEN — 6 values)
+
+`pii | phi | auth | secrets | financial | safety`. Identical to the modifier Tag Vocabulary above. No other value is valid; widening the enum is out of scope.
+
+### Empty-default
+
+`[]` is **always present** on every finding and never omitted (FR-005). This follows the `agentic_pattern`/`maestro_layer` always-present-with-default precedent — not the `source_attribution` omit-when-empty precedent. Untagged findings, and `UNCHANGED`/`RESOLVED` findings, still carry the field with its current-architecture value.
+
+### Per-format representation (one value, three surfaces)
+
+The same sorted enum array appears in three places, byte-equivalent per finding (NFR-3):
+
+| Format | Location | Representation | Empty form |
+|--------|----------|----------------|------------|
+| IR / schema | `schemas/finding.yaml` | `affected_assets: [pii, phi]` (enum-constrained array, default `[]`) | `affected_assets: []` |
+| `threats.md` | the always-present `## Affected Assets` block, keyed by finding ID, written by the deterministic populator (the value authority) | `S-1: [phi, pii]` | `S-1: []` |
+| SARIF (both `threats.sarif` + `risk-scores.sarif`) | `result.properties.affected_assets` (snake_case key, flat sorted array) — copied verbatim from the `threats.md` block | `"affected_assets": ["phi", "pii"]` | `"affected_assets": []` |
+
+The `threats.md` block is the deterministic source of truth; both production SARIF surfaces copy that single value verbatim (the production `.sarif` files are LLM-authored, so this equality is test-checked, not structural). The SARIF property key MUST be `affected_assets` (snake_case) in both emitters and MUST NOT collide with the reserved `tags` key.
+
+### Provenance only — no scoring effect (NFR-2)
+
+Recording `affected_assets` is **provenance only**. It MUST NOT alter `cvss_base`, the composite score, the severity band, or any modifier / `9.2`-ceiling behavior. The CVSS asset-MODIFIER logic (which *does* affect the score) stays in the sections above; this field is the separate, score-neutral record of which assets a finding's component exposes.
 
 ## When This Phase Is Skipped
 

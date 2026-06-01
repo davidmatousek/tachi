@@ -9,6 +9,7 @@ vocabulary) remains in each generator to preserve byte-identity (ADR-021).
 """
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -81,6 +82,54 @@ def parse_component_metadata(threats_md: str) -> dict[str, dict[str, str]]:
         for member in (m.strip() for m in tb["components"].split(",")):
             if member and member in out:
                 out[member]["zone"] = zone
+    return out
+
+
+# Header cell of the populator's "## Affected Assets" table, byte-matching
+# `populate-affected-assets.py` (`_COL_FINDING_ID`). Used to skip the header
+# row during the inverse parse; kept local so this module stays self-contained.
+_COL_FINDING_ID = "Finding ID"
+
+_AFFECTED_ASSETS_BLOCK_PATTERN = re.compile(
+    r"^##[ \t]+Affected Assets[ \t]*$(?P<body>.*?)(?=^#{1,2}[ \t]|\Z)",
+    re.MULTILINE | re.DOTALL,
+)
+_AFFECTED_ASSETS_ROW_PATTERN = re.compile(r"^\|(?P<id>[^|]*)\|(?P<assets>[^|]*)\|")
+
+
+def parse_affected_assets(threats_content: str) -> dict[str, list[str]]:
+    """Map finding ID → list of asset tags from the threats.md block.
+
+    The inverse of the deterministic populator
+    (`scripts/populate-affected-assets.py` → `render_affected_assets_block`):
+    it parses the always-present `## Affected Assets` markdown table back into
+    `{finding_id: [tags]}`, the exact round-trip of the block the populator
+    emits (`| S-1 | [phi, pii] |` → `{"S-1": ["phi", "pii"]}`; `| T-2 | [] |`
+    → `{"T-2": []}`). This is the single canonical extractor the SARIF
+    regeneration scripts (`generate-threats-sarif.py`,
+    `generate-risk-scores-sarif.py`) and the cross-format test consume, so the
+    verification tier reads one value source instead of independently
+    re-deriving from `component_asset_map` (mirrors the `parse_component_metadata`
+    desync-fix precedent above). Order is preserved verbatim from the block
+    (already sorted ascending by the populator — this does NOT re-sort or dedup).
+    Returns `{}` when no `## Affected Assets` block is present (graceful).
+    """
+    match = _AFFECTED_ASSETS_BLOCK_PATTERN.search(threats_content)
+    if not match:
+        return {}
+    out: dict[str, list[str]] = {}
+    for line in match.group("body").splitlines():
+        row = _AFFECTED_ASSETS_ROW_PATTERN.match(line.strip())
+        if not row:
+            continue
+        finding_id = row.group("id").replace("**", "").strip()
+        # Skip the header row ("Finding ID" / "Affected Assets") and the
+        # separator row ("|---|---|"); neither is a real finding.
+        if not finding_id or finding_id == _COL_FINDING_ID or set(finding_id) <= {"-", ":"}:
+            continue
+        inner = row.group("assets").replace("**", "").strip()
+        inner = inner[1:-1] if inner.startswith("[") and inner.endswith("]") else inner
+        out[finding_id] = [tag.strip() for tag in inner.split(",") if tag.strip()]
     return out
 
 
