@@ -38,7 +38,7 @@ triad:
 
 **Purpose**: Create the new docs surface.
 
-- [ ] T001 Create the `docs/adopters/` directory (on branch `305-adoption-signal-capture`).
+- [X] T001 Create the `docs/adopters/` directory (on branch `305-adoption-signal-capture`).
 
 ---
 
@@ -46,7 +46,7 @@ triad:
 
 **Purpose**: Confirm the repo-cleanliness precondition that the internal signal-log work depends on.
 
-- [ ] T002 Verify `_internal/` is gitignored (`git check-ignore _internal/` returns a match; `git ls-files _internal/` is empty) — structural guard for FR-006/SC-009.
+- [X] T002 Verify `_internal/` is gitignored (`git check-ignore _internal/` returns a match; `git ls-files _internal/` is empty) — structural guard for FR-006/SC-009.
 
 **Checkpoint**: Surface ready; gitignore guarantee confirmed. In-repo authoring can proceed.
 
@@ -58,9 +58,9 @@ triad:
 
 **Independent Test**: Open `docs/adopters/case-study-template.md`; confirm every production-use field is present, required/optional are marked, and a consent grant is captured at submission.
 
-- [ ] T003 [P] [US1] Author `docs/adopters/case-study-template.md` — required sections (adopter org/identifier, scale of use, integration point, capabilities used, outcomes) + optional sections (logo, pull-quote, external public-reference link), with required vs optional clearly marked (FR-001). Match docs/standards house style (HTML-comment header).
-- [ ] T004 [US1] Add the required **Consent block** to the template (publish org name? yes/anonymized/no · use logo? yes/no · preferred attribution + contact) with an explicit **default-deny** note: absent a `yes`, nothing identifying is published (FR-002). Depends on T003.
-- [ ] T005 [US1] [MANUAL-ONLY] Verify the template has all 5 required + 3 optional sections and the consent block with all 3 prompts (SC-001, SC-002).
+- [X] T003 [P] [US1] Author `docs/adopters/case-study-template.md` — required sections (adopter org/identifier, scale of use, integration point, capabilities used, outcomes) + optional sections (logo, pull-quote, external public-reference link), with required vs optional clearly marked (FR-001). Match docs/standards house style (HTML-comment header).
+- [X] T004 [US1] Add the required **Consent block** to the template (publish org name? yes/anonymized/no · use logo? yes/no · preferred attribution + contact) with an explicit **default-deny** note: absent a `yes`, nothing identifying is published (FR-002). Depends on T003.
+- [X] T005 [US1] [MANUAL-ONLY] Verify the template has all 5 required + 3 optional sections and the consent block with all 3 prompts (SC-001, SC-002).
 
 **Checkpoint**: Submission path exists — the keystone artifact.
 
@@ -72,7 +72,7 @@ triad:
 
 **Independent Test**: A logged-in GitHub user sees "In the Wild" with a pinned welcome post linking to the template + index.
 
-- [ ] T006 [P] [US2] Draft the welcome-post content (links to the template + the adopters index; explains how to post an adopter story) in **Issue #305** as a pre-merge draft.
+- [X] T006 [P] [US2] Draft the welcome-post content (links to the template + the adopters index; explains how to post an adopter story) in **Issue #305** as a pre-merge draft.
 - [ ] T007 [US2] [POST-MERGE] [MANUAL-ONLY] Configure "In the Wild" as the adopter-stories channel: publish the welcome post, apply a **category-level pin** (In-the-Wild's own 0/4 pool — leaves the global 3/4 untouched), and update the category description to point at the template/index (FR-004, plan D1). Record slot accounting: global discussion pins 3/4 (unchanged); In-the-Wild category pins 0→1/4. Depends on T011 + T003 merged (welcome post links to live template + index).
 - [ ] T008 [US2] [POST-MERGE] [MANUAL-ONLY] Verify the channel is live, the welcome post is pinned, and its links resolve (SC-004).
 
@@ -86,8 +86,8 @@ triad:
 
 **Independent Test**: Add one entry to the gitignored signal log in canonical shape; confirm `git status` shows no `_internal/` path.
 
-- [ ] T009 [P] [US3] Add an append-only **signal-log subsection** to `_internal/strategy/BLP-03-signed-updates.md` under its own clearly-delimited heading (distinct from the existing 2-condition "Re-evaluation log" table — no schema overload), primed with ≥1 entry in canonical shape **date · source · signal-type · decision** where `signal-type ∈ {inquiry, citation, procurement-mention, traffic, adopter-story}` (FR-006, plan D4). Gitignored — never committed. Keep entries positioning-neutral.
-- [ ] T010 [US3] [MANUAL-ONLY] Verify the entry follows the canonical four-field shape with a closed-enum signal-type, the subsection is distinct from the re-eval table, and `git status` shows no `_internal/` path (SC-007, SC-009).
+- [X] T009 [P] [US3] Add an append-only **signal-log subsection** to `_internal/strategy/BLP-03-signed-updates.md` under its own clearly-delimited heading (distinct from the existing 2-condition "Re-evaluation log" table — no schema overload), primed with ≥1 entry in canonical shape **date · source · signal-type · decision** where `signal-type ∈ {inquiry, citation, procurement-mention, traffic, adopter-story}` (FR-006, plan D4). Gitignored — never committed. Keep entries positioning-neutral.
+- [X] T010 [US3] [MANUAL-ONLY] Verify the entry follows the canonical four-field shape with a closed-enum signal-type, the subsection is distinct from the re-eval table, and `git status` shows no `_internal/` path (SC-007, SC-009).
 
 **Checkpoint**: Capture half of the feature is live (local, private).
 
@@ -99,8 +99,8 @@ triad:
 
 **Independent Test**: Land on `docs/adopters/README.md`; the "How to submit" pointer routes to the template + channel; the empty state renders.
 
-- [ ] T011 [P] [US4] Author `docs/adopters/README.md` — an accepted-case-study list with an explicit, non-broken **empty state** at launch + a "How to submit" pointer routing to `case-study-template.md` and the "In the Wild" channel (FR-003). Renders correctly on GitHub.
-- [ ] T012 [US4] [MANUAL-ONLY] Verify the index renders, all internal links resolve, and the empty state is valid (SC-003).
+- [X] T011 [P] [US4] Author `docs/adopters/README.md` — an accepted-case-study list with an explicit, non-broken **empty state** at launch + a "How to submit" pointer routing to `case-study-template.md` and the "In the Wild" channel (FR-003). Renders correctly on GitHub.
+- [X] T012 [US4] [MANUAL-ONLY] Verify the index renders, all internal links resolve, and the empty state is valid (SC-003).
 
 **Checkpoint**: Discovery surface complete.
 
@@ -123,9 +123,9 @@ triad:
 
 **Purpose**: Release framing, the pre-merge acceptance gate, outreach, merge, and close-out.
 
-- [ ] T015 [P] Add a `CHANGELOG.md` entry under a sibling `### … (BLP-04 Wave 3)` heading describing the adopter case-study + signal-capture infrastructure, `feat(305):` framing (FR-007, SC-008).
-- [ ] T016 [P] *(optional)* Augment the existing README §Community "In the Wild" line to also point at `docs/adopters/` — **do not add a duplicate In-the-Wild link** (Architect LOW-3).
-- [ ] T017 Draft the warm outreach message in **Issue #305** (soft "here's what shipped" framing, no ask/CTA — memory `user_linkedin_voice.md`) and pass a named **tone-review gate** against the house voice before any send (FR-005 template, R2). Single source: Issue #305 only (plan D7) — not duplicated in-repo.
+- [X] T015 [P] Add a `CHANGELOG.md` entry under a sibling `### … (BLP-04 Wave 3)` heading describing the adopter case-study + signal-capture infrastructure, `feat(305):` framing (FR-007, SC-008).
+- [X] T016 [P] *(optional)* Augment the existing README §Community "In the Wild" line to also point at `docs/adopters/` — **do not add a duplicate In-the-Wild link** (Architect LOW-3).
+- [X] T017 Draft the warm outreach message in **Issue #305** (soft "here's what shipped" framing, no ask/CTA — memory `user_linkedin_voice.md`) and pass a named **tone-review gate** against the house voice before any send (FR-005 template, R2). Single source: Issue #305 only (plan D7) — not duplicated in-repo.
 - [ ] T018 **[ACCEPTANCE GATE — pre-merge] [MANUAL-ONLY]** Privacy/consent pass (FR-008) + positioning-neutrality scan (FR-009) over **all** public artifacts — `docs/adopters/*`, the `CHANGELOG.md` entry, the README cross-link, **and the Step-6 auto-appended `docs/architecture/01_system_design/README.md` Feature-305 section** (Architect MEDIUM-1 / PM L-3). Confirm: no adopter identity without a consent grant; no commercial/pricing/competitor/buyer-signal/BLP-03 framing in any public surface — for the system-design 305 section, scan **both the Data Flow diagram AND the surrounding prose** (the strategic "why" stays in the gitignored log + specs/ plan, never the public architecture doc) (Architect M-1); the public Data Flow excludes the private `_internal`/recipient nodes; the diff contains **no application code and no new `docs/architecture/02_ADRs/` file** (FR-012); `git status` shows no `_internal/` path. **Gate to mark PR ready.**
 - [ ] T019 [POST-MERGE] Mark PR #306 ready → squash-merge as `feat(305): …` → verify a release-please PR opens within ~30s (`gh pr list --state open --search "release-please"`); if it skips, push an empty `feat(305):` marker commit (F-212 fallback) (plan D6, memory `feedback_aod_deliver_release_gate.md`).
 - [ ] T020 [POST-MERGE] [MANUAL-ONLY] Select ≥3 **previously-engaged** contacts (enumerable rule: prior Discussion comment / prior issue or PR / direct reply to a tachi post / prior logged inbound — **no cold or first-degree-network sends**), send the tone-reviewed message, and log recipients **privately in Issue #305** (already-public handles only; never private contact details) (FR-005, SC-005).

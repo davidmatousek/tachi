@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "feature": "305-adoption-signal-capture",
+  "total_waves": 7,
+  "waves_tested": 0,
+  "waves_skipped": 3,
+  "skip_reason": "Documentation + GitHub platform-config feature with no application code (FR-012). Not in the tachi-pytest.yml CI paths filter (plan D8). Constitution Principle VII Exceptions — DoD mapped to manual inspection (in-repo) + post-merge verification (KB Entry 4). Waves 0-2 executed this session; git diff shows only .md changes (no .ts/.tsx/.js/.jsx/.py/.go/.rs/.java/.rb/.cs), so post-wave test execution skipped per build Step 4.5a. Not a silent skip.",
+  "totals": { "pass": 0, "fail": 0, "skip": 0 },
+  "total_regressions": 0,
+  "coverage_trend": null,
+  "gate_decisions": [],
+  "manual_verification": {
+    "note": "Verification is manual inspection (in-repo at build) + post-merge attestation (platform/outreach), per the docs-only DoD.",
+    "wave_2_results": {
+      "tester_T005_T010_T012": "PASS (3/3 tasks, 12/12 sub-criteria) — .aod/results/tester.md",
+      "gate_B_tone_review_T017": "PASS — .aod/results/product-manager.md"
+    }
+  },
+  "build_status": "PARTIAL — Waves 0-2 of 7 complete (in-repo authoring + verification + tone gate). Stopped at the 3-wave standalone ceiling (orchestrated=false). Resume at Wave 3 (pre-merge acceptance gate, T018)."
+}
