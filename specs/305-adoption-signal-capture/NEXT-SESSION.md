@@ -1,18 +1,19 @@
 # NEXT SESSION — Feature 305 (Adoption Signal Capture, BLP-04 Wave 3)
 
-**Generated**: 2026-06-01 (Mon) at the 3-wave standalone build ceiling
+**Generated**: 2026-06-01 (Mon). **Updated**: 2026-06-01 — Wave 3 (Gate C) PASSED; resume at the merge boundary via `/aod.deliver 305`.
 **Branch**: `305-adoption-signal-capture` | **Draft PR**: [#306](https://github.com/davidmatousek/tachi/pull/306) (`feat(305):` title ✓)
-**Build status**: **PARTIAL** — Waves 0–2 of 7 complete (13/21 tasks, 62%). NOT delivered. Resume at **Wave 3**.
+**Build status**: **PARTIAL** — Waves 0–3 of 7 complete (14/21 tasks, 67%). NOT delivered. Pre-merge **Gate C PASSED**. Resume at **Wave 4 (merge)** via `/aod.deliver 305`.
 
 ---
 
-## What's complete (Waves 0–2 — in-repo MVP, verified + tone-gated)
+## What's complete (Waves 0–3 — in-repo MVP, verified, tone-gated, pre-merge-gated)
 
 | Wave | Tasks | Result |
 |------|-------|--------|
 | 0 — Setup & Foundational Guard | T001, T002 | `docs/adopters/` created; Gate A passed (`_internal/` gitignored, 0 tracked files). |
 | 1 — In-Repo Authoring | T003, T004, T006, T009, T011, T015, T016, T017 | Template + consent block, adopters index, CHANGELOG entry, README cross-link, gitignored signal-log subsection, welcome-post draft (#305), outreach-message draft (#305). |
 | 2 — Verification + Tone Gate | T005, T010, T012, **Gate B** | Tester PASS (3/3, 12/12 sub-criteria); Gate B tone-review PASS (PM). |
+| 3 — Pre-Merge Acceptance Gate | **T018 / Gate C** | All 3 co-owners PASS: security-analyst (FR-008/SC-009) 0 findings; product-manager (FR-009/FR-012) 0 findings; architect (MEDIUM-1) 0 blocking / 2 LOW. PR #306 cleared to mark ready. |
 
 **Committed + pushed** to the draft PR branch this session. `git status` clean of any `_internal/` path (gitignore guarantee verified).
 
@@ -28,14 +29,15 @@
 
 ## Next Actions (resume here)
 
-> Run `/aod.build 305` in a fresh session — Step 1 auto-detects Waves 0–2 complete and resumes at Wave 3. (`/aod.build 305 --orchestrated` lifts the 3-wave ceiling if you want to drive all remaining waves in one session.)
+> All pre-merge in-repo work is **complete and gate-cleared**. The next step is the **merge** (Wave 4 = T019) — a deliver-stage action. Run **`/aod.deliver 305`**: it marks PR #306 ready, squash-merges as `feat(305):`, and runs release-please verification (F-212 marker fallback). The post-merge platform/outreach tail (Waves 5–6) follows.
 
-### Wave 3 — Pre-Merge Acceptance Gate (HARD GATE → PR-ready) — **T018**
-Co-owned by `security-analyst` + `product-manager` + `architect`. Scan **all** public artifacts (template, index, CHANGELOG entry, README cross-link) **AND the Step-6 auto-appended `docs/architecture/01_system_design/README.md` Feature-305 section** (prose AND Data-Flow diagram — Architect MEDIUM-1):
-- **Privacy/consent (FR-008)**: no adopter identity without a consent grant; public Data Flow excludes the private `_internal` log + Issue-#305 recipient nodes; `git status` shows no `_internal/` path.
-- **Positioning-neutrality (FR-009)**: no commercial/pricing/competitor/buyer-signal/BLP-03 framing in any public surface.
-- **FR-012**: diff has no application code and no new `docs/architecture/02_ADRs/` file.
-- **NOTE**: the Step-6 `01_system_design/README.md` 305 section is auto-appended during the final-validation/doc step. If it does not yet exist, it must be created **privacy-abstracted** (private nodes out of the published Data Flow, no buyer-signal prose) and then scanned — it is in T018's predecessor set.
+### Wave 3 — Pre-Merge Acceptance Gate (HARD GATE) — **T018** ✅ COMPLETE (2026-06-01)
+Gate C PASSED — all three co-owners cleared with zero blocking findings (full findings in the gitignored `.aod/results/{security-analyst,product-manager,architect}.md`):
+- **security-analyst** (FR-008 privacy/consent + SC-009): PASS, 0 findings — private `_internal`/recipient nodes excluded from the public Data Flow; `git status` clean of `_internal/`; template placeholder-only with default-deny consent.
+- **product-manager** (FR-009 positioning-neutrality + FR-012): APPROVED, 0 findings — 5/5 public surfaces neutral; no application code, no new ADR.
+- **architect** (MEDIUM-1 system-design prose + diagram scan): APPROVED, 0 blocking / 2 LOW — MEDIUM-1 resolved in the live `01_system_design/README.md` Feature-305 section.
+
+PR #306 is cleared to be marked ready.
 
 ### Wave 4 — Merge + Release — **T019** (`devops`) **[maintainer]**
 Mark PR #306 ready → squash-merge as `feat(305): …` → verify a release-please PR opens within ~30s (`gh pr list --state open --search "release-please"`). If it skips, push an empty `feat(305):` marker commit (F-212 fallback). **Weekday only** (see calendar guard).
@@ -61,5 +63,5 @@ Close Issue #305 with deliverable URLs (template, index, channel) + the `_intern
 
 ## Resume prompt
 ```
-claude "Resume Feature 305 (Adoption Signal Capture) implementation (branch: 305-adoption-signal-capture). Waves 0-2 complete (in-repo MVP authored + verified + tone-gated, committed + pushed to draft PR #306). Run /aod.build 305 to continue at Wave 3 — the pre-merge acceptance gate (T018)."
+claude "Resume Feature 305 (Adoption Signal Capture) delivery (branch: 305-adoption-signal-capture). Waves 0-3 complete — in-repo MVP authored, verified, tone-gated, and the pre-merge acceptance gate (T018/Gate C) PASSED (committed + pushed to draft PR #306). Run /aod.deliver 305 to mark the PR ready, squash-merge as feat(305):, and verify the release-please PR; then the post-merge platform/outreach tail (Waves 5-6)."
 ```
