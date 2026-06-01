@@ -32,8 +32,9 @@ This section documents the reference CI workflows that the upstream template use
 | `.github/workflows/stack-contract.yml` | F130 (Stack Pack Test Contract) | Test contract invariant for every `stacks/*/STACK.md` (excluding content-pack allowlist) |
 | `.github/workflows/tachi-mmdc-preflight.yml` | F145 (Mermaid CLI hard-prerequisite) | Loud-failure path when `mmdc` is absent on the runner (ADR-022) |
 | `.github/workflows/tachi-pytest.yml` | F-248 (Substitution surface hardening) | `scripts/init.sh` substitution behaviour on a macOS+Ubuntu pytest matrix (ADR-038) |
+| `.github/workflows/gitleaks.yml` | F-282 / F-5 (Pre-commit secret-scanning defaults) | Full-repo gitleaks scan on PR — back-stop for `git commit --no-verify` (ADR-042) |
 
-The first three workflows share the bash:3.2 Docker pattern, SHA-pinned checkout action, `contents: read` permissions, and cancel-in-progress concurrency. The latter two (`tachi-mmdc-preflight.yml`, `tachi-pytest.yml`) follow a different pattern — direct host-runner execution with path-filtered triggers — because their workloads (`mmdc` Node binary preflight, Python+bash subprocess tests) do not benefit from container isolation. Use any of the first three as a template when adding a new maintenance workflow that needs the bash:3.2 floor; use `tachi-pytest.yml` as a template when adding a new path-filtered Python test job.
+The first three workflows share the bash:3.2 Docker pattern, SHA-pinned checkout action, `contents: read` permissions, and cancel-in-progress concurrency. The latter three (`tachi-mmdc-preflight.yml`, `tachi-pytest.yml`, `gitleaks.yml`) follow a different pattern — direct host-runner execution with path-filtered triggers (or unfiltered, in `gitleaks.yml`'s case) — because their workloads (`mmdc` Node binary preflight, Python+bash subprocess tests, native gitleaks binary) do not benefit from container isolation. Use any of the first three as a template when adding a new maintenance workflow that needs the bash:3.2 floor; use `tachi-pytest.yml` as a template when adding a new path-filtered Python test job; use `gitleaks.yml` as a template when adding a new SARIF-emitting scanner job.
 
 ### Shared Workflow Conventions
 
@@ -136,9 +137,9 @@ In `--all` mode the script exits with the **numerically lowest non-zero code** a
 
 **Feature 142 Update (2026-04-23)**: The workflow itself (`.github/workflows/stack-contract.yml`) and the validator (`.aod/scripts/bash/stack-contract-lint.sh`) are **unchanged** by F142 (PR #151) — the exit-code contract (0–5) was already strict as of F130. F142 only removes the grace-period fallback that previously lived inside `/aod.deliver` Step 9a, which translated a lint exit 5 (MISSING_BLOCK) into a silent skip. Post-F142, `/aod.deliver` surfaces exit 5 as an explicit error with the lint stderr diagnostic shown verbatim in the delivery report. **Effective impact on CI consumers**: any pipeline that parses delivery.md rendered by `/aod.deliver` should read `e2e_validation.status` (`error` vs. `skipped` vs. `success`) from the payload rather than pattern-matching grace-period language in the human-readable rendering. The stack-contract CI workflow continues to fail any PR that would have tripped its exit 5 anyway — F142 closes the same gap at the `/aod.deliver` boundary for branches not guarded by the CI workflow. PRD: `docs/product/02_PRD/142-remove-grace-period-fallback-2026-04-23.md`.
 
-### Tachi Pytest Workflow (F-248 + F-250 + F-256)
+### Tachi Pytest Workflow (F-248 + F-250 + F-256 + F-282)
 
-**Added in Feature 248** (Substitution Surface Hardening), merged via PR #249 (squash commit `6db9a25`) on 2026-05-04. Re-tuned and re-scoped by Feature 250 (PR #253, squash `75866d9`) on 2026-05-04 (timeouts + session-scoped fixture). Extended by Feature 256 (PR #257, squash `f959622`) on 2026-05-05 to cover the source-pattern-hardening surface.
+**Added in Feature 248** (Substitution Surface Hardening), merged via PR #249 (squash commit `6db9a25`) on 2026-05-04. Re-tuned and re-scoped by Feature 250 (PR #253, squash `75866d9`) on 2026-05-04 (timeouts + session-scoped fixture). Extended by Feature 256 (PR #257, squash `f959622`) on 2026-05-05 to cover the source-pattern-hardening surface. Extended by Feature 282 / F-5 (PR #283, squash `18378bd`) on 2026-05-10 to wire `tests/scripts/test_init_precommit_matrix.py` into both the `paths:` trigger and the pytest invocation in lock-step (the F-256 lock-step pattern, applied verbatim).
 
 `.github/workflows/tachi-pytest.yml` runs the combined F-248 substitution test suite + F-256 source-pattern-hardening test suite on a 2-runner cross-platform matrix (`macos-latest` + `ubuntu-latest`) to catch bash-version regressions across the full bash surface area: `scripts/init.sh`, `.aod/scripts/bash/template-substitute.sh`, `.aod/scripts/bash/init-input.sh`, `.aod/scripts/bash/template-git.sh`, `.aod/scripts/bash/template-config-load.sh` (F-256 canonical KV-load primitive), the constitution templates, and the shipped stack-pack `defaults.env` files (F-256 Site A whitelist surface). The macOS leg is the strictest gate because it ships bash 3.2.57 (Apple's bundled `/bin/bash`, GPLv3-pinned) — a green macOS run on top of a green Ubuntu run proves the entire hardening surface is portable, not bash-3.2-quirk-locked.
 
@@ -178,6 +179,10 @@ F-256 source-pattern-hardening suite (per ADR-040 §Test Coverage — Sites A-D 
 - `tests/scripts/test_template_git_clone_timeout.py` — Stream 4 watchdog + `AOD_FETCH_TIMEOUT` adopter env-var contract (hanging-upstream timeout, validation-rejection footguns, fast-clone happy-path + zombie-watchdog assertion)
 - `tests/scripts/test_template_substitute_lint_no_eval.py` — Lint guard: asserts post-F-256 `template-substitute.sh` contains zero `eval` invocations (closes TACHI-VULN-9a7512071b4a regression-resistance)
 
+F-282 / F-5 pre-commit-secret-scanning matrix (added 2026-05-10):
+
+- `tests/scripts/test_init_precommit_matrix.py` — Validates the F-5 init.sh prompt block: `--no-precommit` skip path, `--precommit` force-install path, default-Y TTY path, non-TTY silent-skip path, `pre-commit --version >= 3.5.0` floor check (warn-and-continue when below), pre-commit-not-installed path (warn-and-continue, no abort). Both `macos-latest` (bash 3.2.57) and `ubuntu-latest` (bash 5.x) legs MUST pass.
+
 **Path filter (NFR-005 — scope discipline)**: The workflow ONLY fires when files in the combined F-248 substitution surface + F-256 source-pattern surface change. Pure docs edits, ADR text, or unrelated agent-tier changes do NOT trigger this job. Mirrors the narrow-scope pattern of `tachi-mmdc-preflight.yml` and avoids burning CI minutes on edits that cannot affect substitution or config-loading behaviour. The complete trigger set is:
 
 ```yaml
@@ -204,6 +209,7 @@ paths:
   - tests/scripts/test_template_config_load_integration.py # F-256
   - tests/scripts/test_template_git_clone_timeout.py      # F-256
   - tests/scripts/test_template_substitute_lint_no_eval.py # F-256
+  - tests/scripts/test_init_precommit_matrix.py            # F-5 (282) — pre-commit prompt + flag matrix
   - tests/scripts/init_sh_helpers.py
   - tests/scripts/conftest.py
   - tests/fixtures/init-baseline-tree/**
@@ -213,7 +219,7 @@ paths:
   - .github/workflows/tachi-pytest.yml
 ```
 
-**Path-filter completeness pattern (F-250 lesson, reinforced by F-256)**: The `paths:` filter and the `pytest` invocation MUST be kept in lock-step. F-250 hot-fixed an asymmetry where 3 unit modules were added to the test invocation but omitted from `paths:`, so edits scoped to those modules silently bypassed CI. F-256 added 5 new test modules + 1 new bash library file (`template-config-load.sh`) + a new fixture tree (`tests/fixtures/config-load/`) — all wired through both the trigger list and the pytest invocation in a single commit. When adding a new test file or library file in future work, update BOTH the `paths:` trigger list AND the `python -m pytest ...` command in the same commit — and verify the file appears in both.
+**Path-filter completeness pattern (F-250 lesson, reinforced by F-256, applied verbatim by F-282/F-5)**: The `paths:` filter and the `pytest` invocation MUST be kept in lock-step. F-250 hot-fixed an asymmetry where 3 unit modules were added to the test invocation but omitted from `paths:`, so edits scoped to those modules silently bypassed CI. F-256 added 5 new test modules + 1 new bash library file (`template-config-load.sh`) + a new fixture tree (`tests/fixtures/config-load/`) — all wired through both the trigger list and the pytest invocation in a single commit. F-282 / F-5 added one new test module (`tests/scripts/test_init_precommit_matrix.py`) — wired through both the trigger list AND the pytest invocation in a single commit (T020 in the F-5 task plan, ratified at /aod.deliver close-out). When adding a new test file or library file in future work, update BOTH the `paths:` trigger list AND the `python -m pytest ...` command in the same commit — and verify the file appears in both.
 
 Edits to other shell scripts, agent files, ADRs, or documentation will not invoke this workflow even if the PR also includes substitution-surface changes — GitHub Actions evaluates the path filter at the PR level, so the workflow fires when at least one matching path is in the diff.
 
@@ -253,7 +259,7 @@ Both legs green on first attempt; release-please PR #254 auto-opened ~35s post-m
 # Install dependencies (matches CI versions)
 python -m pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
 
-# Run the full F-248 substitution suite plus the F-250 unit modules
+# Run the full F-248 + F-256 + F-282 hardening suite (matches CI exactly)
 python -m pytest \
   tests/scripts/test_init_sh_substitution.py \
   tests/scripts/test_init_sh_adversarial.py \
@@ -262,6 +268,12 @@ python -m pytest \
   tests/scripts/test_template_substitute_unit.py \
   tests/scripts/test_init_input_unit.py \
   tests/scripts/test_substitute_shim_canary.py \
+  tests/scripts/test_init_sh_defaults_env.py \
+  tests/scripts/test_template_config_load_unit.py \
+  tests/scripts/test_template_config_load_integration.py \
+  tests/scripts/test_template_git_clone_timeout.py \
+  tests/scripts/test_template_substitute_lint_no_eval.py \
+  tests/scripts/test_init_precommit_matrix.py \
   -v --timeout=1080
 ```
 
@@ -272,6 +284,70 @@ On dev hardware the suite finishes in ~3-4 minutes (vs. the 5-7 minute cold-cach
 ### F-256 Adopter-Facing Environment Variable
 
 F-256 introduces one adopter-facing environment variable, `AOD_FETCH_TIMEOUT`, read by `.aod/scripts/bash/template-git.sh:98` to bound `git clone` wall-clock cost during `/aod.update` / `make update`. Default 60 seconds; positive-integer validation against `^[1-9][0-9]*$` (rejects `0`, leading-zero forms, non-numeric values); exit `9` on timeout (with partial-checkout cleanup), exit `1` on invalid value. Full contract — including the watchdog process-leak invariant and the Q-3 footgun-rejection ruling — is documented in `docs/devops/environment-variables.md` → "F-256 Source-Pattern-Hardening Adopter Variable".
+
+---
+
+### Gitleaks CI Parity Workflow (F-282 / F-5)
+
+**Added in Feature 282 / F-5** (Pre-commit Secret-Scanning Defaults), merged via PR #283 (squash commit `18378bd`) on 2026-05-10 — the 5th and final feature of BLP-02 enterprise hardening (5/5 closed).
+
+`.github/workflows/gitleaks.yml` runs a full-repo gitleaks scan on every `pull_request` against `main` as a back-stop for the local pre-commit hook. The CI workflow exists to catch the case where a developer deliberately bypassed the local hook with `git commit --no-verify` (or has not opted into the hook because they are an existing pre-F-5 adopter). Findings are uploaded to GitHub Code Scanning via SARIF so PR reviewers see them inline in the GitHub Security tab.
+
+| Property | Value |
+|----------|-------|
+| Workflow file | `.github/workflows/gitleaks.yml` |
+| Trigger | `pull_request` against `main` (no path filter — every PR scans the full repo) |
+| Runner | `ubuntu-latest` |
+| Permissions | `contents: read` + `security-events: write` (required by `github/codeql-action/upload-sarif@v3`) |
+| Gitleaks version | **v8.30.1** (pinned) |
+| SHA256 checksum | `551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb` (verified before tarball extraction) |
+| Scan scope | Full-repo (`gitleaks git`) — NOT PR-diff |
+| SARIF category | `gitleaks` (visible under GitHub Security tab → Code Scanning → Tool: gitleaks) |
+| `actions/checkout` | `@v4` with `fetch-depth: 0` (full git history needed for `gitleaks git`) |
+| SARIF upload action | `github/codeql-action/upload-sarif@v3` |
+| `continue-on-error` | `true` on the scan step (so the SARIF upload always runs even when findings are present) |
+| `if: always()` | Set on the upload step to guarantee the SARIF artifact is published |
+
+**Native gitleaks invocation, NOT `gitleaks-action@v2` (per ADR-042 §Alternatives)**: the proprietary `gitleaks-action@v2` requires a paid `GITLEAKS_LICENSE` secret for org repos. The license requirement is enforced at runtime — the action fails closed with no warning during dry-run testing. F-5 deliberately downloads the gitleaks binary from the upstream GitHub release tarball, verifies the SHA256 checksum from the upstream `gitleaks_8.30.1_checksums.txt` artifact before extraction, and invokes the binary directly. This avoids the org-wide license trap and preserves SARIF compatibility verbatim.
+
+**Full-repo, not PR-diff (Q5 ruling)**: PR-diff scanning would miss pre-existing un-scanned credentials in older commits of the branch or its history. Full-repo catches them at merge time even if they predate the introduction of the hook. Trade-off: marginally higher CI cost (≈30s on a tachi-sized tree) vs. cleaner credential hygiene over the lifetime of the repo. The SARIF report retains all findings — reviewers triage based on whether the finding is on the PR-diff (immediate concern) or pre-existing (sweep work item).
+
+**Scan invocation** (verbatim from the workflow):
+
+```bash
+./gitleaks git \
+  --config=.gitleaks.toml \
+  --report-format=sarif \
+  --report-path=gitleaks.sarif \
+  --no-banner \
+  --verbose
+```
+
+**Deliberate decoupling from the local wrapper**: the CI workflow does NOT invoke `.aod/scripts/bash/precommit-wrap.sh` even though the wrapper is the entry point for local commits. The wrapper writes to stderr (the four-item structured contract: rule ID + file:line + bypass guidance + docs link), which is not SARIF-compatible. Reviewers in CI consume findings via the SARIF report uploaded to Code Scanning; developers at the local hook consume findings via the wrapper's stderr output. The two channels are intentionally separated per spec PM-5 / ADR-042 §Decision.
+
+**Bumping gitleaks**: each minor release of gitleaks requires (a) re-testing against `tests/fixtures/gitleaks-rule-interaction/` to confirm the upstream default ruleset still flags + allow-lists tachi's representative samples, (b) updating the `GITLEAKS_VERSION` and `GITLEAKS_SHA256` constants in `gitleaks.yml` from the upstream `gitleaks_<VERSION>_checksums.txt` artifact, and (c) regenerating the rationale catalog in `docs/standards/PRECOMMIT_HOOKS.md` §3 if any new default rule fires on tachi content. Per ADR-042 §Consequences.
+
+**Local equivalent** (matches CI scan behaviour byte-for-byte minus the SARIF upload):
+
+```bash
+# Install gitleaks v8.30.1 locally (macOS):
+brew install gitleaks   # or download the v8.30.1 release tarball + verify SHA256 manually
+
+# Run the same scan CI runs:
+gitleaks git \
+  --config=.gitleaks.toml \
+  --report-format=sarif \
+  --report-path=gitleaks.sarif \
+  --no-banner \
+  --verbose
+
+# Inspect findings:
+jq '.runs[0].results[] | {rule: .ruleId, file: .locations[0].physicalLocation.artifactLocation.uri, line: .locations[0].physicalLocation.region.startLine}' gitleaks.sarif
+```
+
+The local pre-commit hook (`.pre-commit-config.yaml` + `.aod/scripts/bash/precommit-wrap.sh`) runs a different invocation (`gitleaks git --pre-commit --redact --staged`) that scopes to staged content only and emits the wrapper's stderr contract instead of SARIF. Both invocations resolve against the same `.gitleaks.toml` ruleset.
+
+**Full contract**: `specs/282-pre-commit-secret-scanning-defaults/spec.md` (FR-001..FR-013, AC-1..AC-12, NFR-1..NFR-5, R-1..R-5). ADR: `docs/architecture/02_ADRs/ADR-042-pre-commit-secret-scanning-default.md` (§Decision, §Alternatives, §Consequences). Policy log: `docs/standards/PRECOMMIT_HOOKS.md` (per-rule rationale catalog, bypass mechanisms, install paths).
 
 ---
 

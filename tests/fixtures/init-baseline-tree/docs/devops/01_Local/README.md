@@ -205,6 +205,97 @@ See `docs/devops/CI_CD_GUIDE.md` → "BATS Test Harness Setup" for install guida
 
 ---
 
+## Pre-commit Secret-Scanning Hook (Feature 282 / F-5)
+
+**Added in Feature 282 / F-5** (BLP-02 Wave 4+, merged 2026-05-10 at `18378bd`). Tachi ships a default-secure pre-commit gitleaks hook that scans staged content on every `git commit` and refuses commits containing credential-shaped strings (AWS keys, GitHub PATs, OpenAI/Anthropic API keys, RSA/SSH/PGP private key blocks, ~150+ patterns from the upstream gitleaks default ruleset). A CI parity workflow (`.github/workflows/gitleaks.yml`) provides a back-stop for `git commit --no-verify` deliberate bypass.
+
+### Installation paths
+
+**Path 1 — New tachi adopter via `scripts/init.sh`**: init prompts at first-run with default `Y` in TTY contexts. Pressing `<Enter>` accepts; typing `n` skips. Two CLI flag overrides bypass the prompt: `--precommit` forces install regardless of TTY/answer; `--no-precommit` forces skip. Non-TTY contexts (`</dev/null`, CI, scripted invocation) skip the prompt silently.
+
+```bash
+scripts/init.sh                  # default-Y prompt (TTY)
+scripts/init.sh --precommit      # force-install regardless of TTY/answer
+scripts/init.sh --no-precommit   # force-skip regardless of TTY/answer
+```
+
+**Path 2 — Existing tachi adopter via `pre-commit install`** (after `git pull` / `make update` brings in F-5): the F-5 update is **opt-in** for existing adopters (FR-010). Pulling F-5 does NOT auto-install the hook. To opt in:
+
+```bash
+pip install pre-commit         # or: brew install pre-commit (if not already installed)
+cd <your-tachi-clone>
+pre-commit install             # opts into the hook
+```
+
+**Prerequisite**: `pre-commit` framework version >= **3.5.0** (Architect CONCERN-3 floor). If installed but below the floor, init.sh logs a WARN with upgrade guidance and continues (does NOT abort). Verify with:
+
+```bash
+pre-commit --version           # expected: pre-commit 3.5.0 or newer
+```
+
+### What gets scanned
+
+The hook runs `gitleaks git --pre-commit --redact --staged --verbose --config=.gitleaks.toml` against **staged content only** (not the working tree, not unstaged changes, not committed history). Ruleset:
+
+- Upstream gitleaks default ruleset (via `[extend] useDefault = true` in `.gitleaks.toml`) — covers AWS access keys, GitHub PATs, OpenAI/Anthropic API keys, generic high-entropy strings, RSA/SSH/PGP private key blocks, and ~150+ other credential patterns
+- Three tachi allow-lists (additive — env-var placeholders, convention paths, vendored/generated/archived content)
+- Two tachi custom rules (additive, both `warn-only`) — `tachi-personalization-env` defense-in-depth and `tachi-security-exceptions-jsonl` manual-edit detector
+
+Full per-rule rationale catalog: `docs/standards/PRECOMMIT_HOOKS.md` §3.
+
+### Bypass mechanisms
+
+```bash
+# Single-commit bypass (recommended — only the named hook is skipped):
+SKIP=gitleaks git commit -m "docs: add OPENAI_API_KEY=sk-... example to tutorial"
+
+# Inline allow-list comment (long-term suppression on a single line):
+# gitleaks:allow
+api_key = "sk-PLACEHOLDER1234567890abcdefghij"  # tutorial example
+
+# Last-resort full bypass (CI parity workflow will still scan at PR time):
+git commit --no-verify
+
+# Full opt-out (uninstall the hook entirely):
+pre-commit uninstall
+```
+
+The `gitleaks.yml` CI parity workflow runs a full-repo scan on every `pull_request` against `main` as a back-stop for the `--no-verify` path. Findings appear in the GitHub Security tab → Code Scanning under category `gitleaks`. Full contract: `docs/devops/CI_CD_GUIDE.md` → "Gitleaks CI Parity Workflow (F-282 / F-5)".
+
+### When the hook refuses a commit
+
+The wrapper script (`.aod/scripts/bash/precommit-wrap.sh`) augments gitleaks' default stderr with a four-item structured contract:
+
+```text
+──────────────────────────────────────────────────────────────
+Commit refused: secret-scanning hook (gitleaks) found a match.
+
+  Rule ID and file:line — see gitleaks output above.
+
+  Bypass for a known-good case (e.g., a placeholder-only fixture):
+      SKIP=gitleaks git commit ...
+
+  Full bypass / opt-out / remediation guide:
+      docs/standards/PRECOMMIT_HOOKS.md
+──────────────────────────────────────────────────────────────
+```
+
+The wrapper preserves gitleaks' exit code verbatim (FM-5 exit-code-capture pattern — `rc=$?` is captured BEFORE the augmentation block runs, so a failure inside the augmentation cannot mask gitleaks' own rc). Bash 3.2 compatible — runs cleanly on macOS-stock `/bin/bash` 3.2.57.
+
+### Tooling versions
+
+| Tool | Version | Pin location | Bump cadence |
+|------|---------|--------------|--------------|
+| `pre-commit` framework | >= 3.5.0 | Floor enforced by `scripts/init.sh` (warn-and-continue on mismatch) | At adopter discretion (no hard pin) |
+| `gitleaks` binary | v8.30.1 | `.pre-commit-config.yaml` `rev:` (replaced with pinned commit SHA via `pre-commit autoupdate --freeze`) + `.github/workflows/gitleaks.yml` `GITLEAKS_VERSION` constant | Each minor release with empirical re-test against `tests/fixtures/gitleaks-rule-interaction/` per ADR-042 §Consequences |
+| Tarball SHA256 | `551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb` | `.github/workflows/gitleaks.yml` `GITLEAKS_SHA256` constant | Re-derived from upstream `gitleaks_<VERSION>_checksums.txt` on every bump |
+
+### Full reference
+
+Authoritative policy doc + per-rule rationale catalog + complete bypass walkthrough: `docs/standards/PRECOMMIT_HOOKS.md`. ADR: `docs/architecture/02_ADRs/ADR-042-pre-commit-secret-scanning-default.md`. PRD: `docs/product/02_PRD/282-pre-commit-secret-scanning-defaults-2026-05-09.md`. Spec + tasks: `specs/282-pre-commit-secret-scanning-defaults/`.
+
+---
+
 ## Pre-F129 Adopter Bootstrap (Feature 134)
 
 **Applies to**: adopters who cloned AOD-kit before Feature 129 (`/aod.update` mechanism) shipped on 2026-04-19. If your project has no `.aod/aod-kit-version` pin and no `.aod/personalization.env` file, you are in this group. Authoritative walkthrough: `docs/guides/DOWNSTREAM_UPDATE.md` → "Bootstrap pre-F129 adopters".

@@ -3536,6 +3536,8 @@ sequenceDiagram
 
 ### Feature 282: Pre-commit Secret-Scanning Defaults (BLP-02 F-5)
 
+**PR**: [#283](https://github.com/davidmatousek/tachi/pull/283) | **Status**: Delivered | **Date**: 2026-05-10 | **Squash-merge commit**: `18378bd` | **Position**: BLP-02 Wave 4+ — **fifth and final feature** in the 5-feature BLP-02 enterprise-hardening initiative; **closes BLP-02 5/5** alongside F-1 (#250) / F-2 (#256) / F-3 (#272) / F-4 (#277), and **closes the 2026-05-02 Daniel Wood LinkedIn-thread enterprise-hardening punch-list 3/3** alongside F-3 + F-4.
+
 ## Components
 
 This feature ships 8 new files and 3 deltas to introduce a `gitleaks`-via-`pre-commit-framework` default-deny gate against accidental credential exposure. All components are local-host or CI-host scaffolding — no SaaS API surface, no application state.
@@ -3636,3 +3638,59 @@ This feature ships 8 new files and 3 deltas to introduce a `gitleaks`-via-`pre-c
 **No new runtime dependencies** for tachi's own codebase (dev or production). Pre-commit framework + gitleaks are adopter-installed external tooling; `precommit-wrap.sh` uses bash builtins only.
 
 **Cross-references**: [Spec 282](../../../specs/282-pre-commit-secret-scanning-defaults/spec.md) · [Plan 282](../../../specs/282-pre-commit-secret-scanning-defaults/plan.md) · [ADR-042](../02_ADRs/ADR-042-pre-commit-secret-scanning-default.md) (pre-commit secret-scanning default — pending Architect Acceptance at /aod.deliver) · [ADR-038](../02_ADRs/ADR-038-placeholder-substitution-strategy.md) (F-1 substitution surface — F-5 builds on `.gitignore:226` baseline) · [ADR-040](../02_ADRs/ADR-040-config-file-parsing-hardening.md) (F-2 config-file parsing — F-5 raw `read -p` waiver references this precedent) · [ADR-041](../02_ADRs/ADR-041-claude-permissions-baseline.md) (F-4 permissions baseline — F-5 closes BLP-02 LinkedIn-thread punch-list 3/3)
+
+---
+
+## Feature 302: Asset-Tag Output Wiring (F-260b)
+
+> Generated at `/aod.project-plan` (dual sign-off: PM APPROVED_WITH_CONCERNS + Architect APPROVED). Source of truth: [plan.md](../../../specs/302-asset-tag-output-wiring/plan.md). Wires @north-echo's asset-sensitivity tags (PR #262) end-to-end into machine-readable output across the **LLM-authoring** and **Python regeneration/verification** tiers.
+
+### Components
+
+- **`finding.yaml` schema field** — optional `affected_assets` enum-array, default `[]`, `schema_version` 1.9 (always-present-with-default, `agentic_pattern`/`maestro_layer` precedent).
+- **Deterministic populator (value authority, NEW)** — Python; joins `parse_component_asset_map(architecture)` → findings by component; writes the `affected_assets` block into `threats.md`. Pure function; no LLM; no scoring change.
+- **Pipeline sequencing step (NEW)** — runs the populator after the orchestrator emits `threats.md` tables, before SARIF authoring (a Bash step in the `tachi.threat-model`/`tachi.risk-score` command flow).
+- **`threats.md` `affected_assets` block** — new appended structure (tables byte-stable).
+- **Production LLM SARIF-authoring contracts** — `sarif-specification.md` (orchestrator → `threats.sarif`) **and** `risk-scorer.md` SARIF section (risk-scorer → `risk-scores.sarif`): emit `result.properties.affected_assets` (snake_case, flat array) copied verbatim from the `threats.md` block.
+- **Verification tier** — `parse_affected_assets()` in `sarif_common.py` + `generate-*-sarif.py` + baselines pin production output to the deterministic reference.
+- **ADR-046 (thin, NEW)** — documents the determinism-mechanism / LLM-vs-Python tier-boundary decision.
+- **Schema docs** (`asset-modifiers.md` Output Contract + stale-9.5 fix; `schemas/README.md` pointer), **CI** (`tachi-pytest.yml` lock-step), **community credit** (CHANGELOG + Discussion #246 + #302/#260 close).
+
+### Data Flow
+
+```
+architecture description (.md, inline [asset:pii,phi] tags)
+   │
+   ├── PRODUCTION (LLM-authoring tier) ───────────────────────────────────────────────┐
+   │  orchestrator agent ─► threats.md (findings as table rows — tables FROZEN here)    │
+   │        │  ▼ (Bash step in command flow)                                            │
+   │  DETERMINISTIC POPULATOR (Python): parse_component_asset_map(arch) ⋈ findings       │
+   │        │  affected_assets = map.get(component, [])  (sorted)  ← FR-2 value          │
+   │        ▼                                                                            │
+   │  threats.md + appended always-present affected_assets block (by finding ID)         │
+   │        ├─► orchestrator authors threats.sarif    ─ copies block value (snake_case)  │
+   │        └─► risk-scorer authors risk-scores.sarif ─ copies block value (snake_case)  │
+   │                        └── adopter-facing output (US-1/US-2) ──────────────────────┘
+   │
+   └── VERIFICATION (Python regeneration tier — NOT live) ─────────────────────────────┐
+      parse_affected_assets(threats_content) [sarif_common.py]                           │
+        ├─► generate-threats-sarif.py     ─┐                                             │
+        └─► generate-risk-scores-sarif.py ─┴─► baselines + SC-006 equality / SC-002      │
+                                              pin production output to ground truth       │
+      ─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+Production NFR-3 cross-format consistency = the single `threats.md` block value copied into both SARIFs + **baseline/test enforcement** (the `maestro_layer` guarantee, NOT structural-by-construction). The risk-scorer §3.5 CVSS-modifier pass + 9.2 ceiling are **unchanged** (frozen, SC-011).
+
+### Tech Stack
+
+| Component | Technology | Notes |
+|-----------|-----------|-------|
+| Populator + parsers + SARIF scripts | Python 3.11 (stdlib-only, PAT-014) | no new third-party deps |
+| Output authoring | LLM agents (orchestrator, risk-scorer) | production `.md` + `.sarif` |
+| Schemas / references / templates | Markdown + YAML | additive minor bump 1.8→1.9 |
+| Tests | pytest | 26-case suite + new F-260b regression tests |
+| Determinism | `SOURCE_DATE_EPOCH=1700000000` baselines (ADR-021) | byte-identity, additive-only diff |
+| CI | GitHub Actions (`tachi-pytest.yml`) | lock-step paths + invocation |
+
+**Cross-references**: [Spec 302](../../../specs/302-asset-tag-output-wiring/spec.md) · [Plan 302](../../../specs/302-asset-tag-output-wiring/plan.md) · [Contract](../../../specs/302-asset-tag-output-wiring/contracts/affected-assets-contract.md) · ADR-046 (committed, authored at build) · ADR-026 (minor-bump rule) · ADR-028 (additive-field, F-189) · ADR-037 (populator wiring, F-241) · ADR-021 (byte-deterministic baselines) · PR #262 (@north-echo asset-tag prototype)
