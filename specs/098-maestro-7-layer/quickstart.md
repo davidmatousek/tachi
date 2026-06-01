@@ -34,11 +34,18 @@ python3 scripts/populate-maestro-coverage.py --check examples/agentic-app/threat
 Run the populator over each in-scope file (see plan.md Decision E for the list). `maestro-reference` is re-order-only.
 
 ## 4. Regenerate the 6 gated PDF baselines (deterministic)
-For each baseline example (web-app, microservices, ascii-web-api, mermaid-agentic-app, free-text-microservice, maestro-reference):
+The exact two-step pipeline `tests/scripts/test_backward_compatibility.py:88-120` validates against. For each example in {web-app, microservices, ascii-web-api, mermaid-agentic-app, free-text-microservice, maestro-reference}:
 ```bash
-SOURCE_DATE_EPOCH=1700000000 <existing baseline-regeneration step for the example>
+SOURCE_DATE_EPOCH=1700000000 python3 scripts/extract-report-data.py \
+  --target-dir examples/<ex> \
+  --output templates/tachi/security-report/report-data.typ \
+  --template-dir templates/tachi/security-report
+SOURCE_DATE_EPOCH=1700000000 typst compile \
+  templates/tachi/security-report/main.typ \
+  examples/<ex>/security-report.pdf.baseline --root .
+rm -f templates/tachi/security-report/report-data.typ
 ```
-Use the project's existing baseline-generation path (the same one `tests/scripts/test_backward_compatibility.py` validates against). Confirm only matrix rows/order changed — review the `examples/agentic-app/` diff in the PR.
+Confirm only matrix rows/order changed — review the `examples/agentic-app/` diff in the PR.
 
 ## 5. Tests
 ```bash
