@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Adopter case-study + adoption-signal infrastructure (BLP-04 Wave 3)
+
+Added the receiving end for real-world adopter stories: a self-serve case-study
+template, a discoverable adopters index, and the activation of the existing **In
+the Wild** Discussions category as the adopter-stories channel. Prospective
+adopters can now see peer usage in one place, and contributors have a clear,
+consent-gated path to share how they run tachi in production.
+
+**What shipped**:
+- **`docs/adopters/case-study-template.md`** — a structured submission template
+  with required production-use sections (org/identifier, scale of use,
+  integration point, capabilities used, outcomes), optional rich fields (logo,
+  pull-quote, public-reference link), and a **required consent block**
+  (publish name? · use logo? · attribution) that is **default-deny**: absent an
+  explicit `yes`, nothing identifying is published. Anonymized studies are
+  welcome.
+- **`docs/adopters/README.md`** — the adopters index with a "How to submit"
+  pointer routing to the template and the In the Wild channel, and a valid empty
+  state at launch.
+- **In the Wild channel** — the existing Discussions category becomes the
+  adopter-stories channel with a pinned welcome post linking to the template and
+  index (category-level pin; no global discussion-pin slot consumed).
+- **AIVSS v1.0 release watch** — a partial-scope tracking comment + pin on
+  [Issue #168](https://github.com/davidmatousek/tachi/issues/168) keeps the
+  OWASP AIVSS v1.0 release watch warm (watch only; technical evaluation remains a
+  separate future initiative, per Feature 143 / [ADR-024](docs/architecture/02_ADRs/ADR-024-owasp-aivss-evaluation.md)).
+- **README cross-link** — the Community section's In the Wild line also points at
+  `docs/adopters/`.
+
+**Docs + platform configuration only** — no application code, no schema change,
+no new ADR. Issue #305.
+
 ### Asset-sensitivity tags wired through finding IR + threats.md + SARIF (F-260b)
 
 Wired the `affected_assets` provenance field end-to-end across every tachi output
