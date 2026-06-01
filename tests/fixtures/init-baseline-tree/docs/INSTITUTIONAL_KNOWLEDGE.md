@@ -456,6 +456,22 @@ F-292 reused F-260's community-merge precedent (4 mechanical artifacts: CHANGELO
 
 ---
 
+### Entry 9: F-302 (F-260b) Asset-Tag Output Wiring — Delivery Retrospective
+
+**Date**: 2026-06-01 | **Category**: Process Improvement | **Feature**: F-302 / F-260b (BLP-04 Wave 2) | **Issue**: #302 (closed)
+
+**Context**: Wired @north-echo's community asset-sensitivity tags (PR #262, v4.31.0) end-to-end through the output stack — `affected_assets` schema field (1.8 → 1.9), a deterministic populator (`scripts/populate-affected-assets.py`, the value authority), `threats.md` + dual-SARIF serialization, a shared extractor (`scripts/sarif_common.py`), ADR-046, CI lock-step wiring, and a credit moment for @north-echo. 23/23 tasks. Estimated 1-2 days, actual ~2 days (branch 2026-05-30 → delivered 2026-06-01) — on-target. Wiring, not re-tuning: the 6-tag enum, 9.2 CVSS ceiling, and modifier-after-clamp ordering stayed frozen (SC-011). F-260b-specific suites: 61/61 green (35 + 26).
+
+**Lesson — Regenerate the `init-baseline-tree` fixture in lock-step whenever a delivery touches a CI paths-filtered file or a tracked placeholder-bearing doc.**
+
+- **Problem**: PR #303 was the first pull_request since 2026-05-10 (F-282, baseline commit `18378bd`) to touch a `tachi-pytest.yml` `paths:` entry — it added `schemas/finding.yaml`, `scripts/populate-affected-assets.py`, `scripts/sarif_common.py`, and the two F-302 test modules. That re-triggered `test_personalized_tree_bytes_match_baseline`, which failed on 5 drifted placeholder-bearing docs. Only 1 (`docs/architecture/01_system_design/README.md`) was an F-302 change; the other 4 had drifted on main via earlier doc-close commits (F-282 on 2026-05-10, F-296 on 2026-05-30) and were never caught because no intervening PR happened to touch a filtered path. The merge was blocked until the baseline was regenerated (`711e4ae`).
+- **What we learned**: The `init-baseline-tree` byte-content contract runs only on `pull_request` with a `paths:` filter, so doc-content drift on `main` accumulates invisibly and surfaces on the *next unrelated* feature PR. Worse, `/aod.deliver`'s own doc commits (KB entries, PRD INDEX, architecture/devops READMEs) are themselves substitution-target edits that re-drift the baseline immediately after a feature merges.
+- **How to apply**: Treat the `init-baseline-tree` like the extract-classification and manifest-coverage snapshots already regenerated in `/aod.deliver` Step 9a — run `tests/fixtures/regenerate-baseline.sh` whenever a delivery's doc updates touch placeholder-bearing files, and commit the regenerated fixture alongside the docs. ALWAYS verify substitution semantics are intact first (the `test_template_substitute_unit` cases + `test_personalized_tree_modes_match_baseline` must pass, and the regenerated tree must contain zero unsubstituted canonical placeholders) so a regen never masks a real substitution regression — per the explicit "investigate before regenerating" mandate in the script header.
+
+**Evidence**: `specs/302-asset-tag-output-wiring/{delivery.md, security-scan.md, test-results/summary.json}`; squash-merge `3d3d29f`; baseline-fix commit `711e4ae`; Issue #302 closing comment. Related: KB Entries 38/39 (the extract/manifest-coverage twins of this same CI-divergence class).
+
+---
+
 ## Bug Fixes
 
 *No entries yet. Use `/kb-create` to add the first bug fix.*

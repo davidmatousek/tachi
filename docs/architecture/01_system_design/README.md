@@ -3645,6 +3645,8 @@ This feature ships 8 new files and 3 deltas to introduce a `gitleaks`-via-`pre-c
 
 > Generated at `/aod.project-plan` (dual sign-off: PM APPROVED_WITH_CONCERNS + Architect APPROVED). Source of truth: [plan.md](../../../specs/302-asset-tag-output-wiring/plan.md). Wires @north-echo's asset-sensitivity tags (PR #262) end-to-end into machine-readable output across the **LLM-authoring** and **Python regeneration/verification** tiers.
 
+**PR**: [#303](https://github.com/davidmatousek/tachi/pull/303) | **Status**: Delivered | **Date**: 2026-06-01 | **Squash-merge commit**: `3d3d29f` | 23/23 tasks complete | **Position**: BLP-04 Wave 2 — wires @north-echo's community asset-sensitivity tags (PR #262, v4.31.0) end-to-end; **wiring, not re-tuning** (6-value enum + 9.2 ceiling + modifier-after-clamp ordering FROZEN out of scope per SC-011; `tachi_parsers.py` READ-ONLY). ADR-046 Accepted (the determinism-mechanism / LLM-vs-Python tier-boundary record).
+
 ### Components
 
 - **`finding.yaml` schema field** — optional `affected_assets` enum-array, default `[]`, `schema_version` 1.9 (always-present-with-default, `agentic_pattern`/`maestro_layer` precedent).
@@ -3653,7 +3655,7 @@ This feature ships 8 new files and 3 deltas to introduce a `gitleaks`-via-`pre-c
 - **`threats.md` `affected_assets` block** — new appended structure (tables byte-stable).
 - **Production LLM SARIF-authoring contracts** — `sarif-specification.md` (orchestrator → `threats.sarif`) **and** `risk-scorer.md` SARIF section (risk-scorer → `risk-scores.sarif`): emit `result.properties.affected_assets` (snake_case, flat array) copied verbatim from the `threats.md` block.
 - **Verification tier** — `parse_affected_assets()` in `sarif_common.py` + `generate-*-sarif.py` + baselines pin production output to the deterministic reference.
-- **ADR-046 (thin, NEW)** — documents the determinism-mechanism / LLM-vs-Python tier-boundary decision.
+- **ADR-046 (thin, Accepted 2026-06-01)** — documents the determinism-mechanism / LLM-vs-Python tier-boundary decision (5 numbered decisions D1–D5).
 - **Schema docs** (`asset-modifiers.md` Output Contract + stale-9.5 fix; `schemas/README.md` pointer), **CI** (`tachi-pytest.yml` lock-step), **community credit** (CHANGELOG + Discussion #246 + #302/#260 close).
 
 ### Data Flow
@@ -3693,4 +3695,4 @@ Production NFR-3 cross-format consistency = the single `threats.md` block value 
 | Determinism | `SOURCE_DATE_EPOCH=1700000000` baselines (ADR-021) | byte-identity, additive-only diff |
 | CI | GitHub Actions (`tachi-pytest.yml`) | lock-step paths + invocation |
 
-**Cross-references**: [Spec 302](../../../specs/302-asset-tag-output-wiring/spec.md) · [Plan 302](../../../specs/302-asset-tag-output-wiring/plan.md) · [Contract](../../../specs/302-asset-tag-output-wiring/contracts/affected-assets-contract.md) · ADR-046 (committed, authored at build) · ADR-026 (minor-bump rule) · ADR-028 (additive-field, F-189) · ADR-037 (populator wiring, F-241) · ADR-021 (byte-deterministic baselines) · PR #262 (@north-echo asset-tag prototype)
+**Cross-references**: [Spec 302](../../../specs/302-asset-tag-output-wiring/spec.md) · [Plan 302](../../../specs/302-asset-tag-output-wiring/plan.md) · [Contract](../../../specs/302-asset-tag-output-wiring/contracts/affected-assets-contract.md) · [ADR-046](../02_ADRs/ADR-046-asset-tag-output-wiring.md) (Accepted 2026-06-01) · ADR-026 (minor-bump rule) · ADR-028 (additive-field, F-189) · ADR-037 (populator wiring, F-241) · ADR-021 (byte-deterministic baselines) · PR #262 (@north-echo asset-tag prototype)

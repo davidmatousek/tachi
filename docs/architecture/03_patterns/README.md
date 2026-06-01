@@ -76,6 +76,7 @@ This directory documents reusable design patterns for tachi.
 - [STRIDE-per-Element Matrix Targeting](#pattern-stride-per-element-matrix-targeting)
 - [Cross-Agent Correlation Detection](#pattern-cross-agent-correlation-detection)
 - [Heuristic A Enrichment Branch with 11-Host Saturation and Same-Agent Sub-Scope](#pattern-heuristic-a-enrichment-branch)
+- [Deterministic Populator as Value Authority (LLM-Authored Output, Python Verification Tier)](#pattern-deterministic-populator-as-value-authority)
 
 ### Stack Pack Architecture Patterns (AOD Kit)
 - [Two-Level Architecture (Build-Time / Run-Time)](#pattern-two-level-architecture)
@@ -1907,6 +1908,66 @@ def test_personalized_tree_bytes_match_baseline(init_run):
 #### Related Patterns
 
 - [Session-Scoped init.sh Fixture](#pattern-session-scoped-init-sh-fixture) -- both patterns ship together in F-250 Phase 6 Option Z; the asymmetric check works against the session-scoped fixture's canonical post-init state
+
+---
+
+### Pattern: Deterministic Populator as Value Authority
+
+**Added**: Feature 302 (Asset-Tag Output Wiring, F-260b)
+**ADR**: [ADR-046](../02_ADRs/ADR-046-asset-tag-output-wiring.md) (precedent: [ADR-037](../02_ADRs/ADR-037-web-api-coverage-attestation-and-populator-wiring.md) `maestro_layer`)
+
+#### Problem
+
+A new field must reach the adopter-facing production output, but tachi's production artifacts cross an **LLM/Python tier boundary**: the artifacts adopters actually receive (`threats.md` and **both** `.sarif` files) are **LLM-authored at run time** (the orchestrator writes `threats.md` + `threats.sarif`; the risk-scorer writes `risk-scores.md` + `risk-scores.sarif`). The deterministic Python scripts (`generate-*-sarif.py`, `sarif_common.py`) exist only as a **regeneration / verification tier with zero production callers**. So a value cannot simply be "routed through Python" to make it deterministic — that would re-architect the live pipeline. Yet some values (e.g., an asset-sensitivity tag list, or a MAESTRO layer) are pure lookups over a frozen enum and must NOT vary per run or drift between the two output surfaces.
+
+#### Solution
+
+Split authorship of the **value** from authorship of the **artifact**:
+
+1. A deterministic, non-LLM **populator** (pure Python, stdlib-only) owns the value. It computes the value as a pure function of inputs (a `dict.get` over a frozen enum / a parser join) and writes the canonical block into the **first** production artifact (`threats.md`).
+2. The production **LLM authoring contracts** then **copy that block verbatim** into the other surfaces (the SARIF property bags). The LLM transcribes; it does not derive, re-judge, or paraphrase. Pipeline sequencing guarantees the populator runs before the SARIF authoring sources the block.
+3. Cross-format consistency is enforced by a **required, non-optional test check** (multi-finding equality + byte-identity against the deterministic regeneration-tier reference).
+
+The key honesty constraint: this delivers a **deterministic value** (no per-run variance, because the value is a `dict.get`, not a judgement) — but cross-format consistency in production is **test-checked, NOT structurally guaranteed**, because production SARIF is LLM-authored. The structural guarantee exists only in the Python regeneration tier the tests diff against. Do not claim structural determinism on the production path.
+
+#### Example
+
+```python
+# scripts/populate-affected-assets.py — the value authority (pure, no LLM)
+#   affected_assets = component_asset_map.get(component, [])   # dict.get over a frozen 6-value enum
+#   → writes the canonical affected_assets block into threats.md (the value origin)
+
+# Production LLM authoring contracts (sarif-specification.md, risk-scorer.md SARIF section):
+#   emit result.properties.affected_assets — COPIED VERBATIM from the threats.md block
+#   (literal snake_case key + value; LLM transcribes, does not derive)
+
+# scripts/sarif_common.py — shared extractor (verification tier, separate from emitters)
+#   parse_affected_assets(threats_content)  → feeds generate-*-sarif.py + baselines
+
+# The guard (required, non-optional): SC-006 multi-finding equality + SC-002 byte-identity
+#   fails if any SARIF value diverges from its threats.md origin.
+```
+
+Two instances of this pattern exist: `maestro_layer` (ADR-037, the precedent) and `affected_assets` (ADR-046). Both share the **same posture**: deterministic value + test-checked (not structural) production cross-format consistency.
+
+#### When to Use
+
+- A field's value is a deterministic function of inputs (lookup over a frozen enum, a parser join) — not a judgement call the LLM should make
+- The value must appear in **live** adopter-facing output (a regeneration-only wiring would ship a feature adopters never see)
+- Production artifacts are LLM-authored and re-architecting the production path into Python is out of scope
+- A deterministic regeneration/verification tier already exists to serve as the test-check reference
+
+#### When NOT to Use
+
+- The value genuinely requires LLM reasoning or judgement (then transcription is the wrong model — let the LLM author it directly, the `maestro_layer`-style LLM-transcribed alternative)
+- Production output already flows through a deterministic serializer (then the value is structurally consistent by construction — this pattern's test-check is unnecessary)
+- There is no consistency test to back the copy-verbatim contract (without the required guard, the two surfaces can silently diverge — the pattern's central risk)
+
+#### Related Patterns
+
+- [Shared Parser Module Extraction](#pattern-shared-parser-module-extraction) -- the populator and the SARIF verification tier import shared parsers (`tachi_parsers.py`) so the value origin and its verification interpret the same source identically
+- [Additive Optional State Fields](#pattern-additive-optional-state-fields) -- the field this pattern populates is typically an additive minor-bump schema field (`affected_assets`: schema_version 1.8 → 1.9)
+- [Heuristic A Enrichment Branch](#pattern-heuristic-a-enrichment-branch) -- the `maestro_layer` precedent instance originated in the same populator-wiring lineage (ADR-037)
 
 ---
 

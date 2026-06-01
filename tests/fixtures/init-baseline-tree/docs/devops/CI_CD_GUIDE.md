@@ -137,9 +137,9 @@ In `--all` mode the script exits with the **numerically lowest non-zero code** a
 
 **Feature 142 Update (2026-04-23)**: The workflow itself (`.github/workflows/stack-contract.yml`) and the validator (`.aod/scripts/bash/stack-contract-lint.sh`) are **unchanged** by F142 (PR #151) — the exit-code contract (0–5) was already strict as of F130. F142 only removes the grace-period fallback that previously lived inside `/aod.deliver` Step 9a, which translated a lint exit 5 (MISSING_BLOCK) into a silent skip. Post-F142, `/aod.deliver` surfaces exit 5 as an explicit error with the lint stderr diagnostic shown verbatim in the delivery report. **Effective impact on CI consumers**: any pipeline that parses delivery.md rendered by `/aod.deliver` should read `e2e_validation.status` (`error` vs. `skipped` vs. `success`) from the payload rather than pattern-matching grace-period language in the human-readable rendering. The stack-contract CI workflow continues to fail any PR that would have tripped its exit 5 anyway — F142 closes the same gap at the `/aod.deliver` boundary for branches not guarded by the CI workflow. PRD: `docs/product/02_PRD/142-remove-grace-period-fallback-2026-04-23.md`.
 
-### Tachi Pytest Workflow (F-248 + F-250 + F-256 + F-282)
+### Tachi Pytest Workflow (F-248 + F-250 + F-256 + F-282 + F-302)
 
-**Added in Feature 248** (Substitution Surface Hardening), merged via PR #249 (squash commit `6db9a25`) on 2026-05-04. Re-tuned and re-scoped by Feature 250 (PR #253, squash `75866d9`) on 2026-05-04 (timeouts + session-scoped fixture). Extended by Feature 256 (PR #257, squash `f959622`) on 2026-05-05 to cover the source-pattern-hardening surface. Extended by Feature 282 / F-5 (PR #283, squash `18378bd`) on 2026-05-10 to wire `tests/scripts/test_init_precommit_matrix.py` into both the `paths:` trigger and the pytest invocation in lock-step (the F-256 lock-step pattern, applied verbatim).
+**Added in Feature 248** (Substitution Surface Hardening), merged via PR #249 (squash commit `6db9a25`) on 2026-05-04. Re-tuned and re-scoped by Feature 250 (PR #253, squash `75866d9`) on 2026-05-04 (timeouts + session-scoped fixture). Extended by Feature 256 (PR #257, squash `f959622`) on 2026-05-05 to cover the source-pattern-hardening surface. Extended by Feature 282 / F-5 (PR #283, squash `18378bd`) on 2026-05-10 to wire `tests/scripts/test_init_precommit_matrix.py` into both the `paths:` trigger and the pytest invocation in lock-step (the F-256 lock-step pattern, applied verbatim). Extended by Feature 302 / F-260b (PR #303, squash commit `3d3d29f`) on 2026-06-01 to wire the previously-unwired asset-tag test suite (`tests/scripts/test_asset_sensitivity_tags.py` + `tests/scripts/test_affected_assets_wiring.py`) plus their three source surfaces into the `paths:` trigger — and the two test files into the pytest invocation — in lock-step (the same F-256 lock-step pattern).
 
 `.github/workflows/tachi-pytest.yml` runs the combined F-248 substitution test suite + F-256 source-pattern-hardening test suite on a 2-runner cross-platform matrix (`macos-latest` + `ubuntu-latest`) to catch bash-version regressions across the full bash surface area: `scripts/init.sh`, `.aod/scripts/bash/template-substitute.sh`, `.aod/scripts/bash/init-input.sh`, `.aod/scripts/bash/template-git.sh`, `.aod/scripts/bash/template-config-load.sh` (F-256 canonical KV-load primitive), the constitution templates, and the shipped stack-pack `defaults.env` files (F-256 Site A whitelist surface). The macOS leg is the strictest gate because it ships bash 3.2.57 (Apple's bundled `/bin/bash`, GPLv3-pinned) — a green macOS run on top of a green Ubuntu run proves the entire hardening surface is portable, not bash-3.2-quirk-locked.
 
@@ -183,6 +183,13 @@ F-282 / F-5 pre-commit-secret-scanning matrix (added 2026-05-10):
 
 - `tests/scripts/test_init_precommit_matrix.py` — Validates the F-5 init.sh prompt block: `--no-precommit` skip path, `--precommit` force-install path, default-Y TTY path, non-TTY silent-skip path, `pre-commit --version >= 3.5.0` floor check (warn-and-continue when below), pre-commit-not-installed path (warn-and-continue, no abort). Both `macos-latest` (bash 3.2.57) and `ubuntu-latest` (bash 5.x) legs MUST pass.
 
+F-302 / F-260b asset-tag output-wiring suite (added 2026-06-01):
+
+- `tests/scripts/test_asset_sensitivity_tags.py` — the previously-unwired 26-case asset-tag suite (23 defs + 1 parametrize → 26). Covers @north-echo's asset-sensitivity tag prototype merged in v4.31.0 (PR #262).
+- `tests/scripts/test_affected_assets_wiring.py` — populator + SARIF `affected_assets` wiring (35 cases): all 6 tags propagate, empty-default `[]` present, fuzzy component match, sorted/deduped output, cross-format equality (SC-006) across the `threats.md` block + both SARIF emitters, and ceiling-preservation (SC-004). Combined with the sensitivity suite, both F-260b suites run 61/61 green.
+
+Three source surfaces were also added to `paths:` (trigger-only — not separate pytest invocation entries) so the suites fire on F-260b code changes: `scripts/populate-affected-assets.py` (deterministic populator — value authority), `scripts/sarif_common.py` (`affected_assets` extractor — verification tier), and `schemas/finding.yaml` (the `affected_assets` schema contract, bumped 1.8 → 1.9).
+
 **Path filter (NFR-005 — scope discipline)**: The workflow ONLY fires when files in the combined F-248 substitution surface + F-256 source-pattern surface change. Pure docs edits, ADR text, or unrelated agent-tier changes do NOT trigger this job. Mirrors the narrow-scope pattern of `tachi-mmdc-preflight.yml` and avoids burning CI minutes on edits that cannot affect substitution or config-loading behaviour. The complete trigger set is:
 
 ```yaml
@@ -210,6 +217,11 @@ paths:
   - tests/scripts/test_template_git_clone_timeout.py      # F-256
   - tests/scripts/test_template_substitute_lint_no_eval.py # F-256
   - tests/scripts/test_init_precommit_matrix.py            # F-5 (282) — pre-commit prompt + flag matrix
+  - tests/scripts/test_asset_sensitivity_tags.py           # F-302 (260b) — 26-case asset-tag suite
+  - tests/scripts/test_affected_assets_wiring.py           # F-302 (260b) — populator + SARIF affected_assets wiring
+  - scripts/populate-affected-assets.py                    # F-302 (260b) — deterministic populator (value authority)
+  - scripts/sarif_common.py                                # F-302 (260b) — affected_assets extractor (verification tier)
+  - schemas/finding.yaml                                   # F-302 (260b) — affected_assets schema contract (1.9)
   - tests/scripts/init_sh_helpers.py
   - tests/scripts/conftest.py
   - tests/fixtures/init-baseline-tree/**
@@ -219,7 +231,7 @@ paths:
   - .github/workflows/tachi-pytest.yml
 ```
 
-**Path-filter completeness pattern (F-250 lesson, reinforced by F-256, applied verbatim by F-282/F-5)**: The `paths:` filter and the `pytest` invocation MUST be kept in lock-step. F-250 hot-fixed an asymmetry where 3 unit modules were added to the test invocation but omitted from `paths:`, so edits scoped to those modules silently bypassed CI. F-256 added 5 new test modules + 1 new bash library file (`template-config-load.sh`) + a new fixture tree (`tests/fixtures/config-load/`) — all wired through both the trigger list and the pytest invocation in a single commit. F-282 / F-5 added one new test module (`tests/scripts/test_init_precommit_matrix.py`) — wired through both the trigger list AND the pytest invocation in a single commit (T020 in the F-5 task plan, ratified at /aod.deliver close-out). When adding a new test file or library file in future work, update BOTH the `paths:` trigger list AND the `python -m pytest ...` command in the same commit — and verify the file appears in both.
+**Path-filter completeness pattern (F-250 lesson, reinforced by F-256, applied verbatim by F-282/F-5 and F-302/F-260b)**: The `paths:` filter and the `pytest` invocation MUST be kept in lock-step. F-250 hot-fixed an asymmetry where 3 unit modules were added to the test invocation but omitted from `paths:`, so edits scoped to those modules silently bypassed CI. F-256 added 5 new test modules + 1 new bash library file (`template-config-load.sh`) + a new fixture tree (`tests/fixtures/config-load/`) — all wired through both the trigger list and the pytest invocation in a single commit. F-282 / F-5 added one new test module (`tests/scripts/test_init_precommit_matrix.py`) — wired through both the trigger list AND the pytest invocation in a single commit (T020 in the F-5 task plan, ratified at /aod.deliver close-out). F-302 / F-260b added two new test modules (`tests/scripts/test_asset_sensitivity_tags.py` + `tests/scripts/test_affected_assets_wiring.py`) — both wired through the trigger list AND the pytest invocation in a single commit (T020 in the F-302 task plan); it also added three source surfaces (`scripts/populate-affected-assets.py`, `scripts/sarif_common.py`, `schemas/finding.yaml`) to the trigger list only, since those are production/schema files exercised by the suites rather than themselves test entry points. When adding a new test file or library file in future work, update BOTH the `paths:` trigger list AND the `python -m pytest ...` command in the same commit — and verify the file appears in both (source-only surfaces belong in `paths:` only).
 
 Edits to other shell scripts, agent files, ADRs, or documentation will not invoke this workflow even if the PR also includes substitution-surface changes — GitHub Actions evaluates the path filter at the PR level, so the workflow fires when at least one matching path is in the diff.
 
@@ -259,7 +271,7 @@ Both legs green on first attempt; release-please PR #254 auto-opened ~35s post-m
 # Install dependencies (matches CI versions)
 python -m pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
 
-# Run the full F-248 + F-256 + F-282 hardening suite (matches CI exactly)
+# Run the full F-248 + F-256 + F-282 + F-302 hardening suite (matches CI exactly)
 python -m pytest \
   tests/scripts/test_init_sh_substitution.py \
   tests/scripts/test_init_sh_adversarial.py \
@@ -274,12 +286,14 @@ python -m pytest \
   tests/scripts/test_template_git_clone_timeout.py \
   tests/scripts/test_template_substitute_lint_no_eval.py \
   tests/scripts/test_init_precommit_matrix.py \
+  tests/scripts/test_asset_sensitivity_tags.py \
+  tests/scripts/test_affected_assets_wiring.py \
   -v --timeout=1080
 ```
 
 On dev hardware the suite finishes in ~3-4 minutes (vs. the 5-7 minute cold-cache band on `macos-latest`). The 1080s `--timeout` is sized for the worst-case CI runner, not for local; on a fast workstation, no test approaches the cap.
 
-**Full contract**: `specs/248-substitution-surface-hardening/spec.md` (FR-001..FR-011, NFR-001 bash floor, NFR-005 scope discipline). F-250 hot-fix: `specs/250-adversarial-unit-extraction-hotfix/spec.md`. F-256 source-pattern hardening: `specs/256-source-pattern-hardening/spec.md` (FR-1..FR-9, NFR-1..NFR-6, SC-1..SC-15). ADRs: `docs/architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md` (F-248) + `docs/architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md` (F-256). Tasks T039 (workflow authoring) + T040 (CI matrix verification) + T041 (close-out attestation) for F-248; F-250 tasks T001-T029 for the hot-fix; F-256 covers Sites A-D + Stream 4 (T014-T041) + Stream 5 lint (T046).
+**Full contract**: `specs/248-substitution-surface-hardening/spec.md` (FR-001..FR-011, NFR-001 bash floor, NFR-005 scope discipline). F-250 hot-fix: `specs/250-adversarial-unit-extraction-hotfix/spec.md`. F-256 source-pattern hardening: `specs/256-source-pattern-hardening/spec.md` (FR-1..FR-9, NFR-1..NFR-6, SC-1..SC-15). F-302 asset-tag output-wiring: `specs/302-asset-tag-output-wiring/spec.md` (FR-008 CI wiring + FR-009 regression protection; SC-001..SC-012). ADRs: `docs/architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md` (F-248) + `docs/architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md` (F-256) + `docs/architecture/02_ADRs/ADR-046-asset-tag-output-wiring.md` (F-302). Tasks T039 (workflow authoring) + T040 (CI matrix verification) + T041 (close-out attestation) for F-248; F-250 tasks T001-T029 for the hot-fix; F-256 covers Sites A-D + Stream 4 (T014-T041) + Stream 5 lint (T046); F-302 task T020 wires both asset-tag suites into the matrix in lock-step.
 
 ### F-256 Adopter-Facing Environment Variable
 

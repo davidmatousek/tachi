@@ -119,6 +119,14 @@ The CI parity workflow at `.github/workflows/gitleaks.yml` reads no environment 
 
 ---
 
+## F-302 / F-260b Asset-Tag Output Wiring — No New Environment Variables
+
+**Added in Feature 302 / F-260b** (Asset-Tag Output Wiring, PR #303, merged 2026-06-01). For cross-reference: F-302 introduces **no new environment variables** of any kind (adopter-facing, test-only, or CI-only). The feature wires @north-echo's asset-sensitivity tags end-to-end through the output stack (schema field + populator + `threats.md` serialization + SARIF emission) and adds CI protection for the asset-tag test suite via the `tachi-pytest.yml` matrix. The CI delta is a path-filter + pytest-invocation lock-step addition only — it reads no environment variables (the matrix uses the existing `pytest>=8` / `pytest-timeout>=2` / `pyyaml>=6` dependency contract documented for the F-248/F-256 suites above; `--timeout=1080` is a hardcoded flag, not an env var).
+
+**Reference**: `docs/architecture/02_ADRs/ADR-046-asset-tag-output-wiring.md`. Spec FR-008 (CI wiring) + FR-009 (regression protection) in `specs/302-asset-tag-output-wiring/spec.md`. Workflow walkthrough: `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow".
+
+---
+
 ## Cross-References
 
 - **Adopter-facing update env vars**: `docs/devops/CI_CD_GUIDE.md` → "Update-Script Environment Variables" (`CI`, `FORCE_RETAG`, `AOD_UPDATE_TMP_DIR`, `AOD_BOOTSTRAP_*`, `AOD_UPSTREAM_URL`, `YES`, `SKIP_MARKER`).
@@ -126,6 +134,7 @@ The CI parity workflow at `.github/workflows/gitleaks.yml` reads no environment 
 - **Adopter scaffold env vars (Playwright E2E)**: `docs/devops/CI_CD_GUIDE.md` → "Playwright E2E in Adopter CI (FastAPI Stack Packs)" (`TEST_DATABASE_URL`, `TEST_SECRET_KEY`, `BACKEND_TEST_PORT`, `FRONTEND_TEST_PORT`).
 - **`/aod.deliver` exit codes** (consumed by CI scripts, not env vars): `docs/devops/CI_CD_GUIDE.md` → "/aod.deliver Exit-Code Contract".
 - **F-5 / F-282 pre-commit secret-scanning** (no new env vars; framework-level `SKIP=gitleaks` bypass only): `docs/standards/PRECOMMIT_HOOKS.md` §4. CI parity workflow: `docs/devops/CI_CD_GUIDE.md` → "Gitleaks CI Parity Workflow (F-282 / F-5)".
+- **F-302 / F-260b asset-tag output wiring** (no new env vars; CI lock-step path-filter + pytest-invocation delta only): `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow". Section above documents the no-env-var scope.
 
 ---
 
