@@ -3696,3 +3696,46 @@ Production NFR-3 cross-format consistency = the single `threats.md` block value 
 | CI | GitHub Actions (`tachi-pytest.yml`) | lock-step paths + invocation |
 
 **Cross-references**: [Spec 302](../../../specs/302-asset-tag-output-wiring/spec.md) · [Plan 302](../../../specs/302-asset-tag-output-wiring/plan.md) · [Contract](../../../specs/302-asset-tag-output-wiring/contracts/affected-assets-contract.md) · [ADR-046](../02_ADRs/ADR-046-asset-tag-output-wiring.md) (Accepted 2026-06-01) · ADR-026 (minor-bump rule) · ADR-028 (additive-field, F-189) · ADR-037 (populator wiring, F-241) · ADR-021 (byte-deterministic baselines) · PR #262 (@north-echo asset-tag prototype)
+
+---
+
+## Feature 305: Adoption Signal Capture (BLP-04 Wave 3)
+
+> Docs + GitHub platform-config feature — no application code, no schema change, no new ADR. Receiving infrastructure for adoption signals. Spec/plan: `specs/305-adoption-signal-capture/`.
+
+### Components
+
+- **Case-study template** (`docs/adopters/case-study-template.md`) — structured submission with required sections (org/identifier, scale, integration point, capabilities used, outcomes), optional fields (logo, pull-quote, public-reference link), and a required **Consent block** (publish name? / use logo? / attribution) captured at submission.
+- **Adopters index** (`docs/adopters/README.md`) — discovery surface listing accepted case studies (valid empty state at launch) + a "How to submit" pointer to the template and the channel.
+- **Adopter-stories channel** — the existing **"In the Wild"** GitHub Discussions category (reused, not new), with a category-level-pinned welcome post linking to the template + index.
+- **AIVSS watch** — a partial-scope tracking comment + issue pin on Issue #168 (release watch only; technical evaluation is a separate future initiative).
+- **Internal signal log** — a maintainer-kept, gitignored append-only log of inbound adoption signals in a uniform shape (date · source · signal-type · decision; signal-type a closed vocabulary). Lives outside version control; not a repo artifact.
+- **CHANGELOG entry** — `feat(305):` release-visibility record under a BLP-04 Wave 3 heading.
+
+### Data Flow
+
+Public, consent-gated submission + discovery flow (maintainer-side signal tracking is gitignored and intentionally omitted from this public view):
+
+```mermaid
+flowchart TD
+    O[Warm outreach<br/>self-serve link] --> T[case-study-template.md<br/>+ required Consent block]
+    T -->|consent grant = yes / anonymized| I[adopters/README.md<br/>index + empty state]
+    T -->|consent grant = yes| C["In the Wild" Discussions<br/>category-pinned welcome post]
+    I --> P[Prospect / procurement<br/>finds peer signal]
+    C --> P
+    A[Issue #168<br/>AIVSS watch + pin] -.release watch.-> M[Maintainer]
+```
+
+**Invariant**: no adopter identity reaches a public surface without an explicit consent grant captured in the template (default-deny). Maintainer-side signal and recipient tracking is kept off-repo (gitignored / issue-scoped) and never enters a public commit.
+
+### Tech Stack
+
+| Component | Technology | Notes |
+|-----------|-----------|-------|
+| Public docs | Markdown (GitHub-rendered) | new `docs/adopters/` directory |
+| Adopter channel | GitHub Discussions | existing "In the Wild" category; category-level pin (no new category) |
+| Watch / close-out | GitHub Issues | #168 (AIVSS comment + issue pin), #305 (close-out) |
+| Repo cleanliness | git + `.gitignore` | internal log excluded from every commit |
+| Build tooling | none | no runtime, no dependencies, no application code |
+
+**Cross-references**: [Spec 305](../../../specs/305-adoption-signal-capture/spec.md) · [Plan 305](../../../specs/305-adoption-signal-capture/plan.md) · [Data model](../../../specs/305-adoption-signal-capture/data-model.md) · Issue #305 · Issue #168 (AIVSS watch) · No new ADR (ADR-044 positioning precedent).
