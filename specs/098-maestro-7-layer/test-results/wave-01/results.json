@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "wave": 1,
+  "timestamp": "2026-06-02",
+  "test_runner": "python3 -m pytest tests/ --ignore=tests/fixtures",
+  "gate_mode": "soft",
+  "gate_decision": "warn",
+  "totals": { "pass": 858, "fail": 15, "skip": 1 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 15
+  },
+  "notes": "All 15 failures confirmed PRE-EXISTING via git-stash re-run on clean branch state (unrelated subsystems: coverage-attestation, agent-enrichment line caps, tool-abuse byte-identity-vs-main). Feature 098 (T002-T005) introduced ZERO regressions. test_backward_compatibility.py (the test coupled to T003) = 13 passed, 1 skipped (GREEN). Root pytest collection requires --ignore=tests/fixtures (F-302 init-baseline-tree fixture, pre-existing).",
+  "regressions": [],
+  "pre_existing": [
+    "test_coverage_attestation_audit.py::TestCitationCompleteness::test_every_covered_owasp_has_pattern_category_citation",
+    "test_llm10_unbounded_consumption_enrichment.py::TestLineCountCaps (x2)",
+    "test_ml_top_10_coverage_bundle_enrichment.py::TestLineCountCaps (x2)",
+    "test_mobile_top_10_coverage_bundle_enrichment.py (x6)",
+    "test_tool_abuse_enrichment.py (x3: line_count_within_cap, categories_1_8_byte_identity_against_main, validate_source_attribution_on_regen)"
+  ]
+}
