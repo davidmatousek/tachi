@@ -430,13 +430,13 @@ Note: Deduplicated counts reflect 6 correlation groups (CG-1 through CG-6) contr
 
 | MAESTRO Layer | Finding Count | Highest Severity |
 |---------------|---------------|------------------|
-| L3 — Agent Framework | 30 | Critical |
 | L1 — Foundation Model | 18 | Critical |
-| L7 — Agent Ecosystem | 22 | Critical |
 | L2 — Data Operations | 9 | Critical |
+| L3 — Agent Framework | 30 | Critical |
+| L4 — Deployment Infrastructure | 11 | High |
 | L5 — Evaluation and Observability | 6 | Critical |
 | L6 — Security and Compliance | 12 | High |
-| L4 — Deployment Infrastructure | 11 | High |
+| L7 — Agent Ecosystem | 22 | Critical |
 
 ---
 

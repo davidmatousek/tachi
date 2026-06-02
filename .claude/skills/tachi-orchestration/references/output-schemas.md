@@ -233,11 +233,13 @@ A subsection within the Risk Summary showing finding counts and highest severity
 | MAESTRO Layer | Finding Count | Highest Severity |
 |---------------|---------------|------------------|
 | _{layer name}_ | _{deduplicated count}_ | _{Critical\|High\|Medium\|Low\|Note}_ |
+| _{zero-finding layer name}_ | 0 | Analyzed — no findings this scan |
 
-- **Ordering**: Rows are ordered by highest severity descending (Critical first), then by finding count descending within the same severity.
-- **Omission**: Layers with zero findings are omitted from the table.
+- **Completeness**: Always include all 7 canonical MAESTRO layers (L1–L7) as rows, regardless of finding count. No canonical layer is ever omitted from the table.
+- **Ordering**: Rows are ordered in canonical layer order (L1→L7), then the conditional "Unclassified" row last. (This replaces the former severity-descending order.)
+- **Zero-finding cell**: A layer with zero findings shows a Finding Count of `0` and, in the Highest Severity column, the annotation `Analyzed — no findings this scan` (em dash is U+2014). This is coverage metadata affirming the layer was analyzed — never a severity value, and consistent with the STRIDE coverage matrix's analyzed-clean semantics.
 - **Deduplication**: Finding counts use deduplicated values — correlation groups count as 1.
-- **"Unclassified" row**: If any findings have "Unclassified" as their MAESTRO layer, include an "Unclassified" row in the table. Do not omit it.
+- **"Unclassified" row**: If any findings have "Unclassified" as their MAESTRO layer, include an "Unclassified" row in the table after L7. Do not omit it.
 
 ### Section 7: Recommended Actions
 

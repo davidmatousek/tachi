@@ -242,8 +242,13 @@ No AI components are present in this architecture, so no STRIDE-to-AI correlatio
 
 | MAESTRO Layer | Finding Count | Highest Severity |
 |---------------|---------------|------------------|
-| L4 — Deployment Infrastructure | 14 | Critical |
+| L1 — Foundation Model | 0 | Analyzed — no findings this scan |
 | L2 — Data Operations | 8 | Critical |
+| L3 — Agent Framework | 0 | Analyzed — no findings this scan |
+| L4 — Deployment Infrastructure | 14 | Critical |
+| L5 — Evaluation and Observability | 0 | Analyzed — no findings this scan |
+| L6 — Security and Compliance | 0 | Analyzed — no findings this scan |
+| L7 — Agent Ecosystem | 0 | Analyzed — no findings this scan |
 | Unclassified | 1 | Medium |
 
 ---

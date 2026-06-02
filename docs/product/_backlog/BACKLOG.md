@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-01T17:17:36Z.
+> Auto-generated from GitHub Issues on 2026-06-02T14:24:17Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -15,9 +15,8 @@
 | #184 | F-A1.1 follow-on: NIST AI 600-1 GAI Risk taxonomy addition — Surface C transcription (ADR-027 / FR-010 enum expansion) | — | — | 2026-05-05 |
 | #183 | F-A1 follow-on: citation-URL link-rot monitoring | — | — | 2026-05-05 |
 | #182 | F-A1 follow-on: crosswalk related and superseded edge expansion | — | — | 2026-05-05 |
-| #168 | Track OWASP AIVSS v1.0 release and first external adopter case study | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 143 (MA... | 2026-04-15 |
+| #168 | Track OWASP AIVSS v1.0 release and first external adopter case study | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 143 (MA... | 2026-06-01 |
 | #126 | Auto-detect architecture drift | | Dimension | Score | Rationale | | — | 2026-05-05 |
-| #98 | MAESTRO coverage matrix — show all 7 layers including zero-finding layers | — | — | 2026-05-05 |
 | #62 | Custom brand presets — user-definable brand identity via config file | | Dimension | Score | Rationale | | — | 2026-05-05 |
 | #55 | Feature: Security Progression Summary — multi-run trend comparison over time | | Dimension | Score | Rationale | | - Market research: no threat modeling tool provides multi... | 2026-05-05 |
 
@@ -43,7 +42,7 @@
 
 | # | Title | Delivered | Retro | Updated |
 |---|-------|-----------|-------|---------|
-| #305 | Adoption Signal Capture | 2026-06-01 | — | 2026-06-01 |
+| — | *No items in this stage* | | |
 
 ## Document
 
@@ -69,3 +68,4 @@
 | #268 | fix: disentangle tachi-scanner from AOD-Kit positioning in .claude/rules/scope.md | CLOSED | 2026-05-07 |
 | #266 | fix: retitle CONTRIBUTING.md for tachi (currently labeled 'AOD Kit' with stale clone URL) | CLOSED | 2026-05-07 |
 | #264 | feat: adopt dual-frame public positioning (harness reframe) | CLOSED | 2026-05-07 |
+| #98 | MAESTRO coverage matrix — show all 7 layers including zero-finding layers | OPEN | 2026-06-01 |

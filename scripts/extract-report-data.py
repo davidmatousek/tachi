@@ -404,7 +404,7 @@ def parse_maestro_data(threats_content):
             return (2, lid)
 
     sorted_layer_ids = sorted(layer_groups.keys(), key=layer_sort_key)
-    findings_by_layer = [layer_groups[lid] for lid in sorted_layer_ids if layer_groups[lid]["findings"]]
+    findings_by_layer = [layer_groups[lid] for lid in sorted_layer_ids]
 
     result["maestro_findings_by_layer"] = findings_by_layer
 

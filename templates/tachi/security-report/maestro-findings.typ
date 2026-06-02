@@ -151,7 +151,7 @@
     if count > 0 {
       _layer-table(layer-findings)
     } else {
-      text(size: 10pt, fill: brand-muted, style: "italic")[No findings mapped to this layer.]
+      text(size: 10pt, fill: brand-muted, style: "italic")[Analyzed — no findings this scan.]
     }
   }
 

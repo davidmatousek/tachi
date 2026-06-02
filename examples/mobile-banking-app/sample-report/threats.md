@@ -252,12 +252,17 @@ No cross-agent correlations detected. No AI agents were dispatched for this arch
 | Note | 1 | 3.1% |
 | **Total** | **32** | **100%** |
 
-### Risk by MAESTRO Layer
+#### Risk by MAESTRO Layer
 
 | MAESTRO Layer | Finding Count | Highest Severity |
 |---------------|---------------|------------------|
-| L7 — Agent Ecosystem | 21 | Critical |
+| L1 — Foundation Model | 0 | Analyzed — no findings this scan |
 | L2 — Data Operations | 7 | Critical |
+| L3 — Agent Framework | 0 | Analyzed — no findings this scan |
+| L4 — Deployment Infrastructure | 0 | Analyzed — no findings this scan |
+| L5 — Evaluation and Observability | 0 | Analyzed — no findings this scan |
+| L6 — Security and Compliance | 0 | Analyzed — no findings this scan |
+| L7 — Agent Ecosystem | 21 | Critical |
 | Unclassified | 4 | Critical |
 
 ---

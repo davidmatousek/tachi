@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "wave": 4,
+  "timestamp": "2026-06-02T14:53:11Z",
+  "test_runner": "python3 -m pytest (feature scope: test_backward_compatibility.py + test_extract_report_data.py + test_maestro_coverage_invariant.py --ignore=tests/fixtures)",
+  "execution_duration_ms": 34420,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 35, "fail": 0, "skip": 3 },
+  "classification": { "regressions": 0, "new_failures": 0, "pre_existing": 0 },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "scope_note": "Ran the 3 feature-relevant suites (G4 gate). Changes are additive (2 test files) + data (6 PDF baselines) + the Wave-1 render path (already validated); byte-identical backward-compat (13 passed) is the PDF-pipeline regression proof, so no regressions are reachable. 15 pre-existing failures in unrelated subsystems (coverage_attestation_audit, *_enrichment, tool_abuse_enrichment, mobile_top_10) are documented out-of-scope per NEXT-SESSION and were not run.",
+  "generated_tests": { "count": 2, "pass": 2, "fail": 0 }
+}
