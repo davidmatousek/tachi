@@ -488,6 +488,22 @@ F-292 reused F-260's community-merge precedent (4 mechanical artifacts: CHANGELO
 
 ---
 
+### Entry 11: F-098 MAESTRO 7-Layer Coverage Matrix — Delivery Retrospective
+
+**Date**: 2026-06-02 | **Category**: Technical Pattern | **Feature**: F-098 / F-4 (BLP-04 Wave 4, final wave) | **Issue**: #98
+
+**Context**: Output-rendering polish making the MAESTRO "Risk by MAESTRO Layer" coverage matrix always render all 7 canonical layers (L1–L7) in canonical order across both `threats.md` and the PDF "MAESTRO Layer Analysis" page, including zero-finding layers annotated `Analyzed — no findings this scan` (Model A). 17/17 tasks; estimated 1.0–1.5 days, actual ~1.5 days across 2 sessions; Architect + Code-reviewer APPROVED, security PASSED (0 findings); feature suite 35 passed / 3 skipped / 0 regressions; no SARIF/schema change. Smooth, on-target delivery with no author-flagged surprise.
+
+**Lesson — The markdown coverage table is the single source of truth; the PDF data model is seeded from the parsed markdown, so fix the authoring directive, not the downstream filter.**
+
+- **Problem**: A zero-finding MAESTRO layer was silently dropped from both views, making the matrix read as a coverage ceiling (e.g. 2-of-7). The obvious-looking culprit was the PDF extractor's zero-finding filter (`extract-report-data.py:407`), but patching it alone would not fix the markdown view — and could let the PDF show more layers than the markdown actually authored.
+- **What we learned**: The Architect's review re-pinned the true single root cause upstream at the orchestrator's LLM authoring directive (`orchestrator.md:718`) that writes the threats.md table; the PDF's `layer_groups` model is seeded from the *parsed markdown* `parsed_layers` (not a hard-coded layer list), so the PDF is a strictly downstream carry-through. Flipping the directive (omit→always-emit-7, severity-desc→canonical L1→L7) plus removing the now-redundant downstream filter so zero-finding rows reach the previously-dead empty-layer template branch fixes both views from one source of truth.
+- **How to apply**: When a multi-format report renders the same data twice (markdown + PDF), find the authoring/source layer first and fix it there; treat downstream extractors/filters as carry-through that should only ever *narrow* from the source, never widen it. Verify the seeding relationship (does the PDF model derive from the parsed markdown, or from an independent list?) before deciding where the fix belongs. Regenerate wide example tails deterministically (`SOURCE_DATE_EPOCH=1700000000`) and guard the invariant with a heading-level-agnostic completeness test so the 7-row guarantee can't silently regress.
+
+**Evidence**: `specs/098-maestro-7-layer/{spec.md, plan.md, tasks.md, delivery.md, test-results/summary.json}`; squash-merge `ac07085`; release-please PR #314 (`chore(main): release 4.39.0`); follow-ups #311 (Model B clean-vs-n/a) / #312 (maestro-stack infographic) / #313 (CI drift-gate). Related: KB Entry 8 (F-296 docs-only release discipline).
+
+---
+
 ## Bug Fixes
 
 *No entries yet. Use `/kb-create` to add the first bug fix.*

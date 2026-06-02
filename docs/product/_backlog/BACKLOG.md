@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-02T14:24:17Z.
+> Auto-generated from GitHub Issues on 2026-06-02T17:20:12Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -8,6 +8,9 @@
 
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
+| #313 | chore: MAESTRO post-098 durability — wire coverage-invariant test into CI + refresh non-gated example PDFs | — | — | 2026-06-02 |
+| #312 | feat: maestro-stack infographic shows zero-finding MAESTRO layers explicitly (FR-012) | — | — | 2026-06-02 |
+| #311 | feat: MAESTRO matrix Model B — distinguish clean (analyzed, 0 findings) from n/a (not applicable) | — | — | 2026-06-02 |
 | #295 | F-292 post-merge tachi.threat-model verification runs (T017 + T026) | Impact: 3 (closes empirical verification of SC-003 + SC-015), Confidence: 5 (mechanical execution), Effort: 2 (two `tachi.threat-model` runs + 1 commit) = **30 / Tier 2 (Medium)** | — | 2026-05-14 |
 | #217 | detect_images leaves duplicate .jpg/.png pair after recovery write | — | — | 2026-05-05 |
 | #186 | F-A1.3 follow-on: MITRE ATT&CK + ATLAS catalog expansion | — | — | 2026-05-05 |
@@ -68,4 +71,3 @@
 | #268 | fix: disentangle tachi-scanner from AOD-Kit positioning in .claude/rules/scope.md | CLOSED | 2026-05-07 |
 | #266 | fix: retitle CONTRIBUTING.md for tachi (currently labeled 'AOD Kit' with stale clone URL) | CLOSED | 2026-05-07 |
 | #264 | feat: adopt dual-frame public positioning (harness reframe) | CLOSED | 2026-05-07 |
-| #98 | MAESTRO coverage matrix — show all 7 layers including zero-finding layers | OPEN | 2026-06-01 |
