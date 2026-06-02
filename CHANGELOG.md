@@ -9,6 +9,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### MAESTRO coverage matrix always shows all 7 layers (Issue #98)
+
+The "Risk by MAESTRO Layer" coverage matrix now always renders all seven
+canonical MAESTRO layers (L1–L7) in canonical order, regardless of finding
+count — closing a gap where zero-finding layers were silently omitted, which
+made a clean (analyzed, no findings) layer indistinguishable from one that was
+never analyzed. An architect reading any report (or its PDF) now sees the full
+scan span at a glance.
+
+**What shipped**:
+- **Render contract** (`output-schemas.md`, `orchestrator.md`): the matrix
+  directive now mandates all 7 canonical layers in L1→L7 order (was:
+  severity-descending with zero-finding rows omitted), with the conditional
+  "Unclassified" row placed after L7.
+- **Zero-finding annotation**: a layer with no findings shows Finding Count `0`
+  and `Analyzed — no findings this scan` (U+2014) in the Highest Severity
+  column — coverage metadata affirming the layer was analyzed, never a severity
+  value. The markdown cell carries no trailing period; the PDF prose adds one
+  (the sole sanctioned cross-format difference).
+- **PDF render path** (`scripts/extract-report-data.py`,
+  `templates/tachi/security-report/maestro-findings.typ`): removed the
+  zero-finding filter so the PDF renders every authored layer, and replaced the
+  dead empty-layer literal with the annotation. No canonical seeding is added —
+  the PDF can never show more layers than the markdown authored (single source
+  of truth).
+- **Regeneration tool** (`scripts/populate-maestro-coverage.py`): a stdlib-only
+  populator that backfills the 7-layer matrix into committed examples
+  (heading-agnostic discovery, normalize-on-write, `--check` drift mode). It is
+  an examples-regeneration tool and is **not** wired into any command or
+  orchestrator phase.
+- **Regression coverage**: a new `tests/scripts/test_maestro_coverage_invariant.py`
+  asserts every example with a MAESTRO table carries all 7 canonical layers,
+  plus a unit assertion in `test_extract_report_data.py`. Nine example tables
+  were regenerated to canonical 7-layer form and six gated PDF baselines
+  refreshed deterministically (`SOURCE_DATE_EPOCH=1700000000`).
+
+**No SARIF or schema change** — layer counts were already structured; this is a
+markdown + PDF rendering change only. Issue #98.
+
 ### Adopter case-study + adoption-signal infrastructure (BLP-04 Wave 3)
 
 Added the receiving end for real-world adopter stories: a self-serve case-study

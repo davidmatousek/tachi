@@ -116,10 +116,10 @@ triad:
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T013 [P] Verify **no SARIF / schema change** (FR-010): `git diff --stat` shows no changes under SARIF emitters or `schemas/`; confirm no `.sarif`/schema files in the diff.
-- [ ] T014 Run `/aod.analyze` and confirm no cross-artifact inconsistencies (SC-005).
-- [ ] T015 [P] Add a CHANGELOG.md entry: `feat(098): MAESTRO coverage matrix always shows all 7 layers (Issue #98)`.
-- [ ] T016 [P] Create two tracked follow-up GitHub issues: (a) FR-011 Model B — clean-vs-`n/a` two-state annotation (adopt `coverage-matrix-model.md` `---`/`n/a` vocabulary; needs `component_layer_map` from `extract-infographic-data.py`); (b) FR-012 `maestro-stack` infographic completeness. Both are P1 follow-ups, NOT close-gates for #98.
+- [X] T013 [P] Verify **no SARIF / schema change** (FR-010): `git diff --stat` shows no changes under SARIF emitters or `schemas/`; confirm no `.sarif`/schema files in the diff.
+- [X] T014 Run `/aod.analyze` and confirm no cross-artifact inconsistencies (SC-005).
+- [X] T015 [P] Add a CHANGELOG.md entry: `feat(098): MAESTRO coverage matrix always shows all 7 layers (Issue #98)`.
+- [X] T016 [P] Create two tracked follow-up GitHub issues: (a) FR-011 Model B — clean-vs-`n/a` two-state annotation (adopt `coverage-matrix-model.md` `---`/`n/a` vocabulary; needs `component_layer_map` from `extract-infographic-data.py`); (b) FR-012 `maestro-stack` infographic completeness. Both are P1 follow-ups, NOT close-gates for #98.
 - [ ] T017 Assemble the PR description: show the `examples/agentic-app/` diff; spot-check that ONLY matrix rows/order changed (Risk 98.3) — expect the added L4 row **+** the Unclassified row relocating to the bottom **+** non-empty rows re-sorting to canonical order (PM OBS-1, expected churn, not content drift). Note the F-302 remedy in the PR: if `init-baseline-tree` fails on unrelated doc-drift, run `tests/fixtures/regenerate-baseline.sh` after verifying substitution semantics (separate fixture from the PDF `.baseline` gate).
 
 ---
