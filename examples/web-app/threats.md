@@ -200,10 +200,13 @@ The following OWASP 3x3 risk matrix documents how risk levels are computed for e
 
 | MAESTRO Layer | Finding Count | Highest Severity |
 |---------------|---------------|------------------|
-| L4 — Deployment Infrastructure | 5 | Critical |
-| L7 — Agent Ecosystem | 2 | Critical |
+| L1 — Foundation Model | 0 | Analyzed — no findings this scan |
 | L2 — Data Operations | 5 | High |
+| L3 — Agent Framework | 0 | Analyzed — no findings this scan |
+| L4 — Deployment Infrastructure | 5 | Critical |
+| L5 — Evaluation and Observability | 0 | Analyzed — no findings this scan |
 | L6 — Security and Compliance | 4 | High |
+| L7 — Agent Ecosystem | 2 | Critical |
 
 | Risk Level | Count | Percentage |
 |------------|-------|------------|

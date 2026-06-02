@@ -561,17 +561,18 @@ Phase 3.6 classification rule table applied. Pattern synthesis results:
 | **MEDIUM Impact**| Low            | Medium            | High            |
 | **LOW Impact**   | Note           | Low               | Medium          |
 
-### Risk by MAESTRO Layer
+#### Risk by MAESTRO Layer
 
 | MAESTRO Layer | Finding Count | Highest Severity |
 |---|---|---|
 | L1 — Foundation Model | 26 | Critical |
+| L2 — Data Operations | 3 | High |
+| L3 — Agent Framework | 6 | Critical |
+| L4 — Deployment Infrastructure | 0 | Analyzed — no findings this scan |
+| L5 — Evaluation and Observability | 3 | High |
+| L6 — Security and Compliance | 8 | Critical |
 | L7 — Agent Ecosystem | 18 | Critical |
 | Unclassified | 25 | Critical |
-| L6 — Security and Compliance | 8 | Critical |
-| L3 — Agent Framework | 6 | Critical |
-| L2 — Data Operations | 3 | High |
-| L5 — Evaluation and Observability | 3 | High |
 
 *Note: L1 count increased by 4 (D-10, D-11, LLM-15, LLM-16 all on LLM Agent Orchestrator at L1 — Foundation Model). All other layer counts unchanged.*
 

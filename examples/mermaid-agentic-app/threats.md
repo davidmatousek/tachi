@@ -167,8 +167,11 @@ Parsed summary of the Mermaid flowchart architecture input for an agentic AI app
 | MAESTRO Layer | Finding Count | Highest Severity |
 |---------------|---------------|------------------|
 | L1 — Foundation Model | 10 | Critical |
-| L3 — Agent Framework | 3 | Critical |
 | L2 — Data Operations | 4 | High |
+| L3 — Agent Framework | 3 | Critical |
+| L4 — Deployment Infrastructure | 0 | Analyzed — no findings this scan |
+| L5 — Evaluation and Observability | 0 | Analyzed — no findings this scan |
+| L6 — Security and Compliance | 0 | Analyzed — no findings this scan |
 | L7 — Agent Ecosystem | 2 | High |
 
 ---

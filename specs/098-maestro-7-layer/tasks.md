@@ -66,9 +66,9 @@ triad:
 
 **Independent Test**: Open any regenerated example's threats.md "Risk by MAESTRO Layer" table (and its PDF page) — all 7 canonical layers appear as rows in L1→L7 order, regardless of finding count.
 
-- [ ] T006 [US1] Run `scripts/populate-maestro-coverage.py` over the **9 in-scope files** and normalize the 3 h3 headings to `#### `:
+- [X] T006 [US1] Run `scripts/populate-maestro-coverage.py` over the **9 in-scope files** and normalize the 3 h3 headings to `#### `:
   `examples/agentic-app/threats.md` (h3→h4; **PR-diff target**), `examples/agentic-app/sample-report/threats.md` (h3→h4), `examples/mobile-banking-app/sample-report/threats.md` (h3→h4), `examples/web-app/threats.md`, `examples/microservices/threats.md`, `examples/ascii-web-api/threats.md`, `examples/mermaid-agentic-app/threats.md`, `examples/free-text-microservice/threats.md`, `examples/maestro-reference/threats.md` (re-order only). **Do NOT touch** `examples/predictive-ml-app/sample-report/threats.md` or `examples/consumer-agent-app/sample-report/threats.md` (no MAESTRO table — must not force-fit) or any `examples/**/test-output/**`.
-- [ ] T007 [US1] Verify US-1 acceptance: in `examples/agentic-app/threats.md` confirm all 7 canonical rows present in L1→L7 order with L4 (Deployment Infrastructure) now shown; confirm the markdown table heading is now `#### `; spot-check 2 other regenerated examples for 7 canonical rows + canonical order.
+- [X] T007 [US1] Verify US-1 acceptance: in `examples/agentic-app/threats.md` confirm all 7 canonical rows present in L1→L7 order with L4 (Deployment Infrastructure) now shown; confirm the markdown table heading is now `#### `; spot-check 2 other regenerated examples for 7 canonical rows + canonical order.
 
 **Checkpoint**: US-1 complete — the full 7-layer span is visible in every regenerated example's table.
 

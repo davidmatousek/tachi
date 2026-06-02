@@ -202,9 +202,14 @@ No agentic or LLM components detected in the architecture. The system uses no la
 
 | MAESTRO Layer | Finding Count | Highest Severity |
 |---------------|---------------|------------------|
-| L4 — Deployment Infrastructure | 9 | Critical |
-| Unclassified | 3 | High |
+| L1 — Foundation Model | 0 | Analyzed — no findings this scan |
 | L2 — Data Operations | 3 | High |
+| L3 — Agent Framework | 0 | Analyzed — no findings this scan |
+| L4 — Deployment Infrastructure | 9 | Critical |
+| L5 — Evaluation and Observability | 0 | Analyzed — no findings this scan |
+| L6 — Security and Compliance | 0 | Analyzed — no findings this scan |
+| L7 — Agent Ecosystem | 0 | Analyzed — no findings this scan |
+| Unclassified | 3 | High |
 
 ---
 

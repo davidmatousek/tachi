@@ -437,17 +437,18 @@ Note: Clinical Advisory Sub-Agent LLM column count of 7 includes: LLM-13 (prompt
 | **MEDIUM Impact**| Low            | Medium            | High            |
 | **LOW Impact**   | Note           | Low               | Medium          |
 
-### Risk by MAESTRO Layer
+#### Risk by MAESTRO Layer
 
 | MAESTRO Layer | Finding Count | Highest Severity |
 |---|---|---|
 | L1 — Foundation Model | 22 | Critical |
+| L2 — Data Operations | 3 | High |
+| L3 — Agent Framework | 6 | Critical |
+| L4 — Deployment Infrastructure | 0 | Analyzed — no findings this scan |
+| L5 — Evaluation and Observability | 3 | High |
+| L6 — Security and Compliance | 8 | Critical |
 | L7 — Agent Ecosystem | 18 | Critical |
 | Unclassified | 24 | Critical |
-| L6 — Security and Compliance | 8 | Critical |
-| L3 — Agent Framework | 6 | Critical |
-| L2 — Data Operations | 3 | High |
-| L5 — Evaluation and Observability | 3 | High |
 
 Note: L7 count (18) includes all 13 Clinical Advisory Sub-Agent findings (S-9, T-9, R-9, I-9, D-9, E-7, LLM-13, LLM-14, OI-4, MI-1, MI-2, MI-3) plus the previously-existing S-1 (User) and R-1 (User). The sub-agent's MAESTRO layer is L7 (Agent Ecosystem) via "sub-agent" keyword match at L7 ordering.
 
