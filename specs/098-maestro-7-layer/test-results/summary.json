@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "feature": "098-maestro-7-layer",
+  "total_waves": 6,
+  "waves_tested": 2,
+  "waves_skipped": 4,
+  "totals": {
+    "pass": 893,
+    "fail": 15,
+    "skip": 4
+  },
+  "total_regressions": 0,
+  "coverage_trend": null,
+  "gate_decisions": [
+    { "wave": 1, "decision": "warn" },
+    { "wave": 4, "decision": "pass" }
+  ],
+  "notes": "Feature suite (test_backward_compatibility + test_extract_report_data + test_maestro_coverage_invariant) = 35 passed, 3 skipped, 0 regressions under SOURCE_DATE_EPOCH=1700000000. The 15 failures in the totals are the wave-01 full-suite PRE-EXISTING failures (coverage_attestation_audit, *_enrichment, tool_abuse_enrichment, mobile_top_10) — unrelated to #98, confirmed pre-existing via clean-branch git-stash re-run, ZERO introduced by this feature. wave-04 feature-scope gate = pass (generated_tests 2/2). Waves 0/2/3/5 produced no new source code requiring a separate test-execution artifact (Wave 5 = CHANGELOG/PR/follow-ups/security only). coverage_trend null: no coverage tooling configured. Root pytest needs --ignore=tests/fixtures (F-302 init-baseline-tree, pre-existing)."
+}
