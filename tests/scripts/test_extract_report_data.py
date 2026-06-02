@@ -1,11 +1,14 @@
-"""Unit tests for executive-architecture image detection in extract-report-data.py.
+"""Unit tests for extract-report-data.py.
 
-Invokes ``scripts/extract-report-data.py`` as a subprocess and asserts against the
-generated ``report-data.typ`` content. Subprocess invocation is used instead of
-direct module access because the assertions target the emitted Typst text rather
-than intermediate Python state.
+Most tests invoke ``scripts/extract-report-data.py`` as a subprocess and assert
+against the generated ``report-data.typ`` content. Subprocess invocation is used
+when the assertions target the emitted Typst text rather than intermediate Python
+state. A handful of tests (the MAESTRO layer-grouping regression guard) import the
+script as a module to exercise ``parse_maestro_data`` directly against a synthetic
+threats.md, which is both cleaner and more deterministic than rendering Typst.
 """
 
+import importlib.util
 import os
 import subprocess
 import sys
@@ -24,6 +27,23 @@ AGENTIC_APP_SAMPLE = REPO_ROOT / "examples" / "agentic-app" / "sample-report"
 
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 JPEG_MAGIC = b"\xff\xd8\xff\xe0\x00\x10JFIF"
+
+
+def _load_extract_module():
+    """Import the hyphenated ``extract-report-data.py`` as a module.
+
+    The script filename is not a valid Python identifier (it contains hyphens),
+    so it cannot be imported by name. ``scripts`` is placed on ``sys.path`` first
+    so the script's own ``from tachi_parsers import ...`` line resolves, matching
+    how the script is invoked as ``__main__``.
+    """
+    scripts_dir = str(REPO_ROOT / "scripts")
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
+    spec = importlib.util.spec_from_file_location("extract_report_data", SCRIPT_PATH)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def _write_minimal_png(path: Path) -> None:
@@ -319,4 +339,90 @@ def test_clean_jpeg_emits_jpg_path_without_warning(tmp_path):
     )
     assert not (fixture / "threat-executive-architecture.png").exists(), (
         "Clean JPEG must not trigger sibling creation."
+    )
+
+
+# =============================================================================
+# MAESTRO zero-finding-layer retention (Feature 098, FR-009a / T009)
+# =============================================================================
+#
+# T003 removed the zero-finding FILTER from the maestro layer-grouping path in
+# extract-report-data.py: ``findings_by_layer`` is now built from EVERY layer
+# seeded by the "Risk by MAESTRO Layer" distribution table, regardless of
+# whether that layer has any findings. A layer with 0 findings must survive as
+# a group with an empty ``findings`` list so the Typst template's ``else``
+# branch can render its "no findings this scan" state. This test is a genuine
+# regression guard: if a ``if group["findings"]`` filter were reintroduced, the
+# zero-finding L4 group would be dropped and the length-7 assertion would fail.
+
+
+# A synthetic threats.md whose Section 6 distribution table names all 7 canonical
+# MAESTRO layers, with L4 carrying 0 findings. There are deliberately NO Section
+# 3/4 per-finding rows: every layer is therefore zero-finding at the per-finding
+# level, so an old-style ``if group["findings"]`` filter would drop ALL seven
+# groups (length 0) rather than retain them (length 7) — the strongest possible
+# form of the guard. The heading uses the ``####`` form that
+# ``parse_markdown_table`` keys on; ``L4``'s "Highest Severity" cell carries a
+# sentence (matching the production "Analyzed — no findings this scan" idiom) to
+# confirm the parser tolerates non-severity prose in that column.
+_SYNTHETIC_THREATS_ALL_SEVEN_LAYERS = """## 6. Risk Summary
+
+#### Risk by MAESTRO Layer
+
+| MAESTRO Layer | Finding Count | Highest Severity |
+|---|---|---|
+| L1 — Foundation Model | 2 | High |
+| L2 — Data Operations | 1 | Medium |
+| L3 — Agent Frameworks | 1 | High |
+| L4 — Deployment Infrastructure | 0 | Analyzed — no findings this scan |
+| L5 — Evaluation and Observability | 1 | Medium |
+| L6 — Security and Compliance | 1 | High |
+| L7 — Agent Ecosystem | 1 | Low |
+"""
+
+
+def test_maestro_zero_finding_layer_is_retained_not_dropped():
+    """All 7 canonical layers survive grouping; a zero-finding layer keeps an empty list.
+
+    Regression guard for the T003 filter removal (Feature 098, FR-009a). Drives
+    ``parse_maestro_data`` directly with a synthetic threats.md that names all
+    seven L-IDs (L4 = 0 findings) so the grouping path is exercised end-to-end
+    without rendering Typst.
+
+    Asserts:
+      (a) ``maestro_findings_by_layer`` has length exactly 7 — proving no
+          zero-finding layer was filtered out, and
+      (b) the L4 group carries an empty ``findings`` list — so the Typst
+          ``else``-branch ("no findings this scan") fires for it.
+
+    If the dropped ``if group["findings"]`` filter were reinstated, every group
+    would be removed (no per-finding rows exist) and assertion (a) would fail.
+    """
+    extract = _load_extract_module()
+    result = extract.parse_maestro_data(_SYNTHETIC_THREATS_ALL_SEVEN_LAYERS)
+
+    groups = result["maestro_findings_by_layer"]
+    layer_ids = [g["layer_id"] for g in groups]
+
+    # (a) No zero-finding layer was dropped — all 7 canonical layers present.
+    assert len(groups) == 7, (
+        "Expected maestro_findings_by_layer to retain all 7 canonical layers "
+        "(the T003 zero-finding filter was removed), got "
+        f"{len(groups)}: {layer_ids!r}. A length < 7 here means a "
+        "'if group[\"findings\"]' filter was reintroduced — regression."
+    )
+    assert layer_ids == extract.MAESTRO_LAYERS, (
+        "Expected the 7 groups in canonical L1-L7 order matching "
+        f"MAESTRO_LAYERS={extract.MAESTRO_LAYERS!r}, got {layer_ids!r}."
+    )
+
+    # (b) The zero-finding layer (L4) is present with an empty findings list.
+    l4_groups = [g for g in groups if g["layer_id"] == "L4"]
+    assert len(l4_groups) == 1, (
+        f"Expected exactly one L4 group, got {len(l4_groups)}: {layer_ids!r}."
+    )
+    assert l4_groups[0]["findings"] == [], (
+        "Expected the zero-finding L4 layer to carry an empty 'findings' list "
+        "(so the Typst else-branch renders 'no findings this scan'), got "
+        f"{l4_groups[0]['findings']!r}."
     )

@@ -80,7 +80,7 @@ triad:
 
 **Independent Test**: For a zero-finding layer (e.g., agentic-app L4), the markdown row shows `0` + `Analyzed — no findings this scan`, and the regenerated PDF page shows the same annotation phrase.
 
-- [ ] T008 [US2] Verify US-2 cross-format annotation parity: confirm each zero-finding row in the regenerated `examples/agentic-app/threats.md` carries `0` + `Analyzed — no findings this scan` (U+2014, no trailing period in the cell); regenerate the agentic-app PDF and confirm the "MAESTRO Layer Analysis" page renders the same **phrase** `Analyzed — no findings this scan` (trailing period in PDF prose is the sanctioned difference — assert on the phrase, NOT the punctuation; PM OBS-2). Confirm the annotation reads as coverage metadata, not a severity, and does not contradict the STRIDE `---`/`n/a` vocabulary.
+- [X] T008 [US2] Verify US-2 cross-format annotation parity: confirm each zero-finding row in the regenerated `examples/agentic-app/threats.md` carries `0` + `Analyzed — no findings this scan` (U+2014, no trailing period in the cell); regenerate the agentic-app PDF and confirm the "MAESTRO Layer Analysis" page renders the same **phrase** `Analyzed — no findings this scan` (trailing period in PDF prose is the sanctioned difference — assert on the phrase, NOT the punctuation; PM OBS-2). Confirm the annotation reads as coverage metadata, not a severity, and does not contradict the STRIDE `---`/`n/a` vocabulary.
 
 **Checkpoint**: US-1 + US-2 both complete — this is the Issue #98 close-gate (Model A).
 
@@ -94,9 +94,9 @@ triad:
 
 > **Test-first note**: T009 and T010 are AUTHORED against the target state immediately after Phase 2 (per plan sequencing). T009 goes green once T003 lands; T010 is red until T006 regeneration, then green. They are grouped here under US-3 for story coherence.
 
-- [ ] T009 [P] [US3] Add a unit assertion to `tests/scripts/test_extract_report_data.py` (FR-009a): given a synthetic `parsed_layers` containing all 7 canonical layers with some zero-finding, assert `maestro_findings_by_layer` has length 7 (filter removed) and that a zero-finding layer's group has an empty `findings` list (so the Typst `else`-branch fires). Follow the existing subprocess+emitted-Typst harness pattern (or add a direct-import unit — the module imports cleanly).
-- [ ] T010 [P] [US3] Create `tests/scripts/test_maestro_coverage_invariant.py` (FR-009b): for every `examples/**/threats.md` **excluding any path containing `test-output/`**, **if** the file contains a "Risk by MAESTRO Layer" table (discover **heading-level-agnostically** — `^#{3,4}\s+Risk by MAESTRO Layer` or a bare `Risk by MAESTRO Layer` substring, NOT anchored on `#### `, per Architect CONCERN-1) **then** assert all 7 canonical L-IDs from `MAESTRO_LAYERS` are present. Files without the table are skipped (this naturally excludes the 2 table-less sample-reports). Do NOT hardcode any snapshot count.
-- [ ] T011 [US3] Regenerate the **6 gated PDF baselines** under `SOURCE_DATE_EPOCH=1700000000` (FR-008). For each example in {web-app, microservices, ascii-web-api, mermaid-agentic-app, free-text-microservice, maestro-reference}, run the exact two-step pipeline the backward-compat test uses (`tests/scripts/test_backward_compatibility.py:88-120`), writing the typst output directly to the `.baseline` path:
+- [X] T009 [P] [US3] Add a unit assertion to `tests/scripts/test_extract_report_data.py` (FR-009a): given a synthetic `parsed_layers` containing all 7 canonical layers with some zero-finding, assert `maestro_findings_by_layer` has length 7 (filter removed) and that a zero-finding layer's group has an empty `findings` list (so the Typst `else`-branch fires). Follow the existing subprocess+emitted-Typst harness pattern (or add a direct-import unit — the module imports cleanly).
+- [X] T010 [P] [US3] Create `tests/scripts/test_maestro_coverage_invariant.py` (FR-009b): for every `examples/**/threats.md` **excluding any path containing `test-output/`**, **if** the file contains a "Risk by MAESTRO Layer" table (discover **heading-level-agnostically** — `^#{3,4}\s+Risk by MAESTRO Layer` or a bare `Risk by MAESTRO Layer` substring, NOT anchored on `#### `, per Architect CONCERN-1) **then** assert all 7 canonical L-IDs from `MAESTRO_LAYERS` are present. Files without the table are skipped (this naturally excludes the 2 table-less sample-reports). Do NOT hardcode any snapshot count.
+- [X] T011 [US3] Regenerate the **6 gated PDF baselines** under `SOURCE_DATE_EPOCH=1700000000` (FR-008). For each example in {web-app, microservices, ascii-web-api, mermaid-agentic-app, free-text-microservice, maestro-reference}, run the exact two-step pipeline the backward-compat test uses (`tests/scripts/test_backward_compatibility.py:88-120`), writing the typst output directly to the `.baseline` path:
   ```bash
   SOURCE_DATE_EPOCH=1700000000 python3 scripts/extract-report-data.py \
     --target-dir examples/<ex> \
@@ -108,7 +108,7 @@ triad:
   rm -f templates/tachi/security-report/report-data.typ   # keep template dir clean
   ```
   (maestro-reference changes by re-order only.) Also regenerate the agentic-app PDF artifacts for the US-2/PR diff, though agentic-app is not in the 6-baseline gate.
-- [ ] T012 [US3] Run `pytest tests/scripts/test_backward_compatibility.py` and confirm all 6 baselines are byte-identical; run `pytest tests/scripts/test_extract_report_data.py tests/scripts/test_maestro_coverage_invariant.py` and confirm green.
+- [X] T012 [US3] Run `pytest tests/scripts/test_backward_compatibility.py` and confirm all 6 baselines are byte-identical; run `pytest tests/scripts/test_extract_report_data.py tests/scripts/test_maestro_coverage_invariant.py` and confirm green.
 
 **Checkpoint**: US-3 complete — the 7-row invariant is regression-proofed and baselines are deterministic.
 
