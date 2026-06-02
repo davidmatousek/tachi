@@ -1,96 +1,66 @@
 # NEXT-SESSION Handoff — Feature 098 (MAESTRO 7-Layer Coverage Matrix)
 
-**Branch**: `098-maestro-7-layer` · **Issue**: #98 · BLP-04 Wave 4 · `feat(098)`
-**Stopped at**: user request, after Wave 1 (Foundational) — implementation complete & verified
-**Resume at**: **Wave 2 / T006** (run the populator over the 9 in-scope files)
-**Draft PR**: #310
+**Branch**: `098-maestro-7-layer` · **Issue**: #98 · BLP-04 Wave 4 · `feat(098)` · **Draft PR**: #310
+**Stopped at**: standalone 3-wave ceiling (this session ran Waves 2→4)
+**Resume at**: **Wave 5 / T013** (Polish, gates & PR)
 
 ---
 
-## Status: Waves 0–1 COMPLETE (T001–T005), verified. Waves 2–5 remain (T006–T017).
+## Status: Waves 0–4 COMPLETE (T001–T012), verified. Wave 5 remains (T013–T017). 12/17 tasks (71%).
 
-### Done this session (5 source edits on disk, all verified — NOT committed yet)
-| Task | File | Change | Verified |
-|------|------|--------|----------|
-| T001 | `.claude/skills/tachi-orchestration/references/output-schemas.md` | Omission→Completeness (all 7), Ordering→canonical L1→L7, zero-finding cell schema, heading kept `#### ` | em dash **U+2014** ✓ |
-| T002 | `.claude/agents/tachi/orchestrator.md` (~L718) | directive omit→always-7 + L1→L7 + annotation + Unclassified-after-L7 | U+2014 ✓, omit-rule gone ✓ |
-| T003 | `scripts/extract-report-data.py` (L407) | removed zero-finding filter; **no canonical seeding added** (seeding L363–370 intact) | filter gone ✓ |
-| T004 | `templates/tachi/security-report/maestro-findings.typ` (L154) | dead literal → `[Analyzed — no findings this scan.]` (trailing period = Typst prose) | U+2014 ✓ |
-| T005 | `scripts/populate-maestro-coverage.py` **(NEW, untracked)** | stdlib populator: heading-agnostic discovery, h3→h4 normalize-on-write, present rows verbatim, absent→`0`+annotation, Unclassified last, `--check` | smoke-tested, idempotent, end-to-end-validated ✓ |
+### Issue #98 functional close-gate is MET
+**G3 (Model A) PASSED** — US-1 (all 7 layers visible) + US-2 (zero-finding phrase parity md↔PDF) both demonstrably pass on regenerated examples. The remaining Wave 5 work is polish/gates/PR, not feature behavior.
 
-### Populator verification evidence (in-memory only — **no example/baseline file was modified**)
-- Transforms correctly on all 3 shapes: h3+mid-Unclassified+missing-L4 (agentic-app), h4+2/7 (microservices), 7/7 reorder-only (maestro-reference).
-- **Idempotent** (running twice = byte-identical).
-- End-to-end through the real extractor: regenerated agentic-app parses to **7 canonical layers + Unclassified**, L4 has empty findings (→ fires the new Typst empty-layer branch), heading normalized to `#### `.
-- **0 new spurious layers** introduced across all 9 in-scope files.
-- `--check` exits **2** (drift) on un-regenerated files, **0** (no-op) on table-less sample-reports.
+### Done this session (Waves 2–4, committed)
+| Task | What | Evidence | Commit |
+|------|------|----------|--------|
+| T006 | Ran populator over 9 in-scope files; 3 h3→h4 normalized (Architect HIGH gate G2) | all 9 now `#### `; agentic-app 7 canonical rows incl. L4; `--check` exit 0; U+2014 confirmed by codepoint; 2 table-less reports + test-output/ untouched | `656539b` |
+| T007 | US-1 acceptance | agentic-app 7 rows L1→L7 + L4; spot-checks microservices + maestro-reference canonical | `656539b` |
+| — | **P0 architect checkpoint (blocking)** | **APPROVED** — CONCERN-1 (h3→h4) resolved; SC-003 (no canonical seeding, populator unwired) structurally guaranteed; cleared for T011. `.aod/results/architect.md` | — |
+| T008 | US-2 cross-format parity (G3 close-gate) | md cell (no period) + PDF prose page 14 (with period) both carry `Analyzed — no findings this scan`; U+2014 both; asserted on phrase not punctuation (PM OBS-2); temp render, clean tree. `.aod/results/tester.md` | `da1bb45` |
+| T009 | unit assert in `test_extract_report_data.py` | `maestro_findings_by_layer` len==7 + zero-finding layer keeps empty `findings`; guards T003 filter removal; 13 passed | `da1bb45` |
+| T010 | new `test_maestro_coverage_invariant.py` | heading-agnostic discovery (`^#{3,4}` or bare substring, NOT ####-anchored), all 7 L-IDs per table-bearing example, 2 table-less skipped; 9 passed/2 skip; mutation-proven | `da1bb45` |
+| T011 | regenerated **6 gated PDF baselines** under `SOURCE_DATE_EPOCH=1700000000` | 5 changed (gained zero-finding rows); maestro-reference byte-identical (extractor re-sorts → order-only markdown change = no PDF delta) | `da1bb45` |
+| T012 | G4 gate | backward-compat 6 baselines byte-identical (13 passed/1 skip) + both new files green → **35 passed, 3 skipped** | `da1bb45` |
 
-### Gates passed
-- **G0** (contract frozen) ✓ · **G1** (4 prod edits landed, `--check` operational, no canonical seeding) ✓
-- **G2** (h3→h4 normalization) — **NOT YET** (that is T006, next session). This is the Architect HIGH gate; must complete before T011 baseline regen.
+### Gates passed: G0 ✓ · G1 ✓ · G2 ✓ · **G3 (close-gate) ✓** · G4 ✓ · P0 checkpoint ✓
 
 ---
 
-## Test state (post-Wave-1 gate, sub-step 4.5)
-- **No regressions introduced by Feature 098.** Verified by stashing all changes and re-running — the failures persist on the clean branch state.
-- **15 PRE-EXISTING failures** on the branch, in unrelated subsystems (NOT touched by this feature): `test_coverage_attestation_audit`, `test_*_enrichment` `TestLineCountCaps`, `test_tool_abuse_enrichment` (`byte_identity_against_main`, `source_attribution`), `test_mobile_top_10_coverage_bundle_enrichment`. These are repo-/branch-level and out of scope for #98 — do **not** chase them as part of this build.
-- `test_backward_compatibility.py` **VERIFIED green: 13 passed, 1 skipped** (22s) — the 6 PDF baselines are untouched by Wave 1 (T003 is a no-op on current un-regenerated markdown: `empty_seeded=[]` for all 6). The baselines change only when T011 regenerates them next session.
-- Collection caveat: root `pytest tests/` errors on `tests/fixtures/init-baseline-tree/` (`init_sh_helpers` not importable). Run with `--ignore=tests/fixtures`. (F-302 fixture tree — pre-existing.)
+## IMPORTANT scope decision carried into Wave 5 (T017 must reflect this)
+**Non-gated example PDFs were deliberately NOT regenerated.** The byte-gate (`test_backward_compatibility.py:BASELINE_EXAMPLES`) is exactly the 6 {web-app, microservices, ascii-web-api, mermaid-agentic-app, free-text-microservice, maestro-reference} — all regenerated. The other committed PDFs derived from the 9 changed markdown files were checked empirically and **carry PRE-EXISTING `.pdf`↔`.baseline` divergences unrelated to #98** (maestro-reference `security-report.pdf` ≈307KB off its baseline; agentic-app/sample-report `.baseline` ≈365KB off its `.pdf`; mobile-banking-app/sample-report ≈8KB clean-098 delta but is F-7's example). Per **PM OBS-1** ("expect ONLY matrix row/order churn") + the prior out-of-scope guidance, regenerating them would inject non-098 binary churn. The committed render-path fix (orchestrator directive + extract filter + Typst literal) guarantees **all future** PDF generations show 7 layers. **Refreshing historical non-gated example PDFs is a separate artifact-hygiene task — do NOT bundle it into #98.** (Candidate follow-up issue if desired.)
+
+The expected PR diff is therefore: **9 example `threats.md` (matrix rows/order/annotation) + 5 changed `.pdf.baseline` + 2 test files + tasks.md/results.json**. The agentic-app `threats.md` diff = added L4 row + Unclassified relocating to bottom + non-empty rows re-sorting to canonical order (PM OBS-1, expected churn, NOT content drift).
 
 ---
 
-## Pre-existing, OUT-OF-SCOPE observation (do not fix in #98)
-`examples/agentic-app/threats.md` and `examples/agentic-app/sample-report/threats.md` carry a spurious `'MAESTRO Layer': 2` group in the **PDF** output — from 2 malformed Section 7 finding cells, **identical before and after** my changes, **not** in the distribution table the populator owns, and **not** baseline-gated. Leave it; fixing it would muddy the PR diff (PM OBS-1 says expect ONLY matrix row/order churn) and is outside this feature.
+## Next actions — Wave 5 (Polish, gates & PR) — T013–T017
+Per `agent-assignments.md` §3: T013 [P] + T015 [P] + T016 [P] independent; T014 then T017 close the wave (T017 strictly last).
+
+- **T013** [P] (tester) — Verify **no SARIF/schema change** (FR-010): `git diff --stat main...HEAD` shows nothing under SARIF emitters or `schemas/`; confirm no `.sarif`/schema files in the diff.
+- **T015** [P] (senior-backend-engineer) — CHANGELOG.md entry: `feat(098): MAESTRO coverage matrix always shows all 7 layers (Issue #98)`.
+- **T016** [P] (senior-backend-engineer) — Create **2 follow-up GitHub issues** via `gh`: (a) FR-011 Model B clean-vs-`n/a` two-state annotation (needs `component_layer_map` from `extract-infographic-data.py`); (b) FR-012 `maestro-stack` infographic completeness. Both P1 follow-ups, NOT close-gates. **Consider a 3rd**: the non-gated example-PDF artifact-hygiene refresh (above) + the Architect's non-blocking residual (wire `test_maestro_coverage_invariant.py` into CI as a drift-gate).
+- **T014** (tester) — Run `/aod.analyze`; confirm no cross-artifact inconsistencies (SC-005).
+- **T017** (code-reviewer) — Assemble PR description; verify the agentic-app diff shows ONLY matrix rows/order churn (Risk 98.3, PM OBS-1); state the non-gated-PDF scope decision above; note the F-302 remedy (if `tests/fixtures/init-baseline-tree` fails on unrelated doc-drift, run `tests/fixtures/regenerate-baseline.sh` after verifying substitution semantics — separate fixture from the PDF `.baseline` gate). **PR title MUST be `feat(098): …`** (release-please gate).
+
+### After Wave 5 (this is the LAST wave → build proceeds to final completion in the SAME run)
+`/aod.build` will continue past Wave 5 to: **Step 5** Final Validation (architect + code-reviewer; this is the P1 boundary review) → **Step 6** Design Quality Gate (will record "Skipped — no UI files changed") → **Step 7** Security Scan (likely "Skipped — no code/manifest changed" beyond the additive test .py; if it runs, no auth/secrets touched) → **Step 8** completion report + `summary.json`.
+Then: `/aod.deliver 098` (squash-merge PR #310 with `feat(098):` title; verify release-please PR opens, push empty `feat(098):` marker if it skips — see [[feedback_aod_deliver_release_gate]]).
 
 ---
 
-## Next actions (resume here)
+## Hard constraints (unchanged)
+1. **No canonical seeding** in `extract-report-data.py` (SC-003) — already honored; do not add.
+2. **Determinism** — any further PDF (re)gen + the backward-compat test under `SOURCE_DATE_EPOCH=1700000000`.
+3. **Annotation parity asserts the phrase, not the punctuation** (PM OBS-2).
+4. **PR title** = `feat(098): …` (release-please gate).
+5. **Do NOT chase the 15 pre-existing test failures** (coverage_attestation_audit, *_enrichment, tool_abuse_enrichment, mobile_top_10) — branch-level, unrelated to #98. Run pytest with `--ignore=tests/fixtures` (F-302 init-baseline-tree collection error).
 
-### Wave 2 — US-1 regeneration (T006 → T007)
-**T006** (senior-backend-engineer): run the populator over the **9 in-scope files** (this normalizes the 3 h3 headings → `#### ` automatically). One-shot batch:
-```bash
-cd /Users/david/Projects/tachi
-python3 scripts/populate-maestro-coverage.py \
-  examples/agentic-app/threats.md \
-  examples/agentic-app/sample-report/threats.md \
-  examples/mobile-banking-app/sample-report/threats.md \
-  examples/web-app/threats.md \
-  examples/microservices/threats.md \
-  examples/ascii-web-api/threats.md \
-  examples/mermaid-agentic-app/threats.md \
-  examples/free-text-microservice/threats.md \
-  examples/maestro-reference/threats.md
-# verify idempotency / no drift:
-python3 scripts/populate-maestro-coverage.py --check \
-  examples/agentic-app/threats.md examples/web-app/threats.md examples/microservices/threats.md \
-  examples/ascii-web-api/threats.md examples/mermaid-agentic-app/threats.md \
-  examples/free-text-microservice/threats.md examples/maestro-reference/threats.md \
-  examples/agentic-app/sample-report/threats.md examples/mobile-banking-app/sample-report/threats.md
+## Test state
+- Feature tests: **35 passed, 3 skipped** (`test_backward_compatibility` 13/1, `test_extract_report_data` 13/0, `test_maestro_coverage_invariant` 9/2). Artifacts in `specs/098-maestro-7-layer/test-results/wave-04/results.json`.
+- 15 pre-existing failures persist branch-wide (out of scope, documented).
+
+## Resume prompt
 ```
-**Do NOT** run it on `examples/predictive-ml-app/sample-report/threats.md`, `examples/consumer-agent-app/sample-report/threats.md` (table-less — would be a no-op anyway), or any `examples/**/test-output/**`.
-Then **G2 gate**: confirm the 3 h3 files are now `#### `, agentic-app shows 7 canonical rows incl. L4 in L1→L7 order. **T007** (tester): US-1 acceptance.
-
-### Wave 3 — US-2 annotation parity (T008, tester)
-Confirm md cell phrase `Analyzed — no findings this scan` (no trailing period) == PDF prose phrase (trailing period OK — **assert on the phrase, NOT punctuation**; PM OBS-2). Regenerate the agentic-app PDF for the check. **US-1 + US-2 = Issue #98 close-gate.**
-
-### Wave 4 — US-3 regression + deterministic baselines (T009, T010, T011, T012)
-- **T009** (`tests/scripts/test_extract_report_data.py`): synthetic 7-layer `parsed_layers` ⇒ `maestro_findings_by_layer` len 7 + a zero-finding group has empty `findings`.
-- **T010** (`tests/scripts/test_maestro_coverage_invariant.py`, NEW): every `examples/**/threats.md` (exclude `test-output/`) that has the table ⇒ all 7 L-IDs present. Discovery **heading-level-agnostic** (`^#{3,4}\s+Risk by MAESTRO Layer`), NOT `####`-anchored.
-- **T011** (devops): regenerate the **6 gated PDF baselines** {web-app, microservices, ascii-web-api, mermaid-agentic-app, free-text-microservice, maestro-reference} under `SOURCE_DATE_EPOCH=1700000000` using the exact two-step pipeline at `tests/scripts/test_backward_compatibility.py:88-120` (see quickstart.md §4). **Gated behind T006's h3→h4 normalization (G2).**
-- **T012** (tester): `test_backward_compatibility.py` 6 baselines byte-identical + the 2 new test files green.
-
-### Wave 5 — Polish, gates & PR (T013, T014, T015, T016, T017)
-- T013 no SARIF/schema diff · T015 CHANGELOG `feat(098)` · T016 two follow-up issues (FR-011 Model B; FR-012 maestro-stack infographic) · T014 `/aod.analyze` · T017 PR (agentic-app diff = ONLY matrix rows/order; note F-302 remedy `tests/fixtures/regenerate-baseline.sh` if init-baseline-tree drifts).
-
----
-
-## Hard constraints for the executor
-1. **G2 before T011** — h3→h4 normalization (T006) MUST precede baseline regen, else agentic-app PDF renders 0 layers + T010 false-greens.
-2. **No canonical seeding** in `extract-report-data.py` (single source of truth; SC-003). *(Already honored in T003.)*
-3. **Determinism** — every PDF (re)gen + backward-compat test under `SOURCE_DATE_EPOCH=1700000000`.
-4. **Annotation parity asserts the phrase, not the punctuation** (PM OBS-2).
-5. **PR title** = `feat(098): …` (release-please gate).
-
-## Uncommitted work note
-The 5 source edits + the new populator are **uncommitted** on `098-maestro-7-layer`. Re-running `/aod.build 098` will auto-checkpoint them at pre-flight (Step 0g), or commit manually first:
-`git add -A && git commit -m "feat(098): MAESTRO contract + 4 production edits + populator (Waves 0-1)"`
+claude "Resume Feature 098 (MAESTRO 7-layer) on branch 098-maestro-7-layer. Waves 0–4 done (T001–T012), Issue #98 close-gate (US-1+US-2) MET. Read specs/098-maestro-7-layer/NEXT-SESSION.md and run /aod.build 098 to continue from Wave 5/T013 (polish, gates, PR) through to final completion."
+```
