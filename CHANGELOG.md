@@ -316,6 +316,13 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
+## [4.38.0](https://github.com/davidmatousek/tachi/compare/v4.37.0...v4.38.0) (2026-06-01)
+
+
+### Features
+
+* **305:** adoption signal capture (BLP-04 Wave 3) ([b89cf46](https://github.com/davidmatousek/tachi/commit/b89cf46f5d48ca7a49b06438ac210220e0ec5f81))
+
 ## [4.37.0](https://github.com/davidmatousek/tachi/compare/v4.36.0...v4.37.0) (2026-06-01)
 
 
