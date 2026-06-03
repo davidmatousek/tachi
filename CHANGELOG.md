@@ -355,6 +355,13 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
+## [4.39.0](https://github.com/davidmatousek/tachi/compare/v4.38.0...v4.39.0) (2026-06-02)
+
+
+### Features
+
+* **098:** MAESTRO coverage matrix always shows all 7 layers ([#310](https://github.com/davidmatousek/tachi/issues/310)) ([ac07085](https://github.com/davidmatousek/tachi/commit/ac07085027a92b8d570493fba8e170411fbbccf5))
+
 ## [4.38.0](https://github.com/davidmatousek/tachi/compare/v4.37.0...v4.38.0) (2026-06-01)
 
 
