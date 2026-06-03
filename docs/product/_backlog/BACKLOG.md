@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-03T19:28:59Z.
+> Auto-generated from GitHub Issues on 2026-06-03T23:05:18Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -8,7 +8,6 @@
 
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
-| #311 | feat: MAESTRO matrix Model B — distinguish clean (analyzed, 0 findings) from n/a (not applicable) | — | — | 2026-06-03 |
 | #295 | F-292 post-merge tachi.threat-model verification runs (T017 + T026) | Impact: 3 (closes empirical verification of SC-003 + SC-015), Confidence: 5 (mechanical execution), Effort: 2 (two `tachi.threat-model` runs + 1 commit) = **30 / Tier 2 (Medium)** | — | 2026-05-14 |
 | #217 | detect_images leaves duplicate .jpg/.png pair after recovery write | — | — | 2026-05-05 |
 | #186 | F-A1.3 follow-on: MITRE ATT&CK + ATLAS catalog expansion | — | — | 2026-05-05 |
@@ -25,7 +24,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| — | *No items in this stage* | | |
+| #311 | feat: MAESTRO matrix Model B — distinguish clean (analyzed, 0 findings) from n/a (not applicable) | — | 2026-06-03 |
 
 ## Plan
 
