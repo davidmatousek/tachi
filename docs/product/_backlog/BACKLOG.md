@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-03T19:26:17Z.
+> Auto-generated from GitHub Issues on 2026-06-03T19:28:59Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -43,7 +43,7 @@
 
 | # | Title | Delivered | Retro | Updated |
 |---|-------|-----------|-------|---------|
-| #315 | MAESTRO output completeness (round 2) — Model B + infographic + CI durability | 2026-06-03 | — | 2026-06-03 |
+| — | *No items in this stage* | | |
 
 ## Document
 
