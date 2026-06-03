@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "wave": 1,
+  "timestamp": "2026-06-03",
+  "test_runner": "python3 -m pytest (affected-scope: 9 files referencing changed surfaces)",
+  "execution_duration_ms": 39350,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 168, "fail": 3, "skip": 0 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 3
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [
+    "test_tool_abuse_enrichment.py::test_tool_abuse_line_count_within_cap",
+    "test_tool_abuse_enrichment.py::test_categories_1_8_byte_identity_against_main",
+    "test_tool_abuse_enrichment.py::test_validate_source_attribution_on_regen"
+  ],
+  "scope_note": "Per-wave gate scoped to the 9 test files referencing F-315 changed surfaces (maestro-stack extractor block, agentic-app sample-report, infographic count keys, attack-chain/PDF/exec-arch consumers). The full tests/scripts/ suite (49 files, ~22 doing subprocess PDF regen) is a 10-20min integration suite run in CI; scoping the per-wave gate to affected files is appropriate for a maestro-stack-local + non-gated-PDF change.",
+  "regression_classification_evidence": "The 3 failures are PRE-EXISTING F-3/F-241 TDD tests (test_tool_abuse_enrichment.py — ASI07 tool-abuse enrichment / Pattern Category 9 A2A). PROVEN pre-existing: (1) their target files (.claude/agents/tachi/tool-abuse.md, .claude/skills/tachi-tool-abuse/references/detection-patterns.md, examples/agentic-app/sample-report/threats.md) are byte-identical to main (git diff main = empty); (2) the same 3 tests fail identically on a clean `main` worktree (3 failed, 14 passed). Zero F-315 regressions.",
+  "directly_affected_suites_green": {
+    "test_extract_infographic_data.py": "34 passed (Track A)",
+    "test_maestro_coverage_invariant.py": "9 passed / 2 skipped (Track B)",
+    "test_backward_compatibility.py": "13 passed / 1 skipped (Track C + revert re-verify)"
+  }
+}

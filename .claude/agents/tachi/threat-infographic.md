@@ -227,6 +227,8 @@ When `prompt_scaffold` is present, it contains the **locked visual design direct
 
 The complete JSON schema is defined in `specs/071-deterministic-infographic-extraction/data-model.md`. The `template_data` object varies by template -- see the data model for `baseball-card`, `system-architecture`, and `risk-funnel` schemas.
 
+**maestro-stack counts (F-315 / FR-002)**: the `{empty_layers}`, `{layers_with_findings}`, and `{layer_count}` placeholders MUST be taken verbatim from `template_data` in the emitted JSON (they are code-computed and deterministic) -- never recompute or recount them from the layer distribution yourself.
+
 ---
 
 ## Specification Generation

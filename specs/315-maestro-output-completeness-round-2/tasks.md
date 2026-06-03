@@ -36,8 +36,8 @@ triad:
 
 **Purpose**: confirm toolchain + starting state before edits.
 
-- [ ] T001 Verify the build/test toolchain is available: a local Python (3.9+) with `pytest`/`pytest-timeout` for running tests (the new CI job pins **Python 3.11** to match repo CI), and Typst + `mmdc` for PDF regeneration in US2. If `mmdc`/Typst are absent, note it in `specs/315-maestro-output-completeness-round-2/quickstart.md` (PDF regen tasks T014–T016 require them; the rest do not).
-- [ ] T002 [P] Record the starting baseline: run `python -m pytest tests/scripts/test_maestro_coverage_invariant.py -v` (expect green — all examples 7-row) and `python -m pytest tests/scripts/test_backward_compatibility.py -v` (expect green — 6 gated baselines byte-identical). Capture output as the pre-change reference.
+- [X] T001 Verify the build/test toolchain is available: a local Python (3.9+) with `pytest`/`pytest-timeout` for running tests (the new CI job pins **Python 3.11** to match repo CI), and Typst + `mmdc` for PDF regeneration in US2. If `mmdc`/Typst are absent, note it in `specs/315-maestro-output-completeness-round-2/quickstart.md` (PDF regen tasks T014–T016 require them; the rest do not). ✅ Python 3.9.6 (`python3`), pytest 8.4.2, Typst 0.14.2, mmdc 11.12.0 — all present; Track C RUNNABLE.
+- [X] T002 [P] Record the starting baseline: run `python -m pytest tests/scripts/test_maestro_coverage_invariant.py -v` (expect green — all examples 7-row) and `python -m pytest tests/scripts/test_backward_compatibility.py -v` (expect green — 6 gated baselines byte-identical). Capture output as the pre-change reference. ✅ GREEN — invariant 9P/2S, backward-compat 13P/1S (22 pass, 0 fail, 3 skip); baseline in test-results/wave-00/.
 
 ---
 
@@ -57,16 +57,16 @@ triad:
 
 ### Tests for User Story 1 (write FIRST — must FAIL before T006)
 
-- [ ] T003 [P] [US1] Author a NEW partial-MAESTRO fixture at `tests/scripts/fixtures/exec_arch/maestro_partial/` (architecture input + a `threats.md` whose "Risk by MAESTRO Layer" table has findings in ~3 of 7 layers) — needed because the existing `agentic_app` golden source is table-less (all-empty only). [Architect MEDIUM-2]
-- [ ] T004 [US1] Extend `tests/scripts/test_extract_infographic_data.py`: assert the `maestro-stack` `template_data` contains `empty_layers`, `layers_with_findings`, `layer_count`; assert `layers_with_findings + empty_layers == layer_count == 7`; assert the **mixed** counts (`layers_with_findings=3, empty_layers=4`) against the T003 partial fixture AND the all-empty case against the existing golden; assert byte-identity across two runs. Confirm these FAIL pre-implementation. (depends on T003)
+- [X] T003 [P] [US1] Author a NEW partial-MAESTRO fixture at `tests/scripts/fixtures/exec_arch/maestro_partial/` (architecture input + a `threats.md` whose "Risk by MAESTRO Layer" table has findings in ~3 of 7 layers) — needed because the existing `agentic_app` golden source is table-less (all-empty only). [Architect MEDIUM-2]
+- [X] T004 [US1] Extend `tests/scripts/test_extract_infographic_data.py`: assert the `maestro-stack` `template_data` contains `empty_layers`, `layers_with_findings`, `layer_count`; assert `layers_with_findings + empty_layers == layer_count == 7`; assert the **mixed** counts (`layers_with_findings=3, empty_layers=4`) against the T003 partial fixture AND the all-empty case against the existing golden; assert byte-identity across two runs. Confirm these FAIL pre-implementation. (depends on T003)
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] In `scripts/extract-infographic-data.py`, the `maestro-stack` `template_data` block (≈L1937–1965): backfill the distribution to all 7 `MAESTRO_LAYERS` (missing → `finding_count: 0`) and add `layers_with_findings = count(>0)`, `empty_layers = 7 − that`, `layer_count = 7`. **Local to the maestro-stack block ONLY — do NOT touch shared `extract_maestro_data`** (protects the heatmap payload / FR-004). [Architect LOW-4] (depends on T004)
-- [ ] T006 [US1] Regenerate the golden fixture `tests/scripts/fixtures/golden/maestro-stack.json` (now carries the 3 keys; all-empty case). Confirm `tests/scripts/fixtures/golden/maestro-heatmap.json` is UNCHANGED. (depends on T005)
-- [ ] T007 [P] [US1] Add a one-line directive in `.claude/agents/tachi/threat-infographic.md`: the maestro-stack `{empty_layers}`/`{layers_with_findings}`/`{layer_count}` placeholders MUST be taken from the emitted JSON, not recomputed.
-- [ ] T008 [US1] (Optional, Architect LOW-8) Either emit `most_exposed_count` in the same `template_data` block for full sidebar determinism — **depends on T005 (same block; NOT parallel with it)** — OR add a code comment that `{most_exposed_count}` is intentionally left agent-rendered and outside FR-002's enumerated set (this branch is independent). Default to the documentation branch if undecided.
-- [ ] T009 [US1] Run `python -m pytest tests/scripts/test_extract_infographic_data.py -v` → green; verify determinism (extract twice → byte-identical JSON) and that the `maestro-heatmap` golden/output is unchanged (FR-004). (depends on T005, T006)
+- [X] T005 [US1] In `scripts/extract-infographic-data.py`, the `maestro-stack` `template_data` block (≈L1937–1965): backfill the distribution to all 7 `MAESTRO_LAYERS` (missing → `finding_count: 0`) and add `layers_with_findings = count(>0)`, `empty_layers = 7 − that`, `layer_count = 7`. **Local to the maestro-stack block ONLY — do NOT touch shared `extract_maestro_data`** (protects the heatmap payload / FR-004). [Architect LOW-4] (depends on T004)
+- [X] T006 [US1] Regenerate the golden fixture `tests/scripts/fixtures/golden/maestro-stack.json` (now carries the 3 keys; all-empty case). Confirm `tests/scripts/fixtures/golden/maestro-heatmap.json` is UNCHANGED. (depends on T005)
+- [X] T007 [P] [US1] Add a one-line directive in `.claude/agents/tachi/threat-infographic.md`: the maestro-stack `{empty_layers}`/`{layers_with_findings}`/`{layer_count}` placeholders MUST be taken from the emitted JSON, not recomputed.
+- [X] T008 [US1] (Optional, Architect LOW-8) Either emit `most_exposed_count` in the same `template_data` block for full sidebar determinism — **depends on T005 (same block; NOT parallel with it)** — OR add a code comment that `{most_exposed_count}` is intentionally left agent-rendered and outside FR-002's enumerated set (this branch is independent). Default to the documentation branch if undecided.
+- [X] T009 [US1] Run `python -m pytest tests/scripts/test_extract_infographic_data.py -v` → green; verify determinism (extract twice → byte-identical JSON) and that the `maestro-heatmap` golden/output is unchanged (FR-004). (depends on T005, T006)
 
 **Checkpoint**: US1 fully functional and independently testable.
 
@@ -80,27 +80,33 @@ triad:
 
 ### CI gate sub-stream
 
-- [ ] T010 [P] [US2] Create `.github/workflows/tachi-maestro-coverage.yml` — a dedicated `ubuntu-latest` / Python 3.11 job (`pip install pytest pytest-timeout`; `python -m pytest tests/scripts/test_maestro_coverage_invariant.py -v`), modeled on `tachi-mmdc-preflight.yml`. `on.pull_request.paths` per `contracts/tachi-maestro-coverage-ci.contract.md`: regression-necessary tier (`test_maestro_coverage_invariant.py`, `examples/**/threats.md`, `scripts/tachi_parsers.py`, `scripts/populate-maestro-coverage.py`, the workflow file) + optional defense-in-depth tier. Do NOT touch `tachi-pytest.yml`. Keep `paths:` ⇄ invocation in lock-step.
-- [ ] T011 [P] [US2] Remove the "intentionally NOT wired into CI" docstring note (≈L25–27) from `tests/scripts/test_maestro_coverage_invariant.py`.
-- [ ] T012 [US2] Verify: invariant test green locally; negative test — in a scratch copy of an example `threats.md`, delete one canonical layer row → re-run → fails naming the missing layer ID; discard scratch. Confirm an unrelated-file change does not trigger the job and leaves `tachi-pytest.yml` untouched. (depends on T010, T011)
+- [X] T010 [P] [US2] Create `.github/workflows/tachi-maestro-coverage.yml` — a dedicated `ubuntu-latest` / Python 3.11 job (`pip install pytest pytest-timeout`; `python -m pytest tests/scripts/test_maestro_coverage_invariant.py -v`), modeled on `tachi-mmdc-preflight.yml`. `on.pull_request.paths` per `contracts/tachi-maestro-coverage-ci.contract.md`: regression-necessary tier (`test_maestro_coverage_invariant.py`, `examples/**/threats.md`, `scripts/tachi_parsers.py`, `scripts/populate-maestro-coverage.py`, the workflow file) + optional defense-in-depth tier. Do NOT touch `tachi-pytest.yml`. Keep `paths:` ⇄ invocation in lock-step.
+- [X] T011 [P] [US2] Remove the "intentionally NOT wired into CI" docstring note (≈L25–27) from `tests/scripts/test_maestro_coverage_invariant.py`.
+- [X] T012 [US2] Verify: invariant test green locally; negative test — in a scratch copy of an example `threats.md`, delete one canonical layer row → re-run → fails naming the missing layer ID; discard scratch. Confirm an unrelated-file change does not trigger the job and leaves `tachi-pytest.yml` untouched. (depends on T010, T011)
 
 ### Non-gated PDF refresh sub-stream
 
-- [ ] T013 [US2] Drift audit: for each non-gated example PDF (`agentic-app/sample-report`, `consumer-agent-app/sample-report`, `predictive-ml-app/sample-report`, `mobile-banking-app/sample-report`, `maestro-reference` loose `.pdf`), `cmp`/`git` compare PDF vs its `.baseline`/prior content and classify drift (MAESTRO row/order vs none vs table-less). Finalize the **confirmed-drift** refresh set; DROP no-drift targets (`mobile-banking-app` is byte-identical today — verify) and the two table-less reports. Record findings in the PR. [Architect MEDIUM-1]
-- [ ] T014 [US2] For each confirmed-drift target only: run `python scripts/populate-maestro-coverage.py <target>/sample-report/threats.md` (idempotent normalize — for agentic-app use the **sample-report** `threats.md`, not the top-level file [LOW-5]), then regenerate the PDF under `SOURCE_DATE_EPOCH=1700000000`. Leave the gated `maestro-reference/.baseline` untouched (refresh only its loose `.pdf`). (depends on T013)
-- [ ] T015 [US2] [MANUAL-ONLY: non-gated PDFs have no automated byte-gate] Diff each regenerated PDF/baseline vs prior — confirm ONLY MAESTRO row/order churn, no unrelated binary drift. (depends on T014)
-- [ ] T016 [US2] Verify the 6 byte-gated baselines remain byte-identical: `python -m pytest tests/scripts/test_backward_compatibility.py -v` → green; confirm the gated set in `BASELINE_EXAMPLES` is unchanged (not expanded — Q-D1). (depends on T014)
+- [X] T013 [US2] Drift audit: for each non-gated example PDF (`agentic-app/sample-report`, `consumer-agent-app/sample-report`, `predictive-ml-app/sample-report`, `mobile-banking-app/sample-report`, `maestro-reference` loose `.pdf`), `cmp`/`git` compare PDF vs its `.baseline`/prior content and classify drift (MAESTRO row/order vs none vs table-less). Finalize the **confirmed-drift** refresh set; DROP no-drift targets (`mobile-banking-app` is byte-identical today — verify) and the two table-less reports. Record findings in the PR. [Architect MEDIUM-1]
+- [X] T014 [US2] For each confirmed-drift target only: run `python scripts/populate-maestro-coverage.py <target>/sample-report/threats.md` (idempotent normalize — for agentic-app use the **sample-report** `threats.md`, not the top-level file [LOW-5]), then regenerate the PDF under `SOURCE_DATE_EPOCH=1700000000`. Leave the gated `maestro-reference/.baseline` untouched (refresh only its loose `.pdf`). (depends on T013)
+- [X] T015 [US2] [MANUAL-ONLY: non-gated PDFs have no automated byte-gate] Diff each regenerated PDF/baseline vs prior — confirm ONLY MAESTRO row/order churn, no unrelated binary drift. (depends on T014)
+- [X] T016 [US2] Verify the 6 byte-gated baselines remain byte-identical: `python -m pytest tests/scripts/test_backward_compatibility.py -v` → green; confirm the gated set in `BASELINE_EXAMPLES` is unchanged (not expanded — Q-D1). (depends on T014)
 
 **Checkpoint**: US1 and US2 both independently functional.
+
+> **Drift-Audit Outcome (T013/T015) — for the delivering PR body** [Architect-endorsed at Gate G1]:
+> - **`agentic-app/sample-report`** → REFRESHED (.pdf + .baseline): genuine MAESTRO churn — the L4 "Deployment Infrastructure" band (0 findings) was added; `pdftotext` diff confirmed MAESTRO-row + pagination-reflow only (Coverage-Attestation count 0→0).
+> - **`maestro-reference` (loose `.pdf`)** → **NOT refreshed / kept at main** despite plan Decision C listing it "confirmed-drift". The T015 manual diff found its ~307 KB drift is **non-MAESTRO** (F-241 Coverage-Attestation content, 0→16; MAESTRO rows already 7/7 and byte-identical both sides). Excluded per **FR-008** ("limited to MAESTRO row/order churn") + plan **Risk R2** ("flag, don't silently absorb"). Its residual non-MAESTRO staleness is a follow-up (Architect LOW-2 → log under F-241 / BLP-05 framework-mapping).
+> - **`mobile-banking-app/sample-report`** → DROPPED (byte-identical to baseline, no drift). **`consumer-agent-app` + `predictive-ml-app`** → EXCLUDED (table-less, no MAESTRO matrix).
+> - 6 byte-gated baselines unchanged; `maestro-reference/.baseline` (gated) untouched.
 
 ---
 
 ## Phase 5: Polish & Cross-Cutting
 
-- [ ] T017 [P] Add a `CHANGELOG.md` `feat(315)` entry (US-2 maestro-stack all-7 + deterministic counts; US-3 dedicated MAESTRO CI gate + non-gated PDF refresh; note US-1 Model B carved to #311).
-- [ ] T018 Run `/aod.analyze` cross-artifact consistency check (spec ↔ plan ↔ tasks); resolve any drift.
-- [ ] T019 Run `specs/315-maestro-output-completeness-round-2/quickstart.md` end-to-end validation (both stories' verification steps; SC-001…SC-007).
-- [ ] T020 DoD checklist + **delivery gate note for `/aod.deliver`**: the delivering PR MUST `Closes #312 #313` (umbrella #315 closes when both land); **merge release PR #314 (v4.39.0) before/alongside**; verify the F-315 squash-merge (`feat(315):`) yields a release-please PR (deliver-release gate). [PM LOW-2]
+- [X] T017 [P] Add a `CHANGELOG.md` `feat(315)` entry (US-2 maestro-stack all-7 + deterministic counts; US-3 dedicated MAESTRO CI gate + non-gated PDF refresh; note US-1 Model B carved to #311).
+- [X] T018 Run `/aod.analyze` cross-artifact consistency check (spec ↔ plan ↔ tasks); resolve any drift.
+- [X] T019 Run `specs/315-maestro-output-completeness-round-2/quickstart.md` end-to-end validation (both stories' verification steps; SC-001…SC-007).
+- [X] T020 DoD checklist + **delivery gate note for `/aod.deliver`**: the delivering PR MUST `Closes #312 #313` (umbrella #315 closes when both land); **merge release PR #314 (v4.39.0) before/alongside**; verify the F-315 squash-merge (`feat(315):`) yields a release-please PR (deliver-release gate). [PM LOW-2]
 
 ---
 

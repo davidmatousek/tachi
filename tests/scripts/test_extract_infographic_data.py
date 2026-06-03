@@ -757,3 +757,214 @@ def test_superset_invariant():
         f"{sorted(spurious)} that did not have qualifying findings under the "
         f"pre-F-212 logic."
     )
+
+
+# -----------------------------------------------------------------------------
+# F-315 US-2 / #312 — maestro-stack 7-layer completeness + code-computed counts
+#
+# Contract: specs/315-maestro-output-completeness-round-2/
+#   contracts/maestro-stack-template-data.contract.md + data-model.md (Decision B).
+#
+# The maestro-stack template_data MUST (a) present all 7 canonical MAESTRO layers
+# (backfilling layers absent from the parsed table with finding_count: 0), and
+# (b) emit three code-computed integer counts: layers_with_findings, empty_layers,
+# layer_count (=7). Two fixture cases pin correctness:
+#   - MIXED  (maestro_partial, a genuine 3-of-7-row table): layers_with_findings=3,
+#            empty_layers=4 — proves backfill + correct counting on a partial table.
+#   - EMPTY  (agentic_app, table-less): layers_with_findings=0, empty_layers=7 —
+#            proves graceful all-empty backfill.
+# FR-004: the maestro-heatmap payload is NOT changed by this work (asserted in the
+# golden byte-gate test_existing_templates_unchanged + the heatmap golden).
+# -----------------------------------------------------------------------------
+
+# Canonical MAESTRO layer IDs in L1->L7 order (mirrors tachi_parsers.MAESTRO_LAYERS).
+_CANONICAL_MAESTRO_LAYER_IDS = ["L1", "L2", "L3", "L4", "L5", "L6", "L7"]
+# Canonical layer names as the table parser produces them (the segment AFTER the
+# em-dash in "L1 — Foundation Model"). Backfilled layers must use these names.
+_CANONICAL_MAESTRO_LAYER_NAMES = {
+    "L1": "Foundation Model",
+    "L2": "Data Operations",
+    "L3": "Agent Framework",
+    "L4": "Deployment Infrastructure",
+    "L5": "Evaluation and Observability",
+    "L6": "Security and Compliance",
+    "L7": "Agent Ecosystem",
+}
+
+
+def _maestro_stack_template_data(fixture_name):
+    """Run the maestro-stack extractor on a fixture and return its template_data."""
+    returncode, _stdout, stderr, payload = run_extract(
+        FIXTURES_DIR / fixture_name, "maestro-stack"
+    )
+    assert returncode == 0, (
+        f"[{fixture_name}] Expected exit 0, got {returncode}. stderr: {stderr}"
+    )
+    assert payload is not None, f"[{fixture_name}] Expected JSON payload to be written"
+    assert "template_data" in payload, f"[{fixture_name}] Missing template_data"
+    return payload["template_data"]
+
+
+def test_maestro_stack_emits_count_keys_present():
+    """FR-002: maestro-stack template_data carries the three code-computed count keys.
+
+    layers_with_findings, empty_layers, layer_count MUST all be present and be ints.
+    Checked on both the mixed (maestro_partial) and all-empty (agentic_app) fixtures.
+    """
+    for fixture_name in ("maestro_partial", "agentic_app"):
+        td = _maestro_stack_template_data(fixture_name)
+        for key in ("layers_with_findings", "empty_layers", "layer_count"):
+            assert key in td, (
+                f"[{fixture_name}] maestro-stack template_data missing '{key}'; "
+                f"keys present: {sorted(td.keys())}"
+            )
+            assert isinstance(td[key], int), (
+                f"[{fixture_name}] '{key}' must be an int, got {type(td[key]).__name__}"
+            )
+
+
+def test_maestro_stack_count_identity_holds():
+    """FR-002 invariant: layers_with_findings + empty_layers == layer_count == 7.
+
+    Holds for every fixture regardless of how many layers carry findings.
+    """
+    for fixture_name in ("maestro_partial", "agentic_app"):
+        td = _maestro_stack_template_data(fixture_name)
+        assert td["layer_count"] == 7, (
+            f"[{fixture_name}] layer_count must be 7, got {td['layer_count']}"
+        )
+        assert td["layers_with_findings"] + td["empty_layers"] == td["layer_count"], (
+            f"[{fixture_name}] identity violated: "
+            f"{td['layers_with_findings']} + {td['empty_layers']} != "
+            f"{td['layer_count']}"
+        )
+        assert td["layers_with_findings"] + td["empty_layers"] == 7, (
+            f"[{fixture_name}] layers_with_findings + empty_layers must equal 7"
+        )
+
+
+def test_maestro_stack_mixed_counts_partial_fixture():
+    """FR-002/FR-003 mixed case: 3-of-7-row table → 3 with findings, 4 backfilled empty.
+
+    The maestro_partial fixture's "Risk by MAESTRO Layer" table lists exactly 3
+    finding-bearing layers (L1, L3, L5). The extractor MUST backfill the 4 absent
+    layers (L2, L4, L6, L7) at finding_count 0, yielding the mixed counts.
+    """
+    td = _maestro_stack_template_data("maestro_partial")
+    assert td["layers_with_findings"] == 3, (
+        f"Expected layers_with_findings=3 on the 3-of-7 partial table, "
+        f"got {td['layers_with_findings']}"
+    )
+    assert td["empty_layers"] == 4, (
+        f"Expected empty_layers=4 (backfilled L2/L4/L6/L7), "
+        f"got {td['empty_layers']}"
+    )
+    assert td["layer_count"] == 7
+
+
+def test_maestro_stack_all_empty_counts_table_less_fixture():
+    """FR-002/FR-003 all-empty case: table-less input → 0 with findings, 7 empty.
+
+    The agentic_app fixture has no "Risk by MAESTRO Layer" table, so all 7 layers
+    are backfilled at finding_count 0 (graceful empty state, not an error).
+    """
+    td = _maestro_stack_template_data("agentic_app")
+    assert td["layers_with_findings"] == 0, (
+        f"Expected layers_with_findings=0 on a table-less fixture, "
+        f"got {td['layers_with_findings']}"
+    )
+    assert td["empty_layers"] == 7, (
+        f"Expected empty_layers=7 on a table-less fixture, "
+        f"got {td['empty_layers']}"
+    )
+    assert td["layer_count"] == 7
+
+
+def test_maestro_stack_distribution_backfilled_to_seven():
+    """FR-003: maestro_layer_distribution always has exactly 7 canonical entries.
+
+    Holds on both the partial (3-row) and table-less fixtures. Entries are in
+    canonical L1->L7 order; layers absent from the parsed table are backfilled
+    with finding_count 0 and the canonical layer_name produced by the table parser.
+    """
+    for fixture_name in ("maestro_partial", "agentic_app"):
+        td = _maestro_stack_template_data(fixture_name)
+        dist = td["maestro_layer_distribution"]
+        assert len(dist) == 7, (
+            f"[{fixture_name}] expected 7 distribution entries, got {len(dist)}"
+        )
+        assert [e["layer_id"] for e in dist] == _CANONICAL_MAESTRO_LAYER_IDS, (
+            f"[{fixture_name}] distribution not in canonical L1->L7 order: "
+            f"{[e['layer_id'] for e in dist]}"
+        )
+        # Every backfilled (finding_count == 0) entry must carry the canonical
+        # name and an integer >= 0 finding_count.
+        for e in dist:
+            assert isinstance(e["finding_count"], int) and e["finding_count"] >= 0
+            if e["finding_count"] == 0:
+                assert e["layer_name"] == _CANONICAL_MAESTRO_LAYER_NAMES[e["layer_id"]], (
+                    f"[{fixture_name}] backfilled {e['layer_id']} has name "
+                    f"{e['layer_name']!r}, expected "
+                    f"{_CANONICAL_MAESTRO_LAYER_NAMES[e['layer_id']]!r}"
+                )
+        # layers_with_findings must equal the number of non-zero entries.
+        non_zero = sum(1 for e in dist if e["finding_count"] > 0)
+        assert td["layers_with_findings"] == non_zero, (
+            f"[{fixture_name}] layers_with_findings ({td['layers_with_findings']}) "
+            f"!= non-zero distribution entries ({non_zero})"
+        )
+
+
+def test_maestro_stack_per_layer_summaries_cover_all_seven():
+    """FR-003: per_layer_summaries also covers all 7 canonical layers.
+
+    The backfilled 7-entry distribution drives per_layer_summaries, so every
+    canonical layer gets a summary even when its finding_count is 0.
+    """
+    for fixture_name in ("maestro_partial", "agentic_app"):
+        td = _maestro_stack_template_data(fixture_name)
+        summaries = td["per_layer_summaries"]
+        assert len(summaries) == 7, (
+            f"[{fixture_name}] expected 7 per_layer_summaries, got {len(summaries)}"
+        )
+        assert [s["layer_id"] for s in summaries] == _CANONICAL_MAESTRO_LAYER_IDS, (
+            f"[{fixture_name}] per_layer_summaries not canonical L1->L7: "
+            f"{[s['layer_id'] for s in summaries]}"
+        )
+
+
+def test_maestro_stack_deterministic_byte_identical():
+    """ADR-017: two extraction runs on identical input emit byte-identical JSON.
+
+    Compares the full serialized output file (not just template_data) across two
+    runs of the maestro-stack extractor on the partial fixture — the new integer
+    count keys sort deterministically under json.dumps(sort_keys=True, indent=2).
+    """
+    target = FIXTURES_DIR / "maestro_partial"
+    outputs = []
+    for _ in range(2):
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            output_path = f.name
+        try:
+            cmd = [
+                sys.executable,
+                str(SCRIPT_PATH),
+                "--target-dir", str(target),
+                "--template", "maestro-stack",
+                "--output", output_path,
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            assert result.returncode == 0, (
+                f"Expected exit 0, got {result.returncode}. stderr: {result.stderr}"
+            )
+            with open(output_path, "r", encoding="utf-8") as fh:
+                outputs.append(fh.read())
+        finally:
+            try:
+                os.unlink(output_path)
+            except OSError:
+                pass
+    assert outputs[0] == outputs[1], (
+        "maestro-stack output is not byte-identical across two runs on identical "
+        "input (ADR-017 determinism violated)."
+    )

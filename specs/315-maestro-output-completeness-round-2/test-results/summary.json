@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "feature": "315-maestro-output-completeness-round-2",
+  "total_waves": 3,
+  "waves_tested": 1,
+  "waves_skipped": 2,
+  "totals": {
+    "pass": 168,
+    "fail": 3,
+    "skip": 0
+  },
+  "total_regressions": 0,
+  "coverage_trend": null,
+  "gate_decisions": [
+    { "wave": 1, "decision": "pass" }
+  ],
+  "notes": "Wave 0 = baseline capture (22 pass/3 skip across the 2 MAESTRO suites; reference, not a gate). Wave 1 = implementation; affected-scope regression gate (9 files referencing changed surfaces) ran 168 pass / 3 fail / 0 regressions — the 3 failures are PRE-EXISTING F-3/F-241 TDD tests (test_tool_abuse_enrichment.py) proven failing identically on clean main. Wave 2 = docs-only (CHANGELOG + tasks.md), no code files → test gate skipped. Directly-affected suites green: infographic 34, invariant 9/2, backward-compat 13/1. No coverage tooling invoked (coverage_trend null)."
+}

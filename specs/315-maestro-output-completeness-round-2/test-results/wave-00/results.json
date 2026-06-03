@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "wave": 0,
+  "label": "baseline (pre-change reference)",
+  "test_runner": "python3 -m pytest",
+  "test_runner_note": "Task specified 'python -m pytest'; 'python' is not on PATH in this environment. 'python3' is the same interpreter family (Python 3.9.6) running pytest 8.4.2. No venv/pyenv/alias present.",
+  "gate_mode": "off",
+  "gate_decision": "pass",
+  "totals": { "pass": 22, "fail": 0, "skip": 3 },
+  "files": {
+    "test_maestro_coverage_invariant.py": { "pass": 9, "fail": 0, "skip": 2 },
+    "test_backward_compatibility.py": { "pass": 13, "fail": 0, "skip": 1 }
+  },
+  "tests": [
+    { "name": "tests/scripts/test_maestro_coverage_invariant.py::test_maestro_table_covers_all_seven_layers[examples/agentic-app/sample-report/threats.md]", "status": "pass" },
+    { "name": "tests/scripts/test_maestro_coverage_invariant.py::test_maestro_table_covers_all_seven_layers[examples/agentic-app/threats.md]", "status": "pass" },
+    { "name": "tests/scripts/test_maestro_coverage_invariant.py::test_maestro_table_covers_all_seven_layers[examples/ascii-web-api/threats.md]", "status": "pass" },
+    { "name": "tests/scripts/test_maestro_coverage_invariant.py::test_maestro_table_covers_all_seven_layers[examples/consumer-agent-app/sample-report/threats.md]", "status": "skip", "skip_reason": "no 'Risk by MAESTRO Layer' table (intermediate-format sample report); coverage invariant N/A" },
+    { "name": "tests/scripts/test_maestro_coverage_invariant.py::test_maestro_table_covers_all_seven_layers[examples/free-text-microservice/threats.md]", "status": "pass" },
+    { "name": "tests/scripts/test_maestro_coverage_invariant.py::test_maestro_table_covers_all_seven_layers[examples/maestro-reference/threats.md]", "status": "pass" },
+    { "name": "tests/scripts/test_maestro_coverage_invariant.py::test_maestro_table_covers_all_seven_layers[examples/mermaid-agentic-app/threats.md]", "status": "pass" },
+    { "name": "tests/scripts/test_maestro_coverage_invariant.py::test_maestro_table_covers_all_seven_layers[examples/microservices/threats.md]", "status": "pass" },
+    { "name": "tests/scripts/test_maestro_coverage_invariant.py::test_maestro_table_covers_all_seven_layers[examples/mobile-banking-app/sample-report/threats.md]", "status": "pass" },
+    { "name": "tests/scripts/test_maestro_coverage_invariant.py::test_maestro_table_covers_all_seven_layers[examples/predictive-ml-app/sample-report/threats.md]", "status": "skip", "skip_reason": "no 'Risk by MAESTRO Layer' table (intermediate-format sample report); coverage invariant N/A" },
+    { "name": "tests/scripts/test_maestro_coverage_invariant.py::test_maestro_table_covers_all_seven_layers[examples/web-app/threats.md]", "status": "pass" },
+    { "name": "tests/scripts/test_backward_compatibility.py::test_unmodified_examples_byte_identical_pdfs[web-app]", "status": "pass" },
+    { "name": "tests/scripts/test_backward_compatibility.py::test_unmodified_examples_byte_identical_pdfs[microservices]", "status": "pass" },
+    { "name": "tests/scripts/test_backward_compatibility.py::test_unmodified_examples_byte_identical_pdfs[ascii-web-api]", "status": "pass" },
+    { "name": "tests/scripts/test_backward_compatibility.py::test_unmodified_examples_byte_identical_pdfs[mermaid-agentic-app]", "status": "pass" },
+    { "name": "tests/scripts/test_backward_compatibility.py::test_unmodified_examples_byte_identical_pdfs[free-text-microservice]", "status": "pass" },
+    { "name": "tests/scripts/test_backward_compatibility.py::test_unmodified_examples_byte_identical_pdfs[maestro-reference]", "status": "pass" },
+    { "name": "tests/scripts/test_backward_compatibility.py::test_feature_142_zero_edit_invariant_on_detection_agents", "status": "pass" },
+    { "name": "tests/scripts/test_backward_compatibility.py::test_feature_142_backward_compat_pattern_defaults", "status": "pass" },
+    { "name": "tests/scripts/test_backward_compatibility.py::test_feature_142_multi_agent_gate_predicate_false_on_baselines[web-app]", "status": "pass" },
+    { "name": "tests/scripts/test_backward_compatibility.py::test_feature_142_multi_agent_gate_predicate_false_on_baselines[microservices]", "status": "pass" },
+    { "name": "tests/scripts/test_backward_compatibility.py::test_feature_142_multi_agent_gate_predicate_false_on_baselines[ascii-web-api]", "status": "pass" },
+    { "name": "tests/scripts/test_backward_compatibility.py::test_feature_142_multi_agent_gate_predicate_false_on_baselines[mermaid-agentic-app]", "status": "skip", "skip_reason": "excluded from SC-003 per T033 narrowed interpretation; multi-agent gate predicate evaluates TRUE; pattern classification documented known-limitation pending R-04/R-06 follow-up" },
+    { "name": "tests/scripts/test_backward_compatibility.py::test_feature_142_multi_agent_gate_predicate_false_on_baselines[free-text-microservice]", "status": "pass" },
+    { "name": "tests/scripts/test_backward_compatibility.py::test_feature_142_multi_agent_gate_predicate_false_on_baselines[maestro-reference]", "status": "pass" }
+  ]
+}

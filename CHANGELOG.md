@@ -48,6 +48,44 @@ scan span at a glance.
 **No SARIF or schema change** — layer counts were already structured; this is a
 markdown + PDF rendering change only. Issue #98.
 
+### MAESTRO output completeness round 2 — infographic all-7 + CI durability (Issues #312, #313)
+
+Round 2 of the MAESTRO completeness work (follow-up to #98), closing the two
+F-098 surfaces whose all-7 numbers were still agent-derived: the shareable
+infographic and CI regression protection.
+
+**What shipped**:
+- **maestro-stack infographic completeness (#312)** — `scripts/extract-infographic-data.py`
+  now backfills the maestro-stack `template_data` to all seven canonical MAESTRO
+  layers (zero-finding layers added muted, never omitted) and emits
+  code-computed `layers_with_findings` / `empty_layers` / `layer_count` (=7), so
+  the rendered sidebar counts are deterministic rather than counted by the
+  generating agent. The backfill is **local to the maestro-stack block** — the
+  `maestro-heatmap` payload is byte-unchanged. A new partial-MAESTRO fixture plus
+  golden regeneration lock the mixed (3 with-findings / 4 empty / 7 total) and
+  all-empty (0 / 7 / 7) cases, with byte-identity across runs (`SOURCE_DATE_EPOCH`/
+  `sort_keys` determinism).
+- **Dedicated MAESTRO CI gate (#313)** — a new
+  `.github/workflows/tachi-maestro-coverage.yml` runs the existing 7-layer
+  coverage invariant on every PR that touches a MAESTRO author/parse surface,
+  failing with the missing canonical layer ID(s) on any <7-row regression.
+  Path-scoped (regression-necessary + defense-in-depth tiers) and kept in
+  lock-step with its pytest invocation; the existing `tachi-pytest.yml` trigger
+  surface is left untouched. The invariant test's "not wired into CI" note was
+  removed.
+- **Non-gated example PDF refresh (#313)** — `examples/agentic-app/sample-report`
+  was regenerated deterministically (`SOURCE_DATE_EPOCH=1700000000`) to pick up
+  its now-7-row MAESTRO matrix (the L4 "Deployment Infrastructure" band). The
+  drift audit dropped `mobile-banking-app` (byte-identical, no drift) and
+  excluded the two table-less reports; `maestro-reference`'s loose PDF was left
+  as-is because its staleness was unrelated framework-coverage content, not
+  MAESTRO churn. The six byte-gated baselines remain byte-identical.
+
+**No schema or SARIF change** — the new infographic keys are additive and the
+F-098 all-7 + clean-annotation guarantee is preserved. **US-1 (Model B
+two-state clean-vs-n/a annotation) is carved out to its own feature, #311.**
+Issues #312, #313.
+
 ### Adopter case-study + adoption-signal infrastructure (BLP-04 Wave 3)
 
 Added the receiving end for real-world adopter stories: a self-serve case-study

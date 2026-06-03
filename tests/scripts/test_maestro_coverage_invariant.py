@@ -22,8 +22,8 @@ Notes on robustness (per Architect review of Feature 098):
   - No snapshot counts are hardcoded: the file list is globbed at collection time
     and each discovered file is reported independently via parametrization.
 
-This test is intentionally NOT wired into CI — the drift-gating concern is
-tracked separately.
+The dedicated ``.github/workflows/tachi-maestro-coverage.yml`` job runs this
+test on every PR that touches the MAESTRO author/parse surface.
 """
 
 import re

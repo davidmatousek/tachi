@@ -1935,9 +1935,46 @@ def main():
             "control_coverage_pct": funnel.get("control_coverage_pct"),
         }
     elif args.template == "maestro-stack":
-        # Per-layer finding summaries: up to 2 top findings per layer
+        # FR-003 backfill (LOCAL to this block — see FR-004): present all seven
+        # canonical MAESTRO layers. Layers absent from the parsed Section-6 table
+        # (table-less / pre-F-098 / partial input) are synthesized at
+        # finding_count 0 so the rendered stack always shows L1..L7. This backfill
+        # MUST stay local here and never enter the shared extract_maestro_data,
+        # because the maestro-heatmap payload also carries
+        # maestro_layer_distribution and must remain byte-identical (FR-004).
+        #
+        # Canonical layer names mirror populate-maestro-coverage.py:71-79 and the
+        # segment the table parser produces (the part AFTER the em-dash in
+        # "L1 — Foundation Model"), so backfilled names match parsed names.
+        _MAESTRO_LAYER_NAMES = {
+            "L1": "Foundation Model",
+            "L2": "Data Operations",
+            "L3": "Agent Framework",
+            "L4": "Deployment Infrastructure",
+            "L5": "Evaluation and Observability",
+            "L6": "Security and Compliance",
+            "L7": "Agent Ecosystem",
+        }
+        _parsed_by_id = {
+            e["layer_id"]: e for e in maestro["maestro_layer_distribution"]
+        }
+        backfilled_distribution = []
+        for lid in MAESTRO_LAYERS:
+            if lid in _parsed_by_id:
+                backfilled_distribution.append(_parsed_by_id[lid])
+            else:
+                backfilled_distribution.append({
+                    "layer_id": lid,
+                    "layer_name": _MAESTRO_LAYER_NAMES.get(lid, ""),
+                    "finding_count": 0,
+                    "highest_severity": "",
+                })
+
+        # Per-layer finding summaries: up to 2 top findings per layer. Driven by
+        # the backfilled 7-entry distribution so every canonical layer gets a
+        # summary (empty layers carry an empty top_findings list).
         per_layer_summaries = []
-        for layer in maestro["maestro_layer_distribution"]:
+        for layer in backfilled_distribution:
             lid = layer["layer_id"]
             layer_findings = [
                 f for f in maestro["per_finding_maestro"]
@@ -1957,11 +1994,27 @@ def main():
                     {"id": f["id"], "threat": f["threat"][:120]} for f in top_2
                 ],
             })
+
+        # FR-002 code-computed counts (never agent-counted). Identity holds:
+        # layers_with_findings + empty_layers == layer_count == 7.
+        layers_with_findings = sum(
+            1 for layer in backfilled_distribution if layer["finding_count"] > 0
+        )
+        layer_count = len(MAESTRO_LAYERS)  # always 7
+        empty_layers = layer_count - layers_with_findings
+
+        # NOTE (Architect LOW-8): {most_exposed_count} is intentionally NOT emitted
+        # here — it is left agent-rendered and sits OUTSIDE FR-002's enumerated
+        # count set (layers_with_findings / empty_layers / layer_count). Do not add
+        # it to this payload without a corresponding spec change.
         template_data = {
-            "maestro_layer_distribution": maestro["maestro_layer_distribution"],
+            "maestro_layer_distribution": backfilled_distribution,
             "most_exposed_layer": maestro["most_exposed_layer"],
             "per_layer_summaries": per_layer_summaries,
             "has_maestro_data": maestro["has_maestro_data"],
+            "layers_with_findings": layers_with_findings,
+            "empty_layers": empty_layers,
+            "layer_count": layer_count,
         }
     elif args.template == "maestro-heatmap":
         template_data = {

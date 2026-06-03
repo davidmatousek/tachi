@@ -100,10 +100,106 @@
     }
   ],
   "template_data": {
+    "empty_layers": 7,
     "has_maestro_data": false,
-    "maestro_layer_distribution": [],
+    "layer_count": 7,
+    "layers_with_findings": 0,
+    "maestro_layer_distribution": [
+      {
+        "finding_count": 0,
+        "highest_severity": "",
+        "layer_id": "L1",
+        "layer_name": "Foundation Model"
+      },
+      {
+        "finding_count": 0,
+        "highest_severity": "",
+        "layer_id": "L2",
+        "layer_name": "Data Operations"
+      },
+      {
+        "finding_count": 0,
+        "highest_severity": "",
+        "layer_id": "L3",
+        "layer_name": "Agent Framework"
+      },
+      {
+        "finding_count": 0,
+        "highest_severity": "",
+        "layer_id": "L4",
+        "layer_name": "Deployment Infrastructure"
+      },
+      {
+        "finding_count": 0,
+        "highest_severity": "",
+        "layer_id": "L5",
+        "layer_name": "Evaluation and Observability"
+      },
+      {
+        "finding_count": 0,
+        "highest_severity": "",
+        "layer_id": "L6",
+        "layer_name": "Security and Compliance"
+      },
+      {
+        "finding_count": 0,
+        "highest_severity": "",
+        "layer_id": "L7",
+        "layer_name": "Agent Ecosystem"
+      }
+    ],
     "most_exposed_layer": "",
-    "per_layer_summaries": []
+    "per_layer_summaries": [
+      {
+        "finding_count": 0,
+        "highest_severity": "",
+        "layer_id": "L1",
+        "layer_name": "Foundation Model",
+        "top_findings": []
+      },
+      {
+        "finding_count": 0,
+        "highest_severity": "",
+        "layer_id": "L2",
+        "layer_name": "Data Operations",
+        "top_findings": []
+      },
+      {
+        "finding_count": 0,
+        "highest_severity": "",
+        "layer_id": "L3",
+        "layer_name": "Agent Framework",
+        "top_findings": []
+      },
+      {
+        "finding_count": 0,
+        "highest_severity": "",
+        "layer_id": "L4",
+        "layer_name": "Deployment Infrastructure",
+        "top_findings": []
+      },
+      {
+        "finding_count": 0,
+        "highest_severity": "",
+        "layer_id": "L5",
+        "layer_name": "Evaluation and Observability",
+        "top_findings": []
+      },
+      {
+        "finding_count": 0,
+        "highest_severity": "",
+        "layer_id": "L6",
+        "layer_name": "Security and Compliance",
+        "top_findings": []
+      },
+      {
+        "finding_count": 0,
+        "highest_severity": "",
+        "layer_id": "L7",
+        "layer_name": "Agent Ecosystem",
+        "top_findings": []
+      }
+    ]
   },
   "top_findings": [
     {
