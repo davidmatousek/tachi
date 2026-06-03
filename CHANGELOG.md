@@ -393,6 +393,14 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
+## [4.40.0](https://github.com/davidmatousek/tachi/compare/v4.39.0...v4.40.0) (2026-06-03)
+
+
+### Features
+
+* **315:** land Wave 1–2 implementation — MAESTRO CI gate, infographic backfill, PDF refresh ([60dd3b5](https://github.com/davidmatousek/tachi/commit/60dd3b529974d3adf0325ceb83e8a402f191123e))
+* **315:** MAESTRO output completeness round 2 — infographic + CI durability ([027481b](https://github.com/davidmatousek/tachi/commit/027481b2c842da7b1de99097ae68cd216b990151)), closes [#312](https://github.com/davidmatousek/tachi/issues/312) [#313](https://github.com/davidmatousek/tachi/issues/313)
+
 ## [4.39.0](https://github.com/davidmatousek/tachi/compare/v4.38.0...v4.39.0) (2026-06-02)
 
 
