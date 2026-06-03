@@ -33,8 +33,9 @@ This section documents the reference CI workflows that the upstream template use
 | `.github/workflows/tachi-mmdc-preflight.yml` | F145 (Mermaid CLI hard-prerequisite) | Loud-failure path when `mmdc` is absent on the runner (ADR-022) |
 | `.github/workflows/tachi-pytest.yml` | F-248 (Substitution surface hardening) | `scripts/init.sh` substitution behaviour on a macOS+Ubuntu pytest matrix (ADR-038) |
 | `.github/workflows/gitleaks.yml` | F-282 / F-5 (Pre-commit secret-scanning defaults) | Full-repo gitleaks scan on PR — back-stop for `git commit --no-verify` (ADR-042) |
+| `.github/workflows/tachi-maestro-coverage.yml` | F-315 / #313 (MAESTRO output completeness round 2) | F-098 all-7-layer invariant on example MAESTRO matrices — fails naming the missing canonical layer ID(s) (reuses ADR-020/021; dedicated-job pattern per ADR-022) |
 
-The first three workflows share the bash:3.2 Docker pattern, SHA-pinned checkout action, `contents: read` permissions, and cancel-in-progress concurrency. The latter three (`tachi-mmdc-preflight.yml`, `tachi-pytest.yml`, `gitleaks.yml`) follow a different pattern — direct host-runner execution with path-filtered triggers (or unfiltered, in `gitleaks.yml`'s case) — because their workloads (`mmdc` Node binary preflight, Python+bash subprocess tests, native gitleaks binary) do not benefit from container isolation. Use any of the first three as a template when adding a new maintenance workflow that needs the bash:3.2 floor; use `tachi-pytest.yml` as a template when adding a new path-filtered Python test job; use `gitleaks.yml` as a template when adding a new SARIF-emitting scanner job.
+The first three workflows share the bash:3.2 Docker pattern, SHA-pinned checkout action, `contents: read` permissions, and cancel-in-progress concurrency. The latter four (`tachi-mmdc-preflight.yml`, `tachi-pytest.yml`, `gitleaks.yml`, `tachi-maestro-coverage.yml`) follow a different pattern — direct host-runner execution with path-filtered triggers (or unfiltered, in `gitleaks.yml`'s case) — because their workloads (`mmdc` Node binary preflight, Python+bash subprocess tests, native gitleaks binary, Python markdown-glob assertion) do not benefit from container isolation. Use any of the first three as a template when adding a new maintenance workflow that needs the bash:3.2 floor; use `tachi-pytest.yml` as a template when adding a new path-filtered Python test job; use `gitleaks.yml` as a template when adding a new SARIF-emitting scanner job; use `tachi-maestro-coverage.yml` as a template when adding a new single-OS, path-scoped Python invariant job that asserts against a committed-artifact corpus.
 
 ### Shared Workflow Conventions
 
@@ -362,6 +363,64 @@ jq '.runs[0].results[] | {rule: .ruleId, file: .locations[0].physicalLocation.ar
 The local pre-commit hook (`.pre-commit-config.yaml` + `.aod/scripts/bash/precommit-wrap.sh`) runs a different invocation (`gitleaks git --pre-commit --redact --staged`) that scopes to staged content only and emits the wrapper's stderr contract instead of SARIF. Both invocations resolve against the same `.gitleaks.toml` ruleset.
 
 **Full contract**: `specs/282-pre-commit-secret-scanning-defaults/spec.md` (FR-001..FR-013, AC-1..AC-12, NFR-1..NFR-5, R-1..R-5). ADR: `docs/architecture/02_ADRs/ADR-042-pre-commit-secret-scanning-default.md` (§Decision, §Alternatives, §Consequences). Policy log: `docs/standards/PRECOMMIT_HOOKS.md` (per-rule rationale catalog, bypass mechanisms, install paths).
+
+---
+
+### Tachi MAESTRO Coverage Workflow (F-315 / #313)
+
+**Added in Feature 315** (MAESTRO Output Completeness — Round 2), merged via PR #316 (implementation landed via recovery commit `60dd3b5`) on 2026-06-03. This is the durability mechanism (Story 2 / US-3) that locks the F-098 all-7-layer MAESTRO guarantee against silent regression.
+
+`.github/workflows/tachi-maestro-coverage.yml` runs the existing MAESTRO coverage-invariant test (`tests/scripts/test_maestro_coverage_invariant.py`) on every PR that touches the MAESTRO author/parse surface. The invariant: every shipped example `threats.md` carrying a "Risk by MAESTRO Layer" distribution table MUST present all seven canonical MAESTRO layers (L1–L7) as rows. On a <7-row regression the test exits non-zero and **names the missing canonical layer ID(s)**, so the failure is self-explaining in the PR checks UI. Example reports without a MAESTRO table are skipped (not failed) so intermediate-format samples never produce false CI failures.
+
+This is a **dedicated single-concern job** modeled on the `tachi-mmdc-preflight.yml` file precedent (plan Decision A). It is deliberately **NOT folded into `tachi-pytest.yml`**: that job is a bash-compatibility matrix (macOS + ubuntu) and broadening its tightly-scoped trigger would risk NFR-4 cross-firing. The MAESTRO invariant is an OS-independent markdown-glob assertion, so it runs on a single Ubuntu runner. The new job leaves `tachi-pytest.yml`'s `paths:` and pytest invocation **untouched**.
+
+| Property | Value |
+|----------|-------|
+| Workflow file | `.github/workflows/tachi-maestro-coverage.yml` |
+| Trigger | `pull_request` only (path-filtered — two-tier, see below) |
+| Runner | `ubuntu-latest` (single OS — invariant is OS-independent) |
+| Python version | 3.11 (`actions/setup-python@v5`) — matches `tachi-pytest.yml` / `tachi-mmdc-preflight.yml` baseline. Local tests run on Python 3.9+ |
+| Permissions | `contents: read` (principle of least privilege) |
+| Pip dependencies | `pytest`, `pytest-timeout` |
+| Job ID | `maestro-coverage-invariant` |
+| Job name | `Verify all 7 MAESTRO layers present in example tables` |
+| Check name | `tachi maestro coverage` |
+| New env vars / secrets / runtime deps | **None** |
+
+**Invocation** (direct pytest — slash commands cannot run in CI):
+
+```bash
+python3 -m pytest tests/scripts/test_maestro_coverage_invariant.py -v
+```
+
+**Two-tier path filter (F-250 lock-step rule)**: the test reads **committed** `examples/**/threats.md`, so the `paths:` trigger is split into a regression-necessary tier (a change here can alter a committed example matrix) and a defense-in-depth tier (author/parse the *production* matrix; cannot change a committed example). Keep this `paths:` list and the pytest invocation in lock-step — any future addition to the MAESTRO test set or example-author surface MUST update BOTH in the same commit.
+
+```yaml
+paths:
+  # --- regression-necessary: a change here can alter a committed example matrix ---
+  - tests/scripts/test_maestro_coverage_invariant.py
+  - examples/**/threats.md
+  - scripts/tachi_parsers.py                       # MAESTRO_LAYERS (canonical layer list)
+  - scripts/populate-maestro-coverage.py           # the tool that rewrites example tables
+  - .github/workflows/tachi-maestro-coverage.yml
+  # --- defense-in-depth (optional): author/parse the PRODUCTION matrix; cannot change a committed example ---
+  - scripts/extract-report-data.py
+  - .claude/agents/tachi/orchestrator.md
+  - templates/tachi/security-report/maestro-findings.typ
+```
+
+**No cross-firing (NFR-4)**: a change to an unrelated (non-MAESTRO) file does NOT trigger this job, and does NOT modify `tachi-pytest.yml`'s trigger surface — the two jobs are independent. As part of this feature, the invariant test's prior "intentionally NOT wired into CI" docstring notice was removed (FR-007); the test now passes green against the current example set (all matrices complete at 7 rows).
+
+**Local invocation** (matches CI exactly):
+
+```bash
+python -m pip install pytest pytest-timeout
+python -m pytest tests/scripts/test_maestro_coverage_invariant.py -v
+```
+
+**No deployment, infrastructure, or environment changes**: this feature added one CI workflow and refreshed non-gated example PDFs deterministically; it introduced no new env vars, secrets, or runtime dependencies, and did not expand the six byte-gated baseline examples.
+
+**Full contract**: `specs/315-maestro-output-completeness-round-2/spec.md` (FR-005..FR-009 CI durability + non-gated refresh; SC-003..SC-005) and `specs/315-maestro-output-completeness-round-2/contracts/tachi-maestro-coverage-ci.contract.md` (job shape + two-tier trigger ⇄ invocation lock-step + layer-named failure contract). Plan: `specs/315-maestro-output-completeness-round-2/plan.md` (Decision A — dedicated job; Decision E — invariant wiring hygiene). Reuses ADR-020 (MAESTRO classification), ADR-021 (SOURCE_DATE_EPOCH determinism), and the dedicated-CI-job pattern from ADR-022 — **no new ADR**.
 
 ---
 

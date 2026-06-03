@@ -504,6 +504,18 @@ F-292 reused F-260's community-merge precedent (4 mechanical artifacts: CHANGELO
 
 ---
 
+### Entry 12: F-315 MAESTRO Output Completeness (Round 2) — Delivery Retrospective
+
+**Date**: 2026-06-03 | **Category**: Delivery | **Feature**: F-315 | **Issues**: #312, #313 (US-1 Model B #311 carved out)
+
+**Context**: Round-2 follow-up to F-098, closing the two surfaces whose all-7 MAESTRO numbers were still agent-derived. US-2 (#312): the `maestro-stack` infographic now backfills all 7 canonical layers with code-computed `empty_layers` / `layers_with_findings` / `layer_count`. US-3 (#313): a dedicated path-scoped CI gate (`.github/workflows/tachi-maestro-coverage.yml`) guards the 7-layer coverage invariant, plus a deterministic non-gated example-PDF refresh (`examples/agentic-app/sample-report`). 20/20 tasks; estimated 1–2 days, actual ~1 day; no schema/SARIF change; F-098 all-7 + clean-annotation guarantee preserved. Author assessed delivery as smooth — no surprises, no follow-up work flagged.
+
+**Outcome**: Build-wave test gate clean — 0 F-315 regressions (Wave 1: 168 pass / 3 pre-existing F-3/F-241 `test_tool_abuse_enrichment.py` fails, proven failing identically on a clean `main` worktree); directly-affected suites all green (infographic 34, invariant 9/2, backward-compat 13/1). Delivery note: at deliver time the implementation was landed on `main` via a clean cherry-pick of the build-wave commits (the draft PR #316 had carried the plan-stage docs ahead of the build commits); the recovery applied with no conflicts and the feature suite was re-verified green (55 pass / 4 skip) before push.
+
+**Evidence**: `specs/315-maestro-output-completeness-round-2/{spec.md, plan.md, tasks.md, delivery.md, test-results/summary.json}`; #316 docs squash `027481b` + implementation recovery `60dd3b5`; v4.39.0 published (#314, the F-098 dependency); release-please PR #317 (`chore(main): release 4.40.0`). Related: KB Entry 11 (F-098 round-1 source-of-truth fix).
+
+---
+
 ## Bug Fixes
 
 *No entries yet. Use `/kb-create` to add the first bug fix.*
