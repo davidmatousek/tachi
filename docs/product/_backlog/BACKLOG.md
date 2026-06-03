@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-03T23:05:18Z.
+> Auto-generated from GitHub Issues on 2026-06-03T23:42:30Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -24,7 +24,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| #311 | feat: MAESTRO matrix Model B — distinguish clean (analyzed, 0 findings) from n/a (not applicable) | — | 2026-06-03 |
+| — | *No items in this stage* | | |
 
 ## Plan
 
@@ -56,6 +56,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #311 | feat: MAESTRO matrix Model B — distinguish clean (analyzed, 0 findings) from n/a (not applicable) | OPEN | 2026-06-03 |
 | #299 | docs: surface /tachi.architecture as the recommended Step 4 path in the Developer Guide | CLOSED | 2026-05-30 |
 | #289 | chore: BLP-02 initiative closure tracker (post-5/5 outstanding items + follow-up Issues) | CLOSED | 2026-05-11 |
 | #287 | chore(282): post-merge follow-up — gitleaks pin-bump cadence accountability (CONCERN-4) | OPEN | 2026-05-10 |
