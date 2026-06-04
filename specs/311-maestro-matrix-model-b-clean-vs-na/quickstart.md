@@ -42,18 +42,19 @@ Expect: per-layer `coverage_state` present; L7=`clean`, L1/L3/L5/L6=`not_applica
 ```bash
 python3 scripts/extract-infographic-data.py --target-dir examples/microservices \
   --template maestro-stack --output /tmp/maestro-stack.json
-python3 -c "import json;d=json.load(open('/tmp/maestro-stack.json'));print([(l['layer_id'],l.get('coverage_state')) for l in d['per_layer_summaries']])"
+python3 -c "import json;d=json.load(open('/tmp/maestro-stack.json'));print([(l['layer_id'],l.get('coverage_state')) for l in d['template_data']['per_layer_summaries']])"
 ```
 Expect: `[(L1,not_applicable),(L2,findings),(L3,not_applicable),(L4,findings),(L5,not_applicable),(L6,not_applicable),(L7,clean)]` — agrees with the PDF (step 3). Confirm `component_layer_map` did NOT drive this (D3 fence).
 
 ## 5. Cross-surface consistency gate (the regression anchor)
 
 ```bash
-python3 -m pytest tests/scripts/test_maestro_coverage_invariant.py -v
+python3 -m pytest tests/scripts/test_maestro_coverage_invariant.py \
+  tests/scripts/test_maestro_cross_surface_consistency.py -v
 ```
-Expect green: all-7-rows present AND all three surfaces agree on every layer for `microservices`.
+Expect green: the invariant test asserts all-7-rows present; the dedicated `test_maestro_cross_surface_consistency.py` module asserts all three surfaces agree on every layer for `microservices` (threats.md classifier == PDF IR == infographic IR).
 
-**Negative check** (prove the gate bites): temporarily force one surface's L7 to `not_applicable` (or re-route the stack to `component_layer_map`), re-run — expect a failure **naming L7**. Revert.
+**Negative check** (prove the gate bites): `test_forced_l7_divergence_is_caught` automates this — it tampers one surface's L7 to `not_applicable` and asserts the consistency check fails **naming L7** (and only L7). To exercise it manually, re-route the stack to `component_layer_map` and confirm the failure names `L7`, then revert.
 
 ## 6. Determinism / baseline (SC-004)
 

@@ -105,8 +105,8 @@ triad:
 - [X] T019 [MANUAL-ONLY: clean-vs-n/a is a deliberate render change with no pre-existing baseline] Diff each regenerated `threats.md`/PDF vs prior — confirm the change is **only** the clean→n/a annotation split (+ any pagination reflow), no unrelated/non-MAESTRO or scoring drift; flag (don't silently absorb) anything else. (depends on T018)
 - [X] T020 Verify the 6 byte-gated baselines are byte-identical AFTER intentional re-freeze: `python -m pytest tests/scripts/test_backward_compatibility.py -v` → green; confirm `BASELINE_EXAMPLES` is the same set (not expanded). (depends on T018)
 - [X] T021 [P] Add a `CHANGELOG.md` `feat(311)` entry: MAESTRO Model B clean-vs-n/a across all three surfaces (threats.md token, PDF n/a state, infographic n/a band) + cross-surface CI gate + ADR-047.
-- [ ] T022 SC-003 no-schema-drift: `git diff --stat -- '**/*.sarif' schemas/` shows zero changes; run `/aod.analyze` (spec ↔ plan ↔ tasks) → 0 inconsistencies; resolve any drift.
-- [ ] T023 Run `specs/311-maestro-matrix-model-b-clean-vs-na/quickstart.md` end-to-end (SC-001…SC-005); DoD checklist + **deliver-gate note for `/aod.deliver`**: PR squash title MUST be `feat(311):` (release-please); confirm `git tag v4.40.0` present locally before deliver; verify the squash-merge yields a release-please PR (deliver-release gate).
+- [X] T022 SC-003 no-schema-drift: `git diff --stat -- '**/*.sarif' schemas/` shows zero changes; run `/aod.analyze` (spec ↔ plan ↔ tasks) → 0 inconsistencies; resolve any drift.
+- [X] T023 Run `specs/311-maestro-matrix-model-b-clean-vs-na/quickstart.md` end-to-end (SC-001…SC-005); DoD checklist + **deliver-gate note for `/aod.deliver`**: PR squash title MUST be `feat(311):` (release-please); confirm `git tag v4.40.0` present locally before deliver; verify the squash-merge yields a release-please PR (deliver-release gate).
 
 ---
 
