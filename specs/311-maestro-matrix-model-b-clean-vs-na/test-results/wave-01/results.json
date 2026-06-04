@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "wave": 1,
+  "phase": "A — source contract (T003-T008)",
+  "timestamp": "2026-06-04",
+  "test_runner": "python3 -m pytest",
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 888, "fail": 17, "skip": 4 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 17
+  },
+  "regressions": [],
+  "pre_existing_note": "17 failures in tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py and test_tool_abuse_enrichment.py (line-count caps, M8 pattern presence, byte-identity-against-main, source-attribution). CONFIRMED pre-existing via a clean-baseline git worktree at HEAD (zero F-311 code) — same tests fail identically. F-311 touched none of these files; its only shared change (scripts/tachi_parsers.py) is a purely-additive pure function. Out of F-311 scope.",
+  "f311_area": {
+    "note": "F-311 MAESTRO area fully green",
+    "classifier_test_tachi_parsers": "7 passed (T003 red -> T004 green)",
+    "regression_subset": "56 passed, 2 skipped"
+  },
+  "gate_summary": "G1 PASS — classifier pure (INV-1, no Section-1 read), ordinal-0 preserved (INV-3), Section-6 token authored + documented byte-consistently; T008 populator option-(a) with D3 fence. No regressions."
+}

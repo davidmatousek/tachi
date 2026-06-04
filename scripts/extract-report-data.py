@@ -31,6 +31,7 @@ from tachi_parsers import (
     SEVERITY_ORDER,
     SEVERITY_ORDINAL,
     MAESTRO_LAYERS,
+    classify_maestro_coverage_state,
     escape_typst_string,
     parse_frontmatter,
     parse_baseline_frontmatter,
@@ -286,6 +287,11 @@ def parse_maestro_data(threats_content):
             "layer_name": layer_name,
             "finding_count": finding_count,
             "highest_severity": highest_severity,
+            # Feature 311 (ADR-047 D2): classify the carried Section-6 token into
+            # the coverage_state enum. Threaded onto maestro_layer_distribution
+            # here and onto the maestro_findings_by_layer group records below
+            # (HIGH-A: the grouped structure is what main.typ passes to the page).
+            "coverage_state": classify_maestro_coverage_state(finding_count, highest_severity),
         })
 
     result["maestro_layer_distribution"] = parsed_layers
@@ -367,6 +373,11 @@ def parse_maestro_data(threats_content):
             "layer_id": lid,
             "layer_name": layer["layer_name"],
             "findings": [],
+            # Feature 311 (HIGH-A): carry coverage_state onto the GROUP record —
+            # this is the only structure main.typ passes to the MAESTRO page, so
+            # the Typst n/a branch reads layer-group.at("coverage-state"). Sourced
+            # from the matching parsed_layers row's classified Section-6 token.
+            "coverage_state": layer["coverage_state"],
         }
 
     # Assign findings to layer groups
@@ -385,6 +396,10 @@ def parse_maestro_data(threats_content):
                 "layer_id": lid,
                 "layer_name": lname,
                 "findings": [],
+                # Feature 311: a group synthesized here exists ONLY because a
+                # finding mapped to a layer the Section-6 table did not list, so
+                # it is finding-bearing by construction → "findings".
+                "coverage_state": "findings",
             }
 
         layer_groups[lid]["findings"].append({
@@ -1754,7 +1769,8 @@ def generate_report_data_typ(data: dict) -> str:
                 f'  (layer-id: "{escape_typst_string(layer["layer_id"])}", '
                 f'layer-name: "{escape_typst_string(layer["layer_name"])}", '
                 f'finding-count: {layer["finding_count"]}, '
-                f'highest-severity: "{escape_typst_string(layer["highest_severity"])}"),')
+                f'highest-severity: "{escape_typst_string(layer["highest_severity"])}", '
+                f'coverage-state: "{escape_typst_string(layer["coverage_state"])}"),')
         lines.append(")")
     else:
         lines.append("#let maestro-layer-distribution = ()")
@@ -1765,6 +1781,7 @@ def generate_report_data_typ(data: dict) -> str:
             lines.append(
                 f'  (layer-id: "{escape_typst_string(group["layer_id"])}", '
                 f'layer-name: "{escape_typst_string(group["layer_name"])}", '
+                f'coverage-state: "{escape_typst_string(group["coverage_state"])}", '
                 f'findings: (')
             for f in group["findings"]:
                 lines.append(

@@ -233,11 +233,20 @@ A subsection within the Risk Summary showing finding counts and highest severity
 | MAESTRO Layer | Finding Count | Highest Severity |
 |---------------|---------------|------------------|
 | _{layer name}_ | _{deduplicated count}_ | _{Critical\|High\|Medium\|Low\|Note}_ |
-| _{zero-finding layer name}_ | 0 | Analyzed — no findings this scan |
+| _{clean layer name}_ | 0 | Analyzed — no findings this scan |
+| _{n/a layer name}_ | 0 | Not applicable — no components map to this layer |
 
 - **Completeness**: Always include all 7 canonical MAESTRO layers (L1–L7) as rows, regardless of finding count. No canonical layer is ever omitted from the table.
 - **Ordering**: Rows are ordered in canonical layer order (L1→L7), then the conditional "Unclassified" row last. (This replaces the former severity-descending order.)
-- **Zero-finding cell**: A layer with zero findings shows a Finding Count of `0` and, in the Highest Severity column, the annotation `Analyzed — no findings this scan` (em dash is U+2014). This is coverage metadata affirming the layer was analyzed — never a severity value, and consistent with the STRIDE coverage matrix's analyzed-clean semantics.
+- **Three-state Highest-Severity contract**: the cell carries exactly one of three states, decided by the orchestrator from the Phase 1 component→layer set (the carried token is the **sole applicability authority** — FR-001/FR-002/FR-007; downstream extractors inherit it, never re-derive):
+
+  | State | Precondition | Finding Count | Highest Severity cell |
+  |-------|--------------|---------------|-----------------------|
+  | findings | ≥1 finding | N (>0) | severity label (`Critical`/`High`/`Medium`/`Low`/`Note`) |
+  | **clean** | ≥1 component maps to the layer AND 0 findings | `0` | `Analyzed — no findings this scan` (U+2014 em dash; no trailing period) |
+  | **n/a** | 0 components map to the layer | `0` | `Not applicable — no components map to this layer` (U+2014 em dash; no trailing period) |
+
+  Both zero-finding tokens are coverage metadata, never a severity value: **clean** affirms the layer was analyzed and clean (consistent with the STRIDE coverage matrix's analyzed-clean semantics); **n/a** affirms no component was ever in scope for the layer. `Unclassified` components do NOT make any L1–L7 layer in-scope.
 - **Deduplication**: Finding counts use deduplicated values — correlation groups count as 1.
 - **"Unclassified" row**: If any findings have "Unclassified" as their MAESTRO layer, include an "Unclassified" row in the table after L7. Do not omit it.
 

@@ -64,6 +64,19 @@ All three states must be visually distinguishable in the matrix.
 
 ---
 
+## MAESTRO-Layer View: Two Zero-Finding Tokens
+
+The Section-5 STRIDE coverage matrix above uses the bare glyphs `---` (analyzed-clean) and `n/a` (not-applicable) as its compact surface form. The **Risk by MAESTRO Layer** subsection (Section 6) expresses the **same two zero-finding semantics** in human-readable prose rather than glyphs, because it renders one row per canonical layer instead of a dense matrix cell:
+
+| STRIDE matrix glyph (Section 5) | MAESTRO layer token (Section 6 Highest Severity) | Meaning |
+|---------------------------------|---------------------------------------------------|---------|
+| `---` (analyzed, zero findings) | `Analyzed — no findings this scan` (**clean**) | "We looked and found nothing" — the layer has ≥1 mapped component and 0 findings |
+| `n/a` (not applicable) | `Not applicable — no components map to this layer` (**n/a**) | "We did not look" — no component maps to the layer, so it was never in scope |
+
+Both MAESTRO tokens use the U+2014 em dash and carry no trailing period in the markdown cell (see the output schemas reference for the full three-state contract). The orchestrator authors the token from the Phase 1 component→layer set (it is the sole applicability authority); the two states are also machine-discernible downstream via the `coverage_state` enum carried in the PDF/infographic render IR.
+
+---
+
 ## Total Column
 
 For each component row, sum all deduplicated finding counts in that row. Cells with `---` or `n/a` contribute **0** to the sum.

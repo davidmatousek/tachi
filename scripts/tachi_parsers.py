@@ -122,6 +122,54 @@ def parse_finding_pattern(value) -> str:
     return "none"
 
 
+# Distinctive phrase signatures of the two MAESTRO zero-finding tokens (Feature
+# 311, ADR-047 D1). Matched on the normalized phrase (dash + whitespace folded,
+# lowercased) \u2014 NOT on punctuation: the markdown cell carries no trailing
+# period, but the Typst prose literal appends one downstream, so keying on the
+# phrase keeps the classifier stable across both surfaces (contract INV-2).
+_MAESTRO_NA_SIGNATURE = "not applicable"
+_MAESTRO_CLEAN_SIGNATURE = "analyzed"
+
+
+def classify_maestro_coverage_state(finding_count: int, highest_severity: str) -> str:
+    """Classify a MAESTRO layer row into its coverage state from the carried cell.
+
+    Reads ONLY the already-authored Section-6 values (``Finding Count`` and the
+    free-text ``Highest Severity`` token). Does NOT read Section 1 and does NOT
+    decide applicability \u2014 it classifies the orchestrator's decision into the
+    ``coverage_state`` enum both extractors emit (ADR-047 D2). Pure and
+    side-effect-free.
+
+    Mapping (contract ``coverage-state-classifier.contract.md``):
+      * ``finding_count > 0`` \u2192 ``"findings"`` (regardless of severity);
+      * ``finding_count == 0`` and the n/a phrase ``"Not applicable \u2014 no
+        components map to this layer"`` \u2192 ``"not_applicable"``;
+      * ``finding_count == 0`` and the clean phrase ``"Analyzed \u2014 no findings
+        this scan"`` \u2192 ``"clean"``;
+      * ``finding_count == 0`` and empty / unrecognized \u2192 ``"clean"`` (table-less
+        backfill default; INV-4 \u2014 never silently ``"findings"``).
+
+    Dash tolerance (INV-2): U+2014 (em) and U+2013 (en) and surrounding
+    whitespace are folded before matching, mirroring the populator's read
+    robustness; trailing punctuation is ignored.
+
+    Returns exactly one of: ``"findings"`` | ``"clean"`` | ``"not_applicable"``.
+    """
+    if finding_count > 0:
+        return "findings"
+    # Fold em/en dash to a hyphen and collapse whitespace so the match keys on
+    # the phrase, not the punctuation (INV-2). Mirrors _layer_id_of's dash
+    # handling in populate-maestro-coverage.py.
+    normalized = (highest_severity or "").replace("\u2014", "-").replace("\u2013", "-")
+    normalized = re.sub(r"\s+", " ", normalized).strip().lower()
+    if _MAESTRO_NA_SIGNATURE in normalized:
+        return "not_applicable"
+    # Clean is the explicit Model-A phrase AND the catch-all for empty /
+    # unrecognized zero-finding cells (INV-4): a zero-finding layer is never
+    # silently promoted to "findings".
+    return "clean"
+
+
 # =============================================================================
 # Generic Table Parsers
 # =============================================================================

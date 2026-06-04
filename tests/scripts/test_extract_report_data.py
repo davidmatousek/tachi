@@ -426,3 +426,159 @@ def test_maestro_zero_finding_layer_is_retained_not_dropped():
         "(so the Typst else-branch renders 'no findings this scan'), got "
         f"{l4_groups[0]['findings']!r}."
     )
+
+
+# --- Feature 311: coverage_state threading (T009/T010, ADR-047 HIGH-A) ----------
+#
+# Synthetic threats.md mirroring the ``examples/microservices`` Section-6 state
+# map AFTER the Phase-D populator regen (data-model.md fixture table): the four
+# unmapped zero-finding layers (L1/L3/L5/L6) carry the NEW n/a token, the mapped
+# zero-finding layer (L7) carries the UNCHANGED clean token, and the two
+# finding-bearing layers (L2/L4) carry a severity label. The two tokens are
+# byte-identical to the Phase-A contract (U+2014 em-dash, no trailing period).
+# Driving ``parse_maestro_data`` against this string proves T009's wiring emits
+# the right ``coverage_state`` enum on the GROUP records (the only structure
+# main.typ passes to the MAESTRO page) without invoking the populator or
+# rendering Typst — same harness style as the zero-finding-retention guard above.
+_SYNTHETIC_THREATS_MICROSERVICES_STATE_MAP = """## 6. Risk Summary
+
+#### Risk by MAESTRO Layer
+
+| MAESTRO Layer | Finding Count | Highest Severity |
+|---|---|---|
+| L1 — Foundation Model | 0 | Not applicable — no components map to this layer |
+| L2 — Data Operations | 8 | Critical |
+| L3 — Agent Framework | 0 | Not applicable — no components map to this layer |
+| L4 — Deployment Infrastructure | 14 | Critical |
+| L5 — Evaluation and Observability | 0 | Not applicable — no components map to this layer |
+| L6 — Security and Compliance | 0 | Not applicable — no components map to this layer |
+| L7 — Agent Ecosystem | 0 | Analyzed — no findings this scan |
+"""
+
+_MICROSERVICES_THREATS = REPO_ROOT / "examples" / "microservices" / "threats.md"
+
+# Expected per-layer coverage_state for the microservices state map (the CI fixture
+# anchor). Matches data-model.md "Fixture state map" and the cross-surface contract.
+_MICROSERVICES_EXPECTED_STATE = {
+    "L1": "not_applicable",
+    "L2": "findings",
+    "L3": "not_applicable",
+    "L4": "findings",
+    "L5": "not_applicable",
+    "L6": "not_applicable",
+    "L7": "clean",
+}
+
+
+def _group_state(groups, layer_id):
+    """Return the coverage_state of the single group record with ``layer_id``."""
+    matches = [g for g in groups if g["layer_id"] == layer_id]
+    assert len(matches) == 1, (
+        f"Expected exactly one {layer_id} group, got {len(matches)}: "
+        f"{[g['layer_id'] for g in groups]!r}."
+    )
+    return matches[0].get("coverage_state")
+
+
+def test_maestro_coverage_state_on_group_records_microservices_state_map():
+    """coverage_state rides the maestro_findings_by_layer GROUP records (HIGH-A).
+
+    The MAESTRO PDF page reads ONLY ``maestro_findings_by_layer`` (the grouped
+    structure main.typ passes), so the clean-vs-n/a-vs-findings enum MUST live on
+    each group record. Drives ``parse_maestro_data`` against the microservices
+    state map (post-regen tokens) and asserts the group record for every canonical
+    layer carries the expected ``coverage_state``: ``clean`` for L7,
+    ``not_applicable`` for L1/L3/L5/L6, ``findings`` for L2/L4 (data-model.md
+    fixture table + cross-surface-consistency contract).
+    """
+    extract = _load_extract_module()
+    result = extract.parse_maestro_data(_SYNTHETIC_THREATS_MICROSERVICES_STATE_MAP)
+
+    groups = result["maestro_findings_by_layer"]
+    actual = {lid: _group_state(groups, lid) for lid in _MICROSERVICES_EXPECTED_STATE}
+
+    assert actual == _MICROSERVICES_EXPECTED_STATE, (
+        "coverage_state on the maestro_findings_by_layer GROUP records did not "
+        "match the microservices state map.\n"
+        f"  expected: {_MICROSERVICES_EXPECTED_STATE!r}\n"
+        f"  actual:   {actual!r}\n"
+        "The PDF MAESTRO page reads only the grouped structure (HIGH-A), so the "
+        "enum must be set on the group record at the pre-build site, sourced from "
+        "the matching parsed_layers row's classify_maestro_coverage_state token."
+    )
+
+    # The same enum must also ride maestro_layer_distribution (so the distribution
+    # block in report-data.typ carries it too).
+    dist = {l["layer_id"]: l.get("coverage_state") for l in result["maestro_layer_distribution"]}
+    assert dist == _MICROSERVICES_EXPECTED_STATE, (
+        "coverage_state on maestro_layer_distribution did not match the state map: "
+        f"{dist!r}"
+    )
+
+
+def test_maestro_most_exposed_layer_never_a_zero_finding_layer():
+    """compute_most_exposed_layer never selects a clean/n/a (zero-finding) layer (FR-012).
+
+    With the microservices state map (only L2/L4 finding-bearing), the most-exposed
+    layer MUST resolve to L2 or L4 and never to a zero-finding layer — guaranteed by
+    the ordinal-0 tie-break left intact in parse_maestro_data (the clean and n/a
+    tokens both miss _SEVERITY_ORDINAL → 0; no token was added to the ordinal map).
+    """
+    extract = _load_extract_module()
+    result = extract.parse_maestro_data(_SYNTHETIC_THREATS_MICROSERVICES_STATE_MAP)
+
+    most_exposed = result["most_exposed_layer"]
+    assert most_exposed.startswith(("L2", "L4")), (
+        "Expected the most-exposed layer to be a finding-bearing layer (L2 or L4), "
+        f"got {most_exposed!r}. A zero-finding (clean/n/a) layer must never win the "
+        "tie-break (FR-012 ordinal-0)."
+    )
+    # Belt-and-suspenders: both zero-finding tokens resolve to ordinal 0.
+    assert extract._SEVERITY_ORDINAL.get("Not applicable — no components map to this layer", 0) == 0
+    assert extract._SEVERITY_ORDINAL.get("Analyzed — no findings this scan", 0) == 0
+
+
+def test_maestro_coverage_state_live_on_committed_microservices_example():
+    """The committed examples/microservices threats.md drives coverage_state end-to-end.
+
+    Proves the T009 wiring is live against the real CI fixture (not just a synthetic
+    string): every group record carries a ``coverage_state`` field, the finding-bearing
+    layers classify to ``findings``, the mapped zero-finding layer (L7) to ``clean``,
+    and the most-exposed layer is never a zero-finding layer.
+
+    NOTE ON SEQUENCING: the committed source still carries the *clean* token for the
+    unmapped zero-finding layers (L1/L3/L5/L6) — the Phase-D populator regen (T018)
+    flips those to the n/a token, after which they classify to ``not_applicable``.
+    Until then they correctly classify to ``clean`` (the classifier reads only the
+    carried token). This test therefore asserts the live wiring + the stable L7/L2/L4
+    states and the ordinal-0 invariant; the L1/L3/L5/L6 → not_applicable transition is
+    covered against the post-regen state map by
+    ``test_maestro_coverage_state_on_group_records_microservices_state_map``.
+    """
+    extract = _load_extract_module()
+    content = _MICROSERVICES_THREATS.read_text(encoding="utf-8")
+    result = extract.parse_maestro_data(content)
+
+    groups = result["maestro_findings_by_layer"]
+    canonical = [g for g in groups if g["layer_id"] in extract.MAESTRO_LAYERS]
+
+    # Every canonical group record carries the coverage_state field (HIGH-A wiring live).
+    for g in canonical:
+        assert "coverage_state" in g, (
+            f"Group record for {g['layer_id']!r} is missing coverage_state — the "
+            "HIGH-A wiring did not reach the grouped structure main.typ passes."
+        )
+        assert g["coverage_state"] in ("findings", "clean", "not_applicable"), (
+            f"Unexpected coverage_state {g['coverage_state']!r} on {g['layer_id']!r}."
+        )
+
+    # Stable states on the committed source: L2/L4 finding-bearing, L7 clean.
+    assert _group_state(groups, "L2") == "findings"
+    assert _group_state(groups, "L4") == "findings"
+    assert _group_state(groups, "L7") == "clean"
+
+    # FR-012: most-exposed is a finding-bearing layer, never a zero-finding one.
+    assert result["most_exposed_layer"].startswith(("L2", "L4")), (
+        "Most-exposed layer on the committed microservices example must be a "
+        f"finding-bearing layer, got {result['most_exposed_layer']!r}."
+    )

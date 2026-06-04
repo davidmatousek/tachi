@@ -968,3 +968,161 @@ def test_maestro_stack_deterministic_byte_identical():
         "maestro-stack output is not byte-identical across two runs on identical "
         "input (ADR-017 determinism violated)."
     )
+
+
+# -----------------------------------------------------------------------------
+# F-311 US-2 / #311 — maestro-stack coverage_state (clean vs n/a) + backfill survival
+#
+# Contract: specs/311-maestro-matrix-model-b-clean-vs-na/
+#   data-model.md (Entity 2/3 + the examples/microservices fixture map) +
+#   contracts/cross-surface-consistency.contract.md + ADR-047 (D2/D3/D4).
+#
+# The maestro-stack per_layer_summaries MUST carry a `coverage_state` enum
+# (findings | clean | not_applicable) derived from THIS layer's carried Section-6
+# token via classify_maestro_coverage_state ALONE (ADR-047 D2). D3 fence: it is
+# NOT derived from parse_component_layer_mapping()/component_layer_map — that
+# Section-1 path stays heatmap-only (the heatmap golden is byte-frozen, asserted
+# in test_existing_templates_unchanged[maestro-heatmap]). D4: a *present*
+# not_applicable token survives the absent-layer backfill merge and is never
+# overwritten to clean/empty.
+#
+# examples/microservices is the regression anchor (data-model.md): L2/L4=findings,
+# L7=clean. (L1/L3/L5/L6 carry the n/a token once the orchestrator/populator
+# authors it on baseline regen — Phase D / T018; this infographic-track test
+# does not depend on that un-landed change, so it asserts those four layers'
+# state from their *carried token* via the same classifier, which is correct both
+# before and after T018. The cross-surface gate T015 hard-pins the post-regen map.)
+# -----------------------------------------------------------------------------
+
+EXAMPLES_DIR = REPO_ROOT / "examples"
+
+# Canonical Model-B zero-finding tokens — MUST byte-match Phase A
+# (tachi_parsers.classify_maestro_coverage_state) and the orchestrator directive.
+_CLEAN_TOKEN = "Analyzed — no findings this scan"
+_NA_TOKEN = "Not applicable — no components map to this layer"
+
+
+def _import_classify_coverage_state():
+    """Import the shared classifier the extractor inherits (read-only check)."""
+    scripts_dir = REPO_ROOT / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from tachi_parsers import classify_maestro_coverage_state
+    return classify_maestro_coverage_state
+
+
+def _summaries_by_layer(template_data):
+    """Index per_layer_summaries by layer_id for state assertions."""
+    return {s["layer_id"]: s for s in template_data["per_layer_summaries"]}
+
+
+def test_microservices_per_layer_coverage_state():
+    """data-model anchor: coverage_state on the real examples/microservices.
+
+    L2/L4 carry findings (finding_count > 0) → "findings"; L7 is clean (in-scope,
+    zero findings). Every zero-finding layer resolves to a valid zero-finding state,
+    and every layer's emitted coverage_state equals the shared classifier applied to
+    its own carried Section-6 token (proving the maestro-stack inherits the carried
+    cell via the classifier — ADR-047 D2 — end-to-end on a real example).
+    """
+    classify = _import_classify_coverage_state()
+    td = _maestro_stack_template_data_for(EXAMPLES_DIR / "microservices")
+    by_layer = _summaries_by_layer(td)
+
+    assert set(by_layer) == set(_CANONICAL_MAESTRO_LAYER_IDS), (
+        f"microservices must emit all 7 canonical layers, got {sorted(by_layer)}"
+    )
+    # Findings layers (per data-model fixture map): L2 (8 findings), L4 (14).
+    assert by_layer["L2"]["coverage_state"] == "findings", by_layer["L2"]
+    assert by_layer["L4"]["coverage_state"] == "findings", by_layer["L4"]
+    # L7 is in-scope with zero findings → clean (holds before AND after T018).
+    assert by_layer["L7"]["coverage_state"] == "clean", by_layer["L7"]
+
+    for lid, s in by_layer.items():
+        # coverage_state is a pure function of the carried token (ADR-047 D2):
+        expected = classify(s["finding_count"], s["highest_severity"])
+        assert s["coverage_state"] == expected, (
+            f"{lid}: coverage_state {s['coverage_state']!r} != classifier(token) "
+            f"{expected!r} for carried cell {s['highest_severity']!r}"
+        )
+        # Every zero-finding layer is a valid zero-finding state (never "findings").
+        if s["finding_count"] == 0:
+            assert s["coverage_state"] in ("clean", "not_applicable"), (
+                f"{lid}: zero-finding layer has invalid state {s['coverage_state']!r}"
+            )
+
+
+def test_present_not_applicable_token_survives_backfill(tmp_path):
+    """ADR-047 D4: a PRESENT n/a token survives the backfill merge (not → clean/empty).
+
+    Synthetic Section-6 table with explicit n/a rows (L1, L3), a findings row (L2),
+    a clean row (L7), and layers absent from the table (L4/L5/L6). Asserts:
+      - present n/a rows  → coverage_state "not_applicable" (the merge did NOT
+        overwrite the authored token back to clean/empty);
+      - present clean row → "clean"; findings row → "findings";
+      - absent (backfilled) layers default to "clean" (D4 default — preserves
+        today's table-less behavior; never silently "findings").
+    This exercises D4 on the present-row path without mutating the committed
+    examples/ source (owned by the Phase-D baseline-regen track).
+    """
+    threats = tmp_path / "threats.md"
+    threats.write_text(
+        "---\nproject: NA Survival Fixture\n---\n\n"
+        "## 1. System Overview\n\n### Components\n\n"
+        "| Component | Type | MAESTRO Layer |\n"
+        "|-----------|------|---------------|\n"
+        "| Client App | external | L7 — Agent Ecosystem |\n\n"
+        "## 6. Risk Summary\n\n#### Risk by MAESTRO Layer\n\n"
+        "| MAESTRO Layer | Finding Count | Highest Severity |\n"
+        "|---------------|---------------|------------------|\n"
+        f"| L1 — Foundation Model | 0 | {_NA_TOKEN} |\n"
+        "| L2 — Data Operations | 3 | High |\n"
+        f"| L3 — Agent Framework | 0 | {_NA_TOKEN} |\n"
+        f"| L7 — Agent Ecosystem | 0 | {_CLEAN_TOKEN} |\n",
+        encoding="utf-8",
+    )
+    td = _maestro_stack_template_data_for(tmp_path)
+    by_layer = _summaries_by_layer(td)
+
+    # Present n/a tokens MUST survive — the load-bearing D4 assertion.
+    assert by_layer["L1"]["coverage_state"] == "not_applicable", (
+        f"present n/a token overwritten on L1: {by_layer['L1']}"
+    )
+    assert by_layer["L3"]["coverage_state"] == "not_applicable", (
+        f"present n/a token overwritten on L3: {by_layer['L3']}"
+    )
+    # Other present rows classify as authored.
+    assert by_layer["L2"]["coverage_state"] == "findings", by_layer["L2"]
+    assert by_layer["L7"]["coverage_state"] == "clean", by_layer["L7"]
+    # Absent layers backfill to the D4 clean default (never "findings").
+    for lid in ("L4", "L5", "L6"):
+        assert by_layer[lid]["coverage_state"] == "clean", (
+            f"absent layer {lid} did not backfill to clean default: {by_layer[lid]}"
+        )
+
+
+def test_table_less_fixture_backfills_all_to_clean():
+    """ADR-047 D4 default: a table-less input backfills all 7 layers to "clean".
+
+    The agentic_app fixture (no Risk-by-MAESTRO-Layer table) is the golden source
+    for maestro-stack; every backfilled layer carries coverage_state "clean",
+    preserving Model-A behavior when applicability is unknowable. (Locks the
+    additive shape of the regenerated maestro-stack.json golden.)
+    """
+    td = _maestro_stack_template_data("agentic_app")
+    for s in td["per_layer_summaries"]:
+        assert s["coverage_state"] == "clean", (
+            f"table-less backfill: {s['layer_id']} state {s['coverage_state']!r} "
+            "!= clean (D4 default)"
+        )
+
+
+def _maestro_stack_template_data_for(target_dir):
+    """Run the maestro-stack extractor on an arbitrary target dir; return template_data."""
+    returncode, _stdout, stderr, payload = run_extract(target_dir, "maestro-stack")
+    assert returncode == 0, (
+        f"[{target_dir}] Expected exit 0, got {returncode}. stderr: {stderr}"
+    )
+    assert payload is not None, f"[{target_dir}] Expected JSON payload to be written"
+    assert "template_data" in payload, f"[{target_dir}] Missing template_data"
+    return payload["template_data"]

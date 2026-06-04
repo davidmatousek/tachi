@@ -144,13 +144,32 @@
     }
     let layer-findings = layer-group.at("findings", default: ())
     let count = layer-findings.len()
+    // Feature 311 (ADR-047): zero-finding layers split into two states. The
+    // coverage-state enum rides the group record (set in extract-report-data.py).
+    // Default to "clean" so pre-Model-B data (no field) renders unchanged.
+    let coverage-state = str(layer-group.at("coverage-state", default: "clean"))
 
     // Layer heading with finding count.
     heading(level: 2)[#layer-id --- #layer-name #text(size: 10pt, fill: brand-muted, weight: "regular")[(#count finding#if count != 1 [s])]]
 
     if count > 0 {
       _layer-table(layer-findings)
+    } else if coverage-state == "not_applicable" {
+      // Not applicable — no Section-1 component maps to this layer. Visually
+      // separable from the clean line via a tinted (brand-light) inset block and
+      // an explicit "(out of scope)" qualifier, so a reader can tell at a glance
+      // "this layer is out of scope" from "this layer was scanned and is clean".
+      block(
+        fill: brand-light,
+        radius: 3pt,
+        inset: (x: 0.6em, y: 0.4em),
+        width: 100%,
+        text(size: 10pt, fill: brand-muted, style: "italic")[
+          Not applicable — no components map to this layer. #text(weight: "semibold")[(out of scope)]
+        ],
+      )
     } else {
+      // Clean: analyzed, in scope, zero findings (UNCHANGED Model-A treatment).
       text(size: 10pt, fill: brand-muted, style: "italic")[Analyzed — no findings this scan.]
     }
   }
