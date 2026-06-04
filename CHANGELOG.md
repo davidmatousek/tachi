@@ -449,6 +449,13 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
+## [4.41.0](https://github.com/davidmatousek/tachi/compare/v4.40.0...v4.41.0) (2026-06-04)
+
+
+### Features
+
+* **311:** MAESTRO Matrix Model B — clean vs n/a ([#318](https://github.com/davidmatousek/tachi/issues/318)) ([0e5ee1c](https://github.com/davidmatousek/tachi/commit/0e5ee1c5029ebdb69676723be6ca192e439cc006))
+
 ## [4.40.0](https://github.com/davidmatousek/tachi/compare/v4.39.0...v4.40.0) (2026-06-03)
 
 
