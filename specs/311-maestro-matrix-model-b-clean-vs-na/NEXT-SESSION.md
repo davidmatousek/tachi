@@ -1,64 +1,53 @@
 # NEXT-SESSION — F-311 MAESTRO Matrix Model B (clean vs. n/a)
 
-**Branch**: `311-maestro-matrix-model-b-clean-vs-na` · **Date stopped**: 2026-06-04
-**Stopped because**: standalone 3-wave ceiling (`/aod.build`, `orchestrated == false`). Waves 0–2 done; Waves 3–4 remain.
+**Branch**: `311-maestro-matrix-model-b-clean-vs-na` · **Updated**: 2026-06-04
+**Status**: ✅ **BUILD COMPLETE — all 23 tasks done, all gates green. Ready for `/aod.deliver`.**
 
-## Progress: 14/23 tasks (Phase A + Phase B COMPLETE)
+## Progress: 23/23 tasks · 5/5 waves · G0–G4 all PASS
 
-| Wave | Phase | Tasks | Status |
-|------|-------|-------|--------|
-| 0 | Setup | T001, T002 | ✅ done (G0 PASS — baseline green) |
-| 1 | A — source contract | T003–T008 | ✅ done (G1 PASS) |
-| 2 | B — PDF ∥ infographic | T009–T014 | ✅ done (G2 PASS) |
-| 3 | C — fixture + CI | T015, T016 | ⏳ NEXT |
-| 4 | D — baseline regen + delivery | T017–T023 | ⏳ pending |
+| Wave | Phase | Tasks | Gate | Status |
+|------|-------|-------|------|--------|
+| 0 | Setup | T001–T002 | G0 | ✅ |
+| 1 | A — source contract | T003–T008 | G1 | ✅ |
+| 2 | B — PDF ∥ infographic | T009–T014 | G2 | ✅ |
+| 3 | C — fixture + CI | T015–T016 | G3 ✅ (architect APPROVED) | ✅ |
+| 4 | D — baseline regen + delivery | T017–T023 | G4 ✅ | ✅ |
 
-**What landed**: pure `classify_maestro_coverage_state` classifier (`tachi_parsers.py`, INV-1 pure, INV-3 ordinal-0); orchestrator Section-6 two-state directive (sole production authority) + docs (`output-schemas.md`, `coverage-matrix-model.md`); populator option-(a) examples-regen Section-1 read (D3-fenced); PDF `coverage_state` on `maestro_findings_by_layer` group records + Typst n/a branch; infographic `coverage_state` in `per_layer_summaries` + `{layer_bands_text}` n/a band; D3 fence verified (heatmap.json byte-unchanged). **F-311 test area: 69 passed, 2 skipped, 0 regressions.**
+**Step 5 Final Validation**: Architect APPROVED · Code-reviewer PASS · Security-analyst PASS (all 0 blocking).
+**Step 6 Design Gate**: Skipped (no UI files — `.css/.jsx/.tsx/.html` none changed).
+**Step 7 Security Scan**: PASSED — 8 files SAST, 0 findings; SCA skipped (0 manifests). `.security/` evidence committed.
 
----
+## What shipped (the whole feature)
+- **Classifier** `classify_maestro_coverage_state` (pure, Section-1-blind; ADR-047 D2).
+- **threats.md** two-state token (orchestrator Section-6 sole authority; populator option-(a) examples-regen Section-1 read).
+- **PDF** `coverage_state` on `maestro_findings_by_layer` group records + Typst n/a branch (renders "Not applicable — no components map to this layer. (out of scope)").
+- **Infographic** `coverage_state` in `per_layer_summaries` + `{layer_bands_text}` N/A band; D3 heatmap fence intact (`maestro-heatmap.json` byte-unchanged).
+- **Cross-surface CI gate** `test_maestro_cross_surface_consistency.py` (7-layer agreement + negative L7 test) wired into `tachi-maestro-coverage.yml` in F-250 lock-step; 5 render-IR paths promoted regression-necessary.
+- **Baseline regen** (Decision F): churn set = microservices + web-app + free-text-microservice + mermaid-agentic-app + ascii-web-api (5); DROPPED no-drift maestro-reference + 2 sample-reports. 6/6 byte-gated baselines re-frozen byte-identical; BASELINE_EXAMPLES unchanged.
+- **CHANGELOG** feat(311) Unreleased entry; **ADR-047** recorded at define stage.
 
-## ⚠️ CRITICAL — do this FIRST in Wave 3 (both Wave-2 agents flagged it)
+## Test posture
+- F-311 unit area: **71 passed, 2 skipped, 0 failed** (the 2 skips = intermediate-format sample reports).
+- Byte-gate: **6/6 green**. Cross-surface T015: **2/2 green** (incl. negative test).
+- SC-003: **0 SARIF + 0 schema drift**. `/aod.analyze`: 0 blocking inconsistencies.
+- 17 pre-existing enrichment failures (`test_mobile_top_10_coverage_bundle_enrichment.py` + `test_tool_abuse_enrichment.py`) are OUT of F-311 scope, unchanged — flag for separate triage; do NOT let them block F-311 deliver.
 
-**The committed `examples/microservices/threats.md` still carries Model-A CLEAN tokens on L1/L3/L5/L6** (verified — all five zero-finding layers read `Analyzed — no findings this scan`). So classifying the live example *today* yields `clean` (not `not_applicable`) for L1/L3/L5/L6.
+## ⚠️ DELIVER-GATE (do this in `/aod.deliver`)
+1. **PR squash title MUST be `feat(311): …`** (release-please trigger). All 5 session commits are already `feat(311)`/`docs(311)`/`security(311)`.
+2. **`v4.40.0` tag confirmed present locally** (fetched this session). Release-please bases the next release on it.
+3. **Post-merge**: verify a release-please PR opens within ~30s; if not, push an empty `feat(311): … — release marker` commit.
+4. Work is **committed locally on the branch, NOT pushed**. `/aod.deliver` pushes + opens/readies the PR.
 
-T015's expected map (`L1·L3·L5·L6 = not_applicable`) therefore **cannot hold until `microservices/threats.md` is regenerated to Model-B**. The task plan sequences T018 (which regenerates threats.md) *after* T015 — a real ordering coupling.
-
-**Resolution (recommended — option a):** At the START of Wave 3, regenerate the microservices fixture to Model-B before T015:
-```bash
-python3 scripts/populate-maestro-coverage.py examples/microservices/threats.md   # heading-normalize is built in
+## Commits this session (branch `311-…`)
 ```
-The populator (option-a, already verified) produces exactly the data-model map: **L7=clean, L1/L3/L5/L6=n/a, L2/L4=findings**. Then T015 asserts that map across all three surfaces.
-
-**Coupling to remember**: regenerating `microservices/threats.md` changes content (clean→n/a on 4 layers) — this is the intended Phase-D churn (Decision F). `microservices` is one of the **6 byte-gated PDF baselines**, so T018 must deterministically re-freeze its `.pdf.baseline` (`SOURCE_DATE_EPOCH=1700000000`) and T020's byte-gate must re-freeze it deliberately (BASELINE_EXAMPLES set unchanged). Wave-3 fixture regen and Wave-4 PDF re-freeze are coupled for microservices.
-
-*Alternative (option b)*: leave the committed threats.md as-is and have T015 run the populator on an in-memory copy at test time. Less clean — the fixture wouldn't reflect Model-B. Prefer (a).
-
-**Test harness already built for you**: the PDF track added `_load_extract_module()` + a `parse_maestro_data(content)` harness and a `_SYNTHETIC_THREATS_MICROSERVICES_STATE_MAP` post-regen fixture in `tests/scripts/test_extract_report_data.py` — T015 can reuse this pattern to obtain PDF state at test time (Architect MEDIUM-A: PDF render IR is regenerated, not committed). The infographic side mirrors `_maestro_stack_template_data`.
-
----
-
-## Next Actions (in order)
-
-1. **Regen microservices fixture to Model-B** (the CRITICAL prerequisite above).
-2. **T015** (`tester` + SBE) — cross-surface consistency test (new `tests/scripts/test_maestro_cross_surface_consistency.py` or a case in `test_maestro_coverage_invariant.py`): assert `state(threats.md §6 via classify_maestro_coverage_state) == state(report-data.typ coverage_state) == state(maestro-stack.json coverage_state)` for all 7 layers (L7=clean, L1·L3·L5·L6=not_applicable, L2·L4=findings). Obtain PDF state via `parse_maestro_data` at test time. Add the negative test: force one surface's L7 → not_applicable ⇒ assertion fails naming **L7**.
-3. **T016** (`devops`) — wire T015 into `.github/workflows/tachi-maestro-coverage.yml` in **F-250 lock-step** (`on.pull_request.paths` AND the pytest invocation in the SAME commit); reclassify the 5 regression-necessary paths (`extract-report-data.py`, `extract-infographic-data.py`, `maestro-findings.typ`, `infographic-maestro-stack.md`, `orchestrator.md`). Do NOT touch `tachi-pytest.yml`.
-4. **T017–T023** (Wave 4): drift audit (DROP no-drift, enumerate churn set in PR body) → deterministic baseline regen (heading-normalize first; `SOURCE_DATE_EPOCH=1700000000`; needs Typst+mmdc — both present) → [MANUAL-ONLY] annotation-only diff → byte-gate (`test_backward_compatibility.py` green, BASELINE_EXAMPLES unchanged) → CHANGELOG `feat(311)` → SC-003 no-schema-drift + `/aod.analyze` → quickstart e2e + deliver-gate.
-5. **Step 5 Final Validation** (architect + code-reviewer + security-analyst on the full feature), **Step 6 Design Quality Gate** (likely "skipped — no UI files changed": no `*.css/*.jsx/*.tsx/*.html` changed; Typst + markdown templates fall outside the grep checks — verify), **Step 7 Security Scan** (`/security` skill), **Step 8** completion report + `summary.json`.
-
----
-
-## Carry-forward facts
-
-- **T008 MEDIUM-B → OPTION (a) RATIFIED** (PM+Architect+Team-Lead endorsed). **Record in PR body**: "T008: chose option (a) — examples-local Section-1 read + present-row re-decision in `populate-maestro-coverage.py`, fenced EXAMPLES-REGENERATION-ONLY (ADR-047 D3), reuses `classify_maestro_coverage_state`."
-- **17 PRE-EXISTING test failures** in `test_mobile_top_10_coverage_bundle_enrichment.py` + `test_tool_abuse_enrichment.py` (line-count caps, M8 presence, byte-identity-against-main, source-attribution). CONFIRMED pre-existing via clean-baseline worktree at HEAD (zero F-311 code → same failures). **NOT F-311 regressions** — flag for separate triage; do not let them block F-311 gates. F-311 area is fully green.
-- **`v4.40.0` git tag MISSING locally** — run `git fetch --tags` and confirm before `/aod.deliver` (T023 deliver-gate / Team-Lead R7). Release-please bases the next release on it.
-- **Deliver-gate**: PR squash title MUST be `feat(311):` (release-please); verify a release-please PR opens post-merge.
-- **Gates so far**: G0 ✅ G1 ✅ G2 ✅. G3 (consistency) + G4 (byte-gate) remain.
-- Work is **committed locally** (Phase A+B checkpoint). Not yet pushed.
+33ece63 security(311): run security scan [83f099c1229a]
+83f099c docs(311): T022-T023 close-out — quickstart runbook fixes + task marks
+4c4f36c feat(311): Wave 4 — Model-B baseline regen + CHANGELOG (T017-T021)
+9fbd79e feat(311): Wave 3 — cross-surface consistency gate + CI wiring (T015-T016)
+3892246 feat(311): MAESTRO Model B Phase A+B — classifier + PDF/infographic n/a surfaces  (prior session)
+```
 
 ## Resume
-
 ```
-claude "Resume F-311 MAESTRO Model B (branch: 311-maestro-matrix-model-b-clean-vs-na). Waves 0-2 complete (T001-T014). Run /aod.build to continue at Wave 3 — but FIRST read specs/311-maestro-matrix-model-b-clean-vs-na/NEXT-SESSION.md (critical microservices/threats.md regen prerequisite for T015)."
+claude "F-311 MAESTRO Model B build is COMPLETE (23/23 tasks, all gates green). Run /aod.deliver FEATURE: 311 — MAESTRO Matrix Model B (clean vs n/a). Ensure the PR squash title is feat(311): and verify a release-please PR opens post-merge."
 ```
-`/aod.build` auto-detects [X] tasks and resumes at Wave 3 (T015).
