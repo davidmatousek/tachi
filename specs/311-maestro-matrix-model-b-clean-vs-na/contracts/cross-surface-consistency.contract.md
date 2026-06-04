@@ -1,6 +1,6 @@
 # Contract: Cross-surface MAESTRO coverage-state consistency
 
-**Feature**: 311 · **Surface**: `tests/scripts/test_maestro_coverage_invariant.py` (new assertion in the existing dedicated job) · **Spec**: FR-010/FR-011 / SC-001/SC-002
+**Feature**: 311 · **Surface**: `tests/scripts/test_maestro_cross_surface_consistency.py` (new dedicated module, run in the existing `tachi maestro coverage` CI job alongside the F-098 7-layer invariant — keeps that invariant test single-concern) · **Spec**: FR-010/FR-011 / SC-001/SC-002
 
 The structural guarantee (ADR-047) is **test-checked, not structural** in the LLM-authored markdown tier (the `maestro_layer` / ADR-037 posture). This contract is therefore the required, non-optional guard that the three surfaces agree.
 
