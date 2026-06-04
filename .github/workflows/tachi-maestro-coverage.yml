@@ -74,8 +74,15 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install pytest
-        run: pip install pytest pytest-timeout
+      - name: Install pytest + PyYAML
+        # PyYAML is required at pytest *collection* time: tests/scripts/conftest.py
+        # imports `yaml` at module scope, and BOTH test modules below collect
+        # through it. Without pyyaml, pytest aborts at conftest import with
+        # `ModuleNotFoundError: No module named 'yaml'` (exit 4) before any test
+        # runs. Mirrors the pinned install in tachi-pytest.yml (the canonical repo
+        # pattern). The gap was latent from F-315 (the job never actually fired on
+        # #316); F-311 is the first PR to exercise this job, so the fix lands here.
+        run: pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
 
       # Direct pytest invocation — slash commands cannot run in CI. The invariant
       # test discovers the example corpus dynamically and asserts no canonical
