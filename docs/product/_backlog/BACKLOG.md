@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-03T19:28:59Z.
+> Auto-generated from GitHub Issues on 2026-06-04T12:29:55Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -8,7 +8,6 @@
 
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
-| #311 | feat: MAESTRO matrix Model B — distinguish clean (analyzed, 0 findings) from n/a (not applicable) | — | — | 2026-06-03 |
 | #295 | F-292 post-merge tachi.threat-model verification runs (T017 + T026) | Impact: 3 (closes empirical verification of SC-003 + SC-015), Confidence: 5 (mechanical execution), Effort: 2 (two `tachi.threat-model` runs + 1 commit) = **30 / Tier 2 (Medium)** | — | 2026-05-14 |
 | #217 | detect_images leaves duplicate .jpg/.png pair after recovery write | — | — | 2026-05-05 |
 | #186 | F-A1.3 follow-on: MITRE ATT&CK + ATLAS catalog expansion | — | — | 2026-05-05 |
@@ -57,6 +56,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #311 | feat: MAESTRO matrix Model B — distinguish clean (analyzed, 0 findings) from n/a (not applicable) | OPEN | 2026-06-03 |
 | #299 | docs: surface /tachi.architecture as the recommended Step 4 path in the Developer Guide | CLOSED | 2026-05-30 |
 | #289 | chore: BLP-02 initiative closure tracker (post-5/5 outstanding items + follow-up Issues) | CLOSED | 2026-05-11 |
 | #287 | chore(282): post-merge follow-up — gitleaks pin-bump cadence accountability (CONCERN-4) | OPEN | 2026-05-10 |

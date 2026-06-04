@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "wave": 2,
+  "phase": "B — PDF || infographic surfaces (T009-T014)",
+  "timestamp": "2026-06-04",
+  "test_runner": "python3 -m pytest",
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 69, "fail": 0, "skip": 2 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "scope_note": "Totals are the F-311 test area run: test_tachi_parsers.py + test_extract_report_data.py (16, incl. 3 new) + test_extract_infographic_data.py (37, incl. 3 new) + test_maestro_coverage_invariant.py (9+2 skip) = 69 passed, 2 skipped, 0 failed. The 17 pre-existing enrichment failures (Wave 1 note) are unchanged and out of F-311 scope.",
+  "gate_summary": "G2 PASS — HIGH-A: coverage_state rides maestro_findings_by_layer group records + serialized to both Typst blocks. D3 fence: component_layer_map heatmap-only (explicit fence comment L1996-2001; maestro-heatmap.json byte-UNCHANGED). D4 backfill-survival proven (synthetic n/a fixture). FR-012 ordinal-0 tested both tracks. n/a render branch present on PDF (Typst) + infographic ({layer_bands_text} builder).",
+  "sequencing_flag": "CRITICAL for Wave 3: committed examples/microservices/threats.md still carries Model-A CLEAN tokens on L1/L3/L5/L6 (verified). Wave 2 tests prove the not_applicable path via synthetic post-regen fixtures; the live-example tests assert only field-presence + stable L7/L2/L4 + ordinal-0. T015's hard L1/L3/L5/L6=not_applicable expected map requires the microservices threats.md to be regenerated to Model-B (populator T008 produces the correct map) BEFORE/AS-PART-OF T015 — see NEXT-SESSION.md."
+}

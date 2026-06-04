@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "wave": 4,
+  "phase": "D — baseline regen + delivery (T017-T023)",
+  "timestamp": "2026-06-04",
+  "test_runner": "python3 -m pytest",
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 77, "fail": 0, "skip": 2 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "scope_note": "Wave-4 final posture: F-311 unit area 71 passed + 2 skipped (unchanged after the 4-example threats.md regen) AND the byte-gate test_unmodified_examples_byte_identical_pdfs 6/6 passed after intentional re-freeze. 71 unit + 6 byte-gate = 77 passed. The microservices byte-gate red that appeared in Wave 3 (intended Decision-F coupling) is now GREEN — T018 re-froze 5 baselines, T020 confirmed all 6 byte-identical, BASELINE_EXAMPLES unchanged.",
+  "gate_summary": "G4 PASS — T019 [MANUAL-ONLY] code-reviewer confirmed annotation-only + pagination churn (finding-IDs/risk-scores/severity counts identical old->new). T020 byte-gate 6/6 green, BASELINE_EXAMPLES intact. SC-003: 0 SARIF + 0 schema drift; /aod.analyze 0 blocking inconsistencies. T023 quickstart SC-001..SC-005 e2e green (all 3 surfaces agree L7=clean/L1.L3.L5.L6=n/a/L2.L4=findings). v4.40.0 tag local. Deliver-gate: squash title must be feat(311)."
+}

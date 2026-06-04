@@ -69,7 +69,8 @@
 | Medium | #CA8A04 | Yellow-600 | Band severity indicator, finding badges |
 | Low | #2563EB | Blue-600 | Band severity indicator, finding badges |
 | Note | #6B7280 | Gray-500 | Informational only (excluded from visual risk distribution) |
-| Empty layer | #1E293B | Slate-800 | Muted band for layers with zero findings (matches background) |
+| Empty layer | #1E293B | Slate-800 | Muted band for `clean` layers — analyzed, zero findings (matches background) |
+| N/A layer | #1E293B | Slate-800 | `not_applicable` layers — out of scope; same base fill as clean but more recessed: lower opacity / desaturated, with a dashed (not solid) border + an "N/A" text label to distinguish it from a clean layer |
 | Exposed layer | #475569 | Slate-600 | Brighter background for the most-exposed layer band |
 | Text primary | #F8FAFC | Slate-50 | Titles, layer names, finding descriptions |
 | Text secondary | #94A3B8 | Slate-400 | Labels, captions, subtitles |
@@ -121,12 +122,23 @@
 - Brighter background (#475569 Slate-600 instead of standard #334155 Slate-700)
 - Subtle glow or highlight effect to draw the eye
 
-**Empty Layers (zero findings):**
-- Still rendered as a band in the stack (all 7 layers always visible)
-- Muted appearance: darker background (#1E293B matching dashboard background)
-- Grayed text (#64748B Slate-500) for layer name
-- No finding count badge, no severity indicator
-- Dash (—) where finding summaries would appear
+**Zero-Finding Layers — two distinct states (keyed on `coverage_state`):**
+
+All 7 layers are always rendered as bands. A zero-finding layer is one of two
+states — they MUST be visually distinguishable, not collapsed into one muted look:
+
+- **`clean`** (≥1 component maps to the layer; analyzed, no findings — UNCHANGED):
+  - Muted appearance: darker background (#1E293B matching dashboard background)
+  - Grayed text (#64748B Slate-500) for the layer name
+  - No finding count badge, no severity indicator
+  - Dash (—) where finding summaries would appear
+- **`not_applicable`** (no component maps to the layer; out of scope — NEW):
+  - A *distinct* muted treatment, more recessed than `clean`: lower-opacity /
+    desaturated band fill, dashed (rather than solid) band border, layer name in
+    muted text (#64748B Slate-500)
+  - No finding count badge, no severity indicator
+  - An explicit **"N/A"** text label where the finding summaries / dash would
+    appear (NOT the em-dash — the "N/A" label is what tells n/a apart from clean)
 
 ### SIDEBAR (~30% width)
 
@@ -168,6 +180,18 @@ Replace all `{placeholders}` with actual data from the infographic spec sections
 - When populating `{layer_bands_text}` and `{most_exposed_layer}` placeholders, use ONLY natural language and numbers. Never include hex color codes, Tailwind class names, pixel sizes, or CSS values in data text.
 - Use severity names only: "Critical", "High", "Medium", "Low" — not their hex codes.
 
+**`{layer_bands_text}` construction (per-band, keyed on `coverage_state`)**:
+
+Build one line per layer (L7 top → L1 bottom), branching on each layer's
+`coverage_state` field from the infographic data so the three states render as
+visibly distinct bands. The state MUST be applied here, in the per-band text — a
+single static description would make every band render identically and erase the
+clean-vs-n/a distinction:
+
+- **`findings`** (`finding_count` > 0): `"{layer_id} — {layer_name}: {finding_count} findings, highest severity {Severity}"`, then up to 2 top findings as `"{ID}: {short threat}"`. Severity-colored badge + dot.
+- **`clean`** (zero findings, in scope): `"{layer_id} — {layer_name}: analyzed, no findings — muted band, grayed text, a dash (—) where findings would be"`. (UNCHANGED from Model A.)
+- **`not_applicable`** (zero findings, no component maps): `"{layer_id} — {layer_name}: N/A — out of scope, no components map to this layer — a distinctly recessed muted band (lower-opacity fill, dashed border) with an explicit \"N/A\" label instead of a dash"`.
+
 ```
 Create a premium, professional security risk dashboard with a polished, modern dark-theme aesthetic. This should look like a professionally designed Figma dashboard — not a data table or spreadsheet. The overall feel should be confident, sophisticated, and visually impressive — a formal security report artifact, not a presentation slide or boardroom scene. Render ONLY the dashboard itself as a flat document — no perspective, no 3D effects, no room or table context, no environmental background. The image should be the report, not a photo of the report.
 
@@ -181,7 +205,8 @@ STYLING DIRECTIVES (interpret these, do not display them):
 - Layout: 16:9 landscape, 3-zone (top header, main body split into stack + sidebar, footer)
 - Layer bands: horizontal bars stacked vertically, L7 at top through L1 at bottom
 - Most-exposed layer band: brighter background, wider left border accent
-- Empty layer bands: muted, darker background, grayed text
+- Clean layer bands (analyzed, zero findings): muted, darker background, grayed text, a dash (—) where findings would be
+- Not-applicable layer bands (out of scope, no components map): a distinctly more recessed muted band — lower-opacity / desaturated fill and a dashed border — with an explicit "N/A" label instead of a dash, so n/a reads as visibly different from a clean layer
 
 DATA CONTENT (render this as visible text):
 
@@ -189,7 +214,7 @@ TOP SECTION: Title "MAESTRO Layer Risk Distribution: {project_name}" in large wh
 
 STACK ZONE (left ~70% of main body): Seven horizontal bands stacked vertically representing the CSA MAESTRO framework layers. Each band is a rounded card on the dark background. Bands ordered top-to-bottom:
 {layer_bands_text}
-The most-exposed layer ({most_exposed_layer}) should have a visually prominent band — brighter background, wider colored left border, subtle glow — to immediately draw attention. Empty layers (zero findings) should appear muted with darker backgrounds, grayed text, and a dash where findings would be.
+The most-exposed layer ({most_exposed_layer}) should have a visually prominent band — brighter background, wider colored left border, subtle glow — to immediately draw attention. Zero-finding layers come in two visibly distinct states: a "clean" layer (analyzed, in scope) appears muted with a darker background, grayed text, and a dash (—) where findings would be; a "not applicable" layer (out of scope, no components map to it) appears even more recessed — a lower-opacity, desaturated band with a dashed border — and carries an explicit "N/A" label instead of a dash, so a clean layer and an n/a layer are never confused.
 
 SIDEBAR (right ~30% of main body): A sidebar panel with aggregate statistics at the top: "Total Findings: {total_findings}" in large white bold, "Layers with Findings: {layers_with_findings}" and "Empty Layers: {empty_layers}" in smaller light gray. Below the stats: a prominent "MOST EXPOSED" badge card showing "{most_exposed_layer}" with "{most_exposed_count} findings" in severity-colored text, with a colored left border accent. Below the badge: a severity legend with four colored dots — Critical (red), High (orange), Medium (amber), Low (blue).
 
@@ -217,6 +242,6 @@ image_size: "2K"
 - All seven layer labels readable with text names alongside layer IDs (not ID alone)
 - Color is not the sole severity indicator — text labels ("Critical", "High", "Medium", "Low") accompany all color-coded elements
 - Finding count badges use numeric text alongside colored backgrounds
-- Empty layers identified by text dash (—) in addition to muted visual styling
+- Zero-finding layers carry a text marker (not color/styling alone): a `clean` layer uses the dash (—); a `not_applicable` layer uses an explicit **"N/A"** text label, so the two zero-finding states are distinguishable without relying on the band fill difference
 - Minimum contrast ratio 4.5:1 for text on backgrounds
 - Most-exposed layer identifiable by border width and background brightness, not color alone

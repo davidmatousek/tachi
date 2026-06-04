@@ -56,7 +56,10 @@ from pathlib import Path
 # single ordering authority — no second hard-coded L1..L7 list is introduced.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from tachi_parsers import MAESTRO_LAYERS  # noqa: E402
+from tachi_parsers import (  # noqa: E402
+    MAESTRO_LAYERS,
+    classify_maestro_coverage_state,
+)
 
 _EM_DASH = "—"  # U+2014, the canonical annotation + layer-label separator
 _EN_DASH = "–"  # U+2013, tolerated on read for robustness (extractor parity)
@@ -82,6 +85,20 @@ _MAESTRO_LAYER_NAMES = {
 # period (the Typst prose literal adds one — the sole sanctioned cross-format
 # difference, asserted on the phrase not the punctuation; PM OBS-2).
 _ZERO_FINDING_ANNOTATION = f"Analyzed {_EM_DASH} no findings this scan"
+
+# Feature 311 (Model B) n/a annotation: a zero-finding layer with 0 Section-1
+# components mapped to it. Same em-dash + no-trailing-period contract as the
+# clean annotation (ADR-047 D1). The two canonical zero-finding tokens, keyed by
+# the coverage_state classify_maestro_coverage_state returns, so the *string*
+# this tool writes is selected by the same shared classifier the extractors use
+# — one decision function, not a duplicated clean-vs-n/a branch (T008 reuse).
+_NOT_APPLICABLE_ANNOTATION = (
+    f"Not applicable {_EM_DASH} no components map to this layer"
+)
+_STATE_TO_ZERO_FINDING_TOKEN = {
+    "clean": _ZERO_FINDING_ANNOTATION,
+    "not_applicable": _NOT_APPLICABLE_ANNOTATION,
+}
 
 _HEADING_TEXT = "Risk by MAESTRO Layer"
 _CANONICAL_HEADING = f"#### {_HEADING_TEXT}"
@@ -143,22 +160,137 @@ def _find_table_region(lines: "list[str]"):
     return None
 
 
-def _render_data_rows(present: "dict[str, str]") -> "list[str]":
+# =============================================================================
+# Feature 311 (Model B) — examples-local Section-1 component→layer read
+# =============================================================================
+#
+# EXAMPLES-REGENERATION-ONLY — NOT a production authority (ADR-047 D3).
+# Production applicability is authored exactly once by the orchestrator LLM
+# directive (FR-001/D1); this Section-1 read exists solely so this tool can
+# mirror that decision when regenerating the committed examples/**/threats.md
+# tables (deterministic Phase-D regen + idempotent `--check`). It MUST NOT be
+# wired into any command/orchestrator phase or reused as a second production
+# applicability path — doing so would reintroduce the two-source desync the
+# single-authority design (and D3's heatmap fence) exists to prevent.
+
+_SECTION_1_COMPONENTS_HEADING_RE = re.compile(r"^#{2,4}[ \t]+Components[ \t]*$")
+
+
+def _parse_mapped_layers(content: str):
+    """Return the set of canonical layer IDs ≥1 Section-1 component maps to.
+
+    Reads the Section-1 ``Components`` table's "MAESTRO Layer" column and
+    collects every canonical L1-L7 code that carries at least one component.
+    ``Unclassified`` (and any non-canonical code) is ignored — an Unclassified
+    component makes no L1-L7 layer in-scope (data-model.md applicability rule).
+
+    Returns ``None`` when no Section-1 Components table is found (table-less
+    sample-reports). ``None`` means applicability is *unknowable*, so every
+    zero-finding row defaults to the **clean** token (Model-A preserved, never
+    spuriously n/a — INV-4 / ADR-047 D4). A returned *set* (possibly empty)
+    means the table WAS read: a layer absent from it is positively unmapped → n/a.
+
+    EXAMPLES-REGENERATION-ONLY (ADR-047 D3): see the module-section banner above.
+    Pure — reads only ``content``.
+    """
+    lines = content.split("\n")
+    for i, line in enumerate(lines):
+        if not _SECTION_1_COMPONENTS_HEADING_RE.match(line):
+            continue
+        # Locate the table beneath the heading (skip blank lines), then read its
+        # rows until the first non-pipe line. Find the "MAESTRO Layer" column.
+        j = i + 1
+        while j < len(lines) and lines[j].strip() == "":
+            j += 1
+        if j >= len(lines) or not lines[j].lstrip().startswith("|"):
+            continue
+        header_cells = _split_row(lines[j])
+        try:
+            layer_col = next(
+                idx for idx, c in enumerate(header_cells)
+                if c.strip().lower() == "maestro layer"
+            )
+        except StopIteration:
+            continue
+        # Found a Components table with a MAESTRO Layer column: this is an
+        # authoritative (for examples) mapping. Skip header + separator, read rows.
+        mapped: "set[str]" = set()
+        for dl in lines[j + 2:]:
+            if not dl.lstrip().startswith("|"):
+                break
+            cells = _split_row(dl)
+            if len(cells) <= layer_col:
+                continue
+            lid = _layer_id_of(cells[layer_col])
+            if lid in MAESTRO_LAYERS:
+                mapped.add(lid)
+        return mapped  # first Components table wins
+    return None  # no Section-1 mapping available → applicability unknowable
+
+
+def _zero_finding_token_for(lid: str, mapped_layers) -> str:
+    """Select the canonical zero-finding token for layer ``lid`` (clean vs n/a).
+
+    Applicability is the populator's Section-1-derived fact: ``lid`` is n/a only
+    when the Section-1 mapping was read AND ``lid`` is absent from it. When the
+    mapping is unavailable (``mapped_layers is None``) the layer defaults to
+    clean (Model-A preserved; INV-4). The clean-vs-n/a *decision* itself is
+    delegated to the shared ``classify_maestro_coverage_state`` (T004) by
+    classifying the candidate token: the classifier's result keys
+    :data:`_STATE_TO_ZERO_FINDING_TOKEN`, so this tool writes whatever string the
+    extractors will read back as the same state. One decision function across
+    the populator + both extractors — not a duplicated branch. Pure.
+    """
+    if mapped_layers is not None and lid not in mapped_layers:
+        candidate = _NOT_APPLICABLE_ANNOTATION
+    else:
+        candidate = _ZERO_FINDING_ANNOTATION
+    state = classify_maestro_coverage_state(0, candidate)
+    return _STATE_TO_ZERO_FINDING_TOKEN[state]
+
+
+def _redecide_zero_finding_row(row_line: str, lid: str, mapped_layers) -> str:
+    """Re-author a present zero-finding row's Highest-Severity cell if needed.
+
+    A present row with ``Finding Count == 0`` may carry the Model-A clean token
+    even when its layer is unmapped (pre-Model-B examples). Re-decide its token
+    from Section-1 applicability (clean vs n/a) and rewrite only the third cell,
+    preserving the row's layer-label cell verbatim. Rows with a positive count
+    (findings) or an unparseable shape are returned unchanged. Pure.
+    """
+    cells = _split_row(row_line)
+    if len(cells) < 3:
+        return row_line
+    count = cells[1].strip()
+    if count != "0":
+        return row_line  # findings row — never re-annotated
+    new_token = _zero_finding_token_for(lid, mapped_layers)
+    if cells[2].strip() == new_token:
+        return row_line  # already canonical — keep verbatim (byte-stable)
+    return f"| {cells[0]} | {cells[1]} | {new_token} |"
+
+
+def _render_data_rows(present: "dict[str, str]", mapped_layers) -> "list[str]":
     """Build the canonical data-row block from parsed present rows.
 
     Emits all 7 canonical layers in ``MAESTRO_LAYERS`` order (present rows kept
-    verbatim; absent layers added as ``0`` + the annotation), then any
-    non-canonical "other" rows (preserved, sorted — defensive; examples have
-    none), then the conditional ``Unclassified`` row last. Pure and
-    deterministic.
+    verbatim except a re-decided zero-finding token; absent layers added as
+    ``0`` + the applicable clean/n/a token), then any non-canonical "other" rows
+    (preserved, sorted — defensive; examples have none), then the conditional
+    ``Unclassified`` row last. Pure and deterministic.
+
+    ``mapped_layers`` (Section-1 component→layer set, or ``None`` when the
+    mapping is unavailable; EXAMPLES-REGENERATION-ONLY per ADR-047 D3) selects
+    clean vs n/a for every zero-finding row via the shared classifier.
     """
     rows: "list[str]" = []
     for lid in MAESTRO_LAYERS:
         if lid in present:
-            rows.append(present[lid])
+            rows.append(_redecide_zero_finding_row(present[lid], lid, mapped_layers))
         else:
             name = _MAESTRO_LAYER_NAMES.get(lid, lid)
-            rows.append(f"| {lid} {_EM_DASH} {name} | 0 | {_ZERO_FINDING_ANNOTATION} |")
+            token = _zero_finding_token_for(lid, mapped_layers)
+            rows.append(f"| {lid} {_EM_DASH} {name} | 0 | {token} |")
     for lid in sorted(k for k in present if k not in MAESTRO_LAYERS and k != _UNCLASSIFIED):
         rows.append(present[lid])
     if _UNCLASSIFIED in present:
@@ -173,10 +305,16 @@ def populate_content(content: str) -> str:
     unchanged (so the tool is a safe no-op on the table-less sample-reports).
     Otherwise the heading is normalized to ``#### ``, the header + separator rows
     are preserved verbatim, present data rows are reordered into canonical
-    order (kept byte-for-byte), absent canonical layers are added with the
-    zero-finding annotation, and any ``Unclassified`` row is moved last. All
-    content before the heading and after the table (e.g. a trailing ``Note:``
-    paragraph) is preserved verbatim.
+    order (kept byte-for-byte except a zero-finding row whose clean/n/a token is
+    re-decided from Section-1 applicability), absent canonical layers are added
+    with the applicable clean/n/a token, and any ``Unclassified`` row is moved
+    last. All content before the heading and after the table (e.g. a trailing
+    ``Note:`` paragraph) is preserved verbatim.
+
+    Feature 311 (Model B): a zero-finding layer is annotated **clean** when ≥1
+    Section-1 component maps to it and **n/a** when none do. The Section-1 read
+    (:func:`_parse_mapped_layers`) is EXAMPLES-REGENERATION-ONLY and is NOT a
+    production applicability authority (ADR-047 D3 — see the module banner).
     """
     lines = content.split("\n")
     region = _find_table_region(lines)
@@ -188,6 +326,10 @@ def populate_content(content: str) -> str:
     separator_row = lines[table_start + 1]
     data_lines = lines[table_start + 2 : table_end]
 
+    # EXAMPLES-REGENERATION-ONLY component→layer read (ADR-047 D3); None on a
+    # table-less input leaves every zero-finding row classified clean (Model-A).
+    mapped_layers = _parse_mapped_layers(content)
+
     present: "dict[str, str]" = {}
     for dl in data_lines:
         cells = _split_row(dl)
@@ -197,7 +339,7 @@ def populate_content(content: str) -> str:
         if lid:
             present.setdefault(lid, dl)  # first occurrence wins; kept verbatim
 
-    new_data = _render_data_rows(present)
+    new_data = _render_data_rows(present, mapped_layers)
     gap = lines[heading_idx + 1 : table_start]  # preserve blank-line gap verbatim
 
     new_lines = (

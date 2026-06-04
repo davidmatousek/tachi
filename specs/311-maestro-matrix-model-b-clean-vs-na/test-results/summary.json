@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "feature": "311-maestro-matrix-model-b-clean-vs-na",
+  "total_waves": 5,
+  "waves_tested": 4,
+  "waves_skipped": 1,
+  "totals": {
+    "pass": 1105,
+    "fail": 17,
+    "skip": 10
+  },
+  "total_regressions": 0,
+  "coverage_trend": null,
+  "gate_decisions": [
+    {
+      "wave": 1,
+      "decision": "pass"
+    },
+    {
+      "wave": 2,
+      "decision": "pass"
+    },
+    {
+      "wave": 3,
+      "decision": "pass"
+    },
+    {
+      "wave": 4,
+      "decision": "pass"
+    }
+  ],
+  "scope_note": "Per-wave totals are SNAPSHOTS of the growing F-311 test area (re-run each wave), not additive deltas \u2014 so the 'totals' sum double-counts by design of the schema. FINAL posture: F-311 unit area 71 passed + 2 skipped AND byte-gate 6/6 (= 77 distinct green). Wave 0 was the baseline-capture wave (wave-00-baseline.md; pre-change pytest reference). 0 regressions across all waves. The 17 pre-existing enrichment failures (test_mobile_top_10_coverage_bundle_enrichment.py + test_tool_abuse_enrichment.py) are out of F-311 scope and unchanged."
+}

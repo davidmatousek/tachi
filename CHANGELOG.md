@@ -86,6 +86,62 @@ F-098 all-7 + clean-annotation guarantee is preserved. **US-1 (Model B
 two-state clean-vs-n/a annotation) is carved out to its own feature, #311.**
 Issues #312, #313.
 
+### MAESTRO coverage matrix Model B — clean vs. not-applicable (Issue #311)
+
+Completes the carve-out promised by #312/#313: a zero-finding MAESTRO layer is
+now split into two distinct states — **clean** (in scope, analyzed, no findings)
+versus **not applicable** (no Section-1 component maps to the layer, so it was
+never in scope). Model A (#98) rendered both as the same `Analyzed — no findings
+this scan` annotation, so an architect could not tell a genuinely-clean layer
+from one that simply had nothing to analyze. Model B makes the distinction
+visible *and* machine-discernible across all three rendering surfaces.
+
+**What shipped**:
+- **Shared classifier (single authority)** — `scripts/tachi_parsers.py` gains a
+  pure `classify_maestro_coverage_state(finding_count, highest_severity)` →
+  `findings | clean | not_applicable`. It reads ONLY the two arguments (the
+  carried Section-6 cell), never the Section-1 component table — the orchestrator
+  Section-6 directive remains the sole applicability authority (ADR-047 D1/D2).
+- **Two-state token (threats.md)** — a zero-finding layer carries
+  `Analyzed — no findings this scan` when ≥1 component maps to it, and the new
+  `Not applicable — no components map to this layer` (U+2014, no trailing period)
+  when none do (`orchestrator.md` Section-6 directive; documented in the
+  `output-schemas.md` and `coverage-matrix-model.md` references).
+- **PDF n/a state** — `scripts/extract-report-data.py` threads `coverage_state`
+  onto the `maestro_findings_by_layer` group records (the structure the MAESTRO
+  page reads); `templates/tachi/security-report/maestro-findings.typ` branches the
+  zero-finding row to render `Not applicable — no components map to this layer.
+  (out of scope)` with a visually separable muted treatment. The ordinal-0
+  tie-break is preserved (a zero-finding layer never wins "most exposed").
+- **Infographic n/a band** — `scripts/extract-infographic-data.py` emits
+  `coverage_state` into the maestro-stack `per_layer_summaries` (preserving a
+  present n/a token through the absent-layer backfill merge);
+  `templates/tachi/infographics/infographic-maestro-stack.md` adds a third band
+  state (an "N/A" label distinct from the clean dash) in the `{layer_bands_text}`
+  builder, the Gemini prompt, and the Accessibility section. The
+  `parse_component_layer_mapping()` Section-1 path stays heatmap-only (ADR-047 D3
+  fence) — `maestro-heatmap.json` is byte-unchanged.
+- **Cross-surface CI gate** — a new
+  `tests/scripts/test_maestro_cross_surface_consistency.py` asserts the three
+  surfaces agree on every layer's `coverage_state` (threats.md classifier == PDF
+  IR == infographic IR), failing and naming the offending layer + divergent
+  surface on a mismatch; wired into `tachi-maestro-coverage.yml` in F-250
+  lock-step (paths ⇄ invocation, same commit) with five render-IR paths promoted
+  to regression-necessary. The populator (`populate-maestro-coverage.py`) gained
+  an examples-regeneration-only Section-1 read so it can author the n/a token on
+  regen (ADR-047 D3 — not a second production authority).
+- **Baseline refresh** — five gated examples with genuine n/a layers
+  (`microservices`, `web-app`, `free-text-microservice`, `mermaid-agentic-app`,
+  `ascii-web-api`) were regenerated and their PDF baselines re-frozen
+  deterministically (`SOURCE_DATE_EPOCH=1700000000`); the drift audit dropped
+  three no-drift targets (`maestro-reference`, `mobile-banking-app/sample-report`,
+  `agentic-app/sample-report`). The six byte-gated baselines remain byte-identical
+  and `BASELINE_EXAMPLES` is unchanged.
+
+**No SARIF or schema change** — `coverage_state` is additive render metadata and
+the clean-vs-n/a split is a markdown + PDF + infographic rendering change only.
+Design: ADR-047. Issue #311.
+
 ### Adopter case-study + adoption-signal infrastructure (BLP-04 Wave 3)
 
 Added the receiving end for real-world adopter stories: a self-serve case-study

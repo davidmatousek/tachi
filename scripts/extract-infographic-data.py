@@ -36,6 +36,7 @@ from tachi_parsers import (
     parse_baseline_frontmatter,
     parse_resolved_findings,
     compute_delta_counts,
+    classify_maestro_coverage_state,
     parse_markdown_table,
     parse_project_name,
     detect_artifacts,
@@ -1961,8 +1962,15 @@ def main():
         backfilled_distribution = []
         for lid in MAESTRO_LAYERS:
             if lid in _parsed_by_id:
+                # D4 (ADR-047) backfill survival: a present row keeps its carried
+                # Section-6 token verbatim — including the n/a token — so the merge
+                # never overwrites an authored not_applicable back to clean/empty.
                 backfilled_distribution.append(_parsed_by_id[lid])
             else:
+                # Absent (table-less / pre-F-098 / partial input) layer: synthesize
+                # at finding_count 0 with an empty token. The classifier maps the
+                # empty token to "clean" (D4 default — preserves today's behavior
+                # when applicability is unknowable; never silently "findings").
                 backfilled_distribution.append({
                     "layer_id": lid,
                     "layer_name": _MAESTRO_LAYER_NAMES.get(lid, ""),
@@ -1985,11 +1993,23 @@ def main():
                 key=lambda f: (-_SEVERITY_ORDINAL.get(f.get("risk_level", ""), 0), f.get("id", ""))
             )
             top_2 = layer_findings[:2]
+            # coverage_state (ADR-047 D2 / D3 FENCE): the maestro-stack state is a
+            # function of THIS layer's carried Section-6 token (finding_count +
+            # highest_severity) via the shared classifier ALONE. It is deliberately
+            # NOT derived from parse_component_layer_mapping()/component_layer_map —
+            # that Section-1 derivation is fenced to the maestro-heatmap only
+            # (consumed solely by compute_maestro_heatmap above). Routing it here
+            # would reintroduce a second applicability authority and desync the
+            # surfaces. coverage_state ∈ {findings, clean, not_applicable}.
+            coverage_state = classify_maestro_coverage_state(
+                layer["finding_count"], layer["highest_severity"]
+            )
             per_layer_summaries.append({
                 "layer_id": lid,
                 "layer_name": layer["layer_name"],
                 "finding_count": layer["finding_count"],
                 "highest_severity": layer["highest_severity"],
+                "coverage_state": coverage_state,
                 "top_findings": [
                     {"id": f["id"], "threat": f["threat"][:120]} for f in top_2
                 ],

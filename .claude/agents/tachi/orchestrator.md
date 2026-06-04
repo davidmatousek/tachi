@@ -715,7 +715,14 @@ Produce the coverage matrix for Section 5 of the output. This matrix cross-refer
 
 Produce Section 6 (Risk Summary) and Section 7 (Recommended Actions). Include the Risk Calibration Matrix subsection (always present) before the risk summary table. Compute deduplicated counts grouped by risk level (Critical, High, Medium, Low, Note) where each correlation group counts as 1. Percentages must sum to 100%.
 
-After the Risk Calibration Matrix, include a **Risk by MAESTRO Layer** subsection showing deduplicated finding counts and highest severity grouped by MAESTRO layer. Always emit all 7 canonical layers (L1–L7) in canonical L1→L7 order. Zero-finding layers show Finding Count `0` and Highest Severity `Analyzed — no findings this scan` (U+2014 em dash). The Unclassified row remains conditional, placed after L7. See the output schemas reference for the table format.
+After the Risk Calibration Matrix, include a **Risk by MAESTRO Layer** subsection showing deduplicated finding counts and highest severity grouped by MAESTRO layer. Always emit all 7 canonical layers (L1–L7) in canonical L1→L7 order. The Unclassified row remains conditional, placed after L7. See the output schemas reference for the table format.
+
+A zero-finding layer carries one of **two** Highest-Severity tokens, decided from the **component→layer set already computed in Phase 1** (MAESTRO Layer Classification) — do not recompute it:
+
+- **clean** — ≥1 Phase 1 component maps to the layer and it has 0 findings → emit `Analyzed — no findings this scan` (U+2014 em dash, no trailing period).
+- **n/a** — 0 Phase 1 components map to the layer → emit `Not applicable — no components map to this layer` (U+2014 em dash, no trailing period).
+
+A layer is in-scope iff ≥1 component carries that layer code; `Unclassified` components do NOT make any L1–L7 layer in-scope. The token authored here is the **sole applicability authority** for the clean-vs-n/a distinction (FR-002 / ADR-047 D1): downstream extractors inherit it by classifying the carried token and MUST NOT re-derive applicability from Section 1.
 
 Recommended actions are sorted by risk level descending then table appearance order (S, T, R, I, D, E, AG, LLM). Every finding appears exactly once; total rows equal raw finding count.
 
