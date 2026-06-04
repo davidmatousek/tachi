@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "wave": 3,
+  "phase": "C — cross-surface consistency + CI gate (T015-T016)",
+  "timestamp": "2026-06-04",
+  "test_runner": "python3 -m pytest",
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 71, "fail": 0, "skip": 2 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_tests": [
+    "test_maestro_cross_surface_consistency.py::test_microservices_three_surfaces_agree",
+    "test_maestro_cross_surface_consistency.py::test_forced_l7_divergence_is_caught"
+  ],
+  "scope_note": "F-311 unit area = test_tachi_parsers.py + test_extract_report_data.py + test_extract_infographic_data.py + test_maestro_coverage_invariant.py (69 pass, 2 skip) + the new test_maestro_cross_surface_consistency.py (2 pass) = 71 passed, 2 skipped, 0 failed. The 2 skips are intermediate-format sample-reports with no MAESTRO table (pre-existing). The 17 pre-existing enrichment failures (test_mobile_top_10_coverage_bundle_enrichment.py + test_tool_abuse_enrichment.py) are unchanged and out of F-311 scope.",
+  "intended_churn_note": "test_backward_compatibility.py::test_unmodified_examples_byte_identical_pdfs[microservices] is RED after the Wave-3 prerequisite (examples/microservices/threats.md regenerated to Model-B: L1/L3/L5/L6 clean->n/a). Blast radius is ISOLATED to microservices — the other 5 byte-gated baselines (web-app, ascii-web-api, mermaid-agentic-app, free-text-microservice, maestro-reference) all PASS, confirming T011's clean-render path is byte-unchanged. This is the documented Decision-F coupling: T018 deterministically regenerates + re-freezes the microservices .pdf.baseline (SOURCE_DATE_EPOCH=1700000000) and T020 verifies green. NOT a regression — intended Phase-D churn resolved within this build session. No debugger invoked (not a bug).",
+  "gate_summary": "G3 PASS — T015 cross-surface consistency green on examples/microservices (7/7 layers agree: L7=clean, L1/L3/L5/L6=not_applicable, L2/L4=findings). Negative test catches a forced L7 PDF divergence, naming L7 ONLY and pinpointing the pdf surface. Markdown state derived ONLY via classify_maestro_coverage_state (ADR-047 D3 fence honored — Section-1 never routed into state). T016 wires the consistency module into tachi-maestro-coverage.yml in F-250 lock-step (paths + invocation same commit); 5 paths reclassified regression-necessary (extract-report-data.py, extract-infographic-data.py, maestro-findings.typ, infographic-maestro-stack.md, orchestrator.md); tachi-pytest.yml untouched; YAML well-formed."
+}

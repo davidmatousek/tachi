@@ -1,13 +1,19 @@
 # =============================================================================
 # tachi maestro coverage gate — MAESTRO 7-layer invariant (F-315 US-3 / #313)
+#   + cross-surface coverage_state consistency (F-311 US-3 / #311)
 # =============================================================================
 #
-# Purpose: Durably lock the F-098 guarantee that every shipped example
-# `threats.md` carrying a "Risk by MAESTRO Layer" distribution table presents
-# ALL SEVEN canonical MAESTRO layers (L1-L7) as rows. Runs the existing
-# invariant test on every PR that touches the MAESTRO author/parse surface.
-# On a <7-row regression the test exits non-zero and NAMES the missing
-# layer ID(s), so the failure is self-explaining in the PR checks UI.
+# Purpose: Durably lock two MAESTRO guarantees on every PR that touches the
+# MAESTRO author/parse surface:
+#   1. (F-098/F-315) Every shipped example `threats.md` carrying a "Risk by
+#      MAESTRO Layer" table presents ALL SEVEN canonical layers (L1-L7) as rows.
+#   2. (F-311 Model B) The three rendering surfaces — threats.md §6, the PDF
+#      `report-data.typ` IR, and the infographic `maestro-stack.json` IR — agree
+#      on every layer's clean/n-a/findings `coverage_state` (ADR-047 FR-010/
+#      FR-011, SC-001/SC-002). The consistency test re-extracts the PDF and
+#      infographic render IR at test time and classifies the markdown cell with
+#      the shared classifier, so any divergence fails NAMING the layer ID and the
+#      divergent surface — self-explaining in the PR checks UI.
 #
 # Dedicated single-concern job (plan.md Decision A) — modeled on the
 # tachi-mmdc-preflight.yml file precedent. Deliberately NOT folded into
@@ -22,8 +28,10 @@
 # References:
 #   - specs/315-maestro-output-completeness-round-2/plan.md (Decision A + E)
 #   - specs/315-maestro-output-completeness-round-2/contracts/tachi-maestro-coverage-ci.contract.md
-#   - tests/scripts/test_maestro_coverage_invariant.py (the invariant)
-#   - scripts/tachi_parsers.py:MAESTRO_LAYERS (canonical layer source of truth)
+#   - specs/311-maestro-matrix-model-b-clean-vs-na/contracts/cross-surface-consistency.contract.md
+#   - tests/scripts/test_maestro_coverage_invariant.py (the 7-layer invariant)
+#   - tests/scripts/test_maestro_cross_surface_consistency.py (the cross-surface gate)
+#   - scripts/tachi_parsers.py:MAESTRO_LAYERS + classify_maestro_coverage_state (canonical sources of truth)
 # =============================================================================
 
 name: tachi maestro coverage
@@ -31,16 +39,23 @@ name: tachi maestro coverage
 on:
   pull_request:
     paths:
-      # --- regression-necessary: a change here can alter a committed example matrix ---
+      # --- regression-necessary: a change here can alter a committed example matrix,
+      #     OR a cross-surface render-IR coverage_state the consistency test
+      #     re-extracts at test time (Architect LOW-A — the extractors/templates/
+      #     orchestrator author or parse the MAESTRO state the cross-surface gate
+      #     re-derives, so a change here CAN flip a test outcome; the last three
+      #     entries were previously defense-in-depth-only and are now promoted) ---
       - tests/scripts/test_maestro_coverage_invariant.py
+      - tests/scripts/test_maestro_cross_surface_consistency.py
       - examples/**/threats.md
-      - scripts/tachi_parsers.py                       # MAESTRO_LAYERS (canonical layer list)
+      - scripts/tachi_parsers.py                       # MAESTRO_LAYERS + classify_maestro_coverage_state
       - scripts/populate-maestro-coverage.py           # the tool that rewrites example tables
+      - scripts/extract-report-data.py                 # PDF coverage_state IR (re-extracted by the consistency test)
+      - scripts/extract-infographic-data.py            # infographic coverage_state IR (re-extracted by the consistency test)
+      - templates/tachi/security-report/maestro-findings.typ      # PDF clean/n-a render branch
+      - templates/tachi/infographics/infographic-maestro-stack.md # infographic clean/n-a band
+      - .claude/agents/tachi/orchestrator.md           # Section-6 clean/n-a token authority (FR-002 / ADR-047 D1)
       - .github/workflows/tachi-maestro-coverage.yml
-      # --- defense-in-depth (optional): author/parse the PRODUCTION matrix; cannot change a committed example ---
-      - scripts/extract-report-data.py
-      - .claude/agents/tachi/orchestrator.md
-      - templates/tachi/security-report/maestro-findings.typ
 
 permissions:
   contents: read
@@ -62,10 +77,16 @@ jobs:
       - name: Install pytest
         run: pip install pytest pytest-timeout
 
-      # Direct pytest invocation — slash commands cannot run in CI. The test
-      # discovers the example corpus dynamically and, for each file carrying a
-      # MAESTRO table, asserts no canonical L1-L7 layer is missing (naming any
-      # absent layer ID on failure). Keep this invocation in lock-step with the
-      # `paths:` list above (F-250 rule).
-      - name: Run MAESTRO 7-layer coverage invariant
-        run: python3 -m pytest tests/scripts/test_maestro_coverage_invariant.py -v
+      # Direct pytest invocation — slash commands cannot run in CI. The invariant
+      # test discovers the example corpus dynamically and asserts no canonical
+      # L1-L7 layer is missing from any MAESTRO table; the cross-surface test
+      # re-extracts the PDF + infographic render IR for examples/microservices and
+      # asserts the three surfaces agree on every layer's coverage_state (naming
+      # the offending layer ID + divergent surface on failure). Keep BOTH modules
+      # here in lock-step with the `paths:` list above (F-250 rule).
+      - name: Run MAESTRO 7-layer coverage invariant + cross-surface consistency
+        run: |
+          python3 -m pytest \
+            tests/scripts/test_maestro_coverage_invariant.py \
+            tests/scripts/test_maestro_cross_surface_consistency.py \
+            -v
