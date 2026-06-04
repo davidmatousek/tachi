@@ -77,6 +77,7 @@ This directory documents reusable design patterns for tachi.
 - [Cross-Agent Correlation Detection](#pattern-cross-agent-correlation-detection)
 - [Heuristic A Enrichment Branch with 11-Host Saturation and Same-Agent Sub-Scope](#pattern-heuristic-a-enrichment-branch)
 - [Deterministic Populator as Value Authority (LLM-Authored Output, Python Verification Tier)](#pattern-deterministic-populator-as-value-authority)
+- [Author-Once-Inherit Cross-Surface Render State (Single Applicability Authority)](#pattern-author-once-inherit-cross-surface-render-state)
 
 ### Stack Pack Architecture Patterns (AOD Kit)
 - [Two-Level Architecture (Build-Time / Run-Time)](#pattern-two-level-architecture)
@@ -1968,6 +1969,63 @@ Two instances of this pattern exist: `maestro_layer` (ADR-037, the precedent) an
 - [Shared Parser Module Extraction](#pattern-shared-parser-module-extraction) -- the populator and the SARIF verification tier import shared parsers (`tachi_parsers.py`) so the value origin and its verification interpret the same source identically
 - [Additive Optional State Fields](#pattern-additive-optional-state-fields) -- the field this pattern populates is typically an additive minor-bump schema field (`affected_assets`: schema_version 1.8 → 1.9)
 - [Heuristic A Enrichment Branch](#pattern-heuristic-a-enrichment-branch) -- the `maestro_layer` precedent instance originated in the same populator-wiring lineage (ADR-037)
+
+---
+
+### Pattern: Author-Once-Inherit Cross-Surface Render State
+
+**Added**: Feature 311 (MAESTRO Matrix Model B — clean vs. n/a)
+**ADR**: [ADR-047](../02_ADRs/ADR-047-maestro-coverage-state-authority.md)
+
+#### Problem
+
+The same conceptual state must render identically across multiple surfaces produced by **different authors** — e.g. an LLM-authored markdown matrix, a Python-extracted PDF render IR, and a Python-extracted infographic render IR all showing the same per-layer "clean vs not-applicable vs has-findings" state. The naive fix lets each surface **re-derive** that state from a shared upstream input (here, the Section-1 component→layer table). That creates *N* independent derivations of one fact: any heading drift, edge case (an "Unclassified" row), or future schema tweak makes two surfaces disagree, and the disagreement is silent. In this codebase, near-verbatim derivation copies are a documented drift class (CHANGELOG F-136 Typst layer-name drift; F-154 "checks wrong file/pattern").
+
+#### Solution
+
+Decide the state **once at the authoring source**, encode it into an artifact field both consumers already read, and have every downstream consumer **inherit** it by *classifying the carried token* — never by re-deriving the underlying fact:
+
+1. **Author once.** The upstream author (the orchestrator, which already holds the source inputs) decides the state and stamps it into a field the artifact already carries (the Section-6 Highest-Severity cell). Applicability is decided exactly here and nowhere else.
+2. **Inherit by classifying, not re-deriving.** A pure, side-effect-free shared classifier maps the carried token to an enum — `classify_maestro_coverage_state(finding_count, highest_severity) -> "findings" | "clean" | "not_applicable"` in `tachi_parsers.py`. The load-bearing constraint: the classifier reads **only** the already-authored token and MUST NOT read the upstream source (Section 1). It translates the author's decision; it is not a second source of truth. Each consumer emits the enum into its own render IR (`coverage_state` in `report-data.typ` and `maestro-stack.json`).
+3. **Fence the old derivation.** Any pre-existing re-derivation path (here `parse_component_layer_mapping()`, the Section-1-derived heatmap input) is fenced to its original consumer and recorded as a **structural invariant** so a future refactor cannot re-route it to drive the inherited state.
+4. **Guard with a required cross-surface test.** Because consistency in the LLM-authored markdown tier is **test-checked, not structural** (the `maestro_layer` / ADR-037 posture), a non-optional CI gate asserts every surface agrees for every item and fails NAMING the divergent item + surface. "Inherit" is necessary but not sufficient: a renderer that hardcodes one state still needs an explicit branch for the new state — the test fails if a surface cannot express it.
+
+#### Example
+
+```text
+# AUTHOR ONCE — orchestrator stamps the Section-6 Highest-Severity cell:
+#   ≥1 component maps, 0 findings → "Analyzed — no findings this scan"      (clean)
+#   0 components map              → "Not applicable — no components map to this layer"  (n/a)
+
+# INHERIT BY CLASSIFYING — scripts/tachi_parsers.py (pure; reads ONLY the carried token):
+classify_maestro_coverage_state(finding_count, highest_severity) -> "findings" | "clean" | "not_applicable"
+
+# Both consumers translate the same cell into their own render IR (never re-derive):
+#   extract-report-data.py      → coverage_state on the maestro_findings_by_layer group records
+#   extract-infographic-data.py → coverage_state in maestro-stack per_layer_summaries
+#   (parse_component_layer_mapping() Section-1 path FENCED to the heatmap — ADR-047 D3)
+
+# GUARD — required, non-optional CI gate (no second authority can silently desync):
+#   tests/scripts/test_maestro_cross_surface_consistency.py asserts threats.md == PDF IR == infographic IR
+#   for every layer; fails NAMING the offending layer + divergent surface.
+```
+
+#### When to Use
+
+- One conceptual state must appear on **two or more** surfaces produced by different authors (LLM-authored + script-extracted), and they must never disagree
+- The authoring source already holds the inputs needed to decide the state, and already emits a field both consumers read
+- A shared parser module already exists to host the classifier (so the token→enum mapping lives in exactly one place)
+
+#### When NOT to Use
+
+- A single surface consumes the state (no cross-surface agreement to protect)
+- The state genuinely differs per surface by design (then a shared authority is wrong)
+- The production path already flows through one deterministic serializer (then consistency is structural by construction and this pattern's test-check is unnecessary — see the honesty constraint in [Deterministic Populator as Value Authority](#pattern-deterministic-populator-as-value-authority))
+
+#### Related Patterns
+
+- [Deterministic Populator as Value Authority](#pattern-deterministic-populator-as-value-authority) -- the sibling posture: deterministic value + test-checked (not structural) production cross-format consistency; this pattern adds the *single-applicability-authority + classify-don't-re-derive + structural fence* discipline on top
+- [Shared Parser Module Extraction](#pattern-shared-parser-module-extraction) -- the classifier lives in the shared `tachi_parsers.py` so all consumers translate the carried token identically
 
 ---
 

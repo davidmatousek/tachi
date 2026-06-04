@@ -3,7 +3,8 @@ prd:
   number: 311
   topic: maestro-matrix-model-b-clean-vs-na
   created: 2026-06-03
-  status: Approved
+  status: Delivered
+  delivered: 2026-06-04
   type: feature
 triad:
   pm_signoff: {agent: product-manager, date: 2026-06-03, status: APPROVED, notes: "Authored via ~aod-define. BLP-05 Wave 1; carved out of F-315 as the ADR-bearing MAESTRO output-fidelity finisher. User value (clean-vs-n/a no longer ambiguous) and scope boundaries (no SARIF/scoring/taxonomy change; crosswalk waves excluded) clear. Folded both reviewers' concerns inline at v1.1."}
@@ -16,7 +17,7 @@ source:           # Automatically populated from GitHub Issue
 
 # MAESTRO Matrix Model B: Clean vs. N/A — Product Requirements Document
 
-**Status**: Approved (with concerns — see sign-offs)
+**Status**: Delivered (2026-06-04 — PR #318, squash `0e5ee1c`; approved with concerns at sign-off — see sign-offs)
 **Created**: 2026-06-03
 **Author**: product-manager
 **Reviewers**: architect, team-lead
