@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-04T20:38:37Z.
+> Auto-generated from GitHub Issues on 2026-06-04T20:42:51Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -42,7 +42,7 @@
 
 | # | Title | Delivered | Retro | Updated |
 |---|-------|-----------|-------|---------|
-| #311 | feat: MAESTRO matrix Model B — distinguish clean (analyzed, 0 findings) from n/a (not applicable) | 2026-06-04 | — | 2026-06-04 |
+| — | *No items in this stage* | | |
 
 ## Document
 
