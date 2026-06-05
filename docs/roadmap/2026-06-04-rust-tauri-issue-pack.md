@@ -7,7 +7,7 @@
 ## Progress Snapshot
 
 - RT-003, RT-004, RT-007, and RT-008 now have merged Rust slices for threat parsing, attack-chain parsing, SARIF emission, and MAESTRO/OWASP coverage data.
-- RT-005, RT-006, and RT-009 still need their remaining Rust/Tauri work.
+- RT-005 is complete, RT-006 now has the shared Rust command bridge slice, and RT-009 still needs its remaining Rust/Tauri work.
 
 GitHub Issues are not the source of truth in this repository right now, so the
 items below are written as importable issue cards rather than live issues.

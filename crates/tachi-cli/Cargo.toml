@@ -6,3 +6,5 @@ edition = "2021"
 [dependencies]
 tachi-shell = { path = "../tachi-shell" }
 
+[dev-dependencies]
+serde_json = "1"
