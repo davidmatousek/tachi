@@ -66,6 +66,13 @@ pub struct MaestroHeatmapRow {
     pub layers: BTreeMap<String, Option<String>>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct MaestroFindingsByLayer {
+    pub layer_id: String,
+    pub layer_name: String,
+    pub findings: Vec<MaestroFinding>,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct MaestroData {
     pub maestro_layer_distribution: Vec<MaestroLayerDistribution>,
@@ -402,6 +409,51 @@ pub fn extract_maestro_data(threats_content: &str) -> MaestroData {
         maestro_heatmap,
         has_maestro_data,
     }
+}
+
+pub fn group_maestro_findings_by_layer(data: &MaestroData) -> Vec<MaestroFindingsByLayer> {
+    let mut groups: BTreeMap<String, MaestroFindingsByLayer> = BTreeMap::new();
+
+    for layer in &data.maestro_layer_distribution {
+        groups.insert(
+            layer.layer_id.clone(),
+            MaestroFindingsByLayer {
+                layer_id: layer.layer_id.clone(),
+                layer_name: layer.layer_name.clone(),
+                findings: Vec::new(),
+            },
+        );
+    }
+
+    for finding in &data.per_finding_maestro {
+        let layer_raw = finding.maestro_layer.trim();
+        let (layer_id, layer_name) = if layer_raw.is_empty() {
+            (String::from("Unclassified"), String::from("Unclassified"))
+        } else {
+            split_maestro_layer(layer_raw)
+        };
+
+        let entry = groups
+            .entry(layer_id.clone())
+            .or_insert_with(|| MaestroFindingsByLayer {
+                layer_id: layer_id.clone(),
+                layer_name: layer_name.clone(),
+                findings: Vec::new(),
+            });
+
+        if entry.layer_name.is_empty() {
+            entry.layer_name = layer_name;
+        }
+
+        entry.findings.push(finding.clone());
+    }
+
+    let mut grouped: Vec<_> = groups.into_values().collect();
+    grouped.sort_by(|left, right| {
+        maestro_layer_sort_key(&left.layer_id).cmp(&maestro_layer_sort_key(&right.layer_id))
+    });
+    grouped.retain(|group| !group.findings.is_empty());
+    grouped
 }
 
 pub fn compute_maestro_heatmap(per_finding_data: &[MaestroFinding]) -> Vec<MaestroHeatmapRow> {
@@ -874,6 +926,21 @@ fn split_maestro_layer(layer_raw: &str) -> (String, String) {
         .unwrap_or_else(|| (layer_raw.trim().to_string(), String::new()));
 
     (layer_id, layer_name)
+}
+
+fn maestro_layer_sort_key(layer_id: &str) -> (u8, usize, String) {
+    if let Some(position) = MAESTRO_LAYERS
+        .iter()
+        .position(|candidate| *candidate == layer_id)
+    {
+        return (0, position, String::new());
+    }
+
+    if layer_id == "Unclassified" {
+        return (1, 0, String::new());
+    }
+
+    (2, 0, layer_id.to_string())
 }
 
 fn severity_rank(label: &str) -> usize {
