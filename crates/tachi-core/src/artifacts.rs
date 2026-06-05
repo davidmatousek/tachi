@@ -13,6 +13,8 @@ pub struct ArtifactDetection {
     pub threat_report_md: Option<PathBuf>,
     pub has_attack_trees: bool,
     pub attack_trees_dir: Option<PathBuf>,
+    pub has_attack_chains: bool,
+    pub attack_chains_md: Option<PathBuf>,
 }
 
 pub fn detect_artifacts(root: &Path) -> ArtifactDetection {
@@ -21,6 +23,7 @@ pub fn detect_artifacts(root: &Path) -> ArtifactDetection {
     let compensating_controls_md = root.join("compensating-controls.md");
     let threat_report_md = root.join("threat-report.md");
     let attack_trees_dir = root.join("attack-trees");
+    let attack_chains_md = root.join("attack-chains.md");
 
     let has_attack_trees = fs::read_dir(&attack_trees_dir)
         .map(|entries| {
@@ -47,6 +50,11 @@ pub fn detect_artifacts(root: &Path) -> ArtifactDetection {
         threat_report_md: threat_report_md.exists().then_some(threat_report_md),
         has_attack_trees,
         attack_trees_dir: has_attack_trees.then_some(attack_trees_dir),
+        has_attack_chains: attack_chains_md
+            .metadata()
+            .map(|metadata| metadata.len() > 0)
+            .unwrap_or(false),
+        attack_chains_md: attack_chains_md.exists().then_some(attack_chains_md),
     }
 }
 

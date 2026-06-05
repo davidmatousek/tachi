@@ -1,5 +1,6 @@
 pub mod artifacts;
 pub mod assets;
+pub mod attack_chains;
 pub mod coverage_audit;
 pub mod infographic;
 pub mod parity;
