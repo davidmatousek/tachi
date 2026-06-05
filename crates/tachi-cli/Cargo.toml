@@ -1,0 +1,8 @@
+[package]
+name = "tachi-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tachi-shell = { path = "../tachi-shell" }
+

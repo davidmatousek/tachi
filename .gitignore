@@ -74,6 +74,7 @@ temp/
 *.tmp
 *.temp
 .cache/
+.worktrees/
 
 # ============================================================================
 # Database files (local development)
@@ -147,6 +148,7 @@ vendor/
 *.dylib
 *.exe
 *.dll
+target/
 
 # ============================================================================
 # Certificates and keys (NEVER commit)
