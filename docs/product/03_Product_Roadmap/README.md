@@ -30,6 +30,13 @@ Before MVP, you don't have enough information:
 
 This directory contains the product roadmap for tachi, organized by phases or quarters. The roadmap shows **When** features will be delivered and **Why** they're prioritized in that order.
 
+> Repo-specific note: the current roadmap snapshot lives in
+> `2026-H2-roadmap.md`. This README remains the roadmap template and guide for
+> future updates.
+>
+> Rust/Tauri migration note: `2026-Rust-Tauri-roadmap.md` is the active
+> migration roadmap for the Rust-first ecosystem transition.
+
 ---
 
 ## Roadmap Structure

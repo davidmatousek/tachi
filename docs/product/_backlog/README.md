@@ -8,6 +8,14 @@
 
 **GitHub Issues** with `stage:*` labels are the sole source of truth for all backlog items. `BACKLOG.md` is an auto-generated view regenerated from Issues.
 
+> Repo-specific note: GitHub Issues are currently disabled in this repository
+> (GitHub returned HTTP 410 on issue creation), so
+> `2026-05-31-current-state.md` is the active backlog snapshot until issue
+> tracking is re-enabled.
+>
+> Rust/Tauri migration note: `2026-06-04-rust-tauri-migration-backlog.md`
+> is the active backlog snapshot for the Rust/Tauri migration track.
+
 | Resource | Purpose | Managed By |
 |----------|---------|------------|
 | GitHub Issues | All ideas, scores, evidence, status, user stories | `/aod.discover`, `/aod.score`, `/aod.validate` |

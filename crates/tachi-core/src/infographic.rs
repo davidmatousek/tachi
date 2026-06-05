@@ -2,7 +2,13 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
-use crate::parsers::{parse_markdown_table, strip_bold, SeverityCounts, SEVERITY_ORDER};
+use crate::artifacts::{detect_artifacts, determine_tier};
+use crate::parsers::{
+    parse_markdown_table, parse_project_name, parse_scope_data, parse_threats_findings,
+    parse_threats_severity, strip_bold, SeverityCounts, ThreatFinding, SEVERITY_ORDER,
+};
+use serde::Serialize;
+use serde_json::{json, Map, Value};
 
 pub const SEVERITY_COLORS: [(&str, &str); 5] = [
     ("Critical", "#DC2626"),
@@ -37,7 +43,7 @@ pub struct PromptScaffold {
     pub found: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct MaestroLayerDistribution {
     pub layer_id: String,
     pub layer_name: String,
@@ -45,7 +51,7 @@ pub struct MaestroLayerDistribution {
     pub highest_severity: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct MaestroFinding {
     pub id: String,
     pub component: String,
@@ -54,7 +60,7 @@ pub struct MaestroFinding {
     pub threat: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct MaestroHeatmapRow {
     pub component: String,
     pub layers: BTreeMap<String, Option<String>>,
@@ -70,12 +76,79 @@ pub struct MaestroData {
     pub has_maestro_data: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct SeverityPercentage {
     pub label: String,
     pub count: usize,
     pub percentage: usize,
     pub color: &'static str,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PerLayerTopFinding {
+    pub id: String,
+    pub threat: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PerLayerSummary {
+    pub layer_id: String,
+    pub layer_name: String,
+    pub finding_count: usize,
+    pub highest_severity: String,
+    pub top_findings: Vec<PerLayerTopFinding>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct InfographicPayload {
+    pub template: String,
+    pub metadata: InfographicMetadata,
+    pub severity_distribution: Vec<SeverityPercentage>,
+    pub heat_map: Vec<HeatMapRow>,
+    pub top_findings: Vec<TopFinding>,
+    pub findings_ids: Vec<String>,
+    pub template_data: Value,
+    pub has_maestro_data: bool,
+    pub prompt_scaffold: Option<PromptScaffoldPayload>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PromptScaffoldPayload {
+    pub preamble: String,
+    pub postamble: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TopFinding {
+    pub id: String,
+    pub component: String,
+    pub risk_level: String,
+    pub score: f64,
+    pub threat: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct HeatMapRow {
+    pub component: String,
+    pub critical: usize,
+    pub high: usize,
+    pub medium: usize,
+    pub low: usize,
+    pub total: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct InfographicMetadata {
+    pub agent_count: usize,
+    pub data_source_type: String,
+    pub note_count: usize,
+    pub project_name: String,
+    pub risk_posture: String,
+    pub scan_date: String,
+    pub schema_version: String,
+    pub template: String,
+    pub tier: u8,
+    pub total_findings: usize,
 }
 
 pub fn largest_remainder(
@@ -468,6 +541,288 @@ pub fn extract_prompt_scaffold(template_name: &str, repo_root: Option<&Path>) ->
         postamble,
         found: true,
     }
+}
+
+pub fn build_infographic_payload(root: &Path, template: &str) -> Result<Value, String> {
+    let normalized_template = template.trim();
+
+    if normalized_template.is_empty() {
+        return Err(String::from("template is required"));
+    }
+
+    let threats_path = root.join("threats.md");
+    let threats_content = fs::read_to_string(&threats_path)
+        .map_err(|err| format!("failed to read {}: {err}", threats_path.display()))?;
+    if threats_content.trim().is_empty() {
+        return Err(String::from("threats.md is empty"));
+    }
+
+    let findings = parse_threats_findings(&threats_content).unwrap_or_default();
+    if findings.is_empty() {
+        return Err(String::from("no findings parsed from threats.md"));
+    }
+
+    let artifacts = detect_artifacts(root);
+    let tier = determine_tier(&artifacts);
+
+    let severity = parse_threats_severity(&threats_content);
+    let mut severity = if severity.total == 0 {
+        derive_severity_counts_from_findings(&findings)
+    } else {
+        severity
+    };
+    if severity.total == 0 {
+        severity.total = findings.len();
+    }
+
+    let scope = parse_scope_data(&threats_content);
+    let project_name = parse_project_name(&threats_content, None, Some(root));
+    let component_count = scope.components.len();
+    let risk_posture = compute_risk_posture(tier, component_count, &severity);
+    let severity_distribution = compute_severity_percentages(&severity);
+
+    let heat_map = build_heat_map(&findings);
+    let (findings_ids, top_findings) = build_top_findings(&findings);
+
+    let maestro_data = extract_maestro_data(&threats_content);
+
+    let template_data = match normalized_template {
+        "maestro-stack" => build_maestro_stack_template_data(&maestro_data),
+        "maestro-heatmap" => build_maestro_heatmap_template_data(&maestro_data),
+        "baseball-card" | "system-architecture" | "risk-funnel" => {
+            json!({"has_maestro_data": false})
+        }
+        _ => {
+            return Err(format!("unsupported template: {normalized_template}"));
+        }
+    };
+
+    let has_maestro_data = template_data
+        .get("has_maestro_data")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+
+    let data_source_type = match tier {
+        1 => "compensating-controls",
+        2 => "risk-scores",
+        _ => "threats-only",
+    };
+
+    let scaffold = extract_prompt_scaffold(normalized_template, Some(root));
+    let prompt_scaffold = scaffold.found.then_some(PromptScaffoldPayload {
+        preamble: scaffold.preamble,
+        postamble: scaffold.postamble,
+    });
+
+    let metadata = InfographicMetadata {
+        agent_count: component_count,
+        data_source_type: String::from(data_source_type),
+        note_count: severity.note,
+        project_name,
+        risk_posture,
+        scan_date: String::from("unknown"),
+        schema_version: String::from("1.1"),
+        template: normalized_template.to_string(),
+        tier,
+        total_findings: findings.len(),
+    };
+
+    let payload = InfographicPayload {
+        template: normalized_template.to_string(),
+        metadata,
+        severity_distribution,
+        heat_map,
+        top_findings,
+        findings_ids,
+        template_data,
+        has_maestro_data,
+        prompt_scaffold,
+    };
+
+    serde_json::to_value(payload).map_err(|err| format!("failed to build payload: {err}"))
+}
+
+fn compute_risk_posture(tier: u8, component_count: usize, severity: &SeverityCounts) -> String {
+    let tier_label = match tier {
+        1 => "Residual risk",
+        2 => "Inherent risk",
+        _ => "Severity assessment",
+    };
+    let critical = severity.critical;
+    let high = severity.high;
+    let total_components = std::cmp::max(component_count, 1);
+    format!(
+        "{tier_label} — {critical} Critical and {high} High findings across {total_components} components"
+    )
+}
+
+fn derive_severity_counts_from_findings(findings: &[ThreatFinding]) -> SeverityCounts {
+    let mut counts = SeverityCounts::default();
+
+    for finding in findings {
+        match finding.risk_level.as_str() {
+            "Critical" => counts.critical += 1,
+            "High" => counts.high += 1,
+            "Medium" => counts.medium += 1,
+            "Low" => counts.low += 1,
+            "Note" => counts.note += 1,
+            _ => {}
+        }
+        counts.total += 1;
+    }
+
+    counts
+}
+
+fn build_top_findings(findings: &[ThreatFinding]) -> (Vec<String>, Vec<TopFinding>) {
+    let mut ranked = findings.to_vec();
+    ranked.sort_by(|left, right| {
+        severity_rank(&right.risk_level)
+            .cmp(&severity_rank(&left.risk_level))
+            .then_with(|| left.id.cmp(&right.id))
+    });
+
+    let top_findings = ranked
+        .iter()
+        .take(5)
+        .map(|finding| TopFinding {
+            id: finding.id.clone(),
+            component: finding.component.clone(),
+            risk_level: finding.risk_level.clone(),
+            score: 0.0,
+            threat: finding.threat.clone(),
+        })
+        .collect::<Vec<_>>();
+
+    let findings_ids = ranked.iter().map(|finding| finding.id.clone()).collect();
+
+    (findings_ids, top_findings)
+}
+
+fn build_heat_map(findings: &[ThreatFinding]) -> Vec<HeatMapRow> {
+    let mut matrix: BTreeMap<String, HeatMapRow> = BTreeMap::new();
+
+    for finding in findings {
+        let row = matrix
+            .entry(finding.component.clone())
+            .or_insert_with(|| HeatMapRow {
+                component: finding.component.clone(),
+                critical: 0,
+                high: 0,
+                medium: 0,
+                low: 0,
+                total: 0,
+            });
+
+        match finding.risk_level.as_str() {
+            "Critical" => row.critical += 1,
+            "High" => row.high += 1,
+            "Medium" => row.medium += 1,
+            "Low" => row.low += 1,
+            _ => {}
+        }
+        row.total += 1;
+    }
+
+    let mut rows = matrix.into_values().collect::<Vec<_>>();
+    rows.sort_by(|left, right| {
+        right
+            .total
+            .cmp(&left.total)
+            .then_with(|| left.component.cmp(&right.component))
+    });
+    rows
+}
+
+fn build_maestro_stack_template_data(maestro_data: &MaestroData) -> Value {
+    let per_layer_summaries = maestro_data
+        .maestro_layer_distribution
+        .iter()
+        .map(|layer| {
+            let mut layer_findings = maestro_data
+                .per_finding_maestro
+                .iter()
+                .filter(|f| f.maestro_layer.starts_with(&layer.layer_id))
+                .collect::<Vec<_>>();
+
+            layer_findings.sort_by(|left, right| {
+                severity_rank(&right.risk_level)
+                    .cmp(&severity_rank(&left.risk_level))
+                    .then_with(|| left.id.cmp(&right.id))
+            });
+
+            let top = layer_findings
+                .iter()
+                .take(2)
+                .map(|finding| PerLayerTopFinding {
+                    id: finding.id.clone(),
+                    threat: finding.threat.chars().take(120).collect(),
+                });
+
+            json!({
+                "layer_id": layer.layer_id,
+                "layer_name": layer.layer_name,
+                "finding_count": layer.finding_count,
+                "highest_severity": layer.highest_severity,
+                "top_findings": top.collect::<Vec<_>>(),
+            })
+        })
+        .collect::<Vec<_>>();
+
+    json!({
+        "maestro_layer_distribution": to_value_layer_distribution(&maestro_data.maestro_layer_distribution),
+        "most_exposed_layer": maestro_data.most_exposed_layer,
+        "per_layer_summaries": per_layer_summaries,
+        "has_maestro_data": maestro_data.has_maestro_data,
+    })
+}
+
+fn build_maestro_heatmap_template_data(maestro_data: &MaestroData) -> Value {
+    json!({
+        "maestro_heatmap": to_value_heatmap(&maestro_data.maestro_heatmap),
+        "maestro_layer_distribution": to_value_layer_distribution(&maestro_data.maestro_layer_distribution),
+        "has_maestro_data": maestro_data.has_maestro_data,
+    })
+}
+
+fn to_value_layer_distribution(layers: &[MaestroLayerDistribution]) -> Vec<Value> {
+    layers
+        .iter()
+        .map(|layer| {
+            json!({
+                "layer_id": layer.layer_id,
+                "layer_name": layer.layer_name,
+                "finding_count": layer.finding_count,
+                "highest_severity": layer.highest_severity,
+            })
+        })
+        .collect()
+}
+
+fn to_value_heatmap(heatmap: &[MaestroHeatmapRow]) -> Vec<Value> {
+    let mut rows = Vec::new();
+
+    for row in heatmap {
+        let mut value_map: Map<String, Value> = Map::new();
+        value_map.insert(
+            String::from("component"),
+            Value::String(row.component.clone()),
+        );
+
+        for layer in MAESTRO_LAYERS {
+            value_map.insert(
+                layer.to_string(),
+                match row.layers.get(layer) {
+                    Some(Some(score)) => Value::String(score.clone()),
+                    _ => Value::Null,
+                },
+            );
+        }
+
+        rows.push(Value::Object(value_map));
+    }
+
+    rows
 }
 
 fn severity_color(label: &str) -> &'static str {

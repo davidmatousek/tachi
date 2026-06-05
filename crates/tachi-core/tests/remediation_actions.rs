@@ -2,42 +2,29 @@ use tachi_core::report_extraction::{
     build_remediation_actions, RemediationFinding, RemediationTimelineEntry, ThreatReportData,
 };
 
-fn finding(
-    id: &str,
-    threat: &str,
-    recommendation: &str,
-    control_status: &str,
-    residual_severity: &str,
-    severity: &str,
-    risk_level: &str,
-    mitigation: &str,
-) -> RemediationFinding {
-    RemediationFinding {
-        id: id.to_string(),
-        threat: threat.to_string(),
-        recommendation: recommendation.to_string(),
-        control_status: control_status.to_string(),
-        residual_severity: residual_severity.to_string(),
-        severity: severity.to_string(),
-        risk_level: risk_level.to_string(),
-        mitigation: mitigation.to_string(),
-    }
-}
-
 #[test]
 fn build_remediation_actions_uses_compensating_controls_for_tier1() {
     let findings = vec![
-        finding(
-            "S-1",
-            "Auth bypass",
-            "Rotate keys",
-            "Partial",
-            "High",
-            "",
-            "",
-            "",
-        ),
-        finding("S-2", "Data exfil", "", "", "Unknown", "", "", ""),
+        RemediationFinding {
+            id: String::from("S-1"),
+            threat: String::from("Auth bypass"),
+            recommendation: String::from("Rotate keys"),
+            control_status: String::from("Partial"),
+            residual_severity: String::from("High"),
+            severity: String::new(),
+            risk_level: String::new(),
+            mitigation: String::new(),
+        },
+        RemediationFinding {
+            id: String::from("S-2"),
+            threat: String::from("Data exfil"),
+            recommendation: String::new(),
+            control_status: String::new(),
+            residual_severity: String::from("Unknown"),
+            severity: String::new(),
+            risk_level: String::new(),
+            mitigation: String::new(),
+        },
     ];
     let report_data = ThreatReportData {
         executive_narrative: None,
@@ -66,16 +53,16 @@ fn build_remediation_actions_uses_compensating_controls_for_tier1() {
 
 #[test]
 fn build_remediation_actions_uses_threat_report_for_tier3() {
-    let findings = vec![finding(
-        "S-3",
-        "Admin misuse",
-        "Not used",
-        "Not used",
-        "",
-        "",
-        "Critical",
-        "Enforce MFA",
-    )];
+    let findings = vec![RemediationFinding {
+        id: String::from("S-3"),
+        threat: String::from("Admin misuse"),
+        recommendation: String::from("Not used"),
+        control_status: String::from("Not used"),
+        residual_severity: String::new(),
+        severity: String::new(),
+        risk_level: String::from("Critical"),
+        mitigation: String::from("Enforce MFA"),
+    }];
     let report_data = ThreatReportData {
         executive_narrative: None,
         remediation_timeline: vec![RemediationTimelineEntry {

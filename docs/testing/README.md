@@ -10,6 +10,12 @@
 
 This document provides guidance on testing strategy for {{PROJECT_NAME}}. It does NOT scaffold specific test files (project-specific), but provides recommendations and patterns.
 
+## Coverage Visibility
+
+- Run `make coverage-audit` to classify the current test surface with the Rust-backed audit binary.
+- See `coverage-summary.md` for the current counts, category meanings, and smoke-vs-e2e boundary.
+- See `2026-06-04-rust-native-coverage-audit.md` for the Rust-native migration target and current workspace skeleton baseline.
+
 ---
 
 ## Testing Philosophy

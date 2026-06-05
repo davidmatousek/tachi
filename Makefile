@@ -1,6 +1,6 @@
 # Agentic-Oriented-Development-Kit - Common Commands
 
-.PHONY: help init check update spec plan tasks analyze review-spec review-plan test
+.PHONY: help init check update spec plan tasks analyze review-spec review-plan test coverage-audit
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -37,3 +37,6 @@ review-plan: ## Review plan.md with PM + Architect
 # Python test suite
 test: ## Run the Python test suite
 	@pytest tests/scripts/ --cov=scripts --cov-report=term-missing
+
+coverage-audit: ## Report the repository test surface by category
+	@./scripts/coverage-audit.sh --root .

@@ -6,9 +6,8 @@
 
 ## Progress Snapshot
 
-- RT-003 and RT-004 now have merged Rust slices for threat parsing, attack-chain parsing, compensating-controls parsing, risk-scores parsing, and SARIF emission.
-- RT-007 now has merged Rust slices for the shared threat and risk SARIF emitters.
-- RT-005, RT-006, RT-008, and RT-009 still need their remaining Rust/Tauri work.
+- RT-003, RT-004, RT-007, and RT-008 now have merged Rust slices for threat parsing, attack-chain parsing, SARIF emission, and MAESTRO/OWASP coverage data.
+- RT-005, RT-006, and RT-009 still need their remaining Rust/Tauri work.
 
 GitHub Issues are not the source of truth in this repository right now, so the
 items below are written as importable issue cards rather than live issues.
