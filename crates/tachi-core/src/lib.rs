@@ -8,3 +8,4 @@ pub mod parity;
 pub mod parsers;
 pub mod report_extraction;
 pub mod sarif_common;
+pub mod threats_sarif;
