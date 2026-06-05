@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
-use crate::parsers::{SeverityCounts, SEVERITY_ORDER};
+use crate::parsers::{parse_markdown_table, SeverityCounts, SEVERITY_ORDER};
 
 pub const SEVERITY_COLORS: [(&str, &str); 5] = [
     ("Critical", "#DC2626"),
@@ -33,6 +33,14 @@ pub struct PromptScaffold {
     pub preamble: String,
     pub postamble: String,
     pub found: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MaestroLayerDistribution {
+    pub layer_id: String,
+    pub layer_name: String,
+    pub finding_count: usize,
+    pub highest_severity: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -115,6 +123,60 @@ pub fn compute_severity_percentages(severity: &SeverityCounts) -> Vec<SeverityPe
     }
 
     result
+}
+
+pub fn parse_maestro_layer_distribution(threats_content: &str) -> Vec<MaestroLayerDistribution> {
+    let rows = parse_markdown_table(threats_content, "#### Risk by MAESTRO Layer");
+    if rows.is_empty() {
+        return Vec::new();
+    }
+
+    let mut result = Vec::with_capacity(rows.len());
+
+    for row in rows {
+        let layer_raw = row.get("MAESTRO Layer").map_or("", |value| value.trim());
+        if layer_raw.is_empty() {
+            continue;
+        }
+
+        let (layer_id, layer_name) = split_maestro_layer(layer_raw);
+        let finding_count = row
+            .get("Finding Count")
+            .and_then(|value| value.trim().parse::<usize>().ok())
+            .unwrap_or(0);
+        let highest_severity = row
+            .get("Highest Severity")
+            .map(|value| value.trim().to_string())
+            .unwrap_or_default();
+
+        result.push(MaestroLayerDistribution {
+            layer_id,
+            layer_name,
+            finding_count,
+            highest_severity,
+        });
+    }
+
+    result
+}
+
+pub fn compute_most_exposed_layer(layer_distribution: &[MaestroLayerDistribution]) -> String {
+    let Some(top) = layer_distribution.iter().max_by(|left, right| {
+        left.finding_count
+            .cmp(&right.finding_count)
+            .then_with(|| {
+                severity_rank(&left.highest_severity).cmp(&severity_rank(&right.highest_severity))
+            })
+            .then_with(|| right.layer_id.cmp(&left.layer_id))
+    }) else {
+        return String::new();
+    };
+
+    if top.layer_name.is_empty() {
+        top.layer_id.clone()
+    } else {
+        format!("{} — {}", top.layer_id, top.layer_name)
+    }
 }
 
 pub fn extract_prompt_scaffold(template_name: &str, repo_root: Option<&Path>) -> PromptScaffold {
@@ -210,4 +272,22 @@ fn severity_color(label: &str) -> &'static str {
         "Note" => "#6B7280",
         _ => "#6B7280",
     }
+}
+
+fn split_maestro_layer(layer_raw: &str) -> (String, String) {
+    let (layer_id, layer_name) = layer_raw
+        .split_once('—')
+        .or_else(|| layer_raw.split_once('–'))
+        .map(|(id, name)| (id.trim().to_string(), name.trim().to_string()))
+        .unwrap_or_else(|| (layer_raw.trim().to_string(), String::new()));
+
+    (layer_id, layer_name)
+}
+
+fn severity_rank(label: &str) -> usize {
+    SEVERITY_ORDER
+        .iter()
+        .position(|candidate| *candidate == label)
+        .map(|index| SEVERITY_ORDER.len().saturating_sub(index))
+        .unwrap_or(0)
 }
