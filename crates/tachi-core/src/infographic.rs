@@ -60,6 +60,16 @@ pub struct MaestroHeatmapRow {
     pub layers: BTreeMap<String, Option<String>>,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct MaestroData {
+    pub maestro_layer_distribution: Vec<MaestroLayerDistribution>,
+    pub most_exposed_layer: String,
+    pub component_layer_map: BTreeMap<String, String>,
+    pub per_finding_maestro: Vec<MaestroFinding>,
+    pub maestro_heatmap: Vec<MaestroHeatmapRow>,
+    pub has_maestro_data: bool,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SeverityPercentage {
     pub label: String,
@@ -177,6 +187,24 @@ pub fn parse_maestro_layer_distribution(threats_content: &str) -> Vec<MaestroLay
     result
 }
 
+pub fn parse_component_layer_mapping(threats_content: &str) -> BTreeMap<String, String> {
+    parse_markdown_table(threats_content, "### Components")
+        .into_iter()
+        .filter_map(|row| {
+            let component = row
+                .get("Component")
+                .map(|value| value.trim())
+                .filter(|value| !value.is_empty())?;
+            let layer = row
+                .get("MAESTRO Layer")
+                .map(|value| value.trim())
+                .filter(|value| !value.is_empty())?;
+
+            Some((String::from(component), String::from(layer)))
+        })
+        .collect()
+}
+
 pub fn compute_most_exposed_layer(layer_distribution: &[MaestroLayerDistribution]) -> String {
     let Some(top) = layer_distribution.iter().max_by(|left, right| {
         left.finding_count
@@ -281,6 +309,26 @@ pub fn parse_per_finding_maestro(threats_content: &str) -> Vec<MaestroFinding> {
     }
 
     findings
+}
+
+pub fn extract_maestro_data(threats_content: &str) -> MaestroData {
+    let maestro_layer_distribution = parse_maestro_layer_distribution(threats_content);
+    let component_layer_map = parse_component_layer_mapping(threats_content);
+    let per_finding_maestro = parse_per_finding_maestro(threats_content);
+    let maestro_heatmap = compute_maestro_heatmap(&per_finding_maestro);
+    let most_exposed_layer = compute_most_exposed_layer(&maestro_layer_distribution);
+
+    let has_maestro_data =
+        !maestro_layer_distribution.is_empty() || !per_finding_maestro.is_empty();
+
+    MaestroData {
+        maestro_layer_distribution,
+        most_exposed_layer,
+        component_layer_map,
+        per_finding_maestro,
+        maestro_heatmap,
+        has_maestro_data,
+    }
 }
 
 pub fn compute_maestro_heatmap(per_finding_data: &[MaestroFinding]) -> Vec<MaestroHeatmapRow> {
