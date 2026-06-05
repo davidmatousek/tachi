@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
-use crate::parsers::{parse_markdown_table, SeverityCounts, SEVERITY_ORDER};
+use crate::parsers::{parse_markdown_table, strip_bold, SeverityCounts, SEVERITY_ORDER};
 
 pub const SEVERITY_COLORS: [(&str, &str); 5] = [
     ("Critical", "#DC2626"),
@@ -11,6 +11,8 @@ pub const SEVERITY_COLORS: [(&str, &str); 5] = [
     ("Low", "#2563EB"),
     ("Note", "#6B7280"),
 ];
+
+pub const MAESTRO_LAYERS: [&str; 7] = ["L1", "L2", "L3", "L4", "L5", "L6", "L7"];
 
 const SCAFFOLD_TEMPLATES: [&str; 5] = [
     "baseball-card",
@@ -41,6 +43,21 @@ pub struct MaestroLayerDistribution {
     pub layer_name: String,
     pub finding_count: usize,
     pub highest_severity: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MaestroFinding {
+    pub id: String,
+    pub component: String,
+    pub maestro_layer: String,
+    pub risk_level: String,
+    pub threat: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MaestroHeatmapRow {
+    pub component: String,
+    pub layers: BTreeMap<String, Option<String>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -179,6 +196,148 @@ pub fn compute_most_exposed_layer(layer_distribution: &[MaestroLayerDistribution
     }
 }
 
+pub fn parse_per_finding_maestro(threats_content: &str) -> Vec<MaestroFinding> {
+    let lines: Vec<&str> = threats_content.lines().collect();
+    let mut findings = Vec::new();
+
+    for (start_idx, line) in lines.iter().enumerate() {
+        if !is_maestro_agent_section(line) {
+            continue;
+        }
+
+        let mut header_cols: Option<Vec<String>> = None;
+
+        for raw_line in lines.iter().skip(start_idx + 1) {
+            let stripped = raw_line.trim();
+            if stripped.starts_with("## ") || stripped.starts_with("### ") {
+                break;
+            }
+            if !stripped.starts_with('|') {
+                continue;
+            }
+
+            let cells = split_table_row(stripped);
+            if cells.is_empty() {
+                continue;
+            }
+
+            if header_cols.is_none() {
+                if is_separator_row(&cells) {
+                    continue;
+                }
+
+                if cells
+                    .first()
+                    .map(|value| value.eq_ignore_ascii_case("id"))
+                    .unwrap_or(false)
+                {
+                    header_cols = Some(cells);
+                }
+                continue;
+            }
+
+            if is_separator_row(&cells) {
+                continue;
+            }
+
+            let Some(headers) = header_cols.as_ref() else {
+                continue;
+            };
+
+            let Some(id_idx) = column_index(headers, "ID") else {
+                continue;
+            };
+            let id = cells
+                .get(id_idx)
+                .map(|value| strip_bold(value).trim().to_string())
+                .unwrap_or_default();
+            if id.is_empty()
+                || !id
+                    .chars()
+                    .next()
+                    .map(|c| c.is_ascii_uppercase())
+                    .unwrap_or(false)
+            {
+                continue;
+            }
+
+            let component = column_value(headers, &cells, "Component");
+            let threat = column_value(headers, &cells, "Threat");
+            let risk_level = column_value(headers, &cells, "Risk Level");
+            let maestro_layer = column_value(headers, &cells, "MAESTRO Layer");
+
+            if maestro_layer.is_empty() {
+                continue;
+            }
+
+            findings.push(MaestroFinding {
+                id,
+                component,
+                maestro_layer,
+                risk_level,
+                threat,
+            });
+        }
+    }
+
+    findings
+}
+
+pub fn compute_maestro_heatmap(per_finding_data: &[MaestroFinding]) -> Vec<MaestroHeatmapRow> {
+    let mut cell_severity: BTreeMap<(String, String), String> = BTreeMap::new();
+    let mut component_counts: BTreeMap<String, usize> = BTreeMap::new();
+
+    for finding in per_finding_data {
+        let component = finding.component.trim();
+        let layer_raw = finding.maestro_layer.trim();
+        let risk_level = finding.risk_level.trim();
+
+        if component.is_empty() || layer_raw.is_empty() {
+            continue;
+        }
+
+        let (layer_id, _) = split_maestro_layer(layer_raw);
+        if !MAESTRO_LAYERS.contains(&layer_id.as_str()) {
+            continue;
+        }
+
+        *component_counts.entry(component.to_string()).or_insert(0) += 1;
+
+        let key = (component.to_string(), layer_id.clone());
+        let should_replace = cell_severity
+            .get(&key)
+            .map(|existing| severity_rank(risk_level) > severity_rank(existing))
+            .unwrap_or(true);
+
+        if should_replace {
+            cell_severity.insert(key, risk_level.to_string());
+        }
+    }
+
+    let mut sorted_components: Vec<String> = component_counts.keys().cloned().collect();
+    sorted_components.sort_by(|left, right| {
+        component_counts[right]
+            .cmp(&component_counts[left])
+            .then_with(|| left.cmp(right))
+    });
+    sorted_components.truncate(10);
+
+    let mut result = Vec::with_capacity(sorted_components.len());
+    for component in sorted_components {
+        let mut layers = BTreeMap::new();
+        for layer_id in MAESTRO_LAYERS {
+            let value = cell_severity
+                .get(&(component.clone(), layer_id.to_string()))
+                .cloned();
+            layers.insert(layer_id.to_string(), value);
+        }
+
+        result.push(MaestroHeatmapRow { component, layers });
+    }
+
+    result
+}
+
 pub fn extract_prompt_scaffold(template_name: &str, repo_root: Option<&Path>) -> PromptScaffold {
     if !SCAFFOLD_TEMPLATES.contains(&template_name) {
         return PromptScaffold::default();
@@ -272,6 +431,36 @@ fn severity_color(label: &str) -> &'static str {
         "Note" => "#6B7280",
         _ => "#6B7280",
     }
+}
+
+fn split_table_row(line: &str) -> Vec<String> {
+    line.trim_matches('|')
+        .split('|')
+        .map(|cell| cell.trim().to_string())
+        .collect()
+}
+
+fn is_separator_row(cells: &[String]) -> bool {
+    !cells.is_empty()
+        && cells
+            .iter()
+            .all(|cell| !cell.is_empty() && cell.chars().all(|ch| matches!(ch, '-' | ':' | ' ')))
+}
+
+fn column_index(headers: &[String], name: &str) -> Option<usize> {
+    headers.iter().position(|header| header == name)
+}
+
+fn column_value(headers: &[String], cells: &[String], name: &str) -> String {
+    column_index(headers, name)
+        .and_then(|index| cells.get(index))
+        .map(|value| value.trim().to_string())
+        .unwrap_or_default()
+}
+
+fn is_maestro_agent_section(line: &str) -> bool {
+    let trimmed = line.trim();
+    trimmed.starts_with("### 3.") || trimmed.starts_with("### 4.")
 }
 
 fn split_maestro_layer(layer_raw: &str) -> (String, String) {
