@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Feature 311 — MAESTRO Matrix Model B (clean vs. n/a)
+
+**Added**
+- MAESTRO Matrix Model B — clean vs n/a (#318) (`0e5ee1c`)
+
+**Changed**
+- Close Feature 311: documentation sync + delivery retrospective (`9fc52c4`)
+- Regenerate BACKLOG after Issue #311 closed (`3510785`)
+
+_See the "MAESTRO coverage matrix Model B — clean vs. not-applicable (Issue #311)" prose entry below for the full narrative._
+
 ### MAESTRO coverage matrix always shows all 7 layers (Issue #98)
 
 The "Risk by MAESTRO Layer" coverage matrix now always renders all seven
