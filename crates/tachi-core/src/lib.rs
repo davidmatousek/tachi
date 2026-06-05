@@ -7,5 +7,6 @@ pub mod infographic;
 pub mod parity;
 pub mod parsers;
 pub mod report_extraction;
+pub mod risk_scores;
 pub mod sarif_common;
 pub mod threats_sarif;

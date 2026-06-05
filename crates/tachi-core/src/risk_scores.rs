@@ -1,0 +1,405 @@
+use std::collections::BTreeMap;
+
+use serde_json::{json, Value};
+
+use crate::parsers::parse_markdown_table;
+use crate::parsers::SourceAttributionRecord;
+use crate::sarif_common::{build_sarif_envelope, level_for_band, prefix_for, ComponentMetadata};
+
+const SOURCE_THREATS_URI: &str =
+    "examples/agentic-app/test-output/2026-04-26T03-39-12-F3-wave3/threats.md";
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RiskScoreFinding {
+    pub id: String,
+    pub component: String,
+    pub threat_summary: String,
+    pub cvss_base: f64,
+    pub exploitability: f64,
+    pub scalability: f64,
+    pub reachability: f64,
+    pub composite: f64,
+    pub severity_band: String,
+    pub sla_days: String,
+    pub disposition: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct RiskScoreBreakdown {
+    pub threat_full: String,
+    pub component: String,
+    pub category: String,
+    pub maestro_layer: String,
+    pub cvss_vector: String,
+    pub correlation_primary: Option<String>,
+    pub score_source_raw: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct RiskScoreGovernance {
+    pub owner: String,
+    pub sla_days: String,
+    pub disposition: String,
+    pub review_date: String,
+}
+
+pub fn parse_risk_md_section2(md: &str) -> Vec<RiskScoreFinding> {
+    parse_markdown_table(md, "## 2. Scored Threat Table")
+        .into_iter()
+        .map(|row| RiskScoreFinding {
+            id: row.get("ID").cloned().unwrap_or_default(),
+            component: row.get("Component").cloned().unwrap_or_default(),
+            threat_summary: row.get("Threat").cloned().unwrap_or_default(),
+            cvss_base: row
+                .get("CVSS")
+                .and_then(|value| value.parse::<f64>().ok())
+                .unwrap_or(0.0),
+            exploitability: row
+                .get("Exploitability")
+                .and_then(|value| value.parse::<f64>().ok())
+                .unwrap_or(0.0),
+            scalability: row
+                .get("Scalability")
+                .and_then(|value| value.parse::<f64>().ok())
+                .unwrap_or(0.0),
+            reachability: row
+                .get("Reachability")
+                .and_then(|value| value.parse::<f64>().ok())
+                .unwrap_or(0.0),
+            composite: row
+                .get("Composite")
+                .and_then(|value| value.parse::<f64>().ok())
+                .unwrap_or(0.0),
+            severity_band: row.get("Severity").cloned().unwrap_or_default(),
+            sla_days: row.get("SLA").cloned().unwrap_or_default(),
+            disposition: row.get("Disposition").cloned().unwrap_or_default(),
+        })
+        .collect()
+}
+
+pub fn parse_risk_md_section3(md: &str) -> BTreeMap<String, RiskScoreBreakdown> {
+    let mut in_section = false;
+    let mut out = BTreeMap::new();
+    let mut current_id: Option<String> = None;
+    let mut current = RiskScoreBreakdown::default();
+
+    for line in md.lines() {
+        if line.starts_with("## 3. Dimensional Breakdown") {
+            in_section = true;
+            continue;
+        }
+        if in_section && line.starts_with("## ") {
+            if let Some(id) = current_id.take() {
+                out.insert(id, std::mem::take(&mut current));
+            }
+            break;
+        }
+        if !in_section {
+            continue;
+        }
+
+        if let Some((id, text)) = parse_section3_heading(line) {
+            if let Some(prev_id) = current_id.replace(id) {
+                out.insert(prev_id, std::mem::take(&mut current));
+            }
+            current.threat_full = text;
+            continue;
+        }
+
+        if current_id.is_none() {
+            continue;
+        }
+
+        if let Some(value) = parse_prefixed_value(line, "**Component**:") {
+            current.component = value;
+            continue;
+        }
+        if let Some(value) = parse_prefixed_value(line, "**Category**:") {
+            current.category = value;
+            continue;
+        }
+        if let Some(value) = parse_prefixed_value(line, "**MAESTRO Layer**:") {
+            current.maestro_layer = value;
+            continue;
+        }
+        if let Some(value) = parse_backticked_value(line, "**CVSS Vector**:") {
+            current.cvss_vector = value;
+            continue;
+        }
+        if let Some(value) = parse_correlation_primary(line) {
+            current.correlation_primary = Some(value);
+            continue;
+        }
+        if let Some(value) = parse_score_source(line) {
+            current.score_source_raw = value;
+        }
+    }
+
+    if let Some(id) = current_id {
+        out.insert(id, current);
+    }
+
+    out
+}
+
+pub fn parse_risk_md_section4(md: &str) -> BTreeMap<String, RiskScoreGovernance> {
+    let rows = parse_markdown_table(md, "## 4. Governance Fields");
+    let mut out = BTreeMap::new();
+
+    for row in rows {
+        let id = row.get("ID").cloned().unwrap_or_default();
+        if id.is_empty() {
+            continue;
+        }
+        out.insert(
+            id,
+            RiskScoreGovernance {
+                owner: row.get("Owner").cloned().unwrap_or_default(),
+                sla_days: row.get("SLA").cloned().unwrap_or_default(),
+                disposition: row.get("Disposition").cloned().unwrap_or_default(),
+                review_date: row.get("Review Date").cloned().unwrap_or_default(),
+            },
+        );
+    }
+
+    out
+}
+
+pub fn build_risk_scores_sarif(
+    findings: &[RiskScoreFinding],
+    section3: &BTreeMap<String, RiskScoreBreakdown>,
+    section4: &BTreeMap<String, RiskScoreGovernance>,
+    threats_status: &BTreeMap<String, String>,
+    threats_full: &BTreeMap<String, (String, String)>,
+    source_attribution: &BTreeMap<String, Vec<SourceAttributionRecord>>,
+    component_meta: &BTreeMap<String, ComponentMetadata>,
+) -> Value {
+    let results = findings
+        .iter()
+        .map(|finding| {
+            build_result(
+                finding,
+                section3,
+                section4,
+                threats_status,
+                threats_full,
+                source_attribution,
+                component_meta,
+            )
+        })
+        .collect::<Vec<_>>();
+
+    let driver = json!({
+        "name": "Tachi",
+        "semanticVersion": "1.7",
+        "informationUri": "https://github.com/davidmatousek/tachi",
+        "supportedTaxonomies": [
+            {"name": "OWASP", "index": 0},
+            {"name": "CWE", "index": 1},
+        ],
+        "rules": [],
+    });
+
+    let taxonomies = vec![
+        json!({
+            "name": "OWASP",
+            "version": "2021",
+            "informationUri": "https://owasp.org/Top10/",
+            "organization": "OWASP Foundation",
+            "shortDescription": {"text": "OWASP Top 10 Web Application Security Risks"},
+        }),
+        json!({
+            "name": "CWE",
+            "version": "4.13",
+            "informationUri": "https://cwe.mitre.org/",
+            "organization": "MITRE",
+            "shortDescription": {"text": "Common Weakness Enumeration"},
+        }),
+    ];
+
+    build_sarif_envelope(driver, taxonomies, results, false)
+}
+
+fn parse_section3_heading(line: &str) -> Option<(String, String)> {
+    let heading = line.strip_prefix("### ")?;
+    let (id, text) = heading.split_once(": ")?;
+    Some((id.trim().to_string(), text.trim().to_string()))
+}
+
+fn parse_prefixed_value(line: &str, prefix: &str) -> Option<String> {
+    let value = line.strip_prefix(prefix)?.trim();
+    Some(value.trim_matches('`').trim().to_string())
+}
+
+fn parse_backticked_value(line: &str, prefix: &str) -> Option<String> {
+    let value = line.strip_prefix(prefix)?.trim();
+    Some(value.trim_matches('`').to_string())
+}
+
+fn parse_correlation_primary(line: &str) -> Option<String> {
+    let value =
+        line.strip_prefix("**Correlation Group**: Scores inherited from primary finding ")?;
+    Some(value.trim().to_string())
+}
+
+fn parse_score_source(line: &str) -> Option<String> {
+    let value = line.strip_prefix("*Score source: ")?;
+    Some(value.trim().trim_end_matches('*').trim().to_string())
+}
+
+fn build_result(
+    finding: &RiskScoreFinding,
+    section3: &BTreeMap<String, RiskScoreBreakdown>,
+    section4: &BTreeMap<String, RiskScoreGovernance>,
+    threats_status: &BTreeMap<String, String>,
+    threats_full: &BTreeMap<String, (String, String)>,
+    source_attribution: &BTreeMap<String, Vec<SourceAttributionRecord>>,
+    component_meta: &BTreeMap<String, ComponentMetadata>,
+) -> Value {
+    let pref = prefix_for(&finding.id);
+    let rule_id = rule_for_prefix(pref.as_str());
+    let level = level_for_band(&finding.severity_band);
+
+    let meta = component_meta
+        .get(&finding.component)
+        .cloned()
+        .unwrap_or_else(default_component_meta);
+    let kind = kind_for_dfd_type(&meta.dfd_type);
+    let logical_location = json!({
+        "name": finding.component,
+        "fullyQualifiedName": format!("{}/{}", meta.zone, finding.component),
+        "kind": kind,
+    });
+
+    let (threat_text, mitigation_text) = threats_full
+        .get(&finding.id)
+        .cloned()
+        .unwrap_or_else(|| (finding.threat_summary.clone(), String::new()));
+
+    let s3 = section3.get(&finding.id).cloned().unwrap_or_default();
+    let s4 = section4.get(&finding.id).cloned().unwrap_or_default();
+
+    let mut props = json!({
+        "security-severity": format!("{:.1}", finding.composite),
+        "cvss_base": finding.cvss_base,
+        "exploitability": finding.exploitability,
+        "scalability": finding.scalability,
+        "reachability": finding.reachability,
+        "composite": finding.composite,
+        "composite-weights": "0.35/0.30/0.15/0.20",
+        "severity_band": finding.severity_band,
+        "cvss-base-score": format!("{:.1}", finding.cvss_base),
+        "cvss-vector": s3.cvss_vector,
+        "maestro-layer": if s3.maestro_layer.is_empty() { "Unclassified" } else { &s3.maestro_layer },
+        "governance.owner": if s4.owner.is_empty() { "Unassigned" } else { &s4.owner },
+        "governance.sla_days": if s4.sla_days.is_empty() { &finding.sla_days } else { &s4.sla_days },
+        "governance.disposition": if s4.disposition.is_empty() { &finding.disposition } else { &s4.disposition },
+        "review-date": s4.review_date,
+        "risk-owner": if s4.owner.is_empty() { "Unassigned" } else { &s4.owner },
+        "remediation-sla": if s4.sla_days.is_empty() { &finding.sla_days } else { &s4.sla_days },
+        "risk-disposition": if s4.disposition.is_empty() { &finding.disposition } else { &s4.disposition },
+    });
+
+    if !s3.score_source_raw.is_empty() {
+        if s3.score_source_raw.contains("fresh") {
+            props["score-source"] = json!("fresh");
+        } else if s3.score_source_raw.contains("correlation primary") {
+            props["score-source"] = json!("inherited");
+            props["score-source-detail"] = json!(s3.score_source_raw);
+        } else {
+            props["score-source"] = json!("inherited");
+        }
+    } else {
+        props["score-source"] = json!("inherited");
+    }
+
+    if let Some(primary) = s3.correlation_primary {
+        props["correlation-primary"] = json!(primary);
+    }
+
+    if let Some(owasp) = derive_owasp_reference(pref.as_str()) {
+        props["owasp-reference"] = json!(owasp);
+    }
+
+    if let Some(attrs) = source_attribution.get(&finding.id) {
+        props["source-attribution"] = json!(attrs
+            .iter()
+            .map(|record| json!({
+                "taxonomy": record.taxonomy,
+                "id": record.id,
+                "relationship": record.relationship,
+            }))
+            .collect::<Vec<_>>());
+    }
+
+    if finding.id == "AG-8" {
+        props["asi07_emission"] = json!(true);
+        props["feature"] = json!("219-asi07-tool-abuse-enrichment");
+        props["new-finding"] = json!(true);
+    }
+
+    if threats_status
+        .get(&finding.id)
+        .map(|status| status == "NEW")
+        .unwrap_or(false)
+    {
+        props["new-finding"] = json!(true);
+    }
+
+    json!({
+        "ruleId": rule_id,
+        "message": {
+            "text": threat_text,
+            "markdown": mitigation_text,
+        },
+        "level": level,
+        "locations": [
+            {
+                "physicalLocation": {
+                    "artifactLocation": {"uri": SOURCE_THREATS_URI},
+                    "region": {"startLine": 1},
+                },
+                "logicalLocation": logical_location,
+            }
+        ],
+        "partialFingerprints": {"findingId/v1": finding.id},
+        "properties": props,
+    })
+}
+
+fn default_component_meta() -> ComponentMetadata {
+    ComponentMetadata {
+        zone: String::from("Application Zone"),
+        dfd_type: String::from("Process"),
+    }
+}
+
+fn kind_for_dfd_type(dfd_type: &str) -> &'static str {
+    match dfd_type {
+        "External Entity" => "external-entity",
+        "Data Store" => "data-store",
+        _ => "process",
+    }
+}
+
+fn derive_owasp_reference(prefix: &str) -> Option<&'static str> {
+    match prefix {
+        "OI" => Some("OWASP LLM05:2025"),
+        "MI" => Some("OWASP LLM09:2025"),
+        _ => None,
+    }
+}
+
+fn rule_for_prefix(prefix: &str) -> &'static str {
+    match prefix {
+        "S" => "tachi/stride/spoofing",
+        "T" => "tachi/stride/tampering",
+        "R" => "tachi/stride/repudiation",
+        "I" => "tachi/stride/information-disclosure",
+        "D" => "tachi/stride/denial-of-service",
+        "E" => "tachi/stride/elevation-of-privilege",
+        "AG" | "AGP" => "tachi/ai/agentic",
+        "LLM" | "OI" | "MI" => "tachi/ai/llm",
+        _ => "tachi/ai/agentic",
+    }
+}
