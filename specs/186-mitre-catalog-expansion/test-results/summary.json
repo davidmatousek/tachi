@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "feature": "186-mitre-catalog-expansion",
+  "total_waves": 3,
+  "waves_tested": 3,
+  "waves_skipped": 1,
+  "totals": {
+    "pass": 15,
+    "fail": 0,
+    "skip": 0
+  },
+  "total_regressions": 0,
+  "coverage_trend": null,
+  "gate_decisions": [
+    {
+      "wave": 2,
+      "decision": "pass"
+    },
+    {
+      "wave": 2,
+      "decision": "pass"
+    },
+    {
+      "wave": 3,
+      "decision": "pass"
+    }
+  ],
+  "note": "W1 (extract, data-only) had no integrity re-run beyond the T001 baseline 5/5 (no crosswalk change). US1/US2/US3 gates each ran the 5-fn integrity suite -> 5 passed. No coverage tooling (data-layer feature)."
+}
