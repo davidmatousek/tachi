@@ -1,9 +1,12 @@
 use pretty_assertions::assert_eq;
 use serde_json::Value;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use tachi_core::infographic::{
     build_infographic_payload, MaestroLayerDistribution, PerLayerSummary,
 };
+
+static TEMP_DIR_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 const MAESTRO_THREATS_MD: &str = r#"
 # Agentic AI Application
@@ -143,9 +146,11 @@ fn build_infographic_payload_maestro_heatmap_includes_distribution_and_flags() {
 
 fn temp_dir_with_threats() -> std::path::PathBuf {
     let mut path = std::env::temp_dir();
+    let unique_suffix = TEMP_DIR_COUNTER.fetch_add(1, Ordering::Relaxed);
     path.push(format!(
-        "tachi-rust-infographic-payload-{}-{}",
+        "tachi-rust-infographic-payload-{}-{}-{}",
         std::process::id(),
+        unique_suffix,
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("clock")

@@ -1,9 +1,12 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use std::os::unix::fs::PermissionsExt;
 
 use tachi_shell::commands::{bootstrap_output, init_output, install_output, update_output};
+
+static TEMP_DIR_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[cfg(unix)]
 fn write_executable_file(path: &Path, content: &str) {
@@ -19,8 +22,10 @@ fn write_executable_file(path: &Path, content: &str) {
 }
 
 fn fixture_repo() -> PathBuf {
+    let unique_suffix = TEMP_DIR_COUNTER.fetch_add(1, Ordering::Relaxed);
     let root = std::env::temp_dir().join(format!(
-        "tachi-rust-control-plane-{}",
+        "tachi-rust-control-plane-{}-{}",
+        unique_suffix,
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("clock")
