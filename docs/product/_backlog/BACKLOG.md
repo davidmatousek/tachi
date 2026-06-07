@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-07T18:31:14Z.
+> Auto-generated from GitHub Issues on 2026-06-07T19:49:40Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -13,7 +13,6 @@
 | #185 | F-A1.2 follow-on: cwe.yaml expansion — add CWE records discovered in T029 drift analysis | — | — | 2026-05-05 |
 | #184 | F-A1.1 follow-on: NIST AI 600-1 GAI Risk taxonomy addition — Surface C transcription (ADR-027 / FR-010 enum expansion) | — | — | 2026-05-05 |
 | #183 | F-A1 follow-on: citation-URL link-rot monitoring | — | — | 2026-05-05 |
-| #182 | F-A1 follow-on: crosswalk related and superseded edge expansion | — | — | 2026-05-05 |
 | #168 | Track OWASP AIVSS v1.0 release and first external adopter case study | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 143 (MA... | 2026-06-01 |
 | #126 | Auto-detect architecture drift | | Dimension | Score | Rationale | | — | 2026-05-05 |
 | #62 | Custom brand presets — user-definable brand identity via config file | | Dimension | Score | Rationale | | — | 2026-05-05 |
@@ -23,7 +22,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| — | *No items in this stage* | | |
+| #182 | F-A1 follow-on: crosswalk related and superseded edge expansion | — | 2026-06-07 |
 
 ## Plan
 
