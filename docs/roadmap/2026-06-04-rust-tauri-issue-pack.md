@@ -6,9 +6,9 @@
 
 ## Progress Snapshot
 
-- Current completion: 5/9 issue cards, or 56%.
-- RT-003, RT-004, RT-007, and RT-008 now have merged Rust slices for threat parsing, attack-chain parsing, SARIF emission, and MAESTRO/OWASP coverage data.
-- RT-005 is complete; RT-006 now has the shared Rust command bridge slice, and RT-009 still needs its remaining Rust/Tauri work.
+- Current completion: 6/9 issue cards, or 67%.
+- RT-003, RT-004, RT-007, RT-008, and RT-006 now have merged Rust slices for threat parsing, attack-chain parsing, SARIF emission, MAESTRO/OWASP coverage data, and the thin `src-tauri` shell scaffold.
+- RT-005 is complete, and RT-009 still needs its remaining Rust/Tauri docs and retirement work.
 
 GitHub Issues are not the source of truth in this repository right now, so the
 items below are written as importable issue cards rather than live issues.
@@ -89,10 +89,10 @@ Each card includes:
 
 - **Priority**: P1
 - **Labels**: `rust`, `tauri`, `desktop`, `shell`
-- **Summary**: Introduce a Tauri shell that calls shared Rust code without
-  duplicating business logic in the frontend.
+- **Summary**: Introduce a `src-tauri` shell that calls shared Rust code
+  without duplicating business logic in the frontend.
 - **Acceptance**:
-  - A Tauri build exists.
+  - The `src-tauri` shell exists and routes through the shared Rust bridge.
   - Desktop commands call the same Rust core used by CLI paths.
   - The shell remains thin.
 - **Depends on**: RT-003, RT-005

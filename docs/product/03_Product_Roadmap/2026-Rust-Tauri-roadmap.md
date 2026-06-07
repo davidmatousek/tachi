@@ -8,7 +8,7 @@
 
 ## Current-State Summary
 
-tachi currently ships as a Python-first repository with shell helpers, markdown-driven product docs, and pytest-based validation. There is now a Rust workspace with core parity slices for threat parsing, attack-chain parsing, compensating-controls parsing, risk-scores parsing, SARIF emission, and MAESTRO grouping, plus Rust-backed coverage-audit and control-plane command routing, but there is no Tauri application shell yet.
+tachi currently ships as a Python-first repository with shell helpers, markdown-driven product docs, and pytest-based validation. There is now a Rust workspace with core parity slices for threat parsing, attack-chain parsing, compensating-controls parsing, risk-scores parsing, SARIF emission, and MAESTRO grouping, plus Rust-backed coverage-audit and control-plane command routing. The `src-tauri` shell scaffold now exists and routes through the shared Rust bridge, but the packaging/docs slice is still in progress.
 
 The migration roadmap should therefore focus less on "rewrite everything" and more on:
 
@@ -128,7 +128,7 @@ The migration roadmap should therefore focus less on "rewrite everything" and mo
 
 | Item | Source | Status | Notes |
 |------|--------|--------|-------|
-| Tauri app shell | Backlog | Not started | Thin wrapper around Rust core commands |
+| Tauri app shell | Backlog | Done | Thin wrapper around Rust core commands |
 | Desktop command bridge | Backlog | In progress | `tachi-shell` is now the shared command layer for CLI and future Tauri, with routing tests covering install/init/update/bootstrap |
 | Packaging/distribution docs | Backlog | Not started | Keep install/update instructions aligned with the new shell |
 

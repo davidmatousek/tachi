@@ -1,0 +1,11 @@
+[package]
+name = "tachi-tauri"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+tachi-shell = { path = "../crates/tachi-shell" }
+
+[dev-dependencies]
+pretty_assertions = "1"
