@@ -474,14 +474,15 @@ To install a specific version: `install.sh --version v4.36.0` <!-- x-release-ple
 
 ## Running Tests
 
-tachi uses pytest for Python script tests under `tests/scripts/`. To run the test suite:
+tachi uses Rust-native tests plus the Rust-backed coverage audit. To run the test suite:
 
 ```bash
-pip install -r requirements-dev.txt
+cargo test
 make test
+make coverage-audit
 ```
 
-This runs `pytest tests/scripts/ --cov=scripts --cov-report=term-missing`. Tests are required by Constitution Principle VI (Testing Excellence, ≥80% coverage).
+This runs the Rust test suite and the Rust-backed coverage audit. Tests are required by Constitution Principle VI (Testing Excellence, ≥80% coverage).
 
 ---
 

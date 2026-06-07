@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust/Tauri doc refresh and compatibility retirement (RT-009)
+
+Refreshes the canonical docs and retires the remaining legacy compatibility guidance in the roadmap, issue pack, README, and testing guide. The Rust/Tauri migration docs now point to the current command surface, and the remaining retirement work is marked complete.
+
 ### Hardened config-file load (BLP-02 F-2)
 
 Replaced four bash `source`/`eval` config-file load sites with a hardened

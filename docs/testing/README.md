@@ -82,9 +82,9 @@ npm install -D vitest @testing-library/react @testing-library/jest-dom
 - **Unit/Integration**: [Vitest](https://vitest.dev/) or [Jest](https://jestjs.io/)
 - **API Testing**: [Supertest](https://github.com/ladjs/supertest)
 
-**Python Projects**:
-- **Unit/Integration**: [pytest](https://pytest.org/)
-- **API Testing**: [httpx](https://www.python-httpx.org/)
+**Rust Projects**:
+- **Unit/Integration**: `cargo test`
+- **CLI/API Testing**: [`assert_cmd`](https://docs.rs/assert_cmd/) or project-specific integration harnesses
 
 **Go Projects**:
 - **Unit/Integration**: Built-in `testing` package
@@ -347,7 +347,7 @@ it('updates user', () => {
 - [Jest](https://jestjs.io/)
 - [Playwright](https://playwright.dev/)
 - [Testing Library](https://testing-library.com/)
-- [Pytest](https://pytest.org/)
+- [cargo test](https://doc.rust-lang.org/cargo/commands/cargo-test.html)
 
 ### Learning
 - [Testing JavaScript](https://testingjavascript.com/) by Kent C. Dodds
