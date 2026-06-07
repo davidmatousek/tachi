@@ -57,8 +57,8 @@ triad:
 
 **Independent Test**: Insert the 10 edges, run the integrity suite → `5 passed`, crosswalk = 536 primary edges, no dangling endpoint. Ships independently of the US2 disposition.
 
-- [ ] T003 [US1] Insert the 10 resolvable edges (the `_resolvable: true` set, **annotation keys `_resolvable`/`_blocked_on` stripped**) from `specs/186-mitre-catalog-expansion/restored-edges.yaml` into `schemas/taxonomy/crosswalk.yaml` (FR-001). Dedupe-guard against the existing 526 (architect confirmed 0 collisions).
-- [ ] T004 [US1] Verify US1 in `tests/schemas/test_taxonomy_integrity.py`: run the suite → `5 passed`; confirm 536 primary edges, all 10 endpoints resolve, no duplicate, ≥500 floor (SC-001, SC-002).
+- [X] T003 [US1] Insert the 10 resolvable edges (the `_resolvable: true` set, **annotation keys `_resolvable`/`_blocked_on` stripped**) from `specs/186-mitre-catalog-expansion/restored-edges.yaml` into `schemas/taxonomy/crosswalk.yaml` (FR-001). Dedupe-guard against the existing 526 (architect confirmed 0 collisions).
+- [X] T004 [US1] Verify US1 in `tests/schemas/test_taxonomy_integrity.py`: run the suite → `5 passed`; confirm 536 primary edges, all 10 endpoints resolve, no duplicate, ≥500 floor (SC-001, SC-002).
 
 **Checkpoint**: MVP complete — the 10 MITRE edges restored, integrity green. Shippable on its own.
 
