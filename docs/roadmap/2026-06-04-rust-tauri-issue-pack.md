@@ -6,8 +6,8 @@
 
 ## Progress Snapshot
 
-- Current completion: 6/9 issue cards, or 67%.
-- RT-003, RT-004, RT-007, RT-008, and RT-006 now have merged Rust slices for threat parsing, attack-chain parsing, SARIF emission, MAESTRO/OWASP coverage data, and the thin `src-tauri` shell scaffold.
+- Current completion: 7/9 issue cards, or 78%.
+- RT-003, RT-004, RT-006, RT-007, and RT-008 now have merged Rust slices for threat parsing, attack-chain parsing, the thin `src-tauri` shell scaffold, SARIF emission, and MAESTRO/OWASP coverage data.
 - RT-005 is complete, and RT-009 still needs its remaining Rust/Tauri docs and retirement work.
 
 GitHub Issues are not the source of truth in this repository right now, so the

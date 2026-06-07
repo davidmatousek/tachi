@@ -8,7 +8,7 @@
 
 ## Current-State Summary
 
-tachi currently ships as a Python-first repository with shell helpers, markdown-driven product docs, and pytest-based validation. There is now a Rust workspace with core parity slices for threat parsing, attack-chain parsing, compensating-controls parsing, risk-scores parsing, SARIF emission, and MAESTRO grouping, plus Rust-backed coverage-audit and control-plane command routing. The `src-tauri` shell scaffold now exists and routes through the shared Rust bridge, but the packaging/docs slice is still in progress.
+tachi currently ships as a Python-first repository with shell helpers, markdown-driven product docs, and pytest-based validation. There is now a Rust workspace with core parity slices for threat parsing, attack-chain parsing, compensating-controls parsing, risk-scores parsing, SARIF emission, and coverage cataloging, plus Rust-backed coverage-audit and control-plane command routing. The `src-tauri` shell scaffold now exists and routes through the shared Rust bridge, but the packaging/docs slice is still in progress.
 
 The migration roadmap should therefore focus less on "rewrite everything" and more on:
 
@@ -102,7 +102,7 @@ The migration roadmap should therefore focus less on "rewrite everything" and mo
 | Item | Source | Status | Notes |
 |------|--------|--------|-------|
 | Parser/aggregation port | Backlog | In progress | Threat-report narrative parsing, attack-chain parsing, compensating-controls parsing, and risk-scores parsing have moved to `tachi-core` |
-| Report-data generation port | Backlog | In progress | Remediation-action selection and MAESTRO grouping now live in `tachi-core`, and threat/risk SARIF emitters are Rust-backed |
+| Report-data generation port | Backlog | Done | Remediation-action selection, MAESTRO grouping, threat/risk SARIF emitters, and coverage catalog data now live in `tachi-core` |
 | Bootstrap/update command port | Backlog | Not started | Removes Python from the control plane |
 
 ### Success Criteria

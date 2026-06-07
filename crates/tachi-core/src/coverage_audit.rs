@@ -21,6 +21,37 @@ pub struct CoverageAudit {
     pub support: Vec<PathBuf>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CoverageFamily {
+    pub label: &'static str,
+    pub description: &'static str,
+}
+
+pub fn coverage_family_catalog() -> Vec<CoverageFamily> {
+    vec![
+        CoverageFamily {
+            label: "Unit",
+            description: "Rust-native unit tests",
+        },
+        CoverageFamily {
+            label: "Integration",
+            description: "Cross-module integration tests",
+        },
+        CoverageFamily {
+            label: "Smoke",
+            description: "Fast canary and coverage-audit checks",
+        },
+        CoverageFamily {
+            label: "True end-to-end",
+            description: "Desktop and CLI acceptance checks",
+        },
+        CoverageFamily {
+            label: "Support / regression",
+            description: "Fixture and helper regression coverage",
+        },
+    ]
+}
+
 pub fn collect_audit(root: &Path) -> CoverageAudit {
     let tests_root = root.join("tests");
     let mut audit = CoverageAudit::default();
@@ -70,16 +101,17 @@ pub fn render(audit: &CoverageAudit, root: &Path) -> String {
     ));
     lines.push(String::new());
 
+    let catalog = coverage_family_catalog();
     let sections = [
-        ("Unit", &audit.unit),
-        ("Integration", &audit.integration),
-        ("Smoke", &audit.smoke),
-        ("True end-to-end", &audit.e2e),
-        ("Support / regression", &audit.support),
+        (&catalog[0], &audit.unit),
+        (&catalog[1], &audit.integration),
+        (&catalog[2], &audit.smoke),
+        (&catalog[3], &audit.e2e),
+        (&catalog[4], &audit.support),
     ];
 
-    for (label, files) in sections {
-        lines.push(format!("{label}: {}", files.len()));
+    for (family, files) in sections {
+        lines.push(format!("{}: {}", family.label, files.len()));
         for relpath in files {
             lines.push(format!("  - {}", relpath.display()));
         }
