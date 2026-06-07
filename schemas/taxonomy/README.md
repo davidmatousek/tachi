@@ -131,7 +131,7 @@ Every edge in `crosswalk.yaml` carries a `confidence` field from the closed 3-va
 
 | Value | Criterion | Example |
 |-------|-----------|---------|
-| `high` | **Published cross-reference** — the authoritative source explicitly lists the target ID. | OWASP LLM05 explicitly lists CWE-79, CWE-89, CWE-116 in its published cross-references — any LLM05→CWE-79 edge is `high`. |
+| `high` | **Published cross-reference** — the authoritative source explicitly lists the target ID. | OWASP Top 10:2021 A03 (Injection) explicitly lists CWE-79 in its published "List of Mapped CWEs" — any A03→CWE-79 edge is `high`. (Note: OWASP **LLM** pages are prose-only for CWEs — see [§4.1](#41-related--superseded-calibration) caution.) |
 | `medium` | **Inferred one-hop** — semantic match without explicit listing, but citable to one authoritative document. | LLM05 relates to CWE-20 ("Improper Input Validation") via category-semantic match documented in the OWASP LLM project README, not via LLM05's explicit CWE list. |
 | `high` (NIST transcription) | Any edge derived from `nist-ai-rmf-mapping.md` Surface B or Surface C (verbatim transcription per FR-022). | `tachi-control-category:authentication → nist-ai-rmf:MEASURE-2.7` — Surface B real-mapping row. |
 | `low` | **Two-hop or thematic** — curator judgment backed by a non-authoritative document (blog, research paper, internal analysis). | MITRE ATT&CK T1190 relates to OWASP API7 via adversary-objective alignment discussed in a security-research paper, not in any framework's published cross-reference. |
@@ -139,6 +139,58 @@ Every edge in `crosswalk.yaml` carries a `confidence` field from the closed 3-va
 **Anti-drift rule** (verbatim, spec FR-013): **"if the curator cannot articulate a one-sentence citation supporting `high` or `medium`, downgrade to the weaker label."**
 
 This rule inverts the default bias toward confidence inflation — the single most common failure mode in curated cross-framework mappings. The fallback is always `low` (still a valid, shippable value), so the rule does not create pressure to drop edges; it creates pressure to calibrate them honestly. See [ADR-027 Reason 3](../../docs/architecture/02_ADRs/ADR-027-taxonomy-crosswalk-schema.md) for the full rationale.
+
+### 4.1 `related` / `superseded` calibration
+
+> **Feature**: [182-crosswalk-related-superseded-edges](../../specs/182-crosswalk-related-superseded-edges/spec.md) (F-182, BLP-05 Wave 3) — first tranche of `related` edges.
+
+The §4 table and the verbatim anti-drift rule above govern **every** edge type, including `related` and `superseded`. This subsection extends them with per-source-class calibration so a future author can classify a new `related`/`superseded` candidate from the README alone, without re-deriving the methodology — and without falling into the OWASP-LLM→CWE drift trap.
+
+F-182 authored **37 `related` edges** (22 `high` / 15 `medium`) and **0 `superseded` edges**, drawn from four audited published source classes. The achievable `high`/`medium` floor was **37, not the ≥80 target** — the yield-tripwire fired (see "Yield-tripwire outcome" below). Calibrate against these four classes:
+
+| Source class | Authoritative source | Published cross-ref? | `high` rule | `medium` rule | F-182 yield |
+|---|---|---|---|---|---|
+| **CWE ↔ CWE** | `cwe.mitre.org/data/definitions/<N>.html` (Relationships, with View context) | Yes (view-dependent) | Hierarchical relation (`ChildOf`/`ParentOf`/`PeerOf`) published in the canonical **Research view (View-1000)** — often corroborated across View-1000/1003/1305/1340 | The SAME relation appearing **only** in the Development view (View-700) or a concept view (View-1340), OR a **chaining** relation (`CanFollow`/`CanPrecede`) — weaker/context-specific | **22** (16 high / 6 medium) |
+| **OWASP-Web Top 10 → CWE** | `owasp.org/Top10` per-category "List of Mapped CWEs" | Yes (explicit counted list) | `high` by construction (the category page explicitly lists the CWE) | n/a (the list is explicit, so no inference needed) | **0** — see note below |
+| **ATLAS → ATT&CK** | `mitre-atlas/atlas-data` `ATLAS.yaml`, `ATT&CK-reference` field | Yes (first-class field) | `high` by construction (explicit published ID cross-reference) | Reference cites a **base** technique but the edge targets a **sub**-technique (one-hop inference) — see the T0016 worked example | **7** (6 high / 1 medium) |
+| **OWASP-LLM Top 10 → ATLAS** | `genai.owasp.org/llmrisk/...` "Related Frameworks" list | Partial (relates frameworks, not a hard ID cross-reference) | n/a — the page relates the frameworks but does not publish it as a hard ID cross-reference, so `high` is not reached | Inferred one-hop from the "Related Frameworks" list | **8** (0 high / 8 medium) |
+
+**Worked example per source class** (each traces to a real F-182 edge — confidence labels are exactly those authored):
+
+- **CWE↔CWE** — `CWE-20 PeerOf CWE-345` published in **View-1000** → **`high`** (`citation: …/20.html (CWE-20 PeerOf CWE-345, View-1000)`). Contrast `CWE-117 ChildOf CWE-20` appearing **only in View-700** → **`medium`** (Development-view-only), and `CWE-770 CanFollow CWE-20` (a **chaining** relation) → **`medium`** (context-specific). Same `CWE-20`, three different confidence outcomes driven by **view + relation Nature**.
+- **OWASP-Web→CWE** — methodology: the OWASP Top 10:2021 per-category "List of Mapped CWEs" → `high` **by construction**. F-182 yielded **0** here *not* because the lane is weak, but because **F-180 already authored every in-catalog OWASP-Web→CWE cross-reference as a `primary` edge** — there was nothing left to add as `related`. This is the lane to mine first when the OWASP-Web catalog is expanded; today it is exhausted.
+- **ATLAS→ATT&CK** — `AML.T0016 → T1588` via the `ATT&CK-reference` field → **`high`** (explicit published cross-reference). The companion `AML.T0016 → T1588.002` was authored **`medium`**: the published reference cites the **base** technique `T1588`, not the sub-technique `T1588.002`, so targeting the sub-technique is a one-hop inference. **This high→medium pair is the canonical downgrade-discipline example** — the T005 anti-drift audit demoted it from `high` precisely because the citation supports only the base ID.
+- **OWASP-LLM→ATLAS** — `LLM01 → AML.T0054` from the LLM01 page's "Related Frameworks" list → **`medium`** (inferred one-hop). The page *relates* the frameworks but does not publish it as a hard ID cross-reference, so it never reaches `high`. All 8 edges in this class are `medium` for this reason.
+
+#### The CWE View-ID rule (FR-006)
+
+CWE parent/child relations are **view-dependent**: the same CWE has different parents under **View-1000 (Research)**, **View-700 (Development)**, and concept views like **View-1340**. A CWE↔CWE citation **MUST record both the relationship Nature and the View ID** — e.g., `CWE-117 ChildOf CWE-20, View-700`. The View governs confidence: **Research View-1000 is `high`-eligible**; Development-only or concept-only relations are `medium`. Without a View ID a CWE↔CWE relation is **uncalibratable**, and two correct citations from different views can look like a contradiction (they are not — they are different views of the same weakness).
+
+#### OWASP-LLM→CWE caution — the drift trap (FR-004)
+
+OWASP **LLM** risk pages are **prose-only** for CWE references. Confirmed live: **9 of the 10 LLM pages publish no structured CWE list; only LLM10 lists `CWE-400`.** Blogs widely repeat mappings like "LLM05 → CWE-79/89/78," but OWASP itself publishes no structured CWE cross-reference on the LLM pages. Therefore:
+
+- Any **OWASP-LLM→CWE** edge is inferred-from-prose → `low`/inferred, and is **hard-excluded from the `high`/`medium` floor count**.
+- This is why F-182 authored **0** OWASP-LLM→CWE edges.
+- Contrast this **sharply** with **OWASP-Web→CWE**, which *is* a `high`-confidence lane by construction (the explicit "List of Mapped CWEs" on each Top 10:2021 category page). The asymmetry is the single most important calibration fact for a future author: *Web → CWE is structured and `high`; LLM → CWE is prose and `low`.*
+
+#### `superseded` edge calibration (FR-007 / FR-008)
+
+A `superseded` edge expresses old-item → newer-item lineage and is authorable **only where both endpoints already resolve under the current catalogs**. When authorable, a published deprecation/replacement relation with both endpoints in-catalog → **`high`**. F-182 authored **0** `superseded` edges: the locked catalog snapshot holds **current editions/revisions only**, so the *old* endpoint of any supersession is, by construction, absent. The four deferred classes (OWASP edition-revision lineage, deprecated ATT&CK techniques, ATLAS renames-not-supersessions, deprecated CWEs) are recorded with their follow-ons in [`specs/182-crosswalk-related-superseded-edges/deferred-superseded.md`](../../specs/182-crosswalk-related-superseded-edges/deferred-superseded.md). An empty authored set with documented deferral is an **acceptable outcome**, not a failure — the method is documented here even though the authored set is empty.
+
+#### Authoritative-source list (canonical published source per class)
+
+| Source class | Canonical published source | Verification note |
+|---|---|---|
+| CWE↔CWE | `https://cwe.mitre.org/data/definitions/<N>.html` (CWE relationships, **with View context**) | Citation records **Nature + View ID** (FR-006) |
+| OWASP-Web→CWE | `https://owasp.org/Top10` per-category "List of Mapped CWEs" | Explicit counted list → `high` by construction |
+| ATLAS→ATT&CK | `mitre-atlas/atlas-data` `ATLAS.yaml`, `ATT&CK-reference` field | `atlas.mitre.org` technique pages **404 via automated fetch** (anti-bot) — `atlas-data` is the verification source |
+| OWASP-LLM→ATLAS | `https://genai.owasp.org/llmrisk/...` "Related Frameworks" | Inferred one-hop → `medium` ceiling |
+| OWASP-LLM→CWE | *(none authoritative — prose-only)* | Hard-excluded from `high`/`medium` (FR-004); `low`/inferred only |
+
+#### Yield-tripwire outcome — expect a documented floor, not a mandatory 80
+
+The FR-002 build-start survey found the achievable `high`/`medium` core was **37**, below the ≥80 target band. Per the anti-drift rule, the floor was committed at **37 with NO `low`-padding** to reach 80 — **anti-drift over floor-hitting**. The cause was structural: OWASP-Web→CWE yielded 0 (F-180 exhausted it as `primary`), and the 542-edge primary graph already captured the densest relationships, leaving only beyond-primary edges. The lone `medium` in the ATLAS→ATT&CK class is the T0016 sub-technique downgrade described above. **A future author should treat the 80 target as a band, not a quota: a documented-floor outcome (committed achievable count + written tripwire rationale) is the correct result when the high/medium yield falls short — never pad with `low` edges.** The full survey (per-class yield, tripwire state, the downgrade audit note) is captured in [`specs/182-crosswalk-related-superseded-edges/reference-edges.yaml`](../../specs/182-crosswalk-related-superseded-edges/reference-edges.yaml).
 
 ---
 
@@ -188,7 +240,7 @@ When NIST AI RMF 2.0 publishes (or the `airc.nist.gov` Playbook pages add/remove
 
 ## 7. Crosswalk methodology
 
-`crosswalk.yaml` is composed from primary-only edges in F-A1 (per spec FR-025). `related` and `superseded` edge types are **authorized in the schema but out of F-A1 scope** — they ship as a follow-on Issue filed on F-A1 PR merge.
+`crosswalk.yaml` was composed from primary-only edges in F-A1 (per spec FR-025). The `related` and `superseded` edge types were **authorized in the schema but unused at F-A1 merge**, reserved for a follow-on. That follow-on has now begun: **F-182 (BLP-05 Wave 3) authored the first tranche of 37 `related` edges** (22 `high` / 15 `medium`, drawn from four audited published source classes) and **0 `superseded` edges** (catalog-gated — see the deferral disposition). The primary-edge methodology below is unchanged and still governs the 542 `primary` edges; for `related`/`superseded` authoring and confidence calibration, see [§4.1 `related` / `superseded` calibration](#41-related--superseded-calibration).
 
 Day 1 authoring spike (per spec Assumption A5) seeded the crosswalk with **5-slice composition**: 10 OWASP↔CWE + 10 ATT&CK↔CWE + 10 ATT&CK↔ATLAS + 10 LLM↔NIST + 10 Agentic↔MITRE. This 50-edge spike validated the per-edge authoring rate against the ≥500-edge target (spec Risk R3 tiered fallback: Tier 2 = 300-edge floor team-lead-authorizable, Tier 3 = 150-edge floor PRD-amendment-required).
 

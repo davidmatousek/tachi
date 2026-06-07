@@ -1,0 +1,443 @@
+# Reference-edges harvest artifact (F-182, FR-012) — checked in BEFORE crosswalk.yaml edit.
+# Captures the build-start survey (FR-002) + candidate `related` edges from the four
+# audited published source classes, gated against the locked catalog snapshot (T001).
+# Annotation keys (source_class, disposition) live ONLY here; they are STRIPPED on
+# promotion to crosswalk.yaml (ADR-027 forbids extra edge keys). See
+# contracts/reference-edges.schema.md.
+#
+# YIELD-TRIPWIRE FIRED: high/medium core = 37 (< 80 floor). The achievable floor is
+# committed at 37 with NO low-padding (anti-drift over floor-hitting, FR-002). Cause:
+# OWASP-Web->CWE yields 0 (F-180 already authored every in-catalog CWE ref as PRIMARY),
+# and the 542-edge primary graph (34 cwe->cwe, 25 atlas->attack, 58 owasp->atlas)
+# already captured the dense relationships; only beyond-primary edges remain.
+survey:
+  date: '2026-06-07'
+  catalog_snapshot:
+    cwe: 53
+    mitre-atlas: 36
+    mitre-attack: 701
+    owasp: 60
+  yield:
+    cwe_cwe:
+      high: 16
+      medium: 6
+    owasp_web_cwe:
+      high: 0
+      medium: 0
+    atlas_attack:
+      high: 6
+      medium: 1
+    owasp_llm_atlas:
+      high: 0
+      medium: 8
+  high_medium_core_total: 37
+  tripwire_fired: true
+  audit_note: 'T005 anti-drift audit downgraded AML.T0016->T1588.002 high->medium (T1588.002 belongs to subtechnique AML.T0016.001, not the cited base technique). Final: 22 high / 15 medium / 37 total.'
+candidates:
+- source:
+    taxonomy: cwe
+    id: CWE-20
+  target:
+    taxonomy: cwe
+    id: CWE-117
+  edge_type: related
+  confidence: medium
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/117.html (CWE-117 ChildOf CWE-20, View-700)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-20
+  target:
+    taxonomy: cwe
+    id: CWE-120
+  edge_type: related
+  confidence: medium
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/20.html (CWE-20 ParentOf CWE-120, View-700)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-20
+  target:
+    taxonomy: cwe
+    id: CWE-345
+  edge_type: related
+  confidence: high
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/20.html (CWE-20 PeerOf CWE-345, View-1000)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-20
+  target:
+    taxonomy: cwe
+    id: CWE-770
+  edge_type: related
+  confidence: medium
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/770.html (CWE-770 CanFollow CWE-20, View-1000)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-77
+  target:
+    taxonomy: cwe
+    id: CWE-917
+  edge_type: related
+  confidence: high
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/917.html (CWE-917 ChildOf CWE-77, View-1000/1003/1305/1340)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-79
+  target:
+    taxonomy: cwe
+    id: CWE-352
+  edge_type: related
+  confidence: high
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/79.html (CWE-79 PeerOf CWE-352, View-1000)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-79
+  target:
+    taxonomy: cwe
+    id: CWE-494
+  edge_type: related
+  confidence: medium
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/494.html (CWE-494 CanFollow CWE-79, View-1000)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-116
+  target:
+    taxonomy: cwe
+    id: CWE-117
+  edge_type: related
+  confidence: high
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/117.html (CWE-117 ChildOf CWE-116, View-1000)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-223
+  target:
+    taxonomy: cwe
+    id: CWE-778
+  edge_type: related
+  confidence: high
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/778.html (CWE-778 ChildOf CWE-223, View-1000)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-284
+  target:
+    taxonomy: cwe
+    id: CWE-269
+  edge_type: related
+  confidence: high
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/284.html (CWE-284 ParentOf CWE-269, View-1000)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-284
+  target:
+    taxonomy: cwe
+    id: CWE-639
+  edge_type: related
+  confidence: medium
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/284.html (CWE-284 ParentOf CWE-639, View-1340)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-345
+  target:
+    taxonomy: cwe
+    id: CWE-352
+  edge_type: related
+  confidence: high
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/352.html (CWE-352 ChildOf CWE-345, View-1000/1003)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-400
+  target:
+    taxonomy: cwe
+    id: CWE-779
+  edge_type: related
+  confidence: high
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/779.html (CWE-779 ChildOf CWE-400, View-1000)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-407
+  target:
+    taxonomy: cwe
+    id: CWE-1333
+  edge_type: related
+  confidence: high
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/1333.html (CWE-1333 ChildOf CWE-407, View-1000/1003)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-416
+  target:
+    taxonomy: cwe
+    id: CWE-120
+  edge_type: related
+  confidence: medium
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/416.html (CWE-416 CanPrecede CWE-120, View-1000)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-538
+  target:
+    taxonomy: cwe
+    id: CWE-532
+  edge_type: related
+  confidence: high
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/538.html (CWE-538 ParentOf CWE-532, View-1000)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-787
+  target:
+    taxonomy: cwe
+    id: CWE-120
+  edge_type: related
+  confidence: high
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/787.html (CWE-787 ParentOf CWE-120, View-1000/1305/1340)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-787
+  target:
+    taxonomy: cwe
+    id: CWE-121
+  edge_type: related
+  confidence: high
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/787.html (CWE-787 ParentOf CWE-121, View-1000)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-787
+  target:
+    taxonomy: cwe
+    id: CWE-122
+  edge_type: related
+  confidence: high
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/787.html (CWE-787 ParentOf CWE-122, View-1000)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-863
+  target:
+    taxonomy: cwe
+    id: CWE-639
+  edge_type: related
+  confidence: high
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/863.html (CWE-863 ParentOf CWE-639, View-1000/1003)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-943
+  target:
+    taxonomy: cwe
+    id: CWE-89
+  edge_type: related
+  confidence: high
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/943.html (CWE-943 ParentOf CWE-89, View-1000)
+  disposition: authored
+- source:
+    taxonomy: cwe
+    id: CWE-943
+  target:
+    taxonomy: cwe
+    id: CWE-90
+  edge_type: related
+  confidence: high
+  source_class: cwe_cwe
+  citation: https://cwe.mitre.org/data/definitions/943.html (CWE-943 ParentOf CWE-90, View-1000)
+  disposition: authored
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0000
+  target:
+    taxonomy: mitre-attack
+    id: T1596
+  edge_type: related
+  confidence: high
+  source_class: atlas_attack
+  citation: https://atlas.mitre.org/techniques/AML.T0000 (ATT&CK-reference T1596)
+  disposition: authored
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0003
+  target:
+    taxonomy: mitre-attack
+    id: T1594
+  edge_type: related
+  confidence: high
+  source_class: atlas_attack
+  citation: https://atlas.mitre.org/techniques/AML.T0003 (ATT&CK-reference T1594)
+  disposition: authored
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0011
+  target:
+    taxonomy: mitre-attack
+    id: T1204
+  edge_type: related
+  confidence: high
+  source_class: atlas_attack
+  citation: https://atlas.mitre.org/techniques/AML.T0011 (ATT&CK-reference T1204)
+  disposition: authored
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0012
+  target:
+    taxonomy: mitre-attack
+    id: T1078
+  edge_type: related
+  confidence: high
+  source_class: atlas_attack
+  citation: https://atlas.mitre.org/techniques/AML.T0012 (ATT&CK-reference T1078)
+  disposition: authored
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0016
+  target:
+    taxonomy: mitre-attack
+    id: T1588
+  edge_type: related
+  confidence: high
+  source_class: atlas_attack
+  citation: https://atlas.mitre.org/techniques/AML.T0016 (ATT&CK-reference T1588)
+  disposition: authored
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0016
+  target:
+    taxonomy: mitre-attack
+    id: T1588.002
+  edge_type: related
+  confidence: medium
+  source_class: atlas_attack
+  citation: https://atlas.mitre.org/techniques/AML.T0016 (ATT&CK-reference T1588.002)
+  disposition: downgraded
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0037
+  target:
+    taxonomy: mitre-attack
+    id: T1005
+  edge_type: related
+  confidence: high
+  source_class: atlas_attack
+  citation: https://atlas.mitre.org/techniques/AML.T0037 (ATT&CK-reference T1005)
+  disposition: authored
+- source:
+    taxonomy: owasp
+    id: LLM01
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0054
+  edge_type: related
+  confidence: medium
+  source_class: owasp_llm_atlas
+  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/ (Related Frameworks AML.T0054)
+  disposition: authored
+- source:
+    taxonomy: owasp
+    id: LLM02
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0024
+  edge_type: related
+  confidence: medium
+  source_class: owasp_llm_atlas
+  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/ (Related Frameworks AML.T0024)
+  disposition: authored
+- source:
+    taxonomy: owasp
+    id: LLM07
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0051
+  edge_type: related
+  confidence: medium
+  source_class: owasp_llm_atlas
+  citation: https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/ (Related Frameworks AML.T0051)
+  disposition: authored
+- source:
+    taxonomy: owasp
+    id: LLM09
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0048
+  edge_type: related
+  confidence: medium
+  source_class: owasp_llm_atlas
+  citation: https://genai.owasp.org/llmrisk/llm092025-misinformation/ (Related Frameworks AML.T0048)
+  disposition: authored
+- source:
+    taxonomy: owasp
+    id: LLM10
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0024
+  edge_type: related
+  confidence: medium
+  source_class: owasp_llm_atlas
+  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/ (Related Frameworks AML.T0024)
+  disposition: authored
+- source:
+    taxonomy: owasp
+    id: LLM10
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0025
+  edge_type: related
+  confidence: medium
+  source_class: owasp_llm_atlas
+  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/ (Related Frameworks AML.T0025)
+  disposition: authored
+- source:
+    taxonomy: owasp
+    id: LLM10
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0029
+  edge_type: related
+  confidence: medium
+  source_class: owasp_llm_atlas
+  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/ (Related Frameworks AML.T0029)
+  disposition: authored
+- source:
+    taxonomy: owasp
+    id: LLM10
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0034
+  edge_type: related
+  confidence: medium
+  source_class: owasp_llm_atlas
+  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/ (Related Frameworks AML.T0034)
+  disposition: authored

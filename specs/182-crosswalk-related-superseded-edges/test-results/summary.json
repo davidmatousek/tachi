@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "feature": "182-crosswalk-related-superseded-edges",
+  "total_waves": 5,
+  "waves_tested": 0,
+  "waves_skipped": 5,
+  "totals": { "pass": 0, "fail": 0, "skip": 0 },
+  "total_regressions": 0,
+  "coverage_trend": null,
+  "gate_decisions": [],
+  "note": "Data/doc-only feature: no wave changed source-code extensions (.py/.ts/etc.), so Step 4.5 post-wave auto test-execution never triggered (all 5 waves W0-W4 = no-code-change skips). The taxonomy integrity suite (tests/schemas/test_taxonomy_integrity.py, 5 functions) is the feature's structural acceptance oracle and passed 5/5 at the explicit task gates T006 (W2 US1), T009 (W2 US2), and T014 (W4 final). primary count 542 preserved end-to-end; 0 regressions. Coverage tooling N/A (no source code)."
+}
