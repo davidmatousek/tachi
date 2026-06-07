@@ -511,6 +511,14 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
+## [4.42.0](https://github.com/davidmatousek/tachi/compare/v4.41.0...v4.42.0) (2026-06-07)
+
+
+### Features
+
+* **182:** crosswalk related + superseded edge expansion (first tranche) ([#323](https://github.com/davidmatousek/tachi/issues/323)) ([349e160](https://github.com/davidmatousek/tachi/commit/349e160608f473fa8e5fb1dfda66415ab1bb8b45))
+* **186:** MITRE ATT&CK + ATLAS catalog expansion (F-A1.3) ([#321](https://github.com/davidmatousek/tachi/issues/321)) ([93fbd17](https://github.com/davidmatousek/tachi/commit/93fbd173bc1953c5114eeb50c72da7479db767bb))
+
 ## [4.41.0](https://github.com/davidmatousek/tachi/compare/v4.40.0...v4.41.0) (2026-06-04)
 
 
