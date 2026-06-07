@@ -1,13 +1,13 @@
 # Rust/Tauri Migration Issue Pack
 
-**Last Updated**: 2026-06-05
+**Last Updated**: 2026-06-07
 **Purpose**: tracker-neutral backlog cards for the Rust/Tauri parity track
 **Architecture Guardrail**: keep `tachi-rust` Rust and Tauri based
 
 ## Progress Snapshot
 
-- Current completion: 7/9 issue cards, or 78%.
-- RT-003, RT-004, RT-006, RT-007, and RT-008 now have merged Rust slices for threat parsing, attack-chain parsing, the thin `src-tauri` shell scaffold, SARIF emission, and MAESTRO/OWASP coverage data.
+- Current completion: 8/9 issue cards, or 89%.
+- RT-003, RT-004, RT-006, RT-007, and RT-008 now have merged Rust slices for threat parsing, attack-chain parsing, the thin `src-tauri` shell scaffold, SARIF emission, and MAESTRO/OWASP taxonomy data.
 - RT-005 is complete, and RT-009 still needs its remaining Rust/Tauri docs and retirement work.
 
 GitHub Issues are not the source of truth in this repository right now, so the

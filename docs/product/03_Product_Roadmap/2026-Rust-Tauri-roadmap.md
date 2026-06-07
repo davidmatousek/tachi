@@ -1,6 +1,6 @@
 # tachi Roadmap - Rust/Tauri Migration
 
-**Last Updated**: 2026-06-05
+**Last Updated**: 2026-06-07
 **Theme**: migrate the shipped platform from Python-first scripts to a Rust core with a Tauri shell, while preserving feature parity
 **Status**: Planning
 
@@ -8,7 +8,7 @@
 
 ## Current-State Summary
 
-tachi currently ships as a Python-first repository with shell helpers, markdown-driven product docs, and pytest-based validation. There is now a Rust workspace with core parity slices for threat parsing, attack-chain parsing, compensating-controls parsing, risk-scores parsing, SARIF emission, and coverage cataloging, plus Rust-backed coverage-audit and control-plane command routing. The `src-tauri` shell scaffold now exists and routes through the shared Rust bridge, but the packaging/docs slice is still in progress.
+tachi currently ships as a Python-first repository with shell helpers, markdown-driven product docs, and pytest-based validation. There is now a Rust workspace with core parity slices for threat parsing, attack-chain parsing, compensating-controls parsing, risk-scores parsing, SARIF emission, and coverage cataloging, plus Rust-backed coverage-audit, coverage taxonomy catalogs, and control-plane command routing. The `src-tauri` shell scaffold now exists and routes through the shared Rust bridge, but the packaging/docs slice is still in progress.
 
 The migration roadmap should therefore focus less on "rewrite everything" and more on:
 
