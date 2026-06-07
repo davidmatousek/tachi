@@ -532,6 +532,22 @@ F-292 reused F-260's community-merge precedent (4 mechanical artifacts: CHANGELO
 
 ---
 
+### Entry 14: F-182 Crosswalk `related` + `superseded` Edge Expansion (First Tranche) — Delivery Retrospective
+
+**Date**: 2026-06-07 | **Category**: Process | **Feature**: F-182 | **Issues**: #182 (`follow-on-180`)
+
+**Context**: BLP-05 Wave 3 (Crosswalk Integrity & Edges) — the #182 edges piece alongside #183 link-rot. F-180 shipped a primary-only crosswalk (542 edges); #182 was to author the first tranche of `related` edges (committed floor **≥80**, band 80–150, hard ceiling 150) plus the catalog-authorable `superseded` edges, with **no schema / enum / integrity-test / ADR change** (FR-011; ADR-027 frozen). Outcome: the build-start yield survey (T002) found the achievable high/medium core was only **37** (CWE↔CWE 22 · ATLAS→ATT&CK 7 · OWASP-LLM→ATLAS 8 · OWASP-Web→CWE **0**), so the FR-002 yield-tripwire fired and the architect (T003) authorized the **documented achievable floor of 37** rather than padding to 80 with low-confidence edges. The `superseded` authorable set = **0** (catalogs hold current editions only — the *old* endpoint of every supersession is absent), dispositioned as 4 deferred classes in `deferred-superseded.md`. 15/15 tasks (T015 deliver-time); estimated ~1.5–2.5d, actual same-day; integrity **5/5**, primary **542 preserved**, **0** catalog/test/schema/ADR change.
+
+**Lesson — A "floor" on a derived-edge feature is a survey-gated estimate of the achievable, not a guarantee; survey the yield at PLAN time when a predecessor has already consumed the dense relationships.**
+
+- **Problem**: The PRD committed a ≥80 `related`-edge floor (Triad high-confidence core estimate ~65), but the achievable high/medium core was 37. The dense in-catalog cross-references the floor assumed — especially OWASP-Web→CWE — had *already been authored as `primary` edges by F-180*, so OWASP-Web→CWE yielded **0** beyond-primary edges and only a thin residue of beyond-primary relationships remained to harvest.
+- **What we learned**: The anti-drift-over-floor-hitting rule (FR-002 — commit the documented achievable floor, never `low`-pad to reach the number) is what kept the deliverable honest; a vanity-metric flow would have manufactured ~43 junk edges to hit 80. Modeling the floor as tripwired-and-architect-gated (T002 survey → T003 authorization) made the shortfall a **planned, signed-off branch**, not a failure. The very density that made F-180 valuable (it captured every primary cross-ref) is exactly what starved its `related` follow-on — a predictable, not surprising, dynamic once named.
+- **How to apply**: For any follow-on edge/relationship feature against an already-dense graph, run the yield survey at **PLAN** time (not build-start) and set the committed floor to the surveyed achievable high/medium core, with the tripwire as the backstop — don't inherit a headline floor the catalog can't support. Keep the harvest in a checked-in artifact (`reference-edges.yaml`) so the floor decision is auditable. For pure-data changes, reuse the existing integrity suite as the acceptance oracle (no new tests). `superseded` lineage is inherently catalog-gated — expect an empty authorable set until a catalog-expansion wave adds the historical (old-edition) endpoints.
+
+**Evidence**: `specs/182-crosswalk-related-superseded-edges/{spec.md, plan.md, tasks.md, delivery.md, reference-edges.yaml, deferred-superseded.md, test-results/summary.json}`; squash-merge `349e160` (PR #323); integrity suite 5/5 (`tests/schemas/test_taxonomy_integrity.py`); crosswalk 542 primary / 37 related / 0 superseded. Related: KB Entry 13 (F-186, BLP-05 Wave 2 sibling), Entry 11 (F-098); BLP-05 Wave 3 sibling #183 (citation link-rot).
+
+---
+
 ## Bug Fixes
 
 *No entries yet. Use `/kb-create` to add the first bug fix.*

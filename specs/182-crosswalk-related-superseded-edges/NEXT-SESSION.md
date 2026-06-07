@@ -1,3 +1,5 @@
+> **SUPERSEDED (2026-06-07) — Feature DELIVERED.** This was a mid-build snapshot taken at W2 ("9/15, resume at W3"); W3–W4 subsequently completed and the feature shipped via PR #323 (squash `349e160`). Retained for history only. **Authoritative closure record: [delivery.md](delivery.md).** Final state: 37 `related` / 0 `superseded` (4 deferred classes), integrity 5/5, primary 542 preserved.
+
 # NEXT-SESSION Handoff — F-182 Crosswalk `related` + `superseded` Edges
 
 **Branch**: `182-crosswalk-related-superseded-edges` · **Draft PR**: #323 · **Date**: 2026-06-07

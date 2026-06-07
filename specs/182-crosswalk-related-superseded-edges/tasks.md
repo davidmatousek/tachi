@@ -100,7 +100,7 @@ triad:
 - [X] T012 Provenance + CHANGELOG (FR-015): add an F-182 header provenance note to `schemas/taxonomy/crosswalk.yaml` (mirroring the F-186 convention) and a `feat(182)` entry to `CHANGELOG.md` (BLP-05 F-3 sibling-h3 cluster placement) summarizing the `related` floor authored + `superseded` outcome.
 - [X] T013 No-migration diff guard (FR-011, code-reviewer) — runs AFTER T012 so it sees the final diff: confirm the feature diff touches ONLY `schemas/taxonomy/crosswalk.yaml`, `schemas/taxonomy/README.md`, `CHANGELOG.md`, and `specs/182-*` artifacts — **0** changes to any catalog YAML, `tests/schemas/test_taxonomy_integrity.py`, `schema_version`, or any ADR (incl. ADR-027); `primary` count == 542 (SC-005).
 - [X] T014 Final integrity gate: `pytest tests/schemas/test_taxonomy_integrity.py` → `5 passed`; run `/aod.analyze` → no inconsistency (FR-013; SC-005).
-- [ ] T015 Close GitHub Issue #182 `stage:done` with the deliverable summary (`related` count, `superseded` count, deferred-set reference) — deliver-time, via `/aod.deliver` (FR-015).
+- [x] T015 Close GitHub Issue #182 `stage:done` with the deliverable summary (`related` count, `superseded` count, deferred-set reference) — deliver-time, via `/aod.deliver` (FR-015). **Done 2026-06-07**: 37 related / 0 superseded (4 deferred classes → `deferred-superseded.md`); see [delivery.md](delivery.md).
 
 ---
 
