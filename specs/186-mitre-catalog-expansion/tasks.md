@@ -37,7 +37,7 @@ triad:
 
 **Purpose**: Confirm the recovery prerequisites and the clean baseline before any edit.
 
-- [ ] T001 Confirm recovery prerequisites: `git cat-file -t e58f247` and `git cat-file -t 991e1ee` both return `commit`, and `pytest tests/schemas/test_taxonomy_integrity.py` reports `5 passed` (baseline 526 primary edges). If the dangling commits are absent (fresh clone / post-`git gc`), STOP and escalate — recovery source is gone.
+- [X] T001 Confirm recovery prerequisites: `git cat-file -t e58f247` and `git cat-file -t 991e1ee` both return `commit`, and `pytest tests/schemas/test_taxonomy_integrity.py` reports `5 passed` (baseline 526 primary edges). If the dangling commits are absent (fresh clone / post-`git gc`), STOP and escalate — recovery source is gone.
 
 ---
 
@@ -45,7 +45,7 @@ triad:
 
 **Purpose**: Extract the durable restore-set. **CRITICAL**: blocks all edge restoration (US1 + US2 edges); de-risks dangling-object loss.
 
-- [ ] T002 Extract the 16 MITRE-gap-scoped removed edges from commit `e58f247` (`git show e58f247:schemas/taxonomy/crosswalk.yaml`, filter to edges referencing the 16 gap IDs) into `specs/186-mitre-catalog-expansion/restored-edges.yaml`, annotated `_resolvable: true|false` + `_blocked_on:` per the contract (FR-002). Confirm: 16 edges total, 10 `_resolvable: true`, 6 `_resolvable: false`, each `edge_type`/`confidence`/`citation` byte-exact to `e58f247`.
+- [X] T002 Extract the 16 MITRE-gap-scoped removed edges from commit `e58f247` (`git show e58f247:schemas/taxonomy/crosswalk.yaml`, filter to edges referencing the 16 gap IDs) into `specs/186-mitre-catalog-expansion/restored-edges.yaml`, annotated `_resolvable: true|false` + `_blocked_on:` per the contract (FR-002). Confirm: 16 edges total, 10 `_resolvable: true`, 6 `_resolvable: false`, each `edge_type`/`confidence`/`citation` byte-exact to `e58f247`.
 
 **Checkpoint**: restore-set captured and checked in — US1 and US2 can now proceed in parallel.
 
