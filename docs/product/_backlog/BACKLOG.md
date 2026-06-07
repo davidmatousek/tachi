@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-07T19:49:40Z.
+> Auto-generated from GitHub Issues on 2026-06-07T20:17:04Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -22,7 +22,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| #182 | F-A1 follow-on: crosswalk related and superseded edge expansion | — | 2026-06-07 |
+| — | *No items in this stage* | | |
 
 ## Plan
 
@@ -66,3 +66,4 @@
 | #268 | fix: disentangle tachi-scanner from AOD-Kit positioning in .claude/rules/scope.md | CLOSED | 2026-05-07 |
 | #266 | fix: retitle CONTRIBUTING.md for tachi (currently labeled 'AOD Kit' with stale clone URL) | CLOSED | 2026-05-07 |
 | #264 | feat: adopt dual-frame public positioning (harness reframe) | CLOSED | 2026-05-07 |
+| #182 | F-A1 follow-on: crosswalk related and superseded edge expansion | OPEN | 2026-06-07 |
