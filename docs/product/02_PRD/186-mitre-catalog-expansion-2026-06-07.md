@@ -3,7 +3,11 @@ prd:
   number: "186"
   topic: mitre-catalog-expansion
   created: 2026-06-07
-  status: Approved
+  status: Delivered
+  delivered: 2026-06-07
+  pr: 321
+  merge_commit: 93fbd17
+  release: 4.42.0
   type: feature
 triad:
   pm_signoff: { agent: product-manager, date: 2026-06-07, status: APPROVED, notes: "Author sign-off. Scope matches Issue #186 (F-A1.3) restated against current catalog reality and the Triad's empirical findings: F-241 already added all 3 ATT&CK IDs + 7 of 13 ATLAS IDs, so the concrete deliverable is the 10 now-resolvable MITRE-scoped T029 drift edges + an architect add/reject/defer disposition for 6 still-missing ATLAS IDs. Scoped standalone (not bundled with #184/#185) per the user's /aod.define 186 invocation and the BLP-05 split-valve sanction. v1.1 folds in all three architect + three team-lead corrections." }
@@ -16,7 +20,7 @@ source:
 
 # MITRE ATT&CK + ATLAS Catalog Expansion — Residual Drift-Edge Restoration (F-A1.3)
 
-**Status**: Approved
+**Status**: Delivered (2026-06-07 — PR [#321](https://github.com/davidmatousek/tachi/pull/321) squash-merged as `93fbd17`; release-please PR #322 → v4.42.0)
 **Created**: 2026-06-07
 **Author**: product-manager
 **Reviewers**: architect, team-lead

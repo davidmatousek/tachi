@@ -516,6 +516,22 @@ F-292 reused F-260's community-merge precedent (4 mechanical artifacts: CHANGELO
 
 ---
 
+### Entry 13: F-A1.3 MITRE ATT&CK + ATLAS Catalog Expansion — Delivery Retrospective
+
+**Date**: 2026-06-07 | **Category**: Process | **Feature**: F-186 | **Issues**: #186 (`follow-on-180`)
+
+**Context**: BLP-05 Wave 2 crosswalk-catalog restoration — the #186 piece of the #184/#185/#186 trio. Feature 180's T029 cleanup had removed 88 crosswalk edges that referenced then-absent catalog IDs; Feature 241 has since added the catalog records for 10 of them. **US-1** restored those 10 now-resolvable MITRE edges byte-exact from recovered dangling commit `e58f247` (crosswalk 526 → 536). **US-2** dispositioned the 6 still-missing ATLAS IDs (`AML.T0001/T0005/T0025/T0037/T0043/T0048`) against the authoritative `mitre-atlas/atlas-data` source — all 6 verified present (ATLAS-2026.05) → all **"add"**, adding 6 records (mitre-atlas 30 → 36) and restoring their 6 unblocked edges (crosswalk 536 → 542). **US-3** drift guard confirmed a purely-additive change. 12/13 tasks (T013 deliver-time); estimated under 1 day, actual same-day; no schema/ADR change, `mitre-attack.yaml` byte-unchanged (701). Author assessed delivery as smooth — no surprises, no follow-up work flagged.
+
+**Lesson — When restoration depends on unreachable git history, extract the recovery source to a checked-in artifact BEFORE any edit.**
+
+- **Problem**: The 16 in-scope edges had to be recovered from dangling commit `e58f247` (pre-T029-removal, 551 edges) — a commit unreachable from `main` and never pushed. A `git gc` or a fresh clone would have destroyed the only recovery source, making the restoration impossible mid-feature.
+- **What we learned**: Making "extract the restore-set to `specs/186-*/restored-edges.yaml`" a **blocking Foundational task (T002)** before any catalog/crosswalk edit de-risked the entire feature — every subsequent edit drew from the durable checked-in artifact, not the volatile object DB. The artifact carried human-auditable `_resolvable`/`_blocked_on` annotations (stripped on insertion to keep edges byte-exact), so the 10-vs-6 split stayed reviewable without re-running git archaeology.
+- **How to apply**: When a change depends on recovering content from unreachable/unpushed git objects (dangling commits, reflog-only SHAs, stash), capture it to a checked-in file as the FIRST task — before any edit that could trigger gc, and before the work spans a clone boundary. Treat the dangling SHA as a wasting asset. For pure-data changes, reuse the existing test suite as the acceptance oracle (here the 5-fn integrity suite caught any dangling endpoint / shape / sort / dup violation — no new tests needed).
+
+**Evidence**: `specs/186-mitre-catalog-expansion/{spec.md, plan.md, tasks.md, delivery.md, restored-edges.yaml, test-results/summary.json}`; squash-merge `93fbd17`; release-please PR #322 (`chore(main): release 4.42.0`); build-wave gate 15/15 (3 waves, 0 regressions). Related: KB Entry 11 (F-098), Entry 12 (F-315); BLP-05 Wave 2 siblings #184 / #185.
+
+---
+
 ## Bug Fixes
 
 *No entries yet. Use `/kb-create` to add the first bug fix.*
