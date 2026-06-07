@@ -98,7 +98,7 @@ triad:
 
 - [X] T011 [P] Add a `feat(186)` entry to `CHANGELOG.md` summarizing the 10 edges restored + the 6-ID disposition outcome.
 - [X] T012 [P] Update `specs/180-taxonomy-crosswalk-collection/NEXT-SESSION.md` decision trail to point at the #186 resolution; note the 2 CWE-blocked edges as #185 scope.
-- [ ] T013 Close GitHub Issue #186 `stage:done` with the disposition summary + deliverable references (deliver-time, via `/aod.deliver`).
+- [X] T013 Close GitHub Issue #186 `stage:done` with the disposition summary + deliverable references (deliver-time, via `/aod.deliver`). ✓ Closed 2026-06-07 (CLOSED/stage:done; delivery.md + metrics comment posted).
 
 ---
 
