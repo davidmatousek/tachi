@@ -5262,3 +5262,153 @@
   edge_type: primary
   confidence: medium
   citation: https://attack.mitre.org/techniques/T1070/
+# ─── F-A1.3 (#186): Restored MITRE-gap edges (10) ────────────────────
+# Recovered byte-exact from commit e58f247. T029 removed these as endpoint-unresolvable;
+# Feature 241 added the catalog records, so the endpoints now resolve. confidence: medium per source.
+- source:
+    taxonomy: mitre-attack
+    id: T1190
+  target:
+    taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1190/
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0059
+  target:
+    taxonomy: mitre-attack
+    id: T1565.001
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0059
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0060
+  target:
+    taxonomy: mitre-attack
+    id: T1557
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0060
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0000
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0000
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0003
+  target:
+    taxonomy: mitre-attack
+    id: T1195.002
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0003
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0011
+  target:
+    taxonomy: mitre-attack
+    id: T1005
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0011
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0016
+  target:
+    taxonomy: mitre-attack
+    id: T1195.002
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0016
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0029
+  target:
+    taxonomy: mitre-attack
+    id: T1499
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0029
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0034
+  target:
+    taxonomy: mitre-attack
+    id: T1565
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0034
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0040
+  target:
+    taxonomy: mitre-attack
+    id: T1068
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0040
+# ─── F-A1.3 (#186): ATLAS-source edges unblocked by T005 disposition (6) ──────
+# The 6 ATLAS ids above dispositioned "add" (T005/FR-003); their source records
+# were added to mitre-atlas.yaml, so these edges now resolve. Byte-exact from e58f247.
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0001
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0001
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0005
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0005
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0025
+  target:
+    taxonomy: mitre-attack
+    id: T1005
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0025
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0037
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0037
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0043
+  target:
+    taxonomy: mitre-attack
+    id: T1190
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0043
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0048
+  target:
+    taxonomy: mitre-attack
+    id: T1499
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0048

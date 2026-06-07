@@ -65,12 +65,28 @@
 # FR-013, coverage % = |cited_ids| / |taxonomy_ids_not_out_of_scope|;
 # denominator at F-241 closure = 30 with zero exclusions.
 #
+# F-A1.3 EXPANSION APPLIED (#186, 2026-06-07): record count 30 -> 36 via
+# architect disposition (T005/FR-003) of the 6 previously-missing ATLAS ids,
+# verified against the authoritative atlas-data repo (dist/v6/ATLAS-2026.05.yaml,
+# format 6.0.0, modified 2026-05-27): AML.T0001 (Search Open AI Vulnerability
+# Analysis), T0005 (Create Proxy AI Model), T0025 (Exfiltration via Cyber Means),
+# T0037 (Data from Local System), T0043 (Craft Adversarial Data), T0048 (External
+# Harms). All 6 names byte-exact from atlas-data; all in-scope. These unblock the
+# 6 ATLAS-sourced crosswalk edges restored in the same feature (crosswalk 536->542).
+#
 # Sorted alphabetically by `id` per FR-032.
 
 - id: AML.T0000
   full_id: ATLAS-AML.T0000
   name: Search Open Technical Databases
   url: https://atlas.mitre.org/techniques/AML.T0000
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0001
+  full_id: ATLAS-AML.T0001
+  name: Search Open AI Vulnerability Analysis
+  url: https://atlas.mitre.org/techniques/AML.T0001
   cwe_refs: []
   out_of_scope: false
   out_of_scope_rationale: ""
@@ -92,6 +108,13 @@
   full_id: ATLAS-AML.T0004
   name: Search Application Repositories
   url: https://atlas.mitre.org/techniques/AML.T0004
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0005
+  full_id: ATLAS-AML.T0005
+  name: Create Proxy AI Model
+  url: https://atlas.mitre.org/techniques/AML.T0005
   cwe_refs: []
   out_of_scope: false
   out_of_scope_rationale: ""
@@ -179,6 +202,13 @@
   cwe_refs: []
   out_of_scope: false
   out_of_scope_rationale: ""
+- id: AML.T0025
+  full_id: ATLAS-AML.T0025
+  name: Exfiltration via Cyber Means
+  url: https://atlas.mitre.org/techniques/AML.T0025
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: AML.T0029
   full_id: ATLAS-AML.T0029
   name: Denial of AI Service
@@ -207,6 +237,13 @@
   cwe_refs: []
   out_of_scope: false
   out_of_scope_rationale: ""
+- id: AML.T0037
+  full_id: ATLAS-AML.T0037
+  name: Data from Local System
+  url: https://atlas.mitre.org/techniques/AML.T0037
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
 - id: AML.T0040
   full_id: ATLAS-AML.T0040
   name: AI Model Inference API Access
@@ -218,6 +255,20 @@
   full_id: ATLAS-AML.T0042
   name: Verify Attack
   url: https://atlas.mitre.org/techniques/AML.T0042
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0043
+  full_id: ATLAS-AML.T0043
+  name: Craft Adversarial Data
+  url: https://atlas.mitre.org/techniques/AML.T0043
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+- id: AML.T0048
+  full_id: ATLAS-AML.T0048
+  name: External Harms
+  url: https://atlas.mitre.org/techniques/AML.T0048
   cwe_refs: []
   out_of_scope: false
   out_of_scope_rationale: ""

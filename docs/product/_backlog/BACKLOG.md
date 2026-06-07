@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-04T20:42:51Z.
+> Auto-generated from GitHub Issues on 2026-06-07T16:50:29Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -10,7 +10,6 @@
 |---|-------|-----|----------|---------|
 | #295 | F-292 post-merge tachi.threat-model verification runs (T017 + T026) | Impact: 3 (closes empirical verification of SC-003 + SC-015), Confidence: 5 (mechanical execution), Effort: 2 (two `tachi.threat-model` runs + 1 commit) = **30 / Tier 2 (Medium)** | — | 2026-05-14 |
 | #217 | detect_images leaves duplicate .jpg/.png pair after recovery write | — | — | 2026-05-05 |
-| #186 | F-A1.3 follow-on: MITRE ATT&CK + ATLAS catalog expansion | — | — | 2026-05-05 |
 | #185 | F-A1.2 follow-on: cwe.yaml expansion — add CWE records discovered in T029 drift analysis | — | — | 2026-05-05 |
 | #184 | F-A1.1 follow-on: NIST AI 600-1 GAI Risk taxonomy addition — Surface C transcription (ADR-027 / FR-010 enum expansion) | — | — | 2026-05-05 |
 | #183 | F-A1 follow-on: citation-URL link-rot monitoring | — | — | 2026-05-05 |
@@ -68,3 +67,4 @@
 | #268 | fix: disentangle tachi-scanner from AOD-Kit positioning in .claude/rules/scope.md | CLOSED | 2026-05-07 |
 | #266 | fix: retitle CONTRIBUTING.md for tachi (currently labeled 'AOD Kit' with stale clone URL) | CLOSED | 2026-05-07 |
 | #264 | feat: adopt dual-frame public positioning (harness reframe) | CLOSED | 2026-05-07 |
+| #186 | F-A1.3 follow-on: MITRE ATT&CK + ATLAS catalog expansion | OPEN | 2026-06-07 |

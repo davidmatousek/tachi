@@ -79,6 +79,21 @@ After T041, run:
 - **cwe.yaml sort order change**: cwe.yaml now ordered lexicographically (CWE-116, CWE-1333, CWE-20, ...). T029 preserved the header provenance note. T036 should verify the header documents the sort convention.
 - **ADR-027 post-merge SHA fill**: T039 architect MUST update the ADR-027 `<pending-T039-post-merge-fill>` token with the actual merge-commit SHA before closing the merge action.
 
+## Follow-on Resolution Trail (updated 2026-06-07 by F-186)
+
+The 5 follow-on Issues (#182–#186) carried T029's residual taxonomy work:
+
+- **#186 (F-A1.3) — RESOLVED**: restored the 10 now-resolvable MITRE-gap crosswalk
+  edges T029 removed (526 → 536), and architect-dispositioned all 6 still-missing
+  ATLAS ids (`AML.T0001/T0005/T0025/T0037/T0043/T0048`) as **add** — verified against
+  the authoritative atlas-data repo (`dist/v6/ATLAS-2026.05`) — adding their 6 records
+  (`mitre-atlas.yaml` 30 → 36) and restoring their 6 edges (crosswalk → 542). Decision
+  trail: Issue #186 comment. Integrity suite 5/5 throughout; purely additive.
+- **#185 (cwe.yaml) scope**: the 2 CWE-target-blocked edges T029 removed
+  (`T1070.006→CWE-1269`, `T1562→CWE-693`) reference NO MITRE-gap id and were
+  explicitly **out of #186 scope** — they belong to #185's cwe.yaml expansion.
+- **#182/#183/#184**: integrity / NIST AI 600-1 follow-ons — see their respective issues.
+
 ## Context Files
 
 - Tasks: `specs/180-taxonomy-crosswalk-collection/tasks.md` (35/41 complete, synced to `.aod/tasks.md`)
