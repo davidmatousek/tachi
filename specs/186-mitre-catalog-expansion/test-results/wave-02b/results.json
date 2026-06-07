@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "wave": 2,
+  "timestamp": "2026-06-07T13:05:02.718105",
+  "test_runner": "python3 -m pytest tests/schemas/test_taxonomy_integrity.py",
+  "execution_duration_ms": 970,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": {
+    "pass": 5,
+    "fail": 0,
+    "skip": 0
+  },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "note": "US2 gate (T008). Disposition: all 6 ATLAS ids = add (atlas-data dist/v6/ATLAS-2026.05). mitre-atlas 30->36 records (sorted, shape-valid); crosswalk 536->542 (+6 unblocked edges, 6/6 resolve). SC-003 6/6 dispositioned on Issue #186.",
+  "tests": [
+    {
+      "name": "test_framework_yamls_load",
+      "status": "pass"
+    },
+    {
+      "name": "test_crosswalk_loads",
+      "status": "pass"
+    },
+    {
+      "name": "test_crosswalk_referential_integrity",
+      "status": "pass"
+    },
+    {
+      "name": "test_citation_shape",
+      "status": "pass"
+    },
+    {
+      "name": "test_records_sorted",
+      "status": "pass"
+    }
+  ]
+}

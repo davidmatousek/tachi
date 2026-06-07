@@ -5355,3 +5355,60 @@
   edge_type: primary
   confidence: medium
   citation: https://atlas.mitre.org/techniques/AML.T0040
+# ─── F-A1.3 (#186): ATLAS-source edges unblocked by T005 disposition (6) ──────
+# The 6 ATLAS ids above dispositioned "add" (T005/FR-003); their source records
+# were added to mitre-atlas.yaml, so these edges now resolve. Byte-exact from e58f247.
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0001
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0001
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0005
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0005
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0025
+  target:
+    taxonomy: mitre-attack
+    id: T1005
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0025
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0037
+  target:
+    taxonomy: mitre-attack
+    id: T1213
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0037
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0043
+  target:
+    taxonomy: mitre-attack
+    id: T1190
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0043
+- source:
+    taxonomy: mitre-atlas
+    id: AML.T0048
+  target:
+    taxonomy: mitre-attack
+    id: T1499
+  edge_type: primary
+  confidence: medium
+  citation: https://atlas.mitre.org/techniques/AML.T0048
