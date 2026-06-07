@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-07T22:45:24Z.
+> Auto-generated from GitHub Issues on 2026-06-07T22:47:00Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -40,7 +40,7 @@
 
 | # | Title | Delivered | Retro | Updated |
 |---|-------|-----------|-------|---------|
-| #182 | F-A1 follow-on: crosswalk related and superseded edge expansion | 2026-06-07 | — | 2026-06-07 |
+| — | *No items in this stage* | | |
 
 ## Document
 
