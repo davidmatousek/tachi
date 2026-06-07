@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Feature 186 — MITRE ATT&CK + ATLAS Catalog Expansion (residual drift-edge restoration, F-A1.3)
+
+Restored the MITRE crosswalk coverage that Feature 180's T029 cleanup removed and
+Feature 241's catalog expansion has since unblocked, and closed the open
+6-ATLAS-id question with a source-verified architect disposition.
+
+**Added**
+- 16 MITRE-scoped crosswalk edges recovered byte-exact from the pre-removal commit
+  (`crosswalk.yaml` 526 → 542 primary edges): the 10 now-resolvable edges (US1 MVP)
+  plus 6 edges unblocked by the ATLAS-id disposition.
+- 6 MITRE ATLAS catalog records (`mitre-atlas.yaml` 30 → 36): AML.T0001 (Search Open
+  AI Vulnerability Analysis), T0005 (Create Proxy AI Model), T0025 (Exfiltration via
+  Cyber Means), T0037 (Data from Local System), T0043 (Craft Adversarial Data),
+  T0048 (External Harms) — names byte-exact from the authoritative atlas-data repo
+  (ATLAS v2026.05); all dispositioned **add** by architect verification (decision
+  trail on Issue #186).
+
+**Notes**
+- Purely additive: no `schema_version` change, no new ADR, `mitre-attack.yaml`
+  unchanged (701 records). The taxonomy integrity suite (5 functions) stayed green
+  throughout (526 → 542 with zero dangling endpoints). The 2 CWE-target-blocked
+  edges T029 removed (`T1070.006→CWE-1269`, `T1562→CWE-693`) remain out of scope
+  (Issue #185).
+
 ### Feature 311 — MAESTRO Matrix Model B (clean vs. n/a)
 
 **Added**

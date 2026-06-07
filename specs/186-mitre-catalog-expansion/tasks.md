@@ -85,8 +85,8 @@ triad:
 
 **Independent Test**: Diff the crosswalk against pre-change; confirm only the 10 (+k) intended edges were added and the integrity suite is 5/5.
 
-- [ ] T009 [US3] Drift guard on `schemas/taxonomy/crosswalk.yaml`: diff vs the pre-change crosswalk; confirm ONLY the 10 (+k FR-005) intended edges were added — 0 of the ~72 non-gap T029 removals (semantic-drift/dedupe/owasp→cwe/control→nist) and 0 of the 2 CWE-blocked edges (`T1070.006→CWE-1269`, `T1562→CWE-693`) reappear (FR-006, SC-004).
-- [ ] T010 [US3] Final integrity gate: `pytest tests/schemas/test_taxonomy_integrity.py` → `5 passed`; run `/aod.analyze` → no inconsistency; confirm `schemas/taxonomy/mitre-attack.yaml` unchanged at 701 records and no `schema_version` change anywhere (SC-005, SC-006).
+- [X] T009 [US3] Drift guard on `schemas/taxonomy/crosswalk.yaml`: diff vs the pre-change crosswalk; confirm ONLY the 10 (+k FR-005) intended edges were added — 0 of the ~72 non-gap T029 removals (semantic-drift/dedupe/owasp→cwe/control→nist) and 0 of the 2 CWE-blocked edges (`T1070.006→CWE-1269`, `T1562→CWE-693`) reappear (FR-006, SC-004).
+- [X] T010 [US3] Final integrity gate: `pytest tests/schemas/test_taxonomy_integrity.py` → `5 passed`; run `/aod.analyze` → no inconsistency; confirm `schemas/taxonomy/mitre-attack.yaml` unchanged at 701 records and no `schema_version` change anywhere (SC-005, SC-006).
 
 **Checkpoint**: All stories verified; crosswalk is correct and integrity-gated.
 
@@ -96,8 +96,8 @@ triad:
 
 **Purpose**: Documentation and closure (FR-009).
 
-- [ ] T011 [P] Add a `feat(186)` entry to `CHANGELOG.md` summarizing the 10 edges restored + the 6-ID disposition outcome.
-- [ ] T012 [P] Update `specs/180-taxonomy-crosswalk-collection/NEXT-SESSION.md` decision trail to point at the #186 resolution; note the 2 CWE-blocked edges as #185 scope.
+- [X] T011 [P] Add a `feat(186)` entry to `CHANGELOG.md` summarizing the 10 edges restored + the 6-ID disposition outcome.
+- [X] T012 [P] Update `specs/180-taxonomy-crosswalk-collection/NEXT-SESSION.md` decision trail to point at the #186 resolution; note the 2 CWE-blocked edges as #185 scope.
 - [ ] T013 Close GitHub Issue #186 `stage:done` with the disposition summary + deliverable references (deliver-time, via `/aod.deliver`).
 
 ---

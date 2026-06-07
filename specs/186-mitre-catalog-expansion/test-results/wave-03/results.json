@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "wave": 3,
+  "timestamp": "2026-06-07T13:12:14.046180",
+  "test_runner": "python3 -m pytest tests/schemas/test_taxonomy_integrity.py",
+  "execution_duration_ms": 980,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": {
+    "pass": 5,
+    "fail": 0,
+    "skip": 0
+  },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "note": "US3 final gate (T009 drift guard + T010). Drift guard PASS: exactly 16 edges added vs main (==restore-set), 0 of 97 non-gap removals reappeared, 2 CWE-blocked edges absent, purely additive (526 originals intact). T010: 5 passed; mitre-attack.yaml unchanged (701); 0 catalog schema_version changes; crosswalk 542 primary.",
+  "tests": [
+    {
+      "name": "test_framework_yamls_load",
+      "status": "pass"
+    },
+    {
+      "name": "test_crosswalk_loads",
+      "status": "pass"
+    },
+    {
+      "name": "test_crosswalk_referential_integrity",
+      "status": "pass"
+    },
+    {
+      "name": "test_citation_shape",
+      "status": "pass"
+    },
+    {
+      "name": "test_records_sorted",
+      "status": "pass"
+    }
+  ]
+}
