@@ -9,6 +9,14 @@
 #
 # Day 1 Spike (T007): 50 edges across 5 diverse slices per FR A5 composition.
 # All edges carry edge_type: primary. Subsequent waves (T016, T023, T024) extend toward the ≥500 floor.
+#
+# Edit lineage (post-F-180): file now holds 542 primary + 37 related + 0 superseded edges.
+#   F-186 (#186, BLP-05 Wave 2): restored 16 MITRE-scoped primary edges (526 -> 542).
+#   F-182 (#182, BLP-05 Wave 3): first tranche of related edges — 37 authored (22 high /
+#     15 medium), 0 superseded. Yield-tripwire fired (FR-002): achievable high/medium core
+#     = 37 (< 80 target) -> documented achievable floor committed, NO low-padding (anti-drift
+#     over floor-hitting). Detail: the `# ─── F-182` section near EOF +
+#     specs/182-crosswalk-related-superseded-edges/reference-edges.yaml (full harvest/audit).
 # ─── Slice 1: OWASP ↔ CWE (10 edges) ──────────────────────────────────────────
 # Source: OWASP official pages where CWE cross-references are explicitly published.
 - source:

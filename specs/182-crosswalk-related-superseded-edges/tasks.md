@@ -86,8 +86,8 @@ triad:
 
 **Independent Test**: A new author can classify a candidate edge's confidence using only `schemas/taxonomy/README.md` — including the View-ID rule and the OWASP-LLM→CWE caution.
 
-- [ ] T010 [US3] Extend `schemas/taxonomy/README.md` (FR-009): add a `related`/`superseded` calibration section with a worked example per audited source class, the CWE View-ID rule (parents are view-dependent), an explicit "OWASP-LLM→CWE is prose-only on official pages → `low`/inferred" caution, and the authoritative-source list. Keep the existing primary-edge rubric + anti-drift rule intact.
-- [ ] T011 [US3] Verify US3 (code-reviewer): confirm the README rubric extension is self-sufficient (a new author can calibrate confidence from the README alone) and that its calibration examples match the confidence assignments actually used in the authored edges (SC-006).
+- [X] T010 [US3] Extend `schemas/taxonomy/README.md` (FR-009): add a `related`/`superseded` calibration section with a worked example per audited source class, the CWE View-ID rule (parents are view-dependent), an explicit "OWASP-LLM→CWE is prose-only on official pages → `low`/inferred" caution, and the authoritative-source list. Keep the existing primary-edge rubric + anti-drift rule intact.
+- [X] T011 [US3] Verify US3 (code-reviewer): confirm the README rubric extension is self-sufficient (a new author can calibrate confidence from the README alone) and that its calibration examples match the confidence assignments actually used in the authored edges (SC-006).
 
 **Checkpoint**: edge-authoring methodology settled and documented.
 
@@ -97,7 +97,7 @@ triad:
 
 **Purpose**: No-migration verification, documentation, and closure (FR-011, FR-015).
 
-- [ ] T012 Provenance + CHANGELOG (FR-015): add an F-182 header provenance note to `schemas/taxonomy/crosswalk.yaml` (mirroring the F-186 convention) and a `feat(182)` entry to `CHANGELOG.md` (BLP-05 F-3 sibling-h3 cluster placement) summarizing the `related` floor authored + `superseded` outcome.
+- [X] T012 Provenance + CHANGELOG (FR-015): add an F-182 header provenance note to `schemas/taxonomy/crosswalk.yaml` (mirroring the F-186 convention) and a `feat(182)` entry to `CHANGELOG.md` (BLP-05 F-3 sibling-h3 cluster placement) summarizing the `related` floor authored + `superseded` outcome.
 - [ ] T013 No-migration diff guard (FR-011, code-reviewer) — runs AFTER T012 so it sees the final diff: confirm the feature diff touches ONLY `schemas/taxonomy/crosswalk.yaml`, `schemas/taxonomy/README.md`, `CHANGELOG.md`, and `specs/182-*` artifacts — **0** changes to any catalog YAML, `tests/schemas/test_taxonomy_integrity.py`, `schema_version`, or any ADR (incl. ADR-027); `primary` count == 542 (SC-005).
 - [ ] T014 Final integrity gate: `pytest tests/schemas/test_taxonomy_integrity.py` → `5 passed`; run `/aod.analyze` → no inconsistency (FR-013; SC-005).
 - [ ] T015 Close GitHub Issue #182 `stage:done` with the deliverable summary (`related` count, `superseded` count, deferred-set reference) — deliver-time, via `/aod.deliver` (FR-015).

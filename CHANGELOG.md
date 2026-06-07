@@ -33,6 +33,33 @@ Feature 241's catalog expansion has since unblocked, and closed the open
   edges T029 removed (`T1070.006→CWE-1269`, `T1562→CWE-693`) remain out of scope
   (Issue #185).
 
+### Feature 182 — Crosswalk related/superseded edge expansion (BLP-05 Wave 3 / F-3, #182)
+
+Authored the first tranche of non-`primary` crosswalk edges from audited published
+source classes, committing the documented achievable floor when the yield-tripwire
+revealed the high/medium core fell below the original target band.
+
+**Added**
+- 37 `related` crosswalk edges (`crosswalk.yaml`) from four audited published source
+  classes — CWE↔CWE 22 (16 high / 6 medium), ATLAS→ATT&CK 7 (6 high / 1 medium),
+  OWASP-LLM→ATLAS 8 (8 medium); 22 high / 15 medium total. CWE↔CWE citations record
+  the relationship Nature and the CWE View ID (FR-006).
+- README §4.1 `related`/`superseded` calibration rubric: per-class worked examples,
+  the CWE View-ID rule, the OWASP-LLM→CWE prose-only caution, and the authoritative-source
+  list.
+
+**Notes**
+- 0 `superseded` edges authored — the catalog snapshot holds current editions only, so
+  supersession *old* endpoints are absent; deferred classes are recorded in
+  `specs/182-crosswalk-related-superseded-edges/deferred-superseded.md`.
+- **Yield-tripwire** (FR-002): achievable high/medium core = 37 (< 80 target band) →
+  documented achievable floor committed with NO `low`-padding (anti-drift over
+  floor-hitting). Root cause — OWASP-Web→CWE yields 0 (F-180 already authored every
+  in-catalog ref as `primary`) and the 542-edge primary graph already captured the dense
+  relationships.
+- Purely additive: no `schema_version` change, no new ADR, no catalog/test change;
+  `primary` stays 542. The taxonomy integrity suite (5 functions) stayed green throughout.
+
 ### Feature 311 — MAESTRO Matrix Model B (clean vs. n/a)
 
 **Added**
