@@ -12,31 +12,25 @@ fn main() -> ExitCode {
         }
     };
 
-    match report_data_output(&target_dir, &template_dir) {
-        Ok(output) => {
-            if let Some(output_path) = output_path {
-                if let Some(parent) = output_path.parent() {
-                    if let Err(err) = std::fs::create_dir_all(parent) {
-                        eprintln!("failed to create output directory: {err}");
-                        return ExitCode::from(1);
-                    }
-                }
-                if let Err(err) = std::fs::write(&output_path, output.as_bytes()) {
-                    eprintln!("failed to write output file: {err}");
-                    return ExitCode::from(1);
-                }
-            } else {
-                print!("{output}");
-            }
+    let output = report_data_output(&target_dir, &template_dir);
 
-            eprintln!("report-data.typ generated");
-            ExitCode::SUCCESS
+    if let Some(output_path) = output_path {
+        if let Some(parent) = output_path.parent() {
+            if let Err(err) = std::fs::create_dir_all(parent) {
+                eprintln!("failed to create output directory: {err}");
+                return ExitCode::from(1);
+            }
         }
-        Err(err) => {
-            eprintln!("failed to build report data: {err}");
-            ExitCode::from(1)
+        if let Err(err) = std::fs::write(&output_path, output.as_bytes()) {
+            eprintln!("failed to write output file: {err}");
+            return ExitCode::from(1);
         }
+    } else {
+        print!("{output}");
     }
+
+    eprintln!("report-data.typ generated");
+    ExitCode::SUCCESS
 }
 
 fn parse_args() -> Result<(PathBuf, PathBuf, Option<PathBuf>), String> {

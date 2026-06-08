@@ -33,7 +33,7 @@ fn build_report_data_typst_sets_executive_architecture_flags_and_relative_path()
         &[JPEG_MAGIC, b"payload"].concat(),
     );
 
-    let rendered = build_report_data_typst(&target_dir, &template_dir).expect("rendered");
+    let rendered = build_report_data_typst(&target_dir, &template_dir);
 
     assert!(rendered.contains("#let has-executive-architecture = true"));
     let path_line = rendered
@@ -54,7 +54,7 @@ fn build_report_data_typst_treats_zero_byte_executive_architecture_images_as_abs
 
     write_bytes(&target_dir.join("threat-executive-architecture.jpg"), &[]);
 
-    let rendered = build_report_data_typst(&target_dir, &template_dir).expect("rendered");
+    let rendered = build_report_data_typst(&target_dir, &template_dir);
 
     assert!(rendered.contains("#let has-executive-architecture = false"));
     assert!(rendered.contains("#let executive-architecture-image-path = \"\""));
@@ -72,7 +72,7 @@ fn build_report_data_typst_corrects_mislabeled_pngs_to_png_siblings() {
         &[PNG_MAGIC, b"payload"].concat(),
     );
 
-    let rendered = build_report_data_typst(&target_dir, &template_dir).expect("rendered");
+    let rendered = build_report_data_typst(&target_dir, &template_dir);
 
     assert!(rendered.contains("#let has-executive-architecture = true"));
     let path_line = rendered

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust report-data cleanup
+
+Simplified the Rust `report-data` path by collapsing the internal Typst renderer to a plain `String` return value while preserving the existing CLI behavior.
+
 ### Rust report-data output flag and CLI parity
 
 Added an optional `--output` flag to the Rust `report-data` binary so it can write Typst output directly to disk like the legacy Python script, while still supporting stdout when no output path is provided.

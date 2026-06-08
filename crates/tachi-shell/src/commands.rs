@@ -73,7 +73,7 @@ pub fn infographic_data_output(root: &Path, template: &str) -> Result<String, St
         .map_err(|err| format!("failed to serialize infographic payload: {err}"))
 }
 
-pub fn report_data_output(target_dir: &Path, template_dir: &Path) -> Result<String, String> {
+pub fn report_data_output(target_dir: &Path, template_dir: &Path) -> String {
     build_report_data_typst(target_dir, template_dir)
 }
 

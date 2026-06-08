@@ -9,9 +9,9 @@ pub struct ReportImageBinding {
     pub path: Option<String>,
 }
 
-pub fn build_report_data_typst(target_dir: &Path, template_dir: &Path) -> Result<String, String> {
+pub fn build_report_data_typst(target_dir: &Path, template_dir: &Path) -> String {
     let images = detect_images(target_dir, template_dir);
-    Ok(render_report_data_typst(&[
+    render_report_data_typst(&[
         ReportImageBinding {
             has_name: "has-funnel-image",
             path_name: "funnel-image-path",
@@ -42,7 +42,7 @@ pub fn build_report_data_typst(target_dir: &Path, template_dir: &Path) -> Result
             path_name: "executive-architecture-image-path",
             path: images.executive_architecture_image_path,
         },
-    ]))
+    ])
 }
 
 fn render_report_data_typst(bindings: &[ReportImageBinding]) -> String {

@@ -80,8 +80,6 @@ They are intentionally small, phase-aligned, and mergeable in sequence.
 These are intentionally deferred cleanup items tied to the RT-012 report-data slice.
 
 - `report-data --output` ergonomics: add an optional output-file flag so the Rust binary can mirror the old Python script without shell redirection.
-- `build_report_data_typst` return type cleanup: collapse the helper to `String` once the implementation is confirmed to have no failure path.
-
 ## Execution Order
 
 1. RT-010
