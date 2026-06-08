@@ -53,15 +53,21 @@ pub fn coverage_family_catalog() -> Vec<CoverageFamily> {
 }
 
 pub fn collect_audit(root: &Path) -> CoverageAudit {
-    let tests_root = root.join("tests");
     let mut audit = CoverageAudit::default();
+    let mut paths = Vec::new();
 
-    if !tests_root.exists() {
-        return audit;
+    let python_tests_root = root.join("tests");
+    if python_tests_root.exists() {
+        collect_python_test_paths(&python_tests_root, &mut paths);
     }
 
-    let mut paths = Vec::new();
-    collect_test_paths(&tests_root, &mut paths);
+    let rust_test_roots = [root.join("crates"), root.join("src-tauri")];
+    for rust_root in rust_test_roots {
+        if rust_root.exists() {
+            collect_rust_test_paths(&rust_root, &mut paths);
+        }
+    }
+
     paths.sort();
 
     for path in paths {
@@ -141,6 +147,13 @@ fn classify_test(relpath: &Path) -> TestCategory {
     let relpath_str = relpath.to_string_lossy();
     let name = relpath.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
+    if relpath.extension().and_then(|ext| ext.to_str()) == Some("rs")
+        && relpath
+            .components()
+            .any(|component| component.as_os_str() == "tests")
+    {
+        return TestCategory::Integration;
+    }
     if matches_explicit_module(relpath, SMOKE_MODULES) {
         return TestCategory::Smoke;
     }
@@ -166,7 +179,7 @@ fn matches_explicit_module(relpath: &Path, modules: &[&str]) -> bool {
     modules.iter().any(|module| relpath == Path::new(module))
 }
 
-fn collect_test_paths(dir: &Path, out: &mut Vec<PathBuf>) {
+fn collect_python_test_paths(dir: &Path, out: &mut Vec<PathBuf>) {
     let entries = match fs::read_dir(dir) {
         Ok(entries) => entries,
         Err(_) => return,
@@ -175,7 +188,7 @@ fn collect_test_paths(dir: &Path, out: &mut Vec<PathBuf>) {
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
-            collect_test_paths(&path, out);
+            collect_python_test_paths(&path, out);
             continue;
         }
 
@@ -183,6 +196,32 @@ fn collect_test_paths(dir: &Path, out: &mut Vec<PathBuf>) {
             continue;
         };
         if name.starts_with("test_") && name.ends_with(".py") {
+            out.push(path);
+        }
+    }
+}
+
+fn collect_rust_test_paths(dir: &Path, out: &mut Vec<PathBuf>) {
+    let entries = match fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(_) => return,
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_rust_test_paths(&path, out);
+            continue;
+        }
+
+        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        if name.ends_with(".rs")
+            && path
+                .components()
+                .any(|component| component.as_os_str() == "tests")
+        {
             out.push(path);
         }
     }

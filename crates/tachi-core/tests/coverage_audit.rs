@@ -45,3 +45,28 @@ fn collect_audit_classifies_active_and_fixture_copies() {
     assert!(rendered.contains("Unit: 1"));
     assert!(rendered.contains("Integration: 1"));
 }
+
+#[test]
+fn collect_audit_includes_rust_test_modules_as_active_integration_coverage() {
+    let root = unique_temp_dir("tachi-coverage-audit-rust");
+
+    write_file(&root.join("tests/scripts/test_smoke.py"));
+    write_file(&root.join("crates/tachi-core/tests/assets.rs"));
+    write_file(&root.join("crates/tachi-shell/tests/infographic_data.rs"));
+    write_file(&root.join("tests/fixtures/init-baseline-tree/tests/scripts/test_fixture_unit.py"));
+
+    let audit = collect_audit(&root);
+
+    assert_eq!(audit.active.len(), 3);
+    assert_eq!(audit.fixture_copies.len(), 1);
+    assert_eq!(audit.smoke.len(), 1);
+    assert_eq!(audit.integration.len(), 2);
+    assert_eq!(audit.unit.len(), 0);
+    assert_eq!(audit.e2e.len(), 0);
+    assert_eq!(audit.support.len(), 0);
+
+    let rendered = render(&audit, &root);
+    assert!(rendered.contains("Active test modules: 3"));
+    assert!(rendered.contains("Integration: 2"));
+    assert!(rendered.contains("Smoke: 1"));
+}
