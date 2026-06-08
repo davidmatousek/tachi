@@ -4,6 +4,7 @@ use std::process::Output;
 
 use tachi_core::coverage_audit::{collect_audit, render};
 use tachi_core::infographic::build_infographic_payload;
+use tachi_core::report_data::build_report_data_typst;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommandOutput {
@@ -70,6 +71,10 @@ pub fn infographic_data_output(root: &Path, template: &str) -> Result<String, St
     let payload = build_infographic_payload(root, template)?;
     serde_json::to_string_pretty(&payload)
         .map_err(|err| format!("failed to serialize infographic payload: {err}"))
+}
+
+pub fn report_data_output(target_dir: &Path, template_dir: &Path) -> Result<String, String> {
+    build_report_data_typst(target_dir, template_dir)
 }
 
 pub fn install_output(root: &Path, args: &[&str]) -> CommandOutput {

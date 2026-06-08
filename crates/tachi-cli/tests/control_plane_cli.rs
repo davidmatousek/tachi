@@ -7,6 +7,9 @@ use std::process::Command;
 use serde_json::Value;
 
 const TEMPLATE_DIR: &str = "templates/tachi/infographics";
+const REPORT_TEMPLATE_DIR: &str = "templates/tachi/security-report";
+const REPORT_TARGET_DIR: &str = "examples/agentic-app/sample-report";
+const JPEG_MAGIC: &[u8] = b"\xff\xd8\xff\xe0\x00\x10JFIF";
 const THREATS_MD: &str = r#"
 # Agentic AI Application
 
@@ -91,6 +94,28 @@ FOOTER
 ```"##,
     )
     .expect("write stack template");
+
+    root
+}
+
+fn fixture_report_data_repo() -> PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "tachi-rust-report-data-cli-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos()
+    ));
+
+    let target_dir = root.join(REPORT_TARGET_DIR);
+    let template_dir = root.join(REPORT_TEMPLATE_DIR);
+    fs::create_dir_all(&target_dir).expect("create target dir");
+    fs::create_dir_all(&template_dir).expect("create template dir");
+    fs::write(
+        target_dir.join("threat-executive-architecture.jpg"),
+        [JPEG_MAGIC, b"payload"].concat(),
+    )
+    .expect("write executive architecture image");
 
     root
 }
@@ -218,4 +243,27 @@ fn infographic_data_binary_prints_help_to_stderr() {
     assert!(output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("usage: infographic-data"));
+}
+
+#[test]
+fn report_data_binary_returns_typst_payload_for_executive_architecture() {
+    let repo_root = fixture_report_data_repo();
+    let output = Command::new(binary_path("report-data"))
+        .args([
+            "--target-dir",
+            repo_root.join(REPORT_TARGET_DIR).to_string_lossy().as_ref(),
+            "--template-dir",
+            repo_root.join(REPORT_TEMPLATE_DIR).to_string_lossy().as_ref(),
+        ])
+        .output()
+        .expect("run report-data binary");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("#let has-executive-architecture = true"));
+    let path_line = stdout
+        .lines()
+        .find(|line| line.starts_with("#let executive-architecture-image-path"))
+        .expect("executive architecture path line");
+    assert!(path_line.contains("threat-executive-architecture.jpg"));
 }

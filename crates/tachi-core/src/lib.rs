@@ -7,6 +7,7 @@ pub mod coverage_taxonomy;
 pub mod infographic;
 pub mod parity;
 pub mod parsers;
+pub mod report_data;
 pub mod report_extraction;
 pub mod risk_scores;
 pub mod sarif_common;
