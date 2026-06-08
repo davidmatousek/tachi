@@ -4,7 +4,7 @@ use std::process::ExitCode;
 use tachi_shell::commands::report_data_output;
 
 fn main() -> ExitCode {
-    let (target_dir, template_dir) = match parse_args() {
+    let (target_dir, template_dir, output_path) = match parse_args() {
         Ok(values) => values,
         Err(message) => {
             eprintln!("{message}");
@@ -14,7 +14,22 @@ fn main() -> ExitCode {
 
     match report_data_output(&target_dir, &template_dir) {
         Ok(output) => {
-            print!("{output}");
+            if let Some(output_path) = output_path {
+                if let Some(parent) = output_path.parent() {
+                    if let Err(err) = std::fs::create_dir_all(parent) {
+                        eprintln!("failed to create output directory: {err}");
+                        return ExitCode::from(1);
+                    }
+                }
+                if let Err(err) = std::fs::write(&output_path, output.as_bytes()) {
+                    eprintln!("failed to write output file: {err}");
+                    return ExitCode::from(1);
+                }
+            } else {
+                print!("{output}");
+            }
+
+            eprintln!("report-data.typ generated");
             ExitCode::SUCCESS
         }
         Err(err) => {
@@ -24,10 +39,11 @@ fn main() -> ExitCode {
     }
 }
 
-fn parse_args() -> Result<(PathBuf, PathBuf), String> {
+fn parse_args() -> Result<(PathBuf, PathBuf, Option<PathBuf>), String> {
     let mut args = std::env::args().skip(1);
     let mut target_dir = None;
     let mut template_dir = None;
+    let mut output_path = None;
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -43,9 +59,15 @@ fn parse_args() -> Result<(PathBuf, PathBuf), String> {
                     .ok_or_else(|| String::from("--template-dir requires a path argument"))?;
                 template_dir = Some(PathBuf::from(value));
             }
+            "--output" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| String::from("--output requires a path argument"))?;
+                output_path = Some(PathBuf::from(value));
+            }
             "--help" | "-h" => {
                 return Err(String::from(
-                    "usage: report-data --target-dir PATH --template-dir PATH",
+                    "usage: report-data --target-dir PATH --template-dir PATH [--output PATH]",
                 ));
             }
             other => {
@@ -56,5 +78,5 @@ fn parse_args() -> Result<(PathBuf, PathBuf), String> {
 
     let target_dir = target_dir.ok_or_else(|| String::from("--target-dir is required"))?;
     let template_dir = template_dir.ok_or_else(|| String::from("--template-dir is required"))?;
-    Ok((target_dir, template_dir))
+    Ok((target_dir, template_dir, output_path))
 }

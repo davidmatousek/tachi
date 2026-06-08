@@ -267,3 +267,31 @@ fn report_data_binary_returns_typst_payload_for_executive_architecture() {
         .expect("executive architecture path line");
     assert!(path_line.contains("threat-executive-architecture.jpg"));
 }
+
+#[test]
+fn report_data_binary_writes_output_file_when_requested() {
+    let repo_root = fixture_report_data_repo();
+    let output_path = repo_root.join("generated/report-data.typ");
+    let output = Command::new(binary_path("report-data"))
+        .args([
+            "--target-dir",
+            repo_root.join(REPORT_TARGET_DIR).to_string_lossy().as_ref(),
+            "--template-dir",
+            repo_root.join(REPORT_TEMPLATE_DIR).to_string_lossy().as_ref(),
+            "--output",
+            output_path.to_string_lossy().as_ref(),
+        ])
+        .output()
+        .expect("run report-data binary");
+
+    assert!(output.status.success());
+    assert!(
+        output_path.exists(),
+        "report-data binary should write the requested output file"
+    );
+
+    let file_content = fs::read_to_string(&output_path).expect("read output file");
+    assert!(file_content.contains("#let has-executive-architecture = true"));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("report-data.typ generated"));
+}

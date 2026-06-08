@@ -75,6 +75,13 @@ They are intentionally small, phase-aligned, and mergeable in sequence.
   - Error handling is deterministic and actionable across CLI and Tauri paths.
 - **Depends on**: RT-012, RT-013, RT-014
 
+## Backlog Follow-Ups
+
+These are intentionally deferred cleanup items tied to the RT-012 report-data slice.
+
+- `report-data --output` ergonomics: add an optional output-file flag so the Rust binary can mirror the old Python script without shell redirection.
+- `build_report_data_typst` return type cleanup: collapse the helper to `String` once the implementation is confirmed to have no failure path.
+
 ## Execution Order
 
 1. RT-010
@@ -87,4 +94,3 @@ They are intentionally small, phase-aligned, and mergeable in sequence.
 ## Validation Gate
 
 Each card must pass its local unit, integration, and E2E validation before the next card starts, and the workspace coverage floor must remain at or above 80%.
-
