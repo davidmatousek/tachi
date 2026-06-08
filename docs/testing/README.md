@@ -70,7 +70,7 @@ This document provides guidance on testing strategy for {{PROJECT_NAME}}. It doe
 
 - **Unit/Integration**: `cargo test`, `cargo nextest` when faster isolation is useful
 - **Coverage**: `cargo llvm-cov`
-- **CLI smoke**: shell wrappers around `cargo run` or installed binaries such as `coverage-audit`, `infographic-data`, `report-data`, and `threats-sarif`
+- **CLI smoke**: shell wrappers around `cargo run` or installed binaries such as `coverage-audit`, `infographic-data`, `report-data`, `threats-sarif`, and `risk-scores-sarif`
 - `report-data` accepts an optional `--output` path when direct file emission is preferred over stdout capture.
 
 **Example Setup**

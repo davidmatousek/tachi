@@ -10,6 +10,30 @@ const TEMPLATE_DIR: &str = "templates/tachi/infographics";
 const REPORT_TEMPLATE_DIR: &str = "templates/tachi/security-report";
 const REPORT_TARGET_DIR: &str = "examples/agentic-app/sample-report";
 const JPEG_MAGIC: &[u8] = b"\xff\xd8\xff\xe0\x00\x10JFIF";
+const RISK_SCORES_MD: &str = r#"
+## 2. Scored Threat Table
+
+| ID | Component | Threat | CVSS | Exploitability | Scalability | Reachability | Composite | Severity | SLA | Disposition |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| AG-8 | Agent | Prompt injection | 9.1 | 9.0 | 8.5 | 8.0 | 8.8 | High | 7 | Monitor |
+
+## 3. Dimensional Breakdown
+
+### AG-8: Prompt injection
+
+**Component**: Agent
+**Category**: Agentic Threats
+**MAESTRO Layer**: L3 Triage
+**CVSS Vector**: `AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:L`
+**Correlation Group**: Scores inherited from primary finding AG-3
+*Score source: correlation primary*
+
+## 4. Governance Fields
+
+| ID | Owner | SLA | Disposition | Review Date |
+| --- | --- | --- | --- | --- |
+| AG-8 | Alice | 7 | Monitor | 2026-06-06 |
+"#;
 const THREATS_SARIF_MD: &str = r#"
 # Agentic AI Application
 
@@ -152,6 +176,21 @@ fn fixture_threats_sarif_repo() -> PathBuf {
     ));
 
     fs::create_dir_all(&root).expect("create fixture root");
+    fs::write(root.join("threats.md"), THREATS_SARIF_MD).expect("write threats");
+    root
+}
+
+fn fixture_risk_scores_sarif_repo() -> PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "tachi-rust-risk-scores-sarif-cli-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos()
+    ));
+
+    fs::create_dir_all(&root).expect("create fixture root");
+    fs::write(root.join("risk-scores.md"), RISK_SCORES_MD).expect("write risk scores");
     fs::write(root.join("threats.md"), THREATS_SARIF_MD).expect("write threats");
     root
 }
@@ -361,4 +400,38 @@ fn threats_sarif_binary_writes_sarif_file_and_marks_ag8_metadata() {
     assert_eq!(result["properties"]["asi07_emission"], true);
     assert_eq!(result["properties"]["pattern_category"], 9);
     assert!(String::from_utf8_lossy(&output.stderr).contains("wrote 1 findings"));
+}
+
+#[test]
+fn risk_scores_sarif_binary_writes_sarif_file_and_marks_ag8_metadata() {
+    let repo_root = fixture_risk_scores_sarif_repo();
+    let output_path = repo_root.join("generated/risk-scores.sarif");
+    let output = Command::new(binary_path("risk-scores-sarif"))
+        .args([
+            "--risk-scores",
+            repo_root.join("risk-scores.md").to_string_lossy().as_ref(),
+            "--threats",
+            repo_root.join("threats.md").to_string_lossy().as_ref(),
+            "--output",
+            output_path.to_string_lossy().as_ref(),
+        ])
+        .output()
+        .expect("run risk-scores-sarif binary");
+
+    assert!(output.status.success());
+    assert!(
+        output_path.exists(),
+        "risk-scores-sarif binary should write the requested output file"
+    );
+
+    let sarif: Value = serde_json::from_str(
+        &fs::read_to_string(&output_path).expect("read risk scores sarif output"),
+    )
+    .expect("valid SARIF JSON");
+    let result = &sarif["runs"][0]["results"][0];
+    assert_eq!(result["partialFingerprints"]["findingId/v1"], "AG-8");
+    assert_eq!(result["properties"]["security-severity"], "8.8");
+    assert_eq!(result["properties"]["score-source"], "inherited");
+    assert_eq!(result["properties"]["asi07_emission"], true);
+    assert!(String::from_utf8_lossy(&output.stderr).contains("wrote 1 results"));
 }

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust risk scores SARIF CLI slice
+
+Added a Rust-native `risk-scores-sarif` command that reads `risk-scores.md` and `threats.md`, builds SARIF through the shared Rust risk-score builder, and writes the output file with AG-8 enrichment metadata preserved.
+
 ### Rust threats SARIF CLI slice
 
 Added a Rust-native `threats-sarif` command that reads `threats.md`, builds SARIF from the shared Rust parser and threat builder, and writes the output file with AG-8 metadata preserved for the existing enrichment path.
