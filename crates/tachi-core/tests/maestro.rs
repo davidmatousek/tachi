@@ -11,21 +11,21 @@ fn parse_maestro_layer_distribution_reads_table_rows() {
 
 | MAESTRO Layer | Finding Count | Highest Severity |
 | --- | --- | --- |
-| L1 — Foundation Model | 4 | High |
-| L7 — Input Validation | 1 | Critical |
+| L5 — Infrastructure Controls | 4 | High |
+| L7 — User Interface | 1 | Critical |
 "#;
 
     let actual = parse_maestro_layer_distribution(markdown);
     let expected = vec![
         MaestroLayerDistribution {
-            layer_id: String::from("L1"),
-            layer_name: String::from("Foundation Model"),
+            layer_id: String::from("L5"),
+            layer_name: String::from("Evaluation and Observability"),
             finding_count: 4,
             highest_severity: String::from("High"),
         },
         MaestroLayerDistribution {
             layer_id: String::from("L7"),
-            layer_name: String::from("Input Validation"),
+            layer_name: String::from("Agent Ecosystem"),
             finding_count: 1,
             highest_severity: String::from("Critical"),
         },
@@ -51,7 +51,7 @@ fn compute_most_exposed_layer_prefers_count_severity_then_layer_id() {
         },
         MaestroLayerDistribution {
             layer_id: String::from("L7"),
-            layer_name: String::from("Input Validation"),
+            layer_name: String::from("Agent Ecosystem"),
             finding_count: 7,
             highest_severity: String::from("Low"),
         },
@@ -59,5 +59,5 @@ fn compute_most_exposed_layer_prefers_count_severity_then_layer_id() {
 
     let actual = compute_most_exposed_layer(&layer_distribution);
 
-    assert_eq!(actual, "L7 — Input Validation");
+    assert_eq!(actual, "L7 — Agent Ecosystem");
 }

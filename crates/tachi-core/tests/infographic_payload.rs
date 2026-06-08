@@ -15,32 +15,32 @@ const MAESTRO_THREATS_MD: &str = r#"
 
 | Component | Type | MAESTRO Layer |
 | --- | --- | --- |
-| LLM Agent Orchestrator | Service | L2 — Foundation Model |
-| MCP Tool Server | Service | L2 — Foundation Model |
-| Guardrails Service | Service | L5 — Infrastructure Controls |
+| LLM Agent Orchestrator | Service | L5 — Infrastructure Controls |
+| MCP Tool Server | Service | L5 — Security |
+| Guardrails Service | Service | L6 — Agent Ecosystem |
 
 #### Risk by MAESTRO Layer
 
 | MAESTRO Layer | Finding Count | Highest Severity |
 | --- | --- | --- |
-| L2 — Foundation Model | 2 | High |
-| L5 — Infrastructure Controls | 1 | Critical |
+| L5 — Security | 2 | High |
+| L6 — Agent Ecosystem | 1 | Critical |
 
 ### 3. AI Agents
 
 | ID | Component | MAESTRO Layer | Risk Level | Threat | Mitigation |
 | --- | --- | --- | --- | --- | --- |
-| S-1 | LLM Agent Orchestrator | L2 — Foundation Model | High | Prompt override risk | Harden instruction guards |
-| A-1 | MCP Tool Server | L2 — Foundation Model | Medium | Tool abuse injection | Validate tool args |
-| I-1 | Guardrails Service | L5 — Infrastructure Controls | Critical | Model output exfiltration | Enforce egress controls |
+| S-1 | LLM Agent Orchestrator | L5 — Infrastructure Controls | High | Prompt override risk | Harden instruction guards |
+| A-1 | MCP Tool Server | L5 — Security | Medium | Tool abuse injection | Validate tool args |
+| I-1 | Guardrails Service | L6 — Agent Ecosystem | Critical | Model output exfiltration | Enforce egress controls |
 
 ## 7. Recommended Actions
 
 | Finding ID | Component | MAESTRO Layer | Risk Level | Threat | Mitigation |
 | --- | --- | --- | --- | --- | --- |
-| S-1 | LLM Agent Orchestrator | L2 — Foundation Model | High | Prompt override risk | Harden instruction guards |
-| A-1 | MCP Tool Server | L2 — Foundation Model | Medium | Tool abuse injection | Validate tool args |
-| I-1 | Guardrails Service | L5 — Infrastructure Controls | Critical | Model output exfiltration | Enforce egress controls |
+| S-1 | LLM Agent Orchestrator | L5 — Infrastructure Controls | High | Prompt override risk | Harden instruction guards |
+| A-1 | MCP Tool Server | L5 — Security | Medium | Tool abuse injection | Validate tool args |
+| I-1 | Guardrails Service | L6 — Agent Ecosystem | Critical | Model output exfiltration | Enforce egress controls |
 
 ## 6. Risk Summary
 
@@ -57,14 +57,14 @@ const MAESTRO_THREATS_MD: &str = r#"
 fn layer_distribution_fixture() -> Vec<MaestroLayerDistribution> {
     vec![
         MaestroLayerDistribution {
-            layer_id: String::from("L2"),
-            layer_name: String::from("Foundation Model"),
+            layer_id: String::from("L5"),
+            layer_name: String::from("Evaluation and Observability"),
             finding_count: 2,
             highest_severity: String::from("High"),
         },
         MaestroLayerDistribution {
-            layer_id: String::from("L5"),
-            layer_name: String::from("Infrastructure Controls"),
+            layer_id: String::from("L6"),
+            layer_name: String::from("Security and Compliance"),
             finding_count: 1,
             highest_severity: String::from("Critical"),
         },
@@ -74,8 +74,8 @@ fn layer_distribution_fixture() -> Vec<MaestroLayerDistribution> {
 fn expected_stack_payload() -> Value {
     let per_layer = vec![
         PerLayerSummary {
-            layer_id: String::from("L2"),
-            layer_name: String::from("Foundation Model"),
+            layer_id: String::from("L5"),
+            layer_name: String::from("Evaluation and Observability"),
             finding_count: 2,
             highest_severity: String::from("High"),
             top_findings: vec![
@@ -90,8 +90,8 @@ fn expected_stack_payload() -> Value {
             ],
         },
         PerLayerSummary {
-            layer_id: String::from("L5"),
-            layer_name: String::from("Infrastructure Controls"),
+            layer_id: String::from("L6"),
+            layer_name: String::from("Security and Compliance"),
             finding_count: 1,
             highest_severity: String::from("Critical"),
             top_findings: vec![tachi_core::infographic::PerLayerTopFinding {
@@ -103,7 +103,7 @@ fn expected_stack_payload() -> Value {
 
     let expected_template_data = serde_json::json!({
         "maestro_layer_distribution": layer_distribution_fixture(),
-        "most_exposed_layer": "L2 — Foundation Model",
+        "most_exposed_layer": "L5 — Evaluation and Observability",
         "per_layer_summaries": per_layer,
         "has_maestro_data": true,
     });
@@ -141,7 +141,7 @@ fn build_infographic_payload_maestro_heatmap_includes_distribution_and_flags() {
         .iter()
         .find(|row| row["component"] == "LLM Agent Orchestrator")
         .expect("LLM row exists");
-    assert_eq!(l2_row["L2"], Value::String("High".to_string()));
+    assert_eq!(l2_row["L5"], Value::String("High".to_string()));
 }
 
 fn temp_dir_with_threats() -> std::path::PathBuf {

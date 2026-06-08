@@ -14,9 +14,15 @@ fn group_maestro_findings_by_layer_orders_canonical_layers_before_unclassified()
             },
             MaestroLayerDistribution {
                 layer_id: String::from("L5"),
-                layer_name: String::from("Infrastructure Controls"),
+                layer_name: String::from("Evaluation and Observability"),
                 finding_count: 1,
                 highest_severity: String::from("Critical"),
+            },
+            MaestroLayerDistribution {
+                layer_id: String::from("L6"),
+                layer_name: String::from("Security and Compliance"),
+                finding_count: 1,
+                highest_severity: String::from("High"),
             },
         ],
         per_finding_maestro: vec![
@@ -28,18 +34,18 @@ fn group_maestro_findings_by_layer_orders_canonical_layers_before_unclassified()
                 threat: String::from("Prompt override risk"),
             },
             MaestroFinding {
-                id: String::from("I-1"),
-                component: String::from("Guardrails Service"),
-                maestro_layer: String::from(""),
-                risk_level: String::from("Critical"),
-                threat: String::from("Model output exfiltration"),
-            },
-            MaestroFinding {
                 id: String::from("A-1"),
                 component: String::from("MCP Tool Server"),
                 maestro_layer: String::from("L5 — Infrastructure Controls"),
                 risk_level: String::from("Medium"),
                 threat: String::from("Tool abuse injection"),
+            },
+            MaestroFinding {
+                id: String::from("I-1"),
+                component: String::from("Guardrails Service"),
+                maestro_layer: String::from("Guardrails"),
+                risk_level: String::from("Critical"),
+                threat: String::from("Model output exfiltration"),
             },
         ],
         ..Default::default()
@@ -60,7 +66,7 @@ fn group_maestro_findings_by_layer_orders_canonical_layers_before_unclassified()
     );
 
     assert_eq!(groups[1].layer_id, "L5");
-    assert_eq!(groups[1].layer_name, "Infrastructure Controls");
+    assert_eq!(groups[1].layer_name, "Evaluation and Observability");
     assert_eq!(
         groups[1]
             .findings
@@ -70,8 +76,8 @@ fn group_maestro_findings_by_layer_orders_canonical_layers_before_unclassified()
         vec!["A-1"]
     );
 
-    assert_eq!(groups[2].layer_id, "Unclassified");
-    assert_eq!(groups[2].layer_name, "Unclassified");
+    assert_eq!(groups[2].layer_id, "L6");
+    assert_eq!(groups[2].layer_name, "Security and Compliance");
     assert_eq!(
         groups[2]
             .findings

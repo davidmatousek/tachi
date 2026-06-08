@@ -14,16 +14,19 @@ fn parse_component_layer_mapping_reads_layer_table() {
 
 | Component | Type | MAESTRO Layer |
 | --- | --- | --- |
-| API Gateway | API | L2 — Guardrails |
-| Policy Engine | Service | L5 — Infrastructure Controls |
+| API Gateway | API | L5 — Infrastructure Controls |
+| Policy Engine | Service | Guardrails |
 "#;
 
     let mapping = parse_component_layer_mapping(threats_markdown);
     let expected: BTreeMap<String, String> = [
-        (String::from("API Gateway"), String::from("L2 — Guardrails")),
+        (
+            String::from("API Gateway"),
+            String::from("L5 — Evaluation and Observability"),
+        ),
         (
             String::from("Policy Engine"),
-            String::from("L5 — Infrastructure Controls"),
+            String::from("L6 — Security and Compliance"),
         ),
     ]
     .into_iter()
@@ -39,21 +42,21 @@ fn extract_maestro_data_aggregates_sections_and_flags_presence() {
 
 | Component | Type | MAESTRO Layer |
 | --- | --- | --- |
-| API Gateway | API | L2 — Guardrails |
-| Policy Engine | Service | L5 — Infrastructure Controls |
+| API Gateway | API | L5 — Infrastructure Controls |
+| Policy Engine | Service | Guardrails |
 
 #### Risk by MAESTRO Layer
 
 | MAESTRO Layer | Finding Count | Highest Severity |
 | --- | --- | --- |
-| L2 — Guardrails | 2 | High |
-| L5 — Infrastructure Controls | 1 | Critical |
+| L5 — Security | 2 | High |
+| L6 — Agent Ecosystem | 1 | Critical |
 
 ### 3. AI
 
 | ID | Component | MAESTRO Layer | Risk Level |
 | --- | --- | --- | --- |
-| S-1 | API Gateway | L2 — Guardrails | High |
+| S-1 | API Gateway | L5 — Security | High |
 "#;
 
     let actual = extract_maestro_data(threats_markdown);
@@ -61,24 +64,27 @@ fn extract_maestro_data_aggregates_sections_and_flags_presence() {
     let expected = MaestroData {
         maestro_layer_distribution: vec![
             MaestroLayerDistribution {
-                layer_id: String::from("L2"),
-                layer_name: String::from("Guardrails"),
+                layer_id: String::from("L5"),
+                layer_name: String::from("Evaluation and Observability"),
                 finding_count: 2,
                 highest_severity: String::from("High"),
             },
             MaestroLayerDistribution {
-                layer_id: String::from("L5"),
-                layer_name: String::from("Infrastructure Controls"),
+                layer_id: String::from("L6"),
+                layer_name: String::from("Security and Compliance"),
                 finding_count: 1,
                 highest_severity: String::from("Critical"),
             },
         ],
-        most_exposed_layer: String::from("L2 — Guardrails"),
+        most_exposed_layer: String::from("L5 — Evaluation and Observability"),
         component_layer_map: [
-            (String::from("API Gateway"), String::from("L2 — Guardrails")),
+            (
+                String::from("API Gateway"),
+                String::from("L5 — Evaluation and Observability"),
+            ),
             (
                 String::from("Policy Engine"),
-                String::from("L5 — Infrastructure Controls"),
+                String::from("L6 — Security and Compliance"),
             ),
         ]
         .into_iter()
@@ -86,7 +92,7 @@ fn extract_maestro_data_aggregates_sections_and_flags_presence() {
         per_finding_maestro: vec![MaestroFinding {
             id: String::from("S-1"),
             component: String::from("API Gateway"),
-            maestro_layer: String::from("L2 — Guardrails"),
+            maestro_layer: String::from("L5 — Evaluation and Observability"),
             risk_level: String::from("High"),
             threat: String::new(),
         }],
@@ -94,10 +100,10 @@ fn extract_maestro_data_aggregates_sections_and_flags_presence() {
             component: String::from("API Gateway"),
             layers: [
                 (String::from("L1"), None),
-                (String::from("L2"), Some(String::from("High"))),
+                (String::from("L2"), None),
                 (String::from("L3"), None),
                 (String::from("L4"), None),
-                (String::from("L5"), None),
+                (String::from("L5"), Some(String::from("High"))),
                 (String::from("L6"), None),
                 (String::from("L7"), None),
             ]

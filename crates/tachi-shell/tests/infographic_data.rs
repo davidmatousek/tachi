@@ -53,7 +53,7 @@ fn infographic_data_command_returns_maestro_stack_payload_json() {
     assert_eq!(value["template_data"]["has_maestro_data"], true);
     assert_eq!(
         value["template_data"]["most_exposed_layer"],
-        "L2 — Foundation Model"
+        "L2 — Data Operations"
     );
     assert_eq!(
         value["template_data"]["per_layer_summaries"][0]["layer_id"],

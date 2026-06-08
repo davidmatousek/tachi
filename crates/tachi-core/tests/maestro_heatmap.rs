@@ -24,7 +24,7 @@ fn compute_maestro_heatmap_keeps_highest_severity_per_cell_and_sorts_components(
         MaestroFinding {
             id: String::from("B-1"),
             component: String::from("Auth"),
-            maestro_layer: String::from("L2 — Guardrails"),
+            maestro_layer: String::from("L6 — Security and Compliance"),
             risk_level: String::from("Medium"),
             threat: String::from("Jailbreak"),
         },
@@ -38,7 +38,7 @@ fn compute_maestro_heatmap_keeps_highest_severity_per_cell_and_sorts_components(
         },
         MaestroHeatmapRow {
             component: String::from("Auth"),
-            layers: layers(&[("L2", Some("Medium"))]),
+            layers: layers(&[("L6", Some("Medium"))]),
         },
     ];
 

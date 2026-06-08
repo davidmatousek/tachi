@@ -3,6 +3,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::artifacts::{detect_artifacts, determine_tier};
+use crate::coverage_taxonomy::{normalize_maestro_layer_label, MAESTRO_LAYERS};
 use crate::parsers::{
     parse_markdown_table, parse_project_name, parse_scope_data, parse_threats_findings,
     parse_threats_severity, strip_bold, SeverityCounts, ThreatFinding, SEVERITY_ORDER,
@@ -17,8 +18,6 @@ pub const SEVERITY_COLORS: [(&str, &str); 5] = [
     ("Low", "#2563EB"),
     ("Note", "#6B7280"),
 ];
-
-pub const MAESTRO_LAYERS: [&str; 7] = ["L1", "L2", "L3", "L4", "L5", "L6", "L7"];
 
 const SCAFFOLD_TEMPLATES: [&str; 5] = [
     "baseball-card",
@@ -246,7 +245,8 @@ pub fn parse_maestro_layer_distribution(threats_content: &str) -> Vec<MaestroLay
             continue;
         }
 
-        let (layer_id, layer_name) = split_maestro_layer(layer_raw);
+        let normalized_layer = normalize_maestro_layer_label(layer_raw);
+        let (layer_id, layer_name) = split_maestro_layer(&normalized_layer);
         let finding_count = row
             .get("Finding Count")
             .and_then(|value| value.trim().parse::<usize>().ok())
@@ -280,7 +280,10 @@ pub fn parse_component_layer_mapping(threats_content: &str) -> BTreeMap<String, 
                 .map(|value| value.trim())
                 .filter(|value| !value.is_empty())?;
 
-            Some((String::from(component), String::from(layer)))
+            Some((
+                String::from(component),
+                normalize_maestro_layer_label(layer),
+            ))
         })
         .collect()
 }
@@ -372,7 +375,8 @@ pub fn parse_per_finding_maestro(threats_content: &str) -> Vec<MaestroFinding> {
             let component = column_value(headers, &cells, "Component");
             let threat = column_value(headers, &cells, "Threat");
             let risk_level = column_value(headers, &cells, "Risk Level");
-            let maestro_layer = column_value(headers, &cells, "MAESTRO Layer");
+            let maestro_layer =
+                normalize_maestro_layer_label(&column_value(headers, &cells, "MAESTRO Layer"));
 
             if maestro_layer.is_empty() {
                 continue;
@@ -426,11 +430,11 @@ pub fn group_maestro_findings_by_layer(data: &MaestroData) -> Vec<MaestroFinding
     }
 
     for finding in &data.per_finding_maestro {
-        let layer_raw = finding.maestro_layer.trim();
+        let layer_raw = normalize_maestro_layer_label(&finding.maestro_layer);
         let (layer_id, layer_name) = if layer_raw.is_empty() {
             (String::from("Unclassified"), String::from("Unclassified"))
         } else {
-            split_maestro_layer(layer_raw)
+            split_maestro_layer(&layer_raw)
         };
 
         let entry = groups
@@ -462,14 +466,14 @@ pub fn compute_maestro_heatmap(per_finding_data: &[MaestroFinding]) -> Vec<Maest
 
     for finding in per_finding_data {
         let component = finding.component.trim();
-        let layer_raw = finding.maestro_layer.trim();
+        let layer_raw = normalize_maestro_layer_label(&finding.maestro_layer);
         let risk_level = finding.risk_level.trim();
 
         if component.is_empty() || layer_raw.is_empty() {
             continue;
         }
 
-        let (layer_id, _) = split_maestro_layer(layer_raw);
+        let (layer_id, _) = split_maestro_layer(&layer_raw);
         if !MAESTRO_LAYERS.contains(&layer_id.as_str()) {
             continue;
         }
@@ -794,7 +798,9 @@ fn build_maestro_stack_template_data(maestro_data: &MaestroData) -> Value {
             let mut layer_findings = maestro_data
                 .per_finding_maestro
                 .iter()
-                .filter(|f| f.maestro_layer.starts_with(&layer.layer_id))
+                .filter(|f| {
+                    normalize_maestro_layer_label(&f.maestro_layer).starts_with(&layer.layer_id)
+                })
                 .collect::<Vec<_>>();
 
             layer_findings.sort_by(|left, right| {
@@ -919,13 +925,14 @@ fn is_maestro_agent_section(line: &str) -> bool {
 }
 
 fn split_maestro_layer(layer_raw: &str) -> (String, String) {
-    let (layer_id, layer_name) = layer_raw
-        .split_once('—')
-        .or_else(|| layer_raw.split_once('–'))
-        .map(|(id, name)| (id.trim().to_string(), name.trim().to_string()))
-        .unwrap_or_else(|| (layer_raw.trim().to_string(), String::new()));
+    let normalized = layer_raw.trim();
+    for separator in ['—', '–', '-'] {
+        if let Some((layer_id, layer_name)) = normalized.split_once(separator) {
+            return (layer_id.trim().to_string(), layer_name.trim().to_string());
+        }
+    }
 
-    (layer_id, layer_name)
+    (normalized.to_string(), String::new())
 }
 
 fn maestro_layer_sort_key(layer_id: &str) -> (u8, usize, String) {

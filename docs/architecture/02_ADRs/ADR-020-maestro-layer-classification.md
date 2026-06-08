@@ -126,6 +126,8 @@ The implementation adds:
 
 ## Revision History
 
+**2026-06-07**: Rust `coverage_taxonomy.rs` now serves as the shared canonical MAESTRO vocabulary source. Legacy PRD-084 labels remain accepted only at parse boundaries, but rendered output and downstream aggregation use the canonical layer names for L5, L6, and L7.
+
 **2026-04-10 (Feature 136)**: Layer names for L5, L6, L7 aligned with canonical CSA MAESTRO taxonomy per the Ken Huang authoritative definition. L5 renamed from "Security" to "Evaluation and Observability", L6 renamed from "Agent Ecosystem" to "Security and Compliance", L7 renamed from "User Interface" to "Agent Ecosystem". Acronym expansion corrected to "Multi-Agent Environment, Security, Threat, Risk, and Outcome". Schema version bumped from 1.2 to 1.3 to signal the breaking enum-value change. See `docs/product/02_PRD/136-maestro-canonical-layer-correctness-fix-2026-04-10.md` for full context.
 
 **Schema versioning rule** (established for this feature): Enum-value-only breaking changes to `schemas/finding.yaml` warrant a minor schema bump (x.y+1), not a major bump, provided the schema shape and required fields are unchanged. The CHANGELOG migration note is the accountability mechanism for downstream consumers. This rule applies to future enum-value corrections.
