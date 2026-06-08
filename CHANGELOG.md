@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Publishing security and privacy documentation
+
+Updated the public security policy for the `tachi-rust` repository and added a publishing checklist covering private vulnerability reporting, secret and PII handling, Rust validation gates, and GitHub publication hygiene.
+
 ### Rust risk scores SARIF CLI slice
 
 Added a Rust-native `risk-scores-sarif` command that reads `risk-scores.md` and `threats.md`, builds SARIF through the shared Rust risk-score builder, and writes the output file with AG-8 enrichment metadata preserved.
