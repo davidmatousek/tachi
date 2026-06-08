@@ -10,6 +10,28 @@ const TEMPLATE_DIR: &str = "templates/tachi/infographics";
 const REPORT_TEMPLATE_DIR: &str = "templates/tachi/security-report";
 const REPORT_TARGET_DIR: &str = "examples/agentic-app/sample-report";
 const JPEG_MAGIC: &[u8] = b"\xff\xd8\xff\xe0\x00\x10JFIF";
+const THREATS_SARIF_MD: &str = r#"
+# Agentic AI Application
+
+### Components
+
+| Component | Type | MAESTRO Layer |
+| --- | --- | --- |
+| Agent | Service | L3 - Control Plane |
+
+## 7. Recommended Actions
+
+| Finding ID | Component | Threat | Risk Level | Mitigation | Status |
+| --- | --- | --- | --- | --- | --- |
+| AG-8 | Agent | Prompt injection | High | Harden prompts | [NEW] |
+
+## 6. Risk Summary
+
+| Risk Level | Count |
+| --- | --- |
+| High | 1 |
+| Total | 1 |
+"#;
 const THREATS_MD: &str = r#"
 # Agentic AI Application
 
@@ -117,6 +139,20 @@ fn fixture_report_data_repo() -> PathBuf {
     )
     .expect("write executive architecture image");
 
+    root
+}
+
+fn fixture_threats_sarif_repo() -> PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "tachi-rust-threats-sarif-cli-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos()
+    ));
+
+    fs::create_dir_all(&root).expect("create fixture root");
+    fs::write(root.join("threats.md"), THREATS_SARIF_MD).expect("write threats");
     root
 }
 
@@ -294,4 +330,35 @@ fn report_data_binary_writes_output_file_when_requested() {
     assert!(file_content.contains("#let has-executive-architecture = true"));
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("report-data.typ generated"));
+}
+
+#[test]
+fn threats_sarif_binary_writes_sarif_file_and_marks_ag8_metadata() {
+    let repo_root = fixture_threats_sarif_repo();
+    let output_path = repo_root.join("generated/threats.sarif");
+    let output = Command::new(binary_path("threats-sarif"))
+        .args([
+            "--input",
+            repo_root.join("threats.md").to_string_lossy().as_ref(),
+            "--output",
+            output_path.to_string_lossy().as_ref(),
+        ])
+        .output()
+        .expect("run threats-sarif binary");
+
+    assert!(output.status.success());
+    assert!(
+        output_path.exists(),
+        "threats-sarif binary should write the requested output file"
+    );
+
+    let sarif: Value = serde_json::from_str(
+        &fs::read_to_string(&output_path).expect("read threats sarif output"),
+    )
+    .expect("valid SARIF JSON");
+    let result = &sarif["runs"][0]["results"][0];
+    assert_eq!(result["partialFingerprints"]["findingId/v1"], "AG-8");
+    assert_eq!(result["properties"]["asi07_emission"], true);
+    assert_eq!(result["properties"]["pattern_category"], 9);
+    assert!(String::from_utf8_lossy(&output.stderr).contains("wrote 1 findings"));
 }

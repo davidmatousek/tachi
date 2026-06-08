@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust threats SARIF CLI slice
+
+Added a Rust-native `threats-sarif` command that reads `threats.md`, builds SARIF from the shared Rust parser and threat builder, and writes the output file with AG-8 metadata preserved for the existing enrichment path.
+
 ### Rust report-data cleanup
 
 Simplified the Rust `report-data` path by collapsing the internal Typst renderer to a plain `String` return value while preserving the existing CLI behavior.

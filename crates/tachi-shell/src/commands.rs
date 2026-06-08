@@ -4,7 +4,17 @@ use std::process::Output;
 
 use tachi_core::coverage_audit::{collect_audit, render};
 use tachi_core::infographic::build_infographic_payload;
+use tachi_core::parsers::parse_threats_findings;
 use tachi_core::report_data::build_report_data_typst;
+use tachi_core::sarif_common::{parse_component_metadata, prefix_for};
+use tachi_core::threats_sarif::{build_threats_sarif, ThreatSarifFinding};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ThreatsSarifOutput {
+    pub sarif: String,
+    pub findings_count: usize,
+    pub ag8_status: Option<String>,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommandOutput {
@@ -75,6 +85,44 @@ pub fn infographic_data_output(root: &Path, template: &str) -> Result<String, St
 
 pub fn report_data_output(target_dir: &Path, template_dir: &Path) -> String {
     build_report_data_typst(target_dir, template_dir)
+}
+
+pub fn threats_sarif_output(input: &Path) -> Result<ThreatsSarifOutput, String> {
+    let threats_md = std::fs::read_to_string(input)
+        .map_err(|err| format!("failed to read {}: {err}", input.display()))?;
+    let findings = parse_threats_findings(&threats_md)?;
+    let component_meta = parse_component_metadata(&threats_md);
+    let ag8_status = findings
+        .iter()
+        .find(|finding| finding.id == "AG-8")
+        .and_then(|finding| finding.delta_status.clone());
+
+    let sarif_findings = findings
+        .into_iter()
+        .map(|finding| ThreatSarifFinding {
+            id: finding.id.clone(),
+            prefix: prefix_for(&finding.id),
+            status: finding.delta_status.unwrap_or_default(),
+            component: finding.component,
+            maestro: String::new(),
+            agentic_pattern: finding.agentic_pattern,
+            threat: finding.threat,
+            owasp_ref: String::new(),
+            likelihood: finding.likelihood,
+            impact: finding.impact,
+            risk_level: finding.risk_level,
+            mitigation: finding.mitigation,
+        })
+        .collect::<Vec<_>>();
+    let sarif = build_threats_sarif(&sarif_findings, &component_meta);
+    let sarif = serde_json::to_string_pretty(&sarif)
+        .map_err(|err| format!("failed to serialize threats SARIF: {err}"))?;
+
+    Ok(ThreatsSarifOutput {
+        sarif,
+        findings_count: sarif_findings.len(),
+        ag8_status,
+    })
 }
 
 pub fn install_output(root: &Path, args: &[&str]) -> CommandOutput {
