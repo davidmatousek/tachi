@@ -1,6 +1,6 @@
 # Product Roadmap - tachi
 
-**Last Updated**: 2026-03-21
+**Last Updated**: 2026-06-08
 **Owner**: Product Manager (product-manager)
 **Status**: Template - Complete after MVP launch
 
@@ -34,8 +34,10 @@ This directory contains the product roadmap for tachi, organized by phases or qu
 > `2026-H2-roadmap.md`. This README remains the roadmap template and guide for
 > future updates.
 >
-> Rust/Tauri migration note: `2026-Rust-Tauri-roadmap.md` is the active
-> migration roadmap for the Rust-first ecosystem transition.
+> Rust/Tauri migration note: `../roadmap/2026-06-08-rust-tauri-only-roadmap.md`
+> is the active detailed migration roadmap for the Rust-first ecosystem
+> transition, while `2026-Rust-Tauri-roadmap.md` remains the high-level
+> summary view.
 
 ---
 

@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust/Tauri-only migration roadmap and execution cards
+
+Added a fine-grained migration roadmap under `docs/roadmap/` plus an execution-level issue-card set and merge plan. Together they map the remaining Python-to-Rust work into BEADS-style epics, features, capabilities, tasks, and functions, and define phased unit, integration, E2E, and coverage gates for the Rust-native migration with an 80% coverage floor and the current workspace baseline preserved above that threshold.
+
+### Rust/Tauri doc refresh and compatibility retirement (RT-009)
+
+Refreshes the canonical docs and retires the remaining legacy compatibility guidance in the roadmap, issue pack, README, and testing guide. The Rust/Tauri migration docs now point to the current command surface, and the remaining retirement work is marked complete.
+
 ### Hardened config-file load (BLP-02 F-2)
 
 Replaced four bash `source`/`eval` config-file load sites with a hardened

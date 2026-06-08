@@ -47,13 +47,13 @@ This document provides guidance on testing strategy for {{PROJECT_NAME}}. It doe
 - **What**: Individual functions, components, utilities
 - **Speed**: <10ms per test
 - **Scope**: Single unit in isolation
-- **Mocking**: Mock external dependencies
+- **Mocking**: Mock external dependencies only when a real dependency is impractical
 
 ### Integration Tests (20%)
 - **What**: Multiple units working together (API + database)
 - **Speed**: <100ms per test
 - **Scope**: API endpoints, database operations
-- **Mocking**: Minimize (use real database in test mode)
+- **Mocking**: Minimize; prefer real test fixtures and local services
 
 ### E2E Tests (10%)
 - **What**: Complete user workflows
@@ -65,6 +65,19 @@ This document provides guidance on testing strategy for {{PROJECT_NAME}}. It doe
 
 ## Recommended Testing Frameworks by Project Type
 
+### Rust Projects
+
+- **Unit/Integration**: `cargo test`, `cargo nextest` when faster isolation is useful
+- **Coverage**: `cargo llvm-cov`
+- **CLI smoke**: shell wrappers around `cargo run` or installed binaries
+
+**Example Setup**
+```bash
+cargo test
+cargo nextest run
+make llvm-cov
+```
+
 ### Frontend Testing
 
 **JavaScript/TypeScript Projects**:
@@ -72,22 +85,8 @@ This document provides guidance on testing strategy for {{PROJECT_NAME}}. It doe
 - **Component**: [React Testing Library](https://testing-library.com/react) or [Vue Test Utils](https://test-utils.vuejs.org/)
 - **E2E**: [Playwright](https://playwright.dev/) or [Cypress](https://www.cypress.io/)
 
-**Example Setup (Vitest + React Testing Library)**:
-```bash
-npm install -D vitest @testing-library/react @testing-library/jest-dom
-```
+### Go Projects
 
-### Backend Testing
-
-**Node.js Projects**:
-- **Unit/Integration**: [Vitest](https://vitest.dev/) or [Jest](https://jestjs.io/)
-- **API Testing**: [Supertest](https://github.com/ladjs/supertest)
-
-**Python Projects**:
-- **Unit/Integration**: [pytest](https://pytest.org/)
-- **API Testing**: [httpx](https://www.python-httpx.org/)
-
-**Go Projects**:
 - **Unit/Integration**: Built-in `testing` package
 - **API Testing**: [httptest](https://pkg.go.dev/net/http/httptest)
 
@@ -120,100 +119,42 @@ npm install -D vitest @testing-library/react @testing-library/jest-dom
 
 ## Testing Patterns
 
-### Unit Test Pattern
+### Rust Unit Test Pattern
 
-```typescript
-// Example: Testing a calculation function
-import { describe, it, expect } from 'vitest';
-import { calculateTotal } from './utils';
+```rust
+#[test]
+fn calculate_total_adds_item_values() {
+    let items = vec![(10, 2), (5, 3)];
 
-describe('calculateTotal', () => {
-  it('calculates total for multiple items', () => {
-    const items = [
-      { price: 10, quantity: 2 },
-      { price: 5, quantity: 3 }
-    ];
+    let total = calculate_total(&items);
 
-    expect(calculateTotal(items)).toBe(35);
-  });
-
-  it('returns 0 for empty array', () => {
-    expect(calculateTotal([])).toBe(0);
-  });
-
-  it('handles negative quantities', () => {
-    const items = [{ price: 10, quantity: -1 }];
-
-    expect(() => calculateTotal(items)).toThrow('Quantity must be positive');
-  });
-});
+    assert_eq!(total, 35);
+}
 ```
 
-### Integration Test Pattern (API)
+### Rust Integration Test Pattern
 
-```typescript
-// Example: Testing an API endpoint
-import { describe, it, expect, beforeEach } from 'vitest';
-import { app } from '../src/app';
-import { cleanDatabase, seedTestData } from './helpers';
+```rust
+#[test]
+fn command_handles_missing_input() {
+    let result = run_command("--input", "");
 
-describe('POST /api/tasks', () => {
-  beforeEach(async () => {
-    await cleanDatabase();
-    await seedTestData();
-  });
-
-  it('creates a new task', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: '/api/tasks',
-      payload: {
-        title: 'Test Task',
-        description: 'Test Description'
-      }
-    });
-
-    expect(response.statusCode).toBe(201);
-    expect(response.json()).toMatchObject({
-      title: 'Test Task',
-      description: 'Test Description'
-    });
-  });
-
-  it('validates required fields', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: '/api/tasks',
-      payload: {} // Missing required fields
-    });
-
-    expect(response.statusCode).toBe(400);
-    expect(response.json().error).toContain('title is required');
-  });
-});
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("input is required"));
+}
 ```
 
-### E2E Test Pattern (Playwright)
+### E2E Test Pattern
 
 ```typescript
-// Example: Testing user workflow
 import { test, expect } from '@playwright/test';
 
 test('user can create and complete a task', async ({ page }) => {
-  // Navigate to application
   await page.goto('http://localhost:3000');
-
-  // Create task
   await page.fill('[data-testid="task-input"]', 'Buy groceries');
   await page.click('[data-testid="add-task-button"]');
-
-  // Verify task appears
   await expect(page.locator('[data-testid="task-list"]')).toContainText('Buy groceries');
-
-  // Complete task
   await page.click('[data-testid="task-checkbox"]');
-
-  // Verify task marked complete
   await expect(page.locator('[data-testid="completed-tasks"]')).toContainText('Buy groceries');
 });
 ```
@@ -223,23 +164,11 @@ test('user can create and complete a task', async ({ page }) => {
 ## Test Data Management
 
 ### Use Test Fixtures
-```typescript
-// tests/fixtures/tasks.ts
-export const testTasks = [
-  {
-    id: '1',
-    title: 'Test Task 1',
-    status: 'pending'
-  },
-  {
-    id: '2',
-    title: 'Test Task 2',
-    status: 'completed'
-  }
-];
-```
+
+Keep fixtures small, deterministic, and close to the code they exercise.
 
 ### Database Testing
+
 - **Approach 1**: In-memory database (SQLite for PostgreSQL-compatible)
 - **Approach 2**: Test database with migrations (Docker container)
 - **Approach 3**: Transaction rollback (each test in transaction, rollback after)
@@ -260,18 +189,17 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
         with:
-          node-version: '20'
-      - run: npm ci
-      - run: npm test
-      - run: npm run test:coverage
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
+          toolchain: stable
+          profile: minimal
+      - run: cargo test
+      - run: make llvm-cov
 ```
 
 ### Quality Gates
+
 - **Minimum Coverage**: 80%
 - **No Failing Tests**: All tests must pass
 - **Performance**: Test suite completes in <5 minutes
@@ -282,11 +210,10 @@ jobs:
 
 ### DO ✅
 - Write tests alongside feature code
-- Use descriptive test names (`it('returns 404 for non-existent task')`)
+- Use descriptive test names
 - Test error cases and edge cases
 - Keep tests simple and focused
-- Use test data builders/fixtures
-- Mock external APIs and services
+- Use fixtures where they reduce setup noise
 - Run tests before committing
 
 ### DON'T ❌
@@ -302,41 +229,33 @@ jobs:
 ## Common Testing Mistakes
 
 ### Mistake 1: Testing Implementation Instead of Behavior
-```typescript
-// ❌ BAD: Tests implementation
-it('calls fetchUserData function', () => {
-  const spy = vi.spyOn(api, 'fetchUserData');
-  renderComponent();
-  expect(spy).toHaveBeenCalled();
-});
+
+```rust
+// ❌ BAD: Tests implementation detail
+#[test]
+fn calls_helper_function() {
+    assert!(helper_was_called());
+}
 
 // ✅ GOOD: Tests behavior
-it('displays user data after loading', async () => {
-  renderComponent();
-  await waitFor(() => {
-    expect(screen.getByText('John Doe')).toBeInTheDocument();
-  });
-});
+#[test]
+fn displays_user_data_after_loading() {
+    assert_eq!(rendered_user_name(), "John Doe");
+}
 ```
 
 ### Mistake 2: Shared Test State
-```typescript
+
+```rust
 // ❌ BAD: Shared state
-let userId;
+static mut USER_ID: Option<u32> = None;
 
-it('creates user', () => {
-  userId = createUser();
-});
-
-it('updates user', () => {
-  updateUser(userId); // Depends on previous test
-});
-
-// ✅ GOOD: Independent tests
-it('updates user', () => {
-  const userId = createUser(); // Each test sets up own data
-  updateUser(userId);
-});
+// ✅ GOOD: Each test sets up its own data
+#[test]
+fn updates_user() {
+    let user_id = create_user();
+    update_user(user_id);
+}
 ```
 
 ---
@@ -344,14 +263,13 @@ it('updates user', () => {
 ## Resources
 
 ### Documentation
-- [Vitest](https://vitest.dev/)
-- [Jest](https://jestjs.io/)
+- [The Rust Book](https://doc.rust-lang.org/book/)
+- [cargo test](https://doc.rust-lang.org/cargo/commands/cargo-test.html)
+- [cargo llvm-cov](https://github.com/taiki-e/cargo-llvm-cov)
 - [Playwright](https://playwright.dev/)
 - [Testing Library](https://testing-library.com/)
-- [Pytest](https://pytest.org/)
 
 ### Learning
-- [Testing JavaScript](https://testingjavascript.com/) by Kent C. Dodds
 - [Effective Testing](https://effectivetesting.dev/)
 - [Test Desiderata](https://kentbeck.github.io/TestDesiderata/) by Kent Beck
 
@@ -360,8 +278,8 @@ it('updates user', () => {
 ## Getting Started Checklist
 
 - [ ] Choose testing framework for your stack
-- [ ] Set up test runner in package.json
-- [ ] Create test directory structure (`tests/` or `__tests__/`)
+- [ ] Set up test runner in your manifest or workspace config
+- [ ] Create test directory structure (`tests/` or equivalent)
 - [ ] Write first unit test
 - [ ] Configure coverage reporting
 - [ ] Add tests to CI/CD pipeline

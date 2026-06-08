@@ -1,14 +1,16 @@
 # Rust/Tauri Migration Issue Pack
 
-**Last Updated**: 2026-06-07
+**Last Updated**: 2026-06-08
 **Purpose**: tracker-neutral backlog cards for the Rust/Tauri parity track
 **Architecture Guardrail**: keep `tachi-rust` Rust and Tauri based
 
 ## Progress Snapshot
 
-- Current completion: 8/9 issue cards, or 89%.
+- Current completion: 9/9 issue cards, or 100%.
 - RT-003, RT-004, RT-006, RT-007, and RT-008 now have merged Rust slices for threat parsing, attack-chain parsing, the thin `src-tauri` shell scaffold, SARIF emission, and MAESTRO/OWASP taxonomy data.
-- RT-005 is complete, and RT-009 still needs its remaining Rust/Tauri docs and retirement work.
+- RT-005 is complete, and RT-009 is complete after the docs refresh and retirement pass.
+- The detailed Rust/Tauri-only migration roadmap now lives at [2026-06-08-rust-tauri-only-roadmap.md](./2026-06-08-rust-tauri-only-roadmap.md) and expands the remaining Python-removal work into BEADS-style epics, features, capabilities, tasks, and functions.
+- The execution-level issue card set now lives at [2026-06-08-rust-tauri-only-issue-cards.md](./2026-06-08-rust-tauri-only-issue-cards.md) and sequences the migration into RT-010 through RT-015.
 
 GitHub Issues are not the source of truth in this repository right now, so the
 items below are written as importable issue cards rather than live issues.
@@ -119,15 +121,15 @@ Each card includes:
   - The coverage matrix can be generated from shared Rust data.
 - **Depends on**: RT-001, RT-003
 
-### RT-009 - Refresh docs and retire Python-only compatibility paths
+### RT-009 - Refresh docs and retire legacy compatibility paths
 
 - **Priority**: P2
 - **Labels**: `rust`, `docs`, `cleanup`, `migration`
 - **Summary**: Update quickstarts, roadmap, backlog, and release docs after
-  parity lands, then retire Python-only shims and stale instructions.
+  parity lands, then retire legacy shims and stale instructions.
 - **Acceptance**:
   - Canonical docs point at Rust/Tauri commands.
-  - Python-only paths are explicitly transitional or removed.
+  - Legacy compatibility paths are explicitly transitional or removed.
 - **Depends on**: RT-006, RT-007, RT-008
 
 ## Import Notes
