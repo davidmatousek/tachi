@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Publishing README migration status
+
+Updated the root README to describe the current `tachi-rust` migration state accurately before public publishing: Rust/Tauri remains the target, remaining Python surfaces are documented as transitional backlog, and the Rust-native validation path is separated from the legacy `pytest` compatibility target.
+
 ### Publishing security and privacy documentation
 
 Updated the public security policy for the `tachi-rust` repository and added a publishing checklist covering private vulnerability reporting, secret and PII handling, Rust validation gates, and GitHub publication hygiene.

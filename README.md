@@ -14,6 +14,21 @@
 
 ---
 
+## Repository Status
+
+This repository is the `tachi-rust` migration track for a Rust-native tachi implementation. The long-term target is a pure Rust + Tauri codebase with Rust-owned CLI tooling, parsing, SARIF generation, reporting, and tests.
+
+The repository is not yet Python-free. A frozen inventory of the remaining Python surface is maintained at [`docs/roadmap/2026-06-08-python-surface-inventory.md`](docs/roadmap/2026-06-08-python-surface-inventory.md). Current transitional surfaces include:
+
+- legacy runtime scripts under [`scripts/`](scripts/), including SARIF and report-data extractors that are being ported to Rust CLI commands
+- legacy Python tests under [`tests/scripts/`](tests/scripts/) and [`tests/schemas/`](tests/schemas/) that are being migrated to Rust unit, integration, and end-to-end tests
+- Python packaging files such as [`pyproject.toml`](pyproject.toml) and [`requirements-dev.txt`](requirements-dev.txt), retained only while compatibility tests are being retired
+- FastAPI stack scaffolds under [`stacks/fastapi-react/`](stacks/fastapi-react/) and [`stacks/fastapi-react-local/`](stacks/fastapi-react-local/), scheduled for retirement or replacement by Rust/Tauri-native stack guidance
+
+New implementation work should use Rust ecosystem tooling and should not add new Python dependencies. Python references that remain in this repository should be treated as migration backlog unless they are historical fixtures or explicitly documented compatibility surfaces.
+
+---
+
 ## OWASP Coverage
 
 **50/50 across five frameworks** — every catalogued threat in each framework
@@ -475,16 +490,18 @@ To install a specific version: `install.sh --version v4.36.0` <!-- x-release-ple
 
 ## Running Tests
 
-tachi uses Rust-native tests plus the Rust-backed coverage audit. To run the test suite:
+tachi-rust uses Rust-native tests plus the Rust-backed coverage audit as the current validation path:
 
 ```bash
 cargo test
-make test
 make coverage-audit
 make llvm-cov
+cargo clippy --all-targets -- -D warnings
 ```
 
-This runs the Rust test suite, the Rust-backed coverage audit, and the LLVM coverage report with toolchain-local LLVM binaries. Tests are required by Constitution Principle VI (Testing Excellence, ≥80% coverage).
+This runs the Rust test suite, the Rust-backed coverage audit, the LLVM coverage report with toolchain-local LLVM binaries, and Clippy warning gates. Publishing work should keep Rust coverage at or above the project floor documented in [`docs/standards/PUBLISHING_SECURITY.md`](docs/standards/PUBLISHING_SECURITY.md); the roadmap currently targets at least 85% during migration.
+
+`make test` is still a legacy compatibility target and currently invokes the Python `pytest` suite for the remaining migration surface. It is intentionally not listed as part of the Rust-native validation path above.
 
 ---
 
