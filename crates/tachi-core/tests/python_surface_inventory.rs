@@ -1,0 +1,84 @@
+use std::fs;
+use std::path::{Path, PathBuf};
+
+fn workspace_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("workspace root")
+        .to_path_buf()
+}
+
+fn collect_active_python_files(root: &Path) -> Vec<String> {
+    let mut files = Vec::new();
+    collect_python_files(root, root, &mut files);
+    files.sort();
+    files
+}
+
+fn collect_python_files(root: &Path, current: &Path, files: &mut Vec<String>) {
+    let entries = match fs::read_dir(current) {
+        Ok(entries) => entries,
+        Err(_) => return,
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let relative = match path.strip_prefix(root) {
+            Ok(relative) => relative.to_string_lossy().replace('\\', "/"),
+            Err(_) => continue,
+        };
+
+        if relative.contains("/fixtures/") || relative.starts_with("specs/") {
+            continue;
+        }
+
+        if path.is_dir() {
+            collect_python_files(root, &path, files);
+        } else if path.extension().and_then(|value| value.to_str()) == Some("py") {
+            files.push(relative);
+        }
+    }
+}
+
+#[test]
+fn python_surface_inventory_lists_every_active_python_file() {
+    let root = workspace_root();
+    let inventory_path = root.join("docs/roadmap/2026-06-08-python-surface-inventory.md");
+    let inventory = fs::read_to_string(&inventory_path)
+        .expect("expected the python surface inventory doc to exist");
+
+    let expected_files = collect_active_python_files(&root);
+    assert!(
+        !expected_files.is_empty(),
+        "expected to discover active python files in the workspace"
+    );
+
+    let missing: Vec<String> = expected_files
+        .into_iter()
+        .filter(|path| !inventory.contains(path))
+        .collect();
+
+    assert!(
+        missing.is_empty(),
+        "inventory is missing {} active python paths: {}",
+        missing.len(),
+        missing.join(", ")
+    );
+
+    for required in [
+        "pyproject.toml",
+        "requirements-dev.txt",
+        "scripts/extract-report-data.py",
+        "scripts/extract-infographic-data.py",
+        "scripts/generate-threats-sarif.py",
+        "scripts/generate-risk-scores-sarif.py",
+        "scripts/tachi_parsers.py",
+        "scripts/sarif_common.py",
+    ] {
+        assert!(
+            inventory.contains(required),
+            "inventory should mention {required}"
+        );
+    }
+}
