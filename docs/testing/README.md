@@ -13,6 +13,7 @@ This document provides guidance on testing strategy for {{PROJECT_NAME}}. It doe
 ## Coverage Visibility
 
 - Run `make coverage-audit` to classify the current test surface with the Rust-backed audit binary.
+- Run `make llvm-cov` to generate the workspace coverage report with LLVM tools resolved from the active toolchain.
 - See `coverage-summary.md` for the current counts, category meanings, and smoke-vs-e2e boundary.
 - See `2026-06-04-rust-native-coverage-audit.md` for the Rust-native migration target and current workspace skeleton baseline.
 
@@ -82,9 +83,9 @@ npm install -D vitest @testing-library/react @testing-library/jest-dom
 - **Unit/Integration**: [Vitest](https://vitest.dev/) or [Jest](https://jestjs.io/)
 - **API Testing**: [Supertest](https://github.com/ladjs/supertest)
 
-**Rust Projects**:
-- **Unit/Integration**: `cargo test`
-- **CLI/API Testing**: [`assert_cmd`](https://docs.rs/assert_cmd/) or project-specific integration harnesses
+**Python Projects**:
+- **Unit/Integration**: [pytest](https://pytest.org/)
+- **API Testing**: [httpx](https://www.python-httpx.org/)
 
 **Go Projects**:
 - **Unit/Integration**: Built-in `testing` package
@@ -347,7 +348,7 @@ it('updates user', () => {
 - [Jest](https://jestjs.io/)
 - [Playwright](https://playwright.dev/)
 - [Testing Library](https://testing-library.com/)
-- [cargo test](https://doc.rust-lang.org/cargo/commands/cargo-test.html)
+- [Pytest](https://pytest.org/)
 
 ### Learning
 - [Testing JavaScript](https://testingjavascript.com/) by Kent C. Dodds

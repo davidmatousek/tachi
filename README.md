@@ -333,6 +333,7 @@ For agentic AI systems, tachi maps each finding to the [CSA MAESTRO](https://clo
 | L7 | Agent Ecosystem | Multi-agent coordination, delegation, chat UIs, API endpoints |
 
 MAESTRO layers appear in `threats.md`, propagate through all downstream commands, and power the `maestro-stack` and `maestro-heatmap` infographic templates.
+Legacy PRD-084 labels are accepted only at parse boundaries; the Rust taxonomy normalizes them to the canonical layer names above before rendering or aggregation.
 
 ### Agentic Pattern Synthesis
 
@@ -480,9 +481,10 @@ tachi uses Rust-native tests plus the Rust-backed coverage audit. To run the tes
 cargo test
 make test
 make coverage-audit
+make llvm-cov
 ```
 
-This runs the Rust test suite and the Rust-backed coverage audit. Tests are required by Constitution Principle VI (Testing Excellence, ≥80% coverage).
+This runs the Rust test suite, the Rust-backed coverage audit, and the LLVM coverage report with toolchain-local LLVM binaries. Tests are required by Constitution Principle VI (Testing Excellence, ≥80% coverage).
 
 ---
 

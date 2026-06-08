@@ -6,9 +6,9 @@
 
 ## Progress Snapshot
 
-- Current completion: 9/9 issue cards, or 100%.
+- Current completion: 8/9 issue cards, or 89%.
 - RT-003, RT-004, RT-006, RT-007, and RT-008 now have merged Rust slices for threat parsing, attack-chain parsing, the thin `src-tauri` shell scaffold, SARIF emission, and MAESTRO/OWASP taxonomy data.
-- RT-005 is complete, and RT-009 is complete after the docs refresh and retirement pass.
+- RT-005 is complete, and RT-009 still needs its remaining Rust/Tauri docs and retirement work.
 
 GitHub Issues are not the source of truth in this repository right now, so the
 items below are written as importable issue cards rather than live issues.
@@ -42,7 +42,7 @@ Each card includes:
 
 - **Priority**: P0
 - **Labels**: `rust`, `testing`, `coverage`, `tauri`
-- **Summary**: Keep the current test inventory classified as unit,
+- **Summary**: Keep the current pytest inventory classified as unit,
   integration, smoke, true end-to-end, and support/regression while defining
   the Rust/Tauri harness boundary.
 - **Acceptance**:
@@ -79,7 +79,7 @@ Each card includes:
 - **Priority**: P1
 - **Labels**: `rust`, `cli`, `bootstrap`, `tauri`
 - **Summary**: Move the control-plane scripts into Rust command handlers so
-  legacy adapters stop being the canonical entry point.
+  Python stops being the canonical entry point.
 - **Acceptance**:
   - Rust commands preserve the current CLI contract.
   - Install/init/update workflows run through shared Rust logic.
@@ -119,16 +119,15 @@ Each card includes:
   - The coverage matrix can be generated from shared Rust data.
 - **Depends on**: RT-001, RT-003
 
-### RT-009 - Refresh docs and retire legacy compatibility paths
+### RT-009 - Refresh docs and retire Python-only compatibility paths
 
 - **Priority**: P2
 - **Labels**: `rust`, `docs`, `cleanup`, `migration`
-- **Status**: Done
 - **Summary**: Update quickstarts, roadmap, backlog, and release docs after
-  parity lands, then retire legacy shims and stale instructions.
+  parity lands, then retire Python-only shims and stale instructions.
 - **Acceptance**:
   - Canonical docs point at Rust/Tauri commands.
-  - Legacy compatibility paths are explicitly transitional or removed.
+  - Python-only paths are explicitly transitional or removed.
 - **Depends on**: RT-006, RT-007, RT-008
 
 ## Import Notes

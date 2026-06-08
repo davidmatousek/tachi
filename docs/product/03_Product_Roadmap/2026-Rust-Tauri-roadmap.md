@@ -1,14 +1,14 @@
 # tachi Roadmap - Rust/Tauri Migration
 
 **Last Updated**: 2026-06-07
-**Theme**: migrate the shipped platform from shell-backed scripts to a Rust core with a Tauri shell, while preserving feature parity
+**Theme**: migrate the shipped platform from Python-first scripts to a Rust core with a Tauri shell, while preserving feature parity
 **Status**: Planning
 
 ---
 
 ## Current-State Summary
 
-tachi now ships with a Rust workspace, shell helpers, markdown-driven product docs, and Rust-native validation. There is now a Rust workspace with core parity slices for threat parsing, attack-chain parsing, compensating-controls parsing, risk-scores parsing, SARIF emission, and coverage cataloging, plus Rust-backed coverage-audit, coverage taxonomy catalogs, and control-plane command routing. The `src-tauri` shell scaffold now exists and routes through the shared Rust bridge, and the packaging/docs slice is now complete.
+tachi currently ships as a Python-first repository with shell helpers, markdown-driven product docs, and pytest-based validation. There is now a Rust workspace with core parity slices for threat parsing, attack-chain parsing, compensating-controls parsing, risk-scores parsing, SARIF emission, and coverage cataloging, plus Rust-backed coverage-audit, coverage taxonomy catalogs, and control-plane command routing. The `src-tauri` shell scaffold now exists and routes through the shared Rust bridge, but the packaging/docs slice is still in progress.
 
 The migration roadmap should therefore focus less on "rewrite everything" and more on:
 
@@ -16,7 +16,7 @@ The migration roadmap should therefore focus less on "rewrite everything" and mo
 2. preserving parity with the feature ledger in `../02_PRD/INDEX.md`,
 3. moving validation to Rust-native unit, integration, and end-to-end tests,
 4. wrapping the core with a thin Tauri distribution layer,
-5. retiring legacy compatibility paths only after parity is proven.
+5. retiring Python only after parity is proven.
 
 ---
 
@@ -29,7 +29,7 @@ The migration roadmap should therefore focus less on "rewrite everything" and mo
 
 1. Create a Rust workspace at the repo root.
 2. Define crate boundaries for core logic, CLI commands, and Tauri-facing command handlers.
-3. Build a feature-parity map from the current shell-backed implementation to Rust modules.
+3. Build a feature-parity map from the current Python/shell implementation to Rust modules.
 
 ### Planned Work
 
@@ -38,13 +38,13 @@ The migration roadmap should therefore focus less on "rewrite everything" and mo
 | Rust workspace skeleton | Backlog | Done | Root `Cargo.toml`, `Cargo.lock`, and `crates/tachi-core` now exist |
 | First parity crate plan | Docs | Done | See `docs/rust/2026-06-04-first-parity-crate-plan.md` |
 | Feature parity map | Backlog | In progress | Preserve current shipped behavior while Rust now owns the parsing, aggregation, and SARIF slices that have already landed |
-| Legacy compatibility boundary | Backlog | Not started | Define what transitional adapters remain temporarily and why |
+| Python compatibility boundary | Backlog | Not started | Define what stays Python temporarily and why |
 
 ### Success Criteria
 
 - `cargo metadata` works from the repo root.
 - Core crates have a clear ownership boundary.
-- The migration plan can answer "what has moved" and "what is still transitional" without guessing.
+- The migration plan can answer "what has moved" and "what is still Python" without guessing.
 
 ### Risks
 
@@ -77,7 +77,7 @@ The migration roadmap should therefore focus less on "rewrite everything" and mo
 - Rust unit tests are run with `cargo test`.
 - Integration tests are clearly separate from unit tests.
 - End-to-end coverage has one explicit path and one explicit boundary.
-- Coverage reporting is no longer inferred from legacy filenames.
+- Coverage reporting is no longer inferred from Python filenames.
 
 ### Risks
 
@@ -89,7 +89,7 @@ The migration roadmap should therefore focus less on "rewrite everything" and mo
 ## Phase 3 - Core Port
 
 **Timeline**: after Rust coverage is stable
-**Goal**: move the highest-leverage legacy behavior into Rust
+**Goal**: move the highest-leverage Python behavior into Rust
 
 ### Objectives
 
@@ -103,12 +103,12 @@ The migration roadmap should therefore focus less on "rewrite everything" and mo
 |------|--------|--------|-------|
 | Parser/aggregation port | Backlog | In progress | Threat-report narrative parsing, attack-chain parsing, compensating-controls parsing, and risk-scores parsing have moved to `tachi-core` |
 | Report-data generation port | Backlog | Done | Remediation-action selection, MAESTRO grouping, threat/risk SARIF emitters, and coverage catalog data now live in `tachi-core` |
-| Bootstrap/update command port | Backlog | Not started | Removes legacy shell execution from the control plane |
+| Bootstrap/update command port | Backlog | Not started | Removes Python from the control plane |
 
 ### Success Criteria
 
 - The Rust core can reproduce current outputs from frozen fixtures.
-- Legacy adapters become temporary shims rather than the source of truth.
+- Python becomes a temporary adapter rather than the source of truth.
 - The port is small enough to review and test incrementally.
 
 ---
@@ -145,30 +145,30 @@ The migration roadmap should therefore focus less on "rewrite everything" and mo
 
 ---
 
-## Phase 5 - Compatibility Retirement
+## Phase 5 - Python Retirement
 
-**Timeline**: complete
-**Goal**: remove legacy compatibility paths after parity is confirmed
+**Timeline**: final migration cycle
+**Goal**: remove Python-only implementation paths after parity is confirmed
 
 ### Objectives
 
-1. Retire legacy helper scripts and compatibility shims.
+1. Retire Python helper scripts and compatibility shims.
 2. Update migration guides and quickstarts.
-3. Remove or quarantine tests that no longer protect the canonical implementation.
+3. Remove or quarantine Python tests that no longer protect the canonical implementation.
 
 ### Planned Work
 
 | Item | Source | Status | Notes |
 |------|--------|--------|-------|
-| Compatibility retirement plan | Backlog | Done | Legacy compatibility paths have been retired from the migration docs and guidance surface |
-| Doc refresh for Rust/Tauri commands | Backlog | Done | Canonical docs now point at Rust/Tauri commands instead of stale legacy instructions |
-| Legacy-test deprecation map | Backlog | Done | Legacy-test guidance is now explicitly framed as transitional parity coverage |
+| Python retirement plan | Backlog | Not started | Should only begin after Rust parity gates are green |
+| Doc refresh for Rust/Tauri commands | Backlog | Not started | Prevents stale Python instructions from lingering |
+| Legacy-test deprecation map | Backlog | Not started | Distinguish parity guards from obsolete coverage |
 
 ### Success Criteria
 
-- The repo no longer depends on legacy compatibility for canonical behavior.
-- Any remaining transitional surface is explicitly marked transitional or removed.
-- The roadmap points to Rust-native validation as the primary truth.
+- The repo no longer depends on Python for canonical behavior.
+- Any remaining Python surface is explicitly marked transitional or removed.
+- The roadmap can point to Rust-native validation as the primary truth.
 
 ---
 
@@ -177,4 +177,4 @@ The migration roadmap should therefore focus less on "rewrite everything" and mo
 - A rewrite that changes shipped behavior just to look more modern.
 - A Tauri UI that re-implements business logic.
 - A Rust port without parity tests.
-- A long-term dual implementation where legacy adapters remain authoritative.
+- A long-term dual implementation where Python remains authoritative.
