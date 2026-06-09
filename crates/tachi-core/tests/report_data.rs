@@ -23,6 +23,22 @@ fn write_bytes(path: &Path, bytes: &[u8]) {
 }
 
 #[test]
+fn build_report_data_typst_emits_project_name_from_threat_model() {
+    let root = unique_temp_dir("tachi-report-data-project");
+    let target_dir = root.join("examples/agentic-app/sample-report");
+    let template_dir = root.join("templates/tachi/security-report");
+
+    write_bytes(
+        &target_dir.join("threats.md"),
+        b"# Threat Model: Report Data App\n",
+    );
+
+    let rendered = build_report_data_typst(&target_dir, &template_dir);
+
+    assert!(rendered.contains("#let project-name = \"Report Data App\""));
+}
+
+#[test]
 fn build_report_data_typst_sets_executive_architecture_flags_and_relative_path() {
     let root = unique_temp_dir("tachi-report-data");
     let target_dir = root.join("examples/agentic-app/sample-report");
@@ -81,5 +97,7 @@ fn build_report_data_typst_corrects_mislabeled_pngs_to_png_siblings() {
         .expect("executive architecture path line");
     assert!(path_line.contains("threat-executive-architecture.png"));
     assert!(!path_line.contains("://"));
-    assert!(target_dir.join("threat-executive-architecture.png").exists());
+    assert!(target_dir
+        .join("threat-executive-architecture.png")
+        .exists());
 }

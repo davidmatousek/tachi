@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust report-data project metadata parity
+
+Added Rust-native `project-name` emission to the `report-data` Typst payload by reusing the shared Rust project-name parser, closing another slice of `extract-report-data.py` parity without expanding the Python runtime surface.
+
 ### Rust-native source attribution parser contract
 
 Moved the source-attribution parser contract from `tests/scripts/test_source_attribution.py` into the Rust parser integration suite, preserving fixture round-trip and catalog validation coverage while retiring another pytest surface.

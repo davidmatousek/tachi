@@ -17,7 +17,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 |---|---|---|
 | RT-010 | Complete | Keep the frozen Python surface inventory synchronized with retirements. |
 | RT-011 | In progress | Continue migrating pytest coverage to Rust-native tests without dropping coverage below the required floor. |
-| RT-012 | In progress | Finish Rust parity for remaining runtime scripts, then remove Python runtime dependencies from canonical behavior. |
+| RT-012 | In progress | Continue report-data parity after Rust project metadata emission, then remove Python runtime dependencies from canonical behavior. |
 | RT-013 | Pending | Start after RT-012 establishes the shared Rust command layer as canonical. |
 | RT-014 | Pending | Start after RT-012 and RT-013 prove Python packaging and scaffold surfaces are no longer needed. |
 | RT-015 | Pending | Start after the Rust-only path is stable enough for benchmark-driven hardening. |
@@ -51,6 +51,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 - **Priority**: P1
 - **Labels**: `rust`, `core`, `parity`, `sarif`
 - **Summary**: Move the remaining report, infographic, parser, and SARIF logic from Python scripts into Rust modules.
+- **Current evidence**: Rust `report-data` supports direct `--output` writing and now emits `project-name` through the shared Rust project-name parser; full report payload parity is still open.
 - **Acceptance**:
   - The Rust core reproduces the current shipped outputs on frozen fixtures.
   - Python runtime scripts are no longer required for canonical behavior.
@@ -90,11 +91,6 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
   - Error handling is deterministic and actionable across CLI and Tauri paths.
 - **Depends on**: RT-012, RT-013, RT-014
 
-## Backlog Follow-Ups
-
-These are intentionally deferred cleanup items tied to the RT-012 report-data slice.
-
-- `report-data --output` ergonomics: add an optional output-file flag so the Rust binary can mirror the old Python script without shell redirection.
 ## Execution Order
 
 1. RT-010
