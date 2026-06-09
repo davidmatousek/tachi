@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust-native YAML import invariant
+
+Moved the stdlib-only YAML import invariant from `tests/scripts/test_pyyaml_deferred_import.py` into a Rust integration test, preserving the guard that `scripts/*.py` only import `yaml` inside function bodies while retiring another pytest surface.
+
 ### Rust-native project-name parser contract
 
 Moved the project-name parser behavior from `tests/scripts/test_project_name_parser.py` into the Rust parser integration suite, then removed the retired pytest surface from the active Python inventory.
