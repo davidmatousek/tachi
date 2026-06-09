@@ -240,6 +240,49 @@ fn validate_source_attribution_reports_unknown_catalog_ids() {
 }
 
 #[test]
+fn source_attribution_contract_is_rust_native() {
+    let root = workspace_root();
+    assert!(
+        !root
+            .join("tests/scripts/test_source_attribution.py")
+            .exists(),
+        "source-attribution coverage should live in Rust tests, not pytest"
+    );
+
+    let valid_single =
+        include_str!("../../../tests/scripts/fixtures/source_attribution/valid_single_record.md");
+    let single_findings = parse_threats_findings(valid_single).expect("parse single fixture");
+    assert_eq!(single_findings.len(), 1);
+    assert_eq!(single_findings[0].id, "S-1");
+    assert_eq!(
+        single_findings[0].source_attribution.as_ref().unwrap()[0].relationship,
+        "primary"
+    );
+
+    let valid_multi =
+        include_str!("../../../tests/scripts/fixtures/source_attribution/valid_multi_record.md");
+    let multi_findings = parse_threats_findings(valid_multi).expect("parse multi fixture");
+    let records = multi_findings[0].source_attribution.as_ref().unwrap();
+    assert_eq!(records.len(), 3);
+    assert_eq!(records[0].taxonomy, "owasp");
+    assert_eq!(records[1].taxonomy, "cwe");
+    assert_eq!(records[2].taxonomy, "mitre-atlas");
+
+    let mut all_valid_findings = Vec::new();
+    for fixture in [
+        valid_single,
+        valid_multi,
+        include_str!("../../../tests/scripts/fixtures/source_attribution/valid_absent.md"),
+        include_str!("../../../tests/scripts/fixtures/source_attribution/valid_empty_array.md"),
+    ] {
+        all_valid_findings.extend(parse_threats_findings(fixture).expect("parse valid fixture"));
+    }
+
+    let taxonomy_dir = root.join("schemas/taxonomy");
+    assert!(validate_source_attribution(&all_valid_findings, &taxonomy_dir).is_empty());
+}
+
+#[test]
 fn compute_has_source_attribution_is_true_only_for_non_empty_attribution() {
     let absent = include_str!("../../../tests/scripts/fixtures/source_attribution/valid_absent.md");
     let empty =
@@ -256,6 +299,14 @@ fn compute_has_source_attribution_is_true_only_for_non_empty_attribution() {
     assert!(compute_has_source_attribution(&present_findings));
 }
 
+fn workspace_root() -> std::path::PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("workspace root")
+        .to_path_buf()
+}
+
 fn temp_dir() -> std::path::PathBuf {
     let mut root = std::env::temp_dir();
     let stamp = std::time::SystemTime::now()
@@ -265,14 +316,6 @@ fn temp_dir() -> std::path::PathBuf {
     root.push(format!("tachi-core-parsers-{stamp}"));
     std::fs::create_dir_all(&root).expect("create temp dir");
     root
-}
-
-fn workspace_root() -> std::path::PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(Path::parent)
-        .expect("workspace root")
-        .to_path_buf()
 }
 
 fn write_text(path: &std::path::Path, contents: &str) {

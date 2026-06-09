@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust-native source attribution parser contract
+
+Moved the source-attribution parser contract from `tests/scripts/test_source_attribution.py` into the Rust parser integration suite, preserving fixture round-trip and catalog validation coverage while retiring another pytest surface.
+
 ### Rust-native infographic command-dispatch contract
 
 Moved the `tachi.infographic` command-dispatch contract from `tests/scripts/test_command_dispatch.py` into a Rust integration test, preserving the `all` shorthand and `exec` alias checks while retiring another pytest surface.
