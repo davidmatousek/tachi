@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust-native RT-009 documentation contract
+
+Moved the RT-009 roadmap and documentation contract from the remaining pytest suite into a Rust integration test, then removed the retired `tests/test_rt009_docs.py` surface from the active Python inventory.
+
 ### Publishing README migration status
 
 Updated the root README to describe the current `tachi-rust` migration state accurately before public publishing: Rust/Tauri remains the target, remaining Python surfaces are documented as transitional backlog, and the Rust-native validation path is separated from the legacy `pytest` compatibility target.

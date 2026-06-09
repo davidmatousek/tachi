@@ -13,7 +13,7 @@ fn coverage_audit_output_matches_core_counts_on_repo_root() {
     assert!(output.contains("Active test modules: 82"));
     assert!(output.contains("Fixture-copy modules (excluded from active suite): 3"));
     assert!(output.contains("Unit: 3"));
-    assert!(output.contains("Integration: 35"));
+    assert!(output.contains("Integration: 36"));
     assert!(output.contains("Smoke: 4"));
     assert!(output.contains("True end-to-end: 1"));
 }
