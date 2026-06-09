@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust-native template substitute shim canary
+
+Moved the bash `patsub_replacement` shim canary from `tests/scripts/test_substitute_shim_canary.py` into a Rust integration test, preserving the load-bearing `shopt -u patsub_replacement` guard while retiring another pytest smoke surface.
+
 ### Rust report-data project metadata parity
 
 Added Rust-native `project-name` emission to the `report-data` Typst payload by reusing the shared Rust project-name parser, closing another slice of `extract-report-data.py` parity without expanding the Python runtime surface.

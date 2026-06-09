@@ -1,6 +1,6 @@
 # Python Surface Inventory
 
-**Last Updated**: 2026-06-08
+**Last Updated**: 2026-06-09
 **Status**: RT-010 freeze snapshot
 **Scope**: active Python runtime entrypoints, Python packaging, Python test surfaces, and Python-based stack scaffolds that still ship in `tachi-rust`
 
@@ -16,6 +16,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - YAML import invariant coverage has moved from `tests/scripts/test_pyyaml_deferred_import.py` to `crates/tachi-core/tests/yaml_imports.rs`
 - Infographic command-dispatch coverage has moved from `tests/scripts/test_command_dispatch.py` to `crates/tachi-core/tests/infographic_command_dispatch.rs`
 - Source-attribution parser coverage has moved from `tests/scripts/test_source_attribution.py` to `crates/tachi-core/tests/parsers.rs`
+- Template substitute shim canary coverage has moved from `tests/scripts/test_substitute_shim_canary.py` to `crates/tachi-core/tests/substitute_shim_canary.rs`
 - `pyproject.toml` and `requirements-dev.txt` map to retirement once the Rust-native tooling path is complete
 - `stacks/fastapi-react*` scaffolds map to archive/retirement once Rust/Tauri-only stack guidance is stable
 
@@ -36,7 +37,6 @@ stacks/fastapi-react-local/scaffold/backend/app/services/__init__.py
 stacks/fastapi-react-local/scaffold/backend/app/main.py
 tests/scripts/test_pattern_extraction.py
 tests/scripts/test_attack_chain_extraction.py
-tests/scripts/test_substitute_shim_canary.py
 tests/scripts/init_sh_helpers.py
 tests/scripts/test_pattern_synthesis.py
 tests/scripts/generate_pagination_fixture.py
@@ -125,5 +125,5 @@ stacks/fastapi-react/scaffold/backend/app/api/v1/__init__.py
 ## Notes
 
 - The inventory intentionally excludes fixture copies under `tests/fixtures/` and spec artifacts under `specs/`.
-- RT-011 has started retiring pytest-centric coverage by moving the RT-009 documentation contract, taxonomy integrity checks, project-name parser contract, YAML import invariant, infographic command-dispatch contract, and source-attribution parser contract to Rust-native tests.
+- RT-011 has started retiring pytest-centric coverage by moving the RT-009 documentation contract, taxonomy integrity checks, project-name parser contract, YAML import invariant, infographic command-dispatch contract, source-attribution parser contract, and template substitute shim canary to Rust-native tests.
 - RT-014 will remove the packaging and scaffold surfaces once parity is stable.
