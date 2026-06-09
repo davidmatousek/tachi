@@ -52,12 +52,27 @@ fn rt009_documentation_contract_is_rust_native() {
 
     assert!(roadmap.contains("rust-tauri-only-issue-cards.md"));
     assert!(roadmap.contains("rust-tauri-only-merge-plan.md"));
+    assert!(roadmap.contains("Current roadmap completion: 17% (1 of 6 cards complete)."));
+    assert!(roadmap.contains("| RT-010 | Complete |"));
+    assert!(roadmap.contains("| RT-011 | In progress |"));
+    assert!(roadmap.contains("| RT-012 | In progress |"));
+    assert!(roadmap.contains("| RT-013 | Pending |"));
+    assert!(roadmap.contains("| RT-014 | Pending |"));
+    assert!(roadmap.contains("| RT-015 | Pending |"));
     assert!(issue_cards.contains("RT-010 - Freeze the Python surface inventory"));
     assert!(issue_cards.contains("RT-015 - Optimize the Rust path for speed and reliability"));
+    assert!(issue_cards.contains("Current roadmap completion: 17% (1 of 6 cards complete)."));
+    assert!(issue_cards.contains("| RT-010 | Complete |"));
+    assert!(issue_cards.contains("| RT-011 | In progress |"));
+    assert!(issue_cards.contains("| RT-012 | In progress |"));
+    assert!(issue_cards.contains("| RT-013 | Pending |"));
+    assert!(issue_cards.contains("| RT-014 | Pending |"));
+    assert!(issue_cards.contains("| RT-015 | Pending |"));
     assert!(merge_plan.contains("docs(roadmap): add rust-tauri-only migration roadmap"));
     assert!(merge_plan.contains("test(docs): lock roadmap and issue-pack contract"));
 
     let changelog = fs::read_to_string(root.join("CHANGELOG.md")).expect("changelog exists");
+    assert!(changelog.contains("### Rust/Tauri roadmap status refresh"));
     assert!(changelog.contains("### Rust/Tauri doc refresh and compatibility retirement (RT-009)"));
     assert!(changelog.contains(
         "Refreshes the canonical docs and retires the remaining legacy compatibility guidance"

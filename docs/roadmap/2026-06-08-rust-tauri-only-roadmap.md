@@ -19,17 +19,20 @@ The execution-level backlog lives in [2026-06-08-rust-tauri-only-issue-cards.md]
 
 ## Current Status
 
-This is an estimated migration snapshot based on the current repository inventory and the landed Rust slices.
+Current roadmap completion: 17% (1 of 6 cards complete).
 
-| Track | Estimated Completion | Notes |
-|---|---:|---|
-| Rust core parity | 70% | Core parsing, SARIF, taxonomy, and coverage-audit slices already exist in Rust |
-| Rust-native test migration | 35% | Many tests still live under `tests/scripts/*.py` and `tests/schemas/*.py` |
-| Tauri shell hardening | 45% | The shell exists, but the desktop flow still needs parity and E2E coverage |
-| Python surface removal | 20% | Python scripts, pytest config, and FastAPI scaffolds remain |
-| Docs and metadata cleanup | 40% | The highest-level roadmap docs are moving to Rust-first wording, but legacy references still exist |
+This status uses card closure rather than subjective partial estimates. In-progress cards are tracked explicitly but do not count as complete until their acceptance criteria are satisfied and validated.
 
-**Estimated overall completion**: 40%
+| Card | Status | Current evidence |
+|---|---|---|
+| RT-010 | Complete | The Python surface inventory is frozen in [2026-06-08-python-surface-inventory.md](./2026-06-08-python-surface-inventory.md). |
+| RT-011 | In progress | RT-009 documentation coverage and taxonomy integrity checks have moved from pytest to Rust integration tests; the remaining pytest surface is still active. |
+| RT-012 | In progress | Rust-native report-data output handling and SARIF CLI slices exist, but the remaining Python runtime scripts are still listed in the inventory. |
+| RT-013 | Pending | Tauri shell parity work depends on RT-012 runtime parity. |
+| RT-014 | Pending | Python packaging and FastAPI scaffold retirement depends on RT-012 and RT-013. |
+| RT-015 | Pending | Speed and reliability hardening depends on the Rust-only runtime path being stable. |
+
+The prior broad migration snapshot remains useful for orientation: Rust core parity is the strongest track, Rust-native test migration and runtime-script retirement are active, and Tauri shell hardening plus packaging/scaffold retirement remain downstream.
 
 ## BEADS Map
 

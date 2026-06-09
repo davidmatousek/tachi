@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust/Tauri roadmap status refresh
+
+Updated the Rust/Tauri-only roadmap and execution issue cards with a card-closure completion percentage, explicit RT-010 through RT-015 statuses, and recovered RT-011/RT-012 progress notes so the remaining migration sequence can resume from a current baseline.
+
 ### Rust-native taxonomy integrity contract
 
 Moved the taxonomy catalog and crosswalk integrity checks from pytest into a Rust integration test, then removed the retired `tests/schemas/test_taxonomy_integrity.py` surface from the active Python inventory.

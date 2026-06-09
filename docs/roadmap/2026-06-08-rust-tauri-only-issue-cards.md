@@ -7,6 +7,21 @@ These cards are the execution-level backlog for the migration roadmap in
 [2026-06-08-rust-tauri-only-roadmap.md](./2026-06-08-rust-tauri-only-roadmap.md).
 They are intentionally small, phase-aligned, and mergeable in sequence.
 
+## Current Completion
+
+Current roadmap completion: 17% (1 of 6 cards complete).
+
+Completion is counted by closed roadmap cards only. Partial implementation work is listed as in progress and does not count as complete until the card acceptance criteria pass validation.
+
+| Card | Status | Next validation focus |
+|---|---|---|
+| RT-010 | Complete | Keep the frozen Python surface inventory synchronized with retirements. |
+| RT-011 | In progress | Continue migrating pytest coverage to Rust-native tests without dropping coverage below the required floor. |
+| RT-012 | In progress | Finish Rust parity for remaining runtime scripts, then remove Python runtime dependencies from canonical behavior. |
+| RT-013 | Pending | Start after RT-012 establishes the shared Rust command layer as canonical. |
+| RT-014 | Pending | Start after RT-012 and RT-013 prove Python packaging and scaffold surfaces are no longer needed. |
+| RT-015 | Pending | Start after the Rust-only path is stable enough for benchmark-driven hardening. |
+
 ## Card Set
 
 ### RT-010 - Freeze the Python surface inventory
