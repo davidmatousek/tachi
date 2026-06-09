@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust-native project-name parser contract
+
+Moved the project-name parser behavior from `tests/scripts/test_project_name_parser.py` into the Rust parser integration suite, then removed the retired pytest surface from the active Python inventory.
+
 ### Rust/Tauri roadmap status refresh
 
 Updated the Rust/Tauri-only roadmap and execution issue cards with a card-closure completion percentage, explicit RT-010 through RT-015 statuses, and recovered RT-011/RT-012 progress notes so the remaining migration sequence can resume from a current baseline.

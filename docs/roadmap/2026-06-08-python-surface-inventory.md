@@ -12,6 +12,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - `tests/scripts/*.py` and `tests/schemas/*.py` map to Rust unit and integration tests under `crates/*/tests`
 - RT-009 roadmap and documentation contract coverage has moved from `tests/test_rt009_docs.py` to `crates/tachi-core/tests/rt009_docs.rs`
 - Taxonomy catalog integrity coverage has moved from `tests/schemas/test_taxonomy_integrity.py` to `crates/tachi-core/tests/taxonomy_integrity.rs`
+- Project-name parser coverage has moved from `tests/scripts/test_project_name_parser.py` to `crates/tachi-core/tests/parsers.rs`
 - `pyproject.toml` and `requirements-dev.txt` map to retirement once the Rust-native tooling path is complete
 - `stacks/fastapi-react*` scaffolds map to archive/retirement once Rust/Tauri-only stack guidance is stable
 
@@ -87,7 +88,6 @@ stacks/fastapi-react/scaffold/backend/alembic/env.py
 tests/scripts/test_tool_abuse_enrichment.py
 tests/scripts/test_executive_architecture_payload.py
 tests/scripts/test_template_git_clone_timeout.py
-tests/scripts/test_project_name_parser.py
 tests/scripts/test_template_config_load_unit.py
 tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py
 tests/scripts/test_coverage_attestation_tiers.py
@@ -125,5 +125,5 @@ stacks/fastapi-react/scaffold/backend/app/api/v1/__init__.py
 ## Notes
 
 - The inventory intentionally excludes fixture copies under `tests/fixtures/` and spec artifacts under `specs/`.
-- RT-011 has started retiring pytest-centric coverage by moving the RT-009 documentation contract and taxonomy integrity checks to Rust-native tests.
+- RT-011 has started retiring pytest-centric coverage by moving the RT-009 documentation contract, taxonomy integrity checks, and project-name parser contract to Rust-native tests.
 - RT-014 will remove the packaging and scaffold surfaces once parity is stable.

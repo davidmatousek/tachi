@@ -76,6 +76,88 @@ fn parse_project_name_prefers_title_override_then_threats_then_architecture_then
 }
 
 #[test]
+fn parse_project_name_matches_retired_pytest_contract() {
+    let root = temp_dir();
+
+    assert!(
+        !workspace_root()
+            .join("tests/scripts/test_project_name_parser.py")
+            .exists(),
+        "project-name parser coverage should live in Rust tests, not pytest"
+    );
+
+    assert_eq!(
+        parse_project_name("# Alpha Threat Model\n", Some(""), None),
+        "Alpha"
+    );
+    assert_eq!(
+        parse_project_name("# Web Application Threat Model\n", None, None),
+        "Web Application"
+    );
+    assert_eq!(
+        parse_project_name("# Threat Model: second-brain-mcp\n", None, None),
+        "second-brain-mcp"
+    );
+
+    write_text(
+        &root.join("architecture.md"),
+        "# Security Architecture — second-brain-mcp\n",
+    );
+    assert_eq!(
+        parse_project_name("# Threat Model Report\n", None, Some(&root)),
+        "second-brain-mcp"
+    );
+
+    write_text(
+        &root.join("architecture.md"),
+        "# Architecture — my-service\n",
+    );
+    assert_eq!(
+        parse_project_name("# Threat Model Report\n", None, Some(&root)),
+        "my-service"
+    );
+
+    write_text(&root.join("architecture.md"), "# Plain Heading\n");
+    assert_eq!(
+        parse_project_name("# Threat Model Report\n", None, Some(&root)),
+        "Unknown Project"
+    );
+
+    write_text(
+        &root.join("architecture.md"),
+        "# Web Application - Architecture\n",
+    );
+    assert_eq!(
+        parse_project_name("# Threat Model Report\n", None, Some(&root)),
+        "Unknown Project"
+    );
+
+    write_text(
+        &root.join("architecture.md"),
+        "#   Web Application   —   Architecture   \n",
+    );
+    assert_eq!(
+        parse_project_name("# Threat Model Report\n", None, Some(&root)),
+        "Web Application"
+    );
+
+    write_text(
+        &root.join("architecture.md"),
+        "# Web Application — Architecture\n\n# Another Heading\n",
+    );
+    assert_eq!(
+        parse_project_name("# Threat Model Report\n", None, Some(&root)),
+        "Web Application"
+    );
+    assert_eq!(
+        parse_project_name("# Beta Threat Model\n", None, Some(&root)),
+        "Beta"
+    );
+
+    std::fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn parse_finding_pattern_normalizes_case_and_sentinels() {
     assert_eq!(VALID_AGENTIC_PATTERNS.len(), 8);
     assert_eq!(
@@ -183,6 +265,14 @@ fn temp_dir() -> std::path::PathBuf {
     root.push(format!("tachi-core-parsers-{stamp}"));
     std::fs::create_dir_all(&root).expect("create temp dir");
     root
+}
+
+fn workspace_root() -> std::path::PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("workspace root")
+        .to_path_buf()
 }
 
 fn write_text(path: &std::path::Path, contents: &str) {

@@ -772,7 +772,9 @@ fn parse_architecture_heading(content: &str) -> Option<String> {
 
     if pieces[1].eq_ignore_ascii_case("Architecture") {
         normalize_project_name(pieces[0])
-    } else if pieces[0].eq_ignore_ascii_case("Architecture") {
+    } else if pieces[0].eq_ignore_ascii_case("Architecture")
+        || pieces[0].eq_ignore_ascii_case("Security Architecture")
+    {
         normalize_project_name(pieces[1])
     } else {
         None
