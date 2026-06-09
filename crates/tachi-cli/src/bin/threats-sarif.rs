@@ -31,7 +31,11 @@ fn main() -> ExitCode {
         return ExitCode::from(1);
     }
 
-    eprintln!("OK: wrote {} findings to {}", payload.findings_count, output.display());
+    eprintln!(
+        "OK: wrote {} findings to {}",
+        payload.findings_count,
+        output.display()
+    );
     eprintln!(
         "AG-8 present: {} ({})",
         payload.ag8_status.is_some(),
@@ -61,7 +65,9 @@ fn parse_args() -> Result<(PathBuf, PathBuf), String> {
                 output = Some(PathBuf::from(value));
             }
             "--help" | "-h" => {
-                return Err(String::from("usage: threats-sarif --input PATH --output PATH"));
+                return Err(String::from(
+                    "usage: threats-sarif --input PATH --output PATH",
+                ));
             }
             other => {
                 return Err(format!("unrecognized argument: {other}"));

@@ -31,7 +31,11 @@ fn main() -> ExitCode {
         return ExitCode::from(1);
     }
 
-    eprintln!("OK: wrote {} results to {}", payload.results_count, output.display());
+    eprintln!(
+        "OK: wrote {} results to {}",
+        payload.results_count,
+        output.display()
+    );
     ExitCode::SUCCESS
 }
 

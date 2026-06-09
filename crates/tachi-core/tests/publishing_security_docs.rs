@@ -15,8 +15,8 @@ fn publishing_security_docs_are_repo_specific_and_privacy_aware() {
     let security = fs::read_to_string(root.join("SECURITY.md")).expect("SECURITY.md exists");
     let checklist = fs::read_to_string(root.join("docs/standards/PUBLISHING_SECURITY.md"))
         .expect("publishing security checklist exists");
-    let standards = fs::read_to_string(root.join("docs/standards/README.md"))
-        .expect("standards index exists");
+    let standards =
+        fs::read_to_string(root.join("docs/standards/README.md")).expect("standards index exists");
 
     assert!(
         security.contains("pratik-saptarshi/tachi-rust"),

@@ -7,8 +7,7 @@ use tachi_core::infographic::build_infographic_payload;
 use tachi_core::parsers::parse_threats_findings;
 use tachi_core::report_data::build_report_data_typst;
 use tachi_core::risk_scores::{
-    build_risk_scores_sarif, parse_risk_md_section2, parse_risk_md_section3,
-    parse_risk_md_section4,
+    build_risk_scores_sarif, parse_risk_md_section2, parse_risk_md_section3, parse_risk_md_section4,
 };
 use tachi_core::sarif_common::{parse_component_metadata, prefix_for};
 use tachi_core::threats_sarif::{build_threats_sarif, ThreatSarifFinding};

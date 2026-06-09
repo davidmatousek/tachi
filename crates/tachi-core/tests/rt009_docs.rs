@@ -18,17 +18,19 @@ fn rt009_documentation_contract_is_rust_native() {
         "RT-009 documentation coverage should live in Rust tests, not pytest"
     );
 
-    let issue_pack = fs::read_to_string(root.join("docs/roadmap/2026-06-04-rust-tauri-issue-pack.md"))
-        .expect("legacy issue pack exists");
+    let issue_pack =
+        fs::read_to_string(root.join("docs/roadmap/2026-06-04-rust-tauri-issue-pack.md"))
+            .expect("legacy issue pack exists");
     assert!(issue_pack.contains("Current completion: 9/9 issue cards, or 100%."));
     assert!(issue_pack.contains("RT-009 is complete after the docs refresh and retirement pass."));
     assert!(issue_pack.contains("### RT-009 - Refresh docs and retire legacy compatibility paths"));
-    assert!(issue_pack.contains("Legacy compatibility paths are explicitly transitional or removed."));
+    assert!(
+        issue_pack.contains("Legacy compatibility paths are explicitly transitional or removed.")
+    );
 
-    let product_roadmap = fs::read_to_string(
-        root.join("docs/product/03_Product_Roadmap/2026-Rust-Tauri-roadmap.md"),
-    )
-    .expect("product roadmap exists");
+    let product_roadmap =
+        fs::read_to_string(root.join("docs/product/03_Product_Roadmap/2026-Rust-Tauri-roadmap.md"))
+            .expect("product roadmap exists");
     assert!(product_roadmap.contains("## Phase 5 - Compatibility Retirement"));
     assert!(product_roadmap.contains("| Compatibility retirement plan | Backlog | Done |"));
     assert!(product_roadmap.contains("| Doc refresh for Rust/Tauri commands | Backlog | Done |"));

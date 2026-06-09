@@ -328,7 +328,10 @@ fn report_data_binary_returns_typst_payload_for_executive_architecture() {
             "--target-dir",
             repo_root.join(REPORT_TARGET_DIR).to_string_lossy().as_ref(),
             "--template-dir",
-            repo_root.join(REPORT_TEMPLATE_DIR).to_string_lossy().as_ref(),
+            repo_root
+                .join(REPORT_TEMPLATE_DIR)
+                .to_string_lossy()
+                .as_ref(),
         ])
         .output()
         .expect("run report-data binary");
@@ -352,7 +355,10 @@ fn report_data_binary_writes_output_file_when_requested() {
             "--target-dir",
             repo_root.join(REPORT_TARGET_DIR).to_string_lossy().as_ref(),
             "--template-dir",
-            repo_root.join(REPORT_TEMPLATE_DIR).to_string_lossy().as_ref(),
+            repo_root
+                .join(REPORT_TEMPLATE_DIR)
+                .to_string_lossy()
+                .as_ref(),
             "--output",
             output_path.to_string_lossy().as_ref(),
         ])
@@ -391,10 +397,9 @@ fn threats_sarif_binary_writes_sarif_file_and_marks_ag8_metadata() {
         "threats-sarif binary should write the requested output file"
     );
 
-    let sarif: Value = serde_json::from_str(
-        &fs::read_to_string(&output_path).expect("read threats sarif output"),
-    )
-    .expect("valid SARIF JSON");
+    let sarif: Value =
+        serde_json::from_str(&fs::read_to_string(&output_path).expect("read threats sarif output"))
+            .expect("valid SARIF JSON");
     let result = &sarif["runs"][0]["results"][0];
     assert_eq!(result["partialFingerprints"]["findingId/v1"], "AG-8");
     assert_eq!(result["properties"]["asi07_emission"], true);
