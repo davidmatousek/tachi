@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust-native infographic command-dispatch contract
+
+Moved the `tachi.infographic` command-dispatch contract from `tests/scripts/test_command_dispatch.py` into a Rust integration test, preserving the `all` shorthand and `exec` alias checks while retiring another pytest surface.
+
 ### Rust-native YAML import invariant
 
 Moved the stdlib-only YAML import invariant from `tests/scripts/test_pyyaml_deferred_import.py` into a Rust integration test, preserving the guard that `scripts/*.py` only import `yaml` inside function bodies while retiring another pytest surface.
