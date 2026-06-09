@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust-native taxonomy integrity contract
+
+Moved the taxonomy catalog and crosswalk integrity checks from pytest into a Rust integration test, then removed the retired `tests/schemas/test_taxonomy_integrity.py` surface from the active Python inventory.
+
 ### Rust-native RT-009 documentation contract
 
 Moved the RT-009 roadmap and documentation contract from the remaining pytest suite into a Rust integration test, then removed the retired `tests/test_rt009_docs.py` surface from the active Python inventory.
