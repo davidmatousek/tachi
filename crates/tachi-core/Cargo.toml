@@ -12,5 +12,6 @@ serde_json = { version = "1", features = ["preserve_order"] }
 
 [dev-dependencies]
 pretty_assertions = "1"
+regex = "1"
 rstest = "0.24"
 serde_yaml = "0.9"

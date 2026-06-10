@@ -34,6 +34,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - Report-data image binding coverage has moved from `tests/scripts/test_extract_report_data.py` to `crates/tachi-core/tests/report_data.rs` and `crates/tachi-cli/tests/control_plane_cli.rs`
 - Asset-sensitivity tag parser coverage has moved from `tests/scripts/test_asset_sensitivity_tags.py` to `crates/tachi-core/tests/parsers.rs`
 - MAESTRO pattern-classification rules coverage has moved from `tests/scripts/test_pattern_classification_rules.py` to `crates/tachi-core/tests/pattern_classification_rules.rs`
+- Pattern synthesis coverage has moved from `tests/scripts/test_pattern_synthesis.py` to `crates/tachi-core/tests/pattern_synthesis.rs`
 - Threat SARIF generation has moved from `scripts/generate-threats-sarif.py` to `crates/tachi-cli/src/bin/threats-sarif.rs`
 - Risk-score SARIF generation has moved from `scripts/generate-risk-scores-sarif.py` to `crates/tachi-cli/src/bin/risk-scores-sarif.rs`
 - Shared SARIF helpers have moved from `scripts/sarif_common.py` to `crates/tachi-core/src/sarif_common.rs`
@@ -54,7 +55,7 @@ stacks/fastapi-react-local/scaffold/backend/app/main.py
 ~~tests/scripts/test_pattern_extraction.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation.rs::build_per_finding_rows_groups_taxonomies_and_preserves_order` and `crates/tachi-cli/tests/control_plane_cli.rs::report_data_binary_emits_coverage_attestation_payload_when_source_attribution_exists`
 ~~tests/scripts/test_attack_chain_extraction.py~~ - migrated to `crates/tachi-core/tests/attack_chains.rs::parse_attack_chains_extracts_chain_metadata_and_members`, `crates/tachi-core/tests/attack_chains.rs::parse_attack_chains_extracts_findings_and_controls_in_order`, and `crates/tachi-core/tests/attack_chains.rs::generate_chain_mermaid_renders_layers_and_edges`
 tests/scripts/init_sh_helpers.py
-tests/scripts/test_pattern_synthesis.py
+~~tests/scripts/test_pattern_synthesis.py~~ - migrated to `crates/tachi-core/tests/pattern_synthesis.rs::pattern_synthesis_contract_is_rust_native` and the full Rust-native reference-implementation contract suite
 ~~tests/scripts/generate_pagination_fixture.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation_pagination.rs::coverage_attestation_pagination_smoke_compiles_at_scale`
 ~~tests/scripts/test_attack_chains.py~~ - migrated to `crates/tachi-core/tests/attack_chains.rs::generate_chain_mermaid_renders_layers_and_edges` and `crates/tachi-core/tests/attack_chains.rs::parse_attack_chains_extracts_chain_metadata_and_members`
 stacks/fastapi-react-local/scaffold/backend/app/api/__init__.py

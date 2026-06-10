@@ -321,6 +321,7 @@ name = "tachi-core"
 version = "0.1.0"
 dependencies = [
  "pretty_assertions",
+ "regex",
  "rstest",
  "serde",
  "serde_json",
