@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tachi - Repository Changelog</title>
+  <meta name="description" content="Timeline of updates, refactoring, and feature migrations for the Tachi Rust codebase.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --bg-card: rgba(17, 24, 39, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-primary: #f3f4f6;
+      --text-secondary: #9ca3af;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --primary-glow: rgba(99, 102, 241, 0.15);
+      
+      --badge-feat-bg: rgba(16, 185, 129, 0.1);
+      --badge-feat-text: #10b981;
+      --badge-feat-border: rgba(16, 185, 129, 0.2);
+      
+      --badge-refactor-bg: rgba(139, 92, 246, 0.1);
+      --badge-refactor-text: #8b5cf6;
+      --badge-refactor-border: rgba(139, 92, 246, 0.2);
+      
+      --badge-test-bg: rgba(245, 158, 11, 0.1);
+      --badge-test-text: #f59e0b;
+      --badge-test-border: rgba(245, 158, 11, 0.2);
+      
+      --badge-docs-bg: rgba(6, 182, 212, 0.1);
+      --badge-docs-text: #06b6d4;
+      --badge-docs-border: rgba(6, 182, 212, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 40%);
+      background-attachment: fixed;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 4rem 2rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 5rem;
+      position: relative;
+    }
+
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 3.5rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, #a5b4fc 0%, #6366f1 50%, #8b5cf6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.025em;
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 1.15rem;
+      max-width: 600px;
+      margin: 0 auto;
+      font-weight: 400;
+    }
+
+    /* Filters */
+    .filter-container {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-bottom: 4rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 0.6rem 1.2rem;
+      border-radius: 9999px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 500;
+      font-size: 0.9rem;
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-btn:hover {
+      border-color: rgba(99, 102, 241, 0.4);
+      color: var(--text-primary);
+      transform: translateY(-2px);
+    }
+
+    .filter-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+      box-shadow: 0 4px 14px var(--primary-glow);
+    }
+
+    /* Timeline */
+    .timeline {
+      position: relative;
+      padding-left: 2.5rem;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 7.5px;
+      top: 10px;
+      bottom: 10px;
+      width: 1px;
+      background: linear-gradient(to bottom, var(--primary) 0%, rgba(99, 102, 241, 0.1) 100%);
+    }
+
+    .timeline-item {
+      position: relative;
+      margin-bottom: 3.5rem;
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .timeline-item.hidden {
+      display: none;
+      opacity: 0;
+      transform: scale(0.95);
+    }
+
+    .timeline-dot {
+      position: absolute;
+      left: -2.5rem;
+      top: 6px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--bg-color);
+      border: 3px solid var(--primary);
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+      z-index: 10;
+    }
+
+    .timeline-item:hover .timeline-dot {
+      background: var(--primary);
+      box-shadow: 0 0 12px var(--primary);
+    }
+
+    .timeline-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 2rem;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      position: relative;
+    }
+
+    .timeline-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, transparent 100%);
+      pointer-events: none;
+    }
+
+    .timeline-card:hover {
+      border-color: rgba(99, 102, 241, 0.25);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    .timeline-meta {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .timeline-date {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 1px solid transparent;
+    }
+
+    .badge.feat {
+      background: var(--badge-feat-bg);
+      color: var(--badge-feat-text);
+      border-color: var(--badge-feat-border);
+    }
+
+    .badge.refactor {
+      background: var(--badge-refactor-bg);
+      color: var(--badge-refactor-text);
+      border-color: var(--badge-refactor-border);
+    }
+
+    .badge.test {
+      background: var(--badge-test-bg);
+      color: var(--badge-test-text);
+      border-color: var(--badge-test-border);
+    }
+
+    .badge.docs {
+      background: var(--badge-docs-bg);
+      color: var(--badge-docs-text);
+      border-color: var(--badge-docs-border);
+    }
+
+    .commit-hash {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .timeline-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      color: var(--text-primary);
+    }
+
+    .timeline-desc {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-bottom: 1.25rem;
+    }
+
+    /* Details List */
+    .timeline-details {
+      list-style: none;
+      padding-left: 0.5rem;
+      border-left: 2px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .timeline-details li {
+      position: relative;
+      padding-left: 1.25rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .timeline-details li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--primary);
+    }
+
+    .timeline-details li code {
+      font-family: 'Fira Code', monospace;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.1rem 0.3rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      color: #e0e7ff;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 5rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Interactive animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .timeline-item {
+      animation: fadeIn 0.4s ease forwards;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1 id="main-heading">Tachi Rust Changelog</h1>
+      <p class="subtitle">A detailed timeline of features, refactorings, test migrations, and architectural improvements.</p>
+    </header>
+
+    <div class="filter-container" role="group" aria-label="Filter changelog items">
+      <button class="filter-btn active" id="filter-all" onclick="filterTimeline('all')">All Updates</button>
+      <button class="filter-btn" id="filter-feat" onclick="filterTimeline('feat')">Features</button>
+      <button class="filter-btn" id="filter-refactor" onclick="filterTimeline('refactor')">Refactoring</button>
+      <button class="filter-btn" id="filter-test" onclick="filterTimeline('test')">Tests</button>
+      <button class="filter-btn" id="filter-docs" onclick="filterTimeline('docs')">Documentation</button>
+    </div>
+
+    <main class="timeline" id="changelog-timeline">
+      
+      <!-- Current Release / Work in Progress -->
+      <section class="timeline-item" data-type="refactor">
+        <div class="timeline-dot"></div>
+        <article class="timeline-card">
+          <div class="timeline-meta">
+            <span class="timeline-date">Pending Commit</span>
+            <span class="badge refactor">refactor</span>
+            <span class="commit-hash">wip</span>
+          </div>
+          <h2 class="timeline-title">SOLID Restructuring & Core Decoupling</h2>
+          <p class="timeline-desc">Architectural improvements to resolve SOLID SRP/DIP violations and fix python scanner test execution scope.</p>
+          <ul class="timeline-details">
+            <li>Deconstructed monolithic <code>parsers.rs</code> into a modular <code>parsers/</code> submodule (<code>mod.rs</code>, <code>table.rs</code>, <code>scope.rs</code>, <code>mermaid.rs</code>, <code>findings.rs</code>).</li>
+            <li>Decoupled core data formatting and infographic payload compilers from filesystem dependencies inside <code>infographic.rs</code>.</li>
+            <li>Fixed <code>python_surface_inventory.rs</code> integration tests to correctly ignore <code>.worktrees/</code> and dot-directories.</li>
+          </ul>
+        </article>
+      </section>
+
+      <!-- Previous Commits -->
+      <section class="timeline-item" data-type="test">
+        <div class="timeline-dot"></div>
+        <article class="timeline-card">
+          <div class="timeline-meta">
+            <span class="timeline-date">June 2026</span>
+            <span class="badge test">test</span>
+            <span class="commit-hash">c9b6baf</span>
+          </div>
+          <h2 class="timeline-title">Migrate template config integration coverage</h2>
+          <p class="timeline-desc">Ported integration test coverage for template configuration setup from Python to Rust.</p>
+        </article>
+      </section>
+
+      <section class="timeline-item" data-type="test">
+        <div class="timeline-dot"></div>
+        <article class="timeline-card">
+          <div class="timeline-meta">
+            <span class="timeline-date">June 2026</span>
+            <span class="badge test">test</span>
+            <span class="commit-hash">019a4cc</span>
+          </div>
+          <h2 class="timeline-title">Migrate init input unit coverage</h2>
+          <p class="timeline-desc">Ported core unit tests verifying input initialization sequence to Rust.</p>
+        </article>
+      </section>
+
+      <section class="timeline-item" data-type="test">
+        <div class="timeline-dot"></div>
+        <article class="timeline-card">
+          <div class="timeline-meta">
+            <span class="timeline-date">June 2026</span>
+            <span class="badge test">test</span>
+            <span class="commit-hash">784ed84</span>
+          </div>
+          <h2 class="timeline-title">Migrate template config unit coverage</h2>
+          <p class="timeline-desc">Implemented direct unit testing of configuration template generation in Rust.</p>
+        </article>
+      </section>
+
+      <section class="timeline-item" data-type="test">
+        <div class="timeline-dot"></div>
+        <article class="timeline-card">
+          <div class="timeline-meta">
+            <span class="timeline-date">June 2026</span>
+            <span class="badge test">test</span>
+            <span class="commit-hash">41fa80a</span>
+          </div>
+          <h2 class="timeline-title">Migrate template substitution unit coverage</h2>
+          <p class="timeline-desc">Rust migration of coverage validating string and tag variables substitution within templates.</p>
+        </article>
+      </section>
+
+      <section class="timeline-item" data-type="feat">
+        <div class="timeline-dot"></div>
+        <article class="timeline-card">
+          <div class="timeline-meta">
+            <span class="timeline-date">June 2026</span>
+            <span class="badge feat">feat</span>
+            <span class="commit-hash">872e029</span>
+          </div>
+          <h2 class="timeline-title">Port asset tag parsing</h2>
+          <p class="timeline-desc">Integrated new markdown and asset tag parser into the Rust core parser layer.</p>
+        </article>
+      </section>
+
+      <section class="timeline-item" data-type="test">
+        <div class="timeline-dot"></div>
+        <article class="timeline-card">
+          <div class="timeline-meta">
+            <span class="timeline-date">June 2026</span>
+            <span class="badge test">test</span>
+            <span class="commit-hash">ab93d92</span>
+          </div>
+          <h2 class="timeline-title">Migrate image binding coverage</h2>
+          <p class="timeline-desc">Ported image data-binding test assertions from Python scripting harness to native Rust tests.</p>
+        </article>
+      </section>
+
+      <section class="timeline-item" data-type="test">
+        <div class="timeline-dot"></div>
+        <article class="timeline-card">
+          <div class="timeline-meta">
+            <span class="timeline-date">June 2026</span>
+            <span class="badge test">test</span>
+            <span class="commit-hash">409f866</span>
+          </div>
+          <h2 class="timeline-title">Migrate f-a3 populator wiring</h2>
+          <p class="timeline-desc">Ensured the populator pipelines are wired and covered within cargo test suite.</p>
+        </article>
+      </section>
+
+      <section class="timeline-item" data-type="test">
+        <div class="timeline-dot"></div>
+        <article class="timeline-card">
+          <div class="timeline-meta">
+            <span class="timeline-date">June 2026</span>
+            <span class="badge test">test</span>
+            <span class="commit-hash">493df67</span>
+          </div>
+          <h2 class="timeline-title">Migrate self-delete coverage</h2>
+          <p class="timeline-desc">Rust test port covering file cleanups and secure deletion pathways.</p>
+        </article>
+      </section>
+
+      <section class="timeline-item" data-type="docs">
+        <div class="timeline-dot"></div>
+        <article class="timeline-card">
+          <div class="timeline-meta">
+            <span class="timeline-date">May 2026</span>
+            <span class="badge docs">docs</span>
+            <span class="commit-hash">2f3e65a</span>
+          </div>
+          <h2 class="timeline-title">Add repository codemap atlas</h2>
+          <p class="timeline-desc">Documented repository layouts, module connections, and indexing boundaries.</p>
+        </article>
+      </section>
+
+      <section class="timeline-item" data-type="test">
+        <div class="timeline-dot"></div>
+        <article class="timeline-card">
+          <div class="timeline-meta">
+            <span class="timeline-date">May 2026</span>
+            <span class="badge test">test</span>
+            <span class="commit-hash">4ac8387</span>
+          </div>
+          <h2 class="timeline-title">Migrate output integrity coverage</h2>
+          <p class="timeline-desc">Ported JSON and HTML report schema validation tests to native cargo runner.</p>
+        </article>
+      </section>
+
+    </main>
+
+    <footer>
+      <p>&copy; 2026 Tachi Rust. Maintained with &hearts; and <a href="https://github.com/conventional-commits/conventionalcommits.org" target="_blank" rel="noopener">Conventional Commits</a>.</p>
+    </footer>
+  </div>
+
+  <script>
+    function filterTimeline(type) {
+      // Toggle button active classes
+      const buttons = document.querySelectorAll('.filter-btn');
+      buttons.forEach(btn => {
+        if (btn.id === 'filter-' + type) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      // Filter cards
+      const items = document.querySelectorAll('.timeline-item');
+      items.forEach(item => {
+        if (type === 'all' || item.getAttribute('data-type') === type) {
+          item.classList.remove('hidden');
+        } else {
+          item.classList.add('hidden');
+        }
+      });
+    }
+  </style>
+</body>
+</html>

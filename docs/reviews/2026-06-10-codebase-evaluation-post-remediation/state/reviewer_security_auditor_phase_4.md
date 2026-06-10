@@ -1,0 +1,5 @@
+# Phase 4: Private Reflection - Security Auditor
+
+## Confidence Ratings
+1. **Hardcoded templates:** High Confidence.
+2. **Case conversion index sharing:** Medium Confidence.

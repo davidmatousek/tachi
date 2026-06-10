@@ -1,0 +1,19 @@
+{
+  "only": [
+    "py",
+    "yaml",
+    "rs",
+    "sh",
+    "sarif"
+  ],
+  "exclude": [
+    ".worktrees",
+    "target",
+    "docs/reviews"
+  ],
+  "budgets": {},
+  "routing": {
+    "retrieval": {}
+  },
+  "drift": {}
+}

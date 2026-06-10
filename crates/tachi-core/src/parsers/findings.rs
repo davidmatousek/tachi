@@ -1,7 +1,8 @@
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
+
+use crate::parsers::table::parse_markdown_table;
 
 pub const VALID_AGENTIC_PATTERNS: [&str; 8] = [
     "agent_collusion",
@@ -14,383 +15,10 @@ pub const VALID_AGENTIC_PATTERNS: [&str; 8] = [
     "multiple",
 ];
 
-pub const VALID_ASSET_TAGS: [&str; 6] = ["pii", "phi", "auth", "secrets", "financial", "safety"];
-
 pub const SEVERITY_ORDER: [&str; 5] = ["Critical", "High", "Medium", "Low", "Note"];
-
-pub fn escape_typst_string(input: &str) -> String {
-    input
-        .replace('\\', "\\\\")
-        .replace('\"', "\\\"")
-        .replace('\n', "\\n")
-}
-
-pub fn strip_bold(input: &str) -> String {
-    let trimmed = input.trim();
-    if let Some(stripped) = trimmed
-        .strip_prefix("**")
-        .and_then(|s| s.strip_suffix("**"))
-    {
-        stripped.to_string()
-    } else {
-        input.to_string()
-    }
-}
-
-pub fn parse_finding_pattern(input: Option<&str>) -> String {
-    let Some(raw) = input.map(str::trim).filter(|value| !value.is_empty()) else {
-        return String::from("none");
-    };
-
-    let normalized = raw.to_ascii_lowercase().replace('-', "_");
-    if normalized == "—" || normalized == "none" || normalized == "_" {
-        return String::from("none");
-    }
-
-    if VALID_AGENTIC_PATTERNS
-        .iter()
-        .any(|pattern| *pattern == normalized)
-    {
-        normalized
-    } else {
-        String::from("none")
-    }
-}
-
-pub fn parse_markdown_table(content: &str, section_header: &str) -> Vec<BTreeMap<String, String>> {
-    let mut in_section = false;
-    let mut header: Option<Vec<String>> = None;
-    let mut rows = Vec::new();
-
-    for raw_line in content.lines() {
-        let line = raw_line.trim();
-        if line == section_header {
-            in_section = true;
-            header = None;
-            continue;
-        }
-
-        if !in_section {
-            continue;
-        }
-
-        if line.starts_with('#') && line != section_header {
-            break;
-        }
-
-        if !line.starts_with('|') {
-            continue;
-        }
-
-        let cells = split_table_row(line);
-        if cells.is_empty() {
-            continue;
-        }
-
-        if header.is_none() {
-            if is_separator_row(&cells) {
-                continue;
-            }
-            header = Some(cells);
-            continue;
-        }
-
-        if is_separator_row(&cells) {
-            continue;
-        }
-
-        let Some(header_cells) = header.as_ref() else {
-            continue;
-        };
-
-        let mut row = BTreeMap::new();
-        for (idx, key) in header_cells.iter().enumerate() {
-            let value = cells.get(idx).cloned().unwrap_or_default();
-            row.insert(key.clone(), value);
-        }
-        rows.push(row);
-    }
-
-    rows
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct ScopeData {
-    pub components: Vec<ScopeComponent>,
-    pub data_flows: Vec<DataFlow>,
-    pub trust_boundaries: Vec<TrustBoundary>,
-    pub boundary_crossings: Vec<BoundaryCrossing>,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct ScopeComponent {
-    pub name: String,
-    pub kind: String,
-    pub description: String,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct DataFlow {
-    pub source: String,
-    pub destination: String,
-    pub data: String,
-    pub protocol: String,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct TrustBoundary {
-    pub zone: String,
-    pub trust_level: String,
-    pub components: String,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct BoundaryCrossing {
-    pub crossing: String,
-    pub from_zone: String,
-    pub to_zone: String,
-    pub components: String,
-    pub controls: String,
-}
-
-pub fn parse_scope_data(content: &str) -> ScopeData {
-    let mut result = ScopeData::default();
-
-    for row in parse_markdown_table(content, "### Components") {
-        result.components.push(ScopeComponent {
-            name: row.get("Component").cloned().unwrap_or_default(),
-            kind: row.get("Type").cloned().unwrap_or_default(),
-            description: row.get("Description").cloned().unwrap_or_default(),
-        });
-    }
-
-    for row in parse_markdown_table(content, "### Data Flows") {
-        result.data_flows.push(DataFlow {
-            source: row.get("Source").cloned().unwrap_or_default(),
-            destination: row.get("Destination").cloned().unwrap_or_default(),
-            data: row.get("Data").cloned().unwrap_or_default(),
-            protocol: row.get("Protocol").cloned().unwrap_or_default(),
-        });
-    }
-
-    for row in parse_markdown_table(content, "### Trust Zones") {
-        result.trust_boundaries.push(TrustBoundary {
-            zone: row.get("Zone").cloned().unwrap_or_default(),
-            trust_level: row.get("Trust Level").cloned().unwrap_or_default(),
-            components: row.get("Components").cloned().unwrap_or_default(),
-        });
-    }
-
-    for row in parse_markdown_table(content, "### Boundary Crossings") {
-        result.boundary_crossings.push(BoundaryCrossing {
-            crossing: row.get("Crossing").cloned().unwrap_or_default(),
-            from_zone: row.get("From Zone").cloned().unwrap_or_default(),
-            to_zone: row.get("To Zone").cloned().unwrap_or_default(),
-            components: row.get("Components").cloned().unwrap_or_default(),
-            controls: row.get("Controls").cloned().unwrap_or_default(),
-        });
-    }
-
-    result
-}
-
-pub fn parse_component_distribution(findings: &[BTreeMap<String, String>]) -> Vec<(String, usize)> {
-    let mut counts: BTreeMap<String, usize> = BTreeMap::new();
-
-    for finding in findings {
-        if let Some(component) = finding
-            .get("component")
-            .filter(|component| !component.is_empty())
-        {
-            *counts.entry(component.clone()).or_insert(0) += 1;
-        }
-    }
-
-    let mut rows: Vec<(String, usize)> = counts.into_iter().collect();
-    rows.sort_by(|left, right| right.1.cmp(&left.1).then_with(|| left.0.cmp(&right.0)));
-    rows
-}
-
-pub fn parse_component_asset_map(content: &str) -> BTreeMap<String, Vec<String>> {
-    let mut result: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    if content.trim().is_empty() {
-        return result;
-    }
-
-    for block in select_mermaid_scan_blocks(content) {
-        for line in block.lines() {
-            let mut rest = line;
-            let mut consumed = 0;
-            while let Some(quote_start) = rest.find('"') {
-                let absolute_quote_start = consumed + quote_start;
-                let label_start = quote_start + 1;
-                let Some(relative_quote_end) = rest[label_start..].find('"') else {
-                    break;
-                };
-                let label_end = label_start + relative_quote_end;
-                let label = &rest[label_start..label_end];
-
-                if let Some(raw_tags) = asset_block_body(label) {
-                    let node_id = node_id_before_quote(line, absolute_quote_start);
-                    let tags = normalize_asset_tags(&raw_tags, &node_id);
-                    if !tags.is_empty() {
-                        let display_name = extract_asset_display_name(label);
-                        let key = if display_name.is_empty() {
-                            node_id
-                        } else {
-                            display_name
-                        };
-                        merge_asset_tags(&mut result, key, tags);
-                    }
-                }
-
-                consumed += label_end + 1;
-                rest = &rest[label_end + 1..];
-            }
-        }
-    }
-
-    result
-}
-
-fn merge_asset_tags(result: &mut BTreeMap<String, Vec<String>>, key: String, tags: Vec<String>) {
-    let Some(existing) = result.get_mut(&key) else {
-        result.insert(key, tags);
-        return;
-    };
-
-    let before = existing.clone();
-    let mut merged = existing
-        .iter()
-        .cloned()
-        .chain(tags)
-        .collect::<BTreeSet<_>>()
-        .into_iter()
-        .collect::<Vec<_>>();
-    if merged != before {
-        eprintln!(
-            "Warning: component {key:?} has multiple asset declarations; merged tags: {merged:?}"
-        );
-    }
-    std::mem::swap(existing, &mut merged);
-}
-
-fn select_mermaid_scan_blocks(content: &str) -> Vec<&str> {
-    let mut blocks = Vec::new();
-    let mut cursor = 0;
-    while let Some(start) = content[cursor..].find("```mermaid") {
-        let fence_start = cursor + start;
-        let Some(block_start_offset) = content[fence_start..].find('\n') else {
-            break;
-        };
-        let block_start = fence_start + block_start_offset + 1;
-        let Some(block_end_offset) = content[block_start..].find("\n```") else {
-            break;
-        };
-        let block_end = block_start + block_end_offset;
-        blocks.push(&content[block_start..block_end]);
-        cursor = block_end + 4;
-    }
-
-    if blocks.is_empty() {
-        vec![content]
-    } else {
-        blocks
-    }
-}
-
-fn asset_block_body(label: &str) -> Option<String> {
-    let lower = label.to_ascii_lowercase();
-    let start = lower.find("[asset:")?;
-    let body_start = start + "[asset:".len();
-    let body_end = lower[body_start..].find(']')? + body_start;
-    Some(label[body_start..body_end].trim().to_string())
-}
-
-fn node_id_before_quote(line: &str, quote_start: usize) -> String {
-    let prefix = &line[..quote_start];
-    let mut end = prefix.len();
-    let bytes = prefix.as_bytes();
-
-    while end > 0 {
-        let ch = bytes[end - 1] as char;
-        if ch.is_ascii_whitespace() || matches!(ch, '[' | '(' | '{') {
-            end -= 1;
-        } else {
-            break;
-        }
-    }
-
-    let mut start = end;
-    while start > 0 {
-        let ch = bytes[start - 1] as char;
-        if ch.is_ascii_alphanumeric() || ch == '_' {
-            start -= 1;
-        } else {
-            break;
-        }
-    }
-
-    prefix[start..end].to_string()
-}
-
-fn normalize_asset_tags(raw: &str, node_id: &str) -> Vec<String> {
-    let mut tags = BTreeSet::new();
-    for candidate in raw.split(',') {
-        let tag = candidate.trim().to_ascii_lowercase();
-        if tag.is_empty() {
-            continue;
-        }
-        if VALID_ASSET_TAGS.contains(&tag.as_str()) {
-            tags.insert(tag);
-        } else {
-            eprintln!(
-                "Warning: unknown asset tag {tag:?} on node {node_id:?}; valid tags: {:?}",
-                VALID_ASSET_TAGS
-            );
-        }
-    }
-    tags.into_iter().collect()
-}
-
-fn extract_asset_display_name(label: &str) -> String {
-    let without_asset = remove_asset_block(label);
-    let without_breaks = replace_br_tags_with_space(&without_asset);
-    without_breaks
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-fn remove_asset_block(label: &str) -> String {
-    let Some(start) = label.to_ascii_lowercase().find("[asset:") else {
-        return label.to_string();
-    };
-    let Some(end_offset) = label[start..].find(']') else {
-        return label.to_string();
-    };
-    let end = start + end_offset + 1;
-    format!("{}{}", &label[..start], &label[end..])
-}
-
-fn replace_br_tags_with_space(input: &str) -> String {
-    let mut output = String::with_capacity(input.len());
-    let mut cursor = 0;
-    let lower = input.to_ascii_lowercase();
-
-    while let Some(offset) = lower[cursor..].find("<br") {
-        let start = cursor + offset;
-        output.push_str(&input[cursor..start]);
-        let Some(end_offset) = lower[start..].find('>') else {
-            output.push_str(&input[start..]);
-            return output;
-        };
-        output.push(' ');
-        cursor = start + end_offset + 1;
-    }
-    output.push_str(&input[cursor..]);
-    output
-}
+pub const VALID_SOURCE_ATTRIBUTION_TAXONOMIES: [&str; 5] =
+    ["owasp", "mitre-attack", "mitre-atlas", "nist-ai-rmf", "cwe"];
+pub const VALID_SOURCE_ATTRIBUTION_RELATIONSHIPS: [&str; 3] = ["primary", "related", "derived"];
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SeverityCounts {
@@ -421,6 +49,72 @@ pub struct RiskScoreFinding {
     pub severity: String,
     pub cvss: String,
     pub exploitability: String,
+}
+
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+pub struct SourceAttributionRecord {
+    pub taxonomy: String,
+    pub id: String,
+    pub relationship: String,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ThreatFinding {
+    pub id: String,
+    pub component: String,
+    pub threat: String,
+    pub likelihood: String,
+    pub impact: String,
+    pub risk_level: String,
+    pub mitigation: String,
+    pub agentic_pattern: String,
+    pub delta_status: Option<String>,
+    pub source_attribution: Option<Vec<SourceAttributionRecord>>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ValidationError {
+    pub finding_id: String,
+    pub record: SourceAttributionRecord,
+    pub target_yaml_path: String,
+    pub reason: String,
+}
+
+pub fn parse_finding_pattern(input: Option<&str>) -> String {
+    let Some(raw) = input.map(str::trim).filter(|value| !value.is_empty()) else {
+        return String::from("none");
+    };
+
+    let normalized = raw.to_ascii_lowercase().replace('-', "_");
+    if normalized == "—" || normalized == "none" || normalized == "_" {
+        return String::from("none");
+    }
+
+    if VALID_AGENTIC_PATTERNS
+        .iter()
+        .any(|pattern| *pattern == normalized)
+    {
+        normalized
+    } else {
+        String::from("none")
+    }
+}
+
+pub fn parse_component_distribution(findings: &[BTreeMap<String, String>]) -> Vec<(String, usize)> {
+    let mut counts: BTreeMap<String, usize> = BTreeMap::new();
+
+    for finding in findings {
+        if let Some(component) = finding
+            .get("component")
+            .filter(|component| !component.is_empty())
+        {
+            *counts.entry(component.clone()).or_insert(0) += 1;
+        }
+    }
+
+    let mut rows: Vec<(String, usize)> = counts.into_iter().collect();
+    rows.sort_by(|left, right| right.1.cmp(&left.1).then_with(|| left.0.cmp(&right.0)));
+    rows
 }
 
 pub fn parse_threats_severity(content: &str) -> SeverityCounts {
@@ -570,35 +264,6 @@ fn parse_total_count(value: &str) -> Option<(usize, Option<usize>)> {
     } else {
         Some((total, None))
     }
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct SourceAttributionRecord {
-    pub taxonomy: String,
-    pub id: String,
-    pub relationship: String,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct ThreatFinding {
-    pub id: String,
-    pub component: String,
-    pub threat: String,
-    pub likelihood: String,
-    pub impact: String,
-    pub risk_level: String,
-    pub mitigation: String,
-    pub agentic_pattern: String,
-    pub delta_status: Option<String>,
-    pub source_attribution: Option<Vec<SourceAttributionRecord>>,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct ValidationError {
-    pub finding_id: String,
-    pub record: SourceAttributionRecord,
-    pub target_yaml_path: String,
-    pub reason: String,
 }
 
 pub fn parse_threats_findings(content: &str) -> Result<Vec<ThreatFinding>, String> {
@@ -874,101 +539,4 @@ fn parse_source_attribution_list_item(
         id,
         relationship,
     }))
-}
-
-pub const VALID_SOURCE_ATTRIBUTION_TAXONOMIES: [&str; 5] =
-    ["owasp", "mitre-attack", "mitre-atlas", "nist-ai-rmf", "cwe"];
-pub const VALID_SOURCE_ATTRIBUTION_RELATIONSHIPS: [&str; 3] = ["primary", "related", "derived"];
-
-pub fn parse_project_name(
-    content: &str,
-    title_override: Option<&str>,
-    target_dir: Option<&Path>,
-) -> String {
-    if let Some(override_name) = title_override
-        .map(str::trim)
-        .filter(|name| !name.is_empty())
-    {
-        return override_name.to_string();
-    }
-
-    if let Some(name) = parse_threats_h1(content) {
-        return name;
-    }
-
-    if let Some(dir) = target_dir {
-        let architecture_path = dir.join("architecture.md");
-        if let Ok(architecture) = fs::read_to_string(architecture_path) {
-            if let Some(name) = parse_architecture_heading(&architecture) {
-                return name;
-            }
-        }
-    }
-
-    String::from("Unknown Project")
-}
-
-fn split_table_row(line: &str) -> Vec<String> {
-    line.trim_matches('|')
-        .split('|')
-        .map(|cell| cell.trim().to_string())
-        .collect()
-}
-
-fn is_separator_row(cells: &[String]) -> bool {
-    !cells.is_empty()
-        && cells.iter().all(|cell| {
-            let stripped = cell.replace(' ', "");
-            !stripped.is_empty() && stripped.chars().all(|c| c == '-' || c == ':')
-        })
-}
-
-fn parse_threats_h1(content: &str) -> Option<String> {
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if !trimmed.starts_with('#') {
-            continue;
-        }
-
-        let heading = trimmed.trim_start_matches('#').trim();
-        if let Some(name) = heading.strip_suffix(" Threat Model") {
-            return normalize_project_name(name);
-        }
-        if let Some(name) = heading.strip_prefix("Threat Model: ") {
-            return normalize_project_name(name);
-        }
-    }
-
-    None
-}
-
-fn parse_architecture_heading(content: &str) -> Option<String> {
-    let first_h1 = content.lines().find_map(|line| {
-        let trimmed = line.trim();
-        trimmed.strip_prefix('#').map(|rest| rest.trim())
-    })?;
-
-    let pieces: Vec<&str> = first_h1.split('—').map(|part| part.trim()).collect();
-    if pieces.len() != 2 {
-        return None;
-    }
-
-    if pieces[1].eq_ignore_ascii_case("Architecture") {
-        normalize_project_name(pieces[0])
-    } else if pieces[0].eq_ignore_ascii_case("Architecture")
-        || pieces[0].eq_ignore_ascii_case("Security Architecture")
-    {
-        normalize_project_name(pieces[1])
-    } else {
-        None
-    }
-}
-
-fn normalize_project_name(value: &str) -> Option<String> {
-    let normalized = value.trim();
-    if normalized.is_empty() {
-        None
-    } else {
-        Some(normalized.to_string())
-    }
 }

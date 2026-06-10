@@ -599,29 +599,25 @@ pub fn extract_prompt_scaffold(template_name: &str, repo_root: Option<&Path>) ->
     }
 }
 
-pub fn build_infographic_payload(root: &Path, template: &str) -> Result<Value, String> {
+pub fn build_infographic_payload_from_content(
+    threats_content: &str,
+    tier: u8,
+    project_name: String,
+    scaffold: Option<PromptScaffold>,
+    template: &str,
+) -> Result<Value, String> {
     let normalized_template = template.trim();
 
     if normalized_template.is_empty() {
         return Err(String::from("template is required"));
     }
 
-    let threats_path = root.join("threats.md");
-    let threats_content = fs::read_to_string(&threats_path)
-        .map_err(|err| format!("failed to read {}: {err}", threats_path.display()))?;
-    if threats_content.trim().is_empty() {
-        return Err(String::from("threats.md is empty"));
-    }
-
-    let findings = parse_threats_findings(&threats_content).unwrap_or_default();
+    let findings = parse_threats_findings(threats_content).unwrap_or_default();
     if findings.is_empty() {
         return Err(String::from("no findings parsed from threats.md"));
     }
 
-    let artifacts = detect_artifacts(root);
-    let tier = determine_tier(&artifacts);
-
-    let severity = parse_threats_severity(&threats_content);
+    let severity = parse_threats_severity(threats_content);
     let mut severity = if severity.total == 0 {
         derive_severity_counts_from_findings(&findings)
     } else {
@@ -631,8 +627,7 @@ pub fn build_infographic_payload(root: &Path, template: &str) -> Result<Value, S
         severity.total = findings.len();
     }
 
-    let scope = parse_scope_data(&threats_content);
-    let project_name = parse_project_name(&threats_content, None, Some(root));
+    let scope = parse_scope_data(threats_content);
     let component_count = scope.components.len();
     let risk_posture = compute_risk_posture(tier, component_count, &severity);
     let severity_distribution = compute_severity_percentages(&severity);
@@ -640,7 +635,7 @@ pub fn build_infographic_payload(root: &Path, template: &str) -> Result<Value, S
     let heat_map = build_heat_map(&findings);
     let (findings_ids, top_findings) = build_top_findings(&findings);
 
-    let maestro_data = extract_maestro_data(&threats_content);
+    let maestro_data = extract_maestro_data(threats_content);
 
     let template_data = match normalized_template {
         "maestro-stack" => build_maestro_stack_template_data(&maestro_data),
@@ -664,10 +659,9 @@ pub fn build_infographic_payload(root: &Path, template: &str) -> Result<Value, S
         _ => "threats-only",
     };
 
-    let scaffold = extract_prompt_scaffold(normalized_template, Some(root));
-    let prompt_scaffold = scaffold.found.then_some(PromptScaffoldPayload {
-        preamble: scaffold.preamble,
-        postamble: scaffold.postamble,
+    let prompt_scaffold = scaffold.map(|s| PromptScaffoldPayload {
+        preamble: s.preamble,
+        postamble: s.postamble,
     });
 
     let metadata = InfographicMetadata {
@@ -696,6 +690,29 @@ pub fn build_infographic_payload(root: &Path, template: &str) -> Result<Value, S
     };
 
     serde_json::to_value(payload).map_err(|err| format!("failed to build payload: {err}"))
+}
+
+pub fn build_infographic_payload(root: &Path, template: &str) -> Result<Value, String> {
+    let normalized_template = template.trim();
+
+    let threats_path = root.join("threats.md");
+    let threats_content = fs::read_to_string(&threats_path)
+        .map_err(|err| format!("failed to read {}: {err}", threats_path.display()))?;
+    if threats_content.trim().is_empty() {
+        return Err(String::from("threats.md is empty"));
+    }
+
+    let artifacts = detect_artifacts(root);
+    let tier = determine_tier(&artifacts);
+    let project_name = parse_project_name(&threats_content, None, Some(root));
+    let scaffold_raw = extract_prompt_scaffold(normalized_template, Some(root));
+    let scaffold = if scaffold_raw.found {
+        Some(scaffold_raw)
+    } else {
+        None
+    };
+
+    build_infographic_payload_from_content(&threats_content, tier, project_name, scaffold, template)
 }
 
 fn compute_risk_posture(tier: u8, component_count: usize, severity: &SeverityCounts) -> String {

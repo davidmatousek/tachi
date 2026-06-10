@@ -18,7 +18,12 @@
 
 This repository is the `tachi-rust` migration track for a Rust-native tachi implementation. The long-term target is a pure Rust + Tauri codebase with Rust-owned CLI tooling, parsing, SARIF generation, reporting, and tests.
 
-The repository is not yet Python-free. A frozen inventory of the remaining Python surface is maintained at [`docs/roadmap/2026-06-08-python-surface-inventory.md`](docs/roadmap/2026-06-08-python-surface-inventory.md). Current transitional surfaces include:
+Recent updates towards a native Rust implementation include:
+- **Modular Core Parsers**: Deconstructed the monolithic parser under `tachi-core` into a structured, highly cohesive `src/parsers/` package (`findings.rs`, `mermaid.rs`, `scope.rs`, `table.rs`) following the Single Responsibility Principle (SRP).
+- **Filesystem Decoupling**: Decoupled core data formatting and infographic payload compilation in `infographic.rs` from direct filesystem dependencies, adhering to the Dependency Inversion Principle (DIP).
+- **Environment Isolation**: Improved the python surface inventory testing harness to isolate runs from local workspace artifacts (such as git worktrees).
+
+The repository is not yet completely Python-free. A frozen inventory of the remaining Python surface is maintained at [`docs/roadmap/2026-06-08-python-surface-inventory.md`](docs/roadmap/2026-06-08-python-surface-inventory.md). Current transitional surfaces include:
 
 - legacy runtime scripts under [`scripts/`](scripts/), including SARIF and report-data extractors that are being ported to Rust CLI commands
 - legacy Python tests under [`tests/scripts/`](tests/scripts/) and [`tests/schemas/`](tests/schemas/) that are being migrated to Rust unit, integration, and end-to-end tests

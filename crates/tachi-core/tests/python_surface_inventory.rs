@@ -29,7 +29,11 @@ fn collect_python_files(root: &Path, current: &Path, files: &mut Vec<String>) {
             Err(_) => continue,
         };
 
-        if relative.contains("/fixtures/") || relative.starts_with("specs/") {
+        if relative.contains("/fixtures/")
+            || relative.starts_with("specs/")
+            || relative.starts_with(".worktrees/")
+            || relative.starts_with(".git/")
+        {
             continue;
         }
 
