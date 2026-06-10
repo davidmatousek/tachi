@@ -48,7 +48,7 @@ stacks/fastapi-react-local/scaffold/backend/tests/conftest.py
 stacks/fastapi-react-local/scaffold/backend/app/services/__init__.py
 stacks/fastapi-react-local/scaffold/backend/app/main.py
 ~~tests/scripts/test_pattern_extraction.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation.rs::build_per_finding_rows_groups_taxonomies_and_preserves_order` and `crates/tachi-cli/tests/control_plane_cli.rs::report_data_binary_emits_coverage_attestation_payload_when_source_attribution_exists`
-tests/scripts/test_attack_chain_extraction.py
+~~tests/scripts/test_attack_chain_extraction.py~~ - migrated to `crates/tachi-core/tests/attack_chains.rs::parse_attack_chains_extracts_chain_metadata_and_members`, `crates/tachi-core/tests/attack_chains.rs::parse_attack_chains_extracts_findings_and_controls_in_order`, and `crates/tachi-core/tests/attack_chains.rs::generate_chain_mermaid_renders_layers_and_edges`
 tests/scripts/init_sh_helpers.py
 tests/scripts/test_pattern_synthesis.py
 ~~tests/scripts/generate_pagination_fixture.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation_pagination.rs::coverage_attestation_pagination_smoke_compiles_at_scale`

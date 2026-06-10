@@ -31,7 +31,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | `.aod/` | AOD shell helpers, templates, and governance memory. Some shell helpers remain under Rust test coverage while migration continues. |
 | `tests/scripts/` | Transitional pytest suite and fixtures. RT-011 progressively ports high-signal coverage into Rust tests and removes retired pytest modules. |
 | `tests/fixtures/` | Frozen fixture copies and baseline trees used for compatibility checks. These are excluded from active coverage-audit counts. |
-| `scripts/` | Transitional Python runtime scripts from the original implementation. RT-012 tracks porting remaining canonical behavior into Rust; the standalone SARIF generators and pagination smoke scaffolds have already moved to Rust CLI binaries and tests. |
+| `scripts/` | Transitional Python runtime scripts from the original implementation. RT-012 tracks porting remaining canonical behavior into Rust; the standalone SARIF generators, pagination smoke scaffolds, and attack-chain extraction pytest have already moved to Rust CLI binaries and tests. |
 | `stacks/` | Legacy Python/FastAPI and frontend scaffolds. RT-014 tracks retirement or archival after Rust/Tauri parity is stable. |
 | `docs/` | Public project documentation. Roadmap and product planning documents live under `docs/roadmap/`; testing status lives under `docs/testing/`. |
 
@@ -58,7 +58,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit shows 45 Rust integration modules after retiring the defaults-env init, adversarial init, template git clone timeout, executive-architecture infographic, and attack-chain pytests. |
 | Smoke | Transitional smoke modules tracked by `tachi-core::coverage_audit`; current audit shows 0 remaining Python smoke modules. |
 | E2E | Critical init flow currently represented by `tests/scripts/test_init_sh_substitution.py` while the Rust-owned E2E boundary is being defined. |
-| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 87.98% regions / 88.17% lines. Current audit: 66 active modules, 49 Rust integration modules, 0 Python unit modules, 0 Python smoke modules, 16 support/regression modules. |
+| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 87.98% regions / 88.17% lines. Current audit: 65 active modules, 49 Rust integration modules, 0 Python unit modules, 0 Python smoke modules, 15 support/regression modules. |
 
 Primary validation commands:
 
