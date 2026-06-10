@@ -20,6 +20,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - Template substitute no-`eval` lint coverage has moved from `tests/scripts/test_template_substitute_lint_no_eval.py` to `crates/tachi-core/tests/substitute_shim_canary.rs`
 - Template substitute literal substitution coverage has moved from `tests/scripts/test_template_substitute_unit.py` to `crates/tachi-core/tests/substitute_shim_canary.rs`
 - Template config load unit coverage has moved from `tests/scripts/test_template_config_load_unit.py` to `crates/tachi-shell/tests/template_config_load.rs`
+- Init input unit coverage has moved from `tests/scripts/test_init_input_unit.py` to `crates/tachi-core/tests/init_input.rs`
 - Finding-pattern parser coverage has moved from `tests/scripts/test_finding_pattern_parser.py` to `crates/tachi-core/tests/parsers.rs`
 - Report-data image binding coverage has moved from `tests/scripts/test_extract_report_data.py` to `crates/tachi-core/tests/report_data.rs` and `crates/tachi-cli/tests/control_plane_cli.rs`
 - Asset-sensitivity tag parser coverage has moved from `tests/scripts/test_asset_sensitivity_tags.py` to `crates/tachi-core/tests/parsers.rs`
@@ -67,7 +68,7 @@ tests/scripts/test_init_sh_adversarial.py
 tests/scripts/test_init_sh_substitution.py
 ~~tests/scripts/test_init_sh_self_delete.py~~ - migrated to `crates/tachi-shell/tests/control_plane.rs::init_output_preserves_state_files_when_script_self_deletes`
 tests/scripts/test_extractor_contract_fixes.py
-tests/scripts/test_init_input_unit.py
+~~tests/scripts/test_init_input_unit.py~~ - migrated to `crates/tachi-core/tests/init_input.rs::init_input_unit_contract_is_rust_native`
 tests/scripts/test_pattern_classification_rules.py
 tests/scripts/conftest.py
 tests/scripts/test_extract_infographic_data.py

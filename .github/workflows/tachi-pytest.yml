@@ -75,7 +75,6 @@ on:
       - tests/scripts/test_init_sh_substitution.py
       - tests/scripts/test_init_sh_adversarial.py
       - tests/scripts/test_init_sh_constitution.py
-      - tests/scripts/test_init_input_unit.py
       - tests/scripts/test_init_sh_defaults_env.py            # F-256
       - tests/scripts/test_template_config_load_integration.py # F-256
       - tests/scripts/test_template_git_clone_timeout.py      # F-256
@@ -140,8 +139,8 @@ jobs:
         # ONCE per session instead of once per module — the outer/inner
         # timeouts give ~200s/180s slack on the worst observed scenario.
         #
-        # The remaining unit module (test_init_input_unit) is sub-second per
-        # case. The integration modules (test_init_sh_*,
+        # The helper-level init-input unit contract now lives in Rust. The
+        # integration modules (test_init_sh_*,
         # test_template_config_load_integration, test_template_git_clone_timeout)
         # take longer because they spawn `init.sh` subprocesses or hanging-
         # upstream fixtures. All sit in the same pytest invocation so changes
@@ -155,6 +154,7 @@ jobs:
         #
         # Retired pytest modules now covered by Rust tests:
         #   test_init_sh_self_delete.py             — crates/tachi-shell/tests/control_plane.rs
+        #   test_init_input_unit.py                 — crates/tachi-core/tests/init_input.rs
         #   test_template_config_load_unit.py       — crates/tachi-shell/tests/template_config_load.rs
         #   test_template_substitute_unit.py        — crates/tachi-core/tests/substitute_shim_canary.rs
         #   test_substitute_shim_canary.py          — crates/tachi-core/tests/substitute_shim_canary.rs
@@ -164,7 +164,6 @@ jobs:
             tests/scripts/test_init_sh_substitution.py \
             tests/scripts/test_init_sh_adversarial.py \
             tests/scripts/test_init_sh_constitution.py \
-            tests/scripts/test_init_input_unit.py \
             tests/scripts/test_init_sh_defaults_env.py \
             tests/scripts/test_template_config_load_integration.py \
             tests/scripts/test_template_git_clone_timeout.py \

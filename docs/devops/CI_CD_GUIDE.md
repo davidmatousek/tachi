@@ -168,7 +168,7 @@ F-248 substitution suite (per ADR-038 §Test Coverage — 8 substitution + 4 rej
 F-250 unit modules and Rust-native successors (sub-second per case — adversarial extraction + canary):
 
 - `crates/tachi-core/tests/substitute_shim_canary.rs::template_substitute_literal_project_names_are_rust_native` — migrated successor for the retired `tests/scripts/test_template_substitute_unit.py`
-- `tests/scripts/test_init_input_unit.py`
+- `crates/tachi-core/tests/init_input.rs::init_input_unit_contract_is_rust_native` — migrated successor for the retired `tests/scripts/test_init_input_unit.py`
 - `crates/tachi-core/tests/substitute_shim_canary.rs::template_substitute_shim_canary_is_rust_native` — migrated successor for the retired `tests/scripts/test_substitute_shim_canary.py`
 
 F-256 source-pattern-hardening suite (per ADR-040 §Test Coverage — Sites A-D + Stream 4 watchdog + lint guard):
@@ -201,7 +201,7 @@ paths:
   - tests/scripts/test_init_sh_adversarial.py
   - tests/scripts/test_init_sh_constitution.py
   # F-250 template substitution unit coverage now lives in crates/tachi-core/tests/substitute_shim_canary.rs
-  - tests/scripts/test_init_input_unit.py             # F-250
+  # F-250 init-input unit coverage now lives in crates/tachi-core/tests/init_input.rs
   - tests/scripts/test_init_sh_defaults_env.py            # F-256
   # F-256 template-config unit coverage now lives in crates/tachi-shell/tests/template_config_load.rs
   - tests/scripts/test_template_config_load_integration.py # F-256
@@ -261,7 +261,6 @@ python -m pytest \
   tests/scripts/test_init_sh_substitution.py \
   tests/scripts/test_init_sh_adversarial.py \
   tests/scripts/test_init_sh_constitution.py \
-  tests/scripts/test_init_input_unit.py \
   tests/scripts/test_init_sh_defaults_env.py \
   tests/scripts/test_template_config_load_integration.py \
   tests/scripts/test_template_git_clone_timeout.py \
