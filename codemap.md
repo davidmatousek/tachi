@@ -11,7 +11,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | Entry Point | Responsibility |
 |---|---|
 | `Cargo.toml` | Workspace manifest for `crates/tachi-core`, `crates/tachi-cli`, `crates/tachi-shell`, and `src-tauri`. |
-| `crates/tachi-core/src/lib.rs` | Core Rust library export surface for parsers, report data, SARIF builders, taxonomy, coverage audit, and infographic payloads. |
+| `crates/tachi-core/src/lib.rs` | Core Rust library export surface for parsers, report data, SARIF builders, taxonomy, coverage audit, and infographic payloads, including the executive-architecture overlay path. |
 | `crates/tachi-cli/src/bin/*.rs` | Rust CLI binaries for init/install/update/bootstrap, report-data, infographic-data, SARIF generation, and coverage audit. |
 | `crates/tachi-shell/src/commands.rs` | Shared command layer used by CLI-style flows and the Tauri bridge. |
 | `src-tauri/src/lib.rs` | Desktop command registration and bridge integration for Tauri. |
@@ -41,7 +41,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
 2. Shared business logic runs in `tachi-core` modules:
    - `parsers.rs` parses project names, threat findings, markdown tables, source attribution, and agentic patterns.
    - `report_data.rs` builds Typst payload data for report assembly.
-   - `infographic.rs` builds JSON payloads and MAESTRO visual data.
+   - `infographic.rs` builds JSON payloads, MAESTRO visual data, and the executive-architecture overlay path.
    - `risk_scores.rs`, `threats_sarif.rs`, and `sarif_common.rs` build SARIF exports.
    - `coverage_taxonomy.rs` centralizes coverage and MAESTRO taxonomy labels.
    - `coverage_audit.rs` classifies active test modules by unit, integration, smoke, E2E, and support/regression families.
@@ -53,10 +53,10 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | Level | Current Rust-Native Surface |
 |---|---|
 | Unit | Rust unit tests; current audit shows 0 remaining Python unit modules. |
-| Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit shows 45 Rust integration modules after retiring the defaults-env init, adversarial init, and template git clone timeout pytests. |
+| Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit shows 45 Rust integration modules after retiring the defaults-env init, adversarial init, template git clone timeout, and executive-architecture infographic pytests. |
 | Smoke | Transitional smoke modules tracked by `tachi-core::coverage_audit`; current audit shows 2 remaining Python smoke modules. |
 | E2E | Critical init flow currently represented by `tests/scripts/test_init_sh_substitution.py` while the Rust-owned E2E boundary is being defined. |
-| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 85.69% regions / 86.30% lines. |
+| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 85.20% regions / 85.83% lines. |
 
 Primary validation commands:
 
@@ -74,7 +74,7 @@ cargo run -q -p tachi-cli --bin coverage-audit
 | Roadmap Card | Current Direction |
 |---|---|
 | RT-011 | Migrate remaining pytest coverage into Rust tests using TDD. Keep explicit unit, integration, smoke, and E2E classification visible through `coverage-audit`. |
-| RT-012 | Port remaining Python runtime behavior into Rust modules and CLI binaries, especially report extraction and remaining report/SARIF payload parity. |
+| RT-012 | Port remaining Python runtime behavior into Rust modules and CLI binaries, especially report extraction, executive-architecture infographic parity, and remaining report/SARIF payload parity. |
 | RT-013 | Keep Tauri shell thin by routing desktop behavior through shared Rust command handlers. |
 | RT-014 | Retire Python packaging, pytest-only guidance, and FastAPI stack scaffolds after parity is complete. |
 | RT-015 | Optimize Rust path for speed and reliability after the Python runtime path is no longer canonical. |

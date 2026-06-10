@@ -8,8 +8,8 @@ pub mod table;
 
 pub use findings::{
     compute_delta_counts, compute_has_source_attribution, parse_component_distribution,
-    parse_finding_pattern, parse_risk_scores_findings, parse_risk_scores_severity,
-    parse_resolved_findings, parse_threats_findings, parse_threats_severity,
+    parse_finding_pattern, parse_resolved_findings, parse_risk_scores_findings,
+    parse_risk_scores_severity, parse_threats_findings, parse_threats_severity,
     validate_source_attribution, ResolvedFinding, RiskScoreFinding, SeverityCounts,
     SourceAttributionRecord, ThreatFinding, ValidationError, SEVERITY_ORDER,
     VALID_AGENTIC_PATTERNS, VALID_SOURCE_ATTRIBUTION_RELATIONSHIPS,

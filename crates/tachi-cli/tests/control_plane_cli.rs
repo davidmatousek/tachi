@@ -95,6 +95,57 @@ const THREATS_MD: &str = r#"
 | Total | 3 |
 "#;
 
+const EXECUTIVE_ARCHITECTURE_THREATS_MD: &str = r#"
+# Agentic AI Application
+
+### Components
+
+| Component | Type | MAESTRO Layer |
+| --- | --- | --- |
+| Web UI | Interface | L1 — Presentation |
+| API Gateway | Service | L2 — Foundation Model |
+| Edge Router | Service | L2 — Foundation Model |
+| Core Service | Service | L3 — Control Plane |
+| Guardrails Service | Service | L5 — Security |
+
+### Data Flows
+
+| Source | Destination | Data | Protocol |
+| --- | --- | --- | --- |
+| API Gateway | Core Service | Primary Request | HTTPS |
+| Web UI | API Gateway | Login Request | HTTPS |
+| Edge Router | API Gateway | Forwarded Request | HTTPS |
+
+### Trust Zones
+
+| Zone | Trust Level | Components |
+| --- | --- | --- |
+| Edge Layer | untrusted | Web UI, API Gateway, Edge Router |
+| Core Layer | semi-trusted | Core Service |
+| Security Layer | trusted | Guardrails Service |
+
+## 7. Recommended Actions
+
+| Finding ID | Component | Threat | Risk Level | Mitigation | Status |
+| --- | --- | --- | --- | --- | --- |
+| S-1 | Web UI | Prompt override risk | Critical | Harden instruction guards | [NEW] |
+| S-2 | API Gateway | Prompt override risk | Critical | Harden instruction guards | [NEW] |
+| S-3 | Edge Router | Prompt override risk | Critical | Harden instruction guards | [NEW] |
+| S-4 | API Gateway | Prompt override risk | Critical | Harden instruction guards | [NEW] |
+| S-5 | Edge Router | Model output exfiltration | High | Enforce egress controls | [NEW] |
+
+## 6. Risk Summary
+
+| Risk Level | Count |
+| --- | --- |
+| Critical | 4 |
+| High | 1 |
+| Medium | 0 |
+| Low | 0 |
+| Note | 0 |
+| Total | 5 |
+"#;
+
 fn write_executable_file(path: &Path, content: &str) {
     fs::write(path, content).expect("write temporary script");
     #[cfg(unix)]
@@ -164,6 +215,20 @@ fn fixture_report_data_repo() -> PathBuf {
     )
     .expect("write executive architecture image");
 
+    root
+}
+
+fn fixture_executive_architecture_repo() -> PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "tachi-rust-exec-arch-cli-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos()
+    ));
+
+    fs::create_dir_all(&root).expect("create fixture root");
+    fs::write(root.join("threats.md"), EXECUTIVE_ARCHITECTURE_THREATS_MD).expect("write threats");
     root
 }
 
@@ -319,6 +384,32 @@ fn infographic_data_binary_prints_help_to_stderr() {
     assert!(output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("usage: infographic-data"));
+}
+
+#[test]
+fn infographic_data_binary_returns_executive_architecture_payload() {
+    let repo_root = fixture_executive_architecture_repo();
+    let output = Command::new(binary_path("infographic-data"))
+        .args([
+            "--root",
+            repo_root.to_string_lossy().as_ref(),
+            "--template",
+            "executive-architecture",
+        ])
+        .output()
+        .expect("run infographic-data binary");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let value: Value = serde_json::from_str(&stdout).expect("valid JSON");
+    assert_eq!(value["template"], "executive-architecture");
+    assert_eq!(
+        value["template_data"]["metadata"]["template_name"],
+        "executive-architecture"
+    );
+    assert_eq!(value["template_data"]["metadata"]["skip_image"], false);
+    assert_eq!(value["template_data"]["layers"][0]["name"], "Edge Layer");
+    assert_eq!(value["template_data"]["callouts"][0]["finding_id"], "S-1");
 }
 
 #[test]

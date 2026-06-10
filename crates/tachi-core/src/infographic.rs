@@ -604,6 +604,7 @@ pub fn build_infographic_payload_from_content(
     tier: u8,
     project_name: String,
     scaffold: Option<PromptScaffold>,
+    source_file: Option<&Path>,
     template: &str,
 ) -> Result<Value, String> {
     let normalized_template = template.trim();
@@ -638,6 +639,12 @@ pub fn build_infographic_payload_from_content(
     let maestro_data = extract_maestro_data(threats_content);
 
     let template_data = match normalized_template {
+        "executive-architecture" => build_executive_architecture_template_data(
+            threats_content,
+            tier,
+            source_file,
+            &findings,
+        )?,
         "maestro-stack" => build_maestro_stack_template_data(&maestro_data),
         "maestro-heatmap" => build_maestro_heatmap_template_data(&maestro_data),
         "baseball-card" | "system-architecture" | "risk-funnel" => {
@@ -712,7 +719,513 @@ pub fn build_infographic_payload(root: &Path, template: &str) -> Result<Value, S
         None
     };
 
-    build_infographic_payload_from_content(&threats_content, tier, project_name, scaffold, template)
+    build_infographic_payload_from_content(
+        &threats_content,
+        tier,
+        project_name,
+        scaffold,
+        Some(&threats_path),
+        template,
+    )
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ExecutiveArchitectureLayer {
+    name: String,
+    position: usize,
+    components: Vec<String>,
+    component_count: usize,
+    source_kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    layer_overflow: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ExecutiveArchitectureCallout {
+    layer_name: String,
+    finding_id: String,
+    severity: String,
+    raw_description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    composite_score: Option<f64>,
+    affected_component: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ExecutiveArchitectureFlowEdge {
+    source: String,
+    destination: String,
+    data: String,
+    protocol: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ExecutiveArchitectureCluster {
+    name: String,
+    members: Vec<String>,
+    trust_level: String,
+}
+
+fn build_executive_architecture_template_data(
+    threats_content: &str,
+    tier: u8,
+    source_file: Option<&Path>,
+    findings: &[ThreatFinding],
+) -> Result<Value, String> {
+    let scope_data = parse_scope_data(threats_content);
+    let (mut layers, fallback_used) = build_executive_architecture_layers(&scope_data)?;
+    let flow_edges = build_executive_architecture_flow_edges(&scope_data);
+    let clusters = build_executive_architecture_clusters(&scope_data);
+    let per_layer_qualifying = qualifying_executive_architecture_findings(findings, &layers);
+    let allocation = allocate_executive_architecture_callouts(&per_layer_qualifying);
+    let callouts =
+        build_executive_architecture_callouts(&layers, &per_layer_qualifying, &allocation);
+    let callouts_per_layer = callouts.iter().fold(BTreeMap::new(), |mut acc, callout| {
+        *acc.entry(callout.layer_name.clone()).or_insert(0) += 1;
+        acc
+    });
+
+    for layer in &mut layers {
+        let qualifying_count = per_layer_qualifying
+            .get(&layer.name)
+            .map(|items| items.len())
+            .unwrap_or(0);
+        let allocated = callouts_per_layer.get(&layer.name).copied().unwrap_or(0);
+        if qualifying_count > allocated {
+            layer.layer_overflow = Some(format!(
+                "+ {} more in this layer",
+                qualifying_count - allocated
+            ));
+        }
+    }
+
+    let critical_count = findings
+        .iter()
+        .filter(|finding| finding.risk_level.eq_ignore_ascii_case("Critical"))
+        .count();
+    let high_count = findings
+        .iter()
+        .filter(|finding| finding.risk_level.eq_ignore_ascii_case("High"))
+        .count();
+    let total_qualifying = critical_count + high_count;
+    let skip_image = total_qualifying == 0;
+    let source_file = source_file
+        .map(|path| path.display().to_string())
+        .unwrap_or_default();
+
+    Ok(json!({
+        "metadata": {
+            "template_name": "executive-architecture",
+            "tier_source": tier,
+            "source_file": source_file,
+            "generation_timestamp": "unknown",
+            "qualifying_layer_count": layers.len(),
+            "total_filtered_count": total_qualifying,
+            "skip_image": skip_image,
+            "fallback_used": fallback_used,
+        },
+        "layers": layers,
+        "callouts": callouts,
+        "severity_distribution": {
+            "critical_count": critical_count,
+            "high_count": high_count,
+            "total_qualifying": total_qualifying,
+            "total_after_layer_dedup": callouts.len(),
+        },
+        "flow_edges": flow_edges,
+        "clusters": clusters,
+    }))
+}
+
+fn build_executive_architecture_layers(
+    scope_data: &crate::parsers::ScopeData,
+) -> Result<(Vec<ExecutiveArchitectureLayer>, bool), String> {
+    let trust_zones = build_executive_architecture_trust_zones(scope_data);
+    if !trust_zones.is_empty() {
+        let mut layers = Vec::with_capacity(trust_zones.len());
+        for (position, zone) in trust_zones.into_iter().rev().enumerate() {
+            if zone.components.is_empty() {
+                continue;
+            }
+            layers.push(ExecutiveArchitectureLayer {
+                name: zone.name,
+                position,
+                components: zone.components,
+                component_count: zone.component_count,
+                source_kind: String::from("trust_zone"),
+                layer_overflow: None,
+            });
+        }
+        if layers.is_empty() {
+            return Err(String::from("no_scope_data"));
+        }
+        return Ok((layers, false));
+    }
+
+    let mut layers = build_executive_architecture_dfd_layers(scope_data);
+    if layers.is_empty() {
+        return Err(String::from("no_scope_data"));
+    }
+    for (position, layer) in layers.iter_mut().enumerate() {
+        layer.position = position;
+    }
+    Ok((layers, true))
+}
+
+#[derive(Debug, Clone)]
+struct ExecutiveArchitectureTrustZone {
+    name: String,
+    trust_level: String,
+    components: Vec<String>,
+    component_count: usize,
+}
+
+fn build_executive_architecture_trust_zones(
+    scope_data: &crate::parsers::ScopeData,
+) -> Vec<ExecutiveArchitectureTrustZone> {
+    let mut zones = Vec::with_capacity(scope_data.trust_boundaries.len());
+
+    for boundary in &scope_data.trust_boundaries {
+        let trust_level = boundary.trust_level.trim().to_ascii_lowercase();
+        let mut components = boundary
+            .components
+            .split(',')
+            .map(|component| component.trim())
+            .filter(|component| !component.is_empty())
+            .map(String::from)
+            .collect::<Vec<_>>();
+        components.sort_by_key(|left| left.to_ascii_lowercase());
+        zones.push(ExecutiveArchitectureTrustZone {
+            name: boundary.zone.trim().to_string(),
+            trust_level,
+            component_count: components.len(),
+            components,
+        });
+    }
+
+    zones.sort_by(|left, right| {
+        trust_level_sort_key(&left.trust_level)
+            .cmp(&trust_level_sort_key(&right.trust_level))
+            .then_with(|| {
+                left.name
+                    .to_ascii_lowercase()
+                    .cmp(&right.name.to_ascii_lowercase())
+            })
+    });
+
+    zones
+}
+
+fn build_executive_architecture_dfd_layers(
+    scope_data: &crate::parsers::ScopeData,
+) -> Vec<ExecutiveArchitectureLayer> {
+    let mut by_type: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for component in &scope_data.components {
+        let component_name = component.name.trim();
+        let kind = component.kind.trim();
+        if component_name.is_empty() || kind.is_empty() {
+            continue;
+        }
+        by_type
+            .entry(kind.to_string())
+            .or_default()
+            .push(component_name.to_string());
+    }
+
+    let mut layers = Vec::with_capacity(by_type.len());
+    for (position, (kind, mut components)) in by_type.into_iter().enumerate() {
+        components.sort_by_key(|left| left.to_ascii_lowercase());
+        layers.push(ExecutiveArchitectureLayer {
+            name: kind,
+            position,
+            component_count: components.len(),
+            components,
+            source_kind: String::from("dfd_type"),
+            layer_overflow: None,
+        });
+    }
+
+    layers
+}
+
+fn trust_level_sort_key(trust_level: &str) -> usize {
+    match trust_level {
+        "trusted" => 0,
+        "semi-trusted" => 1,
+        "untrusted" => 2,
+        _ => 99,
+    }
+}
+
+fn normalize_executive_component_name(name: &str) -> String {
+    name.trim()
+        .to_ascii_lowercase()
+        .chars()
+        .filter(|ch| *ch != '-' && *ch != '_' && !ch.is_whitespace())
+        .collect()
+}
+
+fn qualifying_executive_architecture_findings<'a>(
+    findings: &'a [ThreatFinding],
+    layers: &[ExecutiveArchitectureLayer],
+) -> BTreeMap<String, Vec<&'a ThreatFinding>> {
+    let mut component_to_layer: BTreeMap<String, String> = BTreeMap::new();
+    for layer in layers {
+        for component in &layer.components {
+            let key = normalize_executive_component_name(component);
+            if !key.is_empty() {
+                component_to_layer
+                    .entry(key)
+                    .or_insert_with(|| layer.name.clone());
+            }
+        }
+    }
+
+    let mut per_layer: BTreeMap<String, Vec<&ThreatFinding>> = layers
+        .iter()
+        .map(|layer| (layer.name.clone(), Vec::new()))
+        .collect();
+
+    for finding in findings {
+        let severity = finding.risk_level.trim();
+        if !severity.eq_ignore_ascii_case("Critical") && !severity.eq_ignore_ascii_case("High") {
+            continue;
+        }
+
+        let key = normalize_executive_component_name(&finding.component);
+        let Some(layer_name) = component_to_layer.get(&key) else {
+            continue;
+        };
+
+        per_layer
+            .entry(layer_name.clone())
+            .or_default()
+            .push(finding);
+    }
+
+    per_layer
+}
+
+fn executive_callout_sort_key(finding: &ThreatFinding) -> (usize, String) {
+    let severity_rank = match finding.risk_level.trim() {
+        "Critical" => 3,
+        "High" => 2,
+        "Medium" => 1,
+        "Low" => 0,
+        _ => 0,
+    };
+
+    (severity_rank, finding.id.clone())
+}
+
+fn allocate_executive_architecture_callouts(
+    per_layer: &BTreeMap<String, Vec<&ThreatFinding>>,
+) -> BTreeMap<String, usize> {
+    const TOTAL_CAP: usize = 8;
+    const PER_LAYER_CEILING: usize = 4;
+
+    let qualifying: BTreeMap<String, usize> = per_layer
+        .iter()
+        .filter(|(_, findings)| !findings.is_empty())
+        .map(|(name, findings)| (name.clone(), findings.len()))
+        .collect();
+
+    if qualifying.is_empty() {
+        return BTreeMap::new();
+    }
+
+    let total_qualifying: usize = qualifying.values().sum();
+    let target_total = total_qualifying.min(TOTAL_CAP);
+    let qualifying_layer_names: Vec<String> = qualifying.keys().cloned().collect();
+    let n_qualifying = qualifying_layer_names.len();
+
+    if n_qualifying > TOTAL_CAP {
+        let mut ranked = qualifying_layer_names.clone();
+        ranked.sort_by(|left, right| {
+            qualifying
+                .get(right)
+                .unwrap_or(&0)
+                .cmp(qualifying.get(left).unwrap_or(&0))
+                .then_with(|| left.to_ascii_lowercase().cmp(&right.to_ascii_lowercase()))
+        });
+
+        let mut allocation = qualifying_layer_names
+            .iter()
+            .cloned()
+            .map(|name| (name, 0usize))
+            .collect::<BTreeMap<_, _>>();
+        for name in ranked.into_iter().take(TOTAL_CAP) {
+            if let Some(slot) = allocation.get_mut(&name) {
+                *slot = 1;
+            }
+        }
+        return allocation;
+    }
+
+    let mut allocation: BTreeMap<String, usize> = qualifying_layer_names
+        .iter()
+        .cloned()
+        .map(|name| (name, 1))
+        .collect();
+    let current_total = n_qualifying;
+    if current_total >= target_total {
+        return allocation;
+    }
+
+    let quotas: BTreeMap<String, f64> = qualifying_layer_names
+        .iter()
+        .map(|name| {
+            let count = *qualifying.get(name).unwrap_or(&0) as f64;
+            (
+                name.clone(),
+                (count / total_qualifying as f64) * target_total as f64,
+            )
+        })
+        .collect();
+    let mut ranked_by_remainder = qualifying_layer_names.clone();
+    ranked_by_remainder.sort_by(|left, right| {
+        let left_remainder = quotas.get(left).copied().unwrap_or(0.0).fract();
+        let right_remainder = quotas.get(right).copied().unwrap_or(0.0).fract();
+        right_remainder
+            .partial_cmp(&left_remainder)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| left.to_ascii_lowercase().cmp(&right.to_ascii_lowercase()))
+    });
+
+    let mut slots_left = target_total - current_total;
+    while slots_left > 0 {
+        let mut added = 0;
+        for name in &ranked_by_remainder {
+            if slots_left == 0 {
+                break;
+            }
+            let cap = qualifying
+                .get(name)
+                .copied()
+                .unwrap_or(0)
+                .min(PER_LAYER_CEILING);
+            let current = allocation.get(name).copied().unwrap_or(0);
+            if current < cap {
+                *allocation.get_mut(name).expect("allocation entry exists") += 1;
+                slots_left -= 1;
+                added += 1;
+            }
+        }
+        if added == 0 {
+            break;
+        }
+    }
+
+    allocation
+}
+
+fn build_executive_architecture_callouts(
+    layers: &[ExecutiveArchitectureLayer],
+    per_layer: &BTreeMap<String, Vec<&ThreatFinding>>,
+    allocation: &BTreeMap<String, usize>,
+) -> Vec<ExecutiveArchitectureCallout> {
+    let mut callouts = Vec::new();
+
+    for layer in layers {
+        let n = allocation.get(&layer.name).copied().unwrap_or(0);
+        if n == 0 {
+            continue;
+        }
+
+        let mut items = per_layer.get(&layer.name).cloned().unwrap_or_default();
+        items.sort_by(|left, right| {
+            executive_callout_sort_key(right)
+                .0
+                .cmp(&executive_callout_sort_key(left).0)
+                .then_with(|| left.id.cmp(&right.id))
+        });
+
+        for finding in items.into_iter().take(n) {
+            callouts.push(ExecutiveArchitectureCallout {
+                layer_name: layer.name.clone(),
+                finding_id: finding.id.clone(),
+                severity: finding.risk_level.trim().to_string(),
+                raw_description: finding.threat.clone(),
+                composite_score: None,
+                affected_component: Some(finding.component.clone()),
+            });
+        }
+    }
+
+    callouts
+}
+
+fn build_executive_architecture_flow_edges(
+    scope_data: &crate::parsers::ScopeData,
+) -> Vec<ExecutiveArchitectureFlowEdge> {
+    let mut edges = scope_data
+        .data_flows
+        .iter()
+        .map(|flow| ExecutiveArchitectureFlowEdge {
+            source: flow.source.clone(),
+            destination: flow.destination.clone(),
+            data: flow.data.clone(),
+            protocol: flow.protocol.clone(),
+        })
+        .collect::<Vec<_>>();
+
+    edges.sort_by(|left, right| {
+        left.source
+            .to_ascii_lowercase()
+            .cmp(&right.source.to_ascii_lowercase())
+            .then_with(|| {
+                left.destination
+                    .to_ascii_lowercase()
+                    .cmp(&right.destination.to_ascii_lowercase())
+            })
+    });
+
+    if edges.len() > 50 {
+        eprintln!(
+            "Warning: flow_edges truncated to 50 entries ({} emitted by producer)",
+            edges.len()
+        );
+        edges.truncate(50);
+    }
+
+    edges
+}
+
+fn build_executive_architecture_clusters(
+    scope_data: &crate::parsers::ScopeData,
+) -> Vec<ExecutiveArchitectureCluster> {
+    let mut clusters = scope_data
+        .trust_boundaries
+        .iter()
+        .map(|boundary| {
+            let mut members = boundary
+                .components
+                .split(',')
+                .map(|component| component.trim())
+                .filter(|component| !component.is_empty())
+                .map(String::from)
+                .collect::<Vec<_>>();
+            members.sort_by_key(|left| left.to_ascii_lowercase());
+
+            ExecutiveArchitectureCluster {
+                name: boundary.zone.clone(),
+                members,
+                trust_level: boundary.trust_level.trim().to_ascii_lowercase(),
+            }
+        })
+        .collect::<Vec<_>>();
+
+    clusters.sort_by(|left, right| {
+        trust_level_sort_key(&left.trust_level)
+            .cmp(&trust_level_sort_key(&right.trust_level))
+            .then_with(|| {
+                left.name
+                    .to_ascii_lowercase()
+                    .cmp(&right.name.to_ascii_lowercase())
+            })
+    });
+
+    clusters
 }
 
 fn compute_risk_posture(tier: u8, component_count: usize, severity: &SeverityCounts) -> String {

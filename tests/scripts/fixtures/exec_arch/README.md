@@ -1,10 +1,11 @@
 # Executive Architecture Test Fixtures
 
-Fixtures for `tests/scripts/test_extract_infographic_data.py` covering the
-`executive-architecture` template in `scripts/extract-infographic-data.py`.
+Fixtures for the Rust executive-architecture infographic tests covering the
+`executive-architecture` template in `crates/tachi-core/tests/infographic_payload.rs`
+and `crates/tachi-cli/tests/control_plane_cli.rs`.
 
-Each subdirectory is a self-contained `--target-dir` argument for the
-extraction script.
+Each subdirectory is a self-contained `--target-dir` argument for the Rust
+infographic payload builder tests.
 
 ## Fixtures
 

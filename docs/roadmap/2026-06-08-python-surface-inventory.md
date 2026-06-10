@@ -15,6 +15,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - Project-name parser coverage has moved from `tests/scripts/test_project_name_parser.py` to `crates/tachi-core/tests/parsers.rs`
 - YAML import invariant coverage has moved from `tests/scripts/test_pyyaml_deferred_import.py` to `crates/tachi-core/tests/yaml_imports.rs`
 - Infographic command-dispatch coverage has moved from `tests/scripts/test_command_dispatch.py` to `crates/tachi-core/tests/infographic_command_dispatch.rs`
+- Executive-architecture infographic payload coverage has moved from `tests/scripts/test_extract_infographic_data.py` and `tests/scripts/test_executive_architecture_payload.py` to `crates/tachi-core/tests/infographic_payload.rs` and `crates/tachi-cli/tests/control_plane_cli.rs`
 - Source-attribution parser coverage has moved from `tests/scripts/test_source_attribution.py` to `crates/tachi-core/tests/parsers.rs`
 - Template substitute shim canary coverage has moved from `tests/scripts/test_substitute_shim_canary.py` to `crates/tachi-core/tests/substitute_shim_canary.rs`
 - Template substitute no-`eval` lint coverage has moved from `tests/scripts/test_template_substitute_lint_no_eval.py` to `crates/tachi-core/tests/substitute_shim_canary.rs`
@@ -74,7 +75,7 @@ tests/scripts/test_extractor_contract_fixes.py
 ~~tests/scripts/test_init_input_unit.py~~ - migrated to `crates/tachi-core/tests/init_input.rs::init_input_unit_contract_is_rust_native`
 tests/scripts/test_pattern_classification_rules.py
 tests/scripts/conftest.py
-tests/scripts/test_extract_infographic_data.py
+~~tests/scripts/test_extract_infographic_data.py~~ - migrated to `crates/tachi-core/tests/infographic_payload.rs::build_infographic_payload_executive_architecture_includes_layers_callouts_and_overlay` and `crates/tachi-cli/tests/control_plane_cli.rs::infographic_data_binary_returns_executive_architecture_payload`
 tests/scripts/test_init_sh_constitution.py
 ~~tests/scripts/test_template_substitute_unit.py~~ - migrated to `crates/tachi-core/tests/substitute_shim_canary.rs::template_substitute_literal_project_names_are_rust_native`
 ~~tests/scripts/test_init_sh_defaults_env.py~~ - migrated to `crates/tachi-shell/tests/init_defaults_env.rs::init_defaults_env_contract_is_rust_native`
@@ -94,7 +95,7 @@ stacks/fastapi-react-local/scaffold/backend/app/core/__init__.py
 stacks/fastapi-react-local/scaffold/backend/app/config.py
 stacks/fastapi-react/scaffold/backend/alembic/env.py
 tests/scripts/test_tool_abuse_enrichment.py
-tests/scripts/test_executive_architecture_payload.py
+~~tests/scripts/test_executive_architecture_payload.py~~ - migrated to `crates/tachi-core/tests/infographic_payload.rs::build_infographic_payload_executive_architecture_requires_scope_data` and `crates/tachi-cli/tests/control_plane_cli.rs::infographic_data_binary_returns_executive_architecture_payload`
 ~~tests/scripts/test_template_config_load_unit.py~~ - migrated to `crates/tachi-shell/tests/template_config_load.rs::template_config_load_unit_contract_is_rust_native`
 tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py
 tests/scripts/test_coverage_attestation_tiers.py
@@ -132,5 +133,5 @@ stacks/fastapi-react/scaffold/backend/app/api/v1/__init__.py
 ## Notes
 
 - The inventory intentionally excludes fixture copies under `tests/fixtures/` and spec artifacts under `specs/`.
-- RT-011 has started retiring pytest-centric coverage by moving the RT-009 documentation contract, taxonomy integrity checks, project-name parser contract, YAML import invariant, infographic command-dispatch contract, source-attribution parser contract, template substitute shim canary, template substitute no-`eval` lint, template substitute literal substitution contract, finding-pattern parser contract, misinformation schema contract, output-integrity schema contract, init self-delete contract, F-A3 populator wiring contract, report-data image binding contract, asset-sensitivity tag parser contract, adversarial init contract, and template git clone timeout contract to Rust-native tests.
+- RT-011 has started retiring pytest-centric coverage by moving the RT-009 documentation contract, taxonomy integrity checks, project-name parser contract, YAML import invariant, infographic command-dispatch contract, executive-architecture infographic payload contract, source-attribution parser contract, template substitute shim canary, template substitute no-`eval` lint, template substitute literal substitution contract, finding-pattern parser contract, misinformation schema contract, output-integrity schema contract, init self-delete contract, F-A3 populator wiring contract, report-data image binding contract, asset-sensitivity tag parser contract, adversarial init contract, and template git clone timeout contract to Rust-native tests.
 - RT-014 will remove the packaging and scaffold surfaces once parity is stable.
