@@ -9,6 +9,7 @@ use serde_json::Value;
 const TEMPLATE_DIR: &str = "templates/tachi/infographics";
 const REPORT_TEMPLATE_DIR: &str = "templates/tachi/security-report";
 const REPORT_TARGET_DIR: &str = "examples/agentic-app/sample-report";
+const PNG_MAGIC: &[u8] = b"\x89PNG\r\n\x1a\n";
 const JPEG_MAGIC: &[u8] = b"\xff\xd8\xff\xe0\x00\x10JFIF";
 const RISK_SCORES_MD: &str = r#"
 ## 2. Scored Threat Table
@@ -375,6 +376,69 @@ fn report_data_binary_writes_output_file_when_requested() {
     assert!(file_content.contains("#let has-executive-architecture = true"));
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("report-data.typ generated"));
+}
+
+#[test]
+fn report_data_binary_warns_when_correcting_mislabeled_png() {
+    let repo_root = fixture_report_data_repo();
+    let target_dir = repo_root.join(REPORT_TARGET_DIR);
+    fs::write(
+        target_dir.join("threat-executive-architecture.jpg"),
+        [PNG_MAGIC, b"payload"].concat(),
+    )
+    .expect("write mislabeled png");
+
+    let output = Command::new(binary_path("report-data"))
+        .args([
+            "--target-dir",
+            target_dir.to_string_lossy().as_ref(),
+            "--template-dir",
+            repo_root
+                .join(REPORT_TEMPLATE_DIR)
+                .to_string_lossy()
+                .as_ref(),
+        ])
+        .output()
+        .expect("run report-data binary");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("threat-executive-architecture.png"));
+    assert!(target_dir
+        .join("threat-executive-architecture.png")
+        .exists());
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("Image format mismatch"));
+    assert!(stderr.contains("PNG bytes"));
+}
+
+#[test]
+fn report_data_binary_keeps_clean_jpeg_without_format_warning() {
+    let repo_root = fixture_report_data_repo();
+    let target_dir = repo_root.join(REPORT_TARGET_DIR);
+    let output = Command::new(binary_path("report-data"))
+        .args([
+            "--target-dir",
+            target_dir.to_string_lossy().as_ref(),
+            "--template-dir",
+            repo_root
+                .join(REPORT_TEMPLATE_DIR)
+                .to_string_lossy()
+                .as_ref(),
+        ])
+        .output()
+        .expect("run report-data binary");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("threat-executive-architecture.jpg"));
+    assert!(!target_dir
+        .join("threat-executive-architecture.png")
+        .exists());
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(!stderr.contains("Image format mismatch"));
 }
 
 #[test]

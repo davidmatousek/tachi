@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust-native report-data image binding contract
+
+Moved the report-data image binding and byte-probe regression contract from `tests/scripts/test_extract_report_data.py` into Rust core and CLI integration tests, preserving legacy image flags, corrected PNG sibling handling, stale mixed-extension selection, and clean JPEG no-warning behavior while retiring another pytest support surface.
+
 ### Rust-native F-A3 populator wiring contract
 
 Moved the F-A3 source-attribution populator wiring contract from `tests/scripts/test_f_a3_populator_wiring.py` into a dedicated Rust integration test, preserving the 14-host inventory, F-241 block-shape, line-cap, Step 5, and ADR-037 D-3 checks while retiring another pytest support surface.

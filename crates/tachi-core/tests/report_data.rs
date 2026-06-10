@@ -6,6 +6,30 @@ use tachi_core::report_data::build_report_data_typst;
 
 const PNG_MAGIC: &[u8] = b"\x89PNG\r\n\x1a\n";
 const JPEG_MAGIC: &[u8] = b"\xff\xd8\xff\xe0\x00\x10JFIF";
+const LEGACY_IMAGE_FLAGS: &[(&str, &str)] = &[
+    ("threat-risk-funnel.jpg", "#let has-funnel-image = true"),
+    ("threat-baseball-card.jpg", "#let has-baseball-image = true"),
+    (
+        "threat-system-architecture.jpg",
+        "#let has-architecture-image = true",
+    ),
+    (
+        "threat-maestro-stack.jpg",
+        "#let has-maestro-stack-image = true",
+    ),
+    (
+        "threat-maestro-heatmap.jpg",
+        "#let has-maestro-heatmap-image = true",
+    ),
+];
+
+fn workspace_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("workspace root")
+        .to_path_buf()
+}
 
 fn unique_temp_dir(prefix: &str) -> PathBuf {
     let nanos = SystemTime::now()
@@ -100,4 +124,58 @@ fn build_report_data_typst_corrects_mislabeled_pngs_to_png_siblings() {
     assert!(target_dir
         .join("threat-executive-architecture.png")
         .exists());
+}
+
+#[test]
+fn build_report_data_typst_matches_retired_image_binding_pytest_contract() {
+    assert!(
+        !workspace_root()
+            .join("tests/scripts/test_extract_report_data.py")
+            .exists(),
+        "report-data image binding coverage should live in Rust tests, not pytest"
+    );
+
+    let root = unique_temp_dir("tachi-report-data-legacy-flags");
+    let target_dir = root.join("examples/agentic-app/sample-report");
+    let template_dir = root.join("templates/tachi/security-report");
+
+    for (filename, _) in LEGACY_IMAGE_FLAGS {
+        write_bytes(
+            &target_dir.join(filename),
+            &[JPEG_MAGIC, b"payload"].concat(),
+        );
+    }
+
+    let rendered = build_report_data_typst(&target_dir, &template_dir);
+
+    for (_, flag_line) in LEGACY_IMAGE_FLAGS {
+        assert!(
+            rendered.lines().any(|line| line == *flag_line),
+            "expected legacy image flag line {flag_line:?}"
+        );
+    }
+}
+
+#[test]
+fn build_report_data_typst_prefers_self_consistent_png_over_stale_jpg() {
+    let root = unique_temp_dir("tachi-report-data-mixed-extension");
+    let target_dir = root.join("examples/agentic-app/sample-report");
+    let template_dir = root.join("templates/tachi/security-report");
+
+    write_bytes(
+        &target_dir.join("threat-executive-architecture.jpg"),
+        &[PNG_MAGIC, b"stale"].concat(),
+    );
+    write_bytes(
+        &target_dir.join("threat-executive-architecture.png"),
+        &[PNG_MAGIC, b"fresh"].concat(),
+    );
+
+    let rendered = build_report_data_typst(&target_dir, &template_dir);
+
+    let path_line = rendered
+        .lines()
+        .find(|line| line.starts_with("#let executive-architecture-image-path"))
+        .expect("executive architecture path line");
+    assert!(path_line.ends_with("threat-executive-architecture.png\""));
 }
