@@ -44,6 +44,14 @@ fn fixture_repo_with_nested_path() -> (PathBuf, PathBuf) {
     (root, nested)
 }
 
+fn workspace_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("workspace root")
+        .to_path_buf()
+}
+
 #[test]
 fn install_output_runs_install_script_with_provided_flags() {
     let root = fixture_repo();
@@ -74,6 +82,30 @@ fn init_output_forwards_args_to_init_script() {
     assert_eq!(output.status, 0);
     assert_eq!(output.stdout.lines().next(), Some("--precommit"));
     assert_eq!(output.stdout.lines().nth(1), Some("--help"));
+}
+
+#[test]
+fn init_output_preserves_state_files_when_script_self_deletes() {
+    assert!(
+        !workspace_root()
+            .join("tests/scripts/test_init_sh_self_delete.py")
+            .exists(),
+        "init self-delete coverage should live in Rust tests, not pytest"
+    );
+
+    let root = fixture_repo();
+    fs::create_dir_all(root.join(".aod")).expect("create .aod state dir");
+    let script = root.join("scripts/init.sh");
+    write_executable_file(
+        &script,
+        "#!/usr/bin/env bash\nset -e\nprintf 'PROJECT_NAME=tachi\\n' > .aod/personalization.env\nprintf 'v1.2.3\\n' > .aod/aod-kit-version\nrm -f scripts/init.sh\n",
+    );
+
+    let output = init_output(&root, &[]);
+    assert_eq!(output.status, 0);
+    assert!(!script.exists(), "init.sh should self-delete after success");
+    assert!(root.join(".aod/personalization.env").is_file());
+    assert!(root.join(".aod/aod-kit-version").is_file());
 }
 
 #[test]

@@ -16,7 +16,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 | Card | Status | Next validation focus |
 |---|---|---|
 | RT-010 | Complete | Keep the frozen Python surface inventory synchronized with retirements. |
-| RT-011 | In progress | Continue migrating the remaining pytest coverage after the Rust-native output-integrity schema migration. |
+| RT-011 | In progress | Continue migrating the remaining pytest coverage after the Rust-native init self-delete migration. |
 | RT-012 | In progress | Continue report-data parity after Rust project metadata emission, then remove Python runtime dependencies from canonical behavior. |
 | RT-013 | Pending | Start after RT-012 establishes the shared Rust command layer as canonical. |
 | RT-014 | Pending | Start after RT-012 and RT-013 prove Python packaging and scaffold surfaces are no longer needed. |
@@ -40,7 +40,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 - **Priority**: P0
 - **Labels**: `rust`, `testing`, `coverage`, `migration`
 - **Summary**: Port the highest-signal pytest suites into Rust unit and integration tests, then define the narrow Rust-owned E2E boundary.
-- **Current evidence**: RT-009 docs, taxonomy integrity, project-name parsing, YAML import placement, infographic command dispatch, source attribution, the template substitute shim canary, template substitute no-`eval` lint, finding-pattern parser, misinformation schema, and output-integrity schema coverage now have Rust-native tests. Current audit: 76 active modules, 40 Rust integration modules, 3 Python smoke modules, 29 support/regression modules.
+- **Current evidence**: RT-009 docs, taxonomy integrity, project-name parsing, YAML import placement, infographic command dispatch, source attribution, the template substitute shim canary, template substitute no-`eval` lint, finding-pattern parser, misinformation schema, output-integrity schema, and init self-delete coverage now have Rust-native tests. Current audit: 75 active modules, 40 Rust integration modules, 3 Python smoke modules, 28 support/regression modules.
 - **Acceptance**:
   - Core parser and payload behavior have Rust-native regression tests.
   - The Rust test taxonomy covers unit, integration, smoke, and critical E2E flows.
