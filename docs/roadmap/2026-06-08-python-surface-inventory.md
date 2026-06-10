@@ -57,7 +57,7 @@ stacks/fastapi-react-local/scaffold/backend/app/api/__init__.py
 stacks/fastapi-react-local/scaffold/backend/app/api/deps.py
 stacks/fastapi-react-local/scaffold/backend/app/api/v1/router.py
 stacks/fastapi-react-local/scaffold/backend/app/api/v1/__init__.py
-tests/scripts/test_coverage_percentage_computation.py
+~~tests/scripts/test_coverage_percentage_computation.py~~ - migrated to `crates/tachi-core/tests/coverage_percentage_computation.rs::baseline_cross_check_matches_independent_percentage_formula` and `crates/tachi-core/tests/coverage_percentage_computation.rs::mixed_and_oos_fixtures_match_expected_percentage_shape`
 tests/scripts/test_init_precommit_matrix.py
 tests/scripts/__init__.py
 ~~tests/scripts/test_misinformation.py~~ - migrated to `crates/tachi-core/tests/taxonomy_integrity.rs::misinformation_id_schema_contract_is_rust_native`
