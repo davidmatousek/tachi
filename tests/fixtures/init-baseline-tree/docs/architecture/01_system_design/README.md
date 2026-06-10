@@ -3536,6 +3536,8 @@ sequenceDiagram
 
 ### Feature 282: Pre-commit Secret-Scanning Defaults (BLP-02 F-5)
 
+**PR**: [#283](https://github.com/pratik-saptarshi/tachi-rust/pull/283) | **Status**: Delivered | **Date**: 2026-05-10 | **Squash-merge commit**: `18378bd` | **Position**: BLP-02 Wave 4+ — **fifth and final feature** in the 5-feature BLP-02 enterprise-hardening initiative; **closes BLP-02 5/5** alongside F-1 (#250) / F-2 (#256) / F-3 (#272) / F-4 (#277), and **closes the 2026-05-02 Daniel Wood LinkedIn-thread enterprise-hardening punch-list 3/3** alongside F-3 + F-4.
+
 ## Components
 
 This feature ships 8 new files and 3 deltas to introduce a `gitleaks`-via-`pre-commit-framework` default-deny gate against accidental credential exposure. All components are local-host or CI-host scaffolding — no SaaS API surface, no application state.

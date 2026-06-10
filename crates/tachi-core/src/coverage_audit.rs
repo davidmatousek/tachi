@@ -8,7 +8,7 @@ const SMOKE_MODULES: &[&str] = &[
     "tests/scripts/test_asset_sensitivity_tags.py",
 ];
 
-const E2E_MODULES: &[&str] = &["tests/scripts/test_init_sh_substitution.py"];
+const E2E_MODULES: &[&str] = &["crates/tachi-shell/tests/init_substitution.rs"];
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CoverageAudit {
@@ -147,18 +147,18 @@ fn classify_test(relpath: &Path) -> TestCategory {
     let relpath_str = relpath.to_string_lossy();
     let name = relpath.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
+    if matches_explicit_module(relpath, SMOKE_MODULES) {
+        return TestCategory::Smoke;
+    }
+    if matches_explicit_module(relpath, E2E_MODULES) {
+        return TestCategory::E2E;
+    }
     if relpath.extension().and_then(|ext| ext.to_str()) == Some("rs")
         && relpath
             .components()
             .any(|component| component.as_os_str() == "tests")
     {
         return TestCategory::Integration;
-    }
-    if matches_explicit_module(relpath, SMOKE_MODULES) {
-        return TestCategory::Smoke;
-    }
-    if matches_explicit_module(relpath, E2E_MODULES) {
-        return TestCategory::E2E;
     }
     if name == "test_smoke.py" || name.contains("_smoke") {
         return TestCategory::Smoke;
