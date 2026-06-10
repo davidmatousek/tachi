@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust-native output-integrity schema contract
+
+Moved the output-integrity ID and source-attribution fixture contract from `tests/scripts/test_output_integrity.py` into the Rust taxonomy integration suite, preserving schema-version, OI prefix, malformed-ID, and catalog rejection coverage while retiring another pytest support surface.
+
 ### Rust-native misinformation schema contract
 
 Moved the misinformation finding ID schema contract from `tests/scripts/test_misinformation.py` into the Rust taxonomy integration suite, preserving MI prefix and malformed-ID coverage while retiring another pytest support surface.

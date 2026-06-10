@@ -2,6 +2,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use tachi_core::parsers::{validate_source_attribution, SourceAttributionRecord, ThreatFinding};
+
 const CATALOG_FILENAMES: &[&str] = &[
     "owasp.yaml",
     "mitre-attack.yaml",
@@ -27,6 +29,8 @@ const CONFIDENCE_VALUES: &[&str] = &["high", "medium", "low"];
 const PRIMARY_EDGE_FLOOR: usize = 500;
 const PRE_MISINFORMATION_ID_PREFIXES: &[&str] =
     &["S", "T", "R", "I", "D", "E", "AG", "LLM", "AGP", "OI"];
+const PRE_OUTPUT_INTEGRITY_ID_PREFIXES: &[&str] =
+    &["S", "T", "R", "I", "D", "E", "AG", "LLM", "AGP"];
 
 #[derive(Debug)]
 struct CatalogRecord {
@@ -125,12 +129,65 @@ fn finding_id_prefixes(schema_text: &str) -> BTreeSet<String> {
         .collect()
 }
 
+fn schema_version(schema_text: &str) -> String {
+    schema_text
+        .lines()
+        .find_map(|line| scalar_value(line, "schema_version:"))
+        .expect("schema_version should be present")
+}
+
 fn finding_id_matches(prefixes: &BTreeSet<String>, value: &str) -> bool {
     let Some((prefix, suffix)) = value.split_once('-') else {
         return false;
     };
 
     prefixes.contains(prefix) && !suffix.is_empty() && suffix.chars().all(|ch| ch.is_ascii_digit())
+}
+
+fn top_level_scalar(text: &str, key: &str) -> Option<String> {
+    text.lines()
+        .find(|line| line.starts_with(key))
+        .and_then(|line| scalar_value(line, key))
+}
+
+fn source_attribution_records(text: &str) -> Vec<SourceAttributionRecord> {
+    let mut records = Vec::new();
+    let mut current = SourceAttributionRecord::default();
+    let mut in_source_attribution = false;
+
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if trimmed == "source_attribution:" {
+            in_source_attribution = true;
+            continue;
+        }
+        if !in_source_attribution {
+            continue;
+        }
+        if trimmed.starts_with('#') || trimmed.is_empty() {
+            continue;
+        }
+        if !line.starts_with("  ") {
+            break;
+        }
+
+        if let Some(value) = trimmed.strip_prefix("- taxonomy:") {
+            if !current.taxonomy.is_empty() {
+                records.push(std::mem::take(&mut current));
+            }
+            current.taxonomy = value.trim().to_string();
+        } else if let Some(value) = trimmed.strip_prefix("id:") {
+            current.id = value.trim().to_string();
+        } else if let Some(value) = trimmed.strip_prefix("relationship:") {
+            current.relationship = value.trim().to_string();
+        }
+    }
+
+    if !current.taxonomy.is_empty() {
+        records.push(current);
+    }
+
+    records
 }
 
 fn nist_sort_key(id: &str) -> (String, u32, u32, String) {
@@ -393,4 +450,113 @@ fn misinformation_id_schema_contract_is_rust_native() {
             "malformed finding ID {finding_id:?} should not match the finding.id pattern"
         );
     }
+}
+
+#[test]
+fn output_integrity_schema_contract_is_rust_native() {
+    let root = workspace_root();
+    assert!(
+        !root.join("tests/scripts/test_output_integrity.py").exists(),
+        "output-integrity schema coverage should live in Rust tests, not pytest"
+    );
+
+    let schema_path = root.join("schemas/finding.yaml");
+    let schema = fs::read_to_string(&schema_path).unwrap_or_else(|err| {
+        panic!(
+            "expected finding schema {} to load: {err}",
+            schema_path.display()
+        )
+    });
+    assert_eq!(schema_version(&schema), "1.8");
+    let prefixes = finding_id_prefixes(&schema);
+
+    for prefix in PRE_OUTPUT_INTEGRITY_ID_PREFIXES {
+        let finding_id = format!("{prefix}-1");
+        assert!(
+            finding_id_matches(&prefixes, &finding_id),
+            "pre-1.6 ID prefix {prefix:?} should remain valid"
+        );
+    }
+
+    for finding_id in ["OI-1", "OI-10", "OI-99", "OI-100"] {
+        assert!(
+            finding_id_matches(&prefixes, finding_id),
+            "OI finding ID {finding_id:?} should match the finding.id pattern"
+        );
+    }
+
+    for finding_id in [
+        "OI1", "OIA-1", "oi-1", "", "OI-", "OI-abc", "XX-1", "OI-1 ", " OI-1",
+    ] {
+        assert!(
+            !finding_id_matches(&prefixes, finding_id),
+            "malformed finding ID {finding_id:?} should not match the finding.id pattern"
+        );
+    }
+
+    let fixture_dir = root.join("tests/scripts/fixtures/output_integrity");
+    let valid_path = fixture_dir.join("valid_oi_finding.yaml");
+    let invalid_path = fixture_dir.join("invalid_attribution_finding.yaml");
+    let valid_text = fs::read_to_string(&valid_path).unwrap_or_else(|err| {
+        panic!(
+            "expected valid OI fixture {} to load: {err}",
+            valid_path.display()
+        )
+    });
+    let invalid_text = fs::read_to_string(&invalid_path).unwrap_or_else(|err| {
+        panic!(
+            "expected invalid OI fixture {} to load: {err}",
+            invalid_path.display()
+        )
+    });
+
+    let valid_records = source_attribution_records(&valid_text);
+    assert_eq!(
+        top_level_scalar(&valid_text, "id:").as_deref(),
+        Some("OI-1")
+    );
+    assert_eq!(
+        top_level_scalar(&valid_text, "category:").as_deref(),
+        Some("llm")
+    );
+    assert!(
+        valid_records.iter().any(|record| record.taxonomy == "owasp"
+            && record.id == "LLM05"
+            && record.relationship == "primary"),
+        "valid OI fixture should cite OWASP LLM05 as primary"
+    );
+    assert!(
+        validate_source_attribution(
+            &[ThreatFinding {
+                id: String::from("OI-1"),
+                source_attribution: Some(valid_records),
+                ..ThreatFinding::default()
+            }],
+            &taxonomy_dir(&root),
+        )
+        .is_empty(),
+        "valid OI fixture source attribution should resolve against the catalog"
+    );
+
+    let invalid_records = source_attribution_records(&invalid_text);
+    assert!(
+        invalid_records
+            .iter()
+            .any(|record| record.taxonomy == "cwe" && record.id == "CWE-73"),
+        "invalid OI fixture should retain the absent CWE-73 citation"
+    );
+    let errors = validate_source_attribution(
+        &[ThreatFinding {
+            id: String::from("OI-99"),
+            source_attribution: Some(invalid_records),
+            ..ThreatFinding::default()
+        }],
+        &taxonomy_dir(&root),
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|error| error.record.taxonomy == "cwe" && error.record.id == "CWE-73"),
+        "invalid OI fixture should fail on absent cwe:CWE-73"
+    );
 }
