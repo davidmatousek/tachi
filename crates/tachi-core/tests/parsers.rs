@@ -1,8 +1,8 @@
 use std::path::Path;
 use tachi_core::parsers::{
-    compute_has_source_attribution, escape_typst_string, parse_finding_pattern,
-    parse_markdown_table, parse_project_name, parse_threats_findings, strip_bold,
-    validate_source_attribution, VALID_AGENTIC_PATTERNS,
+    compute_has_source_attribution, escape_typst_string, parse_component_asset_map,
+    parse_finding_pattern, parse_markdown_table, parse_project_name, parse_threats_findings,
+    strip_bold, validate_source_attribution, VALID_AGENTIC_PATTERNS, VALID_ASSET_TAGS,
 };
 
 #[test]
@@ -374,6 +374,192 @@ fn source_attribution_contract_is_rust_native() {
 }
 
 #[test]
+fn parse_component_asset_map_matches_retired_pytest_contract() {
+    let root = workspace_root();
+    assert!(
+        !root
+            .join("tests/scripts/test_asset_sensitivity_tags.py")
+            .exists(),
+        "asset-sensitivity tag parser coverage should live in Rust tests, not pytest"
+    );
+
+    assert_eq!(
+        VALID_ASSET_TAGS,
+        ["pii", "phi", "auth", "secrets", "financial", "safety"]
+    );
+    assert!(parse_component_asset_map("").is_empty());
+    assert!(parse_component_asset_map("# Architecture\nNo mermaid here.").is_empty());
+    assert!(parse_component_asset_map(
+        "```mermaid\nflowchart TD\n    User[User]\n    DB[(Database)]\n```"
+    )
+    .is_empty());
+
+    let bracket_shapes = parse_component_asset_map(
+        r#"```mermaid
+    Vault["Secrets Vault<br/>[asset:secrets]"]
+    DB[("Postgres DB<br/>[asset:pii,auth]")]
+    Svc[["Payment Service<br/>[asset:financial]"]]
+```"#,
+    );
+    assert_eq!(
+        tag_values(&bracket_shapes, "Secrets Vault"),
+        Some(vec!["secrets"])
+    );
+    assert_eq!(
+        tag_values(&bracket_shapes, "Postgres DB"),
+        Some(vec!["auth", "pii"])
+    );
+    assert_eq!(
+        tag_values(&bracket_shapes, "Payment Service"),
+        Some(vec!["financial"])
+    );
+
+    assert_eq!(
+        parse_component_asset_map(
+            r#"```mermaid
+    SecretsVault["[asset:secrets]"]
+```"#
+        )
+        .get("SecretsVault")
+        .map(|tags| tags.iter().map(String::as_str).collect::<Vec<_>>()),
+        Some(vec!["secrets"])
+    );
+    assert_eq!(
+        parse_component_asset_map(
+            r#"```mermaid
+    DB1["Store One<br>[asset:pii]"]
+    DB2["Store Two<br />[asset:phi]"]
+    DB3["Store Three<br/>[asset:auth]"]
+```"#
+        )
+        .keys()
+        .cloned()
+        .collect::<Vec<_>>(),
+        vec!["Store One", "Store Three", "Store Two"]
+    );
+    assert_eq!(
+        parse_component_asset_map(
+            r#"```mermaid
+    DB["Database<br/>[asset: secrets,PII,auth,pii ]"]
+```"#
+        )
+        .get("Database")
+        .map(|tags| tags.iter().map(String::as_str).collect::<Vec<_>>()),
+        Some(vec!["auth", "pii", "secrets"])
+    );
+    assert_eq!(
+        parse_component_asset_map(
+            r#"```mermaid
+    A["A<br/>[asset:pii]"]
+    B["B<br/>[asset:phi]"]
+    C["C<br/>[asset:auth]"]
+    D["D<br/>[asset:secrets]"]
+    E["E<br/>[asset:financial]"]
+    F["F<br/>[asset:safety]"]
+```"#
+        )
+        .values()
+        .flatten()
+        .cloned()
+        .collect::<std::collections::BTreeSet<_>>(),
+        VALID_ASSET_TAGS
+            .iter()
+            .map(ToString::to_string)
+            .collect::<std::collections::BTreeSet<_>>()
+    );
+    assert_eq!(
+        parse_component_asset_map(
+            r#"```mermaid
+    DB["Database<br/>[asset:pii,unknown_tag,auth]"]
+    Cache["Cache<br/>[asset:foo,bar,baz]"]
+```"#
+        )
+        .get("Database")
+        .map(|tags| tags.iter().map(String::as_str).collect::<Vec<_>>()),
+        Some(vec!["auth", "pii"])
+    );
+    assert!(!parse_component_asset_map(
+        r#"```mermaid
+    Cache["Cache<br/>[asset:foo,bar,baz]"]
+```"#
+    )
+    .contains_key("Cache"));
+
+    let duplicates = parse_component_asset_map(
+        r#"```mermaid
+    DB["Database<br/>[asset:pii]"]
+    DB["Database<br/>[asset:auth]"]
+```"#,
+    );
+    assert_eq!(
+        tag_values(&duplicates, "Database"),
+        Some(vec!["auth", "pii"])
+    );
+
+    assert_eq!(
+        parse_component_asset_map(
+            r#"# Architecture
+Our database carries [asset:pii] tags but this is prose.
+
+```mermaid
+    DB["Real DB<br/>[asset:auth]"]
+```
+
+Trailing prose with [asset:financial] also ignored.
+"#
+        )
+        .get("Real DB")
+        .map(|tags| tags.iter().map(String::as_str).collect::<Vec<_>>()),
+        Some(vec!["auth"])
+    );
+    assert_eq!(
+        parse_component_asset_map(
+            r#"flowchart TD
+    DB["Database<br/>[asset:pii]"]
+    User --> DB
+"#
+        )
+        .get("Database")
+        .map(|tags| tags.iter().map(String::as_str).collect::<Vec<_>>()),
+        Some(vec!["pii"])
+    );
+
+    let multi_fence = parse_component_asset_map(
+        r#"```mermaid
+    DB1["Store One<br/>[asset:pii]"]
+```
+
+Some prose between blocks.
+
+```mermaid
+    DB2["Store Two<br/>[asset:auth]"]
+```"#,
+    );
+    assert_eq!(tag_values(&multi_fence, "Store One"), Some(vec!["pii"]));
+    assert_eq!(tag_values(&multi_fence, "Store Two"), Some(vec!["auth"]));
+
+    let worked_example = root.join("examples/agentic-app/architecture-with-asset-tags.md");
+    if worked_example.is_file() {
+        let parsed = parse_component_asset_map(
+            &std::fs::read_to_string(worked_example).expect("read asset worked example"),
+        );
+        assert_eq!(
+            tag_values(&parsed, "Knowledge Base"),
+            Some(vec!["phi", "pii"])
+        );
+        assert_eq!(tag_values(&parsed, "Audit Logger"), Some(vec!["auth"]));
+        assert_eq!(
+            tag_values(&parsed, "Long-Running Learning Loop"),
+            Some(vec!["safety"])
+        );
+        assert_eq!(
+            tag_values(&parsed, "Clinical Advisory Sub-Agent"),
+            Some(vec!["phi"])
+        );
+    }
+}
+
+#[test]
 fn compute_has_source_attribution_is_true_only_for_non_empty_attribution() {
     let absent = include_str!("../../../tests/scripts/fixtures/source_attribution/valid_absent.md");
     let empty =
@@ -414,4 +600,12 @@ fn write_text(path: &std::path::Path, contents: &str) {
         std::fs::create_dir_all(parent).expect("create parent");
     }
     std::fs::write(path, contents).expect("write file");
+}
+
+fn tag_values<'a>(
+    map: &'a std::collections::BTreeMap<String, Vec<String>>,
+    key: &str,
+) -> Option<Vec<&'a str>> {
+    map.get(key)
+        .map(|tags| tags.iter().map(String::as_str).collect::<Vec<_>>())
 }

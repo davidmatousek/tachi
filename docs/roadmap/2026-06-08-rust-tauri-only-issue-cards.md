@@ -16,8 +16,8 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 | Card | Status | Next validation focus |
 |---|---|---|
 | RT-010 | Complete | Keep the frozen Python surface inventory synchronized with retirements. |
-| RT-011 | In progress | Continue migrating the remaining pytest coverage after the Rust-native report-data image binding migration. |
-| RT-012 | In progress | Continue report-data parity after Rust project metadata and image binding emission, then remove Python runtime dependencies from canonical behavior. |
+| RT-011 | In progress | Continue migrating the remaining pytest coverage after the Rust-native asset-sensitivity parser migration. |
+| RT-012 | In progress | Continue parser/report-data parity after Rust asset tag parsing and report-data image binding emission, then remove Python runtime dependencies from canonical behavior. |
 | RT-013 | Pending | Start after RT-012 establishes the shared Rust command layer as canonical. |
 | RT-014 | Pending | Start after RT-012 and RT-013 prove Python packaging and scaffold surfaces are no longer needed. |
 | RT-015 | Pending | Start after the Rust-only path is stable enough for benchmark-driven hardening. |
@@ -40,7 +40,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 - **Priority**: P0
 - **Labels**: `rust`, `testing`, `coverage`, `migration`
 - **Summary**: Port the highest-signal pytest suites into Rust unit and integration tests, then define the narrow Rust-owned E2E boundary.
-- **Current evidence**: RT-009 docs, taxonomy integrity, project-name parsing, YAML import placement, infographic command dispatch, source attribution, the template substitute shim canary, template substitute no-`eval` lint, finding-pattern parser, misinformation schema, output-integrity schema, init self-delete, F-A3 populator wiring, and report-data image binding coverage now have Rust-native tests. Current audit: 74 active modules, 41 Rust integration modules, 3 Python smoke modules, 26 support/regression modules.
+- **Current evidence**: RT-009 docs, taxonomy integrity, project-name parsing, YAML import placement, infographic command dispatch, source attribution, the template substitute shim canary, template substitute no-`eval` lint, finding-pattern parser, misinformation schema, output-integrity schema, init self-delete, F-A3 populator wiring, report-data image binding, and asset-sensitivity tag parser coverage now have Rust-native tests. Current audit: 73 active modules, 41 Rust integration modules, 2 Python smoke modules, 26 support/regression modules.
 - **Acceptance**:
   - Core parser and payload behavior have Rust-native regression tests.
   - The Rust test taxonomy covers unit, integration, smoke, and critical E2E flows.
@@ -52,7 +52,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 - **Priority**: P1
 - **Labels**: `rust`, `core`, `parity`, `sarif`
 - **Summary**: Move the remaining report, infographic, parser, and SARIF logic from Python scripts into Rust modules.
-- **Current evidence**: Rust `report-data` supports direct `--output` writing, emits `project-name` through the shared Rust project-name parser, and preserves the image binding plus byte-probe behavior previously covered by pytest; full report payload parity is still open.
+- **Current evidence**: Rust `report-data` supports direct `--output` writing, emits `project-name` through the shared Rust project-name parser, preserves the image binding plus byte-probe behavior previously covered by pytest, and now owns asset-sensitivity tag parsing in `tachi-core`; full report payload parity is still open.
 - **Acceptance**:
   - The Rust core reproduces the current shipped outputs on frozen fixtures.
   - Python runtime scripts are no longer required for canonical behavior.

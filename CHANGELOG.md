@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust-native asset-sensitivity tag parser
+
+Ported the Mermaid asset-sensitivity tag parser from `scripts/tachi_parsers.py` into `tachi-core`, preserving the closed six-tag enum, quoted Mermaid label parsing, tag normalization, duplicate merging, and Mermaid fence scoping while retiring `tests/scripts/test_asset_sensitivity_tags.py`.
+
 ### Rust-native report-data image binding contract
 
 Moved the report-data image binding and byte-probe regression contract from `tests/scripts/test_extract_report_data.py` into Rust core and CLI integration tests, preserving legacy image flags, corrected PNG sibling handling, stale mixed-extension selection, and clean JPEG no-warning behavior while retiring another pytest support surface.

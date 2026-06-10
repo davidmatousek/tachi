@@ -20,6 +20,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - Template substitute no-`eval` lint coverage has moved from `tests/scripts/test_template_substitute_lint_no_eval.py` to `crates/tachi-core/tests/substitute_shim_canary.rs`
 - Finding-pattern parser coverage has moved from `tests/scripts/test_finding_pattern_parser.py` to `crates/tachi-core/tests/parsers.rs`
 - Report-data image binding coverage has moved from `tests/scripts/test_extract_report_data.py` to `crates/tachi-core/tests/report_data.rs` and `crates/tachi-cli/tests/control_plane_cli.rs`
+- Asset-sensitivity tag parser coverage has moved from `tests/scripts/test_asset_sensitivity_tags.py` to `crates/tachi-core/tests/parsers.rs`
 - `pyproject.toml` and `requirements-dev.txt` map to retirement once the Rust-native tooling path is complete
 - `stacks/fastapi-react*` scaffolds map to archive/retirement once Rust/Tauri-only stack guidance is stable
 
@@ -94,7 +95,7 @@ tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py
 tests/scripts/test_coverage_attestation_tiers.py
 ~~tests/scripts/test_extract_report_data.py~~ - migrated to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_matches_retired_image_binding_pytest_contract` and `crates/tachi-cli/tests/control_plane_cli.rs`
 tests/scripts/test_llm10_unbounded_consumption_enrichment.py
-tests/scripts/test_asset_sensitivity_tags.py
+~~tests/scripts/test_asset_sensitivity_tags.py~~ - migrated to `crates/tachi-core/tests/parsers.rs::parse_component_asset_map_matches_retired_pytest_contract`
 tests/scripts/test_template_config_load_integration.py
 tests/scripts/test_coverage_attestation_in_scope.py
 tests/scripts/test_smoke.py
