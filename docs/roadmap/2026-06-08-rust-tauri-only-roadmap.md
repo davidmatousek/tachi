@@ -1,6 +1,6 @@
 # Rust/Tauri-Only Migration Roadmap
 
-**Last Updated**: 2026-06-09
+**Last Updated**: 2026-06-10
 **Status**: Active migration roadmap
 **Objective**: make `tachi-rust` a Rust + Tauri only repository
 
@@ -26,7 +26,7 @@ This status uses card closure rather than subjective partial estimates. In-progr
 | Card | Status | Current evidence |
 |---|---|---|
 | RT-010 | Complete | The Python surface inventory is frozen in [2026-06-08-python-surface-inventory.md](./2026-06-08-python-surface-inventory.md). |
-| RT-011 | In progress | RT-009 documentation coverage, taxonomy integrity checks, project-name parser coverage, the YAML import invariant, infographic command-dispatch coverage, source-attribution parser coverage, the template substitute shim canary, template substitute no-`eval` lint, finding-pattern parser coverage, misinformation schema coverage, output-integrity schema coverage, init self-delete coverage, F-A3 populator wiring coverage, report-data image binding coverage, and asset-sensitivity tag parser coverage have moved from pytest to Rust integration tests. Current audit: 73 active modules, 41 Rust integration modules, 2 Python smoke modules, 26 support/regression modules; the remaining pytest surface is still active. |
+| RT-011 | In progress | RT-009 documentation coverage, taxonomy integrity checks, project-name parser coverage, the YAML import invariant, infographic command-dispatch coverage, source-attribution parser coverage, the template substitute shim canary, template substitute no-`eval` lint, template substitute literal-substitution coverage, finding-pattern parser coverage, misinformation schema coverage, output-integrity schema coverage, init self-delete coverage, F-A3 populator wiring coverage, report-data image binding coverage, and asset-sensitivity tag parser coverage have moved from pytest to Rust integration tests. Current audit: 72 active modules, 41 Rust integration modules, 2 Python unit modules, 2 Python smoke modules, 26 support/regression modules; the remaining pytest surface is still active. |
 | RT-012 | In progress | Rust-native report-data output handling, report project metadata emission, report-data image binding and byte-probe parity, asset-sensitivity tag parsing, and SARIF CLI slices exist, but the remaining Python runtime scripts are still listed in the inventory. |
 | RT-013 | Pending | Tauri shell parity work depends on RT-012 runtime parity. |
 | RT-014 | Pending | Python packaging and FastAPI scaffold retirement depends on RT-012 and RT-013. |

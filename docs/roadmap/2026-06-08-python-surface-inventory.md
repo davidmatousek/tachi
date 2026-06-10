@@ -1,6 +1,6 @@
 # Python Surface Inventory
 
-**Last Updated**: 2026-06-09
+**Last Updated**: 2026-06-10
 **Status**: RT-010 freeze snapshot
 **Scope**: active Python runtime entrypoints, Python packaging, Python test surfaces, and Python-based stack scaffolds that still ship in `tachi-rust`
 
@@ -18,6 +18,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - Source-attribution parser coverage has moved from `tests/scripts/test_source_attribution.py` to `crates/tachi-core/tests/parsers.rs`
 - Template substitute shim canary coverage has moved from `tests/scripts/test_substitute_shim_canary.py` to `crates/tachi-core/tests/substitute_shim_canary.rs`
 - Template substitute no-`eval` lint coverage has moved from `tests/scripts/test_template_substitute_lint_no_eval.py` to `crates/tachi-core/tests/substitute_shim_canary.rs`
+- Template substitute literal substitution coverage has moved from `tests/scripts/test_template_substitute_unit.py` to `crates/tachi-core/tests/substitute_shim_canary.rs`
 - Finding-pattern parser coverage has moved from `tests/scripts/test_finding_pattern_parser.py` to `crates/tachi-core/tests/parsers.rs`
 - Report-data image binding coverage has moved from `tests/scripts/test_extract_report_data.py` to `crates/tachi-core/tests/report_data.rs` and `crates/tachi-cli/tests/control_plane_cli.rs`
 - Asset-sensitivity tag parser coverage has moved from `tests/scripts/test_asset_sensitivity_tags.py` to `crates/tachi-core/tests/parsers.rs`
@@ -70,7 +71,7 @@ tests/scripts/test_pattern_classification_rules.py
 tests/scripts/conftest.py
 tests/scripts/test_extract_infographic_data.py
 tests/scripts/test_init_sh_constitution.py
-tests/scripts/test_template_substitute_unit.py
+~~tests/scripts/test_template_substitute_unit.py~~ - migrated to `crates/tachi-core/tests/substitute_shim_canary.rs::template_substitute_literal_project_names_are_rust_native`
 tests/scripts/test_init_sh_defaults_env.py
 tests/scripts/test_backward_compatibility.py
 stacks/fastapi-react-local/scaffold/backend/app/db/base.py
@@ -127,5 +128,5 @@ stacks/fastapi-react/scaffold/backend/app/api/v1/__init__.py
 ## Notes
 
 - The inventory intentionally excludes fixture copies under `tests/fixtures/` and spec artifacts under `specs/`.
-- RT-011 has started retiring pytest-centric coverage by moving the RT-009 documentation contract, taxonomy integrity checks, project-name parser contract, YAML import invariant, infographic command-dispatch contract, source-attribution parser contract, template substitute shim canary, template substitute no-`eval` lint, finding-pattern parser contract, misinformation schema contract, output-integrity schema contract, init self-delete contract, and F-A3 populator wiring contract to Rust-native tests.
+- RT-011 has started retiring pytest-centric coverage by moving the RT-009 documentation contract, taxonomy integrity checks, project-name parser contract, YAML import invariant, infographic command-dispatch contract, source-attribution parser contract, template substitute shim canary, template substitute no-`eval` lint, template substitute literal substitution contract, finding-pattern parser contract, misinformation schema contract, output-integrity schema contract, init self-delete contract, F-A3 populator wiring contract, report-data image binding contract, and asset-sensitivity tag parser contract to Rust-native tests.
 - RT-014 will remove the packaging and scaffold surfaces once parity is stable.

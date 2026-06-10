@@ -75,15 +75,11 @@ on:
       - tests/scripts/test_init_sh_substitution.py
       - tests/scripts/test_init_sh_adversarial.py
       - tests/scripts/test_init_sh_constitution.py
-      - tests/scripts/test_init_sh_self_delete.py
-      - tests/scripts/test_template_substitute_unit.py
       - tests/scripts/test_init_input_unit.py
-      - tests/scripts/test_substitute_shim_canary.py
       - tests/scripts/test_init_sh_defaults_env.py            # F-256
       - tests/scripts/test_template_config_load_unit.py       # F-256
       - tests/scripts/test_template_config_load_integration.py # F-256
       - tests/scripts/test_template_git_clone_timeout.py      # F-256
-      - tests/scripts/test_template_substitute_lint_no_eval.py # F-256
       - tests/scripts/test_init_precommit_matrix.py            # F-5 (282)
       - tests/scripts/init_sh_helpers.py
       - tests/scripts/conftest.py
@@ -145,8 +141,8 @@ jobs:
         # ONCE per session instead of once per module — the outer/inner
         # timeouts give ~200s/180s slack on the worst observed scenario.
         #
-        # The unit modules (test_template_substitute_unit, test_init_input_unit,
-        # test_substitute_shim_canary, test_template_config_load_unit) are
+        # The remaining unit modules (test_init_input_unit,
+        # test_template_config_load_unit) are
         # sub-second per case. The integration modules (test_init_sh_*,
         # test_template_config_load_integration, test_template_git_clone_timeout)
         # take longer because they spawn `init.sh` subprocesses or hanging-
@@ -159,20 +155,21 @@ jobs:
         #   test_template_config_load_unit.py       — KV-parser primitive
         #   test_template_config_load_integration.py — full library round-trip
         #   test_template_git_clone_timeout.py      — Stream 4 watchdog + AOD_FETCH_TIMEOUT
-        #   test_template_substitute_lint_no_eval.py — eval-removal lint guard
+        #
+        # Retired pytest modules now covered by Rust tests:
+        #   test_init_sh_self_delete.py             — crates/tachi-shell/tests/control_plane.rs
+        #   test_template_substitute_unit.py        — crates/tachi-core/tests/substitute_shim_canary.rs
+        #   test_substitute_shim_canary.py          — crates/tachi-core/tests/substitute_shim_canary.rs
+        #   test_template_substitute_lint_no_eval.py — crates/tachi-core/tests/substitute_shim_canary.rs
         run: |
           python -m pytest \
             tests/scripts/test_init_sh_substitution.py \
             tests/scripts/test_init_sh_adversarial.py \
             tests/scripts/test_init_sh_constitution.py \
-            tests/scripts/test_init_sh_self_delete.py \
-            tests/scripts/test_template_substitute_unit.py \
             tests/scripts/test_init_input_unit.py \
-            tests/scripts/test_substitute_shim_canary.py \
             tests/scripts/test_init_sh_defaults_env.py \
             tests/scripts/test_template_config_load_unit.py \
             tests/scripts/test_template_config_load_integration.py \
             tests/scripts/test_template_git_clone_timeout.py \
-            tests/scripts/test_template_substitute_lint_no_eval.py \
             tests/scripts/test_init_precommit_matrix.py \
             -v --timeout=1080

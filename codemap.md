@@ -52,11 +52,11 @@ The repository is still migrating away from the original Python ecosystem. Remai
 
 | Level | Current Rust-Native Surface |
 |---|---|
-| Unit | Rust unit tests plus remaining transitional pytest unit modules listed by `coverage-audit`. |
+| Unit | Rust unit tests plus 2 remaining transitional pytest unit modules listed by `coverage-audit`. |
 | Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`. |
 | Smoke | Transitional smoke modules tracked by `tachi-core::coverage_audit`; current audit shows 2 remaining Python smoke modules. |
 | E2E | Critical init flow currently represented by `tests/scripts/test_init_sh_substitution.py` while the Rust-owned E2E boundary is being defined. |
-| Coverage | `make llvm-cov` is the release-quality local gate. Recent validated baseline: 85.69% regions / 86.30% lines. |
+| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 85.69% regions / 86.30% lines. |
 
 Primary validation commands:
 

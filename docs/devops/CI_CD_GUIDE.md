@@ -163,13 +163,13 @@ F-248 substitution suite (per ADR-038 §Test Coverage — 8 substitution + 4 rej
 - `tests/scripts/test_init_sh_substitution.py`
 - `tests/scripts/test_init_sh_adversarial.py`
 - `tests/scripts/test_init_sh_constitution.py`
-- `tests/scripts/test_init_sh_self_delete.py`
+- `crates/tachi-shell/tests/control_plane.rs::init_output_preserves_state_files_when_script_self_deletes` — migrated successor for the retired `tests/scripts/test_init_sh_self_delete.py`
 
-F-250 unit modules (sub-second per case — adversarial extraction + canary):
+F-250 unit modules and Rust-native successors (sub-second per case — adversarial extraction + canary):
 
-- `tests/scripts/test_template_substitute_unit.py`
+- `crates/tachi-core/tests/substitute_shim_canary.rs::template_substitute_literal_project_names_are_rust_native` — migrated successor for the retired `tests/scripts/test_template_substitute_unit.py`
 - `tests/scripts/test_init_input_unit.py`
-- `tests/scripts/test_substitute_shim_canary.py`
+- `crates/tachi-core/tests/substitute_shim_canary.rs::template_substitute_shim_canary_is_rust_native` — migrated successor for the retired `tests/scripts/test_substitute_shim_canary.py`
 
 F-256 source-pattern-hardening suite (per ADR-040 §Test Coverage — Sites A-D + Stream 4 watchdog + lint guard):
 
@@ -177,7 +177,7 @@ F-256 source-pattern-hardening suite (per ADR-040 §Test Coverage — Sites A-D 
 - `tests/scripts/test_template_config_load_unit.py` — Canonical `aod_template_load_kv_file` primitive surface (29 parametrized cases — comments, blanks, trailing newline, NUL-byte rejection, key-case enforcement, allowlist enforcement, indirect array access)
 - `tests/scripts/test_template_config_load_integration.py` — Full-library round-trip: writer-reader semantic equivalence with the deprecated `source` pattern across personalization-env + aod-kit-version + defaults.env fixtures
 - `tests/scripts/test_template_git_clone_timeout.py` — Stream 4 watchdog + `AOD_FETCH_TIMEOUT` adopter env-var contract (hanging-upstream timeout, validation-rejection footguns, fast-clone happy-path + zombie-watchdog assertion)
-- `tests/scripts/test_template_substitute_lint_no_eval.py` — Lint guard: asserts post-F-256 `template-substitute.sh` contains zero `eval` invocations (closes TACHI-VULN-9a7512071b4a regression-resistance)
+- `crates/tachi-core/tests/substitute_shim_canary.rs::template_substitute_no_eval_lint_is_rust_native` — migrated successor for the retired `tests/scripts/test_template_substitute_lint_no_eval.py`
 
 F-282 / F-5 pre-commit-secret-scanning matrix (added 2026-05-10):
 
@@ -200,15 +200,12 @@ paths:
   - tests/scripts/test_init_sh_substitution.py
   - tests/scripts/test_init_sh_adversarial.py
   - tests/scripts/test_init_sh_constitution.py
-  - tests/scripts/test_init_sh_self_delete.py
-  - tests/scripts/test_template_substitute_unit.py    # F-250
+  # F-250 template substitution unit coverage now lives in crates/tachi-core/tests/substitute_shim_canary.rs
   - tests/scripts/test_init_input_unit.py             # F-250
-  - tests/scripts/test_substitute_shim_canary.py      # F-250
   - tests/scripts/test_init_sh_defaults_env.py            # F-256
   - tests/scripts/test_template_config_load_unit.py       # F-256
   - tests/scripts/test_template_config_load_integration.py # F-256
   - tests/scripts/test_template_git_clone_timeout.py      # F-256
-  - tests/scripts/test_template_substitute_lint_no_eval.py # F-256
   - tests/scripts/test_init_precommit_matrix.py            # F-5 (282) — pre-commit prompt + flag matrix
   - tests/scripts/init_sh_helpers.py
   - tests/scripts/conftest.py
@@ -264,15 +261,11 @@ python -m pytest \
   tests/scripts/test_init_sh_substitution.py \
   tests/scripts/test_init_sh_adversarial.py \
   tests/scripts/test_init_sh_constitution.py \
-  tests/scripts/test_init_sh_self_delete.py \
-  tests/scripts/test_template_substitute_unit.py \
   tests/scripts/test_init_input_unit.py \
-  tests/scripts/test_substitute_shim_canary.py \
   tests/scripts/test_init_sh_defaults_env.py \
   tests/scripts/test_template_config_load_unit.py \
   tests/scripts/test_template_config_load_integration.py \
   tests/scripts/test_template_git_clone_timeout.py \
-  tests/scripts/test_template_substitute_lint_no_eval.py \
   tests/scripts/test_init_precommit_matrix.py \
   -v --timeout=1080
 ```
