@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust-native F-A3 populator wiring contract
+
+Moved the F-A3 source-attribution populator wiring contract from `tests/scripts/test_f_a3_populator_wiring.py` into a dedicated Rust integration test, preserving the 14-host inventory, F-241 block-shape, line-cap, Step 5, and ADR-037 D-3 checks while retiring another pytest support surface.
+
 ### Rust-native init self-delete contract
 
 Moved the init self-delete persistence contract from `tests/scripts/test_init_sh_self_delete.py` into the Rust shell-control integration suite, preserving the successful-run self-delete and state-file persistence checks while retiring another pytest support surface.

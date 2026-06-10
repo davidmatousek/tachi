@@ -54,7 +54,7 @@ tests/scripts/__init__.py
 ~~tests/scripts/test_output_integrity.py~~ - migrated to `crates/tachi-core/tests/taxonomy_integrity.rs::output_integrity_schema_contract_is_rust_native`
 tests/scripts/test_mmdc_preflight.py
 tests/scripts/test_coverage_attestation.py
-tests/scripts/test_f_a3_populator_wiring.py
+~~tests/scripts/test_f_a3_populator_wiring.py~~ - migrated to `crates/tachi-core/tests/f_a3_populator_wiring.rs::f_a3_populator_wiring_contract_is_rust_native`
 tests/scripts/test_coverage_attestation_audit.py
 tests/scripts/test_human_trust_exploitation.py
 tests/scripts/test_coverage_attestation_pagination.py
@@ -125,5 +125,5 @@ stacks/fastapi-react/scaffold/backend/app/api/v1/__init__.py
 ## Notes
 
 - The inventory intentionally excludes fixture copies under `tests/fixtures/` and spec artifacts under `specs/`.
-- RT-011 has started retiring pytest-centric coverage by moving the RT-009 documentation contract, taxonomy integrity checks, project-name parser contract, YAML import invariant, infographic command-dispatch contract, source-attribution parser contract, template substitute shim canary, template substitute no-`eval` lint, finding-pattern parser contract, misinformation schema contract, output-integrity schema contract, and init self-delete contract to Rust-native tests.
+- RT-011 has started retiring pytest-centric coverage by moving the RT-009 documentation contract, taxonomy integrity checks, project-name parser contract, YAML import invariant, infographic command-dispatch contract, source-attribution parser contract, template substitute shim canary, template substitute no-`eval` lint, finding-pattern parser contract, misinformation schema contract, output-integrity schema contract, init self-delete contract, and F-A3 populator wiring contract to Rust-native tests.
 - RT-014 will remove the packaging and scaffold surfaces once parity is stable.
