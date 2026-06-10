@@ -28,6 +28,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - Adversarial init coverage has moved from `tests/scripts/test_init_sh_adversarial.py` to `crates/tachi-shell/tests/init_adversarial.rs`
 - Template git clone timeout coverage has moved from `tests/scripts/test_template_git_clone_timeout.py` to `crates/tachi-shell/tests/template_git_clone_timeout.rs`
 - Init pre-commit matrix coverage has moved from `tests/scripts/test_init_precommit_matrix.py` to `crates/tachi-shell/tests/init_precommit_matrix.rs`
+- PDF page-positioning coverage has moved from `tests/scripts/test_pdf_page_positioning.py` to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_renders_executive_architecture_page_between_summary_and_attack_path`
 - Finding-pattern parser coverage has moved from `tests/scripts/test_finding_pattern_parser.py` to `crates/tachi-core/tests/parsers.rs`
 - Report-data image binding coverage has moved from `tests/scripts/test_extract_report_data.py` to `crates/tachi-core/tests/report_data.rs` and `crates/tachi-cli/tests/control_plane_cli.rs`
 - Asset-sensitivity tag parser coverage has moved from `tests/scripts/test_asset_sensitivity_tags.py` to `crates/tachi-core/tests/parsers.rs`
@@ -70,7 +71,7 @@ tests/scripts/test_mmdc_preflight.py
 ~~tests/scripts/test_coverage_attestation_audit.py~~ - migrated to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_keeps_typst_compilable_when_report_data_lacks_new_bindings`
 tests/scripts/test_human_trust_exploitation.py
 ~~tests/scripts/test_coverage_attestation_pagination.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation_pagination.rs::coverage_attestation_pagination_smoke_compiles_at_scale`
-tests/scripts/test_pdf_page_positioning.py
+~~tests/scripts/test_pdf_page_positioning.py~~ - migrated to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_renders_executive_architecture_page_between_summary_and_attack_path`
 tests/scripts/test_init_sh_substitution.py
 ~~tests/scripts/test_init_sh_self_delete.py~~ - migrated to `crates/tachi-shell/tests/control_plane.rs::init_output_preserves_state_files_when_script_self_deletes`
 tests/scripts/test_extractor_contract_fixes.py

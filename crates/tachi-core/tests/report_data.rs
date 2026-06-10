@@ -54,6 +54,64 @@ fn write_text(path: &Path, content: &str) {
     fs::write(path, content).expect("write test file");
 }
 
+struct ReportDataBackup {
+    path: PathBuf,
+    backup: Option<Vec<u8>>,
+}
+
+impl ReportDataBackup {
+    fn new(path: PathBuf) -> Self {
+        let backup = path
+            .exists()
+            .then(|| fs::read(&path).expect("backup report-data.typ"));
+        Self { path, backup }
+    }
+}
+
+impl Drop for ReportDataBackup {
+    fn drop(&mut self) {
+        if let Some(previous) = &self.backup {
+            let _ = fs::write(&self.path, previous);
+        } else if self.path.exists() {
+            let _ = fs::remove_file(&self.path);
+        }
+    }
+}
+
+fn command_available(binary: &str) -> bool {
+    Command::new(binary)
+        .arg("--version")
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
+fn extract_pdf_strings(pdf_path: &Path) -> Vec<String> {
+    let output = Command::new("strings")
+        .arg(pdf_path)
+        .output()
+        .expect("run strings on PDF");
+
+    assert!(
+        output.status.success(),
+        "strings should run successfully. stdout={:?} stderr={:?}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(|line| line.to_string())
+        .collect()
+}
+
+fn find_first_line_with_heading(lines: &[String], heading: &str) -> Option<usize> {
+    lines
+        .iter()
+        .position(|line| line.contains(heading))
+        .map(|idx| idx + 1)
+}
+
 #[test]
 fn build_report_data_typst_emits_project_name_from_threat_model() {
     let root = unique_temp_dir("tachi-report-data-project");
@@ -272,6 +330,79 @@ fn build_report_data_typst_keeps_typst_compilable_when_report_data_lacks_new_bin
         String::from_utf8_lossy(&result.stdout),
         String::from_utf8_lossy(&result.stderr)
     );
+}
+
+#[test]
+fn build_report_data_typst_renders_executive_architecture_page_between_summary_and_attack_path() {
+    assert!(
+        !workspace_root()
+            .join("tests/scripts/test_pdf_page_positioning.py")
+            .exists(),
+        "pdf page positioning coverage should live in Rust tests, not pytest"
+    );
+
+    if !command_available("typst") {
+        return;
+    }
+
+    let workspace = workspace_root();
+    let target_dir = workspace.join("examples/agentic-app/sample-report");
+    let template_dir = workspace.join("templates/tachi/security-report");
+    let report_data_path = template_dir.join("report-data.typ");
+    let report_data_guard = ReportDataBackup::new(report_data_path.clone());
+
+    let rendered = build_report_data_typst(&target_dir, &template_dir);
+    fs::write(&report_data_path, rendered).expect("write report-data.typ");
+
+    let output_pdf = unique_temp_dir("tachi-pdf-page-positioning").join("security-report.pdf");
+    if let Some(parent) = output_pdf.parent() {
+        fs::create_dir_all(parent).expect("create temp pdf dir");
+    }
+
+    let result = Command::new("typst")
+        .arg("compile")
+        .arg(template_dir.join("main.typ"))
+        .arg(&output_pdf)
+        .arg("--root")
+        .arg(&workspace)
+        .current_dir(&workspace)
+        .output()
+        .expect("run typst compile");
+
+    assert!(
+        result.status.success(),
+        "typst compile should succeed for the agentic-app sample. stdout={:?} stderr={:?}",
+        String::from_utf8_lossy(&result.stdout),
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert!(
+        output_pdf.exists()
+            && fs::metadata(&output_pdf)
+                .map(|metadata| metadata.len() > 0)
+                .unwrap_or(false)
+    );
+
+    let lines = extract_pdf_strings(&output_pdf);
+    assert!(!lines.is_empty(), "expected PDF strings output");
+
+    let exec_summary_pos = find_first_line_with_heading(&lines, "Executive Summary")
+        .expect("Executive Summary heading");
+    let exec_architecture_pos =
+        find_first_line_with_heading(&lines, "Executive Threat Architecture")
+            .expect("Executive Threat Architecture heading");
+    let attack_progression_pos = find_first_line_with_heading(&lines, "Attack Progression")
+        .expect("Attack Progression heading");
+
+    assert!(
+        exec_architecture_pos > exec_summary_pos,
+        "Executive Threat Architecture must appear after Executive Summary"
+    );
+    assert!(
+        exec_architecture_pos < attack_progression_pos,
+        "Executive Threat Architecture must appear before the attack progression content"
+    );
+
+    drop(report_data_guard);
 }
 
 #[test]
