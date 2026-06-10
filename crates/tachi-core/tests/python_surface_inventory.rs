@@ -159,3 +159,24 @@ fn python_surface_inventory_retires_attack_chain_extraction_python_module() {
         "active inventory should no longer list attack-chain extraction pytest coverage"
     );
 }
+
+#[test]
+fn python_surface_inventory_retires_pattern_classification_rules_python_module() {
+    let root = workspace_root();
+    let inventory_path = root.join("docs/roadmap/2026-06-08-python-surface-inventory.md");
+    let inventory = fs::read_to_string(&inventory_path)
+        .expect("expected the python surface inventory doc to exist");
+
+    let active_section = inventory
+        .split("## Active Python Files")
+        .nth(1)
+        .and_then(|section| section.split("## ").next())
+        .expect("active python files section");
+
+    let active_lines = active_section.lines().map(str::trim).collect::<Vec<_>>();
+
+    assert!(
+        !active_lines.contains(&"tests/scripts/test_pattern_classification_rules.py"),
+        "active inventory should no longer list pattern classification rules pytest coverage"
+    );
+}

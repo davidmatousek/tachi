@@ -30,6 +30,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - Finding-pattern parser coverage has moved from `tests/scripts/test_finding_pattern_parser.py` to `crates/tachi-core/tests/parsers.rs`
 - Report-data image binding coverage has moved from `tests/scripts/test_extract_report_data.py` to `crates/tachi-core/tests/report_data.rs` and `crates/tachi-cli/tests/control_plane_cli.rs`
 - Asset-sensitivity tag parser coverage has moved from `tests/scripts/test_asset_sensitivity_tags.py` to `crates/tachi-core/tests/parsers.rs`
+- MAESTRO pattern-classification rules coverage has moved from `tests/scripts/test_pattern_classification_rules.py` to `crates/tachi-core/tests/pattern_classification_rules.rs`
 - Threat SARIF generation has moved from `scripts/generate-threats-sarif.py` to `crates/tachi-cli/src/bin/threats-sarif.rs`
 - Risk-score SARIF generation has moved from `scripts/generate-risk-scores-sarif.py` to `crates/tachi-cli/src/bin/risk-scores-sarif.rs`
 - Shared SARIF helpers have moved from `scripts/sarif_common.py` to `crates/tachi-core/src/sarif_common.rs`
@@ -73,7 +74,6 @@ tests/scripts/test_init_sh_substitution.py
 ~~tests/scripts/test_init_sh_self_delete.py~~ - migrated to `crates/tachi-shell/tests/control_plane.rs::init_output_preserves_state_files_when_script_self_deletes`
 tests/scripts/test_extractor_contract_fixes.py
 ~~tests/scripts/test_init_input_unit.py~~ - migrated to `crates/tachi-core/tests/init_input.rs::init_input_unit_contract_is_rust_native`
-tests/scripts/test_pattern_classification_rules.py
 tests/scripts/conftest.py
 ~~tests/scripts/test_extract_infographic_data.py~~ - migrated to `crates/tachi-core/tests/infographic_payload.rs::build_infographic_payload_executive_architecture_includes_layers_callouts_and_overlay` and `crates/tachi-cli/tests/control_plane_cli.rs::infographic_data_binary_returns_executive_architecture_payload`
 tests/scripts/test_init_sh_constitution.py
@@ -133,5 +133,5 @@ stacks/fastapi-react/scaffold/backend/app/api/v1/__init__.py
 ## Notes
 
 - The inventory intentionally excludes fixture copies under `tests/fixtures/` and spec artifacts under `specs/`.
-- RT-011 has started retiring pytest-centric coverage by moving the RT-009 documentation contract, taxonomy integrity checks, project-name parser contract, YAML import invariant, infographic command-dispatch contract, executive-architecture infographic payload contract, source-attribution parser contract, template substitute shim canary, template substitute no-`eval` lint, template substitute literal substitution contract, finding-pattern parser contract, misinformation schema contract, output-integrity schema contract, init self-delete contract, F-A3 populator wiring contract, report-data image binding contract, asset-sensitivity tag parser contract, adversarial init contract, and template git clone timeout contract to Rust-native tests.
+- RT-011 has started retiring pytest-centric coverage by moving the RT-009 documentation contract, taxonomy integrity checks, project-name parser contract, YAML import invariant, infographic command-dispatch contract, executive-architecture infographic payload contract, source-attribution parser contract, template substitute shim canary, template substitute no-`eval` lint, template substitute literal substitution contract, finding-pattern parser contract, misinformation schema contract, output-integrity schema contract, init self-delete contract, F-A3 populator wiring contract, report-data image binding contract, asset-sensitivity tag contract, adversarial init contract, template git clone timeout contract, and MAESTRO pattern-classification rules contract to Rust-native tests.
 - RT-014 will remove the packaging and scaffold surfaces once parity is stable.
