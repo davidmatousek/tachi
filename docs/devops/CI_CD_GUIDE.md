@@ -174,7 +174,7 @@ F-250 unit modules and Rust-native successors (sub-second per case — adversari
 F-256 source-pattern-hardening suite (per ADR-040 §Test Coverage — Sites A-D + Stream 4 watchdog + lint guard):
 
 - `tests/scripts/test_init_sh_defaults_env.py` — Site A integration: `scripts/init.sh` against `stacks/*/defaults.env` (positive packs + malicious-pack rejection + missing-key rejection)
-- `tests/scripts/test_template_config_load_unit.py` — Canonical `aod_template_load_kv_file` primitive surface (29 parametrized cases — comments, blanks, trailing newline, NUL-byte rejection, key-case enforcement, allowlist enforcement, indirect array access)
+- `crates/tachi-shell/tests/template_config_load.rs::template_config_load_unit_contract_is_rust_native` — migrated successor for the retired `tests/scripts/test_template_config_load_unit.py`
 - `tests/scripts/test_template_config_load_integration.py` — Full-library round-trip: writer-reader semantic equivalence with the deprecated `source` pattern across personalization-env + aod-kit-version + defaults.env fixtures
 - `tests/scripts/test_template_git_clone_timeout.py` — Stream 4 watchdog + `AOD_FETCH_TIMEOUT` adopter env-var contract (hanging-upstream timeout, validation-rejection footguns, fast-clone happy-path + zombie-watchdog assertion)
 - `crates/tachi-core/tests/substitute_shim_canary.rs::template_substitute_no_eval_lint_is_rust_native` — migrated successor for the retired `tests/scripts/test_template_substitute_lint_no_eval.py`
@@ -203,7 +203,7 @@ paths:
   # F-250 template substitution unit coverage now lives in crates/tachi-core/tests/substitute_shim_canary.rs
   - tests/scripts/test_init_input_unit.py             # F-250
   - tests/scripts/test_init_sh_defaults_env.py            # F-256
-  - tests/scripts/test_template_config_load_unit.py       # F-256
+  # F-256 template-config unit coverage now lives in crates/tachi-shell/tests/template_config_load.rs
   - tests/scripts/test_template_config_load_integration.py # F-256
   - tests/scripts/test_template_git_clone_timeout.py      # F-256
   - tests/scripts/test_init_precommit_matrix.py            # F-5 (282) — pre-commit prompt + flag matrix
@@ -263,7 +263,6 @@ python -m pytest \
   tests/scripts/test_init_sh_constitution.py \
   tests/scripts/test_init_input_unit.py \
   tests/scripts/test_init_sh_defaults_env.py \
-  tests/scripts/test_template_config_load_unit.py \
   tests/scripts/test_template_config_load_integration.py \
   tests/scripts/test_template_git_clone_timeout.py \
   tests/scripts/test_init_precommit_matrix.py \
