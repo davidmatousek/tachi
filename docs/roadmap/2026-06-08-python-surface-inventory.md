@@ -16,6 +16,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - YAML import invariant coverage has moved from `tests/scripts/test_pyyaml_deferred_import.py` to `crates/tachi-core/tests/yaml_imports.rs`
 - Infographic command-dispatch coverage has moved from `tests/scripts/test_command_dispatch.py` to `crates/tachi-core/tests/infographic_command_dispatch.rs`
 - Executive-architecture infographic payload coverage has moved from `tests/scripts/test_extract_infographic_data.py` and `tests/scripts/test_executive_architecture_payload.py` to `crates/tachi-core/tests/infographic_payload.rs` and `crates/tachi-cli/tests/control_plane_cli.rs`
+- Infographic extraction runtime handling has moved from `scripts/extract-infographic-data.py` to `crates/tachi-cli/src/bin/infographic-data.rs`
 - Source-attribution parser coverage has moved from `tests/scripts/test_source_attribution.py` to `crates/tachi-core/tests/parsers.rs`
 - Template substitute shim canary coverage has moved from `tests/scripts/test_substitute_shim_canary.py` to `crates/tachi-core/tests/substitute_shim_canary.rs`
 - Template substitute no-`eval` lint coverage has moved from `tests/scripts/test_template_substitute_lint_no_eval.py` to `crates/tachi-core/tests/substitute_shim_canary.rs`
@@ -39,7 +40,6 @@ This inventory freezes the current Python surface so the migration can remove it
 
 ```text
 scripts/tachi_parsers.py
-scripts/extract-infographic-data.py
 scripts/extract-report-data.py
 stacks/fastapi-react-local/scaffold/backend/alembic/env.py
 stacks/fastapi-react-local/scaffold/backend/tests/api/__init__.py

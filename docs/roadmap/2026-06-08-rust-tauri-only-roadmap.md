@@ -27,7 +27,7 @@ This status uses card closure rather than subjective partial estimates. In-progr
 |---|---|---|
 | RT-010 | Complete | The Python surface inventory is frozen in [2026-06-08-python-surface-inventory.md](./2026-06-08-python-surface-inventory.md). |
 | RT-011 | In progress | RT-009 documentation coverage, taxonomy integrity checks, project-name parser coverage, the YAML import invariant, infographic command-dispatch coverage, source-attribution parser coverage, the template substitute shim canary, template substitute no-`eval` lint, template substitute literal-substitution coverage, template config load unit and integration coverage, init input unit coverage, defaults-env init coverage, adversarial init coverage, template git clone timeout coverage, finding-pattern parser coverage, agentic pattern extraction coverage, misinformation schema coverage, output-integrity schema coverage, init self-delete coverage, F-A3 populator wiring coverage, report-data image binding coverage, coverage-attestation aggregation coverage, coverage-attestation in-scope filtering coverage, coverage-attestation report-data guard coverage, coverage-attestation pagination smoke coverage, coverage-percentage computation coverage, asset-sensitivity tag coverage, executive-architecture infographic payload coverage, attack-chain parsing coverage, attack-chain Mermaid generation coverage, and attack-chain extraction coverage have moved from pytest to Rust integration tests. Current audit: 65 active modules, 49 Rust integration modules, 0 Python unit modules, 0 Python smoke modules, 15 support/regression modules; the remaining pytest surface is still active. |
-| RT-012 | In progress | Rust-native report-data output handling, report project metadata emission, report-data image binding and byte-probe parity, coverage-attestation payload emission, coverage-attestation in-scope filtering, coverage-attestation report-data guard coverage, coverage-attestation pagination smoke coverage, asset-sensitivity tag parsing, executive-architecture infographic payload parity, and SARIF CLI slices now cover the threat/risk SARIF runtime paths; the remaining Python runtime scripts are still listed in the inventory. |
+| RT-012 | In progress | Rust-native report-data output handling, infographic output-file handling, report project metadata emission, report-data image binding and byte-probe parity, coverage-attestation payload emission, coverage-attestation in-scope filtering, coverage-attestation report-data guard coverage, coverage-attestation pagination smoke coverage, asset-sensitivity tag parsing, executive-architecture infographic payload parity, and SARIF CLI slices now cover the threat/risk SARIF runtime paths; the remaining Python runtime scripts are still listed in the inventory. |
 | RT-013 | Pending | Tauri shell parity work depends on RT-012 runtime parity. |
 | RT-014 | Pending | Python packaging and FastAPI scaffold retirement depends on RT-012 and RT-013. |
 | RT-015 | Pending | Speed and reliability hardening depends on the Rust-only runtime path being stable. |
@@ -58,7 +58,6 @@ This roadmap uses a BEADS-style hierarchy:
   - coverage catalog lookup
 - **Tasks**
   - port `scripts/extract-report-data.py`
-  - port `scripts/extract-infographic-data.py`
   - port `scripts/generate-threats-sarif.py`
   - port `scripts/generate-risk-scores-sarif.py`
   - port `scripts/tachi_parsers.py`
@@ -335,7 +334,6 @@ This is the current Python-to-Rust replacement map for the repo's active surface
 | `scripts/generate-threats-sarif.py` | Rust SARIF command / library in `tachi-cli` or `tachi-core` |
 | `scripts/generate-risk-scores-sarif.py` | Rust SARIF command / library in `tachi-cli` or `tachi-core` |
 | `scripts/tachi_parsers.py` | `tachi-core` parser modules |
-| `scripts/extract-infographic-data.py` | Rust infographic payload builder, including executive-architecture parity |
 | `scripts/extract-report-data.py` | Rust report-data builder |
 | `tests/scripts/*.py` | Rust integration and end-to-end tests |
 | `tests/schemas/test_taxonomy_integrity.py` | Rust taxonomy/schema validation tests |

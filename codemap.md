@@ -31,7 +31,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | `.aod/` | AOD shell helpers, templates, and governance memory. Some shell helpers remain under Rust test coverage while migration continues. |
 | `tests/scripts/` | Transitional pytest suite and fixtures. RT-011 progressively ports high-signal coverage into Rust tests and removes retired pytest modules. |
 | `tests/fixtures/` | Frozen fixture copies and baseline trees used for compatibility checks. These are excluded from active coverage-audit counts. |
-| `scripts/` | Transitional Python runtime scripts from the original implementation. RT-012 tracks porting remaining canonical behavior into Rust; the standalone SARIF generators, pagination smoke scaffolds, and attack-chain extraction pytest have already moved to Rust CLI binaries and tests. |
+| `scripts/` | Transitional Python runtime scripts from the original implementation. RT-012 tracks porting remaining canonical behavior into Rust; the standalone SARIF generators, infographic extractor, pagination smoke scaffolds, and attack-chain extraction pytest have already moved to Rust CLI binaries and tests. |
 | `stacks/` | Legacy Python/FastAPI and frontend scaffolds. RT-014 tracks retirement or archival after Rust/Tauri parity is stable. |
 | `docs/` | Public project documentation. Roadmap and product planning documents live under `docs/roadmap/`; testing status lives under `docs/testing/`. |
 
@@ -76,7 +76,7 @@ cargo run -q -p tachi-cli --bin coverage-audit
 | Roadmap Card | Current Direction |
 |---|---|
 | RT-011 | Migrate remaining pytest coverage into Rust tests using TDD. Keep explicit unit, integration, smoke, and E2E classification visible through `coverage-audit`. |
-| RT-012 | Port remaining Python runtime behavior into Rust modules and CLI binaries, especially report extraction, executive-architecture infographic parity, and remaining report/SARIF payload parity. |
+| RT-012 | Port remaining Python runtime behavior into Rust modules and CLI binaries, especially report extraction, infographic output handling, executive-architecture infographic parity, and remaining report/SARIF payload parity. |
 | RT-013 | Keep Tauri shell thin by routing desktop behavior through shared Rust command handlers. |
 | RT-014 | Retire Python packaging, pytest-only guidance, and FastAPI stack scaffolds after parity is complete. |
 | RT-015 | Optimize Rust path for speed and reliability after the Python runtime path is no longer canonical. |

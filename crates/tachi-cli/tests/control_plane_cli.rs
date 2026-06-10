@@ -413,6 +413,40 @@ fn infographic_data_binary_returns_executive_architecture_payload() {
 }
 
 #[test]
+fn infographic_data_binary_writes_output_file_when_requested() {
+    let repo_root = fixture_infographic_repo();
+    let output_path = std::env::temp_dir().join(format!(
+        "tachi-rust-infographic-output-{}.json",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos()
+    ));
+
+    let output = Command::new(binary_path("infographic-data"))
+        .args([
+            "--root",
+            repo_root.to_string_lossy().as_ref(),
+            "--template",
+            "maestro-stack",
+            "--output",
+            output_path.to_string_lossy().as_ref(),
+        ])
+        .output()
+        .expect("run infographic-data binary");
+
+    assert!(output.status.success());
+    assert!(output.stdout.is_empty());
+
+    let written = std::fs::read_to_string(&output_path).expect("read written output");
+    let value: Value = serde_json::from_str(&written).expect("valid JSON");
+    assert_eq!(value["template"], "maestro-stack");
+    assert!(value["template_data"]["has_maestro_data"]
+        .as_bool()
+        .unwrap_or(false));
+}
+
+#[test]
 fn report_data_binary_returns_typst_payload_for_executive_architecture() {
     let repo_root = fixture_report_data_repo();
     let output = Command::new(binary_path("report-data"))
