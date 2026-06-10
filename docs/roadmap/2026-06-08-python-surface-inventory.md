@@ -21,6 +21,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - Template substitute literal substitution coverage has moved from `tests/scripts/test_template_substitute_unit.py` to `crates/tachi-core/tests/substitute_shim_canary.rs`
 - Template config load unit coverage has moved from `tests/scripts/test_template_config_load_unit.py` to `crates/tachi-shell/tests/template_config_load.rs`
 - Init input unit coverage has moved from `tests/scripts/test_init_input_unit.py` to `crates/tachi-core/tests/init_input.rs`
+- Template config load integration coverage has moved from `tests/scripts/test_template_config_load_integration.py` to `crates/tachi-shell/tests/template_config_load.rs`
 - Finding-pattern parser coverage has moved from `tests/scripts/test_finding_pattern_parser.py` to `crates/tachi-core/tests/parsers.rs`
 - Report-data image binding coverage has moved from `tests/scripts/test_extract_report_data.py` to `crates/tachi-core/tests/report_data.rs` and `crates/tachi-cli/tests/control_plane_cli.rs`
 - Asset-sensitivity tag parser coverage has moved from `tests/scripts/test_asset_sensitivity_tags.py` to `crates/tachi-core/tests/parsers.rs`
@@ -99,7 +100,7 @@ tests/scripts/test_coverage_attestation_tiers.py
 ~~tests/scripts/test_extract_report_data.py~~ - migrated to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_matches_retired_image_binding_pytest_contract` and `crates/tachi-cli/tests/control_plane_cli.rs`
 tests/scripts/test_llm10_unbounded_consumption_enrichment.py
 ~~tests/scripts/test_asset_sensitivity_tags.py~~ - migrated to `crates/tachi-core/tests/parsers.rs::parse_component_asset_map_matches_retired_pytest_contract`
-tests/scripts/test_template_config_load_integration.py
+~~tests/scripts/test_template_config_load_integration.py~~ - migrated to `crates/tachi-shell/tests/template_config_load.rs::template_config_load_integration_contract_is_rust_native`
 tests/scripts/test_coverage_attestation_in_scope.py
 tests/scripts/test_smoke.py
 tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py

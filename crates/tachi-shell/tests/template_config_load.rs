@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 static TEMP_DIR_COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -91,6 +91,115 @@ fn template_config_load_unit_contract_is_rust_native() {
     }
 }
 
+#[test]
+fn template_config_load_integration_contract_is_rust_native() {
+    let root = workspace_root();
+
+    assert!(
+        !root
+            .join("tests/scripts/test_template_config_load_integration.py")
+            .exists(),
+        "template-config-load integration coverage should live in Rust tests, not pytest"
+    );
+
+    for case in site_b_cases(&root) {
+        let temp_dir = unique_temp_dir(case.id);
+        fs::create_dir_all(&temp_dir).expect("create temp test directory");
+        let fixture_path = materialize_site_fixture(&temp_dir, &case.fixture);
+        let pwned_marker = Path::new("/tmp/F-256-pwned");
+        let _ = fs::remove_file(pwned_marker);
+
+        let script = build_site_b_script(&root, &fixture_path, case.expected_rc == 0);
+        let output = run_bash(&script);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let actual_rc = parse_rc(&stdout, "RC", case.id, case.marker, &stderr);
+
+        assert_eq!(
+            actual_rc, case.expected_rc,
+            "unexpected rc for {} ({}). stdout={stdout:?} stderr={stderr:?}",
+            case.id, case.marker
+        );
+        assert!(
+            !pwned_marker.exists(),
+            "command-injection marker was created for {} ({}). stderr={stderr:?}",
+            case.id,
+            case.marker
+        );
+        if let Some(expected) = case.expected_stderr {
+            assert!(
+                stderr.contains(expected),
+                "stderr substring {expected:?} missing for {} ({}). stderr={stderr:?}",
+                case.id,
+                case.marker
+            );
+        }
+        if case.expected_rc == 0 {
+            for field in [
+                "version",
+                "sha",
+                "updated_at",
+                "upstream_url",
+                "manifest_sha256",
+            ] {
+                let unset_marker = format!("UNSET={field}");
+                assert!(
+                    !stdout.contains(&unset_marker),
+                    "caller-scope variable {field} was unset for {} ({}). stdout={stdout:?} stderr={stderr:?}",
+                    case.id,
+                    case.marker
+                );
+            }
+        }
+
+        let _ = fs::remove_file(pwned_marker);
+        fs::remove_dir_all(&temp_dir).expect("remove temp test directory");
+    }
+
+    assert_site_b_writer_roundtrip(&root);
+
+    for case in site_d_cases(&root) {
+        let temp_dir = unique_temp_dir(case.id);
+        fs::create_dir_all(&temp_dir).expect("create temp test directory");
+        let fixture_path = materialize_site_fixture(&temp_dir, &case.fixture);
+
+        let script = build_site_d_script(&root, &fixture_path, &case.expected_assignments);
+        let output = run_bash(&script);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let actual_rc = parse_rc(&stdout, "RC", case.id, case.marker, &stderr);
+
+        assert_eq!(
+            actual_rc, case.expected_rc,
+            "unexpected rc for {} ({}). stdout={stdout:?} stderr={stderr:?}",
+            case.id, case.marker
+        );
+        if let Some(expected) = case.expected_stderr {
+            assert!(
+                stderr.contains(expected),
+                "stderr substring {expected:?} missing for {} ({}). stderr={stderr:?}",
+                case.id,
+                case.marker
+            );
+        }
+        if case.expected_rc == 0 {
+            for var_name in &case.expected_assignments {
+                let unset_marker = format!("UNSET={var_name}");
+                assert!(
+                    !stdout.contains(&unset_marker),
+                    "caller-scope variable {var_name} was unset for {} ({}). stdout={stdout:?} stderr={stderr:?}",
+                    case.id,
+                    case.marker
+                );
+            }
+        }
+
+        fs::remove_dir_all(&temp_dir).expect("remove temp test directory");
+    }
+
+    assert_site_d_toctou_residual_race(&root);
+}
+
 struct KvCase {
     id: &'static str,
     fixture: Fixture,
@@ -103,11 +212,27 @@ struct KvCase {
     marker: &'static str,
 }
 
+struct SiteCase {
+    id: &'static str,
+    fixture: SiteFixture,
+    expected_rc: i32,
+    expected_assignments: Vec<&'static str>,
+    expected_stderr: Option<&'static str>,
+    marker: &'static str,
+}
+
 enum Fixture {
     Bytes(Vec<u8>),
     MissingPathArgument,
     NonexistentPath,
     DirectoryPath,
+}
+
+enum SiteFixture {
+    Existing(PathBuf),
+    Bytes(Vec<u8>),
+    EmptyPath,
+    NonexistentPath,
 }
 
 fn kv_cases() -> Vec<KvCase> {
@@ -574,6 +699,324 @@ fn build_bash_script(
     }
 
     parts.join("; ")
+}
+
+fn site_b_cases(root: &Path) -> Vec<SiteCase> {
+    let fixtures = root.join("tests/fixtures/config-load");
+    vec![
+        SiteCase {
+            id: "site_b_malformed_command_injection",
+            fixture: SiteFixture::Existing(
+                fixtures
+                    .join("adversarial")
+                    .join("aod-kit-version-malformed"),
+            ),
+            expected_rc: 8,
+            expected_assignments: Vec::new(),
+            expected_stderr: Some("malformed line"),
+            marker: "command-injection rejected by lowercase version loader",
+        },
+        SiteCase {
+            id: "site_b_valid_lowercase",
+            fixture: SiteFixture::Existing(fixtures.join("valid").join("aod-kit-version-valid")),
+            expected_rc: 0,
+            expected_assignments: Vec::new(),
+            expected_stderr: None,
+            marker: "valid lowercase five-field aod-kit-version loads cleanly",
+        },
+        SiteCase {
+            id: "site_b_bare_version_empty",
+            fixture: SiteFixture::Bytes(
+                b"version=\nsha=abc123def456abc123def456abc123def456abcd\nupdated_at=2026-05-04T12:00:00Z\nupstream_url=https://github.com/example/upstream\nmanifest_sha256=abc123def456abc123def456abc123def456abc123def456abc123def456abcd\n"
+                    .to_vec(),
+            ),
+            expected_rc: 0,
+            expected_assignments: Vec::new(),
+            expected_stderr: None,
+            marker: "bare version= empty value stays accepted",
+        },
+        SiteCase {
+            id: "site_b_uppercase_rejected",
+            fixture: SiteFixture::Bytes(b"VERSION=4.28.0\n".to_vec()),
+            expected_rc: 8,
+            expected_assignments: Vec::new(),
+            expected_stderr: Some("malformed line"),
+            marker: "uppercase keys are rejected in lowercase mode",
+        },
+    ]
+}
+
+fn site_d_cases(root: &Path) -> Vec<SiteCase> {
+    let fixtures = root.join("tests/fixtures/config-load");
+    vec![
+        SiteCase {
+            id: "site_d_collapsed_body_valid",
+            fixture: SiteFixture::Existing(
+                fixtures.join("valid").join("personalization-env-valid"),
+            ),
+            expected_rc: 0,
+            expected_assignments: vec![
+                "AOD_PERSONALIZATION_PROJECT_NAME",
+                "AOD_PERSONALIZATION_GITHUB_ORG",
+                "AOD_PERSONALIZATION_TECH_STACK",
+                "AOD_PERSONALIZATION_CLOUD_PROVIDER",
+            ],
+            expected_stderr: None,
+            marker: "collapsed wrapper delegates to library and populates caller scope",
+        },
+        SiteCase {
+            id: "site_d_missing_path",
+            fixture: SiteFixture::EmptyPath,
+            expected_rc: 1,
+            expected_assignments: Vec::new(),
+            expected_stderr: Some("<path>"),
+            marker: "empty path argument is rejected",
+        },
+        SiteCase {
+            id: "site_d_file_absent",
+            fixture: SiteFixture::NonexistentPath,
+            expected_rc: 3,
+            expected_assignments: Vec::new(),
+            expected_stderr: Some("does not exist"),
+            marker: "absent path is rejected",
+        },
+        SiteCase {
+            id: "site_d_embedded_nul",
+            fixture: SiteFixture::Bytes(
+                b"PROJECT_NAME=\"tachi\"\nPROJECT_DESCRIPTION=\"test\"\nGITHUB_ORG=\"test\"\nGITHUB_REPO=\"test\"\nAI_AGENT=\"claude\"\nTECH_STACK=\"nextjs\"\nTECH_STACK_DATABASE=\"pg\"\nTECH_STACK_VECTOR=\"N/A\"\nTECH_STACK_AUTH=\"jwt\"\nRATIFICATION_DATE=\"2026-05-04\"\nCURRENT_DATE=\"2026-05-04\"\nCLOUD_PROVIDER=\"vercel\0pwned\"\n"
+                    .to_vec(),
+            ),
+            expected_rc: 8,
+            expected_assignments: Vec::new(),
+            expected_stderr: Some("NUL byte"),
+            marker: "embedded NUL is rejected by library pre-check",
+        },
+        SiteCase {
+            id: "site_d_missing_canonical_key",
+            fixture: SiteFixture::Bytes(
+                b"PROJECT_NAME=\"tachi\"\nPROJECT_DESCRIPTION=\"test\"\nGITHUB_ORG=\"test\"\nGITHUB_REPO=\"test\"\nAI_AGENT=\"claude\"\nTECH_STACK=\"nextjs\"\nTECH_STACK_DATABASE=\"pg\"\nTECH_STACK_VECTOR=\"N/A\"\nTECH_STACK_AUTH=\"jwt\"\nRATIFICATION_DATE=\"2026-05-04\"\nCURRENT_DATE=\"2026-05-04\"\n"
+                    .to_vec(),
+            ),
+            expected_rc: 8,
+            expected_assignments: Vec::new(),
+            expected_stderr: Some("CLOUD_PROVIDER"),
+            marker: "missing canonical key is rejected by whitelist post-pass",
+        },
+    ]
+}
+
+fn materialize_site_fixture(temp_dir: &Path, fixture: &SiteFixture) -> String {
+    match fixture {
+        SiteFixture::Existing(path) => path.display().to_string(),
+        SiteFixture::Bytes(bytes) => {
+            let fixture_file = temp_dir.join("fixture.env");
+            fs::write(&fixture_file, bytes).expect("write site fixture file");
+            fixture_file.display().to_string()
+        }
+        SiteFixture::EmptyPath => String::new(),
+        SiteFixture::NonexistentPath => temp_dir.join("does_not_exist.env").display().to_string(),
+    }
+}
+
+fn build_site_b_script(root: &Path, fixture_path: &str, dump_fields: bool) -> String {
+    let mut parts = vec![
+        "set +e".to_string(),
+        format!(
+            "source '{}'",
+            root.join(".aod/scripts/bash/template-config-load.sh")
+                .display()
+        ),
+        format!("aod_template_load_kv_file \"{fixture_path}\" \"\" \"\" \"lower\""),
+        "RC=$?".to_string(),
+        "echo RC=$RC".to_string(),
+    ];
+
+    if dump_fields {
+        for field in [
+            "version",
+            "sha",
+            "updated_at",
+            "upstream_url",
+            "manifest_sha256",
+        ] {
+            parts.push(format!(
+                "declare -p {field} 2>/dev/null || echo UNSET={field}"
+            ));
+        }
+    }
+
+    parts.join("; ")
+}
+
+fn assert_site_b_writer_roundtrip(root: &Path) {
+    let temp_dir = unique_temp_dir("site_b_writer_roundtrip");
+    fs::create_dir_all(&temp_dir).expect("create temp test directory");
+    let dest_path = temp_dir.join("aod-kit-version");
+    let script = format!(
+        "set +e; \
+         source '{}'; \
+         source '{}'; \
+         aod_template_write_version_file '{}' \
+           'v1.0.0' \
+           'abc123def456abc123def456abc123def456abcd' \
+           '2026-05-04T12:00:00Z' \
+           'https://github.com/example/upstream' \
+           'abc123def456abc123def456abc123def456abc123def456abc123def456abcd'; \
+         WR_RC=$?; echo WR_RC=$WR_RC; \
+         aod_template_load_kv_file '{}' '' '' 'lower'; \
+         RD_RC=$?; echo RD_RC=$RD_RC; \
+         declare -p version 2>/dev/null || echo UNSET=version; \
+         declare -p sha 2>/dev/null || echo UNSET=sha",
+        root.join(".aod/scripts/bash/template-config-load.sh")
+            .display(),
+        root.join(".aod/scripts/bash/template-git.sh").display(),
+        dest_path.display(),
+        dest_path.display()
+    );
+
+    let output = run_bash(&script);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        parse_rc(
+            &stdout,
+            "WR_RC",
+            "site_b_writer_roundtrip",
+            "writer produces version file",
+            &stderr
+        ),
+        0,
+        "writer failed. stdout={stdout:?} stderr={stderr:?}"
+    );
+    assert!(dest_path.is_file(), "writer did not create version file");
+    assert_eq!(
+        parse_rc(
+            &stdout,
+            "RD_RC",
+            "site_b_writer_roundtrip",
+            "reader loads written version file",
+            &stderr
+        ),
+        0,
+        "round-trip read failed. stdout={stdout:?} stderr={stderr:?}"
+    );
+    assert!(
+        stdout.contains("declare -- version=\"v1.0.0\""),
+        "caller-scope version missing after roundtrip. stdout={stdout:?}"
+    );
+    assert!(
+        !stdout.contains("UNSET=sha"),
+        "caller-scope sha missing after roundtrip. stdout={stdout:?}"
+    );
+
+    fs::remove_dir_all(&temp_dir).expect("remove temp test directory");
+}
+
+fn build_site_d_script(root: &Path, fixture_path: &str, dump_fields: &[&str]) -> String {
+    let mut parts = vec![
+        "set +e".to_string(),
+        format!(
+            "source '{}'",
+            root.join(".aod/scripts/bash/template-config-load.sh")
+                .display()
+        ),
+        format!(
+            "source '{}'",
+            root.join(".aod/scripts/bash/template-substitute.sh")
+                .display()
+        ),
+        format!("aod_template_load_personalization_env \"{fixture_path}\""),
+        "RC=$?".to_string(),
+        "echo RC=$RC".to_string(),
+    ];
+
+    for var_name in dump_fields {
+        parts.push(format!(
+            "declare -p {var_name} 2>/dev/null || echo UNSET={var_name}"
+        ));
+    }
+
+    parts.join("; ")
+}
+
+fn assert_site_d_toctou_residual_race(root: &Path) {
+    let temp_dir = unique_temp_dir("site_d_toctou_residual_race");
+    fs::create_dir_all(&temp_dir).expect("create temp test directory");
+    let fixture_file = temp_dir.join("personalization.env");
+    let initial_content = b"PROJECT_NAME=\"initial\"\nPROJECT_DESCRIPTION=\"initial\"\nGITHUB_ORG=\"initial\"\nGITHUB_REPO=\"initial\"\nAI_AGENT=\"initial\"\nTECH_STACK=\"initial\"\nTECH_STACK_DATABASE=\"initial\"\nTECH_STACK_VECTOR=\"initial\"\nTECH_STACK_AUTH=\"initial\"\nRATIFICATION_DATE=\"2026-05-04\"\nCURRENT_DATE=\"2026-05-04\"\nCLOUD_PROVIDER=\"initial\"\n";
+    fs::write(&fixture_file, initial_content).expect("write initial fixture");
+    let swapped_path = temp_dir.join("personalization-swapped.env");
+    fs::write(
+        &swapped_path,
+        String::from_utf8_lossy(initial_content).replace("initial", "swapped"),
+    )
+    .expect("write swapped fixture");
+
+    let script = format!(
+        "set +e; \
+         source '{}'; \
+         source '{}'; \
+         ( sleep 0.005; mv -f '{}' '{}' ) & \
+         swap_pid=$!; \
+         aod_template_load_personalization_env '{}'; \
+         RC=$?; \
+         wait $swap_pid 2>/dev/null; \
+         echo RC=$RC; \
+         declare -p AOD_PERSONALIZATION_PROJECT_NAME 2>/dev/null || echo UNSET=AOD_PERSONALIZATION_PROJECT_NAME",
+        root.join(".aod/scripts/bash/template-config-load.sh")
+            .display(),
+        root.join(".aod/scripts/bash/template-substitute.sh")
+            .display(),
+        swapped_path.display(),
+        fixture_file.display(),
+        fixture_file.display()
+    );
+
+    let output = run_bash(&script);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let rc = parse_rc(
+        &stdout,
+        "RC",
+        "site_d_toctou_residual_race",
+        "bounded single-snapshot race",
+        &stderr,
+    );
+    assert!(
+        rc == 0 || rc == 8,
+        "unexpected TOCTOU rc {rc}. stdout={stdout:?} stderr={stderr:?}"
+    );
+    if rc == 0 {
+        assert!(
+            stdout.contains("declare -- AOD_PERSONALIZATION_PROJECT_NAME=\"initial\"")
+                || stdout.contains("declare -- AOD_PERSONALIZATION_PROJECT_NAME=\"swapped\""),
+            "TOCTOU success produced neither complete candidate value. stdout={stdout:?}"
+        );
+    }
+
+    fs::remove_dir_all(&temp_dir).expect("remove temp test directory");
+}
+
+fn run_bash(script: &str) -> Output {
+    Command::new(std::env::var("BASH").unwrap_or_else(|_| "/bin/bash".to_string()))
+        .arg("-c")
+        .arg(script)
+        .env_clear()
+        .env("LC_ALL", "C")
+        .env("PATH", std::env::var("PATH").expect("PATH available"))
+        .output()
+        .expect("run bash helper")
+}
+
+fn parse_rc(stdout: &str, label: &str, id: &str, marker: &str, stderr: &str) -> i32 {
+    let prefix = format!("{label}=");
+    stdout
+        .lines()
+        .find_map(|line| line.strip_prefix(&prefix))
+        .and_then(|value| value.parse::<i32>().ok())
+        .unwrap_or_else(|| {
+            panic!("missing {label} line for {id} ({marker}). stdout={stdout:?} stderr={stderr:?}")
+        })
 }
 
 fn workspace_root() -> PathBuf {

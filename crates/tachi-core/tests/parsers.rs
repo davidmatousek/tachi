@@ -5,6 +5,8 @@ use tachi_core::parsers::{
     strip_bold, validate_source_attribution, VALID_AGENTIC_PATTERNS, VALID_ASSET_TAGS,
 };
 
+static PARSER_TEMP_DIR_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 #[test]
 fn escape_typst_string_escapes_backslashes_quotes_and_newlines() {
     let input = "one\\two\"three\nfour";
@@ -590,7 +592,8 @@ fn temp_dir() -> std::path::PathBuf {
         .duration_since(std::time::UNIX_EPOCH)
         .expect("system time before UNIX_EPOCH")
         .as_nanos();
-    root.push(format!("tachi-core-parsers-{stamp}"));
+    let counter = PARSER_TEMP_DIR_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    root.push(format!("tachi-core-parsers-{stamp}-{counter}"));
     std::fs::create_dir_all(&root).expect("create temp dir");
     root
 }
