@@ -55,10 +55,10 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | Level | Current Rust-Native Surface |
 |---|---|
 | Unit | Rust unit tests; current audit shows 0 remaining Python unit modules. |
-| Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit shows 55 Rust integration modules after retiring the defaults-env init, adversarial init, template git clone timeout, executive-architecture infographic, attack-chain, MAESTRO pattern-classification, init precommit matrix, PDF page-positioning, backward-compatibility, human-trust-exploitation, extractor contract fixes, and coverage-attestation tiers pytests. |
+| Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit shows 56 Rust integration modules after retiring the defaults-env init, adversarial init, template git clone timeout, executive-architecture infographic, attack-chain, MAESTRO pattern-classification, init precommit matrix, PDF page-positioning, backward-compatibility, human-trust-exploitation, extractor contract fixes, coverage-attestation tiers, and init constitution pytests. |
 | Smoke | Transitional smoke modules tracked by `tachi-core::coverage_audit`; current audit shows 0 remaining Python smoke modules. |
 | E2E | Critical init flow currently represented by `tests/scripts/test_init_sh_substitution.py` while the Rust-owned E2E boundary is being defined. |
-| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 87.93% regions / 88.11% lines. Current audit: 64 active modules, 55 Rust integration modules, 0 Python unit modules, 0 Python smoke modules, 8 support/regression modules. |
+| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 87.93% regions / 88.11% lines. Current audit: 64 active modules, 56 Rust integration modules, 0 Python unit modules, 0 Python smoke modules, 7 support/regression modules. |
 
 Primary validation commands:
 
