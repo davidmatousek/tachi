@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use tachi_core::report_data::build_report_data_typst;
@@ -44,6 +45,13 @@ fn write_bytes(path: &Path, bytes: &[u8]) {
         fs::create_dir_all(parent).expect("create parent directories");
     }
     fs::write(path, bytes).expect("write test file");
+}
+
+fn write_text(path: &Path, content: &str) {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).expect("create parent directories");
+    }
+    fs::write(path, content).expect("write test file");
 }
 
 #[test]
@@ -188,6 +196,82 @@ AG-1:
     assert!(rendered.contains("#let per-finding-rows = ("));
     assert!(rendered.contains("#let per-framework-aggregates = ("));
     assert!(!rendered.contains("ATT&CK:"));
+}
+
+#[test]
+fn build_report_data_typst_marks_empty_source_attribution_reports_as_false() {
+    let root = unique_temp_dir("tachi-report-data-empty-source");
+    let target_dir = root.join("examples/agentic-app/sample-report");
+    let template_dir = root.join("templates/tachi/security-report");
+
+    write_text(
+        &target_dir.join("threats.md"),
+        "# Agentic AI Application\n\n## 7. Recommended Actions\n\n| Finding ID | Component | Threat | Risk Level | Mitigation | Status |\n| --- | --- | --- | --- | --- | --- |\n| AG-1 | Component | Threat | High | Mitigation | [NEW] |\n",
+    );
+
+    let rendered = build_report_data_typst(&target_dir, &template_dir);
+
+    assert!(rendered.contains("#let has-source-attribution = false"));
+}
+
+#[test]
+fn build_report_data_typst_keeps_typst_compilable_when_report_data_lacks_new_bindings() {
+    let typst = match Command::new("typst").arg("--version").output() {
+        Ok(output) if output.status.success() => "typst",
+        _ => return,
+    };
+    let _ = typst;
+
+    let workspace = workspace_root();
+    let template_dir = workspace.join("templates/tachi/security-report");
+    let report_data_path = template_dir.join("report-data.typ");
+    let backup = report_data_path.exists().then(|| {
+        fs::read(&report_data_path).expect("backup report-data.typ")
+    });
+
+    let root = unique_temp_dir("tachi-report-data-typst-guard");
+    let target_dir = root.join("examples/agentic-app/sample-report");
+    write_text(
+        &target_dir.join("threats.md"),
+        "# Agentic AI Application\n\n## 7. Recommended Actions\n\n| Finding ID | Component | Threat | Risk Level | Mitigation | Status |\n| --- | --- | --- | --- | --- | --- |\n| AG-1 | Component | Threat | High | Mitigation | [NEW] |\n\n## 9. Source Attribution\n\n```yaml\nAG-1:\n  - {taxonomy: \"owasp\", id: \"A01\", relationship: \"primary\"}\n```\n",
+    );
+
+    let rendered = build_report_data_typst(&target_dir, &template_dir);
+    let stripped = rendered
+        .lines()
+        .filter(|line| {
+            let trimmed = line.trim_start();
+            !trimmed.starts_with("#let has-source-attribution")
+                && !trimmed.starts_with("#let per-finding-rows")
+                && !trimmed.starts_with("#let per-framework-aggregates")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n";
+
+    write_text(&report_data_path, &stripped);
+    let result = Command::new("typst")
+        .arg("compile")
+        .arg(template_dir.join("main.typ"))
+        .arg(root.join("out.pdf"))
+        .arg("--root")
+        .arg(&workspace)
+        .current_dir(&workspace)
+        .output()
+        .expect("run typst compile");
+
+    if let Some(previous) = backup {
+        fs::write(&report_data_path, previous).expect("restore report-data.typ");
+    } else if report_data_path.exists() {
+        fs::remove_file(&report_data_path).expect("remove temporary report-data.typ");
+    }
+
+    assert!(
+        result.status.success(),
+        "typst compile should succeed with stale report-data.typ. stdout={:?} stderr={:?}",
+        String::from_utf8_lossy(&result.stdout),
+        String::from_utf8_lossy(&result.stderr)
+    );
 }
 
 #[test]

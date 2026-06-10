@@ -63,9 +63,9 @@ tests/scripts/__init__.py
 ~~tests/scripts/test_misinformation.py~~ - migrated to `crates/tachi-core/tests/taxonomy_integrity.rs::misinformation_id_schema_contract_is_rust_native`
 ~~tests/scripts/test_output_integrity.py~~ - migrated to `crates/tachi-core/tests/taxonomy_integrity.rs::output_integrity_schema_contract_is_rust_native`
 tests/scripts/test_mmdc_preflight.py
-tests/scripts/test_coverage_attestation.py
+~~tests/scripts/test_coverage_attestation.py~~ - migrated to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_emits_coverage_attestation_payload_when_source_attribution_exists`, `crates/tachi-core/tests/report_data.rs::build_report_data_typst_marks_empty_source_attribution_reports_as_false`, and `crates/tachi-core/tests/report_data.rs::build_report_data_typst_keeps_typst_compilable_when_report_data_lacks_new_bindings`
 ~~tests/scripts/test_f_a3_populator_wiring.py~~ - migrated to `crates/tachi-core/tests/f_a3_populator_wiring.rs::f_a3_populator_wiring_contract_is_rust_native`
-tests/scripts/test_coverage_attestation_audit.py
+~~tests/scripts/test_coverage_attestation_audit.py~~ - migrated to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_keeps_typst_compilable_when_report_data_lacks_new_bindings`
 tests/scripts/test_human_trust_exploitation.py
 tests/scripts/test_coverage_attestation_pagination.py
 tests/scripts/test_pdf_page_positioning.py
