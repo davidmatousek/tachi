@@ -54,7 +54,7 @@ make update    # 60s ceiling applied automatically
 
 **Watchdog process-leak invariant** (per L-1 mitigation in spec): if the outer script (`init.sh` or `update.sh`) is interrupted (Ctrl+C) BEFORE the watchdog fires, `aod_template_fetch_upstream` traps `INT TERM EXIT` and kills the watchdog subshell on the way out — preventing orphaned `sleep ${AOD_FETCH_TIMEOUT}` processes from continuing in the background. Adopters should NOT rely on `wait` against the watchdog PID directly; the in-function trap is the canonical cleanup path.
 
-**Reference**: `docs/architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md` §Stream 4 Watchdog. Spec FR-7 + AC-7.1..AC-7.5 + SC-8 + SC-9 in `specs/256-source-pattern-hardening/spec.md`. Test coverage: `tests/scripts/test_template_git_clone_timeout.py` (6 cases — hanging-upstream timeout at varied seconds, exit-1 footgun rejection for `0` / non-numeric / leading-zero, fast-clone happy path with no zombie watchdog).
+**Reference**: `docs/architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md` §Stream 4 Watchdog. Spec FR-7 + AC-7.1..AC-7.5 + SC-8 + SC-9 in `specs/256-source-pattern-hardening/spec.md`. Test coverage: `crates/tachi-shell/tests/template_git_clone_timeout.rs` (Rust-native watchdog timeout, exit-1 footgun rejection for `0` / non-numeric / leading-zero, fast-clone happy path, and cleanup invariants).
 
 ---
 

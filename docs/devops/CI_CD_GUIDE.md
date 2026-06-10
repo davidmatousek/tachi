@@ -141,7 +141,7 @@ In `--all` mode the script exits with the **numerically lowest non-zero code** a
 
 **Added in Feature 248** (Substitution Surface Hardening), merged via PR #249 (squash commit `6db9a25`) on 2026-05-04. Re-tuned and re-scoped by Feature 250 (PR #253, squash `75866d9`) on 2026-05-04 (timeouts + session-scoped fixture). Extended by Feature 256 (PR #257, squash `f959622`) on 2026-05-05 to cover the source-pattern-hardening surface. Extended by Feature 282 / F-5 (PR #283, squash `18378bd`) on 2026-05-10 to wire `tests/scripts/test_init_precommit_matrix.py` into both the `paths:` trigger and the pytest invocation in lock-step (the F-256 lock-step pattern, applied verbatim).
 
-`.github/workflows/tachi-pytest.yml` runs the combined F-248 substitution test suite + F-256 source-pattern-hardening test suite on a 2-runner cross-platform matrix (`macos-latest` + `ubuntu-latest`) to catch bash-version regressions across the full bash surface area: `scripts/init.sh`, `.aod/scripts/bash/template-substitute.sh`, `.aod/scripts/bash/init-input.sh`, `.aod/scripts/bash/template-git.sh`, `.aod/scripts/bash/template-config-load.sh` (F-256 canonical KV-load primitive), the constitution templates, and the shipped stack-pack `defaults.env` files (F-256 Site A whitelist surface). The macOS leg is the strictest gate because it ships bash 3.2.57 (Apple's bundled `/bin/bash`, GPLv3-pinned) — a green macOS run on top of a green Ubuntu run proves the entire hardening surface is portable, not bash-3.2-quirk-locked.
+`.github/workflows/tachi-pytest.yml` runs the remaining F-248 substitution test suite + F-256 source-pattern-hardening test suite on a 2-runner cross-platform matrix (`macos-latest` + `ubuntu-latest`) to catch bash-version regressions across the full bash surface area: `scripts/init.sh`, `.aod/scripts/bash/template-substitute.sh`, `.aod/scripts/bash/init-input.sh`, `.aod/scripts/bash/template-git.sh`, `.aod/scripts/bash/template-config-load.sh` (F-256 canonical KV-load primitive), the constitution templates, and the shipped stack-pack `defaults.env` files (F-256 Site A whitelist surface). The macOS leg is the strictest gate because it ships bash 3.2.57 (Apple's bundled `/bin/bash`, GPLv3-pinned) — a green macOS run on top of a green Ubuntu run proves the entire hardening surface is portable, not bash-3.2-quirk-locked.
 
 | Property | Value |
 |----------|-------|
@@ -161,9 +161,9 @@ In `--all` mode the script exits with the **numerically lowest non-zero code** a
 F-248 substitution suite (per ADR-038 §Test Coverage — 8 substitution + 4 rejection + 1 case-13 + 1 residual + 1 constitution + 3 self-delete + 2 fixture-replay = 20 tests):
 
 - `tests/scripts/test_init_sh_substitution.py`
-- `tests/scripts/test_init_sh_adversarial.py`
 - `tests/scripts/test_init_sh_constitution.py`
 - `crates/tachi-shell/tests/control_plane.rs::init_output_preserves_state_files_when_script_self_deletes` — migrated successor for the retired `tests/scripts/test_init_sh_self_delete.py`
+- `crates/tachi-shell/tests/init_adversarial.rs::init_adversarial_contract_is_rust_native` — migrated successor for the retired `tests/scripts/test_init_sh_adversarial.py`
 
 F-250 unit modules and Rust-native successors (sub-second per case — adversarial extraction + canary):
 
@@ -176,7 +176,7 @@ F-256 source-pattern-hardening suite (per ADR-040 §Test Coverage — Sites A-D 
 - `crates/tachi-shell/tests/init_defaults_env.rs::init_defaults_env_contract_is_rust_native` — migrated successor for the retired `tests/scripts/test_init_sh_defaults_env.py`; covers Site A `scripts/init.sh` against shipped stack packs, malicious-pack rejection, and missing-key rejection.
 - `crates/tachi-shell/tests/template_config_load.rs::template_config_load_unit_contract_is_rust_native` — migrated successor for the retired `tests/scripts/test_template_config_load_unit.py`
 - `crates/tachi-shell/tests/template_config_load.rs::template_config_load_integration_contract_is_rust_native` — migrated successor for the retired `tests/scripts/test_template_config_load_integration.py`; covers full-library round-trip, Site B version loading, Site D personalization loading, and TOCTOU framing.
-- `tests/scripts/test_template_git_clone_timeout.py` — Stream 4 watchdog + `AOD_FETCH_TIMEOUT` adopter env-var contract (hanging-upstream timeout, validation-rejection footguns, fast-clone happy-path + zombie-watchdog assertion)
+- `crates/tachi-shell/tests/template_git_clone_timeout.rs::template_git_clone_timeout_contract_is_rust_native` — migrated successor for the retired `tests/scripts/test_template_git_clone_timeout.py`; covers Stream 4 watchdog + `AOD_FETCH_TIMEOUT` adopter env-var contract, hanging-upstream timeout, validation-rejection footguns, fast-clone happy-path, and cleanup invariants.
 - `crates/tachi-core/tests/substitute_shim_canary.rs::template_substitute_no_eval_lint_is_rust_native` — migrated successor for the retired `tests/scripts/test_template_substitute_lint_no_eval.py`
 
 F-282 / F-5 pre-commit-secret-scanning matrix (added 2026-05-10):
@@ -198,14 +198,13 @@ paths:
   - .aod/template-manifest.txt
   - stacks/*/defaults.env                       # F-256 — Site A whitelist surface
   - tests/scripts/test_init_sh_substitution.py
-  - tests/scripts/test_init_sh_adversarial.py
   - tests/scripts/test_init_sh_constitution.py
   # F-250 template substitution unit coverage now lives in crates/tachi-core/tests/substitute_shim_canary.rs
   # F-250 init-input unit coverage now lives in crates/tachi-core/tests/init_input.rs
   # F-256 defaults-env init coverage now lives in crates/tachi-shell/tests/init_defaults_env.rs
   # F-256 template-config unit coverage now lives in crates/tachi-shell/tests/template_config_load.rs
   # F-256 template-config integration coverage now lives in crates/tachi-shell/tests/template_config_load.rs
-  - tests/scripts/test_template_git_clone_timeout.py      # F-256
+  # F-256 template-git timeout coverage now lives in crates/tachi-shell/tests/template_git_clone_timeout.rs
   - tests/scripts/test_init_precommit_matrix.py            # F-5 (282) — pre-commit prompt + flag matrix
   - tests/scripts/init_sh_helpers.py
   - tests/scripts/conftest.py
@@ -222,7 +221,7 @@ Edits to other shell scripts, agent files, ADRs, or documentation will not invok
 
 **pyyaml dependency**: `tests/scripts/conftest.py` imports `yaml` at module scope. The dependency is cross-suite — shared with the BLP-01 + F-241 detection-agent attestation tests that load `schemas/finding.yaml` and `.claude/agents/tachi/*.yml` schemas. Bumping `pyyaml` in this workflow MUST be coordinated with those suites.
 
-**Baseline fixture**: `tests/fixtures/init-baseline-tree/` contains the canonical post-init filesystem snapshot that `test_init_sh_substitution.py` and `test_init_sh_adversarial.py` diff against. The accompanying `tests/fixtures/regenerate-baseline.sh` script is the **only** supported way to regenerate the baseline — it pins the deterministic substitution inputs (`AOD_RATIFICATION_DATE_OVERRIDE`, `AOD_CURRENT_DATE_OVERRIDE`) and drives `scripts/init.sh` against a clean clone. Run it whenever the canonical placeholder set expands (e.g., new `{{...}}` token added) or upstream template content additions land. See `docs/devops/environment-variables.md` for the full env-var contract.
+**Baseline fixture**: `tests/fixtures/init-baseline-tree/` contains the canonical post-init filesystem snapshot that `test_init_sh_substitution.py` and `crates/tachi-shell/tests/init_adversarial.rs` validate against. The accompanying `tests/fixtures/regenerate-baseline.sh` script is the **only** supported way to regenerate the baseline — it pins the deterministic substitution inputs (`AOD_RATIFICATION_DATE_OVERRIDE`, `AOD_CURRENT_DATE_OVERRIDE`) and drives `scripts/init.sh` against a clean clone. Run it whenever the canonical placeholder set expands (e.g., new `{{...}}` token added) or upstream template content additions land. See `docs/devops/environment-variables.md` for the full env-var contract.
 
 **Performance characteristics (macOS leg)**: macOS runners are notoriously ~3-4× slower than dev hardware for arm64 bash work — a single `scripts/init.sh` invocation that takes ~140-175s on a developer workstation can take ~560-700s cold-cache on `macos-latest` at the 4× worst-case multiplier. F-248 originally tuned a 300s/360s inner/outer pair that worked on the Ubuntu leg but flaked the macOS leg during close-out. F-250 (PR #253, 2026-05-04) re-tuned the timeout budget and restructured the fixture topology to fit the observed cold-cache budget without masking real regressions.
 
@@ -259,9 +258,7 @@ python -m pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
 # Run the full F-248 + F-256 + F-282 hardening suite (matches CI exactly)
 python -m pytest \
   tests/scripts/test_init_sh_substitution.py \
-  tests/scripts/test_init_sh_adversarial.py \
   tests/scripts/test_init_sh_constitution.py \
-  tests/scripts/test_template_git_clone_timeout.py \
   tests/scripts/test_init_precommit_matrix.py \
   -v --timeout=1080
 ```
