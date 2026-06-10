@@ -301,4 +301,4 @@ Continuing the analysis from PRD 066:
 - [Conventional Commits specification](https://www.conventionalcommits.org/)
 
 ### Source
-- GitHub Issue: [#86 — Automated release tagging via GitHub Actions (release-please)](https://github.com/davidmatousek/tachi/issues/86)
+- GitHub Issue: [#86 — Automated release tagging via GitHub Actions (release-please)](https://github.com/pratik-saptarshi/tachi-rust/issues/86)

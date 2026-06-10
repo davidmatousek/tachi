@@ -599,7 +599,7 @@ Legend: ✅ Complete | 🟢 On Track | 🟡 In Review | 📋 Pending | 🔴 Bloc
 ### Product Documentation
 - Product Vision: `docs/product/01_Product_Vision/product-vision.md`
 - BLP-02 Initiative Tracker: memory `project_blp02_enterprise_hardening.md`
-- Issue #282: `https://github.com/davidmatousek/tachi/issues/282`
+- Issue #282: `https://github.com/pratik-saptarshi/tachi-rust/issues/282`
 
 ### Technical Documentation
 - Constitution: `.aod/memory/constitution.md`

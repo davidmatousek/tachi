@@ -5,10 +5,10 @@ labels: bug
 ---
 
 > **Got a question or an unclear behavior you're not sure is a bug?**
-> Try [Q&A Discussions](https://github.com/davidmatousek/tachi/discussions/categories/q-a) first. Reproducible defects go here. Usage questions go there.
+> Try [Q&A Discussions](https://github.com/pratik-saptarshi/tachi-rust/discussions/categories/q-a) first. Reproducible defects go here. Usage questions go there.
 >
 > **Found a security vulnerability?**
-> Do not post it here. Use the [private advisory flow](https://github.com/davidmatousek/tachi/security/advisories/new).
+> Do not post it here. Use the [private advisory flow](https://github.com/pratik-saptarshi/tachi-rust/security/advisories/new).
 
 ## Describe the Bug
 

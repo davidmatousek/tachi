@@ -347,273 +347,273 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
-## [4.36.0](https://github.com/davidmatousek/tachi/compare/v4.35.0...v4.36.0) (2026-05-14)
+## [4.36.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.35.0...v4.36.0) (2026-05-14)
 
 
 ### Features
 
-* **292:** output-integrity cross-sink refinement ([#293](https://github.com/davidmatousek/tachi/issues/293)) ([0629fa2](https://github.com/davidmatousek/tachi/commit/0629fa2622b412eff1ec3f3f34e6bc8e3d1142ee))
+* **292:** output-integrity cross-sink refinement ([#293](https://github.com/pratik-saptarshi/tachi-rust/issues/293)) ([0629fa2](https://github.com/pratik-saptarshi/tachi-rust/commit/0629fa2622b412eff1ec3f3f34e6bc8e3d1142ee))
 
-## [4.35.0](https://github.com/davidmatousek/tachi/compare/v4.34.0...v4.35.0) (2026-05-10)
-
-
-### Features
-
-* **282:** pre-commit secret-scanning defaults ([#283](https://github.com/davidmatousek/tachi/issues/283)) ([18378bd](https://github.com/davidmatousek/tachi/commit/18378bd406a5633f1d13b443d1d1ea7a28a0d295))
-
-## [4.34.0](https://github.com/davidmatousek/tachi/compare/v4.33.0...v4.34.0) (2026-05-09)
+## [4.35.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.34.0...v4.35.0) (2026-05-10)
 
 
 ### Features
 
-* **277:** claude permissions baseline (BLP-02 F-4) ([#278](https://github.com/davidmatousek/tachi/issues/278)) ([896588b](https://github.com/davidmatousek/tachi/commit/896588bc739d4760d36ff64b1b3f313498b4befa))
+* **282:** pre-commit secret-scanning defaults ([#283](https://github.com/pratik-saptarshi/tachi-rust/issues/283)) ([18378bd](https://github.com/pratik-saptarshi/tachi-rust/commit/18378bd406a5633f1d13b443d1d1ea7a28a0d295))
 
-## [4.33.0](https://github.com/davidmatousek/tachi/compare/v4.32.0...v4.33.0) (2026-05-08)
-
-
-### Features
-
-* **272:** SECURITY.md and private disclosure channel ([#273](https://github.com/davidmatousek/tachi/issues/273)) ([7b1cc53](https://github.com/davidmatousek/tachi/commit/7b1cc53e6f57486b356b72b978a86920d7663480))
-
-## [4.32.0](https://github.com/davidmatousek/tachi/compare/v4.31.0...v4.32.0) (2026-05-07)
+## [4.34.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.33.0...v4.34.0) (2026-05-09)
 
 
 ### Features
 
-* **264:** adopt dual-frame public positioning (harness reframe) ([#265](https://github.com/davidmatousek/tachi/issues/265)) ([b558025](https://github.com/davidmatousek/tachi/commit/b558025fefe5f5afd90683248523673283e8329e)), closes [#264](https://github.com/davidmatousek/tachi/issues/264)
+* **277:** claude permissions baseline (BLP-02 F-4) ([#278](https://github.com/pratik-saptarshi/tachi-rust/issues/278)) ([896588b](https://github.com/pratik-saptarshi/tachi-rust/commit/896588bc739d4760d36ff64b1b3f313498b4befa))
+
+## [4.33.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.32.0...v4.33.0) (2026-05-08)
+
+
+### Features
+
+* **272:** SECURITY.md and private disclosure channel ([#273](https://github.com/pratik-saptarshi/tachi-rust/issues/273)) ([7b1cc53](https://github.com/pratik-saptarshi/tachi-rust/commit/7b1cc53e6f57486b356b72b978a86920d7663480))
+
+## [4.32.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.31.0...v4.32.0) (2026-05-07)
+
+
+### Features
+
+* **264:** adopt dual-frame public positioning (harness reframe) ([#265](https://github.com/pratik-saptarshi/tachi-rust/issues/265)) ([b558025](https://github.com/pratik-saptarshi/tachi-rust/commit/b558025fefe5f5afd90683248523673283e8329e)), closes [#264](https://github.com/pratik-saptarshi/tachi-rust/issues/264)
 
 
 ### Bug Fixes
 
-* **266:** retitle CONTRIBUTING.md for tachi ([#267](https://github.com/davidmatousek/tachi/issues/267)) ([abde9cd](https://github.com/davidmatousek/tachi/commit/abde9cd13197689bf245435de48c753fcc225989)), closes [#266](https://github.com/davidmatousek/tachi/issues/266)
-* **268:** disentangle tachi-scanner from AOD-Kit positioning in scope.md ([#271](https://github.com/davidmatousek/tachi/issues/271)) ([b2bef11](https://github.com/davidmatousek/tachi/commit/b2bef1178961e66d86ee525c1d0ef1407e14317c)), closes [#268](https://github.com/davidmatousek/tachi/issues/268)
+* **266:** retitle CONTRIBUTING.md for tachi ([#267](https://github.com/pratik-saptarshi/tachi-rust/issues/267)) ([abde9cd](https://github.com/pratik-saptarshi/tachi-rust/commit/abde9cd13197689bf245435de48c753fcc225989)), closes [#266](https://github.com/pratik-saptarshi/tachi-rust/issues/266)
+* **268:** disentangle tachi-scanner from AOD-Kit positioning in scope.md ([#271](https://github.com/pratik-saptarshi/tachi-rust/issues/271)) ([b2bef11](https://github.com/pratik-saptarshi/tachi-rust/commit/b2bef1178961e66d86ee525c1d0ef1407e14317c)), closes [#268](https://github.com/pratik-saptarshi/tachi-rust/issues/268)
 
-## [4.31.0](https://github.com/davidmatousek/tachi/compare/v4.30.0...v4.31.0) (2026-05-06)
-
-
-### Features
-
-* **260:** asset-sensitivity tag prototype ([#262](https://github.com/davidmatousek/tachi/issues/262)) ([3dfe6a7](https://github.com/davidmatousek/tachi/commit/3dfe6a7295c37d2685ec41ff4180742a6ceb7eb5))
-
-## [4.30.0](https://github.com/davidmatousek/tachi/compare/v4.29.0...v4.30.0) (2026-05-05)
+## [4.31.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.30.0...v4.31.0) (2026-05-06)
 
 
 ### Features
 
-* **256:** file-size cap + regular-file check on KV loader ([#258](https://github.com/davidmatousek/tachi/issues/258)) ([9964a72](https://github.com/davidmatousek/tachi/commit/9964a72316db748a702ff996262026b3de05484a))
+* **260:** asset-sensitivity tag prototype ([#262](https://github.com/pratik-saptarshi/tachi-rust/issues/262)) ([3dfe6a7](https://github.com/pratik-saptarshi/tachi-rust/commit/3dfe6a7295c37d2685ec41ff4180742a6ceb7eb5))
 
-## [4.29.0](https://github.com/davidmatousek/tachi/compare/v4.28.0...v4.29.0) (2026-05-05)
+## [4.30.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.29.0...v4.30.0) (2026-05-05)
 
 
 ### Features
 
-* **256:** harden source-pattern surface — bash source/eval → KV parser + clone timeout ([#257](https://github.com/davidmatousek/tachi/issues/257)) ([f959622](https://github.com/davidmatousek/tachi/commit/f959622d4ce765f68aa55906a12f8c20185c3539))
+* **256:** file-size cap + regular-file check on KV loader ([#258](https://github.com/pratik-saptarshi/tachi-rust/issues/258)) ([9964a72](https://github.com/pratik-saptarshi/tachi-rust/commit/9964a72316db748a702ff996262026b3de05484a))
+
+## [4.29.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.28.0...v4.29.0) (2026-05-05)
+
+
+### Features
+
+* **256:** harden source-pattern surface — bash source/eval → KV parser + clone timeout ([#257](https://github.com/pratik-saptarshi/tachi-rust/issues/257)) ([f959622](https://github.com/pratik-saptarshi/tachi-rust/commit/f959622d4ce765f68aa55906a12f8c20185c3539))
 
 
 ### Bug Fixes
 
-* **250:** permanent CI test process hardening ([#253](https://github.com/davidmatousek/tachi/issues/253)) ([75866d9](https://github.com/davidmatousek/tachi/commit/75866d9662842aff319e66853b2351dd9e95d983))
+* **250:** permanent CI test process hardening ([#253](https://github.com/pratik-saptarshi/tachi-rust/issues/253)) ([75866d9](https://github.com/pratik-saptarshi/tachi-rust/commit/75866d9662842aff319e66853b2351dd9e95d983))
 
-## [4.28.0](https://github.com/davidmatousek/tachi/compare/v4.27.1...v4.28.0) (2026-05-04)
+## [4.28.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.27.1...v4.28.0) (2026-05-04)
 
 
 ### Features
 
-* **248:** harden init.sh substitution surface — sed → bash param expansion + input validation + gitignore default ([#249](https://github.com/davidmatousek/tachi/issues/249)) ([6db9a25](https://github.com/davidmatousek/tachi/commit/6db9a2590ba458964db93f8627272962d22abf70))
+* **248:** harden init.sh substitution surface — sed → bash param expansion + input validation + gitignore default ([#249](https://github.com/pratik-saptarshi/tachi-rust/issues/249)) ([6db9a25](https://github.com/pratik-saptarshi/tachi-rust/commit/6db9a2590ba458964db93f8627272962d22abf70))
 
-## [4.27.1](https://github.com/davidmatousek/tachi/compare/v4.27.0...v4.27.1) (2026-05-02)
+## [4.27.1](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.27.0...v4.27.1) (2026-05-02)
 
 
 ### Bug Fixes
 
-* restore Apache 2.0 license overwritten by /aod.update bug ([f8f3c2e](https://github.com/davidmatousek/tachi/commit/f8f3c2e8cc6759e86c790d0bd9e093df712e9a2d))
+* restore Apache 2.0 license overwritten by /aod.update bug ([f8f3c2e](https://github.com/pratik-saptarshi/tachi-rust/commit/f8f3c2e8cc6759e86c790d0bd9e093df712e9a2d))
 
-## [4.27.0](https://github.com/davidmatousek/tachi/compare/v4.26.0...v4.27.0) (2026-05-02)
-
-
-### Features
-
-* **241:** F-8 + F-A3 Web/API Coverage Attestation + Populator Wiring [Tier 3] ([#242](https://github.com/davidmatousek/tachi/issues/242)) ([e8a5370](https://github.com/davidmatousek/tachi/commit/e8a5370a7eb8598717af1fe2b718bb8d811c891a))
-
-## [4.26.0](https://github.com/davidmatousek/tachi/compare/v4.25.0...v4.26.0) (2026-04-29)
+## [4.27.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.26.0...v4.27.0) (2026-05-02)
 
 
 ### Features
 
-* **237:** Mobile Top 10 Coverage Bundle ([#238](https://github.com/davidmatousek/tachi/issues/238)) ([e962a0e](https://github.com/davidmatousek/tachi/commit/e962a0e5b06d69c45aa3aa6217ebf9945b01f09e))
+* **241:** F-8 + F-A3 Web/API Coverage Attestation + Populator Wiring [Tier 3] ([#242](https://github.com/pratik-saptarshi/tachi-rust/issues/242)) ([e8a5370](https://github.com/pratik-saptarshi/tachi-rust/commit/e8a5370a7eb8598717af1fe2b718bb8d811c891a))
 
-## [4.25.0](https://github.com/davidmatousek/tachi/compare/v4.24.0...v4.25.0) (2026-04-28)
-
-
-### Features
-
-* **232:** ML Top 10 build closeout — data-poisoning + model-theft + tests ([#235](https://github.com/davidmatousek/tachi/issues/235)) ([e325375](https://github.com/davidmatousek/tachi/commit/e32537592307eadd787f84f56109dda553ed8648))
-* **232:** ML Top 10 Coverage Bundle ([#233](https://github.com/davidmatousek/tachi/issues/233)) ([b84552a](https://github.com/davidmatousek/tachi/commit/b84552a519f929d3f02f9780550591fe599085d6))
-
-## [4.24.0](https://github.com/davidmatousek/tachi/compare/v4.23.0...v4.24.0) (2026-04-27)
+## [4.26.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.25.0...v4.26.0) (2026-04-29)
 
 
 ### Features
 
-* **224:** human-trust-exploitation threat agent (ASI09) ([#225](https://github.com/davidmatousek/tachi/issues/225)) ([feaeb95](https://github.com/davidmatousek/tachi/commit/feaeb95019340a85681b65198a4b42e3a92b16a4))
-* **229:** llm10 unbounded consumption verification ([#230](https://github.com/davidmatousek/tachi/issues/230)) ([e086d31](https://github.com/davidmatousek/tachi/commit/e086d31e4bead0dd7cb3de3fd63e4a120da59133))
+* **237:** Mobile Top 10 Coverage Bundle ([#238](https://github.com/pratik-saptarshi/tachi-rust/issues/238)) ([e962a0e](https://github.com/pratik-saptarshi/tachi-rust/commit/e962a0e5b06d69c45aa3aa6217ebf9945b01f09e))
 
-## [4.23.0](https://github.com/davidmatousek/tachi/compare/v4.22.1...v4.23.0) (2026-04-26)
+## [4.25.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.24.0...v4.25.0) (2026-04-28)
 
 
 ### Features
 
-* **219:** asi07-tool-abuse-enrichment ([#220](https://github.com/davidmatousek/tachi/issues/220)) ([f7bf204](https://github.com/davidmatousek/tachi/commit/f7bf20483bc7f805ce4f9f879c6bb6d23a88a211))
+* **232:** ML Top 10 build closeout — data-poisoning + model-theft + tests ([#235](https://github.com/pratik-saptarshi/tachi-rust/issues/235)) ([e325375](https://github.com/pratik-saptarshi/tachi-rust/commit/e32537592307eadd787f84f56109dda553ed8648))
+* **232:** ML Top 10 Coverage Bundle ([#233](https://github.com/pratik-saptarshi/tachi-rust/issues/233)) ([b84552a](https://github.com/pratik-saptarshi/tachi-rust/commit/b84552a519f929d3f02f9780550591fe599085d6))
 
-## [4.22.1](https://github.com/davidmatousek/tachi/compare/v4.22.0...v4.22.1) (2026-04-25)
+## [4.24.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.23.0...v4.24.0) (2026-04-27)
+
+
+### Features
+
+* **224:** human-trust-exploitation threat agent (ASI09) ([#225](https://github.com/pratik-saptarshi/tachi-rust/issues/225)) ([feaeb95](https://github.com/pratik-saptarshi/tachi-rust/commit/feaeb95019340a85681b65198a4b42e3a92b16a4))
+* **229:** llm10 unbounded consumption verification ([#230](https://github.com/pratik-saptarshi/tachi-rust/issues/230)) ([e086d31](https://github.com/pratik-saptarshi/tachi-rust/commit/e086d31e4bead0dd7cb3de3fd63e4a120da59133))
+
+## [4.23.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.22.1...v4.23.0) (2026-04-26)
+
+
+### Features
+
+* **219:** asi07-tool-abuse-enrichment ([#220](https://github.com/pratik-saptarshi/tachi-rust/issues/220)) ([f7bf204](https://github.com/pratik-saptarshi/tachi-rust/commit/f7bf20483bc7f805ce4f9f879c6bb6d23a88a211))
+
+## [4.22.1](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.22.0...v4.22.1) (2026-04-25)
 
 
 ### Bug Fixes
 
-* **215:** byte-probe image detection in extract-report-data ([#216](https://github.com/davidmatousek/tachi/issues/216)) ([672b7fb](https://github.com/davidmatousek/tachi/commit/672b7fb56295b53680f37975d4f9a243af920ec0))
+* **215:** byte-probe image detection in extract-report-data ([#216](https://github.com/pratik-saptarshi/tachi-rust/issues/216)) ([672b7fb](https://github.com/pratik-saptarshi/tachi-rust/commit/672b7fb56295b53680f37975d4f9a243af920ec0))
 
-## [4.22.0](https://github.com/davidmatousek/tachi/compare/v4.21.1...v4.22.0) (2026-04-25)
+## [4.22.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.21.1...v4.22.0) (2026-04-25)
 
 
 ### Features
 
-* **212:** improve executive-architecture infographic ([904d952](https://github.com/davidmatousek/tachi/commit/904d9520f5db8e85493814872b4cf26fdcd5342b))
+* **212:** improve executive-architecture infographic ([904d952](https://github.com/pratik-saptarshi/tachi-rust/commit/904d9520f5db8e85493814872b4cf26fdcd5342b))
 
-## [4.21.1](https://github.com/davidmatousek/tachi/compare/v4.21.0...v4.21.1) (2026-04-24)
+## [4.21.1](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.21.0...v4.21.1) (2026-04-24)
 
 
 ### Bug Fixes
 
-* **209:** producer/consumer contract drift across extractor pipeline ([#210](https://github.com/davidmatousek/tachi/issues/210)) ([d517ac6](https://github.com/davidmatousek/tachi/commit/d517ac6f3bc475c7e99f2e702142396f5b8a5393)), closes [#209](https://github.com/davidmatousek/tachi/issues/209)
+* **209:** producer/consumer contract drift across extractor pipeline ([#210](https://github.com/pratik-saptarshi/tachi-rust/issues/210)) ([d517ac6](https://github.com/pratik-saptarshi/tachi-rust/commit/d517ac6f3bc475c7e99f2e702142396f5b8a5393)), closes [#209](https://github.com/pratik-saptarshi/tachi-rust/issues/209)
 
-## [4.21.0](https://github.com/davidmatousek/tachi/compare/v4.20.0...v4.21.0) (2026-04-24)
-
-
-### Features
-
-* **206:** misinformation threat agent (OWASP LLM09:2025) ([#207](https://github.com/davidmatousek/tachi/issues/207)) ([b703e52](https://github.com/davidmatousek/tachi/commit/b703e52be2fac041dd9b5ffc23b1f5b610e8a262))
-
-## [4.20.0](https://github.com/davidmatousek/tachi/compare/v4.19.0...v4.20.0) (2026-04-20)
+## [4.21.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.20.0...v4.21.0) (2026-04-24)
 
 
 ### Features
 
-* update template from AOD-kit (first F129 run) ([a36a73f](https://github.com/davidmatousek/tachi/commit/a36a73fc28a367047c1eabb2860ba83c60a83e5d))
+* **206:** misinformation threat agent (OWASP LLM09:2025) ([#207](https://github.com/pratik-saptarshi/tachi-rust/issues/207)) ([b703e52](https://github.com/pratik-saptarshi/tachi-rust/commit/b703e52be2fac041dd9b5ffc23b1f5b610e8a262))
 
-## [4.19.0](https://github.com/davidmatousek/tachi/compare/v4.18.1...v4.19.0) (2026-04-19)
+## [4.20.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.19.0...v4.20.0) (2026-04-20)
 
 
 ### Features
 
-* **201:** output-integrity threat agent (OWASP LLM05:2025) ([#202](https://github.com/davidmatousek/tachi/issues/202)) ([558e75e](https://github.com/davidmatousek/tachi/commit/558e75eb333ad7787167833c97b645bc251492e1))
+* update template from AOD-kit (first F129 run) ([a36a73f](https://github.com/pratik-saptarshi/tachi-rust/commit/a36a73fc28a367047c1eabb2860ba83c60a83e5d))
 
-## [4.18.1](https://github.com/davidmatousek/tachi/compare/v4.18.0...v4.18.1) (2026-04-18)
+## [4.19.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.18.1...v4.19.0) (2026-04-19)
+
+
+### Features
+
+* **201:** output-integrity threat agent (OWASP LLM05:2025) ([#202](https://github.com/pratik-saptarshi/tachi-rust/issues/202)) ([558e75e](https://github.com/pratik-saptarshi/tachi-rust/commit/558e75eb333ad7787167833c97b645bc251492e1))
+
+## [4.18.1](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.18.0...v4.18.1) (2026-04-18)
 
 
 ### Bug Fixes
 
-* **198:** merge source_attribution onto Tier 1/2 findings ([#199](https://github.com/davidmatousek/tachi/issues/199)) ([e637d31](https://github.com/davidmatousek/tachi/commit/e637d31927c1e2c66f4f0afe5b2ab2b9ea8abcd1))
+* **198:** merge source_attribution onto Tier 1/2 findings ([#199](https://github.com/pratik-saptarshi/tachi-rust/issues/199)) ([e637d31](https://github.com/pratik-saptarshi/tachi-rust/commit/e637d31927c1e2c66f4f0afe5b2ab2b9ea8abcd1))
 
-## [4.18.0](https://github.com/davidmatousek/tachi/compare/v4.17.0...v4.18.0) (2026-04-18)
-
-
-### Features
-
-* **194:** Coverage Attestation Report Section (F-B / BLP-01) ([#195](https://github.com/davidmatousek/tachi/issues/195)) ([c4b8dc6](https://github.com/davidmatousek/tachi/commit/c4b8dc68f36b59ee7ab49cc587661526ffd1a818))
-
-## [4.17.0](https://github.com/davidmatousek/tachi/compare/v4.16.0...v4.17.0) (2026-04-18)
+## [4.18.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.17.0...v4.18.0) (2026-04-18)
 
 
 ### Features
 
-* **189:** F-A2 source attribution schema extension ([#189](https://github.com/davidmatousek/tachi/issues/189)) ([#190](https://github.com/davidmatousek/tachi/issues/190)) ([6d5d890](https://github.com/davidmatousek/tachi/commit/6d5d890c388af5f546246f4e39f8a4d61fe840b1))
+* **194:** Coverage Attestation Report Section (F-B / BLP-01) ([#195](https://github.com/pratik-saptarshi/tachi-rust/issues/195)) ([c4b8dc6](https://github.com/pratik-saptarshi/tachi-rust/commit/c4b8dc68f36b59ee7ab49cc587661526ffd1a818))
 
-## [4.16.0](https://github.com/davidmatousek/tachi/compare/v4.15.0...v4.16.0) (2026-04-17)
-
-
-### Features
-
-* **180:** F-A1 Taxonomy Crosswalk Collection ([#181](https://github.com/davidmatousek/tachi/issues/181)) ([8b7c7bf](https://github.com/davidmatousek/tachi/commit/8b7c7bf59a6de93a0d3f5016a4395755de19c79e))
-
-## [4.15.0](https://github.com/davidmatousek/tachi/compare/v4.14.1...v4.15.0) (2026-04-16)
+## [4.17.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.16.0...v4.17.0) (2026-04-18)
 
 
 ### Features
 
-* **142:** MAESTRO Phase 3 — Agentic Threat Pattern Expansion ([#172](https://github.com/davidmatousek/tachi/issues/172)) ([c0b7378](https://github.com/davidmatousek/tachi/commit/c0b73780c83aa3df16ac7965738bc76034e88454))
+* **189:** F-A2 source attribution schema extension ([#189](https://github.com/pratik-saptarshi/tachi-rust/issues/189)) ([#190](https://github.com/pratik-saptarshi/tachi-rust/issues/190)) ([6d5d890](https://github.com/pratik-saptarshi/tachi-rust/commit/6d5d890c388af5f546246f4e39f8a4d61fe840b1))
 
-## [4.14.1](https://github.com/davidmatousek/tachi/compare/v4.14.0...v4.14.1) (2026-04-14)
+## [4.16.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.15.0...v4.16.0) (2026-04-17)
+
+
+### Features
+
+* **180:** F-A1 Taxonomy Crosswalk Collection ([#181](https://github.com/pratik-saptarshi/tachi-rust/issues/181)) ([8b7c7bf](https://github.com/pratik-saptarshi/tachi-rust/commit/8b7c7bf59a6de93a0d3f5016a4395755de19c79e))
+
+## [4.15.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.14.1...v4.15.0) (2026-04-16)
+
+
+### Features
+
+* **142:** MAESTRO Phase 3 — Agentic Threat Pattern Expansion ([#172](https://github.com/pratik-saptarshi/tachi-rust/issues/172)) ([c0b7378](https://github.com/pratik-saptarshi/tachi-rust/commit/c0b73780c83aa3df16ac7965738bc76034e88454))
+
+## [4.14.1](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.14.0...v4.14.1) (2026-04-14)
 
 
 ### Bug Fixes
 
-* fall back to architecture.md H1 when threats.md lacks project name ([#165](https://github.com/davidmatousek/tachi/issues/165)) ([b746cb7](https://github.com/davidmatousek/tachi/commit/b746cb74595f9a15041c50bcdef69e5e0ed21709))
+* fall back to architecture.md H1 when threats.md lacks project name ([#165](https://github.com/pratik-saptarshi/tachi-rust/issues/165)) ([b746cb7](https://github.com/pratik-saptarshi/tachi-rust/commit/b746cb74595f9a15041c50bcdef69e5e0ed21709))
 
-## [4.14.0](https://github.com/davidmatousek/tachi/compare/v4.13.0...v4.14.0) (2026-04-14)
-
-
-### Features
-
-* **129:** attack tree delta sub-agent — extract Section 5 generation ([#162](https://github.com/davidmatousek/tachi/issues/162)) ([0729490](https://github.com/davidmatousek/tachi/commit/072949017f633d029ac4af22032da21efcb67b17))
-
-
-### Bug Fixes
-
-* auto-detect newest docs/security run directory in tachi commands ([#164](https://github.com/davidmatousek/tachi/issues/164)) ([39c962c](https://github.com/davidmatousek/tachi/commit/39c962c4eaed2e4cec899f5036169ba005b6d163))
-
-## [4.13.0](https://github.com/davidmatousek/tachi/compare/v4.12.0...v4.13.0) (2026-04-12)
+## [4.14.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.13.0...v4.14.0) (2026-04-14)
 
 
 ### Features
 
-* **141:** MAESTRO Phase 2 — Cross-Layer Attack Chain Analysis ([#159](https://github.com/davidmatousek/tachi/issues/159)) ([5a108e9](https://github.com/davidmatousek/tachi/commit/5a108e984aa8623df3a856007c876006cdff6eb3))
+* **129:** attack tree delta sub-agent — extract Section 5 generation ([#162](https://github.com/pratik-saptarshi/tachi-rust/issues/162)) ([0729490](https://github.com/pratik-saptarshi/tachi-rust/commit/072949017f633d029ac4af22032da21efcb67b17))
 
 
 ### Bug Fixes
 
-* **141:** constrain attack chain diagram height to fit one page ([2310af3](https://github.com/davidmatousek/tachi/commit/2310af313128aaec1cd147a3f028aba41a2f2150))
+* auto-detect newest docs/security run directory in tachi commands ([#164](https://github.com/pratik-saptarshi/tachi-rust/issues/164)) ([39c962c](https://github.com/pratik-saptarshi/tachi-rust/commit/39c962c4eaed2e4cec899f5036169ba005b6d163))
 
-## [4.12.0](https://github.com/davidmatousek/tachi/compare/v4.11.1...v4.12.0) (2026-04-12)
+## [4.13.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.12.0...v4.13.0) (2026-04-12)
 
 
 ### Features
 
-* **154:** deterministic Gemini prompt scaffold for infographic quality stability ([f2ad9be](https://github.com/davidmatousek/tachi/commit/f2ad9be2f24d8d94168dc82cd49048623164f4de))
+* **141:** MAESTRO Phase 2 — Cross-Layer Attack Chain Analysis ([#159](https://github.com/pratik-saptarshi/tachi-rust/issues/159)) ([5a108e9](https://github.com/pratik-saptarshi/tachi-rust/commit/5a108e984aa8623df3a856007c876006cdff6eb3))
 
 
 ### Bug Fixes
 
-* **154:** add .claude/skills/tachi-*/ to INSTALL_MANIFEST ([6547360](https://github.com/davidmatousek/tachi/commit/6547360d39c44301adb51c8b8ec23cc722a13e8a))
-* **154:** infographic quality — extract risk metrics, update Gemini model config ([3cd5d27](https://github.com/davidmatousek/tachi/commit/3cd5d27edde4310dc0ad650ef7265bcc49f098d6))
-* **154:** MAESTRO layer detection in /tachi.infographic checks wrong file and pattern ([30f9ad9](https://github.com/davidmatousek/tachi/commit/30f9ad96b49178b447c79a3d6e49b97977b6ab0d))
+* **141:** constrain attack chain diagram height to fit one page ([2310af3](https://github.com/pratik-saptarshi/tachi-rust/commit/2310af313128aaec1cd147a3f028aba41a2f2150))
 
-## [4.11.1](https://github.com/davidmatousek/tachi/compare/v4.11.0...v4.11.1) (2026-04-12)
-
-
-### Bug Fixes
-
-* **154:** PDF report — attack trees, MAESTRO headings, landscape whitespace ([#155](https://github.com/davidmatousek/tachi/issues/155)) ([7f047b7](https://github.com/davidmatousek/tachi/commit/7f047b7fe42736bd51e60d8dfca18af33cb86d98)), closes [#154](https://github.com/davidmatousek/tachi/issues/154)
-
-## [4.11.0](https://github.com/davidmatousek/tachi/compare/v4.10.1...v4.11.0) (2026-04-12)
+## [4.12.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.11.1...v4.12.0) (2026-04-12)
 
 
 ### Features
 
-* **082:** threat agent skill references — detection tier lean refactor ([#151](https://github.com/davidmatousek/tachi/issues/151)) ([6f9a40d](https://github.com/davidmatousek/tachi/commit/6f9a40dbe17b14a04f10b56357f1a81bb025e24d))
-
-## [4.10.1](https://github.com/davidmatousek/tachi/compare/v4.10.0...v4.10.1) (2026-04-11)
+* **154:** deterministic Gemini prompt scaffold for infographic quality stability ([f2ad9be](https://github.com/pratik-saptarshi/tachi-rust/commit/f2ad9be2f24d8d94168dc82cd49048623164f4de))
 
 
 ### Bug Fixes
 
-* **130:** enforce mmdc as hard prerequisite with loud preflight/mid-render aborts ([#148](https://github.com/davidmatousek/tachi/issues/148)) ([d35a667](https://github.com/davidmatousek/tachi/commit/d35a6676dd8e409d32b06eb5e03760a0aab3f560))
+* **154:** add .claude/skills/tachi-*/ to INSTALL_MANIFEST ([6547360](https://github.com/pratik-saptarshi/tachi-rust/commit/6547360d39c44301adb51c8b8ec23cc722a13e8a))
+* **154:** infographic quality — extract risk metrics, update Gemini model config ([3cd5d27](https://github.com/pratik-saptarshi/tachi-rust/commit/3cd5d27edde4310dc0ad650ef7265bcc49f098d6))
+* **154:** MAESTRO layer detection in /tachi.infographic checks wrong file and pattern ([30f9ad9](https://github.com/pratik-saptarshi/tachi-rust/commit/30f9ad96b49178b447c79a3d6e49b97977b6ab0d))
 
-## [4.10.0](https://github.com/davidmatousek/tachi/compare/v4.9.2...v4.10.0) (2026-04-10)
+## [4.11.1](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.11.0...v4.11.1) (2026-04-12)
+
+
+### Bug Fixes
+
+* **154:** PDF report — attack trees, MAESTRO headings, landscape whitespace ([#155](https://github.com/pratik-saptarshi/tachi-rust/issues/155)) ([7f047b7](https://github.com/pratik-saptarshi/tachi-rust/commit/7f047b7fe42736bd51e60d8dfca18af33cb86d98)), closes [#154](https://github.com/pratik-saptarshi/tachi-rust/issues/154)
+
+## [4.11.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.10.1...v4.11.0) (2026-04-12)
 
 
 ### Features
 
-* **136:** align MAESTRO layer names with canonical CSA taxonomy ([#146](https://github.com/davidmatousek/tachi/issues/146)) ([31356fb](https://github.com/davidmatousek/tachi/commit/31356fb5bb48ac02b62ce8ead35f19d91db36c13))
+* **082:** threat agent skill references — detection tier lean refactor ([#151](https://github.com/pratik-saptarshi/tachi-rust/issues/151)) ([6f9a40d](https://github.com/pratik-saptarshi/tachi-rust/commit/6f9a40dbe17b14a04f10b56357f1a81bb025e24d))
+
+## [4.10.1](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.10.0...v4.10.1) (2026-04-11)
+
+
+### Bug Fixes
+
+* **130:** enforce mmdc as hard prerequisite with loud preflight/mid-render aborts ([#148](https://github.com/pratik-saptarshi/tachi-rust/issues/148)) ([d35a667](https://github.com/pratik-saptarshi/tachi-rust/commit/d35a6676dd8e409d32b06eb5e03760a0aab3f560))
+
+## [4.10.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.9.2...v4.10.0) (2026-04-10)
+
+
+### Features
+
+* **136:** align MAESTRO layer names with canonical CSA taxonomy ([#146](https://github.com/pratik-saptarshi/tachi-rust/issues/146)) ([31356fb](https://github.com/pratik-saptarshi/tachi-rust/commit/31356fb5bb48ac02b62ce8ead35f19d91db36c13))
 
 ## [Unreleased]
 
@@ -654,7 +654,7 @@ The addition is **backward-compatible** per FR-017. Pre-Feature-142 baseline fin
 - Spec: [specs/142-maestro-agentic-pattern-expansion/spec.md](specs/142-maestro-agentic-pattern-expansion/spec.md)
 - Plan: [specs/142-maestro-agentic-pattern-expansion/plan.md](specs/142-maestro-agentic-pattern-expansion/plan.md)
 - Data model: [specs/142-maestro-agentic-pattern-expansion/data-model.md](specs/142-maestro-agentic-pattern-expansion/data-model.md)
-- GitHub Issue: [#142](https://github.com/davidmatousek/tachi/issues/142)
+- GitHub Issue: [#142](https://github.com/pratik-saptarshi/tachi-rust/issues/142)
 
 ---
 
@@ -707,8 +707,8 @@ Phase 1a / 1b (2-agent prototype) and Phase 3 (11-agent scale) regression gates 
 - Plan: [specs/082-threat-agent-skill/plan.md](specs/082-threat-agent-skill/plan.md)
 - Delivery retrospective: [specs/082-threat-agent-skill/delivery.md](specs/082-threat-agent-skill/delivery.md)
 - ADR-023: [docs/architecture/02_ADRs/ADR-023-threat-agent-skill-references-pattern.md](docs/architecture/02_ADRs/ADR-023-threat-agent-skill-references-pattern.md)
-- PR: [#151](https://github.com/davidmatousek/tachi/pull/151)
-- GitHub Issue: [#82](https://github.com/davidmatousek/tachi/issues/82)
+- PR: [#151](https://github.com/pratik-saptarshi/tachi-rust/pull/151)
+- GitHub Issue: [#82](https://github.com/pratik-saptarshi/tachi-rust/issues/82)
 
 ---
 
@@ -819,44 +819,44 @@ If you consume tachi output programmatically:
 - Spec: [specs/136-maestro-canonical-layer/spec.md](specs/136-maestro-canonical-layer/spec.md)
 - Plan: [specs/136-maestro-canonical-layer/plan.md](specs/136-maestro-canonical-layer/plan.md)
 - ADR-020 (canonical taxonomy rule): [docs/architecture/02_ADRs/ADR-020-maestro-layer-classification.md](docs/architecture/02_ADRs/ADR-020-maestro-layer-classification.md)
-- GitHub Issue: [#136](https://github.com/davidmatousek/tachi/issues/136)
+- GitHub Issue: [#136](https://github.com/pratik-saptarshi/tachi-rust/issues/136)
 
 ---
 
-## [4.9.2](https://github.com/davidmatousek/tachi/compare/v4.9.1...v4.9.2) (2026-04-10)
+## [4.9.2](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.9.1...v4.9.2) (2026-04-10)
 
 
 ### Bug Fixes
 
-* **138:** lowercase attack tree PNG filenames to match convention ([#139](https://github.com/davidmatousek/tachi/issues/139)) ([1400e47](https://github.com/davidmatousek/tachi/commit/1400e478ff58a9f1357f69d42c62ea0437e0d4c8)), closes [#138](https://github.com/davidmatousek/tachi/issues/138)
+* **138:** lowercase attack tree PNG filenames to match convention ([#139](https://github.com/pratik-saptarshi/tachi-rust/issues/139)) ([1400e47](https://github.com/pratik-saptarshi/tachi-rust/commit/1400e478ff58a9f1357f69d42c62ea0437e0d4c8)), closes [#138](https://github.com/pratik-saptarshi/tachi-rust/issues/138)
 
-## [4.9.1](https://github.com/davidmatousek/tachi/compare/v4.9.0...v4.9.1) (2026-04-10)
+## [4.9.1](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.9.0...v4.9.1) (2026-04-10)
 
 
 ### Bug Fixes
 
-* **134:** threat-report attack tree baseline, MAESTRO layer rendering, filename convention ([#135](https://github.com/davidmatousek/tachi/issues/135)) ([716df8e](https://github.com/davidmatousek/tachi/commit/716df8e9c98768eb5edf5d87be943833aab81ab1)), closes [#134](https://github.com/davidmatousek/tachi/issues/134)
+* **134:** threat-report attack tree baseline, MAESTRO layer rendering, filename convention ([#135](https://github.com/pratik-saptarshi/tachi-rust/issues/135)) ([716df8e](https://github.com/pratik-saptarshi/tachi-rust/commit/716df8e9c98768eb5edf5d87be943833aab81ab1)), closes [#134](https://github.com/pratik-saptarshi/tachi-rust/issues/134)
 
-## [4.9.0](https://github.com/davidmatousek/tachi/compare/v4.8.0...v4.9.0) (2026-04-10)
-
-
-### Features
-
-* **128:** add executive threat architecture infographic with early-page PDF positioning ([#131](https://github.com/davidmatousek/tachi/issues/131)) ([7b217fe](https://github.com/davidmatousek/tachi/commit/7b217fe2447ba758db770ec1be0ac428e23fa252))
-
-## [4.8.0](https://github.com/davidmatousek/tachi/compare/v4.7.0...v4.8.0) (2026-04-09)
+## [4.9.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.8.0...v4.9.0) (2026-04-10)
 
 
 ### Features
 
-* **120:** add architecture lifecycle command ([#124](https://github.com/davidmatousek/tachi/issues/124)) ([f814c02](https://github.com/davidmatousek/tachi/commit/f814c027db03cf5424599b640bd99ac1aa8cd37e))
+* **128:** add executive threat architecture infographic with early-page PDF positioning ([#131](https://github.com/pratik-saptarshi/tachi-rust/issues/131)) ([7b217fe](https://github.com/pratik-saptarshi/tachi-rust/commit/7b217fe2447ba758db770ec1be0ac428e23fa252))
 
-## [4.7.0](https://github.com/davidmatousek/tachi/compare/v4.6.0...v4.7.0) (2026-04-09)
+## [4.8.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.7.0...v4.8.0) (2026-04-09)
 
 
 ### Features
 
-* **121:** rename tachi commands to tachi.* dot-namespace ([#122](https://github.com/davidmatousek/tachi/issues/122)) ([7d0f968](https://github.com/davidmatousek/tachi/commit/7d0f9684166a8fd6af10517fcca3f1aa85abad73))
+* **120:** add architecture lifecycle command ([#124](https://github.com/pratik-saptarshi/tachi-rust/issues/124)) ([f814c02](https://github.com/pratik-saptarshi/tachi-rust/commit/f814c027db03cf5424599b640bd99ac1aa8cd37e))
+
+## [4.7.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.6.0...v4.7.0) (2026-04-09)
+
+
+### Features
+
+* **121:** rename tachi commands to tachi.* dot-namespace ([#122](https://github.com/pratik-saptarshi/tachi-rust/issues/122)) ([7d0f968](https://github.com/pratik-saptarshi/tachi-rust/commit/7d0f9684166a8fd6af10517fcca3f1aa85abad73))
 
 ## [Unreleased]
 
@@ -884,19 +884,19 @@ Upgrading: Run `install.sh` — it automatically removes old unprefixed command 
 
 ---
 
-## [4.6.0](https://github.com/davidmatousek/tachi/compare/v4.5.0...v4.6.0) (2026-04-09)
+## [4.6.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.5.0...v4.6.0) (2026-04-09)
 
 
 ### Features
 
-* **119:** auto-polish release notes via Claude API after release ([a44127f](https://github.com/davidmatousek/tachi/commit/a44127fccd11aef959cc1939670158ac8dffabb6)), closes [#119](https://github.com/davidmatousek/tachi/issues/119)
+* **119:** auto-polish release notes via Claude API after release ([a44127f](https://github.com/pratik-saptarshi/tachi-rust/commit/a44127fccd11aef959cc1939670158ac8dffabb6)), closes [#119](https://github.com/pratik-saptarshi/tachi-rust/issues/119)
 
 
 ### Bug Fixes
 
-* **119:** move release notes polishing to local-only script ([0dd33fd](https://github.com/davidmatousek/tachi/commit/0dd33fd4c4fd686393207837485386afac16ad03))
+* **119:** move release notes polishing to local-only script ([0dd33fd](https://github.com/pratik-saptarshi/tachi-rust/commit/0dd33fd4c4fd686393207837485386afac16ad03))
 
-## [4.5.0](https://github.com/davidmatousek/tachi/compare/v4.4.2...v4.5.0) (2026-04-09)
+## [4.5.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.4.2...v4.5.0) (2026-04-09)
 
 ### Added
 
@@ -910,7 +910,7 @@ Upgrading: Run `install.sh` — it automatically removes old unprefixed command 
 
 ---
 
-## [4.4.2](https://github.com/davidmatousek/tachi/compare/v4.4.1...v4.4.2) (2026-04-09)
+## [4.4.2](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.4.1...v4.4.2) (2026-04-09)
 
 ### Fixed
 
@@ -918,7 +918,7 @@ Upgrading: Run `install.sh` — it automatically removes old unprefixed command 
 
 ---
 
-## [4.4.1](https://github.com/davidmatousek/tachi/compare/v4.4.0...v4.4.1) (2026-04-09)
+## [4.4.1](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.4.0...v4.4.1) (2026-04-09)
 
 ### Fixed
 
@@ -926,7 +926,7 @@ Upgrading: Run `install.sh` — it automatically removes old unprefixed command 
 
 ---
 
-## [4.4.0](https://github.com/davidmatousek/tachi/compare/v4.3.4...v4.4.0) (2026-04-09)
+## [4.4.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.3.4...v4.4.0) (2026-04-09)
 
 ### Added
 
@@ -934,7 +934,7 @@ Upgrading: Run `install.sh` — it automatically removes old unprefixed command 
 
 ---
 
-## [4.3.4](https://github.com/davidmatousek/tachi/compare/v4.3.3...v4.3.4) (2026-04-08)
+## [4.3.4](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.3.3...v4.3.4) (2026-04-08)
 
 ### Fixed
 
@@ -942,7 +942,7 @@ Upgrading: Run `install.sh` — it automatically removes old unprefixed command 
 
 ---
 
-## [4.3.3](https://github.com/davidmatousek/tachi/compare/v4.3.2...v4.3.3) (2026-04-08)
+## [4.3.3](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.3.2...v4.3.3) (2026-04-08)
 
 ### Fixed
 
@@ -950,7 +950,7 @@ Upgrading: Run `install.sh` — it automatically removes old unprefixed command 
 
 ---
 
-## [4.3.2](https://github.com/davidmatousek/tachi/compare/v4.3.1...v4.3.2) (2026-04-08)
+## [4.3.2](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.3.1...v4.3.2) (2026-04-08)
 
 ### Fixed
 
@@ -959,7 +959,7 @@ Upgrading: Run `install.sh` — it automatically removes old unprefixed command 
 
 ---
 
-## [4.3.1](https://github.com/davidmatousek/tachi/compare/v4.3.0...v4.3.1) (2026-04-08)
+## [4.3.1](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.3.0...v4.3.1) (2026-04-08)
 
 ### Fixed
 
@@ -967,7 +967,7 @@ Upgrading: Run `install.sh` — it automatically removes old unprefixed command 
 
 ---
 
-## [4.3.0](https://github.com/davidmatousek/tachi/compare/v4.2.1...v4.3.0) (2026-04-08)
+## [4.3.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.2.1...v4.3.0) (2026-04-08)
 
 ### Added
 
@@ -975,7 +975,7 @@ Upgrading: Run `install.sh` — it automatically removes old unprefixed command 
 
 ---
 
-## [4.2.1](https://github.com/davidmatousek/tachi/compare/v4.2.0...v4.2.1) (2026-04-08)
+## [4.2.1](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.2.0...v4.2.1) (2026-04-08)
 
 ### Fixed
 
@@ -983,7 +983,7 @@ Upgrading: Run `install.sh` — it automatically removes old unprefixed command 
 
 ---
 
-## [4.2.0](https://github.com/davidmatousek/tachi/compare/v4.1.0...v4.2.0) (2026-04-08)
+## [4.2.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.1.0...v4.2.0) (2026-04-08)
 
 ### Added
 
@@ -991,7 +991,7 @@ Upgrading: Run `install.sh` — it automatically removes old unprefixed command 
 
 ---
 
-## [4.1.0](https://github.com/davidmatousek/tachi/compare/v4.0.0...v4.1.0) (2026-04-07)
+## [4.1.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v4.0.0...v4.1.0) (2026-04-07)
 
 ### Added
 
@@ -1103,7 +1103,7 @@ Project skeleton with STRIDE + AI threat agent prompts, schemas, output template
 
 ---
 
-## [4.0.0](https://github.com/davidmatousek/tachi/compare/v3.0.0...v4.0.0) (2026-02-08)
+## [4.0.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v3.0.0...v4.0.0) (2026-02-08)
 
 ### BREAKING CHANGES
 
@@ -1115,11 +1115,11 @@ Project skeleton with STRIDE + AI threat agent prompts, schemas, output template
 
 ---
 
-## [3.0.0](https://github.com/davidmatousek/tachi/compare/v2.1.0...v3.0.0) (2026-02-07)
+## [3.0.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v2.1.0...v3.0.0) (2026-02-07)
 
 ### BREAKING CHANGES
 
-- **SpecKit commands removed** — All `/speckit.*` commands consolidated into `/triad.*`. See [migration table in previous CHANGELOG](https://github.com/davidmatousek/tachi/blob/v3.0.0/CHANGELOG.md) for command mapping.
+- **SpecKit commands removed** — All `/speckit.*` commands consolidated into `/triad.*`. See [migration table in previous CHANGELOG](https://github.com/pratik-saptarshi/tachi-rust/blob/v3.0.0/CHANGELOG.md) for command mapping.
 
 ### Added
 
@@ -1131,7 +1131,7 @@ Project skeleton with STRIDE + AI threat agent prompts, schemas, output template
 
 ---
 
-## [2.1.0](https://github.com/davidmatousek/tachi/compare/v2.0.0...v2.1.0) (2026-01-31)
+## [2.1.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v2.0.0...v2.1.0) (2026-01-31)
 
 ### Added
 
@@ -1139,7 +1139,7 @@ Project skeleton with STRIDE + AI threat agent prompts, schemas, output template
 
 ---
 
-## [2.0.0](https://github.com/davidmatousek/tachi/compare/v1.1.0...v2.0.0) (2026-01-24)
+## [2.0.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v1.1.0...v2.0.0) (2026-01-24)
 
 ### Added
 
@@ -1148,7 +1148,7 @@ Project skeleton with STRIDE + AI threat agent prompts, schemas, output template
 
 ---
 
-## [1.1.0](https://github.com/davidmatousek/tachi/compare/v1.0.0...v1.1.0) (2025-12-15)
+## [1.1.0](https://github.com/pratik-saptarshi/tachi-rust/compare/v1.0.0...v1.1.0) (2025-12-15)
 
 ### Added
 
@@ -1156,7 +1156,7 @@ Project skeleton with STRIDE + AI threat agent prompts, schemas, output template
 
 ---
 
-## [1.0.0](https://github.com/davidmatousek/tachi/releases/tag/v1.0.0) (2025-12-04)
+## [1.0.0](https://github.com/pratik-saptarshi/tachi-rust/releases/tag/v1.0.0) (2025-12-04)
 
 ### Added
 

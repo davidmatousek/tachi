@@ -214,7 +214,7 @@ All three PRD user stories ship as P1 because they are co-dependent for MVP: wit
 ## References
 
 - **PRD**: `docs/product/02_PRD/189-source-attribution-schema-extension-2026-04-17.md`
-- **GitHub Issue**: [#189](https://github.com/davidmatousek/tachi/issues/189)
+- **GitHub Issue**: [#189](https://github.com/pratik-saptarshi/tachi-rust/issues/189)
 - **Research**: `specs/189-source-attribution-schema-extension/research.md`
 - **F-A1 baseline**: `docs/product/02_PRD/180-taxonomy-crosswalk-collection-2026-04-17.md`
 - **ADR-020** (MAESTRO layer — additive-optional-field precedent): `docs/architecture/02_ADRs/ADR-020-maestro-layer-classification.md`

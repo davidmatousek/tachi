@@ -8,7 +8,7 @@
           "name": "tachi-control-analyzer",
           "version": "1.0",
           "semanticVersion": "1.0",
-          "informationUri": "https://github.com/davidmatousek/tachi",
+          "informationUri": "https://github.com/pratik-saptarshi/tachi-rust",
           "supportedTaxonomies": [
             {
               "name": "OWASP",

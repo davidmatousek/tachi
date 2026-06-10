@@ -21,7 +21,7 @@ triad:
 
 **Input**: Design documents from `/specs/282-pre-commit-secret-scanning-defaults/`
 **Feature Branch**: `282-pre-commit-secret-scanning-defaults`
-**Issue**: [#282](https://github.com/davidmatousek/tachi/issues/282)
+**Issue**: [#282](https://github.com/pratik-saptarshi/tachi-rust/issues/282)
 **Initiative**: BLP-02 Wave 4+ — fifth and final feature in the 5-feature enterprise hardening initiative
 **Tests**: REQUIRED per AC-SPEC-1 entry-criteria + Pre-Mortem FM-3 design consideration. AC-SPEC-1 synthetic-fixture rule-interaction test (16 fixtures + runner) and init.sh prompt-flag matrix test (6 cases) are mandatory deliverables.
 

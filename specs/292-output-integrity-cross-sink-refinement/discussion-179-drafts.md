@@ -2,7 +2,7 @@
 
 These are ready-to-paste drafts for the two community-facing replies F-292 requires. They are NOT posted automatically — you (the maintainer) need to post them under your GitHub authentication.
 
-URL: https://github.com/davidmatousek/tachi/discussions/179
+URL: https://github.com/pratik-saptarshi/tachi-rust/discussions/179
 
 ---
 
@@ -48,20 +48,20 @@ Either way: thanks for the contribution.
 @armorer-labs — F-292 (Output-Integrity Cross-Sink Refinement) just shipped on main. Quick summary of what landed and where:
 
 **PR**: #{PR} (squash-merged {YYYY-MM-DD})
-**CHANGELOG**: [v{NEXT_VERSION}](https://github.com/davidmatousek/tachi/blob/main/CHANGELOG.md#v{NEXT_VERSION})
-**Release**: [v{NEXT_VERSION}](https://github.com/davidmatousek/tachi/releases/tag/v{NEXT_VERSION})
+**CHANGELOG**: [v{NEXT_VERSION}](https://github.com/pratik-saptarshi/tachi-rust/blob/main/CHANGELOG.md#v{NEXT_VERSION})
+**Release**: [v{NEXT_VERSION}](https://github.com/pratik-saptarshi/tachi-rust/releases/tag/v{NEXT_VERSION})
 
 **Three gap closures (per your discussion #179 comment)**:
 
-1. **Vector / Search-DSL Injection (new Cat 6)** — [detection-patterns.md#6-vector--search-dsl-injection](https://github.com/davidmatousek/tachi/blob/main/.claude/skills/tachi-output-integrity/references/detection-patterns.md#6-vector--search-dsl-injection). LLM-synthesized Pinecone / Qdrant metadata filters into multi-tenant query interfaces now emit `OI-{N}` findings under Cat 6 with CWE-943 primary + OWASP LLM08:2025 primary. Worked example exercises the failure mode (LLM-output-layer filter composition without tenant_id pin); 4 defense-in-depth mitigations enumerated.
+1. **Vector / Search-DSL Injection (new Cat 6)** — [detection-patterns.md#6-vector--search-dsl-injection](https://github.com/pratik-saptarshi/tachi-rust/blob/main/.claude/skills/tachi-output-integrity/references/detection-patterns.md#6-vector--search-dsl-injection). LLM-synthesized Pinecone / Qdrant metadata filters into multi-tenant query interfaces now emit `OI-{N}` findings under Cat 6 with CWE-943 primary + OWASP LLM08:2025 primary. Worked example exercises the failure mode (LLM-output-layer filter composition without tenant_id pin); 4 defense-in-depth mitigations enumerated.
 
-2. **AI-coding-assistant package-manager sinks (Cat 2 extension)** — [detection-patterns.md#2-server-side-execution-sinks](https://github.com/davidmatousek/tachi/blob/main/.claude/skills/tachi-output-integrity/references/detection-patterns.md#2-server-side-execution-sinks-sqli--os-command--code-injection). Cat 2 trigger-keyword list extended with `npm install`, `pip install`, `apt install`, `brew install`, `gh workflow`, `actions/`, `uses:`, `package-lock`, `requirements.txt`. Sub-example anchors SANDWORM_MODE npm worm + LiteLLM PyPI compromise + arXiv 2605.07135 (Agentic Workflow Injection) for real-world urgency.
+2. **AI-coding-assistant package-manager sinks (Cat 2 extension)** — [detection-patterns.md#2-server-side-execution-sinks](https://github.com/pratik-saptarshi/tachi-rust/blob/main/.claude/skills/tachi-output-integrity/references/detection-patterns.md#2-server-side-execution-sinks-sqli--os-command--code-injection). Cat 2 trigger-keyword list extended with `npm install`, `pip install`, `apt install`, `brew install`, `gh workflow`, `actions/`, `uses:`, `package-lock`, `requirements.txt`. Sub-example anchors SANDWORM_MODE npm worm + LiteLLM PyPI compromise + arXiv 2605.07135 (Agentic Workflow Injection) for real-world urgency.
 
-3. **Cross-Agent Handoff Sinks (navigational subsection)** — [detection-patterns.md#cross-agent-handoff-sinks](https://github.com/davidmatousek/tachi/blob/main/.claude/skills/tachi-output-integrity/references/detection-patterns.md#cross-agent-handoff-sinks-navigational--no-emission-from-output-integrity). Boundary phrase ("harmless as text, dangerous as tool argument or memory entry"), cross-links to `tool-abuse` (tool-argument handoff) and `data-poisoning` (durable-memory-write, OWASP ASI06 — NOT LLM04), and a Memory-Promotion Rules YAML schema example (promotable_keys / value_schema / tenant_scope) for the canonical durable-write mitigation pattern.
+3. **Cross-Agent Handoff Sinks (navigational subsection)** — [detection-patterns.md#cross-agent-handoff-sinks](https://github.com/pratik-saptarshi/tachi-rust/blob/main/.claude/skills/tachi-output-integrity/references/detection-patterns.md#cross-agent-handoff-sinks-navigational--no-emission-from-output-integrity). Boundary phrase ("harmless as text, dangerous as tool argument or memory entry"), cross-links to `tool-abuse` (tool-argument handoff) and `data-poisoning` (durable-memory-write, OWASP ASI06 — NOT LLM04), and a Memory-Promotion Rules YAML schema example (promotable_keys / value_schema / tenant_scope) for the canonical durable-write mitigation pattern.
 
-**Architecture decision record**: [ADR-045](https://github.com/davidmatousek/tachi/blob/main/docs/architecture/02_ADRs/ADR-045-output-integrity-cross-sink-refinement.md) (Heuristic A enrichment at same-agent scope; 7 decisions mirroring ADR-032 template).
+**Architecture decision record**: [ADR-045](https://github.com/pratik-saptarshi/tachi-rust/blob/main/docs/architecture/02_ADRs/ADR-045-output-integrity-cross-sink-refinement.md) (Heuristic A enrichment at same-agent scope; 7 decisions mirroring ADR-032 template).
 
-**New example baseline**: [`examples/multi-tenant-rag-app/`](https://github.com/davidmatousek/tachi/tree/main/examples/multi-tenant-rag-app) exercises the Cat 6 vector-filter sink for adopter regression-protection.
+**New example baseline**: [`examples/multi-tenant-rag-app/`](https://github.com/pratik-saptarshi/tachi-rust/tree/main/examples/multi-tenant-rag-app) exercises the Cat 6 vector-filter sink for adopter regression-protection.
 
 Thank you again for the contribution. If you have follow-on gap analyses or want to deepen the multi-tenant RAG or AI-coding-assistant coverage further, this discussion thread stays open. Or open a new issue any time.
 ```
@@ -92,7 +92,7 @@ T024 SLA decision log (2026-05-21): contributor @armorer-labs did not respond to
 
 ```bash
 # T005 (post to discussion #179):
-gh api graphql -F discussionId="$(gh api repos/davidmatousek/tachi/discussions/179 --jq '.node_id')" \
+gh api graphql -F discussionId="$(gh api repos/pratik-saptarshi/tachi-rust/discussions/179 --jq '.node_id')" \
   -F body="$(cat <<'EOF'
 # paste Draft 1 content here
 EOF
@@ -103,7 +103,7 @@ EOF
 }'
 
 # Alternative manual approach:
-# 1. Open https://github.com/davidmatousek/tachi/discussions/179 in browser
+# 1. Open https://github.com/pratik-saptarshi/tachi-rust/discussions/179 in browser
 # 2. Scroll to "Add a comment"
 # 3. Paste Draft 1 content
 # 4. Click "Comment"

@@ -24,7 +24,7 @@ source:
 **Phase**: BLP-04 Adoption Push, Wave 1 (Distribution Launch)
 **Priority**: P1
 **Parent Initiative**: BLP-04 Adoption Push (proposed 2026-05-28; 4-feature initiative)
-**Source**: Seed Issue [#296](https://github.com/davidmatousek/tachi/issues/296) (captured 2026-05-28; pre-vetted in BLP-04 blueprint planning)
+**Source**: Seed Issue [#296](https://github.com/pratik-saptarshi/tachi-rust/issues/296) (captured 2026-05-28; pre-vetted in BLP-04 blueprint planning)
 
 ---
 
@@ -43,7 +43,7 @@ As of 2026-05-28, the **50/50 coverage milestone is not publicly discoverable** 
 - davidmatousek's GitHub profile README shows tachi + AOD-Kit only — no flagship framing for either.
 - The Cybersecurity Content public repo is underutilized and predates the milestone (no article references the 50/50 coverage).
 - LinkedIn has **no post yet** referencing BLP-01 or BLP-02 closure, despite Daniel Wood's public LinkedIn thread on 2026-05-02 being the **origin signal that triggered the entire BLP-02 enterprise-hardening punch-list**. A response post would close the social loop and serve as a natural distribution channel.
-- Discussion [#179](https://github.com/davidmatousek/tachi/discussions/179) ("Detect when LLM outputs become injection vectors downstream (LLM05)"), whose feature request was shipped via F-292 (output-integrity cross-sink refinement, v4.36.0, 2026-05-14), remains open — closing it with a shipping comment doubles as an in-channel announcement.
+- Discussion [#179](https://github.com/pratik-saptarshi/tachi-rust/discussions/179) ("Detect when LLM outputs become injection vectors downstream (LLM05)"), whose feature request was shipped via F-292 (output-integrity cross-sink refinement, v4.36.0, 2026-05-14), remains open — closing it with a shipping comment doubles as an in-channel announcement.
 
 **BLP-03 trigger condition #2 (enterprise-buyer signal) remains unmet** — distribution work is the most direct path to manufacture that signal. The 50/50 coverage fact is a **stale-decaying asset**: every week it remains private, the marketing leverage compounds against tachi (the milestone gets older, competing tools ship, the "first to 50/50" framing erodes). Conversion of the asset to public surfaces is **time-sensitive**.
 
@@ -372,14 +372,14 @@ Any framework gap = halt + scope-reduce the announcement to the verified subset;
 
 ## 📚 References
 
-- **Seed Issue #296**: [50/50 OWASP Coverage Distribution Launch (BLP-04 F-1)](https://github.com/davidmatousek/tachi/issues/296) (2026-05-28)
+- **Seed Issue #296**: [50/50 OWASP Coverage Distribution Launch (BLP-04 F-1)](https://github.com/pratik-saptarshi/tachi-rust/issues/296) (2026-05-28)
 - **BLP-04 Adoption Push initiative memory**: `project_blp04_adoption_push.md` (4-feature initiative, PROPOSED 2026-05-28)
 - **BLP-01 Threat Coverage initiative memory**: `project_blp01_threat_coverage.md` (CLOSED 2026-05-01; 11/11 delivered; OWASP 5-framework total 50/50)
 - **BLP-02 Enterprise Hardening initiative memory**: `project_blp02_enterprise_hardening.md` (CLOSED 2026-05-14; 6/6 delivered; v4.36.0)
 - **PRD #292** — F-292 Output-Integrity Cross-Sink Refinement (sets discussion #179 close material): `docs/product/02_PRD/292-output-integrity-cross-sink-refinement-2026-05-14.md`
 - **PRD #260** — F-260 Asset-Sensitivity Tags (community-merged precedent, @north-echo): seed Issue #260 + memory `project_f260_asset_tags.md`
-- **Discussion #179**: https://github.com/davidmatousek/tachi/discussions/179 (to be closed via FR-5)
-- **F-292 PR #293** (referenced in Discussion #179 close): https://github.com/davidmatousek/tachi/pull/293
+- **Discussion #179**: https://github.com/pratik-saptarshi/tachi-rust/discussions/179 (to be closed via FR-5)
+- **F-292 PR #293** (referenced in Discussion #179 close): https://github.com/pratik-saptarshi/tachi-rust/pull/293
 - **Memory: External contributor PR collisions** (Discussion #179 close authorship discipline): `feedback_external_contributor_collisions.md`
 - **Memory: AOD deliver must release** (NFR-5 release-cadence break acknowledgment): `feedback_aod_deliver_release_gate.md`
 - **Memory: GitHub profile README** (current state for FR-4): `reference_github_profile.md`

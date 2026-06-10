@@ -11,7 +11,7 @@
 ### 1. Fresh checkout
 
 ```bash
-git clone https://github.com/davidmatousek/tachi my-project
+git clone https://github.com/pratik-saptarshi/tachi-rust my-project
 cd my-project
 ```
 

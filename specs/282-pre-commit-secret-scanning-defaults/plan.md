@@ -291,7 +291,7 @@ Adopter with --precommit explicit-accept (non-interactive expect-style):
 **Audience**: First-time tachi adopter wanting to enable pre-commit secret-scanning.
 
 **Steps**:
-1. `git clone https://github.com/davidmatousek/tachi.git my-project`
+1. `git clone https://github.com/pratik-saptarshi/tachi-rust.git my-project`
 2. `cd my-project`
 3. `bash scripts/init.sh` — accept the default `Y` at the prompt: `Install pre-commit secret-scanning hook (gitleaks)? [Y/n]`
 4. Verify: `ls -la .git/hooks/pre-commit` — should exist after init.sh.

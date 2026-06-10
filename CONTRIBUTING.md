@@ -6,16 +6,16 @@ Thank you for your interest in contributing to tachi — the threat modeling and
 
 | What you have | Where it goes |
 |---------------|---------------|
-| **Reproducible bug** | [GitHub Issue](https://github.com/davidmatousek/tachi/issues) using the bug-report template |
-| **Question or unclear behavior** | [Discussions → Q&A](https://github.com/davidmatousek/tachi/discussions/categories/q-a) |
-| **Feature idea** | [Discussions → Feature Requests](https://github.com/davidmatousek/tachi/discussions/categories/feature-requests) (not Issues — see below) |
-| **Real-world usage report** | [Discussions → In the Wild](https://github.com/davidmatousek/tachi/discussions/categories/in-the-wild) |
-| **Security vulnerability** | [Private advisory](https://github.com/davidmatousek/tachi/security/advisories/new) — do NOT post publicly |
+| **Reproducible bug** | [GitHub Issue](https://github.com/pratik-saptarshi/tachi-rust/issues) using the bug-report template |
+| **Question or unclear behavior** | [Discussions → Q&A](https://github.com/pratik-saptarshi/tachi-rust/discussions/categories/q-a) |
+| **Feature idea** | [Discussions → Feature Requests](https://github.com/pratik-saptarshi/tachi-rust/discussions/categories/feature-requests) (not Issues — see below) |
+| **Real-world usage report** | [Discussions → In the Wild](https://github.com/pratik-saptarshi/tachi-rust/discussions/categories/in-the-wild) |
+| **Security vulnerability** | [Private advisory](https://github.com/pratik-saptarshi/tachi-rust/security/advisories/new) — do NOT post publicly |
 
 ## Development setup
 
 ```bash
-git clone https://github.com/davidmatousek/tachi.git
+git clone https://github.com/pratik-saptarshi/tachi-rust.git
 cd tachi
 make init
 make check
@@ -32,7 +32,7 @@ See [README.md](README.md) "Prerequisites" for platform-specific install command
 
 Feature requests start as Discussions, not Issues. The lifecycle:
 
-1. **Propose** — Open a thread in [Discussions → Feature Requests](https://github.com/davidmatousek/tachi/discussions/categories/feature-requests) describing the problem you're trying to solve.
+1. **Propose** — Open a thread in [Discussions → Feature Requests](https://github.com/pratik-saptarshi/tachi-rust/discussions/categories/feature-requests) describing the problem you're trying to solve.
 2. **Triage** — Maintainer reviews, asks clarifying questions, gathers community signal.
 3. **Promote** — Once a thread has traction and an [ICE score](docs/AOD_TRIAD.md), the maintainer promotes it to a GitHub Issue (auto-labeled `enhancement`, `stage:discover`).
 4. **Pick up** — Contributors take the Issue through the AOD lifecycle: `/aod.define` → `/aod.plan` → `/aod.build` → `/aod.deliver`. See [docs/AOD_TRIAD.md](docs/AOD_TRIAD.md) for the governance overview.
@@ -68,4 +68,4 @@ All contributors must follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Questions?
 
-Open a [Discussion](https://github.com/davidmatousek/tachi/discussions) — happy to help.
+Open a [Discussion](https://github.com/pratik-saptarshi/tachi-rust/discussions) — happy to help.

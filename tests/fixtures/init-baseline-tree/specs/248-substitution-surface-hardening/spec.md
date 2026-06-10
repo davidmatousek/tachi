@@ -341,7 +341,7 @@ The full risk register is in [PRD §Risks](../../docs/product/02_PRD/248-substit
 
 - **PRD**: [docs/product/02_PRD/248-substitution-surface-hardening-2026-05-03.md](../../docs/product/02_PRD/248-substitution-surface-hardening-2026-05-03.md)
 - **Research**: [research.md](research.md)
-- **Issue**: [#248](https://github.com/davidmatousek/tachi/issues/248)
+- **Issue**: [#248](https://github.com/pratik-saptarshi/tachi-rust/issues/248)
 - **Existing safe function**: [.aod/scripts/bash/template-substitute.sh:318-411](../../.aod/scripts/bash/template-substitute.sh)
 - **Vulnerable code (target for removal)**: [scripts/init.sh:117-159](../../scripts/init.sh) (`replace_in_files`); [scripts/init.sh:24-28](../../scripts/init.sh) (`read -p` prompts); [scripts/init.sh:235-241](../../scripts/init.sh) (constitution sed)
 - **Prior ADR superseded on mechanism axis**: [docs/architecture/02_ADRs/ADR-009-template-variable-expansion-scope.md](../../docs/architecture/02_ADRs/ADR-009-template-variable-expansion-scope.md)

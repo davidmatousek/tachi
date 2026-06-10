@@ -290,7 +290,7 @@ The pipeline must produce equivalent threat analysis results after extraction. T
 
 ## References
 
-- [GitHub Issue #75](https://github.com/davidmatousek/tachi/issues/75) — Source idea with full detail
+- [GitHub Issue #75](https://github.com/pratik-saptarshi/tachi-rust/issues/75) — Source idea with full detail
 - [_TACHI_AGENT_BEST_PRACTICES.md](../../.claude/agents/tachi/_TACHI_AGENT_BEST_PRACTICES.md) — Tier definitions, extraction pattern, compliance table
 - Anthropic: "Building Effective Agents" — six workflow patterns
 - Anthropic: "Effective Context Engineering for AI Agents" — progressive disclosure

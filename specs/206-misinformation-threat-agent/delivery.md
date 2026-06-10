@@ -4,7 +4,7 @@ artifact: delivery.md
 author: senior-backend-engineer (via /aod.build T057)
 date: 2026-04-24
 status: Authored pre-merge — finalize post-squash with merge metadata
-pr: https://github.com/davidmatousek/tachi/pull/207
+pr: https://github.com/pratik-saptarshi/tachi-rust/pull/207
 triad_signoff:
   pm: APPROVED (2026-04-23, tasks.md frontmatter)
   architect: APPROVED (2026-04-23, tasks.md frontmatter)

@@ -13,7 +13,7 @@ triad:
 # Feature Specification: Pre-commit Secret-Scanning Defaults (F-5)
 
 **Feature Branch**: `282-pre-commit-secret-scanning-defaults`
-**Issue**: [#282](https://github.com/davidmatousek/tachi/issues/282)
+**Issue**: [#282](https://github.com/pratik-saptarshi/tachi-rust/issues/282)
 **PRD**: [docs/product/02_PRD/282-pre-commit-secret-scanning-defaults-2026-05-09.md](../../docs/product/02_PRD/282-pre-commit-secret-scanning-defaults-2026-05-09.md)
 **Created**: 2026-05-10
 **Status**: Draft
@@ -349,7 +349,7 @@ Traces to: PRD AC-17, F-4 release-please precedent (~23s SLO).
 
 - gitleaks v8.30.1 (current latest) is the pin target; `pre-commit autoupdate --freeze` converts the tag → commit SHA.
 - Pre-commit framework version >= 3.5.0 is supported; minimum documented in PRECOMMIT_HOOKS.md §Known-Limitations.
-- Tachi is org-owned (`davidmatousek/tachi`) — F-5 invokes gitleaks binary directly to avoid proprietary `gitleaks-action@v2` license.
+- Tachi is org-owned (`pratik-saptarshi/tachi-rust`) — F-5 invokes gitleaks binary directly to avoid proprietary `gitleaks-action@v2` license.
 - F-1 (#248) `.aod/personalization.env` gitignore is in place on main (verified at .gitignore:226).
 - The PRD comparison-matrix correction (trufflehog runtime is Go, not Python) is reflected in ADR-042 — does NOT require a PRD revision (PRD remains as-approved; ADR-042 corrects the technical detail downstream).
 - Adopters with proprietary credential formats add custom rules to `.gitleaks.toml`; merge conflicts on `make update` are documented (R-9).
@@ -380,7 +380,7 @@ Traces to: PRD AC-17, F-4 release-please precedent (~23s SLO).
 
 ### Product Documentation
 - PRD: [docs/product/02_PRD/282-pre-commit-secret-scanning-defaults-2026-05-09.md](../../docs/product/02_PRD/282-pre-commit-secret-scanning-defaults-2026-05-09.md)
-- Issue: [#282](https://github.com/davidmatousek/tachi/issues/282)
+- Issue: [#282](https://github.com/pratik-saptarshi/tachi-rust/issues/282)
 - Initiative: BLP-02 enterprise hardening (5/5 with F-5 closure)
 
 ### Research Grounding

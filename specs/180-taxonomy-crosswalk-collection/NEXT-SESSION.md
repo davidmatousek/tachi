@@ -2,7 +2,7 @@
 
 **Generated**: 2026-04-17 (Day 4 complete)
 **Branch**: `180-taxonomy-crosswalk-collection`
-**PR**: [#181](https://github.com/davidmatousek/tachi/pull/181) (OPEN, MERGEABLE)
+**PR**: [#181](https://github.com/pratik-saptarshi/tachi-rust/pull/181) (OPEN, MERGEABLE)
 **Last Commit**: `ca935d9` chore(180): mark T028 complete in both tasks.md files
 
 ## Completed This Session (Day 4 / Wave 4.1 + 4.2 + 4.3)
@@ -88,8 +88,8 @@ After T041, run:
 - PRD: `docs/product/02_PRD/180-taxonomy-crosswalk-collection-2026-04-17.md`
 - ADR: `docs/architecture/02_ADRs/ADR-027-taxonomy-crosswalk-schema.md` (Status: Accepted, provisional 2026-04-21)
 - Decision trail: `.aod/results/{architect,product-manager,senior-backend-engineer,web-researcher,code-reviewer,team-lead}.md` (all updated 2026-04-17 Day 4)
-- PR: [#181](https://github.com/davidmatousek/tachi/pull/181)
-- Follow-on Issues: [#182](https://github.com/davidmatousek/tachi/issues/182), [#183](https://github.com/davidmatousek/tachi/issues/183), [#184](https://github.com/davidmatousek/tachi/issues/184), [#185](https://github.com/davidmatousek/tachi/issues/185), [#186](https://github.com/davidmatousek/tachi/issues/186)
+- PR: [#181](https://github.com/pratik-saptarshi/tachi-rust/pull/181)
+- Follow-on Issues: [#182](https://github.com/pratik-saptarshi/tachi-rust/issues/182), [#183](https://github.com/pratik-saptarshi/tachi-rust/issues/183), [#184](https://github.com/pratik-saptarshi/tachi-rust/issues/184), [#185](https://github.com/pratik-saptarshi/tachi-rust/issues/185), [#186](https://github.com/pratik-saptarshi/tachi-rust/issues/186)
 
 ## Resume Command
 

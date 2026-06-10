@@ -52,7 +52,7 @@ Single-command entry point for tachi threat modeling. Validates prerequisites, i
      ```
      TACHI NOT INSTALLED
      Run: cp -r <tachi-repo>/adapters/claude-code/agents/ .claude/agents/tachi/
-     See: https://github.com/davidmatousek/tachi
+     See: https://github.com/pratik-saptarshi/tachi-rust
      ```
    - Halt if missing.
 

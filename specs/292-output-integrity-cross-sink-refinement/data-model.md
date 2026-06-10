@@ -294,7 +294,7 @@ examples/multi-tenant-rag-app/
 ```markdown
 ### Features
 
-* **292:** output-integrity cross-sink refinement ([#{PR}](https://github.com/davidmatousek/tachi/issues/{PR})) ({SHA7}))
+* **292:** output-integrity cross-sink refinement ([#{PR}](https://github.com/pratik-saptarshi/tachi-rust/issues/{PR})) ({SHA7}))
 ```
 
 **Maintainer-authored path additions** (if Q5 → b):

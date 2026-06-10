@@ -34,7 +34,7 @@
 
 ### Current `README.md`
 - `## Community` section (lines 40–48) has an existing security bullet at **line 44**:
-  > `- **Security vulnerabilities** → [private advisory](https://github.com/davidmatousek/tachi/security/advisories/new) (do not post publicly)`
+  > `- **Security vulnerabilities** → [private advisory](https://github.com/pratik-saptarshi/tachi-rust/security/advisories/new) (do not post publicly)`
 - **AC-12 best-fit insertion** (Team-Lead A-5 advisory): extend the existing bullet or append a follow-on bullet referencing `[SECURITY.md](SECURITY.md)`. Option A (minimal-delta): extend the line. Option B (more discoverable): add a sibling bullet "Full security policy → [SECURITY.md](SECURITY.md)". **Recommended for spec: Option B** (matches PRD's "one-line pointer" framing — distinct line, not parenthetical).
 
 ### `.aod/results/security-scan.md` finding

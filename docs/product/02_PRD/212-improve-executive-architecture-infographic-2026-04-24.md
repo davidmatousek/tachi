@@ -452,7 +452,7 @@ clusters: list[dict]
 ### Product Documentation
 - Product Vision: [docs/product/01_Product_Vision/product-vision.md](../01_Product_Vision/product-vision.md)
 - Predecessor PRD: [docs/product/02_PRD/128-executive-threat-architecture-2026-04-09.md](128-executive-threat-architecture-2026-04-09.md)
-- Source Issue: [GitHub Issue #212](https://github.com/davidmatousek/tachi/issues/212)
+- Source Issue: [GitHub Issue #212](https://github.com/pratik-saptarshi/tachi-rust/issues/212)
 
 ### Technical Documentation
 - Constitution: [.aod/memory/constitution.md](../../../.aod/memory/constitution.md)

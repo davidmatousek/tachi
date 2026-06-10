@@ -28,7 +28,7 @@
 5. **Run the multi-tenant-rag-app baseline**: `tachi.threat-model examples/multi-tenant-rag-app/architecture.md` — expect at least one `output-integrity` finding with Pinecone-specific Cat 6 terminology (post-merge `SOURCE_DATE_EPOCH=1700000000` byte-identical reproduction is part of T020/T026 follow-up).
 6. **Run the byte-identical regression suite**: `python3 -m pytest tests/scripts/test_backward_compatibility.py` — expect 13 passed / 1 documented skip; confirms SC-004 (5 non-qualifying baselines byte-identical) and SC-010 (zero-edit invariant F-292 carve-out).
 7. **Verify cross-agent navigational invariant (SC-003)**: re-run `tachi.threat-model examples/agentic-app/architecture.md` and diff the OI-scoped finding subset against the pre-292 baseline under `SOURCE_DATE_EPOCH=1700000000`. Expected: byte-identical OI-scoped subset (no new emissions from the navigational prose).
-8. **Verify community attribution chain**: read [discussion #179](https://github.com/davidmatousek/tachi/discussions/179) for the two-choice offer reply (T005), and verify the post-merge delivery comment (T022) names each of the three gap closures with anchor links.
+8. **Verify community attribution chain**: read [discussion #179](https://github.com/pratik-saptarshi/tachi-rust/discussions/179) for the two-choice offer reply (T005), and verify the post-merge delivery comment (T022) names each of the three gap closures with anchor links.
 
 ---
 

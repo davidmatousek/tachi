@@ -38,7 +38,7 @@ Tachi's five AI threat agents (prompt-injection, tool-abuse, agent-autonomy, dat
 
 This matters because MAESTRO practitioners expect these categories — they are the substantive content behind the "Multi-Agent" in MAESTRO. Shipping MAESTRO support without explicit multi-agent threat categories is shipping the framework's branding without its substance. Adopters comparing tachi output to manual MAESTRO threat modeling deliverables see a structural gap: the canonical categories that anchor MAESTRO discourse are missing from the tool that claims to implement it.
 
-The MAESTRO compliance umbrella ([#136](https://github.com/davidmatousek/tachi/issues/136)) has progressed through Phase 1 (passive layer overlay, Features 084 / 136), Phase 2 (cross-layer attack chains, Feature 141), and Phase 4/5 (compliance posture ADRs for AIVSS and NIST AI RMF, Features 143 / 144). Phase 3 — the canonical agentic pattern categories — remains the single open structural gap in tachi's MAESTRO posture.
+The MAESTRO compliance umbrella ([#136](https://github.com/pratik-saptarshi/tachi-rust/issues/136)) has progressed through Phase 1 (passive layer overlay, Features 084 / 136), Phase 2 (cross-layer attack chains, Feature 141), and Phase 4/5 (compliance posture ADRs for AIVSS and NIST AI RMF, Features 143 / 144). Phase 3 — the canonical agentic pattern categories — remains the single open structural gap in tachi's MAESTRO posture.
 
 ### Proposed Solution
 Extend the finding intermediate representation (IR) with an `agentic_pattern` enum field whose values are the six canonical MAESTRO agentic pattern names plus `none` and `multiple`. Add explicit detection for the three patterns currently uncovered (Agent Collusion, Emergent Behavior, Temporal Attacks) and surface pattern category in:
@@ -74,7 +74,7 @@ Estimated 6-10 days — focused additive feature touching detection, schema, and
 Tachi's vision is to be the default threat modeling toolkit for teams building agentic AI applications. The six canonical MAESTRO agentic patterns are the framework's signature differentiator — they name the cross-cutting risks that emerge from multi-agent coordination and that no STRIDE-per-element analysis can surface. Implementing them moves tachi from "STRIDE tool with MAESTRO labels and cross-layer chains" to "full MAESTRO implementation including the six canonical agentic categories." This directly strengthens tachi's positioning as the default toolkit for multi-agent threat modeling.
 
 ### Roadmap Fit
-This is Phase 3 of the MAESTRO compliance initiative ([#136](https://github.com/davidmatousek/tachi/issues/136)). It is the final structural feature in the MAESTRO umbrella — Phases 1, 2, 4, 5 have shipped (Features 084, 136, 141, 143, 144). With Phase 3 delivered, tachi will have completed the MAESTRO compliance roadmap with three implementation features (taxonomy overlay, cross-layer chains, agentic patterns) and two documentation-only ADR spikes (AIVSS and NIST AI RMF posture).
+This is Phase 3 of the MAESTRO compliance initiative ([#136](https://github.com/pratik-saptarshi/tachi-rust/issues/136)). It is the final structural feature in the MAESTRO umbrella — Phases 1, 2, 4, 5 have shipped (Features 084, 136, 141, 143, 144). With Phase 3 delivered, tachi will have completed the MAESTRO compliance roadmap with three implementation features (taxonomy overlay, cross-layer chains, agentic patterns) and two documentation-only ADR spikes (AIVSS and NIST AI RMF posture).
 
 ### Predecessor Relationship
 | Feature | Relationship |
@@ -585,8 +585,8 @@ agentic_pattern:
 
 ### Product Documentation
 - Product Vision: [product-vision.md](../01_Product_Vision/product-vision.md)
-- GitHub Issue: [#142](https://github.com/davidmatousek/tachi/issues/142)
-- Parent Issue: [#136](https://github.com/davidmatousek/tachi/issues/136) (MAESTRO framework compliance)
+- GitHub Issue: [#142](https://github.com/pratik-saptarshi/tachi-rust/issues/142)
+- Parent Issue: [#136](https://github.com/pratik-saptarshi/tachi-rust/issues/136) (MAESTRO framework compliance)
 
 ### Related PRDs
 - [PRD 084: MAESTRO Layer Mapping](084-maestro-layer-mapping-2026-04-07.md) — taxonomy overlay this feature extends

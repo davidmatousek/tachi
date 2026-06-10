@@ -375,8 +375,8 @@ All renames must be shipped in a single PR / commit sequence. Partial renames (w
 
 ### Product Documentation
 - Product Vision: [docs/product/01_Product_Vision/product-vision.md](docs/product/01_Product_Vision/product-vision.md)
-- GitHub Issue: [#121 — Rename tachi commands to tachi.* namespace](https://github.com/davidmatousek/tachi/issues/121)
-- Related Issue: [#120 — tachi.architecture command](https://github.com/davidmatousek/tachi/issues/120)
+- GitHub Issue: [#121 — Rename tachi commands to tachi.* namespace](https://github.com/pratik-saptarshi/tachi-rust/issues/121)
+- Related Issue: [#120 — tachi.architecture command](https://github.com/pratik-saptarshi/tachi-rust/issues/120)
 
 ### Technical Documentation
 - Constitution: [.aod/memory/constitution.md](.aod/memory/constitution.md)

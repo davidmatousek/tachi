@@ -458,7 +458,7 @@ The ADR is **public** per Issue #277 §Detail line: *"Public ADR-041: Claude Cod
 
 ## 📎 References
 
-- **GitHub Issue**: #277 — `https://github.com/davidmatousek/tachi/issues/277`
+- **GitHub Issue**: #277 — `https://github.com/pratik-saptarshi/tachi-rust/issues/277`
 - **Trigger**: Daniel Wood LinkedIn thread 2026-05-02 (same trigger as F-3); see F-3 PRD §Problem-Statement for full thread context.
 - **BLP-02 Initiative Tracker**: project memory record `project_blp02_enterprise_hardening`
 - **Existing `.claude/settings.json`**: `/Users/david/Projects/tachi/.claude/settings.json` (47 LOC, last modified 2026-04-19)

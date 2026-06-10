@@ -2,7 +2,7 @@
 
 **Feature**: 128 — Executive Threat Architecture Infographic
 **Branch**: `128-prd-128-executive` (merged and deleted)
-**PR**: [#131](https://github.com/davidmatousek/tachi/pull/131)
+**PR**: [#131](https://github.com/pratik-saptarshi/tachi-rust/pull/131)
 **Merged**: 2026-04-10 07:24 EDT
 **Merge commit**: `7b217fe`
 **Delivery date**: 2026-04-10

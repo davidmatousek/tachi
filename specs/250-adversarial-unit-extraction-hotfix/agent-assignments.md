@@ -14,7 +14,7 @@ team_lead_signoff:
 
 # Agent Assignments — Feature 250 Adversarial Unit Extraction Hot-Fix
 
-**Branch**: `250-adversarial-unit-extraction-hotfix` | **Draft PR**: [#253](https://github.com/davidmatousek/tachi/pull/253)
+**Branch**: `250-adversarial-unit-extraction-hotfix` | **Draft PR**: [#253](https://github.com/pratik-saptarshi/tachi-rust/pull/253)
 **Total tasks**: 21 across 5 phases | **Active build waves**: 7 | **Post-merge waves**: 2
 
 ---

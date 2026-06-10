@@ -17,7 +17,7 @@ After F-1 lands:
 ### Fresh-clone init
 
 ```bash
-git clone https://github.com/davidmatousek/tachi.git my-project
+git clone https://github.com/pratik-saptarshi/tachi-rust.git my-project
 cd my-project
 ./scripts/init.sh
 ```
@@ -112,7 +112,7 @@ For Test-6 (manual gating action before marking the feature ready):
 
 ```bash
 # Clone fresh into tmpdir
-git clone https://github.com/davidmatousek/tachi.git /tmp/tachi-smoke
+git clone https://github.com/pratik-saptarshi/tachi-rust.git /tmp/tachi-smoke
 cd /tmp/tachi-smoke
 
 # Run init with a metachar-bearing project name

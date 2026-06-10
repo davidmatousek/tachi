@@ -22,9 +22,9 @@
 ## How to See & Test
 
 1. **Repo-root file**: Run `cat SECURITY.md` and verify the 5-section structure (Supported Versions, Reporting a Vulnerability, What to expect, Scope, Out-of-scope) is present in canonical order.
-2. **GitHub-rendered view**: Open `https://github.com/davidmatousek/tachi/blob/main/SECURITY.md` and confirm the file renders cleanly with all five sections.
-3. **Security-tab button**: Open `https://github.com/davidmatousek/tachi/security` in an authenticated browser session and confirm the *Report a vulnerability* button is visible as a primary call-to-action (FR-011, AC-7).
-4. **Advisory submission form**: Open `https://github.com/davidmatousek/tachi/security/advisories/new` and confirm the form loads (no 404, no permission error). Do NOT submit (FR-012, AC-11 smoke-test only).
+2. **GitHub-rendered view**: Open `https://github.com/pratik-saptarshi/tachi-rust/blob/main/SECURITY.md` and confirm the file renders cleanly with all five sections.
+3. **Security-tab button**: Open `https://github.com/pratik-saptarshi/tachi-rust/security` in an authenticated browser session and confirm the *Report a vulnerability* button is visible as a primary call-to-action (FR-011, AC-7).
+4. **Advisory submission form**: Open `https://github.com/pratik-saptarshi/tachi-rust/security/advisories/new` and confirm the form loads (no 404, no permission error). Do NOT submit (FR-012, AC-11 smoke-test only).
 5. **README pointer**: Run `grep -A2 "## Community" README.md` and confirm the `**Full security policy** → [SECURITY.md](SECURITY.md)` bullet appears under `## Community`.
 6. **CHANGELOG entry**: Run `grep -A20 "BLP-02 F-3" CHANGELOG.md` and confirm the F-3 sibling-h3 entry is present in the `## Unreleased` block.
 7. **Operational cross-check** (FR-003): Run `cat .release-please-manifest.json && git tag --list 'v*' | sort -V | tail -5 && gh pr list --state open --search "release-please" --limit 3` and verify that the SECURITY.md worked-example tag matches the latest released tag (currently `v4.32.0`; release-please PR #274 will bump to `4.33.0` on squash-merge).

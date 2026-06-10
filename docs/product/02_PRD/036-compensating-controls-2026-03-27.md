@@ -513,7 +513,7 @@ Risk Register (future, Issue E)
 
 ### Product Documentation
 - Product Vision: [product-vision.md](../01_Product_Vision/product-vision.md)
-- GitHub Issue: [#36 - Compensating Controls](https://github.com/davidmatousek/tachi/issues/36)
+- GitHub Issue: [#36 - Compensating Controls](https://github.com/pratik-saptarshi/tachi-rust/issues/36)
 
 ### Technical Documentation
 - Constitution: [constitution.md](../../.aod/memory/constitution.md)

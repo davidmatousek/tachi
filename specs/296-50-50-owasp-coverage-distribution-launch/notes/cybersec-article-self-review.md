@@ -57,12 +57,12 @@ ADR anchors cited for byte-determinism contract: ADR-021 + ADR-029 + ADR-037 D-1
 ### (d) Link validity — PASS
 
 **Tachi repo URLs** (all well-formed; resolve in production):
-- <https://github.com/davidmatousek/tachi>
-- <https://github.com/davidmatousek/tachi/blob/main/docs/standards/OWASP_COVERAGE.md>
-- <https://github.com/davidmatousek/tachi/blob/main/docs/guides/DEVELOPER_GUIDE_TACHI.md>
-- <https://github.com/davidmatousek/tachi/discussions>
-- <https://github.com/davidmatousek/tachi/discussions/categories/in-the-wild>
-- <https://github.com/davidmatousek/tachi/issues>
+- <https://github.com/pratik-saptarshi/tachi-rust>
+- <https://github.com/pratik-saptarshi/tachi-rust/blob/main/docs/standards/OWASP_COVERAGE.md>
+- <https://github.com/pratik-saptarshi/tachi-rust/blob/main/docs/guides/DEVELOPER_GUIDE_TACHI.md>
+- <https://github.com/pratik-saptarshi/tachi-rust/discussions>
+- <https://github.com/pratik-saptarshi/tachi-rust/discussions/categories/in-the-wild>
+- <https://github.com/pratik-saptarshi/tachi-rust/issues>
 
 **ADR file existence check** (12 references; all PASS):
 - ADR-021, ADR-028, ADR-029, ADR-030, ADR-031, ADR-032, ADR-033, ADR-034, ADR-035, ADR-036, ADR-037, ADR-045 — all exist under `docs/architecture/02_ADRs/`.

@@ -421,4 +421,4 @@ All four PRD-stage open questions (Q-1..Q-4) have been adjudicated and folded in
 - **ADR template**: [docs/architecture/02_ADRs/ADR-000-template.md](../../docs/architecture/02_ADRs/ADR-000-template.md)
 - **Git workflow**: [.claude/rules/git-workflow.md](../../.claude/rules/git-workflow.md) (R12 release-please verification pattern; F-212 incident reference)
 - **BLP-02 strategy**: [_internal/strategy/BLP-02-enterprise-hardening.md](../../_internal/strategy/BLP-02-enterprise-hardening.md)
-- **Draft PR**: [#249](https://github.com/davidmatousek/tachi/pull/249) (opened at plan stage; will be retitled at deliver stage if needed)
+- **Draft PR**: [#249](https://github.com/pratik-saptarshi/tachi-rust/pull/249) (opened at plan stage; will be retitled at deliver stage if needed)

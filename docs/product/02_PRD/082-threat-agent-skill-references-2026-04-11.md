@@ -501,7 +501,7 @@ PRD 082 (this)
 - CWE Top 25
 
 ### Source Issue
-- GitHub Issue #82: [Enrich threat detection quality via skill-referenced domain knowledge for 11 threat agents](https://github.com/davidmatousek/tachi/issues/82)
+- GitHub Issue #82: [Enrich threat detection quality via skill-referenced domain knowledge for 11 threat agents](https://github.com/pratik-saptarshi/tachi-rust/issues/82)
 
 ---
 

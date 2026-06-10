@@ -49,7 +49,7 @@
 
 **CHANGELOG F-260 attribution format** (verbatim):
 ```markdown
-* **260:** asset-sensitivity tag prototype ([#262](https://github.com/davidmatousek/tachi/issues/262)) ([3dfe6a7](https://github.com/davidmatousek/tachi/commit/3dfe6a7...))
+* **260:** asset-sensitivity tag prototype ([#262](https://github.com/pratik-saptarshi/tachi-rust/issues/262)) ([3dfe6a7](https://github.com/pratik-saptarshi/tachi-rust/commit/3dfe6a7...))
 ```
 
 **Multi-agent baselines available for SC-5 cross-link no-emission verification**:

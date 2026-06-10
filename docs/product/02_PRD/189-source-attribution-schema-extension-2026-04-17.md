@@ -436,7 +436,7 @@ F-A2 establishes the *schema contract*. F-A3 is where threat agents and their sk
 
 - Vision: `docs/product/01_Product_Vision/product-vision.md`
 - BLP-01 initiative memory: `/Users/david/.claude/projects/-Users-david-Projects-tachi/memory/project_blp01_threat_coverage.md`
-- GitHub Issue: [#189](https://github.com/davidmatousek/tachi/issues/189)
+- GitHub Issue: [#189](https://github.com/pratik-saptarshi/tachi-rust/issues/189)
 
 ### Precedent PRDs
 

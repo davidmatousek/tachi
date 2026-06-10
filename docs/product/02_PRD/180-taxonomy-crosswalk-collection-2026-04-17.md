@@ -21,7 +21,7 @@ source:
 **Author**: product-manager
 **Reviewers**: architect, team-lead
 **Priority**: P1 (High) — foundation feature; blocks downstream taxonomy-consuming features
-**Parent Discovery**: [#180](https://github.com/davidmatousek/tachi/issues/180)
+**Parent Discovery**: [#180](https://github.com/pratik-saptarshi/tachi-rust/issues/180)
 
 ---
 
@@ -568,7 +568,7 @@ F-A1 (this PRD)
 - [PRD INDEX](./INDEX.md)
 
 ### Parent Discovery & Upstream PRDs
-- **GitHub Issue #180**: [F-A1 — Taxonomy Crosswalk Collection [Foundation]](https://github.com/davidmatousek/tachi/issues/180)
+- **GitHub Issue #180**: [F-A1 — Taxonomy Crosswalk Collection [Foundation]](https://github.com/pratik-saptarshi/tachi-rust/issues/180)
 - **PRD 144**: [NIST AI RMF Evaluation ADR](./144-nist-ai-rmf-evaluation-adr-2026-04-15.md) — source of `nist-ai-rmf-mapping.md` Surface B + Surface C tables (FR-6 source)
 - **PRD 082**: [Threat Agent Skill References](./082-threat-agent-skill-references-2026-04-11.md) — source of agent `detection-patterns.md` references (FR-4 seed harvest)
 - **PRD 143**: [OWASP AIVSS Evaluation ADR](./143-maestro-aivss-evaluation-adr-2026-04-14.md) — precedent for peer-framework reference without runtime wiring (FR-10 ADR cross-reference)

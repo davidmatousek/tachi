@@ -382,7 +382,7 @@ The Quick Start section at the top of the guide gets them to a working threat mo
 
 ### Product Documentation
 - Product Vision: [docs/product/01_Product_Vision/product-vision.md](docs/product/01_Product_Vision/product-vision.md)
-- GitHub Issue: [#45](https://github.com/davidmatousek/tachi/issues/45)
+- GitHub Issue: [#45](https://github.com/pratik-saptarshi/tachi-rust/issues/45)
 
 ### Existing Assets
 - Prompt Specification: [docs/guides/prompts/GUIDE_PROMPT.md](docs/guides/prompts/GUIDE_PROMPT.md)

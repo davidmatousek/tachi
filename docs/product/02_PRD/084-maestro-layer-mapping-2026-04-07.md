@@ -346,7 +346,7 @@ Default: "Unclassified"
 
 ### Product Documentation
 - Product Vision: [product-vision.md](docs/product/01_Product_Vision/product-vision.md)
-- GitHub Issue: [#84](https://github.com/davidmatousek/tachi/issues/84)
+- GitHub Issue: [#84](https://github.com/pratik-saptarshi/tachi-rust/issues/84)
 
 ### Technical Documentation
 - Constitution: [constitution.md](.aod/memory/constitution.md)

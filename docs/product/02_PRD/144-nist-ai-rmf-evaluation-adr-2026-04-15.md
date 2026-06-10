@@ -21,7 +21,7 @@ source:
 **Author**: product-manager
 **Reviewers**: architect, team-lead
 **Priority**: P1 (High) — MAESTRO compliance companion (regulated-adopter alignment)
-**Parent Discovery**: [#144](https://github.com/davidmatousek/tachi/issues/144) (umbrella discovery [#136](https://github.com/davidmatousek/tachi/issues/136))
+**Parent Discovery**: [#144](https://github.com/pratik-saptarshi/tachi-rust/issues/144) (umbrella discovery [#136](https://github.com/pratik-saptarshi/tachi-rust/issues/136))
 
 ---
 
@@ -61,7 +61,7 @@ A documentation-first ADR spike. Research the current NIST AI RMF specification 
 Tachi's vision is to be *"the default threat modeling toolkit for any team building agentic AI applications."* The default toolkit must answer the questions that agentic AI security teams in **regulated industries** are actually asking. CSA MAESTRO is the published taxonomy framework; OWASP AIVSS is the published scoring framework practitioners pair with it (addressed in ADR-024); **NIST AI RMF is the published risk-management process framework that regulated adopters must demonstrate alignment with** to justify tachi adoption to compliance, audit, and procurement gates. Shipping canonical MAESTRO labels (PRD 136) and an AIVSS-divergence ADR (ADR-024) without a documented stance on NIST AI RMF leaves a gap that regulated adopters must close themselves — by reading the compensating-controls analyzer agent definition and reverse-engineering whether tachi's controls map to NIST AI RMF Subcategories. A traceable ADR closes that gap with a single linkable decision.
 
 ### Roadmap Fit
-This is a **MAESTRO compliance companion** to the now-closed Phase 4 ADR-024 (AIVSS evaluation). The umbrella MAESTRO compliance discovery captured in [#136](https://github.com/davidmatousek/tachi/issues/136) is closed as of PRD 143 delivery (2026-04-15), but ADR-024's "Related ADRs" line and the discovery item for #144 explicitly call out NIST AI RMF as the **paired companion framework** that MAESTRO sources reference alongside AIVSS. PRD 144 closes the regulated-adopter half of the MAESTRO companion-framework decision space:
+This is a **MAESTRO compliance companion** to the now-closed Phase 4 ADR-024 (AIVSS evaluation). The umbrella MAESTRO compliance discovery captured in [#136](https://github.com/pratik-saptarshi/tachi-rust/issues/136) is closed as of PRD 143 delivery (2026-04-15), but ADR-024's "Related ADRs" line and the discovery item for #144 explicitly call out NIST AI RMF as the **paired companion framework** that MAESTRO sources reference alongside AIVSS. PRD 144 closes the regulated-adopter half of the MAESTRO companion-framework decision space:
 
 - **Phase 1**: [PRD 136](136-maestro-canonical-layer-correctness-fix-2026-04-10.md) — Canonical layer correctness fix — **Delivered**
 - **Phase 2**: [PRD 141](141-maestro-cross-layer-attack-chains-2026-04-12.md) — Cross-layer attack chain analysis — **Delivered**
@@ -331,7 +331,7 @@ After PRD 144 closes, the regulated-adopter compliance posture for both MAESTRO 
 - All cross-references use relative paths (no absolute paths or external URLs except for the NIST canonical specification links)
 
 ### Traceability
-- ADR-025 references the parent discovery item ([#144](https://github.com/davidmatousek/tachi/issues/144)) and the umbrella MAESTRO compliance discovery ([#136](https://github.com/davidmatousek/tachi/issues/136))
+- ADR-025 references the parent discovery item ([#144](https://github.com/pratik-saptarshi/tachi-rust/issues/144)) and the umbrella MAESTRO compliance discovery ([#136](https://github.com/pratik-saptarshi/tachi-rust/issues/136))
 - ADR-025 cross-references ADR-024 (companion AIVSS evaluation) at minimum
 - The follow-on implementation Issue (if filed) references ADR-025 as its decision baseline
 - ADR-024's "Related ADRs" line **may** be updated to add ADR-025 as a back-reference (optional housekeeping; not required for ADR-025 to ship)
@@ -538,8 +538,8 @@ Single-day implementation cycle with brief PR/governance follow-up. ADR-only fea
 ## References
 
 ### Internal
-- [Issue #144](https://github.com/davidmatousek/tachi/issues/144) — Discovery item for this PRD
-- [Issue #136](https://github.com/davidmatousek/tachi/issues/136) — Umbrella MAESTRO compliance discovery
+- [Issue #144](https://github.com/pratik-saptarshi/tachi-rust/issues/144) — Discovery item for this PRD
+- [Issue #136](https://github.com/pratik-saptarshi/tachi-rust/issues/136) — Umbrella MAESTRO compliance discovery
 - [PRD 143 — MAESTRO Phase 4: OWASP AIVSS Evaluation ADR](143-maestro-aivss-evaluation-adr-2026-04-14.md) — Companion framework PRD
 - [PRD 036 — Compensating Controls](036-compensating-controls-2026-03-27.md) — Original compensating controls analyzer PRD
 - [PRD 136 — MAESTRO Canonical Layer Correctness Fix](136-maestro-canonical-layer-correctness-fix-2026-04-10.md) — Phase 1

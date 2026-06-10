@@ -63,7 +63,7 @@ Estimated 8-12 days — multi-component feature touching orchestration, narrativ
 Tachi's vision is "the default threat modeling toolkit for any team building agentic AI applications." Cross-layer attack chain analysis is the defining capability that separates MAESTRO-aware tooling from generic STRIDE tools with layer tags. By implementing the canonical MAESTRO deliverable, tachi moves from "STRIDE tool with MAESTRO metadata" to "full MAESTRO implementation," directly strengthening its position as the default toolkit for agentic AI threat modeling.
 
 ### Roadmap Fit
-This is Phase 2 of the MAESTRO compliance initiative (parent [#136](https://github.com/davidmatousek/tachi/issues/136)). It builds on the established MAESTRO taxonomy overlay (Feature 084), the canonical layer name corrections (Feature 136), and the attack path visualization pipeline (Feature 112). It extends the pipeline from passive layer tagging to active cross-layer analysis — the first pipeline-level change driven by MAESTRO.
+This is Phase 2 of the MAESTRO compliance initiative (parent [#136](https://github.com/pratik-saptarshi/tachi-rust/issues/136)). It builds on the established MAESTRO taxonomy overlay (Feature 084), the canonical layer name corrections (Feature 136), and the attack path visualization pipeline (Feature 112). It extends the pipeline from passive layer tagging to active cross-layer analysis — the first pipeline-level change driven by MAESTRO.
 
 ### Predecessor Relationship
 | Feature | Relationship |
@@ -502,8 +502,8 @@ chain_breaking_controls: array of string
 
 ### Product Documentation
 - Product Vision: [product-vision.md](docs/product/01_Product_Vision/product-vision.md)
-- GitHub Issue: [#141](https://github.com/davidmatousek/tachi/issues/141)
-- Parent Issue: [#136](https://github.com/davidmatousek/tachi/issues/136) (MAESTRO framework compliance)
+- GitHub Issue: [#141](https://github.com/pratik-saptarshi/tachi-rust/issues/141)
+- Parent Issue: [#136](https://github.com/pratik-saptarshi/tachi-rust/issues/136) (MAESTRO framework compliance)
 
 ### Related PRDs
 - [PRD 084: MAESTRO Layer Mapping](084-maestro-layer-mapping-2026-04-07.md) — taxonomy overlay this feature extends

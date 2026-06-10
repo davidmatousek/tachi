@@ -309,4 +309,4 @@ The following concerns were raised during Triad review and should be addressed d
 - Developer Guide: [DEVELOPER_GUIDE_TACHI.md](../../docs/guides/DEVELOPER_GUIDE_TACHI.md)
 
 ### Source
-- GitHub Issue: [#66 — Install script and version tagging](https://github.com/davidmatousek/tachi/issues/66)
+- GitHub Issue: [#66 — Install script and version tagging](https://github.com/pratik-saptarshi/tachi-rust/issues/66)

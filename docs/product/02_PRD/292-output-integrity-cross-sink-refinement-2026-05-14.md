@@ -24,7 +24,7 @@ source:
 **Phase**: Community-feedback refinement (follow-on to BLP-01 F-1 `output-integrity`, PR #202, v4.21.0)
 **Priority**: P1
 **Parent Feature**: PRD #201 — F-1 LLM05 `output-integrity` threat agent (delivered 2026-04-19)
-**Source**: Discussion [#179 comment](https://github.com/davidmatousek/tachi/discussions/179#discussioncomment-16897078) from @armorer-labs (2026-05-12)
+**Source**: Discussion [#179 comment](https://github.com/pratik-saptarshi/tachi-rust/discussions/179#discussioncomment-16897078) from @armorer-labs (2026-05-12)
 
 ---
 
@@ -322,7 +322,7 @@ A **Heuristic A enrichment branch at smallest scope** — refine the existing `o
 
 ## 📚 References
 
-- **Discussion #179 comment**: https://github.com/davidmatousek/tachi/discussions/179#discussioncomment-16897078 (@armorer-labs, 2026-05-12)
+- **Discussion #179 comment**: https://github.com/pratik-saptarshi/tachi-rust/discussions/179#discussioncomment-16897078 (@armorer-labs, 2026-05-12)
 - **PRD #201** — F-1 `output-integrity` threat agent: `docs/product/02_PRD/201-output-integrity-threat-agent-2026-04-18.md`
 - **ADR-030** — `output-integrity` agent: `docs/architecture/02_ADRs/ADR-030-output-integrity-agent.md`
 - **ADR-021** — `SOURCE_DATE_EPOCH` for deterministic PDF comparison: `docs/architecture/02_ADRs/ADR-021-source-date-epoch-for-deterministic-pdf-comparison.md`

@@ -11,8 +11,8 @@ status: delivered
 
 **Feature**: Threat Agent Skill References — Externalize Detection Knowledge for All 11 Threat Agents
 **Delivered**: 2026-04-11
-**PR**: [#151](https://github.com/davidmatousek/tachi/pull/151) (merged via squash, commit `6f9a40d`)
-**GitHub Issue**: [#82](https://github.com/davidmatousek/tachi/issues/82)
+**PR**: [#151](https://github.com/pratik-saptarshi/tachi-rust/pull/151) (merged via squash, commit `6f9a40d`)
+**GitHub Issue**: [#82](https://github.com/pratik-saptarshi/tachi-rust/issues/82)
 
 ---
 
@@ -158,8 +158,8 @@ CLAUDE.md "Recent Changes" entry for Feature 082 was already pre-written during 
 - Plan: [specs/082-threat-agent-skill/plan.md](plan.md)
 - Tasks: [specs/082-threat-agent-skill/tasks.md](tasks.md)
 - ADR-023: [docs/architecture/02_ADRs/ADR-023-threat-agent-skill-references-pattern.md](../../docs/architecture/02_ADRs/ADR-023-threat-agent-skill-references-pattern.md)
-- PR: [#151](https://github.com/davidmatousek/tachi/pull/151)
-- Issue: [#82](https://github.com/davidmatousek/tachi/issues/82)
+- PR: [#151](https://github.com/pratik-saptarshi/tachi-rust/pull/151)
+- Issue: [#82](https://github.com/pratik-saptarshi/tachi-rust/issues/82)
 - Merge commit: `6f9a40d`
 
 ---

@@ -33,7 +33,7 @@ Architect P2 verdict (full report at `.aod/results/architect.md`): **APPROVED_WI
 
 ### Wave 9 — Push + draft PR ✅ (Session 3)
 
-- **T016** ✅ Branch pushed to origin (new remote tracking set). Draft PR **#273** opened at https://github.com/davidmatousek/tachi/pull/273 with title `feat(272): SECURITY.md and private disclosure channel` (verified via `gh pr view 273 --json title,isDraft` → title prefix `feat(272):` ✅, isDraft `true` ✅). PR# **273** captured for downstream T017–T020.
+- **T016** ✅ Branch pushed to origin (new remote tracking set). Draft PR **#273** opened at https://github.com/pratik-saptarshi/tachi-rust/pull/273 with title `feat(272): SECURITY.md and private disclosure channel` (verified via `gh pr view 273 --json title,isDraft` → title prefix `feat(272):` ✅, isDraft `true` ✅). PR# **273** captured for downstream T017–T020.
 
 ---
 

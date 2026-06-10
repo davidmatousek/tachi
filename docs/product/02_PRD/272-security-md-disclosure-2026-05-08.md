@@ -19,7 +19,7 @@ source:
 
 # F-3 — SECURITY.md and Private Disclosure Channel: Product Requirements Document
 
-**Status**: Delivered 2026-05-08 (PR [#273](https://github.com/davidmatousek/tachi/pull/273) squash-merged as `7b1cc53` on main; release-please PR #274 open)
+**Status**: Delivered 2026-05-08 (PR [#273](https://github.com/pratik-saptarshi/tachi-rust/pull/273) squash-merged as `7b1cc53` on main; release-please PR #274 open)
 **Created**: 2026-05-08
 **Author**: product-manager
 **Reviewers**: architect (APPROVED_WITH_CONCERNS v1.1), team-lead (APPROVED_WITH_CONCERNS v1.0)
@@ -63,7 +63,7 @@ This feature ships as **one small feature branch (`272-security-md-disclosure`),
 
    - **Supported Versions** — Replace the two-row pseudo-policy ("Latest release: Yes; Older releases: Best effort") with a version-line policy that matches tachi's actual high-cadence minor-release reality: **"Only the latest minor of v4.x receives security updates. Older minors are deprecated immediately on the next minor release. Adopters consuming via `make update` should pin to the major line (`v4.x`) rather than a specific minor; adopters who require longer-than-rolling support windows for a specific minor should fork or adopt the same backport pattern themselves."** Cross-checked at merge time against `.release-please-manifest.json` and `git tag --list 'v*' | sort -V | tail -5`. Verified state at PRD draft (2026-05-08): latest tag v4.32.0 (released 2026-05-07 16:46 UTC), manifest at 4.31.0 — the manifest-lag is a separate release-please-pipeline anomaly worth surfacing in a follow-up chore Issue but is not blocking F-3 because the SECURITY.md text references the *latest tag*, not the manifest. The latest-minor-only policy is honest about single-maintainer cadence (1-7 days between minors observed across the v4.20–v4.32 window; ~50 minor releases on the v4.x line; 90-day rolling-window policies become functionally meaningless under that cadence — they would imply ~all 50 minors stay supported, which no single maintainer can backport-test) and matches procurement-questionnaire baselines for high-velocity OSS projects ("vendor's documented support window: latest minor; rolling deprecation on next minor").
 
-   - **Reporting a Vulnerability** — Replace the current single-link section with the GitHub-canonical pattern: a primary instruction to use the *Report a vulnerability* button on the Security tab (which Step 2 below makes visible), a fallback `https://github.com/davidmatousek/tachi/security/advisories/new` direct link for researchers without UI access, and a "do not open a public Issue" prohibition. "What to include" sub-section retained (description / steps to reproduce / affected components / potential impact).
+   - **Reporting a Vulnerability** — Replace the current single-link section with the GitHub-canonical pattern: a primary instruction to use the *Report a vulnerability* button on the Security tab (which Step 2 below makes visible), a fallback `https://github.com/pratik-saptarshi/tachi-rust/security/advisories/new` direct link for researchers without UI access, and a "do not open a public Issue" prohibition. "What to include" sub-section retained (description / steps to reproduce / affected components / potential impact).
 
    - **Expected Response Time** — Replace the current 48-hour acknowledgment with the Issue-#272-adopted **"5 business days to acknowledge"** cadence. Rationale for the change: tachi is a single-maintainer project with no on-call rotation; 48 hours sets a contract the maintainer cannot reliably honor across vacation / illness / weekend windows, and over-promising on response SLA is itself a disclosure-channel anti-pattern (researchers lose trust faster from missed SLAs than from longer-but-met SLAs). 5 business days matches the procurement-questionnaire baseline and is achievable for single-maintainer projects. Assessment-within-1-week and fix-timeline-communicated-after-assessment retained.
 
@@ -90,7 +90,7 @@ This feature ships as **one small feature branch (`272-security-md-disclosure`),
 ### Goals
 
 - **G1**: Close TACHI-VULN-05abc41ad4cc (INFO, A05 Security Misconfiguration). Verified by post-merge `/security` re-scan: finding cleared.
-- **G2**: GitHub *Report a vulnerability* button appears on the repo's Security tab. Verified by manual UI inspection at `https://github.com/davidmatousek/tachi/security` post-toggle-enable.
+- **G2**: GitHub *Report a vulnerability* button appears on the repo's Security tab. Verified by manual UI inspection at `https://github.com/pratik-saptarshi/tachi-rust/security` post-toggle-enable.
 - **G3**: SECURITY.md sections match GitHub-canonical template (Supported Versions / Reporting / Response SLA / Scope / Out-of-scope). Verified by reviewer diff inspection.
 - **G4**: Supported-versions policy is a contract that matches single-maintainer reality (latest-minor-only; immediate deprecation on next minor) — not an over-promise. Verified by cross-check against latest tag (`git tag --list 'v*' | sort -V | tail -1`) at merge time.
 - **G5**: Tachi-specific scope enumeration routes likely-misdirected reports to the correct destination on first contact. Verified by reviewer scope-language review.
@@ -148,20 +148,20 @@ This feature ships as **one small feature branch (`272-security-md-disclosure`),
 
 - [ ] **AC-1**: `SECURITY.md` lands at repo root with all five GitHub-canonical sections present (Supported Versions / Reporting / What to expect / Scope / Out-of-scope).
 - [ ] **AC-2**: Supported-versions policy specifies the v4.x version line as **latest-minor-only** (immediate deprecation on next minor), cross-checked at merge time. Operational cross-check (run before SECURITY.md write): `cat .release-please-manifest.json && git tag --list 'v*' | sort -V | tail -5 && gh pr list --state open --search "release-please" --limit 3`. SECURITY.md text references the latest released *tag* (not the manifest); manifest-vs-tag discrepancies, if any, are captured as a side observation in the PR description and queued as a separate chore Issue without blocking F-3.
-- [ ] **AC-3**: Reporting section primary instruction is the *Report a vulnerability* button; fallback link to `https://github.com/davidmatousek/tachi/security/advisories/new` retained; public-Issue prohibition stated.
+- [ ] **AC-3**: Reporting section primary instruction is the *Report a vulnerability* button; fallback link to `https://github.com/pratik-saptarshi/tachi-rust/security/advisories/new` retained; public-Issue prohibition stated.
 - [ ] **AC-4**: Response SLA is "5 business days to acknowledge" (matches Issue #272 §Interface-Contract).
 - [ ] **AC-5**: Scope section enumerates in-scope and out-of-scope surfaces explicitly; out-of-scope routes Claude Code findings → Anthropic, third-party MCP findings → their maintainers, personalization data → adopter, threat-model accuracy concerns → regular Issues.
 - [ ] **AC-6**: Manual repo-setting step: **Private Vulnerability Reporting** toggle ON in `Settings → Security → Code security and analysis`. Verification evidence (screenshot or plain-text "toggle confirmed ON" in the delivery PR description) attached.
-- [ ] **AC-7**: GitHub *Report a vulnerability* button visible on `https://github.com/davidmatousek/tachi/security` post-toggle-enable (manual UI inspection).
+- [ ] **AC-7**: GitHub *Report a vulnerability* button visible on `https://github.com/pratik-saptarshi/tachi-rust/security` post-toggle-enable (manual UI inspection).
 - [ ] **AC-8**: CHANGELOG entry under `Unreleased → Changed` references SECURITY.md restructure and TACHI-VULN-05abc41ad4cc closure.
 - [ ] **AC-9**: TACHI-VULN-05abc41ad4cc → REMEDIATED in `.aod/results/security-scan.md` after post-merge re-scan.
 - [ ] **AC-10**: Post-merge `/security` re-scan: INFO finding cleared; no new HIGH or MEDIUM findings introduced (LOW or INFO are acceptable side-effect findings if they document a separate concern).
-- [ ] **AC-11**: Smoke-test the disclosure URL while authenticated — open `https://github.com/davidmatousek/tachi/security/advisories/new`, confirm the form loads, do NOT submit. Promoted from nice-to-have per Team-Lead A-5 advisory: the check costs <2min and validates the SECURITY.md fallback link in the same operation.
+- [ ] **AC-11**: Smoke-test the disclosure URL while authenticated — open `https://github.com/pratik-saptarshi/tachi-rust/security/advisories/new`, confirm the form loads, do NOT submit. Promoted from nice-to-have per Team-Lead A-5 advisory: the check costs <2min and validates the SECURITY.md fallback link in the same operation.
 - [ ] **AC-12**: README.md gets a one-line pointer to SECURITY.md (e.g., a "Security" subsection or a one-line bullet under an existing "Contributing" or "Disclosure" section): *"For security disclosure, see [SECURITY.md](SECURITY.md)."* Promoted from deferred per Team-Lead A-5 advisory: a one-line README delta carries zero scope-creep risk and eliminates a stale follow-on Issue.
 
 ### Nice-to-have (post-merge follow-up; not blocking)
 
-- [ ] **AC-13**: Open a follow-up backlog Issue for a **posture probe** that confirms the GitHub *Report a vulnerability* button still appears on the Security tab — concrete probe shape: scrape `https://api.github.com/repos/davidmatousek/tachi` and assert `security_and_analysis.private_vulnerability_reporting.status == "enabled"`. Park as low-priority follow-on (Team-Lead A-1 advisory). Not in F-3 scope; logged at /aod.deliver time.
+- [ ] **AC-13**: Open a follow-up backlog Issue for a **posture probe** that confirms the GitHub *Report a vulnerability* button still appears on the Security tab — concrete probe shape: scrape `https://api.github.com/repos/pratik-saptarshi/tachi-rust` and assert `security_and_analysis.private_vulnerability_reporting.status == "enabled"`. Park as low-priority follow-on (Team-Lead A-1 advisory). Not in F-3 scope; logged at /aod.deliver time.
 - [ ] **AC-14**: Open a follow-up chore Issue surfacing the v4.32.0-tag / 4.31.0-manifest discrepancy observed at PRD draft time (architect C-3 / team-lead D-1 side-observation): release-please may have skipped a manifest update post-v4.32.0 release. Investigate at /aod.deliver time; not in F-3 scope.
 
 ---
@@ -201,7 +201,7 @@ The PR title MUST be `feat(272): SECURITY.md and private disclosure channel` (Co
 - No new code paths; no new attack surface introduced by the change itself.
 - Out-of-scope clause explicitly excludes adopters' personalization data (`.aod/personalization.env`, `brands/*/`) from the tachi disclosure channel — adopters retain ownership of disclosure for content they author.
 - Toggle change is reversible via the same Settings UI — no irreversible repo-state mutation.
-- The `https://github.com/davidmatousek/tachi/security/advisories/new` URL is GitHub-managed; no domain or DNS dependency on tachi-side infrastructure.
+- The `https://github.com/pratik-saptarshi/tachi-rust/security/advisories/new` URL is GitHub-managed; no domain or DNS dependency on tachi-side infrastructure.
 
 ---
 
@@ -217,7 +217,7 @@ The PR title MUST be `feat(272): SECURITY.md and private disclosure channel` (Co
 
 **Risk**: A maintainer or contributor with repo-admin access could accidentally disable the Private Vulnerability Reporting toggle in `Settings → Security`, silently breaking the disclosure channel without anyone noticing until the next research report fails to land.
 
-**Mitigation**: SECURITY.md "Reporting" section footer documents the dependency ("this channel relies on the GitHub Private Vulnerability Reporting toggle being enabled"). Delivery PR description records the verification screenshot/plain-text confirmation as a recoverable artifact. Follow-on backlog Issue committed to via AC-13 (post-merge): periodic posture probe that scrapes `https://api.github.com/repos/davidmatousek/tachi` and asserts `security_and_analysis.private_vulnerability_reporting.status == "enabled"` — captures toggle-state regressions before researchers experience the broken channel. ICE estimate (rough): I:6 C:8 E:9 = ICE 23, but pulled out of F-3 scope to keep this feature bounded.
+**Mitigation**: SECURITY.md "Reporting" section footer documents the dependency ("this channel relies on the GitHub Private Vulnerability Reporting toggle being enabled"). Delivery PR description records the verification screenshot/plain-text confirmation as a recoverable artifact. Follow-on backlog Issue committed to via AC-13 (post-merge): periodic posture probe that scrapes `https://api.github.com/repos/pratik-saptarshi/tachi-rust` and asserts `security_and_analysis.private_vulnerability_reporting.status == "enabled"` — captures toggle-state regressions before researchers experience the broken channel. ICE estimate (rough): I:6 C:8 E:9 = ICE 23, but pulled out of F-3 scope to keep this feature bounded.
 
 ### R-3: Researcher uses wrong URL despite SECURITY.md (LOW)
 
@@ -253,7 +253,7 @@ The PR title MUST be `feat(272): SECURITY.md and private disclosure channel` (Co
 
 ### Loosely-Coupled Dependencies
 
-- **GitHub repo admin access** — required to toggle Private Vulnerability Reporting in Settings. Maintainer has admin rights on the davidmatousek/tachi repo; no organizational approval needed.
+- **GitHub repo admin access** — required to toggle Private Vulnerability Reporting in Settings. Maintainer has admin rights on the pratik-saptarshi/tachi-rust repo; no organizational approval needed.
 - **Latest minor of v4.x** — supported-versions policy references v4.x line; cross-checked at merge time. Verified state at PRD draft (2026-05-08): latest tag v4.32.0 (released 2026-05-07 16:46 UTC), manifest at 4.31.0. The manifest-lag is anomalous — manifest tracks *released* versions, so manifest = latest tag is the steady state when no release-please PR is open, and `gh pr list --state open --search "release-please"` returns empty. This suggests the v4.32.0 release-please cycle may have updated the tag without the manifest, or the manifest got rolled back post-merge. **Captured as a side observation for a follow-up chore Issue; not blocking F-3** because the SECURITY.md text references the *latest released tag* (verified independently against `git tag --list 'v*' | sort -V | tail -1`), not the manifest. Re-perform the cross-check at SECURITY.md write time per AC-2.
 - **CHANGELOG.md `## Unreleased` block** — new entry lands here; assumes the standard release-please flow is operational (it is — F-2's PR #257 was the most recent successful release-trigger 2026-05-05).
 
@@ -318,12 +318,12 @@ F-3 is by design the lowest-effort BLP-02 feature — explicitly classified by I
 
 ## 📎 References
 
-- **GitHub Issue**: #272 — `https://github.com/davidmatousek/tachi/issues/272`
+- **GitHub Issue**: #272 — `https://github.com/pratik-saptarshi/tachi-rust/issues/272`
 - **Source finding**: TACHI-VULN-05abc41ad4cc (`.aod/results/security-scan.md` §F-security-md)
 - **BLP-02 backlog**: `docs/product/_backlog/OPEN_SOURCE_READINESS.md` (F-SECURITY.md line)
 - **Existing SECURITY.md**: `/Users/david/Projects/tachi/SECURITY.md` (40 LOC, last modified 2026-03-26)
 - **Prior BLP-02 PRDs**: #248 (F-1), #250 (hot-fix), #256 (F-2)
 - **Conventional Commit PR title rule**: `.claude/rules/git-workflow.md` §Conventional-Commit-PR-Titles
-- **GitHub Security Advisory destination**: `https://github.com/davidmatousek/tachi/security/advisories/new`
+- **GitHub Security Advisory destination**: `https://github.com/pratik-saptarshi/tachi-rust/security/advisories/new`
 - **GitHub Private Vulnerability Reporting docs**: `https://docs.github.com/en/code-security/security-advisories/working-with-repository-security-advisories/configuring-private-vulnerability-reporting-for-a-repository`
 - **Triad reviews**: `.aod/results/architect.md` (v1.0 + v1.1) and `.aod/results/team-lead.md` (v1.0)

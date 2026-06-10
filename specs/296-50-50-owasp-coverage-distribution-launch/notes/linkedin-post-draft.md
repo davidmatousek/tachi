@@ -29,8 +29,8 @@ How to verify it yourself, without trusting a marketing claim: clone tachi, run 
 
 Full per-bucket breakdown + the verification walkthrough: [Cybersec article URL]
 
-Repo: https://github.com/davidmatousek/tachi
-BLP-02 closure receipts: https://github.com/davidmatousek/tachi/pull/293
+Repo: https://github.com/pratik-saptarshi/tachi-rust
+BLP-02 closure receipts: https://github.com/pratik-saptarshi/tachi-rust/pull/293
 
 ---
 

@@ -3,7 +3,7 @@
 **Generated**: 2026-05-05 13:58
 **Branch**: `256-source-pattern-hardening`
 **Last Commit**: `271f1ae` chore(256): wave 3 test artifacts + BACKLOG sync
-**Draft PR**: [#257](https://github.com/davidmatousek/tachi/pull/257) — title `feat(256): harden source-pattern surface — bash source/eval → KV parser + clone timeout`
+**Draft PR**: [#257](https://github.com/pratik-saptarshi/tachi-rust/pull/257) — title `feat(256): harden source-pattern surface — bash source/eval → KV parser + clone timeout`
 
 ## Completed This Session
 

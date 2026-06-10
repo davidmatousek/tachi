@@ -2846,7 +2846,7 @@ This feature touches three surfaces; the canonical extraction for downstream sys
 |-----------|------|-----------|-------------|-----------|
 | ADR-024: OWASP AIVSS Evaluation and Tachi Composite Scoring Posture | New architecture decision record | `docs/architecture/02_ADRs/ADR-024-owasp-aivss-evaluation.md` | Create | PRD FR-5, Spec FR-005 — the primary deliverable |
 | tachi-risk-scoring skill: AIVSS Relationship section | Update to existing skill file | `.claude/skills/tachi-risk-scoring/SKILL.md` | Add new section | PRD FR-6, Spec FR-006 — cross-reference to ADR-024 for skill consumers |
-| Follow-on implementation Issue (conditional) | New GitHub Issue | `github.com/davidmatousek/tachi/issues` | Create (only if decision = Option A or B) | PRD FR-7, Spec FR-007 — deferred adoption work with option-specific effort estimate copied verbatim from ADR-024 |
+| Follow-on implementation Issue (conditional) | New GitHub Issue | `github.com/pratik-saptarshi/tachi-rust/issues` | Create (only if decision = Option A or B) | PRD FR-7, Spec FR-007 — deferred adoption work with option-specific effort estimate copied verbatim from ADR-024 |
 
 **Architectural posture**: additive-only. No existing agent, schema, script, or example file is modified. ADR-024 becomes the canonical source of truth for tachi's AIVSS stance; SKILL.md becomes the runtime-adjacent pointer; the conditional Issue becomes the discovery anchor for any future implementation work.
 
@@ -3126,7 +3126,7 @@ Architecture Description + Components + Data Flows (Phase 1 output)
 
 ### Feature 189: Source Attribution Schema Extension (F-A2)
 
-**PR**: [#190](https://github.com/davidmatousek/tachi/pull/190) | **Status**: Delivered | **Date**: 2026-04-17 | **Squash-merge commit**: `6d5d890`
+**PR**: [#190](https://github.com/pratik-saptarshi/tachi-rust/pull/190) | **Status**: Delivered | **Date**: 2026-04-17 | **Squash-merge commit**: `6d5d890`
 
 Additive schema extension introducing `source_attribution` as an optional list-of-RECORD field on findings. Schema version bumps 1.4 → 1.5 per [ADR-028](../02_ADRs/ADR-028-source-attribution-schema-extension.md) Decision 1 ("Complex-Shape Addition Clarifier" extending the ADR-026 minor-bump rule from scalar to list-of-RECORD fields). Contract-only: parser round-trip with conditional-key emission (Feature 104 `delta_status` precedent) and two-tier validation — parser-tier V1/V2/V3/V5 enum checks inline in `parse_threats_findings`, plus a new post-parse `validate_source_attribution` V4 referential-integrity helper invokable from orchestrator Phase 4 against the F-A1 catalog YAMLs. Populator wiring (threat agents emitting attribution records) is deferred to F-A3. No new runtime or developer dependencies. No edits to the 22-file zero-edit scope (11 threat-detection agents + 11 companion skill-reference files) per ADR-023. 36/36 tasks complete; triple sign-off.
 
@@ -3182,7 +3182,7 @@ F-A3 / F-B scope: risk-scorer, control-analyzer, threat-report, SARIF,
 
 ### Feature 194: coverage-attestation-report-section
 
-**PR**: [#195](https://github.com/davidmatousek/tachi/pull/195) | **Status**: Delivered | **Date**: 2026-04-18 | **Squash-merge commit**: `c4b8dc6` | **Position**: BLP-01 Tier 2 (F-B) — first downstream consumer of the F-A1 (Feature 180 taxonomy catalogs) + F-A2 (Feature 189 `source_attribution` contract) supply-side pair, consumed independently of the deferred F-A3 populator
+**PR**: [#195](https://github.com/pratik-saptarshi/tachi-rust/pull/195) | **Status**: Delivered | **Date**: 2026-04-18 | **Squash-merge commit**: `c4b8dc6` | **Position**: BLP-01 Tier 2 (F-B) — first downstream consumer of the F-A1 (Feature 180 taxonomy catalogs) + F-A2 (Feature 189 `source_attribution` contract) supply-side pair, consumed independently of the deferred F-A3 populator
 
 Conditional PDF-only coverage-attestation section appended to the tachi security report, rendering (a) a single paginated per-finding attribution table (7 columns) and (b) one per-framework coverage matrix page per external framework in the F-A2 5-value taxonomy enum (OWASP, MITRE ATT&CK, MITRE ATLAS, NIST AI RMF, CWE). Gated on a single new `has-source-attribution` boolean in the Typst data contract — `true` iff ≥1 finding carries a non-empty `source_attribution` array; `false` on all 5 non-agentic baselines pre-F-A3, preserving SC-002 byte-identity under `SOURCE_DATE_EPOCH=1700000000` per ADR-021. Mirrors the Feature 141 `has-attack-chains` pattern verbatim (new Typst page + boolean emission + conditional `main.typ` block with default-value guard and `.len() > 0` belt-and-suspenders check) and the Feature 128 new-Typst-page precedent. New [ADR-029](../02_ADRs/ADR-029-coverage-attestation-report-section.md) under the Proposed → Accepted dual-commit pattern (Accepted 2026-04-18; provisional post-merge SHA fill task T044 pending). **45/46 tasks complete** with triple sign-off (PM + Architect + Team-Lead).
 
@@ -3536,7 +3536,7 @@ sequenceDiagram
 
 ### Feature 282: Pre-commit Secret-Scanning Defaults (BLP-02 F-5)
 
-**PR**: [#283](https://github.com/davidmatousek/tachi/pull/283) | **Status**: Delivered | **Date**: 2026-05-10 | **Squash-merge commit**: `18378bd` | **Position**: BLP-02 Wave 4+ — **fifth and final feature** in the 5-feature BLP-02 enterprise-hardening initiative; **closes BLP-02 5/5** alongside F-1 (#250) / F-2 (#256) / F-3 (#272) / F-4 (#277), and **closes the 2026-05-02 Daniel Wood LinkedIn-thread enterprise-hardening punch-list 3/3** alongside F-3 + F-4.
+**PR**: [#283](https://github.com/pratik-saptarshi/tachi-rust/pull/283) | **Status**: Delivered | **Date**: 2026-05-10 | **Squash-merge commit**: `18378bd` | **Position**: BLP-02 Wave 4+ — **fifth and final feature** in the 5-feature BLP-02 enterprise-hardening initiative; **closes BLP-02 5/5** alongside F-1 (#250) / F-2 (#256) / F-3 (#272) / F-4 (#277), and **closes the 2026-05-02 Daniel Wood LinkedIn-thread enterprise-hardening punch-list 3/3** alongside F-3 + F-4.
 
 ## Components
 

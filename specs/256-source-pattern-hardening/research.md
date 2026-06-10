@@ -198,4 +198,4 @@ Source-of-truth positioning (per `tachi.md` strategic alignment): tachi is the u
 - **Git workflow rules**: [.claude/rules/git-workflow.md](../../.claude/rules/git-workflow.md)
 - **F-212 release-please incident**: `.claude/rules/git-workflow.md` Reference Incident section
 - **BLP-02 strategy** (if present): `_internal/strategy/BLP-02-enterprise-hardening.md`
-- **Issue**: [#256](https://github.com/davidmatousek/tachi/issues/256)
+- **Issue**: [#256](https://github.com/pratik-saptarshi/tachi-rust/issues/256)

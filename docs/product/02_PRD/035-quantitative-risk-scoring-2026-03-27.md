@@ -429,7 +429,7 @@ Compensating Controls (future, Issue B)
 
 ### Product Documentation
 - Product Vision: [product-vision.md](../01_Product_Vision/product-vision.md)
-- GitHub Issue: [#35 - Quantitative Risk Scoring](https://github.com/davidmatousek/tachi/issues/35)
+- GitHub Issue: [#35 - Quantitative Risk Scoring](https://github.com/pratik-saptarshi/tachi-rust/issues/35)
 
 ### Technical Documentation
 - Constitution: [constitution.md](../../.aod/memory/constitution.md)

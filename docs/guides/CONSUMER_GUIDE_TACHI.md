@@ -76,10 +76,10 @@ grep -rn '{{' .aod/memory/constitution.md
 
 ```bash
 # Create a GitHub repo (needed for issue tracking)
-gh repo create davidmatousek/tachi --public --source=. --push
+gh repo create pratik-saptarshi/tachi-rust --public --source=. --push
 
 # If you get "Unable to add remote origin" (origin exists from the clone), run:
-git remote set-url origin https://github.com/davidmatousek/tachi.git
+git remote set-url origin https://github.com/pratik-saptarshi/tachi-rust.git
 git push -u origin main
 ```
 

@@ -344,7 +344,7 @@ Continues the quality-improvement trajectory of PRD 029 (first right-sizing) and
 
 ### Product Documentation
 - [Product Vision](docs/product/01_Product_Vision/product-vision.md)
-- [GitHub Issue #78](https://github.com/davidmatousek/tachi/issues/78)
+- [GitHub Issue #78](https://github.com/pratik-saptarshi/tachi-rust/issues/78)
 
 ### Technical Documentation
 - [Tachi Agent Best Practices](.claude/agents/tachi/_TACHI_AGENT_BEST_PRACTICES.md)

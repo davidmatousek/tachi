@@ -59,7 +59,7 @@ F-2's "data" entities are **configuration files**, **contract markdown**, and **
 | `version` | Yes (may be empty) | Semver-shaped string OR empty (per B-1) | `4.28.0` or `` (bare form for non-tagged commits) |
 | `sha` | Yes | Hex git SHA | `abc123def456...` |
 | `updated_at` | Yes | ISO 8601 timestamp | `2026-05-04T12:00:00Z` |
-| `upstream_url` | Yes | git URL | `https://github.com/davidmatousek/tachi.git` |
+| `upstream_url` | Yes | git URL | `https://github.com/pratik-saptarshi/tachi-rust.git` |
 | `manifest_sha256` | Yes | sha256 hex | `def789...` |
 
 **Validation** (per FR-001 regex with `<key_case>=lower`):

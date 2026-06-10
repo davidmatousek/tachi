@@ -7,7 +7,7 @@ prd:
   status: Delivered
   type: feature
   pr: 257
-  pr_url: https://github.com/davidmatousek/tachi/pull/257
+  pr_url: https://github.com/pratik-saptarshi/tachi-rust/pull/257
   merge_sha: f959622
 triad:
   pm_signoff: {agent: product-manager, date: 2026-05-04, status: APPROVED, notes: "v1.1 final. Authored as BLP-02 Wave 2 follow-on to F-1 (#248) closure. 5 vuln_ids (2 HIGH + 2 MEDIUM + 1 LOW) bundled into one architectural pass establishing read-buffer → strict-KV-regex → printf-v as canonical config-loading primitive. New library `template-config-load.sh` exposing `aod_template_load_kv_file`; refactor of 4 source/eval sites + clone timeout watchdog. v1.0 Pass 1 surfaced 3 BLOCKING (Architect) + 2 HIGH (Team-Lead); v1.1 addressed all 3 BLOCKING (B-1 regex `*` not `+`; B-2 Path R-2 writer escape pass removal; B-3 line iteration mechanism + CRLF + leading-whitespace) + all 4 HIGH + 5/5 MEDIUM + 3/3 LOW (Architect) and Stream resizing (Team-Lead). Q-1..Q-6 all adjudicated and folded in. Pass 1.5 Architect APPROVED 2026-05-04 (all BLOCKING resolutions MATCH framing). Single-PR bundle with Day-5 conversion-lever; 9.5d active / 11d hard ceiling preserved (2026-05-05 → 2026-05-19)."}
@@ -23,7 +23,7 @@ source:
 **Status**: Delivered (PR #257 squash-merged 2026-05-05, SHA f959622). Closed 2/5 BLP-02 features. 5 /security vuln_ids closed (2 HIGH + 2 MEDIUM + 1 LOW) on bash source/eval surface; canonical `aod_template_load_kv_file` primitive shipped via `.aod/scripts/bash/template-config-load.sh`; 4 source/eval sites refactored; portable git clone timeout watchdog landed; ADR-040 *Config File Parsing Hardening* Proposed→Accepted; 9 new test files + adversarial fixture corpus; 62 tasks complete. ~24h delivery envelope (issue → PR merge), well under 9.5d active / 11d hard ceiling. v1.1 PRD final — Pass 1.5 Architect APPROVED, Team-Lead APPROVED_WITH_CONCERNS Pass 1, PM APPROVED. v1.1 addressed all 3 Pass 1 BLOCKING + 4 HIGH + 5 MEDIUM + 3 LOW from Architect plus 2 HIGH + 6 MEDIUM + 3 LOW from Team-Lead.
 **Created**: 2026-05-04
 **Delivered**: 2026-05-05
-**PR**: [#257](https://github.com/davidmatousek/tachi/pull/257) (SHA f959622)
+**PR**: [#257](https://github.com/pratik-saptarshi/tachi-rust/pull/257) (SHA f959622)
 **Author**: product-manager
 **Reviewers**: architect (APPROVED Pass 1.5), team-lead (APPROVED_WITH_CONCERNS Pass 1)
 **Phase**: BLP-02 Wave 2 — second feature in the 5-feature enterprise hardening initiative; depends on F-1 (#248) which delivered 2026-05-04
@@ -1101,7 +1101,7 @@ All six open questions (Q-1..Q-6) have been **RESOLVED** in Pass 1 reviews. The 
 
 ## 📚 References
 
-- **Issue**: [#256](https://github.com/davidmatousek/tachi/issues/256) — Source-Pattern Hardening (BLP-02 Wave 2)
+- **Issue**: [#256](https://github.com/pratik-saptarshi/tachi-rust/issues/256) — Source-Pattern Hardening (BLP-02 Wave 2)
 - **F-1 PRD precedent**: [`docs/product/02_PRD/248-substitution-surface-hardening-2026-05-03.md`](./248-substitution-surface-hardening-2026-05-03.md) — Pass 1 / Pass 2 governance review patterns; pytest-via-subprocess test runner adjudication; release-please belt-and-suspenders pattern.
 - **F-1 ADR**: [`docs/architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md`](../../architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md) — substitution canon; shared validation triplet pattern with F-2.
 - **F-250 ADR**: [`docs/architecture/02_ADRs/ADR-039-test-architecture-fixture-scope-and-asymmetric-baseline.md`](../../architecture/02_ADRs/ADR-039-test-architecture-fixture-scope-and-asymmetric-baseline.md) — test-architecture canon; F-2 fixture-regen script follows this convention.

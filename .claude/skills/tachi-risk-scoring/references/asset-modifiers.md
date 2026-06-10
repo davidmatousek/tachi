@@ -8,7 +8,7 @@ version: 1.0.0
 
 Apply optional CVSS impact-bit floors to a finding based on tags declared on its target component in the architecture description. Closes the asset-value gap in the four-dimensional composite — the existing reachability dimension scores how exposed a component is, and this dimension scores what would be lost if it were compromised.
 
-> **Status**: prototype for [Issue #260](https://github.com/davidmatousek/tachi/issues/260). The tag vocabulary and exact application order are pinned during architect review when the formal spec opens. Modifier ceiling pinned at `9.2` during PR #262 architect review (2026-05-06). Until the formal spec opens, treat the rest as illustrative.
+> **Status**: prototype for [Issue #260](https://github.com/pratik-saptarshi/tachi-rust/issues/260). The tag vocabulary and exact application order are pinned during architect review when the formal spec opens. Modifier ceiling pinned at `9.2` during PR #262 architect review (2026-05-06). Until the formal spec opens, treat the rest as illustrative.
 
 ## Where This Sits in the Pipeline
 

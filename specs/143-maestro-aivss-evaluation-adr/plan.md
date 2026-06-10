@@ -30,7 +30,7 @@ Two-wave delivery: **Wave 1** = AIVSS specification research (FR-001), **Wave 2*
 **Primary Dependencies**: None added. Existing stack remains: Python 3.11 (dev scripts), Typst (PDF), Mermaid CLI. No changes to `pyproject.toml`, `requirements*.txt`, or `package.json`
 **Storage**: N/A — no data persistence changes
 **Testing**: No new test files. One existing verification gate (`git diff` assertion for zero drift, per SC-006) runs during PR review. The existing backward-compatibility PDF baseline suite (`tests/scripts/test_backward_compatibility.py`) is trivially satisfied because no pipeline inputs change
-**Target Platform**: Markdown + YAML files only. Primary surfaces: `docs/architecture/02_ADRs/` (new ADR-024), `.claude/skills/tachi-risk-scoring/SKILL.md` (updated), `github.com/davidmatousek/tachi/issues` (conditional new Issue)
+**Target Platform**: Markdown + YAML files only. Primary surfaces: `docs/architecture/02_ADRs/` (new ADR-024), `.claude/skills/tachi-risk-scoring/SKILL.md` (updated), `github.com/pratik-saptarshi/tachi-rust/issues` (conditional new Issue)
 **Project Type**: Documentation artifact — single-surface ADR + single-section skill update
 **Performance Goals**: N/A (no runtime path)
 **Constraints**: Zero-drift invariant on `schemas/`, `scripts/`, `.claude/agents/`, `examples/`; ADR Status must read `Accepted` at merge; FR-001 canonical-home research timeboxed to 2 hours before PM escalation
@@ -75,7 +75,7 @@ This feature touches three surfaces; the canonical extraction for downstream sys
 |-----------|------|-----------|-------------|-----------|
 | ADR-024: OWASP AIVSS Evaluation and Tachi Composite Scoring Posture | New architecture decision record | `docs/architecture/02_ADRs/ADR-024-owasp-aivss-evaluation.md` | Create | PRD FR-5, Spec FR-005 — the primary deliverable |
 | tachi-risk-scoring skill: AIVSS Relationship section | Update to existing skill file | `.claude/skills/tachi-risk-scoring/SKILL.md` | Add new section | PRD FR-6, Spec FR-006 — cross-reference to ADR-024 for skill consumers |
-| Follow-on implementation Issue (conditional) | New GitHub Issue | `github.com/davidmatousek/tachi/issues` | Create (only if decision = Option A or B) | PRD FR-7, Spec FR-007 — deferred adoption work with option-specific effort estimate copied verbatim from ADR-024 |
+| Follow-on implementation Issue (conditional) | New GitHub Issue | `github.com/pratik-saptarshi/tachi-rust/issues` | Create (only if decision = Option A or B) | PRD FR-7, Spec FR-007 — deferred adoption work with option-specific effort estimate copied verbatim from ADR-024 |
 
 **Architectural posture**: additive-only. No existing agent, schema, script, or example file is modified. ADR-024 becomes the canonical source of truth for tachi's AIVSS stance; SKILL.md becomes the runtime-adjacent pointer; the conditional Issue becomes the discovery anchor for any future implementation work.
 

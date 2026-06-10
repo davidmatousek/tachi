@@ -7,7 +7,7 @@
         "driver": {
           "name": "Tachi",
           "semanticVersion": "1.4",
-          "informationUri": "https://github.com/davidmatousek/tachi",
+          "informationUri": "https://github.com/pratik-saptarshi/tachi-rust",
           "rules": [
             {
               "id": "tachi/stride/spoofing",

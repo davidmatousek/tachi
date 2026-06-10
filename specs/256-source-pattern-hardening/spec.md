@@ -401,7 +401,7 @@ The full risk register is in the PRD. Top-of-mind risks for the spec:
 
 - **PRD**: [docs/product/02_PRD/256-source-pattern-hardening-2026-05-04.md](../../docs/product/02_PRD/256-source-pattern-hardening-2026-05-04.md)
 - **Research**: [research.md](research.md)
-- **Issue**: [#256](https://github.com/davidmatousek/tachi/issues/256)
+- **Issue**: [#256](https://github.com/pratik-saptarshi/tachi-rust/issues/256)
 - **F-1 spec (mirror structure)**: [specs/248-substitution-surface-hardening/spec.md](../248-substitution-surface-hardening/spec.md)
 - **F-1 ADR-038 (validation-triplet pattern, substitution canon)**: [docs/architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md](../../docs/architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md)
 - **F-250 ADR-039 (test architecture canon)**: [docs/architecture/02_ADRs/ADR-039-test-architecture-fixture-scope-and-asymmetric-baseline.md](../../docs/architecture/02_ADRs/ADR-039-test-architecture-fixture-scope-and-asymmetric-baseline.md)

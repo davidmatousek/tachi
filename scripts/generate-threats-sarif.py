@@ -516,7 +516,7 @@ def build_sarif(findings: list[dict], component_meta: dict[str, dict[str, str]])
     driver = {
         "name": "Tachi",
         "semanticVersion": "1.7",
-        "informationUri": "https://github.com/davidmatousek/tachi",
+        "informationUri": "https://github.com/pratik-saptarshi/tachi-rust",
         "supportedTaxonomies": [
             {"name": "OWASP", "index": 0},
             {"name": "CWE", "index": 1},

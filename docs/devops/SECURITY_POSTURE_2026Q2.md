@@ -40,8 +40,8 @@ The cycle organized work into five sub-features (F-1 through F-5). Each row belo
 ### F-1 — Substitution Surface Hardening
 
 **ADR**: [ADR-038](../architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md)
-**Release**: `v4.28.0` (PR [#249](https://github.com/davidmatousek/tachi/pull/249))
-**Hot-fix follow-on**: `v4.28.1` (operational test-architecture stabilization, PR [#253](https://github.com/davidmatousek/tachi/pull/253))
+**Release**: `v4.28.0` (PR [#249](https://github.com/pratik-saptarshi/tachi-rust/pull/249))
+**Hot-fix follow-on**: `v4.28.1` (operational test-architecture stabilization, PR [#253](https://github.com/pratik-saptarshi/tachi-rust/pull/253))
 
 **Posture change**: replaced `sed`-based substitution in [scripts/init.sh](../../scripts/init.sh) with a Bash-3.2-compatible string-replacement primitive. Eliminated the multi-hop execution chain pattern in which adversarially-crafted project paths could influence subsequent shell invocations. Tightened `PROJECT_PATH` validation, `read -p` input handling, personalization gitignore semantics, and constitution path migration.
 
@@ -54,7 +54,7 @@ The cycle organized work into five sub-features (F-1 through F-5). Each row belo
 ### F-2 — Source-Pattern Hardening
 
 **ADR**: [ADR-040](../architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md)
-**Release**: bundled into the `v4.29.0`+ release cadence (PR [#257](https://github.com/davidmatousek/tachi/pull/257))
+**Release**: bundled into the `v4.29.0`+ release cadence (PR [#257](https://github.com/pratik-saptarshi/tachi-rust/pull/257))
 
 **Posture change**: introduced a canonical KV-load primitive `aod_template_load_kv_file` in [.aod/scripts/bash/template-config-load.sh](../../.aod/scripts/bash/template-config-load.sh). The primitive uses a read-buffer → strict-KV-regex → `printf -v` pattern, replacing four legacy `source` and `eval` call sites. New environment variable `AOD_FETCH_TIMEOUT` (default `60s`) bounds remote fetches. Adds a follow-on file-size cap and regular-file check on the KV loader.
 
@@ -67,7 +67,7 @@ The cycle organized work into five sub-features (F-1 through F-5). Each row belo
 ### F-3 — SECURITY.md and Private Disclosure Channel
 
 **Public docs**: [SECURITY.md](../../SECURITY.md), [README.md `## Community`](../../README.md)
-**Release**: `v4.33.0` (PR [#273](https://github.com/davidmatousek/tachi/pull/273))
+**Release**: `v4.33.0` (PR [#273](https://github.com/pratik-saptarshi/tachi-rust/pull/273))
 
 **Posture change**: rewrote [SECURITY.md](../../SECURITY.md) to the GitHub-canonical five-section structure (Supported Versions / Reporting a Vulnerability / What to expect / Scope / Out-of-scope) and enabled GitHub **Private Vulnerability Reporting** on the repository. Researchers can now coordinate disclosure through the upstream GitHub flow without relying on email triage.
 
@@ -84,7 +84,7 @@ The cycle organized work into five sub-features (F-1 through F-5). Each row belo
 **ADR**: [ADR-041](../architecture/02_ADRs/ADR-041-claude-permissions-baseline.md)
 **Public docs**: [docs/standards/CLAUDE_PERMISSIONS.md](../standards/CLAUDE_PERMISSIONS.md)
 **Configuration**: [.claude/settings.json](../../.claude/settings.json)
-**Release**: `v4.34.0` (PR [#278](https://github.com/davidmatousek/tachi/pull/278))
+**Release**: `v4.34.0` (PR [#278](https://github.com/pratik-saptarshi/tachi-rust/pull/278))
 
 **Posture change**: introduced a curated `~80 LOC` [.claude/settings.json](../../.claude/settings.json) baseline organized into four categories — read-only auto-approve, local-state auto-approve, destructive deny + ask, and network host-allowlist. The companion [CLAUDE_PERMISSIONS.md](../standards/CLAUDE_PERMISSIONS.md) is **self-contained** (`~250 LOC`): a SecOps reviewer can read it end-to-end and produce an audit report without reverse-engineering rule names or maintainer intent. Per-rule rationale is one-to-one cross-checked against `settings.json` via the AC-2 verification recipe (FR-002).
 
@@ -107,7 +107,7 @@ The baseline includes a 19-domain WebFetch host-allowlist spanning the GitHub, A
 **Public docs**: [docs/standards/PRECOMMIT_HOOKS.md](../standards/PRECOMMIT_HOOKS.md)
 **Configuration**: [.pre-commit-config.yaml](../../.pre-commit-config.yaml), [.gitleaks.toml](../../.gitleaks.toml)
 **CI parity**: [.github/workflows/gitleaks.yml](../../.github/workflows/gitleaks.yml)
-**Release**: `v4.35.0` (PR [#283](https://github.com/davidmatousek/tachi/pull/283))
+**Release**: `v4.35.0` (PR [#283](https://github.com/pratik-saptarshi/tachi-rust/pull/283))
 
 **Posture change**: ships an opt-in pre-commit secret-scanning hook (gitleaks `v8.30.1` pinned). The hook runs through a stderr-augmenting wrapper at [.aod/scripts/bash/precommit-wrap.sh](../../.aod/scripts/bash/precommit-wrap.sh) that adds a four-item structured refusal contract (rule ID + file:line + bypass guidance + docs link). The CI parity workflow runs full-repo scans on PRs with binary-direct download and SHA256 verification — explicitly avoiding the proprietary gitleaks-action license trap. Both the local and CI variants emit SARIF for GitHub Code Scanning compatibility.
 
@@ -159,7 +159,7 @@ The following items were deliberately out of scope for the 2026Q2 cycle and are 
 ## Re-assessment cadence
 
 - **Every adopter `/aod.update` cycle**: re-read the §Built-in-Read-Only-Set maintenance note in [CLAUDE_PERMISSIONS.md](../standards/CLAUDE_PERMISSIONS.md) and verify against the latest Claude Code release.
-- **Every gitleaks minor release**: re-test against [tests/fixtures/gitleaks-rule-interaction/](../../tests/fixtures/gitleaks-rule-interaction/) before bumping the pin in [.pre-commit-config.yaml](../../.pre-commit-config.yaml). Cadence accountability is tracked under Issue [#287](https://github.com/davidmatousek/tachi/issues/287).
+- **Every gitleaks minor release**: re-test against [tests/fixtures/gitleaks-rule-interaction/](../../tests/fixtures/gitleaks-rule-interaction/) before bumping the pin in [.pre-commit-config.yaml](../../.pre-commit-config.yaml). Cadence accountability is tracked under Issue [#287](https://github.com/pratik-saptarshi/tachi-rust/issues/287).
 - **Every quarter**: re-scan the F-1 → F-5 surfaces with the project's `/security` tool and confirm zero regression. The next quarterly review is documented in this folder as `SECURITY_POSTURE_<YYYY>Q<N>.md`.
 
 ---

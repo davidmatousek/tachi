@@ -10,7 +10,7 @@ release: v4.10.0 (release-please auto-cut, minor)
 
 **Feature**: MAESTRO Canonical Layer Correctness Fix
 **Branch**: `136-maestro-canonical-layer`
-**PR**: [#146](https://github.com/davidmatousek/tachi/pull/146) (merged via squash commit `31356fb`)
+**PR**: [#146](https://github.com/pratik-saptarshi/tachi-rust/pull/146) (merged via squash commit `31356fb`)
 **Delivered**: 2026-04-10
 **Estimated**: 2-3 working days (per team-lead APPROVED_WITH_CONCERNS sign-off)
 **Actual**: ~7 hours wall-clock (spread across 3 sessions due to context management)

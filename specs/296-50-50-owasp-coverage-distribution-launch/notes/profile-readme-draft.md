@@ -47,19 +47,19 @@ Insert this block (lands tachi in the first viewport per AC-1):
 ```markdown
 ## Flagship project: tachi
 
-**[tachi](https://github.com/davidmatousek/tachi)** — Threat Modeling and Vulnerability Detection Harness for Claude Code. An AI-reasoning security scanner (STRIDE + AI + MAESTRO) that reasons over your architecture description to catch the logic-level risks SAST can't reach. **OWASP 50/50 coverage** across LLM 2025 + Agentic 2026 + ML 2023 + Mobile 2024 + Web/API 2021/2023 — every catalogued threat in all five frameworks has a detection agent, with byte-deterministic reproducible verification.
+**[tachi](https://github.com/pratik-saptarshi/tachi-rust)** — Threat Modeling and Vulnerability Detection Harness for Claude Code. An AI-reasoning security scanner (STRIDE + AI + MAESTRO) that reasons over your architecture description to catch the logic-level risks SAST can't reach. **OWASP 50/50 coverage** across LLM 2025 + Agentic 2026 + ML 2023 + Mobile 2024 + Web/API 2021/2023 — every catalogued threat in all five frameworks has a detection agent, with byte-deterministic reproducible verification.
 ```
 
 ### Edit 2 — refresh the existing tachi row in the `### Security Tooling` table (consistency)
 
 **Before:**
 ```markdown
-| [tachi](https://github.com/davidmatousek/tachi) | Automated threat modeling toolkit. STRIDE + AI-specific threats in one command. |
+| [tachi](https://github.com/pratik-saptarshi/tachi-rust) | Automated threat modeling toolkit. STRIDE + AI-specific threats in one command. |
 ```
 
 **After:**
 ```markdown
-| [tachi](https://github.com/davidmatousek/tachi) | STRIDE + AI + MAESTRO threat-modeling harness for Claude Code. OWASP 50/50 coverage (LLM + Agentic + ML + Mobile + Web/API). |
+| [tachi](https://github.com/pratik-saptarshi/tachi-rust) | STRIDE + AI + MAESTRO threat-modeling harness for Claude Code. OWASP 50/50 coverage (LLM + Agentic + ML + Mobile + Web/API). |
 ```
 
 ### What stays unchanged (deliberate)

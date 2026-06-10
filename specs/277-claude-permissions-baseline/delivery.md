@@ -2,8 +2,8 @@
 
 **Delivery Date**: 2026-05-09
 **Branch**: `277-claude-permissions-baseline` (deleted at /aod.deliver-time, was `86a868e` pre-squash, squash-merge at `896588b` on `main`)
-**PR**: [#278](https://github.com/davidmatousek/tachi/pull/278)
-**Release**: release-please [PR #279](https://github.com/davidmatousek/tachi/pull/279) `chore(main): release 4.34.0` (open at delivery-time, opened ~23s post-squash-merge — within FR-013 ~30s SLO)
+**PR**: [#278](https://github.com/pratik-saptarshi/tachi-rust/pull/278)
+**Release**: release-please [PR #279](https://github.com/pratik-saptarshi/tachi-rust/pull/279) `chore(main): release 4.34.0` (open at delivery-time, opened ~23s post-squash-merge — within FR-013 ~30s SLO)
 **Initiative**: BLP-02 enterprise hardening Wave 4 — closes 4-of-5 features delivered
 
 ---
@@ -15,7 +15,7 @@
 - **ADR-041 accepted** (~100 LOC, 6 alternatives-considered) — curated static rule set vs PreToolUse hooks vs managed-settings layer vs runtime gating vs hybrid vs status-quo. Decision: curated static rule set with documented opt-out paths.
 - **CHANGELOG.md entry** with sibling-h3 BLP-02-cluster placement (`### Claude Code permissions baseline (BLP-02 F-4)`) preserving the N-4 carry-forward convention from F-3 / Entry 4.
 - **`.gitignore` exclusion** for `.claude/settings.local.json` (FR-003) — adopters' personal customizations remain unversioned and survive `git pull` of F-4.
-- **Two follow-up Issues filed** at /aod.tasks-time per AC-15/AC-16 nice-to-haves: [#280](https://github.com/davidmatousek/tachi/issues/280) (pre-commit hook for `.claude/settings.json` jq-validity + AC-2 cross-check, ICE I:5 C:7 E:8) and [#281](https://github.com/davidmatousek/tachi/issues/281) (CI integration for the F-4 verification recipe, ICE I:6 C:6 E:7).
+- **Two follow-up Issues filed** at /aod.tasks-time per AC-15/AC-16 nice-to-haves: [#280](https://github.com/pratik-saptarshi/tachi-rust/issues/280) (pre-commit hook for `.claude/settings.json` jq-validity + AC-2 cross-check, ICE I:5 C:7 E:8) and [#281](https://github.com/pratik-saptarshi/tachi-rust/issues/281) (CI integration for the F-4 verification recipe, ICE I:6 C:6 E:7).
 
 **Posture-gap closure** (NOT vuln closure): F-4 closes ZERO `/security` `vuln_id`. The deliverable is the audit-policy posture (named in 2026-05-02 Daniel Wood LinkedIn enterprise-developer-environments thread as a load-bearing prerequisite for SecOps-reviewed managed environments), not a vulnerability remediation.
 
@@ -32,7 +32,7 @@
 7. **Probe ask rules** (AC-6 sub-check d): attempt a Tier-3b `ask` rule (`Bash(git push --force-with-lease:*)`, `Bash(gh release create:*)`, `Bash(brew install:*)`). The harness MUST present an ask prompt distinct from a deny prompt and distinct from auto-approve.
 8. **Verify WebFetch transitive subdomain collapse** (AC-7 ANOMALY / T018): with the F-4 baseline loaded, attempt `WebFetch https://gist.github.com/<some-public-gist-url>`. The harness should auto-approve under the parent `WebFetch(domain:github.com)` rule — this is the AC-7 ANOMALY (subdomain auto-approval under parent rule) documented inline in `docs/standards/CLAUDE_PERMISSIONS.md` so it is not mistaken for a regression.
 9. **Verify customizations survive upgrade** (AC-11): create a fixture `.claude/settings.local.json` with a custom allow/deny, pull F-4, confirm the local file is unchanged and rules still resolve as expected.
-10. **Verify release-please trigger fired** (FR-013): `gh pr list --state open --search "release-please" --limit 3` should return [PR #279](https://github.com/davidmatousek/tachi/pull/279) `chore(main): release 4.34.0`. F-212 recovery flow (empty release-marker commit) should NOT have been triggered.
+10. **Verify release-please trigger fired** (FR-013): `gh pr list --state open --search "release-please" --limit 3` should return [PR #279](https://github.com/pratik-saptarshi/tachi-rust/pull/279) `chore(main): release 4.34.0`. F-212 recovery flow (empty release-marker commit) should NOT have been triggered.
 11. **Verify post-merge security regression**: `.aod/results/security-scan.md` records the post-merge scan as PASSED with no new HIGH or MEDIUM findings; `.security/scan-log.jsonl` chain_hash continuity preserved.
 
 ---
@@ -52,7 +52,7 @@
 
 ## Surprise Log
 
-**AC-7 transitive subdomain collapse (gist.github.com)**: PRD R-7 hypothesized that `WebFetch(domain:X)` rules might require explicit subdomain entries (e.g., a separate rule for `gist.github.com` alongside `github.com`). T018 verification probe with `WebFetch https://gist.github.com/...` confirmed the surprising opposite mechanic: subdomains auto-approve transitively under parent rules. The architect's HIGH-2 v1.1 cascade had preemptively reconciled the rule set to rely on this transitive-collapse, removing 7 redundant github-family explicit entries. The build-stage flip was therefore zero-cost — but the mechanic itself was an unexpected discovery worth documenting inline in `CLAUDE_PERMISSIONS.md` §AC-7-ANOMALY so future maintainers don't mistake it for a regression. Issues #15260, #11972, and #1217 in the upstream Claude Code repo reference this same behavior. The discovery opened the AC-15 + AC-16 follow-up surface filed at /aod.tasks-time as Issues [#280](https://github.com/davidmatousek/tachi/issues/280) and [#281](https://github.com/davidmatousek/tachi/issues/281).
+**AC-7 transitive subdomain collapse (gist.github.com)**: PRD R-7 hypothesized that `WebFetch(domain:X)` rules might require explicit subdomain entries (e.g., a separate rule for `gist.github.com` alongside `github.com`). T018 verification probe with `WebFetch https://gist.github.com/...` confirmed the surprising opposite mechanic: subdomains auto-approve transitively under parent rules. The architect's HIGH-2 v1.1 cascade had preemptively reconciled the rule set to rely on this transitive-collapse, removing 7 redundant github-family explicit entries. The build-stage flip was therefore zero-cost — but the mechanic itself was an unexpected discovery worth documenting inline in `CLAUDE_PERMISSIONS.md` §AC-7-ANOMALY so future maintainers don't mistake it for a regression. Issues #15260, #11972, and #1217 in the upstream Claude Code repo reference this same behavior. The discovery opened the AC-15 + AC-16 follow-up surface filed at /aod.tasks-time as Issues [#280](https://github.com/pratik-saptarshi/tachi-rust/issues/280) and [#281](https://github.com/pratik-saptarshi/tachi-rust/issues/281).
 
 ---
 
@@ -66,7 +66,7 @@
 
 ## Feedback Loop
 
-**New Ideas**: 0 net-new (the deferred AC-15 pre-commit hook + AC-16 CI integration nice-to-haves were filed at /aod.tasks-time as [#280](https://github.com/davidmatousek/tachi/issues/280) (ICE I:5 C:7 E:8) and [#281](https://github.com/davidmatousek/tachi/issues/281) (ICE I:6 C:6 E:7) before delivery — both already on the discovery backlog).
+**New Ideas**: 0 net-new (the deferred AC-15 pre-commit hook + AC-16 CI integration nice-to-haves were filed at /aod.tasks-time as [#280](https://github.com/pratik-saptarshi/tachi-rust/issues/280) (ICE I:5 C:7 E:8) and [#281](https://github.com/pratik-saptarshi/tachi-rust/issues/281) (ICE I:6 C:6 E:7) before delivery — both already on the discovery backlog).
 
 ---
 
@@ -168,6 +168,6 @@ Detailed agent findings: `.aod/results/product-manager.md`, `.aod/results/archit
 - [x] All 30 tasks complete (`tasks.md` shows 0 incomplete)
 - [x] No new TBD/TODO introduced in delivery docs
 - [x] Committed and pushed (closure docs commit follows in this same /aod.deliver run)
-- [x] GitHub Issue [#277](https://github.com/davidmatousek/tachi/issues/277) closed with `stage:done`
+- [x] GitHub Issue [#277](https://github.com/pratik-saptarshi/tachi-rust/issues/277) closed with `stage:done`
 
 **Feature 277 is now officially CLOSED.**

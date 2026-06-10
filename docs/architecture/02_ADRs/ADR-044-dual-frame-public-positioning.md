@@ -3,7 +3,7 @@
 **Status**: Accepted
 **Date**: Proposed: 2026-05-07; Accepted: 2026-05-07
 **Deciders**: Project owner (davidmatousek)
-**Feature**: [264-dual-frame-public-positioning](https://github.com/davidmatousek/tachi/issues/264) — public-positioning record (no implementation work)
+**Feature**: [264-dual-frame-public-positioning](https://github.com/pratik-saptarshi/tachi-rust/issues/264) — public-positioning record (no implementation work)
 **Supersedes**: None
 **Superseded by**: None
 **Related ADRs**: None — this ADR has no code or schema impact.

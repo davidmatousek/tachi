@@ -34,7 +34,7 @@
     "T037": {
       "title": "Draft PR #213 sync verification",
       "status": "PASS",
-      "pr_url": "https://github.com/davidmatousek/tachi/pull/213",
+      "pr_url": "https://github.com/pratik-saptarshi/tachi-rust/pull/213",
       "pr_state": "OPEN",
       "pr_is_draft": true,
       "pr_mergeable": "MERGEABLE",

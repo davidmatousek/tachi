@@ -630,7 +630,7 @@ All four open questions have been adjudicated in Pass 1 reviews and are folded i
 
 ## 📚 References
 
-- **Issue**: [#248](https://github.com/davidmatousek/tachi/issues/248) — Substitution Surface Hardening (BLP-02 Wave 1)
+- **Issue**: [#248](https://github.com/pratik-saptarshi/tachi-rust/issues/248) — Substitution Surface Hardening (BLP-02 Wave 1)
 - **Security scan**: `.aod/results/security-scan.md` (2026-05-02 research scan, 11 findings)
 - **Daniel Wood LinkedIn note**: 2026-05-02 — sed-based substitution flagged as 'possible multi-hop execution chain'. Per Team-Lead Pass 1 L-1, spec.md MUST pin the LinkedIn URL once in §References plus a `web.archive.org` snapshot in ADR-038 §References (the LinkedIn post is mutable; archive snapshot is the durable evidence trail)
 - **Existing safe function**: `.aod/scripts/bash/template-substitute.sh:318-411` (`aod_template_substitute_placeholders`)

@@ -4,8 +4,8 @@
 **Branch**: `main` (post-squash-merge — feature branch `277-claude-permissions-baseline` retained locally + on remote, can be deleted post-W15)
 **Last Commit**: `be41e5e docs(277): T024 build-stage capture (post-merge security scan PASS)`
 **Phase**: implement (24/30 tasks complete; resume at T025-T026 + T027-T028 in Wave 15 — final implement wave)
-**PR**: [#278](https://github.com/davidmatousek/tachi/pull/278) — **MERGED 2026-05-09T16:24:37Z** at squash commit `896588b`
-**Release-please**: PR [#279](https://github.com/davidmatousek/tachi/pull/279) — `chore(main): release 4.34.0` (opened 16:25:00Z, ~23s post-merge)
+**PR**: [#278](https://github.com/pratik-saptarshi/tachi-rust/pull/278) — **MERGED 2026-05-09T16:24:37Z** at squash commit `896588b`
+**Release-please**: PR [#279](https://github.com/pratik-saptarshi/tachi-rust/pull/279) — `chore(main): release 4.34.0` (opened 16:25:00Z, ~23s post-merge)
 
 ---
 
@@ -83,7 +83,7 @@ git push origin main
 
 After W15 completes, run `/aod.deliver` to:
 
-- **T029**: Flip `docs/product/02_PRD/INDEX.md` row 277 status `Approved` → `Delivered` + append squash-merge PR link `https://github.com/davidmatousek/tachi/pull/278` and merge timestamp `2026-05-09T16:24:37Z`.
+- **T029**: Flip `docs/product/02_PRD/INDEX.md` row 277 status `Approved` → `Delivered` + append squash-merge PR link `https://github.com/pratik-saptarshi/tachi-rust/pull/278` and merge timestamp `2026-05-09T16:24:37Z`.
 
 - **T030**: Update `~/.claude/projects/-Users-david-Projects-tachi/memory/project_blp02_enterprise_hardening.md` to reflect Wave 4 → DELIVERED 4-of-5 + append F-4 closure date `2026-05-09` and squash-commit `896588b` + release-please PR #279.
 
@@ -101,8 +101,8 @@ Plus `/aod.deliver` standard steps:
 
 ## Context Files
 
-- **Merged PR**: [#278](https://github.com/davidmatousek/tachi/pull/278) — closed/merged at squash `896588b`
-- **release-please PR**: [#279](https://github.com/davidmatousek/tachi/pull/279) — open, target v4.34.0
+- **Merged PR**: [#278](https://github.com/pratik-saptarshi/tachi-rust/pull/278) — closed/merged at squash `896588b`
+- **release-please PR**: [#279](https://github.com/pratik-saptarshi/tachi-rust/pull/279) — open, target v4.34.0
 - **Sign-off artifacts** (Triad triple-approved + reconciled): `specs/277-claude-permissions-baseline/{spec.md,plan.md,tasks.md,agent-assignments.md}`
 - **Security scan artifacts** (W14 T024): `.security/scan-log.jsonl` (chain_hash `81a9e8c6c660`); `.security/reports/c99c46d0bab9.sarif`; `specs/277-claude-permissions-baseline/security-scan.md`
 - **Authored W2-W3** (squashed in `896588b`): `docs/architecture/02_ADRs/ADR-041-claude-permissions-baseline.md` (195 LOC), `docs/standards/CLAUDE_PERMISSIONS.md` (289 LOC)

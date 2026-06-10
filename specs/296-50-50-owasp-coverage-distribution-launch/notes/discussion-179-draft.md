@@ -3,7 +3,7 @@
 **Status**: DRAFT — **maintainer-updated 2026-05-29: de-personalized (no contributor @-mention or name).**
 **Target publish**: ≤2026-06-04 (FR-005 7-day SLA + SC-005).
 **Target close**: same session, via the Discussions UI (or GraphQL API).
-**URL**: https://github.com/davidmatousek/tachi/discussions/179
+**URL**: https://github.com/pratik-saptarshi/tachi-rust/discussions/179
 
 ## Tone discipline anchor (maintainer-updated)
 
@@ -25,7 +25,7 @@ Thanks to a community gap-analysis comment (2026-05-12) surfacing three pattern-
 
 Architectural decisions documented in ADR-045 (`docs/architecture/02_ADRs/ADR-045-output-integrity-cross-sink-refinement.md`).
 
-CHANGELOG: see the [v4.36.0](https://github.com/davidmatousek/tachi/releases/tag/v4.36.0) entry.
+CHANGELOG: see the [v4.36.0](https://github.com/pratik-saptarshi/tachi-rust/releases/tag/v4.36.0) entry.
 
 This followed tachi's community-merge pattern — gap analysis → PRD → spec → plan → tasks → ADR → implementation → CHANGELOG attribution — the same chain as the earlier F-260 asset-sensitivity-tag contribution (PR #262, v4.31.0).
 
@@ -49,7 +49,7 @@ Subsequent distribution (50/50 OWASP coverage milestone, BLP-04 Wave 1) ships in
 `gh` has no `discussion` subcommand, so post + close via the **Discussions UI** (simplest), or the GraphQL API (`addDiscussionComment` + `closeDiscussion` mutations). After closing, record the URL:
 
 ```bash
-echo "https://github.com/davidmatousek/tachi/discussions/179#discussioncomment-<NEW_ID>" > \
+echo "https://github.com/pratik-saptarshi/tachi-rust/discussions/179#discussioncomment-<NEW_ID>" > \
   specs/296-50-50-owasp-coverage-distribution-launch/notes/discussion-179-close-url.txt
 ```
 

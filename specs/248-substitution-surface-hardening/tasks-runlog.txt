@@ -694,7 +694,7 @@ T037 + T043 OUTCOME (2026-05-04)
 
 T037: PR #249 title updated from `feat(248): substitution surface hardening` to
     `feat(248): harden init.sh substitution surface — sed → bash param expansion + input validation + gitignore default`
-via `gh pr edit 249 --title "..."`. URL: https://github.com/davidmatousek/tachi/pull/249
+via `gh pr edit 249 --title "..."`. URL: https://github.com/pratik-saptarshi/tachi-rust/pull/249
 
 T043 (R12 belt-and-suspenders): immediate re-verification via `gh pr view 249 --json title` returned the canonical title verbatim. PASS. Release-please will trigger on squash-merge per repo's release-please-config.json (`feat:` is in the major-bump+release-trigger set).
 
@@ -740,8 +740,8 @@ T040 OUTCOME (2026-05-04 — 5 CI iterations, all surfaced cross-platform bugs)
 ================================================================================
 
 GitHub Actions run 25300565476 — BOTH MATRIX LEGS GREEN.
-- macos-latest: https://github.com/davidmatousek/tachi/actions/runs/25300565476/job/74166665813
-- ubuntu-latest: https://github.com/davidmatousek/tachi/actions/runs/25300565476/job/74166665808
+- macos-latest: https://github.com/pratik-saptarshi/tachi-rust/actions/runs/25300565476/job/74166665813
+- ubuntu-latest: https://github.com/pratik-saptarshi/tachi-rust/actions/runs/25300565476/job/74166665808
 
 The CI matrix did not previously exist in this repo (only release-please.yml on main + tachi-mmdc-preflight.yml with narrow path filter). T040's first execution required authoring `.github/workflows/tachi-pytest.yml` from scratch — modeled after the existing mmdc preflight workflow, with paths-filter scoped to substitution-relevant files only.
 

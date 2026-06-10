@@ -5,7 +5,7 @@ labels: enhancement, stage:discover
 ---
 
 > **Not a maintainer or promoting from a Discussion?**
-> Feature requests start as [Discussions](https://github.com/davidmatousek/tachi/discussions/categories/feature-requests), not Issues. Post your proposal there — I promote threads to Issues once they have traction and an ICE score. See [CONTRIBUTING.md](../../CONTRIBUTING.md#how-feature-requests-become-work) for the lifecycle.
+> Feature requests start as [Discussions](https://github.com/pratik-saptarshi/tachi-rust/discussions/categories/feature-requests), not Issues. Post your proposal there — I promote threads to Issues once they have traction and an ICE score. See [CONTRIBUTING.md](../../CONTRIBUTING.md#how-feature-requests-become-work) for the lifecycle.
 
 ## Source Discussion
 

@@ -240,4 +240,4 @@ A tachi maintainer regenerates the 5 non-agentic example PDFs and expects byte-i
 - `tests/scripts/test_backward_compatibility.py:38-45` — authoritative baseline list (5 non-agentic baselines)
 
 ### GitHub
-- Issue [#194](https://github.com/davidmatousek/tachi/issues/194)
+- Issue [#194](https://github.com/pratik-saptarshi/tachi-rust/issues/194)

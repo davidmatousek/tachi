@@ -7,7 +7,7 @@
         "driver": {
           "name": "aod-security",
           "version": "1.0.0",
-          "informationUri": "https://github.com/davidmatousek/tachi",
+          "informationUri": "https://github.com/pratik-saptarshi/tachi-rust",
           "rules": [
             {
               "id": "A03",

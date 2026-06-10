@@ -7,7 +7,7 @@
 ## Current State
 
 **HEAD**: `d8b2bba` (on `origin/206-misinformation-threat-agent`)
-**PR**: [#207](https://github.com/davidmatousek/tachi/pull/207) — **Draft, awaiting review/merge**
+**PR**: [#207](https://github.com/pratik-saptarshi/tachi-rust/pull/207) — **Draft, awaiting review/merge**
 **Title**: `feat(206): misinformation threat agent (OWASP LLM09:2025)`
 
 ## Waves Complete

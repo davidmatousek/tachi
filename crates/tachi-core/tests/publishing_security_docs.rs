@@ -23,7 +23,7 @@ fn publishing_security_docs_are_repo_specific_and_privacy_aware() {
         "SECURITY.md should point at the public tachi-rust repository"
     );
     assert!(
-        !security.contains("davidmatousek/tachi"),
+        !security.contains("pratik-saptarshi/tachi-rust"),
         "SECURITY.md should not point at the legacy Python repository"
     );
     assert!(

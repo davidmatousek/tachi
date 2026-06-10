@@ -43,7 +43,7 @@ The previously-DETECTED finding `TACHI-VULN-05abc41ad4cc` (INFO, A05 Security Mi
 
 **Remediation evidence** (delivered in PR #273):
 
-- `SECURITY.md` Section "Reporting a Vulnerability" now references the GitHub *Report a vulnerability* button as primary instruction with the canonical `https://github.com/davidmatousek/tachi/security/advisories/new` fallback URL (FR-001 .. FR-004).
+- `SECURITY.md` Section "Reporting a Vulnerability" now references the GitHub *Report a vulnerability* button as primary instruction with the canonical `https://github.com/pratik-saptarshi/tachi-rust/security/advisories/new` fallback URL (FR-001 .. FR-004).
 - GitHub Private Vulnerability Reporting (PVR) toggle was confirmed ON at 15:34 UTC 2026-05-08 via repo settings UI (FR-007 + AC-6 + D-5; durable plain-text confirmation captured in PR #273 description and tasks.md T007/T017 result rows).
 - README.md `## Community` section now contains a one-line pointer to SECURITY.md (FR-008 + T014).
 - CHANGELOG.md F-3 entry (BLP-02 Wave 3) cites TACHI-VULN-05abc41ad4cc closure with INFO + A05 + BLP-02 Wave 3 metadata (FR-009 + T013).

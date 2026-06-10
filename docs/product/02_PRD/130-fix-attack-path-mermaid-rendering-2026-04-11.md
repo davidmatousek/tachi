@@ -384,7 +384,7 @@ Spike should not exceed 0.5 days. If any answer is unclear, team-lead escalates 
 - Team-Lead review findings: [.aod/results/team-lead.md](.aod/results/team-lead.md)
 
 ### Source
-- GitHub Issue: [#130 — Fix attack path Mermaid rendering when mmdc is not installed](https://github.com/davidmatousek/tachi/issues/130)
+- GitHub Issue: [#130 — Fix attack path Mermaid rendering when mmdc is not installed](https://github.com/pratik-saptarshi/tachi-rust/issues/130)
 - External observation: a downstream project's security report was observed shipping raw Mermaid source after running `/tachi.security-report` without `mmdc` installed. The observation is cited as user-impact evidence only — no external report artifacts are imported into tachi, and the FR-130.7 CI test uses the existing `examples/mermaid-agentic-app/` fixture, not an external one.
 
 ### External Sources (Rejected Alternatives)

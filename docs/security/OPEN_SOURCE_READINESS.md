@@ -219,7 +219,7 @@ rm /path/to/project/.env
 
 If you still need `AOD_REPO` (the non-secret value from `.env`), add it to `.env.tpl`:
 ```bash
-AOD_REPO=davidmatousek/tachi
+AOD_REPO=pratik-saptarshi/tachi-rust
 GEMINI_API_KEY=op://Development/Gemini API Key/credential
 ```
 
@@ -261,7 +261,7 @@ It should report that the variable is set (without revealing the full value).
 
 Add new `op://` references to `~/.claude/.env.tpl`:
 ```bash
-AOD_REPO=davidmatousek/tachi
+AOD_REPO=pratik-saptarshi/tachi-rust
 GEMINI_API_KEY=op://Development/Gemini API Key/credential
 ANTHROPIC_API_KEY=op://Development/Anthropic/credential
 GH_TOKEN=op://Development/GitHub CLI/credential

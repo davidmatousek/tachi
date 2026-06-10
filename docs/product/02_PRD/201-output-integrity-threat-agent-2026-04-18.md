@@ -519,7 +519,7 @@ Architect leanings captured during PRD review listed in the Default column.
 
 ## 📚 References
 
-- [GitHub Issue #201](https://github.com/davidmatousek/tachi/issues/201) — source of user stories and Tier 1 framing
+- [GitHub Issue #201](https://github.com/pratik-saptarshi/tachi-rust/issues/201) — source of user stories and Tier 1 framing
 - [BLP-01 Threat Coverage Blueprint](../../../_internal/strategy/BLP-01-threat-coverage.md) §7 F-1 (private) — full F-1 specification including DoD, Coverage Matrix transitions, governance contract
 - [GUIDE-threat-coverage-research §11 Heuristic A signal-class taxonomy](../../../_internal/strategy/GUIDE-threat-coverage-research.md#11-heuristic-a-signal-class-taxonomy) (private) — worked example for ASI09-into-F-1-or-F-4 decision tree
 - [SDR-001 Threat Coverage Strategy](../../../_internal/strategy/SDR-001-threat-coverage-strategy.md) (private) — Option C governance contract: public per-feature ADR with narrow technical scope

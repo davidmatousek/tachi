@@ -21,7 +21,7 @@ source:
 
 **Status**: Delivered
 **Created**: 2026-04-18
-**Delivered**: 2026-04-18 (PR [#195](https://github.com/davidmatousek/tachi/pull/195), squash commit `c4b8dc6`)
+**Delivered**: 2026-04-18 (PR [#195](https://github.com/pratik-saptarshi/tachi-rust/pull/195), squash commit `c4b8dc6`)
 **Spec**: [specs/194-coverage-attestation-report-section/spec.md](../../../specs/194-coverage-attestation-report-section/spec.md)
 **Author**: product-manager
 **Reviewers**: architect, team-lead
@@ -532,7 +532,7 @@ F-B reads whatever `source_attribution` findings carry. Populator wiring remains
 
 - Vision: `docs/product/01_Product_Vision/product-vision.md`
 - BLP-01 initiative memory: `/Users/david/.claude/projects/-Users-david-Projects-tachi/memory/project_blp01_threat_coverage.md`
-- GitHub Issue: [#194](https://github.com/davidmatousek/tachi/issues/194)
+- GitHub Issue: [#194](https://github.com/pratik-saptarshi/tachi-rust/issues/194)
 
 ### Precedent PRDs
 

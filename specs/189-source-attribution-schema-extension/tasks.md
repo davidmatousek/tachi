@@ -151,7 +151,7 @@ triad:
   - SC-007: empty diff on 22 detection-tier files (flat `.claude/agents/tachi/<name>.md` layout + 11 skill-refs). ADR-028 Decision 6 paths also corrected to reflect flat layout.
 - [X] T033 [P] Run quickstart validation — walked 5 steps end-to-end against live pipeline. All passed. One correction: `CWE-1426` → `CWE-116` in the round-trip test example (CWE-1426 not in catalog). Outcome saved to `.aod/results/quickstart-validation.md`.
 - [X] T034 Full pytest suite: run `pytest tests/scripts/ -v` from repo root. Assert all pre-existing tests pass + new T008/T009/T014/T015/T021/T022/T023/T024/T025 tests pass. Zero new failures. Attach output to PR description. Result: 284 passed, 1 skipped (pre-existing SC-003 narrowing).
-- [X] T035 Submit PR — title "feat(189): F-A2 source attribution schema extension (#189)". Body references spec, plan, research, ADR-028, quickstart. Includes SC audit output summary, pytest output summary, test-coverage numbers, 22-file zero-edit confirmation. **PR URL**: https://github.com/davidmatousek/tachi/pull/190
+- [X] T035 Submit PR — title "feat(189): F-A2 source attribution schema extension (#189)". Body references spec, plan, research, ADR-028, quickstart. Includes SC audit output summary, pytest output summary, test-coverage numbers, 22-file zero-edit confirmation. **PR URL**: https://github.com/pratik-saptarshi/tachi-rust/pull/190
 
 **Post-merge**:
 - [X] T036 Post-merge hook — update ADR-028 `Accepted-commit-SHA` placeholder with actual squash-merge SHA. Single-line commit: `docs(adr): ADR-028 post-merge SHA fill`. Mirrors F-A1 Wave 5.2 post-merge fill precedent.

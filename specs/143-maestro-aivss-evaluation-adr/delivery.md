@@ -58,7 +58,7 @@ Smooth sailing. Five-layer scope discipline (FR-008 + SC-006 + Constraints + Out
 
 **New Ideas**: 1
 
-- Track OWASP AIVSS v1.0 release and first external adopter case study — Issue [#168](https://github.com/davidmatousek/tachi/issues/168) (`type:retro`, `stage:discover`)
+- Track OWASP AIVSS v1.0 release and first external adopter case study — Issue [#168](https://github.com/pratik-saptarshi/tachi-rust/issues/168) (`type:retro`, `stage:discover`)
 
 ---
 

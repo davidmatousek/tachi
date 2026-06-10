@@ -641,8 +641,8 @@ Source: `.claude/skills/tachi-shared/references/maestro-agentic-patterns-shared.
 
 ### Product Documentation
 - Product Vision: [product-vision.md](../01_Product_Vision/product-vision.md)
-- GitHub Issue: [#145](https://github.com/davidmatousek/tachi/issues/145)
-- Parent Issue: [#136](https://github.com/davidmatousek/tachi/issues/136) (MAESTRO framework compliance)
+- GitHub Issue: [#145](https://github.com/pratik-saptarshi/tachi-rust/issues/145)
+- Parent Issue: [#136](https://github.com/pratik-saptarshi/tachi-rust/issues/136) (MAESTRO framework compliance)
 
 ### Related PRDs
 - [PRD 024: Example Threat Models](024-example-threat-models-2026-03-23.md) — established examples directory convention

@@ -215,7 +215,7 @@ grep -E "292:|@armorer-labs|armorer-labs" CHANGELOG.md | head -5
 ## 14. Verify SC-008: Discussion #179 Delivery Comment
 
 ```bash
-gh api repos/davidmatousek/tachi/discussions/179/comments --jq '.[] | select(.author.login=="davidmatousek") | {created_at, body_excerpt: (.body | .[0:200])}' | head -20
+gh api repos/pratik-saptarshi/tachi-rust/discussions/179/comments --jq '.[] | select(.author.login=="davidmatousek") | {created_at, body_excerpt: (.body | .[0:200])}' | head -20
 ```
 
 **Expected**: A delivery comment posted within 24 hours of merge linking the PR, pattern-catalog anchors, and CHANGELOG section. [MANUAL-ONLY] reviewer inspects the comment content.

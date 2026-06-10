@@ -3,8 +3,8 @@
 **Feature**: 282-pre-commit-secret-scanning-defaults (F-5)
 **Delivery Date**: 2026-05-10
 **Squash-merge SHA**: `18378bd`
-**PR**: [#283](https://github.com/davidmatousek/tachi/pull/283) — merged + branch deleted
-**Release**: v4.35.0 (release-please PR [#284](https://github.com/davidmatousek/tachi/pull/284))
+**PR**: [#283](https://github.com/pratik-saptarshi/tachi-rust/pull/283) — merged + branch deleted
+**Release**: v4.35.0 (release-please PR [#284](https://github.com/pratik-saptarshi/tachi-rust/pull/284))
 **Initiative**: BLP-02 Wave 4+ — **5th and final feature; closes BLP-02 5/5**
 **LinkedIn-thread**: Closed punch-list 3/3 (F-3 SECURITY.md + F-4 CLAUDE_PERMISSIONS.md + F-5 pre-commit)
 
@@ -162,11 +162,11 @@ F-5 delivery closes the **BLP-02 enterprise hardening initiative** at 5-of-5 fea
 
 | Feature | Issue | Wave | Delivered |
 |---------|-------|------|-----------|
-| F-1 | [#250](https://github.com/davidmatousek/tachi/issues/250) | W1 (2026-05-04) | ML 2023 + Mobile 2024 + Web/API coverage gap |
-| F-2 | [#256](https://github.com/davidmatousek/tachi/issues/256) | W2 (2026-05-05) | Misinformation threat agent (LLM09:2025) |
-| F-3 | [#272](https://github.com/davidmatousek/tachi/issues/272) | W3 (2026-05-08) | SECURITY.md disclosure policy (docs-only, no ADR) |
-| F-4 | [#277](https://github.com/davidmatousek/tachi/issues/277) | W4 (2026-05-09) | Claude permissions baseline (ADR-041) |
-| F-5 | [#282](https://github.com/davidmatousek/tachi/issues/282) | W4+ (2026-05-10) | **Pre-commit secret-scanning defaults (ADR-042)** ← THIS |
+| F-1 | [#250](https://github.com/pratik-saptarshi/tachi-rust/issues/250) | W1 (2026-05-04) | ML 2023 + Mobile 2024 + Web/API coverage gap |
+| F-2 | [#256](https://github.com/pratik-saptarshi/tachi-rust/issues/256) | W2 (2026-05-05) | Misinformation threat agent (LLM09:2025) |
+| F-3 | [#272](https://github.com/pratik-saptarshi/tachi-rust/issues/272) | W3 (2026-05-08) | SECURITY.md disclosure policy (docs-only, no ADR) |
+| F-4 | [#277](https://github.com/pratik-saptarshi/tachi-rust/issues/277) | W4 (2026-05-09) | Claude permissions baseline (ADR-041) |
+| F-5 | [#282](https://github.com/pratik-saptarshi/tachi-rust/issues/282) | W4+ (2026-05-10) | **Pre-commit secret-scanning defaults (ADR-042)** ← THIS |
 
 ADRs accepted: 038 + 040 + 041 + 042 (F-5 ADR flips Proposed→Accepted at T034).
 

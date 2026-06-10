@@ -31,11 +31,11 @@ A security researcher who finds a vulnerability in tachi can locate a clear, doc
 
 **Why this priority**: This is the core problem F-3 closes. The 2026-05-02 LinkedIn thread that triggered BLP-02 was itself an example of public disclosure that a properly configured SECURITY.md surface could have channeled into a private GitHub Security Advisory. Without SECURITY.md present in GitHub-canonical form, the researcher's default escalation is the public path that produced that thread.
 
-**Independent Test**: Open `https://github.com/davidmatousek/tachi/blob/main/SECURITY.md`, scroll to the "Reporting a Vulnerability" section, follow the primary instruction (the *Report a vulnerability* button) or the fallback URL — confirm a private advisory form is reachable. Delivers value even before the toggle is enabled (URL fallback works; toggle adds the Security-tab button for discovery).
+**Independent Test**: Open `https://github.com/pratik-saptarshi/tachi-rust/blob/main/SECURITY.md`, scroll to the "Reporting a Vulnerability" section, follow the primary instruction (the *Report a vulnerability* button) or the fallback URL — confirm a private advisory form is reachable. Delivers value even before the toggle is enabled (URL fallback works; toggle adds the Security-tab button for discovery).
 
 **Acceptance Scenarios**:
 
-1. **Given** the repo root, **When** a researcher opens `SECURITY.md`, **Then** the "Reporting a Vulnerability" section presents the *Report a vulnerability* button on the Security tab as the primary instruction, with a fallback direct URL `https://github.com/davidmatousek/tachi/security/advisories/new`, and an explicit "do not open a public Issue" prohibition.
+1. **Given** the repo root, **When** a researcher opens `SECURITY.md`, **Then** the "Reporting a Vulnerability" section presents the *Report a vulnerability* button on the Security tab as the primary instruction, with a fallback direct URL `https://github.com/pratik-saptarshi/tachi-rust/security/advisories/new`, and an explicit "do not open a public Issue" prohibition.
 2. **Given** the SECURITY.md "What to include" subsection, **When** a researcher prepares a report, **Then** they see prompts for: description, steps to reproduce, affected components, potential impact.
 3. **Given** the SECURITY.md "What to expect" subsection, **When** a researcher submits a report, **Then** they see the 5-business-day acknowledgment SLA, assessment-within-1-week commitment, and fix-timeline-communicated-after-assessment commitment.
 
@@ -47,11 +47,11 @@ A future Daniel Wood (community member who spots a security concern during their
 
 **Why this priority**: Closes the LinkedIn-fallback-pattern that produced the 2026-05-02 thread. The Security tab is the first place a researcher looks for disclosure path; the button makes the channel discoverable without requiring the researcher to read SECURITY.md first.
 
-**Independent Test**: Visit `https://github.com/davidmatousek/tachi/security` in a logged-in browser session — confirm the *Report a vulnerability* button is rendered as a primary call-to-action above any advisory list. This story is fully delivered by enabling the GitHub repo's Private Vulnerability Reporting toggle, independent of SECURITY.md content.
+**Independent Test**: Visit `https://github.com/pratik-saptarshi/tachi-rust/security` in a logged-in browser session — confirm the *Report a vulnerability* button is rendered as a primary call-to-action above any advisory list. This story is fully delivered by enabling the GitHub repo's Private Vulnerability Reporting toggle, independent of SECURITY.md content.
 
 **Acceptance Scenarios**:
 
-1. **Given** the GitHub repo settings have the **Private vulnerability reporting** toggle enabled, **When** any visitor (authenticated) navigates to `https://github.com/davidmatousek/tachi/security`, **Then** the **Report a vulnerability** button is visible on the page.
+1. **Given** the GitHub repo settings have the **Private vulnerability reporting** toggle enabled, **When** any visitor (authenticated) navigates to `https://github.com/pratik-saptarshi/tachi-rust/security`, **Then** the **Report a vulnerability** button is visible on the page.
 2. **Given** an authenticated reviewer with no prior knowledge of tachi's disclosure channel, **When** they look for "how to report a vulnerability", **Then** the Security-tab button is the first discoverable affordance — no LinkedIn / DM / email fallback is required.
 
 ---
@@ -104,7 +104,7 @@ An enterprise security architect doing a pre-sales review of tachi reads the rep
 
 ### Edge Cases
 
-- **Toggle silently disabled later** (PRD R-2): A future maintainer or contributor with repo-admin access could accidentally toggle Private Vulnerability Reporting OFF in `Settings → Code security and analysis`. Mitigation in spec scope: SECURITY.md "Reporting" section footer notes the dependency. Out of spec scope (deferred to AC-13 follow-up Issue): periodic posture probe scraping `https://api.github.com/repos/davidmatousek/tachi` and asserting `security_and_analysis.private_vulnerability_reporting.status == "enabled"`.
+- **Toggle silently disabled later** (PRD R-2): A future maintainer or contributor with repo-admin access could accidentally toggle Private Vulnerability Reporting OFF in `Settings → Code security and analysis`. Mitigation in spec scope: SECURITY.md "Reporting" section footer notes the dependency. Out of spec scope (deferred to AC-13 follow-up Issue): periodic posture probe scraping `https://api.github.com/repos/pratik-saptarshi/tachi-rust` and asserting `security_and_analysis.private_vulnerability_reporting.status == "enabled"`.
 - **Researcher uses wrong URL despite SECURITY.md** (PRD R-3): A researcher reads SECURITY.md but still defaults to LinkedIn / DM / email. Mitigation: GitHub auto-renders the *Report a vulnerability* button on the Security tab once the toggle is enabled — UI affordance is more discoverable than reading the file.
 - **Adopter on pinned minor surprised by latest-minor-only policy** (PRD R-4): An adopter pinning to `v4.31.x` discovers v4.32.0 release deprecates their pinned line. Mitigation: SECURITY.md worked example explicitly states this, recommends pinning to the major line (`v4.x`) for `make update` adopters.
 - **GitHub deprecates Private Vulnerability Reporting** (PRD R-6): Tachi's documented channel depends on GitHub continuing to offer the feature and the URL pattern. Mitigation: SECURITY.md is a single-file, trivially-updatable artifact — recovery from a hypothetical GitHub-side change is a one-PR delta.
@@ -127,7 +127,7 @@ An enterprise security architect doing a pre-sales review of tachi reads the rep
 
 - **FR-003** (operationalizes AC-2): **Given** the SECURITY.md write step, **Before** the file is committed, the maintainer MUST run the operational cross-check: `cat .release-please-manifest.json && git tag --list 'v*' | sort -V | tail -5 && gh pr list --state open --search "release-please" --limit 3`. **Then** SECURITY.md text MUST reference the latest *tag* (not the manifest). **And** any manifest-vs-tag discrepancy MUST be captured as a side observation in the PR description and queued as a separate chore Issue per AC-14, without blocking F-3.
 
-- **FR-004** (covers AC-3): **Given** the SECURITY.md "Reporting a Vulnerability" section, **When** a researcher reads it, **Then** the primary instruction MUST direct them to the **Report a vulnerability** button on the Security tab. **And** a fallback direct URL `https://github.com/davidmatousek/tachi/security/advisories/new` MUST be present. **And** an explicit "do not open a public Issue" prohibition MUST be stated. **And** a "What to include" subsection MUST list: description, steps to reproduce, affected components, potential impact.
+- **FR-004** (covers AC-3): **Given** the SECURITY.md "Reporting a Vulnerability" section, **When** a researcher reads it, **Then** the primary instruction MUST direct them to the **Report a vulnerability** button on the Security tab. **And** a fallback direct URL `https://github.com/pratik-saptarshi/tachi-rust/security/advisories/new` MUST be present. **And** an explicit "do not open a public Issue" prohibition MUST be stated. **And** a "What to include" subsection MUST list: description, steps to reproduce, affected components, potential impact.
 
 - **FR-005** (covers AC-4): **Given** the SECURITY.md "What to expect" section, **Then** the acknowledgment SLA MUST be stated as **"5 business days to acknowledge"**. **And** the assessment-within-1-week commitment MUST be retained. **And** the fix-timeline-communicated-after-assessment commitment MUST be retained. **And** the credit clause (researcher named in fix commit + release notes by default; anonymity available on request) MUST be retained.
 
@@ -143,11 +143,11 @@ An enterprise security architect doing a pre-sales review of tachi reads the rep
 
 - **FR-010** (covers AC-6): **Given** the GitHub repo settings, **When** the maintainer navigates to `Settings → Code security and analysis → Advanced Security`, **Then** the **Private vulnerability reporting** toggle MUST be set to ON. **And** verification evidence (screenshot or plain-text confirmation that the toggle is ON) MUST be attached to the delivery PR description. *[MANUAL-ONLY] GitHub repo-settings UI is not script-accessible from F-3's tooling; toggle change must be performed in-browser by an account with repo-admin rights.*
 
-- **FR-011** (covers AC-7): **Given** FR-010 is satisfied (toggle is ON), **When** any authenticated visitor opens `https://github.com/davidmatousek/tachi/security`, **Then** the **Report a vulnerability** button MUST be visible on the page. *[MANUAL-ONLY] UI inspection — no programmatic check in F-3 scope; deferred posture probe captured as AC-13 follow-up Issue.*
+- **FR-011** (covers AC-7): **Given** FR-010 is satisfied (toggle is ON), **When** any authenticated visitor opens `https://github.com/pratik-saptarshi/tachi-rust/security`, **Then** the **Report a vulnerability** button MUST be visible on the page. *[MANUAL-ONLY] UI inspection — no programmatic check in F-3 scope; deferred posture probe captured as AC-13 follow-up Issue.*
 
 #### Verification surface
 
-- **FR-012** (covers AC-11): **Given** an authenticated GitHub session, **When** the maintainer opens `https://github.com/davidmatousek/tachi/security/advisories/new`, **Then** the advisory submission form MUST load successfully (no 404, no permission error). **And** the form MUST NOT be submitted (smoke-test only). *[MANUAL-ONLY] Authenticated-UI smoke-test — no automation in F-3 scope.*
+- **FR-012** (covers AC-11): **Given** an authenticated GitHub session, **When** the maintainer opens `https://github.com/pratik-saptarshi/tachi-rust/security/advisories/new`, **Then** the advisory submission form MUST load successfully (no 404, no permission error). **And** the form MUST NOT be submitted (smoke-test only). *[MANUAL-ONLY] Authenticated-UI smoke-test — no automation in F-3 scope.*
 
 - **FR-013** (covers AC-9 + AC-10): **Given** the post-merge `/security` re-scan, **Then** TACHI-VULN-05abc41ad4cc MUST be recorded as REMEDIATED in `.aod/results/security-scan.md`. **And** no new HIGH or MEDIUM findings MUST be introduced. **And** LOW or INFO side-effect findings MAY appear if they document a separate concern.
 
@@ -157,7 +157,7 @@ An enterprise security architect doing a pre-sales review of tachi reads the rep
 
 #### Out of F-3 scope (committed as post-merge follow-up Issues)
 
-- **AC-13 / posture probe**: Periodic check that `security_and_analysis.private_vulnerability_reporting.status == "enabled"` against `https://api.github.com/repos/davidmatousek/tachi`. Logged at `/aod.deliver` time as a low-priority backlog Issue. NOT a F-3 functional requirement.
+- **AC-13 / posture probe**: Periodic check that `security_and_analysis.private_vulnerability_reporting.status == "enabled"` against `https://api.github.com/repos/pratik-saptarshi/tachi-rust`. Logged at `/aod.deliver` time as a low-priority backlog Issue. NOT a F-3 functional requirement.
 - **AC-14 / manifest-vs-tag chore**: Investigate the v4.32.0-tag / 4.31.0-manifest discrepancy observed at PRD draft. Logged at `/aod.deliver` time as a chore Issue. NOT a F-3 functional requirement.
 
 ### Key Entities *(include if feature involves data)*
@@ -175,7 +175,7 @@ An enterprise security architect doing a pre-sales review of tachi reads the rep
 ### Measurable Outcomes
 
 - **SC-001** (PRD G1): Post-merge `/security` re-scan records TACHI-VULN-05abc41ad4cc as REMEDIATED. Verified by reading `.aod/results/security-scan.md` after re-scan.
-- **SC-002** (PRD G2): GitHub *Report a vulnerability* button is visible on the repo's Security tab. Verified by manual UI inspection at `https://github.com/davidmatousek/tachi/security`.
+- **SC-002** (PRD G2): GitHub *Report a vulnerability* button is visible on the repo's Security tab. Verified by manual UI inspection at `https://github.com/pratik-saptarshi/tachi-rust/security`.
 - **SC-003** (PRD G3): SECURITY.md sections match the GitHub-canonical 5-section structure. Verified by reviewer diff inspection of the merged file.
 - **SC-004** (PRD G4): Supported-versions policy is verifiable against the latest released tag at merge time. Verified by re-running the operational cross-check command (FR-003) at merge time and inspecting the SECURITY.md text.
 - **SC-005** (PRD G5): tachi-specific scope routes likely-misdirected reports to the correct destination. Verified by reviewer scope-language review (in-scope surfaces enumerated; out-of-scope routing to Anthropic / third-party MCP / adopter / regular Issues stated).
@@ -190,7 +190,7 @@ An enterprise security architect doing a pre-sales review of tachi reads the rep
 
 ## Assumptions
 
-- **Maintainer holds GitHub repo-admin rights** for `davidmatousek/tachi` — required for FR-010 toggle change. PRD §Loosely-Coupled-Dependencies confirms this.
+- **Maintainer holds GitHub repo-admin rights** for `pratik-saptarshi/tachi-rust` — required for FR-010 toggle change. PRD §Loosely-Coupled-Dependencies confirms this.
 - **`.aod/personalization.env`** is the canonical adopter-personalization file; if a future migration moves it, FR-007's out-of-scope enumeration must be updated. Outside F-3 scope.
 - **GitHub's URL pattern `https://github.com/{owner}/{repo}/security/advisories/new`** remains stable through the F-3 delivery window. Treated as low-vendor-risk per PRD §R-6.
 - **Release-please pipeline is operational** at PRD draft (latest successful release: v4.31.0 / F-2 PR #257 / 2026-05-05). PRD §Loosely-Coupled-Dependencies confirms.

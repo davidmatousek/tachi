@@ -558,4 +558,4 @@ sequenceDiagram
 - **ADR template**: [docs/architecture/02_ADRs/ADR-000-template.md](../../docs/architecture/02_ADRs/ADR-000-template.md)
 - **Git workflow rules**: [.claude/rules/git-workflow.md](../../.claude/rules/git-workflow.md) (release-please verification pattern; F-212 incident reference)
 - **BLP-02 strategy**: `_internal/strategy/BLP-02-enterprise-hardening.md` (if present)
-- **Draft PR**: [#257](https://github.com/davidmatousek/tachi/pull/257) (opened at plan stage; will be retitled at deliver stage if needed)
+- **Draft PR**: [#257](https://github.com/pratik-saptarshi/tachi-rust/pull/257) (opened at plan stage; will be retitled at deliver stage if needed)

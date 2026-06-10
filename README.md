@@ -7,7 +7,7 @@
 ![tachi — Threat Modeling and Vulnerability Detection Harness for Claude Code. AI-Reasoning Scanner (STRIDE + AI + MAESTRO) with 50/50 OWASP Top 10 coverage across five frameworks, a 3-step install, and a 5-step security-report workflow.](brand/posters/2026-05-29-owasp-coverage-poster.jpg)
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![GitHub release](https://img.shields.io/github/v/release/davidmatousek/tachi)](https://github.com/davidmatousek/tachi/releases)
+[![GitHub release](https://img.shields.io/github/v/release/pratik-saptarshi/tachi-rust)](https://github.com/pratik-saptarshi/tachi-rust/releases)
 [![Built with AOD Kit](https://img.shields.io/badge/built%20with-AOD%20Kit-blueviolet.svg)](https://github.com/davidmatousek/agentic-oriented-development-kit)
 
 **Get started**: [Quick Start](#quick-start) | [Developer Guide](docs/guides/DEVELOPER_GUIDE_TACHI.md) (full walkthrough with worked examples)
@@ -78,14 +78,14 @@ tachi is built with the [Agentic Oriented Development Kit (AOD Kit)](https://git
 
 ## Community
 
-- **Questions, ideas, and feature requests** → [GitHub Discussions](https://github.com/davidmatousek/tachi/discussions)
-- **Reproducible bugs** → [GitHub Issues](https://github.com/davidmatousek/tachi/issues)
-- **Security vulnerabilities** → [private advisory](https://github.com/davidmatousek/tachi/security/advisories/new) (do not post publicly)
+- **Questions, ideas, and feature requests** → [GitHub Discussions](https://github.com/pratik-saptarshi/tachi-rust/discussions)
+- **Reproducible bugs** → [GitHub Issues](https://github.com/pratik-saptarshi/tachi-rust/issues)
+- **Security vulnerabilities** → [private advisory](https://github.com/pratik-saptarshi/tachi-rust/security/advisories/new) (do not post publicly)
 - **Full security policy** → [SECURITY.md](SECURITY.md) (supported versions, response SLA, scope)
 - **Pre-commit secret-scanning** → [docs/standards/PRECOMMIT_HOOKS.md](docs/standards/PRECOMMIT_HOOKS.md) (gitleaks default-secure hook; existing adopters opt-in via `pre-commit install`)
-- **Real-world usage** → [In the Wild](https://github.com/davidmatousek/tachi/discussions/categories/in-the-wild) — tell me how you're using tachi, anonymized is fine
+- **Real-world usage** → [In the Wild](https://github.com/pratik-saptarshi/tachi-rust/discussions/categories/in-the-wild) — tell me how you're using tachi, anonymized is fine
 
-If you're new here, start with the [Welcome thread](https://github.com/davidmatousek/tachi/discussions) for how the board is organized.
+If you're new here, start with the [Welcome thread](https://github.com/pratik-saptarshi/tachi-rust/discussions) for how the board is organized.
 
 ---
 
@@ -123,7 +123,7 @@ npm install -g @mermaid-js/mermaid-cli
 ### 1. Clone tachi (one-time)
 
 ```bash
-git clone https://github.com/davidmatousek/tachi.git ~/Projects/tachi
+git clone https://github.com/pratik-saptarshi/tachi-rust.git ~/Projects/tachi
 ```
 
 ### 2. Add tachi to your project

@@ -21,7 +21,7 @@ source:
 **Author**: product-manager
 **Reviewers**: architect, team-lead
 **Priority**: P1 (High) — MAESTRO compliance closure
-**Parent Discovery**: [#143](https://github.com/davidmatousek/tachi/issues/143) (umbrella discovery #136)
+**Parent Discovery**: [#143](https://github.com/pratik-saptarshi/tachi-rust/issues/143) (umbrella discovery #136)
 
 ---
 
@@ -61,7 +61,7 @@ Single short ADR cycle: ~1 working day end-to-end (research, mapping table, ADR 
 Tachi's vision is to be *"the default threat modeling toolkit for any team building agentic AI applications."* The default toolkit must answer the questions that agentic AI security teams are actually asking. CSA MAESTRO is the published taxonomy framework; OWASP AIVSS is the published scoring framework practitioners pair with it. Shipping canonical MAESTRO labels (PRD 136) without a documented stance on AIVSS leaves a gap that adopters must close themselves — by reading the risk-scoring schema and reverse-engineering whether tachi's composite is "AIVSS-aligned." A traceable ADR closes that gap with a single linkable decision.
 
 ### Roadmap Fit
-This is the **fourth and final phase** of the MAESTRO compliance initiative captured in the umbrella discovery [#136](https://github.com/davidmatousek/tachi/issues/136):
+This is the **fourth and final phase** of the MAESTRO compliance initiative captured in the umbrella discovery [#136](https://github.com/pratik-saptarshi/tachi-rust/issues/136):
 
 - **Phase 1**: [PRD 136](136-maestro-canonical-layer-correctness-fix-2026-04-10.md) — Canonical layer correctness fix — **Delivered**
 - **Phase 2**: [PRD 141](141-maestro-cross-layer-attack-chains-2026-04-12.md) — Cross-layer attack chain analysis — **Delivered**
@@ -444,8 +444,8 @@ Single-day cycle expected. ADR-only feature. Two implementation waves: Wave 1 = 
 ## References
 
 ### Internal
-- [Issue #143](https://github.com/davidmatousek/tachi/issues/143) — Discovery item for this PRD
-- [Issue #136](https://github.com/davidmatousek/tachi/issues/136) — Umbrella MAESTRO compliance discovery
+- [Issue #143](https://github.com/pratik-saptarshi/tachi-rust/issues/143) — Discovery item for this PRD
+- [Issue #136](https://github.com/pratik-saptarshi/tachi-rust/issues/136) — Umbrella MAESTRO compliance discovery
 - [PRD 035 — Quantitative Risk Scoring](035-quantitative-risk-scoring-2026-03-27.md) — Original composite scoring PRD
 - [PRD 136 — MAESTRO Canonical Layer Correctness Fix](136-maestro-canonical-layer-correctness-fix-2026-04-10.md) — Phase 1
 - [PRD 141 — MAESTRO Cross-Layer Attack Chains](141-maestro-cross-layer-attack-chains-2026-04-12.md) — Phase 2

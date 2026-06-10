@@ -184,7 +184,7 @@ See Phase 2 T009, T010, T011 — ADR-031 Proposed authoring happens at Wave 1.1 
 - [X] T053 [P] SC-012: verify schema_version `"1.7"` + regex extends to `MI` per T006; regex unit test passes
 - [X] T054 [P] SC-014: three-signal-class discipline per T040 result
 - [X] T055 **R5 code-review double-check (per HIGH-1 buffer-day budget model — consumed at Wave 2.2 PM, NOT buffer)**: senior-backend-engineer + code-reviewer review pattern-catalog worked examples for NFR-6 clearly-fictional framing compliance. Record pass/fail at `.aod/results/wave5-nfr6-compliance-check.md`.
-- [X] T056 Open PR from `206-misinformation-threat-agent` → `main` with title `feat(206): misinformation threat agent (OWASP LLM09:2025)` and body linking to PRD, spec, plan, tasks, ADR-031. Request triple review (PM + Architect + Team-Lead) as part of PR process. **Draft PR #207 opened 2026-04-24 at https://github.com/davidmatousek/tachi/pull/207.**
+- [X] T056 Open PR from `206-misinformation-threat-agent` → `main` with title `feat(206): misinformation threat agent (OWASP LLM09:2025)` and body linking to PRD, spec, plan, tasks, ADR-031. Request triple review (PM + Architect + Team-Lead) as part of PR process. **Draft PR #207 opened 2026-04-24 at https://github.com/pratik-saptarshi/tachi-rust/pull/207.**
 
 **Checkpoint**: All 14 SCs green; NFR-6 compliance verified; PR opened. Wave 6 buffer day available if R2 (regeneration friction) materializes or delivery-retrospective authoring deferred.
 

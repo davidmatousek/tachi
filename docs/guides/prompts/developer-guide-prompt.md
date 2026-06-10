@@ -24,7 +24,7 @@ Tachi is an automated threat modeling toolkit that extends the Microsoft STRIDE 
 - Maps findings to OWASP frameworks: Top 10 Web 2025, LLM Top 10 v2025, Agentic Top 10, MCP Top 10
 - Open source, Apache 2.0 licensed
 
-**Repository**: https://github.com/davidmatousek/tachi
+**Repository**: https://github.com/pratik-saptarshi/tachi-rust
 
 ---
 
@@ -409,7 +409,7 @@ From the user's project root:
 
 ```bash
 # Clone tachi as a sibling project (one-time, reuse across projects)
-git clone https://github.com/davidmatousek/tachi.git ~/Projects/tachi
+git clone https://github.com/pratik-saptarshi/tachi-rust.git ~/Projects/tachi
 
 # Copy agents + templates into your project's Claude Code agents directory
 cp -r ~/Projects/tachi/adapters/claude-code/agents/ .claude/agents/tachi/

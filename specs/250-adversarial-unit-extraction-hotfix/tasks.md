@@ -26,7 +26,7 @@ triad:
 **Input**: Design documents from `/specs/250-adversarial-unit-extraction-hotfix/`
 **Prerequisites**: [plan.md](./plan.md) (PM ✓ + Architect ✓), [spec.md](./spec.md) (PM ✓), [research.md](./research.md), [data-model.md](./data-model.md), [contracts/](./contracts/)
 **PRD**: [docs/product/02_PRD/250-adversarial-unit-extraction-hotfix-2026-05-04.md](../../docs/product/02_PRD/250-adversarial-unit-extraction-hotfix-2026-05-04.md)
-**Branch**: `250-adversarial-unit-extraction-hotfix` | **Draft PR**: [#253](https://github.com/davidmatousek/tachi/pull/253)
+**Branch**: `250-adversarial-unit-extraction-hotfix` | **Draft PR**: [#253](https://github.com/pratik-saptarshi/tachi-rust/pull/253)
 
 **Tests**: this hot-fix's deliverable IS pytest tests. The "tasks" below author tests; there is no separate "write tests first" phase.
 
@@ -42,7 +42,7 @@ triad:
 ## Baseline reference (TC-2 pin)
 
 **CI run baseline**: GitHub Actions run `25314246672` (workflow "tachi pytest")
-- URL: `https://github.com/davidmatousek/tachi/actions/runs/25314246672`
+- URL: `https://github.com/pratik-saptarshi/tachi-rust/actions/runs/25314246672`
 - Head SHA: `219dfeed3e7b81c419920e8dc7a84c73dda4ad95`
 - Created: `2026-05-04T10:35:23Z`
 - Conclusion: `failure` (macos-latest cold-cache 300s subprocess timeout on first init.sh adversarial case)
@@ -122,7 +122,7 @@ This pin closes TC-2 (architect concern carried forward from PRD).
 
 ### Ship the atomic PR (TC-3)
 
-- [X] T016 Stage all four new/modified test files in a single commit: `git add tests/scripts/test_template_substitute_unit.py tests/scripts/test_init_input_unit.py tests/scripts/test_init_sh_adversarial.py tests/scripts/test_substitute_shim_canary.py specs/250-adversarial-unit-extraction-hotfix/ docs/architecture/01_system_design/README.md` then `git commit -m "$(cat <<'EOF'`...EOF blocks per `.claude/rules/git-workflow.md` commit standards. Use a Conventional-Commit subject `fix(250): extract adversarial unit tests — eliminate cold-cache CI flake` (matches PR title). Body includes references to `[#250](https://github.com/davidmatousek/tachi/issues/250)`, the baseline run pin, and `Co-Authored-By:` line per project standard. Do NOT split into multiple commits — TC-3 atomic-PR ordering forbids intermediate states. **Note**: a follow-up commit lands as part of Phase 6 (Option Z scope expansion); the squash-merge collapses to one Conventional-Commits subject on `main`.
+- [X] T016 Stage all four new/modified test files in a single commit: `git add tests/scripts/test_template_substitute_unit.py tests/scripts/test_init_input_unit.py tests/scripts/test_init_sh_adversarial.py tests/scripts/test_substitute_shim_canary.py specs/250-adversarial-unit-extraction-hotfix/ docs/architecture/01_system_design/README.md` then `git commit -m "$(cat <<'EOF'`...EOF blocks per `.claude/rules/git-workflow.md` commit standards. Use a Conventional-Commit subject `fix(250): extract adversarial unit tests — eliminate cold-cache CI flake` (matches PR title). Body includes references to `[#250](https://github.com/pratik-saptarshi/tachi-rust/issues/250)`, the baseline run pin, and `Co-Authored-By:` line per project standard. Do NOT split into multiple commits — TC-3 atomic-PR ordering forbids intermediate states. **Note**: a follow-up commit lands as part of Phase 6 (Option Z scope expansion); the squash-merge collapses to one Conventional-Commits subject on `main`.
 - [X] T017 Push to draft PR #253: `git push origin 250-adversarial-unit-extraction-hotfix`. Confirm the push lands by checking PR #253 has new commits.
 - [X] T018 Wait for CI on PR #253 to complete on both `macos-latest` and `ubuntu-latest` matrix legs. Run `gh pr checks 253 --watch` until all checks complete. Confirm: both legs green. Record measured init.sh-suite duration on `macos-latest` from the GH Actions step timer and compare to baseline 30–40 min band — confirm it's ≤15 min (SC-002) and the delta vs baseline 25314246672 is ≥25 min (SC-005).
 - [X] T019 Verify PR #253 title is `fix(250): extract adversarial unit tests — eliminate cold-cache CI flake` (set at draft creation). If title changed, retitle: `gh pr edit 253 --title "fix(250): extract adversarial unit tests — eliminate cold-cache CI flake"`. Then mark PR ready for review: `gh pr ready 253`.

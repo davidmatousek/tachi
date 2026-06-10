@@ -108,7 +108,7 @@ Established pattern across `.aod/scripts/bash/`: `#!/usr/bin/env bash` shebang; 
 
 - v2.x of `gitleaks/gitleaks-action` is **proprietary** (license changed from MIT pre-v2.0.0).
 - **Free for personal accounts**; **organizations require a `GITLEAKS_LICENSE` key** (paid).
-- Tachi is org-owned (`davidmatousek/tachi`) — would require paid license.
+- Tachi is org-owned (`pratik-saptarshi/tachi-rust`) — would require paid license.
 - **Recommendation**: invoke gitleaks **binary directly** in `.github/workflows/gitleaks.yml` (download release tarball, verify checksum, run `gitleaks git`). Avoids proprietary license while keeping MIT-licensed gitleaks core.
 
 ### Bypass mechanisms (verified)

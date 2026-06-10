@@ -2,7 +2,7 @@
 
 **Delivery Date**: 2026-04-11
 **Branch**: `130-prd-130-fix` (deleted post-merge)
-**PR**: [#148](https://github.com/davidmatousek/tachi/pull/148) — squash commit `d35a667`
+**PR**: [#148](https://github.com/pratik-saptarshi/tachi-rust/pull/148) — squash commit `d35a667`
 
 ---
 

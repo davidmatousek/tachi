@@ -71,7 +71,7 @@ The Gemini key is only needed for generating infographic images (`.jpg`). All te
 Run this once. The tachi repo is shared across all your projects -- you never need to clone it again.
 
 ```bash
-git clone https://github.com/davidmatousek/tachi.git ~/Projects/tachi
+git clone https://github.com/pratik-saptarshi/tachi-rust.git ~/Projects/tachi
 ```
 
 If you have already cloned tachi, pull the latest instead:
@@ -1010,7 +1010,7 @@ From your project root:
 
 ```bash
 # Clone tachi (one-time setup)
-git clone https://github.com/davidmatousek/tachi.git ~/Projects/tachi
+git clone https://github.com/pratik-saptarshi/tachi-rust.git ~/Projects/tachi
 
 # Copy agents, commands, schemas, and templates into your project
 cp -r ~/Projects/tachi/.claude/agents/tachi/ .claude/agents/tachi/

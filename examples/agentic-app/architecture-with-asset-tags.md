@@ -1,6 +1,6 @@
 # Agentic AI Application — Architecture with Asset-Sensitivity Tags
 
-Worked example for [Issue #260](https://github.com/davidmatousek/tachi/issues/260) — the asset-sensitivity tag prototype. This file is a copy of `architecture.md` with `[asset:tag1,tag2]` annotations added to the components that store or process high-value data. The risk-scorer's Section 3.5 modifier pass (see `.claude/skills/tachi-risk-scoring/references/asset-modifiers.md`) consumes these annotations to elevate CVSS impact bits on findings whose target component carries asset tags.
+Worked example for [Issue #260](https://github.com/pratik-saptarshi/tachi-rust/issues/260) — the asset-sensitivity tag prototype. This file is a copy of `architecture.md` with `[asset:tag1,tag2]` annotations added to the components that store or process high-value data. The risk-scorer's Section 3.5 modifier pass (see `.claude/skills/tachi-risk-scoring/references/asset-modifiers.md`) consumes these annotations to elevate CVSS impact bits on findings whose target component carries asset tags.
 
 > **Status**: prototype demonstration. The canonical `architecture.md` is unchanged so existing byte-identical baselines under `SOURCE_DATE_EPOCH=1700000000` continue to pass. To exercise the modifier pipeline against this variant, run `/tachi.threat-model examples/agentic-app/architecture-with-asset-tags.md` followed by `/tachi.risk-score`.
 

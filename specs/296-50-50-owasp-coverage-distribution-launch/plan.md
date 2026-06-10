@@ -37,7 +37,7 @@ Author one new in-tree canonical anchor file (`docs/standards/OWASP_COVERAGE.md`
 **Primary Dependencies**: `git` + `gh` CLI (for Discussion close + Issue #296 close + PR ready-for-review); browser for github.com rendering inspection + LinkedIn publication; YAML parser for `schemas/taxonomy/owasp.yaml` read-only count verification (`grep -c "^- id:"`). All already present in the tachi maintainer baseline.
 **Storage**: Files in repo (`README.md`, `CHANGELOG.md`, `docs/standards/OWASP_COVERAGE.md`, `docs/standards/README.md`, `docs/product/_internal/strategy/BLP-04-adoption-push.md`); external GitHub repos (`davidmatousek/davidmatousek`, `davidmatousek/Cybersecurity-Content`); LinkedIn platform; GitHub Discussion #179. Project memory (`feedback_aod_deliver_release_gate.md`). No database, no schemas modified.
 **Testing**: N/A — no source code change; no automated tests required by the spec. Verification is post-in-tree-merge `/security` re-scan (regression-only; should report zero new findings since no code changed) + manual UI inspections of all 5 published artifacts. **Per Principle VII §Exceptions**: "Documentation-only changes may not require production deployment" — this exemption applies; Constitution-mandated test coverage thresholds (Principle VI) do not bind for documentation files. Per Principle VII §Non-Negotiable Validation Steps, F-1 still satisfies DoD via: ✅ Pushed to main (squash-merge in-tree PR + 4 out-of-tree PRs/posts/comments); ✅ Tested (post-merge `/security` re-scan + 5-artifact UI inspections + FR-008 pre-check evidence); ✅ User-validated (PR review + each published artifact's URL recorded in Issue #296 + Discussion #179 receives the maintainer-authored close comment).
-**Target Platform**: GitHub-hosted repos (`github.com/davidmatousek/tachi`, `github.com/davidmatousek/davidmatousek`, `github.com/davidmatousek/Cybersecurity-Content`); LinkedIn (web + mobile); read by humans on web and via `make update`.
+**Target Platform**: GitHub-hosted repos (`github.com/pratik-saptarshi/tachi-rust`, `github.com/davidmatousek/davidmatousek`, `github.com/davidmatousek/Cybersecurity-Content`); LinkedIn (web + mobile); read by humans on web and via `make update`.
 **Project Type**: single — documentation refresh + external-distribution publication. No new project structure introduced.
 **Performance Goals**: N/A — file-render time governed by GitHub web UI and LinkedIn platform.
 **Constraints**:
@@ -433,7 +433,7 @@ Total target: 2400–3600 (~3000)
 \`\`\`markdown
 ## Flagship project: tachi
 
-**[tachi](https://github.com/davidmatousek/tachi)** — Threat Modeling and
+**[tachi](https://github.com/pratik-saptarshi/tachi-rust)** — Threat Modeling and
 Vulnerability Detection Harness for Claude Code. AI-Reasoning Scanner —
 STRIDE + AI + MAESTRO. **OWASP 50/50 coverage** across LLM 2025 + Agentic
 2026 + ML 2023 + Mobile 2024 + Web/API 2021/2023.
@@ -471,8 +471,8 @@ trust required — byte-deterministic anchor (ADR-021 + ADR-029 + ADR-037).
 Long-form article with the full per-bucket breakdown + verification
 walkthrough: [Cybersec article URL]
 
-Repo: https://github.com/davidmatousek/tachi
-BLP-02 closure receipts: https://github.com/davidmatousek/tachi/pull/293
+Repo: https://github.com/pratik-saptarshi/tachi-rust
+BLP-02 closure receipts: https://github.com/pratik-saptarshi/tachi-rust/pull/293
 \`\`\`
 
 **LinkedIn algorithm discipline (2026)**:
@@ -484,8 +484,8 @@ BLP-02 closure receipts: https://github.com/davidmatousek/tachi/pull/293
 
 ### Wave 4: Discussion #179 closing comment + close
 
-**Discussion**: https://github.com/davidmatousek/tachi/discussions/179
-**Status verification**: `gh discussion view 179 --repo davidmatousek/tachi` at build time to confirm discussion remains open (Assumption A-4).
+**Discussion**: https://github.com/pratik-saptarshi/tachi-rust/discussions/179
+**Status verification**: `gh discussion view 179 --repo pratik-saptarshi/tachi-rust` at build time to confirm discussion remains open (Assumption A-4).
 
 **Closing comment template** (~300 words, drafted Day 1 PM for incubation per Team-Lead L-3):
 
@@ -639,7 +639,7 @@ release-please failures on `feat:`-prefixed merges only.
 F-1 closed.
 
 **Artifacts shipped** (all 5 URLs):
-1. **README hero PR (in-tree)**: [PR #297](https://github.com/davidmatousek/tachi/pull/297) — `docs(296):` squash-merged.
+1. **README hero PR (in-tree)**: [PR #297](https://github.com/pratik-saptarshi/tachi-rust/pull/297) — `docs(296):` squash-merged.
 2. **LinkedIn post**: [URL]
 3. **Cybersec article**: [PR URL in davidmatousek/Cybersecurity-Content]
 4. **GitHub profile refresh**: [PR URL in davidmatousek/davidmatousek]

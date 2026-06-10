@@ -17,13 +17,13 @@ triad:
 **Status**: Draft
 **Input**: User description: "PRD: 143 - maestro-aivss-evaluation-adr"
 **PRD**: [docs/product/02_PRD/143-maestro-aivss-evaluation-adr-2026-04-14.md](../../docs/product/02_PRD/143-maestro-aivss-evaluation-adr-2026-04-14.md)
-**Parent Discovery**: [#143](https://github.com/davidmatousek/tachi/issues/143) (umbrella MAESTRO discovery [#136](https://github.com/davidmatousek/tachi/issues/136))
+**Parent Discovery**: [#143](https://github.com/pratik-saptarshi/tachi-rust/issues/143) (umbrella MAESTRO discovery [#136](https://github.com/pratik-saptarshi/tachi-rust/issues/136))
 
 ## Overview
 
 This is a **documentation-only ADR spike**: evaluate OWASP AIVSS against tachi's four-dimensional composite score and commit the decision as **ADR-024** — adopt as primary, adopt as supplementary field, or document divergence with rationale. Add a 80-200 word AIVSS Relationship section to the tachi-risk-scoring skill file reflecting the decision. If the decision is "adopt", file a follow-on implementation feature as a separate GitHub Issue. **Zero production code changes** — no schemas, scripts, agents, or example outputs are modified in this feature.
 
-Feature 143 is the fourth and final phase of the MAESTRO compliance initiative (Phases 1-3 delivered in PRDs 136, 141, 082). After 143 closes, the umbrella MAESTRO compliance discovery [#136](https://github.com/davidmatousek/tachi/issues/136) can be closed.
+Feature 143 is the fourth and final phase of the MAESTRO compliance initiative (Phases 1-3 delivered in PRDs 136, 141, 082). After 143 closes, the umbrella MAESTRO compliance discovery [#136](https://github.com/pratik-saptarshi/tachi-rust/issues/136) can be closed.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -166,7 +166,7 @@ A security engineer comparing agentic threat modeling tools must explain tachi's
 - **SC-005**: `.claude/skills/tachi-risk-scoring/SKILL.md` contains an `## AIVSS Relationship` section located after `## Domain Overview` and before `## Baseline-Aware Scoring Rules`, between 80 and 200 words long, containing a relative link to ADR-024
 - **SC-006**: `git diff main..feature-branch -- schemas/ scripts/ .claude/agents/ examples/` returns empty — verified as the final gate before PR merge
 - **SC-007**: The decision stated in SKILL.md matches ADR-024 — verified by at least one decision-noun token (e.g., `adopt`, `supplement`, `diverge`) appearing in both surfaces, with no contradictory phrasing
-- **SC-008**: If the recommended decision is Option A or B, a new GitHub Issue exists on `github.com/davidmatousek/tachi/issues` with the `stage:discover` label and a body referencing ADR-024. If the decision is Option C, no such Issue is filed (success is correct conditionality — not unconditional existence)
+- **SC-008**: If the recommended decision is Option A or B, a new GitHub Issue exists on `github.com/pratik-saptarshi/tachi-rust/issues` with the `stage:discover` label and a body referencing ADR-024. If the decision is Option C, no such Issue is filed (success is correct conditionality — not unconditional existence)
 - **SC-009**: ADR-024 cross-references at minimum ADR-020 (MAESTRO classification), ADR-019 (shared cross-agent definitions), and ADR-018 (baseline-aware pipeline) in its frontmatter Related ADRs list
 
 ### Assumptions
