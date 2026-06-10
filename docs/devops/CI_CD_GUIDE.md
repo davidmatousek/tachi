@@ -173,7 +173,7 @@ F-250 unit modules and Rust-native successors (sub-second per case — adversari
 
 F-256 source-pattern-hardening suite (per ADR-040 §Test Coverage — Sites A-D + Stream 4 watchdog + lint guard):
 
-- `tests/scripts/test_init_sh_defaults_env.py` — Site A integration: `scripts/init.sh` against `stacks/*/defaults.env` (positive packs + malicious-pack rejection + missing-key rejection)
+- `crates/tachi-shell/tests/init_defaults_env.rs::init_defaults_env_contract_is_rust_native` — migrated successor for the retired `tests/scripts/test_init_sh_defaults_env.py`; covers Site A `scripts/init.sh` against shipped stack packs, malicious-pack rejection, and missing-key rejection.
 - `crates/tachi-shell/tests/template_config_load.rs::template_config_load_unit_contract_is_rust_native` — migrated successor for the retired `tests/scripts/test_template_config_load_unit.py`
 - `crates/tachi-shell/tests/template_config_load.rs::template_config_load_integration_contract_is_rust_native` — migrated successor for the retired `tests/scripts/test_template_config_load_integration.py`; covers full-library round-trip, Site B version loading, Site D personalization loading, and TOCTOU framing.
 - `tests/scripts/test_template_git_clone_timeout.py` — Stream 4 watchdog + `AOD_FETCH_TIMEOUT` adopter env-var contract (hanging-upstream timeout, validation-rejection footguns, fast-clone happy-path + zombie-watchdog assertion)
@@ -202,7 +202,7 @@ paths:
   - tests/scripts/test_init_sh_constitution.py
   # F-250 template substitution unit coverage now lives in crates/tachi-core/tests/substitute_shim_canary.rs
   # F-250 init-input unit coverage now lives in crates/tachi-core/tests/init_input.rs
-  - tests/scripts/test_init_sh_defaults_env.py            # F-256
+  # F-256 defaults-env init coverage now lives in crates/tachi-shell/tests/init_defaults_env.rs
   # F-256 template-config unit coverage now lives in crates/tachi-shell/tests/template_config_load.rs
   # F-256 template-config integration coverage now lives in crates/tachi-shell/tests/template_config_load.rs
   - tests/scripts/test_template_git_clone_timeout.py      # F-256
@@ -261,7 +261,6 @@ python -m pytest \
   tests/scripts/test_init_sh_substitution.py \
   tests/scripts/test_init_sh_adversarial.py \
   tests/scripts/test_init_sh_constitution.py \
-  tests/scripts/test_init_sh_defaults_env.py \
   tests/scripts/test_template_git_clone_timeout.py \
   tests/scripts/test_init_precommit_matrix.py \
   -v --timeout=1080

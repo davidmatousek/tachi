@@ -75,7 +75,6 @@ on:
       - tests/scripts/test_init_sh_substitution.py
       - tests/scripts/test_init_sh_adversarial.py
       - tests/scripts/test_init_sh_constitution.py
-      - tests/scripts/test_init_sh_defaults_env.py            # F-256
       - tests/scripts/test_template_git_clone_timeout.py      # F-256
       - tests/scripts/test_init_precommit_matrix.py            # F-5 (282)
       - tests/scripts/init_sh_helpers.py
@@ -146,12 +145,12 @@ jobs:
         # surface (F-256) trigger the full CI run.
         #
         # F-256 modules added (Wave 3 + Wave 4):
-        #   test_init_sh_defaults_env.py            — Site A — stacks/*/defaults.env
         #   test_template_git_clone_timeout.py      — Stream 4 watchdog + AOD_FETCH_TIMEOUT
         #
         # Retired pytest modules now covered by Rust tests:
         #   test_init_sh_self_delete.py             — crates/tachi-shell/tests/control_plane.rs
         #   test_init_input_unit.py                 — crates/tachi-core/tests/init_input.rs
+        #   test_init_sh_defaults_env.py            — crates/tachi-shell/tests/init_defaults_env.rs
         #   test_template_config_load_unit.py       — crates/tachi-shell/tests/template_config_load.rs
         #   test_template_config_load_integration.py — crates/tachi-shell/tests/template_config_load.rs
         #   test_template_substitute_unit.py        — crates/tachi-core/tests/substitute_shim_canary.rs
@@ -162,7 +161,6 @@ jobs:
             tests/scripts/test_init_sh_substitution.py \
             tests/scripts/test_init_sh_adversarial.py \
             tests/scripts/test_init_sh_constitution.py \
-            tests/scripts/test_init_sh_defaults_env.py \
             tests/scripts/test_template_git_clone_timeout.py \
             tests/scripts/test_init_precommit_matrix.py \
             -v --timeout=1080
