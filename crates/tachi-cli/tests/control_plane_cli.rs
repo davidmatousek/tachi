@@ -470,6 +470,49 @@ fn report_data_binary_writes_output_file_when_requested() {
 }
 
 #[test]
+fn report_data_binary_emits_coverage_attestation_payload_when_source_attribution_exists() {
+    let repo_root = fixture_report_data_repo();
+    fs::write(
+        repo_root.join(REPORT_TARGET_DIR).join("threats.md"),
+        r#"# Agentic AI Application
+
+## 7. Recommended Actions
+
+| Finding ID | Component | Threat | Risk Level | Mitigation | Status |
+| --- | --- | --- | --- | --- | --- |
+| AG-1 | Component | Threat | High | Mitigation | [NEW] |
+
+## 9. Source Attribution
+
+```yaml
+AG-1:
+  - {taxonomy: "owasp", id: "A01", relationship: "primary"}
+```
+"#,
+    )
+    .expect("write threats with source attribution");
+
+    let output = Command::new(binary_path("report-data"))
+        .args([
+            "--target-dir",
+            repo_root.join(REPORT_TARGET_DIR).to_string_lossy().as_ref(),
+            "--template-dir",
+            repo_root
+                .join(REPORT_TEMPLATE_DIR)
+                .to_string_lossy()
+                .as_ref(),
+        ])
+        .output()
+        .expect("run report-data binary");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("#let has-source-attribution = true"));
+    assert!(stdout.contains("#let per-finding-rows = ("));
+    assert!(stdout.contains("#let per-framework-aggregates = ("));
+}
+
+#[test]
 fn report_data_binary_warns_when_correcting_mislabeled_png() {
     let repo_root = fixture_report_data_repo();
     let target_dir = repo_root.join(REPORT_TARGET_DIR);

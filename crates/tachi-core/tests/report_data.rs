@@ -157,6 +157,40 @@ fn build_report_data_typst_matches_retired_image_binding_pytest_contract() {
 }
 
 #[test]
+fn build_report_data_typst_emits_coverage_attestation_payload_when_source_attribution_exists() {
+    let root = unique_temp_dir("tachi-report-data-source-attribution");
+    let target_dir = root.join("examples/agentic-app/sample-report");
+    let template_dir = root.join("templates/tachi/security-report");
+
+    write_bytes(
+        &target_dir.join("threats.md"),
+        br#"# Agentic AI Application
+
+## 7. Recommended Actions
+
+| Finding ID | Component | Threat | Risk Level | Mitigation | Status |
+| --- | --- | --- | --- | --- | --- |
+| AG-1 | Component | Threat | High | Mitigation | [NEW] |
+
+## 9. Source Attribution
+
+```yaml
+AG-1:
+  - {taxonomy: "owasp", id: "A01", relationship: "primary"}
+  - {taxonomy: "cwe", id: "CWE-79", relationship: "related"}
+```
+"#,
+    );
+
+    let rendered = build_report_data_typst(&target_dir, &template_dir);
+
+    assert!(rendered.contains("#let has-source-attribution = true"));
+    assert!(rendered.contains("#let per-finding-rows = ("));
+    assert!(rendered.contains("#let per-framework-aggregates = ("));
+    assert!(!rendered.contains("ATT&CK:"));
+}
+
+#[test]
 fn build_report_data_typst_prefers_self_consistent_png_over_stale_jpg() {
     let root = unique_temp_dir("tachi-report-data-mixed-extension");
     let target_dir = root.join("examples/agentic-app/sample-report");
