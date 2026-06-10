@@ -27,7 +27,7 @@ This status uses card closure rather than subjective partial estimates. In-progr
 |---|---|---|
 | RT-010 | Complete | The Python surface inventory is frozen in [2026-06-08-python-surface-inventory.md](./2026-06-08-python-surface-inventory.md). |
 | RT-011 | In progress | RT-009 documentation coverage, taxonomy integrity checks, project-name parser coverage, the YAML import invariant, infographic command-dispatch coverage, source-attribution parser coverage, the template substitute shim canary, template substitute no-`eval` lint, template substitute literal-substitution coverage, template config load unit and integration coverage, init input unit coverage, defaults-env init coverage, init adversarial coverage, template git clone timeout coverage, finding-pattern parser coverage, misinformation schema coverage, output-integrity schema coverage, init self-delete coverage, F-A3 populator wiring coverage, report-data image binding coverage, and asset-sensitivity tag parser coverage have moved from pytest to Rust integration tests. Current audit: 71 active modules, 45 Rust integration modules, 0 Python unit modules, 2 Python smoke modules, 23 support/regression modules; the remaining pytest surface is still active. |
-| RT-012 | In progress | Rust-native report-data output handling, report project metadata emission, report-data image binding and byte-probe parity, asset-sensitivity tag parsing, and SARIF CLI slices exist, but the remaining Python runtime scripts are still listed in the inventory. |
+| RT-012 | In progress | Rust-native report-data output handling, report project metadata emission, report-data image binding and byte-probe parity, asset-sensitivity tag parsing, and SARIF CLI slices now cover the threat/risk SARIF runtime paths; the remaining Python runtime scripts are still listed in the inventory. |
 | RT-013 | Pending | Tauri shell parity work depends on RT-012 runtime parity. |
 | RT-014 | Pending | Python packaging and FastAPI scaffold retirement depends on RT-012 and RT-013. |
 | RT-015 | Pending | Speed and reliability hardening depends on the Rust-only runtime path being stable. |
@@ -61,7 +61,7 @@ This roadmap uses a BEADS-style hierarchy:
   - port `scripts/extract-infographic-data.py`
   - port `scripts/generate-threats-sarif.py`
   - port `scripts/generate-risk-scores-sarif.py`
-  - port `scripts/tachi_parsers.py` and `scripts/sarif_common.py`
+  - port `scripts/tachi_parsers.py`
 - **Functions**
   - `build_report_payload`
   - `build_infographic_payload`
@@ -335,7 +335,6 @@ This is the current Python-to-Rust replacement map for the repo's active surface
 | `scripts/generate-threats-sarif.py` | Rust SARIF command / library in `tachi-cli` or `tachi-core` |
 | `scripts/generate-risk-scores-sarif.py` | Rust SARIF command / library in `tachi-cli` or `tachi-core` |
 | `scripts/tachi_parsers.py` | `tachi-core` parser modules |
-| `scripts/sarif_common.py` | Rust shared SARIF types and helpers |
 | `scripts/extract-infographic-data.py` | Rust infographic payload builder |
 | `scripts/extract-report-data.py` | Rust report-data builder |
 | `tests/scripts/*.py` | Rust integration and end-to-end tests |

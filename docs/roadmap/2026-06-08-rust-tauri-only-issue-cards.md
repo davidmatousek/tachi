@@ -17,7 +17,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 |---|---|---|
 | RT-010 | Complete | Keep the frozen Python surface inventory synchronized with retirements. |
 | RT-011 | In progress | Continue migrating the remaining pytest coverage after the Rust-native defaults-env init, adversarial init, and template git clone timeout migrations. |
-| RT-012 | In progress | Continue parser/report-data parity after Rust asset tag parsing and report-data image binding emission, then remove Python runtime dependencies from canonical behavior. |
+| RT-012 | In progress | Continue parser/report-data parity after Rust asset tag parsing, report-data image binding emission, and SARIF runtime retirement, then remove Python runtime dependencies from canonical behavior. |
 | RT-013 | Pending | Start after RT-012 establishes the shared Rust command layer as canonical. |
 | RT-014 | Pending | Start after RT-012 and RT-013 prove Python packaging and scaffold surfaces are no longer needed. |
 | RT-015 | Pending | Start after the Rust-only path is stable enough for benchmark-driven hardening. |
@@ -52,7 +52,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 - **Priority**: P1
 - **Labels**: `rust`, `core`, `parity`, `sarif`
 - **Summary**: Move the remaining report, infographic, parser, and SARIF logic from Python scripts into Rust modules.
-- **Current evidence**: Rust `report-data` supports direct `--output` writing, emits `project-name` through the shared Rust project-name parser, preserves the image binding plus byte-probe behavior previously covered by pytest, and now owns asset-sensitivity tag parsing in `tachi-core`; full report payload parity is still open.
+- **Current evidence**: Rust `report-data` supports direct `--output` writing, emits `project-name` through the shared Rust project-name parser, preserves the image binding plus byte-probe behavior previously covered by pytest, now owns asset-sensitivity tag parsing in `tachi-core`, and the standalone Python SARIF generators have been retired in favor of Rust CLI binaries; full report payload parity is still open.
 - **Acceptance**:
   - The Rust core reproduces the current shipped outputs on frozen fixtures.
   - Python runtime scripts are no longer required for canonical behavior.
