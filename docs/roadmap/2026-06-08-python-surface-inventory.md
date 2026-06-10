@@ -75,7 +75,7 @@ tests/scripts/test_mmdc_preflight.py
 ~~tests/scripts/test_pdf_page_positioning.py~~ - migrated to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_renders_executive_architecture_page_between_summary_and_attack_path`
 tests/scripts/test_init_sh_substitution.py
 ~~tests/scripts/test_init_sh_self_delete.py~~ - migrated to `crates/tachi-shell/tests/control_plane.rs::init_output_preserves_state_files_when_script_self_deletes`
-tests/scripts/test_extractor_contract_fixes.py
+~~tests/scripts/test_extractor_contract_fixes.py~~ - migrated to `crates/tachi-core/tests/extractor_contract_fixes.rs::extractor_contract_fixes_contract_is_rust_native`, `crates/tachi-core/tests/extractor_contract_fixes.rs::parse_attack_trees_accepts_agent_emitted_slugged_filenames`, `crates/tachi-core/tests/extractor_contract_fixes.rs::parse_threat_report_md_falls_back_to_full_section1_prose`, `crates/tachi-core/tests/extractor_contract_fixes.rs::detect_images_accepts_matching_png_and_jpeg_bytes`, `crates/tachi-core/tests/extractor_contract_fixes.rs::parse_compensating_controls_dedupes_cross_listed_findings`, and `crates/tachi-core/tests/extractor_contract_fixes.rs::merge_delta_status_populates_tier1_findings`
 ~~tests/scripts/test_init_input_unit.py~~ - migrated to `crates/tachi-core/tests/init_input.rs::init_input_unit_contract_is_rust_native`
 tests/scripts/conftest.py
 ~~tests/scripts/test_extract_infographic_data.py~~ - migrated to `crates/tachi-core/tests/infographic_payload.rs::build_infographic_payload_executive_architecture_includes_layers_callouts_and_overlay` and `crates/tachi-cli/tests/control_plane_cli.rs::infographic_data_binary_returns_executive_architecture_payload`

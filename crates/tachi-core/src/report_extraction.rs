@@ -1,3 +1,7 @@
+use std::collections::BTreeMap;
+
+use crate::parsers::{parse_markdown_table, ThreatFinding};
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ThreatReportData {
     pub executive_narrative: Option<String>,
@@ -219,5 +223,41 @@ fn sla_for_severity(severity: &str) -> String {
         "Medium" => String::from("30d"),
         "Low" => String::from("90d"),
         _ => String::from("90d"),
+    }
+}
+
+pub fn merge_delta_status(findings: &mut [ThreatFinding], threats_content: &str) {
+    let rows = parse_markdown_table(threats_content, "## 7. Recommended Actions");
+    if rows.is_empty() {
+        return;
+    }
+
+    let mut status_by_id = BTreeMap::new();
+    for row in rows {
+        let fid = row
+            .get("Finding ID")
+            .cloned()
+            .unwrap_or_default()
+            .trim()
+            .to_string();
+        let status = row
+            .get("Status")
+            .cloned()
+            .unwrap_or_default()
+            .trim()
+            .to_string();
+        if !fid.is_empty() && !status.is_empty() {
+            status_by_id.insert(fid, status);
+        }
+    }
+
+    if status_by_id.is_empty() {
+        return;
+    }
+
+    for finding in findings {
+        if let Some(status) = status_by_id.get(&finding.id) {
+            finding.delta_status = Some(status.clone());
+        }
     }
 }
