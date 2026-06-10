@@ -55,10 +55,10 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | Level | Current Rust-Native Surface |
 |---|---|
 | Unit | Rust unit tests; current audit shows 0 remaining Python unit modules. |
-| Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit shows 50 Rust integration modules after retiring the defaults-env init, adversarial init, template git clone timeout, executive-architecture infographic, attack-chain, and MAESTRO pattern-classification pytests. |
+| Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit shows 51 Rust integration modules after retiring the defaults-env init, adversarial init, template git clone timeout, executive-architecture infographic, attack-chain, MAESTRO pattern-classification, and init precommit matrix pytests. |
 | Smoke | Transitional smoke modules tracked by `tachi-core::coverage_audit`; current audit shows 0 remaining Python smoke modules. |
 | E2E | Critical init flow currently represented by `tests/scripts/test_init_sh_substitution.py` while the Rust-owned E2E boundary is being defined. |
-| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 87.93% regions / 88.11% lines. Current audit: 65 active modules, 50 Rust integration modules, 0 Python unit modules, 0 Python smoke modules, 14 support/regression modules. |
+| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 87.93% regions / 88.11% lines. Current audit: 65 active modules, 51 Rust integration modules, 0 Python unit modules, 0 Python smoke modules, 13 support/regression modules. |
 
 Primary validation commands:
 
@@ -83,7 +83,7 @@ cargo run -q -p tachi-cli --bin coverage-audit
 
 ## Dependency Notes
 
-Codemap dependency analysis currently identifies `scripts/tachi_parsers` as the highest-use legacy Python hub and `tests/scripts/init_sh_helpers.py` as the main remaining init-test helper hub. Rust work should avoid expanding those hubs and should instead move behavior into `tachi-core` or `tachi-shell` with Rust tests.
+Codemap dependency analysis currently identifies `scripts/tachi_parsers` as the highest-use legacy Python hub and `tests/scripts/init_sh_helpers.py` as the main remaining init-test helper hub. The init precommit matrix now lives in `crates/tachi-shell/tests/init_precommit_matrix.rs`; Rust work should avoid expanding those hubs and should instead move behavior into `tachi-core` or `tachi-shell` with Rust tests.
 
 ## Agent Guidance
 

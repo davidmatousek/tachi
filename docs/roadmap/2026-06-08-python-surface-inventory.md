@@ -27,6 +27,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - Defaults-env init coverage has moved from `tests/scripts/test_init_sh_defaults_env.py` to `crates/tachi-shell/tests/init_defaults_env.rs`
 - Adversarial init coverage has moved from `tests/scripts/test_init_sh_adversarial.py` to `crates/tachi-shell/tests/init_adversarial.rs`
 - Template git clone timeout coverage has moved from `tests/scripts/test_template_git_clone_timeout.py` to `crates/tachi-shell/tests/template_git_clone_timeout.rs`
+- Init pre-commit matrix coverage has moved from `tests/scripts/test_init_precommit_matrix.py` to `crates/tachi-shell/tests/init_precommit_matrix.rs`
 - Finding-pattern parser coverage has moved from `tests/scripts/test_finding_pattern_parser.py` to `crates/tachi-core/tests/parsers.rs`
 - Report-data image binding coverage has moved from `tests/scripts/test_extract_report_data.py` to `crates/tachi-core/tests/report_data.rs` and `crates/tachi-cli/tests/control_plane_cli.rs`
 - Asset-sensitivity tag parser coverage has moved from `tests/scripts/test_asset_sensitivity_tags.py` to `crates/tachi-core/tests/parsers.rs`
@@ -79,6 +80,7 @@ tests/scripts/conftest.py
 tests/scripts/test_init_sh_constitution.py
 ~~tests/scripts/test_template_substitute_unit.py~~ - migrated to `crates/tachi-core/tests/substitute_shim_canary.rs::template_substitute_literal_project_names_are_rust_native`
 ~~tests/scripts/test_init_sh_defaults_env.py~~ - migrated to `crates/tachi-shell/tests/init_defaults_env.rs::init_defaults_env_contract_is_rust_native`
+~~tests/scripts/test_init_precommit_matrix.py~~ - migrated to `crates/tachi-shell/tests/init_precommit_matrix.rs::init_precommit_matrix_is_rust_native` and `crates/tachi-shell/tests/init_precommit_matrix.rs::non_tty_no_flag_skips_prompt_and_install`
 tests/scripts/test_backward_compatibility.py
 stacks/fastapi-react-local/scaffold/backend/app/db/base.py
 stacks/fastapi-react-local/scaffold/backend/app/db/__init__.py
