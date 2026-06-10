@@ -100,7 +100,7 @@ stacks/fastapi-react-local/scaffold/backend/app/core/exceptions.py
 stacks/fastapi-react-local/scaffold/backend/app/core/__init__.py
 stacks/fastapi-react-local/scaffold/backend/app/config.py
 stacks/fastapi-react/scaffold/backend/alembic/env.py
-tests/scripts/test_tool_abuse_enrichment.py
+~~tests/scripts/test_tool_abuse_enrichment.py~~ - migrated to `crates/tachi-core/tests/tool_abuse_enrichment.rs`
 ~~tests/scripts/test_executive_architecture_payload.py~~ - migrated to `crates/tachi-core/tests/infographic_payload.rs::build_infographic_payload_executive_architecture_requires_scope_data` and `crates/tachi-cli/tests/control_plane_cli.rs::infographic_data_binary_returns_executive_architecture_payload`
 ~~tests/scripts/test_template_config_load_unit.py~~ - migrated to `crates/tachi-shell/tests/template_config_load.rs::template_config_load_unit_contract_is_rust_native`
 tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py

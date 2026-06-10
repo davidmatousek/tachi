@@ -26,8 +26,8 @@ fn coverage_audit_binary_reports_current_suite_classification() {
     assert!(stdout.contains("Active test modules: 64"));
     assert!(stdout.contains("Fixture-copy modules (excluded from active suite): 3"));
     assert!(stdout.contains("Unit: 0"));
-    assert!(stdout.contains("Integration: 56"));
+    assert!(stdout.contains("Integration: 57"));
     assert!(stdout.contains("Smoke: 0"));
     assert!(stdout.contains("True end-to-end: 1"));
-    assert!(stdout.contains("Support / regression: 7"));
+    assert!(stdout.contains("Support / regression: 6"));
 }
