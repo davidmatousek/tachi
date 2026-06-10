@@ -3,6 +3,7 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde_json::Value;
 
@@ -57,6 +58,8 @@ const THREATS_SARIF_MD: &str = r#"
 | High | 1 |
 | Total | 1 |
 "#;
+
+static TEMP_DIR_COUNTER: AtomicU64 = AtomicU64::new(0);
 const THREATS_MD: &str = r#"
 # Agentic AI Application
 
@@ -156,27 +159,20 @@ fn write_executable_file(path: &Path, content: &str) {
     }
 }
 
+fn unique_temp_dir(prefix: &str) -> PathBuf {
+    let counter = TEMP_DIR_COUNTER.fetch_add(1, Ordering::Relaxed);
+    std::env::temp_dir().join(format!("{prefix}-{}-{counter}", std::process::id()))
+}
+
 fn fixture_repo() -> PathBuf {
-    let root = std::env::temp_dir().join(format!(
-        "tachi-rust-control-plane-cli-{}",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos()
-    ));
+    let root = unique_temp_dir("tachi-rust-control-plane-cli");
 
     fs::create_dir_all(root.join("scripts")).expect("create fixture scripts");
     root
 }
 
 fn fixture_infographic_repo() -> PathBuf {
-    let root = std::env::temp_dir().join(format!(
-        "tachi-rust-infographic-cli-{}",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos()
-    ));
+    let root = unique_temp_dir("tachi-rust-infographic-cli");
 
     fs::create_dir_all(&root).expect("create fixture root");
     fs::write(root.join("threats.md"), THREATS_MD).expect("write threats");
@@ -197,13 +193,7 @@ FOOTER
 }
 
 fn fixture_report_data_repo() -> PathBuf {
-    let root = std::env::temp_dir().join(format!(
-        "tachi-rust-report-data-cli-{}",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos()
-    ));
+    let root = unique_temp_dir("tachi-rust-report-data-cli");
 
     let target_dir = root.join(REPORT_TARGET_DIR);
     let template_dir = root.join(REPORT_TEMPLATE_DIR);
@@ -219,13 +209,7 @@ fn fixture_report_data_repo() -> PathBuf {
 }
 
 fn fixture_executive_architecture_repo() -> PathBuf {
-    let root = std::env::temp_dir().join(format!(
-        "tachi-rust-exec-arch-cli-{}",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos()
-    ));
+    let root = unique_temp_dir("tachi-rust-exec-arch-cli");
 
     fs::create_dir_all(&root).expect("create fixture root");
     fs::write(root.join("threats.md"), EXECUTIVE_ARCHITECTURE_THREATS_MD).expect("write threats");
@@ -233,13 +217,7 @@ fn fixture_executive_architecture_repo() -> PathBuf {
 }
 
 fn fixture_threats_sarif_repo() -> PathBuf {
-    let root = std::env::temp_dir().join(format!(
-        "tachi-rust-threats-sarif-cli-{}",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos()
-    ));
+    let root = unique_temp_dir("tachi-rust-threats-sarif-cli");
 
     fs::create_dir_all(&root).expect("create fixture root");
     fs::write(root.join("threats.md"), THREATS_SARIF_MD).expect("write threats");
@@ -247,13 +225,7 @@ fn fixture_threats_sarif_repo() -> PathBuf {
 }
 
 fn fixture_risk_scores_sarif_repo() -> PathBuf {
-    let root = std::env::temp_dir().join(format!(
-        "tachi-rust-risk-scores-sarif-cli-{}",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos()
-    ));
+    let root = unique_temp_dir("tachi-rust-risk-scores-sarif-cli");
 
     fs::create_dir_all(&root).expect("create fixture root");
     fs::write(root.join("risk-scores.md"), RISK_SCORES_MD).expect("write risk scores");
@@ -415,13 +387,7 @@ fn infographic_data_binary_returns_executive_architecture_payload() {
 #[test]
 fn infographic_data_binary_writes_output_file_when_requested() {
     let repo_root = fixture_infographic_repo();
-    let output_path = std::env::temp_dir().join(format!(
-        "tachi-rust-infographic-output-{}.json",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos()
-    ));
+    let output_path = unique_temp_dir("tachi-rust-infographic-output").with_extension("json");
 
     let output = Command::new(binary_path("infographic-data"))
         .args([

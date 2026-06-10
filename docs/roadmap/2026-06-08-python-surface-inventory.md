@@ -72,6 +72,7 @@ tests/scripts/test_mmdc_preflight.py
 ~~tests/scripts/test_coverage_attestation_audit.py~~ - migrated to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_keeps_typst_compilable_when_report_data_lacks_new_bindings`
 ~~tests/scripts/test_human_trust_exploitation.py~~ - migrated to `crates/tachi-core/tests/human_trust_exploitation.rs::human_trust_exploitation_contract_is_rust_native`, `crates/tachi-core/tests/human_trust_exploitation.rs::te_schema_prefix_and_fixture_attribution_are_rust_native`, and `crates/tachi-core/tests/human_trust_exploitation.rs::invalid_te_fixture_keeps_trust_exploitation_disambiguation_but_fails_validation`
 ~~tests/scripts/test_coverage_attestation_pagination.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation_pagination.rs::coverage_attestation_pagination_smoke_compiles_at_scale`
+~~tests/scripts/test_coverage_attestation_tiers.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation_tiers.rs::coverage_attestation_tiers_contract_is_rust_native`, `crates/tachi-core/tests/coverage_attestation_tiers.rs::merge_attaches_attribution_on_matching_tier_1_findings`, and `crates/tachi-core/tests/coverage_attestation_tiers.rs::merge_attaches_attribution_on_matching_tier_2_findings`
 ~~tests/scripts/test_pdf_page_positioning.py~~ - migrated to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_renders_executive_architecture_page_between_summary_and_attack_path`
 tests/scripts/test_init_sh_substitution.py
 ~~tests/scripts/test_init_sh_self_delete.py~~ - migrated to `crates/tachi-shell/tests/control_plane.rs::init_output_preserves_state_files_when_script_self_deletes`
@@ -102,7 +103,6 @@ tests/scripts/test_tool_abuse_enrichment.py
 ~~tests/scripts/test_executive_architecture_payload.py~~ - migrated to `crates/tachi-core/tests/infographic_payload.rs::build_infographic_payload_executive_architecture_requires_scope_data` and `crates/tachi-cli/tests/control_plane_cli.rs::infographic_data_binary_returns_executive_architecture_payload`
 ~~tests/scripts/test_template_config_load_unit.py~~ - migrated to `crates/tachi-shell/tests/template_config_load.rs::template_config_load_unit_contract_is_rust_native`
 tests/scripts/test_ml_top_10_coverage_bundle_enrichment.py
-tests/scripts/test_coverage_attestation_tiers.py
 ~~tests/scripts/test_extract_report_data.py~~ - migrated to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_matches_retired_image_binding_pytest_contract` and `crates/tachi-cli/tests/control_plane_cli.rs`
 tests/scripts/test_llm10_unbounded_consumption_enrichment.py
 ~~tests/scripts/test_asset_sensitivity_tags.py~~ - migrated to `crates/tachi-core/tests/parsers.rs::parse_component_asset_map_matches_retired_pytest_contract`

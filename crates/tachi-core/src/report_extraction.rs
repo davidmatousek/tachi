@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 
-use crate::parsers::{parse_markdown_table, ThreatFinding};
+use crate::parsers::{
+    parse_markdown_table, SourceAttributionRecord, ThreatFinding,
+    VALID_SOURCE_ATTRIBUTION_RELATIONSHIPS, VALID_SOURCE_ATTRIBUTION_TAXONOMIES,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ThreatReportData {
@@ -260,4 +263,153 @@ pub fn merge_delta_status(findings: &mut [ThreatFinding], threats_content: &str)
             finding.delta_status = Some(status.clone());
         }
     }
+}
+
+pub fn merge_source_attribution(findings: &mut [ThreatFinding], threats_content: &str) {
+    let Some(source_by_id) = extract_source_attribution_block(threats_content) else {
+        return;
+    };
+
+    if source_by_id.is_empty() {
+        return;
+    }
+
+    for finding in findings {
+        if let Some(records) = source_by_id.get(&finding.id) {
+            finding.source_attribution = Some(records.clone());
+        }
+    }
+}
+
+fn extract_source_attribution_block(
+    content: &str,
+) -> Option<BTreeMap<String, Vec<SourceAttributionRecord>>> {
+    let header_idx = content
+        .lines()
+        .enumerate()
+        .find_map(|(idx, line)| (line.trim() == "## 9. Source Attribution").then_some(idx))?;
+
+    let mut lines = content.lines().skip(header_idx + 1);
+    let mut seen_fence = false;
+    let mut body = Vec::new();
+
+    for line in lines.by_ref() {
+        let trimmed = line.trim_end();
+        if !seen_fence {
+            if trimmed.trim_start().starts_with("```yaml") {
+                seen_fence = true;
+            }
+            continue;
+        }
+        if trimmed.trim() == "```" {
+            break;
+        }
+        body.push(trimmed.to_string());
+    }
+
+    if !seen_fence {
+        return Some(BTreeMap::new());
+    }
+
+    let mut result = BTreeMap::<String, Vec<SourceAttributionRecord>>::new();
+    let mut current_id: Option<String> = None;
+
+    for line in body {
+        let trimmed = line.trim();
+        if let Some(id) = parse_empty_source_attribution_entry(trimmed) {
+            result.insert(id, Vec::new());
+            current_id = None;
+            continue;
+        }
+
+        if let Some(id) = parse_block_source_attribution_key(trimmed) {
+            current_id = Some(id.clone());
+            result.entry(id).or_default();
+            continue;
+        }
+
+        if let Some(record) = parse_source_attribution_list_item(trimmed) {
+            if let Some(id) = current_id.as_ref() {
+                result.entry(id.clone()).or_default().push(record);
+            }
+        }
+    }
+
+    Some(result)
+}
+
+fn parse_empty_source_attribution_entry(line: &str) -> Option<String> {
+    let (lhs, rhs) = line.split_once(':')?;
+    if rhs.trim() != "[]" {
+        return None;
+    }
+    let id = lhs.trim();
+    if finding_id_like(id) {
+        Some(id.to_string())
+    } else {
+        None
+    }
+}
+
+fn parse_block_source_attribution_key(line: &str) -> Option<String> {
+    let (lhs, rhs) = line.split_once(':')?;
+    if !rhs.trim().is_empty() {
+        return None;
+    }
+    let id = lhs.trim();
+    if finding_id_like(id) {
+        Some(id.to_string())
+    } else {
+        None
+    }
+}
+
+fn finding_id_like(value: &str) -> bool {
+    value.chars().any(|ch| ch == '-')
+        && value
+            .chars()
+            .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '-')
+}
+
+fn parse_source_attribution_list_item(line: &str) -> Option<SourceAttributionRecord> {
+    let stripped = line.trim_start();
+    let body = stripped
+        .strip_prefix("- {")
+        .and_then(|value| value.strip_suffix('}'))?;
+    let mut taxonomy = String::new();
+    let mut id = String::new();
+    let mut relationship = String::from("primary");
+
+    for part in body.split(',') {
+        let (key, value) = part.split_once(':')?;
+        let value = value.trim().trim_matches('"').trim_matches('\'');
+        match key.trim() {
+            "taxonomy" => taxonomy = value.to_string(),
+            "id" => id = value.to_string(),
+            "relationship" => relationship = value.to_string(),
+            _ => {}
+        }
+    }
+
+    if taxonomy.is_empty() || id.is_empty() {
+        return None;
+    }
+
+    if relationship.is_empty() {
+        relationship = String::from("primary");
+    }
+
+    if !VALID_SOURCE_ATTRIBUTION_TAXONOMIES.contains(&taxonomy.as_str()) {
+        return None;
+    }
+
+    if !VALID_SOURCE_ATTRIBUTION_RELATIONSHIPS.contains(&relationship.as_str()) {
+        return None;
+    }
+
+    Some(SourceAttributionRecord {
+        taxonomy,
+        id,
+        relationship,
+    })
 }
