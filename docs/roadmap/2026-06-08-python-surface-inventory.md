@@ -51,7 +51,7 @@ stacks/fastapi-react-local/scaffold/backend/app/main.py
 tests/scripts/test_attack_chain_extraction.py
 tests/scripts/init_sh_helpers.py
 tests/scripts/test_pattern_synthesis.py
-tests/scripts/generate_pagination_fixture.py
+~~tests/scripts/generate_pagination_fixture.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation_pagination.rs::coverage_attestation_pagination_smoke_compiles_at_scale`
 ~~tests/scripts/test_attack_chains.py~~ - migrated to `crates/tachi-core/tests/attack_chains.rs::generate_chain_mermaid_renders_layers_and_edges` and `crates/tachi-core/tests/attack_chains.rs::parse_attack_chains_extracts_chain_metadata_and_members`
 stacks/fastapi-react-local/scaffold/backend/app/api/__init__.py
 stacks/fastapi-react-local/scaffold/backend/app/api/deps.py
@@ -67,7 +67,7 @@ tests/scripts/test_mmdc_preflight.py
 ~~tests/scripts/test_f_a3_populator_wiring.py~~ - migrated to `crates/tachi-core/tests/f_a3_populator_wiring.rs::f_a3_populator_wiring_contract_is_rust_native`
 ~~tests/scripts/test_coverage_attestation_audit.py~~ - migrated to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_keeps_typst_compilable_when_report_data_lacks_new_bindings`
 tests/scripts/test_human_trust_exploitation.py
-tests/scripts/test_coverage_attestation_pagination.py
+~~tests/scripts/test_coverage_attestation_pagination.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation_pagination.rs::coverage_attestation_pagination_smoke_compiles_at_scale`
 tests/scripts/test_pdf_page_positioning.py
 tests/scripts/test_init_sh_substitution.py
 ~~tests/scripts/test_init_sh_self_delete.py~~ - migrated to `crates/tachi-shell/tests/control_plane.rs::init_output_preserves_state_files_when_script_self_deletes`
@@ -104,7 +104,7 @@ tests/scripts/test_llm10_unbounded_consumption_enrichment.py
 ~~tests/scripts/test_asset_sensitivity_tags.py~~ - migrated to `crates/tachi-core/tests/parsers.rs::parse_component_asset_map_matches_retired_pytest_contract`
 ~~tests/scripts/test_template_config_load_integration.py~~ - migrated to `crates/tachi-shell/tests/template_config_load.rs::template_config_load_integration_contract_is_rust_native`
 ~~tests/scripts/test_coverage_attestation_in_scope.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation_in_scope.rs::load_framework_yaml_records_from_dir_filters_oos_and_treats_missing_field_as_in_scope` and `crates/tachi-core/tests/coverage_attestation_in_scope.rs::build_per_framework_aggregates_in_dir_uses_in_scope_denominator`
-tests/scripts/test_smoke.py
+~~tests/scripts/test_smoke.py~~ - migrated to `crates/tachi-core/tests/infographic_scaffold.rs::extract_prompt_scaffold_reads_template_prompt_segments`
 tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py
 stacks/fastapi-react/scaffold/backend/tests/api/__init__.py
 stacks/fastapi-react/scaffold/backend/tests/__init__.py

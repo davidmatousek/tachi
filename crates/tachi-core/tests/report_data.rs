@@ -225,9 +225,9 @@ fn build_report_data_typst_keeps_typst_compilable_when_report_data_lacks_new_bin
     let workspace = workspace_root();
     let template_dir = workspace.join("templates/tachi/security-report");
     let report_data_path = template_dir.join("report-data.typ");
-    let backup = report_data_path.exists().then(|| {
-        fs::read(&report_data_path).expect("backup report-data.typ")
-    });
+    let backup = report_data_path
+        .exists()
+        .then(|| fs::read(&report_data_path).expect("backup report-data.typ"));
 
     let root = unique_temp_dir("tachi-report-data-typst-guard");
     let target_dir = root.join("examples/agentic-app/sample-report");
