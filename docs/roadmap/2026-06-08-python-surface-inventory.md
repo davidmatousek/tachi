@@ -70,7 +70,7 @@ tests/scripts/test_mmdc_preflight.py
 ~~tests/scripts/test_coverage_attestation.py~~ - migrated to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_emits_coverage_attestation_payload_when_source_attribution_exists`, `crates/tachi-core/tests/report_data.rs::build_report_data_typst_marks_empty_source_attribution_reports_as_false`, and `crates/tachi-core/tests/report_data.rs::build_report_data_typst_keeps_typst_compilable_when_report_data_lacks_new_bindings`
 ~~tests/scripts/test_f_a3_populator_wiring.py~~ - migrated to `crates/tachi-core/tests/f_a3_populator_wiring.rs::f_a3_populator_wiring_contract_is_rust_native`
 ~~tests/scripts/test_coverage_attestation_audit.py~~ - migrated to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_keeps_typst_compilable_when_report_data_lacks_new_bindings`
-tests/scripts/test_human_trust_exploitation.py
+~~tests/scripts/test_human_trust_exploitation.py~~ - migrated to `crates/tachi-core/tests/human_trust_exploitation.rs::human_trust_exploitation_contract_is_rust_native`, `crates/tachi-core/tests/human_trust_exploitation.rs::te_schema_prefix_and_fixture_attribution_are_rust_native`, and `crates/tachi-core/tests/human_trust_exploitation.rs::invalid_te_fixture_keeps_trust_exploitation_disambiguation_but_fails_validation`
 ~~tests/scripts/test_coverage_attestation_pagination.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation_pagination.rs::coverage_attestation_pagination_smoke_compiles_at_scale`
 ~~tests/scripts/test_pdf_page_positioning.py~~ - migrated to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_renders_executive_architecture_page_between_summary_and_attack_path`
 tests/scripts/test_init_sh_substitution.py
