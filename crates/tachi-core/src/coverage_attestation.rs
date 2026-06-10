@@ -52,7 +52,7 @@ pub struct CoverageFrameworkAggregate {
 }
 
 #[derive(Debug, Clone, Default)]
-struct FrameworkRecord {
+pub struct FrameworkRecord {
     id: String,
     out_of_scope: bool,
 }
@@ -103,14 +103,21 @@ pub fn build_per_finding_rows(findings: &[ThreatFinding]) -> Vec<CoverageFinding
 pub fn build_per_framework_aggregates(
     findings: &[ThreatFinding],
 ) -> Vec<CoverageFrameworkAggregate> {
+    build_per_framework_aggregates_in_dir(&workspace_taxonomy_dir(), findings)
+}
+
+pub fn build_per_framework_aggregates_in_dir(
+    taxonomy_dir: &Path,
+    findings: &[ThreatFinding],
+) -> Vec<CoverageFrameworkAggregate> {
     let mut aggregates = Vec::with_capacity(ORDERED_FRAMEWORKS.len());
-    let raw_counts = load_framework_yaml_record_counts();
-    let in_scope_counts = load_framework_yaml_in_scope_record_counts();
+    let raw_counts = load_framework_yaml_record_counts_from_dir(taxonomy_dir);
+    let in_scope_counts = load_framework_yaml_in_scope_record_counts_from_dir(taxonomy_dir);
 
     for framework in ORDERED_FRAMEWORKS {
         let yaml_record_count = raw_counts.get(framework).copied().unwrap_or(0);
         let in_scope_yaml_record_count = in_scope_counts.get(framework).copied().unwrap_or(0);
-        let records = load_framework_records(framework, true);
+        let records = load_framework_yaml_records_from_dir(taxonomy_dir, framework, true);
         let items = classify_framework_items(findings, framework, &records);
 
         aggregates.push(build_per_framework_aggregate(
@@ -231,37 +238,55 @@ fn workspace_root() -> PathBuf {
         .to_path_buf()
 }
 
-fn taxonomy_dir() -> PathBuf {
+fn workspace_taxonomy_dir() -> PathBuf {
     workspace_root().join("schemas/taxonomy")
 }
 
-fn load_framework_yaml_record_counts() -> BTreeMap<String, usize> {
-    ORDERED_FRAMEWORKS
-        .into_iter()
-        .map(|framework| {
-            (
-                framework.to_string(),
-                load_framework_records(framework, false).len(),
-            )
-        })
-        .collect()
-}
-
-fn load_framework_yaml_in_scope_record_counts() -> BTreeMap<String, usize> {
-    ORDERED_FRAMEWORKS
-        .into_iter()
-        .map(|framework| {
-            (
-                framework.to_string(),
-                load_framework_records(framework, true).len(),
-            )
-        })
-        .collect()
-}
-
-fn load_framework_records(framework_name: &str, in_scope_only: bool) -> Vec<FrameworkRecord> {
-    let path = taxonomy_dir().join(format!("{framework_name}.yaml"));
+pub fn load_framework_yaml_records_from_dir(
+    taxonomy_dir: &Path,
+    framework_name: &str,
+    in_scope_only: bool,
+) -> Vec<FrameworkRecord> {
+    let path = taxonomy_dir.join(format!("{framework_name}.yaml"));
     let text = fs::read_to_string(path).unwrap_or_default();
+    load_framework_records_from_text(&text, in_scope_only)
+}
+
+pub fn load_framework_yaml_record_counts() -> BTreeMap<String, usize> {
+    load_framework_yaml_record_counts_from_dir(&workspace_taxonomy_dir())
+}
+
+pub fn load_framework_yaml_record_counts_from_dir(taxonomy_dir: &Path) -> BTreeMap<String, usize> {
+    ORDERED_FRAMEWORKS
+        .into_iter()
+        .map(|framework| {
+            (
+                framework.to_string(),
+                load_framework_yaml_records_from_dir(taxonomy_dir, framework, false).len(),
+            )
+        })
+        .collect()
+}
+
+pub fn load_framework_yaml_in_scope_record_counts() -> BTreeMap<String, usize> {
+    load_framework_yaml_in_scope_record_counts_from_dir(&workspace_taxonomy_dir())
+}
+
+pub fn load_framework_yaml_in_scope_record_counts_from_dir(
+    taxonomy_dir: &Path,
+) -> BTreeMap<String, usize> {
+    ORDERED_FRAMEWORKS
+        .into_iter()
+        .map(|framework| {
+            (
+                framework.to_string(),
+                load_framework_yaml_records_from_dir(taxonomy_dir, framework, true).len(),
+            )
+        })
+        .collect()
+}
+
+fn load_framework_records_from_text(text: &str, in_scope_only: bool) -> Vec<FrameworkRecord> {
     let mut records = Vec::new();
     let mut current: Option<FrameworkRecord> = None;
 

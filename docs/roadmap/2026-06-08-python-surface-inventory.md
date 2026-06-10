@@ -103,7 +103,7 @@ tests/scripts/test_coverage_attestation_tiers.py
 tests/scripts/test_llm10_unbounded_consumption_enrichment.py
 ~~tests/scripts/test_asset_sensitivity_tags.py~~ - migrated to `crates/tachi-core/tests/parsers.rs::parse_component_asset_map_matches_retired_pytest_contract`
 ~~tests/scripts/test_template_config_load_integration.py~~ - migrated to `crates/tachi-shell/tests/template_config_load.rs::template_config_load_integration_contract_is_rust_native`
-tests/scripts/test_coverage_attestation_in_scope.py
+~~tests/scripts/test_coverage_attestation_in_scope.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation_in_scope.rs::load_framework_yaml_records_from_dir_filters_oos_and_treats_missing_field_as_in_scope` and `crates/tachi-core/tests/coverage_attestation_in_scope.rs::build_per_framework_aggregates_in_dir_uses_in_scope_denominator`
 tests/scripts/test_smoke.py
 tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py
 stacks/fastapi-react/scaffold/backend/tests/api/__init__.py

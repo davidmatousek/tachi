@@ -16,8 +16,8 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 | Card | Status | Next validation focus |
 |---|---|---|
 | RT-010 | Complete | Keep the frozen Python surface inventory synchronized with retirements. |
-| RT-011 | In progress | Continue migrating the remaining pytest coverage after the Rust-native defaults-env init, adversarial init, and template git clone timeout migrations. |
-| RT-012 | In progress | Continue parser/report-data parity after Rust asset tag parsing, report-data image binding emission, and SARIF runtime retirement, then remove Python runtime dependencies from canonical behavior. |
+| RT-011 | In progress | Continue migrating the remaining pytest coverage after the Rust-native defaults-env init, adversarial init, template git clone timeout, and coverage-attestation in-scope migrations. |
+| RT-012 | In progress | Continue parser/report-data parity after Rust asset tag parsing, report-data image binding emission, coverage-attestation in-scope filtering, and SARIF runtime retirement, then remove Python runtime dependencies from canonical behavior. |
 | RT-013 | Pending | Start after RT-012 establishes the shared Rust command layer as canonical. |
 | RT-014 | Pending | Start after RT-012 and RT-013 prove Python packaging and scaffold surfaces are no longer needed. |
 | RT-015 | Pending | Start after the Rust-only path is stable enough for benchmark-driven hardening. |
@@ -40,7 +40,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 - **Priority**: P0
 - **Labels**: `rust`, `testing`, `coverage`, `migration`
 - **Summary**: Port the highest-signal pytest suites into Rust unit and integration tests, then define the narrow Rust-owned E2E boundary.
-- **Current evidence**: RT-009 docs, taxonomy integrity, project-name parsing, YAML import placement, infographic command dispatch, source attribution, the template substitute shim canary, template substitute no-`eval` lint, template substitute literal-substitution contract, template config load unit and integration contracts, init-input unit contract, defaults-env init contract, adversarial init contract, template git clone timeout contract, finding-pattern parser, agentic pattern extraction, misinformation schema, output-integrity schema, init self-delete, F-A3 populator wiring, report-data image binding, coverage-attestation aggregation, asset-sensitivity tag parser coverage, executive-architecture infographic payload coverage, attack-chain parsing coverage, and attack-chain Mermaid generation coverage now have Rust-native tests. Current audit: 68 active modules, 46 Rust integration modules, 0 Python unit modules, 2 Python smoke modules, 19 support/regression modules.
+- **Current evidence**: RT-009 docs, taxonomy integrity, project-name parsing, YAML import placement, infographic command dispatch, source attribution, the template substitute shim canary, template substitute no-`eval` lint, template substitute literal-substitution contract, template config load unit and integration contracts, init-input unit contract, defaults-env init contract, adversarial init contract, template git clone timeout contract, finding-pattern parser, agentic pattern extraction, misinformation schema, output-integrity schema, init self-delete, F-A3 populator wiring, report-data image binding, coverage-attestation aggregation, coverage-attestation in-scope filtering, asset-sensitivity tag parser coverage, executive-architecture infographic payload coverage, attack-chain parsing coverage, and attack-chain Mermaid generation coverage now have Rust-native tests. Current audit: 68 active modules, 47 Rust integration modules, 0 Python unit modules, 2 Python smoke modules, 18 support/regression modules.
 - **Acceptance**:
   - Core parser and payload behavior have Rust-native regression tests.
   - The Rust test taxonomy covers unit, integration, smoke, and critical E2E flows.
