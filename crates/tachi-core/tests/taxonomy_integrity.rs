@@ -25,6 +25,8 @@ const TAXONOMIES: &[&str] = &[
 const EDGE_TYPES: &[&str] = &["primary", "related", "superseded"];
 const CONFIDENCE_VALUES: &[&str] = &["high", "medium", "low"];
 const PRIMARY_EDGE_FLOOR: usize = 500;
+const PRE_MISINFORMATION_ID_PREFIXES: &[&str] =
+    &["S", "T", "R", "I", "D", "E", "AG", "LLM", "AGP", "OI"];
 
 #[derive(Debug)]
 struct CatalogRecord {
@@ -105,6 +107,30 @@ fn record_url(record: &CatalogRecord) -> Option<String> {
 
 fn is_url_or_existing_file(root: &Path, value: &str) -> bool {
     value.starts_with("http://") || value.starts_with("https://") || root.join(value).is_file()
+}
+
+fn finding_id_prefixes(schema_text: &str) -> BTreeSet<String> {
+    schema_text
+        .lines()
+        .find_map(|line| scalar_value(line, "pattern:"))
+        .and_then(|pattern| pattern.strip_prefix("^(").map(str::to_string))
+        .and_then(|pattern| {
+            pattern
+                .split_once(")-\\\\d+$")
+                .map(|(prefixes, _)| prefixes.to_string())
+        })
+        .expect("finding.id.pattern should use the expected prefix alternation shape")
+        .split('|')
+        .map(ToOwned::to_owned)
+        .collect()
+}
+
+fn finding_id_matches(prefixes: &BTreeSet<String>, value: &str) -> bool {
+    let Some((prefix, suffix)) = value.split_once('-') else {
+        return false;
+    };
+
+    prefixes.contains(prefix) && !suffix.is_empty() && suffix.chars().all(|ch| ch.is_ascii_digit())
 }
 
 fn nist_sort_key(id: &str) -> (String, u32, u32, String) {
@@ -327,4 +353,44 @@ fn taxonomy_integrity_contract_is_rust_native() {
         primary_count >= PRIMARY_EDGE_FLOOR,
         "crosswalk.yaml: {primary_count} primary edges below floor of {PRIMARY_EDGE_FLOOR}"
     );
+}
+
+#[test]
+fn misinformation_id_schema_contract_is_rust_native() {
+    let root = workspace_root();
+    assert!(
+        !root.join("tests/scripts/test_misinformation.py").exists(),
+        "misinformation schema coverage should live in Rust tests, not pytest"
+    );
+
+    let schema_path = root.join("schemas/finding.yaml");
+    let schema = fs::read_to_string(&schema_path).unwrap_or_else(|err| {
+        panic!(
+            "expected finding schema {} to load: {err}",
+            schema_path.display()
+        )
+    });
+    let prefixes = finding_id_prefixes(&schema);
+
+    for prefix in PRE_MISINFORMATION_ID_PREFIXES {
+        let finding_id = format!("{prefix}-1");
+        assert!(
+            finding_id_matches(&prefixes, &finding_id),
+            "pre-1.7 ID prefix {prefix:?} should remain valid"
+        );
+    }
+
+    for finding_id in ["MI-1", "MI-10", "MI-99"] {
+        assert!(
+            finding_id_matches(&prefixes, finding_id),
+            "MI finding ID {finding_id:?} should match the finding.id pattern"
+        );
+    }
+
+    for finding_id in ["MI1", "MIA-1", "mi-1", "", "MI-abc", "MI-"] {
+        assert!(
+            !finding_id_matches(&prefixes, finding_id),
+            "malformed finding ID {finding_id:?} should not match the finding.id pattern"
+        );
+    }
 }

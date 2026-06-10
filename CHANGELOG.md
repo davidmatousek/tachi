@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust-native misinformation schema contract
+
+Moved the misinformation finding ID schema contract from `tests/scripts/test_misinformation.py` into the Rust taxonomy integration suite, preserving MI prefix and malformed-ID coverage while retiring another pytest support surface.
+
 ### Rust-native template substitute no-eval lint
 
 Moved the `template-substitute.sh` no-`eval` lint from `tests/scripts/test_template_substitute_lint_no_eval.py` into the Rust substitute canary integration test, preserving the whole-word token guard while retiring another pytest support surface.
