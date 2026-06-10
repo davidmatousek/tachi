@@ -11,7 +11,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | Entry Point | Responsibility |
 |---|---|
 | `Cargo.toml` | Workspace manifest for `crates/tachi-core`, `crates/tachi-cli`, `crates/tachi-shell`, and `src-tauri`. |
-| `crates/tachi-core/src/lib.rs` | Core Rust library export surface for parsers, report data, SARIF builders, taxonomy, coverage audit, and infographic payloads, including the executive-architecture overlay path. |
+| `crates/tachi-core/src/lib.rs` | Core Rust library export surface for parsers, report data, SARIF builders, taxonomy, coverage audit, infographic payloads, and attack-chain Mermaid generation, including the executive-architecture overlay path. |
 | `crates/tachi-cli/src/bin/*.rs` | Rust CLI binaries for init/install/update/bootstrap, report-data, infographic-data, SARIF generation, and coverage audit. |
 | `crates/tachi-shell/src/commands.rs` | Shared command layer used by CLI-style flows and the Tauri bridge. |
 | `src-tauri/src/lib.rs` | Desktop command registration and bridge integration for Tauri. |
@@ -40,6 +40,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
 1. CLI binaries in `crates/tachi-cli/src/bin/` parse command arguments and delegate to Rust libraries.
 2. Shared business logic runs in `tachi-core` modules:
    - `parsers.rs` parses project names, threat findings, markdown tables, source attribution, and agentic patterns.
+   - `attack_chains.rs` parses attack-chain artifacts and renders MAESTRO-aligned Mermaid diagrams for Rust-native parity tests.
    - `report_data.rs` builds Typst payload data for report assembly.
    - `infographic.rs` builds JSON payloads, MAESTRO visual data, and the executive-architecture overlay path.
    - `risk_scores.rs`, `threats_sarif.rs`, and `sarif_common.rs` build SARIF exports.
@@ -53,10 +54,10 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | Level | Current Rust-Native Surface |
 |---|---|
 | Unit | Rust unit tests; current audit shows 0 remaining Python unit modules. |
-| Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit shows 45 Rust integration modules after retiring the defaults-env init, adversarial init, template git clone timeout, and executive-architecture infographic pytests. |
+| Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit shows 45 Rust integration modules after retiring the defaults-env init, adversarial init, template git clone timeout, executive-architecture infographic, and attack-chain pytests. |
 | Smoke | Transitional smoke modules tracked by `tachi-core::coverage_audit`; current audit shows 2 remaining Python smoke modules. |
 | E2E | Critical init flow currently represented by `tests/scripts/test_init_sh_substitution.py` while the Rust-owned E2E boundary is being defined. |
-| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 85.20% regions / 85.83% lines. |
+| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 85.20% regions / 85.83% lines. Current audit: 68 active modules, 45 Rust integration modules, 0 Python unit modules, 2 Python smoke modules, 20 support/regression modules. |
 
 Primary validation commands:
 

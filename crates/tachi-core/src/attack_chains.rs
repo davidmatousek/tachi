@@ -1,3 +1,6 @@
+use std::collections::BTreeMap;
+
+use crate::coverage_taxonomy::maestro_layer_catalog;
 use crate::parsers::parse_markdown_table;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -28,6 +31,25 @@ pub struct ChainBreakingControl {
     pub target_layer: String,
     pub rationale: String,
     pub recommendation: String,
+}
+
+fn maestro_layer_labels() -> BTreeMap<&'static str, &'static str> {
+    maestro_layer_catalog()
+        .into_iter()
+        .map(|layer| (layer.layer_id, layer.layer_name))
+        .collect()
+}
+
+fn maestro_layer_colors() -> BTreeMap<&'static str, &'static str> {
+    BTreeMap::from([
+        ("L1", "#6366f1"),
+        ("L2", "#8b5cf6"),
+        ("L3", "#a855f7"),
+        ("L4", "#3b82f6"),
+        ("L5", "#06b6d4"),
+        ("L6", "#14b8a6"),
+        ("L7", "#f59e0b"),
+    ])
 }
 
 pub fn parse_attack_chains(content: Option<&str>) -> Vec<AttackChain> {
@@ -79,6 +101,68 @@ pub fn parse_attack_chains(content: Option<&str>) -> Vec<AttackChain> {
     }
 
     chains
+}
+
+pub fn generate_chain_mermaid(chain: &AttackChain) -> String {
+    if chain.findings.is_empty() {
+        return String::new();
+    }
+
+    let layer_names = maestro_layer_labels();
+    let layer_colors = maestro_layer_colors();
+    let mut lines = vec![String::from("flowchart TD")];
+
+    for finding in &chain.findings {
+        let layer = normalize_chain_layer(&finding.maestro_layer);
+        let layer_name = layer_names.get(layer.as_str()).copied().unwrap_or(&layer);
+        let color = layer_colors
+            .get(layer.as_str())
+            .copied()
+            .unwrap_or("#64748b");
+
+        let mut label = format!("{layer}: {layer_name}");
+        if !finding.finding_id.is_empty() {
+            label.push_str(&format!("<br/>{}", finding.finding_id));
+        }
+        if !finding.component.is_empty() {
+            label.push_str(&format!("<br/>{}", finding.component));
+        }
+
+        lines.push(format!("    {layer}[\"{label}\"]"));
+        lines.push(format!(
+            "    style {layer} fill:{color},stroke:#1e293b,color:#fff"
+        ));
+    }
+
+    for idx in 0..chain.findings.len().saturating_sub(1) {
+        let src = normalize_chain_layer(&chain.findings[idx].maestro_layer);
+        let dst = normalize_chain_layer(&chain.findings[idx + 1].maestro_layer);
+        lines.push(format!(r#"    {src} -->|"enables"| {dst}"#));
+    }
+
+    lines.join("\n")
+}
+
+fn normalize_chain_layer(raw_layer: &str) -> String {
+    let trimmed = raw_layer.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    let Some((layer_id, _)) = trimmed
+        .split_once('—')
+        .or_else(|| trimmed.split_once('–'))
+        .or_else(|| trimmed.split_once('-'))
+    else {
+        return trimmed.replace(' ', "");
+    };
+
+    let layer_id = layer_id.trim().to_ascii_uppercase();
+    if layer_id.starts_with('L') && layer_id.len() <= 3 {
+        layer_id
+    } else {
+        trimmed.replace(' ', "")
+    }
 }
 
 fn parse_chain_heading(line: &str) -> Option<(String, String)> {

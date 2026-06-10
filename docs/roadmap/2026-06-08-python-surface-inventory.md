@@ -52,7 +52,7 @@ tests/scripts/test_attack_chain_extraction.py
 tests/scripts/init_sh_helpers.py
 tests/scripts/test_pattern_synthesis.py
 tests/scripts/generate_pagination_fixture.py
-tests/scripts/test_attack_chains.py
+~~tests/scripts/test_attack_chains.py~~ - migrated to `crates/tachi-core/tests/attack_chains.rs::generate_chain_mermaid_renders_layers_and_edges` and `crates/tachi-core/tests/attack_chains.rs::parse_attack_chains_extracts_chain_metadata_and_members`
 stacks/fastapi-react-local/scaffold/backend/app/api/__init__.py
 stacks/fastapi-react-local/scaffold/backend/app/api/deps.py
 stacks/fastapi-react-local/scaffold/backend/app/api/v1/router.py
