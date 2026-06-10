@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-10T23:06:17Z.
+> Auto-generated from GitHub Issues on 2026-06-10T23:15:17Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -21,7 +21,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| #184 | F-A1.1 follow-on: NIST AI 600-1 GAI Risk taxonomy addition — Surface C transcription (ADR-027 / FR-010 enum expansion) | — | 2026-06-10 |
+| — | *No items in this stage* | | |
 
 ## Plan
 
@@ -65,3 +65,4 @@
 | #268 | fix: disentangle tachi-scanner from AOD-Kit positioning in .claude/rules/scope.md | CLOSED | 2026-05-07 |
 | #266 | fix: retitle CONTRIBUTING.md for tachi (currently labeled 'AOD Kit' with stale clone URL) | CLOSED | 2026-05-07 |
 | #264 | feat: adopt dual-frame public positioning (harness reframe) | CLOSED | 2026-05-07 |
+| #184 | F-A1.1 follow-on: NIST AI 600-1 GAI Risk taxonomy addition — Surface C transcription (ADR-027 / FR-010 enum expansion) | OPEN | 2026-06-10 |
