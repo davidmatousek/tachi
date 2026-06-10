@@ -161,6 +161,19 @@ fn parse_project_name_matches_retired_pytest_contract() {
 fn parse_finding_pattern_normalizes_case_and_sentinels() {
     assert_eq!(VALID_AGENTIC_PATTERNS.len(), 8);
     assert_eq!(
+        VALID_AGENTIC_PATTERNS.to_vec(),
+        vec![
+            "agent_collusion",
+            "emergent_behavior",
+            "temporal_attack",
+            "trust_exploitation",
+            "communication_vulnerability",
+            "resource_competition",
+            "none",
+            "multiple",
+        ]
+    );
+    assert_eq!(
         parse_finding_pattern(Some("AGENT_COLLUSION")),
         "agent_collusion"
     );
@@ -169,6 +182,84 @@ fn parse_finding_pattern_normalizes_case_and_sentinels() {
     assert_eq!(parse_finding_pattern(Some("-")), "none");
     assert_eq!(parse_finding_pattern(None), "none");
     assert_eq!(parse_finding_pattern(Some("xyz")), "none");
+}
+
+#[test]
+fn finding_pattern_parser_contract_is_rust_native() {
+    let root = workspace_root();
+    assert!(
+        !root
+            .join("tests/scripts/test_finding_pattern_parser.py")
+            .exists(),
+        "finding-pattern parser coverage should live in Rust tests, not pytest"
+    );
+
+    let with_patterns = parse_threats_findings(include_str!(
+        "../../../tests/scripts/fixtures/finding_pattern_parser/threats_with_patterns.md"
+    ))
+    .expect("parse pattern fixture");
+    assert_eq!(with_patterns.len(), 10);
+    assert_eq!(with_patterns[0].agentic_pattern, "trust_exploitation");
+    assert_eq!(with_patterns[1].agentic_pattern, "agent_collusion");
+    assert_eq!(with_patterns[2].agentic_pattern, "agent_collusion");
+    assert_eq!(with_patterns[3].agentic_pattern, "none");
+    assert_eq!(with_patterns[4].agentic_pattern, "emergent_behavior");
+    assert_eq!(with_patterns[5].agentic_pattern, "temporal_attack");
+    assert_eq!(
+        with_patterns[6].agentic_pattern,
+        "communication_vulnerability"
+    );
+    assert_eq!(with_patterns[7].agentic_pattern, "resource_competition");
+    assert_eq!(with_patterns[8].agentic_pattern, "multiple");
+    assert_eq!(with_patterns[9].agentic_pattern, "none");
+
+    let pre_feature = parse_threats_findings(include_str!(
+        "../../../tests/scripts/fixtures/finding_pattern_parser/threats_pre_feature_142.md"
+    ))
+    .expect("parse pre-feature fixture");
+    assert_eq!(pre_feature.len(), 5);
+    assert!(pre_feature
+        .iter()
+        .all(|finding| finding.agentic_pattern == "none"));
+
+    let all_em_dash = parse_threats_findings(include_str!(
+        "../../../tests/scripts/fixtures/finding_pattern_parser/threats_all_em_dash.md"
+    ))
+    .expect("parse em-dash fixture");
+    assert_eq!(all_em_dash.len(), 4);
+    assert!(all_em_dash
+        .iter()
+        .all(|finding| finding.agentic_pattern == "none"));
+
+    let mixed_case = parse_threats_findings(include_str!(
+        "../../../tests/scripts/fixtures/finding_pattern_parser/threats_mixed_case_headers.md"
+    ))
+    .expect("parse mixed-case fixture");
+    assert_eq!(
+        mixed_case
+            .iter()
+            .map(|finding| finding.agentic_pattern.as_str())
+            .collect::<Vec<_>>(),
+        vec![
+            "trust_exploitation",
+            "agent_collusion",
+            "emergent_behavior",
+            "multiple",
+            "none",
+        ]
+    );
+
+    let shifted = parse_threats_findings(include_str!(
+        "../../../tests/scripts/fixtures/finding_pattern_parser/threats_pattern_column_shifted.md"
+    ))
+    .expect("parse shifted-column fixture");
+    assert_eq!(
+        shifted
+            .iter()
+            .map(|finding| finding.agentic_pattern.as_str())
+            .collect::<Vec<_>>(),
+        vec!["trust_exploitation", "agent_collusion", "none"]
+    );
 }
 
 #[test]

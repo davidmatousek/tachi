@@ -17,6 +17,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - Infographic command-dispatch coverage has moved from `tests/scripts/test_command_dispatch.py` to `crates/tachi-core/tests/infographic_command_dispatch.rs`
 - Source-attribution parser coverage has moved from `tests/scripts/test_source_attribution.py` to `crates/tachi-core/tests/parsers.rs`
 - Template substitute shim canary coverage has moved from `tests/scripts/test_substitute_shim_canary.py` to `crates/tachi-core/tests/substitute_shim_canary.rs`
+- Finding-pattern parser coverage has moved from `tests/scripts/test_finding_pattern_parser.py` to `crates/tachi-core/tests/parsers.rs`
 - `pyproject.toml` and `requirements-dev.txt` map to retirement once the Rust-native tooling path is complete
 - `stacks/fastapi-react*` scaffolds map to archive/retirement once Rust/Tauri-only stack guidance is stable
 
@@ -60,7 +61,6 @@ tests/scripts/test_pdf_page_positioning.py
 tests/scripts/test_init_sh_adversarial.py
 tests/scripts/test_init_sh_substitution.py
 tests/scripts/test_init_sh_self_delete.py
-tests/scripts/test_finding_pattern_parser.py
 tests/scripts/test_extractor_contract_fixes.py
 tests/scripts/test_init_input_unit.py
 tests/scripts/test_template_substitute_lint_no_eval.py
@@ -125,5 +125,5 @@ stacks/fastapi-react/scaffold/backend/app/api/v1/__init__.py
 ## Notes
 
 - The inventory intentionally excludes fixture copies under `tests/fixtures/` and spec artifacts under `specs/`.
-- RT-011 has started retiring pytest-centric coverage by moving the RT-009 documentation contract, taxonomy integrity checks, project-name parser contract, YAML import invariant, infographic command-dispatch contract, source-attribution parser contract, and template substitute shim canary to Rust-native tests.
+- RT-011 has started retiring pytest-centric coverage by moving the RT-009 documentation contract, taxonomy integrity checks, project-name parser contract, YAML import invariant, infographic command-dispatch contract, source-attribution parser contract, template substitute shim canary, and finding-pattern parser contract to Rust-native tests.
 - RT-014 will remove the packaging and scaffold surfaces once parity is stable.

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Rust-native finding-pattern parser contract
+
+Moved the finding-pattern parser fixture contract from `tests/scripts/test_finding_pattern_parser.py` into the Rust parser integration suite, preserving canonical pattern normalization and shifted-column fixture coverage while retiring another pytest support surface.
+
 ### Rust-native template substitute shim canary
 
 Moved the bash `patsub_replacement` shim canary from `tests/scripts/test_substitute_shim_canary.py` into a Rust integration test, preserving the load-bearing `shopt -u patsub_replacement` guard while retiring another pytest smoke surface.
