@@ -1,0 +1,73 @@
+W4 sweep gate evidence (T014) — F-184 NIST AI 600-1 Surface C Transcription
+Date: 2026-06-11 | Executor: senior-backend-engineer | Branch: 184-nist-ai-600-1-surface-c-transcription
+Interpreter pin: /usr/bin/python3
+
+================================================================================
+GATE 1 — quickstart §6 stale-count sweep (inventory surfaces only)
+================================================================================
+Command:
+  grep -n "7-value\|7 catalog\|seven taxonom\|taxonomy (7)\|542\|(14)" \
+    tests/schemas/test_taxonomy_integrity.py \
+    schemas/taxonomy/README.md \
+    schemas/taxonomy/crosswalk.yaml
+
+Output (verbatim, 2 hits):
+  schemas/taxonomy/README.md:203:The FR-002 build-start survey found the achievable `high`/`medium` core was **37**, below the ≥80 target band. Per the anti-drift rule, the floor was committed at **37 with NO `low`-padding** to reach 80 — **anti-drift over floor-hitting**. The cause was structural: OWASP-Web→CWE yielded 0 (F-180 exhausted it as `primary`), and the 542-edge primary graph already captured the densest relationships, leaving only beyond-primary edges. [...]
+  schemas/taxonomy/crosswalk.yaml:14:#   F-186 (#186, BLP-05 Wave 2): restored 16 MITRE-scoped primary edges (526 -> 542).
+
+Verdict: PASS — exactly the TWO expected historical survivors:
+  (1) crosswalk header F-186 lineage line "(526 -> 542)" at L14 (unchanged anchor).
+  (2) README §4.1 yield-tripwire narrative "the 542-edge primary graph" — pre-W4
+      anchor ~L193, now L203 (line shift +10 from the new §3.8 section inserted
+      above it; content byte-identical, line untouched by the F-184 diff —
+      verified: `git diff schemas/taxonomy/README.md` contains zero +/- lines
+      matching "542-edge primary graph").
+  tests/schemas/test_taxonomy_integrity.py: 0 hits (W1 surgery complete).
+  No other hits anywhere → no sweep failures.
+
+Pre-W4 baseline (for the record): 6 offending README hits existed before T012
+(L13 "seven taxonom", L20 "9 files/7 catalog/7-value", L34 "7 catalog",
+L55 "7 catalog", L59 "(14) … 41 edges", L243 "542") — all cleared by T012
+within the C5 inventory; the two survivors above were never touched.
+
+================================================================================
+GATE 2 — exempt surfaces zero-diff
+================================================================================
+Command:
+  git diff main --stat -- docs/architecture/01_system_design/README.md \
+    specs/180-taxonomy-crosswalk-collection/
+
+Output: (empty)
+
+Verdict: PASS — baseline-fixture byte-identity (Architect C2) and specs/180-*
+untouched. Additionally not touched anywhere in the W4 diff: ADR-025 body,
+ADR-028 body, historical PRDs (ADR-027 edits were Revision History append +
+Decision 3 one-line blockquote annotation only; ratified Decision 1–8 text
+byte-unchanged).
+
+================================================================================
+GATE 3 — integrity suite
+================================================================================
+Command:
+  /usr/bin/python3 -m pytest tests/schemas/test_taxonomy_integrity.py -v
+
+Output:
+  test_framework_yamls_load PASSED
+  test_crosswalk_loads PASSED
+  test_crosswalk_referential_integrity PASSED
+  test_citation_shape PASSED
+  test_records_sorted PASSED
+  ============================== 5 passed in 1.71s ===============================
+
+Verdict: PASS — 5/5 (spec FR-008 commit-boundary invariant holds).
+
+================================================================================
+W4 commits
+================================================================================
+  Commit 1 (T011, alone per OQ-3 one-commit condition, + riding W3 artifacts
+  w3-fidelity.md and tasks.md T010 checkbox): 3429f94
+    docs(184): ADR-027 revision entry + Decision 3 annotation (T011)
+  Commit 2 (T012+T013+T014 evidence): see git log —
+    docs(184): taxonomy README §3.8 + CHANGELOG feat(184) (T012+T013)
+
+Overall W4 gate verdict: PASS

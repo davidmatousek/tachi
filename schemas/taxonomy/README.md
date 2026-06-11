@@ -10,14 +10,14 @@
 
 ## 1. Purpose
 
-`schemas/taxonomy/` is a machine-readable catalog and crosswalk of the seven taxonomies tachi cites across its agentic-AI threat-modeling output — OWASP (6 published lists), MITRE ATT&CK, MITRE ATLAS, NIST AI RMF 1.0, CWE, plus two tachi pseudo-taxonomies (`tachi-control-category`, `tachi-stride-ai-category`). Every taxonomy ID tachi cites resolves here to a record carrying `{id, full_id, name, url, cwe_refs}`, and every cross-framework mapping (e.g., "what CWEs does OWASP LLM05 relate to?") resolves to a single row in `crosswalk.yaml`.
+`schemas/taxonomy/` is a machine-readable catalog and crosswalk of the eight taxonomies tachi cites across its agentic-AI threat-modeling output — OWASP (6 published lists), MITRE ATT&CK, MITRE ATLAS, NIST AI RMF 1.0, NIST AI 600-1 (GAI Risks), CWE, plus two tachi pseudo-taxonomies (`tachi-control-category`, `tachi-stride-ai-category`). Every taxonomy ID tachi cites resolves here to a record carrying `{id, full_id, name, url, cwe_refs}`, and every cross-framework mapping (e.g., "what CWEs does OWASP LLM05 relate to?") resolves to a single row in `crosswalk.yaml`.
 
 This is the **foundation data** for downstream features:
 - **F-A2** (finding-level source attribution) will extend the finding schema with a `source_attribution` field that cites specific crosswalk edges.
 - **F-B** (coverage attestation report section) will render a per-DFD-component-class attestation that a given framework is fully covered.
 - Future ecosystem integrations (vulnerability manager, SIEM, compliance dashboard) can consume the YAMLs directly via `yaml.safe_load` without parsing agent markdown prose.
 
-The directory ships **9 files** (per spec FR-001): 7 catalog YAMLs + 1 crosswalk YAML + this README. See [ADR-027](../../docs/architecture/02_ADRs/ADR-027-taxonomy-crosswalk-schema.md) for the full schema rationale, the 7-value `taxonomy` enum, the 3-value `edge_type` / `confidence` enums, and the "Interpretation C" single-feature cadence exception.
+The directory ships **10 files** (9 per spec FR-001, plus the 8th catalog added at F-184): 8 catalog YAMLs + 1 crosswalk YAML + this README. See [ADR-027](../../docs/architecture/02_ADRs/ADR-027-taxonomy-crosswalk-schema.md) for the full schema rationale, the 8-value `taxonomy` enum (extended from 7 at F-184 — see the ADR-027 Revision History), the 3-value `edge_type` / `confidence` enums, and the "Interpretation C" single-feature cadence exception.
 
 ### Runnable Python snippet (SC-007)
 
@@ -31,11 +31,11 @@ for edge in edges[:3]:
     print(f"  {edge['source']['taxonomy']}:{edge['source']['id']} -> {edge['target']['taxonomy']}:{edge['target']['id']} ({edge['confidence']})")
 ```
 
-For per-catalog resolution, substitute any of the 7 catalog files:
+For per-catalog resolution, substitute any of the 8 catalog files:
 
 ```python
-for taxonomy in ('owasp', 'mitre-attack', 'mitre-atlas', 'nist-ai-rmf', 'cwe',
-                 'tachi-control-category', 'tachi-stride-ai-category'):
+for taxonomy in ('owasp', 'mitre-attack', 'mitre-atlas', 'nist-ai-rmf', 'nist-ai-600-1',
+                 'cwe', 'tachi-control-category', 'tachi-stride-ai-category'):
     records = yaml.safe_load(open(f'schemas/taxonomy/{taxonomy}.yaml'))
     print(f"{taxonomy}: {len(records)} records (example: {records[0]['id']})")
 ```
@@ -52,11 +52,11 @@ F-A1 is the machine-readable **foundation** — it deliberately defers three dow
 
 ## 2. Harvest methodology
 
-The 7 catalog YAMLs are assembled from three source classes:
+The 8 catalog YAMLs are assembled from three source classes:
 
 1. **Agent citation seed** — the 38 ATT&CK / 7 ATLAS / 41 CWE IDs currently cited across the 11 threat-detection agents' `detection-patterns.md` files (full frozen list in spec Assumption A1).
 2. **External published lists** — the full published item set for each externally-curated framework: OWASP (6 Top 10 lists), NIST AI RMF 1.0 (72 Subcategories — see §3.4 for the FR-021 amendment trail), CWE Top 25 (2025), MITRE ATLAS v5.4 October 2025 agent techniques (AML.T0058–T0062).
-3. **Verbatim transcription from `nist-ai-rmf-mapping.md`** — per spec FR-022, every Surface B real-mapping row (27) and every Surface C Overlap row (14) in `.claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md` (authored via Feature 144 / ADR-025) is transcribed verbatim into `crosswalk.yaml` as 41 edges. "No equivalent" and "Gap" rows are omitted by default.
+3. **Verbatim transcription from `nist-ai-rmf-mapping.md`** — per spec FR-022, every Surface B real-mapping row (27) in `.claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md` (authored via Feature 144 / ADR-025) is transcribed verbatim into `crosswalk.yaml` as 27 `tachi-control-category → nist-ai-rmf` edges. "No equivalent" and "Gap" rows are omitted by default. **F-184 amendment**: this bullet originally counted 14 Surface C Overlap rows toward a 41-edge transcription total — stale on both counts. Surface C was **deferred at F-180** (ADR-027 T027 entry: the F-180 FR-022 direction conflated NIST AI 600-1 GAI Risks with AI RMF 1.0 Subcategories) and **transcribed at F-184** as **15 `tachi-stride-ai-category → nist-ai-600-1` `primary` edges**, direction-corrected per the F-184 FR-022 ratification; the 16 legacy `tachi-stride-ai-category → nist-ai-rmf` drift edges were removed in the same change-set (T027 directive completed). Transcription total: 27 Surface B + 15 Surface C = 42 edges. See §3.8 for the `nist-ai-600-1.yaml` provenance.
 
 Curation rule: F-A1 is a **harvest + transcription** feature, not a re-authorship feature. Where a published source is factually incorrect, the correction is filed as a separate ADR-025 (or equivalent) amendment Issue, NOT silently corrected in F-A1 (per spec FR-024).
 
@@ -122,6 +122,16 @@ Curation rule: F-A1 is a **harvest + transcription** feature, not a re-authorshi
 - **External curation**: none (tachi pseudo-taxonomy — no external publisher).
 - **Retrieval date**: **2026-04-17** (repo file at commit baseline; the canonical source lives in-repo).
 - **Final record count**: **11** (FR-019 — exact).
+
+### 3.8 `nist-ai-600-1.yaml`
+
+- **Seed source**: external published catalog — **NIST AI 600-1** (Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile, July 2024), DOI `https://doi.org/10.6028/NIST.AI.600-1`. Records are transcribed via the Surface C table of `.claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md` (authored via Feature 144 / ADR-025), names verbatim from the table per FR-024 transcription discipline. Added at **F-184** as the 8th catalog (ADR-027 Decision 3 extension — see the ADR-027 Revision History).
+- **Record composition**: the **12 GAI Risks** of NIST AI 600-1 **§2.1–§2.12**, one record per section. All records share the DOI-anchored URL (same canonical-URL pattern as `nist-ai-rmf.yaml` in §3.4 — per-section anchors are not stable across NIST publication revisions).
+- **id convention**: ids are **YAML-quoted strings** (`"2.1"` … `"2.12"`) — unquoted, `2.10` parses as the float `2.1` and collides with `"2.1"`. Records sort in **publication order** (section-numeric §2.1 → §2.12), enforced by the `_sort_key_section` branch of `test_records_sorted`.
+- **`cwe_refs` rationale**: `cwe_refs: []` on all 12 records — **no CWE mapping exists for GAI risks** (NIST publishes no CWE cross-references in AI 600-1), so the field stays empty per the ADR-027 Decision 1 unidirectional rule (no inferred cross-references).
+- **Retrieval date**: **2026-06-10** (DOI document + in-repo Surface C table verification).
+- **Final record count**: **12** (F-184 contract C1 — exact).
+- **Gap-row omission**: the two Surface C Gap rows are omitted from `crosswalk.yaml`. The **§2.6 row is endpoint-less** (no STRIDE+AI source category — an edge is un-formable). The **§2.9 × Spoofing row** is omitted because transcribing it would author the crosswalk's **first `low`-confidence edge** — against the F-182 anti-drift precedent (no `low`-padding; see §4.1) — for a row the source table itself tells auditors not to cite.
 
 ---
 
@@ -240,7 +250,7 @@ When NIST AI RMF 2.0 publishes (or the `airc.nist.gov` Playbook pages add/remove
 
 ## 7. Crosswalk methodology
 
-`crosswalk.yaml` was composed from primary-only edges in F-A1 (per spec FR-025). The `related` and `superseded` edge types were **authorized in the schema but unused at F-A1 merge**, reserved for a follow-on. That follow-on has now begun: **F-182 (BLP-05 Wave 3) authored the first tranche of 37 `related` edges** (22 `high` / 15 `medium`, drawn from four audited published source classes) and **0 `superseded` edges** (catalog-gated — see the deferral disposition). The primary-edge methodology below is unchanged and still governs the 542 `primary` edges; for `related`/`superseded` authoring and confidence calibration, see [§4.1 `related` / `superseded` calibration](#41-related--superseded-calibration).
+`crosswalk.yaml` was composed from primary-only edges in F-A1 (per spec FR-025). The `related` and `superseded` edge types were **authorized in the schema but unused at F-A1 merge**, reserved for a follow-on. That follow-on has now begun: **F-182 (BLP-05 Wave 3) authored the first tranche of 37 `related` edges** (22 `high` / 15 `medium`, drawn from four audited published source classes) and **0 `superseded` edges** (catalog-gated — see the deferral disposition). The primary-edge methodology below is unchanged and still governs the 541 `primary` edges (post-F-184 composition: **541 `primary` / 37 `related` / 0 `superseded` = 578 edges** — 15 Surface C edges added, 16 drift edges removed at F-184); for `related`/`superseded` authoring and confidence calibration, see [§4.1 `related` / `superseded` calibration](#41-related--superseded-calibration).
 
 Day 1 authoring spike (per spec Assumption A5) seeded the crosswalk with **5-slice composition**: 10 OWASP↔CWE + 10 ATT&CK↔CWE + 10 ATT&CK↔ATLAS + 10 LLM↔NIST + 10 Agentic↔MITRE. This 50-edge spike validated the per-edge authoring rate against the ≥500-edge target (spec Risk R3 tiered fallback: Tier 2 = 300-edge floor team-lead-authorizable, Tier 3 = 150-edge floor PRD-amendment-required).
 

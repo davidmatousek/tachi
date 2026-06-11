@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Feature 184 — NIST AI 600-1 Surface C Transcription (BLP-05 Wave 2 / F-A1.1, #184) — feat(184)
+
+Completed the Surface C follow-on that Feature 180's T027 decision deferred: the NIST
+AI 600-1 GAI Risk taxonomy joins the catalog set, the 15 Surface C Overlap rows are
+transcribed in the corrected direction, and the 16 legacy drift edges the T027
+directive ordered removed are finally gone.
+
+**Added**
+- 8th taxonomy catalog `schemas/taxonomy/nist-ai-600-1.yaml` with 12 GAI Risk records
+  (NIST AI 600-1 §2.1–§2.12, DOI-sourced, YAML-quoted string ids in publication order,
+  `cwe_refs: []` — no CWE mapping exists for GAI risks); `taxonomy` enum extended to
+  8 values (ADR-027 Decision 3 amended via its Revision History extension-governance
+  instrument).
+- 15 Surface C `primary` crosswalk edges (`tachi-stride-ai-category → nist-ai-600-1`,
+  `confidence: high`), direction-corrected per FR-022 (F-180's original direction
+  conflated AI 600-1 GAI Risks with AI RMF 1.0 Subcategories).
+
+**Removed**
+- 16 legacy `tachi-stride-ai-category → nist-ai-rmf` drift edges — the standing T027
+  removal directive (left unfinished by T029's Option (d) MIX) is completed; crosswalk
+  composition moves 542 → 541 `primary` / 579 → 578 total (541 / 37 / 0).
+
+**Notes**
+- The taxonomy integrity suite (5 functions) stayed green at every commit boundary;
+  the ≥500 primary-edge floor holds (headroom 41).
+
 ### Feature 186 — MITRE ATT&CK + ATLAS Catalog Expansion (residual drift-edge restoration, F-A1.3)
 
 Restored the MITRE crosswalk coverage that Feature 180's T029 cleanup removed and
