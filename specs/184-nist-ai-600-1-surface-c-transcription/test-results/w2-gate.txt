@@ -1,0 +1,53 @@
+# W2 Gate — F-184 T009 (edge change-set: T006 remove 16 / T007 add 15 / T008 header+prose)
+# Date: 2026-06-10 22:30:13 EDT | Branch: 184-nist-ai-600-1-surface-c-transcription | Base: 607c2c3
+
+## Step 1 — Integrity suite (acceptance oracle, contract C6)
+/Users/david/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+============================= test session starts ==============================
+platform darwin -- Python 3.9.6, pytest-8.4.2, pluggy-1.6.0 -- /Applications/Xcode.app/Contents/Developer/usr/bin/python3
+cachedir: .pytest_cache
+metadata: {'Python': '3.9.6', 'Platform': 'macOS-26.3.1-arm64-arm-64bit', 'Packages': {'pytest': '8.4.2', 'pluggy': '1.6.0'}, 'Plugins': {'Faker': '22.0.0', 'anyio': '4.12.1', 'html': '4.1.1', 'xdist': '3.8.0', 'json-report': '1.5.0', 'timeout': '2.4.0', 'metadata': '3.1.1', 'cov': '4.1.0', 'asyncio': '0.21.1', 'mock': '3.12.0', 'requests-mock': '1.12.1', 'postgresql': '7.0.2'}}
+rootdir: /Users/david/Projects/tachi
+configfile: pyproject.toml
+plugins: Faker-22.0.0, anyio-4.12.1, html-4.1.1, xdist-3.8.0, json-report-1.5.0, timeout-2.4.0, metadata-3.1.1, cov-4.1.0, asyncio-0.21.1, mock-3.12.0, requests-mock-1.12.1, postgresql-7.0.2
+asyncio: mode=strict
+collecting ... collected 5 items
+
+tests/schemas/test_taxonomy_integrity.py::test_framework_yamls_load PASSED [ 20%]
+tests/schemas/test_taxonomy_integrity.py::test_crosswalk_loads PASSED    [ 40%]
+tests/schemas/test_taxonomy_integrity.py::test_crosswalk_referential_integrity PASSED [ 60%]
+tests/schemas/test_taxonomy_integrity.py::test_citation_shape PASSED     [ 80%]
+tests/schemas/test_taxonomy_integrity.py::test_records_sorted PASSED     [100%]
+
+============================== 5 passed in 1.14s ===============================
+
+## Step 2 — quickstart §2 edge-class checks
+Surface C edges (expect 15): 15
+Drift class    (expect 0):  0
+control->rmf   (expect 31): 31
+pairs: [('agent-autonomy', '2.9'), ('data-poisoning', '2.12'), ('data-poisoning', '2.9'), ('denial-of-service', '2.9'), ('info-disclosure', '2.10'), ('info-disclosure', '2.4'), ('info-disclosure', '2.9'), ('model-theft', '2.10'), ('model-theft', '2.9'), ('privilege-escalation', '2.9'), ('prompt-injection', '2.9'), ('tampering', '2.12'), ('tampering', '2.9'), ('tool-abuse', '2.12'), ('tool-abuse', '2.9')]
+PASS: Surface C class == 15 contract C2 pairs, in C2 table order; all primary/high/correct-citation; string ids
+
+## Step 3 — quickstart §3 count arithmetic (hard assert)
+primary=541 related=37 superseded=0 total=578
+arithmetic OK: 541/37/0 = 578
+
+## Step 4 — duplicates + endpoint resolution
+Suite coverage: test_crosswalk_loads asserts no duplicate {source,target,edge_type} triples
+(test_taxonomy_integrity.py L235) + primary-edge floor; test_crosswalk_referential_integrity
+resolves every edge endpoint against the loaded catalogs (incl. the 30 new nist-ai-600-1 /
+tachi-stride-ai-category endpoints). Both PASSED in Step 1. Standalone re-verification:
+standalone OK: 0 duplicate triples across 578 edges; all 15 nist-ai-600-1 targets resolve in the 12-record catalog (['2.10', '2.12', '2.4', '2.9'])
+
+## Class-untouched proof (T006)
+PASS: all 563 pre-existing non-drift edges identical in order and content vs baseline pin;
+      control->rmf class = 31 edges, byte-level YAML untouched (git diff shows no hunks in their regions)
+
+## Diff shape (intended change-set only)
+ schemas/taxonomy/crosswalk.yaml | 334 ++++++++++++++++++++--------------------
+ 1 file changed, 166 insertions(+), 168 deletions(-)
+deletions = 160 drift-block lines + 2 header-line rewrites + 6 NOTE lines = 168
+insertions = 2 header-line rewrites + 4 F-184 lineage lines + 1 NOTE pointer + 159 F-184 section lines = 166
+
+RESULT: W2 GATE PASS (suite 5/5; §2 15/0/31; §3 541/37/0=578; no dupes; endpoints resolve)

@@ -3,20 +3,24 @@
 # Schema: spec.md FR-009 through FR-014
 # Edge shape: {source: {taxonomy, id}, target: {taxonomy, id}, edge_type, confidence, citation}
 # Enums:
-#   taxonomy (7): owasp, mitre-attack, mitre-atlas, nist-ai-rmf, cwe, tachi-control-category, tachi-stride-ai-category
+#   taxonomy (8): owasp, mitre-attack, mitre-atlas, nist-ai-rmf, nist-ai-600-1, cwe, tachi-control-category, tachi-stride-ai-category
 #   edge_type (3): primary, related, superseded
 #   confidence (3): high, medium, low (anti-drift rule: downgrade if no one-sentence citation supports the label)
 #
 # Day 1 Spike (T007): 50 edges across 5 diverse slices per FR A5 composition.
 # All edges carry edge_type: primary. Subsequent waves (T016, T023, T024) extend toward the ≥500 floor.
 #
-# Edit lineage (post-F-180): file now holds 542 primary + 37 related + 0 superseded edges.
+# Edit lineage (post-F-180): file now holds 541 primary + 37 related + 0 superseded edges.
 #   F-186 (#186, BLP-05 Wave 2): restored 16 MITRE-scoped primary edges (526 -> 542).
 #   F-182 (#182, BLP-05 Wave 3): first tranche of related edges — 37 authored (22 high /
 #     15 medium), 0 superseded. Yield-tripwire fired (FR-002): achievable high/medium core
 #     = 37 (< 80 target) -> documented achievable floor committed, NO low-padding (anti-drift
 #     over floor-hitting). Detail: the `# ─── F-182` section near EOF +
 #     specs/182-crosswalk-related-superseded-edges/reference-edges.yaml (full harvest/audit).
+#   F-184 (#184, BLP-05 Wave 2): Surface C transcribed — 15 primary edges added
+#     (tachi-stride-ai-category → nist-ai-600-1; the `# ─── F-184` section at EOF) and
+#     16 legacy drift edges removed (tachi-stride-ai-category → nist-ai-rmf); taxonomy
+#     enum extended to 8 values with the nist-ai-600-1.yaml catalog (12 GAI Risk records).
 # ─── Slice 1: OWASP ↔ CWE (10 edges) ──────────────────────────────────────────
 # Source: OWASP official pages where CWE cross-references are explicitly published.
 - source:
@@ -372,26 +376,6 @@
   target:
     taxonomy: nist-ai-rmf
     id: MEASURE 2.10
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-stride-ai-category
-    id: prompt-injection
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-stride-ai-category
-    id: data-poisoning
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
   edge_type: primary
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
@@ -1748,146 +1732,6 @@
   confidence: high
   citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
 
-- source:
-    taxonomy: tachi-stride-ai-category
-    id: spoofing
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-stride-ai-category
-    id: tampering
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-stride-ai-category
-    id: tampering
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.8
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-stride-ai-category
-    id: repudiation
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.8
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-stride-ai-category
-    id: info-disclosure
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-stride-ai-category
-    id: info-disclosure
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.10
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-stride-ai-category
-    id: denial-of-service
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-stride-ai-category
-    id: privilege-escalation
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-stride-ai-category
-    id: prompt-injection
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.6
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-stride-ai-category
-    id: data-poisoning
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.8
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-stride-ai-category
-    id: model-theft
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.10
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-stride-ai-category
-    id: model-theft
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-stride-ai-category
-    id: tool-abuse
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
-- source:
-    taxonomy: tachi-stride-ai-category
-    id: agent-autonomy
-  target:
-    taxonomy: nist-ai-rmf
-    id: MEASURE 2.7
-  edge_type: primary
-  confidence: high
-  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
-
 # ─── Batch 5 (cont.): OWASP LLM ↔ ATLAS cross-taxonomy (10 edges) ──────────────
 # Source: Curated from Feature 082 detection-patterns.md and ATLAS v5.x technique
 # pages. Semantic alignment between OWASP LLM risks and ATLAS agent/ML techniques.
@@ -1999,12 +1843,7 @@
 # FR-022 verbatim transcription: every Surface B Overlap cell is emitted as one edge
 # per (tachi-control-category, NIST Subcategory) pair. All 8 FR-018-enum control
 # categories present; 27 total edges. Confidence: high (verbatim-from-ref discipline).
-# NOTE: Surface C (AI 600-1 §2.X → STRIDE+AI) DEFERRED — Surface C rows in the
-# reference use AI 600-1 §2.X identifiers that are NOT in the 7-value taxonomy enum
-# (FR-010) nor in nist-ai-rmf.yaml (which holds AI RMF 1.0 Subcategories only).
-# Flagged for ADR-025 amendment Issue per FR-024 discipline; see T023 results file.
-# T028 integrity test + T029 remediation will reconcile against the 22 drifted
-# Batch 5 edges (dash-format targets, 3 source IDs outside FR-018 enum).
+# Surface C: transcribed at F-184 (#184) as 15 direction-corrected edges (tachi-stride-ai-category → nist-ai-600-1) — see the `# ─── F-184` section at EOF.
 
 # --- authentication (3 Subcategories: MAP 4.2, MEASURE 2.7, MANAGE 1.3) ---
 - source:
@@ -5799,3 +5638,162 @@
   edge_type: related
   confidence: medium
   citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/ (Related Frameworks AML.T0034)
+
+# ─── F-184: NIST Surface C verbatim transcription (15 edges, BLP-05 Wave 2) ────
+# Source: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md Surface C
+# (NIST AI 600-1 GAI Risks × tachi STRIDE+AI categories), direction-corrected per
+# FR-022 to tachi-stride-ai-category → nist-ai-600-1. Target ids are quoted
+# strings resolving against nist-ai-600-1.yaml. Gap rows (§2.6 ×—, §2.9×Spoofing)
+# and all "No equivalent" rows omitted per contract C2. Confidence: high
+# (verbatim-from-ref discipline). Paired with the removal of the 16 legacy drift
+# edges (tachi-stride-ai-category → nist-ai-rmf) in this same change-set.
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: info-disclosure
+  target:
+    taxonomy: nist-ai-600-1
+    id: "2.4"
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: tampering
+  target:
+    taxonomy: nist-ai-600-1
+    id: "2.9"
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: info-disclosure
+  target:
+    taxonomy: nist-ai-600-1
+    id: "2.9"
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: denial-of-service
+  target:
+    taxonomy: nist-ai-600-1
+    id: "2.9"
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: prompt-injection
+  target:
+    taxonomy: nist-ai-600-1
+    id: "2.9"
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: data-poisoning
+  target:
+    taxonomy: nist-ai-600-1
+    id: "2.9"
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: privilege-escalation
+  target:
+    taxonomy: nist-ai-600-1
+    id: "2.9"
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: model-theft
+  target:
+    taxonomy: nist-ai-600-1
+    id: "2.9"
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: agent-autonomy
+  target:
+    taxonomy: nist-ai-600-1
+    id: "2.9"
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: tool-abuse
+  target:
+    taxonomy: nist-ai-600-1
+    id: "2.9"
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: model-theft
+  target:
+    taxonomy: nist-ai-600-1
+    id: "2.10"
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: info-disclosure
+  target:
+    taxonomy: nist-ai-600-1
+    id: "2.10"
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: tool-abuse
+  target:
+    taxonomy: nist-ai-600-1
+    id: "2.12"
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: tampering
+  target:
+    taxonomy: nist-ai-600-1
+    id: "2.12"
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md
+
+- source:
+    taxonomy: tachi-stride-ai-category
+    id: data-poisoning
+  target:
+    taxonomy: nist-ai-600-1
+    id: "2.12"
+  edge_type: primary
+  confidence: high
+  citation: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md

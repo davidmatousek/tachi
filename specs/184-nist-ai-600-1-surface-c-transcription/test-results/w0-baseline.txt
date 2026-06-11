@@ -1,0 +1,51 @@
+=== T001: W0 baseline integrity suite ===
+Command: /usr/bin/python3 -m pytest tests/schemas/test_taxonomy_integrity.py -v
+Date: 2026-06-10 22:01:44 EDT
+Branch: 184-nist-ai-600-1-surface-c-transcription
+HEAD: 686d655
+
+/Users/david/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+============================= test session starts ==============================
+platform darwin -- Python 3.9.6, pytest-8.4.2, pluggy-1.6.0 -- /Applications/Xcode.app/Contents/Developer/usr/bin/python3
+cachedir: .pytest_cache
+metadata: {'Python': '3.9.6', 'Platform': 'macOS-26.3.1-arm64-arm-64bit', 'Packages': {'pytest': '8.4.2', 'pluggy': '1.6.0'}, 'Plugins': {'Faker': '22.0.0', 'anyio': '4.12.1', 'html': '4.1.1', 'xdist': '3.8.0', 'json-report': '1.5.0', 'timeout': '2.4.0', 'metadata': '3.1.1', 'cov': '4.1.0', 'asyncio': '0.21.1', 'mock': '3.12.0', 'requests-mock': '1.12.1', 'postgresql': '7.0.2'}}
+rootdir: /Users/david/Projects/tachi
+configfile: pyproject.toml
+plugins: Faker-22.0.0, anyio-4.12.1, html-4.1.1, xdist-3.8.0, json-report-1.5.0, timeout-2.4.0, metadata-3.1.1, cov-4.1.0, asyncio-0.21.1, mock-3.12.0, requests-mock-1.12.1, postgresql-7.0.2
+asyncio: mode=strict
+collecting ... collected 5 items
+
+tests/schemas/test_taxonomy_integrity.py::test_framework_yamls_load PASSED [ 20%]
+tests/schemas/test_taxonomy_integrity.py::test_crosswalk_loads PASSED    [ 40%]
+tests/schemas/test_taxonomy_integrity.py::test_crosswalk_referential_integrity PASSED [ 60%]
+tests/schemas/test_taxonomy_integrity.py::test_citation_shape PASSED     [ 80%]
+tests/schemas/test_taxonomy_integrity.py::test_records_sorted PASSED     [100%]
+
+============================== 5 passed in 1.03s ===============================
+
+Wall-clock duration: 2.07s (exit code: 0)
+=== T002: W0 count baseline pins (schemas/taxonomy/crosswalk.yaml) ===
+[1] Composition: primary=542 related=37 superseded=0 total=579 (expect 542/37/0=579)
+[2] Drift class tachi-stride-ai-category -> nist-ai-rmf: 16 edges (expect 16)
+[2] Pair match vs contract C3 (16 pairs, 1:1): MATCH
+    agent-autonomy -> MEASURE 2.7
+    data-poisoning -> MEASURE 2.7
+    data-poisoning -> MEASURE 2.8
+    denial-of-service -> MEASURE 2.7
+    info-disclosure -> MEASURE 2.10
+    info-disclosure -> MEASURE 2.7
+    model-theft -> MEASURE 2.10
+    model-theft -> MEASURE 2.7
+    privilege-escalation -> MEASURE 2.7
+    prompt-injection -> MEASURE 2.6
+    prompt-injection -> MEASURE 2.7
+    repudiation -> MEASURE 2.8
+    spoofing -> MEASURE 2.7
+    tampering -> MEASURE 2.7
+    tampering -> MEASURE 2.8
+    tool-abuse -> MEASURE 2.7
+[3] Class tachi-control-category -> nist-ai-rmf: 31 edges (expect 31; do NOT touch — Issue #325)
+[4] Class (any source) -> nist-ai-600-1: 0 edges (expect 0)
+
+T002 RESULT: ALL PINS GREEN — 542/37/0=579, drift=16 (C3 1:1 match), control->rmf=31, ->nist-ai-600-1=0

@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "feature": "184-nist-ai-600-1-surface-c-transcription",
+  "total_waves": 6,
+  "waves_tested": 2,
+  "waves_skipped": 4,
+  "totals": {
+    "pass": 12,
+    "fail": 2,
+    "skip": 0
+  },
+  "total_regressions": 0,
+  "coverage_trend": null,
+  "gate_decisions": [
+    { "wave": 2, "decision": "warn" },
+    { "wave": 3, "decision": "warn" }
+  ],
+  "notes": "Waves numbered per conversation-wave artifacts (wave-02=W1, wave-03=W2 feature waves). The 2 failures are the same single pre-existing test (test_init_sh_substitution.py::test_personalized_tree_bytes_match_baseline), red on main since F-302/F-305, architect-accepted at P0 with re-scoped gate (no NEW mismatches from F-184 — verified at W3 and T015: mismatch set pinned to exactly 3 files). 0 regressions across the build. Waves W0/W3/W4/final-gate produced no code-file changes (skip rule 5a) — their gates ran the integrity suite directly: 5/5 at every commit boundary. coverage_trend null: no coverage tooling detected (pytest-cov not configured)."
+}

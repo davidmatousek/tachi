@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "wave": 2,
+  "timestamp": "2026-06-11T02:16:01Z",
+  "test_runner": "/usr/bin/python3 -m pytest tests/schemas/ tests/scripts/test_init_sh_substitution.py -q (pytest via pyproject.toml; Team-Lead C5 interpreter pin)",
+  "execution_duration_ms": 70170,
+  "gate_mode": "soft",
+  "gate_decision": "warn",
+  "totals": { "pass": 6, "fail": 1, "skip": 0 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 1
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": ["tests/scripts/test_init_sh_substitution.py::test_personalized_tree_bytes_match_baseline"]
+}
