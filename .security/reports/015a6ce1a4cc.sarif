@@ -1,0 +1,49 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "aod-security",
+          "version": "1.0.0",
+          "informationUri": "https://github.com/anthropics/agentic-oriented-development",
+          "rules": [
+            {
+              "id": "A05",
+              "name": "SecurityMisconfiguration",
+              "shortDescription": {
+                "text": "OWASP A05: Security Misconfiguration"
+              },
+              "helpUri": "https://owasp.org/Top10/"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "A05",
+          "message": {
+            "text": "Stdlib xml.etree used to parse the MITRE corpus in harvest_cwe_names.py and name_diff.py. Input is SHA-256-pinned with chain-of-custody verification (name_diff.py provenance guards), and both scripts are regeneration-only with no production caller, so exposure is negligible. defusedxml would harden against crafted-XML resource exhaustion if these scripts are ever pointed at untrusted corpora."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "specs/185-cwe-catalog-expansion/scripts/harvest_cwe_names.py"
+                },
+                "region": {
+                  "startLine": 79
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "935c3576f4e69ad8"
+          },
+          "level": "note"
+        }
+      ]
+    }
+  ]
+}
