@@ -6,9 +6,12 @@
 
 ```bash
 git cat-file -t e58f247 && git cat-file -t 991e1ee          # both → commit
-git show e58f247:schemas/taxonomy/crosswalk.yaml | grep -c "edge_type:"   # 551
+git show e58f247:schemas/taxonomy/crosswalk.yaml | /usr/bin/python3 -c "import sys,yaml;print(len(yaml.safe_load(sys.stdin)))"   # 551
+/usr/bin/python3 -c "import yaml;print(len(yaml.safe_load(open('schemas/taxonomy/crosswalk.yaml'))))"                            # 578
 /usr/bin/python3 -m pytest tests/schemas/test_taxonomy_integrity.py -q    # 5 passed (~1s)
 ```
+
+> Count edges via YAML parse, never `grep -c "edge_type:"` — the naive grep over-counts +1 (a commented header example line matches). Architect tasks-review erratum, 2026-06-11.
 
 > **Known red pre-state**: `tests/scripts/test_backward_compatibility.py` is **6/6 FAIL on main today** — inherited #186 ATLAS drift (mitre-atlas 30→36, CA pages only; verified at plan review). Do NOT "fix" this before W1-3; the W1-3 regen absorbs it together with the CWE delta and restores green.
 
