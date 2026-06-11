@@ -17,6 +17,7 @@ source:
 # CWE Catalog Expansion — T029 Drift-Edge Restoration (F-A1.2)
 
 **Status**: Approved (2026-06-11 — PM + Architect + Team-Lead; both reviewer sign-offs APPROVED_WITH_CONCERNS, all in-scope concerns folded into v1.1)
+**Version**: 1.2 (v1.1 + build-stage errata — see §v1.2 Errata; approved scope unchanged, consequence scope recorded)
 **Created**: 2026-06-11
 **Author**: product-manager
 **Reviewers**: architect, team-lead
@@ -348,9 +349,26 @@ Tachi's differentiator is emitting threat reasoning as machine-readable artifact
 
 ---
 
+## v1.2 Errata (Build-Stage Consequence-Scope Record)
+
+Recorded at T019 (governance trail, 2026-06-11). The approved scope (40 records + 67 edges) is unchanged; this section records consequence-scope items that entered the feature after v1.1 sign-off, per the PM and team-lead tasks-stage conditions. No house PRD errata precedent existed at authoring time; this section establishes the format.
+
+**(a) FR-006 consequence-scope addition — CA-page baseline regeneration (research-driven, PM-accepted).** Spec-stage research discovered that `cwe` is a member of `ORDERED_FRAMEWORKS` (`scripts/extract-report-data.py:1077`): the cwe.yaml record count and per-record Covered/Partial/Gap rows render on the Coverage Attestation pages of every generated security report, so growing the catalog 53 → 93 changes the CA pages of all regenerated reports and trips the byte-identity suite (`tests/scripts/test_backward_compatibility.py`). Spec FR-006 (regenerate the 6 gated baselines per `specs/185-cwe-catalog-expansion/contracts/baseline-regen.contract.md`, ADR-037 D-9 discipline, `SOURCE_DATE_EPOCH=1700000000`) was added at spec stage and PM-accepted. v1.0/v1.1 did not carry this lane — F-184 (nist-ai-600-1, NOT in `ORDERED_FRAMEWORKS`) provided no warning precedent.
+
+**(b) Red-main discovery — byte-identity suite already red on main (inherited #186 ATLAS drift); F-185 absorbs + dual-attributes.** Discovered at plan review and verified independently by both reviewers: #186 grew `mitre-atlas` (also in `ORDERED_FRAMEWORKS`) 30 → 36 without baseline regen, leaving the local-only byte-identity suite red on main (T001 recorded pre-state: `6 failed, 7 passed, 1 skipped`; 100% of divergence attributed to the ATLAS CA section). The F-185 regen is therefore a **repair**, not only protection: the regenerated baselines absorb the inherited ATLAS delta together with the F-185 CWE delta (suite restored to `13 passed, 1 skipped` at T015), and the CHANGELOG entry dual-attributes the regen (F-185 cwe 53 → 93 + absorbed #186 ATLAS 30 → 36). Per-page evidence: `specs/185-cwe-catalog-expansion/test-results/baseline-diff.md` (6/6 examples, deltas confined to CA pages, both attributions present).
+
+**(c) Revised O/R/P 0.75 / 1.0 / 1.5 days (team-lead tasks-stage revision — supersedes the v1.1 pin of 0.5 / 0.75 / 1.0).** Drivers: +FR-006 regen lane (~2.25h realistic) and the red-main governance-trail ripple (dual-attribution evidence, this errata); the optimistic floor now also requires first-pass-clean CA-only diffs. Recorded in `specs/185-cwe-catalog-expansion/tasks.md` §Estimated Effort at the triple sign-off.
+
+**(d) Data-coupled test-pin discovery — coverage-percentage pin refresh (architect-approved; consequence-scope sibling of FR-006).** Build-stage regression gate surfaced that `tests/scripts/test_coverage_attestation.py::test_coverage_percentage_arithmetic` pins the cwe coverage percentage, which is denominator-coupled to the catalog: 1 covered / 53 = **1.89%** → 1 covered / 93 = **1.08%** (covered set unchanged; the extractor emits the honest D3-approved denominator). Architect ruling approved refreshing the pin (the regen, never the test logic): `.aod/results/185-regression-ruling.md` (C1–C5), commit `d48132c`. Lesson generalized: catalog growth enters consequence scope on BOTH rendered-PDF baselines (item a) and data-coupled test expectations (this item) — captured as the KB process lesson (`docs/INSTITUTIONAL_KNOWLEDGE.md`, Entry 15).
+
+**Disposition-trail verification (T019, cross-link T006)**: Issue #185's T006 architect disposition comment carries **exactly 40/40 `CWE-` disposition lines** (each `CWE-N — add — <name> — <type> — <rationale>`), verified by line count against `gh issue view 185 --comments` on 2026-06-11. Gate G0b trail intact.
+
+---
+
 ## Version History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-06-11 | product-manager | Initial PRD (BLP-05 Wave 2, F-A1.2). Issue #185 estimates upgraded to empirical counts via `e58f247`/`991e1ee` blob diff: 67 edges / 40 IDs exact; #186 2-edge deferral containment verified; 0-collision restorability verified. |
 | 1.1 | 2026-06-11 | product-manager | Folded in Triad review (both APPROVED_WITH_CONCERNS). Architect: 65 OWASP edges span **6 families** (22 A0x / 14 Mobile / 12 LLM / 9 ML / 5 ASI / 3 API), not Top 10:2021 alone; ADR-037 D-7 annotation added to FR-5; harvest source pinned to comprehensive `cwec_latest.xml` (per-view CSVs omit Categories); crosswalk header lineage line added; OQ-2 resolved (annotate Category status). Team-Lead: timeline → O/R/P **0.5/0.75/1.0 day** (floor requires scripted harvest); restore-set extraction parallel to disposition; scripted all-40 name-diff in verification wave; #185 sequenced before #183. |
+| 1.2 | 2026-06-11 | product-manager (errata recorded at T019 by senior-backend-engineer per tasks.md) | Build-stage errata — approved scope unchanged: (a) FR-006 consequence-scope addition (CA-page baseline regen, research-driven, PM-accepted); (b) red-main discovery (byte-identity suite already red on main from inherited #186 ATLAS 30→36 drift; F-185 absorbs + dual-attributes; red→green at T015); (c) revised O/R/P **0.75/1.0/1.5d** (team-lead tasks-stage revision, supersedes v1.1's 0.5/0.75/1.0); (d) data-coupled test-pin discovery (`test_coverage_percentage_arithmetic` cwe pin 1.89%→1.08%, architect-approved refresh — consequence-scope sibling of FR-006). Issue #185 T006 disposition verified 40/40. See §v1.2 Errata. |
