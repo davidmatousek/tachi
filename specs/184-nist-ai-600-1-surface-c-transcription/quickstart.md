@@ -98,8 +98,9 @@ grep -n "7-value\|7 catalog\|seven taxonom\|taxonomy (7)\|542\|(14)" \
   && echo "check hits above" || echo "OK: sweep clean"
 # `taxonomy (7)` catches the crosswalk header enum line (comment, invisible to the suite);
 # `542`/`(14)` catch the stale composition + README §2 "(14) … 41 edges" text.
-# ONE expected historical survivor: the crosswalk-header F-186 lineage line "(526 -> 542)" —
-# any other hit is a sweep failure.
+# TWO expected historical survivors: the crosswalk-header F-186 lineage line "(526 -> 542)" (L14)
+# and the README §4.1 yield-tripwire narrative "the 542-edge primary graph" (~L193 — F-182
+# build-start state; no truthful edit removes it). Any other hit is a sweep failure.
 # docs/architecture/README.md L54 blurb checked manually (historical '7-value' phrasing inside the
 # ratified-decision description is updated only via the F-184 amendment clause per contract C5)
 ```
