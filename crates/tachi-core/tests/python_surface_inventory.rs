@@ -369,6 +369,33 @@ fn python_surface_inventory_retires_fastapi_backend_test_packages() {
 }
 
 #[test]
+fn python_surface_inventory_retires_root_pytest_support_package() {
+    let root = workspace_root();
+    let inventory_path = root.join("docs/roadmap/2026-06-08-python-surface-inventory.md");
+    let inventory = fs::read_to_string(&inventory_path)
+        .expect("expected the python surface inventory doc to exist");
+
+    let active_section = inventory
+        .split("## Active Python Files")
+        .nth(1)
+        .and_then(|section| section.split("## ").next())
+        .expect("active python files section");
+
+    let active_lines = active_section.lines().map(str::trim).collect::<Vec<_>>();
+
+    for retired in [
+        "tests/conftest.py",
+        "tests/__init__.py",
+        "tests/schemas/__init__.py",
+    ] {
+        assert!(
+            !active_lines.contains(&retired),
+            "active inventory should no longer list retired root pytest support file {retired}"
+        );
+    }
+}
+
+#[test]
 fn python_surface_inventory_retires_mmdc_preflight_python_module() {
     let root = workspace_root();
     let inventory_path = root.join("docs/roadmap/2026-06-08-python-surface-inventory.md");
