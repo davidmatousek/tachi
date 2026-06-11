@@ -83,7 +83,7 @@ cargo run -q -p tachi-cli --bin coverage-audit
 
 ## Dependency Notes
 
-Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The dead `tests/scripts` init helper package has been retired and the init precommit matrix now lives in `crates/tachi-shell/tests/init_precommit_matrix.rs`; Rust work should continue moving any remaining parser-like behavior into `tachi-core` or `tachi-shell` with Rust tests.
+Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The dead `tests/scripts` init helper package has been retired and the init precommit matrix now lives in `crates/tachi-shell/tests/init_precommit_matrix.rs`; Rust work should continue moving any remaining parser-like behavior into `tachi-core` or `tachi-shell` with Rust tests. The FastAPI Alembic scaffold `env.py` files are also retired and should stay out of the active Python surface inventory.
 
 ## Agent Guidance
 

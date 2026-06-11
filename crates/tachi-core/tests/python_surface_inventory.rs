@@ -313,6 +313,32 @@ fn python_surface_inventory_retires_tachi_parsers() {
 }
 
 #[test]
+fn python_surface_inventory_retires_fastapi_alembic_env_scaffolds() {
+    let root = workspace_root();
+    let inventory_path = root.join("docs/roadmap/2026-06-08-python-surface-inventory.md");
+    let inventory = fs::read_to_string(&inventory_path)
+        .expect("expected the python surface inventory doc to exist");
+
+    let active_section = inventory
+        .split("## Active Python Files")
+        .nth(1)
+        .and_then(|section| section.split("## ").next())
+        .expect("active python files section");
+
+    let active_lines = active_section.lines().map(str::trim).collect::<Vec<_>>();
+
+    for retired in [
+        "stacks/fastapi-react/scaffold/backend/alembic/env.py",
+        "stacks/fastapi-react-local/scaffold/backend/alembic/env.py",
+    ] {
+        assert!(
+            !active_lines.contains(&retired),
+            "active inventory should no longer list retired fastapi alembic env scaffold {retired}"
+        );
+    }
+}
+
+#[test]
 fn python_surface_inventory_retires_mmdc_preflight_python_module() {
     let root = workspace_root();
     let inventory_path = root.join("docs/roadmap/2026-06-08-python-surface-inventory.md");
