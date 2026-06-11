@@ -16,7 +16,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 | Card | Status | Next validation focus |
 |---|---|---|
 | RT-010 | Complete | Keep the frozen Python surface inventory synchronized with retirements. |
-| RT-011 | In progress | Continue migrating the remaining pytest coverage after the Rust-native defaults-env init, adversarial init, template git clone timeout, precommit matrix, mmdc preflight, PDF page-positioning, backward-compatibility PDF byte-identity, coverage-attestation in-scope, coverage-attestation report-data guard, coverage-attestation pagination smoke, coverage-attestation tier merge, coverage-percentage computation, MAESTRO pattern-classification rules, attack-chain extraction, human-trust-exploitation schema/attribution, init constitution, extractor contract fixes, tool-abuse enrichment, pattern-synthesis, and init substitution E2E migrations. Current audit: 64 active modules, 59 Rust integration modules, 0 Python unit modules, 0 Python smoke modules, 4 support/regression modules. |
+| RT-011 | In progress | Continue migrating the remaining pytest coverage after the Rust-native defaults-env init, adversarial init, template git clone timeout, precommit matrix, mmdc preflight, PDF page-positioning, backward-compatibility PDF byte-identity, coverage-attestation in-scope, coverage-attestation report-data guard, coverage-attestation pagination smoke, coverage-attestation tier merge, coverage-percentage computation, MAESTRO pattern-classification rules, attack-chain extraction, human-trust-exploitation schema/attribution, init constitution, extractor contract fixes, tool-abuse enrichment, pattern-synthesis, ML Top 10 coverage bundle enrichment, and init substitution E2E migrations. Current audit: 64 active modules, 60 Rust integration modules, 0 Python unit modules, 0 Python smoke modules, 3 support/regression modules. |
 | RT-012 | In progress | Continue parser/report-data parity after Rust asset tag parsing, report-data image binding emission, infographic output-file handling, coverage-attestation in-scope filtering, coverage-attestation report-data guard, coverage-attestation pagination smoke, coverage-percentage computation, attack-chain extraction, and SARIF runtime retirement, then remove Python runtime dependencies from canonical behavior. |
 | RT-013 | Pending | Start after RT-012 establishes the shared Rust command layer as canonical. |
 | RT-014 | Pending | Start after RT-012 and RT-013 prove Python packaging and scaffold surfaces are no longer needed. |
@@ -29,6 +29,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 - **Priority**: P0
 - **Labels**: `rust`, `inventory`, `migration`, `docs`
 - **Summary**: Catalog every Python runtime entrypoint, Python dependency, and Python doc reference that still ships in the repository.
+- **Current audit update**: ML Top 10 coverage bundle enrichment is now Rust-native. Current audit: 64 active modules, 60 Rust integration modules, 0 Python unit modules, 0 Python smoke modules, 3 support/regression modules.
 - **Acceptance**:
   - Every active Python file is listed.
   - Every Python dependency or pytest reference is mapped to a Rust replacement or retirement path.
