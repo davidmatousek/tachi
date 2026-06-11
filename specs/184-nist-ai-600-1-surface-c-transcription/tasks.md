@@ -102,7 +102,7 @@ triad:
 
 ## Phase 6: Polish & Pre-PR Gate
 
-- [ ] T015 Full pre-PR verification: `/usr/bin/python3 -m pytest tests/schemas/ tests/scripts/test_init_sh_substitution.py -q` all green; run `/aod.analyze` (cross-artifact consistency — spec/plan/tasks); verify draft PR #324 title still conventional (`feat(184): …`); push all commits; update PR body checklist with completed scope. Record in `test-results/final-gate.txt`. **Deliver-time items are NOT tasks here**: Issue #184 `stage:done` closure + OQ-4 ADR-025 one-line amendment note (incl. §2.6 or/and observation) + PR ready/squash-merge happen at `/aod.deliver`.
+- [X] T015 Full pre-PR verification: `/usr/bin/python3 -m pytest tests/schemas/ tests/scripts/test_init_sh_substitution.py -q` all green; run `/aod.analyze` (cross-artifact consistency — spec/plan/tasks); verify draft PR #324 title still conventional (`feat(184): …`); push all commits; update PR body checklist with completed scope. Record in `test-results/final-gate.txt`. **Deliver-time items are NOT tasks here**: Issue #184 `stage:done` closure + OQ-4 ADR-025 one-line amendment note (incl. §2.6 or/and observation) + PR ready/squash-merge happen at `/aod.deliver`.
 
 ---
 

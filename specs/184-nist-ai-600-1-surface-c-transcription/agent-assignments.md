@@ -41,7 +41,7 @@ Operationalizes `specs/184-nist-ai-600-1-surface-c-transcription/tasks.md` (15 t
 | T011 | W4 | `senior-backend-engineer` | [P] | ADR-027 entry + Decision 3 annotation + arch README blurb — ONE commit (OQ-3). **Architect reviews entry text at build checkpoint** |
 | T012 | W4 | `senior-backend-engineer` | [P] | taxonomy README §3.8 + snippet/composition/count updates per C5 |
 | T013 | W4 | `senior-backend-engineer` | [P] | CHANGELOG hand-curated Unreleased `feat(184)` (dual-CHANGELOG model — no release-please edits) |
-| T014 | W4 | `senior-backend-engineer` | — | W4 sweep gate (one expected F-186 lineage survivor); **tester validates gate output**; commits (T011 alone; T012+T013 may share) |
+| T014 | W4 | `senior-backend-engineer` | — | W4 sweep gate (TWO expected historical survivors: crosswalk L14 F-186 lineage + README ~L193 F-182 narrative — architect tasks-review Finding 3); **tester validates gate output**; commits (T011 alone; T012+T013 may share) |
 | T015 | Final | `senior-backend-engineer` | — | Full pre-PR gate + `/aod.analyze` + PR #324 title check + push. Deliver-time items excluded |
 
 **Deliver-time (NOT build tasks)**: Issue #184 `stage:done` closure + OQ-4 ADR-025 one-line note (incl. §2.6 or/and observation) + PR ready/squash-merge → `product-manager` / `architect` at `/aod.deliver`.
