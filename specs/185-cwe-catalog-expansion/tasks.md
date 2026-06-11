@@ -37,8 +37,8 @@ Single-project data feature: `schemas/taxonomy/`, `examples/`, `specs/185-cwe-ca
 
 **Purpose**: Pin recovery sources and record the verified pre-state (including the known-red byte-identity suite).
 
-- [ ] T001 Verify recovery objects and record pre-state evidence in specs/185-cwe-catalog-expansion/test-results/pre-state.md: `git cat-file -t e58f247` and `991e1ee` both → `commit`; blob edge counts 551/438 via YAML parse (NOT `grep -c "edge_type:"` — over-counts +1 on a commented header line); integrity suite 5/5 green (~1s); run `tests/scripts/test_backward_compatibility.py` and record the EXPECTED RED pre-state with LITERAL pytest totals (parametrized failures attributed to the ATLAS CA section per plan review — do NOT "fix" anything here)
-- [ ] T002 [P] Download `https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip`, unzip locally (NOT committed), record corpus pin (version 4.20, release 2026-04-30, file SHA-256, retrieval date) in specs/185-cwe-catalog-expansion/test-results/corpus-pin.md
+- [X] T001 Verify recovery objects and record pre-state evidence in specs/185-cwe-catalog-expansion/test-results/pre-state.md: `git cat-file -t e58f247` and `991e1ee` both → `commit`; blob edge counts 551/438 via YAML parse (NOT `grep -c "edge_type:"` — over-counts +1 on a commented header line); integrity suite 5/5 green (~1s); run `tests/scripts/test_backward_compatibility.py` and record the EXPECTED RED pre-state with LITERAL pytest totals (parametrized failures attributed to the ATLAS CA section per plan review — do NOT "fix" anything here)
+- [X] T002 [P] Download `https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip`, unzip locally (NOT committed), record corpus pin (version 4.20, release 2026-04-30, file SHA-256, retrieval date) in specs/185-cwe-catalog-expansion/test-results/corpus-pin.md
 
 ---
 
@@ -48,9 +48,9 @@ Single-project data feature: `schemas/taxonomy/`, `examples/`, `specs/185-cwe-ca
 
 **CRITICAL**: T005's commit is the feature's insurance policy; it lands before ANY production-data edit.
 
-- [ ] T003 [P] Write specs/185-cwe-catalog-expansion/scripts/extract_restore_set.py — removed-set from `git show e58f247:schemas/taxonomy/crosswalk.yaml` vs `991e1ee`, filter `target.taxonomy == cwe AND target.id ∉ frozen-53`, emit restored-edges.yaml with header provenance + per-edge `_blocked_on` (per contracts/restored-edges.schema.md)
-- [ ] T004 [P] Write specs/185-cwe-catalog-expansion/scripts/harvest_cwe_names.py — parse cwec_v4.20.xml (Weakness/Category/View elements), emit the 40-row table (id, verbatim name, type Weakness|Category|Pillar, status incl. deprecated flag) to specs/185-cwe-catalog-expansion/test-results/harvest-40.md
-- [ ] T005 Run extraction → specs/185-cwe-catalog-expansion/restored-edges.yaml; verify counts (67 = 65 owasp→cwe + 2 mitre-attack→cwe; 40 distinct `_blocked_on` IDs; 34 high / 32 medium / 1 low; all primary; exclusions absent: 1 other-drift + 20 non-CWE + 25 dedupe); COMMIT the artifact immediately (closes Risk 185.1)
+- [X] T003 [P] Write specs/185-cwe-catalog-expansion/scripts/extract_restore_set.py — removed-set from `git show e58f247:schemas/taxonomy/crosswalk.yaml` vs `991e1ee`, filter `target.taxonomy == cwe AND target.id ∉ frozen-53`, emit restored-edges.yaml with header provenance + per-edge `_blocked_on` (per contracts/restored-edges.schema.md)
+- [X] T004 [P] Write specs/185-cwe-catalog-expansion/scripts/harvest_cwe_names.py — parse cwec_v4.20.xml (Weakness/Category/View elements), emit the 40-row table (id, verbatim name, type Weakness|Category|Pillar, status incl. deprecated flag) to specs/185-cwe-catalog-expansion/test-results/harvest-40.md
+- [X] T005 Run extraction → specs/185-cwe-catalog-expansion/restored-edges.yaml; verify counts (67 = 65 owasp→cwe + 2 mitre-attack→cwe; 40 distinct `_blocked_on` IDs; 34 high / 32 medium / 1 low; all primary; exclusions absent: 1 other-drift + 20 non-CWE + 25 dedupe); COMMIT the artifact immediately (closes Risk 185.1)
 
 **Checkpoint**: Restore-set artifact committed; harvest table ready — user stories can begin.
 
@@ -62,7 +62,7 @@ Single-project data feature: `schemas/taxonomy/`, `examples/`, `specs/185-cwe-ca
 
 **Independent Test**: Records alone (no edge changes): integrity suite 5/5 green; catalog 53 → 53+|add-set|; every new ID resolves at its canonical URL; name-diff clean.
 
-- [ ] T006 [US1] Architect disposition (gate before catalog edits): verify each of the 40 IDs against harvest-40.md + 8-sentinel live-page spot-checks (CWE-16/255/937/1035/693 + 1426/1427/1039); publish one add/reject/defer line per ID on GitHub Issue #185 with Category/Pillar fidelity-first rationale (lead posture: add-all-40; deprecated → never "add"; note CWE-693 rejection would re-strand a #186-deferred edge); record verdict summary in specs/185-cwe-catalog-expansion/test-results/disposition.md
+- [X] T006 [US1] Architect disposition (gate before catalog edits): verify each of the 40 IDs against harvest-40.md + 8-sentinel live-page spot-checks (CWE-16/255/937/1035/693 + 1426/1427/1039); publish one add/reject/defer line per ID on GitHub Issue #185 with Category/Pillar fidelity-first rationale (lead posture: add-all-40; deprecated → never "add"; note CWE-693 rejection would re-strand a #186-deferred edge); record verdict summary in specs/185-cwe-catalog-expansion/test-results/disposition.md
 - [ ] T007 [US1] Insert add-set records into schemas/taxonomy/cwe.yaml via scripted lexicographic merge from harvest-40.md — shape `{id, full_id, name, url}`, NO `cwe_refs`/`out_of_scope` keys, URL `https://cwe.mitre.org/data/definitions/<N>.html`, Python string-sort position (`CWE-1035 < CWE-1039 < … < CWE-16 < CWE-201`)
 - [ ] T008 [US1] Extend schemas/taxonomy/cwe.yaml header comment with the F-A1.2 provenance block (mirroring the 41+11+1 composition note): source = T029 drift-edge targets, Issue #185, cwec v4.20 + retrieval date, Category/Pillar status annotations for CWE-16/255/937/1035 (Categories) + CWE-693 (Pillar)
 - [ ] T009 [US1] Update schemas/taxonomy/README.md §3.5 — composition, record count 53 → 53+|add-set| (93 add-all), retrieval date, Category/Pillar note
