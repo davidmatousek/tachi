@@ -14,10 +14,6 @@ fn yaml_import_invariant_is_rust_native() {
 
     let scripts = discover_yaml_referencing_scripts(&root);
     assert!(
-        !scripts.is_empty(),
-        "expected at least one yaml-referencing script under scripts/"
-    );
-    assert!(
         !scripts
             .iter()
             .any(|path| path.ends_with("scripts/extract-report-data.py")),

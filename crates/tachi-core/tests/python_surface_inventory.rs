@@ -76,7 +76,6 @@ fn python_surface_inventory_lists_every_active_python_file() {
         "scripts/extract-infographic-data.py",
         "scripts/generate-threats-sarif.py",
         "scripts/generate-risk-scores-sarif.py",
-        "scripts/tachi_parsers.py",
         "scripts/sarif_common.py",
     ] {
         assert!(
@@ -290,6 +289,27 @@ fn python_surface_inventory_retires_init_helper_package() {
             "active inventory should no longer list retired init helper package file {retired}"
         );
     }
+}
+
+#[test]
+fn python_surface_inventory_retires_tachi_parsers() {
+    let root = workspace_root();
+    let inventory_path = root.join("docs/roadmap/2026-06-08-python-surface-inventory.md");
+    let inventory = fs::read_to_string(&inventory_path)
+        .expect("expected the python surface inventory doc to exist");
+
+    let active_section = inventory
+        .split("## Active Python Files")
+        .nth(1)
+        .and_then(|section| section.split("## ").next())
+        .expect("active python files section");
+
+    let active_lines = active_section.lines().map(str::trim).collect::<Vec<_>>();
+
+    assert!(
+        !active_lines.contains(&"scripts/tachi_parsers.py"),
+        "active inventory should no longer list the retired tachi_parsers Python runtime hub"
+    );
 }
 
 #[test]

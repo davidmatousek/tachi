@@ -1,6 +1,6 @@
 # Python Surface Inventory
 
-**Last Updated**: 2026-06-10
+**Last Updated**: 2026-06-11
 **Status**: RT-010 freeze snapshot
 **Scope**: active Python runtime entrypoints, Python packaging, Python test surfaces, and Python-based stack scaffolds that still ship in `tachi-rust`
 
@@ -13,6 +13,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - RT-009 roadmap and documentation contract coverage has moved from `tests/test_rt009_docs.py` to `crates/tachi-core/tests/rt009_docs.rs`
 - Taxonomy catalog integrity coverage has moved from `tests/schemas/test_taxonomy_integrity.py` to `crates/tachi-core/tests/taxonomy_integrity.rs`
 - Project-name parser coverage has moved from `tests/scripts/test_project_name_parser.py` to `crates/tachi-core/tests/parsers.rs`
+- The retired `scripts/tachi_parsers.py` runtime hub has been replaced by Rust parser modules in `tachi-core`
 - YAML import invariant coverage has moved from `tests/scripts/test_pyyaml_deferred_import.py` to `crates/tachi-core/tests/yaml_imports.rs`
 - Infographic command-dispatch coverage has moved from `tests/scripts/test_command_dispatch.py` to `crates/tachi-core/tests/infographic_command_dispatch.rs`
 - Executive-architecture infographic payload coverage has moved from `tests/scripts/test_extract_infographic_data.py` and `tests/scripts/test_executive_architecture_payload.py` to `crates/tachi-core/tests/infographic_payload.rs` and `crates/tachi-cli/tests/control_plane_cli.rs`
@@ -49,7 +50,6 @@ This inventory freezes the current Python surface so the migration can remove it
 ## Active Python Files
 
 ```text
-scripts/tachi_parsers.py
 stacks/fastapi-react-local/scaffold/backend/alembic/env.py
 stacks/fastapi-react-local/scaffold/backend/tests/api/__init__.py
 stacks/fastapi-react-local/scaffold/backend/tests/__init__.py
@@ -57,6 +57,7 @@ stacks/fastapi-react-local/scaffold/backend/tests/conftest.py
 stacks/fastapi-react-local/scaffold/backend/app/services/__init__.py
 stacks/fastapi-react-local/scaffold/backend/app/main.py
 ~~scripts/extract-report-data.py~~ - migrated to `crates/tachi-cli/src/bin/report-data.rs` and `crates/tachi-core/src/report_data.rs`
+~~scripts/tachi_parsers.py~~ - migrated to `crates/tachi-core` parser modules
 ~~tests/scripts/test_pattern_extraction.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation.rs::build_per_finding_rows_groups_taxonomies_and_preserves_order` and `crates/tachi-cli/tests/control_plane_cli.rs::report_data_binary_emits_coverage_attestation_payload_when_source_attribution_exists`
 ~~tests/scripts/test_attack_chain_extraction.py~~ - migrated to `crates/tachi-core/tests/attack_chains.rs::parse_attack_chains_extracts_chain_metadata_and_members`, `crates/tachi-core/tests/attack_chains.rs::parse_attack_chains_extracts_findings_and_controls_in_order`, and `crates/tachi-core/tests/attack_chains.rs::generate_chain_mermaid_renders_layers_and_edges`
 ~~tests/scripts/test_pattern_synthesis.py~~ - migrated to `crates/tachi-core/tests/pattern_synthesis.rs::pattern_synthesis_contract_is_rust_native` and the full Rust-native reference-implementation contract suite
