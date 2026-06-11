@@ -63,10 +63,10 @@ Single-project data feature: `schemas/taxonomy/`, `examples/`, `specs/185-cwe-ca
 **Independent Test**: Records alone (no edge changes): integrity suite 5/5 green; catalog 53 → 53+|add-set|; every new ID resolves at its canonical URL; name-diff clean.
 
 - [X] T006 [US1] Architect disposition (gate before catalog edits): verify each of the 40 IDs against harvest-40.md + 8-sentinel live-page spot-checks (CWE-16/255/937/1035/693 + 1426/1427/1039); publish one add/reject/defer line per ID on GitHub Issue #185 with Category/Pillar fidelity-first rationale (lead posture: add-all-40; deprecated → never "add"; note CWE-693 rejection would re-strand a #186-deferred edge); record verdict summary in specs/185-cwe-catalog-expansion/test-results/disposition.md
-- [ ] T007 [US1] Insert add-set records into schemas/taxonomy/cwe.yaml via scripted lexicographic merge from harvest-40.md — shape `{id, full_id, name, url}`, NO `cwe_refs`/`out_of_scope` keys, URL `https://cwe.mitre.org/data/definitions/<N>.html`, Python string-sort position (`CWE-1035 < CWE-1039 < … < CWE-16 < CWE-201`)
-- [ ] T008 [US1] Extend schemas/taxonomy/cwe.yaml header comment with the F-A1.2 provenance block (mirroring the 41+11+1 composition note): source = T029 drift-edge targets, Issue #185, cwec v4.20 + retrieval date, Category/Pillar status annotations for CWE-16/255/937/1035 (Categories) + CWE-693 (Pillar)
-- [ ] T009 [US1] Update schemas/taxonomy/README.md §3.5 — composition, record count 53 → 53+|add-set| (93 add-all), retrieval date, Category/Pillar note
-- [ ] T010 [US1] US1 gate: `/usr/bin/python3 -m pytest tests/schemas/test_taxonomy_integrity.py -q` → 5/5; record count check (`grep -c "^- id: " schemas/taxonomy/cwe.yaml`); commit records + header + README
+- [X] T007 [US1] Insert add-set records into schemas/taxonomy/cwe.yaml via scripted lexicographic merge from harvest-40.md — shape `{id, full_id, name, url}`, NO `cwe_refs`/`out_of_scope` keys, URL `https://cwe.mitre.org/data/definitions/<N>.html`, Python string-sort position (`CWE-1035 < CWE-1039 < … < CWE-16 < CWE-201`)
+- [X] T008 [US1] Extend schemas/taxonomy/cwe.yaml header comment with the F-A1.2 provenance block (mirroring the 41+11+1 composition note): source = T029 drift-edge targets, Issue #185, cwec v4.20 + retrieval date, Category/Pillar status annotations for CWE-16/255/937/1035 (Categories) + CWE-693 (Pillar)
+- [X] T009 [US1] Update schemas/taxonomy/README.md §3.5 — composition, record count 53 → 53+|add-set| (93 add-all), retrieval date, Category/Pillar note
+- [X] T010 [US1] US1 gate: `/usr/bin/python3 -m pytest tests/schemas/test_taxonomy_integrity.py -q` → 5/5; record count check (`grep -c "^- id: " schemas/taxonomy/cwe.yaml`); commit records + header + README
 
 **Checkpoint**: Catalog complete — independently verifiable branch checkpoint (MVP increment; single-PR delivery means no partial merge to main) — edges not yet restored.
 
@@ -78,9 +78,9 @@ Single-project data feature: `schemas/taxonomy/`, `examples/`, `specs/185-cwe-ca
 
 **Independent Test**: With US1 records in place: integrity suite 5/5; crosswalk 578 → 578+|restored| (645/608-primary add-all); field-level diff vs `e58f247` blob shows byte-identity; dedupe checks 0.
 
-- [ ] T011 [US2] Insert add-set-targeted edges from specs/185-cwe-catalog-expansion/restored-edges.yaml into schemas/taxonomy/crosswalk.yaml — strip `_blocked_on` working annotations; preserve `edge_type`/`confidence`/`citation` byte-exact (the single `confidence: low` edge `T1070.006 → CWE-1269` stays `low`); BLOCKING pre-insertion re-check: exact-tuple + near-key dedupe vs live crosswalk → 0 collisions (record result in specs/185-cwe-catalog-expansion/test-results/dedupe-check.md)
-- [ ] T012 [US2] Append the F-185 restoration line to the schemas/taxonomy/crosswalk.yaml header "Edit lineage" block (mirroring the T029/F-186/F-184 entries): +67 edges (or actual), source blob e58f247, Issue #185
-- [ ] T013 [US2] US2 gate: integrity suite 5/5; edge counts via YAML parse (578→645 total / 541→608 primary, add-all); field-level byte-exactness diff of restored edges vs `git show e58f247:schemas/taxonomy/crosswalk.yaml`; #186-deferred pair present (`T1070.006 → CWE-1269`, `T1562 → CWE-693`); commit edges + lineage
+- [X] T011 [US2] Insert add-set-targeted edges from specs/185-cwe-catalog-expansion/restored-edges.yaml into schemas/taxonomy/crosswalk.yaml — strip `_blocked_on` working annotations; preserve `edge_type`/`confidence`/`citation` byte-exact (the single `confidence: low` edge `T1070.006 → CWE-1269` stays `low`); BLOCKING pre-insertion re-check: exact-tuple + near-key dedupe vs live crosswalk → 0 collisions (record result in specs/185-cwe-catalog-expansion/test-results/dedupe-check.md)
+- [X] T012 [US2] Append the F-185 restoration line to the schemas/taxonomy/crosswalk.yaml header "Edit lineage" block (mirroring the T029/F-186/F-184 entries): +67 edges (or actual), source blob e58f247, Issue #185
+- [X] T013 [US2] US2 gate: integrity suite 5/5; edge counts via YAML parse (578→645 total / 541→608 primary, add-all); field-level byte-exactness diff of restored edges vs `git show e58f247:schemas/taxonomy/crosswalk.yaml`; #186-deferred pair present (`T1070.006 → CWE-1269`, `T1562 → CWE-693`); commit edges + lineage
 
 **Checkpoint**: Crosswalk restored — US1 and US2 independently verified.
 

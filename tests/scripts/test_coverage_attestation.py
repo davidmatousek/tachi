@@ -404,7 +404,8 @@ def test_coverage_percentage_arithmetic(
 
     - OWASP: 2 primary citations (LLM05 in LLM-1, A03 in I-4) / 60 in-scope
       records → 3.33% (no OOS filtering — owasp.yaml has 0 OOS records)
-    - CWE: 1 primary (CWE-200 in I-4) / 53 in-scope → 1.89% (no OOS records)
+    - CWE: 1 primary (CWE-200 in I-4) / 93 in-scope → 1.08% (no OOS records;
+      F-185 catalog expansion 53 → 93)
     - MITRE-ATTACK: 0 primary / 323 in-scope → 0.00%
         Rationale: the fixture's only `primary` ATT&CK citation, T1070.001
         (Clear Windows Event Logs), is now Out-of-Scope per T041 tactical
@@ -435,7 +436,7 @@ def test_coverage_percentage_arithmetic(
 
     expected_pct = {
         "owasp": "3.33%",
-        "cwe": "1.89%",
+        "cwe": "1.08%",
         "mitre-attack": "0.00%",
         "mitre-atlas": "0.00%",
         "nist-ai-rmf": "0.00%",
