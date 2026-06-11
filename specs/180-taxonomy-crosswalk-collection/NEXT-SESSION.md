@@ -79,7 +79,7 @@ After T041, run:
 - **cwe.yaml sort order change**: cwe.yaml now ordered lexicographically (CWE-116, CWE-1333, CWE-20, ...). T029 preserved the header provenance note. T036 should verify the header documents the sort convention.
 - **ADR-027 post-merge SHA fill**: T039 architect MUST update the ADR-027 `<pending-T039-post-merge-fill>` token with the actual merge-commit SHA before closing the merge action.
 
-## Follow-on Resolution Trail (updated 2026-06-07 by F-186)
+## Follow-on Resolution Trail (updated 2026-06-07 by F-186; 2026-06-11 by F-185)
 
 The 5 follow-on Issues (#182–#186) carried T029's residual taxonomy work:
 
@@ -89,9 +89,19 @@ The 5 follow-on Issues (#182–#186) carried T029's residual taxonomy work:
   the authoritative atlas-data repo (`dist/v6/ATLAS-2026.05`) — adding their 6 records
   (`mitre-atlas.yaml` 30 → 36) and restoring their 6 edges (crosswalk → 542). Decision
   trail: Issue #186 comment. Integrity suite 5/5 throughout; purely additive.
+- **#185 (F-A1.2) — RESOLVED** (2026-06-11): the T029 CWE-blocked residual is closed.
+  Architect-dispositioned all 40 catalog-absent CWE targets as **add** (40/40, incl.
+  4 Category + 1 Pillar; Obsolete-annotated CWE-16/CWE-937; corpus pin CWE v4.20),
+  growing `cwe.yaml` 53 → 93, and restored all 67 CWE-target-blocked edges T029
+  removed — byte-exact from pre-removal blob `e58f247` (crosswalk 578 → 645),
+  including the 2 MITRE-sourced edges #186 deferred (`T1070.006→CWE-1269`,
+  `T1562→CWE-693`). The 6 CA-gated PDF baselines regenerated per ADR-037 D-9
+  (byte-identity suite red → green). Decision trail: Issue #185 T006 comment.
+  Integrity suite 5/5 throughout.
 - **#185 (cwe.yaml) scope**: the 2 CWE-target-blocked edges T029 removed
   (`T1070.006→CWE-1269`, `T1562→CWE-693`) reference NO MITRE-gap id and were
   explicitly **out of #186 scope** — they belong to #185's cwe.yaml expansion.
+  *(Resolved at F-A1.2 — see the #185 entry above.)*
 - **#182/#183/#184**: integrity / NIST AI 600-1 follow-ons — see their respective issues.
 
 ## Context Files
