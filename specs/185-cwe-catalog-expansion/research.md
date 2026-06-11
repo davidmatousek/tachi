@@ -45,3 +45,38 @@
 4. **Record names use CURRENT v4.20 published names** (CWE-1039 rename proves the point); edges are name-free so blob byte-exactness is unaffected.
 5. **Surface the first-`low`-confidence-edge fact** in the spec edge cases so reviewers don't flag it as drift at build review.
 6. Keep out-of-scope fences from the PRD: 1 other-drift edge, 20 non-CWE removals, 25 dedupe collapses, net-new edge authoring, `cwe_refs` population, Top 25 refresh, #183 link-rot.
+
+---
+
+## Phase 0 Decisions (plan stage, 2026-06-11)
+
+### D1 — Harvest source: pinned `cwec_v4.20.xml.zip`
+- **Decision**: Bulk-harvest the 40 record names/types/statuses from MITRE's comprehensive dictionary `https://cwe.mitre.org/data/xml/cwec_v4.20.xml.zip` (v4.20, 2026-04-30), recorded in the cwe.yaml provenance header.
+- **Rationale**: Single authoritative source; includes all 422 Categories + 10 Pillars; one polite download; scriptable name-diff; CWE-1039's v4.17 rename proves per-memory transcription is unsafe.
+- **Alternatives considered**: per-view CSVs (REJECTED — omit Category entries, would false-reject CWE-16/255/937/1035); per-page scraping as primary (REJECTED — 40 fetches, R7-class fragility; retained only as 8-sentinel spot-check).
+
+### D2 — Baseline regeneration scope: the 6 `BASELINE_EXAMPLES` only
+- **Decision**: Regenerate exactly the 6 byte-identity-gated baselines (`web-app`, `microservices`, `ascii-web-api`, `mermaid-agentic-app`, `free-text-microservice`, `maestro-reference`). Leave the 2 F-241 sample-report baselines (`predictive-ml-app`, `mobile-banking-app`) untouched.
+- **Rationale**: Only the 6 are enforced by `test_backward_compatibility.py`; the 2 net-new are excluded by its docstring as "regeneration mutation targets … not expected to match a pre-existing baseline", and no test byte-compares them. Regenerating them adds blast radius with zero gating benefit; their CA-page staleness is the already-documented status of those artifacts.
+- **Alternatives considered**: regen all 8 per the D-9 canonical count (REJECTED — touches other features' mutation surfaces ungated; can be picked up by their owning features or a follow-on). **Architect ratified at plan review (2026-06-11).**
+- **Plan-review addendum (empirical, both reviewers independently)**: the byte-identity suite is ALREADY RED on main — #186 grew `mitre-atlas` (∈ `ORDERED_FRAMEWORKS`) 30→36 without regen; page diff attributes 100% of divergence to the ATLAS CA section. W1-3 is a repair (red→green), absorbing the inherited ATLAS delta with dual attribution in CHANGELOG. Process lesson queued for KB: any catalog-growth feature must check `ORDERED_FRAMEWORKS` membership at definition.
+
+### D3 — Entering records are in-scope (no `out_of_scope` keys)
+- **Decision**: The 40 records land with the frozen 4-field shape only; CA-page `cwe` coverage denominators grow 53 → 93 and percentages drop accordingly on regenerated baselines.
+- **Rationale**: Honest attestation — the existing 53 carry no out-of-scope flags either; flags exist for genuinely out-of-scope records, not for protecting percentages.
+- **Alternatives considered**: flag the 40 `out_of_scope` to preserve coverage optics (REJECTED — data falsification; would also contradict the records' purpose as citable, coverable CWEs).
+
+### D4 — Helper scripts committed under `specs/185-cwe-catalog-expansion/scripts/`
+- **Decision**: `harvest_cwe_names.py`, `extract_restore_set.py`, `name_diff.py` are committed feature-local (regeneration-only tier, no production caller).
+- **Rationale**: Reproducibility of the derivation without dangling-object or `/tmp` dependencies; matches the repo's existing regeneration-script tier.
+- **Alternatives considered**: `/tmp` ephemeral scripts as at PRD derivation (REJECTED — not reproducible post-delivery); `scripts/` production dir (REJECTED — implies a production caller that doesn't exist).
+
+### D5 — Restore-set extraction parallel to disposition (W0 twin tracks)
+- **Decision**: W0-b extraction + artifact commit runs immediately, not gated on the W0-a architect disposition.
+- **Rationale**: Extraction is disposition-independent (the filter is mechanical); the early commit closes the dangling-object window (Risk 185.1) — team-lead C3, proven by #186.
+- **Alternatives considered**: disposition-first sequencing (REJECTED — leaves the only copy of the 67 edges in GC-able dangling objects longer for no benefit).
+
+### D6 — Wave shape: W0 (∥) → W1 (sequential data) → W2 (verification ∥ docs)
+- **Decision**: W0-a disposition ∥ W0-b extraction → W1-1 records → W1-2 edges → W1-3 baselines → W2-a name-diff/test ∥ W2-b review sweep → W2-c docs closure.
+- **Rationale**: FR-030 forces records-before-edges; baselines must capture final data; verification parallelizes; matches the PRD team-lead wave proposal with the FR-006 lane appended.
+- **Alternatives considered**: single linear wave (REJECTED — wastes the disposition/extraction parallelism and the W2 tester∥reviewer split).
