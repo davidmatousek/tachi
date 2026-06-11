@@ -1,0 +1,7 @@
+Post-wave test run, Wave 3 (W2) — F-184 (independent tester run at 7d569ec)
+Command: /usr/bin/python3 -m pytest tests/schemas/ tests/scripts/test_init_sh_substitution.py -q
+Result: 1 failed, 6 passed in 64.59s
+Sole failure: test_personalized_tree_bytes_match_baseline — PRE-EXISTING (architect-accepted P0 ruling)
+Drift set verified EXACTLY ['docs/INSTITUTIONAL_KNOWLEDGE.md', 'docs/devops/README.md', 'docs/devops/CI_CD_GUIDE.md']
+(3 < 10 so list complete; no new mismatches from F-184). Classification: 0 regressions, 0 new, 1 pre-existing.
+Note: named .txt not .log because .gitignore excludes *.log (wave-02/failures.log remained local-only for this reason).
