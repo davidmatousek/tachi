@@ -61,82 +61,11 @@ For mobile-platform deployments, also detects insecure mobile transport security
 
 ## Example Findings
 
-**Verbose Error Messages Exposing Stack Traces**:
-
 ```yaml
-id: "I-1"
-category: info-disclosure
-component: "API Error Handler"
-threat: "Unhandled exceptions reach the response with full stack traces, framework version banners, file system paths, and database driver error codes. Attackers learn the technology stack, exact dependency versions, internal directory structure, and DB schema details — accelerating exploitation of dependency CVEs and informing follow-on injection payloads."
-likelihood: HIGH
-impact: MEDIUM
-risk_level: High
-mitigation: "Configure framework error handlers to emit a generic message + correlation ID to the client; log the full stack trace server-side under the correlation ID. Disable DEBUG / development-mode error pages in production builds (Django DEBUG=False, Flask debug=False, Spring Boot server.error.include-stacktrace=never). Strip framework version banners from response headers. Test via fuzz inputs that trigger uncaught exceptions."
-references:
-  - "OWASP Top 10 2021 A02:2021"
-  - "CWE-209"
-  - "CWE-200"
 source_attribution:
-  - taxonomy: owasp
-    id: A02:2021
-    relationship: primary
-  - taxonomy: cwe
-    id: CWE-209
-    relationship: related
-  - taxonomy: cwe
-    id: CWE-200
-    relationship: related
-dfd_element_type: "Process"
-```
-
-**SSRF to Cloud Metadata Endpoint**:
-
-```yaml
-id: "I-2"
-category: info-disclosure
-component: "Image Proxy Service"
-threat: "Image proxy accepts a URL from user input and fetches it server-side without scheme allowlisting or RFC 1918 / link-local egress filtering. An attacker submits `http://169.254.169.254/latest/meta-data/iam/security-credentials/<role>` to read AWS instance role credentials and pivot into the cloud account."
-likelihood: MEDIUM
-impact: HIGH
-risk_level: High
-mitigation: "Implement a URL allowlist of permitted external hostnames; reject all others pre-request. Enforce egress firewall rules blocking RFC 1918 / link-local / cloud metadata endpoints (169.254.169.254, fd00:ec2::254). Validate URL scheme against {http, https} only. Apply DNS pinning: resolve hostname once, pin IP, verify it is outside private ranges before dispatching. Migrate to IMDSv2 with hop-limit = 1."
-references:
-  - "OWASP Top 10 2021 A10:2021"
-  - "CWE-918"
-source_attribution:
-  - taxonomy: owasp
-    id: A10:2021
-    relationship: primary
-  - taxonomy: cwe
-    id: CWE-918
-    relationship: related
-dfd_element_type: "Process"
-```
-
-**Sensitive Data Logged in Cleartext**:
-
-```yaml
-id: "I-3"
-category: info-disclosure
-component: "Application Logger"
-threat: "Application logs request bodies and query parameters at INFO level without redaction. Logs contain authentication credentials, session tokens, payment card numbers, and personally identifiable information — accessible to anyone with log-aggregation read access (CloudWatch, Splunk, ELK, Datadog) and persisted beyond the retention requirements of regulatory frameworks (GDPR, PCI-DSS, HIPAA)."
-likelihood: HIGH
-impact: HIGH
-risk_level: Critical
-mitigation: "Apply structured logging with explicit field-level redaction at the formatter (e.g., logging filter that masks Authorization headers, Set-Cookie headers, body fields named password / token / pan / ssn). Avoid logging full request bodies — log a hash of the body for correlation if needed. Configure log retention to match data classification requirements. Apply role-based access controls on log aggregation tools."
-references:
-  - "OWASP Top 10 2021 A02:2021"
-  - "CWE-532"
-  - "CWE-200"
-source_attribution:
-  - taxonomy: owasp
-    id: A02:2021
-    relationship: primary
-  - taxonomy: cwe
-    id: CWE-532
-    relationship: related
-  - taxonomy: cwe
-    id: CWE-200
-    relationship: related
-dfd_element_type: "Process"
+  - relationship: primary
+    taxonomy: OWASP M5:2024
+  - relationship: related
+    taxonomy: CWE-200
+step_5_note: source_attribution ties the finding to ADR-037 D-3 precedent
 ```

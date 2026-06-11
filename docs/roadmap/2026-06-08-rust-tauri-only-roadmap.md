@@ -26,7 +26,7 @@ This status uses card closure rather than subjective partial estimates. In-progr
 | Card | Status | Current evidence |
 |---|---|---|
 | RT-010 | Complete | The Python surface inventory is frozen in [2026-06-08-python-surface-inventory.md](./2026-06-08-python-surface-inventory.md). |
-| RT-011 | In progress | RT-009 documentation coverage, taxonomy integrity checks, project-name parser coverage, the YAML import invariant, infographic command-dispatch coverage, source-attribution parser coverage, the template substitute shim canary, template substitute no-`eval` lint, template substitute literal-substitution coverage, template config load unit and integration coverage, init input unit coverage, defaults-env init coverage, adversarial init coverage, template git clone timeout coverage, init precommit matrix coverage, mmdc preflight coverage, PDF page-positioning coverage, backward-compatibility PDF byte-identity coverage, finding-pattern parser coverage, agentic pattern extraction coverage, misinformation schema coverage, output-integrity schema coverage, human-trust-exploitation schema/attribution coverage, extractor contract fixes, init self-delete coverage, F-A3 populator wiring coverage, report-data image binding coverage, coverage-attestation aggregation coverage, coverage-attestation in-scope filtering coverage, coverage-attestation report-data guard coverage, coverage-attestation tier merge coverage, coverage-attestation pagination smoke coverage, coverage-percentage computation coverage, asset-sensitivity tag coverage, MAESTRO pattern-classification rules coverage, executive-architecture infographic payload coverage, attack-chain parsing coverage, attack-chain Mermaid generation coverage, init constitution coverage, attack-chain extraction coverage, tool-abuse enrichment coverage, pattern-synthesis coverage, ML Top 10 coverage bundle enrichment coverage, and init substitution E2E coverage have moved from pytest to Rust tests. Current audit: 64 active modules, 60 Rust integration modules, 0 Python unit modules, 0 Python smoke modules, 3 support/regression modules; the remaining pytest surface is still active. |
+| RT-011 | In progress | RT-009 documentation coverage, taxonomy integrity checks, project-name parser coverage, the YAML import invariant, infographic command-dispatch coverage, source-attribution parser coverage, the template substitute shim canary, template substitute no-`eval` lint, template substitute literal-substitution coverage, template config load unit and integration coverage, init input unit coverage, defaults-env init coverage, adversarial init coverage, template git clone timeout coverage, init precommit matrix coverage, mmdc preflight coverage, PDF page-positioning coverage, backward-compatibility PDF byte-identity coverage, finding-pattern parser coverage, agentic pattern extraction coverage, misinformation schema coverage, output-integrity schema coverage, human-trust-exploitation schema/attribution coverage, extractor contract fixes, init self-delete coverage, F-A3 populator wiring coverage, report-data image binding coverage, coverage-attestation aggregation coverage, coverage-attestation in-scope filtering coverage, coverage-attestation report-data guard coverage, coverage-attestation tier merge coverage, coverage-attestation pagination smoke coverage, coverage-percentage computation coverage, asset-sensitivity tag coverage, MAESTRO pattern-classification rules coverage, executive-architecture infographic payload coverage, attack-chain parsing coverage, attack-chain Mermaid generation coverage, init constitution coverage, attack-chain extraction coverage, tool-abuse enrichment coverage, pattern-synthesis coverage, ML Top 10 coverage bundle enrichment coverage, mobile Top 10 coverage bundle enrichment coverage, and init substitution E2E coverage have moved from pytest to Rust tests. Current audit: 64 active modules, 61 Rust integration modules, 0 Python unit modules, 0 Python smoke modules, 2 support/regression modules; the remaining pytest surface is still active. |
 | RT-012 | In progress | Rust-native report-data output handling, infographic output-file handling, report project metadata emission, report-data image binding and byte-probe parity, coverage-attestation payload emission, coverage-attestation in-scope filtering, coverage-attestation report-data guard coverage, coverage-attestation pagination smoke coverage, asset-sensitivity tag parsing, executive-architecture infographic payload parity, and SARIF CLI slices now cover the threat/risk SARIF runtime paths; the remaining Python runtime scripts are still listed in the inventory. |
 | RT-013 | Pending | Tauri shell parity work depends on RT-012 runtime parity. |
 | RT-014 | Pending | Python packaging and FastAPI scaffold retirement depends on RT-012 and RT-013. |
@@ -224,6 +224,21 @@ This roadmap uses a BEADS-style hierarchy:
   - `normalize_error`
   - `classify_exit_code`
   - `log_actionable_failure`
+
+#### Feature 5.3 - Analyze and optimize the slow init workflow
+
+- **Capabilities**
+  - init-path phase timing visibility
+  - cold-start and warm-start regression comparison
+  - fewer redundant shell-outs and filesystem scans during init
+- **Tasks**
+  - instrument the init path so each startup phase reports timing
+  - benchmark the slowest init path with and without precommit / template bootstrapping
+  - remove repeated parsing and process spawns once the slow phase is isolated
+- **Functions**
+  - `measure_init_cold_start`
+  - `measure_init_phase_latency`
+  - `trace_init_workflow`
 
 ## Phase Plan
 

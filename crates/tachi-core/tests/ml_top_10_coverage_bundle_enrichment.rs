@@ -52,11 +52,11 @@ const TAMPERING_AGENT: &str = ".claude/agents/tachi/tampering.md";
 const DATA_POISONING_AGENT: &str = ".claude/agents/tachi/data-poisoning.md";
 const MODEL_THEFT_AGENT: &str = ".claude/agents/tachi/model-theft.md";
 
-const TAMPERING_COMPANION: &str =
-    ".claude/skills/tachi-tampering/references/detection-patterns.md";
+const TAMPERING_COMPANION: &str = ".claude/skills/tachi-tampering/references/detection-patterns.md";
 const DATA_POISONING_COMPANION: &str =
     ".claude/skills/tachi-data-poisoning/references/detection-patterns.md";
-const MODEL_THEFT_COMPANION: &str = ".claude/skills/tachi-model-theft/references/detection-patterns.md";
+const MODEL_THEFT_COMPANION: &str =
+    ".claude/skills/tachi-model-theft/references/detection-patterns.md";
 
 const T_10_FIXTURE: &str = concat!(
     "tests/scripts/fixtures/ml_top_10_coverage_bundle/",
@@ -126,7 +126,10 @@ fn enriched_files_do_not_reference_maestro() {
     let root = workspace_root();
     for relative in ALL_ENRICHED_FILES {
         let content = read_text(&root.join(relative)).to_lowercase();
-        assert!(!content.contains("maestro"), "{relative} must be MAESTRO-free");
+        assert!(
+            !content.contains("maestro"),
+            "{relative} must be MAESTRO-free"
+        );
     }
 }
 
