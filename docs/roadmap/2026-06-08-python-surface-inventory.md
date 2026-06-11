@@ -29,6 +29,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - Adversarial init coverage has moved from `tests/scripts/test_init_sh_adversarial.py` to `crates/tachi-shell/tests/init_adversarial.rs`
 - Template git clone timeout coverage has moved from `tests/scripts/test_template_git_clone_timeout.py` to `crates/tachi-shell/tests/template_git_clone_timeout.rs`
 - Init pre-commit matrix coverage has moved from `tests/scripts/test_init_precommit_matrix.py` to `crates/tachi-shell/tests/init_precommit_matrix.rs`
+- The dead init helper package (`tests/scripts/{__init__.py,conftest.py,init_sh_helpers.py}`) has been retired now that the init pre-commit matrix is Rust-native
 - mmdc preflight coverage has moved from `tests/scripts/test_mmdc_preflight.py` to `crates/tachi-core/tests/mmdc_preflight.rs`
 - PDF page-positioning coverage has moved from `tests/scripts/test_pdf_page_positioning.py` to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_renders_executive_architecture_page_between_summary_and_attack_path`
 - Backward-compatibility PDF byte-identity coverage has moved from `tests/scripts/test_backward_compatibility.py` to `crates/tachi-core/tests/backward_compatibility.rs::unmodified_examples_byte_identical_pdfs`
@@ -58,7 +59,6 @@ stacks/fastapi-react-local/scaffold/backend/app/main.py
 ~~scripts/extract-report-data.py~~ - migrated to `crates/tachi-cli/src/bin/report-data.rs` and `crates/tachi-core/src/report_data.rs`
 ~~tests/scripts/test_pattern_extraction.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation.rs::build_per_finding_rows_groups_taxonomies_and_preserves_order` and `crates/tachi-cli/tests/control_plane_cli.rs::report_data_binary_emits_coverage_attestation_payload_when_source_attribution_exists`
 ~~tests/scripts/test_attack_chain_extraction.py~~ - migrated to `crates/tachi-core/tests/attack_chains.rs::parse_attack_chains_extracts_chain_metadata_and_members`, `crates/tachi-core/tests/attack_chains.rs::parse_attack_chains_extracts_findings_and_controls_in_order`, and `crates/tachi-core/tests/attack_chains.rs::generate_chain_mermaid_renders_layers_and_edges`
-tests/scripts/init_sh_helpers.py
 ~~tests/scripts/test_pattern_synthesis.py~~ - migrated to `crates/tachi-core/tests/pattern_synthesis.rs::pattern_synthesis_contract_is_rust_native` and the full Rust-native reference-implementation contract suite
 ~~tests/scripts/generate_pagination_fixture.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation_pagination.rs::coverage_attestation_pagination_smoke_compiles_at_scale`
 ~~tests/scripts/test_attack_chains.py~~ - migrated to `crates/tachi-core/tests/attack_chains.rs::generate_chain_mermaid_renders_layers_and_edges` and `crates/tachi-core/tests/attack_chains.rs::parse_attack_chains_extracts_chain_metadata_and_members`
@@ -67,8 +67,6 @@ stacks/fastapi-react-local/scaffold/backend/app/api/deps.py
 stacks/fastapi-react-local/scaffold/backend/app/api/v1/router.py
 stacks/fastapi-react-local/scaffold/backend/app/api/v1/__init__.py
 ~~tests/scripts/test_coverage_percentage_computation.py~~ - migrated to `crates/tachi-core/tests/coverage_percentage_computation.rs::baseline_cross_check_matches_independent_percentage_formula` and `crates/tachi-core/tests/coverage_percentage_computation.rs::mixed_and_oos_fixtures_match_expected_percentage_shape`
-tests/scripts/test_init_precommit_matrix.py
-tests/scripts/__init__.py
 ~~tests/scripts/test_misinformation.py~~ - migrated to `crates/tachi-core/tests/taxonomy_integrity.rs::misinformation_id_schema_contract_is_rust_native`
 ~~tests/scripts/test_output_integrity.py~~ - migrated to `crates/tachi-core/tests/taxonomy_integrity.rs::output_integrity_schema_contract_is_rust_native`
 ~~tests/scripts/test_mmdc_preflight.py~~ - migrated to `crates/tachi-core/tests/mmdc_preflight.rs::preflight_errors_when_renderer_is_missing_for_attack_trees` and `crates/tachi-core/tests/mmdc_preflight.rs::render_failure_summary_includes_all_failure_records`
@@ -86,7 +84,6 @@ tests/scripts/__init__.py
 ~~tests/scripts/test_init_sh_self_delete.py~~ - migrated to `crates/tachi-shell/tests/control_plane.rs::init_output_preserves_state_files_when_script_self_deletes`
 ~~tests/scripts/test_extractor_contract_fixes.py~~ - migrated to `crates/tachi-core/tests/extractor_contract_fixes.rs::extractor_contract_fixes_contract_is_rust_native`, `crates/tachi-core/tests/extractor_contract_fixes.rs::parse_attack_trees_accepts_agent_emitted_slugged_filenames`, `crates/tachi-core/tests/extractor_contract_fixes.rs::parse_threat_report_md_falls_back_to_full_section1_prose`, `crates/tachi-core/tests/extractor_contract_fixes.rs::detect_images_accepts_matching_png_and_jpeg_bytes`, `crates/tachi-core/tests/extractor_contract_fixes.rs::parse_compensating_controls_dedupes_cross_listed_findings`, and `crates/tachi-core/tests/extractor_contract_fixes.rs::merge_delta_status_populates_tier1_findings`
 ~~tests/scripts/test_init_input_unit.py~~ - migrated to `crates/tachi-core/tests/init_input.rs::init_input_unit_contract_is_rust_native`
-tests/scripts/conftest.py
 ~~tests/scripts/test_extract_infographic_data.py~~ - migrated to `crates/tachi-core/tests/infographic_payload.rs::build_infographic_payload_executive_architecture_includes_layers_callouts_and_overlay` and `crates/tachi-cli/tests/control_plane_cli.rs::infographic_data_binary_returns_executive_architecture_payload`
 ~~tests/scripts/test_template_substitute_unit.py~~ - migrated to `crates/tachi-core/tests/substitute_shim_canary.rs::template_substitute_literal_project_names_are_rust_native`
 ~~tests/scripts/test_init_sh_defaults_env.py~~ - migrated to `crates/tachi-shell/tests/init_defaults_env.rs::init_defaults_env_contract_is_rust_native`

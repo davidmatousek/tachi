@@ -83,7 +83,7 @@ cargo run -q -p tachi-cli --bin coverage-audit
 
 ## Dependency Notes
 
-Codemap dependency analysis currently identifies `scripts/tachi_parsers` as the highest-use legacy Python hub and `tests/scripts/init_sh_helpers.py` as the main remaining init-test helper hub. The init precommit matrix now lives in `crates/tachi-shell/tests/init_precommit_matrix.rs`; Rust work should avoid expanding those hubs and should instead move behavior into `tachi-core` or `tachi-shell` with Rust tests.
+Codemap dependency analysis currently identifies `scripts/tachi_parsers` as the highest-use legacy Python hub. The dead `tests/scripts` init helper package has been retired and the init precommit matrix now lives in `crates/tachi-shell/tests/init_precommit_matrix.rs`; Rust work should avoid expanding the remaining parser hub and should instead move behavior into `tachi-core` or `tachi-shell` with Rust tests.
 
 ## Agent Guidance
 

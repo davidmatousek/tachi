@@ -265,6 +265,34 @@ fn python_surface_inventory_retires_extract_report_data_python_module() {
 }
 
 #[test]
+fn python_surface_inventory_retires_init_helper_package() {
+    let root = workspace_root();
+    let inventory_path = root.join("docs/roadmap/2026-06-08-python-surface-inventory.md");
+    let inventory = fs::read_to_string(&inventory_path)
+        .expect("expected the python surface inventory doc to exist");
+
+    let active_section = inventory
+        .split("## Active Python Files")
+        .nth(1)
+        .and_then(|section| section.split("## ").next())
+        .expect("active python files section");
+
+    let active_lines = active_section.lines().map(str::trim).collect::<Vec<_>>();
+
+    for retired in [
+        "tests/scripts/__init__.py",
+        "tests/scripts/conftest.py",
+        "tests/scripts/init_sh_helpers.py",
+        "tests/scripts/test_init_precommit_matrix.py",
+    ] {
+        assert!(
+            !active_lines.contains(&retired),
+            "active inventory should no longer list retired init helper package file {retired}"
+        );
+    }
+}
+
+#[test]
 fn python_surface_inventory_retires_mmdc_preflight_python_module() {
     let root = workspace_root();
     let inventory_path = root.join("docs/roadmap/2026-06-08-python-surface-inventory.md");
