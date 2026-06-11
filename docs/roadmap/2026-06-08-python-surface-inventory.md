@@ -28,9 +28,11 @@ This inventory freezes the current Python surface so the migration can remove it
 - Adversarial init coverage has moved from `tests/scripts/test_init_sh_adversarial.py` to `crates/tachi-shell/tests/init_adversarial.rs`
 - Template git clone timeout coverage has moved from `tests/scripts/test_template_git_clone_timeout.py` to `crates/tachi-shell/tests/template_git_clone_timeout.rs`
 - Init pre-commit matrix coverage has moved from `tests/scripts/test_init_precommit_matrix.py` to `crates/tachi-shell/tests/init_precommit_matrix.rs`
+- mmdc preflight coverage has moved from `tests/scripts/test_mmdc_preflight.py` to `crates/tachi-core/tests/mmdc_preflight.rs`
 - PDF page-positioning coverage has moved from `tests/scripts/test_pdf_page_positioning.py` to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_renders_executive_architecture_page_between_summary_and_attack_path`
 - Backward-compatibility PDF byte-identity coverage has moved from `tests/scripts/test_backward_compatibility.py` to `crates/tachi-core/tests/backward_compatibility.rs::unmodified_examples_byte_identical_pdfs`
 - Init substitution E2E coverage has moved from `tests/scripts/test_init_sh_substitution.py` to `crates/tachi-shell/tests/init_substitution.rs`
+- Init constitution coverage has moved from `tests/scripts/test_init_sh_constitution.py` to `crates/tachi-shell/tests/init_constitution.rs`
 - Finding-pattern parser coverage has moved from `tests/scripts/test_finding_pattern_parser.py` to `crates/tachi-core/tests/parsers.rs`
 - Report-data image binding coverage has moved from `tests/scripts/test_extract_report_data.py` to `crates/tachi-core/tests/report_data.rs` and `crates/tachi-cli/tests/control_plane_cli.rs`
 - Asset-sensitivity tag parser coverage has moved from `tests/scripts/test_asset_sensitivity_tags.py` to `crates/tachi-core/tests/parsers.rs`
@@ -68,7 +70,7 @@ tests/scripts/test_init_precommit_matrix.py
 tests/scripts/__init__.py
 ~~tests/scripts/test_misinformation.py~~ - migrated to `crates/tachi-core/tests/taxonomy_integrity.rs::misinformation_id_schema_contract_is_rust_native`
 ~~tests/scripts/test_output_integrity.py~~ - migrated to `crates/tachi-core/tests/taxonomy_integrity.rs::output_integrity_schema_contract_is_rust_native`
-tests/scripts/test_mmdc_preflight.py
+~~tests/scripts/test_mmdc_preflight.py~~ - migrated to `crates/tachi-core/tests/mmdc_preflight.rs::preflight_errors_when_renderer_is_missing_for_attack_trees` and `crates/tachi-core/tests/mmdc_preflight.rs::render_failure_summary_includes_all_failure_records`
 ~~tests/scripts/test_coverage_attestation.py~~ - migrated to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_emits_coverage_attestation_payload_when_source_attribution_exists`, `crates/tachi-core/tests/report_data.rs::build_report_data_typst_marks_empty_source_attribution_reports_as_false`, and `crates/tachi-core/tests/report_data.rs::build_report_data_typst_keeps_typst_compilable_when_report_data_lacks_new_bindings`
 ~~tests/scripts/test_f_a3_populator_wiring.py~~ - migrated to `crates/tachi-core/tests/f_a3_populator_wiring.rs::f_a3_populator_wiring_contract_is_rust_native`
 ~~tests/scripts/test_coverage_attestation_audit.py~~ - migrated to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_keeps_typst_compilable_when_report_data_lacks_new_bindings`
@@ -83,7 +85,6 @@ tests/scripts/test_mmdc_preflight.py
 ~~tests/scripts/test_init_input_unit.py~~ - migrated to `crates/tachi-core/tests/init_input.rs::init_input_unit_contract_is_rust_native`
 tests/scripts/conftest.py
 ~~tests/scripts/test_extract_infographic_data.py~~ - migrated to `crates/tachi-core/tests/infographic_payload.rs::build_infographic_payload_executive_architecture_includes_layers_callouts_and_overlay` and `crates/tachi-cli/tests/control_plane_cli.rs::infographic_data_binary_returns_executive_architecture_payload`
-tests/scripts/test_init_sh_constitution.py
 ~~tests/scripts/test_template_substitute_unit.py~~ - migrated to `crates/tachi-core/tests/substitute_shim_canary.rs::template_substitute_literal_project_names_are_rust_native`
 ~~tests/scripts/test_init_sh_defaults_env.py~~ - migrated to `crates/tachi-shell/tests/init_defaults_env.rs::init_defaults_env_contract_is_rust_native`
 ~~tests/scripts/test_init_precommit_matrix.py~~ - migrated to `crates/tachi-shell/tests/init_precommit_matrix.rs::init_precommit_matrix_is_rust_native` and `crates/tachi-shell/tests/init_precommit_matrix.rs::non_tty_no_flag_skips_prompt_and_install`

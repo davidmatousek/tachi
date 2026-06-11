@@ -7,6 +7,7 @@ pub mod coverage_attestation;
 pub mod coverage_audit;
 pub mod coverage_taxonomy;
 pub mod infographic;
+pub mod mmdc;
 pub mod parity;
 pub mod parsers;
 pub mod report_data;

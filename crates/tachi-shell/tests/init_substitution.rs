@@ -124,14 +124,14 @@ fn personalized_tree_modes_match_baseline() {
             .permissions()
             .mode()
             & 0o777;
-            if actual_mode != baseline_mode {
-                drifts.push(format!(
-                    "{}: {} vs baseline {}",
-                    rel.display(),
-                    format_args!("0o{actual_mode:o}"),
-                    format_args!("0o{baseline_mode:o}")
-                ));
-            }
+        if actual_mode != baseline_mode {
+            drifts.push(format!(
+                "{}: {} vs baseline {}",
+                rel.display(),
+                format_args!("0o{actual_mode:o}"),
+                format_args!("0o{baseline_mode:o}")
+            ));
+        }
     }
 
     assert!(
