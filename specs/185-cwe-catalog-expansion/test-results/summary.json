@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "feature": "185-cwe-catalog-expansion",
+  "total_waves": 3,
+  "waves_tested": 3,
+  "waves_skipped": 0,
+  "totals": {
+    "pass": 2683,
+    "fail": 71,
+    "skip": 12
+  },
+  "total_regressions": 2,
+  "coverage_trend": null,
+  "gate_decisions": [
+    {
+      "wave": 0,
+      "decision": "warn"
+    },
+    {
+      "wave": 1,
+      "decision": "warn"
+    },
+    {
+      "wave": 2,
+      "decision": "pass"
+    }
+  ],
+  "notes": "Totals are per-wave full-suite sums (the same pre-existing failures recur across waves: 25 at W0 baseline, 19 at final). W1's 2 flagged regressions both dispositioned: 1 architect-approved data-coupled pin refresh (green at W2), 1 confirmed suite-order flake. Final state: 19 failed = documented pre-existing on main, 0 in-scope; byte-identity suite intentionally flipped red\u2192green (D-9 lane). Coverage trend null: no coverage capture (disproportionate for data-only feature)."
+}
