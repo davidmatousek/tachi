@@ -3,7 +3,11 @@ prd:
   number: "184"
   topic: nist-ai-600-1-surface-c-transcription
   created: 2026-06-10
-  status: Approved
+  status: Delivered
+  delivered: 2026-06-11
+  pr: 324
+  merge_commit: db1bba5
+  release: 4.43.0
   type: feature
 triad:
   pm_signoff: { agent: product-manager, date: 2026-06-10, status: APPROVED, notes: "Author sign-off (v1.1). Scope = BLP-05 Wave 2 (#184), standalone per the user's /aod.define 184 invocation (split-valve; #185 stays a sibling). Completes F-180's deferred Surface C under the T027 Option (c) follow-on contract: 8th catalog (12 GAI Risk records), 7→8 enum expansion, FR-022 direction correction, 15 verbatim primary edges — PLUS the FR-7 disposition the Architect's C1 surfaced: the 16 wrong-direction drift edges were never removed at T029 (Option (d) MIX normalized them); PM rules Option A, remove in-scope (541 primary / 578 total after). Five issue-body corrections (C-a–C-e) verified. This PRD is the PM re-sign vehicle for the FR-022 direction amendment AND the drift-edge removal disclosure." }
@@ -16,7 +20,7 @@ source:
 
 # NIST AI 600-1 GAI Risk Taxonomy Addition — Surface C Transcription (F-A1.1 Follow-on)
 
-**Status**: Approved (2026-06-10 — PM author sign-off; Architect APPROVED_WITH_CONCERNS on bounded re-review; Team-Lead APPROVED_WITH_CONCERNS; v1.1/v1.2 fold all Triad corrections)
+**Status**: Delivered (2026-06-11 — PR [#324](https://github.com/davidmatousek/tachi/pull/324) squash-merged as `db1bba5`; release-please PR #326 → v4.43.0; Issue #184 closed. Triad at approval: PM ✓ / Architect ⚠ / Team-Lead ⚠, v1.1/v1.2 fold all corrections)
 **Created**: 2026-06-10
 **Author**: product-manager
 **Reviewers**: architect, team-lead
