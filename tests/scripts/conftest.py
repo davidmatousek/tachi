@@ -45,9 +45,9 @@ SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 def load_yaml_or_empty(path: Path) -> Any:
     """Load YAML and coalesce ``None`` (empty file) to ``[]``.
 
-    Mirrors the loader pattern in scripts/extract-report-data.py:
-    ``yaml.safe_load(open(path))`` with empty-file → empty-list semantics
-    so callers can iterate the result without a None guard.
+    Mirrors the loader pattern used by the Rust report-data and infographic
+    builders: ``yaml.safe_load(open(path))`` with empty-file → empty-list
+    semantics so callers can iterate the result without a None guard.
     """
     with path.open(encoding="utf-8") as fh:
         data = yaml.safe_load(fh)

@@ -16,6 +16,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - YAML import invariant coverage has moved from `tests/scripts/test_pyyaml_deferred_import.py` to `crates/tachi-core/tests/yaml_imports.rs`
 - Infographic command-dispatch coverage has moved from `tests/scripts/test_command_dispatch.py` to `crates/tachi-core/tests/infographic_command_dispatch.rs`
 - Executive-architecture infographic payload coverage has moved from `tests/scripts/test_extract_infographic_data.py` and `tests/scripts/test_executive_architecture_payload.py` to `crates/tachi-core/tests/infographic_payload.rs` and `crates/tachi-cli/tests/control_plane_cli.rs`
+- Report-data generation/runtime handling has moved from `scripts/extract-report-data.py` to `crates/tachi-cli/src/bin/report-data.rs` and `crates/tachi-core/src/report_data.rs`
 - Infographic extraction runtime handling has moved from `scripts/extract-infographic-data.py` to `crates/tachi-cli/src/bin/infographic-data.rs`
 - Source-attribution parser coverage has moved from `tests/scripts/test_source_attribution.py` to `crates/tachi-core/tests/parsers.rs`
 - Template substitute shim canary coverage has moved from `tests/scripts/test_substitute_shim_canary.py` to `crates/tachi-core/tests/substitute_shim_canary.rs`
@@ -48,13 +49,13 @@ This inventory freezes the current Python surface so the migration can remove it
 
 ```text
 scripts/tachi_parsers.py
-scripts/extract-report-data.py
 stacks/fastapi-react-local/scaffold/backend/alembic/env.py
 stacks/fastapi-react-local/scaffold/backend/tests/api/__init__.py
 stacks/fastapi-react-local/scaffold/backend/tests/__init__.py
 stacks/fastapi-react-local/scaffold/backend/tests/conftest.py
 stacks/fastapi-react-local/scaffold/backend/app/services/__init__.py
 stacks/fastapi-react-local/scaffold/backend/app/main.py
+~~scripts/extract-report-data.py~~ - migrated to `crates/tachi-cli/src/bin/report-data.rs` and `crates/tachi-core/src/report_data.rs`
 ~~tests/scripts/test_pattern_extraction.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation.rs::build_per_finding_rows_groups_taxonomies_and_preserves_order` and `crates/tachi-cli/tests/control_plane_cli.rs::report_data_binary_emits_coverage_attestation_payload_when_source_attribution_exists`
 ~~tests/scripts/test_attack_chain_extraction.py~~ - migrated to `crates/tachi-core/tests/attack_chains.rs::parse_attack_chains_extracts_chain_metadata_and_members`, `crates/tachi-core/tests/attack_chains.rs::parse_attack_chains_extracts_findings_and_controls_in_order`, and `crates/tachi-core/tests/attack_chains.rs::generate_chain_mermaid_renders_layers_and_edges`
 tests/scripts/init_sh_helpers.py
@@ -141,5 +142,5 @@ stacks/fastapi-react/scaffold/backend/app/api/v1/__init__.py
 ## Notes
 
 - The inventory intentionally excludes fixture copies under `tests/fixtures/` and spec artifacts under `specs/`.
-- RT-011 has started retiring pytest-centric coverage by moving the RT-009 documentation contract, taxonomy integrity checks, project-name parser contract, YAML import invariant, infographic command-dispatch contract, executive-architecture infographic payload contract, source-attribution parser contract, template substitute shim canary, template substitute no-`eval` lint, template substitute literal substitution contract, finding-pattern parser contract, misinformation schema contract, output-integrity schema contract, init self-delete contract, F-A3 populator wiring contract, report-data image binding contract, asset-sensitivity tag contract, adversarial init contract, template git clone timeout contract, MAESTRO pattern-classification rules contract, ML Top 10 coverage bundle enrichment contract, and LLM10 unbounded consumption contract to Rust-native tests.
+- RT-011 has started retiring pytest-centric coverage by moving the RT-009 documentation contract, taxonomy integrity checks, project-name parser contract, YAML import invariant, infographic command-dispatch contract, executive-architecture infographic payload contract, source-attribution parser contract, template substitute shim canary, template substitute no-`eval` lint, template substitute literal substitution contract, finding-pattern parser contract, misinformation schema contract, output-integrity schema contract, init self-delete contract, F-A3 populator wiring contract, report-data image binding contract, asset-sensitivity tag contract, adversarial init contract, template git clone timeout contract, MAESTRO pattern-classification rules contract, ML Top 10 coverage bundle enrichment contract, LLM10 unbounded consumption contract, and report-data runtime entrypoint contract to Rust-native tests.
 - RT-014 will remove the packaging and scaffold surfaces once parity is stable.

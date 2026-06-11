@@ -3,7 +3,7 @@
 Why the imports are non-standard
 --------------------------------
 The Python scripts under ``scripts/`` use hyphenated filenames
-(e.g. ``extract-infographic-data.py``, ``extract-report-data.py``). Python's
+(e.g. ``extract-infographic-data.py``). Python's
 normal ``import`` statement cannot load modules whose file names contain
 hyphens — hyphens are not valid in Python identifiers. Renaming these scripts
 is not an option because they are invoked by name from slash commands, CI
@@ -76,16 +76,4 @@ def extract_infographic_data():
     return _load_hyphenated_script(
         module_name="extract_infographic_data",
         script_filename="extract-infographic-data.py",
-    )
-
-
-@pytest.fixture(scope="session")
-def extract_report_data():
-    """Session-scoped fixture loading ``scripts/extract-report-data.py``.
-
-    Returns the module object so tests can access its public functions.
-    """
-    return _load_hyphenated_script(
-        module_name="extract_report_data",
-        script_filename="extract-report-data.py",
     )

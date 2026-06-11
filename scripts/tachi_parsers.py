@@ -4,8 +4,8 @@ Provides deterministic parsers for markdown tables, YAML frontmatter, severity
 distributions, findings, scope data, and compensating controls extracted from
 tachi pipeline outputs (threats.md, risk-scores.md, compensating-controls.md).
 
-Used by extract-report-data.py and extract-infographic-data.py to ensure
-consistent, cross-output-identical parsing of the same source artifacts.
+Used by the Rust report/infographic builders to ensure consistent,
+cross-output-identical parsing of the same source artifacts.
 """
 
 from dataclasses import dataclass
@@ -434,7 +434,7 @@ def detect_artifacts(target_dir: Path) -> dict:
     Agentic Pattern Analysis section gating), the threats.md output
     template (conditional Section 4b "Findings by Agentic Pattern"
     rendering), and the PDF security report pipeline
-    (``extract-report-data.py`` conditional pattern data emission).
+    (conditional report-data pattern emission).
     """
     artifacts = {
         "threats_md": False,

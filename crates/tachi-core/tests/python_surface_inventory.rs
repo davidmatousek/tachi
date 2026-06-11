@@ -73,7 +73,6 @@ fn python_surface_inventory_lists_every_active_python_file() {
     for required in [
         "pyproject.toml",
         "requirements-dev.txt",
-        "scripts/extract-report-data.py",
         "scripts/extract-infographic-data.py",
         "scripts/generate-threats-sarif.py",
         "scripts/generate-risk-scores-sarif.py",
@@ -241,6 +240,27 @@ fn python_surface_inventory_retires_init_constitution_python_module() {
     assert!(
         !active_lines.contains(&"tests/scripts/test_init_sh_constitution.py"),
         "active inventory should no longer list the init constitution pytest module"
+    );
+}
+
+#[test]
+fn python_surface_inventory_retires_extract_report_data_python_module() {
+    let root = workspace_root();
+    let inventory_path = root.join("docs/roadmap/2026-06-08-python-surface-inventory.md");
+    let inventory = fs::read_to_string(&inventory_path)
+        .expect("expected the python surface inventory doc to exist");
+
+    let active_section = inventory
+        .split("## Active Python Files")
+        .nth(1)
+        .and_then(|section| section.split("## ").next())
+        .expect("active python files section");
+
+    let active_lines = active_section.lines().map(str::trim).collect::<Vec<_>>();
+
+    assert!(
+        !active_lines.contains(&"scripts/extract-report-data.py"),
+        "active inventory should no longer list the report-data Python runtime script"
     );
 }
 

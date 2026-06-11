@@ -18,10 +18,10 @@ fn yaml_import_invariant_is_rust_native() {
         "expected at least one yaml-referencing script under scripts/"
     );
     assert!(
-        scripts
+        !scripts
             .iter()
             .any(|path| path.ends_with("scripts/extract-report-data.py")),
-        "extract-report-data.py should stay in the YAML import invariant scope"
+        "extract-report-data.py should no longer be part of the YAML import invariant scope"
     );
 
     let violations: Vec<String> = scripts
