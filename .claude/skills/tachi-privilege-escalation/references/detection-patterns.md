@@ -224,6 +224,7 @@ OWASP M8:2024 (Security Misconfiguration) names mobile-tier configuration weakne
 - OWASP M8:2024 — Security Misconfiguration: https://owasp.org/www-project-mobile-top-10/2023-risks/m8-security-misconfiguration
 - OWASP Top 10 2021 A05:2021 — Security Misconfiguration: https://owasp.org/Top10/A05_2021-Security_Misconfiguration/
 - OWASP API Security Top 10 2023 API8:2023 — Security Misconfiguration: https://owasp.org/API-Security/editions/2023/en/0xa8-security-misconfiguration/
+- OWASP Agentic Security Initiative ASI-03: Identity and Privilege Abuse: https://genai.owasp.org/
 - CWE-732 — Incorrect Permission Assignment for Critical Resource: https://cwe.mitre.org/data/definitions/732.html
 - CWE-1188 — Insecure Default Initialization of Resource: https://cwe.mitre.org/data/definitions/1188.html
 - CWE-1004 — Sensitive Cookie Without HttpOnly Flag: https://cwe.mitre.org/data/definitions/1004.html

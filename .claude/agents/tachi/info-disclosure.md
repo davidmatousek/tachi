@@ -18,6 +18,8 @@ owasp_references:
   - "OWASP Top 10 2021 A01:2021 — Broken Access Control"
   - "OWASP Top 10 2021 A02:2021 — Cryptographic Failures"
   - "OWASP Top 10 2021 A10:2021 — Server-Side Request Forgery (SSRF)"
+  - "OWASP LLM02:2025 — Sensitive Information Disclosure"
+  - "OWASP API Security 2023 API7 — Server-Side Request Forgery"
   - "OWASP API Security 2023 API3 — Broken Object Property Level Authorization"
   - "CWE-200: Exposure of Sensitive Information to an Unauthorized Actor"
   - "CWE-209: Generation of Error Message Containing Sensitive Information"

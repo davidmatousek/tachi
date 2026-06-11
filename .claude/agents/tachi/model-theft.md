@@ -17,6 +17,7 @@ owasp_references:
   - "OWASP LLM03:2025"
   - "OWASP ML03:2023 — Model Inversion Attack"
   - "OWASP ML04:2023 — Membership Inference Attack"
+  - "OWASP ML05:2023 — Model Theft"
   - "OWASP ML06:2023 — AI Supply Chain Attacks"
   - "MITRE ATLAS AML.T0024 — Exfiltration via ML Inference API"
 output_schema: ../../../schemas/finding.yaml
@@ -42,7 +43,6 @@ For predictive-ML deployments, also covers extraction and artifact-integrity thr
 5. Provide actionable, technology-specific `mitigation` guidance and cite supporting `references` (OWASP LLM10/LLM07/LLM03, OWASP AI Exchange, MITRE ATLAS AML.T0024/T0057, MITRE ATT&CK T1005, CWE-200/209/522, OWASP ML03:2023/ML04:2023/ML06:2023, MITRE ATT&CK T1195/T1195.001/T1195.002) from the reference file's Primary Sources list. Populate `source_attribution` with one `relationship: primary` taxonomy entry (typically OWASP LLM03:2025 / LLM10:2025 / LLM07:2025 for LLM extraction and cost-amplification surfaces, or OWASP ML03:2023 / ML04:2023 / ML06:2023 for predictive-ML model-inversion / membership-inference / artifact-side supply-chain surfaces per F-6 ADR-035 lineage) plus ≥1 `relationship: related` CWE entry, mirroring the F-1/F-2/F-4 net-new agent precedent per ADR-037 D-3.
 6. Emit the finding list to the orchestrator for Phase 3 aggregation. If no components match any trigger keyword, return zero findings; do not speculate about model theft on architectures without model hosting or inference components.
 ## Example Findings
-
 **Model Weights Exposed via Unprotected Storage**:
 
 ```yaml

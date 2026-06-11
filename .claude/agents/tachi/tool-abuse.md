@@ -13,7 +13,7 @@ model: sonnet
 category: agentic
 threat_class: AG
 dfd_targets: [Process]
-owasp_references: [ASI-02, ASI-04, MCP-03, MCP-05, LLM06:2025, ASI-07]
+owasp_references: [ASI-02, ASI-04, ASI-05, API6:2023, MCP-03, MCP-05, LLM06:2025, ASI-07]
 output_schema: ../../../schemas/finding.yaml
 ```
 # Tool Abuse Threat Agent

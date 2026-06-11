@@ -260,6 +260,7 @@ Category 10 cites OWASP LLM03:2025 as `relationship: related` per the existing C
 ## Primary Sources
 
 - **OWASP Agentic Security Initiative (ASI)** — Framework for agentic application threat modeling. ASI-02 Unauthorized Tool Access, ASI-04 Cross-Agent Trust Exploitation: https://genai.owasp.org/
+- **OWASP ASI-05:2026 — Unexpected Code Execution (RCE)** — Canonical OWASP coverage of tool-driven code execution and payload-triggered execution paths: https://genai.owasp.org/
 - **OWASP ASI07:2026 — Insecure Inter-Agent Communication** — Canonical OWASP coverage of inter-agent communication channel security and multi-hop MCP trust propagation (A2A authentication / message signing / replay protection / taint propagation / per-hop MCP attestation / signed-capability handoff / trust-chain validator): https://genai.owasp.org/
 - **OWASP LLM03:2025 Supply Chain** — Canonical OWASP coverage of plugin and tool supply-chain compromise, including third-party plugin ingestion and MCP tool sources: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
 - **OWASP LLM06:2025 Excessive Agency** — Canonical OWASP coverage of tool-invocation misuse, cross-tool chaining, and agent capability overreach (Excessive Functionality / Excessive Permissions / Excessive Autonomy sub-categories): https://genai.owasp.org/llmrisk/llm062025-excessive-agency/

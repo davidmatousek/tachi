@@ -81,6 +81,7 @@ Server-Side Request Forgery against cloud workload metadata endpoints is the mos
 **Primary source**:
 
 - OWASP Top 10 2021 A10: Server-Side Request Forgery: https://owasp.org/Top10/A10_2021-Server-Side_Request_Forgery_%28SSRF%29/
+- OWASP API Security Top 10 2023 API7: Server-Side Request Forgery: https://owasp.org/API-Security/editions/2023/en/0xa7-server-side-request-forgery/
 - CWE-918: Server-Side Request Forgery: https://cwe.mitre.org/data/definitions/918.html
 - OWASP SSRF Prevention Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html
 - AWS IMDSv2 guidance: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html
@@ -102,6 +103,7 @@ The SSRF surface in this category intersects with OWASP API Security Top 10 2023
 
 Primary citation cross-link:
 
+- OWASP LLM02:2025 Sensitive Information Disclosure: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
 - OWASP API Security Top 10 2023 API10:2023 — Unsafe Consumption of APIs: https://owasp.org/API-Security/editions/2023/en/0xaa-unsafe-consumption-of-apis/
 
 ## Pattern Category 8: Information Exposure Through Error Messages and Debug Output

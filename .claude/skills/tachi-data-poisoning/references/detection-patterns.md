@@ -226,8 +226,10 @@ Same architecture may also surface Pattern Category 10 (D — corpus-side ML06) 
 - **OWASP LLM03:2025 - Supply Chain**: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
 - **OWASP LLM04:2025 - Data and Model Poisoning**: https://genai.owasp.org/llmrisk/llm04-data-and-model-poisoning/
 - **OWASP LLM08:2025 - Vector and Embedding Weaknesses**: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
+- **OWASP ML02:2023 - Data Poisoning Attack**: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML02_2023-Data_Poisoning_Attack.html
 - **MITRE ATLAS AML.T0020 - Poison Training Data**: https://atlas.mitre.org/techniques/AML.T0020
 - **MITRE ATLAS AML.T0018 - Backdoor ML Model**: https://atlas.mitre.org/techniques/AML.T0018
+- **OWASP ML10:2023 - Model Poisoning**: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML10_2023-Model_Poisoning.html
 - **MITRE ATLAS AML.T0010 - ML Supply Chain Compromise**: https://atlas.mitre.org/techniques/AML.T0010
 - **CWE-345 - Insufficient Verification of Data Authenticity**: https://cwe.mitre.org/data/definitions/345.html
 - **CWE-1395 - Dependency on Vulnerable Third-Party Component**: https://cwe.mitre.org/data/definitions/1395.html

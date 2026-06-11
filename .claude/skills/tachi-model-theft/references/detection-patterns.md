@@ -290,6 +290,7 @@ Pattern Categories 12 + 13 + 14 (predictive-ML extraction and artifact-integrity
 - **OWASP LLM10:2025 - Unbounded Consumption** (includes model extraction and model theft sub-categories, consolidating LLM04:2023 and LLM10:2023): https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/
 - **OWASP LLM07:2025 - System Prompt Leakage** (new in v2025 as a dedicated category): https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/
 - **OWASP LLM03:2025 - Supply Chain**: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
+- **OWASP ML05:2023 - Model Theft**: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML05_2023-Model_Theft.html
 - **OWASP AI Exchange - Model Theft and Information Leakage**: https://owaspai.org/docs/ai_security_overview/
 - **MITRE ATLAS AML.T0024 - Exfiltration via ML Inference API**: https://atlas.mitre.org/techniques/AML.T0024
 - **MITRE ATLAS AML.T0057 - LLM Data Leakage**: https://atlas.mitre.org/techniques/AML.T0057

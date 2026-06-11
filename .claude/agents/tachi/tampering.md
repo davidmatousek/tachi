@@ -15,7 +15,9 @@ dfd_targets: [Process, Data Store, Data Flow]
 owasp_references:
   - "OWASP Top 10 2021 A03:2021 — Injection"
   - "OWASP Top 10 2021 A08:2021 — Software and Data Integrity Failures"
+  - "OWASP Top 10 2021 A06:2021 — Vulnerable and Outdated Components"
   - "OWASP API Security 2023 API3 — Broken Object Property Level Authorization"
+  - "OWASP API Security 2023 API10 — Unsafe Consumption of APIs"
   - "CWE-345: Insufficient Verification of Data Authenticity"
   - "CWE-352: Cross-Site Request Forgery"
   - "CWE-494: Download of Code Without Integrity Check"

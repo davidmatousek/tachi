@@ -16,8 +16,11 @@ threat_class: E
 dfd_targets: [Process]
 owasp_references:
   - "OWASP Top 10 2021 A01:2021 — Broken Access Control"
+  - "OWASP Top 10 2021 A05:2021 — Security Misconfiguration"
   - "OWASP API Security 2023 API1 — Broken Object Level Authorization"
   - "OWASP API Security 2023 API5 — Broken Function Level Authorization"
+  - "OWASP API Security 2023 API8 — Security Misconfiguration"
+  - "OWASP Agentic Security Initiative ASI-03 — Identity and Privilege Abuse"
   - "CWE-269: Improper Privilege Management"
   - "CWE-285: Improper Authorization"
   - "CWE-639: Authorization Bypass Through User-Controlled Key"
