@@ -15,6 +15,7 @@ CATALOG_FILENAMES = [
     "mitre-attack.yaml",
     "mitre-atlas.yaml",
     "nist-ai-rmf.yaml",
+    "nist-ai-600-1.yaml",
     "cwe.yaml",
     "tachi-control-category.yaml",
     "tachi-stride-ai-category.yaml",
@@ -25,6 +26,7 @@ TAXONOMY_ENUM = {
     "mitre-attack",
     "mitre-atlas",
     "nist-ai-rmf",
+    "nist-ai-600-1",
     "cwe",
     "tachi-control-category",
     "tachi-stride-ai-category",
@@ -77,9 +79,25 @@ def _sort_key_nist(record_id: str):
     return (function_part, major, minor)
 
 
+def _sort_key_section(record_id: str):
+    """Section-numeric sort key so ``"2.2"`` precedes ``"2.10"``.
+
+    Parses ``"2.10"`` into ``(2, 10)``. Pure lexicographic sort would emit
+    ``"2.10"`` before ``"2.2"``, breaking the NIST AI 600-1 publication
+    ordering (§2.1 → §2.12).
+    """
+    major_str, _, minor_str = record_id.partition(".")
+    try:
+        major = int(major_str)
+        minor = int(minor_str) if minor_str else 0
+    except ValueError:  # malformed — fall back to string sort for stability
+        return (0, 0, record_id)
+    return (major, minor)
+
+
 @pytest.fixture(scope="module")
 def catalogs():
-    """Load all 7 catalog YAMLs once. Returns ``{filename: parsed_list}``."""
+    """Load all catalog YAMLs once. Returns ``{filename: parsed_list}``."""
     loaded = {}
     for name in CATALOG_FILENAMES:
         path = TAXONOMY_DIR / name
@@ -238,11 +256,11 @@ def test_crosswalk_referential_integrity(crosswalk, catalog_id_index):
 
         assert source_tax in TAXONOMY_ENUM, (
             f"crosswalk.yaml: edge {index}: source.taxonomy={source_tax!r} "
-            f"not in 7-value enum {sorted(TAXONOMY_ENUM)}"
+            f"not in taxonomy enum {sorted(TAXONOMY_ENUM)}"
         )
         assert target_tax in TAXONOMY_ENUM, (
             f"crosswalk.yaml: edge {index}: target.taxonomy={target_tax!r} "
-            f"not in 7-value enum {sorted(TAXONOMY_ENUM)}"
+            f"not in taxonomy enum {sorted(TAXONOMY_ENUM)}"
         )
         assert edge_type in EDGE_TYPE_ENUM, (
             f"crosswalk.yaml: edge {index}: edge_type={edge_type!r} "
@@ -286,12 +304,15 @@ def test_citation_shape(crosswalk):
 
 
 def test_records_sorted(catalogs):
-    """nist-ai-rmf uses numeric-within-function sort; others use lexicographic id sort."""
+    """nist-ai-rmf uses numeric-within-function sort; nist-ai-600-1 uses
+    section-numeric sort; others use lexicographic id sort."""
     for filename, records in catalogs.items():
         ids = [record["id"] for record in records]
 
         if filename == "nist-ai-rmf.yaml":
             expected = sorted(ids, key=_sort_key_nist)
+        elif filename == "nist-ai-600-1.yaml":
+            expected = sorted(ids, key=_sort_key_section)
         else:
             expected = sorted(ids)
 

@@ -1,0 +1,104 @@
+# NIST AI 600-1 Catalog (taxonomy: nist-ai-600-1)
+#
+# Composition: NIST AI 600-1 "Artificial Intelligence Risk Management
+# Framework: Generative Artificial Intelligence Profile" (July 2024),
+# Section 2 Generative AI risks — exactly 12 records, §§2.1–2.12.
+#
+# Source: transcribed verbatim from the Surface C table of
+# `.claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md`
+# (the in-repo verbatim source surface per the F-184 build contract C1).
+# Retrieval/verification date: 2026-06-10.
+#
+# Record shape: {id, full_id, name, url, cwe_refs}.
+# `cwe_refs: []` for all records — NIST AI 600-1 publishes no direct CWE
+# cross-references; any AI-600-1<->CWE relationships belong in
+# crosswalk.yaml, never inline here.
+#
+# IDs are YAML-QUOTED strings ("2.1" … "2.12") — the quoting is
+# load-bearing: an unquoted `2.10` float-coerces to `2.1`, colliding with
+# §2.1 and silently corrupting referential integrity. Every id in this
+# file (and every crosswalk edge endpoint targeting this taxonomy) MUST
+# remain quoted.
+#
+# `full_id` format: `NIST AI 600-1 §<id>` (e.g., `NIST AI 600-1 §2.9`).
+#
+# URL: every record shares the NIST DOI
+# `https://doi.org/10.6028/NIST.AI.600-1` (the DOI resolves to the
+# document containing all 12 §2 risk subsections; per-section anchors are
+# not stable across NIST publication revisions).
+#
+# Sorted in NIST publication order: §2.1 → §2.12, section-numeric — NOT
+# lexicographic, which would misplace "2.10"–"2.12" before "2.2". The
+# integrity suite enforces this ordering via `_sort_key_section`.
+#
+# KNOWN DIVERGENCE (documented, not corrected here): NIST's AI 600-1 PDF
+# titles §2.6 "Harmful Bias and Homogenization"; the in-repo Surface C
+# table says "Harmful Bias or Homogenization". This file follows the
+# table ("or"); the or/and observation routes with the OQ-4 ADR-025
+# amendment note at delivery — never a silent edit here.
+#
+# FR-024 transcription discipline: this catalog is a verbatim
+# transcription of the cited source surface, not a re-authorship. Factual
+# corrections route to the source table / ADR-025 amendment process,
+# never unilaterally into this file.
+
+- id: "2.1"
+  full_id: NIST AI 600-1 §2.1
+  name: CBRN Information or Capabilities
+  url: https://doi.org/10.6028/NIST.AI.600-1
+  cwe_refs: []
+- id: "2.2"
+  full_id: NIST AI 600-1 §2.2
+  name: Confabulation
+  url: https://doi.org/10.6028/NIST.AI.600-1
+  cwe_refs: []
+- id: "2.3"
+  full_id: NIST AI 600-1 §2.3
+  name: Dangerous, Violent, or Hateful Content
+  url: https://doi.org/10.6028/NIST.AI.600-1
+  cwe_refs: []
+- id: "2.4"
+  full_id: NIST AI 600-1 §2.4
+  name: Data Privacy
+  url: https://doi.org/10.6028/NIST.AI.600-1
+  cwe_refs: []
+- id: "2.5"
+  full_id: NIST AI 600-1 §2.5
+  name: Environmental Impacts
+  url: https://doi.org/10.6028/NIST.AI.600-1
+  cwe_refs: []
+- id: "2.6"
+  full_id: NIST AI 600-1 §2.6
+  name: Harmful Bias or Homogenization
+  url: https://doi.org/10.6028/NIST.AI.600-1
+  cwe_refs: []
+- id: "2.7"
+  full_id: NIST AI 600-1 §2.7
+  name: Human-AI Configuration
+  url: https://doi.org/10.6028/NIST.AI.600-1
+  cwe_refs: []
+- id: "2.8"
+  full_id: NIST AI 600-1 §2.8
+  name: Information Integrity
+  url: https://doi.org/10.6028/NIST.AI.600-1
+  cwe_refs: []
+- id: "2.9"
+  full_id: NIST AI 600-1 §2.9
+  name: Information Security
+  url: https://doi.org/10.6028/NIST.AI.600-1
+  cwe_refs: []
+- id: "2.10"
+  full_id: NIST AI 600-1 §2.10
+  name: Intellectual Property
+  url: https://doi.org/10.6028/NIST.AI.600-1
+  cwe_refs: []
+- id: "2.11"
+  full_id: NIST AI 600-1 §2.11
+  name: Obscene, Degrading, and/or Abusive Content
+  url: https://doi.org/10.6028/NIST.AI.600-1
+  cwe_refs: []
+- id: "2.12"
+  full_id: NIST AI 600-1 §2.12
+  name: Value Chain and Component Integration
+  url: https://doi.org/10.6028/NIST.AI.600-1
+  cwe_refs: []

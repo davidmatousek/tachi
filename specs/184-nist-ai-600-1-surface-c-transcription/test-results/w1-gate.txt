@@ -1,0 +1,39 @@
+=== T005: W1 gate — suite (8 catalogs, 0 new edges) ===
+Command: /usr/bin/python3 -m pytest tests/schemas/test_taxonomy_integrity.py -v
+Date: 2026-06-10 22:08:38 EDT
+Branch: 184-nist-ai-600-1-surface-c-transcription
+HEAD: 686d655
+
+/Users/david/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+============================= test session starts ==============================
+platform darwin -- Python 3.9.6, pytest-8.4.2, pluggy-1.6.0 -- /Applications/Xcode.app/Contents/Developer/usr/bin/python3
+cachedir: .pytest_cache
+metadata: {'Python': '3.9.6', 'Platform': 'macOS-26.3.1-arm64-arm-64bit', 'Packages': {'pytest': '8.4.2', 'pluggy': '1.6.0'}, 'Plugins': {'Faker': '22.0.0', 'anyio': '4.12.1', 'html': '4.1.1', 'xdist': '3.8.0', 'json-report': '1.5.0', 'timeout': '2.4.0', 'metadata': '3.1.1', 'cov': '4.1.0', 'asyncio': '0.21.1', 'mock': '3.12.0', 'requests-mock': '1.12.1', 'postgresql': '7.0.2'}}
+rootdir: /Users/david/Projects/tachi
+configfile: pyproject.toml
+plugins: Faker-22.0.0, anyio-4.12.1, html-4.1.1, xdist-3.8.0, json-report-1.5.0, timeout-2.4.0, metadata-3.1.1, cov-4.1.0, asyncio-0.21.1, mock-3.12.0, requests-mock-1.12.1, postgresql-7.0.2
+asyncio: mode=strict
+collecting ... collected 5 items
+
+tests/schemas/test_taxonomy_integrity.py::test_framework_yamls_load PASSED [ 20%]
+tests/schemas/test_taxonomy_integrity.py::test_crosswalk_loads PASSED    [ 40%]
+tests/schemas/test_taxonomy_integrity.py::test_crosswalk_referential_integrity PASSED [ 60%]
+tests/schemas/test_taxonomy_integrity.py::test_citation_shape PASSED     [ 80%]
+tests/schemas/test_taxonomy_integrity.py::test_records_sorted PASSED     [100%]
+
+============================== 5 passed in 1.18s ===============================
+pytest exit code: 0
+
+=== Quickstart §4 — catalog checks (W1 gate) ===
+catalog OK: ['2.1', '2.2', '2.3', '2.4', '2.5', '2.6', '2.7', '2.8', '2.9', '2.10', '2.11', '2.12']
+§4 exit code: 0
+
+=== Quickstart §5 block 1 — _sort_key_nist byte-identity vs main (AST extraction) ===
+OK: _sort_key_nist byte-untouched (code + docstring)
+§5 block-1 exit code: 0
+
+=== Stale-string sweep (test file) ===
+OK: no '7-value' / '7 catalog' strings remain in test file
+
+T005 RESULT: W1 GATE GREEN — suite 5/5 (8 catalogs, floor 542>=500 holds, 0 nist-ai-600-1 edges = valid state), §4 catalog checks pass, _sort_key_nist byte-identical to main
