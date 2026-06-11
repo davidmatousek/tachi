@@ -55,10 +55,10 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | Level | Current Rust-Native Surface |
 |---|---|
 | Unit | Rust unit tests; current audit shows 0 remaining Python unit modules. |
-| Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit shows 61 Rust integration modules after retiring the defaults-env init, adversarial init, template git clone timeout, executive-architecture infographic, attack-chain, MAESTRO pattern-classification, init precommit matrix, mmdc preflight, PDF page-positioning, backward-compatibility, human-trust-exploitation, extractor contract fixes, coverage-attestation tiers, init constitution, tool-abuse enrichment, pattern-synthesis, ML Top 10 coverage bundle, and mobile Top 10 coverage bundle pytests while the init-substitution E2E boundary is now Rust-owned. |
+| Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit shows 62 Rust integration modules after retiring the defaults-env init, adversarial init, template git clone timeout, executive-architecture infographic, attack-chain, MAESTRO pattern-classification, init precommit matrix, mmdc preflight, PDF page-positioning, backward-compatibility, human-trust-exploitation, extractor contract fixes, coverage-attestation tiers, init constitution, tool-abuse enrichment, pattern-synthesis, ML Top 10 coverage bundle, mobile Top 10 coverage bundle, and LLM10 unbounded consumption pytests while the init-substitution E2E boundary is now Rust-owned. |
 | Smoke | Transitional smoke modules tracked by `tachi-core::coverage_audit`; current audit shows 0 remaining Python smoke modules. |
 | E2E | Critical init flow now lives in `crates/tachi-shell/tests/init_substitution.rs` while the Rust-owned E2E boundary is being defined. |
-| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 86.47% regions / 86.83% lines. Current audit: 64 active modules, 61 Rust integration modules, 0 Python unit modules, 0 Python smoke modules, 2 support/regression modules. |
+| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 86.47% regions / 86.83% lines. Current audit: 65 active modules, 62 Rust integration modules, 0 Python unit modules, 0 Python smoke modules, 1 support/regression module. |
 
 Primary validation commands:
 
