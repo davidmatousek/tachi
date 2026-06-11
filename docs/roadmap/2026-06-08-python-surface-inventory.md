@@ -33,6 +33,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - The dead init helper package (`tests/scripts/{__init__.py,conftest.py,init_sh_helpers.py}`) has been retired now that the init pre-commit matrix is Rust-native
 - mmdc preflight coverage has moved from `tests/scripts/test_mmdc_preflight.py` to `crates/tachi-core/tests/mmdc_preflight.rs`
 - FastAPI Alembic `env.py` scaffold coverage has been retired from both `stacks/fastapi-react/` variants
+- FastAPI backend test-package scaffolding (`tests/{__init__,conftest,api/__init__}.py`) has been retired from both `stacks/fastapi-react/` variants
 - PDF page-positioning coverage has moved from `tests/scripts/test_pdf_page_positioning.py` to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_renders_executive_architecture_page_between_summary_and_attack_path`
 - Backward-compatibility PDF byte-identity coverage has moved from `tests/scripts/test_backward_compatibility.py` to `crates/tachi-core/tests/backward_compatibility.rs::unmodified_examples_byte_identical_pdfs`
 - Init substitution E2E coverage has moved from `tests/scripts/test_init_sh_substitution.py` to `crates/tachi-shell/tests/init_substitution.rs`
@@ -51,9 +52,6 @@ This inventory freezes the current Python surface so the migration can remove it
 ## Active Python Files
 
 ```text
-stacks/fastapi-react-local/scaffold/backend/tests/api/__init__.py
-stacks/fastapi-react-local/scaffold/backend/tests/__init__.py
-stacks/fastapi-react-local/scaffold/backend/tests/conftest.py
 stacks/fastapi-react-local/scaffold/backend/app/services/__init__.py
 stacks/fastapi-react-local/scaffold/backend/app/main.py
 ~~scripts/extract-report-data.py~~ - migrated to `crates/tachi-cli/src/bin/report-data.rs` and `crates/tachi-core/src/report_data.rs`
@@ -112,9 +110,6 @@ stacks/fastapi-react-local/scaffold/backend/app/config.py
 ~~tests/scripts/test_coverage_attestation_in_scope.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation_in_scope.rs::load_framework_yaml_records_from_dir_filters_oos_and_treats_missing_field_as_in_scope` and `crates/tachi-core/tests/coverage_attestation_in_scope.rs::build_per_framework_aggregates_in_dir_uses_in_scope_denominator`
 ~~tests/scripts/test_smoke.py~~ - migrated to `crates/tachi-core/tests/infographic_scaffold.rs::extract_prompt_scaffold_reads_template_prompt_segments`
 ~~tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py~~ - migrated to `crates/tachi-core/tests/mobile_top_10_coverage_bundle_enrichment.rs::mobile_top_10_coverage_bundle_contract_is_rust_native`
-stacks/fastapi-react/scaffold/backend/tests/api/__init__.py
-stacks/fastapi-react/scaffold/backend/tests/__init__.py
-stacks/fastapi-react/scaffold/backend/tests/conftest.py
 stacks/fastapi-react/scaffold/backend/app/config.py
 stacks/fastapi-react/scaffold/backend/app/__init__.py
 stacks/fastapi-react/scaffold/backend/app/services/__init__.py
