@@ -48,7 +48,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - Threat SARIF generation has moved from `scripts/generate-threats-sarif.py` to `crates/tachi-cli/src/bin/threats-sarif.rs`
 - Risk-score SARIF generation has moved from `scripts/generate-risk-scores-sarif.py` to `crates/tachi-cli/src/bin/risk-scores-sarif.rs`
 - Shared SARIF helpers have moved from `scripts/sarif_common.py` to `crates/tachi-core/src/sarif_common.rs`
-- `pyproject.toml` and `requirements-dev.txt` map to retirement once the Rust-native tooling path is complete
+- `pyproject.toml` and `requirements-dev.txt` have been retired; Rust-native tooling now owns the canonical build and test path
 - `stacks/fastapi-react*` scaffolds map to archive/retirement once Rust/Tauri-only stack guidance is stable
 
 ## Active Python Files

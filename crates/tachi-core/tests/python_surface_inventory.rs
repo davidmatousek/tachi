@@ -436,6 +436,33 @@ fn python_surface_inventory_retires_fastapi_backend_app_runtime_trees() {
 }
 
 #[test]
+fn python_surface_inventory_retires_python_packaging_manifests() {
+    let root = workspace_root();
+    let inventory_path = root.join("docs/roadmap/2026-06-08-python-surface-inventory.md");
+    let inventory = fs::read_to_string(&inventory_path)
+        .expect("expected the python surface inventory doc to exist");
+
+    let active_section = inventory
+        .split("## Active Python Files")
+        .nth(1)
+        .and_then(|section| section.split("## ").next())
+        .expect("active python files section");
+
+    let active_lines = active_section.lines().map(str::trim).collect::<Vec<_>>();
+
+    for retired in ["pyproject.toml", "requirements-dev.txt"] {
+        assert!(
+            !active_lines.contains(&retired),
+            "active inventory should no longer list retired packaging manifest {retired}"
+        );
+        assert!(
+            !root.join(retired).exists(),
+            "retired packaging manifest should be removed from the repository root: {retired}"
+        );
+    }
+}
+
+#[test]
 fn python_surface_inventory_retires_mmdc_preflight_python_module() {
     let root = workspace_root();
     let inventory_path = root.join("docs/roadmap/2026-06-08-python-surface-inventory.md");
