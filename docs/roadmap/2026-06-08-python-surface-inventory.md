@@ -34,6 +34,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - The dead root pytest support package (`tests/{conftest.py,__init__.py,schemas/__init__.py}`) has been retired now that the remaining root pytest inventory has been eliminated
 - mmdc preflight coverage has moved from `tests/scripts/test_mmdc_preflight.py` to `crates/tachi-core/tests/mmdc_preflight.rs`
 - FastAPI Alembic `env.py` scaffold coverage has been retired from both `stacks/fastapi-react/` variants
+- FastAPI backend Alembic scaffold packaging manifests (`scaffold/backend/alembic.ini` and `scaffold/backend/alembic/versions/.gitkeep`) have been retired from both `stacks/fastapi-react/` variants
 - FastAPI backend test-package scaffolding (`tests/{__init__,conftest,api/__init__}.py`) has been retired from both `stacks/fastapi-react/` variants
 - FastAPI backend app runtime trees (`app/main.py`, `app/api/deps.py`, `app/api/v1/router.py`, `app/db/base.py`, `app/db/session.py`, `app/core/middleware.py`, `app/core/exceptions.py`, `app/config.py`) have been retired from both `stacks/fastapi-react/` variants
 - FastAPI backend scaffold packaging manifests (`scaffold/backend/pyproject.toml`) have been retired from both `stacks/fastapi-react/` variants

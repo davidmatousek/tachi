@@ -493,6 +493,38 @@ fn python_surface_inventory_retires_fastapi_backend_scaffold_packaging_manifests
 }
 
 #[test]
+fn python_surface_inventory_retires_fastapi_backend_alembic_scaffold_files() {
+    let root = workspace_root();
+    let inventory_path = root.join("docs/roadmap/2026-06-08-python-surface-inventory.md");
+    let inventory = fs::read_to_string(&inventory_path)
+        .expect("expected the python surface inventory doc to exist");
+
+    let active_section = inventory
+        .split("## Active Python Files")
+        .nth(1)
+        .and_then(|section| section.split("## ").next())
+        .expect("active python files section");
+
+    let active_lines = active_section.lines().map(str::trim).collect::<Vec<_>>();
+
+    for retired in [
+        "stacks/fastapi-react/scaffold/backend/alembic.ini",
+        "stacks/fastapi-react/scaffold/backend/alembic/versions/.gitkeep",
+        "stacks/fastapi-react-local/scaffold/backend/alembic.ini",
+        "stacks/fastapi-react-local/scaffold/backend/alembic/versions/.gitkeep",
+    ] {
+        assert!(
+            !active_lines.contains(&retired),
+            "active inventory should no longer list retired fastapi backend alembic scaffold file {retired}"
+        );
+        assert!(
+            !root.join(retired).exists(),
+            "retired fastapi backend alembic scaffold file should be removed from the repository: {retired}"
+        );
+    }
+}
+
+#[test]
 fn python_surface_inventory_retires_mmdc_preflight_python_module() {
     let root = workspace_root();
     let inventory_path = root.join("docs/roadmap/2026-06-08-python-surface-inventory.md");
