@@ -277,7 +277,9 @@ aod_trace_init_phase "substitution"
 # The hot path now walks the manifest-backed personalized file list rather
 # than rescanning every tracked file in the checkout. That keeps the init path
 # aligned with the shipped personalized surface and leaves unmanifested files
-# untouched.
+# untouched. The clean constitution template is still rewritten in place as a
+# one-off compatibility step so the constitution byte-equivalence contract
+# continues to hold.
 FAILED_FILES=""
 while IFS= read -r path; do
   [ -n "$path" ] || continue
@@ -285,6 +287,11 @@ while IFS= read -r path; do
     FAILED_FILES="$FAILED_FILES $path"
   fi
 done < <(sed -n 's/^personalized|//p' .aod/template-manifest.txt | tr -d '\r')
+if [ -f ".aod/templates/constitution-clean.md" ]; then
+  if ! aod_template_substitute_placeholders ".aod/templates/constitution-clean.md" ".aod/templates/constitution-clean.md"; then
+    FAILED_FILES="$FAILED_FILES .aod/templates/constitution-clean.md"
+  fi
+fi
 if [ -n "$FAILED_FILES" ]; then
   echo -e "${RED}ERROR: substitution failed on:$FAILED_FILES${NC}" >&2
   exit 1

@@ -236,7 +236,7 @@ This roadmap uses a BEADS-style hierarchy:
   - fewer redundant shell-outs and filesystem scans during init
 - **Tasks**
   - instrument the init path so each startup phase reports timing via `AOD_INIT_TRACE=1`
-  - scope placeholder substitution to manifest-backed personalized files instead of walking the whole tree
+  - scope placeholder substitution to manifest-backed personalized files and the constitution clean template instead of walking the whole tree
   - benchmark the slowest init path with and without precommit / template bootstrapping
   - remove repeated parsing and process spawns once the slow phase is isolated
 - **Functions**
