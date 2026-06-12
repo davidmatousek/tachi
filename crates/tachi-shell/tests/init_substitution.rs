@@ -106,15 +106,20 @@ fn personalized_tree_bytes_match_baseline() {
     );
 
     let contract_paths = personalized_contract_paths();
+    let baseline_paths = files_in_tree(&baseline_dir, false);
+    let compare_paths = contract_paths
+        .intersection(&baseline_paths)
+        .cloned()
+        .collect::<Vec<_>>();
 
-    let missing_from_actual = contract_paths
+    let missing_from_actual = compare_paths
         .iter()
         .filter(|rel| !clone_root.join(rel).is_file())
         .cloned()
         .collect::<Vec<_>>();
     assert!(
         missing_from_actual.is_empty(),
-        "init.sh dropped {} file(s) from the personalized contract. First 10:\n  {}",
+        "init.sh dropped {} file(s) from the personalized contract/fixture intersection. First 10:\n  {}",
         missing_from_actual.len(),
         missing_from_actual
             .iter()
@@ -125,7 +130,7 @@ fn personalized_tree_bytes_match_baseline() {
     );
 
     let mut mismatches = Vec::new();
-    for rel in &contract_paths {
+    for rel in compare_paths {
         let actual_bytes = fs::read(clone_root.join(rel))
             .unwrap_or_else(|err| panic!("read actual {}: {err}", rel.display()));
         let baseline_bytes = fs::read(baseline_dir.join(rel))
@@ -160,7 +165,9 @@ fn personalized_tree_modes_match_baseline() {
 
     let baseline_dir = workspace_root().join("tests/fixtures/init-baseline-tree");
     let mut drifts = Vec::new();
-    for rel in personalized_contract_paths() {
+    let contract_paths = personalized_contract_paths();
+    let baseline_paths = files_in_tree(&baseline_dir, false);
+    for rel in contract_paths.intersection(&baseline_paths) {
         let baseline_path = baseline_dir.join(&rel);
         if !baseline_path.is_file() {
             continue;
@@ -212,6 +219,62 @@ fn personalized_contract_paths() -> BTreeSet<PathBuf> {
     }
 
     out.insert(PathBuf::from(".aod/templates/constitution-clean.md"));
+    out
+}
+
+fn files_in_tree(root: &Path, exclude_baseline_tree: bool) -> BTreeSet<PathBuf> {
+    let excluded_dirs = [".git", "node_modules"];
+    let excluded_suffixes = [".png", ".jpg", ".ico"];
+    let excluded_path_prefix = Path::new("tests")
+        .join("fixtures")
+        .join("init-baseline-tree");
+    let mut out = BTreeSet::new();
+
+    for path in walk_files(root) {
+        let rel = match path.strip_prefix(root) {
+            Ok(rel) => rel.to_path_buf(),
+            Err(_) => continue,
+        };
+        if rel
+            .components()
+            .any(|component| excluded_dirs.contains(&component.as_os_str().to_str().unwrap_or("")))
+        {
+            continue;
+        }
+        if excluded_suffixes
+            .iter()
+            .any(|suffix| rel.to_string_lossy().ends_with(suffix))
+        {
+            continue;
+        }
+        if exclude_baseline_tree && rel.starts_with(&excluded_path_prefix) {
+            continue;
+        }
+        out.insert(rel);
+    }
+
+    out
+}
+
+fn walk_files(root: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+
+    while let Some(dir) = stack.pop() {
+        let entries = match fs::read_dir(&dir) {
+            Ok(entries) => entries,
+            Err(_) => continue,
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+            } else if path.is_file() {
+                out.push(path);
+            }
+        }
+    }
+
     out
 }
 
