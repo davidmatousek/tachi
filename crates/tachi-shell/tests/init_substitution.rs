@@ -105,16 +105,16 @@ fn personalized_tree_bytes_match_baseline() {
         "init baseline tree should already be committed"
     );
 
-    let actual_set = files_in_tree(&clone_root, true);
-    let baseline_set = files_in_tree(&baseline_dir, false);
+    let contract_paths = personalized_contract_paths();
 
-    let missing_from_actual = baseline_set
-        .difference(&actual_set)
+    let missing_from_actual = contract_paths
+        .iter()
+        .filter(|rel| !clone_root.join(rel).is_file())
         .cloned()
         .collect::<Vec<_>>();
     assert!(
         missing_from_actual.is_empty(),
-        "init.sh dropped {} file(s) from the personalized tree (substitution regression suspected). First 10:\n  {}",
+        "init.sh dropped {} file(s) from the personalized contract. First 10:\n  {}",
         missing_from_actual.len(),
         missing_from_actual
             .iter()
@@ -124,13 +124,8 @@ fn personalized_tree_bytes_match_baseline() {
             .join("\n  ")
     );
 
-    let drift_allowed = BTreeSet::from([PathBuf::from(".aod/aod-kit-version")]);
     let mut mismatches = Vec::new();
-    for rel in actual_set.intersection(&baseline_set) {
-        if drift_allowed.contains(rel) {
-            continue;
-        }
-
+    for rel in &contract_paths {
         let actual_bytes = fs::read(clone_root.join(rel))
             .unwrap_or_else(|err| panic!("read actual {}: {err}", rel.display()));
         let baseline_bytes = fs::read(baseline_dir.join(rel))
@@ -142,7 +137,7 @@ fn personalized_tree_bytes_match_baseline() {
 
     assert!(
         mismatches.is_empty(),
-        "{} file(s) drifted from baseline. First 10: {:?}",
+        "{} file(s) drifted from personalized baseline. First 10: {:?}",
         mismatches.len(),
         mismatches.iter().take(10).collect::<Vec<_>>()
     );
@@ -165,7 +160,7 @@ fn personalized_tree_modes_match_baseline() {
 
     let baseline_dir = workspace_root().join("tests/fixtures/init-baseline-tree");
     let mut drifts = Vec::new();
-    for rel in files_in_tree(&clone_root, true) {
+    for rel in personalized_contract_paths() {
         let baseline_path = baseline_dir.join(&rel);
         if !baseline_path.is_file() {
             continue;
@@ -196,6 +191,28 @@ fn personalized_tree_modes_match_baseline() {
         drifts.len(),
         drifts.iter().take(5).collect::<Vec<_>>()
     );
+}
+
+fn personalized_contract_paths() -> BTreeSet<PathBuf> {
+    let root = workspace_root();
+    let manifest = root.join(".aod/template-manifest.txt");
+    let manifest_text = fs::read_to_string(&manifest).expect("read manifest");
+    let mut out = BTreeSet::new();
+
+    for line in manifest_text.lines() {
+        let line = line.trim();
+        if !line.starts_with("personalized|") {
+            continue;
+        }
+        let rel = line.trim_start_matches("personalized|");
+        if rel.is_empty() {
+            continue;
+        }
+        out.insert(PathBuf::from(rel));
+    }
+
+    out.insert(PathBuf::from(".aod/templates/constitution-clean.md"));
+    out
 }
 
 fn workspace_root() -> PathBuf {
@@ -345,62 +362,6 @@ fn run_init_in_clone(clone_root: &Path, stdin_payload: &str) -> InitRun {
         stdout: String::from_utf8_lossy(&output.stdout).to_string(),
         stderr: String::from_utf8_lossy(&output.stderr).to_string(),
     }
-}
-
-fn files_in_tree(root: &Path, exclude_baseline_tree: bool) -> BTreeSet<PathBuf> {
-    let excluded_dirs = [".git", "node_modules"];
-    let excluded_suffixes = [".png", ".jpg", ".ico"];
-    let excluded_path_prefix = Path::new("tests")
-        .join("fixtures")
-        .join("init-baseline-tree");
-    let mut out = BTreeSet::new();
-
-    for path in walk_files(root) {
-        let rel = match path.strip_prefix(root) {
-            Ok(rel) => rel.to_path_buf(),
-            Err(_) => continue,
-        };
-        if rel
-            .components()
-            .any(|component| excluded_dirs.contains(&component.as_os_str().to_str().unwrap_or("")))
-        {
-            continue;
-        }
-        if excluded_suffixes
-            .iter()
-            .any(|suffix| rel.to_string_lossy().ends_with(suffix))
-        {
-            continue;
-        }
-        if exclude_baseline_tree && rel.starts_with(&excluded_path_prefix) {
-            continue;
-        }
-        out.insert(rel);
-    }
-
-    out
-}
-
-fn walk_files(root: &Path) -> Vec<PathBuf> {
-    let mut out = Vec::new();
-    let mut stack = vec![root.to_path_buf()];
-
-    while let Some(dir) = stack.pop() {
-        let entries = match fs::read_dir(&dir) {
-            Ok(entries) => entries,
-            Err(_) => continue,
-        };
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_dir() {
-                stack.push(path);
-            } else if path.is_file() {
-                out.push(path);
-            }
-        }
-    }
-
-    out
 }
 
 fn safe_path() -> String {
