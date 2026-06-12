@@ -19,6 +19,10 @@ fn init_sh_declares_trace_hook_for_slow_init_workflow() {
         "expected scripts/init.sh to trace the prerequisites phase"
     );
     assert!(
+        init_source.contains("aod_trace_init_phase \"stack-discovery\""),
+        "expected scripts/init.sh to trace the stack-discovery phase"
+    );
+    assert!(
         init_source.contains("aod_trace_init_phase \"personalization\""),
         "expected scripts/init.sh to trace the personalization phase"
     );
@@ -29,6 +33,10 @@ fn init_sh_declares_trace_hook_for_slow_init_workflow() {
     assert!(
         init_source.contains("aod_trace_init_phase \"version-pin\""),
         "expected scripts/init.sh to trace the version-pin phase"
+    );
+    assert!(
+        init_source.contains("aod_trace_init_phase \"precommit\""),
+        "expected scripts/init.sh to trace the precommit phase"
     );
 }
 

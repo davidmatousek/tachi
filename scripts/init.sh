@@ -119,6 +119,7 @@ esac
 
 # Discover available stack packs
 echo ""
+aod_trace_init_phase "stack-discovery"
 echo "Select Tech Stack:"
 STACK_PACKS=()
 STACK_INDEX=1
@@ -214,6 +215,7 @@ fi
 # T016 (Architect CONCERN-3): pre-commit framework v3.5.0 floor — below
 # this version, hook install may silently partial-install or runtime-crash
 # (see docs/standards/PRECOMMIT_HOOKS.md §Known-Limitations).
+ aod_trace_init_phase "precommit"
 PRECOMMIT_DECISION="skip"
 if [ "$PRECOMMIT_FLAG" = "force" ]; then
   PRECOMMIT_DECISION="install"
