@@ -131,9 +131,9 @@ fn personalized_tree_bytes_match_baseline() {
 
     let mut mismatches = Vec::new();
     for rel in compare_paths {
-        let actual_bytes = fs::read(clone_root.join(rel))
+        let actual_bytes = fs::read(clone_root.join(&rel))
             .unwrap_or_else(|err| panic!("read actual {}: {err}", rel.display()));
-        let baseline_bytes = fs::read(baseline_dir.join(rel))
+        let baseline_bytes = fs::read(baseline_dir.join(&rel))
             .unwrap_or_else(|err| panic!("read baseline {}: {err}", rel.display()));
         if actual_bytes != baseline_bytes {
             mismatches.push(rel.display().to_string());
