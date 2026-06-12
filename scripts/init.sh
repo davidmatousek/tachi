@@ -5,6 +5,7 @@ set -e
 
 if [ "${AOD_INIT_TRACE:-0}" = "1" ]; then
   SECONDS=0
+  AOD_INIT_TRACE_PHASE_COUNT=0
 fi
 
 # Colors
@@ -69,6 +70,7 @@ done
 
 aod_trace_init_phase() {
   if [ "${AOD_INIT_TRACE:-0}" = "1" ]; then
+    AOD_INIT_TRACE_PHASE_COUNT=$((AOD_INIT_TRACE_PHASE_COUNT + 1))
     printf 'INIT TRACE phase=%s elapsed=%ss\n' "$1" "$SECONDS" >&2
   fi
 }
@@ -511,6 +513,9 @@ fi
 # in their original positions.
 
 # Remove this init script (one-time use)
+if [ "${AOD_INIT_TRACE:-0}" = "1" ]; then
+  printf 'INIT TRACE summary total=%ss phases=%s\n' "$SECONDS" "${AOD_INIT_TRACE_PHASE_COUNT:-0}" >&2
+fi
 rm -f scripts/init.sh
 
 echo ""
