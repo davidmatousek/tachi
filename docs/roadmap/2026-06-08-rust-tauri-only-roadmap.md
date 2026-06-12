@@ -353,7 +353,9 @@ This is the current Python-to-Rust replacement map for the repo's active surface
 | `scripts/generate-risk-scores-sarif.py` | Rust SARIF command / library in `tachi-cli` or `tachi-core` |
 | `scripts/tachi_parsers.py` | retired; parser behavior now lives in `tachi-core` modules |
 | `stacks/fastapi-react*/scaffold/backend/alembic/env.py` | retired; Alembic env scaffolds are no longer active Python surface |
+| `stacks/fastapi-react*/scaffold/backend/alembic` | retired; backend Alembic scaffold directories are no longer active Python surface |
 | `stacks/fastapi-react*/scaffold/backend/alembic.ini` | retired; backend Alembic scaffold manifests are no longer active Python surface |
+| `stacks/fastapi-react*/scaffold/backend/alembic/versions` | retired; backend Alembic scaffold directories are no longer active Python surface |
 | `stacks/fastapi-react*/scaffold/backend/alembic/versions/.gitkeep` | retired; backend Alembic scaffold manifest placeholders are no longer active Python surface |
 | `stacks/fastapi-react*/scaffold/backend/tests/{api/__init__.py,__init__.py,conftest.py}` | retired; backend test-package scaffolding is no longer active Python surface |
 | `stacks/fastapi-react*/scaffold/backend/app/{main.py,api/deps.py,api/v1/router.py,db/base.py,db/session.py,core/middleware.py,core/exceptions.py,config.py}` | retired; backend app runtime trees are no longer active Python surface |

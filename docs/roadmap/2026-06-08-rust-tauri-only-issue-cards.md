@@ -78,7 +78,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 - **Labels**: `rust`, `cleanup`, `python`, `docs`
 - **Summary**: Remove or archive the Python packaging surface, pytest configuration, and FastAPI-based stack scaffolds once Rust parity is stable.
 - **Acceptance**:
-  - `pyproject.toml`, `requirements-dev.txt`, the backend scaffold `pyproject.toml` files, and the backend Alembic scaffold manifests are retired and no longer part of the active canonical path.
+  - `pyproject.toml`, `requirements-dev.txt`, the backend scaffold `pyproject.toml` files, and the backend Alembic scaffold directories/manifests are retired and no longer part of the active canonical path.
   - Python-specific install and testing guidance is removed from active docs.
   - Any remaining FastAPI scaffolds are archived or replaced with Rust/Tauri guidance.
 - **Depends on**: RT-012, RT-013
