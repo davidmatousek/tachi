@@ -60,7 +60,7 @@ fn rt009_documentation_contract_is_rust_native() {
     assert!(roadmap.contains("| RT-012 | In progress |"));
     assert!(roadmap.contains("| RT-013 | Pending |"));
     assert!(roadmap.contains("| RT-014 | Pending |"));
-    assert!(roadmap.contains("| RT-015 | Pending |"));
+    assert!(roadmap.contains("| RT-015 | In progress |"));
     assert!(issue_cards.contains("RT-010 - Freeze the Python surface inventory"));
     assert!(issue_cards.contains("RT-015 - Optimize the Rust path for speed and reliability"));
     assert!(issue_cards.contains("Current roadmap completion: 17% (1 of 6 cards complete)."));
@@ -69,7 +69,7 @@ fn rt009_documentation_contract_is_rust_native() {
     assert!(issue_cards.contains("| RT-012 | In progress |"));
     assert!(issue_cards.contains("| RT-013 | Pending |"));
     assert!(issue_cards.contains("| RT-014 | Pending |"));
-    assert!(issue_cards.contains("| RT-015 | Pending |"));
+    assert!(issue_cards.contains("| RT-015 | In progress |"));
     assert!(merge_plan.contains("docs(roadmap): add rust-tauri-only migration roadmap"));
     assert!(merge_plan.contains("test(docs): lock roadmap and issue-pack contract"));
 
