@@ -288,10 +288,11 @@ aod_trace_init_phase "substitution"
 # F-248 T019 (FR-001): replace the previous sed-based replace_in_files()
 # function with bash parameter expansion via aod_template_substitute_placeholders.
 # Single bash branch handles BOTH macOS and Linux (no more $OSTYPE split).
-# The hot path now walks only `.aod/template-manifest.txt` entries in the
-# `personalized` category rather than rescanning every file in the checkout.
-# That keeps the init path aligned with the residual-scan contract and removes
-# the expensive whole-tree `find` from startup.
+# The hot path now walks only `.aod/template-manifest.txt` entries that are
+# template-owned (`owned`, `personalized`, `scaffold`, `merge`) rather than
+# rescanning every file in the checkout. That keeps the init path aligned with
+# the tracked template surface and removes the expensive whole-tree `find`
+# from startup while leaving untracked files untouched.
 FAILED_FILES=""
 if [ -f ".aod/template-manifest.txt" ]; then
   MANIFEST_ENTRIES="$(aod_template_parse_manifest ".aod/template-manifest.txt")" || {
@@ -300,8 +301,8 @@ if [ -f ".aod/template-manifest.txt" ]; then
   }
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
-      'personalized|'*)
-        path="${line#personalized|}"
+      'owned|'*|'personalized|'*|'scaffold|'*|'merge|'*)
+        path="${line#*|}"
         path="${path%$'\r'}"
         if ! aod_template_substitute_placeholders "./$path" "./$path"; then
           FAILED_FILES="$FAILED_FILES $path"
@@ -318,22 +319,6 @@ fi
 if [ -n "$FAILED_FILES" ]; then
   echo -e "${RED}ERROR: substitution failed on:$FAILED_FILES${NC}" >&2
   exit 1
-fi
-
-# Keep template-owned constitution artifacts and other shipped template files
-# personalized too, but only within `.aod/templates/` rather than the whole
-# checkout. This preserves the constitution byte-equality contract while still
-# excluding arbitrary untracked repo-root files from the hot path.
-if [ -d ".aod/templates" ]; then
-  while IFS= read -r -d '' path; do
-    if ! aod_template_substitute_placeholders "$path" "$path"; then
-      FAILED_FILES="$FAILED_FILES $path"
-    fi
-  done < <(find .aod/templates -type f -print0)
-  if [ -n "$FAILED_FILES" ]; then
-    echo -e "${RED}ERROR: template substitution failed on:$FAILED_FILES${NC}" >&2
-    exit 1
-  fi
 fi
 
 echo -e "${GREEN}✓ Template variables replaced${NC}"
