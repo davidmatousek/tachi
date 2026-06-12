@@ -58,7 +58,8 @@ fn init_substitution_leaves_tracked_unmanifested_files_unchanged() {
     let stray_path = clone_root.join("sandbox/rogue-tracked-note.md");
     fs::create_dir_all(stray_path.parent().expect("rogue tracked parent"))
         .expect("create stray tracked dir");
-    let original = "This tracked file should stay literal: {{PROJECT_NAME}} and {{CURRENT_DATE}}.\n";
+    let original =
+        "This tracked file should stay literal: {{PROJECT_NAME}} and {{CURRENT_DATE}}.\n";
     fs::write(&stray_path, original).expect("write tracked stray file");
     git(&clone_root, &["add", "sandbox/rogue-tracked-note.md"]);
 
