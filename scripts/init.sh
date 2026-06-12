@@ -320,6 +320,22 @@ if [ -n "$FAILED_FILES" ]; then
   exit 1
 fi
 
+# Keep template-owned constitution artifacts and other shipped template files
+# personalized too, but only within `.aod/templates/` rather than the whole
+# checkout. This preserves the constitution byte-equality contract while still
+# excluding arbitrary untracked repo-root files from the hot path.
+if [ -d ".aod/templates" ]; then
+  while IFS= read -r -d '' path; do
+    if ! aod_template_substitute_placeholders "$path" "$path"; then
+      FAILED_FILES="$FAILED_FILES $path"
+    fi
+  done < <(find .aod/templates -type f -print0)
+  if [ -n "$FAILED_FILES" ]; then
+    echo -e "${RED}ERROR: template substitution failed on:$FAILED_FILES${NC}" >&2
+    exit 1
+  fi
+fi
+
 echo -e "${GREEN}✓ Template variables replaced${NC}"
 
 # F-248 T020 (FR-004): post-loop residual scan, scoped to PERSONALIZED files
