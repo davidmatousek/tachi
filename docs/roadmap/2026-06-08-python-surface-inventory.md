@@ -35,6 +35,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - mmdc preflight coverage has moved from `tests/scripts/test_mmdc_preflight.py` to `crates/tachi-core/tests/mmdc_preflight.rs`
 - FastAPI Alembic `env.py` scaffold coverage has been retired from both `stacks/fastapi-react/` variants
 - FastAPI backend test-package scaffolding (`tests/{__init__,conftest,api/__init__}.py`) has been retired from both `stacks/fastapi-react/` variants
+- FastAPI backend app runtime trees (`app/main.py`, `app/api/deps.py`, `app/api/v1/router.py`, `app/db/base.py`, `app/db/session.py`, `app/core/middleware.py`, `app/core/exceptions.py`, `app/config.py`) have been retired from both `stacks/fastapi-react/` variants
 - PDF page-positioning coverage has moved from `tests/scripts/test_pdf_page_positioning.py` to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_renders_executive_architecture_page_between_summary_and_attack_path`
 - Backward-compatibility PDF byte-identity coverage has moved from `tests/scripts/test_backward_compatibility.py` to `crates/tachi-core/tests/backward_compatibility.rs::unmodified_examples_byte_identical_pdfs`
 - Init substitution E2E coverage has moved from `tests/scripts/test_init_sh_substitution.py` to `crates/tachi-shell/tests/init_substitution.rs`
@@ -53,7 +54,6 @@ This inventory freezes the current Python surface so the migration can remove it
 ## Active Python Files
 
 ```text
-stacks/fastapi-react-local/scaffold/backend/app/main.py
 ~~scripts/extract-report-data.py~~ - migrated to `crates/tachi-cli/src/bin/report-data.rs` and `crates/tachi-core/src/report_data.rs`
 ~~scripts/tachi_parsers.py~~ - migrated to `crates/tachi-core` parser modules
 ~~tests/scripts/test_pattern_extraction.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation.rs::build_per_finding_rows_groups_taxonomies_and_preserves_order` and `crates/tachi-cli/tests/control_plane_cli.rs::report_data_binary_emits_coverage_attestation_payload_when_source_attribution_exists`
@@ -61,8 +61,6 @@ stacks/fastapi-react-local/scaffold/backend/app/main.py
 ~~tests/scripts/test_pattern_synthesis.py~~ - migrated to `crates/tachi-core/tests/pattern_synthesis.rs::pattern_synthesis_contract_is_rust_native` and the full Rust-native reference-implementation contract suite
 ~~tests/scripts/generate_pagination_fixture.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation_pagination.rs::coverage_attestation_pagination_smoke_compiles_at_scale`
 ~~tests/scripts/test_attack_chains.py~~ - migrated to `crates/tachi-core/tests/attack_chains.rs::generate_chain_mermaid_renders_layers_and_edges` and `crates/tachi-core/tests/attack_chains.rs::parse_attack_chains_extracts_chain_metadata_and_members`
-stacks/fastapi-react-local/scaffold/backend/app/api/deps.py
-stacks/fastapi-react-local/scaffold/backend/app/api/v1/router.py
 ~~tests/scripts/test_coverage_percentage_computation.py~~ - migrated to `crates/tachi-core/tests/coverage_percentage_computation.rs::baseline_cross_check_matches_independent_percentage_formula` and `crates/tachi-core/tests/coverage_percentage_computation.rs::mixed_and_oos_fixtures_match_expected_percentage_shape`
 ~~tests/scripts/test_misinformation.py~~ - migrated to `crates/tachi-core/tests/taxonomy_integrity.rs::misinformation_id_schema_contract_is_rust_native`
 ~~tests/scripts/test_output_integrity.py~~ - migrated to `crates/tachi-core/tests/taxonomy_integrity.rs::output_integrity_schema_contract_is_rust_native`
@@ -86,11 +84,6 @@ stacks/fastapi-react-local/scaffold/backend/app/api/v1/router.py
 ~~tests/scripts/test_init_sh_defaults_env.py~~ - migrated to `crates/tachi-shell/tests/init_defaults_env.rs::init_defaults_env_contract_is_rust_native`
 ~~tests/scripts/test_init_precommit_matrix.py~~ - migrated to `crates/tachi-shell/tests/init_precommit_matrix.rs::init_precommit_matrix_is_rust_native` and `crates/tachi-shell/tests/init_precommit_matrix.rs::non_tty_no_flag_skips_prompt_and_install`
 ~~tests/scripts/test_backward_compatibility.py~~ - migrated to `crates/tachi-core/tests/backward_compatibility.rs::backward_compatibility_contract_is_rust_native` and `crates/tachi-core/tests/backward_compatibility.rs::unmodified_examples_byte_identical_pdfs`
-stacks/fastapi-react-local/scaffold/backend/app/db/base.py
-stacks/fastapi-react-local/scaffold/backend/app/db/session.py
-stacks/fastapi-react-local/scaffold/backend/app/core/middleware.py
-stacks/fastapi-react-local/scaffold/backend/app/core/exceptions.py
-stacks/fastapi-react-local/scaffold/backend/app/config.py
 ~~tests/scripts/test_tool_abuse_enrichment.py~~ - migrated to `crates/tachi-core/tests/tool_abuse_enrichment.rs`
 ~~tests/scripts/test_executive_architecture_payload.py~~ - migrated to `crates/tachi-core/tests/infographic_payload.rs::build_infographic_payload_executive_architecture_requires_scope_data` and `crates/tachi-cli/tests/control_plane_cli.rs::infographic_data_binary_returns_executive_architecture_payload`
 ~~tests/scripts/test_template_config_load_unit.py~~ - migrated to `crates/tachi-shell/tests/template_config_load.rs::template_config_load_unit_contract_is_rust_native`
@@ -100,14 +93,6 @@ stacks/fastapi-react-local/scaffold/backend/app/config.py
 ~~tests/scripts/test_coverage_attestation_in_scope.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation_in_scope.rs::load_framework_yaml_records_from_dir_filters_oos_and_treats_missing_field_as_in_scope` and `crates/tachi-core/tests/coverage_attestation_in_scope.rs::build_per_framework_aggregates_in_dir_uses_in_scope_denominator`
 ~~tests/scripts/test_smoke.py~~ - migrated to `crates/tachi-core/tests/infographic_scaffold.rs::extract_prompt_scaffold_reads_template_prompt_segments`
 ~~tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py~~ - migrated to `crates/tachi-core/tests/mobile_top_10_coverage_bundle_enrichment.rs::mobile_top_10_coverage_bundle_contract_is_rust_native`
-stacks/fastapi-react/scaffold/backend/app/config.py
-stacks/fastapi-react/scaffold/backend/app/main.py
-stacks/fastapi-react/scaffold/backend/app/db/base.py
-stacks/fastapi-react/scaffold/backend/app/db/session.py
-stacks/fastapi-react/scaffold/backend/app/core/middleware.py
-stacks/fastapi-react/scaffold/backend/app/core/exceptions.py
-stacks/fastapi-react/scaffold/backend/app/api/deps.py
-stacks/fastapi-react/scaffold/backend/app/api/v1/router.py
 .claude/skills/~aod-build/scripts/generate_checkpoint.py
 .claude/skills/~aod-build/scripts/analyze_tasks.py
 .claude/skills/~aod-build/scripts/update_index.py

@@ -396,6 +396,46 @@ fn python_surface_inventory_retires_root_pytest_support_package() {
 }
 
 #[test]
+fn python_surface_inventory_retires_fastapi_backend_app_runtime_trees() {
+    let root = workspace_root();
+    let inventory_path = root.join("docs/roadmap/2026-06-08-python-surface-inventory.md");
+    let inventory = fs::read_to_string(&inventory_path)
+        .expect("expected the python surface inventory doc to exist");
+
+    let active_section = inventory
+        .split("## Active Python Files")
+        .nth(1)
+        .and_then(|section| section.split("## ").next())
+        .expect("active python files section");
+
+    let active_lines = active_section.lines().map(str::trim).collect::<Vec<_>>();
+
+    for retired in [
+        "stacks/fastapi-react-local/scaffold/backend/app/main.py",
+        "stacks/fastapi-react-local/scaffold/backend/app/api/deps.py",
+        "stacks/fastapi-react-local/scaffold/backend/app/api/v1/router.py",
+        "stacks/fastapi-react-local/scaffold/backend/app/db/base.py",
+        "stacks/fastapi-react-local/scaffold/backend/app/db/session.py",
+        "stacks/fastapi-react-local/scaffold/backend/app/core/middleware.py",
+        "stacks/fastapi-react-local/scaffold/backend/app/core/exceptions.py",
+        "stacks/fastapi-react-local/scaffold/backend/app/config.py",
+        "stacks/fastapi-react/scaffold/backend/app/main.py",
+        "stacks/fastapi-react/scaffold/backend/app/api/deps.py",
+        "stacks/fastapi-react/scaffold/backend/app/api/v1/router.py",
+        "stacks/fastapi-react/scaffold/backend/app/db/base.py",
+        "stacks/fastapi-react/scaffold/backend/app/db/session.py",
+        "stacks/fastapi-react/scaffold/backend/app/core/middleware.py",
+        "stacks/fastapi-react/scaffold/backend/app/core/exceptions.py",
+        "stacks/fastapi-react/scaffold/backend/app/config.py",
+    ] {
+        assert!(
+            !active_lines.contains(&retired),
+            "active inventory should no longer list retired fastapi backend app runtime file {retired}"
+        );
+    }
+}
+
+#[test]
 fn python_surface_inventory_retires_mmdc_preflight_python_module() {
     let root = workspace_root();
     let inventory_path = root.join("docs/roadmap/2026-06-08-python-surface-inventory.md");
