@@ -89,6 +89,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 - **Labels**: `rust`, `performance`, `reliability`, `benchmarks`
 - **Summary**: Reduce startup cost, eliminate avoidable shell-outs, and tighten error handling after the Rust path is in place.
 - **Refinement**: analyze and optimize the slow init workflow by measuring each init phase, comparing cold and warm startup, and using the benchmark results to remove the slowest shell-outs and repeated scans.
+- **Refinement**: scope placeholder substitution to manifest-backed `personalized` files so unmanifested files are no longer rewritten during init.
 - **Refinement**: analyze and optimize the slow init workflow by measuring each init phase with `AOD_INIT_TRACE=1`, comparing cold and warm startup, and using the benchmark results to remove the slowest shell-outs and repeated scans.
 - **Acceptance**:
   - Hot-path shell-outs are removed or minimized.

@@ -50,6 +50,23 @@ else
   exit 1
 fi
 
+# Source the manifest and validation helpers so init can scope substitution to
+# manifest-backed personalized files instead of rescanning the whole tree.
+if [ -f ".aod/scripts/bash/template-validate.sh" ]; then
+  # shellcheck disable=SC1091
+  source .aod/scripts/bash/template-validate.sh
+else
+  echo -e "${RED}ERROR: .aod/scripts/bash/template-validate.sh not found — required for init manifest validation${NC}" >&2
+  exit 1
+fi
+if [ -f ".aod/scripts/bash/template-manifest.sh" ]; then
+  # shellcheck disable=SC1091
+  source .aod/scripts/bash/template-manifest.sh
+else
+  echo -e "${RED}ERROR: .aod/scripts/bash/template-manifest.sh not found — required for init manifest-scoped substitution${NC}" >&2
+  exit 1
+fi
+
 # F-5 (T015): parse --no-precommit / --precommit flag overrides for the
 # opt-in pre-commit secret-scanning hook prompt. These flags affect ONLY
 # the first-run init.sh invocation; post-init opt-out is `pre-commit
@@ -271,23 +288,33 @@ aod_trace_init_phase "substitution"
 # F-248 T019 (FR-001): replace the previous sed-based replace_in_files()
 # function with bash parameter expansion via aod_template_substitute_placeholders.
 # Single bash branch handles BOTH macOS and Linux (no more $OSTYPE split).
-# Process substitution `< <(...)` is bash 3.2 compatible.
-#
-# bash 3.2 hazard: piping to `while read` creates a subshell that masks
-# errors. We use process substitution + a flag variable to capture failures
-# (NOT `set -e` which is already on at script scope and gets confusing in
-# pipe-subshell contexts).
+# The hot path now walks only `.aod/template-manifest.txt` entries in the
+# `personalized` category rather than rescanning every file in the checkout.
+# That keeps the init path aligned with the residual-scan contract and removes
+# the expensive whole-tree `find` from startup.
 FAILED_FILES=""
-while IFS= read -r -d '' path; do
-  if ! aod_template_substitute_placeholders "$path" "$path"; then
-    FAILED_FILES="$FAILED_FILES $path"
-  fi
-done < <(find . -type f \
-  -not -path "./.git/*" \
-  -not -path "./node_modules/*" \
-  -not -name "*.png" -not -name "*.jpg" -not -name "*.ico" \
-  -not -name "*.pdf" -not -name "*.baseline" -not -name ".DS_Store" \
-  -print0)
+if [ -f ".aod/template-manifest.txt" ]; then
+  MANIFEST_ENTRIES="$(aod_template_parse_manifest ".aod/template-manifest.txt")" || {
+    echo -e "${RED}ERROR: failed to parse .aod/template-manifest.txt for init substitution${NC}" >&2
+    exit 1
+  }
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      'personalized|'*)
+        path="${line#personalized|}"
+        path="${path%$'\r'}"
+        if ! aod_template_substitute_placeholders "./$path" "./$path"; then
+          FAILED_FILES="$FAILED_FILES $path"
+        fi
+        ;;
+    esac
+  done <<EOF
+$MANIFEST_ENTRIES
+EOF
+else
+  echo -e "${RED}ERROR: .aod/template-manifest.txt not found — required for init substitution${NC}" >&2
+  exit 1
+fi
 if [ -n "$FAILED_FILES" ]; then
   echo -e "${RED}ERROR: substitution failed on:$FAILED_FILES${NC}" >&2
   exit 1

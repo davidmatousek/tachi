@@ -23,6 +23,33 @@ fn init_substitution_contract_is_rust_native() {
 }
 
 #[test]
+fn init_substitution_leaves_unmanifested_files_unchanged() {
+    let temp_dir = unique_temp_dir("substitution-scope");
+    fs::create_dir_all(&temp_dir).expect("create temp dir");
+
+    let clone_root = clone_into_tmpdir(&temp_dir);
+    let stray_path = clone_root.join("sandbox/rogue-note.md");
+    fs::create_dir_all(stray_path.parent().expect("rogue parent")).expect("create stray dir");
+    let original = "This file should stay literal: {{PROJECT_NAME}} and {{CURRENT_DATE}}.\n";
+    fs::write(&stray_path, original).expect("write stray file");
+
+    let init_run = run_init_in_clone(&clone_root, &build_canonical_stdin(&clone_root));
+    assert_eq!(
+        init_run.status,
+        0,
+        "init.sh exit {}; stderr tail:\n{}",
+        init_run.status,
+        stderr_tail(&init_run.stderr, 1500)
+    );
+
+    let after = fs::read_to_string(&stray_path).expect("read stray file after init");
+    assert_eq!(
+        after, original,
+        "init.sh should only substitute files tracked in .aod/template-manifest.txt"
+    );
+}
+
+#[test]
 fn personalized_tree_bytes_match_baseline() {
     let temp_dir = unique_temp_dir("substitution-bytes");
     fs::create_dir_all(&temp_dir).expect("create temp dir");
