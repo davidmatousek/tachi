@@ -104,7 +104,7 @@ Using the detected artifacts list provided by the command, verify each artifact'
 
 **MANDATORY**: Read `.claude/skills/tachi-report-assembly/references/brand-asset-guidelines.md` for brand logo detection (file locations, dark variant handling, path resolution pattern, format detection, and fallback rules).
 
-Invoke the deterministic Python extraction script to parse all artifacts and generate `report-data.typ`. The script handles artifact parsing, tier selection, severity counting, scope extraction, validation, and Typst output generation.
+Invoke the deterministic Rust `report-data` binary to parse all artifacts and generate `report-data.typ`. The binary handles artifact parsing, tier selection, severity counting, scope extraction, validation, and Typst output generation.
 
 ### 2a. Handle Report Configuration
 
@@ -117,45 +117,12 @@ Check for a user-provided `report-config.typ` in the target directory:
    - Ensure the default `templates/tachi/security-report/report-config.typ` exists (it ships with the templates)
    - Log: `"Using default report configuration"`
 
-### 2b. Preflight: Verify Script Exists
+### 2b. Invoke Rust Extraction
 
-**MANDATORY HARD-FAIL CHECK** — before invoking the extraction script, verify it exists on disk:
-
-```bash
-test -f scripts/extract-report-data.py && test -f scripts/tachi_parsers.py
-```
-
-If either file is missing, abort with this exact error and do NOT fall through to any alternate extraction path:
-
-```
-EXTRACTION SCRIPT MISSING
-
-Required files not found:
-  - scripts/extract-report-data.py
-  - scripts/tachi_parsers.py
-
-These files are distributed by tachi's scripts/install.sh and must exist
-in the project's scripts/ directory. If this project was installed before
-PR #154, re-run the installer:
-
-  ~/Projects/tachi/scripts/install.sh
-
-Or manually copy the missing files from the tachi source tree.
-
-DO NOT generate report-data.typ inline — the deterministic Python
-extraction is the only supported path. LLM-based inline extraction
-silently produces field-incomplete output (missing attack-tree images,
-empty MAESTRO layer headings, missing MAESTRO data).
-```
-
-Return failure to the command. Do NOT proceed to Step 2c, Step 2d, or Step 3 under any circumstances when the scripts are missing.
-
-### 2c. Invoke Extraction Script
-
-Run the deterministic extraction script:
+Run the deterministic extraction binary:
 
 ```bash
-python3 scripts/extract-report-data.py \
+cargo run -q -p tachi-cli --bin report-data -- \
   --target-dir {target_dir} \
   --output templates/tachi/security-report/report-data.typ \
   --template-dir templates/tachi/security-report/ \
@@ -164,24 +131,24 @@ python3 scripts/extract-report-data.py \
 
 Include `--title` only if the command provided a title override.
 
-### 2d. Handle Exit Codes
+### 2c. Handle Exit Codes
 
 | Exit Code | Meaning | Agent Action |
 |-----------|---------|-------------|
 | 0 | Success | Proceed to Step 3 (Compilation) |
 | 1 | Missing required artifact | Display stderr message and abort: `"Error: {message}"` |
 | 2 | Validation failure | Display stderr details and abort: `"Validation error: {details}"` |
-| 127 | `python3` or script not found | Display: `"Error: extraction script invocation failed. Verify scripts/extract-report-data.py is executable and python3 is on PATH. Re-run scripts/install.sh if the script is missing."` and abort |
+| 127 | command not found | Display: `"Error: extraction command invocation failed. Verify cargo and the report-data binary are available on PATH / in the workspace. Re-run the workspace build if the binary is missing."` and abort |
 
-If the script exits non-zero for any reason, do NOT proceed to compilation. Do NOT fall back to inline LLM extraction. Display the error and return failure to the command.
+If the binary exits non-zero for any reason, do NOT proceed to compilation. Do NOT fall back to inline LLM extraction. Display the error and return failure to the command.
 
-### 2e. Report Results
+### 2d. Report Results
 
 Display: `"report-data.typ generated — proceeding to compilation"`
 
 ---
 
-**Deprecated inline extraction path — DO NOT USE**: Versions of this agent before PR #154 documented an LLM-based fallback for Steps 2-3 that parsed artifacts inline and generated `report-data.typ` by prompting the model. That path is deprecated and unsupported: it silently omits `has-image` on attack-tree entries (producing attack-path pages with no Mermaid visuals), emits empty `layer-id`/`layer-name` fields in MAESTRO findings-by-layer groups (producing headings that render as bare em-dashes), and skips other derived fields. The deterministic Python script (`scripts/extract-report-data.py`) is the only supported extraction path. For the full variable specification, see `specs/067-deterministic-report-data/data-model.md`.
+**Deprecated inline extraction path — DO NOT USE**: Versions of this agent before PR #154 documented an LLM-based fallback for Steps 2-3 that parsed artifacts inline and generated `report-data.typ` by prompting the model. That path is deprecated and unsupported: it silently omits `has-image` on attack-tree entries (producing attack-path pages with no Mermaid visuals), emits empty `layer-id`/`layer-name` fields in MAESTRO findings-by-layer groups (producing headings that render as bare em-dashes), and skips other derived fields. The deterministic Rust report-data binary is the only supported extraction path. For the full variable specification, see `specs/067-deterministic-report-data/data-model.md`.
 
 ---
 

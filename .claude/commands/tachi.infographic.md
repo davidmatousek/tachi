@@ -144,9 +144,9 @@ Single-command entry point for tachi threat infographic generation — the visua
    ```
    Generate threat infographic specification(s) using the deterministic extraction script.
 
-   CRITICAL: You MUST run the extraction script for data extraction. Do NOT parse
-   markdown files manually or extract severity counts via LLM. The script ensures
-   cross-output consistency with the security report (Feature 067/071).
+   CRITICAL: You MUST run the Rust extraction binary for data extraction. Do NOT
+   parse markdown files manually or extract severity counts via LLM. The binary
+   ensures cross-output consistency with the security report (Feature 067/071).
 
    Target directory: {data_source_dir}
    Template: {template}
@@ -156,8 +156,8 @@ Single-command entry point for tachi threat infographic generation — the visua
    - threat-{template-name}-spec.md (always)
    - threat-{template-name}.jpg (when GEMINI_API_KEY available)
 
-   Step 1: Run the extraction script (once per template, or 3x if template is "all", or 2x if template is "maestro"):
-     python3 scripts/extract-infographic-data.py \
+   Step 1: Run the extraction binary (once per template, or 3x if template is "all", or 2x if template is "maestro"):
+     cargo run -q -p tachi-cli --bin infographic-data -- \
        --target-dir {data_source_dir} \
        --template {template_name} \
        --output /tmp/infographic-{template_name}.json
