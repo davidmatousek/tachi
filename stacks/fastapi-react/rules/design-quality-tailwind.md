@@ -1,5 +1,7 @@
 # Tailwind v4 Design Quality — FastAPI + React
 
+Archived legacy pack; retained for historical reference only.
+
 <!-- Stack-specific supplement to .claude/rules/design-quality.md -->
 <!-- Loaded when the fastapi-react pack is active -->
 

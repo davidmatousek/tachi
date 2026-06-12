@@ -1,5 +1,7 @@
 # Debugger — Python FastAPI + React Supplement
 
+Archived legacy pack; retained for historical reference only.
+
 ## Stack Context
 
 Backend — FastAPI 0.115+ on uvicorn async event loop, SQLAlchemy 2.0 async ORM with asyncpg driver, Pydantic v2 for validation, pytest + pytest-asyncio for test execution, Alembic for migrations. Frontend — React 19 SPA with Vite 6 HMR, TanStack Query v5 with DevTools, TypeScript 5.5+ strict mode. Two separate processes: uvicorn (backend) and Vite dev server (frontend) communicating over REST at `/api/v1/`.

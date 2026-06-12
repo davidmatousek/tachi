@@ -1,5 +1,7 @@
 # Security Rules — FastAPI + React (Local / SQLite)
 
+Archived legacy pack; retained for historical reference only.
+
 Stack-specific OWASP Top 10 mitigations for Python FastAPI backend and React frontend.
 
 ---

@@ -1,5 +1,7 @@
 # UX/UI Designer — Python FastAPI + React Supplement
 
+Archived legacy pack; retained for historical reference only.
+
 ## Stack Context
 
 React 19 functional components with TypeScript strict mode, Tailwind CSS v4 (CSS-first configuration via `@theme` directive, no `tailwind.config.js`), Biome for formatting and linting, Vite 6 build tooling. No prescribed UI component library — the pack is framework-agnostic for component libs (user chooses shadcn/ui, Radix, Headless UI, or custom). Design tokens live in `src/app.css` under the `@theme` directive. All styling uses Tailwind v4 utility classes exclusively.

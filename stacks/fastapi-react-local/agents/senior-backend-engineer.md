@@ -1,5 +1,7 @@
 # Senior Backend Engineer — Python FastAPI + React (Local / SQLite) Supplement
 
+Archived legacy pack; retained for historical reference only.
+
 ## Stack Context
 
 FastAPI 0.115+ async REST API, SQLAlchemy 2.0 async ORM with aiosqlite driver, Pydantic v2 for request/response schemas and settings, Alembic for async migrations (batch mode), uv package manager, Ruff for linting/formatting, pytest + pytest-asyncio for testing, httpx AsyncClient for integration tests. SQLite with WAL mode for local-first development.

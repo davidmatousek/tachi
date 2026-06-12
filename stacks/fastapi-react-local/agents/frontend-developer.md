@@ -1,5 +1,7 @@
 # Frontend Developer — Python FastAPI + React Supplement
 
+Archived legacy pack; retained for historical reference only.
+
 ## Stack Context
 
 React 19 SPA with Vite 6 build tooling, TypeScript 5.5+ in strict mode, TanStack Query v5 for server state, Tailwind CSS v4 (CSS-first configuration), Biome for linting and formatting. Backend is a FastAPI async REST API at `/api/v1/`. Path alias `@/` maps to `src/`. Environment variable `VITE_API_URL` provides the API base URL. Vitest + React Testing Library for testing.

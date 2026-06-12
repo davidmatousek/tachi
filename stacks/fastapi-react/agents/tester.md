@@ -1,5 +1,7 @@
 # Tester — Python FastAPI + React Supplement
 
+Archived legacy pack; retained for historical reference only.
+
 ## Stack-Specific E2E Conventions
 
 - **Location**: E2E specs live at `frontend/e2e/*.spec.ts`; shared fixtures at `frontend/e2e/fixtures.ts`; adopter starter templates at `frontend/e2e/_templates/*.template.ts` (excluded from runs via `testIgnore: /\.template\.ts$/`).

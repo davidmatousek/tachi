@@ -1,5 +1,7 @@
 # DevOps — Python FastAPI + React Supplement
 
+Archived legacy pack; retained for historical reference only.
+
 ## Stack Context
 
 Docker Compose for local development with three services: PostgreSQL 16 (database), FastAPI backend (uvicorn ASGI server), React frontend (Vite dev server). `uv` for Python dependency management, npm for frontend dependencies. Backend serves async REST API on uvicorn with `--reload` for development and `--workers N` for production. Frontend connects to backend via `VITE_API_URL` environment variable. Alembic for database migrations (async configuration). `.env.example` documents all required environment variables with development defaults.

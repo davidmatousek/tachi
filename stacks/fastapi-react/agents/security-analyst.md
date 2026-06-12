@@ -1,5 +1,7 @@
 # Security Analyst — FastAPI + React Supplement
 
+Archived legacy pack; retained for historical reference only.
+
 ## Stack Context
 
 FastAPI with async endpoints, React 18+ SPA served separately, PostgreSQL via asyncpg with parameterized queries, Pydantic v2 for request/response validation, JWT authentication with httpOnly/SameSite/Secure cookies, Argon2 password hashing via passlib[argon2], explicit CORS origins, structured JSON logging, Alembic for migrations.

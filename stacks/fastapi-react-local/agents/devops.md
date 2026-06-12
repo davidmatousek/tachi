@@ -1,5 +1,7 @@
 # DevOps — Python FastAPI + React (Local / SQLite) Supplement
 
+Archived legacy pack; retained for historical reference only.
+
 ## Stack Context
 
 Local-first development with zero external dependencies. FastAPI backend (uvicorn ASGI server) with SQLite database (WAL mode), React frontend (Vite dev server). `uv` for Python dependency management, npm for frontend dependencies. No Docker required for development. Backend serves async REST API on uvicorn with `--reload` for development. Frontend connects to backend via `VITE_API_URL` environment variable. Alembic for database migrations (async configuration, batch mode for SQLite). `.env.example` documents all required environment variables with development defaults.

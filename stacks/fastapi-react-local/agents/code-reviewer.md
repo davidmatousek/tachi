@@ -1,5 +1,7 @@
 # Code Reviewer — Python FastAPI + React Supplement
 
+Archived legacy pack; retained for historical reference only.
+
 ## Stack Context
 
 Dual-language stack: Python 3.12+ backend, TypeScript 5.5+ frontend. Backend: FastAPI 0.115+, SQLAlchemy 2.0 async with asyncpg, Pydantic v2, Alembic migrations, uv package manager, Ruff linting/formatting, pytest + pytest-asyncio. Frontend: React 19, Vite 6, TanStack Query v5, Tailwind CSS v4 (CSS-first config), Biome linting/formatting. REST API with `/api/v1/` prefix. Docker Compose for local development.

@@ -12,6 +12,8 @@
 #   backend  — FastAPI + uvicorn with hot-reload (port 8000)
 #   frontend — React + Vite dev server with hot-reload (port 5173)
 #
+# Archived legacy pack; retained for historical reference only.
+# The scaffold is preserved for reference but is no longer an active stack target.
 # IMPORTANT: This file is for local development only.
 # NEVER use docker-compose.yml for production deployment.
 
