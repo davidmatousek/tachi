@@ -50,6 +50,35 @@ fn init_substitution_leaves_unmanifested_files_unchanged() {
 }
 
 #[test]
+fn init_substitution_leaves_tracked_unmanifested_files_unchanged() {
+    let temp_dir = unique_temp_dir("substitution-tracked-scope");
+    fs::create_dir_all(&temp_dir).expect("create temp dir");
+
+    let clone_root = clone_into_tmpdir(&temp_dir);
+    let stray_path = clone_root.join("sandbox/rogue-tracked-note.md");
+    fs::create_dir_all(stray_path.parent().expect("rogue tracked parent"))
+        .expect("create stray tracked dir");
+    let original = "This tracked file should stay literal: {{PROJECT_NAME}} and {{CURRENT_DATE}}.\n";
+    fs::write(&stray_path, original).expect("write tracked stray file");
+    git(&clone_root, &["add", "sandbox/rogue-tracked-note.md"]);
+
+    let init_run = run_init_in_clone(&clone_root, &build_canonical_stdin(&clone_root));
+    assert_eq!(
+        init_run.status,
+        0,
+        "init.sh exit {}; stderr tail:\n{}",
+        init_run.status,
+        stderr_tail(&init_run.stderr, 1500)
+    );
+
+    let after = fs::read_to_string(&stray_path).expect("read tracked stray file after init");
+    assert_eq!(
+        after, original,
+        "init.sh should only substitute files listed in .aod/template-manifest.txt, not every tracked file"
+    );
+}
+
+#[test]
 fn personalized_tree_bytes_match_baseline() {
     let temp_dir = unique_temp_dir("substitution-bytes");
     fs::create_dir_all(&temp_dir).expect("create temp dir");
@@ -235,6 +264,20 @@ fn git_stdout(repo_root: &Path, args: &[&str]) -> String {
         .expect("git stdout should be utf-8")
         .trim()
         .to_string()
+}
+
+fn git(repo_root: &Path, args: &[&str]) {
+    let output = Command::new("git")
+        .args(args)
+        .current_dir(repo_root)
+        .output()
+        .expect("run git command");
+    assert!(
+        output.status.success(),
+        "git {} failed: {}",
+        args.join(" "),
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 fn build_canonical_stdin(clone_root: &Path) -> String {

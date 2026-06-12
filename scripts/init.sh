@@ -50,8 +50,9 @@ else
   exit 1
 fi
 
-# Source the manifest and validation helpers so init can scope substitution to
-# manifest-backed personalized files instead of rescanning the whole tree.
+# Scope substitution to manifest-backed personalized files instead of
+# rescanning the whole tracked tree. The manifest is the source of truth for
+# files that should receive placeholder substitution during init.
 # F-5 (T015): parse --no-precommit / --precommit flag overrides for the
 # opt-in pre-commit secret-scanning hook prompt. These flags affect ONLY
 # the first-run init.sh invocation; post-init opt-out is `pre-commit
@@ -273,20 +274,17 @@ aod_trace_init_phase "substitution"
 # F-248 T019 (FR-001): replace the previous sed-based replace_in_files()
 # function with bash parameter expansion via aod_template_substitute_placeholders.
 # Single bash branch handles BOTH macOS and Linux (no more $OSTYPE split).
-# The hot path now walks the tracked repo file set (`git ls-files`) rather
-# than rescanning every file in the checkout. That keeps the init path aligned
-# with the shipped surface and leaves untracked files untouched.
+# The hot path now walks the manifest-backed personalized file list rather
+# than rescanning every tracked file in the checkout. That keeps the init path
+# aligned with the shipped personalized surface and leaves unmanifested files
+# untouched.
 FAILED_FILES=""
-while IFS= read -r -d '' path; do
-  case "$path" in
-    *.png|*.jpg|*.ico|*.pdf|*.baseline|.DS_Store)
-      continue
-      ;;
-  esac
+while IFS= read -r path; do
+  [ -n "$path" ] || continue
   if ! aod_template_substitute_placeholders "$path" "$path"; then
     FAILED_FILES="$FAILED_FILES $path"
   fi
-done < <(git ls-files -z)
+done < <(sed -n 's/^personalized|//p' .aod/template-manifest.txt | tr -d '\r')
 if [ -n "$FAILED_FILES" ]; then
   echo -e "${RED}ERROR: substitution failed on:$FAILED_FILES${NC}" >&2
   exit 1
