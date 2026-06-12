@@ -1,6 +1,6 @@
 # Rust/Tauri-Only Migration Roadmap
 
-**Last Updated**: 2026-06-11
+**Last Updated**: 2026-06-12
 **Status**: Active migration roadmap
 **Objective**: make `tachi-rust` a Rust + Tauri only repository
 
@@ -30,7 +30,7 @@ This status uses card closure rather than subjective partial estimates. In-progr
 | RT-012 | In progress | Rust-native report-data output handling, infographic output-file handling, report project metadata emission, report-data image binding and byte-probe parity, coverage-attestation payload emission, coverage-attestation in-scope filtering, coverage-attestation report-data guard coverage, coverage-attestation pagination smoke coverage, asset-sensitivity tag parsing, executive-architecture infographic payload parity, and SARIF CLI slices now cover the threat/risk SARIF runtime paths; `scripts/extract-report-data.py`, `scripts/tachi_parsers.py`, the FastAPI Alembic `env.py` scaffolds, the FastAPI backend test-package scaffolding, the FastAPI backend app runtime trees, the FastAPI backend scaffold packaging manifests, the FastAPI backend Alembic scaffold packaging manifests, the dead `tests/scripts` helper package, the dead root pytest support package, `pyproject.toml`, and `requirements-dev.txt` are retired and the active Python inventory is empty. |
 | RT-013 | Pending | Tauri shell parity work depends on RT-012 runtime parity. |
 | RT-014 | Pending | Python packaging and FastAPI scaffold archival depends on RT-012 and RT-013; backend scaffold packaging manifests, backend Alembic scaffold packaging manifests, and the FastAPI stack packs are archived legacy references. |
-| RT-015 | Pending | Speed and reliability hardening depends on the Rust-only runtime path being stable. |
+| RT-015 | In progress | Speed and reliability hardening depends on the Rust-only runtime path being stable. |
 
 The prior broad migration snapshot remains useful for orientation: Rust core parity is the strongest track, Rust-native test migration and runtime-script retirement are active, and Tauri shell hardening plus packaging/scaffold retirement remain downstream.
 
@@ -237,6 +237,7 @@ This roadmap uses a BEADS-style hierarchy:
 - **Tasks**
   - instrument the init path so each startup phase reports timing via `AOD_INIT_TRACE=1`
   - scope placeholder substitution to manifest-backed personalized files and the constitution clean template instead of walking the whole tree
+  - factor manifest-backed personalized path extraction into a reusable helper and reuse the cached list across substitution and residual scanning
   - benchmark the slowest init path with and without precommit / template bootstrapping
   - remove repeated parsing and process spawns once the slow phase is isolated
 - **Functions**

@@ -1,6 +1,6 @@
 # Rust/Tauri-Only Migration Issue Cards
 
-**Last Updated**: 2026-06-11
+**Last Updated**: 2026-06-12
 **Status**: Planning backlog derived from the Rust/Tauri-only roadmap
 
 These cards are the execution-level backlog for the migration roadmap in
@@ -20,7 +20,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 | RT-012 | In progress | Continue parser/report-data parity after Rust asset tag parsing, report-data image binding emission, infographic output-file handling, coverage-attestation in-scope filtering, coverage-attestation report-data guard, coverage-attestation pagination smoke, coverage-percentage computation, attack-chain extraction, and SARIF runtime retirement; `scripts/extract-report-data.py`, the dead `tests/scripts` helper package, the dead root pytest support package, the FastAPI backend app runtime trees, the FastAPI backend scaffold packaging manifests, the FastAPI backend Alembic scaffold packaging manifests, `pyproject.toml`, and `requirements-dev.txt` are now retired, and the active Python inventory is empty. Archived FastAPI docs guidance is now tracked as a follow-on cleanup note. |
 | RT-013 | Pending | Start after RT-012 establishes the shared Rust command layer as canonical. |
 | RT-014 | Pending | Start after RT-012 and RT-013 prove the Python packaging and scaffold surfaces can be archived as legacy references. |
-| RT-015 | Pending | Start after the Rust-only path is stable enough for benchmark-driven hardening. |
+| RT-015 | In progress | Start after the Rust-only path is stable enough for benchmark-driven hardening. |
 
 ## Card Set
 
