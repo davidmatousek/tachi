@@ -586,6 +586,14 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
+## [4.43.0](https://github.com/davidmatousek/tachi/compare/v4.42.0...v4.43.0) (2026-06-12)
+
+
+### Features
+
+* **184:** NIST AI 600-1 GAI Risk taxonomy — Surface C transcription (8th catalog) ([#324](https://github.com/davidmatousek/tachi/issues/324)) ([db1bba5](https://github.com/davidmatousek/tachi/commit/db1bba58bb89a0e6f061dafb1522a81010f081a7))
+* **185:** cwe.yaml expansion + 67 drift-edge restoration (F-A1.2) ([#328](https://github.com/davidmatousek/tachi/issues/328)) ([2aa1bf5](https://github.com/davidmatousek/tachi/commit/2aa1bf524ed3fc17358a5a4ce0ab2c2b2b86ce43))
+
 ## [4.42.0](https://github.com/davidmatousek/tachi/compare/v4.41.0...v4.42.0) (2026-06-07)
 
 
