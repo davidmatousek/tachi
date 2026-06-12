@@ -95,9 +95,7 @@ This inventory freezes the current Python surface so the migration can remove it
 ~~tests/scripts/test_coverage_attestation_in_scope.py~~ - migrated to `crates/tachi-core/tests/coverage_attestation_in_scope.rs::load_framework_yaml_records_from_dir_filters_oos_and_treats_missing_field_as_in_scope` and `crates/tachi-core/tests/coverage_attestation_in_scope.rs::build_per_framework_aggregates_in_dir_uses_in_scope_denominator`
 ~~tests/scripts/test_smoke.py~~ - migrated to `crates/tachi-core/tests/infographic_scaffold.rs::extract_prompt_scaffold_reads_template_prompt_segments`
 ~~tests/scripts/test_mobile_top_10_coverage_bundle_enrichment.py~~ - migrated to `crates/tachi-core/tests/mobile_top_10_coverage_bundle_enrichment.rs::mobile_top_10_coverage_bundle_contract_is_rust_native`
-.claude/skills/~aod-build/scripts/generate_checkpoint.py
-.claude/skills/~aod-build/scripts/analyze_tasks.py
-.claude/skills/~aod-build/scripts/update_index.py
+# no active Python files remain.
 ```
 
 ## Notes

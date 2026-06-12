@@ -46,7 +46,7 @@ fn collect_python_files(root: &Path, current: &Path, files: &mut Vec<String>) {
 }
 
 #[test]
-fn python_surface_inventory_lists_every_active_python_file() {
+fn python_surface_inventory_lists_no_active_python_files() {
     let root = workspace_root();
     let inventory_path = root.join("docs/roadmap/2026-06-08-python-surface-inventory.md");
     let inventory = fs::read_to_string(&inventory_path)
@@ -54,35 +54,15 @@ fn python_surface_inventory_lists_every_active_python_file() {
 
     let expected_files = collect_active_python_files(&root);
     assert!(
-        !expected_files.is_empty(),
-        "expected to discover active python files in the workspace"
+        expected_files.is_empty(),
+        "expected to discover no active python files in the workspace, found: {}",
+        expected_files.join(", ")
     );
-
-    let missing: Vec<String> = expected_files
-        .into_iter()
-        .filter(|path| !inventory.contains(path))
-        .collect();
 
     assert!(
-        missing.is_empty(),
-        "inventory is missing {} active python paths: {}",
-        missing.len(),
-        missing.join(", ")
+        inventory.contains("no active Python files"),
+        "inventory should explicitly state that no active Python files remain"
     );
-
-    for required in [
-        "pyproject.toml",
-        "requirements-dev.txt",
-        "scripts/extract-infographic-data.py",
-        "scripts/generate-threats-sarif.py",
-        "scripts/generate-risk-scores-sarif.py",
-        "scripts/sarif_common.py",
-    ] {
-        assert!(
-            inventory.contains(required),
-            "inventory should mention {required}"
-        );
-    }
 }
 
 #[test]
@@ -596,4 +576,25 @@ fn python_surface_inventory_retires_tool_abuse_enrichment_python_module() {
         !active_lines.contains(&"tests/scripts/test_tool_abuse_enrichment.py"),
         "active inventory should no longer list tool abuse enrichment pytest coverage"
     );
+}
+
+#[test]
+fn python_surface_inventory_retires_remaining_python_artifacts() {
+    let root = workspace_root();
+
+    for retired in [
+        ".claude/skills/~aod-build/scripts/analyze_tasks.py",
+        ".claude/skills/~aod-build/scripts/generate_checkpoint.py",
+        ".claude/skills/~aod-build/scripts/update_index.py",
+        "specs/212-improve-executive-architecture-infographic/artifacts/final/build_prompt.py",
+        "specs/212-improve-executive-architecture-infographic/artifacts/final/call_gemini.py",
+        "specs/212-improve-executive-architecture-infographic/artifacts/iteration-1/build_prompt.py",
+        "specs/212-improve-executive-architecture-infographic/artifacts/iteration-1/call_gemini.py",
+        "tests/scripts/fixtures/__init__.py",
+    ] {
+        assert!(
+            !root.join(retired).exists(),
+            "retired Python artifact should no longer exist: {retired}"
+        );
+    }
 }
