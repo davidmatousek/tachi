@@ -36,6 +36,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - FastAPI Alembic `env.py` scaffold coverage has been retired from both `stacks/fastapi-react/` variants
 - FastAPI backend test-package scaffolding (`tests/{__init__,conftest,api/__init__}.py`) has been retired from both `stacks/fastapi-react/` variants
 - FastAPI backend app runtime trees (`app/main.py`, `app/api/deps.py`, `app/api/v1/router.py`, `app/db/base.py`, `app/db/session.py`, `app/core/middleware.py`, `app/core/exceptions.py`, `app/config.py`) have been retired from both `stacks/fastapi-react/` variants
+- FastAPI backend scaffold packaging manifests (`scaffold/backend/pyproject.toml`) have been retired from both `stacks/fastapi-react/` variants
 - PDF page-positioning coverage has moved from `tests/scripts/test_pdf_page_positioning.py` to `crates/tachi-core/tests/report_data.rs::build_report_data_typst_renders_executive_architecture_page_between_summary_and_attack_path`
 - Backward-compatibility PDF byte-identity coverage has moved from `tests/scripts/test_backward_compatibility.py` to `crates/tachi-core/tests/backward_compatibility.rs::unmodified_examples_byte_identical_pdfs`
 - Init substitution E2E coverage has moved from `tests/scripts/test_init_sh_substitution.py` to `crates/tachi-shell/tests/init_substitution.rs`

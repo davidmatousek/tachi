@@ -137,7 +137,7 @@ After scaffold:
 - [ ] `backend/app/main.py` exists (FastAPI app factory)
 - [ ] `backend/app/api/v1/router.py` exists
 - [ ] `backend/app/db/session.py` exists (async SQLAlchemy)
-- [ ] `backend/pyproject.toml` exists with FastAPI, SQLAlchemy, aiosqlite deps
+- [ ] `backend/pyproject.toml` was retired with the backend scaffold packaging manifests
 - [ ] `frontend/src/main.tsx` exists (React root)
 - [ ] `frontend/src/api/client.ts` exists (typed fetch wrapper)
 - [ ] `frontend/package.json` exists with React 19, TanStack Query, Tailwind
