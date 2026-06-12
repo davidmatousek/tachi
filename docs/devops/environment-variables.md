@@ -123,7 +123,7 @@ The CI parity workflow at `.github/workflows/gitleaks.yml` reads no environment 
 
 - **Adopter-facing update env vars**: `docs/devops/CI_CD_GUIDE.md` → "Update-Script Environment Variables" (`CI`, `FORCE_RETAG`, `AOD_UPDATE_TMP_DIR`, `AOD_BOOTSTRAP_*`, `AOD_UPSTREAM_URL`, `YES`, `SKIP_MARKER`).
 - **Adopter-facing fetch-timeout var (F-256)**: `AOD_FETCH_TIMEOUT` documented above. Read by `.aod/scripts/bash/template-git.sh` to bound `git clone` wall-clock cost. Default 60s; positive-integer validation; exit 9 on timeout, exit 1 on invalid value.
-- **Adopter scaffold env vars (Playwright E2E)**: `docs/devops/CI_CD_GUIDE.md` → "Playwright E2E in Adopter CI (FastAPI Stack Packs)" (`TEST_DATABASE_URL`, `TEST_SECRET_KEY`, `BACKEND_TEST_PORT`, `FRONTEND_TEST_PORT`).
+- **Archived legacy guidance**: `docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md` preserves the historical FastAPI pack E2E environment-variable notes.
 - **`/aod.deliver` exit codes** (consumed by CI scripts, not env vars): `docs/devops/CI_CD_GUIDE.md` → "/aod.deliver Exit-Code Contract".
 - **F-5 / F-282 pre-commit secret-scanning** (no new env vars; framework-level `SKIP=gitleaks` bypass only): `docs/standards/PRECOMMIT_HOOKS.md` §4. CI parity workflow: `docs/devops/CI_CD_GUIDE.md` → "Gitleaks CI Parity Workflow (F-282 / F-5)".
 

@@ -1,0 +1,39 @@
+use std::fs;
+use std::path::{Path, PathBuf};
+
+fn workspace_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("workspace root")
+        .to_path_buf()
+}
+
+#[test]
+fn active_devops_docs_treat_fastapi_pack_guidance_as_archived_reference_only() {
+    let root = workspace_root();
+
+    let docs = [
+        "docs/devops/README.md",
+        "docs/devops/01_Local/README.md",
+        "docs/devops/CI_CD_GUIDE.md",
+        "docs/devops/environment-variables.md",
+    ];
+
+    for doc in docs {
+        let content =
+            fs::read_to_string(root.join(doc)).unwrap_or_else(|err| panic!("read {doc}: {err}"));
+        assert!(
+            content.contains("Archived legacy guidance"),
+            "active devops doc {doc} should explicitly mark FastAPI pack guidance as archived"
+        );
+        assert!(
+            !content.contains("fastapi-react"),
+            "active devops doc {doc} should not instruct adopting fastapi-react"
+        );
+        assert!(
+            !content.contains("fastapi-react-local"),
+            "active devops doc {doc} should not instruct adopting fastapi-react-local"
+        );
+    }
+}

@@ -183,22 +183,9 @@ These are reference patterns — they do not ship to adopters (stack-contract wo
 
 ---
 
-## Feature 138 Additions (2026-04-21)
+## Archived Legacy Guidance
 
-The **Playwright E2E Layer for FastAPI Stack Packs** (PR #146, feature branch `138-playwright-e2e-fastapi-stack-packs` squash-merged on 2026-04-22, merge commit `7569dc5`) shipped Playwright E2E scaffolds into both FastAPI stack packs. Unlike F128/F129/F130 which were template-maintenance only, F138 changes the adopter-facing scaffold surface:
-
-- **Adopter-facing scaffolds**: `stacks/fastapi-react/scaffold/frontend/e2e/` and `stacks/fastapi-react-local/scaffold/frontend/e2e/` now ship a Playwright smoke test, fixtures, adopter `auth-crud.template.ts`, and `playwright.config.ts` per pack. Both packs declare `e2e_command: npm --prefix frontend run test:e2e` in their `STACK.md` (enforced by F130's stack-contract lint).
-- **New adopter env vars** (only for `fastapi-react` / Postgres variant):
-  - `TEST_DATABASE_URL` — required. DSN must contain `test_` or `_test` in the database name AND must not equal `DATABASE_URL`. Both invariants are enforced by the Playwright fixture at test-run time.
-  - `TEST_SECRET_KEY` — optional override. Scaffold ships a test-only default so fresh scaffolds run without user configuration.
-  - `BACKEND_TEST_PORT` (default `8001`) and `FRONTEND_TEST_PORT` (default `5173`) — optional overrides for port-collision cases. Both packs share these defaults.
-- **Zero config for `fastapi-react-local`**: the SQLite variant creates an ephemeral `/tmp/e2e-<uuid>.db` per run — no env vars needed.
-- **One-time browser install**: adopters run `npx playwright install chromium` once per workstation (~200-300 MB). Chromium-only by design (Firefox/WebKit are not bundled).
-- **No new CI workflows in this template repo**: `stack-contract.yml` (F130) already validates the `e2e_command` declaration. Adopters wire the `test:e2e` script into their own CI using the snippet in `CI_CD_GUIDE.md` → "Playwright E2E in Adopter CI (FastAPI Stack Packs)".
-- **Classification snapshot update**: `scripts/extract-classification.txt` regenerated for the 24 new shipped files (`SHIP` for scaffold paths, `EXCL-by-construction` for spec artifacts — F128 maintainer acknowledgement step).
-- **No staging/production deployment changes**: F138 is a test-layer feature. Runtime deployment targets, secrets, and infrastructure are unchanged.
-
-Adopter quickstart (authoritative): `specs/138-playwright-e2e-fastapi-stack-packs/quickstart.md`. Local setup reference: `docs/devops/01_Local/README.md` → "Playwright E2E (FastAPI Stack Packs) — Adopter Quickstart".
+Archived legacy guidance for the old FastAPI stack packs lives in `docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md`. This active devops surface no longer treats the FastAPI packs as current adopter quickstarts.
 
 ---
 

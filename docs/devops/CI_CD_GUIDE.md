@@ -459,38 +459,9 @@ BATS is **not yet wired into** `manifest-coverage.yml`, `extract-coverage.yml`, 
 
 ---
 
-## Playwright E2E in Adopter CI (FastAPI Stack Packs)
+## Archived Legacy Guidance
 
-**Added in Feature 138** (2026-04-21). No new CI workflows were added to this template repo — the existing `stack-contract.yml` (F130) validates the `e2e_command` declaration is present and well-formed. Adopters who scaffold `fastapi-react` or `fastapi-react-local` receive an opt-in `test:e2e` npm script they can wire into their own CI.
-
-Reference CI snippet (GitHub Actions; adapt to your provider):
-
-```yaml
-- name: Install backend deps
-  run: cd backend && uv sync
-
-- name: Install frontend deps
-  run: cd frontend && npm ci
-
-- name: Install Playwright browsers
-  run: cd frontend && npx playwright install chromium --with-deps
-
-- name: Run E2E tests
-  env:
-    TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}  # fastapi-react (Postgres) only
-    CI: true
-  run: npm --prefix frontend run test:e2e
-
-- name: Upload traces on failure
-  if: failure()
-  uses: actions/upload-artifact@v4
-  with:
-    name: playwright-traces
-    path: frontend/test-results/
-    retention-days: 14
-```
-
-`CI=true` disables `reuseExistingServer`. Trace artifacts redact `Authorization` / `Cookie` headers by default but keep retention short on public repos. Full adopter walkthrough: `specs/138-playwright-e2e-fastapi-stack-packs/quickstart.md`.
+Archived legacy guidance for the old FastAPI stack packs lives in `docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md`. The active CI guide no longer presents FastAPI pack E2E wiring as a current template path.
 
 ---
 

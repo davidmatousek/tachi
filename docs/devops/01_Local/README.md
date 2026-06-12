@@ -338,39 +338,9 @@ Full adopter walkthrough including troubleshooting and the dual-repo model (PLSK
 
 ---
 
-## Playwright E2E (FastAPI Stack Packs) — Adopter Quickstart
+## Archived Legacy Guidance
 
-**Applies to**: adopters who ran `/aod.stack scaffold fastapi-react` or `/aod.stack scaffold fastapi-react-local` after Feature 138 (2026-04-21). Both packs ship a Playwright E2E layer declared as `e2e_command: npm --prefix frontend run test:e2e` in `STACK.md`.
-
-### One-time setup
-
-```bash
-# Install Chromium (~200-300 MB; required once per workstation)
-npx playwright install chromium
-```
-
-### Configuration
-
-| Variable | Default | Pack | Required? |
-|----------|---------|------|-----------|
-| `TEST_DATABASE_URL` | — | `fastapi-react` (Postgres) | Yes. DSN must contain `test_` or `_test` in the database name; must not equal `DATABASE_URL`. Enforced by fixture. |
-| `TEST_SECRET_KEY` | scaffold ships a test-only default | `fastapi-react` (Postgres) | Optional override |
-| `BACKEND_TEST_PORT` | `8001` | both | Optional — only set if `8001` collides with your dev server |
-| `FRONTEND_TEST_PORT` | `5173` | both | Optional — only set if `5173` collides |
-
-`fastapi-react-local` (SQLite variant) requires **zero** env-var configuration — the fixture creates an ephemeral `/tmp/e2e-<uuid>.db` per run.
-
-For the Postgres variant, copy `frontend/.env.test.example` → `frontend/.env.test` and fill in `TEST_DATABASE_URL` (e.g., `postgresql+asyncpg://postgres:postgres@localhost:5433/myapp_test`).
-
-### Run
-
-```bash
-npm --prefix frontend run test:e2e
-```
-
-The shipped smoke test boots the backend (runs `alembic upgrade head` on the Postgres variant), boots the frontend dev server, and asserts `/health` plus bootstrap render in Chromium.
-
-Full walkthrough including CI snippets and troubleshooting: `specs/138-playwright-e2e-fastapi-stack-packs/quickstart.md`.
+Archived legacy guidance for the old FastAPI stack packs lives in `docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md`. The active local-dev guide no longer treats those packs as current setup paths.
 
 ---
 
