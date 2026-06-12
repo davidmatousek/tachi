@@ -169,11 +169,11 @@ fn personalized_tree_modes_match_baseline() {
     let contract_paths = personalized_contract_paths();
     let baseline_paths = files_in_tree(&baseline_dir, false);
     for rel in contract_paths.intersection(&baseline_paths) {
-        let baseline_path = baseline_dir.join(&rel);
+        let baseline_path = baseline_dir.join(rel);
         if !baseline_path.is_file() {
             continue;
         }
-        let actual_mode = fs::metadata(clone_root.join(&rel))
+        let actual_mode = fs::metadata(clone_root.join(rel))
             .expect("read actual metadata")
             .permissions()
             .mode()
