@@ -55,10 +55,10 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | Level | Current Rust-Native Surface |
 |---|---|
 | Unit | Rust unit tests; current audit shows 0 remaining Python unit modules. |
-| Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit shows 63 Rust integration modules after retiring the defaults-env init, adversarial init, template git clone timeout, executive-architecture infographic, attack-chain, MAESTRO pattern-classification, init precommit matrix, mmdc preflight, PDF page-positioning, backward-compatibility, human-trust-exploitation, extractor contract fixes, coverage-attestation tiers, init constitution, tool-abuse enrichment, pattern-synthesis, ML Top 10 coverage bundle, mobile Top 10 coverage bundle, LLM10 unbounded consumption, and coverage-attestation audit pytests while the init-substitution E2E boundary is now Rust-owned. |
+| Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit shows 64 Rust integration modules after retiring the defaults-env init, adversarial init, template git clone timeout, executive-architecture infographic, attack-chain, MAESTRO pattern-classification, init precommit matrix, mmdc preflight, PDF page-positioning, backward-compatibility, human-trust-exploitation, extractor contract fixes, coverage-attestation tiers, init constitution, tool-abuse enrichment, pattern-synthesis, ML Top 10 coverage bundle, mobile Top 10 coverage bundle, LLM10 unbounded consumption, coverage-attestation audit, and init timing trace pytests while the init-substitution E2E boundary is now Rust-owned. |
 | Smoke | Transitional smoke modules tracked by `tachi-core::coverage_audit`; current audit shows 0 remaining Python smoke modules. |
 | E2E | Critical init flow now lives in `crates/tachi-shell/tests/init_substitution.rs` while the Rust-owned E2E boundary is being defined. |
-| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 86.36% regions / 86.73% lines. Current audit: 64 active modules, 63 Rust integration modules, 0 Python unit modules, 0 Python smoke modules, 0 support/regression modules. |
+| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 86.36% regions / 86.73% lines. Current audit: 65 active modules, 64 Rust integration modules, 0 Python unit modules, 0 Python smoke modules, 0 support/regression modules. |
 
 Primary validation commands:
 
@@ -79,11 +79,11 @@ cargo run -q -p tachi-cli --bin coverage-audit
 | RT-012 | Port remaining Python runtime behavior into Rust modules and CLI binaries, especially report extraction, infographic output handling, executive-architecture infographic parity, and remaining report/SARIF payload parity. |
 | RT-013 | Keep Tauri shell thin by routing desktop behavior through shared Rust command handlers. |
 | RT-014 | Retire Python packaging, pytest-only guidance, and FastAPI stack scaffolds after parity is complete. |
-| RT-015 | Optimize Rust path for speed and reliability after the Python runtime path is no longer canonical. |
+| RT-015 | Optimize Rust path for speed and reliability after the Python runtime path is no longer canonical, with `AOD_INIT_TRACE=1` timing markers in `scripts/init.sh`. |
 
 ## Dependency Notes
 
-Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The dead `tests/scripts` init helper package has been retired and the init precommit matrix now lives in `crates/tachi-shell/tests/init_precommit_matrix.rs`; Rust work should continue moving any remaining parser-like behavior into `tachi-core` or `tachi-shell` with Rust tests. The FastAPI Alembic scaffold `env.py` files, backend test-package scaffolding, backend app runtime trees, backend scaffold packaging manifests, backend Alembic scaffold directories/manifests, root pytest support package, and top-level Python packaging manifests (`pyproject.toml`, `requirements-dev.txt`) are also retired and should stay out of the active Python surface inventory.
+Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The dead `tests/scripts` init helper package has been retired and the init precommit matrix now lives in `crates/tachi-shell/tests/init_precommit_matrix.rs`; `scripts/init.sh` now exposes opt-in `AOD_INIT_TRACE=1` timing markers for the slow-init refinement, and Rust work should continue moving any remaining parser-like behavior into `tachi-core` or `tachi-shell` with Rust tests. The FastAPI Alembic scaffold `env.py` files, backend test-package scaffolding, backend app runtime trees, backend scaffold packaging manifests, backend Alembic scaffold directories/manifests, root pytest support package, and top-level Python packaging manifests (`pyproject.toml`, `requirements-dev.txt`) are also retired and should stay out of the active Python surface inventory.
 
 ## Agent Guidance
 

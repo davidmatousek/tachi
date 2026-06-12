@@ -3,6 +3,10 @@
 
 set -e
 
+if [ "${AOD_INIT_TRACE:-0}" = "1" ]; then
+  SECONDS=0
+fi
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -60,10 +64,17 @@ for arg in "$@"; do
   esac
 done
 
+aod_trace_init_phase() {
+  if [ "${AOD_INIT_TRACE:-0}" = "1" ]; then
+    printf 'INIT TRACE phase=%s elapsed=%ss\n' "$1" "$SECONDS" >&2
+  fi
+}
+
 echo -e "${BLUE}🚀 Agentic-Oriented-Development-Kit - Project Initialization${NC}"
 echo ""
 
 # Check prerequisites
+aod_trace_init_phase "prerequisites"
 echo -e "${YELLOW}Checking prerequisites...${NC}"
 command -v node >/dev/null 2>&1 || { echo -e "${RED}Node.js is required but not installed.${NC}" >&2; exit 1; }
 command -v git >/dev/null 2>&1 || { echo -e "${RED}Git is required but not installed.${NC}" >&2; exit 1; }
@@ -239,6 +250,7 @@ echo ""
 # /aod.update reads this file on every run and uses bash parameter expansion
 # (NOT sed) to re-substitute placeholders into personalized-category files.
 echo -e "${YELLOW}🔄 Writing personalization snapshot (.aod/personalization.env)...${NC}"
+aod_trace_init_phase "personalization"
 if aod_template_init_personalization ".aod/personalization.env"; then
   echo -e "${GREEN}✓ Personalization snapshot written (.aod/personalization.env)${NC}"
 else
@@ -254,6 +266,7 @@ if ! aod_template_load_personalization_env ".aod/personalization.env"; then
 fi
 
 echo -e "${YELLOW}🔄 Replacing template variables...${NC}"
+aod_trace_init_phase "substitution"
 
 # F-248 T019 (FR-001): replace the previous sed-based replace_in_files()
 # function with bash parameter expansion via aod_template_substitute_placeholders.
@@ -414,6 +427,7 @@ fi
 # self-delete ran first and this write failed, the adopter would be stuck
 # without init.sh and without a valid pin.
 echo -e "${YELLOW}🔄 Writing version pin (.aod/aod-kit-version)...${NC}"
+aod_trace_init_phase "version-pin"
 
 # Ensure .aod/ exists (it should already, but defensive)
 mkdir -p .aod
