@@ -1,0 +1,757 @@
+# Restore-Set Artifact — Feature 185 (Issue #185, F-A1.2): T029 CWE-blocked edge restoration
+# Contract: specs/185-cwe-catalog-expansion/contracts/restored-edges.schema.md
+#
+# Provenance:
+#   source blob:  git show e58f247:schemas/taxonomy/crosswalk.yaml  (pre-T029, 551 edges)
+#   control blob: git show 991e1ee:schemas/taxonomy/crosswalk.yaml  (post-T029, 438 edges)
+#   filter: removed-set (present in source, absent from control by full edge content)
+#           AND target.taxonomy == "cwe" AND target.id NOT in frozen-53 (live schemas/taxonomy/cwe.yaml)
+#   counts: 67 edges = 65 owasp->cwe + 2 mitre-attack->cwe;
+#           confidence 34 high / 32 medium / 1 low; all edge_type: primary;
+#           40 distinct _blocked_on CWE IDs
+#   exclusions (absent by construction): 1 other-drift cwe-target edge, 20 non-CWE-target
+#           removals, 25 dedupe collapses
+#   extraction date: 2026-06-11
+#   extraction script: specs/185-cwe-catalog-expansion/scripts/extract_restore_set.py
+#
+# Edge fields (edge_type/confidence/citation) are byte-copied from the source blob —
+# no re-authoring, no upgrades (the single `confidence: low` edge T1070.006 -> CWE-1269
+# stays low). `_blocked_on` is a working annotation (= the missing target CWE ID) and
+# MUST be stripped before W1-2 insertion (crosswalk forbids extra edge keys).
+
+- source:
+    taxonomy: owasp
+    id: A02
+  target:
+    taxonomy: cwe
+    id: CWE-259
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
+  _blocked_on: CWE-259
+
+- source:
+    taxonomy: owasp
+    id: A02
+  target:
+    taxonomy: cwe
+    id: CWE-319
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
+  _blocked_on: CWE-319
+
+- source:
+    taxonomy: owasp
+    id: A02
+  target:
+    taxonomy: cwe
+    id: CWE-327
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
+  _blocked_on: CWE-327
+
+- source:
+    taxonomy: owasp
+    id: A02
+  target:
+    taxonomy: cwe
+    id: CWE-916
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A02_2021-Cryptographic_Failures/
+  _blocked_on: CWE-916
+
+- source:
+    taxonomy: owasp
+    id: A04
+  target:
+    taxonomy: cwe
+    id: CWE-256
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A04_2021-Insecure_Design/
+  _blocked_on: CWE-256
+
+- source:
+    taxonomy: owasp
+    id: A04
+  target:
+    taxonomy: cwe
+    id: CWE-311
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A04_2021-Insecure_Design/
+  _blocked_on: CWE-311
+
+- source:
+    taxonomy: owasp
+    id: A05
+  target:
+    taxonomy: cwe
+    id: CWE-16
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
+  _blocked_on: CWE-16
+
+- source:
+    taxonomy: owasp
+    id: A05
+  target:
+    taxonomy: cwe
+    id: CWE-260
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
+  _blocked_on: CWE-260
+
+- source:
+    taxonomy: owasp
+    id: A05
+  target:
+    taxonomy: cwe
+    id: CWE-520
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
+  _blocked_on: CWE-520
+
+- source:
+    taxonomy: owasp
+    id: A05
+  target:
+    taxonomy: cwe
+    id: CWE-611
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
+  _blocked_on: CWE-611
+
+- source:
+    taxonomy: owasp
+    id: A05
+  target:
+    taxonomy: cwe
+    id: CWE-614
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
+  _blocked_on: CWE-614
+
+- source:
+    taxonomy: owasp
+    id: A06
+  target:
+    taxonomy: cwe
+    id: CWE-937
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A06_2021-Vulnerable_and_Outdated_Components/
+  _blocked_on: CWE-937
+
+- source:
+    taxonomy: owasp
+    id: A06
+  target:
+    taxonomy: cwe
+    id: CWE-1035
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A06_2021-Vulnerable_and_Outdated_Components/
+  _blocked_on: CWE-1035
+
+- source:
+    taxonomy: owasp
+    id: A06
+  target:
+    taxonomy: cwe
+    id: CWE-1104
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A06_2021-Vulnerable_and_Outdated_Components/
+  _blocked_on: CWE-1104
+
+- source:
+    taxonomy: owasp
+    id: A07
+  target:
+    taxonomy: cwe
+    id: CWE-255
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/
+  _blocked_on: CWE-255
+
+- source:
+    taxonomy: owasp
+    id: A07
+  target:
+    taxonomy: cwe
+    id: CWE-521
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/
+  _blocked_on: CWE-521
+
+- source:
+    taxonomy: owasp
+    id: A07
+  target:
+    taxonomy: cwe
+    id: CWE-798
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/
+  _blocked_on: CWE-798
+
+- source:
+    taxonomy: owasp
+    id: A08
+  target:
+    taxonomy: cwe
+    id: CWE-829
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/
+  _blocked_on: CWE-829
+
+- source:
+    taxonomy: owasp
+    id: A08
+  target:
+    taxonomy: cwe
+    id: CWE-565
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/
+  _blocked_on: CWE-565
+
+- source:
+    taxonomy: owasp
+    id: A08
+  target:
+    taxonomy: cwe
+    id: CWE-915
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/
+  _blocked_on: CWE-915
+
+- source:
+    taxonomy: owasp
+    id: A04
+  target:
+    taxonomy: cwe
+    id: CWE-73
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A04_2021-Insecure_Design/
+  _blocked_on: CWE-73
+
+- source:
+    taxonomy: owasp
+    id: A05
+  target:
+    taxonomy: cwe
+    id: CWE-1174
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/
+  _blocked_on: CWE-1174
+
+- source:
+    taxonomy: owasp
+    id: LLM01
+  target:
+    taxonomy: cwe
+    id: CWE-1427
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+  _blocked_on: CWE-1427
+
+- source:
+    taxonomy: owasp
+    id: LLM02
+  target:
+    taxonomy: cwe
+    id: CWE-201
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+  _blocked_on: CWE-201
+
+- source:
+    taxonomy: owasp
+    id: LLM02
+  target:
+    taxonomy: cwe
+    id: CWE-359
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+  _blocked_on: CWE-359
+
+- source:
+    taxonomy: owasp
+    id: LLM03
+  target:
+    taxonomy: cwe
+    id: CWE-1357
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
+  _blocked_on: CWE-1357
+
+- source:
+    taxonomy: owasp
+    id: LLM03
+  target:
+    taxonomy: cwe
+    id: CWE-829
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
+  _blocked_on: CWE-829
+
+- source:
+    taxonomy: owasp
+    id: LLM04
+  target:
+    taxonomy: cwe
+    id: CWE-915
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm042025-data-and-model-poisoning/
+  _blocked_on: CWE-915
+
+- source:
+    taxonomy: owasp
+    id: LLM05
+  target:
+    taxonomy: cwe
+    id: CWE-601
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
+  _blocked_on: CWE-601
+
+- source:
+    taxonomy: owasp
+    id: LLM06
+  target:
+    taxonomy: cwe
+    id: CWE-732
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
+  _blocked_on: CWE-732
+
+- source:
+    taxonomy: owasp
+    id: LLM07
+  target:
+    taxonomy: cwe
+    id: CWE-540
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/
+  _blocked_on: CWE-540
+
+- source:
+    taxonomy: owasp
+    id: LLM07
+  target:
+    taxonomy: cwe
+    id: CWE-1426
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/
+  _blocked_on: CWE-1426
+
+- source:
+    taxonomy: owasp
+    id: LLM09
+  target:
+    taxonomy: cwe
+    id: CWE-1426
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm092025-misinformation/
+  _blocked_on: CWE-1426
+
+- source:
+    taxonomy: owasp
+    id: LLM10
+  target:
+    taxonomy: cwe
+    id: CWE-799
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/
+  _blocked_on: CWE-799
+
+- source:
+    taxonomy: owasp
+    id: API2
+  target:
+    taxonomy: cwe
+    id: CWE-307
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa2-broken-authentication/
+  _blocked_on: CWE-307
+
+- source:
+    taxonomy: owasp
+    id: API3
+  target:
+    taxonomy: cwe
+    id: CWE-213
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/
+  _blocked_on: CWE-213
+
+- source:
+    taxonomy: owasp
+    id: API8
+  target:
+    taxonomy: cwe
+    id: CWE-16
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/API-Security/editions/2023/en/0xa8-security-misconfiguration/
+  _blocked_on: CWE-16
+
+- source:
+    taxonomy: mitre-attack
+    id: T1070.006
+  target:
+    taxonomy: cwe
+    id: CWE-1269
+  edge_type: primary
+  confidence: low
+  citation: https://attack.mitre.org/techniques/T1070/006/
+  _blocked_on: CWE-1269
+
+- source:
+    taxonomy: mitre-attack
+    id: T1562
+  target:
+    taxonomy: cwe
+    id: CWE-693
+  edge_type: primary
+  confidence: medium
+  citation: https://attack.mitre.org/techniques/T1562/
+  _blocked_on: CWE-693
+
+- source:
+    taxonomy: owasp
+    id: M1
+  target:
+    taxonomy: cwe
+    id: CWE-798
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m1-improper-credential-usage
+  _blocked_on: CWE-798
+
+- source:
+    taxonomy: owasp
+    id: M2
+  target:
+    taxonomy: cwe
+    id: CWE-1357
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m2-inadequate-supply-chain-security
+  _blocked_on: CWE-1357
+
+- source:
+    taxonomy: owasp
+    id: M2
+  target:
+    taxonomy: cwe
+    id: CWE-1104
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m2-inadequate-supply-chain-security
+  _blocked_on: CWE-1104
+
+- source:
+    taxonomy: owasp
+    id: M5
+  target:
+    taxonomy: cwe
+    id: CWE-319
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m5-insecure-communication
+  _blocked_on: CWE-319
+
+- source:
+    taxonomy: owasp
+    id: M5
+  target:
+    taxonomy: cwe
+    id: CWE-295
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m5-insecure-communication
+  _blocked_on: CWE-295
+
+- source:
+    taxonomy: owasp
+    id: M6
+  target:
+    taxonomy: cwe
+    id: CWE-359
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m6-inadequate-privacy-controls
+  _blocked_on: CWE-359
+
+- source:
+    taxonomy: owasp
+    id: M7
+  target:
+    taxonomy: cwe
+    id: CWE-693
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m7-insufficient-binary-protection
+  _blocked_on: CWE-693
+
+- source:
+    taxonomy: owasp
+    id: M7
+  target:
+    taxonomy: cwe
+    id: CWE-489
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m7-insufficient-binary-protection
+  _blocked_on: CWE-489
+
+- source:
+    taxonomy: owasp
+    id: M8
+  target:
+    taxonomy: cwe
+    id: CWE-16
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m8-security-misconfiguration
+  _blocked_on: CWE-16
+
+- source:
+    taxonomy: owasp
+    id: M8
+  target:
+    taxonomy: cwe
+    id: CWE-732
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m8-security-misconfiguration
+  _blocked_on: CWE-732
+
+- source:
+    taxonomy: owasp
+    id: M9
+  target:
+    taxonomy: cwe
+    id: CWE-312
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m9-insecure-data-storage
+  _blocked_on: CWE-312
+
+- source:
+    taxonomy: owasp
+    id: M9
+  target:
+    taxonomy: cwe
+    id: CWE-311
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m9-insecure-data-storage
+  _blocked_on: CWE-311
+
+- source:
+    taxonomy: owasp
+    id: M10
+  target:
+    taxonomy: cwe
+    id: CWE-327
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m10-insufficient-cryptography
+  _blocked_on: CWE-327
+
+- source:
+    taxonomy: owasp
+    id: M10
+  target:
+    taxonomy: cwe
+    id: CWE-326
+  edge_type: primary
+  confidence: high
+  citation: https://owasp.org/www-project-mobile-top-10/2023-risks/m10-insufficient-cryptography
+  _blocked_on: CWE-326
+
+- source:
+    taxonomy: owasp
+    id: ML01
+  target:
+    taxonomy: cwe
+    id: CWE-1039
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML01_2023-Input_Manipulation_Attack.html
+  _blocked_on: CWE-1039
+
+- source:
+    taxonomy: owasp
+    id: ML02
+  target:
+    taxonomy: cwe
+    id: CWE-1039
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML02_2023-Data_Poisoning_Attack.html
+  _blocked_on: CWE-1039
+
+- source:
+    taxonomy: owasp
+    id: ML03
+  target:
+    taxonomy: cwe
+    id: CWE-201
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML03_2023-Model_Inversion_Attack.html
+  _blocked_on: CWE-201
+
+- source:
+    taxonomy: owasp
+    id: ML04
+  target:
+    taxonomy: cwe
+    id: CWE-359
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML04_2023-Membership_Inference_Attack.html
+  _blocked_on: CWE-359
+
+- source:
+    taxonomy: owasp
+    id: ML05
+  target:
+    taxonomy: cwe
+    id: CWE-312
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML05_2023-Model_Theft.html
+  _blocked_on: CWE-312
+
+- source:
+    taxonomy: owasp
+    id: ML06
+  target:
+    taxonomy: cwe
+    id: CWE-1357
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML06_2023-AI_Supply_Chain_Attacks.html
+  _blocked_on: CWE-1357
+
+- source:
+    taxonomy: owasp
+    id: ML07
+  target:
+    taxonomy: cwe
+    id: CWE-1039
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML07_2023-Transfer_Learning_Attack.html
+  _blocked_on: CWE-1039
+
+- source:
+    taxonomy: owasp
+    id: ML08
+  target:
+    taxonomy: cwe
+    id: CWE-1039
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML08_2023-Model_Skewing.html
+  _blocked_on: CWE-1039
+
+- source:
+    taxonomy: owasp
+    id: ML10
+  target:
+    taxonomy: cwe
+    id: CWE-1039
+  edge_type: primary
+  confidence: medium
+  citation: https://owasp.org/www-project-machine-learning-security-top-10/docs/ML10_2023-Model_Poisoning.html
+  _blocked_on: CWE-1039
+
+- source:
+    taxonomy: owasp
+    id: ASI01
+  target:
+    taxonomy: cwe
+    id: CWE-1427
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  _blocked_on: CWE-1427
+
+- source:
+    taxonomy: owasp
+    id: ASI04
+  target:
+    taxonomy: cwe
+    id: CWE-1357
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  _blocked_on: CWE-1357
+
+- source:
+    taxonomy: owasp
+    id: ASI07
+  target:
+    taxonomy: cwe
+    id: CWE-319
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  _blocked_on: CWE-319
+
+- source:
+    taxonomy: owasp
+    id: ASI09
+  target:
+    taxonomy: cwe
+    id: CWE-1426
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  _blocked_on: CWE-1426
+
+- source:
+    taxonomy: owasp
+    id: ASI10
+  target:
+    taxonomy: cwe
+    id: CWE-1427
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  _blocked_on: CWE-1427

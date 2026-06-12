@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "wave": 1,
+  "timestamp": "2026-06-11T17:25:00-07:00",
+  "test_runner": "/usr/bin/python3 -m pytest tests/ -q --ignore=tests/fixtures",
+  "execution_duration_ms": 743530,
+  "gate_mode": "soft",
+  "gate_decision": "warn",
+  "totals": {
+    "pass": 891,
+    "fail": 27,
+    "skip": 4
+  },
+  "classification": {
+    "regressions": 2,
+    "new_failures": 0,
+    "pre_existing": 25
+  },
+  "regressions": [
+    "tests/scripts/test_coverage_attestation.py::test_coverage_percentage_arithmetic",
+    "tests/scripts/test_attack_chain_extraction.py::TestConditionalGate::test_valid_chains_file_produces_true_flag"
+  ],
+  "new_failures": [],
+  "pre_existing": [],
+  "notes": "2 regressions flagged, both dispositioned: (1) coverage_percentage_arithmetic = stale data-coupled pin (1.89%=1/53 vs honest 1.08%=1/93 post-D3 growth) \u2014 architect ruling APPROVED two-line refresh (.aod/results/185-regression-ruling.md), applied + re-verified green, to be recorded at T018/T019; (2) attack_chain conditional-gate = suite-order flake, passes in isolation AND file context (27 passed), not W1-caused. 25 pre-existing failures unchanged from wave-00 baseline (names in wave-00/results.json). 6 byte-identity failures persist by design until W2 T014/T015 regen."
+}

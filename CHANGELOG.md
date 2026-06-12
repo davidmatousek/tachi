@@ -9,6 +9,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Feature 185 — CWE Catalog Expansion + T029 Drift-Edge Restoration (BLP-05 Wave 2 / F-A1.2, #185) — feat(185)
+
+Closed the last cwe.yaml residual from Feature 180's T029 cleanup: the 40
+architect-dispositioned CWE records join the catalog, all 67 CWE-target-blocked
+crosswalk edges return byte-exact, and the 6 CA-gated PDF baselines regenerate —
+flipping the byte-identity suite red → green.
+
+**Added**
+- 40 CWE records (`schemas/taxonomy/cwe.yaml` 53 → 93; corpus pin CWE v4.20): 35
+  Weakness + 4 Category (CWE-16/255/937/1035) + 1 Pillar (CWE-693) per the 40/40
+  **add** disposition on Issue #185; Obsolete status (CWE-16, CWE-937) annotated in
+  the header provenance block — FR-001's Deprecated-never-add rule held with zero
+  exclusions.
+- 67 crosswalk edges restored byte-exact from pre-removal blob `e58f247`
+  (`crosswalk.yaml` 578 → 645 = 608 `primary` / 37 `related` / 0 `superseded`): the
+  65 owasp-sourced + 2 mitre-attack-sourced CWE-blocked edges T029 removed — closing
+  the 2-edge deferral #186 explicitly left out of scope (`T1070.006 → CWE-1269`,
+  `T1562 → CWE-693`).
+
+**Changed**
+- The 6 byte-identity-gated security-report baselines regenerated under
+  `SOURCE_DATE_EPOCH=1700000000` — **dual-attributed**: F-185 CWE growth (CA
+  denominator 53 → 93, +40 Gap badges) **plus** the absorbed inherited #186 ATLAS
+  delta (30 → 36, +6 Gap badges) that had left the suite red on main since the
+  ATLAS catalog grew without baseline regen. Per-page diffs confirm deltas confined
+  to the two Coverage Attestation matrix pages on all 6 examples
+  (`specs/185-cwe-catalog-expansion/test-results/baseline-diff.md`);
+  `tests/scripts/test_backward_compatibility.py` flips red → green
+  (`6 failed, 7 passed, 1 skipped` → `13 passed, 1 skipped`).
+- Data-coupled test-pin refresh (architect-approved consequence-scope sibling of
+  the FR-006 regen lane): `test_coverage_percentage_arithmetic`'s cwe
+  coverage-percentage pin moves 1.89% → 1.08% (1 covered / 53 → 93 in-scope, covered
+  set unchanged) — ruling at `.aod/results/185-regression-ruling.md`.
+
+**Notes**
+- The 2 F-241 sample-report baselines
+  (`examples/{predictive-ml-app,mobile-banking-app}/sample-report/security-report.pdf.baseline`)
+  remain **stale-by-design** for CA counts (still rendering 53-CWE / 30-ATLAS
+  tables): they are excluded from byte-identity gating as regeneration mutation
+  targets per the test-docstring F-6/F-7 exclusions — no test compares their bytes;
+  documented status, not an oversight.
+- ADR-037 D-7 annotated (prospective-only): 5 of the 8 substitution CWEs
+  (CWE-307/311/319/326/732) are now catalog-resolvable; the 12 historical Section 9
+  substitutions in committed baselines are NOT retro-rewritten; F-185 records a
+  third catalog-growth trigger (crosswalk-restoration evidence) extending — not
+  contradicting — D-7's trigger dichotomy.
+- Taxonomy integrity suite (5 functions) green at every commit boundary; the ≥500
+  primary-edge floor holds (headroom now 108).
+
 ### Feature 184 — NIST AI 600-1 Surface C Transcription (BLP-05 Wave 2 / F-A1.1, #184) — feat(184)
 
 Completed the Surface C follow-on that Feature 180's T027 decision deferred: the NIST
