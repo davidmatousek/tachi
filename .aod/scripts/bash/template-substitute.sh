@@ -21,6 +21,9 @@
 #                                              literal replace. NOT sed.
 #                                              Preserves file mode.
 #   - aod_template_assert_no_residual          Grep for {{[A-Z_]+}}; exit 8 on match.
+#   - aod_template_manifest_personalized_paths Emit the manifest-backed
+#                                              personalized file list, one
+#                                              path per line.
 #   - aod_template_init_personalization        Prompt adopter for values during
 #                                              init.sh; write personalization.env.
 #
@@ -199,6 +202,34 @@ aod_template_load_personalization_env() {
         return 1
     fi
     aod_template_load_kv_file "$path" "AOD_PERSONALIZATION_" AOD_CANONICAL_PLACEHOLDERS
+}
+
+# -----------------------------------------------------------------------------
+# aod_template_manifest_personalized_paths <manifest_path>
+# -----------------------------------------------------------------------------
+# Emit the manifest-backed personalized file list, one normalized relative path
+# per line, so init/update can reuse a cached list instead of re-parsing the
+# manifest multiple times.
+#
+# Arguments:
+#   $1 — path to .aod/template-manifest.txt
+# Return:
+#   0 — success
+#   1 — argument error or missing manifest
+# -----------------------------------------------------------------------------
+aod_template_manifest_personalized_paths() {
+    local manifest_path="${1:-}"
+
+    if [ -z "$manifest_path" ]; then
+        echo "[aod] ERROR: aod_template_manifest_personalized_paths requires <manifest_path>" >&2
+        return 1
+    fi
+    if [ ! -f "$manifest_path" ]; then
+        echo "[aod] ERROR: aod_template_manifest_personalized_paths: manifest missing: $manifest_path" >&2
+        return 1
+    fi
+
+    sed -n 's/^personalized|//p' "$manifest_path" | tr -d '\r'
 }
 
 # -----------------------------------------------------------------------------

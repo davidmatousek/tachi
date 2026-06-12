@@ -272,6 +272,7 @@ fi
 
 echo -e "${YELLOW}🔄 Replacing template variables...${NC}"
 aod_trace_init_phase "substitution"
+PERSONALIZED_PATHS="$(aod_template_manifest_personalized_paths ".aod/template-manifest.txt")"
 
 # F-248 T019 (FR-001): replace the previous sed-based replace_in_files()
 # function with bash parameter expansion via aod_template_substitute_placeholders.
@@ -288,7 +289,9 @@ while IFS= read -r path; do
   if ! aod_template_substitute_placeholders "$path" "$path"; then
     FAILED_FILES="$FAILED_FILES $path"
   fi
-done < <(sed -n 's/^personalized|//p' .aod/template-manifest.txt | tr -d '\r')
+done <<EOF
+$PERSONALIZED_PATHS
+EOF
 if [ -f ".aod/templates/constitution-clean.md" ]; then
   if ! aod_template_substitute_placeholders ".aod/templates/constitution-clean.md" ".aod/templates/constitution-clean.md"; then
     FAILED_FILES="$FAILED_FILES .aod/templates/constitution-clean.md"
@@ -331,7 +334,9 @@ if [ -f ".aod/template-manifest.txt" ]; then
         fi
         ;;
     esac
-  done < .aod/template-manifest.txt
+  done <<EOF
+$PERSONALIZED_PATHS
+EOF
 fi
 
 # Write AOD_REPO to .env for explicit GitHub repo targeting
