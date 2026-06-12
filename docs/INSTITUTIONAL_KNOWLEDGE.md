@@ -564,6 +564,22 @@ F-292 reused F-260's community-merge precedent (4 mechanical artifacts: CHANGELO
 
 ---
 
+### Entry 16: F-A1.2 CWE Catalog Expansion — Delivery Retrospective
+
+**Date**: 2026-06-12 | **Category**: Process | **Feature**: F-185 | **Issues**: #185 (`follow-on-180`), #329 (retro follow-up)
+
+**Context**: Delivery-stage close-out of BLP-05 Wave 2's final record-expansion item (the #184/#185/#186 split-valve trio). Estimated O/R/P 0.75/1.0/1.5d (realistic 1d — revised up from 0.5/0.75/1.0 at tasks stage once consequence-scope was understood, see Entry 15); actual ~1 day (branch 2026-06-11 → delivered 2026-06-12) — on-target. Shipped: `cwe.yaml` 53 → 93 (40/40 **add**), `crosswalk.yaml` 578 → 645 (67 CWE-blocked edges byte-restored from `e58f247`; closes #186's 2-edge deferral); 6 CA-page PDF baselines regenerated red→green (ADR-037 D-9 lane); 20/20 tasks; build gate PASS (3 waves, 19 documented pre-existing failures, 0 in-scope, 0 regressions). PR #328 squash-merged `2aa1bf5`; ships in release-please PR #326 → v4.43.0 (batched with F-184). Issue #185 closed `stage:done`.
+
+**Lesson — A consequence-coupled data feature delivers clean only when the couplings are surfaced as first-class scope and the pre-state is recorded; the catalog edit itself is the easy part.** (Deep build-stage mechanics: see Entry 15.)
+
+- **Problem (delivery view)**: The headline deliverable read as pure data (records + edges), but the real delivery risk lived in two render/test couplings discovered late (CA-page baseline regen + a coverage-percentage test pin) plus an inherited red-main left by sibling F-186. A naive close would have either shipped red (byte-identity suite) or mis-attributed the red→green flip.
+- **What we learned**: Recording the LITERAL pre-state pytest totals at T001 is what made the red→green flip attributable and the dual-attribution (inherited #186 ATLAS drift vs. F-185's own cwe growth) honest at delivery. The delivery itself was uneventful precisely because the consequence-scope was made explicit (spec FR-006, PRD v1.2 errata) rather than absorbed silently. Estimate accuracy held (actual ~1d ≈ realistic 1d) once the tasks-stage revision folded the lane in.
+- **How to apply**: For consequence-coupled features, treat "delivery clean" as a function of how early the couplings were named — the cost is paid at define/plan, not deliver. Carry an explicit pre-state artifact (`test-results/pre-state.md`) into the delivery doc so the audit trail proves what changed and why. The local-only byte-identity suite gap that enabled the inherited red is now tracked as a backlog item (#329 — evaluate CI wiring / catalog-count drift guard).
+
+**Evidence**: `specs/185-cwe-catalog-expansion/{spec.md, plan.md, tasks.md, delivery.md, test-results/{summary.json, pre-state.md, final-gate.md}}`; squash-merge `2aa1bf5` (PR #328); build-wave gate 3 waves / final 19 pre-existing, 0 in-scope, 0 regressions; release-please PR #326 (`chore(main): release 4.43.0`). Related: Entry 15 (F-185 build-stage consequence-scope lesson — the substantive companion to this delivery entry), Entry 13 (F-186, BLP-05 Wave 2 sibling), Entry 14 (F-182, BLP-05 Wave 3).
+
+---
+
 ## Bug Fixes
 
 *No entries yet. Use `/kb-create` to add the first bug fix.*
