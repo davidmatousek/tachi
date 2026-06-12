@@ -1,4 +1,6 @@
-# Conventions — Python FastAPI + React (Local / SQLite)
+# Archived Conventions — Python FastAPI + React (Local / SQLite)
+
+This pack is an archived legacy pack; retained for historical reference only. Do not use it for new work.
 
 ## Backend (Python)
 

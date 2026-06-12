@@ -1,4 +1,6 @@
-# Python FastAPI + React Stack
+# Archived Python FastAPI + React Stack
+
+**Status**: Archived legacy pack; retained for historical reference only.
 
 **Target**: Developers building async Python APIs with modern React frontends
 **Stack**: FastAPI 0.115+ · SQLAlchemy 2.0+ · asyncpg · Pydantic v2 · React 19 · Vite 6 · TanStack Query 5 · Tailwind CSS 4 · TypeScript 5.5+

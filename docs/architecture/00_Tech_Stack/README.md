@@ -378,14 +378,18 @@ When adding a new user-facing template file to the kit, use `tachi` wherever the
 - Runtime rules surface: `.claude/rules/stack/` (copied on activation, cleaned on removal)
 - See ADR-007 for the design decision behind dual-surface injection
 
-**Shipped packs**:
+**Active packs**:
 | Pack | Status | Purpose |
 |------|--------|---------|
 | `stacks/nextjs-supabase/` | Full | Next.js + TypeScript + Supabase + Prisma + Vercel conventions |
-| `stacks/fastapi-react/` | Full | Python FastAPI + SQLAlchemy 2.0 async + React 19 + TypeScript + Vite + Docker Compose (Feature 078) |
-| `stacks/fastapi-react-local/` | Full | Python FastAPI + SQLAlchemy 2.0 async + aiosqlite + React 19 + Vite + Tailwind CSS 4 — zero external dependencies, local-first variant (Feature 085) |
 | `stacks/swiftui-cloudkit/` | Skeleton | SwiftUI + CloudKit native iOS conventions |
 | `stacks/knowledge-system/` | Full | Markdown + YAML + Claude Code for knowledge-intensive content systems (Feature 064) |
+
+**Archived legacy packs**:
+| Pack | Status | Purpose |
+|------|--------|---------|
+| `stacks/fastapi-react/` | Archived | Python FastAPI + SQLAlchemy 2.0 async + React 19 + TypeScript + Vite + Docker Compose (Feature 078) |
+| `stacks/fastapi-react-local/` | Archived | Python FastAPI + SQLAlchemy 2.0 async + aiosqlite + React 19 + Vite + Tailwind CSS 4 — zero external dependencies, local-first variant (Feature 085) |
 
 **Pack anatomy** (each pack directory):
 | Path | Purpose |

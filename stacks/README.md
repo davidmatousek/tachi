@@ -187,6 +187,23 @@ When `/aod.stack use {pack}` runs:
 
 Core agent files in `.claude/agents/` are **never modified** by activation. Governance behavior is **identical** with or without an active pack.
 
+## Pack Status
+
+### Active Packs
+
+| Pack | Status | Purpose |
+|------|--------|---------|
+| `stacks/nextjs-supabase/` | Active | Next.js + TypeScript + Supabase + Prisma + Vercel conventions |
+| `stacks/swiftui-cloudkit/` | Active | SwiftUI + CloudKit native iOS conventions |
+| `stacks/knowledge-system/` | Active | Markdown + YAML + Claude Code for knowledge-intensive content systems (Feature 064) |
+
+### Archived Legacy Packs
+
+| Pack | Status | Purpose |
+|------|--------|---------|
+| `stacks/fastapi-react/` | Archived | Python FastAPI + SQLAlchemy 2.0 async + React 19 + TypeScript + Vite + Docker Compose (Feature 078) |
+| `stacks/fastapi-react-local/` | Archived | Python FastAPI + SQLAlchemy 2.0 async + aiosqlite + React 19 + Vite + Tailwind CSS 4 - zero external dependencies, local-first variant (Feature 085) |
+
 ## Core-Agent Supplement Pattern
 
 Some domain-specific packs (e.g., `knowledge-system`) provide **informational supplements** for Core-tier agents (product-manager, architect, team-lead). These supplements add domain awareness context that Core agents can reference during reviews — they do NOT modify governance methodology, decision-making authority, or sign-off criteria.

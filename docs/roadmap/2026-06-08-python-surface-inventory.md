@@ -51,7 +51,7 @@ This inventory freezes the current Python surface so the migration can remove it
 - Risk-score SARIF generation has moved from `scripts/generate-risk-scores-sarif.py` to `crates/tachi-cli/src/bin/risk-scores-sarif.rs`
 - Shared SARIF helpers have moved from `scripts/sarif_common.py` to `crates/tachi-core/src/sarif_common.rs`
 - `pyproject.toml` and `requirements-dev.txt` have been retired; Rust-native tooling now owns the canonical build and test path
-- `stacks/fastapi-react*` scaffolds map to archive/retirement once Rust/Tauri-only stack guidance is stable
+- `stacks/fastapi-react*` scaffolds are archived legacy references now that Rust/Tauri-only stack guidance is stable
 
 ## Active Python Files
 
@@ -102,4 +102,4 @@ This inventory freezes the current Python surface so the migration can remove it
 
 - The inventory intentionally excludes fixture copies under `tests/fixtures/` and spec artifacts under `specs/`.
 - RT-011 has started retiring pytest-centric coverage by moving the RT-009 documentation contract, taxonomy integrity checks, project-name parser contract, YAML import invariant, infographic command-dispatch contract, executive-architecture infographic payload contract, source-attribution parser contract, template substitute shim canary, template substitute no-`eval` lint, template substitute literal substitution contract, finding-pattern parser contract, misinformation schema contract, output-integrity schema contract, init self-delete contract, F-A3 populator wiring contract, report-data image binding contract, asset-sensitivity tag contract, adversarial init contract, template git clone timeout contract, MAESTRO pattern-classification rules contract, ML Top 10 coverage bundle enrichment contract, LLM10 unbounded consumption contract, and report-data runtime entrypoint contract to Rust-native tests.
-- RT-014 will remove the packaging and scaffold surfaces once parity is stable.
+- RT-014 will finish the remaining packaging and scaffold archival cleanup once parity is stable.
