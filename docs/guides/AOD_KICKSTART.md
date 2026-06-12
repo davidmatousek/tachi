@@ -78,7 +78,7 @@ The skill checks for an active stack pack. Three paths:
 | Packs available | Shows a list -- pick one or say "Custom stack" |
 | No packs | Asks you to describe your stack |
 
-For a content site, you might select `fastapi-react-local` for a dynamic site, or describe a custom stack like "Next.js 14 with MDX content, Tailwind CSS, and Vercel deployment."
+Archived legacy guidance for the old FastAPI Local pack lives in `docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md`. For a content site, describe the current Rust/Tauri stack you want instead of selecting `fastapi-react-local`.
 
 ### Stage 3: Guide Generation
 

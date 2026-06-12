@@ -23,10 +23,10 @@ fn coverage_audit_binary_reports_current_suite_classification() {
     );
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Active test modules: 68"));
+    assert!(stdout.contains("Active test modules: 69"));
     assert!(stdout.contains("Fixture-copy modules (excluded from active suite): 0"));
     assert!(stdout.contains("Unit: 0"));
-    assert!(stdout.contains("Integration: 67"));
+    assert!(stdout.contains("Integration: 68"));
     assert!(stdout.contains("Smoke: 0"));
     assert!(stdout.contains("True end-to-end: 1"));
     assert!(stdout.contains("Support / regression: 0"));
