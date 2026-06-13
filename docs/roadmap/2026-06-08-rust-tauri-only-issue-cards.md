@@ -1,6 +1,6 @@
 # Rust/Tauri-Only Migration Issue Cards
 
-**Last Updated**: 2026-06-12
+**Last Updated**: 2026-06-13
 **Status**: Planning backlog derived from the Rust/Tauri-only roadmap
 
 These cards are the execution-level backlog for the migration roadmap in
@@ -20,7 +20,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 | RT-012 | In progress | Continue parser/report-data parity after Rust asset tag parsing, report-data image binding emission, infographic output-file handling, coverage-attestation in-scope filtering, coverage-attestation report-data guard, coverage-attestation pagination smoke, coverage-percentage computation, attack-chain extraction, and SARIF runtime retirement; the report-data typst guard now uses a copied template tree instead of mutating the repo template tree, and `scripts/extract-report-data.py`, the dead `tests/scripts` helper package, the dead root pytest support package, the FastAPI backend app runtime trees, the FastAPI backend scaffold packaging manifests, the FastAPI backend Alembic scaffold packaging manifests, `pyproject.toml`, and `requirements-dev.txt` are now retired, and the active Python inventory is empty. Archived FastAPI docs guidance is now tracked as a follow-on cleanup note. |
 | RT-013 | In progress | Continue routing desktop behavior through the shared Rust command layer; the `infographic-data` bridge now returns the Rust-built payload directly. |
 | RT-014 | Pending | Start after RT-012 and RT-013 prove the Python packaging and scaffold surfaces can be archived as legacy references; the smoke guide, active architecture and devops README/CI/env-var summaries, root README legacy `make test` compatibility note, Rust init matrix workflow, orchestration skill JSON examples, live doc JSON examples, pre-commit install guidance, devops local pre-commit package-manager path, CLAUDE organization/testing examples, permissions doc pip-install rule, and CLAUDE org environment-quirks example now point at Rust/Tauri or shell tooling, and the security-review FastAPI scaffold note is archived guidance only. |
-| RT-015 | In progress | Start after the Rust-only path is stable enough for benchmark-driven hardening. |
+| RT-015 | In progress | Start after the Rust-only path is stable enough for benchmark-driven hardening; the current work includes cleanup-phase tracing, millisecond trace summaries, same-clone cold/warm precommit benchmarking, and single-read report-data assembly. |
 
 ## Card Set
 
@@ -89,13 +89,13 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 - **Summary**: Reduce startup cost, eliminate avoidable shell-outs, and tighten error handling after the Rust path is in place.
 - **Refinement**: analyze and optimize the slow init workflow by measuring each init phase, comparing cold and warm startup, and using the benchmark results to remove the slowest shell-outs and repeated scans.
 - **Refinement**: scope placeholder substitution to manifest-backed personalized files plus the constitution clean template so unmanifested files are no longer rewritten during init.
-- **Refinement**: analyze and optimize the slow init workflow by measuring each init phase with `AOD_INIT_TRACE=1` (including stack discovery and precommit), surfacing the slowest phase plus millisecond timing fields in the final trace summary, comparing cold and warm startup, benchmarking both precommit modes from the same clone, and using the benchmark results to remove the slowest shell-outs and repeated scans.
+- **Refinement**: analyze and optimize the slow init workflow by measuring each init phase with `AOD_INIT_TRACE=1` (including stack discovery, precommit, and the final cleanup step), surfacing the slowest phase plus millisecond timing fields in the final trace summary, comparing cold and warm startup, benchmarking both precommit modes from the same clone, and using the benchmark results to remove the slowest shell-outs and repeated scans.
 - **Refinement**: reuse already-read `threats.md` content when deriving report project metadata so Typst assembly avoids a duplicate filesystem read on the hot path.
 - **Acceptance**:
   - Hot-path shell-outs are removed or minimized.
   - Startup and command latency have explicit benchmarks.
   - Error handling is deterministic and actionable across CLI and Tauri paths.
-- **Story validation focus**: `init` timing traces, cold-start baseline, warm-start baseline, repeatable same-clone cold/warm benchmark sampling, and a regression benchmark that prevents the slow path from returning.
+- **Story validation focus**: `init` timing traces, cold-start baseline, warm-start baseline, repeatable same-clone cold/warm benchmark sampling, cleanup-phase timing visibility, and a regression benchmark that prevents the slow path from returning.
 - **Depends on**: RT-012, RT-013, RT-014
 
 ## Execution Order

@@ -1,6 +1,6 @@
 # Rust/Tauri-Only Migration Roadmap
 
-**Last Updated**: 2026-06-12
+**Last Updated**: 2026-06-13
 **Status**: Active migration roadmap
 **Objective**: make `tachi-rust` a Rust + Tauri only repository
 
@@ -30,7 +30,7 @@ This status uses card closure rather than subjective partial estimates. In-progr
 | RT-012 | In progress | Rust-native report-data output handling, infographic output-file handling, report project metadata emission, report-data image binding and byte-probe parity, coverage-attestation payload emission, coverage-attestation in-scope filtering, coverage-attestation report-data guard coverage, coverage-attestation pagination smoke coverage, asset-sensitivity tag parsing, executive-architecture infographic payload parity, and SARIF CLI slices now cover the threat/risk SARIF runtime paths; the report-data typst guard now runs against a copied template tree instead of mutating the repo template tree, and `scripts/extract-report-data.py`, `scripts/tachi_parsers.py`, the FastAPI Alembic `env.py` scaffolds, the FastAPI backend test-package scaffolding, the FastAPI backend app runtime trees, the FastAPI backend scaffold packaging manifests, the FastAPI backend Alembic scaffold packaging manifests, the dead `tests/scripts` helper package, the dead root pytest support package, `pyproject.toml`, and `requirements-dev.txt` are retired and the active Python inventory is empty. |
 | RT-013 | In progress | Tauri shell parity work now routes `infographic-data` through the shared Rust payload builder while the remaining desktop paths stay thin and command-driven. |
 | RT-014 | Pending | Python packaging and FastAPI scaffold archival depends on RT-012 and RT-013; backend scaffold packaging manifests, backend Alembic scaffold packaging manifests, the FastAPI stack packs, the smoke guide deliverable check, the root README legacy `make test` compatibility note, the Rust init matrix workflow, the active architecture and devops README/CI/env-var summaries, the live doc JSON formatting examples, the orchestration skill JSON parsing examples, the security-review FastAPI scaffold note, the pre-commit install guidance, the devops local pre-commit package-manager path, the CLAUDE organization/testing examples, the permissions doc pip-install rule, and the CLAUDE org environment-quirks example are archived legacy references. |
-| RT-015 | In progress | Speed and reliability hardening depends on the Rust-only runtime path being stable; `scripts/init.sh` now carries `AOD_INIT_TRACE=1` timing markers with millisecond trace summaries, same-clone cold/warm precommit benchmarking, and `report_data.rs` reuses the already-read threats content on the hot path. |
+| RT-015 | In progress | Speed and reliability hardening depends on the Rust-only runtime path being stable; `scripts/init.sh` now carries `AOD_INIT_TRACE=1` timing markers with a cleanup phase, millisecond trace summaries, same-clone cold/warm precommit benchmarking, and `report_data.rs` reuses the already-read threats content on the hot path. |
 
 The prior broad migration snapshot remains useful for orientation: Rust core parity is the strongest track, Rust-native test migration and runtime-script retirement are active, and Tauri shell hardening plus packaging/scaffold retirement remain downstream.
 
@@ -235,8 +235,8 @@ This roadmap uses a BEADS-style hierarchy:
   - cold-start and warm-start regression comparison
   - fewer redundant shell-outs and filesystem scans during init
 - **Tasks**
-  - instrument the init path so each startup phase reports timing via `AOD_INIT_TRACE=1`
-  - include millisecond timing fields and the slowest init phase in the trace summary so benchmark runs can isolate the bottleneck
+  - instrument the init path so each startup phase reports timing via `AOD_INIT_TRACE=1`, including the final cleanup step before self-delete
+  - include millisecond timing fields, the slowest init phase, and the total cleanup-inclusive duration in the trace summary so benchmark runs can isolate the bottleneck
   - scope placeholder substitution to manifest-backed personalized files and the constitution clean template instead of walking the whole tree
   - factor manifest-backed personalized path extraction into a reusable helper and reuse the cached list across substitution and residual scanning
   - reuse the already-read `threats.md` content when deriving report project metadata so report-data assembly avoids a duplicate filesystem read
