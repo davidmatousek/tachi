@@ -223,15 +223,15 @@ uv run uvicorn app.main:app --port 8001 &
 sleep 2
 
 # Health check
-curl -s http://localhost:8001/health | python3 -m json.tool
+curl -s http://localhost:8001/health
 
 # Create a greeting
 curl -s -X POST http://localhost:8001/api/v1/greet \
   -H "Content-Type: application/json" \
-  -d '{"name": "Smoke Test"}' | python3 -m json.tool
+  -d '{"name": "Smoke Test"}'
 
 # List greetings
-curl -s http://localhost:8001/api/v1/greetings | python3 -m json.tool
+curl -s http://localhost:8001/api/v1/greetings
 
 # Cleanup
 kill %1

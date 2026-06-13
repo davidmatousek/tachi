@@ -368,7 +368,7 @@ Eval suites are executed using Anthropic's skill-creator eval pipeline, which or
 Confirm the eval suite file exists and is valid JSON:
 
 ```bash
-cat .claude/skills/{skill-name}/evals/evals.json | python3 -m json.tool
+jq . .claude/skills/{skill-name}/evals/evals.json
 ```
 
 If this produces a parse error, fix the JSON syntax before proceeding.
@@ -714,7 +714,7 @@ Replace all `REPLACE:` placeholders with content specific to your skill.
 ### Step 4: Validate the JSON (1 minute)
 
 ```bash
-cat .claude/skills/{your-skill}/evals/evals.json | python3 -m json.tool
+jq . .claude/skills/{your-skill}/evals/evals.json
 ```
 
 If the command outputs formatted JSON without errors, the file is syntactically valid.

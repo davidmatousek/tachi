@@ -20,6 +20,7 @@ fn active_devops_docs_treat_fastapi_pack_guidance_as_archived_reference_only() {
         "docs/devops/01_Local/README.md",
         "docs/devops/CI_CD_GUIDE.md",
         "docs/devops/environment-variables.md",
+        "docs/guides/SMOKE_TEST.md",
     ];
 
     for doc in docs {
@@ -41,6 +42,12 @@ fn active_devops_docs_treat_fastapi_pack_guidance_as_archived_reference_only() {
             assert!(
                 !content.contains("retained only while compatibility tests are being retired"),
                 "root README should not describe retired Python packaging as still retained"
+            );
+        }
+        if doc == "docs/guides/SMOKE_TEST.md" {
+            assert!(
+                !content.contains("python3 -m json.tool"),
+                "smoke guide should not use Python for JSON pretty-printing"
             );
         }
     }

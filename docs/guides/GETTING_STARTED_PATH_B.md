@@ -15,7 +15,7 @@ make quickstart
 Wait for it to finish. Verify:
 
 ```bash
-curl -s http://localhost:8000/health | python3 -m json.tool
+curl -s http://localhost:8000/health | jq .
 # Should show: "status": "healthy"
 ```
 
@@ -274,7 +274,7 @@ Check [github.com/davidmatousek?tab=projects](https://github.com/davidmatousek?t
 
 ```bash
 # Check if the project was registered
-curl -s http://localhost:8000/api/v1/projects | python3 -m json.tool
+curl -s http://localhost:8000/api/v1/projects | jq .
 ```
 
 If `hello-world-aod` appears, note its `id` (e.g., `2`) and delete it via the API:
@@ -284,7 +284,7 @@ If `hello-world-aod` appears, note its `id` (e.g., `2`) and delete it via the AP
 curl -X DELETE http://localhost:8000/api/v1/projects/<id>
 
 # Verify it's gone
-curl -s http://localhost:8000/api/v1/projects | python3 -m json.tool
+curl -s http://localhost:8000/api/v1/projects | jq .
 ```
 
 ### 6. Start over
