@@ -1,63 +1,39 @@
 # =============================================================================
-# tachi pytest matrix — init.sh substitution + source-pattern hardening suite
+# tachi init matrix — Rust shell hardening + active-doc guard
 # =============================================================================
 #
-# Purpose: Run the F-248 substitution-surface suite AND the F-256 source-
-# pattern-hardening suite (`tests/scripts/test_init_sh_*.py` +
-# `tests/scripts/test_template_*.py`) on a 2-runner cross-platform matrix to
-# catch bash-version regressions:
+# Purpose: Run the Rust-native successors for the init.sh hardening surface on
+# a 2-runner cross-platform matrix so we still catch bash-version regressions:
 #
-#   - macos-latest ships bash 3.2.57 (Apple's bundled /bin/bash). This is
-#     the OLDEST supported runtime and the strictest gate for compatibility
+#   - macos-latest ships bash 3.2.57 (Apple's bundled /bin/bash). This is the
+#     OLDEST supported runtime and the strictest gate for compatibility
 #     constraints in `.aod/scripts/bash/template-substitute.sh`,
 #     `.aod/scripts/bash/init-input.sh`, `.aod/scripts/bash/template-git.sh`,
-#     and `.aod/scripts/bash/template-config-load.sh` (NFR-001: bash 3.2.57+;
-#     no `mapfile`, no associative arrays, no `${var,,}`).
+#     and `.aod/scripts/bash/template-config-load.sh`.
 #
-#   - ubuntu-latest ships bash 5.x. This is the modern reference shell;
-#     a green ubuntu run on top of a green macOS run proves the test
-#     suite is portable, not bash-3.2-quirk-locked.
+#   - ubuntu-latest ships bash 5.x. This is the modern reference shell; a
+#     green ubuntu run on top of a green macOS run proves the suite is portable,
+#     not bash-3.2-quirk-locked.
 #
 # The workflow:
 #   1. Checks out the repo at the PR head SHA
-#   2. Sets up Python 3.11 (matches `tachi-mmdc-preflight.yml` baseline;
-#      pytest is installed via `python -m pip install pytest pytest-timeout`)
+#   2. Sets up the stable Rust toolchain
 #   3. Asserts `bash --version` to make the matrix gate visible in logs
-#   4. Runs the F-248 init.sh suite + the F-256 template-* suite with
-#      `--timeout=1080` (per F-250 outer cap rationale; see header comment
-#      on the pytest step below)
+#   4. Runs the Rust init + doc guard suites that replaced the retired pytest
+#      matrix
 #   5. Both matrix legs MUST pass green
 #
-# Path filter (NFR-005 alignment + scope discipline): the workflow ONLY
-# fires when files in the remaining F-248 + F-256 hardening surfaces change. Pure
-# docs edits, ADR text, or unrelated agent-tier changes do NOT trigger
-# this job. This mirrors the narrow-scope pattern of `tachi-mmdc-preflight.yml`
-# and avoids burning CI minutes on edits that cannot affect substitution or
-# config-loading behavior.
-#
-# Path-filter completeness pattern (F-250 lesson, reinforced by F-256):
-# the `paths:` filter and the `pytest` invocation MUST be kept in lock-step.
-# When adding a new test file or refactoring a new bash library file,
-# update BOTH the `paths:` trigger list AND the `python -m pytest ...`
-# command in the same commit. F-256 added 5 new test modules and a new
-# canonical helper (`template-config-load.sh`); all are now wired through
-# both paths and invocation below.
+# Path filter (scope discipline): the workflow ONLY fires when files in the
+# remaining init hardening surface change. Pure docs edits, ADR text, or
+# unrelated agent-tier changes do NOT trigger this job.
 #
 # References:
-#   - specs/248-substitution-surface-hardening/spec.md (FR-001..FR-011, NFR-001)
-#   - specs/248-substitution-surface-hardening/tasks.md (T039, T040)
-#   - specs/250-adversarial-unit-extraction-hotfix/spec.md (timeout philosophy
-#     + session-scoped fixture rationale)
-#   - specs/256-source-pattern-hardening/spec.md (FR-1..FR-9, NFR-1..NFR-6,
-#     SC-1..SC-15) — adds Sites A-D + Stream 4 watchdog + canonical KV-load
-#     primitive `aod_template_load_kv_file`
 #   - docs/architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md
-#     §Test Coverage (F-248)
 #   - docs/architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md
-#     §Test Coverage (F-256)
+#   - docs/standards/PUBLISHING_SECURITY.md
 # =============================================================================
 
-name: tachi pytest
+name: tachi init matrix
 
 on:
   pull_request:
@@ -67,96 +43,60 @@ on:
       - .aod/scripts/bash/template-substitute.sh
       - .aod/scripts/bash/template-validate.sh
       - .aod/scripts/bash/template-git.sh
-      - .aod/scripts/bash/template-config-load.sh   # F-256
+      - .aod/scripts/bash/template-config-load.sh
       - .aod/templates/constitution-clean.md
       - .aod/templates/constitution-instructional.md
       - .aod/template-manifest.txt
-      - stacks/*/defaults.env                       # F-256 — Site A whitelist surface
-      - tests/scripts/test_init_sh_substitution.py
-      - tests/scripts/test_init_sh_constitution.py
-      - tests/scripts/test_init_precommit_matrix.py            # F-5 (282)
-      - tests/scripts/init_sh_helpers.py
-      - tests/scripts/conftest.py
-      - tests/fixtures/init-baseline-tree/**
-      - tests/fixtures/regenerate-baseline.sh
-      - tests/fixtures/regenerate-config-load-baseline.sh     # F-256
-      - tests/fixtures/config-load/**                         # F-256
+      - stacks/*/defaults.env
+      - crates/tachi-shell/tests/init_substitution.rs
+      - crates/tachi-shell/tests/init_constitution.rs
+      - crates/tachi-shell/tests/init_defaults_env.rs
+      - crates/tachi-shell/tests/init_precommit_matrix.rs
+      - crates/tachi-shell/tests/init_timing_trace.rs
+      - crates/tachi-shell/tests/init_trace_summary.rs
+      - crates/tachi-core/tests/active_docs_runtime_guidance.rs
+      - docs/architecture/00_Tech_Stack/README.md
+      - README.md
+      - docs/standards/CLAUDE_MD_ORGANIZATION.md
+      - docs/standards/CLAUDE_PERMISSIONS.md
+      - docs/standards/PRECOMMIT_HOOKS.md
+      - docs/standards/EVAL_CONVENTIONS.md
+      - docs/guides/SMOKE_TEST.md
       - .github/workflows/tachi-pytest.yml
 
 permissions:
   contents: read
 
 jobs:
-  init-sh-suite:
-    name: pytest init.sh suite — ${{ matrix.os }}
+  init-suite:
+    name: Rust init suite — ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [macos-latest, ubuntu-latest]
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_TARGET_DIR: ${{ runner.temp }}/tachi-target
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install pytest + pytest-timeout + pyyaml
-        # Required by the suite + tests/scripts/conftest.py:
-        # - pytest: runner
-        # - pytest-timeout: per-test wall-clock cap (--timeout=300)
-        # - pyyaml: conftest.py imports `yaml` at module scope (cross-suite
-        #   shared with BLP-01 + F-241 detection-agent attestation tests
-        #   which load schemas/finding.yaml + .claude/agents/tachi/*.yml)
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
-
-      - name: Diagnostic — bash version (NFR-001 compatibility gate)
-        # Make the matrix runner's bash version visible in CI logs. macOS
-        # ships /bin/bash 3.2.57 (the strict gate); ubuntu ships /bin/bash
-        # 5.x (the modern reference). Both must pass the suite.
+      - name: Diagnostic — bash version (compatibility gate)
         run: |
           echo "uname: $(uname -a)"
           echo "/bin/bash --version: $(/bin/bash --version | head -1)"
           echo "default bash --version: $(bash --version | head -1)"
 
-      - name: Run F-248 + F-256 hardening pytest suite
-        # Direct invocation: `pytest` resolves to the venv-installed binary.
-        # `--timeout=1080` is the OUTER pytest per-test cap; the helper's
-        # subprocess `run_init_in_clone(timeout_sec=900)` is the INNER cap on
-        # a single init.sh invocation. macos-latest GitHub Actions runners
-        # are notoriously ~3-4× slower than dev machines for arm64 bash work
-        # (~140-175s on dev → ~560-700s cold-cache on macos-latest at the
-        # 4× worst-case multiplier). F-250 promoted `init_run` to a session-
-        # scoped fixture in conftest.py so the macos cold-cache cost is paid
-        # ONCE per session instead of once per module — the outer/inner
-        # timeouts give ~200s/180s slack on the worst observed scenario.
-        #
-        # The helper-level init-input unit contract now lives in Rust. The
-        # remaining pytest modules take longer because they spawn `init.sh`
-        # subprocesses or session-scoped fixtures. All sit in the same pytest
-        # invocation so changes to either the substitution surface (F-248) or
-        # the source-pattern surface (F-256) trigger the full CI run.
-        #
-        # Rust-native successors now cover the retired pytest modules:
-        #   crates/tachi-shell/tests/init_adversarial.rs
-        #   crates/tachi-shell/tests/template_git_clone_timeout.rs
-        #
-        # Retired pytest modules now covered by Rust tests:
-        #   test_init_sh_self_delete.py             — crates/tachi-shell/tests/control_plane.rs
-        #   test_init_input_unit.py                 — crates/tachi-core/tests/init_input.rs
-        #   test_init_sh_defaults_env.py            — crates/tachi-shell/tests/init_defaults_env.rs
-        #   test_template_config_load_unit.py       — crates/tachi-shell/tests/template_config_load.rs
-        #   test_template_config_load_integration.py — crates/tachi-shell/tests/template_config_load.rs
-        #   test_template_substitute_unit.py        — crates/tachi-core/tests/substitute_shim_canary.rs
-        #   test_substitute_shim_canary.py          — crates/tachi-core/tests/substitute_shim_canary.rs
-        #   test_template_substitute_lint_no_eval.py — crates/tachi-core/tests/substitute_shim_canary.rs
+      - name: Run Rust init suite
         run: |
-          python -m pytest \
-            tests/scripts/test_init_sh_substitution.py \
-            tests/scripts/test_init_sh_constitution.py \
-            tests/scripts/test_init_precommit_matrix.py \
-            -v --timeout=1080
+          cargo test -q -p tachi-shell --test init_substitution
+          cargo test -q -p tachi-shell --test init_constitution
+          cargo test -q -p tachi-shell --test init_defaults_env
+          cargo test -q -p tachi-shell --test init_precommit_matrix
+          cargo test -q -p tachi-shell --test init_timing_trace
+          cargo test -q -p tachi-shell --test init_trace_summary
+          cargo test -q -p tachi-core --test active_docs_runtime_guidance active_docs_do_not_instruct_running_retired_python_entrypoints
