@@ -60,8 +60,29 @@ fn init_trace_summary_reports_phases_and_total_elapsed_time() {
         init_run
             .stderr
             .lines()
-            .any(|line| line.starts_with("INIT TRACE summary total=") && line.contains("phases=7")),
+            .any(|line| {
+                line.starts_with("INIT TRACE summary total=")
+                    && summary_line_has_exact_field(line, "phases", "7")
+            }),
         "init.sh should print a final timing summary line with the phase count"
+    );
+}
+
+#[test]
+fn init_trace_summary_reports_an_exact_phase_count_token() {
+    assert!(
+        summary_line_has_exact_field(
+            "INIT TRACE summary total=12s phases=7 slowest-phase=cleanup slowest-duration=1s total_ms=12000 slowest-duration_ms=1000",
+            "phases",
+            "7"
+        )
+    );
+    assert!(
+        !summary_line_has_exact_field(
+            "INIT TRACE summary total=12s phases=70 slowest-phase=cleanup slowest-duration=1s total_ms=12000 slowest-duration_ms=1000",
+            "phases",
+            "7"
+        )
     );
 }
 
@@ -351,7 +372,7 @@ fn clone_into_tmpdir(temp_dir: &Path) -> PathBuf {
         String::from_utf8_lossy(&checkout.stderr)
     );
 
-    sync_init_script(&clone_root);
+    sync_init_script_from_workspace(&clone_root);
 
     clone_root
 }
@@ -464,10 +485,13 @@ fn run_init_in_clone(clone_root: &Path, stdin_payload: &str, args: &[&str]) -> I
 }
 
 fn restore_init_script(clone_root: &Path) {
-    sync_init_script(clone_root);
+    // Reset the clone to the checked-out fixture, then re-overlay the current
+    // workspace version of scripts/init.sh so repeated samples exercise the
+    // same live shell content as the branch under test.
+    sync_init_script_from_workspace(clone_root);
 }
 
-fn sync_init_script(clone_root: &Path) {
+fn sync_init_script_from_workspace(clone_root: &Path) {
     let workspace_init = workspace_root().join("scripts/init.sh");
     let clone_init = clone_root.join("scripts/init.sh");
     fs::copy(&workspace_init, &clone_init).unwrap_or_else(|err| {
@@ -477,6 +501,11 @@ fn sync_init_script(clone_root: &Path) {
             clone_init.display()
         )
     });
+}
+
+fn summary_line_has_exact_field(line: &str, key: &str, expected: &str) -> bool {
+    let token = format!("{key}={expected}");
+    line.split_whitespace().any(|part| part == token)
 }
 
 fn safe_path() -> String {
