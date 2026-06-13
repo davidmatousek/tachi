@@ -18,22 +18,30 @@ fn active_devops_docs_treat_fastapi_pack_guidance_as_archived_reference_only() {
         "docs/devops/01_Local/README.md",
         "docs/devops/CI_CD_GUIDE.md",
         "docs/devops/environment-variables.md",
+        "docs/security/OPEN_SOURCE_READINESS.md",
     ];
 
     for doc in docs {
         let content =
             fs::read_to_string(root.join(doc)).unwrap_or_else(|err| panic!("read {doc}: {err}"));
-        assert!(
-            content.contains("Archived legacy guidance"),
-            "active devops doc {doc} should explicitly mark FastAPI pack guidance as archived"
-        );
-        assert!(
-            !content.contains("fastapi-react"),
-            "active devops doc {doc} should not instruct adopting fastapi-react"
-        );
-        assert!(
-            !content.contains("fastapi-react-local"),
-            "active devops doc {doc} should not instruct adopting fastapi-react-local"
-        );
+        if doc == "docs/security/OPEN_SOURCE_READINESS.md" {
+            assert!(
+                content.contains("archived FastAPI scaffold guidance"),
+                "security review doc should mark the FastAPI scaffold note as archived legacy guidance"
+            );
+        } else {
+            assert!(
+                content.contains("Archived legacy guidance"),
+                "active devops doc {doc} should explicitly mark FastAPI pack guidance as archived"
+            );
+            assert!(
+                !content.contains("fastapi-react"),
+                "active devops doc {doc} should not instruct adopting fastapi-react"
+            );
+            assert!(
+                !content.contains("fastapi-react-local"),
+                "active devops doc {doc} should not instruct adopting fastapi-react-local"
+            );
+        }
     }
 }
