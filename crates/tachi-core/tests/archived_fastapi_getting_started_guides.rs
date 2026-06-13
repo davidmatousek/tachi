@@ -39,5 +39,9 @@ fn active_getting_started_guides_treat_fastapi_local_as_archived_reference_only(
             !content.contains("fastapi-react-local"),
             "active getting-started guide {doc} should not name the archived FastAPI Local pack"
         );
+        assert!(
+            !content.contains("ls backend/app/"),
+            "active getting-started guide {doc} should not instruct inspecting the retired FastAPI backend app tree"
+        );
     }
 }

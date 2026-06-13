@@ -201,22 +201,18 @@ cd ~/Projects/hello-world-aod
 git pull origin main
 ```
 
-**Check that Issue #2 (Backend: Greeting API) produced actual code and docs:**
+**Check that the Rust/Tauri deliverables landed in the workspace:**
 
 ```bash
 # Application code
-ls backend/app/                    # FastAPI app structure
-ls backend/app/models/             # SQLAlchemy models (Greeting)
-ls backend/app/schemas/            # Pydantic schemas (GreetingCreate, GreetingResponse)
-ls backend/app/api/                # API routes (/greet, /greetings, /health)
-
-# Database
-ls backend/alembic/versions/       # Alembic migration(s)
+ls crates/tachi-core/src/          # Shared Rust core logic
+ls crates/tachi-shell/tests/       # Rust integration coverage
+ls src-tauri/                      # Tauri bridge and desktop shell
 
 # Documentation
-cat .aod/spec.md                   # Feature specification
-cat .aod/plan.md                   # Technical plan
-ls specs/002-*/                    # Archived feature artifacts
+cat docs/roadmap/2026-06-08-rust-tauri-only-roadmap.md
+cat docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md
+ls docs/roadmap/
 ```
 
 **Functional test** (if the backend is runnable):
