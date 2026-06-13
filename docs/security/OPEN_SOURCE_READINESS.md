@@ -99,7 +99,7 @@ This tracked file has absolute paths that break for any other developer and leak
 
 ### M-1: `SECRET_KEY` Default in Scaffold `config.py`
 
-- **File**: `stacks/fastapi-react-local/scaffold/backend/app/config.py:27`
+- **File**: archived FastAPI scaffold note
 - **Value**: `SECRET_KEY: str = "change-this-to-a-random-secret-key"`
 - **Risk**: Historical scaffold default could persist into production if a legacy FastAPI stack were ever revived unchanged.
 - **Fix**: This is archived FastAPI scaffold guidance only; keep it out of the active Rust/Tauri runtime surface and raise an error if a future scaffold ever requires `SECRET_KEY` from the environment.
