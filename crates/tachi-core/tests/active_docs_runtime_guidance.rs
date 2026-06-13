@@ -17,6 +17,7 @@ fn active_docs_do_not_instruct_running_retired_python_entrypoints() {
         "docs/standards/CLAUDE_PERMISSIONS.md",
         "docs/standards/PRECOMMIT_HOOKS.md",
         "docs/standards/EVAL_CONVENTIONS.md",
+        "README.md",
     ];
 
     let retired_refs = [
@@ -34,6 +35,7 @@ fn active_docs_do_not_instruct_running_retired_python_entrypoints() {
         "third-party Python package",
         "requirements-dev.txt",
         "pyproject.toml",
+        "make test",
     ];
 
     for doc in active_docs {

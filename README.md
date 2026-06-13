@@ -503,7 +503,7 @@ cargo clippy --all-targets -- -D warnings
 
 This runs the Rust test suite, the Rust-backed coverage audit, the LLVM coverage report with toolchain-local LLVM binaries, and Clippy warning gates. Publishing work should keep Rust coverage at or above the project floor documented in [`docs/standards/PUBLISHING_SECURITY.md`](docs/standards/PUBLISHING_SECURITY.md); the roadmap currently targets at least 85% during migration.
 
-`make test` is still a legacy compatibility target and currently invokes the Python `pytest` suite for the remaining migration surface. It is intentionally not listed as part of the Rust-native validation path above.
+The legacy compatibility target remains available for archival migration use, but it is intentionally not listed as part of the Rust-native validation path above.
 
 ---
 
