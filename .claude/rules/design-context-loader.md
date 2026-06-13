@@ -25,7 +25,7 @@ Look for archetype files in `.claude/design/archetypes/`.
 
 If a stack pack is active (`.aod/stack-active.json`), load the scaffold CSS file containing `@theme` tokens:
 - nextjs-supabase: `stacks/nextjs-supabase/scaffold/app/globals.css`
-- fastapi-react: `stacks/fastapi-react/scaffold/frontend/src/app.css`
+- Archived legacy guidance: use the archived FastAPI pack scaffold CSS only for reference, not active UI work.
 
 ### Step 4: Load Design Quality Rules
 

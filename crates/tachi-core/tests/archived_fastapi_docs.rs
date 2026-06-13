@@ -14,6 +14,7 @@ fn active_devops_docs_treat_fastapi_pack_guidance_as_archived_reference_only() {
     let root = workspace_root();
 
     let docs = [
+        ".claude/rules/design-context-loader.md",
         "docs/devops/README.md",
         "docs/devops/01_Local/README.md",
         "docs/devops/CI_CD_GUIDE.md",
