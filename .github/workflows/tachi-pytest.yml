@@ -19,7 +19,7 @@
 #   1. Checks out the repo at the PR head SHA
 #   2. Sets up the stable Rust toolchain
 #   3. Asserts `bash --version` to make the matrix gate visible in logs
-#   4. Runs the Rust init + doc guard suites that replaced the retired pytest
+#   4. Runs the Rust init + doc guard suites
 #      matrix
 #   5. Both matrix legs MUST pass green
 #

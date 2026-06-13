@@ -239,12 +239,31 @@ fn active_devops_readme_performance_note_avoids_naming_the_python_pytest_depende
 
     let devops_readme = read_lines(&root.join("docs/devops/README.md"), 304, 309);
     assert!(
-        devops_readme.contains("Rust suite removes the legacy Python test dependency"),
+        devops_readme.contains("Rust suite removes the legacy test dependency"),
         "devops README performance note should describe the dependency generically"
     );
     assert!(
-        !devops_readme.contains("Python pytest dependency"),
+        !devops_readme.contains("Python test dependency"),
+        "devops README performance note should not name Python as the dependency"
+    );
+    assert!(
+        !devops_readme.contains("pytest"),
         "devops README performance note should not name pytest as the dependency"
+    );
+}
+
+#[test]
+fn active_tachi_init_matrix_workflow_header_avoids_retired_pytest_framing() {
+    let root = workspace_root();
+
+    let workflow_header = read_lines(&root.join(".github/workflows/tachi-pytest.yml"), 1, 24);
+    assert!(
+        workflow_header.contains("Rust init + doc guard suites"),
+        "workflow header should describe the Rust init + doc guard suites generically"
+    );
+    assert!(
+        !workflow_header.contains("retired pytest"),
+        "workflow header should not describe the workflow as replacing pytest"
     );
 }
 
