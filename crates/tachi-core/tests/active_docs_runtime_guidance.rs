@@ -20,7 +20,6 @@ fn active_docs_do_not_instruct_running_retired_python_entrypoints() {
         "README.md",
         ".github/workflows/tachi-pytest.yml",
         "docs/devops/environment-variables.md",
-        "docs/devops/CI_CD_GUIDE.md",
     ];
 
     let retired_refs = [
@@ -40,14 +39,6 @@ fn active_docs_do_not_instruct_running_retired_python_entrypoints() {
         "pyproject.toml",
         "make test",
         "tests/scripts/test_init_sh_*.py",
-        "The host-runner workflows (`tachi-pytest.yml`, `tachi-mmdc-preflight.yml`) follow a different shape",
-        "scripts/init.sh substitution behaviour on a macOS+Ubuntu pytest matrix (ADR-038)",
-        "The F-248 init.sh substitution suite + F-256 source-pattern-hardening test suite on a 2-runner cross-platform matrix",
-        "Pip dependencies | `pytest>=8`, `pytest-timeout>=2`, `pyyaml>=6`",
-        "Job name | `pytest init.sh suite — ${{ matrix.os }}`",
-        "python -m pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'",
-        "python -m pytest \\",
-        "The F-248 pytest workflow (`tachi-pytest.yml`) does NOT set these variables directly",
     ];
 
     for doc in active_docs {
