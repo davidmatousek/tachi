@@ -262,7 +262,7 @@ cargo test -q -p tachi-shell --test init_trace_summary
 cargo test -q -p tachi-core --test active_docs_runtime_guidance active_docs_do_not_instruct_running_retired_python_entrypoints
 ```
 
-On dev hardware the suite finishes quickly; on CI the bash compatibility gate is still the slowest component. The Rust tests remove the Python `pytest` dependency while preserving the macOS/Ubuntu comparison that catches shell-version regressions.
+On dev hardware the suite finishes quickly; on CI the bash compatibility gate is still the slowest component. The Rust tests remove the legacy Python test framework dependency while preserving the macOS/Ubuntu comparison that catches shell-version regressions.
 
 **Full contract**: `specs/248-substitution-surface-hardening/spec.md` (FR-001..FR-011, NFR-001 bash floor, NFR-005 scope discipline). F-250 hot-fix: `specs/250-adversarial-unit-extraction-hotfix/spec.md`. F-256 source-pattern hardening: `specs/256-source-pattern-hardening/spec.md` (FR-1..FR-9, NFR-1..NFR-6, SC-1..SC-15). ADRs: `docs/architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md` (F-248) + `docs/architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md` (F-256). Tasks T039 (workflow authoring) + T040 (CI matrix verification) + T041 (close-out attestation) for F-248; F-250 tasks T001-T029 for the hot-fix; F-256 covers Sites A-D + Stream 4 (T014-T041) + Stream 5 lint (T046).
 

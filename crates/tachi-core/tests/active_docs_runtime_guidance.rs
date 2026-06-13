@@ -120,6 +120,16 @@ fn active_devops_docs_and_architecture_summary_frames_are_rust_init_matrix_based
         !ci_guide.contains("pytest-level timeout"),
         "CI guide timing note should not use pytest-level timeout wording"
     );
+    assert!(
+        !ci_guide.contains("pytest dependency"),
+        "CI guide should not frame the Rust tests as removing a pytest dependency"
+    );
+
+    let ci_guide_tail = read_lines(&root.join("docs/devops/CI_CD_GUIDE.md"), 260, 268);
+    assert!(
+        !ci_guide_tail.contains("Python `pytest` dependency"),
+        "CI guide should not call the legacy test dependency pytest"
+    );
 
     let architecture_gate = read_lines(
         &root.join("docs/architecture/00_Tech_Stack/README.md"),
