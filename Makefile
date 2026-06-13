@@ -34,9 +34,9 @@ review-spec: ## Review spec.md with PM
 review-plan: ## Review plan.md with PM + Architect
 	@echo "Use product-manager + architect agents or /aod.plan for auto-review"
 
-# Python test suite
-test: ## Run the Python test suite
-	@pytest tests/scripts/ --cov=scripts --cov-report=term-missing
+# Rust test suite
+test: ## Run the Rust test suite
+	@cargo test -q
 
 coverage-audit: ## Report the repository test surface by category
 	@./scripts/coverage-audit.sh --root .

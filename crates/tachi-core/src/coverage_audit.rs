@@ -6,6 +6,7 @@ const SMOKE_MODULES: &[&str] = &[
     "tests/scripts/test_substitute_shim_canary.py",
     "tests/scripts/test_coverage_attestation_pagination.py",
     "tests/scripts/test_asset_sensitivity_tags.py",
+    "crates/tachi-core/tests/coverage_attestation_pagination.rs",
 ];
 
 const E2E_MODULES: &[&str] = &["crates/tachi-shell/tests/init_substitution.rs"];

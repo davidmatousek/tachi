@@ -256,6 +256,21 @@ fn active_devops_ci_guide_uses_rust_init_matrix_language_for_the_workflow_file_l
     );
 }
 
+#[test]
+fn active_makefile_test_target_uses_rust_test_invocation() {
+    let root = workspace_root();
+
+    let makefile = read_lines(&root.join("Makefile"), 33, 42);
+    assert!(
+        makefile.contains("cargo test -q"),
+        "Makefile test target should show a Rust test invocation"
+    );
+    assert!(
+        !makefile.contains("pytest tests/scripts/"),
+        "Makefile test target should not invoke the retired pytest suite"
+    );
+}
+
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()

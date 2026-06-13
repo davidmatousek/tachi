@@ -62,7 +62,7 @@ on:
       - docs/standards/PRECOMMIT_HOOKS.md
       - docs/standards/EVAL_CONVENTIONS.md
       - docs/guides/SMOKE_TEST.md
-      - .github/workflows/tachi-pytest.yml
+      - .github/workflows/*.yml
 
 permissions:
   contents: read

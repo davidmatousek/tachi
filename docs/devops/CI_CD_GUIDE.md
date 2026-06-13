@@ -212,7 +212,7 @@ paths:
   - tests/fixtures/regenerate-baseline.sh
   - tests/fixtures/regenerate-config-load-baseline.sh     # F-256
   - tests/fixtures/config-load/**                         # F-256
-  - .github/workflows/tachi-pytest.yml
+  - .github/workflows/*.yml
 ```
 
 **Path-filter completeness pattern (F-250 lesson, reinforced by F-256, applied verbatim by F-282/F-5)**: The `paths:` filter and the Rust test invocation MUST be kept in lock-step. F-250 hot-fixed an asymmetry where 3 unit modules were added to the test invocation but omitted from `paths:`, so edits scoped to those modules silently bypassed CI. F-256 added 5 new test modules + 1 new bash library file (`template-config-load.sh`) + a new fixture tree (`tests/fixtures/config-load/`) — all wired through both the trigger list and the Rust test invocation in a single commit. F-282 / F-5 added one new test module (`tests/scripts/test_init_precommit_matrix.py`) — wired through both the trigger list AND the Rust test invocation in a single commit (T020 in the F-5 task plan, ratified at /aod.deliver close-out). When adding a new test file or library file in future work, update BOTH the `paths:` trigger list AND the `cargo test ...` command in the same commit — and verify the file appears in both.
