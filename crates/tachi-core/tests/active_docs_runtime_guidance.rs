@@ -211,6 +211,21 @@ fn active_architecture_system_design_ci_section_uses_rust_init_matrix_language()
     );
 }
 
+#[test]
+fn active_devops_readme_performance_note_avoids_naming_the_python_pytest_dependency() {
+    let root = workspace_root();
+
+    let devops_readme = read_lines(&root.join("docs/devops/README.md"), 304, 309);
+    assert!(
+        devops_readme.contains("Rust suite removes the legacy Python test dependency"),
+        "devops README performance note should describe the dependency generically"
+    );
+    assert!(
+        !devops_readme.contains("Python pytest dependency"),
+        "devops README performance note should not name pytest as the dependency"
+    );
+}
+
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
