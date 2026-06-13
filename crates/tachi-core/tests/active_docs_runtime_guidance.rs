@@ -13,6 +13,7 @@ fn active_docs_do_not_instruct_running_retired_python_entrypoints() {
         "docs/architecture/01_system_design/README.md",
         "docs/guides/GETTING_STARTED_PATH_B.md",
         "docs/guides/SMOKE_TEST.md",
+        "docs/standards/PRECOMMIT_HOOKS.md",
         "docs/standards/EVAL_CONVENTIONS.md",
     ];
 
@@ -23,6 +24,8 @@ fn active_docs_do_not_instruct_running_retired_python_entrypoints() {
         "python3 -m pytest tests/",
         "python3 -m json.tool",
         "python3 -c",
+        "pip install pre-commit",
+        "third-party Python package",
         "requirements-dev.txt",
         "pyproject.toml",
     ];

@@ -44,7 +44,7 @@ The F-5 update is **opt-in** for existing adopters (FR-010): pulling the F-5 com
 If `pre-commit` is not yet installed system-wide:
 
 ```bash
-pip install pre-commit           # or: brew install pre-commit
+brew install pre-commit
 cd <your-tachi-clone>
 pre-commit install
 ```
@@ -195,7 +195,7 @@ The hook is calibrated against **the casual-typo case and the first-time-contrib
 
 ### 8.2 Pre-commit framework distribution risk
 
-The `pre-commit` framework is a third-party Python package. Adopters install it via `pip install pre-commit` or `brew install pre-commit`; the framework itself is outside tachi's supply chain. A compromised upstream `pre-commit` package would compromise the hook's integrity. Mitigation: the framework is widely-used (12k+ GitHub stars, broad adoption), maintained at github.com/pre-commit/pre-commit, and pulled by name (PyPI) or formula (Homebrew) — both ecosystems carry their own integrity layers.
+The `pre-commit` framework is a third-party hook manager. Adopters install it via their package manager of choice or Homebrew; the framework itself is outside tachi's supply chain. A compromised upstream `pre-commit` release would compromise the hook's integrity. Mitigation: the framework is widely-used (12k+ GitHub stars, broad adoption), maintained at github.com/pre-commit/pre-commit, and distributed through package-manager ecosystems that carry their own integrity layers.
 
 ### 8.3 Custom rule limits
 
