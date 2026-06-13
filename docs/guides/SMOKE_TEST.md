@@ -71,8 +71,8 @@ make init
 | GitHub Org | *your GitHub username* |
 | GitHub Repo | `hello-world-aod` |
 | AI Agent | `1` (Claude Code) |
-Archived legacy guidance for the old FastAPI Local pack lives in `docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md`.
-| Tech Stack | `Other` - archived legacy FastAPI Local guidance lives in `docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md` |
+Archived legacy guidance for the old FastAPI pack lives in `docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md`.
+| Tech Stack | `Other` - archived legacy FastAPI guidance lives in `docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md` |
 
 ```bash
 make check

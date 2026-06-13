@@ -35,5 +35,9 @@ fn active_getting_started_guides_treat_fastapi_local_as_archived_reference_only(
             !content.contains("| Tech Stack | `1` (fastapi-react-local) |"),
             "active getting-started guide {doc} should not present fastapi-react-local as an init prompt answer"
         );
+        assert!(
+            !content.contains("fastapi-react-local"),
+            "active getting-started guide {doc} should not name the archived FastAPI Local pack"
+        );
     }
 }
