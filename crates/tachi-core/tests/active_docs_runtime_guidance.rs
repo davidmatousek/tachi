@@ -298,6 +298,21 @@ fn active_devops_ci_guide_uses_rust_init_matrix_language_for_the_workflow_file_l
 }
 
 #[test]
+fn active_architecture_index_summary_avoids_python_pytest_framing() {
+    let root = workspace_root();
+
+    let architecture_index = read_lines(&root.join("docs/architecture/README.md"), 67, 67);
+    assert!(
+        architecture_index.contains("Rust init matrix workflow"),
+        "architecture index should describe the workflow with Rust init matrix wording"
+    );
+    assert!(
+        !architecture_index.contains("pytest"),
+        "architecture index should not frame the live summaries around pytest"
+    );
+}
+
+#[test]
 fn active_makefile_test_target_uses_rust_test_invocation() {
     let root = workspace_root();
 
