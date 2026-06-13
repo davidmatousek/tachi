@@ -106,18 +106,29 @@ fn init_trace_summary_exposes_millisecond_fields_for_benchmarking() {
     );
 
     for marker in [
-        "INIT TRACE phase=prerequisites elapsed_ms=",
-        "INIT TRACE phase=stack-discovery elapsed_ms=",
-        "INIT TRACE phase=precommit elapsed_ms=",
-        "INIT TRACE summary total_ms=",
-        "slowest-duration_ms=",
+        "INIT TRACE phase=prerequisites",
+        "INIT TRACE phase=stack-discovery",
+        "INIT TRACE phase=precommit",
     ] {
         assert!(
-            init_run.stderr.contains(marker),
+            init_run
+                .stderr
+                .lines()
+                .any(|line| line.contains(marker) && line.contains("elapsed_ms=")),
             "init.sh should emit millisecond timing fields for benchmark comparison: {marker}\nstderr tail:\n{}",
             stderr_tail(&init_run.stderr, 2000)
         );
     }
+
+    assert!(
+        init_run
+            .stderr
+            .lines()
+            .any(|line| line.starts_with("INIT TRACE summary total_ms=")
+                && line.contains("slowest-duration_ms=")),
+        "init.sh should include millisecond totals and slowest-phase duration in the final summary\nstderr tail:\n{}",
+        stderr_tail(&init_run.stderr, 2000)
+    );
 }
 
 fn workspace_root() -> PathBuf {
