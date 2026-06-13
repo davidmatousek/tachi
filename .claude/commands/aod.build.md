@@ -226,10 +226,9 @@ For each wave:
    **5b. Detect test runner**:
    Follow this 5-level precedence chain. Use the first match:
    1. **Stack pack**: If `.aod/stack-active.json` exists and contains a `test_command` field, use that command
-   2. **package.json**: If `package.json` exists and has a `scripts.test` entry (and it is not the default `echo "Error: no test specified"`), use `npm test`
-   3. **pytest**: If `pytest.ini`, `pyproject.toml` (with `[tool.pytest]` section), or `setup.cfg` (with `[tool:pytest]` section) exists, use `pytest`
-   4. **Makefile**: If `Makefile` exists and contains a `test:` target, use `make test`
-   5. **None found**: Skip with message `"No test runner detected. Skipping post-wave tests."` and continue to sub-step 6 (checkpoint review)
+   2. **Cargo.toml**: If `Cargo.toml` exists, use `cargo test`
+   3. **package.json**: If `package.json` exists and has a `scripts.test` entry (and it is not the default `echo "Error: no test specified"`), use `npm test`
+   4. **None found**: Skip with message `"No test runner detected. Skipping post-wave tests."` and continue to sub-step 6 (checkpoint review)
 
    **5c. Execute tests and capture output**:
    - Run the detected test command
@@ -237,7 +236,7 @@ For each wave:
    - Parse exit code and output for pass/fail/skip counts
    - Extract individual test names and statuses when structured output is available:
      - **Jest**: Parse JSON reporter output (if available) or summary lines
-     - **pytest**: Parse JUnit XML output (if available) or summary line
+     - **Rust tests**: Parse the standard cargo test summary line or any structured output emitted by the harness
      - **Other runners**: Parse summary line for aggregate counts
    - Surface only a summary line in context (per ADR-010 disk-offload principle): `"{pass} passed, {fail} failed, {skip} skipped"`
    - If output exceeds 3 failure names, show only the first 3 followed by `"... and {N} more"`
@@ -245,7 +244,7 @@ For each wave:
    **5c-cov. Capture coverage data** (when available):
    - Detect coverage tooling availability by checking:
      - **Jest**: If `--coverage` flag is supported (check `package.json` for `jest` config or `jest.config.*`), re-run with `npx jest --coverage --json` or check if coverage output was already produced
-     - **pytest**: If `pytest-cov` is installed (check for `pytest-cov` in requirements files or `pyproject.toml`), re-run with `pytest --cov --cov-report=json` or check existing output
+     - **Rust**: If `cargo llvm-cov` is available, re-run with `cargo llvm-cov --json` or check if coverage output was already produced
      - **Other runners**: Check for coverage output files in common locations (`coverage/`, `.nyc_output/`, `htmlcov/`)
    - If coverage tooling is available and produces output:
      - Write `specs/{NNN}-*/test-results/wave-{NN}/coverage.json` per data-model.md schema with `schema_version: "1.0"`
@@ -256,7 +255,7 @@ For each wave:
 
    **5d. Classify failures**:
    - Load previous wave's `results.json` from `specs/{NNN}-*/test-results/wave-{NN-1}/` (if it exists)
-   - **When structured output is available** (individual test names from Jest JSON or pytest JUnit XML):
+   - **When structured output is available** (individual test names from Jest JSON or Rust harness JSON/XML):
      - Compare at individual test level using test names as identifiers
      - **Regression**: Test existed in previous wave AND passed, now fails → gate-triggering
      - **New failure**: Test did not exist in previous wave results → warning, not regression
@@ -314,7 +313,7 @@ For each wave:
        "tests": [{ "name": "{test_name}", "status": "{pass|fail|skip}", "duration_ms": {n} }, ...]
      }
      ```
-   - The `tests` array is populated only when structured output is available (Jest JSON, pytest JUnit XML). Omit the field when only aggregate counts are available.
+   - The `tests` array is populated only when structured output is available (Jest JSON or Rust harness JSON/XML). Omit the field when only aggregate counts are available.
    - The `regressions`, `new_failures`, and `pre_existing` arrays contain test names when structured output is available; empty arrays when only aggregate counts are available.
    - Write `failures.log` to the wave directory only when `totals.fail > 0`. This file contains the raw stdout/stderr captured in sub-step 5c.
    - If the skip check (5a) caused test execution to be skipped, do NOT write any artifacts for this wave.

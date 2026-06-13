@@ -204,7 +204,7 @@ When E2E tests fail in `/aod.deliver`'s auto-fix loop, the tester is invoked in 
 
 ### Frontend (UI Tests)
 - **Location**: `tests/features/frontend/`
-- **Tool**: Declared E2E runner from the active pack's STACK.md contract (e.g., Playwright, pytest-playwright, XCTest UI)
+- **Tool**: Declared E2E runner from the active pack's STACK.md contract (e.g., Playwright, XCTest UI)
 - **Focus**: User interactions, forms, navigation
 
 ### E2E (Integration Tests)
