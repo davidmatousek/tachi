@@ -280,15 +280,14 @@ fn build_report_data_typst_keeps_typst_compilable_when_report_data_lacks_new_bin
     };
     let _ = typst;
 
-    let workspace = workspace_root();
+    let workspace = unique_temp_dir("tachi-report-data-typst-copy");
     let template_dir = workspace.join("templates/tachi/security-report");
+    copy_dir_all(
+        &workspace_root().join("templates/tachi/security-report"),
+        &template_dir,
+    );
     let report_data_path = template_dir.join("report-data.typ");
-    let backup = report_data_path
-        .exists()
-        .then(|| fs::read(&report_data_path).expect("backup report-data.typ"));
-
-    let root = unique_temp_dir("tachi-report-data-typst-guard");
-    let target_dir = root.join("examples/agentic-app/sample-report");
+    let target_dir = workspace.join("examples/agentic-app/sample-report");
     write_text(
         &target_dir.join("threats.md"),
         "# Agentic AI Application\n\n## 7. Recommended Actions\n\n| Finding ID | Component | Threat | Risk Level | Mitigation | Status |\n| --- | --- | --- | --- | --- | --- |\n| AG-1 | Component | Threat | High | Mitigation | [NEW] |\n\n## 9. Source Attribution\n\n```yaml\nAG-1:\n  - {taxonomy: \"owasp\", id: \"A01\", relationship: \"primary\"}\n```\n",
@@ -311,18 +310,12 @@ fn build_report_data_typst_keeps_typst_compilable_when_report_data_lacks_new_bin
     let result = Command::new("typst")
         .arg("compile")
         .arg(template_dir.join("main.typ"))
-        .arg(root.join("out.pdf"))
+        .arg(workspace.join("out.pdf"))
         .arg("--root")
         .arg(&workspace)
         .current_dir(&workspace)
         .output()
         .expect("run typst compile");
-
-    if let Some(previous) = backup {
-        fs::write(&report_data_path, previous).expect("restore report-data.typ");
-    } else if report_data_path.exists() {
-        fs::remove_file(&report_data_path).expect("remove temporary report-data.typ");
-    }
 
     assert!(
         result.status.success(),
@@ -330,6 +323,20 @@ fn build_report_data_typst_keeps_typst_compilable_when_report_data_lacks_new_bin
         String::from_utf8_lossy(&result.stdout),
         String::from_utf8_lossy(&result.stderr)
     );
+}
+
+fn copy_dir_all(src: &Path, dst: &Path) {
+    fs::create_dir_all(dst).expect("create destination directory");
+    for entry in fs::read_dir(src).expect("read source directory") {
+        let entry = entry.expect("read source entry");
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        if entry.file_type().expect("source entry type").is_dir() {
+            copy_dir_all(&src_path, &dst_path);
+        } else {
+            fs::copy(&src_path, &dst_path).expect("copy source file");
+        }
+    }
 }
 
 #[test]
