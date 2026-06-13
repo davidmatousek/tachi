@@ -1,6 +1,6 @@
 # Stack Pack Consumer Guide — FastAPI + React (AOD Agent Orchestrator)
 
-**Purpose**: Build the AOD Agent Orchestrator — a standalone, product-led AI agent orchestrator with a web UI — using the `fastapi-react-local` stack pack (SQLite, zero external dependencies). This guide covers project setup and seeds the backlog with epics and stories for iterative, governed development.
+**Purpose**: Build the AOD Agent Orchestrator — a standalone, product-led AI agent orchestrator with a web UI — using an archived Python FastAPI + React stack pack (SQLite, zero external dependencies). This guide covers project setup and seeds the backlog with epics and stories for iterative, governed development.
 
 **What you're building**: A web-based orchestrator that manages a swarm of AI coding agent sessions (Claude, Gemini, Codex, etc.) through the full AOD lifecycle (Discover → Define → Plan → Build → Deliver → Document) with Triad governance, real-time monitoring, wave-based parallel execution, and agent-driven orchestration (a lead agent can drive the swarm via CLI or MCP).
 
@@ -84,7 +84,7 @@ make init
 | GitHub Org | `davidmatousek` |
 | GitHub Repo | `aod-orchestrator` |
 | AI Agent | `1` (Claude Code) |
-| Tech Stack | Select `fastapi-react-local` — "Python FastAPI + React (Local)" |
+| Tech Stack | Select the archived Python FastAPI + React local stack |
 
 ```bash
 # Verify setup
@@ -119,8 +119,8 @@ Run these commands inside Claude Code:
 # List available packs
 /aod.stack list
 
-# Activate the local-first FastAPI + React pack (SQLite, no Docker)
-/aod.stack use fastapi-react-local
+# Activate the archived local-first FastAPI + React stack for reference
+/aod.stack use archived-fastapi-stack
 
 # Scaffold the project structure
 /aod.stack scaffold
@@ -129,7 +129,7 @@ Run these commands inside Claude Code:
 ### Verification Checklist
 
 After activation:
-- [ ] `.aod/stack-active.json` exists with `"pack": "fastapi-react-local"`
+- [ ] `.aod/stack-active.json` exists with the archived FastAPI stack pack marker
 - [ ] `.claude/rules/stack/` contains `conventions.md`, `security.md`, `persona-loader.md`
 - [ ] Activation summary shows loaded rules and available persona supplements
 
@@ -241,7 +241,7 @@ cat docs/product/01_Product_Vision/product-vision.md
 | NFR-04 | No authentication for MVP | Localhost only; defer auth to multi-user version |
 | NFR-05 | Agent driver extensibility | New agent = new driver class, no core changes |
 | NFR-06 | Concurrent session capacity | Support 10+ parallel agent sessions (subject to provider rate limits) |
-| NFR-07 | Stack compliance | All code follows fastapi-react-local stack pack conventions |
+| NFR-07 | Stack compliance | All code follows the archived FastAPI stack pack conventions |
 | NFR-08 | Test coverage | 80%+ on services and API layers |
 | NFR-09 | Structured logging | JSON logs; health endpoint with dependency and resource status |
 | NFR-10 | Data integrity | Atomic state changes; no orphaned worktrees on failure |
@@ -1074,7 +1074,7 @@ The agent building feature N reads the Interface Contract from feature N-1's spe
 | Issue | Resolution |
 |-------|------------|
 | `make init` fails | Ensure Python 3.12+, Node.js 20+, and Git are installed |
-| `/aod.stack use` says pack not found | Verify `stacks/fastapi-react-local/STACK.md` exists |
+| `/aod.stack use` says pack not found | Verify the archived FastAPI stack pack guide exists |
 | SQLite `SQLITE_BUSY` errors | WAL mode should be enabled; increase busy timeout in config |
 | Docker Compose fails (optional PostgreSQL mode) | Ensure Docker Desktop is running; check port conflicts (5432). Not needed for SQLite mode |
 | `uv sync` fails | Ensure `uv` is installed (`curl -LsSf https://astral.sh/uv/install.sh \| sh`) |

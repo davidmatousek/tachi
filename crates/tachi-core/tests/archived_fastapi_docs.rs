@@ -53,3 +53,21 @@ fn security_readiness_doc_avoids_concrete_fastapi_scaffold_paths() {
         "security readiness doc should not expose the concrete FastAPI scaffold config path"
     );
 }
+
+#[test]
+fn archived_fastapi_consumer_guide_is_generic_about_the_old_pack_name() {
+    let root = workspace_root();
+    let content = fs::read_to_string(
+        root.join("docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md"),
+    )
+    .expect("read archived consumer guide");
+
+    assert!(
+        content.contains("archived FastAPI stack"),
+        "archived consumer guide should stay generic about the retired FastAPI stack"
+    );
+    assert!(
+        !content.contains("fastapi-react-local"),
+        "archived consumer guide should not name the retired fastapi-react-local pack"
+    );
+}
