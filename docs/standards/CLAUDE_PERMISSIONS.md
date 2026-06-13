@@ -146,7 +146,7 @@ Every non-built-in rule from `.claude/settings.json` appears at least once in th
 | `Bash(brew install:*)` | 3b (ask) | System-level mutation outside repo. | Casual brew install proceeds without confirmation. |
 | `Bash(brew uninstall:*)` | 3b (ask) | System-level mutation outside repo. | Same as `brew install:*`. |
 | `Bash(npm install -g:*)` | 3b (ask) | Global package install with privilege-escalation potential; affects all node projects. | Global install proceeds without confirmation. |
-| `Bash(pip install:*)` | 3b (ask) | System-wide installs without venv warrant confirmation. | System pip install proceeds without confirmation. |
+| `Bash(package-manager install:*)` | 3b (ask) | System-level installs can mutate the host environment; confirmation keeps the workflow explicit. | System install proceeds without confirmation. |
 | `Bash(git filter-branch:*)` | 3b (ask) | History rewrite; potentially non-recoverable for collaborators. | History rewrite proceeds without confirmation. |
 | `Bash(git filter-repo:*)` | 3b (ask) | Modern history-rewrite tool. | Same as `git filter-branch:*`. |
 | `Bash(eval:*)` | 3b (ask) | String evaluation can hide arbitrary commands. Calibrated against alert-fatigue cost of full deny. | Evaluation of dynamic strings auto-approves. |
