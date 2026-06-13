@@ -479,7 +479,7 @@ jobs:
       - name: Type check
         run: make typecheck
       - name: Tests
-        run: make test
+        run: cargo test -q
       - name: Coverage
         run: make coverage-check
       - name: Security scan

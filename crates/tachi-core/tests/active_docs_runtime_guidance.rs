@@ -140,6 +140,21 @@ fn active_devops_readme_no_longer_names_the_retired_tachi_pytest_workflow_in_liv
 }
 
 #[test]
+fn active_git_workflow_doc_uses_rust_test_invocation_in_the_quality_example() {
+    let root = workspace_root();
+
+    let git_workflow = read_lines(&root.join("docs/standards/GIT_WORKFLOW.md"), 472, 486);
+    assert!(
+        git_workflow.contains("cargo test -q"),
+        "git workflow quality example should show a Rust test command"
+    );
+    assert!(
+        !git_workflow.contains("run: make test"),
+        "git workflow quality example should not use the retired make test command"
+    );
+}
+
+#[test]
 fn active_devops_ci_guide_frames_the_rust_init_matrix_without_pytest_invocation_language() {
     let root = workspace_root();
 
