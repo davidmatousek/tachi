@@ -38,6 +38,10 @@ fn init_sh_declares_trace_hook_for_slow_init_workflow() {
         init_source.contains("aod_trace_init_phase \"precommit\""),
         "expected scripts/init.sh to trace the precommit phase"
     );
+    assert!(
+        init_source.contains("aod_trace_init_phase \"cleanup\""),
+        "expected scripts/init.sh to trace the cleanup phase"
+    );
 }
 
 fn workspace_root() -> PathBuf {

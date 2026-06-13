@@ -569,9 +569,12 @@ fi
 
 # Remove this init script (one-time use)
 if [ "${AOD_INIT_TRACE:-0}" = "1" ]; then
-  aod_trace_init_summary
+  aod_trace_init_phase "cleanup"
 fi
 rm -f scripts/init.sh
+if [ "${AOD_INIT_TRACE:-0}" = "1" ]; then
+  aod_trace_init_summary
+fi
 
 echo ""
 echo -e "${GREEN}🎉 Project initialized successfully!${NC}"

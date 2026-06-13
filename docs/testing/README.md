@@ -13,7 +13,7 @@ This document provides guidance on testing strategy for {{PROJECT_NAME}}. It doe
 ## Coverage Visibility
 
 - Run `make coverage-audit` to classify the current test surface with the Rust-backed audit binary.
-- The audit now includes Rust-native test modules under `crates/*/tests` and `src-tauri/tests` alongside the remaining legacy Python tests.
+- The audit now includes Rust-native test modules under `crates/*/tests` and `src-tauri/tests` alongside the archived compatibility fixtures still present in the tree.
 - Run `make llvm-cov` to generate the workspace coverage report with LLVM tools resolved from the active toolchain.
 - See `coverage-summary.md` for the current counts, category meanings, and smoke-vs-e2e boundary.
 - See `2026-06-04-rust-native-coverage-audit.md` for the Rust-native migration target and current workspace skeleton baseline.

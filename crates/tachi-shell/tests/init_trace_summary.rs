@@ -34,6 +34,7 @@ fn init_trace_summary_reports_phases_and_total_elapsed_time() {
         "INIT TRACE phase=personalization",
         "INIT TRACE phase=substitution",
         "INIT TRACE phase=version-pin",
+        "INIT TRACE phase=cleanup",
     ];
 
     let phase_offsets = phase_markers
@@ -59,7 +60,7 @@ fn init_trace_summary_reports_phases_and_total_elapsed_time() {
         init_run
             .stderr
             .lines()
-            .any(|line| line.starts_with("INIT TRACE summary total=") && line.contains("phases=6")),
+            .any(|line| line.starts_with("INIT TRACE summary total=") && line.contains("phases=7")),
         "init.sh should print a final timing summary line with the phase count"
     );
 }
@@ -350,6 +351,8 @@ fn clone_into_tmpdir(temp_dir: &Path) -> PathBuf {
         String::from_utf8_lossy(&checkout.stderr)
     );
 
+    sync_init_script(&clone_root);
+
     clone_root
 }
 
@@ -461,16 +464,19 @@ fn run_init_in_clone(clone_root: &Path, stdin_payload: &str, args: &[&str]) -> I
 }
 
 fn restore_init_script(clone_root: &Path) {
-    let output = Command::new("git")
-        .args(["checkout", "--quiet", "--", "scripts/init.sh"])
-        .current_dir(clone_root)
-        .output()
-        .expect("restore init script");
-    assert!(
-        output.status.success(),
-        "restore init script failed: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    sync_init_script(clone_root);
+}
+
+fn sync_init_script(clone_root: &Path) {
+    let workspace_init = workspace_root().join("scripts/init.sh");
+    let clone_init = clone_root.join("scripts/init.sh");
+    fs::copy(&workspace_init, &clone_init).unwrap_or_else(|err| {
+        panic!(
+            "sync init script {} -> {}: {err}",
+            workspace_init.display(),
+            clone_init.display()
+        )
+    });
 }
 
 fn safe_path() -> String {
