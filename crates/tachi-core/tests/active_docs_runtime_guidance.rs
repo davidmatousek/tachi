@@ -177,6 +177,40 @@ fn active_devops_ci_guide_frames_the_rust_init_matrix_without_pytest_invocation_
     );
 }
 
+#[test]
+fn active_git_workflow_doc_no_longer_uses_make_test_in_the_quality_example() {
+    let root = workspace_root();
+
+    let git_workflow = read_lines(&root.join("docs/standards/GIT_WORKFLOW.md"), 472, 486);
+    assert!(
+        !git_workflow.contains("run: make test"),
+        "git workflow quality example should not use the retired make test command"
+    );
+}
+
+#[test]
+fn active_architecture_system_design_ci_section_uses_rust_init_matrix_language() {
+    let root = workspace_root();
+
+    let arch_ci = read_lines(
+        &root.join("docs/architecture/01_system_design/README.md"),
+        3346,
+        3356,
+    );
+    assert!(
+        arch_ci.contains("Rust init matrix"),
+        "architecture CI section should describe the Rust init matrix"
+    );
+    assert!(
+        !arch_ci.contains("tachi-pytest.yml"),
+        "architecture CI section should not name the workflow as pytest-based"
+    );
+    assert!(
+        !arch_ci.contains("pytest invocation"),
+        "architecture CI section should not describe the Rust workflow with pytest invocation language"
+    );
+}
+
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
