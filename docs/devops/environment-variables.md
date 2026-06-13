@@ -62,11 +62,11 @@ make update    # 60s ceiling applied automatically
 
 **Added in Feature 248** (Substitution Surface Hardening, PR #249, merged 2026-05-04).
 
-These variables are read by `scripts/init.sh` and used by the F-248 test suite (`tests/scripts/test_init_sh_*.py`) and the baseline-regeneration script (`tests/fixtures/regenerate-baseline.sh`) to make placeholder substitution byte-deterministic. They are **test-only** — production invocations of `scripts/init.sh` MUST NOT set them.
+These variables are read by `scripts/init.sh` and used by the Rust init suite (`crates/tachi-shell/tests/init_substitution.rs`, `crates/tachi-shell/tests/init_constitution.rs`, and `tests/fixtures/regenerate-baseline.sh`) to make placeholder substitution byte-deterministic. They are **test-only** — production invocations of `scripts/init.sh` MUST NOT set them.
 
 | Variable | Default | Read at | Purpose |
 |----------|---------|---------|---------|
-| `AOD_RATIFICATION_DATE_OVERRIDE` | unset (falls back to `date +%Y-%m-%d`) | `scripts/init.sh:123` | Pins the constitution `RATIFICATION_DATE` substitution to a fixed value (typically `2026-05-04` for the F-248 baseline). Used by `tests/fixtures/regenerate-baseline.sh` and by the F-248 pytest fixtures to produce byte-deterministic init output. NOT for production use — production invocations rely on the `date(1)` fallback. |
+| `AOD_RATIFICATION_DATE_OVERRIDE` | unset (falls back to `date +%Y-%m-%d`) | `scripts/init.sh:123` | Pins the constitution `RATIFICATION_DATE` substitution to a fixed value (typically `2026-05-04` for the F-248 baseline). Used by `tests/fixtures/regenerate-baseline.sh` and by the Rust init fixtures to produce byte-deterministic init output. NOT for production use — production invocations rely on the `date(1)` fallback. |
 | `AOD_CURRENT_DATE_OVERRIDE` | unset (falls back to `date +%Y-%m-%d`) | `scripts/init.sh:124` | Pins the `CURRENT_DATE` substitution to a fixed value. Same pattern and constraints as `AOD_RATIFICATION_DATE_OVERRIDE`. NOT for production use. |
 
 **Why two variables, not one**: `RATIFICATION_DATE` and `CURRENT_DATE` are semantically distinct — the constitution's ratification date is a one-time historical record, while `CURRENT_DATE` is a refresh-on-init timestamp. Bundling them into a single override would conflate the two and risk masking a regression where one is updated and the other is not. The two-variable contract is intentional and stable.
@@ -81,7 +81,7 @@ AOD_RATIFICATION_DATE_OVERRIDE=2026-05-04 \
   bash scripts/init.sh
 ```
 
-**CI invocation**: the F-248 pytest workflow (`tachi-pytest.yml`) does NOT set these variables directly — instead, the test fixtures invoke them via `tests/scripts/init_sh_helpers.run_init_in_clone()` after the helper sets a deterministic value. This isolates per-test determinism from cross-test fixture coupling.
+**CI invocation**: the Rust init workflow (`tachi-pytest.yml`) does NOT set these variables directly — instead, the Rust fixtures invoke them via `scripts/init.sh` helpers after the test harness sets a deterministic value. This isolates per-test determinism from cross-test fixture coupling.
 
 **Reference**: `docs/architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md` §Test Coverage. Spec FR-001..FR-011 in `specs/248-substitution-surface-hardening/spec.md`.
 
