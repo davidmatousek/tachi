@@ -124,8 +124,11 @@ fn init_trace_summary_exposes_millisecond_fields_for_benchmarking() {
         init_run
             .stderr
             .lines()
-            .any(|line| line.starts_with("INIT TRACE summary total_ms=")
-                && line.contains("slowest-duration_ms=")),
+            .any(|line| {
+                line.starts_with("INIT TRACE summary total=")
+                    && line.contains("total_ms=")
+                    && line.contains("slowest-duration_ms=")
+            }),
         "init.sh should include millisecond totals and slowest-phase duration in the final summary\nstderr tail:\n{}",
         stderr_tail(&init_run.stderr, 2000)
     );
