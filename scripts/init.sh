@@ -97,10 +97,9 @@ aod_trace_init_summary() {
         AOD_INIT_TRACE_SLOWEST_PHASE=$AOD_INIT_TRACE_CURRENT_PHASE
       fi
     fi
-    printf 'INIT TRACE summary total=%ss phases=%s slowest=%s slowest-phase=%s slowest-duration=%ss\n' \
+    printf 'INIT TRACE summary total=%ss phases=%s slowest-phase=%s slowest-duration=%ss\n' \
       "$SECONDS" "${AOD_INIT_TRACE_PHASE_COUNT:-0}" \
-      "${AOD_INIT_TRACE_SLOWEST_PHASE:-none}" "${AOD_INIT_TRACE_SLOWEST_PHASE:-none}" \
-      "${AOD_INIT_TRACE_SLOWEST_SECONDS:-0}" >&2
+      "${AOD_INIT_TRACE_SLOWEST_PHASE:-none}" "${AOD_INIT_TRACE_SLOWEST_SECONDS:-0}" >&2
   fi
 }
 

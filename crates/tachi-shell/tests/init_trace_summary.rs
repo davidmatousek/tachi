@@ -82,8 +82,8 @@ fn init_trace_summary_reports_slowest_phase() {
             .stderr
             .lines()
             .any(|line| line.starts_with("INIT TRACE summary total=")
-                && line.contains("slowest=")
-                && line.contains("phase=")),
+                && line.contains("slowest-phase=")
+                && line.contains("slowest-duration=")),
         "init.sh should report the slowest phase in the final timing summary"
     );
 }
