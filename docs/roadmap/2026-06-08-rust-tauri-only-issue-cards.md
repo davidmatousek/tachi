@@ -95,7 +95,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
   - Hot-path shell-outs are removed or minimized.
   - Startup and command latency have explicit benchmarks.
   - Error handling is deterministic and actionable across CLI and Tauri paths.
-- **Story validation focus**: `init` timing traces, cold-start baseline, warm-start baseline, and a regression benchmark that prevents the slow path from returning.
+- **Story validation focus**: `init` timing traces, cold-start baseline, warm-start baseline, repeatable same-clone cold/warm benchmark sampling, and a regression benchmark that prevents the slow path from returning.
 - **Depends on**: RT-012, RT-013, RT-014
 
 ## Execution Order

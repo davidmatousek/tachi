@@ -240,7 +240,7 @@ This roadmap uses a BEADS-style hierarchy:
   - scope placeholder substitution to manifest-backed personalized files and the constitution clean template instead of walking the whole tree
   - factor manifest-backed personalized path extraction into a reusable helper and reuse the cached list across substitution and residual scanning
   - reuse the already-read `threats.md` content when deriving report project metadata so report-data assembly avoids a duplicate filesystem read
-  - benchmark the slowest init path with and without precommit / template bootstrapping
+  - benchmark the slowest init path with cold and warm samples, with and without precommit / template bootstrapping
   - remove repeated parsing and process spawns once the slow phase is isolated
 - **Functions**
   - `aod_trace_init_phase`

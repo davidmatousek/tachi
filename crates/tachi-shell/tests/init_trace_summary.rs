@@ -134,6 +134,47 @@ fn init_trace_summary_exposes_millisecond_fields_for_benchmarking() {
     );
 }
 
+#[test]
+fn init_trace_summary_can_collect_cold_and_warm_samples_in_one_clone() {
+    let temp_dir = unique_temp_dir("trace-summary-cold-warm");
+    fs::create_dir_all(&temp_dir).expect("create temp dir");
+
+    let clone_root = clone_into_tmpdir(&temp_dir);
+    let cold = run_init_in_clone(&clone_root, &build_canonical_stdin(&clone_root));
+    assert_eq!(
+        cold.status,
+        0,
+        "cold init.sh exit {}; stdout tail:\n{}\nstderr tail:\n{}",
+        cold.status,
+        stdout_tail(&cold.stdout, 1500),
+        stderr_tail(&cold.stderr, 1500)
+    );
+
+    restore_init_script(&clone_root);
+    let personalization_env = clone_root.join(".aod/personalization.env");
+    if personalization_env.exists() {
+        fs::remove_file(&personalization_env).expect("remove personalization env");
+    }
+
+    let warm = run_init_in_clone(&clone_root, &build_canonical_stdin(&clone_root));
+    assert_eq!(
+        warm.status,
+        0,
+        "warm init.sh exit {}; stdout tail:\n{}\nstderr tail:\n{}",
+        warm.status,
+        stdout_tail(&warm.stdout, 1500),
+        stderr_tail(&warm.stderr, 1500)
+    );
+
+    for (label, run) in [("cold", &cold), ("warm", &warm)] {
+        assert!(
+            run.stderr.contains("total_ms=") && run.stderr.contains("slowest-duration_ms="),
+            "{label} init trace summary should expose millisecond totals\nstderr tail:\n{}",
+            stderr_tail(&run.stderr, 2000)
+        );
+    }
+}
+
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -269,6 +310,19 @@ fn run_init_in_clone(clone_root: &Path, stdin_payload: &str) -> InitRun {
         stdout: String::from_utf8_lossy(&output.stdout).to_string(),
         stderr: String::from_utf8_lossy(&output.stderr).to_string(),
     }
+}
+
+fn restore_init_script(clone_root: &Path) {
+    let output = Command::new("git")
+        .args(["checkout", "--quiet", "--", "scripts/init.sh"])
+        .current_dir(clone_root)
+        .output()
+        .expect("restore init script");
+    assert!(
+        output.status.success(),
+        "restore init script failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 fn safe_path() -> String {
