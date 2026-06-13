@@ -30,7 +30,7 @@ This status uses card closure rather than subjective partial estimates. In-progr
 | RT-012 | In progress | Rust-native report-data output handling, infographic output-file handling, report project metadata emission, report-data image binding and byte-probe parity, coverage-attestation payload emission, coverage-attestation in-scope filtering, coverage-attestation report-data guard coverage, coverage-attestation pagination smoke coverage, asset-sensitivity tag parsing, executive-architecture infographic payload parity, and SARIF CLI slices now cover the threat/risk SARIF runtime paths; the report-data typst guard now runs against a copied template tree instead of mutating the repo template tree, and `scripts/extract-report-data.py`, `scripts/tachi_parsers.py`, the FastAPI Alembic `env.py` scaffolds, the FastAPI backend test-package scaffolding, the FastAPI backend app runtime trees, the FastAPI backend scaffold packaging manifests, the FastAPI backend Alembic scaffold packaging manifests, the dead `tests/scripts` helper package, the dead root pytest support package, `pyproject.toml`, and `requirements-dev.txt` are retired and the active Python inventory is empty. |
 | RT-013 | In progress | Tauri shell parity work now routes `infographic-data` through the shared Rust payload builder while the remaining desktop paths stay thin and command-driven. |
 | RT-014 | Pending | Python packaging and FastAPI scaffold archival depends on RT-012 and RT-013; backend scaffold packaging manifests, backend Alembic scaffold packaging manifests, the FastAPI stack packs, and the security-review FastAPI scaffold note are archived legacy references. |
-| RT-015 | In progress | Speed and reliability hardening depends on the Rust-only runtime path being stable; `scripts/init.sh` now carries `AOD_INIT_TRACE=1` timing markers and `report_data.rs` reuses the already-read threats content on the hot path. |
+| RT-015 | In progress | Speed and reliability hardening depends on the Rust-only runtime path being stable; `scripts/init.sh` now carries `AOD_INIT_TRACE=1` timing markers with millisecond trace summaries, and `report_data.rs` reuses the already-read threats content on the hot path. |
 
 The prior broad migration snapshot remains useful for orientation: Rust core parity is the strongest track, Rust-native test migration and runtime-script retirement are active, and Tauri shell hardening plus packaging/scaffold retirement remain downstream.
 
@@ -236,7 +236,7 @@ This roadmap uses a BEADS-style hierarchy:
   - fewer redundant shell-outs and filesystem scans during init
 - **Tasks**
   - instrument the init path so each startup phase reports timing via `AOD_INIT_TRACE=1`
-  - include the slowest init phase in the trace summary so benchmark runs can isolate the bottleneck
+  - include millisecond timing fields and the slowest init phase in the trace summary so benchmark runs can isolate the bottleneck
   - scope placeholder substitution to manifest-backed personalized files and the constitution clean template instead of walking the whole tree
   - factor manifest-backed personalized path extraction into a reusable helper and reuse the cached list across substitution and residual scanning
   - reuse the already-read `threats.md` content when deriving report project metadata so report-data assembly avoids a duplicate filesystem read

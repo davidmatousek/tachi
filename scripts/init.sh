@@ -3,13 +3,27 @@
 
 set -e
 
+#
+# Timing helper used only when AOD_INIT_TRACE=1.
+# Keep the implementation shell-compatible with macOS bash 3.2.
+aod_trace_now_ms() {
+  if command -v perl >/dev/null 2>&1; then
+    perl -MTime::HiRes=time -e 'printf("%.0f\n", time * 1000)'
+  else
+    printf '%s000\n' "$SECONDS"
+  fi
+}
+
 if [ "${AOD_INIT_TRACE:-0}" = "1" ]; then
   SECONDS=0
   AOD_INIT_TRACE_PHASE_COUNT=0
   AOD_INIT_TRACE_CURRENT_PHASE=""
   AOD_INIT_TRACE_CURRENT_PHASE_START=0
+  AOD_INIT_TRACE_WALL_START_MS=$(aod_trace_now_ms)
+  AOD_INIT_TRACE_CURRENT_PHASE_START_MS=$AOD_INIT_TRACE_WALL_START_MS
   AOD_INIT_TRACE_SLOWEST_PHASE=""
   AOD_INIT_TRACE_SLOWEST_SECONDS=0
+  AOD_INIT_TRACE_SLOWEST_MILLISECONDS=0
 fi
 
 # Colors
@@ -74,32 +88,45 @@ done
 
 aod_trace_init_phase() {
   if [ "${AOD_INIT_TRACE:-0}" = "1" ]; then
+    now_ms=$(aod_trace_now_ms)
     if [ -n "${AOD_INIT_TRACE_CURRENT_PHASE:-}" ]; then
       phase_elapsed=$((SECONDS - AOD_INIT_TRACE_CURRENT_PHASE_START))
-      if [ "$phase_elapsed" -gt "${AOD_INIT_TRACE_SLOWEST_SECONDS:-0}" ]; then
+      phase_elapsed_ms=$((now_ms - AOD_INIT_TRACE_CURRENT_PHASE_START_MS))
+      if [ "$phase_elapsed" -gt "${AOD_INIT_TRACE_SLOWEST_SECONDS:-0}" ] || \
+         { [ "$phase_elapsed" -eq "${AOD_INIT_TRACE_SLOWEST_SECONDS:-0}" ] && \
+           [ "$phase_elapsed_ms" -gt "${AOD_INIT_TRACE_SLOWEST_MILLISECONDS:-0}" ]; }; then
         AOD_INIT_TRACE_SLOWEST_SECONDS=$phase_elapsed
+        AOD_INIT_TRACE_SLOWEST_MILLISECONDS=$phase_elapsed_ms
         AOD_INIT_TRACE_SLOWEST_PHASE=$AOD_INIT_TRACE_CURRENT_PHASE
       fi
     fi
     AOD_INIT_TRACE_PHASE_COUNT=$((AOD_INIT_TRACE_PHASE_COUNT + 1))
     AOD_INIT_TRACE_CURRENT_PHASE="$1"
     AOD_INIT_TRACE_CURRENT_PHASE_START=$SECONDS
-    printf 'INIT TRACE phase=%s elapsed=%ss\n' "$1" "$SECONDS" >&2
+    AOD_INIT_TRACE_CURRENT_PHASE_START_MS=$now_ms
+    printf 'INIT TRACE phase=%s elapsed=%ss elapsed_ms=%sms\n' \
+      "$1" "$SECONDS" "$((now_ms - AOD_INIT_TRACE_WALL_START_MS))" >&2
   fi
 }
 
 aod_trace_init_summary() {
   if [ "${AOD_INIT_TRACE:-0}" = "1" ]; then
+    now_ms=$(aod_trace_now_ms)
     if [ -n "${AOD_INIT_TRACE_CURRENT_PHASE:-}" ]; then
       phase_elapsed=$((SECONDS - AOD_INIT_TRACE_CURRENT_PHASE_START))
-      if [ "$phase_elapsed" -gt "${AOD_INIT_TRACE_SLOWEST_SECONDS:-0}" ]; then
+      phase_elapsed_ms=$((now_ms - AOD_INIT_TRACE_CURRENT_PHASE_START_MS))
+      if [ "$phase_elapsed" -gt "${AOD_INIT_TRACE_SLOWEST_SECONDS:-0}" ] || \
+         { [ "$phase_elapsed" -eq "${AOD_INIT_TRACE_SLOWEST_SECONDS:-0}" ] && \
+           [ "$phase_elapsed_ms" -gt "${AOD_INIT_TRACE_SLOWEST_MILLISECONDS:-0}" ]; }; then
         AOD_INIT_TRACE_SLOWEST_SECONDS=$phase_elapsed
+        AOD_INIT_TRACE_SLOWEST_MILLISECONDS=$phase_elapsed_ms
         AOD_INIT_TRACE_SLOWEST_PHASE=$AOD_INIT_TRACE_CURRENT_PHASE
       fi
     fi
-    printf 'INIT TRACE summary total=%ss phases=%s slowest-phase=%s slowest-duration=%ss\n' \
-      "$SECONDS" "${AOD_INIT_TRACE_PHASE_COUNT:-0}" \
-      "${AOD_INIT_TRACE_SLOWEST_PHASE:-none}" "${AOD_INIT_TRACE_SLOWEST_SECONDS:-0}" >&2
+    printf 'INIT TRACE summary total=%ss total_ms=%sms phases=%s slowest-phase=%s slowest-duration=%ss slowest-duration_ms=%sms\n' \
+      "$SECONDS" "$((now_ms - AOD_INIT_TRACE_WALL_START_MS))" \
+      "${AOD_INIT_TRACE_PHASE_COUNT:-0}" "${AOD_INIT_TRACE_SLOWEST_PHASE:-none}" \
+      "${AOD_INIT_TRACE_SLOWEST_SECONDS:-0}" "${AOD_INIT_TRACE_SLOWEST_MILLISECONDS:-0}" >&2
   fi
 }
 

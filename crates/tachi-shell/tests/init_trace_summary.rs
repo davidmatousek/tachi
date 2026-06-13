@@ -88,6 +88,38 @@ fn init_trace_summary_reports_slowest_phase() {
     );
 }
 
+#[test]
+fn init_trace_summary_exposes_millisecond_fields_for_benchmarking() {
+    let temp_dir = unique_temp_dir("trace-summary-ms");
+    fs::create_dir_all(&temp_dir).expect("create temp dir");
+
+    let clone_root = clone_into_tmpdir(&temp_dir);
+    let init_run = run_init_in_clone(&clone_root, &build_canonical_stdin(&clone_root));
+
+    assert_eq!(
+        init_run.status,
+        0,
+        "init.sh exit {}; stdout tail:\n{}\nstderr tail:\n{}",
+        init_run.status,
+        stdout_tail(&init_run.stdout, 1500),
+        stderr_tail(&init_run.stderr, 1500)
+    );
+
+    for marker in [
+        "INIT TRACE phase=prerequisites elapsed_ms=",
+        "INIT TRACE phase=stack-discovery elapsed_ms=",
+        "INIT TRACE phase=precommit elapsed_ms=",
+        "INIT TRACE summary total_ms=",
+        "slowest-duration_ms=",
+    ] {
+        assert!(
+            init_run.stderr.contains(marker),
+            "init.sh should emit millisecond timing fields for benchmark comparison: {marker}\nstderr tail:\n{}",
+            stderr_tail(&init_run.stderr, 2000)
+        );
+    }
+}
+
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
