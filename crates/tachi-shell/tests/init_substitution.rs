@@ -61,7 +61,10 @@ fn init_substitution_leaves_tracked_unmanifested_files_unchanged() {
     let original =
         "This tracked file should stay literal: {{PROJECT_NAME}} and {{CURRENT_DATE}}.\n";
     fs::write(&stray_path, original).expect("write tracked stray file");
-    git(&clone_root, &["add", "sandbox/rogue-tracked-note.md"]);
+    git(
+        &clone_root,
+        &["add", "--sparse", "sandbox/rogue-tracked-note.md"],
+    );
 
     let init_run = run_init_in_clone(&clone_root, &build_canonical_stdin(&clone_root));
     assert_eq!(
@@ -301,11 +304,13 @@ fn unique_temp_dir(label: &str) -> PathBuf {
 fn clone_into_tmpdir(temp_dir: &Path) -> PathBuf {
     let repo_root = workspace_root();
     let head_sha = git_stdout(&repo_root, &["rev-parse", "HEAD"]);
+    let origin_url = git_stdout(&repo_root, &["remote", "get-url", "origin"]);
+    let personalized_paths = personalized_contract_paths();
     let clone_root = temp_dir.join("tachi");
 
     let clone = Command::new("git")
-        .args(["clone", "--quiet"])
-        .arg(format!("file://{}", repo_root.display()))
+        .args(["clone", "--shared", "--sparse", "--quiet"])
+        .arg(&repo_root)
         .arg(&clone_root)
         .output()
         .expect("clone repo into temp dir");
@@ -313,6 +318,59 @@ fn clone_into_tmpdir(temp_dir: &Path) -> PathBuf {
         clone.status.success(),
         "git clone failed: {}",
         String::from_utf8_lossy(&clone.stderr)
+    );
+
+    let origin_set = Command::new("git")
+        .args(["remote", "set-url", "origin", origin_url.trim()])
+        .current_dir(&clone_root)
+        .output()
+        .expect("set origin url");
+    assert!(
+        origin_set.status.success(),
+        "git remote set-url failed: {}",
+        String::from_utf8_lossy(&origin_set.stderr)
+    );
+
+    let sparse_init = Command::new("git")
+        .args(["sparse-checkout", "init", "--no-cone"])
+        .current_dir(&clone_root)
+        .output()
+        .expect("init sparse checkout");
+    assert!(
+        sparse_init.status.success(),
+        "git sparse-checkout init failed: {}",
+        String::from_utf8_lossy(&sparse_init.stderr)
+    );
+
+    let mut sparse_paths = vec![
+        ".aod/template-manifest.txt".to_string(),
+        ".aod/scripts/bash/template-substitute.sh".to_string(),
+        ".aod/scripts/bash/init-input.sh".to_string(),
+        ".aod/scripts/bash/template-config-load.sh".to_string(),
+        ".aod/scripts/bash/template-git.sh".to_string(),
+        ".aod/scripts/bash/github-lifecycle.sh".to_string(),
+        ".aod/memory/constitution.md".to_string(),
+        "scripts/init.sh".to_string(),
+        "docs/product/01_Product_Vision/product-vision.md".to_string(),
+        "stacks/**/STACK.md".to_string(),
+        "stacks/**/defaults.env".to_string(),
+    ];
+    sparse_paths.extend(
+        personalized_paths
+            .into_iter()
+            .map(|path| path.display().to_string()),
+    );
+
+    let sparse_set = Command::new("git")
+        .args(["sparse-checkout", "set", "--no-cone"])
+        .args(&sparse_paths)
+        .current_dir(&clone_root)
+        .output()
+        .expect("set sparse checkout patterns");
+    assert!(
+        sparse_set.status.success(),
+        "git sparse-checkout set failed: {}",
+        String::from_utf8_lossy(&sparse_set.stderr)
     );
 
     let checkout = Command::new("git")

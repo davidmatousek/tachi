@@ -10,6 +10,7 @@ fn active_docs_do_not_instruct_running_retired_python_entrypoints() {
         ".claude/commands/tachi.infographic.md",
         ".claude/skills/aod-orchestrate/SKILL.md",
         "docs/architecture/00_Tech_Stack/README.md",
+        "docs/architecture/01_system_design/README.md",
         "docs/guides/GETTING_STARTED_PATH_B.md",
         "docs/guides/SMOKE_TEST.md",
         "docs/standards/EVAL_CONVENTIONS.md",

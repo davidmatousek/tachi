@@ -16,13 +16,13 @@ This feature does not add or modify runtime components. The deliverable is a mac
 | 5 external framework catalog YAMLs | New data files | `schemas/taxonomy/{owasp,mitre-attack,mitre-atlas,nist-ai-rmf,cwe}.yaml` | Create | Spec FR-015/FR-017/FR-020/FR-021 — 5-field `{id, full_id, name, url, cwe_refs}` shape per FR-003; OWASP ≥60, MITRE ATT&CK ≥38, MITRE ATLAS ≥12 (7 seed + 5 curated AML.T0058-T0062), NIST AI RMF = 72 exactly (GOVERN 19 + MAP 18 + MEASURE 22 + MANAGE 13, primary-source-corrected from historical 68), CWE ≥53 (41 seed + 12 net-new from CWE Top 25 2025) |
 | 2 tachi pseudo-taxonomy catalog YAMLs | New data files | `schemas/taxonomy/{tachi-control-category,tachi-stride-ai-category}.yaml` | Create | Spec FR-018/FR-019 — 8 canonical control-category slugs (seeded from `.claude/skills/tachi-control-analysis/references/control-categories.md`) + 11 STRIDE+AI category slugs (6 STRIDE + 5 AI, seeded from `.claude/skills/tachi-shared/references/stride-categories-shared.md`) |
 | Crosswalk edge file | New data file | `schemas/taxonomy/crosswalk.yaml` | Create (526 primary edges) | Spec FR-009/FR-025 — 5-field edge shape `{source: {taxonomy, id}, target: {taxonomy, id}, edge_type, confidence, citation}`; ≥500 primary-edge floor under R3 Tier 1 default (achieved 526); `related` and `superseded` edges deferred to follow-on Issue |
-| Curation methodology README | New documentation | `schemas/taxonomy/README.md` | Create | Spec FR-033 — §Purpose (with runnable Python snippet), §Harvest methodology, §Per-framework provenance (7 sections), §Confidence calibration rubric with anti-drift rule, §Canonical-URL conventions, §Update procedures (5 external frameworks), §Crosswalk methodology, §Single-source-of-truth cross-reference to `nist-ai-rmf-mapping.md`, §"What F-A1 does NOT give you today" subsection naming deferred downstream capabilities (F-A2, F-B, agent-reference migration, Surface C transcription) |
+| Curation methodology README | New documentation | `schemas/taxonomy/README.md` | Create | Spec FR-033 — §Purpose (with runnable shell snippet), §Harvest methodology, §Per-framework provenance (7 sections), §Confidence calibration rubric with anti-drift rule, §Canonical-URL conventions, §Update procedures (5 external frameworks), §Crosswalk methodology, §Single-source-of-truth cross-reference to `nist-ai-rmf-mapping.md`, §"What F-A1 does NOT give you today" subsection naming deferred downstream capabilities (F-A2, F-B, agent-reference migration, Surface C transcription) |
 | Referential integrity test suite | New pytest module | `tests/schemas/test_taxonomy_integrity.py` + `tests/schemas/__init__.py` | Create | Spec FR-027 through FR-032 — 4+1 test functions: `test_framework_yamls_load` (FR-028), `test_crosswalk_loads` (FR-029), `test_crosswalk_referential_integrity` (FR-030), `test_citation_shape` (FR-031), optional `test_records_sorted` (FR-032 with numeric-within-function NIST sort clarification) |
 | New ADR | New governance record | `docs/architecture/02_ADRs/ADR-027-taxonomy-crosswalk-schema.md` | Create (Proposed→Accepted) | Spec FR-039/FR-040/FR-041 — 8 numbered decisions covering per-item record shape (with unidirectional OWASP→CWE `cwe_refs` rule), per-edge record shape, 7-value `taxonomy` enum, 3-value `edge_type` enum, 3-value `confidence` enum (with anti-drift rule), citation non-empty-and-resolvable rule, Interpretation C single-feature cadence exception bounded to foundation-data features, and Proposed→Accepted dual-commit governance protocol; Proposed at Day 1 Wave 1.1 schema-lock commit; Accepted at PR #181 merge (commit `8b7c7bf`) |
 | Cross-reference link on top-level README | Additive edit | `README.md` | Update (1 link) | Spec FR-038a — single link to `schemas/taxonomy/README.md` |
 | Cross-reference link on Tech Stack | Additive edit | `docs/architecture/00_Tech_Stack/README.md` | Update (1 link) | Spec FR-038b — single link under Schemas / Standards sections |
 
-**Architectural posture**: additive-only with zero runtime surface-area touch. No existing agent, schema under `schemas/*.yaml` (excluding new `schemas/taxonomy/`), script, template, or example file is modified. The 5 non-agentic example PDFs (web-app, microservices, ascii-web-api, mermaid-agentic-app, free-text-microservice) regenerate byte-identically under `SOURCE_DATE_EPOCH=1700000000` per ADR-021 (spec FR-036 / SC-004 verified via `tests/scripts/test_backward_compatibility.py`). Zero new runtime dependencies — `pyyaml` and `pytest` were already declared in `requirements-dev.txt` per Feature 128.
+**Architectural posture**: additive-only with zero runtime surface-area touch. No existing agent, schema under `schemas/*.yaml` (excluding new `schemas/taxonomy/`), script, template, or example file is modified. The 5 non-agentic example PDFs (web-app, microservices, ascii-web-api, mermaid-agentic-app, free-text-microservice) regenerate byte-identically under `SOURCE_DATE_EPOCH=1700000000` per ADR-021 (spec FR-036 / SC-004 verified via `tests/scripts/test_backward_compatibility.py`). Zero new runtime dependencies — `pyyaml` and `pytest` were already declared in the legacy Python dev manifest per Feature 128.
 
 **Scope amendments during implementation** (both recorded in ADR-027 Revision History):
 - **NIST Subcategory count 68 → 72** (pm_signoff_amendment_1): Day 2 harvest of the authoritative NIST AI RMF 1.0 Playbook pages (airc.nist.gov, fetched 2026-04-17) surfaced 72 Subcategories (GOVERN 19 + MAP 18 + MEASURE 22 + MANAGE 13), not the 68 historically cited in the PRD era. Amendment approved under FR-024 primary-source-correction discipline; FR-022 transcribed IDs (MAP 4.2, MEASURE 2.6-2.10, MANAGE 1.3, MANAGE 2.4, GOVERN 1.4) remain within the 68-subset ⊂ 72-superset, so no ADR-025 or `nist-ai-rmf-mapping.md` edits required.
@@ -111,14 +111,14 @@ Contributor proposing a new crosswalk edge
 
 ### New Dependencies
 
-**None.** This feature introduces zero new runtime or development dependencies. Empty diff on `requirements*.txt`, `pyproject.toml`, `package.json`. `pyyaml>=6.0` and `pytest>=8.0` were already declared in `requirements-dev.txt` per Feature 128 (Q7 / Assumption A6 verified at spec time).
+**None.** This feature introduces zero new runtime or development dependencies. Empty diff on `requirements*.txt`, legacy Python workspace manifest files, `package.json`. `pyyaml>=6.0` and `pytest>=8.0` were already declared in the legacy Python dev manifest per Feature 128 (Q7 / Assumption A6 verified at spec time).
 
 ### Tools Used (all pre-existing)
 
 | Tool | Purpose | Source |
 |------|---------|--------|
 | YAML | Block-style data authoring for 7 catalog files + crosswalk | Native to repository (matches existing `schemas/finding.yaml` / `schemas/attack-chain.yaml` / `schemas/report.yaml` conventions) |
-| `pyyaml` | `yaml.safe_load` parsing at integrity-test time and for adopter consumption | Pre-existing in `requirements-dev.txt` per Feature 128 |
+| `pyyaml` | `yaml.safe_load` parsing at integrity-test time and for adopter consumption | Pre-existing in the legacy Python dev manifest per Feature 128 |
 | `pytest` | Integrity test suite harness | Pre-existing per Feature 128 |
 | `pathlib.Path.is_file()` | Citation file-path existence check (stdlib) | Pre-existing Python 3.11 stdlib |
 | `ADR-000-template.md` | ADR-027 authoring scaffold | Pre-existing governance template |
@@ -230,7 +230,7 @@ Maintainer adding new MAESTRO-adjacent feature
 
 ### New Dependencies
 
-**None.** This feature introduces zero new runtime or development dependencies. Empty diff on `requirements*.txt`, `pyproject.toml`, `package.json`.
+**None.** This feature introduces zero new runtime or development dependencies. Empty diff on `requirements*.txt`, legacy Python workspace manifest files, `package.json`.
 
 ### Tools Used (all pre-existing)
 
@@ -1492,7 +1492,7 @@ graph LR
 ```
 threats.md + brand/*.png + optional artifacts
     → Report Assembler (detects artifacts)
-    → python3 scripts/extract-report-data.py (deterministic parsing, Feature 067)
+    → cargo run -q -p tachi-cli --bin report-data -- --target-dir <dir> --template-dir <dir> [--output <path>] (deterministic parsing, Feature 067)
     → report-data.typ + report-config.typ
     → Typst compile (main.typ orchestrates 13 page types)
     → security-report.pdf
@@ -1512,10 +1512,10 @@ threats.md + brand/*.png + optional artifacts
 
 ## Components
 
-### Component 1: Python Extraction Script (`scripts/extract-report-data.py`)
+### Component 1: Rust CLI binary (`report-data`)
 
 **Type**: New file
-**Purpose**: Deterministic, stdlib-only Python 3.9+ script that replaces LLM-based markdown parsing in the report-assembler agent. Parses all 4 pipeline markdown artifacts (threats.md, risk-scores.md, compensating-controls.md, threat-report.md) using regex-based extraction and writes a complete Typst data file (report-data.typ) with all variable bindings.
+**Purpose**: Deterministic Rust command that replaces LLM-based markdown parsing in the report-assembler agent. Parses all 4 pipeline markdown artifacts (threats.md, risk-scores.md, compensating-controls.md, threat-report.md) using shared Rust parsing and writes a complete Typst data file (report-data.typ) with all variable bindings.
 
 Key properties:
 - **Byte-identical output**: Same inputs always produce the same report-data.typ (no LLM variance)
@@ -1533,7 +1533,7 @@ Key properties:
 ```
 threats.md + optional artifacts (risk-scores.md, compensating-controls.md, threat-report.md)
     → Report Assembler (artifact detection)
-    → python3 scripts/extract-report-data.py --target-dir <dir> --output-dir <dir>
+    → cargo run -q -p tachi-cli --bin report-data -- --target-dir <dir> --template-dir <dir> [--output <path>]
     → report-data.typ (deterministic, byte-identical on same inputs)
     → Typst compile (main.typ orchestrates page types)
     → security-report.pdf
@@ -1543,7 +1543,7 @@ threats.md + optional artifacts (risk-scores.md, compensating-controls.md, threa
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| Python | 3.9+ (stdlib only) | Deterministic markdown parsing and Typst data generation; zero external dependencies |
+| Rust | 2021 edition | Deterministic markdown parsing and Typst data generation; zero external dependencies |
 
 ---
 
@@ -1551,10 +1551,10 @@ threats.md + optional artifacts (risk-scores.md, compensating-controls.md, threa
 
 ## Components
 
-### Component 1: Shared Parser Module (`scripts/tachi_parsers.py`)
+### Component 1: Shared Parser Module (`tachi-core`)
 
-**Type**: New file (extracted from Feature 067's `extract-report-data.py`)
-**Purpose**: Shared parser module (~750 lines) providing deterministic parsers for markdown tables, YAML frontmatter, severity distributions, findings, scope data, and compensating controls. Both `extract-report-data.py` and `extract-infographic-data.py` import the same parsing functions, guaranteeing identical interpretation of the same source artifacts across report and infographic pipelines.
+**Type**: New module (extracted from Feature 067's Rust report-data command)
+**Purpose**: Shared parser module (~750 lines) providing deterministic parsers for markdown tables, YAML frontmatter, severity distributions, findings, scope data, and compensating controls. Both `report-data` and `infographic-data` import the same parsing functions, guaranteeing identical interpretation of the same source artifacts across report and infographic pipelines.
 
 Key exports:
 - **Table parsing**: `parse_markdown_table()`, `_find_table_with_column()`
@@ -1565,10 +1565,10 @@ Key exports:
 - **Scope/controls**: `parse_scope_data()`, `parse_compensating_controls_md()`, `parse_component_distribution()`
 - **Constants**: `SEVERITY_ORDER`, `STRIDE_PREFIXES`, exit codes
 
-### Component 2: Infographic Extraction Script (`scripts/extract-infographic-data.py`)
+### Component 2: Infographic CLI (`infographic-data`)
 
 **Type**: New file (~1,060 lines)
-**Purpose**: Deterministic, stdlib-only Python 3.9+ script that replaces LLM-based data extraction in the threat-infographic agent. Parses pipeline markdown artifacts and writes JSON data files with all variable bindings needed by infographic templates (baseball-card, system-architecture, risk-funnel).
+**Purpose**: Deterministic Rust command that replaces LLM-based data extraction in the threat-infographic agent. Parses pipeline markdown artifacts and writes JSON data files with all variable bindings needed by infographic templates (baseball-card, system-architecture, risk-funnel).
 
 Key properties:
 - **Byte-identical output**: Same inputs always produce the same JSON (no LLM variance)
@@ -1593,8 +1593,8 @@ Key properties:
 ```
 threats.md + optional artifacts (risk-scores.md, compensating-controls.md)
     → Infographic Agent (template selection)
-    → python3 scripts/extract-infographic-data.py --target-dir <dir> --template <name> --output <path>
-        → tachi_parsers.py (shared parsing: frontmatter, tables, severity, findings, scope)
+    → cargo run -q -p tachi-cli --bin infographic-data -- --root <dir> --template <name> [--output <path>]
+        → shared Rust parsers (frontmatter, tables, severity, findings, scope)
     → infographic-data.json (deterministic, byte-identical on same inputs)
     → Agent reads JSON and generates specification
     → threat-{template-name}-spec.md + optional threat-{template-name}.jpg (Gemini API)
@@ -1604,7 +1604,7 @@ threats.md + optional artifacts (risk-scores.md, compensating-controls.md)
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| Python | 3.9+ (stdlib only) | Deterministic markdown parsing and JSON data generation; zero external dependencies |
+| Rust | 2021 edition | Deterministic markdown parsing and JSON data generation; zero external dependencies |
 | JSON | N/A | Structured data interchange between extraction script and infographic agent |
 
 ---
@@ -2989,7 +2989,7 @@ No tech stack changes. Reference lineage unchanged from current state:
 - **Conventional commits**: `docs:` prefix only (per Constitution IX + SC-012)
 - **GitHub CLI**: `bash .aod/scripts/bash/create-issue.sh` for FR-008 conditional Issue filing
 
-**Zero new runtime dependencies**: empty diff on `requirements*.txt`, `pyproject.toml`, `package.json`. Zero new CLI prerequisites.
+**Zero new runtime dependencies**: empty diff on `requirements*.txt`, legacy Python workspace manifest files, `package.json`. Zero new CLI prerequisites.
 
 ---
 
@@ -3120,7 +3120,7 @@ Architecture Description + Components + Data Flows (Phase 1 output)
 | Testing | pytest >= 8.0 | Established in Feature 128; backward-compat baselines per ADR-021 |
 | Example Architecture | Markdown (agentic-app extension) | Matches existing examples/ convention; 1-2h architectural extension budget |
 
-**Zero new runtime dependencies**: empty diff on `requirements*.txt`, `pyproject.toml`, `package.json`. Zero new CLI prerequisites.
+**Zero new runtime dependencies**: empty diff on `requirements*.txt`, legacy Python workspace manifest files, `package.json`. Zero new CLI prerequisites.
 
 ---
 
@@ -3176,7 +3176,7 @@ F-A3 / F-B scope: risk-scorer, control-analyzer, threat-report, SARIF,
 | Tests | pytest >= 8.0 (developer-only) | Established in Feature 128; SC-2 harness reused unmodified |
 | Serialization surface | Q1-resolved at Day 1 memo | Primary: Q1-E conditional Section 9 YAML block (Feature 141 precedent). Fallback: Q1-B YAML sidecar file. Both preserve SC-2 byte-identity on the 5 non-agentic baselines. |
 
-**Zero new runtime dependencies**: empty diff on `requirements*.txt`, `pyproject.toml`, `package.json`. Zero new CLI prerequisites. 22-file zero-edit scope preserved per ADR-023.
+**Zero new runtime dependencies**: empty diff on `requirements*.txt`, legacy Python workspace manifest files, `package.json`. Zero new CLI prerequisites. 22-file zero-edit scope preserved per ADR-023.
 
 ---
 
@@ -3245,7 +3245,7 @@ PDF Output — byte-identical on 5 baselines when gate=false.
 | Determinism | `SOURCE_DATE_EPOCH=1700000000` per ADR-021 | 5 non-agentic baselines byte-identical (SC-002 BLOCKER gate) |
 | Gate pattern | `has-source-attribution` + `.len() > 0` | Mirrors Feature 141 `has-attack-chains` dual-predicate (`main.typ:246`) |
 
-**Architectural posture**: additive-only. Zero schema changes (FR-015 BLOCKER — `schemas/finding.yaml` remains at version 1.5 from Feature 189); zero edits to the 22-file scope (11 threat-detection agents + 11 companion skill-reference `detection-patterns.md` files) per ADR-023 / ADR-028 lineage (FR-014 / SC-009 BLOCKER — third extension of the invariant after F-082 / F-A2); no crosswalk JOIN (FR-017 scope boundary — `schemas/taxonomy/crosswalk.yaml` unused by F-B; deferred to F-C follow-on). Zero new runtime or developer dependencies (SC-008): empty diff on `requirements*.txt`, `pyproject.toml`, `package.json` (`pyyaml` already declared per Feature 128). F-A3 populator coordination handled via Day 2 EOD status check; F-A3 had not shipped at F-B merge time, so the `has-source-attribution` gate evaluates to `false` on all 5 non-agentic baselines, preserving byte-identity on `web-app`, `microservices`, `ascii-web-api`, `mermaid-agentic-app`, `free-text-microservice`, and `maestro-reference` (6-baseline coverage harness green).
+**Architectural posture**: additive-only. Zero schema changes (FR-015 BLOCKER — `schemas/finding.yaml` remains at version 1.5 from Feature 189); zero edits to the 22-file scope (11 threat-detection agents + 11 companion skill-reference `detection-patterns.md` files) per ADR-023 / ADR-028 lineage (FR-014 / SC-009 BLOCKER — third extension of the invariant after F-082 / F-A2); no crosswalk JOIN (FR-017 scope boundary — `schemas/taxonomy/crosswalk.yaml` unused by F-B; deferred to F-C follow-on). Zero new runtime or developer dependencies (SC-008): empty diff on `requirements*.txt`, legacy Python workspace manifest files, `package.json` (`pyyaml` already declared per Feature 128). F-A3 populator coordination handled via Day 2 EOD status check; F-A3 had not shipped at F-B merge time, so the `has-source-attribution` gate evaluates to `false` on all 5 non-agentic baselines, preserving byte-identity on `web-app`, `microservices`, `ascii-web-api`, `mermaid-agentic-app`, `free-text-microservice`, and `maestro-reference` (6-baseline coverage harness green).
 
 **Strategic significance — BLP-01 Reporting tier unblocked**: F-B is the second of the 3-feature BLP-01 reporting initiative (F-A3 populators, F-B report section, F-C crosswalk-JOIN follow-on). F-B ships the consumer-side bridge — the PDF attestation renderer over the F-A1 / F-A2 data contract — independent of F-A3 populator completion. When F-A3 later wires threat-detection agents to emit `source_attribution` during detection, the `has-source-attribution` gate flips to `true` on affected architectures and the section renders automatically with no F-B code changes. Ecosystem integrators who consume tachi via the PDF surface now have a direct visual answer to the "what fraction of framework X does this engagement cover?" aggregate question, complementing the machine-readable access surface (`source_attribution` arrays on findings, Section 9 YAML block in `threats.md`) shipped by F-A2.
 
@@ -3527,7 +3527,7 @@ sequenceDiagram
 - **Primary tools**: bash builtins (`cat`, `printf -v`, `[[`, `=~`, `${!var}`, here-strings `<<<`, `&`, `wait`, `kill`, `sleep`, `trap`).
 - **Testing**: pytest (existing) via subprocess; pytest fixtures (session-scoped `hanging_upstream` per F-250 ADR-039).
 - **CI**: GitHub Actions matrix (macos-latest bash 3.2.57 + ubuntu-latest bash 5.x); existing workflow file; F-2 adds tests to the already-running matrix.
-- **No new runtime deps**: empty diff on `pyproject.toml`, `requirements*.txt`, `package.json` per NFR-002.
+- **No new runtime deps**: empty diff on legacy Python workspace manifest files, `requirements*.txt`, `package.json` per NFR-002.
 - **Documentation**: Markdown ADR (ADR-040 dual-commit Proposed → Accepted); CHANGELOG.md entry; new `contracts/stack-pack-defaults-schema.md`.
 
 **Cross-references**: [Spec 256](../../../specs/256-source-pattern-hardening/spec.md) · [Plan 256](../../../specs/256-source-pattern-hardening/plan.md) · [ADR-040](../02_ADRs/ADR-040-config-file-parsing-hardening.md) (config-file parsing hardening — Accepted 2026-05-05; bash `source`/`eval` → `aod_template_load_kv_file` KV parser across 4 sites + clone timeout + F-1 prompt-boundary contract amendment) · [ADR-038](../02_ADRs/ADR-038-placeholder-substitution-strategy.md) (F-1 substitution canon — F-2 reuses validation-triplet pattern) · [ADR-039](../02_ADRs/ADR-039-test-architecture-fixture-scope-and-asymmetric-baseline.md) (F-250 test-architecture canon — session-scoped fixture pattern adopted for `hanging_upstream`) · [Feature 248](#feature-248-substitution-surface-hardening) (predecessor BLP-02 Wave 1; F-2 amends F-1's `aod_init_read_validated` per B-2 Path R-2)

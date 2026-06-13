@@ -31,7 +31,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | `.aod/` | AOD shell helpers, templates, and governance memory. Some shell helpers remain under Rust test coverage while migration continues. |
 | `tests/scripts/` | Transitional pytest suite and fixtures. RT-011 progressively ports high-signal coverage into Rust tests and removes retired pytest modules. |
 | `tests/fixtures/` | Frozen fixture copies and baseline trees used for compatibility checks. These are excluded from active coverage-audit counts. |
-| `scripts/` | Transitional Python runtime scripts from the original implementation. RT-012 tracks porting remaining canonical behavior into Rust; the standalone SARIF generators, infographic extractor, pagination smoke scaffolds, and attack-chain extraction pytest have already moved to Rust CLI binaries and tests, and RT-013 now routes desktop `infographic-data` through the shared Rust payload builder. |
+| `scripts/` | Transitional Python runtime scripts from the original implementation. RT-012 tracks porting remaining canonical behavior into Rust; the standalone SARIF generators, infographic extractor, pagination smoke scaffolds, and attack-chain extraction pytest have already moved to Rust CLI binaries and tests, RT-013 now routes desktop `infographic-data` through the shared Rust payload builder, and the active architecture system-design README now points at the Rust CLI extractors. |
 | `stacks/` | Legacy Python/FastAPI and frontend scaffolds. RT-014 tracks retirement or archival after Rust/Tauri parity is stable; the stack index now describes the retired FastAPI packs generically. |
 | `docs/` | Public project documentation. Roadmap and product planning documents live under `docs/roadmap/`; testing status lives under `docs/testing/`; archived security-review guidance for retired FastAPI scaffolds lives in `docs/security/`; the root `README.md` now treats the old FastAPI packs as archived legacy guidance, and live examples use Rust/Tauri or shell tooling instead of Python pretty-printers. |
 
@@ -78,7 +78,7 @@ cargo run -q -p tachi-cli --bin coverage-audit
 | RT-011 | Migrate remaining pytest coverage into Rust tests using TDD. Keep explicit unit, integration, smoke, and E2E classification visible through `coverage-audit`. |
 | RT-012 | Port remaining Python runtime behavior into Rust modules and CLI binaries, especially report extraction, infographic output handling, executive-architecture infographic parity, and remaining report/SARIF payload parity. |
 | RT-013 | Keep Tauri shell thin by routing desktop behavior through shared Rust command handlers; `infographic-data` now flows through the shared Rust payload builder. |
-| RT-014 | Retire Python packaging, pytest-only guidance, and FastAPI stack scaffolds after parity is complete; the security-review FastAPI scaffold note is archived guidance only. |
+| RT-014 | Retire Python packaging, pytest-only guidance, and FastAPI stack scaffolds after parity is complete; the security-review FastAPI scaffold note is archived guidance only, and the active architecture system-design README now points at Rust CLI extractor commands. |
 | RT-015 | Optimize Rust path for speed and reliability after the Python runtime path is no longer canonical, with `AOD_INIT_TRACE=1` timing markers in `scripts/init.sh`, millisecond slowest-phase trace summaries, same-clone cold/warm precommit sample support, and single-read report-data assembly. |
 
 ## Dependency Notes
