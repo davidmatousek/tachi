@@ -27,6 +27,7 @@ fn active_docs_do_not_instruct_running_retired_python_entrypoints() {
         "pytest src/api/tests/",
         "Run `pytest` before committing",
         "Bash(pip install:*)",
+        "Requires Python 3.11+",
         "python3 -m json.tool",
         "python3 -c",
         "pip install pre-commit",

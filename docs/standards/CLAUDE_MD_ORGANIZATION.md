@@ -103,7 +103,7 @@ This project already follows best practices with 6 CLAUDE.md files:
 | Testing instructions | `cargo test -q` |
 | Repo conventions | "Always use feature branches" |
 | Architectural decisions | "PostgreSQL-only (no Redis)" |
-| Environment quirks | "Requires Python 3.11+" |
+| Environment quirks | "Requires Rust stable toolchain" |
 | Common gotchas | "Check INSTITUTIONAL_KNOWLEDGE.md first" |
 
 ### What to Exclude
