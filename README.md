@@ -23,14 +23,11 @@ Recent updates towards a native Rust implementation include:
 - **Filesystem Decoupling**: Decoupled core data formatting and infographic payload compilation in `infographic.rs` from direct filesystem dependencies, adhering to the Dependency Inversion Principle (DIP).
 - **Environment Isolation**: Improved the python surface inventory testing harness to isolate runs from local workspace artifacts (such as git worktrees).
 
-The repository is not yet completely Python-free. A frozen inventory of the remaining Python surface is maintained at [`docs/roadmap/2026-06-08-python-surface-inventory.md`](docs/roadmap/2026-06-08-python-surface-inventory.md). Current transitional surfaces include:
+The repository is now Rust/Tauri-native. The frozen inventory in [`docs/roadmap/2026-06-08-python-surface-inventory.md`](docs/roadmap/2026-06-08-python-surface-inventory.md) is kept as historical evidence of the migration, but the active Python runtime surface has been retired. Remaining Python references in the tree are archival or compatibility fixtures only.
 
-- legacy runtime scripts under [`scripts/`](scripts/), including SARIF and report-data extractors that are being ported to Rust CLI commands
-- legacy Python tests under [`tests/scripts/`](tests/scripts/) and [`tests/schemas/`](tests/schemas/) that are being migrated to Rust unit, integration, and end-to-end tests
-- Python packaging files such as [`pyproject.toml`](pyproject.toml) and [`requirements-dev.txt`](requirements-dev.txt), retained only while compatibility tests are being retired
 - Archived legacy guidance for the old FastAPI stack packs lives in [`docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md`](docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md). The active repository no longer treats those packs as current setup paths.
 
-New implementation work should use Rust ecosystem tooling and should not add new Python dependencies. Python references that remain in this repository should be treated as migration backlog unless they are historical fixtures or explicitly documented compatibility surfaces.
+New implementation work should use Rust ecosystem tooling and should not add new Python dependencies. Any remaining Python references in this repository are historical fixtures or explicitly documented compatibility surfaces, not active runtime paths.
 
 ---
 

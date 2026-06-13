@@ -37,6 +37,12 @@ fn active_devops_docs_treat_fastapi_pack_guidance_as_archived_reference_only() {
             !content.contains("fastapi-react-local"),
             "active devops doc {doc} should not instruct adopting fastapi-react-local"
         );
+        if doc == "README.md" {
+            assert!(
+                !content.contains("retained only while compatibility tests are being retired"),
+                "root README should not describe retired Python packaging as still retained"
+            );
+        }
     }
 }
 
