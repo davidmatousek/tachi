@@ -31,10 +31,10 @@ This section documents the reference CI workflows that the upstream template use
 | `.github/workflows/extract-coverage.yml` | F128 (directory-based extraction manifest) | Classification-snapshot invariant for `scripts/extract-classification.txt` |
 | `.github/workflows/stack-contract.yml` | F130 (Stack Pack Test Contract) | Test contract invariant for every `stacks/*/STACK.md` (excluding content-pack allowlist) |
 | `.github/workflows/tachi-mmdc-preflight.yml` | F145 (Mermaid CLI hard-prerequisite) | Loud-failure path when `mmdc` is absent on the runner (ADR-022) |
-| `.github/workflows/tachi-pytest.yml` | F-248 (Substitution surface hardening) | `scripts/init.sh` substitution behaviour on a macOS+Ubuntu pytest matrix (ADR-038) |
+| `.github/workflows/tachi-pytest.yml` | F-248 (Substitution surface hardening) | `scripts/init.sh` substitution behaviour on a macOS+Ubuntu Rust init matrix (ADR-038) |
 | `.github/workflows/gitleaks.yml` | F-282 / F-5 (Pre-commit secret-scanning defaults) | Full-repo gitleaks scan on PR — back-stop for `git commit --no-verify` (ADR-042) |
 
-The first three workflows share the bash:3.2 Docker pattern, SHA-pinned checkout action, `contents: read` permissions, and cancel-in-progress concurrency. The latter three (`tachi-mmdc-preflight.yml`, `tachi-pytest.yml`, `gitleaks.yml`) follow a different pattern — direct host-runner execution with path-filtered triggers (or unfiltered, in `gitleaks.yml`'s case) — because their workloads (`mmdc` Node binary preflight, Python+bash subprocess tests, native gitleaks binary) do not benefit from container isolation. Use any of the first three as a template when adding a new maintenance workflow that needs the bash:3.2 floor; use `tachi-pytest.yml` as a template when adding a new path-filtered Python test job; use `gitleaks.yml` as a template when adding a new SARIF-emitting scanner job.
+The first three workflows share the bash:3.2 Docker pattern, SHA-pinned checkout action, `contents: read` permissions, and cancel-in-progress concurrency. The latter three (`tachi-mmdc-preflight.yml`, `tachi-pytest.yml`, `gitleaks.yml`) follow a different pattern — direct host-runner execution with path-filtered triggers (or unfiltered, in `gitleaks.yml`'s case) — because their workloads (`mmdc` Node binary preflight, Rust init hardening, native gitleaks binary) do not benefit from container isolation. Use any of the first three as a template when adding a new maintenance workflow that needs the bash:3.2 floor; use `tachi-pytest.yml` as a template when adding a new path-filtered Rust test job; use `gitleaks.yml` as a template when adding a new SARIF-emitting scanner job.
 
 ### Shared Workflow Conventions
 
@@ -139,22 +139,22 @@ In `--all` mode the script exits with the **numerically lowest non-zero code** a
 
 ### Tachi Pytest Workflow (F-248 + F-250 + F-256 + F-282)
 
-**Added in Feature 248** (Substitution Surface Hardening), merged via PR #249 (squash commit `6db9a25`) on 2026-05-04. Re-tuned and re-scoped by Feature 250 (PR #253, squash `75866d9`) on 2026-05-04 (timeouts + session-scoped fixture). Extended by Feature 256 (PR #257, squash `f959622`) on 2026-05-05 to cover the source-pattern-hardening surface. Extended by Feature 282 / F-5 (PR #283, squash `18378bd`) on 2026-05-10 to wire `tests/scripts/test_init_precommit_matrix.py` into both the `paths:` trigger and the pytest invocation in lock-step (the F-256 lock-step pattern, applied verbatim).
+**Added in Feature 248** (Substitution Surface Hardening), merged via PR #249 (squash commit `6db9a25`) on 2026-05-04. Re-tuned and re-scoped by Feature 250 (PR #253, squash `75866d9`) on 2026-05-04 (timeouts + session-scoped fixture). Extended by Feature 256 (PR #257, squash `f959622`) on 2026-05-05 to cover the source-pattern-hardening surface. Later migrated to Rust init tests and the Rust init matrix workflow in place of the original Python matrix.
 
-`.github/workflows/tachi-pytest.yml` runs the remaining F-248 substitution test suite + F-256 source-pattern-hardening test suite on a 2-runner cross-platform matrix (`macos-latest` + `ubuntu-latest`) to catch bash-version regressions across the full bash surface area: `scripts/init.sh`, `.aod/scripts/bash/template-substitute.sh`, `.aod/scripts/bash/init-input.sh`, `.aod/scripts/bash/template-git.sh`, `.aod/scripts/bash/template-config-load.sh` (F-256 canonical KV-load primitive), the constitution templates, and the shipped stack-pack `defaults.env` files (F-256 Site A whitelist surface). The macOS leg is the strictest gate because it ships bash 3.2.57 (Apple's bundled `/bin/bash`, GPLv3-pinned) — a green macOS run on top of a green Ubuntu run proves the entire hardening surface is portable, not bash-3.2-quirk-locked.
+`.github/workflows/tachi-pytest.yml` now runs the Rust init matrix on a 2-runner cross-platform matrix (`macos-latest` + `ubuntu-latest`) to catch bash-version regressions across the full bash surface area: `scripts/init.sh`, `.aod/scripts/bash/template-substitute.sh`, `.aod/scripts/bash/init-input.sh`, `.aod/scripts/bash/template-git.sh`, `.aod/scripts/bash/template-config-load.sh` (F-256 canonical KV-load primitive), the constitution templates, and the shipped stack-pack `defaults.env` files (F-256 Site A whitelist surface). The macOS leg is the strictest gate because it ships bash 3.2.57 (Apple's bundled `/bin/bash`, GPLv3-pinned) — a green macOS run on top of a green Ubuntu run proves the entire hardening surface is portable, not bash-3.2-quirk-locked.
 
 | Property | Value |
 |----------|-------|
 | Workflow file | `.github/workflows/tachi-pytest.yml` |
 | Trigger | `pull_request` only (path-filtered — see below) |
 | Runners | `macos-latest`, `ubuntu-latest` (matrix, `fail-fast: false`) |
-| Python version | 3.11 (matches `tachi-mmdc-preflight.yml` baseline) |
+| Rust toolchain | stable |
 | Permissions | `contents: read` |
-| Pip dependencies | `pytest>=8`, `pytest-timeout>=2`, `pyyaml>=6` |
-| Inner subprocess timeout | 900s (in `tests/scripts/init_sh_helpers.run_init_in_clone`, F-250) |
-| Outer pytest timeout | 1080s (per-test wall-clock cap, ~180s fixture-teardown slack, F-250) |
-| Job ID | `init-sh-suite` |
-| Job name | `pytest init.sh suite — ${{ matrix.os }}` |
+| Cargo invocation | `cargo test -q -p tachi-shell --test init_substitution ...` |
+| Inner subprocess timeout | 900s (historical shell helper contract; retained for compatibility checks) |
+| Outer test timeout | N/A in the Rust workflow |
+| Job ID | `init-suite` |
+| Job name | `Rust init suite — ${{ matrix.os }}` |
 
 **Test files covered** (F-248 substitution suite + F-250 unit modules + F-256 source-pattern-hardening suite, all wired into the same pytest invocation per the path-filter completeness pattern):
 
@@ -252,18 +252,17 @@ Both legs green on first attempt; release-please PR #254 auto-opened ~35s post-m
 **Local invocation** (matches CI exactly post-F-250):
 
 ```bash
-# Install dependencies (matches CI versions)
-python -m pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
-
-# Run the full F-248 + F-256 + F-282 hardening suite (matches CI exactly)
-python -m pytest \
-  tests/scripts/test_init_sh_substitution.py \
-  tests/scripts/test_init_sh_constitution.py \
-  tests/scripts/test_init_precommit_matrix.py \
-  -v --timeout=1080
+# Run the Rust init matrix locally
+cargo test -q -p tachi-shell --test init_substitution
+cargo test -q -p tachi-shell --test init_constitution
+cargo test -q -p tachi-shell --test init_defaults_env
+cargo test -q -p tachi-shell --test init_precommit_matrix
+cargo test -q -p tachi-shell --test init_timing_trace
+cargo test -q -p tachi-shell --test init_trace_summary
+cargo test -q -p tachi-core --test active_docs_runtime_guidance active_docs_do_not_instruct_running_retired_python_entrypoints
 ```
 
-On dev hardware the suite finishes in ~3-4 minutes (vs. the 5-7 minute cold-cache band on `macos-latest`). The 1080s `--timeout` is sized for the worst-case CI runner, not for local; on a fast workstation, no test approaches the cap.
+On dev hardware the suite finishes quickly; on CI the bash compatibility gate is still the slowest component. The Rust tests remove the Python `pytest` dependency while preserving the macOS/Ubuntu comparison that catches shell-version regressions.
 
 **Full contract**: `specs/248-substitution-surface-hardening/spec.md` (FR-001..FR-011, NFR-001 bash floor, NFR-005 scope discipline). F-250 hot-fix: `specs/250-adversarial-unit-extraction-hotfix/spec.md`. F-256 source-pattern hardening: `specs/256-source-pattern-hardening/spec.md` (FR-1..FR-9, NFR-1..NFR-6, SC-1..SC-15). ADRs: `docs/architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md` (F-248) + `docs/architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md` (F-256). Tasks T039 (workflow authoring) + T040 (CI matrix verification) + T041 (close-out attestation) for F-248; F-250 tasks T001-T029 for the hot-fix; F-256 covers Sites A-D + Stream 4 (T014-T041) + Stream 5 lint (T046).
 
