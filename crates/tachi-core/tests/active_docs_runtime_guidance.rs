@@ -53,10 +53,62 @@ fn active_docs_do_not_instruct_running_retired_python_entrypoints() {
     }
 }
 
+#[test]
+fn active_devops_docs_and_architecture_summary_frames_are_rust_init_matrix_based() {
+    let root = workspace_root();
+
+    let devops_readme = read_lines(&root.join("docs/devops/README.md"), 1, 180);
+    assert!(
+        devops_readme.contains("Rust init matrix"),
+        "active devops README summary should describe the Rust init matrix"
+    );
+    assert!(
+        !devops_readme.contains("tachi-pytest.yml"),
+        "active devops README summary should not frame the host-runner workflow as pytest-based"
+    );
+
+    let env_vars = read_lines(&root.join("docs/devops/environment-variables.md"), 1, 120);
+    assert!(
+        env_vars.contains("Rust init matrix workflow"),
+        "active environment-variable guidance should describe the Rust init matrix workflow"
+    );
+    assert!(
+        !env_vars.contains("tachi-pytest.yml"),
+        "active environment-variable guidance should not name the workflow as pytest-based"
+    );
+
+    let architecture_gate = read_lines(
+        &root.join("docs/architecture/00_Tech_Stack/README.md"),
+        228,
+        240,
+    );
+    assert!(
+        architecture_gate.contains("Rust init matrix"),
+        "architecture CI gate guidance should describe the Rust init matrix"
+    );
+    assert!(
+        !architecture_gate.contains("tachi-pytest.yml"),
+        "architecture CI gate guidance should not name the matrix as pytest-based"
+    );
+}
+
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(Path::parent)
         .expect("workspace root")
         .to_path_buf()
+}
+
+fn read_lines(path: &Path, start_line: usize, end_line: usize) -> String {
+    assert!(start_line >= 1, "start_line must be 1-based");
+    assert!(end_line >= start_line, "end_line must be >= start_line");
+    let content =
+        fs::read_to_string(path).unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
+    content
+        .lines()
+        .skip(start_line - 1)
+        .take(end_line - start_line + 1)
+        .collect::<Vec<_>>()
+        .join("\n")
 }

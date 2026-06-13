@@ -45,7 +45,7 @@ CI/CD setup instructions for common platforms. Also documents reference template
 
 The patterns below describe CI that the upstream template uses to protect its own release-tooling integrity. **They do not ship to adopter projects** — adopt them only if you extend the template or want the same guarantees in your own repo.
 
-The bash-pattern workflows (manifest-coverage, extract-coverage, stack-contract) share the same bash:3.2 Docker pattern, SHA-pinned checkout action, `contents: read` permissions, and cancel-in-progress concurrency. See `docs/devops/CI_CD_GUIDE.md` for the reusable pattern including the `apk add git` + `safe.directory` setup. The host-runner workflows (`tachi-pytest.yml`, `tachi-mmdc-preflight.yml`) follow a different shape — direct host execution with path-filtered triggers — because their workloads (Rust init hardening, mmdc Node binary preflight) do not benefit from container isolation.
+The bash-pattern workflows (manifest-coverage, extract-coverage, stack-contract) share the same bash:3.2 Docker pattern, SHA-pinned checkout action, `contents: read` permissions, and cancel-in-progress concurrency. See `docs/devops/CI_CD_GUIDE.md` for the reusable pattern including the `apk add git` + `safe.directory` setup. The host-runner workflows (Rust init matrix workflow, `tachi-mmdc-preflight.yml`) follow a different shape — direct host execution with path-filtered triggers — because their workloads (Rust init hardening, mmdc Node binary preflight) do not benefit from container isolation.
 
 ### Reference: Manifest Coverage Workflow (F129)
 
@@ -133,7 +133,7 @@ Production ({{PRODUCTION_PLATFORM}}):
 - [Local Setup](01_Local/README.md)
 - [Staging Deployment](02_Staging/README.md)
 - [Production Deployment](03_Production/README.md)
-- [CI/CD Guide](CI_CD_GUIDE.md) — includes manifest-coverage + extract-coverage + stack-contract workflows, tachi-pytest (F-248 + F-256 + F-282) + tachi-mmdc-preflight (F145) + gitleaks (F-282 / F-5) host-runner workflows, bash:3.2 Docker pattern, BATS harness, update-script env vars
+- [CI/CD Guide](CI_CD_GUIDE.md) — includes manifest-coverage + extract-coverage + stack-contract workflows, Rust init matrix (F-248 + F-256 + F-282) + tachi-mmdc-preflight (F145) + gitleaks (F-282 / F-5) host-runner workflows, bash:3.2 Docker pattern, BATS harness, update-script env vars
 - [Environment Variables Contract](environment-variables.md) — test-only and CI-only env vars (F-248 date overrides, F129 BATS overrides) — adopter-facing env vars are documented in CI_CD_GUIDE.md
 - [Pre-commit Secret-Scanning Hooks](../standards/PRECOMMIT_HOOKS.md) — authoritative policy doc for the F-5 / F-282 default-secure pre-commit gitleaks hook (install paths, bypass mechanisms, per-rule rationale catalog)
 - [Downstream Template Update Guide](../guides/DOWNSTREAM_UPDATE.md) — authoritative adopter walkthrough for `make update` / `/aod.update`

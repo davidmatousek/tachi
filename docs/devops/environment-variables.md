@@ -81,7 +81,7 @@ AOD_RATIFICATION_DATE_OVERRIDE=2026-05-04 \
   bash scripts/init.sh
 ```
 
-**CI invocation**: the Rust init workflow (`tachi-pytest.yml`) does NOT set these variables directly — instead, the Rust fixtures invoke them via `scripts/init.sh` helpers after the test harness sets a deterministic value. This isolates per-test determinism from cross-test fixture coupling.
+**CI invocation**: the Rust init matrix workflow does NOT set these variables directly — instead, the Rust fixtures invoke them via `scripts/init.sh` helpers after the test harness sets a deterministic value. This isolates per-test determinism from cross-test fixture coupling.
 
 **Reference**: `docs/architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md` §Test Coverage. Spec FR-001..FR-011 in `specs/248-substitution-surface-hardening/spec.md`.
 
