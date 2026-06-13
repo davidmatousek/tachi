@@ -67,6 +67,16 @@ fn active_devops_docs_and_architecture_summary_frames_are_rust_init_matrix_based
         "active devops README summary should not frame the host-runner workflow as pytest-based"
     );
 
+    let feature_248 = read_lines(&root.join("docs/devops/README.md"), 292, 346);
+    assert!(
+        feature_248.contains("Rust init matrix"),
+        "feature 248 summary should describe the Rust init matrix"
+    );
+    assert!(
+        !feature_248.contains("tachi-pytest.yml"),
+        "feature 248 summary should not mention the retired pytest workflow filename"
+    );
+
     let env_vars = read_lines(&root.join("docs/devops/environment-variables.md"), 1, 120);
     assert!(
         env_vars.contains("Rust init matrix workflow"),
