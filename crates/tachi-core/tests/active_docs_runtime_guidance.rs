@@ -124,6 +124,29 @@ fn active_devops_docs_and_architecture_summary_frames_are_rust_init_matrix_based
     );
 }
 
+#[test]
+fn active_devops_ci_guide_frames_the_rust_init_matrix_without_pytest_invocation_language() {
+    let root = workspace_root();
+
+    let ci_guide = read_lines(&root.join("docs/devops/CI_CD_GUIDE.md"), 140, 265);
+    assert!(
+        ci_guide.contains("Rust init matrix"),
+        "CI guide should frame the workflow as the Rust init matrix"
+    );
+    assert!(
+        ci_guide.contains("cargo test -q -p tachi-shell --test init_substitution"),
+        "CI guide should show the Rust test invocation"
+    );
+    assert!(
+        !ci_guide.contains("python -m pytest"),
+        "CI guide should not describe the Rust workflow with pytest invocation language"
+    );
+    assert!(
+        !ci_guide.contains("pytest invocation"),
+        "CI guide should not keep the old pytest invocation framing"
+    );
+}
+
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()

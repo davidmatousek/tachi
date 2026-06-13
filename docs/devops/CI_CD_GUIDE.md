@@ -137,7 +137,7 @@ In `--all` mode the script exits with the **numerically lowest non-zero code** a
 
 **Feature 142 Update (2026-04-23)**: The workflow itself (`.github/workflows/stack-contract.yml`) and the validator (`.aod/scripts/bash/stack-contract-lint.sh`) are **unchanged** by F142 (PR #151) — the exit-code contract (0–5) was already strict as of F130. F142 only removes the grace-period fallback that previously lived inside `/aod.deliver` Step 9a, which translated a lint exit 5 (MISSING_BLOCK) into a silent skip. Post-F142, `/aod.deliver` surfaces exit 5 as an explicit error with the lint stderr diagnostic shown verbatim in the delivery report. **Effective impact on CI consumers**: any pipeline that parses delivery.md rendered by `/aod.deliver` should read `e2e_validation.status` (`error` vs. `skipped` vs. `success`) from the payload rather than pattern-matching grace-period language in the human-readable rendering. The stack-contract CI workflow continues to fail any PR that would have tripped its exit 5 anyway — F142 closes the same gap at the `/aod.deliver` boundary for branches not guarded by the CI workflow. PRD: `docs/product/02_PRD/142-remove-grace-period-fallback-2026-04-23.md`.
 
-### Tachi Pytest Workflow (F-248 + F-250 + F-256 + F-282)
+### Tachi Init Matrix Workflow (F-248 + F-250 + F-256 + F-282)
 
 **Added in Feature 248** (Substitution Surface Hardening), merged via PR #249 (squash commit `6db9a25`) on 2026-05-04. Re-tuned and re-scoped by Feature 250 (PR #253, squash `75866d9`) on 2026-05-04 (timeouts + session-scoped fixture). Extended by Feature 256 (PR #257, squash `f959622`) on 2026-05-05 to cover the source-pattern-hardening surface. Later migrated to Rust init tests and the Rust init matrix workflow in place of the original Python matrix.
 
@@ -156,7 +156,7 @@ In `--all` mode the script exits with the **numerically lowest non-zero code** a
 | Job ID | `init-suite` |
 | Job name | `Rust init suite — ${{ matrix.os }}` |
 
-**Test files covered** (F-248 substitution suite + F-250 unit modules + F-256 source-pattern-hardening suite, all wired into the same pytest invocation per the path-filter completeness pattern):
+**Test files covered** (F-248 substitution suite + F-250 unit modules + F-256 source-pattern-hardening suite, all wired into the same Rust test invocation per the path-filter completeness pattern):
 
 F-248 substitution suite (per ADR-038 §Test Coverage — 8 substitution + 4 rejection + 1 case-13 + 1 residual + 1 constitution + 3 self-delete + 2 fixture-replay = 20 tests):
 
@@ -215,7 +215,7 @@ paths:
   - .github/workflows/tachi-pytest.yml
 ```
 
-**Path-filter completeness pattern (F-250 lesson, reinforced by F-256, applied verbatim by F-282/F-5)**: The `paths:` filter and the `pytest` invocation MUST be kept in lock-step. F-250 hot-fixed an asymmetry where 3 unit modules were added to the test invocation but omitted from `paths:`, so edits scoped to those modules silently bypassed CI. F-256 added 5 new test modules + 1 new bash library file (`template-config-load.sh`) + a new fixture tree (`tests/fixtures/config-load/`) — all wired through both the trigger list and the pytest invocation in a single commit. F-282 / F-5 added one new test module (`tests/scripts/test_init_precommit_matrix.py`) — wired through both the trigger list AND the pytest invocation in a single commit (T020 in the F-5 task plan, ratified at /aod.deliver close-out). When adding a new test file or library file in future work, update BOTH the `paths:` trigger list AND the `python -m pytest ...` command in the same commit — and verify the file appears in both.
+**Path-filter completeness pattern (F-250 lesson, reinforced by F-256, applied verbatim by F-282/F-5)**: The `paths:` filter and the Rust test invocation MUST be kept in lock-step. F-250 hot-fixed an asymmetry where 3 unit modules were added to the test invocation but omitted from `paths:`, so edits scoped to those modules silently bypassed CI. F-256 added 5 new test modules + 1 new bash library file (`template-config-load.sh`) + a new fixture tree (`tests/fixtures/config-load/`) — all wired through both the trigger list and the Rust test invocation in a single commit. F-282 / F-5 added one new test module (`tests/scripts/test_init_precommit_matrix.py`) — wired through both the trigger list AND the Rust test invocation in a single commit (T020 in the F-5 task plan, ratified at /aod.deliver close-out). When adding a new test file or library file in future work, update BOTH the `paths:` trigger list AND the `cargo test ...` command in the same commit — and verify the file appears in both.
 
 Edits to other shell scripts, agent files, ADRs, or documentation will not invoke this workflow even if the PR also includes substitution-surface changes — GitHub Actions evaluates the path filter at the PR level, so the workflow fires when at least one matching path is in the diff.
 
