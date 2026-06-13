@@ -12,7 +12,11 @@ fn init_trace_summary_reports_phases_and_total_elapsed_time() {
     fs::create_dir_all(&temp_dir).expect("create temp dir");
 
     let clone_root = clone_into_tmpdir(&temp_dir);
-    let init_run = run_init_in_clone(&clone_root, &build_canonical_stdin(&clone_root));
+    let init_run = run_init_in_clone(
+        &clone_root,
+        &build_canonical_stdin(&clone_root),
+        &["--no-precommit"],
+    );
 
     assert_eq!(
         init_run.status,
@@ -66,7 +70,11 @@ fn init_trace_summary_reports_slowest_phase() {
     fs::create_dir_all(&temp_dir).expect("create temp dir");
 
     let clone_root = clone_into_tmpdir(&temp_dir);
-    let init_run = run_init_in_clone(&clone_root, &build_canonical_stdin(&clone_root));
+    let init_run = run_init_in_clone(
+        &clone_root,
+        &build_canonical_stdin(&clone_root),
+        &["--no-precommit"],
+    );
 
     assert_eq!(
         init_run.status,
@@ -94,7 +102,11 @@ fn init_trace_summary_exposes_millisecond_fields_for_benchmarking() {
     fs::create_dir_all(&temp_dir).expect("create temp dir");
 
     let clone_root = clone_into_tmpdir(&temp_dir);
-    let init_run = run_init_in_clone(&clone_root, &build_canonical_stdin(&clone_root));
+    let init_run = run_init_in_clone(
+        &clone_root,
+        &build_canonical_stdin(&clone_root),
+        &["--no-precommit"],
+    );
 
     assert_eq!(
         init_run.status,
@@ -140,7 +152,11 @@ fn init_trace_summary_can_collect_cold_and_warm_samples_in_one_clone() {
     fs::create_dir_all(&temp_dir).expect("create temp dir");
 
     let clone_root = clone_into_tmpdir(&temp_dir);
-    let cold = run_init_in_clone(&clone_root, &build_canonical_stdin(&clone_root));
+    let cold = run_init_in_clone(
+        &clone_root,
+        &build_canonical_stdin(&clone_root),
+        &["--no-precommit"],
+    );
     assert_eq!(
         cold.status,
         0,
@@ -156,7 +172,11 @@ fn init_trace_summary_can_collect_cold_and_warm_samples_in_one_clone() {
         fs::remove_file(&personalization_env).expect("remove personalization env");
     }
 
-    let warm = run_init_in_clone(&clone_root, &build_canonical_stdin(&clone_root));
+    let warm = run_init_in_clone(
+        &clone_root,
+        &build_canonical_stdin(&clone_root),
+        &["--no-precommit"],
+    );
     assert_eq!(
         warm.status,
         0,
@@ -172,6 +192,57 @@ fn init_trace_summary_can_collect_cold_and_warm_samples_in_one_clone() {
             "{label} init trace summary should expose millisecond totals\nstderr tail:\n{}",
             stderr_tail(&run.stderr, 2000)
         );
+    }
+}
+
+#[test]
+fn init_trace_summary_can_collect_cold_and_warm_samples_with_and_without_precommit_in_one_clone() {
+    let temp_dir = unique_temp_dir("trace-summary-cold-warm-precommit");
+    fs::create_dir_all(&temp_dir).expect("create temp dir");
+
+    let clone_root = clone_into_tmpdir(&temp_dir);
+    for (label, args) in [
+        ("no-precommit", &["--no-precommit"][..]),
+        ("precommit", &["--precommit"][..]),
+    ] {
+        restore_init_script(&clone_root);
+        let personalization_env = clone_root.join(".aod/personalization.env");
+        if personalization_env.exists() {
+            fs::remove_file(&personalization_env).expect("remove personalization env");
+        }
+
+        let cold = run_init_in_clone(&clone_root, &build_canonical_stdin(&clone_root), args);
+        assert_eq!(
+            cold.status,
+            0,
+            "cold {label} init.sh exit {}; stdout tail:\n{}\nstderr tail:\n{}",
+            cold.status,
+            stdout_tail(&cold.stdout, 1500),
+            stderr_tail(&cold.stderr, 1500)
+        );
+
+        restore_init_script(&clone_root);
+        if personalization_env.exists() {
+            fs::remove_file(&personalization_env).expect("remove personalization env");
+        }
+
+        let warm = run_init_in_clone(&clone_root, &build_canonical_stdin(&clone_root), args);
+        assert_eq!(
+            warm.status,
+            0,
+            "warm {label} init.sh exit {}; stdout tail:\n{}\nstderr tail:\n{}",
+            warm.status,
+            stdout_tail(&warm.stdout, 1500),
+            stderr_tail(&warm.stderr, 1500)
+        );
+
+        for (sample, run) in [("cold", &cold), ("warm", &warm)] {
+            assert!(
+                run.stderr.contains("slowest-phase=") && run.stderr.contains("slowest-duration_ms="),
+                "{label} {sample} init trace summary should expose the slowest-phase timing fields\nstderr tail:\n{}",
+                stderr_tail(&run.stderr, 2000)
+            );
+        }
     }
 }
 
@@ -274,7 +345,7 @@ fn discover_pack_count(clone_root: &Path) -> usize {
         .count()
 }
 
-fn run_init_in_clone(clone_root: &Path, stdin_payload: &str) -> InitRun {
+fn run_init_in_clone(clone_root: &Path, stdin_payload: &str, args: &[&str]) -> InitRun {
     let fake_home = clone_root
         .parent()
         .expect("clone root parent")
@@ -283,6 +354,7 @@ fn run_init_in_clone(clone_root: &Path, stdin_payload: &str) -> InitRun {
 
     let output = Command::new(std::env::var("BASH").unwrap_or_else(|_| "/bin/bash".to_string()))
         .arg("./scripts/init.sh")
+        .args(args)
         .current_dir(clone_root)
         .env("LC_ALL", "C")
         .env("HOME", &fake_home)
@@ -290,7 +362,6 @@ fn run_init_in_clone(clone_root: &Path, stdin_payload: &str) -> InitRun {
         .env("AOD_RATIFICATION_DATE_OVERRIDE", "2026-05-04")
         .env("AOD_CURRENT_DATE_OVERRIDE", "2026-05-04")
         .env("AOD_INIT_TRACE", "1")
-        .arg("--no-precommit")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
