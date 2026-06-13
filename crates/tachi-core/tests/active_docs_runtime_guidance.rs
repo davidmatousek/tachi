@@ -77,6 +77,16 @@ fn active_devops_docs_and_architecture_summary_frames_are_rust_init_matrix_based
         "feature 248 summary should not mention the retired pytest workflow filename"
     );
 
+    let feature_282 = read_lines(&root.join("docs/devops/README.md"), 334, 344);
+    assert!(
+        feature_282.contains("Rust init matrix path-filter delta"),
+        "feature 282 summary should describe the Rust init matrix path-filter delta"
+    );
+    assert!(
+        !feature_282.contains("tachi-pytest.yml"),
+        "feature 282 summary should not mention the retired pytest workflow filename"
+    );
+
     let env_vars = read_lines(&root.join("docs/devops/environment-variables.md"), 1, 120);
     assert!(
         env_vars.contains("Rust init matrix workflow"),
