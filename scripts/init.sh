@@ -6,6 +6,10 @@ set -e
 if [ "${AOD_INIT_TRACE:-0}" = "1" ]; then
   SECONDS=0
   AOD_INIT_TRACE_PHASE_COUNT=0
+  AOD_INIT_TRACE_CURRENT_PHASE=""
+  AOD_INIT_TRACE_CURRENT_PHASE_START=0
+  AOD_INIT_TRACE_SLOWEST_PHASE=""
+  AOD_INIT_TRACE_SLOWEST_SECONDS=0
 fi
 
 # Colors
@@ -70,8 +74,33 @@ done
 
 aod_trace_init_phase() {
   if [ "${AOD_INIT_TRACE:-0}" = "1" ]; then
+    if [ -n "${AOD_INIT_TRACE_CURRENT_PHASE:-}" ]; then
+      phase_elapsed=$((SECONDS - AOD_INIT_TRACE_CURRENT_PHASE_START))
+      if [ "$phase_elapsed" -gt "${AOD_INIT_TRACE_SLOWEST_SECONDS:-0}" ]; then
+        AOD_INIT_TRACE_SLOWEST_SECONDS=$phase_elapsed
+        AOD_INIT_TRACE_SLOWEST_PHASE=$AOD_INIT_TRACE_CURRENT_PHASE
+      fi
+    fi
     AOD_INIT_TRACE_PHASE_COUNT=$((AOD_INIT_TRACE_PHASE_COUNT + 1))
+    AOD_INIT_TRACE_CURRENT_PHASE="$1"
+    AOD_INIT_TRACE_CURRENT_PHASE_START=$SECONDS
     printf 'INIT TRACE phase=%s elapsed=%ss\n' "$1" "$SECONDS" >&2
+  fi
+}
+
+aod_trace_init_summary() {
+  if [ "${AOD_INIT_TRACE:-0}" = "1" ]; then
+    if [ -n "${AOD_INIT_TRACE_CURRENT_PHASE:-}" ]; then
+      phase_elapsed=$((SECONDS - AOD_INIT_TRACE_CURRENT_PHASE_START))
+      if [ "$phase_elapsed" -gt "${AOD_INIT_TRACE_SLOWEST_SECONDS:-0}" ]; then
+        AOD_INIT_TRACE_SLOWEST_SECONDS=$phase_elapsed
+        AOD_INIT_TRACE_SLOWEST_PHASE=$AOD_INIT_TRACE_CURRENT_PHASE
+      fi
+    fi
+    printf 'INIT TRACE summary total=%ss phases=%s slowest=%s slowest-phase=%s slowest-duration=%ss\n' \
+      "$SECONDS" "${AOD_INIT_TRACE_PHASE_COUNT:-0}" \
+      "${AOD_INIT_TRACE_SLOWEST_PHASE:-none}" "${AOD_INIT_TRACE_SLOWEST_PHASE:-none}" \
+      "${AOD_INIT_TRACE_SLOWEST_SECONDS:-0}" >&2
   fi
 }
 
@@ -514,7 +543,7 @@ fi
 
 # Remove this init script (one-time use)
 if [ "${AOD_INIT_TRACE:-0}" = "1" ]; then
-  printf 'INIT TRACE summary total=%ss phases=%s\n' "$SECONDS" "${AOD_INIT_TRACE_PHASE_COUNT:-0}" >&2
+  aod_trace_init_summary
 fi
 rm -f scripts/init.sh
 

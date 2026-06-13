@@ -236,6 +236,7 @@ This roadmap uses a BEADS-style hierarchy:
   - fewer redundant shell-outs and filesystem scans during init
 - **Tasks**
   - instrument the init path so each startup phase reports timing via `AOD_INIT_TRACE=1`
+  - include the slowest init phase in the trace summary so benchmark runs can isolate the bottleneck
   - scope placeholder substitution to manifest-backed personalized files and the constitution clean template instead of walking the whole tree
   - factor manifest-backed personalized path extraction into a reusable helper and reuse the cached list across substitution and residual scanning
   - reuse the already-read `threats.md` content when deriving report project metadata so report-data assembly avoids a duplicate filesystem read

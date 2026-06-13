@@ -60,6 +60,34 @@ fn init_trace_summary_reports_phases_and_total_elapsed_time() {
     );
 }
 
+#[test]
+fn init_trace_summary_reports_slowest_phase() {
+    let temp_dir = unique_temp_dir("trace-summary-slowest");
+    fs::create_dir_all(&temp_dir).expect("create temp dir");
+
+    let clone_root = clone_into_tmpdir(&temp_dir);
+    let init_run = run_init_in_clone(&clone_root, &build_canonical_stdin(&clone_root));
+
+    assert_eq!(
+        init_run.status,
+        0,
+        "init.sh exit {}; stdout tail:\n{}\nstderr tail:\n{}",
+        init_run.status,
+        stdout_tail(&init_run.stdout, 1500),
+        stderr_tail(&init_run.stderr, 1500)
+    );
+
+    assert!(
+        init_run
+            .stderr
+            .lines()
+            .any(|line| line.starts_with("INIT TRACE summary total=")
+                && line.contains("slowest=")
+                && line.contains("phase=")),
+        "init.sh should report the slowest phase in the final timing summary"
+    );
+}
+
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()

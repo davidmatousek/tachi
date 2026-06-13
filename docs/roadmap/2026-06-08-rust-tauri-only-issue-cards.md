@@ -89,7 +89,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 - **Summary**: Reduce startup cost, eliminate avoidable shell-outs, and tighten error handling after the Rust path is in place.
 - **Refinement**: analyze and optimize the slow init workflow by measuring each init phase, comparing cold and warm startup, and using the benchmark results to remove the slowest shell-outs and repeated scans.
 - **Refinement**: scope placeholder substitution to manifest-backed personalized files plus the constitution clean template so unmanifested files are no longer rewritten during init.
-- **Refinement**: analyze and optimize the slow init workflow by measuring each init phase with `AOD_INIT_TRACE=1` (including stack discovery and precommit), comparing cold and warm startup, and using the benchmark results to remove the slowest shell-outs and repeated scans.
+- **Refinement**: analyze and optimize the slow init workflow by measuring each init phase with `AOD_INIT_TRACE=1` (including stack discovery and precommit), surfacing the slowest phase in the final trace summary, comparing cold and warm startup, and using the benchmark results to remove the slowest shell-outs and repeated scans.
 - **Refinement**: reuse already-read `threats.md` content when deriving report project metadata so Typst assembly avoids a duplicate filesystem read on the hot path.
 - **Acceptance**:
   - Hot-path shell-outs are removed or minimized.
