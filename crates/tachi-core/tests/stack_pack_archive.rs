@@ -49,11 +49,17 @@ fn fastapi_stack_packs_are_archived_legacy_reference_only() {
         "active stack pack index should not list fastapi-react-local as active"
     );
     assert!(stacks_readme.contains("## Archived Legacy Packs"));
-    assert!(stacks_readme.contains("fastapi-react"));
-    assert!(stacks_readme.contains("fastapi-react-local"));
+    assert!(
+        stacks_readme.contains("archived FastAPI packs"),
+        "archived stack index should describe the retired FastAPI packs generically"
+    );
 
     assert!(tech_stack.contains("| `stacks/fastapi-react/` | Archived |"));
     assert!(tech_stack.contains("| `stacks/fastapi-react-local/` | Archived |"));
+    assert!(
+        tech_stack.contains("archived FastAPI packs"),
+        "architecture README should describe the retired FastAPI packs generically"
+    );
 }
 
 #[test]

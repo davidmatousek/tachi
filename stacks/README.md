@@ -199,6 +199,8 @@ Core agent files in `.claude/agents/` are **never modified** by activation. Gove
 
 ### Archived Legacy Packs
 
+The archived FastAPI packs below are legacy references only.
+
 | Pack | Status | Purpose |
 |------|--------|---------|
 | `stacks/fastapi-react/` | Archived | Python FastAPI + SQLAlchemy 2.0 async + React 19 + TypeScript + Vite + Docker Compose (Feature 078) |
