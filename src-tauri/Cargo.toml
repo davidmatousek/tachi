@@ -9,3 +9,4 @@ tachi-shell = { path = "../crates/tachi-shell" }
 
 [dev-dependencies]
 pretty_assertions = "1"
+serde_json = "1"
