@@ -35,12 +35,11 @@ rm -rf hello-world-aod
 gh repo delete davidmatousek/hello-world-aod --yes 2>/dev/null || true
 
 # Remove orchestrator records
-PROJECT_ID=$(curl -s http://localhost:8000/api/v1/projects | python3 -c "
-import sys, json
-for p in json.load(sys.stdin):
-    if p['name'] == 'hello-world-aod':
-        print(p['id'])
-" 2>/dev/null)
+PROJECT_ID=$(
+  curl -s http://localhost:8000/api/v1/projects |
+    jq -r '.[] | select(.name == "hello-world-aod") | .id' |
+    head -n1
+)
 [ -n "$PROJECT_ID" ] && curl -X DELETE "http://localhost:8000/api/v1/projects/$PROJECT_ID" && echo "Deleted project $PROJECT_ID"
 ```
 
@@ -144,12 +143,8 @@ tmux attach -t <session_name>   # Ctrl+B, D to detach
 ### 7a. Session completed
 
 ```bash
-curl -s http://localhost:8000/api/v1/sessions | python3 -c "
-import sys, json
-for s in json.load(sys.stdin):
-    if 'hello-world' in s.get('worktree_path',''):
-        print(f'S{s[\"id\"]}: status={s[\"status\"]} exit={s.get(\"exit_code\")} pr_status={s.get(\"pr_status\")} pr_url={s.get(\"pr_url\",\"none\")}')
-"
+curl -s http://localhost:8000/api/v1/sessions |
+  jq -r '.[] | select(.worktree_path | contains("hello-world")) | "S\(.id): status=\(.status) exit=\(.exit_code) pr_status=\(.pr_status) pr_url=\(.pr_url // \"none\")"'
 ```
 
 **Expected**: `status=completed`, `pr_status=created`, `pr_url=https://github.com/...`

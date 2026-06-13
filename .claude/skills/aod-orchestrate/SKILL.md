@@ -603,7 +603,7 @@ ELAPSED=0
 
 while [ $ELAPSED -lt $TIMEOUT ]; do
   RESP=$(curl -sf "$BATCH_URL" -H "X-AOD-Source: skill" 2>/dev/null)
-  STATUS=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status','unknown'))" 2>/dev/null)
+  STATUS=$(echo "$RESP" | jq -r '.status // "unknown"' 2>/dev/null)
 
   if [ "$STATUS" = "completed" ] || [ "$STATUS" = "partial_failure" ] || [ "$STATUS" = "failed" ]; then
     echo "$RESP"
@@ -611,11 +611,10 @@ while [ $ELAPSED -lt $TIMEOUT ]; do
   fi
 
   # Progress line (shown in tool output)
-  PROGRESS=$(echo "$RESP" | python3 -c "
-import sys,json
-d=json.load(sys.stdin).get('progress',{})
-print(f\"{d.get('completed',0)}/{d.get('total','?')} complete, {d.get('running',0)} running ({int($ELAPSED/60)}m elapsed)\")
-" 2>/dev/null)
+  PROGRESS=$(echo "$RESP" | jq -r --arg elapsed "$ELAPSED" '
+    .progress as $p
+    | "\($p.completed // 0)/\($p.total // "?") complete, \($p.running // 0) running (\(($elapsed | tonumber) / 60 | floor)m elapsed)"
+  ' 2>/dev/null)
   echo "Wave {wave_number}: $PROGRESS"
 
   sleep $INTERVAL
