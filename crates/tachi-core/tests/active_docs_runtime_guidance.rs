@@ -125,6 +125,21 @@ fn active_devops_docs_and_architecture_summary_frames_are_rust_init_matrix_based
 }
 
 #[test]
+fn active_devops_readme_no_longer_names_the_retired_tachi_pytest_workflow_in_live_guidance() {
+    let root = workspace_root();
+
+    let devops_readme = read_lines(&root.join("docs/devops/README.md"), 300, 326);
+    assert!(
+        devops_readme.contains("Rust init matrix"),
+        "devops README should describe the Rust init matrix in the live guidance sentence"
+    );
+    assert!(
+        !devops_readme.contains("tachi-pytest"),
+        "devops README should not name the retired tachi-pytest workflow in live guidance"
+    );
+}
+
+#[test]
 fn active_devops_ci_guide_frames_the_rust_init_matrix_without_pytest_invocation_language() {
     let root = workspace_root();
 
