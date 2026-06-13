@@ -33,7 +33,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | `tests/fixtures/` | Frozen fixture copies and baseline trees used for compatibility checks. These are excluded from active coverage-audit counts. |
 | `scripts/` | Transitional Python runtime scripts from the original implementation. RT-012 tracks porting remaining canonical behavior into Rust; the standalone SARIF generators, infographic extractor, pagination smoke scaffolds, and attack-chain extraction pytest have already moved to Rust CLI binaries and tests, and RT-013 now routes desktop `infographic-data` through the shared Rust payload builder. |
 | `stacks/` | Legacy Python/FastAPI and frontend scaffolds. RT-014 tracks retirement or archival after Rust/Tauri parity is stable; the stack index now describes the retired FastAPI packs generically. |
-| `docs/` | Public project documentation. Roadmap and product planning documents live under `docs/roadmap/`; testing status lives under `docs/testing/`; archived security-review guidance for retired FastAPI scaffolds lives in `docs/security/`. |
+| `docs/` | Public project documentation. Roadmap and product planning documents live under `docs/roadmap/`; testing status lives under `docs/testing/`; archived security-review guidance for retired FastAPI scaffolds lives in `docs/security/`; the root `README.md` now treats the old FastAPI packs as archived legacy guidance. |
 
 ## Rust Data And Control Flow
 

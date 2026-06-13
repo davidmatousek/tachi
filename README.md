@@ -28,7 +28,7 @@ The repository is not yet completely Python-free. A frozen inventory of the rema
 - legacy runtime scripts under [`scripts/`](scripts/), including SARIF and report-data extractors that are being ported to Rust CLI commands
 - legacy Python tests under [`tests/scripts/`](tests/scripts/) and [`tests/schemas/`](tests/schemas/) that are being migrated to Rust unit, integration, and end-to-end tests
 - Python packaging files such as [`pyproject.toml`](pyproject.toml) and [`requirements-dev.txt`](requirements-dev.txt), retained only while compatibility tests are being retired
-- FastAPI stack scaffolds under [`stacks/fastapi-react/`](stacks/fastapi-react/) and [`stacks/fastapi-react-local/`](stacks/fastapi-react-local/), scheduled for retirement or replacement by Rust/Tauri-native stack guidance
+- Archived legacy guidance for the old FastAPI stack packs lives in [`docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md`](docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md). The active repository no longer treats those packs as current setup paths.
 
 New implementation work should use Rust ecosystem tooling and should not add new Python dependencies. Python references that remain in this repository should be treated as migration backlog unless they are historical fixtures or explicitly documented compatibility surfaces.
 
