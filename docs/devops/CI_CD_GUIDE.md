@@ -31,10 +31,10 @@ This section documents the reference CI workflows that the upstream template use
 | `.github/workflows/extract-coverage.yml` | F128 (directory-based extraction manifest) | Classification-snapshot invariant for `scripts/extract-classification.txt` |
 | `.github/workflows/stack-contract.yml` | F130 (Stack Pack Test Contract) | Test contract invariant for every `stacks/*/STACK.md` (excluding content-pack allowlist) |
 | `.github/workflows/tachi-mmdc-preflight.yml` | F145 (Mermaid CLI hard-prerequisite) | Loud-failure path when `mmdc` is absent on the runner (ADR-022) |
-| `.github/workflows/tachi-pytest.yml` | F-248 (Substitution surface hardening) | `scripts/init.sh` substitution behaviour on a macOS+Ubuntu Rust init matrix (ADR-038) |
+| Rust init matrix workflow | F-248 (Substitution surface hardening) | `scripts/init.sh` substitution behaviour on a macOS+Ubuntu Rust init matrix (ADR-038) |
 | `.github/workflows/gitleaks.yml` | F-282 / F-5 (Pre-commit secret-scanning defaults) | Full-repo gitleaks scan on PR — back-stop for `git commit --no-verify` (ADR-042) |
 
-The first three workflows share the bash:3.2 Docker pattern, SHA-pinned checkout action, `contents: read` permissions, and cancel-in-progress concurrency. The latter three (`tachi-mmdc-preflight.yml`, `tachi-pytest.yml`, `gitleaks.yml`) follow a different pattern — direct host-runner execution with path-filtered triggers (or unfiltered, in `gitleaks.yml`'s case) — because their workloads (`mmdc` Node binary preflight, Rust init hardening, native gitleaks binary) do not benefit from container isolation. Use any of the first three as a template when adding a new maintenance workflow that needs the bash:3.2 floor; use `tachi-pytest.yml` as a template when adding a new path-filtered Rust test job; use `gitleaks.yml` as a template when adding a new SARIF-emitting scanner job.
+The first three workflows share the bash:3.2 Docker pattern, SHA-pinned checkout action, `contents: read` permissions, and cancel-in-progress concurrency. The latter three (`tachi-mmdc-preflight.yml`, the Rust init matrix workflow, `gitleaks.yml`) follow a different pattern — direct host-runner execution with path-filtered triggers (or unfiltered, in `gitleaks.yml`'s case) — because their workloads (`mmdc` Node binary preflight, Rust init hardening, native gitleaks binary) do not benefit from container isolation. Use any of the first three as a template when adding a new maintenance workflow that needs the bash:3.2 floor; use the Rust init matrix workflow as a template when adding a new path-filtered Rust test job; use `gitleaks.yml` as a template when adding a new SARIF-emitting scanner job.
 
 ### Shared Workflow Conventions
 
@@ -141,11 +141,11 @@ In `--all` mode the script exits with the **numerically lowest non-zero code** a
 
 **Added in Feature 248** (Substitution Surface Hardening), merged via PR #249 (squash commit `6db9a25`) on 2026-05-04. Re-tuned and re-scoped by Feature 250 (PR #253, squash `75866d9`) on 2026-05-04 (timeouts + session-scoped fixture). Extended by Feature 256 (PR #257, squash `f959622`) on 2026-05-05 to cover the source-pattern-hardening surface. Later migrated to Rust init tests and the Rust init matrix workflow in place of the original Python matrix.
 
-`.github/workflows/tachi-pytest.yml` now runs the Rust init matrix on a 2-runner cross-platform matrix (`macos-latest` + `ubuntu-latest`) to catch bash-version regressions across the full bash surface area: `scripts/init.sh`, `.aod/scripts/bash/template-substitute.sh`, `.aod/scripts/bash/init-input.sh`, `.aod/scripts/bash/template-git.sh`, `.aod/scripts/bash/template-config-load.sh` (F-256 canonical KV-load primitive), the constitution templates, and the shipped stack-pack `defaults.env` files (F-256 Site A whitelist surface). The macOS leg is the strictest gate because it ships bash 3.2.57 (Apple's bundled `/bin/bash`, GPLv3-pinned) — a green macOS run on top of a green Ubuntu run proves the entire hardening surface is portable, not bash-3.2-quirk-locked.
+The Rust init matrix workflow runs a 2-runner cross-platform matrix (`macos-latest` + `ubuntu-latest`) to catch bash-version regressions across the full bash surface area: `scripts/init.sh`, `.aod/scripts/bash/template-substitute.sh`, `.aod/scripts/bash/init-input.sh`, `.aod/scripts/bash/template-git.sh`, `.aod/scripts/bash/template-config-load.sh` (F-256 canonical KV-load primitive), the constitution templates, and the shipped stack-pack `defaults.env` files (F-256 Site A whitelist surface). The macOS leg is the strictest gate because it ships bash 3.2.57 (Apple's bundled `/bin/bash`, GPLv3-pinned) — a green macOS run on top of a green Ubuntu run proves the entire hardening surface is portable, not bash-3.2-quirk-locked.
 
 | Property | Value |
 |----------|-------|
-| Workflow file | `.github/workflows/tachi-pytest.yml` |
+| Workflow file | Rust init matrix workflow |
 | Trigger | `pull_request` only (path-filtered — see below) |
 | Runners | `macos-latest`, `ubuntu-latest` (matrix, `fail-fast: false`) |
 | Rust toolchain | stable |

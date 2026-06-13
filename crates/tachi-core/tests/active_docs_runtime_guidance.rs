@@ -226,6 +226,36 @@ fn active_devops_readme_performance_note_avoids_naming_the_python_pytest_depende
     );
 }
 
+#[test]
+fn active_devops_ci_guide_does_not_frame_the_workflow_file_as_pytest_based() {
+    let root = workspace_root();
+
+    let ci_guide = read_lines(&root.join("docs/devops/CI_CD_GUIDE.md"), 140, 218);
+    assert!(
+        ci_guide.contains("Rust init matrix"),
+        "CI guide should frame the workflow as the Rust init matrix"
+    );
+    assert!(
+        !ci_guide.contains(".github/workflows/tachi-pytest.yml"),
+        "CI guide should not frame the workflow file as pytest-based"
+    );
+}
+
+#[test]
+fn active_devops_ci_guide_uses_rust_init_matrix_language_for_the_workflow_file_label() {
+    let root = workspace_root();
+
+    let ci_guide = read_lines(&root.join("docs/devops/CI_CD_GUIDE.md"), 32, 38);
+    assert!(
+        ci_guide.contains("Rust init matrix workflow"),
+        "CI guide workflow table should use the Rust init matrix workflow label"
+    );
+    assert!(
+        !ci_guide.contains("tachi-pytest.yml"),
+        "CI guide workflow table should not name the retired workflow file"
+    );
+}
+
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
