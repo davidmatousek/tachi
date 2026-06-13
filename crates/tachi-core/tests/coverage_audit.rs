@@ -93,3 +93,32 @@ fn collect_audit_classifies_rust_smoke_canary_as_smoke_coverage() {
     assert!(rendered.contains("Smoke: 1"));
     assert!(rendered.contains("Integration: 1"));
 }
+
+#[test]
+fn collect_audit_classifies_inline_source_tests_as_unit_coverage() {
+    let root = unique_temp_dir("tachi-coverage-audit-unit");
+
+    write_file(&root.join("crates/tachi-core/src/report_data.rs"));
+    write_file(&root.join("crates/tachi-shell/tests/infographic_data.rs"));
+    write_file(&root.join("tests/fixtures/init-baseline-tree/tests/scripts/test_fixture_unit.py"));
+
+    fs::write(
+        root.join("crates/tachi-core/src/report_data.rs"),
+        "#[cfg(test)]\nmod tests {}\n",
+    )
+    .expect("write inline unit source");
+
+    let audit = collect_audit(&root);
+
+    assert_eq!(audit.active.len(), 2);
+    assert_eq!(audit.fixture_copies.len(), 1);
+    assert_eq!(audit.unit.len(), 1);
+    assert_eq!(audit.integration.len(), 1);
+    assert_eq!(audit.smoke.len(), 0);
+    assert_eq!(audit.e2e.len(), 0);
+    assert_eq!(audit.support.len(), 0);
+
+    let rendered = render(&audit, &root);
+    assert!(rendered.contains("Unit: 1"));
+    assert!(rendered.contains("Integration: 1"));
+}

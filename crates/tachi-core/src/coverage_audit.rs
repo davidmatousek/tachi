@@ -66,6 +66,7 @@ pub fn collect_audit(root: &Path) -> CoverageAudit {
     for rust_root in rust_test_roots {
         if rust_root.exists() {
             collect_rust_test_paths(&rust_root, &mut paths);
+            collect_rust_unit_paths(&rust_root, &mut paths);
         }
     }
 
@@ -157,6 +158,13 @@ fn classify_test(relpath: &Path) -> TestCategory {
     if relpath.extension().and_then(|ext| ext.to_str()) == Some("rs")
         && relpath
             .components()
+            .any(|component| component.as_os_str() == "src")
+    {
+        return TestCategory::Unit;
+    }
+    if relpath.extension().and_then(|ext| ext.to_str()) == Some("rs")
+        && relpath
+            .components()
             .any(|component| component.as_os_str() == "tests")
     {
         return TestCategory::Integration;
@@ -223,6 +231,38 @@ fn collect_rust_test_paths(dir: &Path, out: &mut Vec<PathBuf>) {
                 .components()
                 .any(|component| component.as_os_str() == "tests")
         {
+            out.push(path);
+        }
+    }
+}
+
+fn collect_rust_unit_paths(dir: &Path, out: &mut Vec<PathBuf>) {
+    let entries = match fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(_) => return,
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_rust_unit_paths(&path, out);
+            continue;
+        }
+
+        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        if !name.ends_with(".rs") {
+            continue;
+        }
+        if name == "coverage_audit.rs" {
+            continue;
+        }
+
+        let Ok(content) = fs::read_to_string(&path) else {
+            continue;
+        };
+        if content.contains("#[cfg(test)]") {
             out.push(path);
         }
     }

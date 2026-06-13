@@ -10,9 +10,9 @@ fn coverage_audit_output_matches_core_counts_on_repo_root() {
 
     let output = coverage_audit_output(&repo_root);
 
-    assert!(output.contains("Active test modules: 71"));
+    assert!(output.contains("Active test modules: 72"));
     assert!(output.contains("Fixture-copy modules (excluded from active suite): 0"));
-    assert!(output.contains("Unit: 0"));
+    assert!(output.contains("Unit: 1"));
     assert!(output.contains("Integration: 69"));
     assert!(output.contains("Smoke: 1"));
     assert!(output.contains("True end-to-end: 1"));
