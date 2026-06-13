@@ -13,6 +13,7 @@ fn active_docs_do_not_instruct_running_retired_python_entrypoints() {
         "docs/architecture/01_system_design/README.md",
         "docs/guides/GETTING_STARTED_PATH_B.md",
         "docs/guides/SMOKE_TEST.md",
+        "docs/standards/CLAUDE_MD_ORGANIZATION.md",
         "docs/standards/PRECOMMIT_HOOKS.md",
         "docs/standards/EVAL_CONVENTIONS.md",
     ];
@@ -22,6 +23,8 @@ fn active_docs_do_not_instruct_running_retired_python_entrypoints() {
         "python3 scripts/extract-infographic-data.py",
         "pip install -r requirements-dev.txt",
         "python3 -m pytest tests/",
+        "pytest src/api/tests/",
+        "Run `pytest` before committing",
         "python3 -m json.tool",
         "python3 -c",
         "pip install pre-commit",

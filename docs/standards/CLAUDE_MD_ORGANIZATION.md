@@ -100,7 +100,7 @@ This project already follows best practices with 6 CLAUDE.md files:
 |-----------|---------|
 | Commands Claude can't guess | `make deploy-backend-prod` |
 | Style rules differing from defaults | "Use ES modules, not CommonJS" |
-| Testing instructions | `pytest src/api/tests/` |
+| Testing instructions | `cargo test -q` |
 | Repo conventions | "Always use feature branches" |
 | Architectural decisions | "PostgreSQL-only (no Redis)" |
 | Environment quirks | "Requires Python 3.11+" |
@@ -148,7 +148,7 @@ paths:
 # Backend Development Rules
 - Use parameterized queries (see DB-001 pattern)
 - All endpoints require authentication
-- Run `pytest` before committing
+- Run the repo's test suite before committing
 ```
 
 ### Glob Patterns
