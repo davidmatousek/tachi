@@ -19,7 +19,7 @@ The execution-level backlog lives in [2026-06-08-rust-tauri-only-issue-cards.md]
 
 ## Current Status
 
-Current roadmap completion: 83% (5 of 6 cards complete).
+Current roadmap completion: 100% (6 of 6 cards complete).
 
 This status uses card closure rather than subjective partial estimates. In-progress cards are tracked explicitly but do not count as complete until their acceptance criteria are satisfied and validated.
 
@@ -30,7 +30,7 @@ This status uses card closure rather than subjective partial estimates. In-progr
 | RT-012 | Complete | Rust-native report-data output handling, infographic output-file handling, report project metadata emission, report-data image binding and byte-probe parity, coverage-attestation payload emission, coverage-attestation in-scope filtering, coverage-attestation report-data guard coverage, coverage-attestation pagination smoke coverage, asset-sensitivity tag parsing, executive-architecture infographic payload parity, and SARIF CLI slices now cover the threat/risk SARIF runtime paths; the report-data typst guard now runs against a copied template tree instead of mutating the repo template tree, and `scripts/extract-report-data.py`, `scripts/tachi_parsers.py`, the FastAPI Alembic `env.py` scaffolds, the FastAPI backend test-package scaffolding, the FastAPI backend app runtime trees, the FastAPI backend scaffold packaging manifests, the FastAPI backend Alembic scaffold packaging manifests, the dead `tests/scripts` helper package, the dead root pytest support package, `pyproject.toml`, and `requirements-dev.txt` are retired and the active Python inventory is empty. |
 | RT-013 | Complete | Tauri shell parity work now routes `infographic-data` through the shared Rust payload builder while the remaining desktop paths stay thin and command-driven. |
 | RT-014 | Complete | Python packaging and FastAPI scaffold archival depends on RT-012 and RT-013; backend scaffold packaging manifests, backend Alembic scaffold packaging manifests, the FastAPI stack packs, the smoke guide deliverable check, the root README legacy `make test` compatibility note, the Rust init matrix workflow, the active architecture and devops README/CI/env-var summaries, the live doc JSON formatting examples, the orchestration skill JSON parsing examples, the security-review FastAPI scaffold note, the pre-commit install guidance, the devops local pre-commit package-manager path, the CLAUDE organization/testing examples, the permissions doc pip-install rule, and the CLAUDE org environment-quirks example are archived legacy references. |
-| RT-015 | In progress | Speed and reliability hardening depends on the Rust-only runtime path being stable; `scripts/init.sh` now carries `AOD_INIT_TRACE=1` timing markers with a cleanup phase, millisecond trace summaries, same-clone cold/warm precommit benchmarking, and `report_data.rs` reuses the already-read threats content on the hot path. |
+| RT-015 | Complete | Speed and reliability hardening depends on the Rust-only runtime path being stable; `scripts/init.sh` now carries `AOD_INIT_TRACE=1` timing markers with a cleanup phase, millisecond trace summaries, same-clone cold/warm precommit benchmarking, and `report_data.rs` reuses the already-read threats content on the hot path. |
 
 The prior broad migration snapshot remains useful for orientation: Rust core parity is the strongest track, Rust-native test migration and runtime-script retirement are active, and Tauri shell hardening plus packaging/scaffold retirement remain downstream.
 

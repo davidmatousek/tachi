@@ -9,7 +9,7 @@ They are intentionally small, phase-aligned, and mergeable in sequence.
 
 ## Current Completion
 
-Current roadmap completion: 83% (5 of 6 cards complete).
+Current roadmap completion: 100% (6 of 6 cards complete).
 
 Completion is counted by closed roadmap cards only. Partial implementation work is listed as in progress and does not count as complete until the card acceptance criteria pass validation.
 
@@ -20,7 +20,7 @@ Completion is counted by closed roadmap cards only. Partial implementation work 
 | RT-012 | Complete | Continue parser/report-data parity after Rust asset tag parsing, report-data image binding emission, infographic output-file handling, coverage-attestation in-scope filtering, coverage-attestation report-data guard, coverage-attestation pagination smoke, coverage-percentage computation, attack-chain extraction, and SARIF runtime retirement; the report-data typst guard now uses a copied template tree instead of mutating the repo template tree, and `scripts/extract-report-data.py`, the dead `tests/scripts` helper package, the dead root pytest support package, the FastAPI backend app runtime trees, the FastAPI backend scaffold packaging manifests, the FastAPI backend Alembic scaffold packaging manifests, `pyproject.toml`, and `requirements-dev.txt` are now retired, and the active Python inventory is empty. Archived FastAPI docs guidance is now tracked as a follow-on cleanup note. |
 | RT-013 | Complete | Continue routing desktop behavior through the shared Rust command layer; the `infographic-data` bridge now returns the Rust-built payload directly. |
 | RT-014 | Complete | Start after RT-012 and RT-013 prove the Python packaging and scaffold surfaces can be archived as legacy references; the smoke guide, active architecture and devops README/CI/env-var summaries, root README legacy `make test` compatibility note, Rust init matrix workflow, orchestration skill JSON examples, live doc JSON examples, pre-commit install guidance, devops local pre-commit package-manager path, CLAUDE organization/testing examples, permissions doc pip-install rule, and CLAUDE org environment-quirks example now point at Rust/Tauri or shell tooling, and the security-review FastAPI scaffold note is archived guidance only. |
-| RT-015 | In progress | Start after the Rust-only path is stable enough for benchmark-driven hardening; the current work includes cleanup-phase tracing, millisecond trace summaries, same-clone cold/warm precommit benchmarking, and single-read report-data assembly. |
+| RT-015 | Complete | Start after the Rust-only path is stable enough for benchmark-driven hardening; the current work includes cleanup-phase tracing, millisecond trace summaries, same-clone cold/warm precommit benchmarking, and single-read report-data assembly. |
 
 ## Card Set
 
