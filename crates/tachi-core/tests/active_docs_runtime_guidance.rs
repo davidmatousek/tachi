@@ -17,6 +17,7 @@ fn active_docs_do_not_instruct_running_retired_python_entrypoints() {
         "docs/standards/CLAUDE_PERMISSIONS.md",
         "docs/standards/PRECOMMIT_HOOKS.md",
         "docs/standards/EVAL_CONVENTIONS.md",
+        "docs/devops/01_Local/README.md",
         "README.md",
         ".github/workflows/tachi-pytest.yml",
         "docs/devops/environment-variables.md",
@@ -30,6 +31,7 @@ fn active_docs_do_not_instruct_running_retired_python_entrypoints() {
         "pytest src/api/tests/",
         "Run `pytest` before committing",
         "Bash(pip install:*)",
+        "pip install pre-commit",
         "Requires Python 3.11+",
         "python3 -m json.tool",
         "python3 -c",
@@ -95,6 +97,16 @@ fn active_devops_docs_and_architecture_summary_frames_are_rust_init_matrix_based
     assert!(
         !env_vars.contains("tachi-pytest.yml"),
         "active environment-variable guidance should not name the workflow as pytest-based"
+    );
+
+    let local_devops = read_lines(&root.join("docs/devops/01_Local/README.md"), 212, 228);
+    assert!(
+        local_devops.contains("brew install pre-commit"),
+        "local devops guidance should point at the package-manager install path"
+    );
+    assert!(
+        !local_devops.contains("pip install pre-commit"),
+        "local devops guidance should not suggest Python-package installation"
     );
 
     let architecture_gate = read_lines(

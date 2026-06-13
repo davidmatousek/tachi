@@ -222,7 +222,7 @@ scripts/init.sh --no-precommit   # force-skip regardless of TTY/answer
 **Path 2 — Existing tachi adopter via `pre-commit install`** (after `git pull` / `make update` brings in F-5): the F-5 update is **opt-in** for existing adopters (FR-010). Pulling F-5 does NOT auto-install the hook. To opt in:
 
 ```bash
-pip install pre-commit         # or: brew install pre-commit (if not already installed)
+brew install pre-commit
 cd <your-tachi-clone>
 pre-commit install             # opts into the hook
 ```
