@@ -230,11 +230,11 @@ Edits to other shell scripts, agent files, ADRs, or documentation will not invok
 | Layer | Value | Rationale |
 |-------|-------|-----------|
 | Inner subprocess (`run_init_in_clone(timeout_sec=)` default) | 900s | Caps a single `scripts/init.sh` invocation. Headroom over the 560-700s observed worst case so that the timeout fires only on a genuine hang, not on cold-cache compounding. |
-| Outer pytest (`--timeout=1080`) | 1080s | Per-test wall-clock cap = inner cap + ~180s fixture-teardown slack. Aligns with the inner cap so a subprocess timeout surfaces as the inner exception (preserving diagnostic stderr) before the outer cap fires. |
+| Outer test harness (`--timeout=1080`) | 1080s | Per-test wall-clock cap = inner cap + ~180s fixture-teardown slack. Aligns with the inner cap so a subprocess timeout surfaces as the inner exception (preserving diagnostic stderr) before the outer cap fires. |
 
-The 1080s outer cap is intentional: it MUST be > the inner 900s cap to ensure the helper's `subprocess.TimeoutExpired` raises with stderr captured rather than being preempted by a pytest-level timeout that drops the subprocess output.
+The 1080s outer cap is intentional: it MUST be > the inner 900s cap to ensure the helper's `subprocess.TimeoutExpired` raises with stderr captured rather than being preempted by the outer timeout that drops the subprocess output.
 
-**F-250 fixture restructure**: F-248 originally declared the `init_run` fixture at module scope across 5 separate test modules — every module paid the cold-cache cost on first use, summing to 5×300s+ on the macOS leg. F-250 promoted `init_run` to a session-scoped fixture in `tests/scripts/conftest.py` so the macOS cold-cache cost is paid ONCE per pytest session instead of once per module. Combined with the new timeout budget, observed wall time on the macOS leg dropped from the 30-40 minute band into a 5-7 minute band on the post-merge CI run.
+**F-250 fixture restructure**: F-248 originally declared the `init_run` fixture at module scope across 5 separate test modules — every module paid the cold-cache cost on first use, summing to 5×300s+ on the macOS leg. F-250 promoted `init_run` to a session-scoped fixture in `tests/scripts/conftest.py` so the macOS cold-cache cost is paid ONCE per test session instead of once per module. Combined with the new timeout budget, observed wall time on the macOS leg dropped from the 30-40 minute band into a 5-7 minute band on the post-merge CI run.
 
 **KPIs observed on PR #253 (F-250 merge run, 2026-05-04)**:
 

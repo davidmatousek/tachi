@@ -18,6 +18,7 @@ fn active_docs_do_not_instruct_running_retired_python_entrypoints() {
         "docs/standards/PRECOMMIT_HOOKS.md",
         "docs/standards/EVAL_CONVENTIONS.md",
         "docs/devops/01_Local/README.md",
+        "docs/devops/CI_CD_GUIDE.md",
         "README.md",
         ".github/workflows/tachi-pytest.yml",
         "docs/devops/environment-variables.md",
@@ -37,6 +38,7 @@ fn active_docs_do_not_instruct_running_retired_python_entrypoints() {
         "python3 -c",
         "pip install pre-commit",
         "third-party Python package",
+        "pytest-level timeout",
         "requirements-dev.txt",
         "pyproject.toml",
         "make test",
@@ -107,6 +109,16 @@ fn active_devops_docs_and_architecture_summary_frames_are_rust_init_matrix_based
     assert!(
         !local_devops.contains("pip install pre-commit"),
         "local devops guidance should not suggest Python-package installation"
+    );
+
+    let ci_guide = read_lines(&root.join("docs/devops/CI_CD_GUIDE.md"), 224, 240);
+    assert!(
+        ci_guide.contains("Outer test harness"),
+        "CI guide timing note should name the outer harness instead of pytest"
+    );
+    assert!(
+        !ci_guide.contains("pytest-level timeout"),
+        "CI guide timing note should not use pytest-level timeout wording"
     );
 
     let architecture_gate = read_lines(
