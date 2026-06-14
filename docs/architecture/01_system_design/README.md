@@ -3739,3 +3739,50 @@ flowchart TD
 | Build tooling | none | no runtime, no dependencies, no application code |
 
 **Cross-references**: [Spec 305](../../../specs/305-adoption-signal-capture/spec.md) · [Plan 305](../../../specs/305-adoption-signal-capture/plan.md) · [Data model](../../../specs/305-adoption-signal-capture/data-model.md) · Issue #305 · Issue #168 (AIVSS watch) · No new ADR (ADR-044 positioning precedent).
+
+### Feature 183: Citation-URL Link-Rot Monitoring — Scheduled CI Check (BLP-05 Wave 3, last open item)
+
+**PR**: [#330](https://github.com/davidmatousek/tachi/pull/330) | **Status**: Plan (dual sign-off complete) | **Date**: 2026-06-14 | **Position**: BLP-05 Wave 3 (Crosswalk Integrity & Edges) **last open item** + F-180 T034 follow-on. Adds the *asynchronous, networked* citation-reachability guard that F-180 deferred by design — complementary to the *synchronous, offline* `test_citation_shape()`.
+
+## Tech Stack
+
+- **Runtime**: Python 3.11 standard library (`urllib.request`, `concurrent.futures.ThreadPoolExecutor`, `http.client`, `json`, `re`, `glob`, `pathlib`, `argparse`, `time`, `threading.Semaphore`, `email.utils.parsedate_to_datetime`).
+- **Parsing**: `pyyaml>=6.0` (already pinned in `requirements-dev.txt`) via `yaml.safe_load`.
+- **CI**: GitHub Actions — `actions/checkout@v4`, `actions/setup-python@v5` (3.11), `actions/cache@v4`.
+- **Issue I/O**: native `gh` CLI with ambient `GITHUB_TOKEN` (`issues: write`).
+- **Tests**: `pytest>=8.0` (offline parity + classifier unit tests).
+- **Zero new runtime dependency** — the deliberate stdlib path (NFR-002).
+
+## Components
+
+1. **`scripts/check-citation-urls.py`** (new, ~150–250 LOC) — the checker: `discover_urls()` (glob `schemas/taxonomy/*.yaml`, extract `citation`/`url`, `^https?://` filter, dedup, URL→source map), `classify_url()` (HEAD→ranged-GET, ≤5 redirects, retry transient only), `HostThrottler` (per-host Semaphore 2–3 under global 10 + politeness delay + UA/Accept/Retry-After), `Ledger` (cache TTL ~21d, miss=check-all, 4xx-never-OK, `last_status`), `render_issue_body()` (host-grouped, delimited machine block), `manage_tracking_issue()` (gh 3-state lifecycle), and sentinel injection (`--inject-sentinel-rot`, pre-classified, no fetch).
+2. **`.github/workflows/tachi-citation-linkrot.yml`** (new) — `schedule` (`17 9 * * 1`) + `workflow_dispatch` (`inject_sentinel_rot` input); `permissions: contents: read, issues: write`; checkout → setup-python 3.11 → cache restore → checker → cache save. **No `on: pull_request`/`push`.**
+3. **`tests/schemas/test_citation_linkrot_parity.py`** (new) — FR-008 offline parity guard (set-parity both directions vs the **union** of crosswalk `citation` [`test_citation_shape()`] **and** catalog `url` [`test_framework_yamls_load()`] + field-rule encoding + uniform `^https?://` filter) + classifier unit tests (stubbed, no socket). Import pulls no outbound HTTP (NFR-001).
+4. **`schemas/taxonomy/README.md`** (edit, ~line 224) — deferral note → live-monitor reference (FR-009).
+
+**Architectural posture**: one new workflow + one new script + one new test module + one README line. Disjoint write-set; no parser reuse; zero new runtime dependency; no schema / `finding.yaml` change. The only network egress lives in the scheduled-only checker, structurally unreachable from the pytest collection path (NFR-001 determinism boundary — the load-bearing invariant).
+
+## Data Flow
+
+```
+weekly cron (17 9 * * 1)  ──┐
+workflow_dispatch ──────────┴─► tachi-citation-linkrot.yml
+   ├─ checkout@v4 ─► schemas/taxonomy/*.yaml
+   ├─ setup-python@v5 (3.11) ; cache@v4 restore ─► ledger.json {url:{last_ok,last_status}}
+   └─ python scripts/check-citation-urls.py
+        1. discover_urls() ── glob+safe_load+filter+dedup ─► {url → [sources]}
+        2. ledger TTL skip (last_ok < 21d ⇒ skip; miss ⇒ check-all)
+        3. classify_url() per URL ── HostThrottler (per-host sem) ─► external hosts
+              HEAD → (405/403/501) → ranged GET ; ≤5 redirects ; retry transient only
+        4. partition → {link-rot | needs-review | transient | healthy}  (+ injected sentinel rot)
+        5. ledger update (2xx ⇒ write last_ok ; 4xx ⇒ never cache OK)
+        6. manage_tracking_issue() via gh:
+              rot>0 & no issue    ─► gh issue create  (sentinel title + follow-on-180)
+              rot>0 & issue open  ─► gh issue edit (machine block) + dated delta comment
+              rot==0 & issue open ─► gh issue comment "healthy" + gh issue close
+   └─ cache@v4 save ─► updated ledger.json
+```
+
+**Determinism boundary**: outbound egress exists only inside `classify_url()`/`HostThrottler`, reachable only from the scheduled-workflow script; pytest collection never imports it; the parity guard + classifier tests stub the transport (NFR-001).
+
+**Cross-references**: [Spec 183](../../../specs/183-citation-url-link-rot-monitoring/spec.md) · [Plan 183](../../../specs/183-citation-url-link-rot-monitoring/plan.md) · [Data model](../../../specs/183-citation-url-link-rot-monitoring/data-model.md) · [Contracts](../../../specs/183-citation-url-link-rot-monitoring/contracts/) · Issue #183 · Predecessor F-180 (F-A1) · No new ADR (architect baseline `.aod/results/architect-baseline-183.md`).

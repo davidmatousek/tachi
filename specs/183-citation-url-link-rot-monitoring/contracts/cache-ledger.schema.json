@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/davidmatousek/tachi/specs/183/cache-ledger.schema.json",
+  "title": "Citation Link-Rot Last-Success Ledger",
+  "description": "Per-URL last-successful-check ledger persisted to actions/cache (never committed to the repo). Optimization only — never a source of truth. A cache miss means 'check everything', never 'assume healthy'.",
+  "type": "object",
+  "propertyNames": {
+    "description": "An in-scope citation URL (^https?://).",
+    "pattern": "^https?://"
+  },
+  "additionalProperties": {
+    "type": "object",
+    "required": ["last_ok", "last_status"],
+    "additionalProperties": false,
+    "properties": {
+      "last_ok": {
+        "type": "string",
+        "format": "date-time",
+        "description": "ISO-8601 UTC timestamp of the most recent 2xx-final outcome. ONLY written on a 2xx-final result; a 4xx never refreshes this."
+      },
+      "last_status": {
+        "type": "integer",
+        "minimum": 100,
+        "maximum": 599,
+        "description": "Most recent observed final HTTP status. Enables 'previously healthy on <date>' context in the tracking issue."
+      }
+    }
+  },
+  "examples": [
+    {
+      "https://attack.mitre.org/techniques/T1059/": { "last_ok": "2026-06-08T09:18:42Z", "last_status": 200 },
+      "https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/": { "last_ok": "2026-06-08T09:19:03Z", "last_status": 200 }
+    }
+  ]
+}
