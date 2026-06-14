@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "wave": 2,
+  "timestamp": "2026-06-14T17:22:40Z",
+  "test_runner": "pytest tests/schemas/",
+  "execution_duration_ms": 2440,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": {
+    "pass": 22,
+    "fail": 0,
+    "skip": 0
+  },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "generated_tests": {
+    "count": 17,
+    "pass": 17,
+    "fail": 0
+  },
+  "nfr_001_proof": "module passes 17/17 under an outer egress block (getaddrinfo/create_connection/connect/subprocess.run/Popen all raise) \u2014 proven network-free + subprocess-free",
+  "parity": {
+    "surface_a_discover_urls": 930,
+    "surface_b1_crosswalk_citation": 191,
+    "surface_b2_catalog_url": 883,
+    "a_equals_b": true
+  },
+  "note": "Wave 2 = W2a script extension (T011/T012/T014/T015/T016/T018) + T017 README, then W2b tester module (T009/T010/T013) + T019 run. 17 new offline tests; 5 pre-existing test_taxonomy_integrity.py stay green."
+}

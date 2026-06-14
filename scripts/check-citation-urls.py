@@ -5,9 +5,11 @@ Discovers every external citation URL referenced by ``schemas/taxonomy/*.yaml``
 (``citation`` in ``crosswalk.yaml``; ``url`` in all other catalogs), probes each
 for link-rot via a polite, per-host-throttled HTTP HEAD/ranged-GET sweep, and
 renders a single self-updating GitHub tracking issue body. Zero runtime
-dependency beyond pyyaml — stdlib only (NFR-002). Importing this module opens
-NO socket (NFR-001): all network code lives inside ``classify_url`` /
-``HostThrottler`` and is reachable only from ``main()``.
+dependency beyond pyyaml and the ambient ``gh`` binary (NFR-002): no third-party
+HTTP client — stdlib ``urllib`` only. Importing this module opens NO socket and
+spawns NO subprocess (NFR-001): all network code lives inside ``classify_url`` /
+``HostThrottler`` and all ``gh`` subprocess calls in ``manage_tracking_issue`` —
+both reachable only from ``main()`` and never executed at module scope.
 
 Exit-code legend (load-bearing — this is a MONITOR, not a GATE):
     0  ran successfully — INCLUDING when link-rot was found (rot is reported via
@@ -19,8 +21,10 @@ Exit-code legend (load-bearing — this is a MONITOR, not a GATE):
 from __future__ import annotations
 
 import argparse
+import calendar
 import concurrent.futures
 import dataclasses
+import datetime
 import email.utils
 import enum
 import glob
@@ -28,6 +32,8 @@ import http.client
 import json
 import pathlib
 import random
+import socket
+import subprocess
 import sys
 import threading
 import time
@@ -55,6 +61,12 @@ REQUEST_HEADERS = {"User-Agent": USER_AGENT, "Accept": "text/html,*/*"}
 
 MAX_REDIRECTS = 5
 RETRY_AFTER_CAP_SECONDS = 30.0
+
+# Transient-retry policy (T011, NFR-004): 5xx / timeout / DNS / conn-reset get up
+# to MAX_TRANSIENT_RETRIES additional attempts with exponential backoff + jitter
+# (1→2→4s). 4xx is NEVER retried (deterministic). Total attempts = 1 + retries.
+MAX_TRANSIENT_RETRIES = 2
+RETRY_BASE_SECONDS = 1.0
 
 ISSUE_TITLE_SENTINEL = "[link-rot] Taxonomy citation link-rot — open findings"
 MACHINE_BLOCK_START = "<!--linkrot:start-->"
@@ -278,23 +290,54 @@ _HARD_ROT_STATUSES = frozenset({400, 404, 410, 451})
 _NEEDS_REVIEW_STATUSES = frozenset({401, 403, 429})
 
 
-def classify_url(url: str, throttler: HostThrottler) -> Classification:
-    """Probe one URL and return its :class:`Classification` (FR-004 detection half).
+class _TransientRetry(Exception):
+    """Internal signal: a single attempt hit a retryable transient condition.
 
-    Flow: issue ``HEAD``; on 405/403/501 retry once as a ranged ``GET``
-    (``Range: bytes=0-0``); follow ≤5 redirects manually; classify on the FINAL
-    status. A single fetch failure NEVER crashes the run — it is caught here and
-    returned as a placeholder verdict so the sweep continues (no silent failure).
+    Carries a short ``token`` (e.g. ``"timeout"``, ``"500"``, ``"dns"``,
+    ``"conn-reset"``) and the ``final_url`` reached so far. Raised by
+    :func:`_classify_once` for 5xx-final statuses and connection-level
+    exceptions; caught by :func:`classify_url`, which decides whether to retry
+    (with exponential backoff) or give up and emit a final ``TRANSIENT`` verdict.
+    Never escapes this module — it is purely a control-flow signal (NFR-001).
+    """
 
-    Verdict mapping for this wave:
-        final 2xx                          → HEALTHY
-        final 404/410/post-retry hard-4xx  → LINK_ROT
-        401/403/429                        → NEEDS_REVIEW
-        anything else / fetch failure      → TRANSIENT (placeholder)
+    def __init__(self, token: str, final_url: str) -> None:
+        super().__init__(token)
+        self.token = token
+        self.final_url = final_url
 
-    NOTE: the full transient/needs-review retry+backoff semantics arrive in T011.
-    This function is deliberately structured so that path can be slotted in at the
-    EXTENSION POINT marked below without reshaping the verdict mapping.
+
+def _transient_token_for_exception(exc: BaseException) -> str:
+    """Map a connection-level exception to a short retry/detail token.
+
+    Discriminates DNS failure, timeout, and connection-reset from a generic
+    connection error so the ``detail`` string is diagnostic (data-model.md
+    §Classification — e.g. ``"timeout x3"``).
+    """
+    if isinstance(exc, TimeoutError) or isinstance(exc, socket.timeout):
+        return "timeout"
+    # urllib wraps the underlying socket error in URLError.reason.
+    reason = getattr(exc, "reason", exc)
+    if isinstance(reason, TimeoutError) or isinstance(reason, socket.timeout):
+        return "timeout"
+    if isinstance(reason, socket.gaierror):
+        return "dns"
+    if isinstance(reason, ConnectionResetError):
+        return "conn-reset"
+    if isinstance(reason, ConnectionError):
+        return "conn"
+    return "conn"
+
+
+def _classify_once(url: str, throttler: HostThrottler) -> Classification:
+    """Run ONE probe attempt (HEAD→ranged-GET fallback, ≤5 manual redirects).
+
+    Returns a terminal :class:`Classification` for any 2xx/4xx final status or a
+    redirect-hop-exceeded condition (all deterministic — no retry). Raises
+    :class:`_TransientRetry` for a 5xx-final status or a connection-level
+    exception (timeout / DNS / conn-reset / generic conn), so the caller's retry
+    loop can re-attempt. The HEAD→GET fallback and redirect following match the
+    Wave-1 flow exactly; only the 5xx/exception paths now signal a retry.
     """
     current = url
     detail_parts: list[str] = []
@@ -314,28 +357,101 @@ def classify_url(url: str, throttler: HostThrottler) -> Classification:
             if status in (301, 302, 303, 307, 308):
                 location = response.headers.get("Location") if response.headers else None
                 if not location:
-                    return _classification(url, Verdict.TRANSIENT, status, current,
+                    # A redirect with no Location is broken, not transient → rot.
+                    return _classification(url, Verdict.LINK_ROT, status, current,
                                            "redirect with no Location")
                 current = urllib.parse.urljoin(current, location)
                 continue
 
+            # 5xx → retryable transient: signal the caller to back off and retry.
+            if 500 <= status < 600:
+                raise _TransientRetry(str(status), current)
+
+            # 2xx / 4xx (and any other non-5xx, non-redirect) are deterministic.
             return _verdict_for_status(url, status, current, " → ".join(detail_parts))
 
         # Loop exhausted → exceeded MAX_REDIRECTS hops → treated as broken (rot).
         return _classification(url, Verdict.LINK_ROT, None, current,
                                f"redirect loop / >{MAX_REDIRECTS} hops")
 
-    # ---- EXTENSION POINT (T011): replace the blanket TRANSIENT below with
-    #      exponential-backoff retries (1→2→4s + jitter) for 5xx/timeout/conn,
-    #      DNS-vs-timeout discrimination, and final-status re-classification. ----
-    except (urllib.error.URLError, http.client.HTTPException, OSError, ValueError) as exc:
-        _ = random  # jitter source reserved for the T011 backoff path
-        return _classification(url, Verdict.TRANSIENT, None, current,
-                               f"fetch failed: {type(exc).__name__}")
+    except urllib.error.HTTPError as http_error:
+        # The throttler normally surfaces HTTPError as a response-like object, so
+        # this is a defensive fallback. An HTTPError carries a real status code, so
+        # classify on it deterministically (a 5xx still routes to a retry) rather
+        # than treating it as an opaque connection failure.
+        status = http_error.code
+        if 500 <= status < 600:
+            raise _TransientRetry(str(status), current) from http_error
+        return _verdict_for_status(url, status, current, f"HTTPError {status}")
+    except (urllib.error.URLError, http.client.HTTPException, OSError) as exc:
+        # Connection-level failure (timeout / DNS / reset / conn) → retryable.
+        raise _TransientRetry(_transient_token_for_exception(exc), current) from exc
+
+
+def _backoff_sleep(attempt: int) -> None:
+    """Sleep exponentially with jitter before the next transient retry.
+
+    ``delay = RETRY_BASE_SECONDS * (2 ** attempt) + uniform(0, RETRY_BASE_SECONDS)``
+    yields ~1→2→4s across attempts 0,1,2 plus sub-second jitter to avoid
+    thundering-herd alignment against a recovering host (NFR-004).
+    """
+    delay = RETRY_BASE_SECONDS * (2 ** attempt) + random.uniform(0, RETRY_BASE_SECONDS)
+    time.sleep(delay)
+
+
+def classify_url(url: str, throttler: HostThrottler) -> Classification:
+    """Probe one URL and return its :class:`Classification` (FR-004 full).
+
+    Flow: issue ``HEAD``; on 405/403/501 retry once as a ranged ``GET``
+    (``Range: bytes=0-0``); follow ≤5 redirects manually; classify on the FINAL
+    status. 2xx/4xx short-circuit immediately (deterministic — never retried).
+    A 5xx-final status or a connection-level failure (timeout / DNS / conn-reset)
+    is retried up to :data:`MAX_TRANSIENT_RETRIES` times with exponential backoff
+    + jitter (1→2→4s); if still failing after retries the verdict is a final
+    ``TRANSIENT`` with a count-annotated ``detail`` (e.g. ``"timeout x3"`` or
+    ``"500 x3"``). A single fetch failure NEVER crashes the run — it is caught
+    here and returned as a verdict so the sweep continues (no silent failure).
+
+    Verdict mapping (data-model.md §Verdict):
+        final 2xx                          → HEALTHY
+        final 404/410/400/451              → LINK_ROT
+        401/403/429                        → NEEDS_REVIEW
+        redirect loop / >5 hops            → LINK_ROT (broken)
+        5xx / timeout / DNS / conn (retries exhausted) → TRANSIENT
+    """
+    last_token = "transient"
+    last_url = url
+    # attempts 0..MAX_TRANSIENT_RETRIES inclusive → 1 initial + N retries.
+    for attempt in range(MAX_TRANSIENT_RETRIES + 1):
+        try:
+            return _classify_once(url, throttler)
+        except _TransientRetry as retry:
+            last_token = retry.token
+            last_url = retry.final_url
+            if attempt < MAX_TRANSIENT_RETRIES:
+                _backoff_sleep(attempt)
+                continue
+        except (ValueError, http.client.HTTPException, OSError) as exc:
+            # Defensive net: an unexpected per-URL failure (e.g. a malformed
+            # redirect target) must degrade to a non-reported TRANSIENT, never
+            # crash the worker thread / abort the whole sweep (no silent failure).
+            return _classification(url, Verdict.TRANSIENT, None, last_url,
+                                   f"fetch error: {type(exc).__name__}")
+
+    # Retries exhausted — emit a final TRANSIENT annotated with the attempt count.
+    total_attempts = MAX_TRANSIENT_RETRIES + 1
+    return _classification(url, Verdict.TRANSIENT, None, last_url,
+                           f"{last_token} x{total_attempts}")
 
 
 def _verdict_for_status(url: str, status: int, final_url: str, detail: str) -> Classification:
-    """Map a final HTTP status to a :class:`Classification` (this wave's mapping)."""
+    """Map a deterministic (2xx/4xx) final HTTP status to a :class:`Classification`.
+
+    5xx never reaches here — :func:`_classify_once` raises :class:`_TransientRetry`
+    for 5xx before calling this. Any non-2xx/non-rot/non-needs-review status that
+    does reach here (e.g. an unexpected 3xx that was not a recognized redirect) is
+    treated conservatively as ``TRANSIENT`` (not reported).
+    """
     if 200 <= status < 300:
         verdict = Verdict.HEALTHY
     elif status in _HARD_ROT_STATUSES:
@@ -343,7 +459,6 @@ def _verdict_for_status(url: str, status: int, final_url: str, detail: str) -> C
     elif status in _NEEDS_REVIEW_STATUSES:
         verdict = Verdict.NEEDS_REVIEW
     else:
-        # 5xx and any unmapped status — refined by T011's retry/backoff path.
         verdict = Verdict.TRANSIENT
     return _classification(url, verdict, status, final_url, detail)
 
@@ -361,44 +476,434 @@ def _classification(url: str, verdict: Verdict, status: int | None,
 
 
 # =============================================================================
+# T014 — Last-success ledger (FR-006, contracts/cache-ledger.schema.json)
+# =============================================================================
+
+LEDGER_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"  # schema: ISO-8601 UTC, second precision
+
+
+def _now_utc() -> float:
+    """Current POSIX timestamp (UTC). Wrapped for test-time monkeypatching."""
+    return time.time()
+
+
+def _format_ledger_timestamp(epoch_seconds: float) -> str:
+    """Format a POSIX timestamp as a schema-conformant ISO-8601 UTC string."""
+    return time.strftime(LEDGER_TIMESTAMP_FORMAT, time.gmtime(epoch_seconds))
+
+
+def _parse_ledger_timestamp(value: str) -> float | None:
+    """Parse a ledger ``last_ok`` ISO-8601 UTC string to a POSIX timestamp.
+
+    Tolerates a trailing ``Z`` and (defensively) sub-second/offset variants.
+    Returns ``None`` on any unparseable value so callers treat it as a cache
+    miss (re-check) rather than crashing — the ledger is never a source of truth.
+    """
+    if not isinstance(value, str) or not value:
+        return None
+    text = value.strip()
+    try:
+        return calendar.timegm(time.strptime(text, LEDGER_TIMESTAMP_FORMAT))
+    except ValueError:
+        pass
+    # Fallback: let datetime handle offsets / fractional seconds (e.g. "+00:00").
+    try:
+        normalized = text[:-1] + "+00:00" if text.endswith("Z") else text
+        parsed = datetime.datetime.fromisoformat(normalized)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=datetime.timezone.utc)
+        return parsed.timestamp()
+    except ValueError:
+        return None
+
+
+class Ledger:
+    """Per-URL last-success cache (FR-006; cache-ledger.schema.json).
+
+    An OPTIMIZATION ONLY — never a source of truth. A missing or corrupt file is
+    an empty ledger ("check everything"), never "assume healthy". Only a final
+    2xx (``HEALTHY``) outcome refreshes ``last_ok``; a 4xx / needs-review /
+    transient outcome updates ``last_status`` for context but NEVER ``last_ok``,
+    so a rotted URL is re-checked every run until it 2xx-recovers.
+
+    In-memory shape mirrors the on-disk JSON: ``{url: {"last_ok": iso8601,
+    "last_status": int}}``.
+    """
+
+    def __init__(self, entries: dict[str, dict[str, object]] | None = None) -> None:
+        self._entries: dict[str, dict[str, object]] = entries or {}
+
+    @classmethod
+    def load(cls, path: str) -> "Ledger":
+        """Load the ledger JSON at *path*; missing/corrupt → empty (never crash).
+
+        A read or parse failure logs a single note to stderr and yields an empty
+        ledger, guaranteeing a cache miss degrades to "check everything" rather
+        than aborting the run (FR-006 / no silent failure).
+        """
+        ledger_path = pathlib.Path(path)
+        if not ledger_path.exists():
+            print(f"note: no ledger at {path!r} — checking every URL (cache miss)",
+                  file=sys.stderr)
+            return cls({})
+        try:
+            with open(ledger_path, encoding="utf-8") as handle:
+                data = json.load(handle)
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            print(f"note: ignoring unreadable/corrupt ledger {path!r} "
+                  f"({type(exc).__name__}: {exc}) — checking every URL",
+                  file=sys.stderr)
+            return cls({})
+        if not isinstance(data, dict):
+            print(f"note: ledger {path!r} is not a JSON object — checking every URL",
+                  file=sys.stderr)
+            return cls({})
+        # Keep only well-formed entries; drop the rest (defensive, non-fatal).
+        entries: dict[str, dict[str, object]] = {}
+        for url, entry in data.items():
+            if isinstance(url, str) and isinstance(entry, dict):
+                entries[url] = dict(entry)
+        return cls(entries)
+
+    def should_skip(self, url: str, ttl_days: int, *, no_cache: bool = False) -> bool:
+        """True iff *url* has a fresh ``last_ok`` within *ttl_days* (else re-check).
+
+        Returns ``False`` whenever ``no_cache`` is set (full sweep), the URL is
+        absent, ``last_ok`` is missing/unparseable, or it is older than the TTL —
+        i.e. the safe default is always "check it".
+        """
+        if no_cache:
+            return False
+        entry = self._entries.get(url)
+        if not entry:
+            return False
+        last_ok = _parse_ledger_timestamp(entry.get("last_ok"))  # type: ignore[arg-type]
+        if last_ok is None:
+            return False
+        age_seconds = _now_utc() - last_ok
+        return age_seconds < ttl_days * 86400.0
+
+    def record(self, classification: Classification) -> None:
+        """Update the ledger from one classification (write rule, FR-006).
+
+        ONLY a final 2xx (``HEALTHY``) refreshes ``last_ok`` to now. Every outcome
+        with a concrete ``final_status`` updates ``last_status`` for context, but a
+        4xx / needs-review / transient NEVER touches ``last_ok`` (so it stays
+        re-checked until recovery). A status-less transient (timeout/DNS) records
+        nothing — there is no observed final status to remember.
+        """
+        url = classification.url
+        is_healthy = classification.verdict is Verdict.HEALTHY
+        if not is_healthy and classification.final_status is None:
+            return  # nothing observed worth caching (e.g. timeout/DNS transient)
+        entry = self._entries.setdefault(url, {})
+        if classification.final_status is not None:
+            entry["last_status"] = classification.final_status
+        if is_healthy:
+            entry["last_ok"] = _format_ledger_timestamp(_now_utc())
+        # NB: save() persists only entries that carry BOTH last_ok and last_status
+        # (the schema's required keys). An entry seen solely as a 4xx — last_status
+        # but no last_ok — is therefore dropped on save and re-checked next run.
+
+    def previously_healthy_date(self, url: str) -> str | None:
+        """Return the date (``YYYY-MM-DD``) of *url*'s last 2xx, if any.
+
+        Drives the optional "previously healthy ``<date>``" suffix on a rotted
+        URL's tracking-issue line (T012). Returns ``None`` when no ``last_ok`` is
+        on record (e.g. cache miss / never-healthy URL).
+        """
+        entry = self._entries.get(url)
+        if not entry:
+            return None
+        last_ok = entry.get("last_ok")
+        epoch = _parse_ledger_timestamp(last_ok)  # type: ignore[arg-type]
+        if epoch is None:
+            return None
+        return time.strftime("%Y-%m-%d", time.gmtime(epoch))
+
+    def save(self, path: str) -> None:
+        """Write the ledger to *path* as schema-conformant JSON ({url:{last_ok,last_status}}).
+
+        Only entries that satisfy the schema's ``required: [last_ok, last_status]``
+        are persisted; an entry observed solely as a 4xx (no prior ``last_ok``) is
+        omitted so the URL is naturally re-checked on the next run. A write failure
+        is non-fatal (the ledger is an optimization) — it logs a note and returns.
+        """
+        serializable: dict[str, dict[str, object]] = {}
+        for url, entry in self._entries.items():
+            last_ok = entry.get("last_ok")
+            last_status = entry.get("last_status")
+            if isinstance(last_ok, str) and isinstance(last_status, int):
+                serializable[url] = {"last_ok": last_ok, "last_status": last_status}
+        try:
+            with open(path, "w", encoding="utf-8") as handle:
+                json.dump(serializable, handle, indent=2, sort_keys=True)
+                handle.write("\n")
+        except OSError as exc:
+            print(f"note: could not write ledger {path!r} ({type(exc).__name__}: {exc})",
+                  file=sys.stderr)
+
+
+# =============================================================================
 # T006 — Issue body rendering (FR-007, data-model.md §TrackingIssueBody)
 # =============================================================================
 
 
-def render_issue_body(
-    confirmed_rot: list[Classification],
+def _append_host_grouped_findings(
+    lines: list[str],
+    findings: list[Classification],
     sources: dict[str, list[SourceLocation]],
-    run_timestamp: str,
-) -> str:
-    """Render the tracking-issue Markdown body for the confirmed-rot findings.
+    *,
+    bold_status: bool,
+    previously_healthy: dict[str, str] | None = None,
+) -> None:
+    """Append a host-grouped finding list to *lines* (shared by both sections).
 
-    The entire machine-parseable region is wrapped in the exact delimiters
-    ``<!--linkrot:start-->`` … ``<!--linkrot:end-->`` so the next run can diff
-    state. Findings are grouped by host. The needs-review section is added in
-    T012 at the EXTENSION POINT below.
+    Each host becomes an ``### <host>`` subheading; each finding a per-URL line
+    (URL · final status, optionally bolded; optional "previously healthy
+    ``<date>``" suffix when *previously_healthy* carries a date for that URL),
+    followed by one sub-bullet per :class:`SourceLocation` display form. Matches
+    data-model.md §TrackingIssueBody exactly.
     """
-    lines: list[str] = [MACHINE_BLOCK_START, "", f"## Confirmed link-rot ({len(confirmed_rot)})"]
-
     by_host: dict[str, list[Classification]] = {}
-    for finding in confirmed_rot:
+    for finding in findings:
         by_host.setdefault(url_host(finding.url) or "(unknown host)", []).append(finding)
 
     for host in sorted(by_host):
         lines.append("")
         lines.append(f"### {host}")
         for finding in by_host[host]:
-            status = finding.final_status if finding.final_status is not None else "broken"
-            lines.append(f"- `{finding.url}` — **{status}**")
+            status: int | str = (
+                finding.final_status if finding.final_status is not None else "broken"
+            )
+            status_md = f"**{status}**" if bold_status else f"{status}"
+            line = f"- `{finding.url}` — {status_md}"
+            healthy_date = (previously_healthy or {}).get(finding.url)
+            if healthy_date:
+                line += f" — previously healthy {healthy_date}"
+            lines.append(line)
             for location in sources.get(finding.url, []):
                 lines.append(f"  - {location.display()}")
 
-    # ---- EXTENSION POINT (T012): append the "## Needs manual verification (M)"
-    #      section here, grouped by host, BEFORE the closing delimiter. ----
+
+def render_issue_body(
+    confirmed_rot: list[Classification],
+    needs_review: list[Classification],
+    sources: dict[str, list[SourceLocation]],
+    run_timestamp: str,
+    previously_healthy: dict[str, str] | None = None,
+) -> str:
+    """Render the tracking-issue Markdown body (data-model.md §TrackingIssueBody).
+
+    Two sections inside one machine-parseable block delimited by the exact markers
+    ``<!--linkrot:start-->`` … ``<!--linkrot:end-->`` (rewritten in place each run
+    so the next run can diff state):
+
+    1. **Confirmed link-rot (N)** — the ``LINK_ROT`` findings; N is the SOLE
+       open/close driver (a rotted line may carry a "previously healthy
+       ``<date>``" suffix sourced from the ledger's ``last_ok``).
+    2. **Needs manual verification (M) — possibly bot-blocked** — the
+       ``NEEDS_REVIEW`` findings (401/403/429). M is informational only and NEVER
+       affects the open/close decision.
+
+    ``TRANSIENT`` findings are never rendered. Both sections group by host.
+    """
+    lines: list[str] = [MACHINE_BLOCK_START, "", f"## Confirmed link-rot ({len(confirmed_rot)})"]
+    _append_host_grouped_findings(
+        lines, confirmed_rot, sources,
+        bold_status=True, previously_healthy=previously_healthy,
+    )
+
+    # ---- EXTENSION POINT (T012): needs-manual-verification section, grouped by
+    #      host, INSIDE the machine block (before the closing delimiter). This is
+    #      informational only — it does NOT affect the confirmed-rot open/close
+    #      count. TRANSIENT is never rendered anywhere. ----
+    if needs_review:
+        lines.append("")
+        lines.append(f"## Needs manual verification ({len(needs_review)}) — possibly bot-blocked")
+        _append_host_grouped_findings(lines, needs_review, sources, bold_status=False)
 
     lines.append(MACHINE_BLOCK_END)
     lines.append("")
     lines.append(f"_Last run: {run_timestamp} · sentinel: `{ISSUE_TITLE_SENTINEL}`_")
     return "\n".join(lines)
+
+
+# =============================================================================
+# T015 — Tracking-issue lifecycle via native gh (FR-007, NFR-006/NFR-007)
+# =============================================================================
+
+LINEAGE_LABEL = "follow-on-180"   # existing lineage label applied on create
+LINKROT_LABEL = "link-rot"        # convenience label (best-effort ensure)
+LINKROT_LABEL_COLOR = "b35900"    # rust/amber — "rot"; cosmetic only
+
+
+@dataclasses.dataclass
+class IssueOutcome:
+    """Result of a tracking-issue lifecycle pass (feeds the --json summary)."""
+
+    action: str            # "created" | "updated" | "closed" | "none"
+    number: int | None = None
+
+
+def _run_gh(args: list[str], *, fatal: bool = True) -> subprocess.CompletedProcess[str]:
+    """Run a ``gh`` subcommand, capturing output (NEVER at import time).
+
+    With ``fatal=True`` (default) a non-zero exit, a missing ``gh`` binary, or an
+    auth failure raises :class:`InfraError` (→ main returns exit 2). With
+    ``fatal=False`` the same conditions are swallowed (the returned process may
+    have a non-zero ``returncode``) for best-effort calls (label create, delta
+    comment) whose failure must degrade gracefully rather than block the run.
+    """
+    try:
+        completed = subprocess.run(
+            ["gh", *args],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        if fatal:
+            raise InfraError("gh CLI not found on PATH (required for issue I/O)") from exc
+        return subprocess.CompletedProcess(["gh", *args], 127, "", str(exc))
+    except OSError as exc:
+        if fatal:
+            raise InfraError(f"failed to invoke gh: {exc}") from exc
+        return subprocess.CompletedProcess(["gh", *args], 1, "", str(exc))
+
+    if fatal and completed.returncode != 0:
+        raise InfraError(
+            f"gh {' '.join(args[:2])} failed (exit {completed.returncode}): "
+            f"{completed.stderr.strip() or completed.stdout.strip()}"
+        )
+    return completed
+
+
+def _find_open_issue(sentinel_title: str) -> int | None:
+    """Return the number of the open issue whose title EXACTLY equals the sentinel.
+
+    Uses ``gh issue list --search '"<sentinel>" in:title'`` (a substring/keyword
+    search), then filters in Python for an EXACT title match so a near-miss title
+    can never be mistaken for the canonical tracking issue. A gh failure here is
+    fatal (→ exit 2) — we cannot safely create/close without a reliable lookup.
+    """
+    completed = _run_gh([
+        "issue", "list",
+        "--state", "open",
+        "--search", f'"{sentinel_title}" in:title',
+        "--json", "number,title",
+        "--limit", "50",
+    ])
+    try:
+        rows = json.loads(completed.stdout or "[]")
+    except json.JSONDecodeError as exc:
+        raise InfraError(f"could not parse gh issue list JSON: {exc}") from exc
+    for row in rows:
+        if isinstance(row, dict) and row.get("title") == sentinel_title:
+            number = row.get("number")
+            if isinstance(number, int):
+                return number
+    return None
+
+
+def _ensure_linkrot_label() -> None:
+    """Best-effort create the convenience ``link-rot`` label (failure is non-fatal).
+
+    Mirrors ``gh label create link-rot --color … 2>/dev/null || true`` — the title
+    sentinel is the real dedup mechanism, so a label that already exists or cannot
+    be created must NOT abort the run (tracking-issue.md).
+    """
+    _run_gh(["label", "create", LINKROT_LABEL, "--color", LINKROT_LABEL_COLOR],
+            fatal=False)
+
+
+def _delta_comment_body(confirmed_rot: list[Classification], run_date: str) -> str:
+    """Build the dated best-effort delta comment posted alongside an issue edit."""
+    return (
+        f"Updated {run_date}: {len(confirmed_rot)} confirmed link-rot finding(s) "
+        f"in the machine block above. See the body for per-URL detail and source "
+        f"locations."
+    )
+
+
+def manage_tracking_issue(
+    confirmed_rot: list[Classification],
+    needs_review: list[Classification],
+    rendered_body: str,
+    run_timestamp: str,
+) -> IssueOutcome:
+    """Drive the single sentinel-titled tracking issue via ``gh`` (FR-007).
+
+    Confirmed rot (the ``LINK_ROT`` count) is the SOLE open/close driver;
+    ``needs_review`` never opens or keeps an issue open on its own — it only rides
+    along inside an issue that confirmed rot has already opened. Lifecycle
+    (tracking-issue.md), keyed by :data:`ISSUE_TITLE_SENTINEL`:
+
+    * rot>0, no open issue  → create (sentinel title, machine-block body, lineage label)
+    * rot>0, open issue     → edit body (rewrite block) + best-effort dated delta comment
+    * rot==0, open issue    → comment "all citations healthy" THEN close (audit trail)
+    * rot==0, no open issue → no-op
+
+    Genuine gh failures (auth, not installed, non-zero create/edit/close) raise
+    :class:`InfraError` → exit 2. Only the delta comment is best-effort. MUST be
+    called only from :func:`main` (non-dry-run) — never at import time (NFR-001):
+    every subprocess call is reachable only through this function.
+    """
+    has_rot = len(confirmed_rot) > 0
+    open_number = _find_open_issue(ISSUE_TITLE_SENTINEL)
+    run_date = run_timestamp
+
+    if has_rot and open_number is None:
+        # Create the one tracking issue. Best-effort ensure the convenience label
+        # exists first; its failure is swallowed and never blocks the create.
+        _ensure_linkrot_label()
+        completed = _run_gh([
+            "issue", "create",
+            "--title", ISSUE_TITLE_SENTINEL,
+            "--body", rendered_body,
+            "--label", LINEAGE_LABEL,
+        ])
+        return IssueOutcome("created", _issue_number_from_url(completed.stdout))
+
+    if has_rot and open_number is not None:
+        # Rewrite the machine block in place (fatal on failure), THEN post a
+        # best-effort dated delta comment (failure logged, never blocks the edit).
+        _run_gh(["issue", "edit", str(open_number), "--body", rendered_body])
+        comment = _run_gh(
+            ["issue", "comment", str(open_number),
+             "--body", _delta_comment_body(confirmed_rot, run_date)],
+            fatal=False,
+        )
+        if comment.returncode != 0:
+            print(f"note: delta comment on issue #{open_number} failed "
+                  f"(exit {comment.returncode}); edit succeeded — continuing",
+                  file=sys.stderr)
+        return IssueOutcome("updated", open_number)
+
+    if not has_rot and open_number is not None:
+        # Recovery: ALWAYS comment before closing (audit trail), both fatal — a
+        # failed close would silently leave a stale open issue.
+        _run_gh(["issue", "comment", str(open_number),
+                 "--body", f"All citations healthy as of {run_date}. Closing."])
+        _run_gh(["issue", "close", str(open_number)])
+        return IssueOutcome("closed", open_number)
+
+    # rot==0 & no open issue → nothing to do.
+    return IssueOutcome("none", None)
+
+
+def _issue_number_from_url(create_stdout: str) -> int | None:
+    """Extract the issue number from ``gh issue create`` stdout (an issue URL).
+
+    ``gh issue create`` prints the new issue URL (``…/issues/331``); parse the
+    trailing path segment. Returns ``None`` if it cannot be parsed (non-fatal —
+    the issue was created regardless; only the reported number is lost).
+    """
+    text = (create_stdout or "").strip().rstrip("/")
+    if not text:
+        return None
+    tail = text.rsplit("/", 1)[-1]
+    return int(tail) if tail.isdigit() else None
 
 
 # =============================================================================
@@ -459,14 +964,25 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_INFRA_ERROR
 
-    # --- Optional deterministic sentinel injection (TL-2, no fetch). ---
+    # --- Optional deterministic sentinel injection (TL-2, no fetch). The
+    #     sentinel is pre-classified LINK_ROT and is NEVER fetched nor written to
+    #     the ledger (T016); it only drives the gh create/close decision. ---
     sentinel_injected = False
     if args.inject_sentinel_rot:
-        sentinel_class, sentinel_loc = _sentinel_classification()
-        sources.setdefault(sentinel_class.url, []).append(sentinel_loc)
+        _, sentinel_loc = _sentinel_classification()
+        sources.setdefault(SENTINEL_URL, []).append(sentinel_loc)
         sentinel_injected = True
 
-    fetch_urls = [url for url in sources if url != SENTINEL_URL]
+    # --- Ledger (FR-006): load, then TTL-skip fresh URLs from the fetch set. The
+    #     ledger is an OPTIMIZATION — never a source of truth. The sentinel is
+    #     excluded from fetching regardless (it is injected pre-classified). ---
+    ledger = Ledger.load(args.ledger_path)
+    candidate_urls = [url for url in sources if url != SENTINEL_URL]
+    fetch_urls = [
+        url for url in candidate_urls
+        if not ledger.should_skip(url, args.ttl_days, no_cache=args.no_cache)
+    ]
+    skipped_cached = len(candidate_urls) - len(fetch_urls)
 
     # --- Classification sweep through the per-host throttler (FR-001/FR-005). ---
     throttler = HostThrottler(
@@ -487,33 +1003,62 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         throttler.shutdown()
 
+    # --- Ledger write rule (FR-006): record every real fetched outcome, then
+    #     persist. Only a 2xx refreshes last_ok. The sentinel is NEVER recorded
+    #     (it has no real network outcome). Respects --no-cache for the read side
+    #     (should_skip already returned False); writing still refreshes the cache
+    #     so a subsequent cached run benefits. ---
+    for classification in classifications:
+        ledger.record(classification)
+    ledger.save(args.ledger_path)
+
     if sentinel_injected:
         classifications.append(_sentinel_classification()[0])
 
-    # --- Partition by verdict. ---
+    # --- Partition by verdict. Confirmed rot (LINK_ROT) is the SOLE open/close
+    #     driver; the injected sentinel counts here so it drives create/close. ---
     confirmed_rot = [c for c in classifications if c.verdict is Verdict.LINK_ROT]
     needs_review = [c for c in classifications if c.verdict is Verdict.NEEDS_REVIEW]
     healthy = [c for c in classifications if c.verdict is Verdict.HEALTHY]
     transient = [c for c in classifications if c.verdict is Verdict.TRANSIENT]
 
-    run_timestamp = time.strftime("%Y-%m-%dT%H:%MZ", time.gmtime())
-    body = render_issue_body(confirmed_rot, sources, run_timestamp)
+    # --- "previously healthy <date>" context for rotted URLs, from the ledger. ---
+    previously_healthy = {
+        finding.url: date
+        for finding in confirmed_rot
+        if (date := ledger.previously_healthy_date(finding.url)) is not None
+    }
 
-    # --- Issue I/O is added in T015. For now --dry-run just prints the body. ---
-    # (gh create/edit/close wiring is intentionally absent this wave.)
+    run_timestamp = time.strftime("%Y-%m-%dT%H:%MZ", time.gmtime())
+    body = render_issue_body(
+        confirmed_rot, needs_review, sources, run_timestamp,
+        previously_healthy=previously_healthy,
+    )
+
+    # --- Issue I/O via gh (T015). Suppressed ENTIRELY under --dry-run (which just
+    #     prints the body). A genuine gh failure raises InfraError → exit 2. ---
+    issue_outcome = IssueOutcome("none", None)
     if args.dry_run:
         print(body)
+    else:
+        try:
+            issue_outcome = manage_tracking_issue(
+                confirmed_rot, needs_review, body, run_timestamp,
+            )
+        except InfraError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return EXIT_INFRA_ERROR
 
     if args.json:
         summary = {
             "checked": len(fetch_urls),
-            "skipped_cached": 0,          # ledger TTL skip arrives in T010
+            "skipped_cached": skipped_cached,
             "healthy": len(healthy),
             "link_rot": len(confirmed_rot),
             "needs_review": len(needs_review),
             "transient": len(transient),
-            "issue_action": "none",       # gh wiring arrives in T015
-            "issue_number": None,
+            "issue_action": issue_outcome.action,
+            "issue_number": issue_outcome.number,
             "sentinel_injected": sentinel_injected,
         }
         print(json.dumps(summary, indent=2))

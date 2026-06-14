@@ -221,7 +221,7 @@ The FR-002 build-start survey found the achievable `high`/`medium` core was **37
 | OWASP Agentic Top 10:2026 | `owasp.yaml` | `https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/` (single document URL shared across ASI01–ASI10; per-item anchors not stable in the 2026 publication) |
 | tachi pseudo-taxonomies | `tachi-control-category.yaml`, `tachi-stride-ai-category.yaml` | Repo-relative path to canonical source reference (e.g., `.claude/skills/tachi-control-analysis/references/control-categories.md`) |
 
-Link-rot monitoring for external URLs is **out of F-A1 scope** (follow-on Issue filed on F-A1 PR merge). The integrity test (`test_citation_shape()` per FR-031) verifies URL syntax via regex only — no HTTP fetch (ADR-021 determinism).
+Link-rot monitoring for external URLs is now **live** via the weekly scheduled workflow `.github/workflows/tachi-citation-linkrot.yml` (checker `scripts/check-citation-urls.py`; Issue #183, BLP-05 Wave 3). It probes every external citation URL out-of-band on a schedule and maintains a single self-healing tracking issue (opened when confirmed link-rot appears, updated in place, and auto-closed once all citations are healthy again). The integrity test (`test_citation_shape()` per FR-031) remains regex-only — it verifies URL syntax and performs **no HTTP fetch** (ADR-021 determinism). The live network probe is confined to the scheduled workflow and never runs on the PR / `pytest` path (NFR-001).
 
 ---
 
