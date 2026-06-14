@@ -52,6 +52,9 @@ test-results/
 playwright-report/
 playwright/.cache/
 
+# Citation link-rot monitor ledger (#183) — actions/cache artifact, never committed (FR-006)
+linkrot-ledger.json
+
 # ============================================================================
 # Logs
 # ============================================================================

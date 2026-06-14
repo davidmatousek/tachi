@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "wave": 1,
+  "timestamp": "2026-06-14T17:04:59Z",
+  "test_runner": "pytest tests/schemas/",
+  "execution_duration_ms": 430,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": {
+    "pass": 5,
+    "fail": 0,
+    "skip": 0
+  },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "note": "Wave 1 produced scripts/check-citation-urls.py + workflow (no code imports them yet). Regression baseline: existing tests/schemas/test_taxonomy_integrity.py stays green. Feature's own offline test module is authored in Wave 2."
+}

@@ -1,0 +1,96 @@
+# =============================================================================
+# tachi citation link-rot monitor — weekly citation-URL health watch (F-183 / #183)
+# =============================================================================
+#
+# Purpose: Weekly scheduled probe of every citation URL referenced by the tachi
+# crosswalk catalog (BLP-05 Wave 3). It detects link rot (dead/redirected/
+# changed authority URLs) and maintains a single GitHub tracking issue across
+# runs via a cache-persisted ledger (linkrot-ledger.json) — opening, updating,
+# commenting, and closing the issue as rot appears and clears.
+#
+# WHY SCHEDULED-ONLY / NEVER-ON-PR (NFR-001 — the load-bearing invariant):
+#   This workflow MUST NOT declare `on: pull_request` or `on: push`. Citation
+#   reachability depends on the live internet, which is non-deterministic and
+#   outside the contributor's control. Wiring it to PR/push would make a flaky
+#   external host able to redden an unrelated merge — a determinism-boundary
+#   violation. The ONLY triggers are the weekly cron and manual workflow_dispatch.
+#   Do not add a PR trigger or a path filter (there is no PR trigger to filter).
+#
+# MONITOR, NOT A GATE (exit-code semantics):
+#   The checker exits 0 even when rot IS found — a found-rot run is still a GREEN
+#   run. Only a genuine infrastructure failure (script crash, gh auth failure)
+#   turns the run red. Do NOT later wire this as a required check or treat a green
+#   run as "no rot" — read the tracking issue for rot state, not the run color.
+#
+# LEAST PRIVILEGE (NFR-005):
+#   Permissions are exactly `contents: read` (checkout) + `issues: write`
+#   (create/edit/comment/close the tracking issue). No `pull-requests`, no
+#   `contents: write` — the job never pushes code or touches PRs. `gh` uses the
+#   ambient GITHUB_TOKEN via the GH_TOKEN env var — no PAT, no extra secret.
+#
+# References:
+#   - specs/183-citation-url-link-rot-monitoring/contracts/workflow.md (authoritative)
+#   - specs/183-citation-url-link-rot-monitoring/spec.md (NFR-001, NFR-005)
+#   - scripts/check-citation-urls.py (the checker + issue-lifecycle logic)
+#   - Modeled on tachi-maestro-coverage.yml (single-concern, single ubuntu runner).
+# =============================================================================
+
+name: tachi citation link-rot
+
+on:
+  schedule:
+    - cron: "17 9 * * 1"        # Mondays 09:17 UTC — off-:00 (cron-throttle dodge), off-peak
+  workflow_dispatch:
+    inputs:
+      inject_sentinel_rot:
+        description: "Inject a pre-classified synthetic rot finding to validate the issue lifecycle (no network)."
+        type: boolean
+        default: false
+
+# Least privilege (NFR-005): exactly checkout-read + issue-write. Nothing else.
+permissions:
+  contents: read     # checkout
+  issues: write      # create/edit/comment/close the tracking issue
+
+jobs:
+  citation-linkrot-monitor:
+    name: Probe citation URLs and reconcile the tracking issue
+    # Single OS — the probe is network I/O + markdown/YAML parsing, OS-independent.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyYAML
+        # pyyaml is already a repo dependency (catalog parsing); install it inline
+        # mirroring the precedent's pinned install. NO `requests` or any other new
+        # runtime dependency — the checker uses only the standard library + pyyaml.
+        run: pip install 'pyyaml>=6'
+
+      - name: Restore + save ledger cache
+        # COMBINED actions/cache@v4 (restore AND save in one step) — NOT
+        # actions/cache/restore. The combined action auto-saves `path` in its
+        # post-job hook keyed by the primary `key`. Because the primary key embeds
+        # ${{ github.run_id }} it ALWAYS misses on restore (every run is unique),
+        # so the post-save ALWAYS fires and the ledger accumulates run-over-run;
+        # restore-keys resolves the newest prior ledger on the way in (architect
+        # MINOR-1: a restore-only action performs no save → the ledger would never
+        # accumulate). MINOR-2: actions/cache is a NEW pattern for this repo —
+        # devops validates restore-key accumulation on the first two dispatch runs
+        # (quickstart §4).
+        uses: actions/cache@v4
+        with:
+          path: linkrot-ledger.json
+          key: linkrot-ledger-v1-${{ github.run_id }}
+          restore-keys: |
+            linkrot-ledger-v1-
+
+      - name: Check citation URLs and reconcile tracking issue
+        run: python scripts/check-citation-urls.py --json ${{ inputs.inject_sentinel_rot && '--inject-sentinel-rot' || '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # ambient token for gh — no PAT
