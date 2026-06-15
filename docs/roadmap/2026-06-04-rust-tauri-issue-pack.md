@@ -16,8 +16,8 @@ execution work belongs in
 - RT-003, RT-004, RT-006, RT-007, and RT-008 now have merged Rust slices for threat parsing, attack-chain parsing, the thin `src-tauri` shell scaffold, SARIF emission, and MAESTRO/OWASP taxonomy data.
 - RT-005 is complete, and RT-009 is complete after the docs refresh and retirement pass.
 - The navigation hub now lives at [implementation-backlog.md](./implementation-backlog.md) and points at the canonical roadmap, issue pack, and issue-card set.
-- The detailed Rust/Tauri implementation roadmap now lives at [2026-06-08-rust-tauri-only-roadmap.md](./2026-06-08-rust-tauri-only-roadmap.md) and expands the remaining Rust/Tauri implementation work into BEADS-style epics, features, capabilities, tasks, and functions.
-- The execution-level issue card set now lives at [2026-06-08-rust-tauri-only-issue-cards.md](./2026-06-08-rust-tauri-only-issue-cards.md) and sequences the migration into task-sized Beads templates.
+- The detailed Rust/Tauri parity roadmap now lives at [2026-06-15-rust-tauri-parity-remediation-roadmap.html.md](./2026-06-15-rust-tauri-parity-remediation-roadmap.html.md) and expands the remaining Rust/Tauri implementation work into Beads-style epics, features, capabilities, tasks, and functions.
+- The execution-level issue card set now lives at [2026-06-15-rust-tauri-parity-issue-cards.md](./2026-06-15-rust-tauri-parity-issue-cards.md) and sequences the parity plan into task-sized Beads templates.
 
 GitHub Issues are not the source of truth in this repository right now, so the
 items below are written as importable issue cards rather than live issues.

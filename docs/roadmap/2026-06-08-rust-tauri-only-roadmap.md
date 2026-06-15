@@ -5,6 +5,9 @@ Status: archived planning snapshot
 This roadmap is superseded by
 [the 2026-06-15 parity remediation roadmap](2026-06-15-rust-tauri-parity-remediation-roadmap.html.md).
 
+The active Beads-ready issue cards are
+[2026-06-15-rust-tauri-parity-issue-cards.md](./2026-06-15-rust-tauri-parity-issue-cards.md).
+
 **Last Updated**: 2026-06-14
 **Status**: Active implementation backlog
 **Objective**: make `tachi-rust` a Rust + Tauri only repository through
@@ -12,11 +15,12 @@ Beads-ready execution slices
 
 ## Executive Summary
 
-This roadmap is the canonical sequencing document for the Rust/Tauri-only
-transition. It keeps the existing roadmap artifacts as the source of truth,
+This roadmap is the archived canonical sequencing document for the original
+Rust/Tauri-only transition. The current active plan is the 2026-06-15 parity
+roadmap. It keeps the original roadmap artifacts as source-of-truth history,
 adds a navigation hub in [implementation-backlog.md](./implementation-backlog.md),
-points at the execution cards in
-[2026-06-08-rust-tauri-only-issue-cards.md](./2026-06-08-rust-tauri-only-issue-cards.md),
+points at the active execution cards in
+[2026-06-15-rust-tauri-parity-issue-cards.md](./2026-06-15-rust-tauri-parity-issue-cards.md),
 and anchors the merge sequence in
 [2026-06-08-rust-tauri-only-merge-plan.md](./2026-06-08-rust-tauri-only-merge-plan.md).
 

@@ -4,9 +4,10 @@
 **Theme**: migrate the shipped platform from shell-backed scripts to a Rust core with a Tauri shell, while preserving feature parity
 **Status**: Planning
 
-> Canonical detailed roadmap note: the fine-grained Rust/Tauri-only migration plan now lives in
-> `docs/roadmap/2026-06-08-rust-tauri-only-roadmap.md`. This file remains the high-level summary
-> view of the same migration, while the docs/roadmap file carries the phased BEADS breakdown.
+> Canonical detailed roadmap note: the fine-grained Rust/Tauri parity plan now lives in
+> `docs/roadmap/2026-06-15-rust-tauri-parity-remediation-roadmap.html.md`. This file remains the
+> high-level summary view of the same migration, while the docs/roadmap file carries the phased
+> Beads breakdown.
 
 ---
 

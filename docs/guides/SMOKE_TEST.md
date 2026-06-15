@@ -205,7 +205,7 @@ ls crates/tachi-shell/tests/       # Rust integration coverage
 ls src-tauri/                      # Tauri bridge and desktop shell
 
 # Documentation
-cat docs/roadmap/2026-06-08-rust-tauri-only-roadmap.md
+cat docs/roadmap/2026-06-15-rust-tauri-parity-remediation-roadmap.html.md
 cat docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md
 ls docs/roadmap/
 ```
