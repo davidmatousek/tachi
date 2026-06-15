@@ -29,6 +29,11 @@ The repository is now Rust/Tauri-native. The frozen inventory in [`docs/roadmap/
 
 New implementation work should use Rust ecosystem tooling and should not add new Python dependencies. Any remaining Python references in this repository are historical fixtures or explicitly documented compatibility surfaces, not active runtime paths.
 
+Publication and release readiness guidance lives in:
+
+- [`docs/bill-of-materials.html.md`](docs/bill-of-materials.html.md) for the publishable surface inventory.
+- [`docs/publish-readiness-checklist.html.md`](docs/publish-readiness-checklist.html.md) for the pre-push security, privacy, docs, and CI gate.
+
 ---
 
 ## OWASP Coverage
@@ -80,6 +85,7 @@ tachi is built with the [Agentic Oriented Development Kit (AOD Kit)](https://git
 - **Security vulnerabilities** → [private advisory](https://github.com/pratik-saptarshi/tachi-rust/security/advisories/new) (do not post publicly)
 - **Full security policy** → [SECURITY.md](SECURITY.md) (supported versions, response SLA, scope)
 - **Pre-commit secret-scanning** → [docs/standards/PRECOMMIT_HOOKS.md](docs/standards/PRECOMMIT_HOOKS.md) (gitleaks default-secure hook; existing adopters opt-in via `pre-commit install`)
+- **Publishing gate** → [docs/publish-readiness-checklist.html.md](docs/publish-readiness-checklist.html.md) and [docs/bill-of-materials.html.md](docs/bill-of-materials.html.md)
 - **Real-world usage** → [In the Wild](https://github.com/pratik-saptarshi/tachi-rust/discussions/categories/in-the-wild) — tell me how you're using tachi, anonymized is fine
 
 If you're new here, start with the [Welcome thread](https://github.com/pratik-saptarshi/tachi-rust/discussions) for how the board is organized.

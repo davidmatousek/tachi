@@ -25,6 +25,11 @@ make llvm-cov
 
 The coverage report must stay above the project floor. Current publishing work uses an 85% floor for total coverage while the Rust/Tauri-only roadmap continues removing Python surfaces.
 
+For the publish inventory and gate checklist, also review:
+
+- [Bill of Materials](../bill-of-materials.html.md)
+- [Publish Readiness Checklist](../publish-readiness-checklist.html.md)
+
 ## Repository hygiene gate
 
 - `README.md` remains in the repository root.
@@ -39,3 +44,4 @@ The coverage report must stay above the project floor. Current publishing work u
 - Push only reviewed, tested commits to `origin/main`.
 - Use GitHub private vulnerability reporting for embargoed issues.
 - Do not include local paths, private tokens, unredacted usernames, or private project names in public release notes.
+- Re-run the publish readiness checklist after the final merge and before the push.
