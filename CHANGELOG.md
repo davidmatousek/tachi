@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Feature 183 — Citation-URL Link-Rot Monitoring (BLP-05 Wave 3 / F-3, #183) — feat(183)
+
+Keeps the framework-crosswalk catalog's cited authority URLs verifiably live: a
+weekly scheduled job probes every citation URL, classifies link-rot, and maintains
+a single self-healing GitHub tracking issue — without ever blocking a merge. Final
+feature of the BLP-05 framework-mapping initiative (6/6 complete).
+
+**Added**
+- Scheduled GitHub Actions workflow `.github/workflows/tachi-citation-linkrot.yml`
+  (cron `17 9 * * 1` + manual `workflow_dispatch`) that probes every taxonomy
+  crosswalk citation URL and reconciles one tracking issue. **Scheduled-only** (never
+  `pull_request`/`push`) and **monitor-not-gate** (exits 0 even when rot is found) so a
+  flaky external host can never redden an unrelated merge (NFR-001). Least-privilege
+  `contents: read` + `issues: write` via the ambient `GITHUB_TOKEN` — no PAT, no new
+  secret.
+- Zero-dependency checker `scripts/check-citation-urls.py` (stdlib `urllib` +
+  `concurrent.futures` + existing `pyyaml`; **no new runtime dependency**): per-host
+  throttled fetch (HEAD→ranged-GET), four-tier classification (HEALTHY / LINK_ROT
+  404·410 / NEEDS_REVIEW 401·403·429 / TRANSIENT 5xx·timeout, never reported), a
+  cache-persisted ledger, and a single self-healing tracking issue that opens on
+  confirmed rot, updates in place, and self-closes on recovery.
+- Offline test suite `tests/schemas/test_citation_linkrot_parity.py` (17 tests):
+  both-surface/both-direction URL parity guard, the full classifier matrix, and an
+  NFR-001 boundary assertion that the module opens no socket at import time.
+
+**Changed**
+- `schemas/taxonomy/README.md`: the link-rot "out of F-A1 scope" deferral now points
+  to the live scheduled monitor.
+
 ### Feature 185 — CWE Catalog Expansion + T029 Drift-Edge Restoration (BLP-05 Wave 2 / F-A1.2, #185) — feat(185)
 
 Closed the last cwe.yaml residual from Feature 180's T029 cleanup: the 40
