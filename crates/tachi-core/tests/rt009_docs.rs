@@ -53,7 +53,7 @@ fn rt009_documentation_contract_is_rust_native() {
             .expect("rust tauri merge plan exists");
 
     assert!(roadmap.contains("implementation-backlog.md"));
-    assert!(roadmap.contains("rust-tauri-only-issue-cards.md"));
+    assert!(roadmap.contains("2026-06-15-rust-tauri-parity-issue-cards.md"));
     assert!(roadmap.contains("rust-tauri-only-merge-plan.md"));
     assert!(roadmap.contains("Stage 0 | Inventory and contract freeze"));
     assert!(roadmap.contains("Stage 5 | Performance, streaming, and formal assurance"));

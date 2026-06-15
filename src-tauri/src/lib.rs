@@ -4,6 +4,7 @@ use tachi_shell::commands::CommandOutput;
 use tachi_shell::tauri_bridge::{dispatch_command, dispatch_command_with_progress};
 
 pub mod offline;
+pub mod release_artifacts;
 
 pub const DESKTOP_COMMANDS: [&str; 5] =
     ["install", "init", "update", "bootstrap", "infographic-data"];
@@ -35,4 +36,8 @@ pub use tachi_shell::progress::{
 pub use offline::{
     bootstrap_from_cache, check_for_update, restore_offline_cache, BootstrapReport,
     OfflineRestoreReport, UpdateCheck,
+};
+pub use release_artifacts::{
+    build_release_manifest, validate_package_contents, verify_checksum_matrix,
+    PackageContentReport, ReleaseArtifact, ReleaseManifest,
 };
