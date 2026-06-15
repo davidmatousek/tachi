@@ -98,7 +98,7 @@ temporary scratch state, or a local-only worktree artifact.
 |---|---|---|
 | `.github/workflows/gitleaks.yml` | Full-repo secret scanning | Required publication gate. |
 | `.github/workflows/rust-clippy.yml` | Rust lint gate | Prevents warnings from shipping. |
-| `.github/workflows/release-please.yml` | Release orchestration | Main-push release automation without release-PR branch churn. |
+| `.github/workflows/release-please.yml` | Release orchestration | Main-push release automation without release-PR branch churn; release gate now covers manifest and checksum parity. |
 | `.github/workflows/tachi-mmdc-preflight.yml` | Mermaid preflight | Protects docs and renderable diagram outputs. |
 | `.github/workflows/tachi-pytest.yml` | Transitional compatibility tests | Must be reviewed for retirement or narrowing as migration completes. |
 

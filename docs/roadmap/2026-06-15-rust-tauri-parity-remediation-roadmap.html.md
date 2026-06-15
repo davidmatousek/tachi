@@ -189,6 +189,7 @@ Exit gate:
 - workflow version drift is removed
 - release artifacts are reproducible
 - workflow and packaging docs agree with the code path
+- `make publish-gate` enforces workflow drift plus release artifact parity
 
 ## Phase 4 - exceed `tachi`
 

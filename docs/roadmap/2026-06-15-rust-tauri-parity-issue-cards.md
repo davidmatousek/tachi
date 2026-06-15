@@ -171,7 +171,7 @@ Every card includes:
 - `Implementation owner`: `docs`
 - `Stage label`: Phase 3
 - `Next test seam`: `.github/workflows/`
-- `Notes`: Treat workflow version drift as a publish blocker.
+- `Notes`: Implemented in `Makefile workflow-gate`; validated by `make publish-gate`.
 
 ### RT-018 - release artifact parity
 
@@ -188,7 +188,7 @@ Every card includes:
 - `Implementation owner`: `docs`
 - `Stage label`: Phase 3
 - `Next test seam`: `docs/bill-of-materials.html.md`
-- `Notes`: Keep the BOM in sync with the release inventory.
+- `Notes`: Implemented in `feat/rt018-release-artifact-parity`; validated by `make publish-gate`.
 
 ### RT-021 - docs-only release-please filter
 

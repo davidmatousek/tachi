@@ -85,7 +85,8 @@ release candidate branch into `main`.
 - [ ] The branch to publish is up to date with the intended base branch.
 - [ ] The publish commit history is linear or intentionally merged.
 - [ ] The push target is `origin/main` or a clearly named release branch.
-- [ ] `make publish-gate` runs clean on the branch being published.
+- [ ] `make publish-gate` runs clean on the branch being published, including
+      workflow drift and release artifact parity checks.
 - [ ] The post-push CI monitor command is ready, for example:
 
 ```bash
