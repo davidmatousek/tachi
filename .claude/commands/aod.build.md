@@ -529,6 +529,17 @@ The skill handles all analysis steps internally (file detection, SAST, SCA, seve
 
 **IMPORTANT**: After Step 7 completes (whether scan passed, was acknowledged, or was skipped), you MUST immediately proceed to this step. Do NOT stop or wait for user input between Steps 7 and 8.
 
+**Completion precondition (deterministic gate — runs BEFORE the banner below)**: The `IMPLEMENTATION COMPLETE` banner is authorized ONLY when the active tasks file is readable, has at least one completed task, and has NO remaining `- [ ]`. Resolve the active tasks path the same way Step 1 does (`specs/{NNN}-*/tasks.md`, where `{NNN}` is the feature number). Run:
+
+```bash
+tasks="$(ls specs/{NNN}-*/tasks.md 2>/dev/null | head -1)"
+if [ ! -r "$tasks" ] || ! grep -q '^- \[[xX]\]' "$tasks" || grep -q '^- \[ \]' "$tasks"; then
+  : # NOT a final completion — do NOT print the banner; hand off to the Step 4 sub-step 7 wave-ceiling stop template instead.
+fi
+```
+
+Fail-safe: an unreadable/absent tasks file, or one with zero checkboxes, is treated as NOT complete (the banner is withheld). This puts the completion decision in deterministic bash, not model judgment (KB Entry 41) — it cannot be rationalized past while any `- [ ]` line remains.
+
 **Re-ground before output**: Re-read the template below exactly. Do not paraphrase or substitute checkpoint/review commentary into the template structure.
 
 Display summary:

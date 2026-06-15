@@ -1,5 +1,6 @@
 ---
 name: orchestrator
+model: sonnet
 description: "Multi-agent workflow coordination and parallel wave execution. Use for executing approved implementation plans and coordinating agent teams."
 version: 1.0.0
 changelog:

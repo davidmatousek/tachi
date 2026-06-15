@@ -1,5 +1,6 @@
 ---
 name: senior-backend-engineer
+model: sonnet
 description: "Backend implementation, API development, database operations, and server-side logic. Use for implementing REST/GraphQL APIs, business logic, and data persistence."
 version: 2.0.0
 changelog:

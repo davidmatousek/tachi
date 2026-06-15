@@ -1,5 +1,6 @@
 ---
 name: frontend-developer
+model: sonnet
 description: "Frontend implementation, UI components, responsive design, and API integration. Use for building user interfaces and implementing design specifications."
 version: 2.0.0
 changelog:

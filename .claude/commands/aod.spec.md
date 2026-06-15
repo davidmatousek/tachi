@@ -24,6 +24,7 @@ Consider user input before proceeding (if not empty).
    - Strip `--revision` from `$ARGUMENTS` (trim extra whitespace)
    - Read `.aod/revision-context.md` for reviewer feedback (contains reviewer name, attempt number, artifact path, and full feedback text)
    - Store feedback as `revision_feedback`
+   - **Clear governance cache explicitly**: Call `aod_state_clear_governance_cache "spec"` so the upcoming PM review is treated as fresh regardless of mtime-staleness backstop. (Belt-and-suspenders: do NOT rely on the mtime backstop alone.)
 2. Default: `revision_mode = false`
 
 ## Overview
@@ -239,6 +240,29 @@ d. **Update Checklist** with current pass/fail status
 - Think like a tester: every requirement should be testable and unambiguous
 
 **NOTE:** The script creates and checks out the new branch and initializes the spec file before writing.
+
+## Step 3.6: Rubric Preload (PM Structural Self-Check)
+
+Before invoking governance, self-check the generated spec against the PM reviewer's structural axes. Load `.claude/skills/triad/pm-review.md` and evaluate the spec against sections 1–4 (structural/feasibility axes only):
+
+1. **Product Vision Alignment** — Does the spec support the product vision? Is user value clearly articulated? Are business goals achievable?
+2. **User Stories and Acceptance Criteria** — Are user stories well-formed (When/I want/So I can)? Are acceptance criteria testable and measurable? Is scope well-defined?
+3. **Success Metrics** — Are success criteria defined and measurable? Do metrics align with business goals?
+4. **Scope and Constraints** — Is scope realistic? Are constraints documented? Are out-of-scope items listed?
+
+**Excluded**: Do NOT apply the PM's strategic-veto authority (BLOCKED status decisions) — that is the reviewer's prerogative, not the producer's self-check.
+
+For each axis, note whether the spec satisfies it. If any axis is unmet, fix the spec now (before submitting for governance). Display a brief self-check summary:
+
+```
+Rubric Self-Check (pm-review.md structural axes):
+- Vision alignment: [PASS | FIX: <issue>]
+- User stories/AC: [PASS | FIX: <issue>]
+- Success metrics: [PASS | FIX: <issue>]
+- Scope/constraints: [PASS | FIX: <issue>]
+```
+
+Fix any FIX items before proceeding to Step 4.
 
 ## Step 4: PM Sign-off
 

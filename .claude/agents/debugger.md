@@ -1,5 +1,6 @@
 ---
 name: debugger
+model: sonnet
 description: "Bug investigation, root cause analysis using 5 Whys methodology, and systematic troubleshooting. Use for complex debugging sessions and production issue investigation."
 version: 2.0.0
 changelog:

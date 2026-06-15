@@ -1,0 +1,33 @@
+{
+  "mcpServers": {
+    "{{PROJECT_NAME}}-mcp": {
+      "command": "node",
+      "args": [
+        "{{PROJECT_PATH}}/path/to/mcp-server.js"
+      ],
+      "env": {
+        "PROJECT_ROOT": "{{PROJECT_PATH}}",
+        "NODE_ENV": "development"
+      }
+    }
+  },
+  "comments": {
+    "description": "MCP (Model Context Protocol) Configuration for {{PROJECT_NAME}}",
+    "usage": [
+      "Replace {{PROJECT_NAME}} with your actual project name",
+      "Replace {{PROJECT_PATH}} with the absolute path to your project root",
+      "Update the path to your MCP server implementation",
+      "Add environment variables as needed for your MCP server"
+    ],
+    "example": {
+      "projectName": "my-awesome-app",
+      "projectPath": "/Users/yourname/projects/my-awesome-app",
+      "serverPath": "/Users/yourname/projects/my-awesome-app/backend/mcp/server.js"
+    },
+    "notes": [
+      "MCP servers enable AI agents to access project-specific context and tools",
+      "See https://modelcontextprotocol.io for more information",
+      "Multiple MCP servers can be configured by adding additional entries"
+    ]
+  }
+}

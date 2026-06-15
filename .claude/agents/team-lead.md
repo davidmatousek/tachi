@@ -1,5 +1,6 @@
 ---
 name: team-lead
+model: opus
 description: "Feasibility assessment, timeline validation, agent assignments, and tasks.md sign-offs. Use for capacity planning and task prioritization."
 version: 2.0.0
 changelog:

@@ -36,7 +36,20 @@ This skill synthesizes best practices from:
 
 ## PRD Structure
 
-Every PRD created by this skill follows this proven structure:
+### Template Selection (FR-013)
+
+Choose the template **before** drafting, based on the define workflow type (set in `/aod.define` Step 2) and the optional `--full` opt-in:
+
+| Condition | Template |
+|-----------|----------|
+| **Feature** type, no `--full` (**default**) | **[Quick-Start PRD Template](#quick-start-prd-template)** (lean) — skip sections that are N/A for the feature |
+| **Infrastructure** type **OR** explicit `--full` | The **full** structure below (+ the exhaustive NFR block) |
+
+A simple feature does not pay for the full ~545-line template (FR-013/AC-013a). Only promote to the full structure when the workflow type is **Infrastructure** or the user passes `--full` (AC-013b).
+
+### Full Template (Infrastructure / `--full`)
+
+The full PRD structure below is used for **Infrastructure-type** defines or when **`--full`** is requested. For a default Feature define, use the lean [Quick-Start PRD Template](#quick-start-prd-template) instead.
 
 ```markdown
 # [Feature Name] - Product Requirements Document
@@ -247,6 +260,11 @@ Relationships:
 ---
 
 ## 🚀 Non-Functional Requirements
+
+> **Type-conditional (FR-013/AC-013c)**: Render each subsection only when the corresponding surface exists — do not emit N/A blocks:
+> - **Accessibility Requirements** → only when the feature has a **UI surface** (screens, components, pages).
+> - **Performance / Reliability / Security Requirements** → only when the feature has a **runtime surface** (an API, service, or process that executes at runtime).
+> - A pure-internal/governance change with **no UI and no runtime surface** may omit this entire section. This exhaustive NFR block belongs to the full template (Infrastructure / `--full`); a lean Feature PRD carries only the NFR subsections whose surface is present.
 
 ### Performance Requirements
 
@@ -716,6 +734,53 @@ Before invoking Triad review, load governance rules just-in-time:
 4. **Revision**: Incorporate feedback, answer open questions
 5. **Approval**: Get sign-offs from required stakeholders
 
+### Step 4b: Persist Governance Artifacts (FR-012 / D-7)
+
+After Triad reviews complete (Step 4), write governance artifacts to `specs/{feature-id}/` using the §1 minimal frontmatter schema. Create the directory if it does not exist.
+
+**Always emit — for every define (Feature AND Infrastructure)**:
+
+`specs/{feature-id}/feasibility-check.md`
+```yaml
+---
+artifact: feasibility-check
+feature_id: {NNN}        # zero-padded PRD/issue number; must equal prd_number
+owner: team-lead
+date: {YYYY-MM-DD}
+prd_number: {NNN}
+status: draft
+estimate:
+  planning_days: {number}   # team-lead central estimate; T027 derives the PRD timeline from this
+  floor_days: {number}      # floor_days ≤ planning_days ≤ ceiling_days
+  ceiling_days: {number}
+---
+```
+Body: team-lead's timeline/feasibility review output from Step 4.
+
+**Conditionally emit — Infrastructure/deployment PRD type only (or explicit opt-in)**:
+
+`specs/{feature-id}/architect-baseline.md`
+
+Scope: constitution.md:533 — "Architect Baseline" owner is Architect, purpose is "Current infrastructure state for **deployment PRDs**". Do NOT emit for plain Feature defines unless the user explicitly opts in. This is a hard emission gate — no silent mandate expansion.
+
+```yaml
+---
+artifact: architect-baseline
+feature_id: {NNN}        # zero-padded PRD/issue number; must equal prd_number
+owner: architect
+date: {YYYY-MM-DD}
+prd_number: {NNN}
+status: draft
+---
+```
+Body: architect's baseline technical assessment from the Infrastructure workflow Step 1.
+
+**Validation before writing**:
+- `feature_id == prd_number` (both must be the same zero-padded number)
+- `owner` matches artifact: `feasibility-check` → `team-lead`; `architect-baseline` → `architect`
+- `floor_days ≤ planning_days ≤ ceiling_days` (feasibility-check estimate block)
+- All `estimate.*` values are numeric
+
 ### Step 5: Handoff to Spec Creation
 
 Once PRD is approved:
@@ -806,6 +871,9 @@ Product Manager validates tasks.md ensures:
 | "Sign-offs can land asynchronously after hand-off to /aod.spec" | Step 4 (line 712) requires sign-offs before approval; Step 5 (line 721) gates handoff on approved status. |
 | "Open Questions belong in spec.md — I'll leave the PRD section empty" | PRD Structure (line 480) reserves the Open Questions section; Quality Checklist (line 677) requires capturing them. |
 | "Architect baseline review is for infrastructure PRDs only — I'll skip" | Step 1 (line 607) mandates reading architecture/README and deployment-environments docs before drafting the PRD. |
+| "feasibility-check.md is only needed for Infrastructure PRDs" | Step 4b requires feasibility-check.md for ALL defines (Feature and Infrastructure). Only architect-baseline.md is conditionally emitted (Infrastructure/deployment or explicit opt-in). |
+| "I'll emit architect-baseline.md for every define to be thorough" | constitution.md:533 scopes architect-baseline to "deployment PRDs." Emitting it silently for Feature defines is mandate expansion — the emission gate is hard. |
+| "The estimate block in feasibility-check.md is optional" | Step 4b requires the estimate block on every feasibility-check (floor/planning/ceiling); T027 reads `estimate.planning_days` to derive the PRD timeline. Omitting it breaks the timeline-derivation dependency. |
 
 ## Red Flags
 
@@ -815,6 +883,10 @@ Product Manager validates tasks.md ensures:
 - Agent declares the PRD READY while Quality Checklist Alignment items (line 679) remain unchecked.
 - Agent omits source.idea_id from frontmatter despite a backlog Issue selection per Step 1 (line 619).
 - Agent maps PRD → Spec sections without consulting the table at line 734, dropping required sections.
+- Agent completes a define (Feature or Infrastructure) without writing `feasibility-check.md` to `specs/{feature-id}/` per Step 4b.
+- Agent writes `architect-baseline.md` for a Feature define without explicit user opt-in (constitution.md:533 gate).
+- Agent writes a governance artifact without the §1 YAML frontmatter (`artifact`, `feature_id`, `owner`, `date`, `prd_number`, `status`; plus `estimate` block on feasibility-check).
+- Agent writes governance artifacts where `feature_id != prd_number` (must match — both are the zero-padded GitHub Issue number).
 
 ---
 
@@ -822,7 +894,7 @@ Product Manager validates tasks.md ensures:
 
 ### Quick-Start PRD Template
 
-For simple features, use this minimal template:
+**Default template for Feature-type PRDs** (FR-013/AC-013a) — promoted as-is (Q-010). Use this lean template for every Feature `/aod.define` **unless** the workflow type is Infrastructure or `--full` was passed (then use the [Full Template](#full-template-infrastructure----full) above):
 
 ```markdown
 # [Feature] PRD - Quick Start

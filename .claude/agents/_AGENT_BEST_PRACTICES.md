@@ -477,6 +477,7 @@ All agents require YAML frontmatter with these fields.
 
 ```yaml
 ---
+model: opus | sonnet | haiku   # Tier alias — match power to cognitive load (see Model Tiering)
 version: MAJOR.MINOR.PATCH     # Semantic version
 changelog:                      # Version history
   - version: X.Y.Z
@@ -502,12 +503,30 @@ triad_governance:               # Governance participation
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| model | string | Yes | Tier alias: `opus` \| `sonnet` \| `haiku` (never a pinned ID). See Model Tiering. |
 | version | string | Yes | Semantic version (MAJOR.MINOR.PATCH) |
 | changelog | array | Yes | List of version entries with dates and changes |
 | boundaries.does_not_handle | array | Yes | Explicit scope exclusions |
 | triad_governance.participates_in | array | Yes | Governance stages this agent participates in |
 | triad_governance.veto_authority | array | Conditional | Domains where agent can block decisions |
 | triad_governance.defers_to | array | Conditional | Roles agent defers to for specific decisions |
+
+### Model Tiering
+
+Every agent declares a `model:` **alias** (`opus` | `sonnet` | `haiku`) — never a version-pinned ID like `claude-opus-4-8`, so the tier tracks the current generation without re-drifting on a model bump. Match power to the agent's cognitive load: this reclaims the largest token/$ lever *and* raises the quality floor on the binding governance gates (the two goals are aligned, not in tension).
+
+| Tier | Use for | Agents |
+|------|---------|--------|
+| `opus` | Binding verdict gates — sign-off authority where a wrong call ships | architect, product-manager, team-lead, code-reviewer |
+| `sonnet` | Implementation, near-verdict review, gate-grade test authoring | security-analyst, senior-backend-engineer, frontend-developer, devops, tester, debugger, orchestrator, ux-ui-designer |
+| `haiku` | High-volume retrieval/lookup; no verdict authority | web-researcher |
+
+**Rules:**
+- **Opus floor on verdict gates — never override downward.** The verdict / near-verdict agents (architect, product-manager, team-lead, code-reviewer, security-analyst) MUST NOT be downgraded below their declared tier during a governance run — not via the `CLAUDE_CODE_SUBAGENT_MODEL` env var (it silently outranks frontmatter for *every* subagent) nor a per-invocation `model` param.
+- **`tester` is never `haiku`** — it authors the gate-grade tests that decide delivery, so it stays mid-tier minimum (enforced by `tests/unit/model_tiers.bats`).
+- **Fable is NOT for agent definitions.** Fable 5 is the premium top tier (~2× Opus list price). Agent work is bounded and templated, so Opus is the sensible ceiling — assigning Fable raises cost without raising the floor that matters. Reserve Fable for human-driven, hardest one-off reasoning. To *conserve* tokens the lever is prompt caching, **not** a higher model tier.
+
+Authoritative per-agent map: [`_README.md`](_README.md). Decision rationale + history: [ADR-014](../../docs/architecture/02_ADRs/ADR-014-per-agent-model-tiering-alias-convention.md).
 
 ### Version Numbering
 

@@ -227,6 +227,10 @@ aod_gh_validate_cache() {
                 rm -f "$AOD_BOARD_CACHE"
                 return 1
             fi
+            # D-5 migration warning: cache shows legacy "AOD Backlog" but repo expects {repo-name}-backlog
+            if [[ "$cached_title" == "AOD Backlog" && -n "$repo_title" && "$cached_title" != "$repo_title" ]]; then
+                echo "[aod] Warning: cache shows board_title=\"AOD Backlog\" but $repo_title does not match. Set AOD_BOARD=N (your board number) to pin explicitly and avoid silent re-routing." >&2
+            fi
         fi
     fi
 
@@ -274,6 +278,33 @@ aod_gh_check_board() {
 
     # All checks passed — mark as checked for this session
     _AOD_BOARD_CHECKED=1
+    return 0
+}
+
+# One-time label setup: ensure all 7 stage:* labels exist on the repo
+# Iterates AOD_STAGE_LABELS (single source of truth, line 40) and creates each
+# via `gh label create --force` (idempotent — refreshes color, no error if
+# already present). Continues on per-label failure so a single bad label does
+# not block the rest. Designed to be invoked from scripts/init.sh during the
+# bootstrap GitHub setup phase, paired with aod_gh_setup_board.
+# Args: none
+# Returns: 0 always (graceful degradation)
+# Stderr: "[aod] gh error: <stderr>" on per-label failure
+aod_gh_setup_labels() {
+    if ! aod_gh_check_available; then
+        return 0
+    fi
+
+    local label label_stderr label_err
+    for label in "${AOD_STAGE_LABELS[@]}"; do
+        label_stderr=$(mktemp 2>/dev/null || echo "/tmp/aod-label-stderr-$$")
+        if ! gh label create "$label" --color 1d76db --force --repo "$AOD_REPO" >/dev/null 2>"$label_stderr"; then
+            label_err=$(cat "$label_stderr" 2>/dev/null)
+            echo "[aod] gh error: $label_err" >&2
+        fi
+        rm -f "$label_stderr"
+    done
+
     return 0
 }
 
@@ -329,14 +360,14 @@ aod_gh_setup_board() {
             return 0
         }
     else
-        # Auto-detect: try "{repo}-backlog", then "AOD Backlog", then create
+        # Auto-detect: try "{repo}-backlog", then create
         local repo_name
         repo_name=$(gh repo view --json name --jq '.name' 2>/dev/null) || repo_name=""
-        board_title="AOD Backlog"
         local repo_title=""
         if [[ -n "$repo_name" ]]; then
             repo_title="${repo_name}-backlog"
         fi
+        board_title="$repo_title"
 
         local existing_board
         existing_board=$(gh project list --owner "$owner" --format json 2>/dev/null) || {
@@ -344,17 +375,11 @@ aod_gh_setup_board() {
             return 0
         }
 
-        # First try {repo}-backlog, then fall back to "AOD Backlog"
+        # First try {repo}-backlog; if missing, create it
         if [[ -n "$repo_title" ]]; then
             project_number=$(echo "$existing_board" | jq -r --arg title "$repo_title" '.projects[] | select(.title == $title) | .number' 2>/dev/null | head -1)
             if [[ -n "$project_number" && "$project_number" != "null" ]]; then
                 board_title="$repo_title"
-            fi
-        fi
-        if [[ -z "$project_number" || "$project_number" == "null" ]]; then
-            project_number=$(echo "$existing_board" | jq -r --arg title "AOD Backlog" '.projects[] | select(.title == $title) | .number' 2>/dev/null | head -1)
-            if [[ -n "$project_number" && "$project_number" != "null" ]]; then
-                board_title="AOD Backlog"
             fi
         fi
 
@@ -900,9 +925,19 @@ aod_gh_create_issue() {
         return 0
     fi
 
+    # Defensive: if the specific stage label this issue needs is missing,
+    # recreate the full set via idempotent setup. Checking the specific label
+    # (not just any stage:*) handles partial deletion per FR-003.
+    if ! gh label list --repo "$AOD_REPO" --json name -q ".[] | select(.name == \"stage:${stage}\") | .name" 2>/dev/null | grep -q .; then
+        aod_gh_setup_labels
+        echo "[aod] Recreated missing stage labels" >&2
+    fi
+
     local label="stage:${stage}"
 
-    # Ensure type:* label exists (idempotent — no error if already present)
+    # Ensure type:* label exists (idempotent — no error if already present).
+    # Symmetric stderr surfacing for this `gh label create` is intentionally
+    # deferred (rare failure mode, out of scope for AC-4; see F172 architect concern #4).
     if [[ -n "$issue_type" ]]; then
         gh label create "type:${issue_type}" --force 2>/dev/null || true
     fi
@@ -941,19 +976,29 @@ aod_gh_create_issue() {
         return 0
     fi
 
-    # Create new issue
+    # Create new issue. Capture gh's stderr to a temp file so real failures
+    # (auth, rate limit, network) surface with the actual error text instead
+    # of the misleading generic "Failed to create" warning. Splitting the
+    # pipeline so `grep` does not mask gh's exit code.
     local issue_number
+    local gh_stderr_file
+    gh_stderr_file=$(mktemp 2>/dev/null || echo "/tmp/aod-issue-stderr-$$")
+    local gh_stdout
     if [[ -n "$issue_type" ]]; then
-        issue_number=$(gh issue create --title "$title" --body "$body" --label "$label" --label "type:${issue_type}" 2>/dev/null | grep -o '[0-9]*$') || {
-            echo "[aod] Warning: Failed to create GitHub Issue. Continuing without tracking." >&2
+        gh_stdout=$(gh issue create --title "$title" --body "$body" --label "$label" --label "type:${issue_type}" 2>"$gh_stderr_file") || {
+            echo "[aod] gh error: $(cat "$gh_stderr_file")" >&2
+            rm -f "$gh_stderr_file"
             return 0
         }
     else
-        issue_number=$(gh issue create --title "$title" --body "$body" --label "$label" 2>/dev/null | grep -o '[0-9]*$') || {
-            echo "[aod] Warning: Failed to create GitHub Issue. Continuing without tracking." >&2
+        gh_stdout=$(gh issue create --title "$title" --body "$body" --label "$label" 2>"$gh_stderr_file") || {
+            echo "[aod] gh error: $(cat "$gh_stderr_file")" >&2
+            rm -f "$gh_stderr_file"
             return 0
         }
     fi
+    rm -f "$gh_stderr_file"
+    issue_number=$(echo "$gh_stdout" | grep -o '[0-9]*$')
 
     if [[ -n "$issue_number" ]]; then
         echo "[aod] Created Issue #${issue_number} with label ${label}." >&2

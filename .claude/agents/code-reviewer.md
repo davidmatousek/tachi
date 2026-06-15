@@ -1,5 +1,6 @@
 ---
 name: code-reviewer
+model: opus
 description: "Code quality analysis, best practices enforcement, and PR reviews. Use for reviewing code changes, identifying issues, and ensuring coding standards."
 version: 2.0.0
 changelog:

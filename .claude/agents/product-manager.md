@@ -1,5 +1,6 @@
 ---
 name: product-manager
+model: opus
 description: "Product strategy, PRD creation, requirements definition, scope decisions, and spec/plan/tasks sign-offs. Use for product alignment reviews and vision validation."
 version: 2.0.0
 changelog:
@@ -124,7 +125,7 @@ You ensure alignment between product artifacts (docs/product/) and AOD Kit speci
 1. **Read artifact**: spec.md, plan.md, or tasks.md
 2. **Validate alignment** using checklist (Section 5)
 3. **Apply thinking lens** (optional): If requirements seem risky or unclear, apply Pre-Mortem lens. If inherited assumptions need challenging, apply First Principles lens. See `docs/core_principles/README.md`.
-4. **Provide verdict**: APPROVED or CHANGES REQUESTED
+4. **Provide verdict**: one of the canonical 4-value enum — `APPROVED | APPROVED_WITH_CONCERNS | CHANGES_REQUESTED | BLOCKED` (underscored; the single Workflow-1 verdict set — see §5 / `STATUS:` below)
 5. **Document decision** in artifact (include lens findings if applied)
 
 ### 4.3 Strategy Change Workflow

@@ -2,7 +2,7 @@
 # AOD-kit Template Manifest
 # =============================================================================
 #
-# Feature 129 (downstream template update mechanism) — PLSK source of truth.
+# Feature 129 (downstream template update mechanism) — upstream source of truth.
 #
 # Purpose:
 #   Categorize every git-tracked file in this repo by ownership. Drives
@@ -19,7 +19,7 @@
 # Valid categories (6):
 #   owned         Template content. Overwritten verbatim from upstream on
 #                 /aod.update. Adopters MUST NOT hand-edit these files.
-#   personalized  Template content with {{ PLACEHOLDER }} tokens. Overwritten
+#   personalized  Template content with {{PLACEHOLDER}} tokens. Overwritten
 #                 from upstream and then re-substituted from
 #                 .aod/personalization.env. Adopters MUST NOT hand-edit.
 #   user          Adopter-owned. Never touched by /aod.update (hidden from
@@ -83,11 +83,9 @@ owned|.claude/hooks/**
 owned|.claude/lib/**
 owned|.claude/skills/**
 
-# .claude/config is template-owned JSON
-# (.claude/mcp-config.json removed in F-248 T033 Q-1 Option (b) — no wired
-# consumer reads it from the project tree per T005 internal-tooling-search;
-# canonical placeholder set remains locked at 12.)
+# .claude/config and MCP are template-owned JSON
 owned|.claude/config/feature-flags.json
+owned|.claude/mcp-config.json
 owned|.claude/settings.json
 
 # .claude/rules/ — most rules carry a `<!-- Rule file for {{PROJECT_NAME}} -->`
@@ -102,11 +100,27 @@ owned|.aod/templates/**
 # Template-owned manifest (this file itself)
 owned|.aod/template-manifest.txt
 
+# .aod/scaffold/ — token-bearing seed for init.sh; refreshed verbatim, never re-substituted
+owned|.aod/scaffold/README.md
+
+# Feature 139 — delivery verification infrastructure. Template ships the
+# directory scaffolds (.gitkeep) and the example config + its doc companion.
+# Runtime artifacts within these directories (audit JSONL, lock files, state
+# snapshots) are adopter-generated and categorized separately below.
+owned|.aod/audit/.gitkeep
+owned|.aod/locks/.gitkeep
+owned|.aod/state/.gitkeep
+owned|.aod/config.json.example
+owned|.aod/config.json.example.md
+
 # Template-owned top-level scripts
 owned|scripts/check.sh
+owned|scripts/check-extract-coverage.sh
 owned|scripts/check-manifest-coverage.sh
 owned|scripts/extract.sh
+owned|scripts/extract-classification.txt
 owned|scripts/init.sh
+owned|scripts/reset-templates/**
 owned|scripts/sync-upstream.sh
 owned|scripts/update.sh
 
@@ -125,9 +139,11 @@ owned|docs/PROJECT_DOCS_CHECKLIST.md
 user|docs/architecture/00_Tech_Stack/**
 user|docs/architecture/04_deployment_environments/**
 user|docs/architecture/README.md
+owned|docs/branding/**
 owned|docs/core_principles/**
 owned|docs/devops/**
 owned|docs/guides/**
+owned|docs/stacks/**
 owned|docs/standards/**
 owned|docs/testing/**
 
@@ -146,6 +162,7 @@ owned|tests/unit/**
 owned|tests/integration/**
 owned|tests/fixtures/**
 owned|tests/stress/**
+owned|tests/contract/**
 
 # Top-level template-owned project files (MIGRATION). LICENSE and
 # CONTRIBUTING.md are adopter-owned — categorized under `user|` below.
@@ -158,7 +175,7 @@ owned|MIGRATION.md
 owned|.gitattributes
 
 # -----------------------------------------------------------------------------
-# personalized — template content with {{ PLACEHOLDER }} tokens; re-substituted
+# personalized — template content with {{PLACEHOLDER}} tokens; re-substituted
 # -----------------------------------------------------------------------------
 # CLAUDE.md is `merge|` below (agent-context document — both sides edit).
 # scope.md, git-workflow.md, commands.md are `user|` below (adopter-owned
@@ -238,7 +255,9 @@ user|specs/**
 user|.aod/archive/**
 user|.aod/closures/**
 user|.aod/handoff/**
-user|.aod/results/.gitkeep
+# Per-feature reviewer outputs (PM/Architect/Team-Lead sign-off artifacts).
+# Each adopter accumulates their own review history here.
+user|.aod/results/**
 
 # Active feature workspace files — the adopter's in-flight work
 user|.aod/spec.md
@@ -267,7 +286,7 @@ scaffold|.gitignore
 # adopters merge upstream improvements manually.
 merge|CLAUDE.md
 merge|Makefile
-merge|README.md
+user|README.md
 
 # -----------------------------------------------------------------------------
 # ignore — never updated, excluded from coverage requirement (but still here
@@ -279,17 +298,25 @@ ignore|.git/**
 ignore|node_modules/**
 ignore|*.log
 ignore|.aod/logs/**
+ignore|.aod/scratch/**
 ignore|.aod/update-tmp/**
 ignore|.aod/update.lock
 ignore|.aod/run-state.json
 
-# AOD-kit-only contributor content (not in PLSK; lives only in the public
-# agentic-oriented-development-kit release repo). Adopters don't need these —
-# they're for contributors to the upstream repo itself.
+# Public-repo-only contributor content. These live in the public
+# agentic-oriented-development-kit release repo but aren't synced to
+# adopters — they're for contributors to the upstream template itself.
 ignore|.github/ISSUE_TEMPLATE/**
 ignore|CODE_OF_CONDUCT.md
 ignore|docs/ARTICLE_SERIES.md
+# Maintainer-only session-handoff prompts — never shipped downstream.
+ignore|docs/prompts/**
 
 # Stack pack scaffolds are copied only when /aod.stack scaffold runs; they live
 # in the template as seed content but never sync to the adopter via /aod.update.
 ignore|stacks/*/scaffold/**
+
+# Internal strategy docs — upstream maintainer-only content (blueprints, audits).
+# Never shipped to adopters: _internal/ is deliberately absent from MANIFEST_DIRS
+# in scripts/extract.sh. Ignored here to satisfy coverage without leaking content.
+ignore|_internal/**

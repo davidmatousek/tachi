@@ -93,40 +93,30 @@ Options:
 
 ### ICE Scoring
 
-Present each ICE dimension using AskUserQuestion:
-
-#### Impact — "How much value does this deliver to users?"
+Score all three ICE dimensions in **one batched `AskUserQuestion` call** — a single call
+carrying three questions (Impact, Confidence, Effort) — so the user answers them together
+instead of in three sequential round-trips:
 
 ```
-Options:
+One AskUserQuestion call, three questions:
+
+Q1 — Impact: "How much value does this deliver to users?"
   - High (9): "Transformative — significant user value"
   - Medium (6): "Solid improvement — meaningful but incremental"
   - Low (3): "Minor enhancement — small quality-of-life fix"
-```
 
-Allow "Other" for custom numeric values (1-10).
-
-#### Confidence — "How sure are we this will succeed?"
-
-```
-Options:
+Q2 — Confidence: "How sure are we this will succeed?"
   - High (9): "Proven pattern — strong evidence it will work"
   - Medium (6): "Some unknowns — reasonable confidence with gaps"
   - Low (3): "Speculative — significant uncertainty"
-```
 
-Allow "Other" for custom numeric values (1-10).
-
-#### Effort (Ease of Implementation) — "How easy is this to build?"
-
-```
-Options:
+Q3 — Effort (Ease of Implementation): "How easy is this to build?"
   - High (9): "Days of work — straightforward implementation"
   - Medium (6): "Weeks of work — moderate complexity"
   - Low (3): "Months of work — significant engineering effort"
 ```
 
-Allow "Other" for custom numeric values (1-10).
+Allow "Other" for custom numeric values (1-10) on each question.
 
 **Compute**: ICE Total = Impact + Confidence + Effort (range 3-30)
 
@@ -316,7 +306,8 @@ Auto-Deferred: {Yes if status is Deferred, otherwise No}
 Use the Task tool with `product-manager` subagent_type:
 
 ```
-Review this idea for product backlog inclusion:
+Review this idea for product backlog inclusion. You are the product-manager
+guardian of product-spec alignment — apply your §5 Quality Standards rubric.
 
 Idea: {idea_description}
 ICE Score: {total} (I:{impact} C:{confidence} E:{effort})
@@ -325,48 +316,62 @@ Current Status: {status}
 Auto-Deferred: {yes/no}
 Evidence: {evidence}
 
-Evaluate:
-1. Does this idea align with the product vision and roadmap?
-2. Is the ICE scoring reasonable given the idea description?
-3. Does this idea deliver meaningful user value?
-4. Should this idea enter the product backlog as a user story?
-5. Is the evidence sufficient to justify pursuing this idea? Evaluate the quality and
-   specificity of the evidence provided.
+Ground your judgement in the actual product artifacts — read what is relevant:
+- Vision:       docs/product/01_Product_Vision/product-vision.md
+- Roadmap:      docs/product/03_Product_Roadmap/
+- OKRs:         docs/product/06_OKRs/
+- User Stories: docs/product/05_User_Stories/README.md
 
-If evidence is empty or "No evidence provided", flag this:
+Evaluate against these criteria:
+1. Vision & positioning fit — does the idea serve the product vision and target users?
+2. Strategic alignment — does it fit the roadmap timeline and support a current-quarter OKR?
+3. User value — is there a clear, user-focused problem and meaningful benefit?
+4. ICE reasonableness — are Impact/Confidence/Effort credible given the description and evidence?
+5. Evidence sufficiency — is the evidence specific enough to justify pursuing this now?
+6. Backlog-readiness — is scope bounded enough to become a well-formed user story?
+
+If evidence is empty or "No evidence provided", flag it explicitly:
 "No evidence provided — recommend gathering evidence before proceeding."
-You may still approve if the idea has strong merit despite missing evidence, but note
-the evidence gap in your rationale.
+You may still approve on strong merit, but note the evidence gap in your rationale.
 
-If auto-deferred (score < 12), provide additional justification for why this idea
-should or should not override the auto-defer gate.
+If auto-deferred (score < 12), justify why this idea should or should not override
+the auto-defer gate.
+
+Apply a thinking lens when warranted (Pre-Mortem for risky/unclear value,
+First Principles to challenge inherited assumptions); fold any lens findings into
+the rationale.
 
 Respond with:
-STATUS: [APPROVED | REJECTED]
-EVIDENCE_QUALITY: [Strong | Adequate | Weak | Missing]
-RATIONALE: [Your detailed reasoning — 2-4 sentences]
+STATUS: [APPROVED | APPROVED_WITH_CONCERNS | CHANGES_REQUESTED | BLOCKED]
+RATIONALE: [2-4 sentences — vision/roadmap alignment, evidence quality in prose, and user value]
 ```
 
 ### Handle Rejection
 
-If PM returns **REJECTED**:
-1. Update the GitHub Issue: add a comment with PM rejection rationale and update the `Status:` line in the body to "Rejected"
-2. Display rejection and exit:
+Map the PM `STATUS:` verdict to an action. **No value falls through** — a missing or unparseable STATUS is treated as `CHANGES_REQUESTED` (fail safe toward human re-review, never a silent capture):
+
+| `STATUS:` verdict | Action |
+|-------------------|--------|
+| `APPROVED` | Proceed to Step 7 (capture as a validated idea). |
+| `APPROVED_WITH_CONCERNS` | Proceed to Step 7, AND record the PM's concerns (from `RATIONALE:`) as a comment on the GitHub Issue so they travel with the story. |
+| `CHANGES_REQUESTED` | Do NOT capture. Route back to the human for refinement: surface the PM `RATIONALE:`, set the Issue `Status:` to "Changes Requested", and stop. |
+| `BLOCKED` | Hard stop — no capture. Route to the human with the PM `RATIONALE:`; set the Issue `Status:` to "Blocked". Never auto-override a BLOCKED verdict. |
+
+For a `CHANGES_REQUESTED` or `BLOCKED` verdict, update the GitHub Issue (add the PM rationale as a comment, set the `Status:` line accordingly), display the result, then exit:
 
 ```
-PM VALIDATION: REJECTED
+PM VALIDATION: {status}
 
 ID: #{issue_number}
 Idea: {description}
 PM Rationale: {rationale}
 
-The idea has been marked as Rejected on GitHub Issue #{issue_number}.
-To re-submit: re-score with `/aod.score #{issue_number}`, then run `/aod.validate #{issue_number}` again.
+The idea was not captured ({status}). To re-submit: re-score with `/aod.score #{issue_number}`, then run `/aod.validate #{issue_number}` again.
 ```
 
 ### Handle Approval
 
-If PM returns **APPROVED**: Continue to Step 7.
+If PM returns **APPROVED** or **APPROVED_WITH_CONCERNS**: Continue to Step 7. For `APPROVED_WITH_CONCERNS`, the concerns recorded above travel with the user story.
 
 ## Step 7: User Story Generation
 
@@ -398,7 +403,7 @@ If PM returns **APPROVED**: Continue to Step 7.
 
 ### Regenerate BACKLOG.md
 
-Run `.aod/scripts/bash/backlog-regenerate.sh` to update the backlog snapshot.
+Run `.aod/scripts/bash/backlog-regenerate.sh` **only for the `/aod.validate` entry point** (which skips capture). In the full `/aod.discover` flow, Step 5b already regenerated the snapshot at capture — do NOT regenerate again here (the user-story update does not change the stage-keyed backlog). This keeps every exit path — capture-only, deferred, full-flow-approved, and `/aod.validate` — regenerating BACKLOG.md **exactly once**.
 
 ### Report result
 
@@ -408,7 +413,6 @@ PM VALIDATION: APPROVED
 
 ID: #{issue_number}
 Idea: {description}
-Evidence Quality: {evidence_quality}
 PM Rationale: {rationale}
 
 User Story Created:
@@ -436,7 +440,6 @@ ICE Scoring:
   Priority Tier: {tier}
 
 PM Validation: APPROVED
-  Evidence Quality: {evidence_quality}
   Rationale: {rationale}
 
 User Story Created:
@@ -555,7 +558,7 @@ Next: Run `/aod.define {topic}` to create a PRD, or continue seeding with `/aod.
 - [ ] BACKLOG.md regenerated after Issue creation
 - [ ] Governance tier read from constitution (light/standard/full, default: standard)
 - [ ] Light tier: PM validation skipped in full flow, with note to user
-- [ ] PM validation includes evidence quality evaluation (Strong/Adequate/Weak/Missing)
+- [ ] PM validation evaluates evidence quality as free-text in the PM `RATIONALE:` (no separate enum)
 - [ ] PM validation invoked via Task tool (product-manager subagent)
 - [ ] Rejection: GitHub Issue updated, flow exits
 - [ ] Approval: User story generated in proper format

@@ -1,5 +1,6 @@
 ---
 name: web-researcher
+model: haiku
 description: "Technical research, library evaluation, and best practices investigation. Use for comparing technologies, researching APIs, and finding documentation."
 version: 2.0.0
 changelog:

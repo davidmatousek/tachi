@@ -1,5 +1,6 @@
 ---
 name: architect
+model: opus
 description: "System architecture, technical design, API contracts, data models, and technology decisions. Use for plan.md reviews and technical feasibility validation."
 version: 2.0.0
 changelog:

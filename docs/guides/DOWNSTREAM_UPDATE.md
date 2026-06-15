@@ -179,6 +179,35 @@ Under 1 minute for 100-500 tracked files (SC-001 target: <5 minutes). Preview re
 
 ---
 
+## README Lifecycle
+
+The root `README.md` and `.aod/scaffold/README.md` have distinct lifecycle roles. Understanding the split helps when customizing your project's README and when running `/aod.update`.
+
+### The two files
+
+| File | Role | Manifest category | Owner |
+|---|---|---|---|
+| `README.md` (root) | Your project's hand-edited README. Public-facing on your repo's GitHub landing page. | `user|` (silent skip on update) | You — edit freely. |
+| `.aod/scaffold/README.md` | Token-bearing seed used by `init.sh` during bootstrap. Never rendered to a public surface; lives buried under `.aod/`. | `owned|` (refreshed verbatim on update) | Upstream — do not hand-edit. |
+
+### What happens at each lifecycle moment
+
+**Clone** — When you `git clone` AOD Kit (or the consumer-facing template repo), GitHub renders the root `README.md` as a polished marketing landing page describing AOD itself. The scaffold under `.aod/scaffold/` is not rendered anywhere — it's just a file waiting for `init.sh`.
+
+**`make init` (one-shot bootstrap)** — `scripts/init.sh` copies `.aod/scaffold/README.md` over the root `README.md`, then `replace_in_files()` substitutes all `{{PROJECT_NAME}}` and other tokens with the values you provided at the prompts. The result: your root `README.md` describes *your* project, with your project name baked in.
+
+> **`make init` is one-shot per project.** Re-running it overwrites your customized root `README.md` with the scaffold (then re-substitutes tokens). If you want to refresh tokens after init, edit `README.md` directly — do not re-run `init.sh`. This matches the existing init.sh behavior; the scaffold copy step (Feature 169) does not change it.
+
+**`/aod.update` (periodic upstream sync)** — Because root `README.md` is classified `user|`, `/aod.update` **silently skips it** — no preview, no warning, no overwrite. Your customizations are safe forever after init. `.aod/scaffold/README.md` is `owned|`, so upstream improvements to the scaffold flow through automatically (you'll see it as `update` or `skip` in the preview).
+
+### Why the scaffold persists after init
+
+After `make init` runs, `.aod/scaffold/README.md` remains in your repo. This is intentional: future `/aod.update` runs may refresh it from upstream so a *fresh re-clone* of the AOD template still has the latest scaffold. The scaffold is never re-substituted on your side (that would defeat its purpose as a seed for re-clone scenarios). You can leave it alone — it is `owned|` and managed by upstream.
+
+If you don't expect to re-init or re-clone, deleting `.aod/scaffold/` is harmless. `init.sh` will still run for fresh installs because it has a defensive existence check on the file. But removing it offers no upside, and `/aod.update` would re-add it on the next run.
+
+---
+
 ## Bootstrap (pre-F129 adopters)
 
 If you installed AOD-kit before Feature 129 (the `/aod.update` mechanism) shipped, your repo is missing two prerequisite files that `make update` expects: `.aod/aod-kit-version` and `.aod/personalization.env`. Running `make update` in this state exits with code 3 ("missing prerequisites"). This section walks you end-to-end from "error" to "updated" without external references.

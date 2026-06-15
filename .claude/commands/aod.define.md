@@ -162,6 +162,39 @@ Use AskUserQuestion to determine workflow type:
 2. Invoke ~aod-define skill with architect baseline context
 3. Launch team-lead agent for timeline/feasibility review
 4. Launch architect agent for final technical review
+5. **Persist governance artifacts** — write both files to `specs/{feature-id}/` with the §1 frontmatter schema:
+
+   **`specs/{feature-id}/architect-baseline.md`** (Infrastructure/deployment type only — constitution.md:533 scopes this to "deployment PRDs"; do NOT emit for Feature defines unless explicitly opted in):
+   ```yaml
+   ---
+   artifact: architect-baseline
+   feature_id: {NNN}        # zero-padded; equals prd_number
+   owner: architect
+   date: {YYYY-MM-DD}
+   prd_number: {NNN}
+   status: draft
+   ---
+   ```
+   Body: architect's baseline technical assessment from step 1.
+
+   **`specs/{feature-id}/feasibility-check.md`** (ALL defines — Feature and Infrastructure):
+   ```yaml
+   ---
+   artifact: feasibility-check
+   feature_id: {NNN}        # zero-padded; equals prd_number
+   owner: team-lead
+   date: {YYYY-MM-DD}
+   prd_number: {NNN}
+   status: draft
+   estimate:
+     planning_days: {number}   # team-lead central estimate (T027 reads this for PRD timeline)
+     floor_days: {number}      # floor ≤ planning_days ≤ ceiling_days
+     ceiling_days: {number}
+   ---
+   ```
+   Body: team-lead's timeline/feasibility review from step 3.
+
+   **Validation**: `feature_id == prd_number`; `owner` matches artifact (architect / team-lead); `floor_days ≤ planning_days ≤ ceiling_days`. If `specs/{feature-id}/` does not yet exist, create it.
 
 **Feature workflow**:
 1. Invoke ~aod-define skill directly
@@ -183,6 +216,29 @@ Provide sign-off:
 STATUS: [APPROVED | APPROVED_WITH_CONCERNS | CHANGES_REQUESTED | BLOCKED]
 NOTES: [Your detailed feedback]
 ```
+
+3. **Persist governance artifact** — write to `specs/{feature-id}/` with the §1 frontmatter schema:
+
+   **`specs/{feature-id}/feasibility-check.md`** (ALL defines — Feature and Infrastructure):
+   ```yaml
+   ---
+   artifact: feasibility-check
+   feature_id: {NNN}        # zero-padded; equals prd_number
+   owner: team-lead
+   date: {YYYY-MM-DD}
+   prd_number: {NNN}
+   status: draft
+   estimate:
+     planning_days: {number}   # team-lead central estimate (T027 reads this for PRD timeline)
+     floor_days: {number}      # floor ≤ planning_days ≤ ceiling_days
+     ceiling_days: {number}
+   ---
+   ```
+   Body: team-lead's timeline/feasibility review from the parallel review above.
+
+   **Note**: For Feature-type defines, `architect-baseline.md` is NOT emitted unless explicitly opted in (constitution.md:533 scopes it to "deployment PRDs" only). No silent mandate expansion.
+
+   **Validation**: `feature_id == prd_number`; `owner: team-lead`; `floor_days ≤ planning_days ≤ ceiling_days`. If `specs/{feature-id}/` does not yet exist, create it.
 
 ## Step 4: Handle Review Results
 
@@ -230,7 +286,8 @@ source:           # Automatically populated from GitHub Issue
 ---
 ```
 
-2. Write to `docs/product/02_PRD/{filename}`
+2. **Derive Timeline & Milestones from the team-lead estimate (FR-012/AC-012c)**: Before writing, populate the PRD's **Timeline & Milestones** section from the persisted `specs/{feature-id}/feasibility-check.md` `estimate.planning_days` (the team-lead's central estimate) — NOT a PM guess. Size the phase breakdown and the **Dev Complete** milestone to `planning_days`, using `floor_days`..`ceiling_days` as the spread, so the PRD timeline traces 1:1 to the team-lead's estimate. If `feasibility-check.md` is absent, leave the drafted timeline and note the missing estimate.
+3. Write to `docs/product/02_PRD/{filename}`
 
 ## Step 6b: Regenerate BACKLOG.md
 
@@ -274,6 +331,8 @@ Next: /aod.plan PRD: {prd_number} - {topic}
 - [ ] Blockers handled (resolved, overridden, or aborted)
 - [ ] PRD number matches GitHub Issue number
 - [ ] Frontmatter injected with all three sign-offs
+- [ ] `feasibility-check.md` written to `specs/{feature-id}/` with §1 schema (all defines)
+- [ ] `architect-baseline.md` written to `specs/{feature-id}/` with §1 schema (Infrastructure/deployment only)
 - [ ] INDEX.md updated with new row
 - [ ] Completion summary displayed
 
@@ -294,3 +353,6 @@ Next: /aod.plan PRD: {prd_number} - {topic}
 - Agent runs Architect and Team-Lead reviews for a Feature-type PRD sequentially instead of parallel per Step 3 ("Feature workflow", line 168).
 - Agent writes a PRD whose `prd.number` differs from the linked GitHub Issue number (Step 5 binds them).
 - Agent skips the Step 0 vision check without confirming `docs/product/01_Product_Vision/product-vision.md` exists.
+- Agent completes a define without writing `feasibility-check.md` to `specs/{feature-id}/` (required for ALL defines, Feature or Infrastructure).
+- Agent writes `architect-baseline.md` for a Feature-type define without explicit user opt-in (constitution.md:533 scopes it to deployment PRDs only).
+- Agent writes either artifact without the §1 YAML frontmatter schema (`artifact`, `feature_id`, `owner`, `date`, `prd_number`, `status`, `estimate` for feasibility-check).

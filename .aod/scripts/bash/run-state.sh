@@ -24,6 +24,7 @@
 #   aod_state_get_governance_cache <art> <rev> — Read cached governance verdict
 #   aod_state_cache_governance <art> <rev> <status> <summary> — Cache verdict
 #   aod_state_clear_governance_cache <art> — Invalidate cache for artifact
+#   aod_state_signoff_present <spec> <plan> <tasks> — Role-tagged APPROVED + DoD-ack check (0/1/2)
 #
 # Requires: jq (JSON processor)
 # Bash 3.2 compatible (macOS default)
@@ -492,3 +493,189 @@ aod_state_clear_governance_cache() {
     aod_state_write "$state"
 }
 
+# Decide whether a cached governance verdict is still fresh for an artifact.
+# Authoritative implementation of the governance.md freshness rule (FR-001):
+# a verdict cached at-or-before the artifact's last modification CANNOT be
+# trusted — a same-second (or later) edit may never have been seen by the
+# reviewer. The corrected boundary is `artifact_mtime >= cache_ts => STALE`
+# (the prior `<=`/`>` prose treated a same-second edit as fresh, letting an
+# unreviewed change ship under an APPROVED that never saw it).
+#
+# Args: $1 = artifact path
+#       $2 = cache timestamp, ISO 8601 (e.g. 2026-05-31T14:30:00Z)
+# Returns: 0 = FRESH  (artifact_mtime <  cache_ts; cached verdict valid)
+#          1 = STALE  (artifact_mtime >= cache_ts; same-second-or-newer => re-review)
+#          2 = error  (missing artifact / unparseable timestamp) — caller treats as STALE
+#
+# Bash 3.2 and `set -euo pipefail` safe: every external call carries an explicit
+# `|| return 2`; no bare command may abort a sourcing caller. GNU/BSD flavor is
+# DETECTED via `--version` before a flag is chosen (no `stat -c || stat -f`
+# try-fallback, which could mask a real error as a flavor miss).
+aod_state_cache_is_fresh() {
+    local artifact_path="$1"
+    local cache_ts="$2"
+
+    # Fail-safe: an empty timestamp or absent artifact can never validate a cache.
+    [[ -n "$cache_ts" ]] || return 2
+    [[ -e "$artifact_path" ]] || return 2
+
+    # Validate ISO-8601 shape AND field ranges before trusting date(1): BSD
+    # `date -j` NORMALIZES out-of-range fields (month 13 rolls into next year)
+    # instead of failing, which would silently mis-compare. Anchored,
+    # range-constrained ERE; no `{n}` intervals (bash 3.2 / BSD regex safe).
+    local iso_re='^[0-9][0-9][0-9][0-9]-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])[T ]([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z?$'
+    [[ "$cache_ts" =~ $iso_re ]] || return 2
+
+    # 1. artifact mtime -> epoch. Detect GNU vs BSD via `stat --version`
+    #    (GNU exits 0; BSD has no --version and exits non-zero) BEFORE the flag.
+    local artifact_epoch
+    if stat --version >/dev/null 2>&1; then
+        artifact_epoch=$(stat -c %Y "$artifact_path" 2>/dev/null) || return 2  # GNU
+    else
+        artifact_epoch=$(stat -f %m "$artifact_path" 2>/dev/null) || return 2  # BSD
+    fi
+
+    # 2. cache timestamp ISO 8601 -> epoch. Reuse the run-state.sh date idiom
+    #    (detect GNU vs BSD via `date --version`, then parse with that flavor),
+    #    but force UTC: the cache timestamp is a UTC wall-clock ('...Z') and at
+    #    second precision a host-local parse would skew the compare by the local
+    #    offset (e.g. -4h), wrongly ruling same-second/newer edits FRESH. The
+    #    day-granularity aod_state_is_stale idiom can ignore this; a freshness
+    #    compare cannot.
+    local cache_epoch
+    if date --version >/dev/null 2>&1; then
+        cache_epoch=$(TZ=UTC date -d "$cache_ts" +%s 2>/dev/null) || return 2    # GNU
+    else
+        local cleaned
+        cleaned=$(echo "$cache_ts" | tr 'T' ' ' | tr -d 'Z')                     # BSD
+        cache_epoch=$(TZ=UTC date -j -f "%Y-%m-%d %H:%M:%S" "$cleaned" +%s 2>/dev/null) || return 2
+    fi
+
+    # 3. Fail-safe against any non-numeric conversion slipping through.
+    case "$artifact_epoch" in ''|*[!0-9]*) return 2 ;; esac
+    case "$cache_epoch"    in ''|*[!0-9]*) return 2 ;; esac
+
+    # 4. Corrected boundary: artifact_mtime >= cache_ts => STALE (same-second or newer).
+    if [ "$artifact_epoch" -ge "$cache_epoch" ]; then
+        return 1
+    fi
+    return 0
+}
+
+# Check whether all three artifact sign-offs are present and the DoD-ack token exists.
+# Implements FR-011 / D-1 / D-2 / Contract 1 (gate-contracts.md).
+# Mirrors aod_state_cache_is_fresh: same 0/1/2 contract, same || return 2 discipline.
+#
+# Args: $1 = spec_path   (YAML frontmatter must carry pm_signoff/architect_signoff/techlead_signoff)
+#       $2 = plan_path   (same frontmatter shape)
+#       $3 = tasks_path  (same frontmatter shape + <!-- DOD-ACK --> token in body)
+#
+# Returns:
+#   0 = PRESENT: every artifact has each role's block with status containing APPROVED
+#                AND the DoD-ack token (<!-- DOD-ACK -->) is present in tasks_path.
+#                (APPROVED_WITH_CONCERNS also satisfies — substring of status: value.)
+#   1 = ABSENT:  at least one role block is missing / non-APPROVED, or DoD-ack token absent.
+#   2 = ERROR:   an artifact is unreadable / structurally indeterminate — fail-closed.
+#
+# Match precision (D-2): role-block-scoped, NOT a blanket file grep. Each role key
+# (pm_signoff: / architect_signoff: / techlead_signoff:) is extracted from the YAML
+# frontmatter using awk, then status: is grepped WITHIN that slice only. A bare
+# "APPROVED" substring in prose / notes outside a status: line does NOT pass the gate.
+# CHANGES_REQUESTED / BLOCKED / PENDING / null do NOT contain the APPROVED substring
+# on the status: line so they correctly fail.
+#
+# Bash 3.2 and set -euo pipefail safe: every external call carries || return 2.
+aod_state_signoff_present() {
+    local spec="$1"
+    local plan="$2"
+    local tasks="$3"
+
+    # --- Fail-closed: all three paths must be non-empty and readable ---------------
+    [[ -n "$spec"  ]] || return 2
+    [[ -n "$plan"  ]] || return 2
+    [[ -n "$tasks" ]] || return 2
+    [[ -r "$spec"  ]] || return 2
+    [[ -r "$plan"  ]] || return 2
+    [[ -r "$tasks" ]] || return 2
+
+    # --- Helper: extract a named role block from a file's YAML frontmatter ---------
+    # Uses awk to print lines from the role-key line up to (but not including) the
+    # next same-depth role key, the closing frontmatter "---", or EOF.
+    # Piped result is consumed by the caller; awk exit status propagated via ||.
+    #
+    # The frontmatter delimiters are "---" lines; we only scan between the first pair.
+    # Role keys match as: two leading spaces + the key name + colon (e.g. "  pm_signoff:").
+    # The "next role" stop pattern covers all three role keys so extraction halts at
+    # any sibling key, not just the one we started from.
+    #
+    # Args: $1 = file path, $2 = role key name (e.g. pm_signoff)
+    _aod_extract_role_block() {
+        local _file="$1"
+        local _role="$2"
+        awk -v role="  ${_role}:" '
+            BEGIN { in_front=0; printing=0; front_count=0 }
+            /^---$/ {
+                front_count++
+                if (front_count == 1) { in_front=1; next }
+                if (front_count == 2) { in_front=0; printing=0; exit }
+            }
+            !in_front { next }
+            printing && /^  (pm_signoff|architect_signoff|techlead_signoff):/ {
+                exit
+            }
+            $0 == role || index($0, role) == 1 { printing=1 }
+            printing { print }
+        ' "$_file"
+    }
+
+    # --- Check each artifact + its expected role(s) --------------------------------
+    # Per-artifact required roles (FR-020 / Feature 182): each artifact is checked only
+    # for the role sign-off(s) that exist by the time it is produced —
+    #   spec.md  -> pm_signoff
+    #   plan.md  -> pm_signoff + architect_signoff
+    #   tasks.md -> pm_signoff + architect_signoff + techlead_signoff (+ <!-- DOD-ACK -->)
+    # Each file's relevant role block(s) are checked for status: APPROVED (substring),
+    # so APPROVED_WITH_CONCERNS also passes (APPROVED is its substring). No blanket grep.
+    # NOTE: BLOCKED_OVERRIDDEN is a recognized status enum but does NOT contain "APPROVED",
+    # so this gate currently BLOCKS it; making it pass would be a separate behavior change.
+    # A present role block that lacks `status: APPROVED` => return 1 (absent/not-approved).
+    # An empty extraction (role key entirely missing or malformed frontmatter) => return 2
+    # via the `[[ -n "$block" ]] || return 2` guard below (fail-closed, never absent).
+
+    local block
+
+    # spec.md — pm_signoff must be APPROVED
+    block=$(_aod_extract_role_block "$spec" "pm_signoff") || return 2
+    [[ -n "$block" ]] || return 2
+    echo "$block" | grep -q 'status:.*APPROVED' || return 1
+
+    # plan.md — pm_signoff must be APPROVED
+    block=$(_aod_extract_role_block "$plan" "pm_signoff") || return 2
+    [[ -n "$block" ]] || return 2
+    echo "$block" | grep -q 'status:.*APPROVED' || return 1
+
+    # plan.md — architect_signoff must be APPROVED
+    block=$(_aod_extract_role_block "$plan" "architect_signoff") || return 2
+    [[ -n "$block" ]] || return 2
+    echo "$block" | grep -q 'status:.*APPROVED' || return 1
+
+    # tasks.md — pm_signoff must be APPROVED
+    block=$(_aod_extract_role_block "$tasks" "pm_signoff") || return 2
+    [[ -n "$block" ]] || return 2
+    echo "$block" | grep -q 'status:.*APPROVED' || return 1
+
+    # tasks.md — architect_signoff must be APPROVED
+    block=$(_aod_extract_role_block "$tasks" "architect_signoff") || return 2
+    [[ -n "$block" ]] || return 2
+    echo "$block" | grep -q 'status:.*APPROVED' || return 1
+
+    # tasks.md — techlead_signoff must be APPROVED
+    block=$(_aod_extract_role_block "$tasks" "techlead_signoff") || return 2
+    [[ -n "$block" ]] || return 2
+    echo "$block" | grep -q 'status:.*APPROVED' || return 1
+
+    # DoD-acknowledgment token (T004/C-PLAN-04 canonical): fixed-string grep in tasks.md
+    grep -qF '<!-- DOD-ACK -->' "$tasks" || return 1
+
+    return 0
+}

@@ -10,6 +10,8 @@ Last Updated: 2025-09-16
 
 **CRITICAL: All deliverables must meet the complete Definition of Done before being marked as "DELIVERED"**
 
+> **Canonical authority**: The DoD **bar** is defined by **constitution Principle VII** (NON-NEGOTIABLE), and Principle VII is canonical. This document is the *procedure* that operationalizes VII — its authority pointer points **UP** to the constitution. Where the two differ, VII wins; this doc conforms to VII, never the reverse. See `docs/architecture/02_ADRs/ADR-015-canonical-dod-source.md` for the recorded decision (Feature 180 / Q-009).
+
 ## **3-Step DoD Validation Process**
 
 Every development phase and deliverable must complete ALL three validation steps:
@@ -19,10 +21,10 @@ Every development phase and deliverable must complete ALL three validation steps
 - All features accessible to end users
 - Production environment validated and operational
 
-### **2. ✅ Tested with Playwright MCP Server**
-- Complete user workflows validated using MCP browser automation
-- End-to-end functionality confirmed through actual browser testing
-- UI components and user interactions verified working
+### **2. ✅ Tested**
+- **All automated tests pass (unit, integration, E2E, performance)** — this is the canonical bar, taken verbatim from constitution Principle VII.2
+- The test bar is technique-agnostic: it applies to backend-only, CLI, and library work, not only UI features
+- *Example technique, where a UI exists*: drive end-to-end user workflows with the Playwright MCP Server (browser automation) to confirm UI components and interactions. This is one way to satisfy the E2E portion of the bar above — it is **not** the bar itself, and is not required for features with no UI surface.
 
 ### **3. ✅ Validated by User Personal Testing**
 - User confirms functionality works as expected
@@ -41,7 +43,7 @@ Every phase must include:
 ```
 Definition of Done Checklist for Phase X:
 - [ ] Pushed to Production
-- [ ] Playwright MCP Tested
+- [ ] Tested — all automated tests pass (unit, integration, E2E, performance)
 - [ ] User Validated
 ```
 

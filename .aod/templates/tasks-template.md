@@ -11,6 +11,13 @@ description: "Task list template for feature implementation"
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
+> **Definition of Done** (canonical bar = constitution VII):
+> 1. ✅ Pushed to Production — feature deployed and operational.
+> 2. ✅ Tested — all automated tests pass (unit, integration, E2E, performance)   <!-- VII.2 bar; Playwright MCP is an example where a UI exists -->
+> 3. ✅ User Validated — real-world usage confirmed by actual users/stakeholders.
+
+<!-- DOD-ACK -->
+
 ## Format: `[ID] [P?] [Story] Description`
 - **[P]**: Can run in parallel (different files, no dependencies)
 - **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)

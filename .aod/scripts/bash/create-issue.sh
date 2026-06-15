@@ -68,11 +68,22 @@ case "$STAGE" in
     *) echo "[aod] Error: Invalid stage '$STAGE'. Valid: discover, define, plan, build, deliver, done" >&2; exit 1 ;;
 esac
 
+# --- Verify gh is available ---
+# Gate before the library call so a missing gh emits exactly one wrapper-level
+# message (FR-004 / US3 Independent Test). Other failure modes (auth, rate limit,
+# network) flow through `aod_gh_create_issue` and surface real `gh` stderr via
+# T010's mktemp pattern.
+if ! command -v gh >/dev/null 2>&1; then
+    echo "[aod] gh not found on PATH. Skipping issue creation." >&2
+    exit 0
+fi
+
 # --- Create the issue (includes board sync) ---
 issue_number=$(aod_gh_create_issue "$TITLE" "$BODY" "$STAGE" "$ISSUE_TYPE")
 
 if [[ -z "$issue_number" ]]; then
-    echo "[aod] Warning: Issue creation returned no issue number (gh unavailable?)." >&2
+    # Library already surfaced the real cause via stderr; exit 0 to keep the
+    # broader flow non-blocking.
     exit 0
 fi
 

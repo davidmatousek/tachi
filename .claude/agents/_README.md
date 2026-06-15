@@ -29,6 +29,35 @@ Quick reference for all agents in {{PROJECT_NAME}}.
 
 ---
 
+## Model Tiering (FR-004)
+
+Each agent declares a `model:` alias in its frontmatter (`opus` | `sonnet` | `haiku`) — an
+**alias**, never a version-pinned ID (e.g. `claude-opus-4-8`), so the tier tracks the current
+model generation without re-drifting on a version bump.
+
+| Tier | Agents | Rationale |
+|------|--------|-----------|
+| `opus` | architect, product-manager, team-lead, code-reviewer | **Verdict gates** — Triad sign-off authority + the binding code-review gate (`code-reviewer` promoted from `sonnet` 2026-06-11; it renders binding APPROVED/CHANGES_REQUESTED) |
+| `sonnet` | security-analyst, senior-backend-engineer, frontend-developer, devops, tester, debugger, orchestrator, ux-ui-designer | Implementation, near-verdict review, and gate-grade test authoring |
+| `haiku` | web-researcher | High-volume retrieval/lookup; no verdict authority |
+
+**Invariant**: `tester` is never `haiku` — verdict-bearing validation warrants at least the mid tier.
+
+**`model:` is a hard SET, not a session-overridable floor.** Claude Code resolution order
+(highest wins): (1) `CLAUDE_CODE_SUBAGENT_MODEL` env var → (2) per-invocation `model` param →
+(3) the def's `model:` frontmatter → (4) the session / main-conversation model. A high session
+model (rank 4) does **not** raise a subagent declared `sonnet`/`haiku` (rank 3 wins).
+
+**Don't-override-downward convention.** When running Workflow-1 governance, the verdict /
+near-verdict agents (architect, product-manager, team-lead, code-reviewer, security-analyst)
+MUST NOT be downgraded below their declared tier via **either** override rank:
+- the per-invocation `model` param (rank 2), or
+- the `CLAUDE_CODE_SUBAGENT_MODEL` env var (rank 1) — the **higher-risk** path: it silently
+  outranks frontmatter for *every* subagent with zero per-call signal. Do not set it below
+  `opus` for a verdict gate during a governance run.
+
+---
+
 ## Quick Selection Guide
 
 ### By Task Type

@@ -24,6 +24,7 @@ Consider user input before proceeding (if not empty).
    - Strip `--revision` from `$ARGUMENTS` (trim extra whitespace)
    - Read `.aod/revision-context.md` for reviewer feedback (contains reviewer name, attempt number, artifact path, and full feedback text)
    - Store feedback as `revision_feedback`
+   - **Clear governance cache explicitly**: Call `aod_state_clear_governance_cache "tasks"` so the upcoming triple review is treated as fresh regardless of mtime-staleness backstop. (Belt-and-suspenders: do NOT rely on the mtime backstop alone.)
 2. Default: `revision_mode = false`
 
 ## Overview
@@ -170,6 +171,29 @@ Every task MUST strictly follow this format:
   - Each phase should be a complete, independently testable increment
 - **Final Phase**: Polish & Cross-Cutting Concerns
 
+## Step 2f: Rubric Preload (Team-Lead Feasibility Self-Check)
+
+Before invoking governance, self-check the generated tasks against the Team-Lead reviewer's feasibility axes. Load `.claude/skills/triad/teamlead-review.md` and evaluate the tasks against sections 1–4 (feasibility axes only):
+
+1. **Task Feasibility** — Are tasks achievable with available resources? Is the timeline realistic? Are dependencies correctly identified?
+2. **Agent Assignments** — Are tasks assigned to appropriate agent types? Is workload balanced? Are skill gaps addressed?
+3. **Parallel Execution Opportunities** — Which tasks can run in parallel? Are wave assignments optimal? Are blocking dependencies minimized?
+4. **Capacity Constraints** — Are there bottleneck agents? Is there slack for unexpected issues? Is the critical path identified?
+
+**Excluded**: Do NOT apply the Team-Lead's strategic-veto authority (NOT_FEASIBLE / BLOCKED status decisions) — that is the reviewer's prerogative, not the producer's self-check.
+
+For each axis, note whether the tasks satisfy it. If any axis is unmet, fix the tasks now (before submitting for governance). Display a brief self-check summary:
+
+```
+Rubric Self-Check (teamlead-review.md feasibility axes):
+- Task feasibility: [PASS | FIX: <issue>]
+- Agent assignments: [PASS | FIX: <issue>]
+- Parallel execution: [PASS | FIX: <issue>]
+- Capacity constraints: [PASS | FIX: <issue>]
+```
+
+Fix any FIX items before proceeding to Step 3.
+
 ## Step 3: Triple Sign-off (Parallel)
 
 Launch **three Task agents in parallel** (single message, three Task tool calls):
@@ -198,9 +222,10 @@ NOTES: [Your detailed feedback]
 
 **Any CHANGES_REQUESTED**:
 1. Display feedback from reviewers who requested changes
-2. Use architect agent to update tasks addressing the feedback
+2. Route the revision to the **authoring role** of `tasks.md` — the **team-lead** (the tasks/assignments author) updates the tasks addressing the feedback. Do NOT hard-code the architect here; the author role is derived from the artifact (tasks.md → team-lead).
 3. Re-run reviews only for reviewers who requested changes
-4. Loop until all approved or user aborts
+4. Loop until all approved or the **max 5** revision iterations are reached
+5. **On exhaustion** (5 revision iterations without all-APPROVED): STOP looping, escalate to a human, and leave the artifact **In Review** (or **Blocked** if a reviewer's last verdict was BLOCKED) — **never** auto-Approve an artifact that did not earn approval (C-012 human-verdict invariant)
 
 **Any BLOCKED**:
 1. Display blocker with veto domain (PM=scope, Architect=technical, Team-Lead=timeline)
@@ -268,6 +293,8 @@ Invoke team-lead agent to create `agent-assignments.md`.
 | `ux-ui-designer` | UI/UX design, wireframes |
 | `orchestrator` | Multi-agent coordination, wave execution |
 
+> **Roster count**: 12 = the *assignable* roster above (team-lead is the **assigner**, never assigned to itself); 13 = total agent defs — all 13 carry a `model:` tier (see `.claude/agents/_README.md` → Model Tiering). Both counts are correct; they describe different sets.
+
 **Common fallback mappings** (when no specialist fits):
 - Markdown/documentation writing → `senior-backend-engineer`
 - File creation or editing (non-code) → `senior-backend-engineer`
@@ -281,6 +308,67 @@ Invoke team-lead agent to create `agent-assignments.md`.
 - Time estimates per wave
 
 Save to `specs/{NNN}-*/agent-assignments.md`
+
+## Step 6.5: PLAN-Exit Gate — /aod.analyze Cross-Artifact Check
+
+Before advancing to the Step 7 completion summary, run `/aod.analyze` as a mandatory PLAN-exit gate.
+
+### Invocation
+
+Run `/aod.analyze` with no extra arguments (it reads spec/plan/tasks from the active feature directory automatically).
+
+### Parse Result
+
+Scan the final output of `/aod.analyze` for a line matching this exact pattern (emitted by analyze Step 9):
+
+```
+ANALYZE_STATUS: <clean|non-clean> (CRITICAL=<n> HIGH=<n> MEDIUM=<n> LOW=<n>)
+```
+
+**Determination rules (apply in order)**:
+
+1. **Error / no output**: If `/aod.analyze` errors or produces no parseable `ANALYZE_STATUS:` line → treat as **non-clean** (fail-safe; never silently pass).
+2. **`non-clean` status token**: Token reads `non-clean` → **non-clean**.
+3. **CRITICAL or HIGH count ≥ 1**: Even if token reads `clean`, if any `CRITICAL=<n>` or `HIGH=<n>` value is ≥ 1 → **non-clean** (defense-in-depth).
+4. **Otherwise**: **clean** — proceed to Step 7.
+
+### On NON-CLEAN: Route to Human (CHANGES_REQUESTED handling)
+
+A non-clean result MUST NOT hard-block, auto-veto, or silently proceed. Route through the CHANGES_REQUESTED handling defined in `.claude/skills/~aod-run/references/governance.md` lines 151-227:
+
+1. **Display rejection information** (governance.md §"Display rejection information"):
+
+```
+GOVERNANCE GATE — CHANGES REQUESTED
+====================================
+Stage: Plan (tasks)
+Reviewer: /aod.analyze (cross-artifact gate)
+Artifact: {tasks_path}
+
+/aod.analyze found non-clean cross-artifact issues.
+
+Findings requiring attention:
+  CRITICAL: <n>  HIGH: <n>  MEDIUM: <n>  LOW: <n>
+
+Review the /aod.analyze report above and decide how to proceed.
+```
+
+2. **Offer human decision** via AskUserQuestion (PM is the PRIMARY GATE — the human decides):
+   - **"Address now"** — Fix the flagged issues in spec/plan/tasks, then re-run `/aod.tasks` (which will re-run this gate). Do NOT auto-apply fixes.
+   - **"Proceed anyway"** — Accept the non-clean result, acknowledge the risk, and continue to Step 7. Record the override in a note appended to the tasks.md YAML frontmatter under `analyze_gate_override: true`.
+   - **"Pause"** — Stop here; the user will resume manually after fixing.
+
+3. **If `autonomous == true`**: Auto-select "Address now". Display: `"Auto-selected: Address now (autonomous mode)"`. Do NOT prompt. Do NOT auto-apply analyze fixes — re-invoke `/aod.tasks --revision` so the human addresses issues in the next session.
+
+### On CLEAN: Proceed
+
+Display a single status line and continue:
+
+```
+/aod.analyze: clean — CRITICAL=0 HIGH=0. Advancing to completion summary.
+```
+
+Then continue to Step 7.
 
 ## Step 7: Report Completion
 

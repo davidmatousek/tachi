@@ -24,6 +24,7 @@ Consider user input before proceeding (if not empty).
    - Strip `--revision` from `$ARGUMENTS` (trim extra whitespace)
    - Read `.aod/revision-context.md` for reviewer feedback (contains reviewer name, attempt number, artifact path, and full feedback text)
    - Store feedback as `revision_feedback`
+   - **Clear governance cache explicitly**: Call `aod_state_clear_governance_cache "plan"` so the upcoming dual review is treated as fresh regardless of mtime-staleness backstop. (Belt-and-suspenders: do NOT rely on the mtime backstop alone.)
 2. Default: `revision_mode = false`
 
 ## Overview
@@ -119,6 +120,29 @@ Follow the structure in IMPL_PLAN template to:
 1. Verify `plan.md` was created at `specs/{NNN}-*/plan.md`
 2. If not created: Error and exit
 
+## Step 2e: Rubric Preload (Architect Structural Self-Check)
+
+Before invoking governance, self-check the generated plan against the Architect reviewer's structural/feasibility axes. Load `.claude/skills/triad/architect-review.md` and evaluate the plan against sections 1–4 (structural/feasibility axes only):
+
+1. **Tech Stack Consistency** — Does the plan use technologies from the approved tech stack? Are dependencies documented?
+2. **Architecture Alignment** — Does the design follow existing architectural patterns? Are components modular? Is separation of concerns maintained?
+3. **Anti-Patterns** — Are there code smells or architectural anti-patterns? Is complexity appropriate? Are security concerns identified?
+4. **Technical Debt** — Does the implementation introduce technical debt? Is debt justified and tracked? Are cleanup tasks documented?
+
+**Excluded**: Do NOT apply the Architect's strategic-veto authority (BLOCKED status decisions) — that is the reviewer's prerogative, not the producer's self-check.
+
+For each axis, note whether the plan satisfies it. If any axis is unmet, fix the plan now (before submitting for governance). Display a brief self-check summary:
+
+```
+Rubric Self-Check (architect-review.md structural axes):
+- Tech stack consistency: [PASS | FIX: <issue>]
+- Architecture alignment: [PASS | FIX: <issue>]
+- Anti-patterns: [PASS | FIX: <issue>]
+- Technical debt: [PASS | FIX: <issue>]
+```
+
+Fix any FIX items before proceeding to Step 3.
+
 ## Step 3: Dual Sign-off (Parallel)
 
 Launch **two Task agents in parallel** (single message, two Task tool calls):
@@ -146,9 +170,10 @@ NOTES: [Your detailed feedback]
 
 **Any CHANGES_REQUESTED**:
 1. Display feedback from reviewers who requested changes
-2. Use architect agent to update plan addressing the feedback
+2. Route the revision to the **authoring role** of `plan.md` — the **architect** (the plan's author) updates the plan addressing the feedback. Do NOT hard-code a non-authoring agent; the author role is derived from the artifact (plan.md → architect).
 3. Re-run reviews only for reviewers who requested changes
-4. Loop until all approved or user aborts
+4. Loop until all approved or the **max 5** revision iterations are reached
+5. **On exhaustion** (5 revision iterations without all-APPROVED): STOP looping, escalate to a human, and leave the artifact **In Review** (or **Blocked** if a reviewer's last verdict was BLOCKED) — **never** auto-Approve an artifact that did not earn approval (C-012 human-verdict invariant)
 
 **Any BLOCKED**:
 1. Display blocker with veto domain (PM=product scope, Architect=technical)

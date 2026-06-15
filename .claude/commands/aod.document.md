@@ -171,9 +171,20 @@ Compare code endpoints against OpenAPI spec and flag mismatches.
 
 1. Extract endpoint signatures from code (method, path, params, response type)
 2. Parse OpenAPI spec for corresponding definitions
-3. Identify mismatches: new endpoints, changed params, removed endpoints, response type diffs
+3. Identify mismatches: new endpoints, changed params, removed endpoints, response type diffs — classify each as **additive** (new endpoint) or **breaking** (removed endpoint, changed param, response-type diff)
 4. If no mismatches: display "API docs are in sync", proceed to Step 5
-5. If `autonomous == true`: auto-accept all mismatches — update spec for each mismatch, stage, commit with `docs({NNN}): sync OpenAPI spec` → proceed to Step 5
+5. If `autonomous == true`:
+   - If the diff contains **only additive** mismatches (no removed endpoints, no changed params, no response-type diffs): auto-sync — update spec for each new endpoint, stage, commit with `docs({NNN}): sync OpenAPI spec (additive)` → proceed to Step 5
+   - If the diff contains **any breaking** mismatch (removed endpoint, changed param, or response-type diff): do NOT auto-rewrite — display the following and proceed to Step 5 without modifying the spec:
+     ```
+     API Sync — Human Review Required (autonomous mode):
+       Breaking changes detected in the diff — auto-sync is blocked.
+       Spec: {spec_path}
+       Breaking mismatches: {list each breaking mismatch with category}
+       Additive mismatches: {list each additive mismatch, if any}
+
+     Action required: re-run /aod.document (without --autonomous) to review and approve these changes interactively.
+     ```
 6. If `autonomous == false`: Present via AskUserQuestion:
    ```
    API Sync Review:

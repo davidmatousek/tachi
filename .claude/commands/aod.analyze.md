@@ -162,6 +162,21 @@ At end of report, output a concise Next Actions block:
 
 Ask the user: "Would you like me to suggest concrete remediation edits for the top N issues?" (Do NOT apply them automatically.)
 
+### 9. Emit Machine-Readable Summary Line
+
+After Step 8, output — on its own line, with no surrounding prose — the following deterministic summary:
+
+```
+ANALYZE_STATUS: <clean|non-clean> (CRITICAL=<n> HIGH=<n> MEDIUM=<n> LOW=<n>)
+```
+
+**Rules**:
+- `clean` = zero CRITICAL and zero HIGH findings from Step 4
+- `non-clean` = one or more CRITICAL **or** HIGH findings from Step 4
+- `<n>` values are integer counts derived from the Step 6 "Metrics" block; MEDIUM count included for completeness
+- This line is the machine-readable gate token parsed by `/aod.tasks` Step 6.5 (PLAN-exit gate); it MUST be the last non-blank output line of the run
+- If Step 1 aborts (missing artifact), emit: `ANALYZE_STATUS: non-clean (CRITICAL=1 HIGH=0 MEDIUM=0 LOW=0)` and stop
+
 ## Operating Principles
 
 ### Context Efficiency

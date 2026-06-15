@@ -118,7 +118,7 @@ After Step 4 handles agent results, validate that documentation agents actually 
 
 ## Step 6: Structured Retrospective
 
-Run the `~aod-deliver` skill's retrospective and validation flow (Steps 2-9 from `.claude/skills/~aod-deliver/SKILL.md`):
+Run the `~aod-deliver` skill's retrospective and validation flow (Steps 2-14 from `.claude/skills/~aod-deliver/SKILL.md`):
 
 **Pass flags to skill**: The `require_tests` and `autonomous` flags parsed in Step 0 must be available to the skill's Step 9d (Gate Decision) for gate mode evaluation.
 
@@ -149,10 +149,9 @@ Run the `~aod-deliver` skill's retrospective and validation flow (Steps 2-9 from
    - **If `autonomous == true`**: Skip feedback prompt (no new ideas to capture). Display: `"Auto-selected: skip feedback loop (autonomous mode)"`
 4. **Lessons Learned**: Capture key lesson with category, append KB entry to `docs/INSTITUTIONAL_KNOWLEDGE.md`
    - **If `autonomous == true`**: Auto-generate a brief lesson from the delivery context. Display: `"Auto-generated: KB entry from delivery context (autonomous mode)"`
-5. **GitHub Update**: Post delivery metrics as comment on feature's GitHub Issue, transition to `stage:deliver` (at retrospective start)
-6. **BACKLOG.md**: Regenerate via `.aod/scripts/bash/backlog-regenerate.sh`
-7. **E2E Validation Gate**: Run Step 9 (sub-steps 9a-9d) — detect Playwright, invoke tester agent, parse results, evaluate gate decision using `require_tests` and `autonomous` flags
-8. **Build-Wave Test Evidence**: Before Step 10 artifact detection, discover build-wave test results alongside E2E results:
+5. **GitHub Update**: (Handled by skill — see skill Step 1 for `stage:deliver` transition and skill Step 7 for metrics comment)
+6. **E2E Validation Gate**: Run Step 9 (sub-steps 9a-9d) — detect Playwright, invoke tester agent, parse results, evaluate gate decision using `require_tests` and `autonomous` flags
+7. **Build-Wave Test Evidence**: Before Step 10 artifact detection, discover build-wave test results alongside E2E results:
    - Scan `specs/{NNN}-*/test-results/wave-*/results.json` for per-wave test outcomes
    - Scan `specs/{NNN}-*/test-results/summary.json` for the build-wide aggregate summary
    - If found, parse pass/fail counts from each `results.json` and the overall status from `summary.json`
@@ -213,18 +212,18 @@ Cleanup: branch deleted, tasks verified
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
+> **Trailer must stay generic.** Do NOT pin a model name or version into the trailer above — this command ships to adopters via `extract.sh`; a pinned trailer mis-attributes their commits and re-introduces attribution drift.
+
 Then `git push origin main`.
+
+> **Post-merge exception**: `aod.deliver` runs AFTER the squash-merge to main, so this direct `git push origin main` of the closed-feature docs is the one legitimate direct-to-main push in the workflow. Documentation only — recorded here as an exception; no automated check performs or verifies it.
 
 ## Step 10: Close GitHub Issue
 
-After commit and push, finalize the GitHub Issue lifecycle:
+After commit and push, the skill (Steps 12 and 8) finalizes the GitHub Issue lifecycle — `stage:done` transition, issue close, and BACKLOG.md regeneration are all owned by the skill. This command step confirms the close is complete.
 
-1. Transition from `stage:deliver` to `stage:done`: `source .aod/scripts/bash/github-lifecycle.sh && aod_gh_update_stage "$issue_number" "done"`
-2. Close the issue: `gh issue close "$issue_number" --comment "Feature delivered. Retrospective complete. See: specs/{NNN}-*/delivery.md"` where `{NNN}-*` is resolved from the actual specs directory path
-3. Regenerate BACKLOG.md: `.aod/scripts/bash/backlog-regenerate.sh`
-4. If `gh` is unavailable, skip silently (graceful degradation)
-
-This is the terminal lifecycle state — the issue is now fully closed and removed from the active backlog.
+1. Confirm the GitHub Issue is closed (performed by skill Step 12): the issue transitions to `stage:done`, closes with a delivery comment, and BACKLOG.md is regenerated.
+2. If `gh` is unavailable, skip silently (graceful degradation).
 
 ## Step 11: User Story Export
 
@@ -245,6 +244,7 @@ After the GitHub Issue is closed with `stage:done`, export validated user storie
 
    Co-Authored-By: Claude <noreply@anthropic.com>
    ```
+   > **Trailer must stay generic** — same rule as Step 9: do NOT pin a model name or version into this export-commit trailer (ships to adopters via `extract.sh`).
 
 ## Step 12: Verify Delivery Document
 
