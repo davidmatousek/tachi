@@ -213,6 +213,7 @@ Goal: only after parity is proven, add Rust/Tauri-native advantages.
 - Acceptance: app can recover from offline startup with cached data
 - Validation: smoke test covers cold start, cache restore, and update
   probe paths
+- Notes: Implemented in `feat/rt020-offline-bootstrap-cache`; ready for merge
 
 Exit gate:
 

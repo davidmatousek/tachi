@@ -262,4 +262,4 @@ Every card includes:
 - `Implementation owner`: `src-tauri`
 - `Stage label`: Phase 4
 - `Next test seam`: `src-tauri/src/lib.rs`
-- `Notes`: Add only after release hardening is stable.
+- `Notes`: Implemented in `feat/rt020-offline-bootstrap-cache`; ready for merge.
