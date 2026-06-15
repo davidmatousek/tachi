@@ -12,6 +12,7 @@ fn preflight_skips_renderer_lookup_when_no_attack_trees_exist() {
 fn preflight_errors_when_renderer_is_missing_for_attack_trees() {
     let error =
         ensure_attack_path_renderer_available(2, false).expect_err("expected preflight error");
+    println!("preflight_error={error}");
 
     assert!(error.contains("@mermaid-js/mermaid-cli"));
     assert!(error.contains("npm install -g @mermaid-js/mermaid-cli"));

@@ -46,6 +46,8 @@ release candidate branch into `main`.
       baseline.
 - [ ] Any benchmark or regression gate referenced by the roadmap has its current
       baseline recorded.
+- [ ] `INSTALL_MANIFEST.md` only references files/directories that exist in the
+      repository and expected install command paths.
 
 ## 5. Documentation readiness
 
@@ -74,6 +76,7 @@ release candidate branch into `main`.
 - [ ] The branch to publish is up to date with the intended base branch.
 - [ ] The publish commit history is linear or intentionally merged.
 - [ ] The push target is `origin/main` or a clearly named release branch.
+- [ ] `make publish-gate` runs clean on the branch being published.
 - [ ] The post-push CI monitor command is ready, for example:
 
 ```bash

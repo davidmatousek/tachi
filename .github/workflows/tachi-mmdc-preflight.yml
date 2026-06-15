@@ -2,18 +2,14 @@
 # tachi mmdc preflight gate — CI fresh-install acceptance test (FR-130.7)
 # =============================================================================
 #
-# Purpose: Prove the Feature 130 preflight gate fires in a shell where
-# `mmdc` (@mermaid-js/mermaid-cli) is NOT on PATH. ubuntu-latest ships
-# without mmdc (plan.md spike S3), so omitting the install step satisfies
-# the "mmdc absent" precondition automatically.
-#
+# Purpose: Prove the mmdc preflight contract fires in a Rust-native path
+# where `mmdc` (@mermaid-js/mermaid-cli) is NOT on PATH.
+# 
 # The workflow:
 #   1. Installs Typst + Python 3.11 (but NOT mmdc)
 #   2. Asserts mmdc is absent (guards against transitive installs — plan Risk #6)
-#   3. Runs scripts/extract-report-data.py against examples/mermaid-agentic-app/
-#      (direct Python invocation — slash commands cannot run in CI)
-#   4. Asserts non-zero exit code
-#   5. Asserts the canonical three tokens from the RuntimeError message:
+#   3. Runs the Rust contract test for the missing-renderer path.
+#   4. Asserts the canonical three tokens from the contract failure string:
 #        - @mermaid-js/mermaid-cli
 #        - npm install -g @mermaid-js/mermaid-cli
 #        - Attack path rendering
@@ -22,7 +18,7 @@
 #   - specs/130-prd-130-fix/plan.md (spike S3 + Risk #6)
 #   - specs/130-prd-130-fix/tasks.md (T018)
 #   - docs/architecture/02_ADRs/ADR-022-mmdc-hard-prerequisite.md
-#   - scripts/extract-report-data.py:render_mermaid_to_png (preflight gate)
+#   - crates/tachi-core/src/mmdc.rs (canonical MMDC contract)
 # =============================================================================
 
 name: tachi mmdc preflight
@@ -30,10 +26,11 @@ name: tachi mmdc preflight
 on:
   pull_request:
     paths:
-      - scripts/extract-report-data.py
       - templates/tachi/security-report/attack-path.typ
       - scripts/install.sh
       - .claude/commands/tachi.security-report.md
+      - crates/tachi-core/src/mmdc.rs
+      - crates/tachi-core/tests/mmdc_preflight.rs
       - README.md
       - .github/workflows/tachi-mmdc-preflight.yml
 
@@ -79,18 +76,15 @@ jobs:
             exit 1
           fi
 
-      # Direct Python invocation of the extraction script. Claude Code slash
-      # commands cannot run in CI — we call scripts/extract-report-data.py
-      # with its required CLI args (--target-dir, --output, --template-dir).
-      # The preflight gate in render_mermaid_to_png() fires before any file
-      # is written, so --output is only needed to satisfy argparse.
-      - name: Run extract-report-data.py against mermaid-agentic-app (expect failure)
+      # Rust-native preflight contract test. The selected test validates the
+      # canonical preflight message for missing renderer behavior and prints it
+      # with --nocapture for downstream token assertions.
+      - name: Run mmdc preflight contract test (expect canonical failure signal)
         run: |
           set +e
-          python3 scripts/extract-report-data.py \
-            --target-dir examples/mermaid-agentic-app \
-            --output /tmp/report-data.typ \
-            --template-dir templates/tachi/security-report \
+          cargo test -p tachi-core --test mmdc_preflight \
+            preflight_errors_when_renderer_is_missing_for_attack_trees \
+            -- --exact --nocapture \
             >/tmp/out.txt 2>&1
           EXIT=$?
           set -e
@@ -98,11 +92,11 @@ jobs:
           cat /tmp/out.txt
           echo "---- end captured output ----"
           echo "exit code: $EXIT"
-          if [ "$EXIT" -eq 0 ]; then
-            echo "FAIL: expected non-zero exit code, got 0. Preflight gate did not fire."
+          if [ "$EXIT" -ne 0 ]; then
+            echo "FAIL: preflight contract test failed."
             exit 1
           fi
-          echo "OK: non-zero exit code as expected ($EXIT)"
+          echo "OK: preflight contract test passed ($EXIT)"
 
       # Assert all three canonical tokens from the preflight RuntimeError
       # message appear in the captured output. Grep each token individually

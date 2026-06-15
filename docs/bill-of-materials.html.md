@@ -40,6 +40,7 @@ temporary scratch state, or a local-only worktree artifact.
 | `.aod/` | AOD support files | Publishable with review | Contains governance and hook logic; verify no private data. |
 | `schemas/` | Validation schemas and taxonomies | Publishable | Needed for parser/report contracts. |
 | `tests/` | Fixtures and regression tests | Publishable with review | Synthetic or redacted only; no private source material. |
+| `INSTALL_MANIFEST.md` | Install command contract | Publishable with review | Machine-parseable file list that must match distributable paths. |
 | `scripts/` | Transitional shell and helper scripts | Publishable with review | Keep no secret-bearing defaults. |
 | `brand/` | Visual assets | Publishable | Verify image captions and alt text do not expose private data. |
 | `examples/` | Example output and sample artifacts | Publishable with review | Must remain synthetic or sanitized. |
