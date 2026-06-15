@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "feature": "183-citation-url-link-rot-monitoring",
+  "total_waves": 3,
+  "waves_tested": 2,
+  "waves_skipped": 1,
+  "totals": {
+    "pass": 22,
+    "fail": 0,
+    "skip": 0
+  },
+  "total_regressions": 0,
+  "coverage_trend": null,
+  "gate_decisions": [
+    {
+      "wave": 1,
+      "decision": "pass"
+    },
+    {
+      "wave": 2,
+      "decision": "pass"
+    }
+  ],
+  "note": "Totals reflect the final cumulative schemas suite run at Wave 2 (17 new offline tests + 5 pre-existing test_taxonomy_integrity.py); Wave 1's run was the 5-test regression baseline (subset). Wave 3 is review-only (no code/test execution -> skipped). Coverage intentionally null: the checker's live-fetch/gh/main paths are deliver-adjacent (validated by the MANUAL-ONLY T021 two-run dispatch), not offline-unit-testable; the offline suite covers discover_urls, classify_url (stubbed transport), Ledger, and render. NFR-001 proven: full module passes under an outer egress block."
+}

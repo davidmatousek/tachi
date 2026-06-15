@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-12T12:36:51Z.
+> Auto-generated from GitHub Issues on 2026-06-14T16:56:56Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -11,7 +11,6 @@
 | #329 | Evaluate wiring byte-identity baseline suite into CI to prevent silent red-main after ORDERED_FRAMEWORKS catalog growth | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of F-185 (CWE Cata... | 2026-06-12 |
 | #295 | F-292 post-merge tachi.threat-model verification runs (T017 + T026) | Impact: 3 (closes empirical verification of SC-003 + SC-015), Confidence: 5 (mechanical execution), Effort: 2 (two `tachi.threat-model` runs + 1 commit) = **30 / Tier 2 (Medium)** | — | 2026-05-14 |
 | #217 | detect_images leaves duplicate .jpg/.png pair after recovery write | — | — | 2026-05-05 |
-| #183 | F-A1 follow-on: citation-URL link-rot monitoring | — | — | 2026-05-05 |
 | #168 | Track OWASP AIVSS v1.0 release and first external adopter case study | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 143 (MA... | 2026-06-01 |
 | #126 | Auto-detect architecture drift | | Dimension | Score | Rationale | | — | 2026-05-05 |
 | #62 | Custom brand presets — user-definable brand identity via config file | | Dimension | Score | Rationale | | — | 2026-05-05 |
@@ -66,3 +65,4 @@
 | #268 | fix: disentangle tachi-scanner from AOD-Kit positioning in .claude/rules/scope.md | CLOSED | 2026-05-07 |
 | #266 | fix: retitle CONTRIBUTING.md for tachi (currently labeled 'AOD Kit' with stale clone URL) | CLOSED | 2026-05-07 |
 | #264 | feat: adopt dual-frame public positioning (harness reframe) | CLOSED | 2026-05-07 |
+| #183 | F-A1 follow-on: citation-URL link-rot monitoring | OPEN | 2026-06-14 |
