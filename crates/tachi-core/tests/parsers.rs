@@ -1,8 +1,9 @@
 use std::path::Path;
 use tachi_core::parsers::{
-    compute_has_source_attribution, escape_typst_string, parse_component_asset_map,
+    compute_delta_counts, compute_has_source_attribution, escape_typst_string, parse_component_asset_map,
     parse_finding_pattern, parse_markdown_table, parse_project_name, parse_threats_findings,
-    strip_bold, validate_source_attribution, VALID_AGENTIC_PATTERNS, VALID_ASSET_TAGS,
+    strip_bold, validate_source_attribution, ResolvedFinding, ThreatFinding, VALID_AGENTIC_PATTERNS,
+    VALID_ASSET_TAGS,
 };
 
 static PARSER_TEMP_DIR_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
@@ -576,6 +577,48 @@ fn compute_has_source_attribution_is_true_only_for_non_empty_attribution() {
     assert!(!compute_has_source_attribution(&absent_findings));
     assert!(!compute_has_source_attribution(&empty_findings));
     assert!(compute_has_source_attribution(&present_findings));
+}
+
+#[test]
+fn compute_delta_counts_trims_case_and_ignores_unknown_statuses() {
+    let findings = vec![
+        ThreatFinding {
+            delta_status: Some("new".into()),
+            ..Default::default()
+        },
+        ThreatFinding {
+            delta_status: Some("NEW".into()),
+            ..Default::default()
+        },
+        ThreatFinding {
+            delta_status: Some("  updated ".into()),
+            ..Default::default()
+        },
+        ThreatFinding {
+            delta_status: Some("unchanged".into()),
+            ..Default::default()
+        },
+        ThreatFinding {
+            delta_status: Some("unknown".into()),
+            ..Default::default()
+        },
+        ThreatFinding {
+            delta_status: Some("".into()),
+            ..Default::default()
+        },
+    ];
+
+    let resolved = vec![ResolvedFinding {
+        id: "R-1".into(),
+        ..Default::default()
+    }];
+
+    let counts = compute_delta_counts(&findings, &resolved);
+
+    assert_eq!(counts.get("new"), Some(&2));
+    assert_eq!(counts.get("updated"), Some(&1));
+    assert_eq!(counts.get("unchanged"), Some(&1));
+    assert_eq!(counts.get("resolved"), Some(&1));
 }
 
 fn workspace_root() -> std::path::PathBuf {

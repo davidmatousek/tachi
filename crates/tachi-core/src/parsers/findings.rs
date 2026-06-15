@@ -179,10 +179,22 @@ pub fn compute_delta_counts(
 
     for finding in findings {
         if let Some(status) = finding.delta_status.as_ref() {
-            match status.to_ascii_uppercase().as_str() {
-                "NEW" => *counts.get_mut("new").expect("key exists") += 1,
-                "UNCHANGED" => *counts.get_mut("unchanged").expect("key exists") += 1,
-                "UPDATED" => *counts.get_mut("updated").expect("key exists") += 1,
+            match status.trim().to_ascii_uppercase().as_str() {
+                "NEW" => {
+                    if let Some(total) = counts.get_mut("new") {
+                        *total += 1;
+                    }
+                }
+                "UNCHANGED" => {
+                    if let Some(total) = counts.get_mut("unchanged") {
+                        *total += 1;
+                    }
+                }
+                "UPDATED" => {
+                    if let Some(total) = counts.get_mut("updated") {
+                        *total += 1;
+                    }
+                }
                 _ => {}
             }
         }
