@@ -1,400 +1,247 @@
-# Rust/Tauri-Only Migration Roadmap
+# Rust/Tauri Implementation Roadmap
 
-**Last Updated**: 2026-06-13
-**Status**: Active migration roadmap
-**Objective**: make `tachi-rust` a Rust + Tauri only repository
+**Last Updated**: 2026-06-14
+**Status**: Active implementation backlog
+**Objective**: make `tachi-rust` a Rust + Tauri only repository through
+Beads-ready execution slices
 
 ## Executive Summary
 
-`tachi-rust` already has a meaningful Rust core, Rust-backed coverage audit, and a thin Tauri shell path. The remaining work is to remove the Python runtime surface, migrate the pytest suite to Rust-native tests, and make the Rust workspace the only canonical implementation and validation path.
+This roadmap is the canonical sequencing document for the Rust/Tauri-only
+transition. It keeps the existing roadmap artifacts as the source of truth,
+adds a navigation hub in [implementation-backlog.md](./implementation-backlog.md),
+and expands the backlog into a Beads-ready hierarchy that can be executed one
+TDD slice at a time.
 
-This roadmap treats Python as transitional only. The target end state is:
+The work is intentionally ordered:
 
-- no Python runtime entrypoints in the shipped repo
-- no Python packaging or pytest-only validation path
-- no Python-based stack scaffolds in the active product surface
-- Rust and Tauri as the only canonical implementation layers
+1. Safety and parser hardening first.
+1. Developer experience, packaging, and onboarding second.
+1. Reporting, outputs, and rule-engine expansion third.
+1. Ecosystem integrations and framework coverage fourth.
+1. Performance, streaming, and formal assurance last.
 
-The execution-level backlog lives in [2026-06-08-rust-tauri-only-issue-cards.md](./2026-06-08-rust-tauri-only-issue-cards.md), and the merge sequence lives in [2026-06-08-rust-tauri-only-merge-plan.md](./2026-06-08-rust-tauri-only-merge-plan.md).
+The roadmap does not treat any stage as complete until its validation gate is
+passed and the next stage can begin without reopening the previous one.
 
-## Current Status
+## Backlog Shape
 
-Current roadmap completion: 100% (6 of 6 cards complete).
+The backlog is organized as:
 
-This status uses card closure rather than subjective partial estimates. In-progress cards are tracked explicitly but do not count as complete until their acceptance criteria are satisfied and validated.
+`Epic -> Feature -> Capability -> Task -> Function`
 
-| Card | Status | Current evidence |
+- `Epic` captures the migration outcome.
+- `Feature` groups work by crate or user-facing concern.
+- `Capability` states the behavior that must exist.
+- `Task` is the smallest TDD-driven slice.
+- `Function` is the concrete function, command, fixture, or test seam.
+
+The Beads-ready template for each task lives in
+[implementation-backlog.md](./implementation-backlog.md).
+
+## Stage Plan
+
+| Stage | Focus | Exit criterion |
 |---|---|---|
-| RT-010 | Complete | The Python surface inventory is frozen in [2026-06-08-python-surface-inventory.md](./2026-06-08-python-surface-inventory.md). |
-| RT-011 | Complete | RT-009 documentation coverage, taxonomy integrity checks, project-name parser coverage, the YAML import invariant, infographic command-dispatch coverage, source-attribution parser coverage, the template substitute shim canary, template substitute no-`eval` lint, template substitute literal-substitution coverage, template config load unit and integration coverage, init input unit coverage, defaults-env init coverage, adversarial init coverage, template git clone timeout coverage, init precommit matrix coverage, mmdc preflight coverage, PDF page-positioning coverage, backward-compatibility PDF byte-identity coverage, finding-pattern parser coverage, agentic pattern extraction coverage, misinformation schema coverage, output-integrity schema coverage, human-trust-exploitation schema/attribution coverage, extractor contract fixes, init self-delete coverage, F-A3 populator wiring coverage, report-data image binding coverage, coverage-attestation aggregation coverage, coverage-attestation in-scope filtering coverage, coverage-attestation report-data guard coverage, coverage-attestation tier merge coverage, coverage-attestation pagination smoke coverage, coverage-percentage computation coverage, asset-sensitivity tag coverage, MAESTRO pattern-classification rules coverage, executive-architecture infographic payload coverage, attack-chain parsing coverage, attack-chain Mermaid generation coverage, init constitution coverage, attack-chain extraction coverage, tool-abuse enrichment coverage, pattern-synthesis coverage, ML Top 10 coverage bundle enrichment coverage, mobile Top 10 coverage bundle enrichment coverage, LLM10 unbounded consumption coverage, coverage-attestation audit coverage, init timing trace coverage, init trace summary coverage, archived FastAPI docs guidance, archived FastAPI getting-started guidance, and init substitution E2E coverage now have Rust-native tests; the dead `tests/scripts` init helper package is retired. Current audit: 72 active modules, 69 Rust integration modules, 1 Rust unit module, 1 Rust smoke module, 0 support/regression modules. |
-| RT-012 | Complete | Rust-native report-data output handling, infographic output-file handling, report project metadata emission, report-data image binding and byte-probe parity, coverage-attestation payload emission, coverage-attestation in-scope filtering, coverage-attestation report-data guard coverage, coverage-attestation pagination smoke coverage, asset-sensitivity tag parsing, executive-architecture infographic payload parity, and SARIF CLI slices now cover the threat/risk SARIF runtime paths; the report-data typst guard now runs against a copied template tree instead of mutating the repo template tree, and `scripts/extract-report-data.py`, `scripts/tachi_parsers.py`, the FastAPI Alembic `env.py` scaffolds, the FastAPI backend test-package scaffolding, the FastAPI backend app runtime trees, the FastAPI backend scaffold packaging manifests, the FastAPI backend Alembic scaffold packaging manifests, the dead `tests/scripts` helper package, the dead root pytest support package, `pyproject.toml`, and `requirements-dev.txt` are retired and the active Python inventory is empty. |
-| RT-013 | Complete | Tauri shell parity work now routes `infographic-data` through the shared Rust payload builder while the remaining desktop paths stay thin and command-driven. |
-| RT-014 | Complete | Python packaging and FastAPI scaffold archival depends on RT-012 and RT-013; backend scaffold packaging manifests, backend Alembic scaffold packaging manifests, the FastAPI stack packs, the smoke guide deliverable check, the root README legacy `make test` compatibility note, the Rust init matrix workflow, the active architecture and devops README/CI/env-var summaries, the live doc JSON formatting examples, the orchestration skill JSON parsing examples, the security-review FastAPI scaffold note, the pre-commit install guidance, the devops local pre-commit package-manager path, the CLAUDE organization/testing examples, the permissions doc pip-install rule, and the CLAUDE org environment-quirks example are archived legacy references. |
-| RT-015 | Complete | Speed and reliability hardening depends on the Rust-only runtime path being stable; `scripts/init.sh` now carries `AOD_INIT_TRACE=1` timing markers with a cleanup phase, millisecond trace summaries, same-clone cold/warm precommit benchmarking, and `report_data.rs` reuses the already-read threats content on the hot path. |
-
-The prior broad migration snapshot remains useful for orientation: Rust core parity is the strongest track, Rust-native test migration and runtime-script retirement are active, and Tauri shell hardening plus packaging/scaffold retirement remain downstream.
-
-## BEADS Map
-
-This roadmap uses a BEADS-style hierarchy:
-
-- `Epic` = a migration theme
-- `Feature` = a deliverable slice within the epic
-- `Capability` = the behavior the feature must provide
-- `Task` = the work items required to build the capability
-- `Function` = the concrete function, command, fixture, or test boundary that must exist when the task is done
-
-### Epic 1 - Rust Runtime Ownership
-
-**Goal**: move all shipped behavior to Rust-owned code paths.
-
-#### Feature 1.1 - Port Python script entrypoints to Rust
-
-- **Capabilities**
-  - report data extraction
-  - infographic payload assembly
-  - SARIF emission
-  - taxonomy normalization
-  - coverage catalog lookup
-- **Tasks**
-  - port `scripts/generate-threats-sarif.py`
-  - port `scripts/generate-risk-scores-sarif.py`
-  - retire `scripts/tachi_parsers.py`
-  - retire FastAPI Alembic `env.py` scaffolds
-  - retire FastAPI backend test-package scaffolding
-  - retire the root pytest support package
-  - retire the FastAPI backend app runtime trees
-- **Functions**
-  - `build_report_payload`
-  - `build_infographic_payload`
-  - `emit_threat_sarif`
-  - `emit_risk_score_sarif`
-  - `normalize_taxonomy_label`
-  - `load_coverage_catalog`
-
-#### Feature 1.2 - Replace Python packaging with Rust-native workspace metadata
-
-- **Capabilities**
-  - build from `Cargo.toml`
-  - run from Rust binaries and Tauri commands
-  - avoid Python dependency resolution in install and CI paths
-- **Tasks**
-  - retire `pyproject.toml`
-  - retire `requirements-dev.txt`
-  - remove Python-specific install guidance from active docs, including pre-commit installation wording, pytest examples in organization docs, root README legacy compatibility notes, pip-install wording in permissions docs, and Python-runtime environment examples in organization docs
-  - replace any Python-only bootstrap assumptions in scripts and templates
-- **Functions**
-  - `cargo build`
-  - `cargo run`
-  - `cargo test`
-  - `cargo llvm-cov`
-
-### Epic 2 - Rust-Native Test Migration
-
-**Goal**: translate every meaningful pytest case into Rust-native tests or a Rust-owned E2E harness.
-
-#### Feature 2.1 - Port unit and integration tests to Rust
-
-- **Capabilities**
-  - fixture-based regression tests
-  - parser and transformer contract tests
-  - CLI command and payload shape tests
-  - taxonomy and schema validation tests
-- **Tasks**
-  - migrate `tests/scripts/test_*` modules into `crates/*/tests`
-  - migrate `tests/schemas/test_taxonomy_integrity.py`
-  - move shared fixture helpers into Rust test support modules
-  - keep the current Python tests only as temporary reference while the Rust equivalents land
-- **Functions**
-  - `assert_fixture_roundtrip`
-  - `assert_parser_contract`
-  - `assert_sarif_shape`
-  - `assert_taxonomy_integrity`
-  - `assert_coverage_audit_counts`
-
-#### Feature 2.2 - Define the Rust end-to-end boundary
-
-- **Capabilities**
-  - CLI smoke validation
-  - Tauri command bridge validation
-  - desktop-critical flow validation
-- **Tasks**
-  - define the minimum E2E set for install/init/update/report generation
-  - wire a Rust-owned desktop harness for the critical flows
-  - keep expensive UI automation limited to the smallest set of business-critical paths
-- **Functions**
-  - `invoke_cli_smoke`
-  - `invoke_tauri_command`
-  - `assert_critical_flow`
-
-### Epic 3 - Tauri Shell and Desktop Parity
-
-**Goal**: keep the shell thin while the Rust core stays authoritative.
-
-#### Feature 3.1 - Use one Rust command layer for CLI and desktop
-
-- **Capabilities**
-  - shared command routing
-  - shared error mapping
-  - shared serialization layer
-- **Tasks**
-  - keep command handlers in Rust
-  - avoid duplicate business logic in the frontend
-  - ensure CLI and desktop paths return the same payloads for the same inputs
-- **Functions**
-  - `route_command`
-  - `map_error`
-  - `serialize_payload`
-  - `deserialize_input`
-
-#### Feature 3.2 - Make desktop validation explicit and narrow
-
-- **Capabilities**
-  - desktop smoke coverage
-  - deterministic payload rendering
-  - command round-trip checks
-- **Tasks**
-  - add the minimum desktop harness needed for critical flows
-  - avoid broad UI reimplementation work
-  - keep the shell focused on invocation, display, and persistence
-- **Functions**
-  - `validate_desktop_roundtrip`
-  - `validate_command_state`
-
-### Epic 4 - Python Surface Retirement
-
-**Goal**: remove the remaining Python runtime and toolchain surfaces once Rust parity is stable.
-
-#### Feature 4.1 - Remove Python entrypoints and toolchain dependencies
-
-- **Capabilities**
-  - no Python entrypoint in the shipped repo
-  - no Python dev dependency in the canonical path
-  - no Python-first CI contract
-- **Tasks**
-  - delete or archive Python scripts after parity landing
-  - remove pytest configuration and Python-only developer dependencies
-  - remove Python-specific references from build and release docs
-- **Functions**
-  - `no_python_entrypoints`
-  - `no_pytest_contract`
-  - `no_python_packaging`
-
-#### Feature 4.2 - Replace Python stack scaffolds with Rust-native guidance
-
-- **Capabilities**
-  - Rust/Tauri stack examples
-  - Rust-native developer onboarding
-  - no FastAPI/pytest-specific shipped defaults in the active repo surface
-- **Tasks**
-  - retire or replace `stacks/fastapi-react*`
-  - update any scaffold defaults that still assume Python
-  - ensure stack docs describe Rust/Tauri options only
-- **Functions**
-  - `validate_stack_template`
-  - `validate_runtime_assumptions`
-
-### Epic 5 - Speed and Reliability Hardening
-
-**Goal**: use the Rust rewrite to reduce startup cost, improve determinism, and tighten failure handling.
-
-#### Feature 5.1 - Reduce startup and IO overhead
-
-- **Capabilities**
-  - fewer process spawns
-  - less repeated filesystem parsing
-  - deterministic command execution
-- **Tasks**
-  - eliminate shell-outs from hot paths where Rust can own the logic
-  - keep parsing and payload generation in-memory where possible
-  - add targeted benchmarks for the slowest flows
-- **Functions**
-  - `measure_startup_time`
-  - `measure_command_latency`
-  - `track_allocations`
-
-#### Feature 5.2 - Improve failure isolation and observability
-
-- **Capabilities**
-  - explicit error boundaries
-  - predictable exit codes
-  - actionable diagnostics
-- **Tasks**
-  - standardize error shape across CLI and Tauri paths
-  - keep validation failures early and explicit
-  - prefer deterministic fixtures over ad hoc mutable state
-- **Functions**
-  - `normalize_error`
-  - `classify_exit_code`
-  - `log_actionable_failure`
-
-#### Feature 5.3 - Analyze and optimize the slow init workflow
-
-- **Capabilities**
-  - init-path phase timing visibility
-  - cold-start and warm-start regression comparison
-  - fewer redundant shell-outs and filesystem scans during init
-- **Tasks**
-  - instrument the init path so each startup phase reports timing via `AOD_INIT_TRACE=1`, including the final cleanup step before self-delete
-  - include millisecond timing fields, the slowest init phase, and the total cleanup-inclusive duration in the trace summary so benchmark runs can isolate the bottleneck
-  - scope placeholder substitution to manifest-backed personalized files and the constitution clean template instead of walking the whole tree
-  - factor manifest-backed personalized path extraction into a reusable helper and reuse the cached list across substitution and residual scanning
-  - reuse the already-read `threats.md` content when deriving report project metadata so report-data assembly avoids a duplicate filesystem read
-  - benchmark the slowest init path with cold and warm samples, with and without precommit / template bootstrapping, using a same-clone matrix so both modes can be compared from one baseline
-  - remove repeated parsing and process spawns once the slow phase is isolated
-- **Functions**
-  - `aod_trace_init_phase`
-  - `aod_template_parse_manifest`
-  - `measure_init_cold_start`
-  - `measure_init_phase_latency`
-  - `trace_init_workflow`
-
-## Phase Plan
-
-Each phase is designed to be mergeable on its own and to land behind tests before the next phase starts.
-
-### Phase 0 - Inventory and Contract Freeze
-
-**Priority**: P0  
-**Purpose**: freeze the current Python surface inventory and lock the Rust replacement targets.
-
-- Inventory every Python file, Python dependency, and Python doc reference.
-- Map each item to its Rust owner or explicit retirement path.
-- Freeze the test taxonomy so every pytest case has a migration destination.
-
-**Validation**
-
-- Unit: inventory fixtures and mapping tables are internally consistent.
-- Integration: current Rust command paths still pass existing tests.
-- E2E: current critical CLI flows still work without regression.
-- Coverage gate: keep the workspace at or above the current baseline, no drop below 80%.
-
-### Phase 1 - Rust-Native Test Migration
-
-**Priority**: P0  
-**Purpose**: replace pytest-centric coverage with Rust tests before deleting legacy paths.
-
-- Port the high-signal parser, payload, and schema tests first.
-- Move shared test helpers into Rust support modules.
-- Define a narrow Rust-owned E2E set for the critical flows only.
-
-**Validation**
-
-- Unit: every migrated behavior has a direct Rust test.
-- Integration: crate-level tests cover command and payload boundaries.
-- E2E: CLI smoke and one desktop-critical flow are executable from Rust-owned tooling.
-- Coverage gate: Rust-native coverage stays at or above 80%; current target is to hold the existing 85%+ baseline.
-
-### Phase 2 - Runtime Port and Parity
-
-**Priority**: P0/P1  
-**Purpose**: move all remaining runtime logic out of Python scripts and into Rust.
-
-- Port report extraction and infographic generation.
-- Port SARIF emission and shared parsing helpers.
-- Make Rust the canonical owner of taxonomy and coverage data.
-
-**Validation**
-
-- Unit: each ported module has parity fixtures and edge-case coverage.
-- Integration: end-to-end file inputs produce byte-stable or schema-stable outputs.
-- E2E: CLI and desktop command paths produce equivalent user-visible results.
-- Coverage gate: no phase exit until coverage remains at or above 80%.
-
-### Phase 3 - Tauri Shell Parity
-
-**Priority**: P1  
-**Purpose**: keep the shell thin and make desktop behavior match CLI behavior.
-
-- Use one Rust command layer for desktop and CLI.
-- Keep frontend state and command wiring minimal.
-- Add only the desktop validation needed for critical user flows.
-
-**Validation**
-
-- Unit: command serialization and error mapping are covered.
-- Integration: shared command paths run in both CLI and Tauri contexts.
-- E2E: install/init/update/report-generation paths pass in the desktop harness.
-- Coverage gate: preserve or improve the current Rust coverage baseline.
-
-### Phase 4 - Python Retirement
-
-**Priority**: P1/P2  
-**Purpose**: remove Python from active runtime and testing surfaces.
-
-- Delete or archive Python scripts after their Rust equivalents land.
-- Remove `pyproject.toml`, `requirements-dev.txt`, and pytest guidance from active docs.
-- Replace FastAPI stack defaults with Rust/Tauri-native guidance or archived examples.
-
-**Validation**
-
-- Unit: repo search assertions prove no active Python entrypoints remain.
-- Integration: build and test run without Python toolchain dependency in the canonical path.
-- E2E: shipped flows run only through Rust/Tauri paths.
-- Coverage gate: still at or above 80% after removal.
-
-### Phase 5 - Performance and Reliability Hardening
-
-**Priority**: P2  
-**Purpose**: use the Rust migration to reduce latency and make failures easier to diagnose.
-
-- Reduce process spawning and repeated parsing.
-- Add benchmarks for startup and command latency.
-- Tighten error handling and output consistency.
-
-**Validation**
-
-- Unit: deterministic benchmarks or microbenchmarks exercise the hot paths.
-- Integration: latency-sensitive flows stay within the agreed budget.
-- E2E: critical flows remain reliable under normal and error conditions.
-- Coverage gate: do not regress below the 80% floor.
-
-## Migration Inventory
-
-This is the current Python-to-Rust replacement map for the repo's active surface.
-
-| Current Python Surface | Rust-Native Target |
-|---|---|
-| `scripts/generate-threats-sarif.py` | Rust SARIF command / library in `tachi-cli` or `tachi-core` |
-| `scripts/generate-risk-scores-sarif.py` | Rust SARIF command / library in `tachi-cli` or `tachi-core` |
-| `scripts/tachi_parsers.py` | retired; parser behavior now lives in `tachi-core` modules |
-| `stacks/fastapi-react*/scaffold/backend/alembic/env.py` | retired; Alembic env scaffolds are no longer active Python surface |
-| `stacks/fastapi-react*/scaffold/backend/alembic` | retired; backend Alembic scaffold directories are no longer active Python surface |
-| `stacks/fastapi-react*/scaffold/backend/alembic.ini` | retired; backend Alembic scaffold manifests are no longer active Python surface |
-| `stacks/fastapi-react*/scaffold/backend/alembic/versions` | retired; backend Alembic scaffold directories are no longer active Python surface |
-| `stacks/fastapi-react*/scaffold/backend/alembic/versions/.gitkeep` | retired; backend Alembic scaffold manifest placeholders are no longer active Python surface |
-| `stacks/fastapi-react*/scaffold/backend/tests/{api/__init__.py,__init__.py,conftest.py}` | retired; backend test-package scaffolding is no longer active Python surface |
-| `stacks/fastapi-react*/scaffold/backend/app/{main.py,api/deps.py,api/v1/router.py,db/base.py,db/session.py,core/middleware.py,core/exceptions.py,config.py}` | retired; backend app runtime trees are no longer active Python surface |
-| `stacks/fastapi-react*/scaffold/backend/pyproject.toml` | retired; backend scaffold packaging manifests are no longer active Python surface |
-| `tests/{conftest.py,__init__.py,schemas/__init__.py}` | retired; root pytest support package is no longer active Python surface |
-| `scripts/extract-report-data.py` | retired; report-data builder now lives in Rust |
-| `tests/scripts/*.py` | Rust integration and end-to-end tests |
-| `tests/schemas/test_taxonomy_integrity.py` | Rust taxonomy/schema validation tests |
-| `pyproject.toml` | retired; Rust workspace metadata now lives in `Cargo.toml` |
-| `requirements-dev.txt` | retired; Cargo dev-dependencies and CI tooling now live in Rust workspace manifests |
-| `stacks/fastapi-react*` | archived legacy references; Rust/Tauri-native stack guidance now lives in active packs |
-
-## Validation Policy
-
-Every phase must pass the same validation ladder before it can merge:
-
-1. **Unit tests** for the changed Rust modules.
-2. **Integration tests** for command, fixture, and payload boundaries.
-3. **E2E validation** for the smallest set of critical user flows.
-4. **Coverage validation** with a floor of **80% Rust-native coverage**.
-5. **Reliability validation** with no unresolved regressions in startup, exit codes, or command routing.
-
-The current workspace already sits above the requested floor, so the migration must preserve that margin while Python is removed.
-
-## Merge Cadence
-
-- Use one isolated git worktree per phase or feature cluster.
-- Land changes in small conventional commits.
-- Merge only after the phase's unit, integration, E2E, and coverage gates are green.
-- Prefer progressive merges into `main` instead of one large end-state branch.
-
-## Out of Scope
-
-- Keeping Python as a long-term canonical runtime.
-- Retaining pytest as the primary validation path once the Rust equivalents exist.
-- Expanding the Tauri UI beyond the minimum needed for parity and usability.
+| Stage 0 | Inventory and contract freeze | Every active parser, command, output, and documentation surface is mapped to an owner, a dependency, and a test seam before new implementation work starts. |
+| Stage 1 | Safety and parser hardening | User-facing parsing paths fail deterministically, malformed Mermaid/PlantUML/C4 inputs are covered by fixtures, and no parse-path panic remains. |
+| Stage 2 | Developer experience, packaging, and onboarding | Cargo-first installation, CLI ergonomics, completions, and onboarding docs reflect the real Rust/Tauri workflow without Python packaging assumptions. |
+| Stage 3 | Reporting, outputs, and rule-engine expansion | Report payloads, scoring, taxonomy, and output shapes are stable under fixtures and snapshot-style checks. |
+| Stage 4 | Ecosystem integrations and framework coverage | Shared command dispatch, desktop bridge behavior, and framework-facing integrations stay parity-aligned. |
+| Stage 5 | Performance, streaming, and formal assurance | Benchmark gates, invariant checks, and regression proofs protect the hardened Rust-only path from performance or behavior drift. |
+
+Do not start a later stage until the current stage has satisfied its exit
+criterion and the relevant validation matrix.
+
+## TDD Policy
+
+- Write the failing test before production code.
+- Verify red before green.
+- Keep each slice minimal until it passes.
+- Validate at the function, task, capability, feature, and epic levels.
+- Prefer small, mergeable Beads items over broad change sets.
+- Re-run the progressive validation after every slice, not only at the end of a
+  stage.
+
+## Validation Matrix
+
+| Work type | Proof required | Typical test seam |
+|---|---|---|
+| Parser work | Unit tests plus integration fixtures | Parser modules and malformed fixture sets |
+| CLI and config work | Command-level tests plus config parsing tests | `tachi-cli` entrypoints |
+| Tauri work | Bridge parity tests plus desktop smoke checks | `src-tauri` command registration |
+| Reporting work | Output-shape checks plus snapshot-style regression tests | `tachi-core` builders |
+| Ecosystem work | Cross-component parity checks | `tachi-shell` and `src-tauri` bridge paths |
+| Performance work | Benchmark or criterion gate | Hot-path functions and regressions |
+| Docs work | Readability, consistency, and link checks | Roadmap and onboarding docs |
+
+## Dependency Rules
+
+- Parser hardening must land before rule-engine expansion.
+- CLI config stability must land before completions and release packaging work.
+- Reporting and output contracts must stabilize before integrations that rely
+  on those artifacts.
+- Ecosystem integrations must stay behind the shared shell and desktop bridge.
+- Performance and formal assurance come last, after behavioral contracts are
+  stable.
+- Capture dependencies at the feature or capability level whenever possible.
+  Do not mirror every internal call edge in Beads.
+
+## Beads Issue Template
+
+Use this copy-paste format for each task-sized Beads issue:
+
+```md
+Epic:
+Feature:
+Capability:
+Task:
+Function:
+Dependencies:
+Acceptance criteria:
+Validation:
+Implementation owner:
+Stage label:
+Next test seam:
+Notes:
+```
+
+## Epic 1 - Rust Safety and Parser Hardening
+
+**Primary owner**: `tachi-core`
+**Stage**: Stage 1
+
+### Feature 1.1 - Diagram parser boundary safety
+
+| Capability | Tasks | Functions |
+|---|---|---|
+| Mermaid, PlantUML, C4, and related diagram inputs reject malformed content without panicking. | Add failing fixtures for malformed and partially valid diagrams; replace `unwrap()` / `expect()` on the parse path with `Result` propagation; assert deterministic failure surfaces. | `parse_mermaid_block`, `parse_plantuml_block`, `parse_c4_block`, `parse_diagram_input` |
+| Parser failure responses include explicit source, span, and recovery context. | Normalize parse errors; surface the exact input section that failed; keep bridge and CLI error text stable for diagnostics. | `map_parse_error`, `normalize_parse_span`, `render_parse_diagnostic` |
+
+### Feature 1.2 - Panic-free user-facing parsing paths
+
+| Capability | Tasks | Functions |
+|---|---|---|
+| User-facing parse paths stop using panic-based control flow. | Audit parse entry points for `unwrap()` and `expect()`; move fatal assumptions into tests; keep the command layer from swallowing parse errors. | `assert_no_parse_panic`, `parse_input_or_error`, `route_parse_error` |
+| Shell and CLI propagation preserves parser failures as structured errors. | Thread parse results through `tachi-shell` and `tachi-cli`; avoid lossy conversion into generic exits; verify the same error is visible from every caller. | `map_error`, `serialize_payload`, `deserialize_input` |
+
+### Feature 1.3 - Parser fixtures and contract coverage
+
+| Capability | Tasks | Functions |
+|---|---|---|
+| The fixture corpus covers malformed, empty, nested, and edge-case parser inputs. | Add regression fixtures for each supported diagram flavor; cover mixed encodings and partial blocks; lock the failure behavior with snapshots. | `assert_fixture_roundtrip`, `assert_parser_contract`, `assert_parse_failure` |
+| Parser contract tests prove deterministic behavior across the supported inputs. | Add red/green tests for grammar boundaries; verify the same fixture fails or succeeds consistently; keep the contract cases small and focused. | `validate_parser_contract`, `render_contract_snapshot`, `compare_parse_output` |
+
+## Epic 2 - Developer Experience, Packaging, and Onboarding
+
+**Primary owners**: `tachi-cli`, docs
+**Stage**: Stage 2
+
+### Feature 2.1 - CLI config and completion ergonomics
+
+| Capability | Tasks | Functions |
+|---|---|---|
+| CLI config loading is explicit and predictable. | Add tests for config defaults, overrides, and invalid values; keep environment and file resolution stable; document the config precedence. | `load_cli_config`, `resolve_workspace_root`, `normalize_cli_flags` |
+| Shell completions and help text stay synchronized with the CLI surface. | Generate completions from the real command set; verify help text examples against current flags; keep the command surface discoverable. | `generate_completions`, `render_help_text`, `list_cli_commands` |
+
+### Feature 2.2 - Cargo-first packaging and bootstrap flow
+
+| Capability | Tasks | Functions |
+|---|---|---|
+| Workspace build and bootstrap paths use the Rust toolchain as the canonical install path. | Remove Python packaging assumptions from the active path; make build/test/bootstrap commands work from Cargo entrypoints; lock down release packaging checks. | `cargo build`, `cargo test`, `cargo run` |
+| Packaging behavior is documented against the actual workspace layout. | Align install, update, and bootstrap docs with the Rust workspace; keep release notes and onboarding examples current; verify that the documented path matches the shell. | `validate_packaging_contract`, `render_bootstrap_steps`, `check_release_manifest` |
+
+### Feature 2.3 - Onboarding and documentation
+
+| Capability | Tasks | Functions |
+|---|---|---|
+| Onboarding docs describe the Rust/Tauri workflow without legacy Python guidance. | Refresh quickstarts and README-level examples; point readers at the new backlog index; keep the examples executable. | `update_onboarding_docs`, `render_quickstart`, `link_roadmap_docs` |
+| Troubleshooting guidance matches the actual command behavior. | Add command-specific error examples; document the expected output on failure; keep the docs aligned with the CLI and Tauri bridge. | `document_failure_modes`, `write_troubleshooting_note`, `verify_doc_examples` |
+
+## Epic 3 - Reporting, Outputs, and Rule-Engine Expansion
+
+**Primary owner**: `tachi-core`
+**Stage**: Stage 3
+
+### Feature 3.1 - Report payloads and output contracts
+
+| Capability | Tasks | Functions |
+|---|---|---|
+| Report-data and infographic payloads stay schema-stable under fixture-driven tests. | Add output-shape tests; keep serialization stable; verify the same input produces the same report payloads across runs. | `build_report_payload`, `build_infographic_payload`, `assert_output_shape` |
+| File writing and output selection stay deterministic. | Cover output-path handling; validate stdout versus file writes; keep the write contract small enough to test with fixtures. | `write_report_output`, `select_output_target`, `compare_snapshot_output` |
+
+### Feature 3.2 - Taxonomy, scoring, and coverage catalog
+
+| Capability | Tasks | Functions |
+|---|---|---|
+| Taxonomy normalization stays centralized in Rust. | Expand taxonomy tests; verify label normalization and family mapping; keep the reporting path and catalog path in sync. | `normalize_taxonomy_label`, `load_coverage_catalog`, `lookup_taxonomy_family` |
+| Scoring and coverage classification remain reproducible. | Add fixture coverage for scoring and coverage classification; lock boundary cases; keep the output stable enough for downstream consumers. | `score_threat`, `classify_coverage_family`, `render_coverage_summary` |
+
+### Feature 3.3 - Rule-engine and schema expansion
+
+| Capability | Tasks | Functions |
+|---|---|---|
+| New rule families can be added without breaking the existing report contract. | Add fixtures for new family mappings; preserve the current output shape; keep the rule-engine extension points explicit. | `classify_rule_family`, `map_rule_crosswalk`, `expand_rule_set` |
+| Shared schema validation covers the new and existing reporting families. | Assert schema integrity for report outputs; verify integration with the scoring and taxonomy layers; keep the failure mode explicit. | `validate_report_schema`, `assert_schema_integrity`, `compare_rule_output` |
+
+## Epic 4 - Ecosystem Integrations and Framework Coverage
+
+**Primary owners**: `tachi-shell`, `src-tauri`
+**Stage**: Stage 4
+
+### Feature 4.1 - Shared shell dispatch and runtime bridge
+
+| Capability | Tasks | Functions |
+|---|---|---|
+| CLI and desktop callers use the same Rust command layer. | Keep dispatch, serialization, and error mapping in `tachi-shell`; add parity tests for CLI and desktop callers; avoid duplicate business logic in the adapters. | `route_command`, `serialize_payload`, `deserialize_input` |
+| Shared errors preserve the same meaning across runtimes. | Standardize error mapping; keep command failures readable and deterministic; make the shell the source of truth for bridge behavior. | `map_error`, `normalize_command_result`, `format_runtime_error` |
+
+### Feature 4.2 - Thin desktop shell parity
+
+| Capability | Tasks | Functions |
+|---|---|---|
+| The Tauri shell stays thin and registration-only. | Keep `src-tauri` focused on command registration and bootstrap; refuse to add business logic there; validate the command surface through tests. | `register_commands`, `run_desktop_app`, `invoke_tauri_command` |
+| Desktop smoke checks cover the smallest business-critical flow set. | Add smoke coverage for the minimum desktop round-trips; keep the harness narrow; verify the shell forwards through the shared layer. | `assert_desktop_roundtrip`, `check_bridge_parity`, `validate_command_state` |
+
+### Feature 4.3 - Framework and ecosystem coverage
+
+| Capability | Tasks | Functions |
+|---|---|---|
+| Ecosystem integrations are proved against framework-facing fixtures. | Add targeted fixtures for supported integrations; keep input/output contracts stable; ensure the shared shell remains the integration point. | `validate_integration_fixture`, `assert_bridge_parity`, `route_framework_command` |
+| Framework coverage stays explicit in docs and tests. | Document the supported integration surfaces; keep the test matrix readable; refuse to hide unsupported cases behind implicit behavior. | `document_framework_coverage`, `render_integration_matrix`, `verify_integration_docs` |
+
+## Epic 5 - Performance, Streaming, and Formal Assurance
+
+**Primary owners**: `tachi-core`, `tachi-shell`, docs
+**Stage**: Stage 5
+
+### Feature 5.1 - Hot-path performance and streaming
+
+| Capability | Tasks | Functions |
+|---|---|---|
+| Hot paths are measured before they are optimized. | Add benchmarks for startup, parsing, and command latency; identify repeated scans and process spawns; keep the benchmark fixtures stable. | `measure_startup_time`, `measure_command_latency`, `track_allocations` |
+| Large outputs can stream when that reduces overhead. | Reduce avoidable buffering; keep the reporting path memory-aware; validate that the streaming behavior still matches the output contract. | `stream_report_output`, `write_stream_chunk`, `flush_output_buffer` |
+
+### Feature 5.2 - Failure observability and exit discipline
+
+| Capability | Tasks | Functions |
+|---|---|---|
+| Errors are structured and actionable across the CLI and desktop paths. | Standardize the error shape; keep exit codes deterministic; make user-facing diagnostics specific enough to act on. | `normalize_error`, `classify_exit_code`, `log_actionable_failure` |
+| Failure handling is observable in tests. | Add regression tests for expected error modes; keep the command layer from collapsing distinct failures into one generic response. | `assert_failure_mode`, `render_failure_case`, `compare_exit_behavior` |
+
+### Feature 5.3 - Formal assurance and regression gates
+
+| Capability | Tasks | Functions |
+|---|---|---|
+| Benchmarks become part of the release gate. | Record the benchmark thresholds; keep performance regression checks in the repo; refuse to merge a slowdown without an explicit review. | `assert_regression_budget`, `run_criterion_benchmark`, `record_benchmark_baseline` |
+| Invariants and contract tests protect the hardened path. | Add property tests or invariants where they buy confidence; keep the contracts narrow; verify that the behavior remains reproducible. | `verify_contract_invariants`, `compare_regression_fixture`, `assert_behavioral_invariant` |
+
+## Execution Notes
+
+- Start with Stage 0 inventory work and do not begin implementation slices
+  until the inventory is frozen.
+- Keep each Beads item small enough to complete in one TDD loop.
+- Use the issue pack for tracker-neutral baselines and the issue cards for
+  concrete task templates.
+- Re-check the roadmap and issue-card pointers whenever the backlog changes so
+  the navigation hub stays current.

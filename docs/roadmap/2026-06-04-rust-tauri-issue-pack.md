@@ -1,6 +1,6 @@
 # Rust/Tauri Migration Issue Pack
 
-**Last Updated**: 2026-06-08
+**Last Updated**: 2026-06-14
 **Purpose**: tracker-neutral backlog cards for the Rust/Tauri parity track
 **Architecture Guardrail**: keep `tachi-rust` Rust and Tauri based
 
@@ -9,8 +9,9 @@
 - Current completion: 9/9 issue cards, or 100%.
 - RT-003, RT-004, RT-006, RT-007, and RT-008 now have merged Rust slices for threat parsing, attack-chain parsing, the thin `src-tauri` shell scaffold, SARIF emission, and MAESTRO/OWASP taxonomy data.
 - RT-005 is complete, and RT-009 is complete after the docs refresh and retirement pass.
-- The detailed Rust/Tauri-only migration roadmap now lives at [2026-06-08-rust-tauri-only-roadmap.md](./2026-06-08-rust-tauri-only-roadmap.md) and expands the remaining Python-removal work into BEADS-style epics, features, capabilities, tasks, and functions.
-- The execution-level issue card set now lives at [2026-06-08-rust-tauri-only-issue-cards.md](./2026-06-08-rust-tauri-only-issue-cards.md) and sequences the migration into RT-010 through RT-015.
+- The navigation hub now lives at [implementation-backlog.md](./implementation-backlog.md) and points at the canonical roadmap, issue pack, and issue-card set.
+- The detailed Rust/Tauri implementation roadmap now lives at [2026-06-08-rust-tauri-only-roadmap.md](./2026-06-08-rust-tauri-only-roadmap.md) and expands the remaining Rust/Tauri implementation work into BEADS-style epics, features, capabilities, tasks, and functions.
+- The execution-level issue card set now lives at [2026-06-08-rust-tauri-only-issue-cards.md](./2026-06-08-rust-tauri-only-issue-cards.md) and sequences the migration into task-sized Beads templates.
 
 GitHub Issues are not the source of truth in this repository right now, so the
 items below are written as importable issue cards rather than live issues.
