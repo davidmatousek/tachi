@@ -314,11 +314,11 @@ def _transient_token_for_exception(exc: BaseException) -> str:
     connection error so the ``detail`` string is diagnostic (data-model.md
     §Classification — e.g. ``"timeout x3"``).
     """
-    if isinstance(exc, TimeoutError) or isinstance(exc, socket.timeout):
-        return "timeout"
-    # urllib wraps the underlying socket error in URLError.reason.
+    # urllib wraps the underlying socket error in URLError.reason; for a bare
+    # timeout/socket error (no .reason attr) getattr falls back to exc itself,
+    # so this single check covers both the wrapped and unwrapped cases.
     reason = getattr(exc, "reason", exc)
-    if isinstance(reason, TimeoutError) or isinstance(reason, socket.timeout):
+    if isinstance(reason, (TimeoutError, socket.timeout)):
         return "timeout"
     if isinstance(reason, socket.gaierror):
         return "dns"
@@ -851,7 +851,6 @@ def manage_tracking_issue(
     """
     has_rot = len(confirmed_rot) > 0
     open_number = _find_open_issue(ISSUE_TITLE_SENTINEL)
-    run_date = run_timestamp
 
     if has_rot and open_number is None:
         # Create the one tracking issue. Best-effort ensure the convenience label
@@ -871,7 +870,7 @@ def manage_tracking_issue(
         _run_gh(["issue", "edit", str(open_number), "--body", rendered_body])
         comment = _run_gh(
             ["issue", "comment", str(open_number),
-             "--body", _delta_comment_body(confirmed_rot, run_date)],
+             "--body", _delta_comment_body(confirmed_rot, run_timestamp)],
             fatal=False,
         )
         if comment.returncode != 0:
@@ -884,7 +883,7 @@ def manage_tracking_issue(
         # Recovery: ALWAYS comment before closing (audit trail), both fatal — a
         # failed close would silently leave a stale open issue.
         _run_gh(["issue", "comment", str(open_number),
-                 "--body", f"All citations healthy as of {run_date}. Closing."])
+                 "--body", f"All citations healthy as of {run_timestamp}. Closing."])
         _run_gh(["issue", "close", str(open_number)])
         return IssueOutcome("closed", open_number)
 
