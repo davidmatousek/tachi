@@ -81,7 +81,7 @@ jobs:
         os: [macos-latest, ubuntu-latest]
     env:
       CARGO_TERM_COLOR: always
-      CARGO_TARGET_DIR: ${{ runner.temp }}/tachi-target
+      CARGO_TARGET_DIR: ${{ github.workspace }}/.cargo-target
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
