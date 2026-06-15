@@ -83,10 +83,21 @@ owned|.claude/hooks/**
 owned|.claude/lib/**
 owned|.claude/skills/**
 
-# .claude/config and MCP are template-owned JSON
+# feature-flags.json is template-owned: it declares Claude Code capability flags
+# (version gates + flag_key env vars), not adopter state — adopters toggle via the
+# AOD_* env vars, not by editing this JSON.
 owned|.claude/config/feature-flags.json
-owned|.claude/mcp-config.json
-owned|.claude/settings.json
+# mcp-config.json is a {{PLACEHOLDER}} starter; which MCP servers to wire is an
+# adopter choice. `scaffold` (copy-if-missing) seeds new projects without
+# overwriting an adopter's real config — and stops /aod.update from re-shipping
+# raw placeholders (owned files are never re-substituted post-init). See #187.
+scaffold|.claude/mcp-config.json
+# settings.json ships a permissions + hooks baseline that adopters extend with
+# project-specific entries (tachi: ~90 perms vs the template's ~25). It carries
+# no {{PLACEHOLDER}} tokens and always diverges from upstream, so `merge` would
+# warn every run — `user` matches the git-workflow.md/commands.md precedent (#168).
+# Adopters pull new template permissions in manually. See #187.
+user|.claude/settings.json
 
 # .claude/rules/ — most rules carry a `<!-- Rule file for {{PROJECT_NAME}} -->`
 # header comment, so they're categorized `personalized|` below to keep the
@@ -130,7 +141,12 @@ owned|.github/workflows/**
 # docs/ — curated architecture and methodology that adopters inherit verbatim
 owned|docs/AOD_TRIAD.md
 owned|docs/DOCS_TO_UPDATE_AFTER_NEW_FEATURE.md
-owned|docs/INSTITUTIONAL_KNOWLEDGE.md
+# INSTITUTIONAL_KNOWLEDGE.md is adopter-ACCUMULATED, not inherited: kb-create,
+# /aod.deliver, and root-cause-analyzer write entries into it (1900+ lines in a
+# mature project). The template only seeds it at init; /aod.update must never
+# overwrite the accumulation. `user` mirrors the .aod/memory/** treatment of
+# adopter knowledge. See #187.
+user|docs/INSTITUTIONAL_KNOWLEDGE.md
 owned|docs/PROJECT_DOCS_CHECKLIST.md
 # Architecture subdirs — adopters heavily customize these. Guard list
 # FR-007 already protects docs/architecture/** as user-owned; manifest
@@ -141,7 +157,15 @@ user|docs/architecture/04_deployment_environments/**
 user|docs/architecture/README.md
 owned|docs/branding/**
 owned|docs/core_principles/**
+# docs/devops/ — the methodology files (CI/CD guide, feature matrix, migration,
+# README) are owned. The per-environment subdirs hold the adopter's ACTUAL deploy
+# procedures (referenced by .claude/rules/deployment.md), paralleling
+# docs/architecture/04_deployment_environments/** — so they're user-owned. The
+# narrow user| entries win over the broad owned| via precedence (user > owned). See #187.
 owned|docs/devops/**
+user|docs/devops/01_Local/**
+user|docs/devops/02_Staging/**
+user|docs/devops/03_Production/**
 owned|docs/guides/**
 owned|docs/stacks/**
 owned|docs/standards/**

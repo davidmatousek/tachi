@@ -38,47 +38,6 @@ if [ -n "${AOD_TEMPLATE_SUBSTITUTE_SH_SOURCED:-}" ]; then
 fi
 readonly AOD_TEMPLATE_SUBSTITUTE_SH_SOURCED=1
 
-# F-2 T035: aod_template_load_personalization_env delegates to
-# aod_template_load_kv_file from template-config-load.sh. Source defensively
-# so callers (init.sh, update.sh, integration tests) don't have to remember
-# the dependency. The library guards against double-sourcing.
-if [ -z "${AOD_TEMPLATE_CONFIG_LOAD_SH_SOURCED:-}" ]; then
-  _AOD_TEMPLATE_SUBSTITUTE_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  if [ -f "$_AOD_TEMPLATE_SUBSTITUTE_SCRIPT_DIR/template-config-load.sh" ]; then
-    # shellcheck disable=SC1091
-    . "$_AOD_TEMPLATE_SUBSTITUTE_SCRIPT_DIR/template-config-load.sh"
-  else
-    echo "[aod] ERROR: template-config-load.sh not found in $_AOD_TEMPLATE_SUBSTITUTE_SCRIPT_DIR — required by template-substitute.sh post-F-2" >&2
-    return 1
-  fi
-  unset _AOD_TEMPLATE_SUBSTITUTE_SCRIPT_DIR
-fi
-
-# -----------------------------------------------------------------------------
-# bash 5.2+ patsub_replacement compatibility shim (CRITICAL for FR-001)
-# -----------------------------------------------------------------------------
-# Bash 5.2 added `shopt -s patsub_replacement` (ENABLED BY DEFAULT) which
-# makes `&` in the replacement string of `${var//pat/repl}` expand to the
-# matched text — exact sed-style behavior. This DEFEATS the whole point of
-# moving from sed to bash parameter expansion (ADR-038): adversarial values
-# like `AT&T` get re-substituted to `AT<matched_text>T`, producing
-# corrupt residuals like `AT{{PROJECT_NAME}}T` that fail FR-001 + the
-# residual scan (FR-004).
-#
-# Discovered via T040 CI matrix: macOS bash 3.2.57 has no such option, all
-# tests pass; ubuntu-latest bash 5.x has patsub_replacement on by default,
-# case-01 (AT&T) fails identically to the pre-F-248 sed regression.
-#
-# Fix: explicitly DISABLE patsub_replacement at source-time. The shopt is
-# unknown on bash 3.2 (returns non-zero) — the `2>/dev/null || true`
-# preserves bash 3.2 compatibility per NFR-001.
-#
-# This affects every callsite that sources template-substitute.sh:
-# scripts/init.sh, scripts/update.sh, and the test suite. All require
-# literal-substitution semantics; none rely on `&` reference behavior.
-# -----------------------------------------------------------------------------
-shopt -u patsub_replacement 2>/dev/null || true
-
 # -----------------------------------------------------------------------------
 # CANONICAL_PLACEHOLDERS — the fixed 12 keys this mechanism knows how to
 # substitute. Order mirrors contracts/personalization-schema.md §Fields and
@@ -182,23 +141,96 @@ _aod_substitute_lookup() {
 #   8  — validation failure (missing key, newline, NUL)
 # -----------------------------------------------------------------------------
 aod_template_load_personalization_env() {
-    # F-2 T035 (ADR-040 Decision Item 5): collapse the pre-F-2 47-line
-    # subshell-validate-then-caller-source body to ~7 lines of library
-    # delegation per FR-005. Behavior preserved:
-    #   - missing-path → 1 (Step 1 of library)
-    #   - file-absent → 3 (Step 2 of library)
-    #   - validation-failure (newline / NUL / metachar) → 8 (Step 5 + Step 2b)
-    #   - missing canonical key → 8 (Step 6 post-pass via AOD_CANONICAL_PLACEHOLDERS)
-    #   - AOD_PERSONALIZATION_<KEY> populated (Step 7 printf -v)
-    # The library performs regex-validated load with NO bash interpretation
-    # of file content; the H-2 TOCTOU race window is collapsed to a single
-    # `cat $path` (per ADR-040 Decision Item 5).
     local path="${1:-}"
+
     if [ -z "$path" ]; then
         echo "[aod] ERROR: aod_template_load_personalization_env requires <path>" >&2
         return 1
     fi
-    aod_template_load_kv_file "$path" "AOD_PERSONALIZATION_" AOD_CANONICAL_PLACEHOLDERS
+
+    if [ ! -f "$path" ]; then
+        echo "[aod] ERROR: personalization.env not found: $path" >&2
+        return 3
+    fi
+
+    # Source the env file into a SUBSHELL first to avoid polluting the caller's
+    # scope if validation fails. We then re-source into the caller's scope
+    # only after validation passes. This uses bash's $(...) + declare -p
+    # round-trip trick, but bash 3.2-compatible: we just source twice.
+    #
+    # Step 1: sanity-source in subshell; if source fails, halt.
+    if ! (
+        set -e
+        # shellcheck disable=SC1090
+        source "$path"
+    ) >/dev/null 2>&1; then
+        echo "[aod] ERROR: personalization.env is not bash-sourceable: $path" >&2
+        return 8
+    fi
+
+    # Step 2: source into the caller's scope under a sentinel — we intentionally
+    # let `source` run here so the KEY=VALUE lines populate the caller. Use a
+    # local-ish pattern: source inside a function means variables live in
+    # function scope unless declared globally. Bash source inside a function
+    # sets globals by default for assignments without `local` — which is what
+    # the env file uses — so these become globals. That is the desired
+    # behavior: the init.sh fresh-install flow wants PROJECT_NAME etc. visible
+    # at script scope.
+    #
+    # However, we need to AVOID shadowing caller vars with different semantics.
+    # Strategy: save the existing env values into AOD_PERSONALIZATION_<KEY> via
+    # our case lookup AFTER source runs, then validate.
+    # shellcheck disable=SC1090
+    source "$path"
+
+    # Step 3: validate every canonical key.
+    local key val missing=""
+    for key in "${AOD_CANONICAL_PLACEHOLDERS[@]}"; do
+        # Indirect expansion: ${!key} resolves the variable named $key.
+        # Bash 3.2 supports ${!var} for scalar indirection (not arrays).
+        # shellcheck disable=SC2027,SC2086
+        eval "val=\"\${$key:-}\""
+
+        if [ -z "$val" ]; then
+            if [ -z "$missing" ]; then
+                missing="$key"
+            else
+                missing="$missing, $key"
+            fi
+            continue
+        fi
+
+        # Reject newlines in value (contracts/personalization-schema.md §Value Constraints).
+        case "$val" in
+            *$'\n'*)
+                echo "[aod] ERROR: personalization value for $key contains a newline (not permitted)" >&2
+                return 8
+                ;;
+        esac
+
+        # NUL bytes: bash scalar strings CANNOT contain NUL (the byte truncates
+        # the value at C-string level inside bash's internals). If a NUL was
+        # in the file's byte stream, the sourced value would already be
+        # truncated to everything before it — undetectable here. We accept
+        # this limitation (documented in contracts/personalization-schema.md
+        # §Read Protocol); defense-in-depth is handled by init.sh's write-
+        # time validation.
+
+        # Export into the AOD_PERSONALIZATION_ namespace for substitute_lookup.
+        # Use eval because the var name is dynamic; `val` is a shell-expanded
+        # string so we need to pass it through safely. Using printf -v would
+        # be cleaner but is bash 3.1+ — though actually 3.2 supports it, we
+        # use the simpler eval approach consistent with other template-*.sh libs.
+        eval "AOD_PERSONALIZATION_${key}=\"\$val\""
+    done
+
+    if [ -n "$missing" ]; then
+        echo "[aod] ERROR: personalization.env is missing required key(s): $missing" >&2
+        echo "[aod] (these are required per contracts/personalization-schema.md; RATIFICATION_DATE and CURRENT_DATE are init-time snapshots and must not be blank or recomputed)" >&2
+        return 8
+    fi
+
+    return 0
 }
 
 # -----------------------------------------------------------------------------
@@ -323,13 +355,8 @@ aod_template_substitute_placeholders() {
     if [ -s "$src" ]; then
         local last_byte
         last_byte="$(tail -c 1 "$src" 2>/dev/null | od -An -c 2>/dev/null | tr -d ' ' || true)"
-        # `od -An -c` renders a trailing newline byte as the two characters
-        # backslash-n. The pattern `*\\n*` matches that literal sequence in
-        # the bash glob context (single-quoted `*'\n'*` is equivalent — both
-        # match a literal backslash followed by `n`; ShellCheck SC2221/SC2222
-        # flagged the original duplicate).
         case "$last_byte" in
-            *\\n*)
+            *\\n*|*'\n'*)
                 src_had_trailing_newline=1
                 ;;
         esac
@@ -480,13 +507,8 @@ aod_template_init_personalization() {
     # supplies them as shell vars in its own scope — which, since we're a
     # sourced function, IS our scope.
     local key val
-    local var_name
     for key in "${AOD_CANONICAL_PLACEHOLDERS[@]}"; do
-        # F-2 T029 (ADR-040 Decision Item 7): scalar indirect expansion via
-        # `${!var}` replaces the pre-F-2 dynamic-lookup pattern (with `:-`
-        # default). Bash 3.2 compatible.
-        var_name="$key"
-        val="${!var_name:-}"
+        eval "val=\"\${$key:-}\""
         if [ -z "$val" ]; then
             echo "[aod] ERROR: aod_template_init_personalization: required value not set in caller scope: $key" >&2
             return 8
@@ -508,34 +530,20 @@ aod_template_init_personalization() {
         # Emit each key=value line. Quote values that contain spaces or
         # shell-special characters so the file remains bash-sourceable.
         for key in "${AOD_CANONICAL_PLACEHOLDERS[@]}"; do
-            # F-2 T030 (ADR-040 Decision Item 7): strict bash 3.2 indirect
-            # expansion via `${!var}` (NO `:-` default) replaces the pre-F-2
-            # dynamic-lookup pattern. Matches the pre-F-2 :558 semantics;
-            # aod_template_init_personalization validates non-empty key in
-            # the loop above before we reach here.
-            var_name="$key"
-            val="${!var_name}"
+            eval "val=\"\${$key}\""
             # Determine if we need double-quote wrapping. Spaces, tabs, and
             # shell metacharacters all require quoting. Safe characters:
             # [A-Za-z0-9._/:@+=-].
             case "$val" in
                 *[!A-Za-z0-9._/:@+=-]*)
-                    # F-2 T031: writer escape pass REMOVED. Pre-F-2 the writer
-                    # escape-pass at this site rewrote `\\`/`"`/`$`/backtick
-                    # to defend the snapshot's bash-sourceability on re-source.
-                    # F-2 removes that pass because the upstream defense
-                    # (init-input.sh aod_init_read_validated, F-2 T032
-                    # amendment) now rejects `$`, `\`, backtick at the prompt
-                    # boundary. The `"` quote is still possible but the
-                    # writer's `case` arm above only fires for chars OUTSIDE
-                    # the safe set [A-Za-z0-9._/:@+=-]; if a value contains
-                    # `"`, the post-F-2 LOAD path (Site D via the library)
-                    # rejects it via the regex value class which excludes `"`,
-                    # `$`, `\`, backtick. Result: any value that SURVIVES
-                    # validation can be emitted without escape and re-loaded
-                    # cleanly. Direct emission preserves byte identity for the
-                    # round-trip.
-                    printf '%s="%s"\n' "$key" "$val"
+                    # Contains at least one char outside the safe set — quote.
+                    # Double-quotes require escaping `$`, `\`, `"`, and backtick.
+                    local escaped="$val"
+                    escaped="${escaped//\\/\\\\}"     # \ → \\
+                    escaped="${escaped//\"/\\\"}"     # " → \"
+                    escaped="${escaped//\$/\\\$}"     # $ → \$
+                    escaped="${escaped//\`/\\\`}"     # ` → \`
+                    printf '%s="%s"\n' "$key" "$escaped"
                     ;;
                 '')
                     # Shouldn't reach here (validated above), but safe fallback.
