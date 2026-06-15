@@ -226,7 +226,7 @@ Every card includes:
 - `Implementation owner`: `docs`
 - `Stage label`: Phase 3
 - `Next test seam`: `.github/workflows/release-please.yml`
-- `Notes`: Keep the workflow behavior explicit in the docs.
+- `Notes`: Implemented in `feat/release-please-no-pr-creation`; validated on code push.
 
 ## Phase 4 - exceed `tachi`
 

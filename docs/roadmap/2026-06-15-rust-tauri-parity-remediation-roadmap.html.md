@@ -182,6 +182,7 @@ Goal: remove workflow drift and make releases reproducible.
   main-push workflow cannot fail on stale release refs
 - Acceptance: release-please no longer attempts PR branch updates on push
 - Validation: latest main-push release-please run succeeds
+- Notes: Implemented in `feat/release-please-no-pr-creation`; validated on code push
 
 Exit gate:
 
