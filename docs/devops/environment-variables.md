@@ -127,6 +127,22 @@ The CI parity workflow at `.github/workflows/gitleaks.yml` reads no environment 
 
 ---
 
+## F-183 Citation Link-Rot Monitor — No New Environment Variables
+
+**Added in Feature 183** (Citation-URL Link-Rot Monitoring, PR #330, merged 2026-06-15, release v4.44.0). For cross-reference: F-183 introduces **no new environment variables** of any kind (adopter-facing, test-only, or CI-only). The feature ships one scheduled GitHub Actions workflow (`.github/workflows/tachi-citation-linkrot.yml`) that runs `scripts/check-citation-urls.py` on a weekly cron + manual `workflow_dispatch` to probe citation URLs and reconcile a single self-healing GitHub tracking issue.
+
+The only environment value the workflow references is the **ambient `GITHUB_TOKEN`**, surfaced to the `gh` CLI via the `GH_TOKEN` env var:
+
+| Reference | Value | Notes |
+|-----------|-------|-------|
+| `GH_TOKEN` | `${{ secrets.GITHUB_TOKEN }}` | The **ambient token automatically provisioned by GitHub Actions** for every workflow run. NOT a Personal Access Token (PAT), NOT a new repository secret — `secrets.GITHUB_TOKEN` is built in and requires zero configuration by adopters or maintainers. Scoped by the workflow's `permissions:` block to `contents: read` + `issues: write` (least privilege, NFR-005). Used by `gh issue` commands to create/edit/comment/close the tracking issue. |
+
+There is **no new secret to provision**. The `workflow_dispatch` input `inject_sentinel_rot` is a workflow input (boolean, default `false`), not an environment variable. The pip dependency contract is `pyyaml>=6` only (no new runtime dependency).
+
+**Reference**: `specs/183-citation-url-link-rot-monitoring/spec.md` (NFR-005 least privilege). Workflow contract: `specs/183-citation-url-link-rot-monitoring/contracts/workflow.md`. Workflow walkthrough: `docs/devops/CI_CD_GUIDE.md` → "Tachi Citation Link-Rot Monitor (F-183 / #183)".
+
+---
+
 ## Cross-References
 
 - **Adopter-facing update env vars**: `docs/devops/CI_CD_GUIDE.md` → "Update-Script Environment Variables" (`CI`, `FORCE_RETAG`, `AOD_UPDATE_TMP_DIR`, `AOD_BOOTSTRAP_*`, `AOD_UPSTREAM_URL`, `YES`, `SKIP_MARKER`).
@@ -135,6 +151,7 @@ The CI parity workflow at `.github/workflows/gitleaks.yml` reads no environment 
 - **`/aod.deliver` exit codes** (consumed by CI scripts, not env vars): `docs/devops/CI_CD_GUIDE.md` → "/aod.deliver Exit-Code Contract".
 - **F-5 / F-282 pre-commit secret-scanning** (no new env vars; framework-level `SKIP=gitleaks` bypass only): `docs/standards/PRECOMMIT_HOOKS.md` §4. CI parity workflow: `docs/devops/CI_CD_GUIDE.md` → "Gitleaks CI Parity Workflow (F-282 / F-5)".
 - **F-302 / F-260b asset-tag output wiring** (no new env vars; CI lock-step path-filter + pytest-invocation delta only): `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow". Section above documents the no-env-var scope.
+- **F-183 citation link-rot monitor** (no new env vars; ambient `GITHUB_TOKEN` via `GH_TOKEN` only, no PAT/secret): `docs/devops/CI_CD_GUIDE.md` → "Tachi Citation Link-Rot Monitor (F-183 / #183)". Section above documents the no-env-var scope and the ambient-token reference.
 
 ---
 

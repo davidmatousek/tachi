@@ -70,10 +70,28 @@ This document defines the technology stack for tachi.
 - Examples: Docker, Kubernetes, None (serverless)
 
 **CI/CD**: GitHub Actions
+
+**Release automation:**
 - `release-please` (googleapis/release-please-action@v4): Automated version tagging and CHANGELOG generation on merge to main (Feature 086)
 - Configuration: `release-please-config.json` (changelog sections), `.release-please-manifest.json` (current version), `.github/workflows/release-please.yml` (workflow trigger)
 - Release type: `simple` (no package manager integration; version tracked in manifest)
 - Why: Convention-based release automation from Conventional Commits; eliminates manual `git tag` and CHANGELOG maintenance
+
+### Scheduled automation inventory
+
+| Workflow | Trigger | Permissions | Purpose | Feature |
+|----------|---------|-------------|---------|---------|
+| `.github/workflows/tachi-maestro-coverage.yml` | (validation job — canonical single-concern precedent) | `contents: read` | MAESTRO coverage-state validation | BLP-05 W1 |
+| `.github/workflows/tachi-citation-linkrot.yml` | `schedule` (`17 9 * * 1`, weekly Mon 09:17 UTC) + `workflow_dispatch` | `contents: read`, `issues: write` | Probe every citation URL in the taxonomy crosswalk catalog; classify HEALTHY / LINK_ROT (404·410) / NEEDS_REVIEW (401·403·429) / TRANSIENT (5xx·timeout, never reported); reconcile one self-healing `gh` tracking issue | 183 (v4.44.0) |
+
+**Citation link-rot monitor — notable technical decisions (Feature 183):**
+- **Scheduled-only / never-on-PR determinism boundary** — external URL reachability is non-deterministic, so the check must never gate a merge. The workflow declares `schedule` + `workflow_dispatch` and deliberately omits `on: pull_request` / `on: push`. The deterministic offline guard (`tests/schemas/test_citation_shape()`) stays regex-only with zero network egress. This extends the existing [ADR-021](../02_ADRs/ADR-021-source-date-epoch-for-deterministic-pdf-comparison.md) determinism-boundary invariant (deterministic test/PR path stays free of environmental non-determinism) to a new non-determinism source — outbound HTTP rather than wall-clock timestamps. No new ADR was minted (see Feature 183 entry in `01_system_design/README.md` and the build-time/test-suite separation note).
+- **Monitor-not-gate exit-code semantics** — the checker exits `0` even when link-rot is found; only an infrastructure failure reds the run. Reporting flows to the tracking issue, never to the job's pass/fail state.
+- **`actions/cache@v4` ledger (combined save+restore)** — a run_id-keyed primary key plus a `restore-keys` prefix so the ledger always saves and accumulates run-over-run; a cache miss means "check everything," never "assume healthy" (cache is an optimization, not a source of truth).
+- **Native `gh` CLI, not a marketplace action** — supply-chain minimalism for a security-posture repo; uses the ambient `GITHUB_TOKEN`.
+- **Least-privilege permissions** — `contents: read` (checkout) + `issues: write` (tracking issue) only.
+
+**Zero new runtime dependency (Feature 183) — itself a recorded decision:** `scripts/check-citation-urls.py` is a single zero-dependency Python checker using only the standard library (`urllib.request`, `concurrent.futures.ThreadPoolExecutor`, `http.client`, `re`, `glob`, `pathlib`, `argparse`, `time`, `threading.Semaphore`, `email.utils.parsedate_to_datetime`) plus the already-pinned `pyyaml>=6.0` (`requirements-dev.txt`). `requests` / `httpx` were deliberately NOT added — the stdlib `urllib` + thread-pool path keeps the dependency footprint of a security-posture repo at zero net new runtime packages (architect-preferred path; baseline NFR-002). The offline parity test and classifier unit tests use `pytest>=8.0` (already pinned).
 
 ---
 

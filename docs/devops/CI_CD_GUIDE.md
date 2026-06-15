@@ -34,8 +34,9 @@ This section documents the reference CI workflows that the upstream template use
 | `.github/workflows/tachi-pytest.yml` | F-248 (Substitution surface hardening) | `scripts/init.sh` substitution behaviour on a macOS+Ubuntu pytest matrix (ADR-038) |
 | `.github/workflows/gitleaks.yml` | F-282 / F-5 (Pre-commit secret-scanning defaults) | Full-repo gitleaks scan on PR — back-stop for `git commit --no-verify` (ADR-042) |
 | `.github/workflows/tachi-maestro-coverage.yml` | F-315 / #313 (MAESTRO output completeness round 2) + F-311 / #311 (MAESTRO Matrix Model B — clean vs n/a) | Two MAESTRO invariants on every PR touching the author/parse surface: (1) F-098 all-7-layer invariant on example matrices — fails naming the missing canonical layer ID(s); (2) F-311 cross-surface `coverage_state` consistency — threats.md §6, the PDF render IR, and the maestro-stack infographic IR must agree on every layer's clean/n-a/findings state, failing NAMING the offending layer + divergent surface (reuses ADR-020/021 + ADR-047; dedicated-job pattern per ADR-022). Install step requires `pyyaml` (conftest collection dep). |
+| `.github/workflows/tachi-citation-linkrot.yml` | F-183 / #183 (Citation-URL Link-Rot Monitoring) | **Scheduled monitor, not a gate.** Weekly cron (`17 9 * * 1`, Mondays 09:17 UTC) + manual `workflow_dispatch` probe of citation URLs in the crosswalk catalog; reconciles a single self-healing tracking issue. Exits **0 even when rot is found** (a found-rot run is GREEN); only an infra failure reddens it. NEVER declares `on.pull_request` / `on.push` (NFR-001 determinism boundary). `contents: read` + `issues: write` only; ambient `GITHUB_TOKEN` (no PAT/secret). |
 
-The first three workflows share the bash:3.2 Docker pattern, SHA-pinned checkout action, `contents: read` permissions, and cancel-in-progress concurrency. The latter four (`tachi-mmdc-preflight.yml`, `tachi-pytest.yml`, `gitleaks.yml`, `tachi-maestro-coverage.yml`) follow a different pattern — direct host-runner execution with path-filtered triggers (or unfiltered, in `gitleaks.yml`'s case) — because their workloads (`mmdc` Node binary preflight, Python+bash subprocess tests, native gitleaks binary, Python markdown-glob assertion) do not benefit from container isolation. Use any of the first three as a template when adding a new maintenance workflow that needs the bash:3.2 floor; use `tachi-pytest.yml` as a template when adding a new path-filtered Python test job; use `gitleaks.yml` as a template when adding a new SARIF-emitting scanner job; use `tachi-maestro-coverage.yml` as a template when adding a new single-OS, path-scoped Python invariant job that asserts against a committed-artifact corpus.
+The first three workflows share the bash:3.2 Docker pattern, SHA-pinned checkout action, `contents: read` permissions, and cancel-in-progress concurrency. The next four (`tachi-mmdc-preflight.yml`, `tachi-pytest.yml`, `gitleaks.yml`, `tachi-maestro-coverage.yml`) follow a different pattern — direct host-runner execution with path-filtered triggers (or unfiltered, in `gitleaks.yml`'s case) — because their workloads (`mmdc` Node binary preflight, Python+bash subprocess tests, native gitleaks binary, Python markdown-glob assertion) do not benefit from container isolation. The last (`tachi-citation-linkrot.yml`) is a third shape entirely — a **scheduled monitor** with NO PR/push trigger at all (cron + `workflow_dispatch` only) that probes the live internet and is intentionally non-blocking. Use any of the first three as a template when adding a new maintenance workflow that needs the bash:3.2 floor; use `tachi-pytest.yml` as a template when adding a new path-filtered Python test job; use `gitleaks.yml` as a template when adding a new SARIF-emitting scanner job; use `tachi-maestro-coverage.yml` as a template when adding a new single-OS, path-scoped Python invariant job that asserts against a committed-artifact corpus; use `tachi-citation-linkrot.yml` as a template when adding a new scheduled/non-gating monitor that must never redden an unrelated merge.
 
 ### Shared Workflow Conventions
 
@@ -46,7 +47,7 @@ The first three workflows share the bash:3.2 Docker pattern, SHA-pinned checkout
 | Permissions | `contents: read` (principle of least privilege) |
 | Concurrency | `cancel-in-progress: true` on same ref (force-push safe) |
 | Action pinning | `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683` (v4.2.2) pinned by SHA, NOT tag |
-| Trigger | `push` and `pull_request` against `main` (stack-contract adds a `paths:` filter — see F130 subsection) |
+| Trigger | `push` and `pull_request` against `main` (stack-contract adds a `paths:` filter — see F130 subsection). **Exception**: `tachi-citation-linkrot.yml` (F-183) declares NO `push`/`pull_request` trigger — it runs on a weekly `schedule` cron + manual `workflow_dispatch` only. See its subsection. |
 
 ### Manifest Coverage Workflow (F129)
 
@@ -435,6 +436,55 @@ python -m pytest \
 **No deployment, infrastructure, or environment changes**: F-315 added this CI workflow and F-311 extended it with a second invariant + the `pyyaml` install fix. Neither feature introduced new env vars or secrets; `pyyaml>=6` is already declared in `requirements-dev.txt` (the CI install step pins it inline to match). F-311 did not expand the six byte-gated baseline examples (6/6 re-frozen byte-identical).
 
 **Full contract**: F-315 — `specs/315-maestro-output-completeness-round-2/spec.md` (FR-005..FR-009 CI durability + non-gated refresh; SC-003..SC-005) and `specs/315-maestro-output-completeness-round-2/contracts/tachi-maestro-coverage-ci.contract.md` (job shape + trigger ⇄ invocation lock-step + layer-named failure contract). F-311 — `specs/311-maestro-matrix-model-b-clean-vs-na/spec.md` (FR-010/FR-011 cross-surface agreement; SC-001/SC-002) and `specs/311-maestro-matrix-model-b-clean-vs-na/contracts/cross-surface-consistency.contract.md` (re-extraction model + layer+surface-named failure contract). Plans: `specs/315-…/plan.md` (Decision A — dedicated job; Decision E — invariant wiring hygiene). Reuses ADR-020 (MAESTRO classification), ADR-021 (SOURCE_DATE_EPOCH determinism), the dedicated-CI-job pattern from ADR-022, and adds **ADR-047** (Model B clean-vs-n/a, recorded for F-311).
+
+---
+
+### Tachi Citation Link-Rot Monitor (F-183 / #183)
+
+**Added in Feature 183** (Citation-URL Link-Rot Monitoring), merged via PR #330 (squash commit `0a33d70`) on 2026-06-15 — release v4.44.0, the final feature of BLP-05 Wave 3.
+
+`.github/workflows/tachi-citation-linkrot.yml` is a **scheduled monitor, not a CI gate**. Once a week it probes every citation URL referenced by the tachi crosswalk catalog (the framework-mapping output authority shipped across BLP-05 Wave 2), detects link rot (dead / redirected / authority-changed URLs), and reconciles a single self-healing GitHub tracking issue — opening, updating, commenting, and closing the issue as rot appears and clears across runs. It runs `scripts/check-citation-urls.py`.
+
+This workflow is a third CI shape distinct from both the bash:3.2 maintenance workflows and the host-runner test/scanner workflows: it has **no `push`/`pull_request` trigger at all**, it is **deliberately non-blocking**, and it persists state across runs via a cache-backed ledger. Treat it as the template for any future scheduled, internet-probing, never-on-PR monitor.
+
+| Property | Value |
+|----------|-------|
+| Workflow file | `.github/workflows/tachi-citation-linkrot.yml` |
+| Trigger | `schedule` cron `17 9 * * 1` (Mondays 09:17 UTC) + `workflow_dispatch` (manual). **NO `push`, NO `pull_request`, NO `paths:` filter** (NFR-001 — there is no PR trigger to filter) |
+| `workflow_dispatch` input | `inject_sentinel_rot` (boolean, default `false`) — injects one pre-classified synthetic rot finding to exercise the issue lifecycle with no network calls (lifecycle validation) |
+| Runner | `ubuntu-latest` (single OS — the probe is network I/O + markdown/YAML parsing, OS-independent) |
+| Python version | 3.11 (`actions/setup-python@v5`) |
+| Permissions | `contents: read` (checkout) + `issues: write` (create/edit/comment/close the tracking issue) — **least privilege, NFR-005** |
+| Auth | Ambient `GITHUB_TOKEN` via `GH_TOKEN` env (`secrets.GITHUB_TOKEN`) for `gh` — **no PAT, no new repository secret** |
+| Pip dependencies | `pyyaml>=6` only (catalog parsing). NO `requests` or any other new runtime dep — the checker uses the standard library + pyyaml |
+| Checker script | `scripts/check-citation-urls.py` (probe + issue-lifecycle logic) |
+| Ledger persistence | `actions/cache@v4` (combined restore+save) — `linkrot-ledger.json` accumulates run-over-run (see below) |
+| Job ID | `citation-linkrot-monitor` |
+| Job name | `Probe citation URLs and reconcile the tracking issue` |
+| New env vars / new secrets | **None** (ambient `GITHUB_TOKEN` only) |
+
+**Monitor, not a gate — the load-bearing operational semantic**: the checker exits **`0` even when link-rot IS found**. A found-rot run is still a **GREEN** run. Only a genuine infrastructure failure (the script crashing, or `gh` authentication failing) turns the run red. Two operator consequences follow:
+
+1. **Read the tracking issue for rot state, NOT the run color.** A green checkmark in the Actions tab does NOT mean "no rot" — it means "the probe completed without crashing." The single self-healing GitHub issue is the source of truth for current rot status.
+2. **Do NOT wire this as a required check.** It is not a branch-protection gate and must never become one — making a flaky external host able to block a merge is exactly the failure mode NFR-001 forbids.
+
+**Scheduled-only / never-on-PR (NFR-001 — determinism boundary)**: the workflow MUST NOT declare `on: pull_request` or `on: push`. Citation reachability depends on the live internet, which is non-deterministic and outside any contributor's control. Wiring this to PR or push would let a transiently-down external host redden an unrelated merge — a determinism-boundary violation. The cron + `workflow_dispatch` pair are the only legitimate triggers. Do not add a PR trigger or a path filter when extending it.
+
+**Ledger caching (`actions/cache@v4`, combined action)**: the workflow uses the **combined** `actions/cache@v4` (restore AND save in one step), NOT `actions/cache/restore`. The combined action auto-saves `path: linkrot-ledger.json` in its post-job hook keyed by the primary `key`. Because the primary key embeds `${{ github.run_id }}` it ALWAYS misses on restore (every run id is unique), so the post-job save ALWAYS fires and the ledger accumulates run-over-run. The `restore-keys: linkrot-ledger-v1-` prefix resolves the newest prior ledger on the way in. A restore-only action would perform no save and the ledger would never accumulate (architect MINOR-1). `actions/cache` is a new pattern for this repo (architect MINOR-2) — restore-key accumulation should be validated on the first two dispatch runs (quickstart §4).
+
+**Manual run command** (operators / lifecycle validation):
+
+```bash
+# Normal manual probe (real network calls):
+gh workflow run tachi-citation-linkrot.yml -f inject_sentinel_rot=false
+
+# Lifecycle validation — inject one synthetic rot finding, no network:
+gh workflow run tachi-citation-linkrot.yml -f inject_sentinel_rot=true
+```
+
+**No deployment, infrastructure, secret, or environment-variable changes**: F-183 added this one scheduled workflow + the `scripts/check-citation-urls.py` checker. It introduces no new environment variables, no new secrets (the ambient `GITHUB_TOKEN` is automatically provisioned by GitHub Actions), no new runtime services, and no staging/production deployment surface. The only persistent state is the cache-backed `linkrot-ledger.json` and the single GitHub tracking issue.
+
+**Full contract**: `specs/183-citation-url-link-rot-monitoring/contracts/workflow.md` (authoritative workflow contract), `specs/183-citation-url-link-rot-monitoring/spec.md` (NFR-001 scheduled-only, NFR-005 least privilege). Checker + issue-lifecycle logic: `scripts/check-citation-urls.py`. Modeled on `tachi-maestro-coverage.yml` (single-concern, single ubuntu runner). Adopter walkthrough: `specs/183-citation-url-link-rot-monitoring/quickstart.md`.
 
 ---
 
