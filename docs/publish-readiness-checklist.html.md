@@ -36,6 +36,7 @@ release candidate branch into `main`.
       scan policy.
 - [ ] Any legitimate placeholder or fixture match is documented and justified.
 - [ ] No new warnings were introduced by hook configuration changes.
+- [ ] `rg "actions/checkout@v4" .github/workflows` returns no matches.
 
 ## 4. Rust validation
 
@@ -60,6 +61,9 @@ release candidate branch into `main`.
 
 - [ ] `.github/workflows/gitleaks.yml` is green for the publish branch.
 - [ ] `.github/workflows/rust-clippy.yml` is green.
+- [ ] `.github/workflows/tachi-mmdc-preflight.yml` is green.
+- [ ] `.github/workflows/tachi-pytest.yml` is either retired or scoped strictly to
+      transitional compatibility with a documented deprecation plan.
 - [ ] Any release workflow required for the branch has succeeded or is queued
       without failures.
 - [ ] GitHub Actions status was checked after the last merge or rebase.

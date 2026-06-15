@@ -120,12 +120,14 @@ The repository policy for these surfaces is:
 | Gate | Evidence | Acceptance |
 |---|---|---|
 | Rust unit and integration tests | `cargo test -q` | Must pass cleanly. |
+| Rust e2e and bridge checks | `cargo test -p tachi-shell --test init_substitution` and `cargo test -p tachi-core --test rt009_docs` | Must pass for CLI/tidy report contract parity surfaces. |
 | Lint gate | `cargo clippy --all-targets -- -D warnings` | No warnings allowed. |
 | Coverage gate | `make llvm-cov` | Coverage remains above the repo floor. |
 | Diff hygiene | `git diff --check` | No whitespace or patch-format issues. |
 | Secret scan | `pre-commit run --all-files` or `gitleaks` / CI workflow | No secrets or private data leak into the publish set. |
 | Docs gate | README and docs cross-links | Public docs match the shipped behavior. |
 | CI gate | GitHub Actions run status | Release and security workflows are green. |
+| Workflow hardening | `rg "actions/checkout@v4" .github/workflows` | No legacy checkout versions remain. |
 
 ## Exclusions
 
@@ -141,3 +143,10 @@ If a surface is listed as publishable, it must be reviewed for security,
 privacy, doc accuracy, and release readiness before `main` is pushed to
 `origin`.
 
+## Publish Evidence Checklist (required before push)
+
+- [ ] `rg "actions/checkout@v4" .github/workflows` returns no matches.
+- [ ] `git status --short --branch` has no unexpected untracked or dirty state.
+- [ ] `cargo test -q` and `make llvm-cov` are green on the release candidate branch.
+- [ ] `cargo clippy --all-targets -- -D warnings` is clean.
+- [ ] Public examples and fixtures are synthetic or redacted.
