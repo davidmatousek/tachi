@@ -586,6 +586,13 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
+## [4.44.0](https://github.com/davidmatousek/tachi/compare/v4.43.0...v4.44.0) (2026-06-15)
+
+
+### Features
+
+* **183:** citation-URL link-rot monitoring (scheduled CI check) ([#330](https://github.com/davidmatousek/tachi/issues/330)) ([0a33d70](https://github.com/davidmatousek/tachi/commit/0a33d70b7983290df8e09e261f9b313b7b5d5f6f))
+
 ## [4.43.0](https://github.com/davidmatousek/tachi/compare/v4.42.0...v4.43.0) (2026-06-12)
 
 
