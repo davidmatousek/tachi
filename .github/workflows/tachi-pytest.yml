@@ -36,6 +36,9 @@
 name: tachi init matrix
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
     paths:
       - scripts/init.sh
