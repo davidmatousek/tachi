@@ -1,5 +1,11 @@
 # Rust/Tauri Migration Issue Pack
 
+Status: archived completion record
+
+This issue pack is complete and retained for provenance only. New
+execution work belongs in
+[the 2026-06-15 parity remediation roadmap](2026-06-15-rust-tauri-parity-remediation-roadmap.html.md).
+
 **Last Updated**: 2026-06-14
 **Purpose**: tracker-neutral backlog cards for the Rust/Tauri parity track
 **Architecture Guardrail**: keep `tachi-rust` Rust and Tauri based

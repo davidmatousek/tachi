@@ -1,8 +1,11 @@
 # Rust/Tauri Implementation Issue Cards
 
-**Last Updated**: 2026-06-14
-**Status**: Beads-ready execution backlog derived from the implementation roadmap
+**Last Updated**: 2026-06-15
+**Status**: archived execution backlog
 **Source**: [2026-06-08-rust-tauri-only-roadmap.md](./2026-06-08-rust-tauri-only-roadmap.md)
+
+This card set is retained for provenance only. The active Beads-ready issue set
+is [2026-06-15-rust-tauri-parity-issue-cards.md](./2026-06-15-rust-tauri-parity-issue-cards.md).
 
 These cards are the task-sized execution slices for the roadmap in
 [implementation-backlog.md](./implementation-backlog.md). They are intentionally

@@ -1,5 +1,10 @@
 # Rust/Tauri Implementation Roadmap
 
+Status: archived planning snapshot
+
+This roadmap is superseded by
+[the 2026-06-15 parity remediation roadmap](2026-06-15-rust-tauri-parity-remediation-roadmap.html.md).
+
 **Last Updated**: 2026-06-14
 **Status**: Active implementation backlog
 **Objective**: make `tachi-rust` a Rust + Tauri only repository through

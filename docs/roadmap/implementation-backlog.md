@@ -1,18 +1,29 @@
 # Implementation Backlog
 
-**Last Updated**: 2026-06-14
+**Last Updated**: 2026-06-15
 **Purpose**: navigation hub for the Beads-ready Rust/Tauri implementation backlog
 **Scope**: roadmap sequencing, issue-pack pointers, and task-template guidance
 
+## Active Execution
+
+- [Rust/Tauri Parity Remediation Roadmap](./2026-06-15-rust-tauri-parity-remediation-roadmap.html.md)
+- [Rust/Tauri Parity Issue Cards](./2026-06-15-rust-tauri-parity-issue-cards.md)
+
+## Archive Records
+
+- [Rust/Tauri Migration Issue Pack](./2026-06-04-rust-tauri-issue-pack.md)
+- [Rust/Tauri Implementation Roadmap](./2026-06-08-rust-tauri-only-roadmap.md)
+- [Rust/Tauri Implementation Issue Cards](./2026-06-08-rust-tauri-only-issue-cards.md)
+
 ## Canonical Sources
 
-- [Rust/Tauri implementation roadmap](./2026-06-08-rust-tauri-only-roadmap.md)
+- [Rust/Tauri parity remediation roadmap](./2026-06-15-rust-tauri-parity-remediation-roadmap.html.md)
+- [Rust/Tauri parity issue cards](./2026-06-15-rust-tauri-parity-issue-cards.md)
 - [Rust/Tauri migration issue pack](./2026-06-04-rust-tauri-issue-pack.md)
-- [Rust/Tauri implementation cards](./2026-06-08-rust-tauri-only-issue-cards.md)
 
-The roadmap is the canonical sequencing document. The issue pack is the
-tracker-neutral backlog baseline. The issue cards are the copy-paste execution
-templates that become Beads issues.
+The active roadmap is the canonical sequencing document. The issue cards are
+the copy-paste execution templates that become Beads issues. The archived issue
+pack remains the tracker-neutral historical baseline.
 
 ## Backlog Shape
 
@@ -28,14 +39,13 @@ Work is organized as:
 
 ## Stage Map
 
-1. Stage 0: inventory and contract freeze
-1. Stage 1: safety and parser hardening
-1. Stage 2: developer experience, packaging, and onboarding
-1. Stage 3: reporting, outputs, and rule-engine expansion
-1. Stage 4: ecosystem integrations and framework coverage
-1. Stage 5: performance, streaming, and formal assurance
+1. Phase 0: parity harness
+1. Phase 1: critical parity closure
+1. Phase 2: output contract parity
+1. Phase 3: CI and release hardening
+1. Phase 4: exceed `tachi`
 
-Each stage is a hard gate. Do not start the next stage until the current stage
+Each phase is a hard gate. Do not start the next phase until the current phase
 has passed its exit criteria and validation matrix.
 
 ## TDD Policy
@@ -61,12 +71,12 @@ has passed its exit criteria and validation matrix.
 
 ## Dependency Rules
 
-- Safety and parser hardening must land before rule-engine expansion.
-- CLI config stability must land before completions and release packaging work.
-- Reporting and output contracts must stabilize before ecosystem integrations
-  that consume those artifacts.
-- Performance and formal assurance are last, after behavioral contracts are
-  stable.
+- Parity harness work must land before any bridge, output, or release-hardening
+  slice.
+- Tauri command exposure must land before schema validation and desktop-only UX.
+- Output goldens and parser regression tests must stabilize before release
+  artifact work.
+- Release hardening must land before desktop-specific differentiators.
 - Keep dependencies at the capability or feature level when possible. Do not
   create task graphs that mirror every internal callsite.
 
@@ -91,7 +101,7 @@ Notes:
 
 ## Usage Order
 
-1. Read the roadmap to understand the intended sequencing.
-1. Use the issue pack for tracker-neutral backlog context.
-1. Copy a task template from the issue cards into Beads.
-1. Execute the task with TDD and validate the stage gate before advancing.
+1. Read the active roadmap to understand the intended sequencing.
+1. Use the issue cards for tracker-ready Beads issue text.
+1. Use the archived issue pack only for provenance and historical context.
+1. Execute the task with TDD and validate the phase gate before advancing.
