@@ -173,6 +173,16 @@ Goal: remove workflow drift and make releases reproducible.
 - Acceptance: docs-only pushes to `main` do not invoke release-please
 - Validation: main-push smoke check after docs-only changes
 
+### RT-022 - release-please no PR branch updates
+
+- Epic: CI modernization
+- Capability: release automation stability
+- Feature: release-please push safety
+- Task: keep `release-please` from updating its PR branch on push so the
+  main-push workflow cannot fail on stale release refs
+- Acceptance: release-please no longer attempts PR branch updates on push
+- Validation: latest main-push release-please run succeeds
+
 Exit gate:
 
 - workflow version drift is removed

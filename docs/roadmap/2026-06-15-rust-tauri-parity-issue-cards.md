@@ -211,6 +211,23 @@ Every card includes:
 - `Next test seam`: `.github/workflows/release-please.yml`
 - `Notes`: Keep release automation active for code changes.
 
+### RT-022 - release-please no PR branch updates
+
+- `Epic`: Phase 3 - CI and release hardening
+- `Capability`: release automation stability
+- `Feature`: release-please push safety
+- `Task`: keep `release-please` from updating its PR branch on push so the
+  main-push workflow cannot fail on stale release refs
+- `Acceptance criteria`:
+  - `release-please` no longer attempts PR branch updates on push.
+  - Main-push CI no longer fails on `release-please` ref updates.
+- `Validation`:
+  - Latest main-push `release-please` run succeeds.
+- `Implementation owner`: `docs`
+- `Stage label`: Phase 3
+- `Next test seam`: `.github/workflows/release-please.yml`
+- `Notes`: Keep the workflow behavior explicit in the docs.
+
 ## Phase 4 - exceed `tachi`
 
 ### RT-019 - progress and cancel support

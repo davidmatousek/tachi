@@ -98,7 +98,7 @@ temporary scratch state, or a local-only worktree artifact.
 |---|---|---|
 | `.github/workflows/gitleaks.yml` | Full-repo secret scanning | Required publication gate. |
 | `.github/workflows/rust-clippy.yml` | Rust lint gate | Prevents warnings from shipping. |
-| `.github/workflows/release-please.yml` | Release orchestration | Runs on non-doc main pushes to avoid docs-only ref churn. |
+| `.github/workflows/release-please.yml` | Release orchestration | Main-push release automation without release-PR branch churn. |
 | `.github/workflows/tachi-mmdc-preflight.yml` | Mermaid preflight | Protects docs and renderable diagram outputs. |
 | `.github/workflows/tachi-pytest.yml` | Transitional compatibility tests | Must be reviewed for retirement or narrowing as migration completes. |
 
@@ -133,7 +133,7 @@ The repository policy for these surfaces is:
 | Secret scan | `pre-commit run --all-files` or `gitleaks` / CI workflow | No secrets or private data leak into the publish set. |
 | Docs gate | README and docs cross-links | Public docs match the shipped behavior. |
 | CI gate | GitHub Actions run status | Release and security workflows are green. |
-| Release-please gate | `release-please.yml` push filter | Docs-only publishes do not churn release refs. |
+| Release-please gate | `release-please.yml` push filter | Docs-only publishes do not churn release refs and push runs avoid PR-branch churn. |
 | Workflow hardening | `rg "actions/checkout@v4" .github/workflows` | No legacy checkout versions remain. |
 
 ## Exclusions

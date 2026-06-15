@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
   pull-requests: write
 
 jobs:
@@ -21,3 +22,5 @@ jobs:
     steps:
       - name: Run release-please
         uses: googleapis/release-please-action@v4
+        with:
+          skip-github-pull-request: true

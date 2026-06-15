@@ -71,7 +71,7 @@ release candidate branch into `main`.
 - [ ] `.github/workflows/gitleaks.yml` is green for the publish branch.
 - [ ] `.github/workflows/rust-clippy.yml` is green.
 - [ ] `.github/workflows/release-please.yml` ignores docs-only and roadmap-only
-      pushes so documentation publishes do not churn release refs.
+      pushes and does not churn release-PR branches on main pushes.
 - [ ] `.github/workflows/tachi-mmdc-preflight.yml` is green.
 - [ ] `.github/workflows/tachi-pytest.yml` is either retired or scoped strictly to
       transitional compatibility with a documented deprecation plan.
