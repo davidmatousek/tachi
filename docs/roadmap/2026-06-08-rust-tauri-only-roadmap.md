@@ -10,8 +10,10 @@ Beads-ready execution slices
 This roadmap is the canonical sequencing document for the Rust/Tauri-only
 transition. It keeps the existing roadmap artifacts as the source of truth,
 adds a navigation hub in [implementation-backlog.md](./implementation-backlog.md),
-and expands the backlog into a Beads-ready hierarchy that can be executed one
-TDD slice at a time.
+points at the execution cards in
+[2026-06-08-rust-tauri-only-issue-cards.md](./2026-06-08-rust-tauri-only-issue-cards.md),
+and anchors the merge sequence in
+[2026-06-08-rust-tauri-only-merge-plan.md](./2026-06-08-rust-tauri-only-merge-plan.md).
 
 The work is intentionally ordered:
 
@@ -37,7 +39,8 @@ The backlog is organized as:
 - `Function` is the concrete function, command, fixture, or test seam.
 
 The Beads-ready template for each task lives in
-[implementation-backlog.md](./implementation-backlog.md).
+[implementation-backlog.md](./implementation-backlog.md), while the concrete
+issue-card and merge-plan pointers stay in the canonical roadmap artifacts.
 
 ## Stage Plan
 
