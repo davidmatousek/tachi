@@ -52,24 +52,18 @@ fn rt009_documentation_contract_is_rust_native() {
         fs::read_to_string(root.join("docs/roadmap/2026-06-08-rust-tauri-only-merge-plan.md"))
             .expect("rust tauri merge plan exists");
 
+    assert!(roadmap.contains("implementation-backlog.md"));
     assert!(roadmap.contains("rust-tauri-only-issue-cards.md"));
     assert!(roadmap.contains("rust-tauri-only-merge-plan.md"));
-    assert!(roadmap.contains("Current roadmap completion: 100% (6 of 6 cards complete)."));
-    assert!(roadmap.contains("| RT-010 | Complete |"));
-    assert!(roadmap.contains("| RT-011 | Complete |"));
-    assert!(roadmap.contains("| RT-012 | Complete |"));
-    assert!(roadmap.contains("| RT-013 | Complete |"));
-    assert!(roadmap.contains("| RT-014 | Complete |"));
-    assert!(roadmap.contains("| RT-015 | Complete |"));
-    assert!(issue_cards.contains("RT-010 - Freeze the Python surface inventory"));
-    assert!(issue_cards.contains("RT-015 - Optimize the Rust path for speed and reliability"));
-    assert!(issue_cards.contains("Current roadmap completion: 100% (6 of 6 cards complete)."));
-    assert!(issue_cards.contains("| RT-010 | Complete |"));
-    assert!(issue_cards.contains("| RT-011 | Complete |"));
-    assert!(issue_cards.contains("| RT-012 | Complete |"));
-    assert!(issue_cards.contains("| RT-013 | Complete |"));
-    assert!(issue_cards.contains("| RT-014 | Complete |"));
-    assert!(issue_cards.contains("| RT-015 | Complete |"));
+    assert!(roadmap.contains("Stage 0 | Inventory and contract freeze"));
+    assert!(roadmap.contains("Stage 5 | Performance, streaming, and formal assurance"));
+    assert!(roadmap.contains("Epic 1 - Rust Safety and Parser Hardening"));
+    assert!(roadmap.contains("Epic 5 - Performance, Streaming, and Formal Assurance"));
+    assert!(roadmap.contains("Beads-ready template for each task lives in"));
+    assert!(issue_cards.contains("RB-1.1 - Diagram parser boundary safety"));
+    assert!(issue_cards.contains("RB-5.6 - Contract invariants"));
+    assert!(issue_cards.contains("`Stage label`:"));
+    assert!(issue_cards.contains("`Capability bundle`:"));
     assert!(merge_plan.contains("docs(roadmap): add rust-tauri-only migration roadmap"));
     assert!(merge_plan.contains("test(docs): lock roadmap and issue-pack contract"));
 
