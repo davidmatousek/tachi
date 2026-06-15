@@ -190,6 +190,27 @@ Every card includes:
 - `Next test seam`: `docs/bill-of-materials.html.md`
 - `Notes`: Keep the BOM in sync with the release inventory.
 
+### RT-021 - docs-only release-please filter
+
+- `Epic`: Phase 3 - CI and release hardening
+- `Capability`: workflow hygiene
+- `Feature`: docs-only release safety
+- `Task`: skip release-please on docs-only and roadmap-only pushes so
+  documentation publishes do not churn release refs
+- `Function`: `.github/workflows/release-please.yml`
+- `Dependencies`: RT-017
+- `Acceptance criteria`:
+  - Docs-only pushes to `main` do not invoke release-please.
+  - Code and packaging pushes still invoke release-please.
+  - The workflow no longer fails on the docs-only publish path.
+- `Validation`:
+  - Workflow trigger review.
+  - Main-push smoke check after docs-only changes.
+- `Implementation owner`: `docs`
+- `Stage label`: Phase 3
+- `Next test seam`: `.github/workflows/release-please.yml`
+- `Notes`: Keep release automation active for code changes.
+
 ## Phase 4 - exceed `tachi`
 
 ### RT-019 - progress and cancel support

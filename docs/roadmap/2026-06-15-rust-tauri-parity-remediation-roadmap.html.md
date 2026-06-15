@@ -163,6 +163,16 @@ Goal: remove workflow drift and make releases reproducible.
   in CI
 - Validation: release checks run on all supported platforms
 
+### RT-021 - docs-only release-please filter
+
+- Epic: CI modernization
+- Capability: workflow hygiene
+- Feature: docs-only release safety
+- Task: skip release-please on docs-only and roadmap-only pushes so
+  documentation publishes do not churn release refs
+- Acceptance: docs-only pushes to `main` do not invoke release-please
+- Validation: main-push smoke check after docs-only changes
+
 Exit gate:
 
 - workflow version drift is removed
