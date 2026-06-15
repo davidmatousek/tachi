@@ -192,6 +192,7 @@ Goal: only after parity is proven, add Rust/Tauri-native advantages.
 - Acceptance: long-running commands can be cancelled without corrupting
   state
 - Validation: desktop integration test covers progress and cancel
+- Notes: Implemented in `feat/rt019-progress-cancel-support`; ready for merge
 
 ### RT-020 - offline bootstrap and update checks
 

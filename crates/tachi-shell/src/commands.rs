@@ -1,6 +1,9 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::process::Output;
+use std::process::Stdio;
+use std::thread::sleep;
+use std::time::Duration;
 
 use tachi_core::coverage_audit::{collect_audit, render};
 use tachi_core::infographic::build_infographic_payload;
@@ -11,6 +14,10 @@ use tachi_core::risk_scores::{
 };
 use tachi_core::sarif_common::{parse_component_metadata, prefix_for};
 use tachi_core::threats_sarif::{build_threats_sarif, ThreatSarifFinding};
+
+use crate::progress::{
+    emit_progress_event, CancellationToken, NoopProgressReporter, ProgressReporter,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ThreatsSarifOutput {
@@ -38,29 +45,118 @@ fn run_script_command(
     args: &[&str],
     repo_root: &Path,
 ) -> CommandOutput {
+    let token = CancellationToken::new();
+    let mut reporter = NoopProgressReporter;
+    run_script_command_with_progress(
+        script_dir,
+        script_name,
+        args,
+        repo_root,
+        &token,
+        &mut reporter,
+    )
+}
+
+pub(crate) fn run_script_command_with_progress(
+    script_dir: &Path,
+    script_name: &str,
+    args: &[&str],
+    repo_root: &Path,
+    token: &CancellationToken,
+    reporter: &mut dyn ProgressReporter,
+) -> CommandOutput {
+    emit_progress_event(reporter, script_name, "starting");
+    if token.is_cancelled() {
+        emit_progress_event(reporter, script_name, "cancelled");
+        return CommandOutput {
+            status: 130,
+            stdout: String::new(),
+            stderr: format!("{script_name} cancelled\n"),
+        };
+    }
+
     let script_path = script_dir.join(script_name);
     let cwd = script_dir.parent().unwrap_or(repo_root);
 
-    let result = Command::new(&script_path)
+    let spawn_result = Command::new(&script_path)
         .current_dir(cwd)
         .args(args)
-        .output();
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn();
 
-    match result {
-        Ok(Output {
-            status,
-            stdout,
-            stderr,
-        }) => CommandOutput {
-            status: status.code().unwrap_or(1),
-            stdout: String::from_utf8_lossy(&stdout).to_string(),
-            stderr: String::from_utf8_lossy(&stderr).to_string(),
-        },
-        Err(err) => CommandOutput {
-            status: 1,
-            stdout: String::new(),
-            stderr: format!("failed to execute {script_name}: {err}\n"),
-        },
+    let mut child = match spawn_result {
+        Ok(child) => child,
+        Err(err) => {
+            emit_progress_event(reporter, script_name, "failed");
+            return CommandOutput {
+                status: 1,
+                stdout: String::new(),
+                stderr: format!("failed to execute {script_name}: {err}\n"),
+            };
+        }
+    };
+
+    loop {
+        if token.is_cancelled() {
+            let _ = child.kill();
+            match child.wait_with_output() {
+                Ok(output) => {
+                    emit_progress_event(reporter, script_name, "cancelled");
+                    return CommandOutput {
+                        status: 130,
+                        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+                        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+                    };
+                }
+                Err(err) => {
+                    emit_progress_event(reporter, script_name, "cancelled");
+                    return CommandOutput {
+                        status: 130,
+                        stdout: String::new(),
+                        stderr: format!("{script_name} cancelled: {err}\n"),
+                    };
+                }
+            }
+        }
+
+        match child.try_wait() {
+            Ok(Some(_status)) => match child.wait_with_output() {
+                Ok(Output {
+                    status,
+                    stdout,
+                    stderr,
+                }) => {
+                    emit_progress_event(reporter, script_name, "completed");
+                    return CommandOutput {
+                        status: status.code().unwrap_or(1),
+                        stdout: String::from_utf8_lossy(&stdout).to_string(),
+                        stderr: String::from_utf8_lossy(&stderr).to_string(),
+                    };
+                }
+                Err(err) => {
+                    emit_progress_event(reporter, script_name, "failed");
+                    return CommandOutput {
+                        status: 1,
+                        stdout: String::new(),
+                        stderr: format!("failed to execute {script_name}: {err}\n"),
+                    };
+                }
+            },
+            Ok(None) => {
+                emit_progress_event(reporter, script_name, "running");
+                sleep(Duration::from_millis(10));
+            }
+            Err(err) => {
+                let _ = child.kill();
+                emit_progress_event(reporter, script_name, "failed");
+                return CommandOutput {
+                    status: 1,
+                    stdout: String::new(),
+                    stderr: format!("failed to monitor {script_name}: {err}\n"),
+                };
+            }
+        }
     }
 }
 

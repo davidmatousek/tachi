@@ -228,7 +228,7 @@ Every card includes:
 - `Implementation owner`: `src-tauri`
 - `Stage label`: Phase 4
 - `Next test seam`: `src-tauri/src/commands.rs`
-- `Notes`: Add this only after parity tests are green.
+- `Notes`: Implemented in `feat/rt019-progress-cancel-support`; ready for merge.
 
 ### RT-020 - offline bootstrap and update checks
 
