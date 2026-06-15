@@ -106,6 +106,14 @@ user|.claude/settings.json
 
 # .aod/ — template scripts and reusable templates
 owned|.aod/scripts/bash/**
+# template-substitute.sh + template-git.sh run LIVE during /aod.update and are the
+# two engine libs adopters harden (tachi: template-config-load/KV-load, gitleaks).
+# `merge` preserves the adopter's hardened copy AND warns when upstream changes them
+# — so engine improvements surface for manual integration instead of silently
+# clobbering (owned) or silently freezing (user). Narrow merge wins over the broad
+# owned glob via precedence. Durable fix: upstream the hardening. See #189.
+merge|.aod/scripts/bash/template-substitute.sh
+merge|.aod/scripts/bash/template-git.sh
 owned|.aod/templates/**
 
 # Template-owned manifest (this file itself)
@@ -130,7 +138,11 @@ owned|scripts/check-extract-coverage.sh
 owned|scripts/check-manifest-coverage.sh
 owned|scripts/extract.sh
 owned|scripts/extract-classification.txt
-owned|scripts/init.sh
+# init.sh is consumed only at bootstrap (one-shot); it has no post-init value, and
+# adopters harden it (tachi: ~351 lines — gitleaks, input validation). As `owned`
+# /aod.update clobbers that with zero upside. Fresh adopters still get the template
+# copy at clone time, before /aod.update is ever relevant. See #189.
+user|scripts/init.sh
 owned|scripts/reset-templates/**
 owned|scripts/sync-upstream.sh
 owned|scripts/update.sh
@@ -157,25 +169,30 @@ user|docs/architecture/04_deployment_environments/**
 user|docs/architecture/README.md
 owned|docs/branding/**
 owned|docs/core_principles/**
-# docs/devops/ — the methodology files (CI/CD guide, feature matrix, migration,
-# README) are owned. The per-environment subdirs hold the adopter's ACTUAL deploy
-# procedures (referenced by .claude/rules/deployment.md), paralleling
-# docs/architecture/04_deployment_environments/** — so they're user-owned. The
-# narrow user| entries win over the broad owned| via precedence (user > owned). See #187.
-owned|docs/devops/**
-user|docs/devops/01_Local/**
-user|docs/devops/02_Staging/**
-user|docs/devops/03_Production/**
+# docs/devops/ — the adopter's deploy/CI workspace. The template seeds substantive
+# guides at init (CI/CD guide, env READMEs), but adopters customize them with their
+# actual procedures — and every file carries {{PROJECT_NAME}}, so as `owned` it both
+# clobbers customization AND re-ships raw placeholders on update. The whole tree is
+# user-owned, paralleling docs/architecture/**. (Supersedes the #187 env-only split.) See #189.
+user|docs/devops/**
 owned|docs/guides/**
 owned|docs/stacks/**
 owned|docs/standards/**
+# standards/README.md is the adopter's standards index — they extend it with their
+# own entries. The methodology files in docs/standards/** stay owned (DoD, naming,
+# Triad — adopters inherit these). Narrow user wins over broad owned. See #189.
+user|docs/standards/README.md
 owned|docs/testing/**
 
 # stacks/ — per-pack content EXCEPT scaffold/ subdirs (those are ignored)
 owned|stacks/README.md
 owned|stacks/*/STACK.md
 owned|stacks/*/DOMAINS.md
-owned|stacks/*/defaults.env
+# defaults.env is sourced only at init to fill {{TECH_STACK_*}} placeholders for the
+# SELECTED pack; it has no post-init value, and adopters edit it (tachi: TECH_STACK
+# key). `scaffold` (copy-if-missing) preserves the adopter's copy while still seeding
+# a brand-new pack's defaults. See #189.
+scaffold|stacks/*/defaults.env
 owned|stacks/*/agents/**
 owned|stacks/*/rules/**
 owned|stacks/*/skills/**
