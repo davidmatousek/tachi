@@ -54,9 +54,14 @@ release candidate branch into `main`.
 ## 5. Documentation readiness
 
 - [ ] `README.md` matches the actual build, install, and usage path.
-- [ ] `docs/roadmap/implementation-backlog.md` points at the canonical roadmap,
-      issue pack, and issue-card set.
-- [ ] The roadmap and issue cards reflect the current stage sequencing.
+- [ ] `docs/roadmap/implementation-backlog.md` points at the active parity
+      roadmap, active issue cards, and archived provenance docs.
+- [ ] The active roadmap is
+      `docs/roadmap/2026-06-15-rust-tauri-parity-remediation-roadmap.html.md`.
+- [ ] The active Beads-ready issue set is
+      `docs/roadmap/2026-06-15-rust-tauri-parity-issue-cards.md`.
+- [ ] The archived roadmap docs are clearly marked historical only.
+- [ ] The roadmap and issue cards reflect the current phase sequencing.
 - [ ] Public docs do not promise unsupported features or outdated workflows.
 - [ ] Release notes, changelog entries, and user-facing examples are current and
       redaction-safe.

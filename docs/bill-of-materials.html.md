@@ -79,11 +79,14 @@ temporary scratch state, or a local-only worktree artifact.
 
 | Path | Purpose | Publish note |
 |---|---|---|
-| `docs/roadmap/implementation-backlog.md` | Backlog navigation hub | Canonical link target for implementation sequencing. |
-| `docs/roadmap/2026-06-08-rust-tauri-only-roadmap.md` | Implementation roadmap | Canonical staging, dependency, and validation plan. |
-| `docs/roadmap/2026-06-08-rust-tauri-only-issue-cards.md` | Execution cards | Copy-paste Beads issue templates. |
-| `docs/roadmap/2026-06-04-rust-tauri-issue-pack.md` | Historical tracker-neutral pack | Keep synchronized with the canonical roadmap. |
+| `docs/roadmap/implementation-backlog.md` | Backlog navigation hub | Canonical link target for active implementation sequencing. |
+| `docs/roadmap/2026-06-15-rust-tauri-parity-remediation-roadmap.html.md` | Active remediation roadmap | Canonical parity-first staging, dependency, and validation plan. |
+| `docs/roadmap/2026-06-15-rust-tauri-parity-issue-cards.md` | Active execution cards | Copy-paste Beads issue templates for the parity phases. |
+| `docs/roadmap/2026-06-04-rust-tauri-issue-pack.md` | Historical tracker-neutral pack | Archived provenance for the earlier migration plan. |
+| `docs/roadmap/2026-06-08-rust-tauri-only-roadmap.md` | Archived implementation roadmap | Historical planning snapshot, not active scope. |
+| `docs/roadmap/2026-06-08-rust-tauri-only-issue-cards.md` | Archived execution cards | Historical Beads-ready backlog from the superseded plan. |
 | `docs/roadmap/2026-06-08-python-surface-inventory.md` | Frozen migration evidence | Historical reference, not the active surface. |
+| `docs/publish-readiness-checklist.html.md` | Publish gate checklist | Required pre-push security, privacy, docs, and CI gate. |
 | `docs/standards/PUBLISHING_SECURITY.md` | Security and privacy publish gate | Must remain the security policy source for public pushes. |
 | `docs/standards/PRECOMMIT_HOOKS.md` | Secret-scanning hook guide | Security gate for staged content and local commits. |
 | `docs/changelog.html` | Release chronology | Must remain redaction-safe. |
@@ -149,6 +152,10 @@ privacy, doc accuracy, and release readiness before `main` is pushed to
 ## Publish Evidence Checklist (required before push)
 
 - [ ] `rg "actions/checkout@v4" .github/workflows` returns no matches.
+- [ ] `docs/roadmap/implementation-backlog.md` points at the active parity roadmap and issue cards.
+- [ ] The active roadmap is `docs/roadmap/2026-06-15-rust-tauri-parity-remediation-roadmap.html.md`.
+- [ ] The active Beads-ready issue cards are `docs/roadmap/2026-06-15-rust-tauri-parity-issue-cards.md`.
+- [ ] Archived roadmap docs are clearly marked as historical only.
 - [ ] `git status --short --branch` has no unexpected untracked or dirty state.
 - [ ] `cargo test -q` and `make llvm-cov` are green on the release candidate branch.
 - [ ] `cargo clippy --all-targets -- -D warnings` is clean.
