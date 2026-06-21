@@ -69,6 +69,7 @@ release candidate branch into `main`.
 - [ ] The roadmap and issue cards reflect the current phase sequencing.
 - [ ] The DOC-00X documentation-update plan remains separate from the parity
       and docs-sweep tracks.
+- [ ] `make docs-version-gate` passes.
 - [ ] Public docs do not promise unsupported features or outdated workflows.
 - [ ] Release notes, changelog entries, and user-facing examples are current and
       redaction-safe.
@@ -83,6 +84,7 @@ release candidate branch into `main`.
 - [ ] `.github/workflows/tachi-mmdc-preflight.yml` is green.
 - [ ] `.github/workflows/tachi-pytest.yml` is either retired or scoped strictly to
       transitional compatibility with a documented deprecation plan.
+- [ ] The docs/version gate is green on the current branch.
 - [ ] Any release workflow required for the branch has succeeded or is queued
       without failures.
 - [ ] GitHub Actions status was checked after the last merge or rebase.

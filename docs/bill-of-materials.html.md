@@ -137,7 +137,7 @@ The repository policy for these surfaces is:
 | Diff hygiene | `git diff --check` | No whitespace or patch-format issues. |
 | Secret scan | `pre-commit run --all-files` or `gitleaks` / CI workflow | No secrets or private data leak into the publish set. |
 | Docs gate | README and docs cross-links | Public docs match the shipped behavior. |
-| Docs/version sweep | `rg "actions/checkout@v[0-6]|actions-rs/toolchain@|github/codeql-action/upload-sarif@v3|codeql/upload-sarif@v3|::set-output|Node 20" docs examples` | Maintained docs are current, examples stay synthetic, and archival snippets are labeled historical. |
+| Docs/version sweep | `make docs-version-gate` | Maintained docs are current and examples stay synthetic. |
 | CI gate | GitHub Actions run status | Release and security workflows are green. |
 | Release-please gate | `release-please.yml` push filter | Docs-only publishes do not churn release refs and push runs avoid PR-branch churn. |
 | Workflow hardening | `rg "actions/checkout@v[0-6]|actions-rs/toolchain@|github/codeql-action/upload-sarif@v3|::set-output" .github/workflows` | No legacy checkout, toolchain, SARIF, or set-output usage remains. |
@@ -166,6 +166,7 @@ privacy, doc accuracy, and release readiness before `main` is pushed to
 - [ ] The active docs-sweep roadmap is `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-roadmap.html.md`.
 - [ ] The active docs-sweep Beads cards are `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-issue-cards.md`.
 - [ ] Archived roadmap docs are clearly marked as historical only.
+- [ ] `make docs-version-gate` passes.
 - [ ] `git status --short --branch` has no unexpected untracked or dirty state.
 - [ ] `cargo test -q` and `make llvm-cov` are green on the release candidate branch.
 - [ ] `cargo clippy --all-targets -- -D warnings` is clean.

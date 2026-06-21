@@ -1116,8 +1116,8 @@ jobs:
   upload-sarif:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/upload-sarif@v3
+      - uses: actions/checkout@v7
+      - uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: docs/security/threats.sarif
 ```
@@ -1688,11 +1688,11 @@ jobs:
   threat-model:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Upload existing SARIF (generated locally or in a prior step)
       - name: Upload threat model results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: docs/security/threats.sarif
           category: threat-model

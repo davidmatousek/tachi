@@ -1092,7 +1092,7 @@ graph LR
 | YAML | Frontmatter metadata, VERSION manifest | Standard for config in all target platforms |
 | Bash | VERSION file generation script | Lightweight, no runtime dependencies |
 | GitHub Actions YAML | CI workflow definition | Standard for GitHub CI/CD |
-| `codeql/upload-sarif@v3` | SARIF upload to Code Scanning | GitHub's official SARIF upload action |
+| `codeql/upload-sarif@v4` | SARIF upload to Code Scanning | GitHub's official SARIF upload action |
 
 ---
 

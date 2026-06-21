@@ -165,7 +165,7 @@ The wrapper is **LOCAL-ONLY**: the CI parity workflow (§6) invokes gitleaks dir
 1. Downloads the gitleaks v8.30.1 binary directly from the GitHub release tarball.
 2. Verifies the binary against the upstream SHA256 checksum (`gitleaks_8.30.1_checksums.txt`).
 3. Runs `gitleaks git --config=.gitleaks.toml --report-format sarif` against full history (`fetch-depth: 0`).
-4. Uploads the SARIF report to GitHub Code Scanning via `github/codeql-action/upload-sarif@v3`. Findings appear inline on the PR Files-changed tab.
+4. Uploads the SARIF report to GitHub Code Scanning via `github/codeql-action/upload-sarif@v4`. Findings appear inline on the PR Files-changed tab.
 
 The workflow does NOT use the proprietary `gitleaks-action@v2` (which requires a paid `GITLEAKS_LICENSE` secret for org repos). Native binary invocation preserves SARIF compatibility, avoids the org-wide license trap, and keeps the supply chain auditable (one downloaded artifact verified by a published checksum).
 
