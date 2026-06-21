@@ -30,6 +30,7 @@ until the critical gaps are closed and proven with tests.
 - Schema and fixture contract RT-011 is implemented and validated.
 - Deterministic normalization helper RT-012 is implemented and validated.
 - Tauri command allowlist parity RT-013 is implemented and validated.
+- Desktop invoke contract validation RT-014 is implemented and validated.
 - Parser regression coverage RT-016 is implemented and validated.
 - CI and release hardening RT-017, RT-018, RT-021, and RT-022 are
   implemented and validated.
@@ -115,6 +116,7 @@ Exit gate:
 - desktop integration tests pass
 - CLI and Tauri command names are aligned
 - no bridge path depends on Python or shell-script fallback behavior
+- Notes: Implemented in `src-tauri/src/schema.rs` and `src-tauri/src/lib.rs`; validated by schema, bridge, and registry tests.
 
 ## Phase 2 - output contract parity
 

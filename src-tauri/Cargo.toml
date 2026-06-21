@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 sha2 = "0.10"
+serde_json = "1"
 tachi-shell = { path = "../crates/tachi-shell" }
 
 [dev-dependencies]

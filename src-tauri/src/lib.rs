@@ -1,11 +1,11 @@
 use std::path::Path;
 
-use tachi_shell::commands::CommandOutput;
 use tachi_shell::tauri_bridge::{dispatch_command, dispatch_command_with_progress};
 
 pub mod offline;
 pub mod registry;
 pub mod release_artifacts;
+pub mod schema;
 
 pub const DESKTOP_COMMANDS: [&str; 9] = [
     "install",
@@ -20,7 +20,16 @@ pub const DESKTOP_COMMANDS: [&str; 9] = [
 ];
 
 pub fn dispatch_desktop_command(command: &str, repo_root: &Path, args: &[&str]) -> CommandOutput {
-    dispatch_command(command, repo_root, args)
+    if let Err(message) = validate_invoke_input(command, repo_root, args).map(|_| ()) {
+        return schema_error_output(command, message, 2);
+    }
+
+    let output = dispatch_command(command, repo_root, args);
+    if let Err(message) = validate_invoke_output(command, &output) {
+        return schema_error_output(command, message, 1);
+    }
+
+    output
 }
 
 pub fn dispatch_desktop_command_with_progress(
@@ -30,7 +39,16 @@ pub fn dispatch_desktop_command_with_progress(
     token: &tachi_shell::progress::CancellationToken,
     reporter: &mut dyn tachi_shell::progress::ProgressReporter,
 ) -> CommandOutput {
-    dispatch_command_with_progress(command, repo_root, args, token, reporter)
+    if let Err(message) = validate_invoke_input(command, repo_root, args).map(|_| ()) {
+        return schema_error_output(command, message, 2);
+    }
+
+    let output = dispatch_command_with_progress(command, repo_root, args, token, reporter);
+    if let Err(message) = validate_invoke_output(command, &output) {
+        return schema_error_output(command, message, 1);
+    }
+
+    output
 }
 
 pub fn registered_commands() -> &'static [&'static str] {
@@ -52,3 +70,15 @@ pub use release_artifacts::{
     build_release_manifest, validate_package_contents, verify_checksum_matrix,
     PackageContentReport, ReleaseArtifact, ReleaseManifest,
 };
+pub use schema::{
+    render_schema_error, validate_invoke_input, validate_invoke_output, DesktopInvokeInput,
+};
+pub use tachi_shell::commands::CommandOutput;
+
+fn schema_error_output(command: &str, message: String, status: i32) -> CommandOutput {
+    CommandOutput {
+        status,
+        stdout: String::new(),
+        stderr: format!("{}\n", render_schema_error(command, &message)),
+    }
+}

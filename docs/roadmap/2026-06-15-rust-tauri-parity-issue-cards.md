@@ -26,9 +26,9 @@ Every card includes:
 
 ## Current Status Snapshot
 
-- Open: RT-014
+- Open: none
 - Partial: RT-015
-- Done: RT-010, RT-011, RT-012, RT-013, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
+- Done: RT-010, RT-011, RT-012, RT-013, RT-014, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
 
 ## Phase 0 - parity harness
 
@@ -128,7 +128,7 @@ Every card includes:
 - `Implementation owner`: `src-tauri`
 - `Stage label`: Phase 1
 - `Next test seam`: `src-tauri/src/commands.rs`
-- `Notes`: Preserve the same error shape for CLI and desktop callers.
+- `Notes`: Implemented in `src-tauri/src/schema.rs` and `src-tauri/src/lib.rs`; validated by schema, bridge, and registry tests.
 
 ## Phase 2 - output contract parity
 
