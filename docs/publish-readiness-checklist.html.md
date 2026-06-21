@@ -5,8 +5,15 @@
 **Purpose**: confirm `tachi-rust` is ready to publish to `origin/main`
 **Scope**: security, privacy, docs, tests, coverage, CI, and release hygiene
 
-Use this checklist before pushing `main` to remote origin or before promoting a
-release candidate branch into `main`.
+Use this checklist before publishing to GitHub or cutting a release.
+
+## 0. Canonical publish sequence
+
+- [ ] `pre-commit run --all-files` or the equivalent `gitleaks` scan passes.
+- [ ] `make publish-gate` passes on the release candidate branch.
+- [ ] `git push origin main --follow-tags` is the intended publish command.
+- [ ] `gh run list --branch main --limit 10` is ready for post-push monitoring.
+- [ ] `gh run watch <run-id>` will be used until the publish workflow completes.
 
 ## 1. Repository hygiene
 
@@ -28,11 +35,16 @@ release candidate branch into `main`.
       vulnerability reporting.
 - [ ] The BOM at [bill-of-materials.html.md](./bill-of-materials.html.md) was
       reviewed for any sensitive surfaces that need redaction.
+- [ ] `README.md`, `SECURITY.md`, `CHANGELOG.md`, and the public docs under
+      `docs/` do not leak private paths, credentials, internal-only status, or
+      unreleased operational details.
 
 ## 3. Secret scanning
 
 - [ ] `pre-commit run --all-files` passes, or the equivalent gitleaks command has
       been run successfully.
+- [ ] The secret scan covers committed examples, fixtures, docs, generated
+      reports, and workflow files.
 - [ ] `.github/workflows/gitleaks.yml` is present and matches the local secret
       scan policy.
 - [ ] Any legitimate placeholder or fixture match is documented and justified.
@@ -45,7 +57,7 @@ release candidate branch into `main`.
 - [ ] Parser hardening regression tests pass, including delta-count normalization and panic-free status handling.
 - [ ] Reporting goldens pass for coverage, report, threat, risk, and infographic outputs.
 - [ ] `cargo clippy --all-targets -- -D warnings` passes.
-- [ ] `make llvm-cov` passes and the coverage floor remains above the repo
+- [ ] `make llvm-cov` passes and the coverage floor remains above the project
       baseline.
 - [ ] Any benchmark or regression gate referenced by the roadmap has its current
       baseline recorded.
@@ -54,7 +66,9 @@ release candidate branch into `main`.
 
 ## 5. Documentation readiness
 
-- [ ] `README.md` matches the actual build, install, and usage path.
+- [ ] `README.md` matches the actual build, install, usage, and release path.
+- [ ] `SECURITY.md` matches the current private-reporting and privacy policy.
+- [ ] `CHANGELOG.md` is redaction-safe and reflects only releasable notes.
 - [ ] `docs/roadmap/implementation-backlog.md` points at the active parity
       roadmap, active docs sweep roadmap, and archived provenance docs.
 - [ ] The active parity roadmap is
@@ -69,6 +83,8 @@ release candidate branch into `main`.
 - [ ] The roadmap and issue cards reflect the current phase sequencing.
 - [ ] The DOC-00X documentation-update plan remains separate from the parity
       and docs-sweep tracks.
+- [ ] `docs/bill-of-materials.html.md` and `docs/publish-readiness-checklist.html.md`
+      agree on the publish gate, security surfaces, and remote publication flow.
 - [ ] `make docs-version-gate` passes.
 - [ ] `make docs-archive-version-gate` passes.
 - [ ] Public docs do not promise unsupported features or outdated workflows.
@@ -86,6 +102,7 @@ release candidate branch into `main`.
 - [ ] `.github/workflows/tachi-pytest.yml` is either retired or scoped strictly to
       transitional compatibility with a documented deprecation plan.
 - [ ] The docs/version gate is green on the current branch.
+- [ ] The release artifact gate and checksum matrix pass via `make publish-gate`.
 - [ ] Any release workflow required for the branch has succeeded or is queued
       without failures.
 - [ ] GitHub Actions status was checked after the last merge or rebase.
@@ -104,6 +121,8 @@ release candidate branch into `main`.
 gh run list --branch main --limit 10
 gh run watch <run-id>
 ```
+- [ ] The CI monitor runs until the relevant release, lint, security, and docs
+      jobs all finish successfully.
 
 ## 8. Publish decision
 

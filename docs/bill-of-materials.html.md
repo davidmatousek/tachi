@@ -24,6 +24,21 @@ This BOM is the authoritative inventory for publication review. If a file or
 directory is not listed here, it is either internal implementation detail,
 temporary scratch state, or a local-only worktree artifact.
 
+## Public-Facing Documents
+
+These are the documents that must stay current, redaction-safe, and aligned
+with the shipped release workflow before publication.
+
+| Path | Role | Publish status | Notes |
+|---|---|---|---|
+| `README.md` | Repository landing page | Publishable | Must describe the current install, usage, and release path without stale workflow guidance. |
+| `SECURITY.md` | Security policy | Publishable | Private vulnerability reporting only; keep public disclosure guidance current. |
+| `CHANGELOG.md` | Release history | Publishable | Redaction-safe release notes only. |
+| `docs/bill-of-materials.html.md` | Publish inventory | Publishable | Canonical inventory of publication surfaces and validation gates. |
+| `docs/publish-readiness-checklist.html.md` | Publish readiness checklist | Publishable | Required pre-push gate for security, privacy, docs, CI, and release hygiene. |
+| `docs/standards/PUBLISHING_SECURITY.md` | Security and privacy gate | Publishable | Source of truth for public-push safety rules and disclosure boundaries. |
+| `docs/standards/PRECOMMIT_HOOKS.md` | Secret-scanning hook guide | Publishable with review | Must not imply weaker scanning than the current gate. |
+
 ## Top-Level Inventory
 
 | Path | Role | Publish status | Notes |
@@ -123,6 +138,7 @@ The repository policy for these surfaces is:
 1. Keep public examples synthetic or redacted.
 1. Route security issues through private disclosure, not public issue trackers.
 1. Re-scan before publish and again after release merges.
+1. Keep `README.md`, `CHANGELOG.md`, and all release-facing docs free of private paths, tokens, usernames, and unredacted operational details.
 
 ## Validation BOM
 
@@ -135,10 +151,12 @@ The repository policy for these surfaces is:
 | Coverage gate | `make llvm-cov` | Coverage remains above the repo floor. |
 | Reporting goldens | `cargo test -p tachi-core --test reporting_goldens -- --nocapture` | Canonical report, threat, risk, coverage, and infographic outputs remain stable. |
 | Diff hygiene | `git diff --check` | No whitespace or patch-format issues. |
-| Secret scan | `pre-commit run --all-files` or `gitleaks` / CI workflow | No secrets or private data leak into the publish set. |
-| Docs gate | README and docs cross-links | Public docs match the shipped behavior. |
+| Secret scan | `pre-commit run --all-files` or `gitleaks` / CI workflow | No secrets or private data leak into the publish set, including examples, fixtures, logs, and generated docs. |
+| Docs gate | `README.md`, `SECURITY.md`, `CHANGELOG.md`, and public docs cross-links | Public docs match the shipped behavior and the disclosure policy. |
 | Docs/version sweep | `make docs-version-gate` + `make docs-archive-version-gate` | Maintained docs stay current; archived docs and examples retain only intentional historical references. |
-| CI gate | GitHub Actions run status | Release and security workflows are green. |
+| Publish gate | `make publish-gate` | The release candidate passes the full local publish-readiness suite before remote publication. |
+| CI gate | GitHub Actions run status | Release, security, lint, and docs workflows are green. |
+| Remote monitor | `git push origin main --follow-tags` + `gh run watch` | Post-push CI is observed to completion before the release is considered published. |
 | Release-please gate | `release-please.yml` push filter | Docs-only publishes do not churn release refs and push runs avoid PR-branch churn. |
 | Workflow hardening | `rg "actions/checkout@v[0-6]|actions-rs/toolchain@|github/codeql-action/upload-sarif@v3|::set-output" .github/workflows` | No legacy checkout, toolchain, SARIF, or set-output usage remains. |
 
