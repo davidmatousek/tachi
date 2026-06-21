@@ -26,9 +26,9 @@ Every card includes:
 
 ## Current Status Snapshot
 
-- Open: RT-010, RT-011, RT-012, RT-013, RT-014
+- Open: RT-011, RT-012, RT-013, RT-014
 - Partial: RT-015
-- Done: RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
+- Done: RT-010, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
 
 ## Phase 0 - parity harness
 
@@ -49,7 +49,8 @@ Every card includes:
 - `Implementation owner`: `tachi-shell`
 - `Stage label`: Phase 0
 - `Next test seam`: `crates/tachi-shell/src/commands.rs`
-- `Notes`: Keep the harness small enough to run on every PR.
+- `Notes`: Implemented in `src-tauri/tests/registry_diff.rs`; validated by
+  registry diff tests and bridge regression tests.
 
 ### RT-011 - schema and fixture contract
 

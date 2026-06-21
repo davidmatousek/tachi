@@ -26,6 +26,7 @@ until the critical gaps are closed and proven with tests.
 
 ## Resolved in repo
 
+- Command registry diff harness RT-010 is implemented and validated.
 - Parser regression coverage RT-016 is implemented and validated.
 - CI and release hardening RT-017, RT-018, RT-021, and RT-022 are
   implemented and validated.

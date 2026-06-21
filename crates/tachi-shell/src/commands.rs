@@ -19,6 +19,9 @@ use crate::progress::{
     emit_progress_event, CancellationToken, NoopProgressReporter, ProgressReporter,
 };
 
+pub const CONTROL_PLANE_COMMANDS: [&str; 5] =
+    ["install", "init", "update", "bootstrap", "infographic-data"];
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ThreatsSarifOutput {
     pub sarif: String,
@@ -37,6 +40,10 @@ pub struct CommandOutput {
     pub status: i32,
     pub stdout: String,
     pub stderr: String,
+}
+
+pub fn control_plane_commands() -> &'static [&'static str] {
+    &CONTROL_PLANE_COMMANDS
 }
 
 fn run_script_command(
