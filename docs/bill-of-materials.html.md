@@ -80,8 +80,12 @@ temporary scratch state, or a local-only worktree artifact.
 | Path | Purpose | Publish note |
 |---|---|---|
 | `docs/roadmap/implementation-backlog.md` | Backlog navigation hub | Canonical link target for active implementation sequencing. |
-| `docs/roadmap/2026-06-15-rust-tauri-parity-remediation-roadmap.html.md` | Active remediation roadmap | Canonical parity-first staging, dependency, and validation plan. |
-| `docs/roadmap/2026-06-15-rust-tauri-parity-issue-cards.md` | Active execution cards | Copy-paste Beads issue templates for the parity phases. |
+| `docs/roadmap/2026-06-21-rust-tauri-parity-remediation-roadmap.html.md` | Active parity roadmap | Canonical Rust/Tauri parity rebaseline and supersession plan. |
+| `docs/roadmap/2026-06-21-rust-tauri-parity-issue-cards.md` | Active parity execution cards | Copy-paste Beads issue templates for the parity phases. |
+| `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-roadmap.html.md` | Active docs hygiene roadmap | Separate docs-only sweep for stale workflow-version references. |
+| `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-issue-cards.md` | Active docs sweep cards | Copy-paste Beads issue templates for docs/version hygiene. |
+| `docs/roadmap/2026-06-15-rust-tauri-parity-remediation-roadmap.html.md` | Archived parity roadmap | Historical snapshot of the earlier parity plan. |
+| `docs/roadmap/2026-06-15-rust-tauri-parity-issue-cards.md` | Archived parity cards | Historical Beads-ready backlog for the earlier parity track. |
 | `docs/roadmap/2026-06-04-rust-tauri-issue-pack.md` | Historical tracker-neutral pack | Archived provenance for the earlier migration plan. |
 | `docs/roadmap/2026-06-08-rust-tauri-only-roadmap.md` | Archived implementation roadmap | Historical planning snapshot, not active scope. |
 | `docs/roadmap/2026-06-08-rust-tauri-only-issue-cards.md` | Archived execution cards | Historical Beads-ready backlog from the superseded plan. |
@@ -133,6 +137,7 @@ The repository policy for these surfaces is:
 | Diff hygiene | `git diff --check` | No whitespace or patch-format issues. |
 | Secret scan | `pre-commit run --all-files` or `gitleaks` / CI workflow | No secrets or private data leak into the publish set. |
 | Docs gate | README and docs cross-links | Public docs match the shipped behavior. |
+| Docs/version sweep | `rg "actions/checkout@v[0-6]|actions-rs/toolchain@|github/codeql-action/upload-sarif@v3|codeql/upload-sarif@v3|::set-output|Node 20" docs examples` | Maintained docs are current, examples stay synthetic, and archival snippets are labeled historical. |
 | CI gate | GitHub Actions run status | Release and security workflows are green. |
 | Release-please gate | `release-please.yml` push filter | Docs-only publishes do not churn release refs and push runs avoid PR-branch churn. |
 | Workflow hardening | `rg "actions/checkout@v[0-6]|actions-rs/toolchain@|github/codeql-action/upload-sarif@v3|::set-output" .github/workflows` | No legacy checkout, toolchain, SARIF, or set-output usage remains. |
@@ -155,8 +160,11 @@ privacy, doc accuracy, and release readiness before `main` is pushed to
 
 - [ ] `rg "actions/checkout@v[0-6]|actions-rs/toolchain@|github/codeql-action/upload-sarif@v3|::set-output" .github/workflows` returns no matches.
 - [ ] `docs/roadmap/implementation-backlog.md` points at the active parity roadmap and issue cards.
-- [ ] The active roadmap is `docs/roadmap/2026-06-15-rust-tauri-parity-remediation-roadmap.html.md`.
-- [ ] The active Beads-ready issue cards are `docs/roadmap/2026-06-15-rust-tauri-parity-issue-cards.md`.
+- [ ] `docs/roadmap/implementation-backlog.md` points at the active parity roadmap, the active docs sweep roadmap, and archived provenance docs.
+- [ ] The active parity roadmap is `docs/roadmap/2026-06-21-rust-tauri-parity-remediation-roadmap.html.md`.
+- [ ] The active parity Beads cards are `docs/roadmap/2026-06-21-rust-tauri-parity-issue-cards.md`.
+- [ ] The active docs-sweep roadmap is `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-roadmap.html.md`.
+- [ ] The active docs-sweep Beads cards are `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-issue-cards.md`.
 - [ ] Archived roadmap docs are clearly marked as historical only.
 - [ ] `git status --short --branch` has no unexpected untracked or dirty state.
 - [ ] `cargo test -q` and `make llvm-cov` are green on the release candidate branch.
