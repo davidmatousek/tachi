@@ -26,9 +26,9 @@ Every card includes:
 
 ## Current Status Snapshot
 
-- Open: RT-012, RT-013, RT-014
+- Open: RT-013, RT-014
 - Partial: RT-015
-- Done: RT-010, RT-011, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
+- Done: RT-010, RT-011, RT-012, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
 
 ## Phase 0 - parity harness
 
@@ -88,7 +88,8 @@ Every card includes:
 - `Implementation owner`: `tachi-core`
 - `Stage label`: Phase 0
 - `Next test seam`: `crates/tachi-core/src/parsers/findings.rs`
-- `Notes`: Do not duplicate normalization in command code.
+- `Notes`: Implemented in `crates/tachi-core/src/normalization.rs` and used by
+  the findings parser plus fixture canonicalization.
 
 ## Phase 1 - critical parity closure
 

@@ -1,8 +1,8 @@
-use std::collections::BTreeMap;
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+
+use crate::normalization::normalize_value;
 
 pub const FIXTURE_SCHEMA_VERSION: u32 = 1;
 
@@ -78,19 +78,4 @@ fn canonical_json(value: &Value) -> Result<String, String> {
     let normalized = normalize_value(value);
     serde_json::to_string(&normalized)
         .map_err(|err| format!("failed to serialize canonical fixture payload: {err}"))
-}
-
-fn normalize_value(value: &Value) -> Value {
-    match value {
-        Value::Array(items) => Value::Array(items.iter().map(normalize_value).collect()),
-        Value::Object(map) => {
-            let mut sorted = BTreeMap::new();
-            for (key, value) in map {
-                sorted.insert(key.clone(), normalize_value(value));
-            }
-            let object = sorted.into_iter().collect();
-            Value::Object(object)
-        }
-        other => other.clone(),
-    }
 }

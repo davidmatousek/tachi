@@ -1,10 +1,12 @@
 use std::path::Path;
+use serde_json::json;
 use tachi_core::parsers::{
     compute_delta_counts, compute_has_source_attribution, escape_typst_string, parse_component_asset_map,
     parse_finding_pattern, parse_markdown_table, parse_project_name, parse_threats_findings,
     strip_bold, validate_source_attribution, ResolvedFinding, ThreatFinding, VALID_AGENTIC_PATTERNS,
     VALID_ASSET_TAGS,
 };
+use tachi_core::normalization::{normalize_optional_text, normalize_value, stable_trim_text};
 
 static PARSER_TEMP_DIR_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
@@ -262,6 +264,42 @@ fn finding_pattern_parser_contract_is_rust_native() {
             .map(|finding| finding.agentic_pattern.as_str())
             .collect::<Vec<_>>(),
         vec!["trust_exploitation", "agent_collusion", "none"]
+    );
+}
+
+#[test]
+fn normalize_value_trims_strings_and_stably_orders_nested_objects() {
+    assert_eq!(stable_trim_text("  padded  "), "padded");
+    assert_eq!(
+        normalize_optional_text(Some("  ready  ")),
+        Some(String::from("ready"))
+    );
+    assert_eq!(normalize_optional_text(Some("   ")), None);
+    assert_eq!(normalize_optional_text(None), None);
+
+    let payload = json!({
+        "z": "  tail  ",
+        "nested": {
+            "b": "  bravo ",
+            "a": null,
+            "c": [" first ", {"d": " second "}],
+        },
+        "keep": 3,
+    });
+
+    let normalized = normalize_value(&payload);
+
+    assert_eq!(
+        normalized,
+        json!({
+            "keep": 3,
+            "nested": {
+                "a": null,
+                "b": "bravo",
+                "c": ["first", {"d": "second"}],
+            },
+            "z": "tail",
+        })
     );
 }
 

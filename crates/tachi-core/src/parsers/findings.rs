@@ -2,6 +2,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
+use crate::normalization::{
+    normalize_lower_text, normalize_optional_text, normalize_upper_text, stable_trim_text,
+};
 use crate::parsers::table::parse_markdown_table;
 
 pub const VALID_AGENTIC_PATTERNS: [&str; 8] = [
@@ -81,11 +84,11 @@ pub struct ValidationError {
 }
 
 pub fn parse_finding_pattern(input: Option<&str>) -> String {
-    let Some(raw) = input.map(str::trim).filter(|value| !value.is_empty()) else {
+    let Some(raw) = input.map(stable_trim_text).filter(|value| !value.is_empty()) else {
         return String::from("none");
     };
 
-    let normalized = raw.to_ascii_lowercase().replace('-', "_");
+    let normalized = normalize_lower_text(raw).replace('-', "_");
     if normalized == "—" || normalized == "none" || normalized == "_" {
         return String::from("none");
     }
@@ -179,7 +182,7 @@ pub fn compute_delta_counts(
 
     for finding in findings {
         if let Some(status) = finding.delta_status.as_ref() {
-            match status.trim().to_ascii_uppercase().as_str() {
+            match normalize_upper_text(status).as_str() {
                 "NEW" => {
                     if let Some(total) = counts.get_mut("new") {
                         *total += 1;
@@ -255,11 +258,11 @@ fn accumulate_severity_rows(
 }
 
 fn parse_count(value: &str) -> usize {
-    value.trim().parse::<usize>().unwrap_or(0)
+    stable_trim_text(value).parse::<usize>().unwrap_or(0)
 }
 
 fn parse_total_count(value: &str) -> Option<(usize, Option<usize>)> {
-    let value = value.trim();
+    let value = stable_trim_text(value);
     let start = value
         .chars()
         .take_while(|ch| ch.is_ascii_digit())
@@ -287,7 +290,7 @@ pub fn parse_threats_findings(content: &str) -> Result<Vec<ThreatFinding>, Strin
     let pattern_key = rows[0]
         .keys()
         .find(|key| {
-            let lowered = key.trim().to_ascii_lowercase();
+            let lowered = normalize_lower_text(key);
             lowered == "pattern" || lowered == "agentic pattern"
         })
         .cloned();
@@ -301,7 +304,7 @@ pub fn parse_threats_findings(content: &str) -> Result<Vec<ThreatFinding>, Strin
             .as_ref()
             .and_then(|block| block.get(&id).cloned());
 
-        let mut finding = ThreatFinding {
+        let finding = ThreatFinding {
             id: id.clone(),
             component: row.get("Component").cloned().unwrap_or_default(),
             threat: row.get("Threat").cloned().unwrap_or_default(),
@@ -313,18 +316,9 @@ pub fn parse_threats_findings(content: &str) -> Result<Vec<ThreatFinding>, Strin
                 .as_ref()
                 .map(|key| parse_finding_pattern(row.get(key).map(|s| s.as_str())))
                 .unwrap_or_else(|| String::from("none")),
-            delta_status: row
-                .get("Status")
-                .cloned()
-                .filter(|status| !status.trim().is_empty()),
+            delta_status: normalize_optional_text(row.get("Status").map(|status| status.as_str())),
             source_attribution,
         };
-
-        if let Some(delta_status) = finding.delta_status.as_ref() {
-            if delta_status.trim().is_empty() {
-                finding.delta_status = None;
-            }
-        }
 
         findings.push(finding);
     }
