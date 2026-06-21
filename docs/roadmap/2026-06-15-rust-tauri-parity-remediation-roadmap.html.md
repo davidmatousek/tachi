@@ -133,6 +133,8 @@ the important command families.
 - Acceptance: fixtures cover the primary command families and the edge
   cases that previously drifted
 - Validation: snapshot tests compare against canonical fixtures
+- Notes: Implemented in `crates/tachi-core/tests/reporting_goldens.rs`;
+  validated by reporting goldens tests
 
 ### RT-016 - parser regression suite
 

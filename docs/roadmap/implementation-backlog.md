@@ -1,6 +1,6 @@
 # Implementation Backlog
 
-**Last Updated**: 2026-06-15
+**Last Updated**: 2026-06-21
 **Purpose**: navigation hub for the Beads-ready Rust/Tauri implementation backlog
 **Scope**: roadmap sequencing, issue-pack pointers, and task-template guidance
 
@@ -13,8 +13,8 @@
 ## Current Status Snapshot
 
 - Open: none
-- Partial: RT-015
-- Done: RT-010, RT-011, RT-012, RT-013, RT-014, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
+- Partial: none
+- Done: RT-010, RT-011, RT-012, RT-013, RT-014, RT-015, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
 
 ## Archive Records
 

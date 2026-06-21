@@ -1,7 +1,7 @@
 # Publish Readiness Checklist
 
 **Status**: Active release gate
-**Last Updated**: 2026-06-15
+**Last Updated**: 2026-06-21
 **Purpose**: confirm `tachi-rust` is ready to publish to `origin/main`
 **Scope**: security, privacy, docs, tests, coverage, CI, and release hygiene
 
@@ -43,6 +43,7 @@ release candidate branch into `main`.
 
 - [ ] `cargo test -q` passes.
 - [ ] Parser hardening regression tests pass, including delta-count normalization and panic-free status handling.
+- [ ] Reporting goldens pass for coverage, report, threat, risk, and infographic outputs.
 - [ ] `cargo clippy --all-targets -- -D warnings` passes.
 - [ ] `make llvm-cov` passes and the coverage floor remains above the repo
       baseline.

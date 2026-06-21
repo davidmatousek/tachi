@@ -1,6 +1,6 @@
 # Rust/Tauri Parity Issue Cards
 
-**Last Updated**: 2026-06-15
+**Last Updated**: 2026-06-21
 **Status**: Beads-ready execution backlog for the active parity roadmap
 **Source**: [2026-06-15-rust-tauri-parity-remediation-roadmap.html.md](./2026-06-15-rust-tauri-parity-remediation-roadmap.html.md)
 
@@ -27,8 +27,8 @@ Every card includes:
 ## Current Status Snapshot
 
 - Open: none
-- Partial: RT-015
-- Done: RT-010, RT-011, RT-012, RT-013, RT-014, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
+- Partial: none
+- Done: RT-010, RT-011, RT-012, RT-013, RT-014, RT-015, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
 
 ## Phase 0 - parity harness
 
@@ -144,6 +144,8 @@ Every card includes:
   - Canonical outputs remain stable until intentionally revised.
 - `Validation`:
   - Snapshot tests compare against canonical fixtures.
+- `Notes`: Implemented in `crates/tachi-core/tests/reporting_goldens.rs`;
+  validated by reporting goldens tests.
 - `Implementation owner`: `tachi-core`
 - `Stage label`: Phase 2
 - `Next test seam`: `crates/tachi-core/tests/`

@@ -1,7 +1,7 @@
 # Bill of Materials
 
 **Status**: Active publish inventory
-**Last Updated**: 2026-06-15
+**Last Updated**: 2026-06-21
 **Purpose**: enumerate the repository surfaces that are expected to ship, be
 reviewed, or be validated before publishing `tachi-rust` to remote origin
 **Scope**: source code, docs, tests, CI, security posture, and release gates
@@ -129,6 +129,7 @@ The repository policy for these surfaces is:
 | Parser hardening regression | `cargo test -p tachi-core compute_delta_counts_trims_case_and_ignores_unknown_statuses -- --nocapture` | Must pass for panic-free delta counting and status normalization. |
 | Lint gate | `cargo clippy --all-targets -- -D warnings` | No warnings allowed. |
 | Coverage gate | `make llvm-cov` | Coverage remains above the repo floor. |
+| Reporting goldens | `cargo test -p tachi-core --test reporting_goldens -- --nocapture` | Canonical report, threat, risk, coverage, and infographic outputs remain stable. |
 | Diff hygiene | `git diff --check` | No whitespace or patch-format issues. |
 | Secret scan | `pre-commit run --all-files` or `gitleaks` / CI workflow | No secrets or private data leak into the publish set. |
 | Docs gate | README and docs cross-links | Public docs match the shipped behavior. |
