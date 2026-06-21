@@ -23,7 +23,6 @@ until the critical gaps are closed and proven with tests.
    the major command families.
 3. Deterministic serialization and normalization rules still need a
    shared test harness.
-4. Workflow pins and CodeQL/runtime warnings still need modernization.
 
 ## Resolved in repo
 
@@ -35,6 +34,7 @@ until the critical gaps are closed and proven with tests.
 - Parser regression coverage RT-016 is implemented and validated.
 - CI and release hardening RT-017, RT-018, RT-021, and RT-022 are
   implemented and validated.
+- CI modernization RT-023 is implemented and validated.
 - Desktop UX slices RT-019 and RT-020 are implemented and validated.
 
 ## Working rules
@@ -211,8 +211,8 @@ Goal: remove workflow drift and make releases reproducible.
 - Validation: workflow version scan gate and published main-push run
   completes without Node 20 deprecation warnings from the updated
   workflows
-- Notes: Open modernization slice for the live CI workflow set and the
-  publish-readiness gate
+- Notes: Implemented in `.github/workflows/*` and `Makefile`; validated
+  by workflow-gate, publish-gate, and main-push CI
 
 Exit gate:
 

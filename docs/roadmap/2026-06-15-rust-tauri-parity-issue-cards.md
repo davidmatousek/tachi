@@ -26,9 +26,9 @@ Every card includes:
 
 ## Current Status Snapshot
 
-- Open: RT-023
+- Open: none
 - Partial: none
-- Done: RT-010, RT-011, RT-012, RT-013, RT-014, RT-015, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
+- Done: RT-010, RT-011, RT-012, RT-013, RT-014, RT-015, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022, RT-023
 
 ## Phase 0 - parity harness
 
@@ -263,7 +263,7 @@ Every card includes:
 - `Implementation owner`: `docs`
 - `Stage label`: Phase 3
 - `Next test seam`: `.github/workflows/*`
-- `Notes`: Open modernization slice for the live CI workflow set and the publish-readiness gate.
+- `Notes`: Implemented in `.github/workflows/*` and `Makefile`; validated by workflow-gate, publish-gate, and main-push CI.
 
 ## Phase 4 - exceed `tachi`
 
