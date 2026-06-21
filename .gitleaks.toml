@@ -93,6 +93,7 @@ paths = [
   '''\.aod/personalization\.env\.example''',   # legitimate template
   '''tests/fixtures/.*''',                     # F-5 rule-interaction fixtures
   '''tests/scripts/.*''',                      # integration tests for substitution mechanism (T020 Wave-5 carry-forward)
+  '''crates/tachi-shell/tests/template_config_load\.rs''', # migrated Rust substitution integration coverage
   '''docs/.*''',                               # documentation references
   '''specs/.*''',                              # historical spec/plan references
 ]
