@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0   # full history so `gitleaks git` can scan it
 
@@ -70,7 +70,7 @@ jobs:
 
       - name: Upload SARIF to GitHub Code Scanning
         if: always()   # upload even if scan exited non-zero
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: gitleaks.sarif
           category: gitleaks

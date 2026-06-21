@@ -45,8 +45,8 @@ llvm-cov: ## Run cargo llvm-cov with the active toolchain's LLVM tools
 	@./scripts/llvm-cov.sh
 
 workflow-gate: ## Validate workflow action versions and checkout modernization
-	@if rg "actions/checkout@v4" .github/workflows; then \
-	  echo "FAIL: actions/checkout@v4 is still present in workflows"; \
+	@if rg "actions/checkout@v[0-6]|actions-rs/toolchain@|github/codeql-action/upload-sarif@v3|::set-output" .github/workflows; then \
+	  echo "FAIL: stale GitHub Actions or CodeQL pins are still present in workflows"; \
 	  exit 1; \
 	else \
 	  echo "workflow action gate passed"; \

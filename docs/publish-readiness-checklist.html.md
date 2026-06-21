@@ -37,7 +37,7 @@ release candidate branch into `main`.
       scan policy.
 - [ ] Any legitimate placeholder or fixture match is documented and justified.
 - [ ] No new warnings were introduced by hook configuration changes.
-- [ ] `rg "actions/checkout@v4" .github/workflows` returns no matches.
+- [ ] `rg "actions/checkout@v[0-6]|actions-rs/toolchain@|github/codeql-action/upload-sarif@v3|::set-output" .github/workflows` returns no matches.
 
 ## 4. Rust validation
 
@@ -71,6 +71,7 @@ release candidate branch into `main`.
 
 - [ ] `.github/workflows/gitleaks.yml` is green for the publish branch.
 - [ ] `.github/workflows/rust-clippy.yml` is green.
+- [ ] The latest main-push Actions run does not emit Node 20 deprecation warnings from the updated workflows.
 - [ ] `.github/workflows/release-please.yml` ignores docs-only and roadmap-only
       pushes and does not churn release-PR branches on main pushes.
 - [ ] `.github/workflows/tachi-mmdc-preflight.yml` is green.

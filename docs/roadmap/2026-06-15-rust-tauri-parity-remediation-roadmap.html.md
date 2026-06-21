@@ -23,6 +23,7 @@ until the critical gaps are closed and proven with tests.
    the major command families.
 3. Deterministic serialization and normalization rules still need a
    shared test harness.
+4. Workflow pins and CodeQL/runtime warnings still need modernization.
 
 ## Resolved in repo
 
@@ -196,6 +197,22 @@ Goal: remove workflow drift and make releases reproducible.
 - Acceptance: release-please no longer attempts PR branch updates on push
 - Validation: latest main-push release-please run succeeds
 - Notes: Implemented in `feat/release-please-no-pr-creation`; validated on code push
+
+### RT-023 - GitHub Actions and CodeQL modernization
+
+- Epic: CI modernization
+- Capability: workflow hygiene
+- Feature: workflow and CodeQL pin modernization
+- Task: upgrade checkout, CodeQL upload, and Rust toolchain actions to
+  current majors and remove Node 20 deprecation sources
+- Acceptance: all live workflows use `actions/checkout@v7`; Rust CI no
+  longer depends on `actions-rs/toolchain`; SARIF uploads use
+  `github/codeql-action/upload-sarif@v4`
+- Validation: workflow version scan gate and published main-push run
+  completes without Node 20 deprecation warnings from the updated
+  workflows
+- Notes: Open modernization slice for the live CI workflow set and the
+  publish-readiness gate
 
 Exit gate:
 

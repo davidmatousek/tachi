@@ -26,7 +26,7 @@ Every card includes:
 
 ## Current Status Snapshot
 
-- Open: none
+- Open: RT-023
 - Partial: none
 - Done: RT-010, RT-011, RT-012, RT-013, RT-014, RT-015, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
 
@@ -244,6 +244,26 @@ Every card includes:
 - `Stage label`: Phase 3
 - `Next test seam`: `.github/workflows/release-please.yml`
 - `Notes`: Implemented in `feat/release-please-no-pr-creation`; validated on code push.
+
+### RT-023 - GitHub Actions and CodeQL modernization
+
+- `Epic`: Phase 3 - CI and release hardening
+- `Capability`: workflow hygiene
+- `Task`: upgrade checkout, CodeQL upload, and Rust toolchain actions to current majors and remove Node 20 deprecation sources
+- `Function`: `.github/workflows/*`, `Makefile`
+- `Dependencies`: RT-017, RT-022
+- `Acceptance criteria`:
+  - All live workflows use `actions/checkout@v7`.
+  - Rust CI no longer depends on `actions-rs/toolchain`.
+  - SARIF uploads use `github/codeql-action/upload-sarif@v4`.
+  - Publish-gate fails if stale checkout, CodeQL, or set-output usage returns.
+- `Validation`:
+  - Workflow version scan gate.
+  - Main-push Actions run completes without Node 20 deprecation warnings from the updated workflows.
+- `Implementation owner`: `docs`
+- `Stage label`: Phase 3
+- `Next test seam`: `.github/workflows/*`
+- `Notes`: Open modernization slice for the live CI workflow set and the publish-readiness gate.
 
 ## Phase 4 - exceed `tachi`
 

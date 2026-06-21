@@ -135,7 +135,7 @@ The repository policy for these surfaces is:
 | Docs gate | README and docs cross-links | Public docs match the shipped behavior. |
 | CI gate | GitHub Actions run status | Release and security workflows are green. |
 | Release-please gate | `release-please.yml` push filter | Docs-only publishes do not churn release refs and push runs avoid PR-branch churn. |
-| Workflow hardening | `rg "actions/checkout@v4" .github/workflows` | No legacy checkout versions remain. |
+| Workflow hardening | `rg "actions/checkout@v[0-6]|actions-rs/toolchain@|github/codeql-action/upload-sarif@v3|::set-output" .github/workflows` | No legacy checkout, toolchain, SARIF, or set-output usage remains. |
 
 ## Exclusions
 
@@ -153,7 +153,7 @@ privacy, doc accuracy, and release readiness before `main` is pushed to
 
 ## Publish Evidence Checklist (required before push)
 
-- [ ] `rg "actions/checkout@v4" .github/workflows` returns no matches.
+- [ ] `rg "actions/checkout@v[0-6]|actions-rs/toolchain@|github/codeql-action/upload-sarif@v3|::set-output" .github/workflows` returns no matches.
 - [ ] `docs/roadmap/implementation-backlog.md` points at the active parity roadmap and issue cards.
 - [ ] The active roadmap is `docs/roadmap/2026-06-15-rust-tauri-parity-remediation-roadmap.html.md`.
 - [ ] The active Beads-ready issue cards are `docs/roadmap/2026-06-15-rust-tauri-parity-issue-cards.md`.

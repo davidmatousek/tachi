@@ -12,7 +12,7 @@
 
 ## Current Status Snapshot
 
-- Open: none
+- Open: RT-023
 - Partial: none
 - Done: RT-010, RT-011, RT-012, RT-013, RT-014, RT-015, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
 
