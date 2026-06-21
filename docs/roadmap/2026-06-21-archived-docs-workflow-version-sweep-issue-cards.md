@@ -10,9 +10,9 @@ They are intentionally separate from the active CI surface and do not touch
 
 ## Current Status Snapshot
 
-- Open: DOC-001, DOC-002, DOC-003, DOC-004
+- Open: DOC-004
 - Partial: none
-- Done: none
+- Done: DOC-001, DOC-002, DOC-003
 
 ## Phase 0 - inventory and classification
 
@@ -36,6 +36,7 @@ They are intentionally separate from the active CI surface and do not touch
 - `Next test seam`: `docs/testing/README.md`
 - `Notes`: This is the intake step that separates maintained docs from frozen
   historical docs.
+- `Notes`: Completed by `docs/roadmap/2026-06-21-archived-docs-workflow-version-inventory.md`.
 
 ## Phase 1 - maintained-doc updates
 
@@ -61,6 +62,8 @@ They are intentionally separate from the active CI surface and do not touch
 - `Stage label`: Phase 1
 - `Next test seam`: `docs/devops/CI_CD_GUIDE.md`
 - `Notes`: Keep the edits minimal; do not broaden this into a prose rewrite.
+- `Notes`: Completed; the maintained-doc scan now returns only intentional
+  validation text in the BOM and publish checklist.
 
 ## Phase 2 - historical-doc annotation
 
@@ -89,6 +92,7 @@ They are intentionally separate from the active CI surface and do not touch
 - `Next test seam`: `docs/product/02_PRD/012-sarif-output-generation-2026-03-22.md`
 - `Notes`: Preserve provenance; do not rewrite the historical record into a
   current-maintenance guide.
+- `Notes`: Completed by adding archival callouts to the historical docs.
 
 ## Phase 3 - regression gate
 

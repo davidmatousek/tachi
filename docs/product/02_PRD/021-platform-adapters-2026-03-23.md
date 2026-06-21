@@ -143,7 +143,7 @@ Platform adapters directly serve the vision of becoming "the default threat mode
 **Acceptance Criteria**:
 - **Given** the GitHub Actions adapter, **when** a PR changes architecture files, **then** the workflow triggers automatically
 - **Given** the workflow runs, **when** the orchestrator and threat agents execute via LLM API, **then** `threats.md` and `threats.sarif` are generated
-- **Given** SARIF output, **when** the workflow completes, **then** results are uploaded to GitHub Code Scanning via `codeql/upload-sarif@v3`
+- **Given** SARIF output, **when** the workflow completes, **then** results are uploaded to GitHub Code Scanning via `codeql/upload-sarif@v3` (historical tachi-era reference; current `tachi-rust` CI uses newer workflow pins)
 - **Given** the workflow YAML, **when** a user adds it to `.github/workflows/`, **then** it works with configurable LLM API key (secret) and architecture file path
 
 **Priority**: P1
@@ -232,7 +232,7 @@ Core agent changes require regenerating affected adapters. During spec/plan phas
 - Invokes orchestrator and threat agents via LLM API (configurable provider)
 - Must handle the orchestrator's large prompt (~120K+ tokens) — API invocation strategy (chunking, model selection) to be defined in spec phase
 - Generates `threats.md` and `threats.sarif`
-- Uploads SARIF to GitHub Code Scanning via `codeql/upload-sarif@v3`
+- Uploads SARIF to GitHub Code Scanning via `codeql/upload-sarif@v3` (historical tachi-era reference; current `tachi-rust` CI uses newer workflow pins)
 - Requires `LLM_API_KEY` secret and architecture file path input
 - Supports configurable LLM provider (OpenAI, Anthropic, Google, etc.)
 - Includes error handling for API failures, rate limits, and token budget constraints
@@ -309,7 +309,7 @@ All adapters MUST produce semantically equivalent `threats.md` output given the 
 
 ### Assumptions
 - Claude Code `.claude/agents/` directory structure is stable (HIGH confidence — well documented)
-- GitHub Actions `codeql/upload-sarif@v3` remains the standard SARIF upload action (HIGH confidence)
+- GitHub Actions `codeql/upload-sarif@v3` remains the standard SARIF upload action (HIGH confidence; historical tachi-era reference, not current `tachi-rust` guidance)
 
 ### Assumptions Requiring Validation (P1 Blockers)
 - [ ] Cursor `.cursor/rules/` format supports multi-file agent definitions — **MEDIUM confidence, must verify before Sprint 2**

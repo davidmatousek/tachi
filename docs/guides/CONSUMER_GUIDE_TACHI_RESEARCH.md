@@ -480,7 +480,7 @@ Note: GitHub requires `security-severity` as a **numeric string** (e.g., `"7.5"`
 | Results per run | 25,000 (top 5,000 displayed) |
 | Rules per run | 25,000 |
 
-Upload via `codeql/upload-sarif@v3` GitHub Action.
+Upload via `codeql/upload-sarif@v3` GitHub Action. Historical reference: this reflects the original tachi adapter docs, not the current `tachi-rust` CI surface.
 
 ### References
 

@@ -17,7 +17,11 @@ docs clearly labeled as historical, and keep examples free of stale pins.
 
 ## Current inventory
 
-### Maintained docs that should be updated
+### Inventory artifact
+
+- `docs/roadmap/2026-06-21-archived-docs-workflow-version-inventory.md`
+
+### Maintained docs reviewed
 
 - `docs/testing/README.md`
 - `docs/guides/DEVELOPER_GUIDE_TACHI.md`
@@ -27,6 +31,9 @@ docs clearly labeled as historical, and keep examples free of stale pins.
 - `docs/standards/GIT_WORKFLOW.md`
 - `docs/architecture/00_Tech_Stack/README.md`
 - `docs/architecture/01_system_design/README.md`
+
+DOC-001 and DOC-002 are complete. The maintained-doc scan returned only
+intentional validation text in the BOM and publish checklist.
 
 ### Historical docs that should be annotated, not silently rewritten
 
@@ -45,11 +52,7 @@ docs clearly labeled as historical, and keep examples free of stale pins.
 
 ## Current gaps
 
-1. Several maintained docs still show older checkout, toolchain, or SARIF
-   upload pins in code snippets.
-2. Several historical docs still describe older action versions without
-   an archival marker that would tell readers the snippet is frozen.
-3. There is no repo-local regression gate that scans archived docs/examples
+1. There is no repo-local regression gate that scans archived docs/examples
    without also pulling in the live workflow files.
 
 ## Sweep rules
@@ -74,6 +77,10 @@ Exit criteria:
   stale pins appear.
 - The active CI workflow files remain untouched.
 
+Status:
+
+- DOC-001 is complete; the inventory artifact records the scan dispositions.
+
 ## Phase 1 - maintained-doc updates
 
 Goal: fix the docs that are meant to guide current users and contributors.
@@ -84,6 +91,11 @@ Exit criteria:
   when version specificity is unnecessary.
 - Snippets in maintainer-facing docs no longer teach older checkout/toolchain
   patterns.
+
+Status:
+
+- DOC-002 is complete; maintained-doc grep now returns only intentional
+  validation text in the BOM and publish checklist.
 
 ## Phase 2 - historical-doc annotation
 
@@ -97,6 +109,10 @@ Exit criteria:
 - Readers can tell at a glance whether a snippet is explanatory history or
   current instruction.
 
+Status:
+
+- DOC-003 is complete; the historical docs now carry archival callouts.
+
 ## Phase 3 - regression gate
 
 Goal: prevent the archive sweep from regressing.
@@ -106,6 +122,11 @@ Exit criteria:
 - A docs-only scan gate covers the archive/docs/examples surface.
 - The gate excludes `.github/workflows/*`.
 - The gate fails if a stale version pin reappears in a maintained doc.
+
+Status:
+
+- DOC-004 remains open; the existing docs/version gate covers the maintained
+  docs set but not the full archived-docs surface.
 
 ## Validation matrix
 

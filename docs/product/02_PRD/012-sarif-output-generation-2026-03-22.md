@@ -251,7 +251,7 @@ Each rule includes `help.markdown` with detection guidance and framework referen
 
 ### Schema Validity
 - Generated SARIF MUST validate against the official SARIF 2.1.0 JSON schema with zero validation errors
-- SARIF MUST be parseable by `codeql/upload-sarif@v3` GitHub Action
+- SARIF MUST be parseable by `codeql/upload-sarif@v3` GitHub Action (historical tachi-era reference; current `tachi-rust` CI uses newer workflow pins)
 
 ### Performance
 - SARIF generation adds no additional orchestrator phases — mapping occurs within Phase 4 (Assess) alongside existing threats.md generation
@@ -273,7 +273,7 @@ Each rule includes `help.markdown` with detection guidance and framework referen
 - **Target**: Zero finding loss between markdown and SARIF output
 - **Timeline**: At delivery
 
-**GitHub Code Scanning Upload**: Generated SARIF is accepted by `codeql/upload-sarif@v3`
+**GitHub Code Scanning Upload**: Generated SARIF is accepted by `codeql/upload-sarif@v3` (historical tachi-era reference; current `tachi-rust` CI uses newer workflow pins)
 - **Baseline**: N/A
 - **Target**: Successful upload with findings displayed in Code Scanning alerts
 - **Timeline**: At delivery

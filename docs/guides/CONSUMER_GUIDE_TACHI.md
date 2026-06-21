@@ -524,7 +524,7 @@ For each remaining feature (F-002 through F-010), copy the feature block from th
 
 **Research** (see `docs/guides/CONSUMER_GUIDE_TACHI_RESEARCH.md`):
 - §11 — Input Format Specifications (Mermaid diagram types, C4 tooling — Structurizr, C4-PlantUML, Mermaid C4 experimental status)
-- §6 — SARIF 2.1.0 (GitHub Actions SARIF upload via `codeql/upload-sarif@v3` for the GitHub Actions adapter)
+- §6 — SARIF 2.1.0 (GitHub Actions SARIF upload via `codeql/upload-sarif@v3` for the GitHub Actions adapter; historical tachi-era reference)
 
 **Stories**:
 

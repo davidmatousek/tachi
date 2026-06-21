@@ -1,7 +1,7 @@
 # Rust/Tauri Parity Issue Cards
 
 **Last Updated**: 2026-06-21
-**Status**: Beads-ready execution backlog for the active parity/supersession roadmap
+**Status**: archived execution backlog for the completed parity/supersession roadmap
 **Source**: [2026-06-21-rust-tauri-parity-remediation-roadmap.html.md](./2026-06-21-rust-tauri-parity-remediation-roadmap.html.md)
 
 These cards are the task-sized execution slices for the active parity roadmap.
@@ -9,9 +9,9 @@ Copy them into Beads as-is or with only implementation-owner routing changes.
 
 ## Current Status Snapshot
 
-- Open: RT-024, RT-025, RT-026, RT-027, RT-028, RT-029, RT-030
+- Open: none
 - Partial: none
-- Done: RT-010, RT-011, RT-012, RT-013, RT-014, RT-015, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022, RT-023
+- Done: RT-010, RT-011, RT-012, RT-013, RT-014, RT-015, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022, RT-023, RT-024, RT-025, RT-026, RT-027, RT-028, RT-029, RT-030
 
 ## Phase 0 - parity rebaseline
 

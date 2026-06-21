@@ -6,22 +6,23 @@
 
 ## Active Execution
 
-- [Rust/Tauri Parity Remediation Roadmap](./2026-06-21-rust-tauri-parity-remediation-roadmap.html.md)
-- [Rust/Tauri Parity Issue Cards](./2026-06-21-rust-tauri-parity-issue-cards.md)
 - [Archived Docs Workflow-Version Sweep Roadmap](./2026-06-21-archived-docs-workflow-version-sweep-roadmap.html.md)
 - [Archived Docs Workflow-Version Sweep Issue Cards](./2026-06-21-archived-docs-workflow-version-sweep-issue-cards.md)
+- [Archived Docs Workflow-Version Inventory](./2026-06-21-archived-docs-workflow-version-inventory.md)
 - [Beads issue mirror snapshot](./.beads/issues.jsonl)
 
 ## Current Status Snapshot
 
-- Open: DOC-001, DOC-002, DOC-003, DOC-004, RT-024, RT-025, RT-026, RT-027, RT-028, RT-029, RT-030
+- Open: DOC-004
 - Partial: none
-- Done: RT-010, RT-011, RT-012, RT-013, RT-014, RT-015, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022, RT-023
+- Done: DOC-001, DOC-002, DOC-003, RT-010, RT-011, RT-012, RT-013, RT-014, RT-015, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022, RT-023, RT-024, RT-025, RT-026, RT-027, RT-028, RT-029, RT-030
 
 ## Archive Records
 
 - [Rust/Tauri Parity Remediation Roadmap](./2026-06-15-rust-tauri-parity-remediation-roadmap.html.md)
 - [Rust/Tauri Parity Issue Cards](./2026-06-15-rust-tauri-parity-issue-cards.md)
+- [Rust/Tauri Parity Remediation Roadmap](./2026-06-21-rust-tauri-parity-remediation-roadmap.html.md)
+- [Rust/Tauri Parity Issue Cards](./2026-06-21-rust-tauri-parity-issue-cards.md)
 - [Rust/Tauri Migration Issue Pack](./2026-06-04-rust-tauri-issue-pack.md)
 - [Rust/Tauri Implementation Roadmap](./2026-06-08-rust-tauri-only-roadmap.md)
 - [Rust/Tauri Implementation Issue Cards](./2026-06-08-rust-tauri-only-issue-cards.md)

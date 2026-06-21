@@ -1,12 +1,12 @@
 # Rust/Tauri Parity Capability Matrix
 
-Status: discovery artifact
+Status: finalized discovery artifact
 
 Scope: compare the current `tachi-rust` surface against the sibling
 `/Volumes/dev/Git-SCM/tachi` repository for the parity rebaseline.
 
 This document is the working output for RT-024. It captures the current
-capability inventory and the gap signals that should be turned into the next
+capability inventory and the gap signals that were turned into the next
 parity follow-up cards.
 
 ## Current reading
@@ -43,7 +43,7 @@ versions and older CI conventions in its own active surface.
 | Docs hygiene | Active docs-sweep roadmap exists to keep old workflow pins out of maintained docs. | Sibling repo still carries older workflow pin references in active docs/workflows. | Keep docs hygiene separate from runtime parity. |
 | Examples | Current scan found no stale workflow-version pins under `examples/`. | The sibling repo scan is still heavily saturated with older workflow references. | Preserve the current examples clean state and gate regressions. |
 
-## Discovery gaps to turn into work
+## Discovery gaps that were turned into work
 
 1. Rebaseline the sibling capability matrix into a deterministic artifact so the
    next parity slices have a stable source of truth.
@@ -64,9 +64,6 @@ versions and older CI conventions in its own active surface.
 
 ## Next step
 
-Convert this matrix into:
-
-1. A deterministic inventory artifact for RT-024.
-2. The expected surface list for RT-025.
-3. A reconciliation note in the roadmap/issue cards when the matrix is
-   stabilized.
+The matrix is stabilized. Keep it as provenance for the completed RT-024 slice
+and use it as the historical baseline for the now-closed RT-025 through RT-030
+parity follow-up cards.

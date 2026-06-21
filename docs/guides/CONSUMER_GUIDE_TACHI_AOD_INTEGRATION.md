@@ -46,7 +46,7 @@
    - `aod.stack remove` cleanly removes all Tachi artifacts
 
 4. **As a security-conscious developer, I want threat model output integrated with my existing CI/CD**, so that SARIF findings from Tachi appear in GitHub Code Scanning alongside my other security tools.
-   - Documentation for adding `codeql/upload-sarif@v3` step to upload `threats.sarif`
+   - Documentation for adding `codeql/upload-sarif@v3` step to upload `threats.sarif` (historical tachi-era reference)
    - Example GitHub Actions workflow snippet in the stack pack scaffold
    - SARIF output location follows the convention: `.aod/threat-model/YYYY-MM-DD/threats.sarif`
 

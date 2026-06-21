@@ -44,7 +44,7 @@ We will adopt **SARIF 2.1.0** (Static Analysis Results Interchange Format) as th
 
 **Reasons**:
 1. **Industry standard**: SARIF 2.1.0 is an OASIS-approved standard consumed by GitHub Code Scanning, Azure DevOps, VS Code SARIF Viewer, and other security tools. No proprietary format achieves comparable reach.
-2. **Native GitHub integration**: GitHub's `codeql/upload-sarif@v3` action accepts SARIF directly. Findings appear as security alerts with severity, rule descriptions, and fingerprint-based deduplication -- no custom integration needed.
+2. **Native GitHub integration**: GitHub's `codeql/upload-sarif@v3` action accepts SARIF directly. Findings appear as security alerts with severity, rule descriptions, and fingerprint-based deduplication -- no custom integration needed. Historical reference: this pin reflects the original tachi-era workflow contract, not the current `tachi-rust` CI surface.
 3. **Semantic richness**: SARIF's `reportingDescriptor` (rules), `logicalLocations`, `relatedLocations`, and `partialFingerprints` objects map cleanly to tachi's finding IR without lossy compression or custom extensions.
 4. **Stable tracking**: The `partialFingerprints` mechanism provides deterministic finding identity. GitHub uses these to track alerts across runs, preventing duplicate alert noise on re-analysis.
 5. **Zero runtime dependencies**: SARIF is JSON. The orchestrator prompt generates it directly alongside `threats.md` with no external tooling, libraries, or runtime requirements.

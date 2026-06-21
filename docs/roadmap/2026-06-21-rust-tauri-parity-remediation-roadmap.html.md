@@ -1,11 +1,11 @@
 # Rust/Tauri Parity Remediation Roadmap
 
-Status: active execution roadmap
+Status: archived snapshot
 
 Scope: Rust and Tauri only. No Python runtime path, no shell-script fallback
 in release or desktop flows, and no active CI edits in this roadmap.
 
-This roadmap is the forward-looking parity and supersession track for the
+This roadmap was the forward-looking parity and supersession track for the
 `tachi-rust` repository against the sibling `tachi` repository at
 `/Volumes/dev/Git-SCM/tachi`.
 
@@ -20,19 +20,18 @@ desktop and release features that do not depend on Python.
 
 ## Current boundary
 
-- The earlier parity slices RT-010 through RT-023 are complete and remain
+- The earlier parity slices RT-010 through RT-030 are complete and remain
   closed.
-- This roadmap starts where the prior parity track ended: rebaselining,
-  revalidating, and then pushing beyond parity.
-- If the sibling `tachi` repository has drifted, the first phase will surface
-  the gap before any implementation work begins.
+- RT-024 through RT-030 completed the parity rebaseline and supersession
+  track.
+- This document is retained as an archival record of the parity plan and its
+  exit criteria.
 
 ## Current critical gaps
 
-1. The parity baseline against the sibling repository needs a fresh inventory.
-2. Command surface, fixture, and schema regressions need a drift-proof harness.
-3. The post-parity supercession path needs explicit TDD slices before work
-   starts on new desktop-only capabilities.
+1. None for the parity track; the open work has moved to the docs-sweep roadmap.
+2. Preserve the archived parity record as provenance for the completed RT
+   slices.
 
 ## Working rules
 
@@ -66,7 +65,7 @@ confirm what still differs before touching code.
 - Next test seam: `docs/roadmap/`
 - Notes: Discovery artifact lives in
   `docs/roadmap/2026-06-21-rust-tauri-parity-capability-matrix.md`.
-- Notes: This is a parity discovery card, not a code change.
+- Notes: Discovery artifact finalized; retained here as archival provenance.
 
 Exit gate:
 
