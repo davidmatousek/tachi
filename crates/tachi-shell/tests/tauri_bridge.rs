@@ -14,6 +14,8 @@ use tachi_shell::tauri_bridge::dispatch_command_with_progress;
 #[derive(Clone)]
 struct RecordingReporter(Arc<Mutex<Vec<ProgressEvent>>>);
 
+static FIXTURE_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 impl ProgressReporter for RecordingReporter {
     fn emit(&mut self, event: ProgressEvent) {
         self.0.lock().expect("reporter mutex").push(event);
@@ -22,11 +24,12 @@ impl ProgressReporter for RecordingReporter {
 
 fn fixture_repo() -> PathBuf {
     let root = std::env::temp_dir().join(format!(
-        "tachi-rust-tauri-bridge-{}",
+        "tachi-rust-tauri-bridge-{}-{}",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("clock")
-            .as_nanos()
+            .as_nanos(),
+        FIXTURE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     ));
 
     fs::create_dir_all(root.join("scripts")).expect("create fixture scripts");

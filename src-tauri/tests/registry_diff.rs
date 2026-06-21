@@ -11,9 +11,13 @@ fn registry_diff_reports_matching_control_plane_surface() {
         RegistryDiff {
             shared_commands: vec![
                 String::from("bootstrap"),
+                String::from("coverage-audit"),
                 String::from("infographic-data"),
                 String::from("init"),
                 String::from("install"),
+                String::from("report-data"),
+                String::from("risk-scores-sarif"),
+                String::from("threats-sarif"),
                 String::from("update"),
             ],
             cli_only_commands: Vec::new(),
@@ -25,8 +29,29 @@ fn registry_diff_reports_matching_control_plane_surface() {
 #[test]
 fn registry_diff_reports_missing_and_extra_commands() {
     let diff = diff_registry(
-        &["install", "init", "update", "bootstrap", "infographic-data", "report-data"],
-        &["install", "init", "update", "bootstrap", "infographic-data", "sync-status"],
+        &[
+            "install",
+            "init",
+            "update",
+            "bootstrap",
+            "infographic-data",
+            "coverage-audit",
+            "report-data",
+            "risk-scores-sarif",
+            "threats-sarif",
+        ],
+        &[
+            "install",
+            "init",
+            "update",
+            "bootstrap",
+            "infographic-data",
+            "coverage-audit",
+            "report-data",
+            "risk-scores-sarif",
+            "threats-sarif",
+            "sync-status",
+        ],
     );
 
     assert_eq!(
@@ -34,12 +59,16 @@ fn registry_diff_reports_missing_and_extra_commands() {
         RegistryDiff {
             shared_commands: vec![
                 String::from("bootstrap"),
+                String::from("coverage-audit"),
                 String::from("infographic-data"),
                 String::from("init"),
                 String::from("install"),
+                String::from("report-data"),
+                String::from("risk-scores-sarif"),
+                String::from("threats-sarif"),
                 String::from("update"),
             ],
-            cli_only_commands: vec![String::from("report-data")],
+            cli_only_commands: Vec::new(),
             tauri_only_commands: vec![String::from("sync-status")],
         }
     );

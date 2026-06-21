@@ -29,6 +29,7 @@ until the critical gaps are closed and proven with tests.
 - Command registry diff harness RT-010 is implemented and validated.
 - Schema and fixture contract RT-011 is implemented and validated.
 - Deterministic normalization helper RT-012 is implemented and validated.
+- Tauri command allowlist parity RT-013 is implemented and validated.
 - Parser regression coverage RT-016 is implemented and validated.
 - CI and release hardening RT-017, RT-018, RT-021, and RT-022 are
   implemented and validated.

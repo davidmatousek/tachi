@@ -14,6 +14,8 @@ use tachi_tauri::{
 #[derive(Clone)]
 struct RecordingReporter(Arc<Mutex<Vec<ProgressEvent>>>);
 
+static FIXTURE_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 impl ProgressReporter for RecordingReporter {
     fn emit(&mut self, event: ProgressEvent) {
         self.0.lock().expect("reporter mutex").push(event);
@@ -22,15 +24,23 @@ impl ProgressReporter for RecordingReporter {
 
 fn fixture_repo() -> PathBuf {
     let root = std::env::temp_dir().join(format!(
-        "tachi-rust-tauri-shell-{}",
+        "tachi-rust-tauri-shell-{}-{}",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("clock")
-            .as_nanos()
+            .as_nanos(),
+        FIXTURE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     ));
 
     fs::create_dir_all(root.join("scripts")).expect("create fixture scripts");
     root
+}
+
+fn workspace_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("workspace root")
+        .to_path_buf()
 }
 
 fn write_executable_file(path: &PathBuf, content: &str) {
@@ -44,7 +54,17 @@ fn write_executable_file(path: &PathBuf, content: &str) {
 fn registered_commands_expose_shared_shell_surface() {
     assert_eq!(
         registered_commands(),
-        &["install", "init", "update", "bootstrap", "infographic-data"]
+        &[
+            "install",
+            "init",
+            "update",
+            "bootstrap",
+            "infographic-data",
+            "coverage-audit",
+            "report-data",
+            "risk-scores-sarif",
+            "threats-sarif",
+        ]
     );
 }
 
@@ -84,6 +104,111 @@ fn dispatch_desktop_command_routes_infographic_data_through_shared_shell_surface
         serde_json::from_str(&output.stdout).expect("valid infographic JSON");
     assert_eq!(payload["template"], "maestro-stack");
     assert!(payload["template_data"].is_object());
+}
+
+#[test]
+fn dispatch_desktop_command_routes_coverage_audit_through_shared_shell_surface() {
+    let root = fixture_repo();
+
+    let output = dispatch_desktop_command("coverage-audit", &root, &[]);
+
+    assert_eq!(output.status, 0);
+    assert!(output.stdout.contains("Coverage audit for"));
+}
+
+#[test]
+fn dispatch_desktop_command_routes_report_data_through_shared_shell_surface() {
+    let root = fixture_repo();
+    let target_dir = root.join("target");
+    let template_dir = root.join("templates/tachi/security-report");
+    fs::create_dir_all(&template_dir).expect("create template dir");
+    fs::create_dir_all(&target_dir).expect("create target dir");
+    fs::copy(
+        workspace_root().join("tests/scripts/fixtures/report_data/image_absent/threats.md"),
+        target_dir.join("threats.md"),
+    )
+    .expect("copy threats fixture");
+    let output_path = root.join("out/report-data.typ");
+
+    let output = dispatch_desktop_command(
+        "report-data",
+        &root,
+        &[
+            "--target-dir",
+            target_dir.to_string_lossy().as_ref(),
+            "--template-dir",
+            template_dir.to_string_lossy().as_ref(),
+            "--output",
+            output_path.to_string_lossy().as_ref(),
+        ],
+    );
+
+    assert_eq!(output.status, 0);
+    assert!(output.stderr.contains("report-data.typ generated"));
+    let rendered = fs::read_to_string(&output_path).expect("read report-data output");
+    assert!(rendered.contains("#let project-name ="));
+}
+
+#[test]
+fn dispatch_desktop_command_routes_threats_sarif_through_shared_shell_surface() {
+    let root = fixture_repo();
+    let input = root.join("threats.md");
+    fs::copy(
+        workspace_root().join("tests/scripts/fixtures/exec_arch/agentic_app/threats.md"),
+        &input,
+    )
+    .expect("copy threats fixture");
+    let output_path = root.join("out/threats.sarif");
+
+    let output = dispatch_desktop_command(
+        "threats-sarif",
+        &root,
+        &[
+            "--input",
+            input.to_string_lossy().as_ref(),
+            "--output",
+            output_path.to_string_lossy().as_ref(),
+        ],
+    );
+
+    assert_eq!(output.status, 0);
+    assert!(output.stderr.contains("OK: wrote"));
+    assert!(output_path.is_file());
+}
+
+#[test]
+fn dispatch_desktop_command_routes_risk_scores_sarif_through_shared_shell_surface() {
+    let root = fixture_repo();
+    let risk_scores = root.join("risk-scores.md");
+    let threats = root.join("threats.md");
+    fs::copy(
+        workspace_root().join("tests/scripts/fixtures/exec_arch/agentic_app/risk-scores.md"),
+        &risk_scores,
+    )
+    .expect("copy risk scores fixture");
+    fs::copy(
+        workspace_root().join("tests/scripts/fixtures/exec_arch/agentic_app/threats.md"),
+        &threats,
+    )
+    .expect("copy threats fixture");
+    let output_path = root.join("out/risk-scores.sarif");
+
+    let output = dispatch_desktop_command(
+        "risk-scores-sarif",
+        &root,
+        &[
+            "--risk-scores",
+            risk_scores.to_string_lossy().as_ref(),
+            "--threats",
+            threats.to_string_lossy().as_ref(),
+            "--output",
+            output_path.to_string_lossy().as_ref(),
+        ],
+    );
+
+    assert_eq!(output.status, 0);
+    assert!(output.stderr.contains("OK: wrote"));
+    assert!(output_path.is_file());
 }
 
 #[test]

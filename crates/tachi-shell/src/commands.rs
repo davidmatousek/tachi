@@ -19,8 +19,17 @@ use crate::progress::{
     emit_progress_event, CancellationToken, NoopProgressReporter, ProgressReporter,
 };
 
-pub const CONTROL_PLANE_COMMANDS: [&str; 5] =
-    ["install", "init", "update", "bootstrap", "infographic-data"];
+pub const CONTROL_PLANE_COMMANDS: [&str; 9] = [
+    "install",
+    "init",
+    "update",
+    "bootstrap",
+    "infographic-data",
+    "coverage-audit",
+    "report-data",
+    "risk-scores-sarif",
+    "threats-sarif",
+];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ThreatsSarifOutput {

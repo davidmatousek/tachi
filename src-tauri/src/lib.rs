@@ -7,8 +7,17 @@ pub mod offline;
 pub mod registry;
 pub mod release_artifacts;
 
-pub const DESKTOP_COMMANDS: [&str; 5] =
-    ["install", "init", "update", "bootstrap", "infographic-data"];
+pub const DESKTOP_COMMANDS: [&str; 9] = [
+    "install",
+    "init",
+    "update",
+    "bootstrap",
+    "infographic-data",
+    "coverage-audit",
+    "report-data",
+    "risk-scores-sarif",
+    "threats-sarif",
+];
 
 pub fn dispatch_desktop_command(command: &str, repo_root: &Path, args: &[&str]) -> CommandOutput {
     dispatch_command(command, repo_root, args)

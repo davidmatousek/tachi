@@ -26,9 +26,9 @@ Every card includes:
 
 ## Current Status Snapshot
 
-- Open: RT-013, RT-014
+- Open: RT-014
 - Partial: RT-015
-- Done: RT-010, RT-011, RT-012, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
+- Done: RT-010, RT-011, RT-012, RT-013, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
 
 ## Phase 0 - parity harness
 
@@ -109,7 +109,9 @@ Every card includes:
 - `Implementation owner`: `src-tauri`
 - `Stage label`: Phase 1
 - `Next test seam`: `src-tauri/src/lib.rs`
-- `Notes`: Keep the bridge thin and command-only.
+- `Notes`: Implemented in `src-tauri/src/lib.rs` and
+  `crates/tachi-shell/src/tauri_bridge.rs`; validated by the desktop bridge and
+  registry parity tests.
 
 ### RT-014 - desktop invoke contract validation
 
