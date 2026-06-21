@@ -19,12 +19,17 @@ until the critical gaps are closed and proven with tests.
 ## Current critical gaps
 
 1. Desktop command surface parity is incomplete.
-2. Output contracts still need golden-fixture proof across the major
-   command families.
-3. Deterministic serialization and normalization rules need a shared
-   test harness.
-4. CI and release workflows still need version and policy cleanup.
-5. Packaging, checksums, and artifact consistency need explicit coverage.
+2. Output contracts still need canonical golden-fixture proof across
+   the major command families.
+3. Deterministic serialization and normalization rules still need a
+   shared test harness.
+
+## Resolved in repo
+
+- Parser regression coverage RT-016 is implemented and validated.
+- CI and release hardening RT-017, RT-018, RT-021, and RT-022 are
+  implemented and validated.
+- Desktop UX slices RT-019 and RT-020 are implemented and validated.
 
 ## Working rules
 

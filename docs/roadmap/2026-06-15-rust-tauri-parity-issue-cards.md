@@ -24,6 +24,12 @@ Every card includes:
 - `Next test seam`
 - `Notes`
 
+## Current Status Snapshot
+
+- Open: RT-010, RT-011, RT-012, RT-013, RT-014
+- Partial: RT-015
+- Done: RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
+
 ## Phase 0 - parity harness
 
 ### RT-010 - command registry diff harness
@@ -135,7 +141,8 @@ Every card includes:
 - `Implementation owner`: `tachi-core`
 - `Stage label`: Phase 2
 - `Next test seam`: `crates/tachi-core/tests/`
-- `Notes`: Freeze ordering before snapshotting.
+- `Notes`: Partial coverage exists via structural tests, but canonical
+  goldens are still missing. Freeze ordering before snapshotting.
 
 ### RT-016 - parser regression suite
 
@@ -152,7 +159,8 @@ Every card includes:
 - `Implementation owner`: `tachi-core`
 - `Stage label`: Phase 2
 - `Next test seam`: `crates/tachi-core/src/parsers/`
-- `Notes`: Keep the regression set small but representative.
+- `Notes`: Implemented in `crates/tachi-core/tests/parsers.rs`; validated
+  by targeted parser regression tests.
 
 ## Phase 3 - CI and release hardening
 
@@ -209,7 +217,8 @@ Every card includes:
 - `Implementation owner`: `docs`
 - `Stage label`: Phase 3
 - `Next test seam`: `.github/workflows/release-please.yml`
-- `Notes`: Keep release automation active for code changes.
+- `Notes`: Implemented in `.github/workflows/release-please.yml`;
+  validated on docs-only publish path.
 
 ### RT-022 - release-please no PR branch updates
 

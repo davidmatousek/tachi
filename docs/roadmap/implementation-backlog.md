@@ -8,6 +8,13 @@
 
 - [Rust/Tauri Parity Remediation Roadmap](./2026-06-15-rust-tauri-parity-remediation-roadmap.html.md)
 - [Rust/Tauri Parity Issue Cards](./2026-06-15-rust-tauri-parity-issue-cards.md)
+- [Beads issue mirror snapshot](./.beads/issues.jsonl)
+
+## Current Status Snapshot
+
+- Open: RT-010, RT-011, RT-012, RT-013, RT-014
+- Partial: RT-015
+- Done: RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
 
 ## Archive Records
 
