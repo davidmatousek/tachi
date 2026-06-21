@@ -1,6 +1,6 @@
 # Archived Docs Workflow-Version Sweep Roadmap
 
-Status: active execution roadmap
+Status: archived snapshot
 
 Scope: archived docs and examples only. No edits to `.github/workflows`,
 no active CI surface changes, and no rework of the completed parity roadmap.
@@ -52,8 +52,8 @@ intentional validation text in the BOM and publish checklist.
 
 ## Current gaps
 
-1. There is no repo-local regression gate that scans archived docs/examples
-   without also pulling in the live workflow files.
+1. None; the archive/docs/examples regression gate is implemented and wired
+   into `make publish-gate`.
 
 ## Sweep rules
 
@@ -125,8 +125,7 @@ Exit criteria:
 
 Status:
 
-- DOC-004 remains open; the existing docs/version gate covers the maintained
-  docs set but not the full archived-docs surface.
+- DOC-004 is complete; the archive gate is wired into `make publish-gate`.
 
 ## Validation matrix
 

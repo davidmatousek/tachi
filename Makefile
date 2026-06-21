@@ -1,6 +1,6 @@
 # Agentic-Oriented-Development-Kit - Common Commands
 
-.PHONY: help init check update spec plan tasks analyze review-spec review-plan test coverage-audit llvm-cov workflow-gate docs-version-gate release-gate publish-gate
+.PHONY: help init check update spec plan tasks analyze review-spec review-plan test coverage-audit llvm-cov workflow-gate docs-version-gate docs-archive-version-gate release-gate publish-gate
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -69,6 +69,9 @@ docs-version-gate: ## Validate docs and examples workflow-version hygiene
 	  echo "docs/version gate passed"; \
 	fi
 
+docs-archive-version-gate: ## Validate archived docs workflow-version hygiene
+	@./scripts/docs-archive-version-gate.sh
+
 release-gate: ## Validate release artifact parity and checksum matrix
 	@cargo test -p tachi-tauri --test release_artifacts -- --nocapture
 
@@ -76,6 +79,7 @@ publish-gate: ## Run end-to-end publish-readiness gates locally
 	@$(MAKE) check
 	@$(MAKE) workflow-gate
 	@$(MAKE) docs-version-gate
+	@$(MAKE) docs-archive-version-gate
 	@$(MAKE) release-gate
 	@$(MAKE) test
 	@cargo clippy --all-targets -- -D warnings

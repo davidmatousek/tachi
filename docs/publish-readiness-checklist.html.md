@@ -70,6 +70,7 @@ release candidate branch into `main`.
 - [ ] The DOC-00X documentation-update plan remains separate from the parity
       and docs-sweep tracks.
 - [ ] `make docs-version-gate` passes.
+- [ ] `make docs-archive-version-gate` passes.
 - [ ] Public docs do not promise unsupported features or outdated workflows.
 - [ ] Release notes, changelog entries, and user-facing examples are current and
       redaction-safe.

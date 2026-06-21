@@ -10,9 +10,9 @@ They are intentionally separate from the active CI surface and do not touch
 
 ## Current Status Snapshot
 
-- Open: DOC-004
+- Open: none
 - Partial: none
-- Done: DOC-001, DOC-002, DOC-003
+- Done: DOC-001, DOC-002, DOC-003, DOC-004
 
 ## Phase 0 - inventory and classification
 
@@ -116,3 +116,5 @@ They are intentionally separate from the active CI surface and do not touch
 - `Next test seam`: `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-roadmap.html.md`
 - `Notes`: This is the guardrail that keeps the sweep from regressing after the
   doc edits land.
+- `Notes`: Completed by `scripts/docs-archive-version-gate.sh` and the
+  Makefile publish gate wiring.

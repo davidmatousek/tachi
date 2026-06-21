@@ -1,12 +1,33 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(Path::parent)
         .expect("workspace root")
-        .to_path_buf()
+    .to_path_buf()
+}
+
+fn unique_temp_root(prefix: &str) -> PathBuf {
+    let suffix = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("clock")
+        .as_nanos();
+    std::env::temp_dir().join(format!("{prefix}-{suffix}"))
+}
+
+fn write_file(root: &Path, rel: &str, contents: &str) {
+    let path = root.join(rel);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).expect("create parent directories");
+    }
+    fs::write(path, contents).expect("write test file");
+}
+
+fn docs_archive_gate_script() -> PathBuf {
+    workspace_root().join("scripts/docs-archive-version-gate.sh")
 }
 
 #[test]
@@ -49,5 +70,51 @@ fn publishing_security_docs_are_repo_specific_and_privacy_aware() {
     assert!(
         standards.contains("PUBLISHING_SECURITY.md"),
         "standards index should link the publishing security checklist"
+    );
+}
+
+#[test]
+fn docs_archive_version_gate_allows_archival_references_and_rejects_maintained_drift() {
+    let allowlisted_root = unique_temp_root("tachi-rust-docs-archive-allowlisted");
+    write_file(
+        &allowlisted_root,
+        "docs/guides/CONSUMER_GUIDE_TACHI.md",
+        "Upload via `codeql/upload-sarif@v3` GitHub Action. Historical reference: this reflects the original tachi adapter docs, not the current `tachi-rust` CI surface.\n",
+    );
+
+    let allowlisted_output = Command::new(docs_archive_gate_script())
+        .arg(&allowlisted_root)
+        .output()
+        .expect("run docs archive gate on allowlisted tree");
+    assert!(
+        allowlisted_output.status.success(),
+        "archival references should be allowed in docs archive gate. stdout={:?} stderr={:?}",
+        String::from_utf8_lossy(&allowlisted_output.stdout),
+        String::from_utf8_lossy(&allowlisted_output.stderr)
+    );
+
+    let maintained_root = unique_temp_root("tachi-rust-docs-archive-maintained");
+    write_file(
+        &maintained_root,
+        "docs/roadmap/archival-note.md",
+        "Legacy guidance mentions `codeql/upload-sarif@v3` without an archival marker.\n",
+    );
+
+    let maintained_output = Command::new(docs_archive_gate_script())
+        .arg(&maintained_root)
+        .output()
+        .expect("run docs archive gate on maintained-doc drift");
+    assert!(
+        !maintained_output.status.success(),
+        "maintained docs drift should fail the archive gate"
+    );
+    let stderr = String::from_utf8_lossy(&maintained_output.stderr);
+    assert!(
+        stderr.contains("docs/roadmap/archival-note.md"),
+        "failure should name the stale file: {stderr}"
+    );
+    assert!(
+        stderr.contains("stale workflow-version references"),
+        "failure should explain the gate condition: {stderr}"
     );
 }
