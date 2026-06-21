@@ -1,12 +1,15 @@
 # Rust/Tauri Parity Issue Cards
 
 **Last Updated**: 2026-06-21
-**Status**: Beads-ready execution backlog for the active parity roadmap
+**Status**: archived Beads snapshot for the earlier parity roadmap
 **Source**: [2026-06-15-rust-tauri-parity-remediation-roadmap.html.md](./2026-06-15-rust-tauri-parity-remediation-roadmap.html.md)
 
-These cards are the task-sized execution slices for the active parity roadmap in
-[implementation-backlog.md](./implementation-backlog.md). Copy them into Beads
-as-is or with only implementation-owner routing changes.
+The active parity roadmap and issue cards now live in the
+`2026-06-21-rust-tauri-parity-remediation-*` pair. Keep this file as a
+historical record only.
+
+These cards were the task-sized execution slices for the earlier parity roadmap.
+Retain them for provenance; do not use them for new work.
 
 ## Card Format
 

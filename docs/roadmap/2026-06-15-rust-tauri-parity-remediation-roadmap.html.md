@@ -1,20 +1,19 @@
 # Rust/Tauri Parity Remediation Roadmap
 
-Status: active execution roadmap
+Status: archived snapshot
 
 Scope: Rust and Tauri only. No Python runtime path, no Python bridge,
 no legacy script execution in release or desktop flows.
 
-This roadmap supersedes the completed `2026-06-04` issue pack and the
+This roadmap superseded the completed `2026-06-04` issue pack and the
 `2026-06-08` migration roadmap. Keep those files as archive records only.
+The active parity roadmap is now
+[2026-06-21-rust-tauri-parity-remediation-roadmap.html.md](./2026-06-21-rust-tauri-parity-remediation-roadmap.html.md).
 
 ## Objective
 
-Reach feature parity with `tachi`, then exceed it with Rust/Tauri-only
-desktop and release capabilities.
-
-The first phase is strict parity. Do not introduce new differentiators
-until the critical gaps are closed and proven with tests.
+Archived snapshot of the earlier parity remediation plan. Retained for
+provenance only; do not add new work here.
 
 ## Current critical gaps
 
