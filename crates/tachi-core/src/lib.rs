@@ -3,6 +3,7 @@ pub mod assets;
 pub mod attack_chains;
 pub mod attack_trees;
 pub mod compensating_controls;
+pub mod fixtures;
 pub mod coverage_attestation;
 pub mod coverage_audit;
 pub mod coverage_taxonomy;

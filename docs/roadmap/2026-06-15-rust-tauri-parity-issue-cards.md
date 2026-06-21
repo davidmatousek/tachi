@@ -26,9 +26,9 @@ Every card includes:
 
 ## Current Status Snapshot
 
-- Open: RT-011, RT-012, RT-013, RT-014
+- Open: RT-012, RT-013, RT-014
 - Partial: RT-015
-- Done: RT-010, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
+- Done: RT-010, RT-011, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022
 
 ## Phase 0 - parity harness
 
@@ -69,6 +69,8 @@ Every card includes:
 - `Stage label`: Phase 0
 - `Next test seam`: `tests/fixtures/`
 - `Notes`: Use the same schema for CLI and Tauri capture.
+- `Notes`: Implemented in `crates/tachi-core/src/fixtures.rs`; validated by
+  the fixture contract tests.
 
 ### RT-012 - deterministic normalization helper
 
