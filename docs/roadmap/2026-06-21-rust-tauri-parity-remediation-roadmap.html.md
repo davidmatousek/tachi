@@ -64,6 +64,8 @@ confirm what still differs before touching code.
 - Implementation owner: `docs`
 - Stage label: Phase 0
 - Next test seam: `docs/roadmap/`
+- Notes: Discovery artifact lives in
+  `docs/roadmap/2026-06-21-rust-tauri-parity-capability-matrix.md`.
 - Notes: This is a parity discovery card, not a code change.
 
 Exit gate:

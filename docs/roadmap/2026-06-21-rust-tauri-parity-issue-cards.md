@@ -32,6 +32,8 @@ Copy them into Beads as-is or with only implementation-owner routing changes.
 - `Implementation owner`: `docs`
 - `Stage label`: Phase 0
 - `Next test seam`: `docs/roadmap/`
+- `Notes`: Discovery artifact lives in
+  `docs/roadmap/2026-06-21-rust-tauri-parity-capability-matrix.md`.
 - `Notes`: Discovery first; no code changes in this slice.
 
 ## Phase 1 - critical parity closure
