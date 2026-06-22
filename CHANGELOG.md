@@ -14,7 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Added a non-path-filtered workspace PR workflow for
 `cargo test --workspace --all-targets`, made the clippy SARIF workflow fail
 closed on warnings while still uploading SARIF, and added Rust tests that guard
-both workflow policies.
+both workflow policies. Strengthened issue and pull-request templates so every
+implementation slice records failing-test-first evidence, exact validation
+gates, positive and negative/adversarial cases, and property/golden/mutation
+applicability.
 
 ### Scaffold dependency floor hardening
 

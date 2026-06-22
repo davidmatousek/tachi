@@ -48,6 +48,16 @@ Which Triad roles does this feature affect?
 
 Mockups, related ADRs, blueprint links, prior art.
 
+## TDD Acceptance Evidence
+
+Maintainers should complete this section before implementation.
+
+- Failing test first:
+- Exact validation gate:
+- Positive case:
+- Negative/adversarial case:
+- Property/golden/mutation applicability:
+
 ---
 
 ## Next Step (for contributors)

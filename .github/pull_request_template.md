@@ -12,3 +12,12 @@
 - [ ] Documentation updated (if applicable)
 - [ ] No secrets, credentials, or PII in committed files
 - [ ] Tested locally
+
+## TDD and Gate Evidence
+
+- Failing test first:
+- Exact validation gate:
+- Positive case:
+- Negative/adversarial case:
+- Property/golden/mutation applicability:
+- `make publish-gate` result or reason for narrower scoped validation:

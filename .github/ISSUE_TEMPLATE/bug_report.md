@@ -43,3 +43,13 @@ What actually happened. Include the full error output if any.
 ## Additional Context
 
 Logs, screenshots, related Issues, workarounds you've tried.
+
+## TDD Acceptance Evidence
+
+Maintainers should complete this section before implementation.
+
+- Failing test first:
+- Exact validation gate:
+- Positive case:
+- Negative/adversarial case:
+- Property/golden/mutation applicability:
