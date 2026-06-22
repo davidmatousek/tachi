@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use tachi_shell::commands::report_data_output;
+use tachi_shell::commands::{render_report_data_result, report_data_result};
 
 fn main() -> ExitCode {
     let (target_dir, template_dir, output_path) = match parse_args() {
@@ -12,7 +12,8 @@ fn main() -> ExitCode {
         }
     };
 
-    let output = report_data_output(&target_dir, &template_dir);
+    let result = report_data_result(&target_dir, &template_dir);
+    let output = render_report_data_result(&result);
 
     if let Some(output_path) = output_path {
         if let Some(parent) = output_path.parent() {

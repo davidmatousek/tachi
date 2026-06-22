@@ -396,6 +396,31 @@ pub fn coverage_audit_output(root: &Path) -> String {
     render(&audit, root)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReportDataResult {
+    pub typst: String,
+}
+
+pub fn report_data_result(target_dir: &Path, template_dir: &Path) -> ReportDataResult {
+    ReportDataResult {
+        typst: build_report_data_typst(target_dir, template_dir),
+    }
+}
+
+pub fn validate_report_data_result(result: &ReportDataResult) -> Result<(), String> {
+    if result.typst.starts_with("#let project-name =") {
+        Ok(())
+    } else {
+        Err(String::from(
+            "report-data typed result missing project-name binding",
+        ))
+    }
+}
+
+pub fn render_report_data_result(result: &ReportDataResult) -> String {
+    result.typst.clone()
+}
+
 pub fn infographic_data_output(root: &Path, template: &str) -> Result<String, String> {
     let payload = build_infographic_payload(root, template)?;
     serde_json::to_string_pretty(&payload)
@@ -403,7 +428,7 @@ pub fn infographic_data_output(root: &Path, template: &str) -> Result<String, St
 }
 
 pub fn report_data_output(target_dir: &Path, template_dir: &Path) -> String {
-    build_report_data_typst(target_dir, template_dir)
+    render_report_data_result(&report_data_result(target_dir, template_dir))
 }
 
 pub fn threats_sarif_output(input: &Path) -> Result<ThreatsSarifOutput, String> {

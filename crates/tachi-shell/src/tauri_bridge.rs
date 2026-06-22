@@ -1,9 +1,12 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use crate::commands::infographic_data_output;
 use crate::commands::{
-    coverage_audit_output, report_data_output, risk_scores_sarif_output, run_script_command_with_progress,
+    infographic_data_output, render_report_data_result, report_data_result,
+    validate_report_data_result,
+};
+use crate::commands::{
+    coverage_audit_output, risk_scores_sarif_output, run_script_command_with_progress,
     threats_sarif_output, CommandOutput,
 };
 use crate::progress::{
@@ -256,7 +259,15 @@ fn dispatch_report_data(_root: &Path, args: &[&str]) -> CommandOutput {
         }
     };
 
-    let output = report_data_output(&target_dir, &template_dir);
+    let result = report_data_result(&target_dir, &template_dir);
+    if let Err(message) = validate_report_data_result(&result) {
+        return CommandOutput {
+            status: 1,
+            stdout: String::new(),
+            stderr: format!("{message}\n"),
+        };
+    }
+    let output = render_report_data_result(&result);
     if let Some(output_path) = output_path {
         let output_path = match ensure_contained_output_path(root, &output_path, "report-data output") {
             Ok(path) => path,
