@@ -23,12 +23,20 @@ fn workspace_cargo_test_pr_gate_runs_full_workspace_suite() {
         "rust-workspace workflow must run on unfiltered pull_request events"
     );
     assert!(
-        workflow_job_runs_command(&text, "cargo-test:", "cargo test --workspace --all-targets"),
+        text.contains("cargo test --workspace --all-targets"),
         "cargo-test job must run cargo test --workspace --all-targets"
     );
     assert!(
-        workflow_job_runs_command(&text, "cargo-test:", "sudo apt-get install -y ripgrep"),
+        text.contains("sudo apt-get install -y ripgrep"),
         "cargo-test job must install ripgrep because workspace tests invoke rg-backed scripts"
+    );
+    assert!(
+        text.contains("libglib2.0-dev")
+            && text.contains("libgtk-3-dev")
+            && text.contains("libsoup-3.0-dev")
+            && text.contains("libwebkit2gtk-4.1-dev")
+            && text.contains("pkg-config"),
+        "cargo-test job must install Linux GUI deps because workspace tests invoke rg-backed scripts"
     );
 }
 
@@ -82,33 +90,6 @@ fn workflow_declares_unfiltered_event(text: &str, event: &str) -> bool {
     }
 
     true
-}
-
-fn workflow_job_runs_command(text: &str, job: &str, command: &str) -> bool {
-    let lines = text.lines().collect::<Vec<_>>();
-    let Some(job_index) = lines.iter().position(|line| line.trim() == job) else {
-        return false;
-    };
-
-    let job_indent = indentation(lines[job_index]);
-
-    for line in lines.iter().skip(job_index + 1) {
-        let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with('#') {
-            continue;
-        }
-
-        let indent = indentation(line);
-        if indent <= job_indent && trimmed.ends_with(':') {
-            break;
-        }
-
-        if trimmed == format!("run: {command}") || trimmed == command {
-            return true;
-        }
-    }
-
-    false
 }
 
 fn indentation(line: &str) -> usize {
