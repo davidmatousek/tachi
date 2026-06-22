@@ -42,7 +42,8 @@ jobs:
       - name: Install native Linux build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libglib2.0-dev libgtk-3-dev pkg-config
+          sudo apt-get install -y libglib2.0-dev libgtk-3-dev libsoup-3.0-dev \
+            libwebkit2gtk-4.1-dev pkg-config
 
       - name: Run rust-clippy
         shell: bash
