@@ -86,7 +86,7 @@ pub fn dispatch_command_with_progress(
 }
 
 fn dispatch_infographic_data(
-    root: &Path,
+    base_root: &Path,
     args: &[&str],
     token: &CancellationToken,
     reporter: &mut dyn ProgressReporter,
@@ -101,8 +101,19 @@ fn dispatch_infographic_data(
         };
     }
 
-    let (root, template, output_path) = match parse_infographic_data_args(root, args) {
+    let (root, template, output_path) = match parse_infographic_data_args(base_root, args) {
         Ok(values) => values,
+        Err(message) => {
+            emit_progress_event(reporter, "infographic-data", "failed");
+            return CommandOutput {
+                status: 2,
+                stdout: String::new(),
+                stderr: format!("{message}\n"),
+            };
+        }
+    };
+    let validated_root = match ensure_contained_input_path(base_root, &root, "infographic root") {
+        Ok(path) => path,
         Err(message) => {
             emit_progress_event(reporter, "infographic-data", "failed");
             return CommandOutput {
@@ -123,9 +134,24 @@ fn dispatch_infographic_data(
         };
     }
 
-    match infographic_data_output(&root, &template) {
+    match infographic_data_output(&validated_root, &template) {
         Ok(payload) => {
             if let Some(output_path) = output_path {
+                let output_path = match ensure_contained_output_path(
+                    &validated_root,
+                    &output_path,
+                    "infographic output",
+                ) {
+                    Ok(path) => path,
+                    Err(message) => {
+                        emit_progress_event(reporter, "infographic-data", "failed");
+                        return CommandOutput {
+                            status: 2,
+                            stdout: String::new(),
+                            stderr: format!("{message}\n"),
+                        };
+                    }
+                };
                 if token.is_cancelled() {
                     emit_progress_event(reporter, "infographic-data", "cancelled");
                     return CommandOutput {
@@ -208,9 +234,40 @@ fn dispatch_report_data(_root: &Path, args: &[&str]) -> CommandOutput {
             };
         }
     };
+    let root = _root;
+    let target_dir = match ensure_contained_input_path(root, &target_dir, "report target directory") {
+        Ok(path) => path,
+        Err(message) => {
+            return CommandOutput {
+                status: 2,
+                stdout: String::new(),
+                stderr: format!("{message}\n"),
+            };
+        }
+    };
+    let template_dir = match ensure_contained_input_path(root, &template_dir, "report template directory") {
+        Ok(path) => path,
+        Err(message) => {
+            return CommandOutput {
+                status: 2,
+                stdout: String::new(),
+                stderr: format!("{message}\n"),
+            };
+        }
+    };
 
     let output = report_data_output(&target_dir, &template_dir);
     if let Some(output_path) = output_path {
+        let output_path = match ensure_contained_output_path(root, &output_path, "report-data output") {
+            Ok(path) => path,
+            Err(message) => {
+                return CommandOutput {
+                    status: 2,
+                    stdout: String::new(),
+                    stderr: format!("{message}\n"),
+                };
+            }
+        };
         if let Some(parent) = output_path.parent() {
             if let Err(err) = std::fs::create_dir_all(parent) {
                 return CommandOutput {
@@ -244,6 +301,27 @@ fn dispatch_report_data(_root: &Path, args: &[&str]) -> CommandOutput {
 fn dispatch_threats_sarif(_root: &Path, args: &[&str]) -> CommandOutput {
     let (input, output) = match parse_threats_sarif_args(args) {
         Ok(values) => values,
+        Err(message) => {
+            return CommandOutput {
+                status: 2,
+                stdout: String::new(),
+                stderr: format!("{message}\n"),
+            };
+        }
+    };
+    let root = _root;
+    let input = match ensure_contained_input_path(root, &input, "threats input") {
+        Ok(path) => path,
+        Err(message) => {
+            return CommandOutput {
+                status: 2,
+                stdout: String::new(),
+                stderr: format!("{message}\n"),
+            };
+        }
+    };
+    let output = match ensure_contained_output_path(root, &output, "threats SARIF output") {
+        Ok(path) => path,
         Err(message) => {
             return CommandOutput {
                 status: 2,
@@ -297,6 +375,37 @@ fn dispatch_threats_sarif(_root: &Path, args: &[&str]) -> CommandOutput {
 fn dispatch_risk_scores_sarif(_root: &Path, args: &[&str]) -> CommandOutput {
     let (risk_scores, threats, output) = match parse_risk_scores_args(args) {
         Ok(values) => values,
+        Err(message) => {
+            return CommandOutput {
+                status: 2,
+                stdout: String::new(),
+                stderr: format!("{message}\n"),
+            };
+        }
+    };
+    let root = _root;
+    let risk_scores = match ensure_contained_input_path(root, &risk_scores, "risk scores input") {
+        Ok(path) => path,
+        Err(message) => {
+            return CommandOutput {
+                status: 2,
+                stdout: String::new(),
+                stderr: format!("{message}\n"),
+            };
+        }
+    };
+    let threats = match ensure_contained_input_path(root, &threats, "threats input") {
+        Ok(path) => path,
+        Err(message) => {
+            return CommandOutput {
+                status: 2,
+                stdout: String::new(),
+                stderr: format!("{message}\n"),
+            };
+        }
+    };
+    let output = match ensure_contained_output_path(root, &output, "risk scores SARIF output") {
+        Ok(path) => path,
         Err(message) => {
             return CommandOutput {
                 status: 2,
@@ -517,4 +626,95 @@ fn parse_infographic_data_args(
 
     let template = template.ok_or_else(|| String::from("--template is required"))?;
     Ok((root, template, output_path))
+}
+
+fn ensure_contained_input_path(root: &Path, candidate: &Path, label: &str) -> Result<PathBuf, String> {
+    if contains_parent_dir(candidate) {
+        return Err(format!(
+            "path policy failed for {label}: {} contains parent traversal",
+            candidate.display()
+        ));
+    }
+    let root = root
+        .canonicalize()
+        .map_err(|err| format!("path policy failed for {label}: failed to resolve root {}: {err}", root.display()))?;
+    let candidate = candidate
+        .canonicalize()
+        .map_err(|err| format!("path policy failed for {label}: failed to resolve {}: {err}", candidate.display()))?;
+
+    if candidate.starts_with(&root) {
+        Ok(candidate)
+    } else {
+        Err(format!(
+            "path policy failed for {label}: {} escapes {}",
+            candidate.display(),
+            root.display()
+        ))
+    }
+}
+
+fn ensure_contained_output_path(root: &Path, candidate: &Path, label: &str) -> Result<PathBuf, String> {
+    if contains_parent_dir(candidate) {
+        return Err(format!(
+            "path policy failed for {label}: {} contains parent traversal",
+            candidate.display()
+        ));
+    }
+    let root = root
+        .canonicalize()
+        .map_err(|err| format!("path policy failed for {label}: failed to resolve root {}: {err}", root.display()))?;
+    let candidate = if candidate.is_absolute() {
+        candidate.to_path_buf()
+    } else {
+        root.join(candidate)
+    };
+
+    let mut existing = candidate.as_path();
+    while !existing.exists() {
+        existing = existing.parent().ok_or_else(|| {
+            format!(
+                "path policy failed for {label}: unable to find existing ancestor for {}",
+                candidate.display()
+            )
+        })?;
+    }
+    let existing = existing
+        .canonicalize()
+        .map_err(|err| format!("path policy failed for {label}: failed to resolve {}: {err}", existing.display()))?;
+
+    if !existing.starts_with(&root) {
+        return Err(format!(
+            "path policy failed for {label}: {} escapes {}",
+            existing.display(),
+            root.display()
+        ));
+    }
+
+    let mut current = candidate.as_path();
+    while let Some(parent) = current.parent() {
+        if !parent.exists() {
+            break;
+        }
+        let metadata = parent
+            .symlink_metadata()
+            .map_err(|err| format!("path policy failed for {label}: failed to inspect {}: {err}", parent.display()))?;
+        if metadata.file_type().is_symlink() {
+            return Err(format!(
+                "path policy failed for {label}: {} traverses symlink {}",
+                candidate.display(),
+                parent.display()
+            ));
+        }
+        if parent == root {
+            break;
+        }
+        current = parent;
+    }
+
+    Ok(candidate)
+}
+
+fn contains_parent_dir(path: &Path) -> bool {
+    path.components()
+        .any(|component| matches!(component, std::path::Component::ParentDir))
 }

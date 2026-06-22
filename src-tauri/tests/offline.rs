@@ -1,4 +1,5 @@
 use std::fs;
+use std::os::unix::fs::symlink;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
@@ -28,6 +29,10 @@ fn write_executable_file(path: &PathBuf, content: &str) {
     fs::set_permissions(path, perms).expect("set executable mode");
 }
 
+fn canonical(path: &PathBuf) -> PathBuf {
+    fs::canonicalize(path).expect("canonicalize path")
+}
+
 #[test]
 fn restore_offline_cache_restores_expected_files() {
     let repo_root = fixture_root("offline-repo");
@@ -45,17 +50,18 @@ fn restore_offline_cache_restores_expected_files() {
     .expect("write version pin");
 
     let report = restore_offline_cache(&repo_root, &cache_root).expect("restore cache");
+    let canonical_repo_root = canonical(&repo_root);
 
     assert_eq!(
         report,
         OfflineRestoreReport {
             restored_files: vec![
-                repo_root.join(".aod/aod-kit-version"),
-                repo_root.join("scripts/update.sh"),
+                canonical_repo_root.join(".aod/aod-kit-version"),
+                canonical_repo_root.join("scripts/update.sh"),
             ],
             missing_cache_files: vec![
-                repo_root.join("scripts/install.sh"),
-                repo_root.join("scripts/init.sh"),
+                canonical_repo_root.join("scripts/install.sh"),
+                canonical_repo_root.join("scripts/init.sh"),
             ],
         }
     );
@@ -103,18 +109,19 @@ fn bootstrap_from_cache_restores_ready_offline_state() {
     .expect("write cached version");
 
     let report = bootstrap_from_cache(&repo_root, &cache_root).expect("bootstrap from cache");
+    let canonical_repo_root = canonical(&repo_root);
 
     assert_eq!(
         report,
         BootstrapReport {
             restore: OfflineRestoreReport {
                 restored_files: vec![
-                    repo_root.join(".aod/aod-kit-version"),
-                    repo_root.join("scripts/update.sh"),
+                    canonical_repo_root.join(".aod/aod-kit-version"),
+                    canonical_repo_root.join("scripts/update.sh"),
                 ],
                 missing_cache_files: vec![
-                    repo_root.join("scripts/install.sh"),
-                    repo_root.join("scripts/init.sh"),
+                    canonical_repo_root.join("scripts/install.sh"),
+                    canonical_repo_root.join("scripts/init.sh"),
                 ],
             },
             update_check: UpdateCheck {
@@ -125,4 +132,33 @@ fn bootstrap_from_cache_restores_ready_offline_state() {
             offline_ready: true,
         }
     );
+}
+
+#[test]
+fn restore_offline_cache_rejects_parent_traversal_roots() {
+    let repo_root = fixture_root("offline-repo-traversal");
+    let cache_root = fixture_root("offline-cache-traversal");
+
+    let err = restore_offline_cache(&repo_root.join(".."), &cache_root)
+        .expect_err("reject repo root traversal");
+    assert!(err.contains("contains parent traversal"));
+}
+
+#[test]
+fn restore_offline_cache_rejects_symlinked_cache_files() {
+    let repo_root = fixture_root("offline-repo-symlink");
+    let cache_root = fixture_root("offline-cache-symlink");
+    let outside = fixture_root("offline-cache-outside");
+
+    fs::create_dir_all(outside.join(".aod")).expect("create outside aod dir");
+    fs::write(outside.join(".aod/aod-kit-version"), "version=v9.9.9\n").expect("write outside pin");
+    fs::create_dir_all(cache_root.join(".aod")).expect("create cache aod dir");
+    symlink(
+        outside.join(".aod/aod-kit-version"),
+        cache_root.join(".aod/aod-kit-version"),
+    )
+    .expect("create symlinked cache pin");
+
+    let err = restore_offline_cache(&repo_root, &cache_root).expect_err("reject symlink escape");
+    assert!(err.contains("path policy failed for offline cache file"));
 }

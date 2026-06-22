@@ -12,6 +12,12 @@ The repository has strong Rust migration momentum, broad integration coverage, a
 
 The highest-priority remediation is to make CI fail closed for behavior and lint regressions, then harden the Tauri boundary before deeper refactors. After that, the roadmap moves command parsing/dispatch/output rendering into typed shared contracts, splits shell responsibilities by SOLID boundaries, narrows the `tachi-core` public API, decomposes large mixed-purpose modules, and upgrades test strategy with semantic, property, fuzz, and mutation-style gates.
 
+### Current repository delta
+
+- `src-tauri/tauri.conf.json`, `src-tauri/capabilities/main.json`, and `src-tauri/build.rs` now exist, so the Tauri surface is no longer a raw scaffold.
+- `AQ-021` is partially implemented: the desktop boundary now has least-privilege config and capability tests, but the runtime wiring and typed boundary work remain open.
+- The remaining risk concentrates in typed command contracts, root-contained IO, bounded process execution, public API narrowing, and test-quality hardening.
+
 ## Panel findings
 
 ### High severity
@@ -20,8 +26,8 @@ The highest-priority remediation is to make CI fail closed for behavior and lint
 | --- | --- | --- | --- |
 | AQ-F01 | PR CI does not expose a full workspace behavioral gate | `.github/workflows/tachi-pytest.yml`, `.github/workflows/tachi-mmdc-preflight.yml`, `Makefile` | Regressions can merge when targeted workflows pass but workspace tests fail. |
 | AQ-F02 | Clippy SARIF lane is advisory rather than fail-closed | `.github/workflows/rust-clippy.yml` uses `continue-on-error` semantics | Lint regressions can be hidden behind successful uploads. |
-| AQ-F03 | Tauri surface is a scaffold, not a complete least-privilege app boundary | `src-tauri/src/lib.rs::run`, `src-tauri/Cargo.toml`; no `tauri.conf.json` or capabilities directory observed | Publish docs can imply desktop controls that are not enforced. |
-| AQ-F04 | Desktop/control-plane command args remain partially opaque | `src-tauri/src/schema.rs`, `crates/tachi-shell/src/tauri_bridge.rs`, `crates/tachi-shell/src/commands.rs` | UI invoke path can become a privileged shell-script proxy. |
+| AQ-F03 | Tauri surface is partially hardened, but runtime wiring is still incomplete | `src-tauri/src/lib.rs::run`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `src-tauri/capabilities/main.json` | Desktop boundary now exists, but the invoke surface still needs deeper typed wiring and full least-privilege validation. |
+| AQ-F04 | Desktop/control-plane command args remain partially opaque | `src-tauri/src/schema.rs`, `crates/tachi-shell/src/tauri_bridge.rs`, `crates/tachi-shell/src/commands.rs` | UI invoke path can still drift toward a privileged proxy unless the typed registry lands. |
 | AQ-F05 | File writes and cache copies need explicit root containment | `crates/tachi-shell/src/tauri_bridge.rs`, `src-tauri/src/offline.rs` | Output/cache paths can escape expected roots if absolute, parent, or symlink paths are accepted. |
 | AQ-F06 | Command contracts are stringly and duplicated across adapters | CLI `parse_args`, Tauri schema validation, shell dispatch matches | Violates open/closed principle and creates CLI/Tauri drift risk. |
 | AQ-F07 | `tachi-shell::commands` mixes facade, executor, orchestrator, filesystem, serialization, and progress concerns | `crates/tachi-shell/src/commands.rs` | Single-responsibility violations make extension and testing brittle. |
@@ -169,4 +175,3 @@ The highest-priority remediation is to make CI fail closed for behavior and lint
 - AQ-001: epic, Architecture and test quality maturity program.
 - AQ-010/AQ-020/AQ-030/AQ-040/AQ-050: phase capabilities.
 - AQ-011..AQ-055: executable TDD tasks with dependency edges and acceptance criteria.
-

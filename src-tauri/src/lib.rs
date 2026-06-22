@@ -55,8 +55,17 @@ pub fn registered_commands() -> &'static [&'static str] {
     &DESKTOP_COMMANDS
 }
 
+#[tauri::command]
+fn desktop_registered_commands() -> &'static [&'static str] {
+    registered_commands()
+}
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let _registered_commands = registered_commands();
+    tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![desktop_registered_commands])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }
 
 pub use tachi_shell::progress::{

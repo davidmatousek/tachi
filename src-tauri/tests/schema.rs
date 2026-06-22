@@ -15,6 +15,25 @@ fn workspace_root() -> std::path::PathBuf {
 fn validate_invoke_input_returns_typed_requests() {
     let root = workspace_root();
 
+    let install = validate_invoke_input(
+        "install",
+        &root,
+        &["--source", "/tmp/source", "--version", "v1.2.3"],
+    )
+    .expect("install schema");
+    assert_eq!(
+        install,
+        DesktopInvokeInput::ControlPlane {
+            command: "install".to_string(),
+            args: vec![
+                "--source".to_string(),
+                "/tmp/source".to_string(),
+                "--version".to_string(),
+                "v1.2.3".to_string(),
+            ],
+        }
+    );
+
     let report = validate_invoke_input(
         "report-data",
         &root,
@@ -122,6 +141,33 @@ fn validate_invoke_input_rejects_missing_required_fields_and_unknown_commands() 
     let err = validate_invoke_input("infographic-data", &root, &["--wat"])
         .expect_err("unknown infographic arg");
     assert!(err.contains("unrecognized argument: --wat"));
+
+    let err = validate_invoke_input("install", &root, &["--wat"]).expect_err("unknown install arg");
+    assert!(err.contains("unrecognized argument: --wat"));
+
+    let err = validate_invoke_input(
+        "init",
+        &root,
+        &["--precommit", "--no-precommit"],
+    )
+    .expect_err("conflicting init flags");
+    assert!(err.contains("duplicate or conflicting argument"));
+
+    let err = validate_invoke_input(
+        "update",
+        &root,
+        &["--dry-run", "--apply"],
+    )
+    .expect_err("conflicting update flags");
+    assert!(err.contains("duplicate or conflicting argument"));
+
+    let err = validate_invoke_input(
+        "bootstrap",
+        &root,
+        &["--yes", "--dry-run", ";", "rm", "-rf", "/"],
+    )
+    .expect_err("shell-control bootstrap arg");
+    assert!(err.contains("shell-control args are not allowed"));
 
     let err = validate_invoke_input("threats-sarif", &root, &["--input", "threats.md"])
         .expect_err("missing threats output");

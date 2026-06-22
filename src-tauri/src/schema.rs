@@ -41,7 +41,7 @@ pub fn validate_invoke_input(
     match command {
         "install" | "init" | "update" | "bootstrap" => Ok(DesktopInvokeInput::ControlPlane {
             command: command.to_string(),
-            args: args.iter().map(|arg| (*arg).to_string()).collect(),
+            args: validate_control_plane_args(command, args)?,
         }),
         "coverage-audit" => Ok(DesktopInvokeInput::CoverageAudit {
             root: parse_optional_root(default_root, &mut iter, command)?,
@@ -297,4 +297,88 @@ fn next_value<'a>(
     iter.next()
         .copied()
         .ok_or_else(|| render_schema_error(command, &format!("{flag} requires a path argument")))
+}
+
+fn validate_control_plane_args(command: &str, args: &[&str]) -> Result<Vec<String>, String> {
+    let mut validated = Vec::with_capacity(args.len());
+    let mut seen_groups = std::collections::BTreeSet::new();
+    let mut iter = args.iter().peekable();
+
+    while let Some(arg) = iter.next() {
+        let arg = *arg;
+        if arg == "--help" || arg == "-h" {
+            return Err(render_schema_error(
+                command,
+                "help is not an invocation payload",
+            ));
+        }
+        if is_shell_control_token(arg) {
+            return Err(render_schema_error(
+                command,
+                "shell-control args are not allowed",
+            ));
+        }
+
+        let group = control_plane_flag_group(command, arg)
+            .ok_or_else(|| render_schema_error(command, &format!("unrecognized argument: {arg}")))?;
+        if !seen_groups.insert(group) {
+            return Err(render_schema_error(
+                command,
+                &format!("duplicate or conflicting argument: {arg}"),
+            ));
+        }
+        validated.push(arg.to_string());
+
+        if control_plane_flag_takes_value(command, arg) {
+            let value = iter.next().copied().ok_or_else(|| {
+                render_schema_error(command, &format!("{arg} requires a path argument"))
+            })?;
+            if is_shell_control_token(value) {
+                return Err(render_schema_error(
+                    command,
+                    "shell-control args are not allowed",
+                ));
+            }
+            validated.push(value.to_string());
+        }
+    }
+
+    Ok(validated)
+}
+
+fn control_plane_flag_group(command: &str, flag: &str) -> Option<&'static str> {
+    match command {
+        "install" => match flag {
+            "--source" => Some("--source"),
+            "--version" => Some("--version"),
+            _ => None,
+        },
+        "init" => match flag {
+            "--precommit" | "--no-precommit" => Some("precommit-mode"),
+            _ => None,
+        },
+        "update" | "bootstrap" => match flag {
+            "--dry-run" | "--apply" => Some("execution-mode"),
+            "--yes" => Some("--yes"),
+            "--json" => Some("--json"),
+            "--force-retag" => Some("--force-retag"),
+            "--upstream-url" => Some("--upstream-url"),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn control_plane_flag_takes_value(command: &str, flag: &str) -> bool {
+    match command {
+        "install" => matches!(flag, "--source" | "--version"),
+        "update" | "bootstrap" => matches!(flag, "--upstream-url"),
+        _ => false,
+    }
+}
+
+fn is_shell_control_token(value: &str) -> bool {
+    value
+        .chars()
+        .any(|ch| matches!(ch, ';' | '|' | '&' | '<' | '>' | '$' | '`'))
 }

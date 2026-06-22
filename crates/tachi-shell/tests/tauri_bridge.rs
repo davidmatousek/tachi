@@ -1,5 +1,6 @@
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::symlink;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -101,4 +102,68 @@ fn dispatch_command_with_progress_can_cancel_running_install_script() {
     assert!(messages.iter().any(|message| message == "starting"));
     assert!(messages.iter().any(|message| message == "running"));
     assert!(messages.iter().any(|message| message == "cancelled"));
+}
+
+#[test]
+fn dispatch_command_rejects_output_path_escape_and_parent_traversal() {
+    let root = fixture_repo();
+    let target_dir = root.join("target");
+    let template_dir = root.join("templates/tachi/security-report");
+    fs::create_dir_all(&template_dir).expect("create template dir");
+    fs::create_dir_all(&target_dir).expect("create target dir");
+    fs::write(target_dir.join("threats.md"), "# Threat Model: Escape Test\n").expect("write threats");
+    let output_path = std::env::temp_dir().join(format!(
+        "tachi-rust-escape-{}",
+        FIXTURE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    ));
+
+    let output = dispatch_command(
+        "report-data",
+        &root,
+        &[
+            "--target-dir",
+            target_dir.to_string_lossy().as_ref(),
+            "--template-dir",
+            template_dir.to_string_lossy().as_ref(),
+            "--output",
+            output_path.to_string_lossy().as_ref(),
+        ],
+    );
+
+    assert_eq!(output.status, 2);
+    assert!(output.stderr.contains("path policy failed for report-data output"));
+
+    let traversal = dispatch_command(
+        "infographic-data",
+        &root,
+        &["--root", root.join("..").to_string_lossy().as_ref(), "--template", "maestro-stack"],
+    );
+    assert_eq!(traversal.status, 2);
+    assert!(traversal.stderr.contains("contains parent traversal"));
+}
+
+#[test]
+fn dispatch_command_rejects_symlink_escape_in_input_path() {
+    let root = fixture_repo();
+    let outside = std::env::temp_dir().join(format!(
+        "tachi-rust-outside-{}",
+        FIXTURE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    ));
+    fs::create_dir_all(&outside).expect("create outside root");
+    fs::write(outside.join("threats.md"), "outside").expect("write outside threats");
+    symlink(outside.join("threats.md"), root.join("threats.md")).expect("create symlink");
+
+    let output = dispatch_command(
+        "threats-sarif",
+        &root,
+        &[
+            "--input",
+            root.join("threats.md").to_string_lossy().as_ref(),
+            "--output",
+            root.join("out/threats.sarif").to_string_lossy().as_ref(),
+        ],
+    );
+
+    assert_eq!(output.status, 2);
+    assert!(output.stderr.contains("path policy failed for threats input"));
 }
