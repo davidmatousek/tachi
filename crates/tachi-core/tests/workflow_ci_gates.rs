@@ -16,39 +16,16 @@ fn workflow_text(name: &str) -> String {
 
 #[test]
 fn workspace_cargo_test_pr_gate_runs_full_workspace_suite() {
-    let workflows_dir = repo_root().join(".github/workflows");
-    let mut matching_workflows = Vec::new();
-
-    for entry in fs::read_dir(&workflows_dir).expect("read workflows directory") {
-        let entry = entry.expect("workflow entry");
-        let path = entry.path();
-        if path.extension().and_then(|extension| extension.to_str()) != Some("yml") {
-            continue;
-        }
-
-        let text = fs::read_to_string(&path).expect("read workflow file");
-        if workflow_runs_command(&text, "cargo test --workspace --all-targets") {
-            matching_workflows.push((path, text));
-        }
-    }
+    let text = workflow_text("rust-workspace.yml");
 
     assert!(
-        !matching_workflows.is_empty(),
-        "PR CI must include a cargo test --workspace --all-targets workflow"
+        workflow_declares_unfiltered_event(&text, "pull_request"),
+        "rust-workspace workflow must run on unfiltered pull_request events"
     );
-
-    for (path, text) in matching_workflows {
-        assert!(
-            text.contains("pull_request:"),
-            "{} must run on pull_request",
-            path.display()
-        );
-        assert!(
-            !text.contains("paths:"),
-            "{} must not path-filter the full workspace behavioral gate",
-            path.display()
-        );
-    }
+    assert!(
+        workflow_job_runs_command(&text, "cargo-test:", "cargo test --workspace --all-targets"),
+        "cargo-test job must run cargo test --workspace --all-targets"
+    );
 }
 
 #[test]
@@ -73,10 +50,65 @@ fn clippy_sarif_workflow_fails_closed_without_losing_upload() {
     );
 }
 
-fn workflow_runs_command(text: &str, command: &str) -> bool {
-    text.lines()
-        .map(str::trim)
-        .any(|line| line == format!("run: {command}") || line == command)
+fn workflow_declares_unfiltered_event(text: &str, event: &str) -> bool {
+    let lines = text.lines().collect::<Vec<_>>();
+    let Some(event_index) = lines
+        .iter()
+        .position(|line| line.trim() == format!("{event}:"))
+    else {
+        return false;
+    };
+
+    let event_indent = indentation(lines[event_index]);
+
+    for line in lines.iter().skip(event_index + 1) {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+
+        let indent = indentation(line);
+        if indent <= event_indent && trimmed.ends_with(':') {
+            break;
+        }
+
+        if matches!(trimmed, "paths:" | "paths-ignore:") {
+            return false;
+        }
+    }
+
+    true
+}
+
+fn workflow_job_runs_command(text: &str, job: &str, command: &str) -> bool {
+    let lines = text.lines().collect::<Vec<_>>();
+    let Some(job_index) = lines.iter().position(|line| line.trim() == job) else {
+        return false;
+    };
+
+    let job_indent = indentation(lines[job_index]);
+
+    for line in lines.iter().skip(job_index + 1) {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+
+        let indent = indentation(line);
+        if indent <= job_indent && trimmed.ends_with(':') {
+            break;
+        }
+
+        if trimmed == format!("run: {command}") || trimmed == command {
+            return true;
+        }
+    }
+
+    false
+}
+
+fn indentation(line: &str) -> usize {
+    line.chars().take_while(|character| *character == ' ').count()
 }
 
 fn workflow_step_has_line(text: &str, step_name: &str, required_line: &str) -> bool {
