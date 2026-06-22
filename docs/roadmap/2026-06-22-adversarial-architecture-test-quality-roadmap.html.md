@@ -16,7 +16,9 @@ The highest-priority remediation is to make CI fail closed for behavior and lint
 
 - `src-tauri/tauri.conf.json`, `src-tauri/capabilities/main.json`, and `src-tauri/build.rs` now exist, so the Tauri surface is no longer a raw scaffold.
 - `AQ-021` is partially implemented: the desktop boundary now has least-privilege config and capability tests, but the runtime wiring and typed boundary work remain open.
-- The remaining risk concentrates in typed command contracts, root-contained IO, bounded process execution, public API narrowing, and test-quality hardening.
+- `AQ-022` and `AQ-023` are complete: the desktop command schema now rejects control-plane drift and the bridge/offline layer now enforces root-contained IO.
+- `AQ-024` is complete: the shared executor now enforces bounded timeout, cancellation cleanup, output caps, and process-group termination where supported.
+- The remaining risk concentrates in typed desktop error taxonomy, public API narrowing, and test-quality hardening.
 
 ## Panel findings
 

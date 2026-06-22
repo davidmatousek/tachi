@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+use std::process::Command;
 
 use tachi_shell::progress::{
     cancel_running_command, CancellationToken, ProgressEvent, ProgressReporter,
@@ -16,6 +17,7 @@ use tachi_shell::tauri_bridge::dispatch_command_with_progress;
 struct RecordingReporter(Arc<Mutex<Vec<ProgressEvent>>>);
 
 static FIXTURE_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+static EXEC_POLICY_LOCK: Mutex<()> = Mutex::new(());
 
 impl ProgressReporter for RecordingReporter {
     fn emit(&mut self, event: ProgressEvent) {
@@ -44,8 +46,19 @@ fn write_executable_file(path: &PathBuf, content: &str) {
     fs::set_permissions(path, perms).expect("set executable mode");
 }
 
+fn wait_for_file(path: &PathBuf) {
+    for _ in 0..100 {
+        if path.exists() {
+            return;
+        }
+        thread::sleep(Duration::from_millis(10));
+    }
+    panic!("timed out waiting for {}", path.display());
+}
+
 #[test]
 fn dispatch_command_routes_bootstrap_to_update_with_prefix() {
+    let _guard = EXEC_POLICY_LOCK.lock().expect("policy lock");
     let root = fixture_repo();
     write_executable_file(
         &root.join("scripts/update.sh"),
@@ -61,6 +74,7 @@ fn dispatch_command_routes_bootstrap_to_update_with_prefix() {
 
 #[test]
 fn dispatch_command_rejects_unknown_command() {
+    let _guard = EXEC_POLICY_LOCK.lock().expect("policy lock");
     let root = fixture_repo();
 
     let output = dispatch_command("unknown", &root, &[]);
@@ -71,22 +85,25 @@ fn dispatch_command_rejects_unknown_command() {
 
 #[test]
 fn dispatch_command_with_progress_can_cancel_running_install_script() {
+    let _guard = EXEC_POLICY_LOCK.lock().expect("policy lock");
     let root = fixture_repo();
     write_executable_file(
         &root.join("scripts/install.sh"),
-        "#!/usr/bin/env bash\ntrap 'exit 130' TERM\nprintf 'begin\\n'\nsleep 5\nprintf 'done\\n'\n",
+        "#!/usr/bin/env bash\ntrap 'exit 130' TERM\nsleep 60 &\nchild=$!\nprintf '%s\\n' \"$child\" > child.pid\nprintf 'begin\\n'\nwait\n",
     );
 
     let token = CancellationToken::new();
     let worker_token = token.clone();
     let events = Arc::new(Mutex::new(Vec::new()));
     let reporter = RecordingReporter(events.clone());
+    let child_root = root.clone();
 
     let handle = thread::spawn(move || {
         let mut reporter = reporter;
-        dispatch_command_with_progress("install", &root, &[], &worker_token, &mut reporter)
+        dispatch_command_with_progress("install", &child_root, &[], &worker_token, &mut reporter)
     });
 
+    wait_for_file(&root.join("child.pid"));
     thread::sleep(Duration::from_millis(100));
     cancel_running_command(&token);
 
@@ -102,10 +119,88 @@ fn dispatch_command_with_progress_can_cancel_running_install_script() {
     assert!(messages.iter().any(|message| message == "starting"));
     assert!(messages.iter().any(|message| message == "running"));
     assert!(messages.iter().any(|message| message == "cancelled"));
+    let child_pid = fs::read_to_string(root.join("child.pid"))
+        .expect("read child pid")
+        .trim()
+        .to_string();
+    let kill_status = Command::new("kill")
+        .arg("-0")
+        .arg(&child_pid)
+        .status()
+        .expect("probe child pid");
+    assert!(!kill_status.success(), "background child should not survive cancel");
+}
+
+#[test]
+fn dispatch_command_times_out_long_running_install_script_and_cleans_children() {
+    let _guard = EXEC_POLICY_LOCK.lock().expect("policy lock");
+    let previous_timeout = std::env::var("TACHI_EXECUTION_TIMEOUT_MS").ok();
+    std::env::set_var("TACHI_EXECUTION_TIMEOUT_MS", "1000");
+
+    let root = fixture_repo();
+    write_executable_file(
+        &root.join("scripts/install.sh"),
+        "#!/usr/bin/env bash\nsleep 60 &\nchild=$!\nprintf '%s\\n' \"$child\" > child.pid\nwait\n",
+    );
+
+    let output = dispatch_command("install", &root, &[]);
+
+    if let Some(value) = previous_timeout {
+        std::env::set_var("TACHI_EXECUTION_TIMEOUT_MS", value);
+    } else {
+        std::env::remove_var("TACHI_EXECUTION_TIMEOUT_MS");
+    }
+
+    assert_eq!(output.status, 124);
+    assert!(output.stderr.is_empty() || output.stderr.contains("timed out"));
+    let child_pid = fs::read_to_string(root.join("child.pid"))
+        .expect("read child pid")
+        .trim()
+        .to_string();
+    let kill_status = Command::new("kill")
+        .arg("-0")
+        .arg(&child_pid)
+        .status()
+        .expect("probe child pid");
+    assert!(!kill_status.success(), "background child should not survive timeout");
+}
+
+#[test]
+fn dispatch_command_caps_large_stdout_and_stderr_output() {
+    let _guard = EXEC_POLICY_LOCK.lock().expect("policy lock");
+    let root = fixture_repo();
+    write_executable_file(
+        &root.join("scripts/install.sh"),
+        "#!/usr/bin/env bash\nfor i in $(seq 1 10000); do printf '0123456789'; done\nfor i in $(seq 1 10000); do printf 'abcdefghij' >&2; done\n",
+    );
+
+    let output = dispatch_command("install", &root, &[]);
+
+    assert_eq!(output.status, 0);
+    assert!(output.stdout.len() <= 64 * 1024);
+    assert!(output.stderr.len() <= 64 * 1024);
+    assert!(output.stdout.starts_with("0123456789"));
+    assert!(output.stderr.starts_with("abcdefghij"));
+}
+
+#[test]
+fn dispatch_command_propagates_nonzero_exit_status() {
+    let _guard = EXEC_POLICY_LOCK.lock().expect("policy lock");
+    let root = fixture_repo();
+    write_executable_file(
+        &root.join("scripts/install.sh"),
+        "#!/usr/bin/env bash\nprintf 'bad exit\\n' >&2\nexit 7\n",
+    );
+
+    let output = dispatch_command("install", &root, &[]);
+
+    assert_eq!(output.status, 7);
+    assert!(output.stderr.contains("bad exit"));
 }
 
 #[test]
 fn dispatch_command_rejects_output_path_escape_and_parent_traversal() {
+    let _guard = EXEC_POLICY_LOCK.lock().expect("policy lock");
     let root = fixture_repo();
     let target_dir = root.join("target");
     let template_dir = root.join("templates/tachi/security-report");
@@ -144,6 +239,7 @@ fn dispatch_command_rejects_output_path_escape_and_parent_traversal() {
 
 #[test]
 fn dispatch_command_rejects_symlink_escape_in_input_path() {
+    let _guard = EXEC_POLICY_LOCK.lock().expect("policy lock");
     let root = fixture_repo();
     let outside = std::env::temp_dir().join(format!(
         "tachi-rust-outside-{}",

@@ -1,9 +1,13 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::process::Output;
 use std::process::Stdio;
+use std::time::Instant;
 use std::thread::sleep;
 use std::time::Duration;
+use std::io::{BufReader, Read};
+
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 
 use tachi_core::coverage_audit::{collect_audit, render};
 use tachi_core::infographic::build_infographic_payload;
@@ -30,6 +34,10 @@ pub const CONTROL_PLANE_COMMANDS: [&str; 9] = [
     "risk-scores-sarif",
     "threats-sarif",
 ];
+
+const DEFAULT_EXECUTION_TIMEOUT: Duration = Duration::from_secs(30);
+const DEFAULT_OUTPUT_CAP_BYTES: usize = 64 * 1024;
+const POLL_INTERVAL: Duration = Duration::from_millis(10);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ThreatsSarifOutput {
@@ -81,6 +89,9 @@ pub(crate) fn run_script_command_with_progress(
     token: &CancellationToken,
     reporter: &mut dyn ProgressReporter,
 ) -> CommandOutput {
+    let timeout = execution_timeout();
+    let output_cap = execution_output_cap();
+
     emit_progress_event(reporter, script_name, "starting");
     if token.is_cancelled() {
         emit_progress_event(reporter, script_name, "cancelled");
@@ -99,6 +110,7 @@ pub(crate) fn run_script_command_with_progress(
         .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
+        .process_group(0)
         .spawn();
 
     let mut child = match spawn_result {
@@ -112,68 +124,154 @@ pub(crate) fn run_script_command_with_progress(
             };
         }
     };
+    let stdout = child.stdout.take().expect("child stdout piped");
+    let stderr = child.stderr.take().expect("child stderr piped");
+    let stdout_handle = std::thread::spawn(move || capture_stream(stdout, output_cap));
+    let stderr_handle = std::thread::spawn(move || capture_stream(stderr, output_cap));
+    let start = Instant::now();
+    let mut running_emitted = false;
 
     loop {
         if token.is_cancelled() {
-            let _ = child.kill();
-            match child.wait_with_output() {
-                Ok(output) => {
-                    emit_progress_event(reporter, script_name, "cancelled");
-                    return CommandOutput {
-                        status: 130,
-                        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
-                        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
-                    };
-                }
-                Err(err) => {
-                    emit_progress_event(reporter, script_name, "cancelled");
-                    return CommandOutput {
-                        status: 130,
-                        stdout: String::new(),
-                        stderr: format!("{script_name} cancelled: {err}\n"),
-                    };
-                }
-            }
+            terminate_process_group(&mut child);
+            return finalize_script_output(
+                script_name,
+                reporter,
+                child.wait(),
+                stdout_handle,
+                stderr_handle,
+                130,
+                "cancelled",
+            );
+        }
+
+        if start.elapsed() >= timeout {
+            terminate_process_group(&mut child);
+            return finalize_script_output(
+                script_name,
+                reporter,
+                child.wait(),
+                stdout_handle,
+                stderr_handle,
+                124,
+                "timed out",
+            );
         }
 
         match child.try_wait() {
-            Ok(Some(_status)) => match child.wait_with_output() {
-                Ok(Output {
-                    status,
-                    stdout,
-                    stderr,
-                }) => {
-                    emit_progress_event(reporter, script_name, "completed");
-                    return CommandOutput {
-                        status: status.code().unwrap_or(1),
-                        stdout: String::from_utf8_lossy(&stdout).to_string(),
-                        stderr: String::from_utf8_lossy(&stderr).to_string(),
-                    };
-                }
-                Err(err) => {
-                    emit_progress_event(reporter, script_name, "failed");
-                    return CommandOutput {
-                        status: 1,
-                        stdout: String::new(),
-                        stderr: format!("failed to execute {script_name}: {err}\n"),
-                    };
-                }
-            },
+            Ok(Some(status)) => {
+                let stdout = stdout_handle.join().unwrap_or_default();
+                let stderr = stderr_handle.join().unwrap_or_default();
+                emit_progress_event(reporter, script_name, "completed");
+                return CommandOutput {
+                    status: status.code().unwrap_or(1),
+                    stdout: String::from_utf8_lossy(&stdout).to_string(),
+                    stderr: String::from_utf8_lossy(&stderr).to_string(),
+                };
+            }
             Ok(None) => {
-                emit_progress_event(reporter, script_name, "running");
-                sleep(Duration::from_millis(10));
+                if !running_emitted {
+                    emit_progress_event(reporter, script_name, "running");
+                    running_emitted = true;
+                }
+                sleep(POLL_INTERVAL);
             }
             Err(err) => {
-                let _ = child.kill();
+                terminate_process_group(&mut child);
                 emit_progress_event(reporter, script_name, "failed");
+                let stdout = stdout_handle.join().unwrap_or_default();
+                let stderr = stderr_handle.join().unwrap_or_default();
                 return CommandOutput {
                     status: 1,
-                    stdout: String::new(),
-                    stderr: format!("failed to monitor {script_name}: {err}\n"),
+                    stdout: String::from_utf8_lossy(&stdout).to_string(),
+                    stderr: format!(
+                        "failed to monitor {script_name}: {err}\n{}",
+                        String::from_utf8_lossy(&stderr)
+                    ),
                 };
             }
         }
     }
+}
+
+fn finalize_script_output(
+    script_name: &str,
+    reporter: &mut dyn ProgressReporter,
+    wait_result: std::io::Result<std::process::ExitStatus>,
+    stdout_handle: std::thread::JoinHandle<Vec<u8>>,
+    stderr_handle: std::thread::JoinHandle<Vec<u8>>,
+    status: i32,
+    phase: &str,
+) -> CommandOutput {
+    let stdout = stdout_handle.join().unwrap_or_default();
+    let stderr = stderr_handle.join().unwrap_or_default();
+    emit_progress_event(reporter, script_name, phase);
+    match wait_result {
+        Ok(output_status) => CommandOutput {
+            status: if status == 130 || status == 124 {
+                status
+            } else {
+                output_status.code().unwrap_or(1)
+            },
+            stdout: String::from_utf8_lossy(&stdout).to_string(),
+            stderr: String::from_utf8_lossy(&stderr).to_string(),
+        },
+        Err(err) => CommandOutput {
+            status,
+            stdout: String::from_utf8_lossy(&stdout).to_string(),
+            stderr: format!("{script_name} {phase}: {err}\n{}", String::from_utf8_lossy(&stderr)),
+        },
+    }
+}
+
+fn capture_stream<R: Read>(reader: R, cap: usize) -> Vec<u8> {
+    let mut reader = BufReader::new(reader);
+    let mut buffer = [0u8; 4096];
+    let mut collected = Vec::new();
+
+    loop {
+        match reader.read(&mut buffer) {
+            Ok(0) => break,
+            Ok(read) => {
+                let remaining = cap.saturating_sub(collected.len());
+                if remaining > 0 {
+                    collected.extend_from_slice(&buffer[..read.min(remaining)]);
+                }
+            }
+            Err(_) => break,
+        }
+    }
+
+    collected
+}
+
+fn execution_timeout() -> Duration {
+    std::env::var("TACHI_EXECUTION_TIMEOUT_MS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .map(Duration::from_millis)
+        .unwrap_or(DEFAULT_EXECUTION_TIMEOUT)
+}
+
+fn execution_output_cap() -> usize {
+    std::env::var("TACHI_EXECUTION_OUTPUT_CAP_BYTES")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .unwrap_or(DEFAULT_OUTPUT_CAP_BYTES)
+}
+
+#[cfg(unix)]
+fn terminate_process_group(child: &mut std::process::Child) {
+    let _ = Command::new("kill")
+        .arg("-TERM")
+        .arg(format!("-{}", child.id()))
+        .status();
+    let _ = child.kill();
+}
+
+#[cfg(not(unix))]
+fn terminate_process_group(child: &mut std::process::Child) {
+    let _ = child.kill();
 }
 
 fn script_dir_for_repo_root(repo_root: &Path) -> PathBuf {
