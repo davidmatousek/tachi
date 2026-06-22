@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use crate::commands::{
     infographic_data_output, render_report_data_result, report_data_result,
-    validate_report_data_result,
+    validate_report_data_result, command_dispatch_kind, CommandDispatchKind,
 };
 use crate::commands::{
     coverage_audit_output, risk_scores_sarif_output, run_script_command_with_progress,
@@ -27,8 +27,9 @@ pub fn dispatch_command_with_progress(
     token: &CancellationToken,
     reporter: &mut dyn ProgressReporter,
 ) -> CommandOutput {
-    invoke_with_progress(command, token, reporter, |token, reporter| match command {
-        "install" => {
+    invoke_with_progress(command, token, reporter, |token, reporter| match command_dispatch_kind(command) {
+        Some(CommandDispatchKind::ControlPlane) => match command {
+            "install" => {
             let scripts_dir = super::commands::control_plane_scripts_dir(root);
             run_script_command_with_progress(
                 &scripts_dir,
@@ -38,8 +39,8 @@ pub fn dispatch_command_with_progress(
                 token,
                 reporter,
             )
-        }
-        "init" => {
+            }
+            "init" => {
             let scripts_dir = super::commands::control_plane_scripts_dir(root);
             run_script_command_with_progress(
                 &scripts_dir,
@@ -49,8 +50,8 @@ pub fn dispatch_command_with_progress(
                 token,
                 reporter,
             )
-        }
-        "update" => {
+            }
+            "update" => {
             let scripts_dir = super::commands::control_plane_scripts_dir(root);
             run_script_command_with_progress(
                 &scripts_dir,
@@ -60,8 +61,8 @@ pub fn dispatch_command_with_progress(
                 token,
                 reporter,
             )
-        }
-        "bootstrap" => {
+            }
+            "bootstrap" => {
             let mut bootstrap_args = Vec::with_capacity(args.len() + 1);
             bootstrap_args.push("--bootstrap");
             bootstrap_args.extend_from_slice(args);
@@ -74,16 +75,24 @@ pub fn dispatch_command_with_progress(
                 token,
                 reporter,
             )
+            }
+            other => CommandOutput {
+                status: 2,
+                stdout: String::new(),
+                stderr: format!("unsupported command: {other}\n"),
+            },
+        },
+        Some(CommandDispatchKind::CoverageAudit) => dispatch_coverage_audit(root, args),
+        Some(CommandDispatchKind::InfographicData) => {
+            dispatch_infographic_data(root, args, token, reporter)
         }
-        "coverage-audit" => dispatch_coverage_audit(root, args),
-        "infographic-data" => dispatch_infographic_data(root, args, token, reporter),
-        "report-data" => dispatch_report_data(root, args),
-        "risk-scores-sarif" => dispatch_risk_scores_sarif(root, args),
-        "threats-sarif" => dispatch_threats_sarif(root, args),
-        other => CommandOutput {
+        Some(CommandDispatchKind::ReportData) => dispatch_report_data(root, args),
+        Some(CommandDispatchKind::RiskScoresSarif) => dispatch_risk_scores_sarif(root, args),
+        Some(CommandDispatchKind::ThreatsSarif) => dispatch_threats_sarif(root, args),
+        None => CommandOutput {
             status: 2,
             stdout: String::new(),
-            stderr: format!("unsupported command: {other}\n"),
+            stderr: format!("unsupported command: {command}\n"),
         },
     })
 }

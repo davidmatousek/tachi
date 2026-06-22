@@ -1,5 +1,6 @@
 use tachi_shell::commands::{
-    command_registry, command_spec, CommandOutputKind, CommandRegistry, CommandSpec,
+    command_dispatch_kind, command_registry, command_spec, CommandDispatchKind,
+    CommandOutputKind, CommandRegistry, CommandSpec,
 };
 
 #[test]
@@ -31,14 +32,32 @@ fn typed_command_registry_exposes_output_kinds() {
 }
 
 #[test]
+fn typed_command_registry_exposes_dispatch_kinds() {
+    assert_eq!(
+        command_dispatch_kind("install").expect("install dispatch"),
+        CommandDispatchKind::ControlPlane
+    );
+    assert_eq!(
+        command_dispatch_kind("coverage-audit").expect("coverage-audit dispatch"),
+        CommandDispatchKind::CoverageAudit
+    );
+    assert_eq!(
+        command_dispatch_kind("report-data").expect("report-data dispatch"),
+        CommandDispatchKind::ReportData
+    );
+}
+
+#[test]
 fn typed_command_registry_rejects_duplicate_names() {
     let registry = CommandRegistry::new(&[
         CommandSpec {
             name: "alpha",
+            dispatch_kind: CommandDispatchKind::ControlPlane,
             output_kind: CommandOutputKind::Plain,
         },
         CommandSpec {
             name: "alpha",
+            dispatch_kind: CommandDispatchKind::ControlPlane,
             output_kind: CommandOutputKind::Plain,
         },
     ]);

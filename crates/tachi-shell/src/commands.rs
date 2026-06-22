@@ -44,8 +44,19 @@ pub enum CommandOutputKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CommandDispatchKind {
+    ControlPlane,
+    CoverageAudit,
+    InfographicData,
+    ReportData,
+    ThreatsSarif,
+    RiskScoresSarif,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CommandSpec {
     pub name: &'static str,
+    pub dispatch_kind: CommandDispatchKind,
     pub output_kind: CommandOutputKind,
 }
 
@@ -57,38 +68,47 @@ pub struct CommandRegistry {
 pub const COMMAND_SPECS: [CommandSpec; 9] = [
     CommandSpec {
         name: "install",
+        dispatch_kind: CommandDispatchKind::ControlPlane,
         output_kind: CommandOutputKind::Plain,
     },
     CommandSpec {
         name: "init",
+        dispatch_kind: CommandDispatchKind::ControlPlane,
         output_kind: CommandOutputKind::Plain,
     },
     CommandSpec {
         name: "update",
+        dispatch_kind: CommandDispatchKind::ControlPlane,
         output_kind: CommandOutputKind::Plain,
     },
     CommandSpec {
         name: "bootstrap",
+        dispatch_kind: CommandDispatchKind::ControlPlane,
         output_kind: CommandOutputKind::Plain,
     },
     CommandSpec {
         name: "infographic-data",
+        dispatch_kind: CommandDispatchKind::InfographicData,
         output_kind: CommandOutputKind::Json,
     },
     CommandSpec {
         name: "coverage-audit",
+        dispatch_kind: CommandDispatchKind::CoverageAudit,
         output_kind: CommandOutputKind::CoverageSummary,
     },
     CommandSpec {
         name: "report-data",
+        dispatch_kind: CommandDispatchKind::ReportData,
         output_kind: CommandOutputKind::Typst,
     },
     CommandSpec {
         name: "risk-scores-sarif",
+        dispatch_kind: CommandDispatchKind::RiskScoresSarif,
         output_kind: CommandOutputKind::RiskScoresSarif,
     },
     CommandSpec {
         name: "threats-sarif",
+        dispatch_kind: CommandDispatchKind::ThreatsSarif,
         output_kind: CommandOutputKind::ThreatsSarif,
     },
 ];
@@ -131,6 +151,10 @@ pub fn command_spec(command: &str) -> Option<&'static CommandSpec> {
 
 pub fn command_output_kind(command: &str) -> Option<CommandOutputKind> {
     command_spec(command).map(|spec| spec.output_kind)
+}
+
+pub fn command_dispatch_kind(command: &str) -> Option<CommandDispatchKind> {
+    command_spec(command).map(|spec| spec.dispatch_kind)
 }
 
 impl CommandRegistry {
