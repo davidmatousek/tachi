@@ -26,6 +26,10 @@ fn workspace_cargo_test_pr_gate_runs_full_workspace_suite() {
         workflow_job_runs_command(&text, "cargo-test:", "cargo test --workspace --all-targets"),
         "cargo-test job must run cargo test --workspace --all-targets"
     );
+    assert!(
+        workflow_job_runs_command(&text, "cargo-test:", "sudo apt-get install -y ripgrep"),
+        "cargo-test job must install ripgrep because workspace tests invoke rg-backed scripts"
+    );
 }
 
 #[test]
