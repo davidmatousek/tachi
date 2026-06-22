@@ -237,3 +237,8 @@ venv/
 # that should not be tracked. Project-level .claude/settings.json is the
 # committed baseline; settings.local.json is per-developer, per-machine.
 .claude/settings.local.json
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+.beads-credential-key
+.beads/proxieddb/
