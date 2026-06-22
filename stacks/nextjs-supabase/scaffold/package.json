@@ -18,7 +18,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "next": ">=16.2.3",
+    "next": "^16.2.6",
     "react": ">=19.0.0",
     "react-dom": ">=19.0.0",
     "@supabase/supabase-js": ">=2.45.0",
@@ -31,7 +31,7 @@
     "tailwindcss": ">=4.0.0",
     "@biomejs/biome": ">=2.0.0",
     "prisma": ">=7.0.0",
-    "vitest": ">=4.0.0",
+    "vitest": "^4.1.0",
     "@testing-library/react": ">=16.0.0",
     "playwright": ">=1.55.1",
     "@types/node": ">=20.0.0",
