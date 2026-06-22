@@ -1,6 +1,6 @@
 use pretty_assertions::assert_eq;
 
-use tachi_core::coverage_taxonomy::{
+use tachi_core::facade::{
     maestro_layer_catalog, normalize_maestro_layer_label, owasp_coverage_family_catalog,
     render_owasp_coverage_matrix,
 };

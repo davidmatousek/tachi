@@ -1,4 +1,3 @@
-use std::fs;
 use std::path::Path;
 
 pub mod findings;
@@ -45,30 +44,10 @@ pub fn parse_project_name(
     title_override: Option<&str>,
     target_dir: Option<&Path>,
 ) -> String {
-    if let Some(override_name) = title_override
-        .map(str::trim)
-        .filter(|name| !name.is_empty())
-    {
-        return override_name.to_string();
-    }
-
-    if let Some(name) = parse_threats_h1(content) {
-        return name;
-    }
-
-    if let Some(dir) = target_dir {
-        let architecture_path = dir.join("architecture.md");
-        if let Ok(architecture) = fs::read_to_string(architecture_path) {
-            if let Some(name) = parse_architecture_heading(&architecture) {
-                return name;
-            }
-        }
-    }
-
-    String::from("Unknown Project")
+    crate::metadata::resolve_report_project_name(content, title_override, target_dir)
 }
 
-fn parse_threats_h1(content: &str) -> Option<String> {
+pub(crate) fn parse_threats_h1(content: &str) -> Option<String> {
     for line in content.lines() {
         let trimmed = line.trim();
         if !trimmed.starts_with('#') {
@@ -85,28 +64,6 @@ fn parse_threats_h1(content: &str) -> Option<String> {
     }
 
     None
-}
-
-fn parse_architecture_heading(content: &str) -> Option<String> {
-    let first_h1 = content.lines().find_map(|line| {
-        let trimmed = line.trim();
-        trimmed.strip_prefix('#').map(|rest| rest.trim())
-    })?;
-
-    let pieces: Vec<&str> = first_h1.split('—').map(|part| part.trim()).collect();
-    if pieces.len() != 2 {
-        return None;
-    }
-
-    if pieces[1].eq_ignore_ascii_case("Architecture") {
-        normalize_project_name(pieces[0])
-    } else if pieces[0].eq_ignore_ascii_case("Architecture")
-        || pieces[0].eq_ignore_ascii_case("Security Architecture")
-    {
-        normalize_project_name(pieces[1])
-    } else {
-        None
-    }
 }
 
 fn normalize_project_name(value: &str) -> Option<String> {

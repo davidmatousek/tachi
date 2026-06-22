@@ -6,7 +6,8 @@ use crate::coverage_attestation::{
     build_per_finding_rows, build_per_framework_aggregates, CoverageFindingRow,
     CoverageFrameworkAggregate, CoverageReference,
 };
-use crate::parsers::{compute_has_source_attribution, parse_project_name, parse_threats_findings};
+use crate::metadata::resolve_report_project_name;
+use crate::parsers::{compute_has_source_attribution, parse_threats_findings};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReportImageBinding {
@@ -18,7 +19,7 @@ pub struct ReportImageBinding {
 pub fn build_report_data_typst(target_dir: &Path, template_dir: &Path) -> String {
     let images = detect_images(target_dir, template_dir);
     let threats_content = fs::read_to_string(target_dir.join("threats.md")).unwrap_or_default();
-    let project_name = parse_report_project_name_from_threats_content(&threats_content, target_dir);
+    let project_name = resolve_report_project_name(&threats_content, None, Some(target_dir));
     let findings = parse_threats_findings(&threats_content).unwrap_or_default();
     let has_source_attribution = compute_has_source_attribution(&findings);
     let per_finding_rows = build_per_finding_rows(&findings);
@@ -183,13 +184,6 @@ fn render_framework_items(items: &[crate::coverage_attestation::CoverageFramewor
     format!("({inner},)")
 }
 
-fn parse_report_project_name_from_threats_content(
-    threats_content: &str,
-    target_dir: &Path,
-) -> String {
-    parse_project_name(threats_content, None, Some(target_dir))
-}
-
 fn typst_string(value: &str) -> String {
     let escaped = value.replace('\\', "\\\\").replace('"', "\\\"");
     format!("\"{escaped}\"")
@@ -197,15 +191,16 @@ fn typst_string(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_report_project_name_from_threats_content;
+    use super::resolve_report_project_name;
     use std::path::Path;
 
     #[test]
     fn parse_report_project_name_from_threats_content_prefers_existing_text() {
         let threats_content = "# Threat Model: Single Read Report\n";
-        let project_name = parse_report_project_name_from_threats_content(
+        let project_name = resolve_report_project_name(
             threats_content,
-            Path::new("/tmp/single-read-report"),
+            None,
+            Some(Path::new("/tmp/single-read-report")),
         );
 
         assert_eq!(project_name, "Single Read Report");

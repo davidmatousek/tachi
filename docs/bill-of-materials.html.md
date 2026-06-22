@@ -97,8 +97,9 @@ with the shipped release workflow before publication.
 | Path | Purpose | Publish note |
 |---|---|---|
 | `docs/roadmap/implementation-backlog.md` | Backlog navigation hub | Canonical link target for active implementation sequencing. |
-| `docs/roadmap/2026-06-21-rust-tauri-parity-remediation-roadmap.html.md` | Active parity roadmap | Canonical Rust/Tauri parity rebaseline and supersession plan. |
-| `docs/roadmap/2026-06-21-rust-tauri-parity-issue-cards.md` | Active parity execution cards | Copy-paste Beads issue templates for the parity phases. |
+| `docs/roadmap/2026-06-22-adversarial-architecture-test-quality-roadmap.html.md` | Active AQ roadmap | Canonical architecture, SOLID, and test-quality remediation plan. |
+| `docs/roadmap/2026-06-21-rust-tauri-parity-remediation-roadmap.html.md` | Archived parity roadmap | Historical Rust/Tauri parity rebaseline and supersession plan. |
+| `docs/roadmap/2026-06-21-rust-tauri-parity-issue-cards.md` | Archived parity execution cards | Historical Beads issue templates for the parity phases. |
 | `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-roadmap.html.md` | Active docs hygiene roadmap | Separate docs-only sweep for stale workflow-version references. |
 | `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-issue-cards.md` | Active docs sweep cards | Copy-paste Beads issue templates for docs/version hygiene. |
 | `docs/roadmap/2026-06-15-rust-tauri-parity-remediation-roadmap.html.md` | Archived parity roadmap | Historical snapshot of the earlier parity plan. |

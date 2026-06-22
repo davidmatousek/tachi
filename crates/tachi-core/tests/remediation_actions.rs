@@ -1,4 +1,4 @@
-use tachi_core::report_extraction::{
+use tachi_core::facade::{
     build_remediation_actions, RemediationFinding, RemediationTimelineEntry, ThreatReportData,
 };
 

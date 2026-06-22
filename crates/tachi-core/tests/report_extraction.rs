@@ -1,4 +1,4 @@
-use tachi_core::report_extraction::parse_threat_report_md;
+use tachi_core::facade::parse_threat_report_md;
 
 const THREAT_REPORT_PROSE_ONLY: &str = "# Threat Report\n\n## 1. Executive Summary\n\nThe system under review is a SaaS application with 42 active findings.\n\n**Risk profile by count**: 5 Critical, 12 High, 20 Medium, 5 Low.\n\n**Most critical unresolved exposure**: The auth service allows unauthenticated\nadmin access via a legacy flag that was never removed.\n\n## 2. Architecture Overview\n\nComponents and trust boundaries follow below.\n";
 

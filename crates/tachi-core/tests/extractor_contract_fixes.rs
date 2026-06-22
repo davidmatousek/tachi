@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use tachi_core::facade::detect_images;
 use tachi_core::facade::parse_compensating_controls_md;
-use tachi_core::report_extraction::{merge_delta_status, parse_threat_report_md};
+use tachi_core::facade::{merge_delta_status, parse_threat_report_md};
 use tachi_core::{attack_trees::parse_attack_trees, parsers::ThreatFinding};
 
 fn workspace_root() -> PathBuf {

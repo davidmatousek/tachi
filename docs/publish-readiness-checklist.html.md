@@ -74,11 +74,14 @@ Use this checklist before publishing to GitHub or cutting a release.
 - [ ] `README.md` matches the actual build, install, usage, and release path.
 - [ ] `SECURITY.md` matches the current private-reporting and privacy policy.
 - [ ] `CHANGELOG.md` is redaction-safe and reflects only releasable notes.
-- [ ] `docs/roadmap/implementation-backlog.md` points at the active parity
-      roadmap, active docs sweep roadmap, and archived provenance docs.
-- [ ] The active parity roadmap is
+- [ ] `docs/roadmap/implementation-backlog.md` points at the active AQ
+      roadmap, archived parity roadmap, active docs sweep roadmap, and
+      archived provenance docs.
+- [ ] The active AQ roadmap is
+      `docs/roadmap/2026-06-22-adversarial-architecture-test-quality-roadmap.html.md`.
+- [ ] The archived parity roadmap is
       `docs/roadmap/2026-06-21-rust-tauri-parity-remediation-roadmap.html.md`.
-- [ ] The active parity Beads-ready issue set is
+- [ ] The archived parity Beads-ready issue set is
       `docs/roadmap/2026-06-21-rust-tauri-parity-issue-cards.md`.
 - [ ] The active docs-sweep roadmap is
       `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-roadmap.html.md`.

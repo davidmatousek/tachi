@@ -1,5 +1,5 @@
 use tachi_core::parsers::{SourceAttributionRecord, ThreatFinding};
-use tachi_core::report_extraction::merge_source_attribution;
+use tachi_core::facade::merge_source_attribution;
 
 const SECTION_9_ON_TWO_FINDINGS: &str = r#"---
 schema_version: "1.5"

@@ -4,8 +4,9 @@ use std::path::Path;
 
 use crate::artifacts::{detect_artifacts, determine_tier};
 use crate::coverage_taxonomy::{normalize_maestro_layer_label, MAESTRO_LAYERS};
+use crate::metadata::resolve_report_project_name;
 use crate::parsers::{
-    parse_markdown_table, parse_project_name, parse_scope_data, parse_threats_findings,
+    parse_markdown_table, parse_scope_data, parse_threats_findings,
     parse_threats_severity, strip_bold, SeverityCounts, ThreatFinding, SEVERITY_ORDER,
 };
 use serde::Serialize;
@@ -711,7 +712,7 @@ pub fn build_infographic_payload(root: &Path, template: &str) -> Result<Value, S
 
     let artifacts = detect_artifacts(root);
     let tier = determine_tier(&artifacts);
-    let project_name = parse_project_name(&threats_content, None, Some(root));
+    let project_name = resolve_report_project_name(&threats_content, None, Some(root));
     let scaffold_raw = extract_prompt_scaffold(normalized_template, Some(root));
     let scaffold = if scaffold_raw.found {
         Some(scaffold_raw)
