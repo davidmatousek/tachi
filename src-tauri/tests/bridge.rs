@@ -6,6 +6,7 @@ use std::thread;
 use std::time::Duration;
 
 use pretty_assertions::assert_eq;
+use tachi_shell::commands::command_registry;
 use tachi_tauri::{
     cancel_running_command, dispatch_desktop_command, dispatch_desktop_command_with_progress,
     registered_commands, CancellationToken, ProgressEvent, ProgressReporter,
@@ -55,6 +56,20 @@ fn registered_commands_expose_shared_shell_surface() {
     assert_eq!(
         registered_commands(),
         &[
+            "install",
+            "init",
+            "update",
+            "bootstrap",
+            "infographic-data",
+            "coverage-audit",
+            "report-data",
+            "risk-scores-sarif",
+            "threats-sarif",
+        ]
+    );
+    assert_eq!(
+        command_registry().names(),
+        vec![
             "install",
             "init",
             "update",

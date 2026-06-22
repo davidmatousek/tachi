@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::collections::BTreeSet;
 use std::process::Command;
 use std::process::Stdio;
 use std::time::Instant;
@@ -32,6 +33,66 @@ pub const CONTROL_PLANE_COMMANDS: [&str; 9] = [
     "threats-sarif",
 ];
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CommandOutputKind {
+    Plain,
+    CoverageSummary,
+    Json,
+    Typst,
+    ThreatsSarif,
+    RiskScoresSarif,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CommandSpec {
+    pub name: &'static str,
+    pub output_kind: CommandOutputKind,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct CommandRegistry {
+    specs: &'static [CommandSpec],
+}
+
+pub const COMMAND_SPECS: [CommandSpec; 9] = [
+    CommandSpec {
+        name: "install",
+        output_kind: CommandOutputKind::Plain,
+    },
+    CommandSpec {
+        name: "init",
+        output_kind: CommandOutputKind::Plain,
+    },
+    CommandSpec {
+        name: "update",
+        output_kind: CommandOutputKind::Plain,
+    },
+    CommandSpec {
+        name: "bootstrap",
+        output_kind: CommandOutputKind::Plain,
+    },
+    CommandSpec {
+        name: "infographic-data",
+        output_kind: CommandOutputKind::Json,
+    },
+    CommandSpec {
+        name: "coverage-audit",
+        output_kind: CommandOutputKind::CoverageSummary,
+    },
+    CommandSpec {
+        name: "report-data",
+        output_kind: CommandOutputKind::Typst,
+    },
+    CommandSpec {
+        name: "risk-scores-sarif",
+        output_kind: CommandOutputKind::RiskScoresSarif,
+    },
+    CommandSpec {
+        name: "threats-sarif",
+        output_kind: CommandOutputKind::ThreatsSarif,
+    },
+];
+
 const DEFAULT_EXECUTION_TIMEOUT: Duration = Duration::from_secs(30);
 const DEFAULT_OUTPUT_CAP_BYTES: usize = 64 * 1024;
 const POLL_INTERVAL: Duration = Duration::from_millis(10);
@@ -58,6 +119,48 @@ pub struct CommandOutput {
 
 pub fn control_plane_commands() -> &'static [&'static str] {
     &CONTROL_PLANE_COMMANDS
+}
+
+pub const fn command_registry() -> CommandRegistry {
+    CommandRegistry::new(&COMMAND_SPECS)
+}
+
+pub fn command_spec(command: &str) -> Option<&'static CommandSpec> {
+    command_registry().spec(command)
+}
+
+pub fn command_output_kind(command: &str) -> Option<CommandOutputKind> {
+    command_spec(command).map(|spec| spec.output_kind)
+}
+
+impl CommandRegistry {
+    pub const fn new(specs: &'static [CommandSpec]) -> Self {
+        Self { specs }
+    }
+
+    pub const fn specs(&self) -> &'static [CommandSpec] {
+        self.specs
+    }
+
+    pub fn names(&self) -> Vec<&'static str> {
+        self.specs.iter().map(|spec| spec.name).collect()
+    }
+
+    pub fn spec(&self, command: &str) -> Option<&'static CommandSpec> {
+        self.specs.iter().find(|spec| spec.name == command)
+    }
+
+    pub fn validate_unique(&self) -> Result<(), String> {
+        let mut seen = BTreeSet::new();
+
+        for spec in self.specs {
+            if !seen.insert(spec.name) {
+                return Err(format!("duplicate command in registry: {}", spec.name));
+            }
+        }
+
+        Ok(())
+    }
 }
 
 fn run_script_command(

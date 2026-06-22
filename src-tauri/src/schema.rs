@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 use crate::error::DesktopError;
-use tachi_shell::commands::CommandOutput;
+use tachi_shell::commands::{command_output_kind, CommandOutput, CommandOutputKind};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DesktopInvokeInput {
@@ -198,8 +198,8 @@ pub fn validate_invoke_output(command: &str, output: &CommandOutput) -> Result<(
         return Ok(());
     }
 
-    match command {
-        "coverage-audit" => {
+    match command_output_kind(command) {
+        Some(CommandOutputKind::CoverageSummary) => {
             if output.stdout.contains("Coverage audit for")
                 && output.stdout.contains("Active test modules")
             {
@@ -211,7 +211,7 @@ pub fn validate_invoke_output(command: &str, output: &CommandOutput) -> Result<(
                 ))
             }
         }
-        "infographic-data" => {
+        Some(CommandOutputKind::Json) => {
             let payload: Value = serde_json::from_str(&output.stdout).map_err(|err| {
                 render_schema_error(command, &format!("infographic JSON output failed validation: {err}"))
             })?;
@@ -226,7 +226,7 @@ pub fn validate_invoke_output(command: &str, output: &CommandOutput) -> Result<(
                 ))
             }
         }
-        "report-data" => {
+        Some(CommandOutputKind::Typst) => {
             if !output.stdout.is_empty() {
                 if output.stdout.starts_with("#let project-name =") {
                     Ok(())
@@ -245,7 +245,7 @@ pub fn validate_invoke_output(command: &str, output: &CommandOutput) -> Result<(
                 ))
             }
         }
-        "threats-sarif" => {
+        Some(CommandOutputKind::ThreatsSarif) => {
             if output.stdout.is_empty() && output.stderr.contains("OK: wrote") {
                 Ok(())
             } else {
@@ -255,7 +255,7 @@ pub fn validate_invoke_output(command: &str, output: &CommandOutput) -> Result<(
                 ))
             }
         }
-        "risk-scores-sarif" => {
+        Some(CommandOutputKind::RiskScoresSarif) => {
             if output.stdout.is_empty() && output.stderr.contains("OK: wrote") {
                 Ok(())
             } else {
@@ -265,7 +265,7 @@ pub fn validate_invoke_output(command: &str, output: &CommandOutput) -> Result<(
                 ))
             }
         }
-        _ => Ok(()),
+        Some(CommandOutputKind::Plain) | None => Ok(()),
     }
 }
 
