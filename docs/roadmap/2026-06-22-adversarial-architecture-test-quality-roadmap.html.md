@@ -19,6 +19,7 @@ The highest-priority remediation is to make CI fail closed for behavior and lint
 - `AQ-022` and `AQ-023` are complete: the desktop command schema now rejects control-plane drift and the bridge/offline layer now enforces root-contained IO.
 - `AQ-024` is complete: the shared executor now enforces bounded timeout, cancellation cleanup, output caps, and process-group termination where supported.
 - `AQ-025` is complete: the desktop boundary now exposes a typed error taxonomy with stable codes while keeping CLI rendering compatible.
+- `AQ-030` is complete: the typed command registry now drives parsing, dispatch, and output policy through a single source of command metadata.
 - `AQ-031` is complete: the typed command registry is shared by CLI and Tauri through a single source of command metadata.
 - `AQ-032` is complete: `report-data` now validates a typed result before legacy rendering, and both the Tauri bridge and CLI binary render from that typed result.
 - `AQ-041` is complete: `tachi-core` now exposes a stable facade module and downstream consumers compile against the facade surface.
