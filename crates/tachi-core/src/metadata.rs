@@ -37,7 +37,7 @@ fn parse_architecture_heading(content: &str) -> Option<String> {
         trimmed.strip_prefix('#').map(|rest| rest.trim())
     })?;
 
-    for separator in ['—', '–', '-'] {
+    for separator in ['—', '–'] {
         if let Some((left, right)) = first_h1.split_once(separator) {
             let left = left.trim();
             let right = right.trim();
