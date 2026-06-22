@@ -19,7 +19,8 @@ The highest-priority remediation is to make CI fail closed for behavior and lint
 - `AQ-022` and `AQ-023` are complete: the desktop command schema now rejects control-plane drift and the bridge/offline layer now enforces root-contained IO.
 - `AQ-024` is complete: the shared executor now enforces bounded timeout, cancellation cleanup, output caps, and process-group termination where supported.
 - `AQ-025` is complete: the desktop boundary now exposes a typed error taxonomy with stable codes while keeping CLI rendering compatible.
-- The remaining risk concentrates in public API narrowing and test-quality hardening.
+- `AQ-041` is started as a facade-first core API slice: `tachi-core` now exposes a stable facade module and the shared shell consumes it.
+- The remaining risk concentrates in deeper module-privacy narrowing, public API hygiene, and test-quality hardening.
 
 ## Panel findings
 

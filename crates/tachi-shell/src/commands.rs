@@ -9,15 +9,12 @@ use std::io::{BufReader, Read};
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 
-use tachi_core::coverage_audit::{collect_audit, render};
-use tachi_core::infographic::build_infographic_payload;
-use tachi_core::parsers::parse_threats_findings;
-use tachi_core::report_data::build_report_data_typst;
-use tachi_core::risk_scores::{
-    build_risk_scores_sarif, parse_risk_md_section2, parse_risk_md_section3, parse_risk_md_section4,
+use tachi_core::facade::{
+    build_infographic_payload, build_report_data_typst, build_threats_sarif, collect_audit,
+    parse_component_metadata, parse_risk_md_section2, parse_risk_md_section3,
+    parse_risk_md_section4, parse_threats_findings, prefix_for, render, ThreatSarifFinding,
 };
-use tachi_core::sarif_common::{parse_component_metadata, prefix_for};
-use tachi_core::threats_sarif::{build_threats_sarif, ThreatSarifFinding};
+use tachi_core::risk_scores::build_risk_scores_sarif;
 
 use crate::progress::{
     emit_progress_event, CancellationToken, NoopProgressReporter, ProgressReporter,
