@@ -48,6 +48,25 @@ fn nextjs_supabase_scaffold_excludes_known_vulnerable_dependency_floors() {
     );
 }
 
+#[test]
+fn publish_gate_runs_scaffold_dependency_floor_audit() {
+    let makefile_path = workspace_root().join("Makefile");
+    let makefile = fs::read_to_string(&makefile_path).expect("read Makefile");
+
+    assert!(
+        makefile.contains("scaffold-dependency-gate:"),
+        "Makefile must expose a scaffold-dependency-gate target for offline Dependabot floor auditing"
+    );
+    assert!(
+        makefile.contains("cargo test -p tachi-core --test scaffold_dependency_floors"),
+        "scaffold-dependency-gate must run the focused Rust dependency floor audit"
+    );
+    assert!(
+        makefile.contains("@$(MAKE) scaffold-dependency-gate"),
+        "publish-gate must run scaffold-dependency-gate as a release blocker"
+    );
+}
+
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 struct Version {
     major: u64,
