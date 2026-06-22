@@ -3,6 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use sha2::{Digest, Sha256};
+use crate::error::DesktopError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseArtifact {
@@ -48,6 +49,13 @@ pub fn build_release_manifest(
     Ok(ReleaseManifest { artifacts })
 }
 
+pub fn build_release_manifest_typed(
+    root: &Path,
+    relative_paths: &[&str],
+) -> Result<ReleaseManifest, DesktopError> {
+    build_release_manifest(root, relative_paths).map_err(classify_release_error)
+}
+
 pub fn verify_checksum_matrix(root: &Path, manifest: &ReleaseManifest) -> Result<(), String> {
     for artifact in &manifest.artifacts {
         let path = root.join(&artifact.relative_path);
@@ -77,6 +85,13 @@ pub fn verify_checksum_matrix(root: &Path, manifest: &ReleaseManifest) -> Result
     }
 
     Ok(())
+}
+
+pub fn verify_checksum_matrix_typed(
+    root: &Path,
+    manifest: &ReleaseManifest,
+) -> Result<(), DesktopError> {
+    verify_checksum_matrix(root, manifest).map_err(classify_release_error)
 }
 
 pub fn validate_package_contents(
@@ -112,6 +127,13 @@ pub fn validate_package_contents(
     })
 }
 
+pub fn validate_package_contents_typed(
+    root: &Path,
+    expected_paths: &[&str],
+) -> Result<PackageContentReport, DesktopError> {
+    validate_package_contents(root, expected_paths).map_err(classify_release_error)
+}
+
 fn collect_files(root: &Path) -> Result<Vec<PathBuf>, String> {
     let mut files = Vec::new();
     let mut stack = vec![root.to_path_buf()];
@@ -135,4 +157,14 @@ fn collect_files(root: &Path) -> Result<Vec<PathBuf>, String> {
     }
 
     Ok(files)
+}
+
+fn classify_release_error(message: String) -> DesktopError {
+    if message.contains("checksum mismatch") || message.contains("size mismatch") {
+        DesktopError::policy(message)
+    } else if message.contains("failed to read") || message.contains("failed to inspect") {
+        DesktopError::io(message)
+    } else {
+        DesktopError::internal(message)
+    }
 }

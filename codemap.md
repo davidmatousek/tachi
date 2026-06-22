@@ -25,7 +25,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | `crates/tachi-core/` | Domain and data-transformation core. It parses generated threat-model artifacts, computes MAESTRO and coverage views, builds report data, emits SARIF payloads, and owns the Rust coverage-audit catalog. |
 | `crates/tachi-cli/` | Thin CLI binary layer. Binaries parse flags, call shared core/shell functions, and write files or stdout. Business logic should move down into `tachi-core` or `tachi-shell`. |
 | `crates/tachi-shell/` | Shared command facade for shell-style control-plane operations and Tauri-facing command dispatch. Keeps desktop and CLI command semantics aligned and now enforces bounded execution, output/input path containment, and process cleanup for desktop bridge file IO. |
-| `src-tauri/` | Tauri desktop shell. It should remain a bridge/registration layer and avoid duplicate business logic. The scaffold now includes `tauri.conf.json`, `capabilities/main.json`, typed control-plane schema guards, and offline cache path-policy checks with a least-privilege `core:default` main-window capability. |
+| `src-tauri/` | Tauri desktop shell. It should remain a bridge/registration layer and avoid duplicate business logic. The scaffold now includes `tauri.conf.json`, `capabilities/main.json`, typed control-plane schema guards, typed desktop error taxonomy, and offline cache path-policy checks with a least-privilege `core:default` main-window capability. |
 | `schemas/` | Finding schema and taxonomy catalogs used by parser, source-attribution, coverage, and crosswalk validation tests. |
 | `.claude/` | Agent, command, skill, and reference content inherited from the original Tachi workflow. This is data/configuration for threat-modeling behavior, not Rust runtime code. |
 | `.aod/` | AOD shell helpers, templates, and governance memory. Some shell helpers remain under Rust test coverage while migration continues. |
@@ -48,7 +48,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
    - `coverage_taxonomy.rs` centralizes coverage and MAESTRO taxonomy labels.
    - `coverage_audit.rs` classifies active test modules by unit, integration, smoke, E2E, and support/regression families.
 3. `tachi-shell` exposes reusable command functions for shell and desktop paths.
-4. `src-tauri` registers desktop commands, enforces typed control-plane argument policy, and dispatches through the shared shell bridge, bounded execution policy, and offline path-policy checks.
+4. `src-tauri` registers desktop commands, enforces typed control-plane argument policy, and dispatches through the shared shell bridge, bounded execution policy, typed desktop error mapping, and offline path-policy checks.
 
 ## Testing And Validation
 

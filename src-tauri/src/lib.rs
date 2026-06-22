@@ -4,6 +4,7 @@ use tachi_shell::tauri_bridge::{dispatch_command, dispatch_command_with_progress
 
 pub mod offline;
 pub mod registry;
+pub mod error;
 pub mod release_artifacts;
 pub mod schema;
 
@@ -20,13 +21,13 @@ pub const DESKTOP_COMMANDS: [&str; 9] = [
 ];
 
 pub fn dispatch_desktop_command(command: &str, repo_root: &Path, args: &[&str]) -> CommandOutput {
-    if let Err(message) = validate_invoke_input(command, repo_root, args).map(|_| ()) {
-        return schema_error_output(command, message, 2);
+    if let Err(err) = validate_invoke_input_typed(command, repo_root, args).map(|_| ()) {
+        return err.into_command_output(command);
     }
 
     let output = dispatch_command(command, repo_root, args);
-    if let Err(message) = validate_invoke_output(command, &output) {
-        return schema_error_output(command, message, 1);
+    if let Err(err) = validate_invoke_output_typed(command, &output) {
+        return err.into_command_output(command);
     }
 
     output
@@ -39,13 +40,13 @@ pub fn dispatch_desktop_command_with_progress(
     token: &tachi_shell::progress::CancellationToken,
     reporter: &mut dyn tachi_shell::progress::ProgressReporter,
 ) -> CommandOutput {
-    if let Err(message) = validate_invoke_input(command, repo_root, args).map(|_| ()) {
-        return schema_error_output(command, message, 2);
+    if let Err(err) = validate_invoke_input_typed(command, repo_root, args).map(|_| ()) {
+        return err.into_command_output(command);
     }
 
     let output = dispatch_command_with_progress(command, repo_root, args, token, reporter);
-    if let Err(message) = validate_invoke_output(command, &output) {
-        return schema_error_output(command, message, 1);
+    if let Err(err) = validate_invoke_output_typed(command, &output) {
+        return err.into_command_output(command);
     }
 
     output
@@ -73,23 +74,19 @@ pub use tachi_shell::progress::{
     NoopProgressReporter, ProgressEvent, ProgressReporter,
 };
 pub use offline::{
-    bootstrap_from_cache, check_for_update, restore_offline_cache, BootstrapReport,
+    bootstrap_from_cache, bootstrap_from_cache_typed, check_for_update,
+    check_for_update_typed, restore_offline_cache, restore_offline_cache_typed, BootstrapReport,
     OfflineRestoreReport, UpdateCheck,
 };
 pub use registry::{collect_cli_commands, collect_tauri_commands, diff_registry, RegistryDiff};
 pub use release_artifacts::{
-    build_release_manifest, validate_package_contents, verify_checksum_matrix,
+    build_release_manifest, build_release_manifest_typed, validate_package_contents,
+    validate_package_contents_typed, verify_checksum_matrix, verify_checksum_matrix_typed,
     PackageContentReport, ReleaseArtifact, ReleaseManifest,
 };
 pub use schema::{
-    render_schema_error, validate_invoke_input, validate_invoke_output, DesktopInvokeInput,
+    render_schema_error, validate_invoke_input, validate_invoke_input_typed,
+    validate_invoke_output, validate_invoke_output_typed, DesktopInvokeInput,
 };
+pub use error::{DesktopError, DesktopErrorKind};
 pub use tachi_shell::commands::CommandOutput;
-
-fn schema_error_output(command: &str, message: String, status: i32) -> CommandOutput {
-    CommandOutput {
-        status,
-        stdout: String::new(),
-        stderr: format!("{}\n", render_schema_error(command, &message)),
-    }
-}

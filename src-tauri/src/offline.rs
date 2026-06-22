@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::error::DesktopError;
+
 const OFFLINE_CACHE_FILES: [&str; 4] = [
     ".aod/aod-kit-version",
     "scripts/install.sh",
@@ -90,6 +92,13 @@ pub fn restore_offline_cache(
     })
 }
 
+pub fn restore_offline_cache_typed(
+    repo_root: &Path,
+    cache_root: &Path,
+) -> Result<OfflineRestoreReport, DesktopError> {
+    restore_offline_cache(repo_root, cache_root).map_err(classify_offline_error)
+}
+
 pub fn check_for_update(repo_root: &Path, cache_root: &Path) -> Result<UpdateCheck, String> {
     let current_version = read_version_pin(&repo_root.join(".aod/aod-kit-version"))?;
     let cached_version = read_version_pin(&cache_root.join(".aod/aod-kit-version"))?;
@@ -105,6 +114,13 @@ pub fn check_for_update(repo_root: &Path, cache_root: &Path) -> Result<UpdateChe
     })
 }
 
+pub fn check_for_update_typed(
+    repo_root: &Path,
+    cache_root: &Path,
+) -> Result<UpdateCheck, DesktopError> {
+    check_for_update(repo_root, cache_root).map_err(classify_offline_error)
+}
+
 pub fn bootstrap_from_cache(repo_root: &Path, cache_root: &Path) -> Result<BootstrapReport, String> {
     let restore = restore_offline_cache(repo_root, cache_root)?;
     let update_check = check_for_update(repo_root, cache_root)?;
@@ -116,6 +132,13 @@ pub fn bootstrap_from_cache(repo_root: &Path, cache_root: &Path) -> Result<Boots
         update_check,
         offline_ready,
     })
+}
+
+pub fn bootstrap_from_cache_typed(
+    repo_root: &Path,
+    cache_root: &Path,
+) -> Result<BootstrapReport, DesktopError> {
+    bootstrap_from_cache(repo_root, cache_root).map_err(classify_offline_error)
 }
 
 fn read_version_pin(path: &Path) -> Result<Option<String>, String> {
@@ -209,4 +232,18 @@ fn ensure_contained_output_path(root: &Path, candidate: &Path, label: &str) -> R
 fn contains_parent_dir(path: &Path) -> bool {
     path.components()
         .any(|component| matches!(component, std::path::Component::ParentDir))
+}
+
+fn classify_offline_error(message: String) -> DesktopError {
+    if message.contains("path policy failed") {
+        DesktopError::policy(message)
+    } else if message.contains("failed to create")
+        || message.contains("failed to restore")
+        || message.contains("failed to read")
+        || message.contains("failed to inspect")
+    {
+        DesktopError::io(message)
+    } else {
+        DesktopError::internal(message)
+    }
 }

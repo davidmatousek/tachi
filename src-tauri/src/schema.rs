@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
+use crate::error::DesktopError;
 use tachi_shell::commands::CommandOutput;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -183,6 +184,15 @@ pub fn validate_invoke_input(
     }
 }
 
+pub fn validate_invoke_input_typed(
+    command: &str,
+    default_root: &Path,
+    args: &[&str],
+) -> Result<DesktopInvokeInput, DesktopError> {
+    validate_invoke_input(command, default_root, args)
+        .map_err(|message| DesktopError::validation(message))
+}
+
 pub fn validate_invoke_output(command: &str, output: &CommandOutput) -> Result<(), String> {
     if output.status != 0 {
         return Ok(());
@@ -257,6 +267,13 @@ pub fn validate_invoke_output(command: &str, output: &CommandOutput) -> Result<(
         }
         _ => Ok(()),
     }
+}
+
+pub fn validate_invoke_output_typed(
+    command: &str,
+    output: &CommandOutput,
+) -> Result<(), DesktopError> {
+    validate_invoke_output(command, output).map_err(|message| DesktopError::validation(message))
 }
 
 pub fn render_schema_error(command: &str, message: &str) -> String {

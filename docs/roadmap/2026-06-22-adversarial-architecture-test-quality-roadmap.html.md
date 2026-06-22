@@ -18,7 +18,8 @@ The highest-priority remediation is to make CI fail closed for behavior and lint
 - `AQ-021` is partially implemented: the desktop boundary now has least-privilege config and capability tests, but the runtime wiring and typed boundary work remain open.
 - `AQ-022` and `AQ-023` are complete: the desktop command schema now rejects control-plane drift and the bridge/offline layer now enforces root-contained IO.
 - `AQ-024` is complete: the shared executor now enforces bounded timeout, cancellation cleanup, output caps, and process-group termination where supported.
-- The remaining risk concentrates in typed desktop error taxonomy, public API narrowing, and test-quality hardening.
+- `AQ-025` is complete: the desktop boundary now exposes a typed error taxonomy with stable codes while keeping CLI rendering compatible.
+- The remaining risk concentrates in public API narrowing and test-quality hardening.
 
 ## Panel findings
 
