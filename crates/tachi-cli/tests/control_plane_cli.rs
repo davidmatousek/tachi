@@ -282,6 +282,43 @@ fn init_binary_prints_help() {
 }
 
 #[test]
+fn init_binary_rejects_missing_root_value() {
+    let output = Command::new(binary_path("init"))
+        .arg("--root")
+        .output()
+        .expect("run init with missing root value");
+
+    assert_eq!(output.status.code(), Some(2));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("--root requires a path argument"));
+}
+
+#[test]
+fn coverage_audit_binary_rejects_invalid_arguments() {
+    let missing_root = Command::new(binary_path("coverage-audit"))
+        .arg("--root")
+        .output()
+        .expect("run coverage-audit with missing root");
+    assert_eq!(missing_root.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&missing_root.stderr)
+        .contains("--root requires a path argument"));
+
+    let unknown = Command::new(binary_path("coverage-audit"))
+        .arg("--wat")
+        .output()
+        .expect("run coverage-audit with unknown argument");
+    assert_eq!(unknown.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&unknown.stderr).contains("unrecognized argument: --wat"));
+
+    let help = Command::new(binary_path("coverage-audit"))
+        .arg("--help")
+        .output()
+        .expect("run coverage-audit help");
+    assert_eq!(help.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&help.stderr).contains("usage: coverage-audit"));
+}
+
+#[test]
 fn update_binary_forwards_flags() {
     let root = fixture_repo();
     write_executable_file(
@@ -467,6 +504,41 @@ fn report_data_binary_writes_output_file_when_requested() {
     assert!(file_content.contains("#let has-executive-architecture = true"));
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("report-data.typ generated"));
+}
+
+#[test]
+fn report_data_binary_rejects_invalid_arguments() {
+    let missing_target_value = Command::new(binary_path("report-data"))
+        .arg("--target-dir")
+        .output()
+        .expect("run report-data with missing target-dir value");
+    assert_eq!(missing_target_value.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&missing_target_value.stderr)
+        .contains("--target-dir requires a path argument"));
+
+    let missing_template = Command::new(binary_path("report-data"))
+        .args(["--target-dir", "target"])
+        .output()
+        .expect("run report-data with missing template-dir");
+    assert_eq!(missing_template.status.code(), Some(2));
+    assert!(
+        String::from_utf8_lossy(&missing_template.stderr).contains("--template-dir is required")
+    );
+
+    let missing_output_value = Command::new(binary_path("report-data"))
+        .args(["--target-dir", "target", "--template-dir", "templates", "--output"])
+        .output()
+        .expect("run report-data with missing output value");
+    assert_eq!(missing_output_value.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&missing_output_value.stderr)
+        .contains("--output requires a path argument"));
+
+    let unknown = Command::new(binary_path("report-data"))
+        .arg("--wat")
+        .output()
+        .expect("run report-data with unknown argument");
+    assert_eq!(unknown.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&unknown.stderr).contains("unrecognized argument: --wat"));
 }
 
 #[test]
