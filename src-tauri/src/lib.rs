@@ -55,7 +55,9 @@ pub fn registered_commands() -> &'static [&'static str] {
     &DESKTOP_COMMANDS
 }
 
-pub fn run() {}
+pub fn run() {
+    let _registered_commands = registered_commands();
+}
 
 pub use tachi_shell::progress::{
     cancel_running_command, emit_progress_event, invoke_with_progress, CancellationToken,

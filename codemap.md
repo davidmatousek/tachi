@@ -25,7 +25,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | `crates/tachi-core/` | Domain and data-transformation core. It parses generated threat-model artifacts, computes MAESTRO and coverage views, builds report data, emits SARIF payloads, and owns the Rust coverage-audit catalog. |
 | `crates/tachi-cli/` | Thin CLI binary layer. Binaries parse flags, call shared core/shell functions, and write files or stdout. Business logic should move down into `tachi-core` or `tachi-shell`. |
 | `crates/tachi-shell/` | Shared command facade for shell-style control-plane operations and Tauri-facing command dispatch. Keeps desktop and CLI command semantics aligned. |
-| `src-tauri/` | Tauri desktop shell. It should remain a bridge/registration layer and avoid duplicate business logic. |
+| `src-tauri/` | Tauri desktop shell. It should remain a bridge/registration layer and avoid duplicate business logic. The scaffold now includes `tauri.conf.json` and `capabilities/main.json` with a least-privilege `core:default` main-window capability. |
 | `schemas/` | Finding schema and taxonomy catalogs used by parser, source-attribution, coverage, and crosswalk validation tests. |
 | `.claude/` | Agent, command, skill, and reference content inherited from the original Tachi workflow. This is data/configuration for threat-modeling behavior, not Rust runtime code. |
 | `.aod/` | AOD shell helpers, templates, and governance memory. Some shell helpers remain under Rust test coverage while migration continues. |
@@ -55,10 +55,10 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | Level | Current Rust-Native Surface |
 |---|---|
 | Unit | Rust unit tests; current audit shows 2 Rust unit modules and 0 remaining Python unit modules. |
-| Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit shows 79 Rust integration modules, including the scaffold dependency-floor audit, workflow CI gate audit, and issue-template TDD contract audit, while the init-substitution E2E boundary is Rust-owned. |
+| Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit shows 80 Rust integration modules, including the scaffold dependency-floor audit, workflow CI gate audit, issue-template TDD contract audit, and Tauri capability-boundary audit, while the init-substitution E2E boundary is Rust-owned. |
 | Smoke | Transitional smoke modules tracked by `tachi-core::coverage_audit`; current audit shows 1 Rust smoke canary and 0 remaining Python smoke modules. |
 | E2E | Critical init flow now lives in `crates/tachi-shell/tests/init_substitution.rs` while the Rust-owned E2E boundary is being defined. |
-| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 85.93% regions / 85.05% lines. Current audit: 83 active modules, 79 Rust integration modules, 2 Rust unit modules, 1 Rust smoke module, 1 Rust E2E module, 0 support/regression modules. |
+| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 85.93% regions / 85.05% lines. Current audit: 84 active modules, 80 Rust integration modules, 2 Rust unit modules, 1 Rust smoke module, 1 Rust E2E module, 0 support/regression modules. |
 
 The publish gate now includes `make scaffold-dependency-gate`, which runs the
 Rust-native `scaffold_dependency_floors` integration test against the real

@@ -112,6 +112,9 @@ Use this checklist before publishing to GitHub or cutting a release.
       transitional compatibility with a documented deprecation plan.
 - [ ] The docs/version gate is green on the current branch.
 - [ ] The release artifact gate and checksum matrix pass via `make publish-gate`.
+- [ ] `src-tauri/tauri.conf.json` and `src-tauri/capabilities/main.json`
+      remain least-privilege and do not grant filesystem or shell permissions
+      without the corresponding AQ-022/AQ-023 policy tests.
 - [ ] The scaffold dependency-floor audit passes via `make scaffold-dependency-gate`
       and is included in `make publish-gate`.
 - [ ] Any release workflow required for the branch has succeeded or is queued

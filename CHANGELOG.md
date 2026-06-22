@@ -19,6 +19,13 @@ implementation slice records failing-test-first evidence, exact validation
 gates, positive and negative/adversarial cases, and property/golden/mutation
 applicability.
 
+### Tauri capability boundary scaffold
+
+Added a Tauri v2 configuration file and a least-privilege main-window
+capability that grants only `core:default`, plus a Rust contract test that
+guards against returning to an empty desktop `run()` scaffold or granting
+filesystem/shell permissions before the typed policy work lands.
+
 ### Scaffold dependency floor hardening
 
 Raised the Next.js/Supabase scaffold floors for `next` and `vitest`, then added

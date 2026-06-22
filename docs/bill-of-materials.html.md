@@ -50,7 +50,7 @@ with the shipped release workflow before publication.
 | `CHANGELOG.md` | Release history | Publishable | Keep release notes redaction-safe. |
 | `docs/` | Public documentation | Publishable | Long-form docs, roadmap, standards, and review artifacts. |
 | `crates/` | Workspace library and binary crates | Publishable | Source of the Rust implementation. |
-| `src-tauri/` | Desktop bridge shell | Publishable | Thin Tauri layer only. |
+| `src-tauri/` | Desktop bridge shell | Publishable | Thin Tauri layer with explicit config and least-privilege main-window capability. |
 | `.github/` | CI and release workflows | Publishable | Public automation surface. |
 | `.claude/` | Agent configuration and runtime rules | Publishable with review | Must avoid secrets and private credentials. |
 | `.aod/` | AOD support files | Publishable with review | Contains governance and hook logic; verify no private data. |
@@ -71,7 +71,7 @@ with the shipped release workflow before publication.
 | `crates/tachi-core/` | Parsers, scoring, reporting, taxonomy, SARIF, coverage helpers | Parser hardening, output shape stability, no panic-based user-facing parsing. |
 | `crates/tachi-cli/` | CLI entrypoints and argument-forwarding binaries | Flag correctness, help text, command parity, no duplicated business logic. |
 | `crates/tachi-shell/` | Shared command facade and bridge adapter | Shared dispatch, shared errors, identical CLI/Tauri semantics. |
-| `src-tauri/` | Thin desktop shell | Registration-only bridge, no business logic drift. |
+| `src-tauri/` | Thin desktop shell | Registration-only bridge, explicit `tauri.conf.json`, least-privilege `capabilities/main.json`, no business logic drift. |
 | `schemas/` | Finding schemas and taxonomy catalogs | Schema compatibility, crosswalk stability, fixture coverage. |
 
 ### Transitional helper surface

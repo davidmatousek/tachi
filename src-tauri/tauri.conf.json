@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "tachi-rust",
+  "version": "0.1.0",
+  "identifier": "io.github.pratik-saptarshi.tachi-rust",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "frontendDist": "../docs"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "tachi-rust",
+        "width": 1200,
+        "height": 800
+      }
+    ],
+    "security": {
+      "csp": {
+        "default-src": "\u0027self\u0027",
+        "connect-src": "ipc: http://ipc.localhost",
+        "img-src": "\u0027self\u0027 asset: http://asset.localhost data:",
+        "style-src": "\u0027self\u0027 \u0027unsafe-inline\u0027",
+        "script-src": "\u0027self\u0027"
+      }
+    }
+  }
+}
