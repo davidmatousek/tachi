@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use tachi_core::compensating_controls::parse_compensating_controls_md;
+use tachi_core::facade::parse_compensating_controls_md;
 use tachi_core::coverage_attestation::{
     build_per_framework_aggregates_in_dir, CoverageFrameworkAggregate,
 };

@@ -1,4 +1,4 @@
-use tachi_core::compensating_controls::parse_compensating_controls_md;
+use tachi_core::facade::parse_compensating_controls_md;
 
 const CC_MD_WITH_CROSS_LISTED: &str = r#"---
 schema_version: "1.0"

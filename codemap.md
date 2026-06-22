@@ -22,7 +22,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
 
 | Directory | Responsibility Summary |
 |---|---|
-| `crates/tachi-core/` | Domain and data-transformation core. It parses generated threat-model artifacts, computes MAESTRO and coverage views, builds report data, emits SARIF payloads, owns the Rust coverage-audit catalog, and now exposes a stable facade module for downstream consumers. |
+| `crates/tachi-core/` | Domain and data-transformation core. It parses generated threat-model artifacts, computes MAESTRO and coverage views, builds report data, emits SARIF payloads, owns the Rust coverage-audit catalog, and now exposes a stable facade module while hiding low-level utility modules behind it. |
 | `crates/tachi-cli/` | Thin CLI binary layer. Binaries parse flags, call shared core/shell functions, and write files or stdout. Business logic should move down into `tachi-core` or `tachi-shell`. |
 | `crates/tachi-shell/` | Shared command facade for shell-style control-plane operations and Tauri-facing command dispatch. Keeps desktop and CLI command semantics aligned and now enforces bounded execution, output/input path containment, and process cleanup for desktop bridge file IO. |
 | `src-tauri/` | Tauri desktop shell. It should remain a bridge/registration layer and avoid duplicate business logic. The scaffold now includes `tauri.conf.json`, `capabilities/main.json`, typed control-plane schema guards, typed desktop error taxonomy, and offline cache path-policy checks with a least-privilege `core:default` main-window capability. |
@@ -47,7 +47,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
    - `risk_scores.rs`, `threats_sarif.rs`, and `sarif_common.rs` build SARIF exports.
    - `coverage_taxonomy.rs` centralizes coverage and MAESTRO taxonomy labels.
    - `coverage_audit.rs` classifies active test modules by unit, integration, smoke, E2E, and support/regression families.
-3. `tachi-shell` exposes reusable command functions for shell and desktop paths through the stable `tachi_core::facade` surface.
+3. `tachi-shell` exposes reusable command functions for shell and desktop paths through the stable `tachi_core::facade` surface, which now carries the test-facing artifacts/assets/attack-chain/mmdc and compensating-control helpers.
 4. `src-tauri` registers desktop commands, enforces typed control-plane argument policy, and dispatches through the shared shell bridge, bounded execution policy, typed desktop error mapping, and offline path-policy checks.
 
 ## Testing And Validation

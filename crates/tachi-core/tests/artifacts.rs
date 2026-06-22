@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use tachi_core::artifacts::{detect_artifacts, determine_tier};
+use tachi_core::facade::{detect_artifacts, determine_tier};
 
 fn temp_repo_dir() -> PathBuf {
     let mut root = std::env::temp_dir();

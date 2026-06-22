@@ -1,5 +1,5 @@
-use tachi_core::artifacts::detect_artifacts;
-use tachi_core::attack_chains::{
+use tachi_core::facade::detect_artifacts;
+use tachi_core::facade::{
     generate_chain_mermaid, parse_attack_chains, AttackChain, AttackChainFinding,
 };
 

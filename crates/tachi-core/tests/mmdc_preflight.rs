@@ -1,4 +1,4 @@
-use tachi_core::mmdc::{
+use tachi_core::facade::{
     ensure_attack_path_renderer_available, format_attack_path_render_failure_summary,
     MermaidRenderFailure, MMDC_INSTALL_HINT,
 };

@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use tachi_core::assets::{detect_brand_assets, detect_images};
+use tachi_core::facade::{detect_brand_assets, detect_images};
 
 fn unique_temp_dir(prefix: &str) -> PathBuf {
     let nanos = SystemTime::now()

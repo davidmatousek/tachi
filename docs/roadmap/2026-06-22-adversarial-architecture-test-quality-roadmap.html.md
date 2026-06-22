@@ -20,7 +20,8 @@ The highest-priority remediation is to make CI fail closed for behavior and lint
 - `AQ-024` is complete: the shared executor now enforces bounded timeout, cancellation cleanup, output caps, and process-group termination where supported.
 - `AQ-025` is complete: the desktop boundary now exposes a typed error taxonomy with stable codes while keeping CLI rendering compatible.
 - `AQ-041` is started as a facade-first core API slice: `tachi-core` now exposes a stable facade module and the shared shell consumes it.
-- The remaining risk concentrates in deeper module-privacy narrowing, public API hygiene, and test-quality hardening.
+- `AQ-041` has advanced further: several test-facing utility modules are now hidden behind the facade, and downstream consumers compile against the facade surface.
+- The remaining risk concentrates in the rest of the public API hygiene, deeper module-privacy narrowing, and test-quality hardening.
 
 ## Panel findings
 
