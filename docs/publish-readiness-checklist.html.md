@@ -1,7 +1,7 @@
 # Publish Readiness Checklist
 
 **Status**: Active release gate
-**Last Updated**: 2026-06-21
+**Last Updated**: 2026-06-22
 **Purpose**: confirm `tachi-rust` is ready to publish to `origin/main`
 **Scope**: security, privacy, docs, tests, coverage, CI, and release hygiene
 
@@ -55,6 +55,8 @@ Use this checklist before publishing to GitHub or cutting a release.
 ## 4. Rust validation
 
 - [ ] `cargo test -q` passes.
+- [ ] `cargo test --workspace --all-targets` passes or the equivalent
+      `.github/workflows/rust-workspace.yml` PR gate is green.
 - [ ] Parser hardening regression tests pass, including delta-count normalization and panic-free status handling.
 - [ ] Reporting goldens pass for coverage, report, threat, risk, and infographic outputs.
 - [ ] `cargo clippy --all-targets -- -D warnings` passes.
@@ -97,7 +99,11 @@ Use this checklist before publishing to GitHub or cutting a release.
 ## 6. CI and GitHub readiness
 
 - [ ] `.github/workflows/gitleaks.yml` is green for the publish branch.
+- [ ] `.github/workflows/rust-workspace.yml` is green and is not
+      path-filtered on pull requests.
 - [ ] `.github/workflows/rust-clippy.yml` is green.
+- [ ] `.github/workflows/rust-clippy.yml` fails closed on warnings while still
+      uploading SARIF with `if: always()`.
 - [ ] The latest main-push Actions run does not emit Node 20 deprecation warnings from the updated workflows.
 - [ ] `.github/workflows/release-please.yml` ignores docs-only and roadmap-only
       pushes and does not churn release-PR branches on main pushes.

@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fail-closed Rust CI gates
+
+Added a non-path-filtered workspace PR workflow for
+`cargo test --workspace --all-targets`, made the clippy SARIF workflow fail
+closed on warnings while still uploading SARIF, and added Rust tests that guard
+both workflow policies.
+
 ### Scaffold dependency floor hardening
 
 Raised the Next.js/Supabase scaffold floors for `next` and `vitest`, then added

@@ -1,7 +1,7 @@
 # Bill of Materials
 
 **Status**: Active publish inventory
-**Last Updated**: 2026-06-21
+**Last Updated**: 2026-06-22
 **Purpose**: enumerate the repository surfaces that are expected to ship, be
 reviewed, or be validated before publishing `tachi-rust` to remote origin
 **Scope**: source code, docs, tests, CI, security posture, and release gates
@@ -118,6 +118,7 @@ with the shipped release workflow before publication.
 | Path | Purpose | Publish note |
 |---|---|---|
 | `.github/workflows/gitleaks.yml` | Full-repo secret scanning | Required publication gate. |
+| `.github/workflows/rust-workspace.yml` | Full Rust workspace PR test gate | Required non-path-filtered behavior gate for `cargo test --workspace --all-targets`. |
 | `.github/workflows/rust-clippy.yml` | Rust lint gate | Prevents warnings from shipping. |
 | `.github/workflows/release-please.yml` | Release orchestration | Main-push release automation without release-PR branch churn; release gate now covers manifest and checksum parity. |
 | `.github/workflows/tachi-mmdc-preflight.yml` | Mermaid preflight | Protects docs and renderable diagram outputs. |
@@ -147,9 +148,10 @@ The repository policy for these surfaces is:
 | Gate | Evidence | Acceptance |
 |---|---|---|
 | Rust unit and integration tests | `cargo test -q` | Must pass cleanly. |
+| Full workspace PR behavior gate | `cargo test --workspace --all-targets` and `.github/workflows/rust-workspace.yml` | Pull requests run the whole Rust workspace without path filters. |
 | Rust e2e and bridge checks | `cargo test -p tachi-shell --test init_substitution` and `cargo test -p tachi-core --test rt009_docs` | Must pass for CLI/tidy report contract parity surfaces. |
 | Parser hardening regression | `cargo test -p tachi-core compute_delta_counts_trims_case_and_ignores_unknown_statuses -- --nocapture` | Must pass for panic-free delta counting and status normalization. |
-| Lint gate | `cargo clippy --all-targets -- -D warnings` | No warnings allowed. |
+| Lint gate | `cargo clippy --all-targets -- -D warnings` and `.github/workflows/rust-clippy.yml` | No warnings allowed; SARIF upload remains `if: always()` but clippy status fails closed. |
 | Coverage gate | `make llvm-cov` | Coverage remains above the repo floor. |
 | Reporting goldens | `cargo test -p tachi-core --test reporting_goldens -- --nocapture` | Canonical report, threat, risk, coverage, and infographic outputs remain stable. |
 | Diff hygiene | `git diff --check` | No whitespace or patch-format issues. |
