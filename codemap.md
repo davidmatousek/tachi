@@ -55,10 +55,10 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | Level | Current Rust-Native Surface |
 |---|---|
 | Unit | Rust unit tests; current audit shows 1 Rust unit module and 0 remaining Python unit modules. |
-| Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit shows 69 Rust integration modules after retiring the defaults-env init, adversarial init, template git clone timeout, executive-architecture infographic, attack-chain, MAESTRO pattern-classification, init precommit matrix, mmdc preflight, PDF page-positioning, backward-compatibility, human-trust-exploitation, extractor contract fixes, coverage-attestation tiers, init constitution, tool-abuse enrichment, pattern-synthesis, ML Top 10 coverage bundle, mobile Top 10 coverage bundle, LLM10 unbounded consumption, coverage-attestation audit, init timing trace, init trace summary, archived FastAPI docs guidance, archived FastAPI getting-started guidance, stack-pack archive pytests, manifest-backed init path caching, and the isolated report-data typst guard while the init-substitution E2E boundary is now Rust-owned. |
+| Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit shows 77 Rust integration modules, including the scaffold dependency-floor audit for the Next.js/Supabase template, while the init-substitution E2E boundary is Rust-owned. |
 | Smoke | Transitional smoke modules tracked by `tachi-core::coverage_audit`; current audit shows 1 Rust smoke canary and 0 remaining Python smoke modules. |
 | E2E | Critical init flow now lives in `crates/tachi-shell/tests/init_substitution.rs` while the Rust-owned E2E boundary is being defined. |
-| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 86.36% regions / 86.73% lines. Current audit: 72 active modules, 69 Rust integration modules, 1 Rust unit module, 1 Rust smoke module, 0 support/regression modules. |
+| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 86.36% regions / 86.73% lines. Current audit: 81 active modules, 77 Rust integration modules, 2 Rust unit modules, 1 Rust smoke module, 1 Rust E2E module, 0 support/regression modules. |
 
 The publish gate now includes `make scaffold-dependency-gate`, which runs the
 Rust-native `scaffold_dependency_floors` integration test against the real
