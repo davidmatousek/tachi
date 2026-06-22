@@ -1,4 +1,4 @@
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::{fs, path::PathBuf};
 
 #[test]
@@ -65,6 +65,46 @@ fn publish_gate_runs_scaffold_dependency_floor_audit() {
         makefile.contains("@$(MAKE) scaffold-dependency-gate"),
         "publish-gate must run scaffold-dependency-gate as a release blocker"
     );
+}
+
+#[test]
+fn dependency_floor_audit_reports_synthetic_vulnerable_ranges() {
+    let package_json = json!({
+        "dependencies": {
+            "next": ">=16.2.3"
+        },
+        "devDependencies": {
+            "vitest": ">=4.0.0"
+        }
+    });
+
+    let failures = [
+        dependency_floor_failure(
+            &package_json,
+            "dependencies",
+            "next",
+            Version::new(16, 2, 6),
+            &["#13 GHSA-26hh-7cqf-hhc6"],
+        ),
+        dependency_floor_failure(
+            &package_json,
+            "devDependencies",
+            "vitest",
+            Version::new(4, 1, 0),
+            &["#14 GHSA-5xrq-8626-4rwp"],
+        ),
+    ]
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>();
+
+    assert_eq!(failures.len(), 2);
+    assert!(failures[0].contains("dependencies.next"));
+    assert!(failures[0].contains("16.2.6"));
+    assert!(failures[0].contains("#13 GHSA-26hh-7cqf-hhc6"));
+    assert!(failures[1].contains("devDependencies.vitest"));
+    assert!(failures[1].contains("4.1.0"));
+    assert!(failures[1].contains("#14 GHSA-5xrq-8626-4rwp"));
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]

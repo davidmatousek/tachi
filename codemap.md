@@ -15,7 +15,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | `crates/tachi-cli/src/bin/*.rs` | Rust CLI binaries for init/install/update/bootstrap, report-data, infographic-data, SARIF generation, and coverage audit. |
 | `crates/tachi-shell/src/commands.rs` | Shared command layer used by CLI-style flows and the Tauri bridge. |
 | `src-tauri/src/lib.rs` | Desktop command registration and bridge integration for Tauri. |
-| `Makefile` | Validation shortcuts, including the Rust coverage gate via `make llvm-cov`. |
+| `Makefile` | Validation shortcuts, including the Rust coverage gate via `make llvm-cov` and the scaffold dependency-floor gate via `make scaffold-dependency-gate`. |
 | `docs/roadmap/` | Canonical migration roadmap, issue cards, merge plan, and Python-surface inventory. |
 
 ## Directory Map
@@ -59,6 +59,11 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | Smoke | Transitional smoke modules tracked by `tachi-core::coverage_audit`; current audit shows 1 Rust smoke canary and 0 remaining Python smoke modules. |
 | E2E | Critical init flow now lives in `crates/tachi-shell/tests/init_substitution.rs` while the Rust-owned E2E boundary is being defined. |
 | Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 86.36% regions / 86.73% lines. Current audit: 72 active modules, 69 Rust integration modules, 1 Rust unit module, 1 Rust smoke module, 0 support/regression modules. |
+
+The publish gate now includes `make scaffold-dependency-gate`, which runs the
+Rust-native `scaffold_dependency_floors` integration test against the real
+Next.js/Supabase scaffold manifest so known vulnerable `next` and `vitest`
+lower bounds cannot be reintroduced.
 
 Primary validation commands:
 

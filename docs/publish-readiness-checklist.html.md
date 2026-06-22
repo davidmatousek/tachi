@@ -11,6 +11,7 @@ Use this checklist before publishing to GitHub or cutting a release.
 
 - [ ] `pre-commit run --all-files` or the equivalent `gitleaks` scan passes.
 - [ ] `make publish-gate` passes on the release candidate branch.
+- [ ] `make scaffold-dependency-gate` passes before publishing scaffold or template changes.
 - [ ] `git push origin main --follow-tags` is the intended publish command.
 - [ ] `gh run list --branch main --limit 10` is ready for post-push monitoring.
 - [ ] `gh run watch <run-id>` will be used until the publish workflow completes.
@@ -63,6 +64,8 @@ Use this checklist before publishing to GitHub or cutting a release.
       baseline recorded.
 - [ ] `INSTALL_MANIFEST.md` only references files/directories that exist in the
       repository and expected install command paths.
+- [ ] `make scaffold-dependency-gate` passes and blocks scaffold ranges that admit
+      currently known vulnerable `next` or `vitest` versions.
 
 ## 5. Documentation readiness
 
@@ -103,6 +106,8 @@ Use this checklist before publishing to GitHub or cutting a release.
       transitional compatibility with a documented deprecation plan.
 - [ ] The docs/version gate is green on the current branch.
 - [ ] The release artifact gate and checksum matrix pass via `make publish-gate`.
+- [ ] The scaffold dependency-floor audit passes via `make scaffold-dependency-gate`
+      and is included in `make publish-gate`.
 - [ ] Any release workflow required for the branch has succeeded or is queued
       without failures.
 - [ ] GitHub Actions status was checked after the last merge or rebase.
@@ -114,7 +119,7 @@ Use this checklist before publishing to GitHub or cutting a release.
 - [ ] The publish commit history is linear or intentionally merged.
 - [ ] The push target is `origin/main` or a clearly named release branch.
 - [ ] `make publish-gate` runs clean on the branch being published, including
-      workflow drift and release artifact parity checks.
+      workflow drift, scaffold dependency-floor, and release artifact parity checks.
 - [ ] The post-push CI monitor command is ready, for example:
 
 ```bash

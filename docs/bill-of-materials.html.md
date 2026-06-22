@@ -56,6 +56,7 @@ with the shipped release workflow before publication.
 | `.aod/` | AOD support files | Publishable with review | Contains governance and hook logic; verify no private data. |
 | `schemas/` | Validation schemas and taxonomies | Publishable | Needed for parser/report contracts. |
 | `tests/` | Fixtures and regression tests | Publishable with review | Synthetic or redacted only; no private source material. |
+| `stacks/` | Scaffold templates and archived stack packs | Publishable with review | Template manifests must not admit known vulnerable dependency floors. |
 | `INSTALL_MANIFEST.md` | Install command contract | Publishable with review | Machine-parseable file list that must match distributable paths. |
 | `scripts/` | Transitional shell and helper scripts | Publishable with review | Keep no secret-bearing defaults. |
 | `brand/` | Visual assets | Publishable | Verify image captions and alt text do not expose private data. |
@@ -80,6 +81,7 @@ with the shipped release workflow before publication.
 | `scripts/` | Init/bootstrap helpers and transitional tooling | No secret leakage, no unreviewed shell injection, clear retirement path. |
 | `.aod/` | Governance and operational helpers | Hook safety, no private state, no accidental publish of local settings. |
 | `.claude/` | Agent and permissions configuration | Public-safe policy, no credentials, no private repo-specific tokens. |
+| `stacks/nextjs-supabase/scaffold/` | Next.js/Supabase scaffold template | Dependency floors must exclude known vulnerable `next` and `vitest` ranges. |
 
 ### Test and fixture surface
 
@@ -152,6 +154,7 @@ The repository policy for these surfaces is:
 | Reporting goldens | `cargo test -p tachi-core --test reporting_goldens -- --nocapture` | Canonical report, threat, risk, coverage, and infographic outputs remain stable. |
 | Diff hygiene | `git diff --check` | No whitespace or patch-format issues. |
 | Secret scan | `pre-commit run --all-files` or `gitleaks` / CI workflow | No secrets or private data leak into the publish set, including examples, fixtures, logs, and generated docs. |
+| Scaffold dependency gate | `make scaffold-dependency-gate` | Next.js/Supabase scaffold dependency ranges exclude currently known vulnerable `next` and `vitest` floors. |
 | Docs gate | `README.md`, `SECURITY.md`, `CHANGELOG.md`, and public docs cross-links | Public docs match the shipped behavior and the disclosure policy. |
 | Docs/version sweep | `make docs-version-gate` + `make docs-archive-version-gate` | Maintained docs stay current; archived docs and examples retain only intentional historical references. |
 | Publish gate | `make publish-gate` | The release candidate passes the full local publish-readiness suite before remote publication. |
@@ -187,5 +190,6 @@ privacy, doc accuracy, and release readiness before `main` is pushed to
 - [ ] `make docs-version-gate` passes.
 - [ ] `git status --short --branch` has no unexpected untracked or dirty state.
 - [ ] `cargo test -q` and `make llvm-cov` are green on the release candidate branch.
+- [ ] `make scaffold-dependency-gate` is green for scaffold dependency floors.
 - [ ] `cargo clippy --all-targets -- -D warnings` is clean.
 - [ ] Public examples and fixtures are synthetic or redacted.
