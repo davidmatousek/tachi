@@ -1,12 +1,14 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
 
 use std::os::unix::fs::PermissionsExt;
 
 use tachi_shell::commands::{bootstrap_output, init_output, install_output, update_output};
 
 static TEMP_DIR_COUNTER: AtomicU64 = AtomicU64::new(0);
+static CONTROL_PLANE_LOCK: Mutex<()> = Mutex::new(());
 
 #[cfg(unix)]
 fn write_executable_file(path: &Path, content: &str) {
@@ -54,6 +56,7 @@ fn workspace_root() -> PathBuf {
 
 #[test]
 fn install_output_runs_install_script_with_provided_flags() {
+    let _guard = CONTROL_PLANE_LOCK.lock().expect("control plane lock");
     let root = fixture_repo();
     let script = root.join("scripts/install.sh");
     write_executable_file(
@@ -71,6 +74,7 @@ fn install_output_runs_install_script_with_provided_flags() {
 
 #[test]
 fn init_output_forwards_args_to_init_script() {
+    let _guard = CONTROL_PLANE_LOCK.lock().expect("control plane lock");
     let root = fixture_repo();
     let script = root.join("scripts/init.sh");
     write_executable_file(
@@ -86,6 +90,7 @@ fn init_output_forwards_args_to_init_script() {
 
 #[test]
 fn init_output_preserves_state_files_when_script_self_deletes() {
+    let _guard = CONTROL_PLANE_LOCK.lock().expect("control plane lock");
     assert!(
         !workspace_root()
             .join("tests/scripts/test_init_sh_self_delete.py")
@@ -110,6 +115,7 @@ fn init_output_preserves_state_files_when_script_self_deletes() {
 
 #[test]
 fn update_output_forwards_update_flags() {
+    let _guard = CONTROL_PLANE_LOCK.lock().expect("control plane lock");
     let root = fixture_repo();
     let script = root.join("scripts/update.sh");
     write_executable_file(
@@ -125,6 +131,7 @@ fn update_output_forwards_update_flags() {
 
 #[test]
 fn bootstrap_output_prepends_bootstrap_flag() {
+    let _guard = CONTROL_PLANE_LOCK.lock().expect("control plane lock");
     let root = fixture_repo();
     let script = root.join("scripts/update.sh");
     write_executable_file(
@@ -146,6 +153,7 @@ fn bootstrap_output_prepends_bootstrap_flag() {
 
 #[test]
 fn init_output_uses_ancestor_scripts_dir_when_invoked_from_nested_path() {
+    let _guard = CONTROL_PLANE_LOCK.lock().expect("control plane lock");
     let (root, nested) = fixture_repo_with_nested_path();
     let script = root.join("scripts/init.sh");
     write_executable_file(
