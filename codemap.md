@@ -108,3 +108,6 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
 - AQ-033: bootstrap control-plane argument shaping was extracted into
   `bootstrap_control_plane_args`, and `crates/tachi-shell/src/tauri_bridge.rs`
   now reuses the helper instead of duplicating the bootstrap prefix logic.
+- AQ-043: `crates/tachi-core/src/infographic.rs` now routes template loading
+  through an injected `PromptScaffoldStore`, letting tests swap in a fake
+  store while the filesystem adapter preserves current behavior.

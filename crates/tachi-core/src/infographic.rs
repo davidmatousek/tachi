@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::artifacts::{detect_artifacts, determine_tier};
 use crate::coverage_taxonomy::{normalize_maestro_layer_label, MAESTRO_LAYERS};
@@ -41,6 +41,31 @@ pub struct PromptScaffold {
     pub preamble: String,
     pub postamble: String,
     pub found: bool,
+}
+
+pub trait PromptScaffoldStore {
+    fn load_template(&self, template_name: &str) -> Option<String>;
+}
+
+struct FilesystemPromptScaffoldStore {
+    repo_root: PathBuf,
+}
+
+impl PromptScaffoldStore for FilesystemPromptScaffoldStore {
+    fn load_template(&self, template_name: &str) -> Option<String> {
+        let template_file = TEMPLATE_FILES
+            .iter()
+            .find(|(name, _)| *name == template_name)
+            .map(|(_, file)| *file)?;
+
+        let template_path = self
+            .repo_root
+            .join("templates")
+            .join("tachi")
+            .join("infographics")
+            .join(template_file);
+        fs::read_to_string(template_path).ok()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -517,26 +542,22 @@ pub fn compute_maestro_heatmap(per_finding_data: &[MaestroFinding]) -> Vec<Maest
 }
 
 pub fn extract_prompt_scaffold(template_name: &str, repo_root: Option<&Path>) -> PromptScaffold {
+    let repo_root = repo_root.unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap());
+    let store = FilesystemPromptScaffoldStore {
+        repo_root: repo_root.to_path_buf(),
+    };
+    extract_prompt_scaffold_from_store(template_name, &store)
+}
+
+pub fn extract_prompt_scaffold_from_store(
+    template_name: &str,
+    store: &dyn PromptScaffoldStore,
+) -> PromptScaffold {
     if !SCAFFOLD_TEMPLATES.contains(&template_name) {
         return PromptScaffold::default();
     }
 
-    let repo_root =
-        repo_root.unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap());
-    let Some(template_file) = TEMPLATE_FILES
-        .iter()
-        .find(|(name, _)| *name == template_name)
-        .map(|(_, file)| *file)
-    else {
-        return PromptScaffold::default();
-    };
-
-    let template_path = repo_root
-        .join("templates")
-        .join("tachi")
-        .join("infographics")
-        .join(template_file);
-    let Ok(content) = fs::read_to_string(template_path) else {
+    let Some(content) = store.load_template(template_name) else {
         return PromptScaffold::default();
     };
 
