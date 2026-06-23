@@ -132,6 +132,10 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   `docs/reports/fuzz-mutation-baseline.md`,
   `.github/workflows/fuzz-mutation-audit.yml`, and `make fuzz-mutation-gate`
   now define an offline advisory fuzz/mutation lane with a repo test guard.
+- RT-00i: `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-roadmap.html.md`,
+  `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md`, and
+  `Cargo.lock` now anchor the glib alert remediation plan and phased AISVS 1.0
+  control rollout.
 - AQ-042: `crates/tachi-core/src/infographic/maestro_templates.rs`
   now owns MAESTRO template assembly and a direct unit test, separating the
   layer-summary rendering from the parent infographic module.
