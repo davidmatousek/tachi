@@ -21,6 +21,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run release-please
-        uses: googleapis/release-please-action@v5
+        uses: googleapis/release-please-action@v5.0.0
         with:
           skip-github-pull-request: true

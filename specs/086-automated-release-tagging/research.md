@@ -21,7 +21,7 @@
 
 ## Industry Research
 - release-please is the most widely adopted release automation for GitHub (40k+ stars)
-- v4 is the current stable version (`googleapis/release-please-action@v4`)
+- v5.0.0 is the current stable version (`googleapis/release-please-action@v5.0.0`)
 - `simple` release type: tracks version in `.release-please-manifest.json`, no package manager integration
 - Workflow requires permissions: `contents: write`, `pull-requests: write`
 - Release PR is idempotent — accumulates commits until merged

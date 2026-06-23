@@ -25,7 +25,7 @@ Automate version tagging using Google's release-please GitHub Action. Three conf
 ## Technical Context
 
 **Language/Version**: YAML (GitHub Actions workflow syntax), JSON (release-please config)
-**Primary Dependencies**: `googleapis/release-please-action@v4` (GitHub Action)
+**Primary Dependencies**: `googleapis/release-please-action@v5.0.0` (GitHub Action)
 **Storage**: `.release-please-manifest.json` (version tracking, JSON)
 **Testing**: Manual validation — merge a conventional commit, verify Release PR creation, merge Release PR, verify tag + GitHub Release
 **Target Platform**: GitHub Actions (GitHub-hosted runners)
@@ -91,7 +91,7 @@ CHANGELOG.md                    # EXISTING: Auto-maintained by release-please
 **Configuration**:
 - Trigger: `on: push: branches: [main]`
 - Permissions: `contents: write`, `pull-requests: write`
-- Action: `googleapis/release-please-action@v4`
+- Action: `googleapis/release-please-action@v5.0.0`
 - Release type: `simple`
 
 **Behavior**:

@@ -45,7 +45,7 @@ triad:
 
 **Goal**: After this phase, pushing to main triggers release-please to create Release PRs with auto-determined version bumps and grouped CHANGELOG entries
 
-- [X] T002 [P] [US1] Create GitHub Actions workflow at `.github/workflows/release-please.yml` with trigger on push to main, permissions for contents:write and pull-requests:write, using googleapis/release-please-action@v4 with release-type simple
+- [X] T002 [P] [US1] Create GitHub Actions workflow at `.github/workflows/release-please.yml` with trigger on push to main, permissions for contents:write and pull-requests:write, using googleapis/release-please-action@v5.0.0 with release-type simple
 - [X] T003 [P] [US2] Create release configuration at `release-please-config.json` with release-type simple, changelog-sections mapping conventional commit types to CHANGELOG groups (Features, Bug Fixes, Documentation, Miscellaneous), and include-component-in-tag false
 - [X] T004 [P] [US1] Create version manifest at `.release-please-manifest.json` with initial content `{"." : "4.0.0"}` matching the existing v4.0.0 tag baseline
 

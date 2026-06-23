@@ -1933,7 +1933,7 @@ User runs install.sh from target project root
 **Configuration**:
 - Trigger: `on: push: branches: [main]`
 - Permissions: `contents: write`, `pull-requests: write`
-- Action: `googleapis/release-please-action@v4`
+- Action: `googleapis/release-please-action@v5.0.0`
 - Release type: `simple`
 
 ### Component 2: Release Configuration (`release-please-config.json`)

@@ -70,7 +70,7 @@ This document defines the technology stack for tachi.
 - Examples: Docker, Kubernetes, None (serverless)
 
 **CI/CD**: GitHub Actions
-- `release-please` (googleapis/release-please-action@v4): Automated version tagging and CHANGELOG generation on merge to main (Feature 086)
+- `release-please` (googleapis/release-please-action@v5.0.0): Automated version tagging and CHANGELOG generation on merge to main (Feature 086)
 - Configuration: `release-please-config.json` (changelog sections), `.release-please-manifest.json` (current version), `.github/workflows/release-please.yml` (workflow trigger)
 - Release type: `simple` (no package manager integration; version tracked in manifest)
 - Why: Convention-based release automation from Conventional Commits; eliminates manual `git tag` and CHANGELOG maintenance
