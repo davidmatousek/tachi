@@ -98,3 +98,13 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
 - Use `.worktrees/` for isolated branches; it is ignored by git.
 - Treat roadmap documents under `docs/roadmap/` as the canonical migration status.
 - Keep `README.md` at repository root and move non-root Markdown documentation under `docs/` unless it is standard project metadata.
+
+## Recent AQ Slices
+
+- AQ-021: `src-tauri/src/lib.rs` now registers a typed desktop dispatch
+  command, and `crates/tachi-shell/src/commands.rs` exposes serializable
+  `CommandOutput` for Tauri IPC while keeping the desktop capability boundary
+  test-backed.
+- AQ-033: bootstrap control-plane argument shaping was extracted into
+  `bootstrap_control_plane_args`, and `crates/tachi-shell/src/tauri_bridge.rs`
+  now reuses the helper instead of duplicating the bootstrap prefix logic.
