@@ -152,6 +152,13 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   domain conversions for coverage audit, report data, infographic payloads,
   threats SARIF, and risk scores SARIF, leaving `commands.rs` as a slimmer
   registry/runtime adapter.
+- AQ-033: `crates/tachi-shell/src/commands.rs` only orchestrates the registry
+  and delegates to executor, runtime helper, and progress seams; bridge and
+  CLI parity tests now justify closing the boundary split slice.
+- AQ-034: `src-tauri/tests/bridge.rs`,
+  `crates/tachi-shell/tests/tauri_bridge.rs`, and
+  `crates/tachi-cli/tests/control_plane_cli.rs` now cover CLI/Tauri command
+  parity and command-shape checks for the registered shell surface.
 - AQ-043: `crates/tachi-core/src/infographic.rs` and
   `crates/tachi-core/src/coverage_attestation.rs` now route template and
   taxonomy loading through injected stores, with filesystem-equivalence tests
