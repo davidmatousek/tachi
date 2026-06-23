@@ -89,7 +89,7 @@ fn dispatch_command_with_progress_can_cancel_running_install_script() {
     let root = fixture_repo();
     write_executable_file(
         &root.join("scripts/install.sh"),
-        "#!/usr/bin/env bash\ntrap 'exit 130' TERM\nsleep 60 &\nchild=$!\nprintf '%s\\n' \"$child\" > child.pid\nprintf 'begin\\n'\nwait\n",
+        "#!/usr/bin/env bash\ntrap 'exit 130' TERM\nsleep 5 &\nchild=$!\nprintf '%s\\n' \"$child\" > child.pid\nprintf 'begin\\n'\nwait\n",
     );
 
     let token = CancellationToken::new();
@@ -143,7 +143,7 @@ fn dispatch_command_times_out_long_running_install_script_and_cleans_children() 
     let root = fixture_repo();
     write_executable_file(
         &root.join("scripts/install.sh"),
-        "#!/usr/bin/env bash\nsleep 60 &\nchild=$!\nprintf '%s\\n' \"$child\" > child.pid\nwait\n",
+        "#!/usr/bin/env bash\nsleep 5 &\nchild=$!\nprintf '%s\\n' \"$child\" > child.pid\nwait\n",
     );
 
     let output = dispatch_command("install", &root, &[]);
