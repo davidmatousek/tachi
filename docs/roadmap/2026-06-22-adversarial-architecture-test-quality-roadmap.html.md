@@ -4,7 +4,7 @@
 **Scope**: `tachi-rust` current repository state
 **Review mode**: adversarial panel with architecture/SOLID, Rust/Tauri, and test-quality slices
 **Execution model**: Beads-managed, test-driven development, small conventional-commit slices
-**Status**: planning artifact; implementation pending
+**Status**: completed locally; retained as historical roadmap record
 
 ## Executive summary
 
@@ -24,6 +24,7 @@ The highest-priority remediation is now to harden the Tauri boundary before deep
 - `AQ-032` is complete: `report-data` now validates a typed result before legacy rendering, and both the Tauri bridge and CLI binary render from that typed result.
 - `AQ-041` is complete: `tachi-core` now exposes a stable facade module and downstream consumers compile against the facade surface.
 - `AQ-055` is complete: coverage-audit assertions now use invariants instead of brittle global counts.
+- `AQ-001` is closed: all child capabilities have reached the documented completion criteria and the roadmap now serves as a historical record.
 - Revalidation note: the fail-closed workspace-test and clippy gates are already present, and the bridge/offline containment checks already block the previously reported path-escape concerns. Those older findings remain archived context only.
 - The remaining risk concentrates in adapter drift, SOLID boundary cleanup, public API hygiene, and the remaining Phase 4 test-quality hardening.
 

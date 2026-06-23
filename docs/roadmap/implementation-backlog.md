@@ -8,13 +8,12 @@
 
 - [Beads issue mirror snapshot](./.beads/issues.jsonl)
 - [AISVS Dependabot remediation roadmap](./2026-06-23-aisvs-dependabot-remediation-roadmap.html.md)
-- [Adversarial architecture roadmap](./2026-06-22-adversarial-architecture-test-quality-roadmap.html.md)
 
 ## Current Status Snapshot
 
-- Open: AQ-001, AQ-010, AQ-020, AQ-051, AQ-052, AQ-053, AQ-054
+- Open: AQ-010, AQ-020, AQ-051, AQ-052, AQ-053, AQ-054
 - Partial: AQ-021, AQ-022, AQ-023, AQ-024, AQ-025
-- Done: AQ-011, AQ-012, AQ-013, AQ-030, AQ-031, AQ-032, AQ-033, AQ-034, AQ-040, AQ-041, AQ-042, AQ-043, AQ-050, AQ-055, DOC-001, DOC-002, DOC-003, DOC-004, RT-010, RT-011, RT-012, RT-013, RT-014, RT-015, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022, RT-023, RT-024, RT-025, RT-026, RT-027, RT-028, RT-029, RT-030
+- Done: AQ-001, AQ-011, AQ-012, AQ-013, AQ-030, AQ-031, AQ-032, AQ-033, AQ-034, AQ-040, AQ-041, AQ-042, AQ-043, AQ-050, AQ-055, DOC-001, DOC-002, DOC-003, DOC-004, RT-010, RT-011, RT-012, RT-013, RT-014, RT-015, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022, RT-023, RT-024, RT-025, RT-026, RT-027, RT-028, RT-029, RT-030
 
 ## Archive Records
 

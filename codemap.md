@@ -154,6 +154,10 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   `docs/testing/fuzz-mutation-audit.md`, and
   `docs/reports/fuzz-mutation-baseline.md` now document the non-blocking
   property/fuzz/mutation lanes and their promotion criteria.
+- AQ-001: `docs/roadmap/2026-06-22-adversarial-architecture-test-quality-roadmap.html.md`,
+  `docs/roadmap/2026-06-22-adversarial-architecture-test-quality-issue-cards.md`,
+  and the associated AQ task set are now complete and retained as the
+  historical architecture/test-quality record.
 - RT-00i: `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-roadmap.html.md`,
   `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md`,
   `docs/bill-of-materials.html.md`,

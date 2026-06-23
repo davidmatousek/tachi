@@ -104,7 +104,7 @@ with the shipped release workflow before publication.
 | `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-roadmap.html.md` | Active AISVS/security roadmap | Canonical sequencing for the live Dependabot alert, AISVS C01-C12 rollout, and TDD-backed validation gates. |
 | `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md` | Active AISVS/security issue cards | Beads-ready execution templates for the RT-00i epic and its phase slices. |
 | `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md#phase-5-publish-readiness-and-release-gates` | Phase 5 publish-readiness slice | Tracks `RT-00i.6`, the docs and release-gate follow-up that keeps AISVS work publish-ready after each slice. |
-| `docs/roadmap/2026-06-22-adversarial-architecture-test-quality-roadmap.html.md` | Active AQ roadmap | Canonical architecture, SOLID, and test-quality remediation plan. |
+| `docs/roadmap/2026-06-22-adversarial-architecture-test-quality-roadmap.html.md` | Archived AQ roadmap | Canonical architecture, SOLID, and test-quality remediation plan, now retained as a historical record. |
 | `docs/roadmap/2026-06-21-rust-tauri-parity-remediation-roadmap.html.md` | Archived parity roadmap | Historical Rust/Tauri parity rebaseline and supersession plan. |
 | `docs/roadmap/2026-06-21-rust-tauri-parity-issue-cards.md` | Archived parity execution cards | Historical Beads issue templates for the parity phases. |
 | `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-roadmap.html.md` | Active docs hygiene roadmap | Separate docs-only sweep for stale workflow-version references. |

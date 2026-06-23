@@ -80,10 +80,10 @@ Use this checklist before publishing to GitHub or cutting a release.
 - [ ] `README.md` matches the actual build, install, usage, and release path.
 - [ ] `SECURITY.md` matches the current private-reporting and privacy policy.
 - [ ] `CHANGELOG.md` is redaction-safe and reflects only releasable notes.
-- [ ] `docs/roadmap/implementation-backlog.md` points at the active AQ
+- [ ] `docs/roadmap/implementation-backlog.md` points at the archived AQ
       roadmap, active AISVS/security roadmap, active docs sweep roadmap, and
       archived provenance docs.
-- [ ] The active AQ roadmap is
+- [ ] The AQ roadmap is archived at
       `docs/roadmap/2026-06-22-adversarial-architecture-test-quality-roadmap.html.md`.
 - [ ] The active AISVS roadmap is
       `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-roadmap.html.md`.
@@ -97,7 +97,8 @@ Use this checklist before publishing to GitHub or cutting a release.
 - [ ] The active docs-sweep Beads-ready issue set is
       `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-issue-cards.md`.
 - [ ] The archived roadmap docs are clearly marked historical only.
-- [ ] The roadmap and issue cards reflect the current phase sequencing.
+- [ ] The roadmap and issue cards reflect the current phase sequencing, with
+      closed AQ work retained as historical context.
 - [ ] The live `glib` Dependabot alert proof is captured in
       `crates/tachi-core/tests/scaffold_dependency_floors.rs`, and
       `RT-00i.2` remains open until the upstream desktop stack can resolve a
