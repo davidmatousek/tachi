@@ -128,6 +128,39 @@ fn coverage_audit_render_matches_canonical_inventory_golden() {
 }
 
 #[test]
+fn coverage_audit_render_preserves_semantic_section_invariants() {
+    let root = temp_dir("tachi-coverage-semantic");
+    write_text(&root.join("tests/scripts/test_smoke.py"), "print('smoke')");
+    write_text(
+        &root.join("tests/scripts/test_example_unit.py"),
+        "print('unit')",
+    );
+    write_text(
+        &root.join("tests/scripts/test_example_integration.py"),
+        "print('integration')",
+    );
+    write_text(
+        &root.join("crates/tachi-core/src/report_data.rs"),
+        "pub fn placeholder() {}",
+    );
+    write_text(
+        &root.join("crates/tachi-shell/tests/init_substitution.rs"),
+        "#[test]\nfn placeholder() {}",
+    );
+
+    let audit = collect_audit(&root);
+    let rendered = render(&audit, &root);
+
+    assert!(rendered.contains(&format!("Coverage audit for {}", root.display())));
+    assert!(rendered.contains("Active test modules: 4"));
+    assert!(rendered.contains("Unit: 1"));
+    assert!(rendered.contains("Integration: 1"));
+    assert!(rendered.contains("Smoke: 1"));
+    assert!(rendered.contains("True end-to-end: 1"));
+    assert!(rendered.contains("Support / regression: 0"));
+}
+
+#[test]
 fn build_report_data_typst_matches_canonical_golden() {
     let root = temp_dir("tachi-report-golden");
     let target_dir = root.join("examples/agentic-app/sample-report");

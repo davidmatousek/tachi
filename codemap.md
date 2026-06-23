@@ -120,3 +120,6 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
 - AQ-051: `crates/tachi-core/src/parsers/findings.rs` now skips malformed
   recommendation rows with empty Finding IDs, and the parser test suite
   carries a focused regression for that source-level edge case.
+- AQ-052: `crates/tachi-core/tests/reporting_goldens.rs` now includes a
+  semantic coverage-audit invariant test alongside the exact snapshot so
+  reporting goldens cover behavior without overfitting to every line.
