@@ -129,7 +129,8 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   for normalization, coverage math, source-attribution order, and malformed
   parser inputs, giving the property-quality lane a no-network baseline.
 - AQ-054: `docs/testing/fuzz-mutation-audit.md`,
-  `docs/reports/fuzz-mutation-baseline.md`, and `make fuzz-mutation-gate`
+  `docs/reports/fuzz-mutation-baseline.md`,
+  `.github/workflows/fuzz-mutation-audit.yml`, and `make fuzz-mutation-gate`
   now define an offline advisory fuzz/mutation lane with a repo test guard.
 - AQ-042: `crates/tachi-core/src/infographic/maestro_templates.rs`
   now owns MAESTRO template assembly and a direct unit test, separating the

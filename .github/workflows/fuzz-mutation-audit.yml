@@ -1,0 +1,25 @@
+name: fuzz-mutation-audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate advisory fuzz/mutation lane
+        continue-on-error: true
+        run: make fuzz-mutation-gate
+
+      - name: Summarize lane
+        run: |
+          echo "Advisory fuzz/mutation lane is documented and non-blocking."
+          echo "Use docs/testing/fuzz-mutation-audit.md for manual runs."

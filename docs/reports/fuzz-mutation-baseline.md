@@ -1,6 +1,9 @@
 # Fuzz And Mutation Baseline
 
 Generated offline as the initial advisory artifact for AQ-054.
+This baseline pairs with the scheduled/manual advisory workflow and the
+publish gate docs; it is intentionally non-blocking until survivors justify
+promotion.
 
 ## Status
 
@@ -15,6 +18,8 @@ Generated offline as the initial advisory artifact for AQ-054.
 - Create a parser roundtrip survivor task once the first fuzz pass produces output
 - Create a normalization survivor task once mutation output identifies a weak case
 - Create a rendering survivor task once the first mutation pass identifies brittle output
+- Current follow-up issues are tracked in Beads as `AQ-054.4`, `AQ-054.5`, and
+  `AQ-054.6`; revalidate them after the first real fuzz or mutation run.
 
 ## Notes
 

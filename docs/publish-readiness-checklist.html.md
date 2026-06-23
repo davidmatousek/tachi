@@ -14,6 +14,7 @@ Use this checklist before publishing to GitHub or cutting a release.
 - [ ] `cargo test -p tachi-shell` passes after the script executor boundary
       slice and coverage-invariant cleanup.
 - [ ] `make scaffold-dependency-gate` passes before publishing scaffold or template changes.
+- [ ] `make fuzz-mutation-gate` passes and `.github/workflows/fuzz-mutation-audit.yml` remains scheduled/manual and non-blocking.
 - [ ] `git push origin main --follow-tags` is the intended publish command.
 - [ ] `gh run list --branch main --limit 10` is ready for post-push monitoring.
 - [ ] `gh run watch <run-id>` will be used until the publish workflow completes.
@@ -71,6 +72,8 @@ Use this checklist before publishing to GitHub or cutting a release.
       repository and expected install command paths.
 - [ ] `make scaffold-dependency-gate` passes and blocks scaffold ranges that admit
       currently known vulnerable `next` or `vitest` versions.
+- [ ] `make fuzz-mutation-gate` passes, the advisory fuzz/mutation workflow stays
+      manual or scheduled, and its baseline report remains offline-safe.
 
 ## 5. Documentation readiness
 
