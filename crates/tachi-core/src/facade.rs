@@ -1,7 +1,8 @@
 pub use crate::aisvs::{
-    aisvs_control_registry, AccessContext, AccessMode, AisvsControl, AisvsControlId, AisvsError,
-    AisvsRegistry, InfrastructurePolicy, LifecycleGate, LifecycleStage, MemoryScope,
-    ModelBehaviorPolicy, PromptInput, SupplyChainEvidence, TrainingDataAsset,
+    aisvs_control_registry, AccessContext, AccessMode, AdversarialCase, AisvsControl,
+    AisvsControlId, AisvsError, AisvsRegistry, InfrastructurePolicy, LifecycleGate, LifecycleStage,
+    McpInvocation, McpPolicy, MemoryScope, ModelBehaviorPolicy, MonitoringEvent, MonitoringPolicy,
+    OrchestrationAction, OrchestrationPolicy, PromptInput, SupplyChainEvidence, TrainingDataAsset,
 };
 pub use crate::artifacts::{detect_artifacts, determine_tier};
 pub use crate::assets::{detect_brand_assets, detect_images};

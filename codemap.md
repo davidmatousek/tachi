@@ -136,7 +136,7 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md`,
   `crates/tachi-core/src/aisvs.rs`, and `Cargo.lock` now anchor the glib
   alert remediation plan and phased AISVS 1.0 control rollout, with the typed
-  control registry foundation plus C01-C08 typed control policies and tests
+  control registry foundation plus C01-C12 typed control policies and tests
   landed locally.
 - AQ-042: `crates/tachi-core/src/infographic/maestro_templates.rs`
   now owns MAESTRO template assembly and a direct unit test, separating the

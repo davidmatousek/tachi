@@ -199,6 +199,14 @@ pub enum AisvsError {
     InvalidModelBehaviorPolicy,
     #[error("invalid AISVS memory scope")]
     InvalidMemoryScope,
+    #[error("invalid AISVS orchestration policy")]
+    InvalidOrchestrationPolicy,
+    #[error("invalid AISVS MCP policy")]
+    InvalidMcpPolicy,
+    #[error("invalid AISVS adversarial case")]
+    InvalidAdversarialCase,
+    #[error("invalid AISVS monitoring event")]
+    InvalidMonitoringEvent,
 }
 
 impl AisvsError {
@@ -215,6 +223,10 @@ impl AisvsError {
             Self::InvalidSupplyChainEvidence => "AISVS_INVALID_SUPPLY_CHAIN_EVIDENCE",
             Self::InvalidModelBehaviorPolicy => "AISVS_INVALID_MODEL_BEHAVIOR_POLICY",
             Self::InvalidMemoryScope => "AISVS_INVALID_MEMORY_SCOPE",
+            Self::InvalidOrchestrationPolicy => "AISVS_INVALID_ORCHESTRATION_POLICY",
+            Self::InvalidMcpPolicy => "AISVS_INVALID_MCP_POLICY",
+            Self::InvalidAdversarialCase => "AISVS_INVALID_ADVERSARIAL_CASE",
+            Self::InvalidMonitoringEvent => "AISVS_INVALID_MONITORING_EVENT",
         }
     }
 }
@@ -411,6 +423,203 @@ impl MemoryScope {
 
     pub const fn allows_cross_scope(&self) -> bool {
         self.cross_scope_allowed
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OrchestrationPolicy {
+    requires_approval: bool,
+    allows_escalation: bool,
+}
+
+impl OrchestrationPolicy {
+    pub fn new(requires_approval: bool, allows_escalation: bool) -> Result<Self, AisvsError> {
+        if allows_escalation && !requires_approval {
+            return Err(AisvsError::InvalidOrchestrationPolicy);
+        }
+
+        Ok(Self {
+            requires_approval,
+            allows_escalation,
+        })
+    }
+
+    pub const fn requires_approval(&self) -> bool {
+        self.requires_approval
+    }
+
+    pub const fn allows_escalation(&self) -> bool {
+        self.allows_escalation
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OrchestrationAction {
+    name: String,
+    escalation: bool,
+}
+
+impl OrchestrationAction {
+    pub fn new(name: &str, escalation: bool) -> Result<Self, AisvsError> {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err(AisvsError::InvalidOrchestrationPolicy);
+        }
+
+        Ok(Self {
+            name: name.to_string(),
+            escalation,
+        })
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub const fn is_escalation(&self) -> bool {
+        self.escalation
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct McpPolicy {
+    schema_name: String,
+    allowed_tools: Vec<String>,
+}
+
+impl McpPolicy {
+    pub fn new(schema_name: &str, allowed_tools: &[&str]) -> Result<Self, AisvsError> {
+        let schema_name = schema_name.trim();
+        if schema_name.is_empty() || allowed_tools.is_empty() {
+            return Err(AisvsError::InvalidMcpPolicy);
+        }
+
+        let mut tools = Vec::new();
+        for tool in allowed_tools {
+            let tool = tool.trim();
+            if tool.is_empty() || tools.iter().any(|existing| existing == tool) {
+                return Err(AisvsError::InvalidMcpPolicy);
+            }
+            tools.push(tool.to_string());
+        }
+
+        Ok(Self {
+            schema_name: schema_name.to_string(),
+            allowed_tools: tools,
+        })
+    }
+
+    pub fn schema_name(&self) -> &str {
+        &self.schema_name
+    }
+
+    pub fn allows_tool(&self, tool: &str) -> bool {
+        let tool = tool.trim();
+        !tool.is_empty() && self.allowed_tools.iter().any(|allowed| allowed == tool)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct McpInvocation {
+    tool_name: String,
+    payload: String,
+}
+
+impl McpInvocation {
+    pub fn new(tool_name: &str, payload: &str) -> Result<Self, AisvsError> {
+        let tool_name = tool_name.trim();
+        let payload = payload.trim();
+        if tool_name.is_empty() || payload.is_empty() {
+            return Err(AisvsError::InvalidMcpPolicy);
+        }
+
+        Ok(Self {
+            tool_name: tool_name.to_string(),
+            payload: payload.to_string(),
+        })
+    }
+
+    pub fn tool_name(&self) -> &str {
+        &self.tool_name
+    }
+
+    pub fn payload(&self) -> &str {
+        &self.payload
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AdversarialCase {
+    family: String,
+    payload: String,
+}
+
+impl AdversarialCase {
+    pub fn new(family: &str, payload: &str) -> Result<Self, AisvsError> {
+        let family = family.trim();
+        let payload = payload.trim();
+        if family.is_empty() || payload.is_empty() {
+            return Err(AisvsError::InvalidAdversarialCase);
+        }
+
+        Ok(Self {
+            family: family.to_string(),
+            payload: payload.to_string(),
+        })
+    }
+
+    pub fn family(&self) -> &str {
+        &self.family
+    }
+
+    pub fn payload(&self) -> &str {
+        &self.payload
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MonitoringPolicy {
+    redacts_secrets: bool,
+}
+
+impl MonitoringPolicy {
+    pub const fn strict_redaction() -> Self {
+        Self {
+            redacts_secrets: true,
+        }
+    }
+
+    pub const fn redacts_secrets(&self) -> bool {
+        self.redacts_secrets
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MonitoringEvent {
+    component: String,
+    message: String,
+}
+
+impl MonitoringEvent {
+    pub fn new(component: &str, message: &str) -> Result<Self, AisvsError> {
+        let component = component.trim();
+        let message = message.trim();
+        if component.is_empty() || message.is_empty() {
+            return Err(AisvsError::InvalidMonitoringEvent);
+        }
+
+        Ok(Self {
+            component: component.to_string(),
+            message: message.to_string(),
+        })
+    }
+
+    pub fn component(&self) -> &str {
+        &self.component
+    }
+
+    pub fn message(&self) -> &str {
+        &self.message
     }
 }
 

@@ -3,8 +3,10 @@ use std::str::FromStr;
 use pretty_assertions::assert_eq;
 
 use tachi_core::{
-    AccessContext, AccessMode, AisvsError, InfrastructurePolicy, LifecycleGate, LifecycleStage,
-    MemoryScope, ModelBehaviorPolicy, PromptInput, SupplyChainEvidence, TrainingDataAsset,
+    AccessContext, AccessMode, AdversarialCase, AisvsError, InfrastructurePolicy, LifecycleGate,
+    LifecycleStage, McpInvocation, McpPolicy, MemoryScope, ModelBehaviorPolicy, MonitoringEvent,
+    MonitoringPolicy, OrchestrationAction, OrchestrationPolicy, PromptInput, SupplyChainEvidence,
+    TrainingDataAsset,
 };
 
 #[test]
@@ -115,4 +117,59 @@ fn c08_memory_scope_rejects_unbounded_retention_and_cross_scope_use() {
     let err = MemoryScope::new(0, 365, true).unwrap_err();
     assert_eq!(err, AisvsError::InvalidMemoryScope);
     assert_eq!(err.code(), "AISVS_INVALID_MEMORY_SCOPE");
+}
+
+#[test]
+fn c09_orchestration_policy_requires_approval_before_escalation() {
+    let policy = OrchestrationPolicy::new(true, false).unwrap();
+    assert!(policy.requires_approval());
+    assert!(!policy.allows_escalation());
+
+    let action = OrchestrationAction::new("render-report", false).unwrap();
+    assert_eq!(action.name(), "render-report");
+    assert!(!action.is_escalation());
+
+    let err = OrchestrationPolicy::new(false, true).unwrap_err();
+    assert_eq!(err, AisvsError::InvalidOrchestrationPolicy);
+    assert_eq!(err.code(), "AISVS_INVALID_ORCHESTRATION_POLICY");
+}
+
+#[test]
+fn c10_mcp_policy_requires_schema_and_tool_allowlist() {
+    let policy = McpPolicy::new("invoke.schema.json", &["search", "status"]).unwrap();
+    assert_eq!(policy.schema_name(), "invoke.schema.json");
+    assert!(policy.allows_tool("search"));
+    assert!(!policy.allows_tool("delete"));
+
+    let invocation = McpInvocation::new("search", "query=telemetry").unwrap();
+    assert_eq!(invocation.tool_name(), "search");
+    assert_eq!(invocation.payload(), "query=telemetry");
+
+    let err = McpPolicy::new("", &["search"]).unwrap_err();
+    assert_eq!(err, AisvsError::InvalidMcpPolicy);
+    assert_eq!(err.code(), "AISVS_INVALID_MCP_POLICY");
+}
+
+#[test]
+fn c11_adversarial_case_is_explicit_and_fail_closed() {
+    let case = AdversarialCase::new("prompt-injection", "drop system prompt").unwrap();
+    assert_eq!(case.family(), "prompt-injection");
+    assert_eq!(case.payload(), "drop system prompt");
+
+    let err = AdversarialCase::new(" ", "").unwrap_err();
+    assert_eq!(err, AisvsError::InvalidAdversarialCase);
+    assert_eq!(err.code(), "AISVS_INVALID_ADVERSARIAL_CASE");
+}
+
+#[test]
+fn c12_monitoring_policy_redacts_secrets_and_rejects_empty_events() {
+    let policy = MonitoringPolicy::strict_redaction();
+    let event = MonitoringEvent::new("aisvs", "policy updated").unwrap();
+    assert_eq!(event.component(), "aisvs");
+    assert_eq!(event.message(), "policy updated");
+    assert!(policy.redacts_secrets());
+
+    let err = MonitoringEvent::new("", " ").unwrap_err();
+    assert_eq!(err, AisvsError::InvalidMonitoringEvent);
+    assert_eq!(err.code(), "AISVS_INVALID_MONITORING_EVENT");
 }

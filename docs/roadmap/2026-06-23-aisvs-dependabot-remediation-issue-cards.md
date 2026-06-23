@@ -153,3 +153,5 @@ with the exact commands named in the card.
 - `Stage label`: Phase 4
 - `Next test seam`: `crates/tachi-core/src/aisvs/monitoring.rs`
 - `Notes`: Finish the control family with observability and alerting surfaces.
+- `Status`: implemented locally in `crates/tachi-core/src/aisvs.rs` with
+  targeted phase-4 tests in `crates/tachi-core/tests/aisvs_controls.rs`.

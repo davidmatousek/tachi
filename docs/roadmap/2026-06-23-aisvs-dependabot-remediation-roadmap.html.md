@@ -157,6 +157,13 @@ release gates so future security controls are incremental instead of ad hoc.
   targeted regressions.
 - C12 tests prove monitoring and audit outputs are redaction-safe and stable.
 
+**Status**
+
+- Implemented locally in `crates/tachi-core/src/aisvs.rs` with
+  `crates/tachi-core/tests/aisvs_controls.rs`.
+- The phase-4 slice keeps orchestration, MCP, adversarial, and monitoring
+  controls typed and fail-closed.
+
 ## Phase 5: Publish-readiness and release gates
 
 | Layer | Mapping |
