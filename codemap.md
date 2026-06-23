@@ -123,3 +123,6 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
 - AQ-052: `crates/tachi-core/tests/reporting_goldens.rs` now includes a
   semantic coverage-audit invariant test alongside the exact snapshot so
   reporting goldens cover behavior without overfitting to every line.
+- AQ-053: `crates/tachi-core/tests/property_quality.rs` now exercises
+  normalization and coverage math across generated cases, giving the
+  property-quality lane a no-network baseline.
