@@ -105,6 +105,17 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   command, and `crates/tachi-shell/src/commands.rs` exposes serializable
   `CommandOutput` for Tauri IPC while keeping the desktop capability boundary
   test-backed.
+- AQ-040: `crates/tachi-core/tests/facade_api.rs` now exercises the stable
+  core facade surface, proving downstream crates can compile against the root
+  exports instead of module internals.
+- AQ-042: `crates/tachi-core/src/infographic/maestro_templates.rs` and
+  `crates/tachi-core/tests/infographic_payload.rs` now cover the split MAESTRO
+  template assembly and executive-architecture payload seams.
+- AQ-043: `crates/tachi-core/src/coverage_attestation.rs`,
+  `crates/tachi-core/src/infographic.rs`, and
+  `crates/tachi-core/tests/coverage_attestation_in_scope.rs` now route
+  taxonomy/template resolution through injected stores with fake-provider
+  coverage.
 - AQ-033: bootstrap control-plane argument shaping was extracted into
   `bootstrap_control_plane_args`, and `crates/tachi-shell/src/tauri_bridge.rs`
   now reuses the helper instead of duplicating the bootstrap prefix logic.
