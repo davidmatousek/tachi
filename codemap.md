@@ -124,8 +124,9 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   semantic coverage-audit invariant test alongside the exact snapshot so
   reporting goldens cover behavior without overfitting to every line.
 - AQ-053: `crates/tachi-core/tests/property_quality.rs` now exercises
-  normalization and coverage math across generated cases, giving the
-  property-quality lane a no-network baseline.
+  normalization, coverage math, source-attribution order, and malformed
+  parser inputs across generated cases, giving the property-quality lane a
+  no-network baseline.
 - AQ-054: `docs/testing/fuzz-mutation-audit.md`,
   `docs/reports/fuzz-mutation-baseline.md`, and `make fuzz-mutation-gate`
   now define an offline advisory fuzz/mutation lane with a repo test guard.

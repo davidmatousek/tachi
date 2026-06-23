@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use tachi_core::infographic::largest_remainder;
 use tachi_core::normalization::{normalize_lower_text, normalize_optional_text};
+use tachi_core::parsers::parse_threats_findings;
 
 #[test]
 fn normalize_lower_text_handles_generated_ascii_variants() {
@@ -86,4 +87,80 @@ fn largest_remainder_preserves_totals_and_order_across_generated_cases() {
             assert!(actual.values().all(|value| *value <= target));
         }
     }
+}
+
+#[test]
+fn parse_threats_findings_preserves_generated_source_attribution_order() {
+    let cases = [
+        vec![
+            ("owasp", "A01", "primary"),
+            ("mitre-atlas", "ATLAS-001", "related"),
+            ("cwe", "CWE-79", "derived"),
+        ],
+        vec![
+            ("cwe", "CWE-79", "derived"),
+            ("owasp", "A01", "primary"),
+            ("mitre-atlas", "ATLAS-001", "related"),
+        ],
+        vec![
+            ("mitre-atlas", "ATLAS-001", "related"),
+            ("cwe", "CWE-79", "derived"),
+            ("owasp", "A01", "primary"),
+        ],
+    ];
+
+    for records in cases {
+        let markdown = build_threats_markdown(&records);
+        let findings = parse_threats_findings(&markdown).expect("parse threats findings");
+        let parsed = findings[0]
+            .source_attribution
+            .as_ref()
+            .expect("source attribution");
+
+        let parsed_records: Vec<_> = parsed
+            .iter()
+            .map(|record| {
+                (
+                    record.taxonomy.as_str(),
+                    record.id.as_str(),
+                    record.relationship.as_str(),
+                )
+            })
+            .collect();
+        let expected_records = records
+            .iter()
+            .map(|(taxonomy, id, relationship)| (*taxonomy, *id, *relationship))
+            .collect::<Vec<_>>();
+
+        assert_eq!(parsed_records, expected_records);
+    }
+}
+
+#[test]
+fn parse_threats_findings_rejects_generated_malformed_inputs() {
+    let malformed_cases = [
+        "",
+        "# Agentic AI Application\n\n## 7. Recommended Actions\n|\n",
+        "# Agentic AI Application\n\n## 7. Recommended Actions\n\n| Finding ID | Component | Threat |\n| --- | --- | --- |\n| AG-1 | Component | Threat |\n\n## 9. Source Attribution\n\n```yaml\nAG-1:\n  - taxonomy: owasp\n    id: A01\n",
+        "# Agentic AI Application\n\n## 7. Recommended Actions\n\n| Finding ID | Component | Threat |\n| --- | --- | --- |\n| AG-1 | Component | Threat |\n\n## 9. Source Attribution\n\n```yaml\nAG-1:\n  - {taxonomy: \"owasp\", id: \"A01\", relationship: \"primary\"\n```\n",
+    ];
+
+    for markdown in malformed_cases {
+        let result = std::panic::catch_unwind(|| parse_threats_findings(markdown));
+        assert!(result.is_ok(), "parser should not panic on malformed input");
+    }
+}
+
+fn build_threats_markdown(records: &[(&str, &str, &str)]) -> String {
+    let source_attribution = records
+        .iter()
+        .map(|(taxonomy, id, relationship)| {
+            format!("  - {{taxonomy: \"{taxonomy}\", id: \"{id}\", relationship: \"{relationship}\"}}")
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    format!(
+        "# Agentic AI Application\n\n## 7. Recommended Actions\n\n| Finding ID | Component | Threat | Risk Level | Mitigation | Status |\n| --- | --- | --- | --- | --- | --- |\n| AG-1 | Component | Threat | High | Mitigation | [NEW] |\n\n## 9. Source Attribution\n\n```yaml\nAG-1:\n{source_attribution}\n```\n"
+    )
 }
