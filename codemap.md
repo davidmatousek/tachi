@@ -140,6 +140,10 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   system script spawning, timeout, and cancellation behind an injected
   `ScriptExecutor` seam, while `ScriptOutputSink` owns output finalization
   with fake-request and fake-sink coverage.
+- AQ-033: `crates/tachi-shell/src/command_use_cases.rs` now owns the shell
+  domain conversions for coverage audit, report data, infographic payloads,
+  threats SARIF, and risk scores SARIF, leaving `commands.rs` as a slimmer
+  registry/runtime adapter.
 - AQ-043: `crates/tachi-core/src/infographic.rs` and
   `crates/tachi-core/src/coverage_attestation.rs` now route template and
   taxonomy loading through injected stores, with filesystem-equivalence tests
