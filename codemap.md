@@ -108,6 +108,9 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
 - AQ-001: tracker now has phase-0 Beads children `AQ-011`, `AQ-012`, and
   `AQ-013` materialized from the architecture/test-quality roadmap, and
   their workflow/template proofs are validated and closed.
+- AQ-054.4: parser roundtrip seed coverage now exists in
+  `crates/tachi-core/tests/parsers.rs` as a regression landing zone for the
+  advisory fuzz/mutation lane.
 - AQ-040: `crates/tachi-core/tests/facade_api.rs` now exercises the stable
   core facade surface, proving downstream crates can compile against the root
   exports instead of module internals.

@@ -268,6 +268,58 @@ fn finding_pattern_parser_contract_is_rust_native() {
 }
 
 #[test]
+fn parse_threats_findings_roundtrips_a_canonical_seed_row_without_loss() {
+    let seed = r#"
+## 7. Recommended Actions
+
+| Finding ID | Component | Threat | Risk Level | Mitigation | Agentic Pattern | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| R-1 | Parser | Preserve exact field tokens | Medium | Keep identifiers stable | trust_exploitation | open |
+"#;
+
+    let findings = parse_threats_findings(seed).expect("parse canonical seed row");
+    assert_eq!(findings.len(), 1);
+
+    let first = &findings[0];
+    assert_eq!(first.id, "R-1");
+    assert_eq!(first.component, "Parser");
+    assert_eq!(first.threat, "Preserve exact field tokens");
+    assert_eq!(first.risk_level, "Medium");
+    assert_eq!(first.mitigation, "Keep identifiers stable");
+    assert_eq!(first.agentic_pattern, "trust_exploitation");
+    assert_eq!(first.delta_status.as_deref(), Some("open"));
+    assert!(first.source_attribution.is_none());
+
+    let roundtripped = format!(
+        r#"
+## 7. Recommended Actions
+
+| Finding ID | Component | Threat | Risk Level | Mitigation | Agentic Pattern | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| {id} | {component} | {threat} | {risk_level} | {mitigation} | {pattern} | {status} |
+"#,
+        id = first.id,
+        component = first.component,
+        threat = first.threat,
+        risk_level = first.risk_level,
+        mitigation = first.mitigation,
+        pattern = first.agentic_pattern,
+        status = first.delta_status.as_deref().unwrap_or("—"),
+    );
+
+    let reparsed = parse_threats_findings(&roundtripped).expect("reparse roundtripped seed");
+    assert_eq!(reparsed.len(), 1);
+    assert_eq!(reparsed[0].id, first.id);
+    assert_eq!(reparsed[0].component, first.component);
+    assert_eq!(reparsed[0].threat, first.threat);
+    assert_eq!(reparsed[0].risk_level, first.risk_level);
+    assert_eq!(reparsed[0].mitigation, first.mitigation);
+    assert_eq!(reparsed[0].agentic_pattern, first.agentic_pattern);
+    assert_eq!(reparsed[0].delta_status, first.delta_status);
+    assert_eq!(reparsed[0].source_attribution, first.source_attribution);
+}
+
+#[test]
 fn normalize_value_trims_strings_and_stably_orders_nested_objects() {
     assert_eq!(stable_trim_text("  padded  "), "padded");
     assert_eq!(

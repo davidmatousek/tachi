@@ -11,6 +11,10 @@ promotion.
 - `cargo-mutants` lane: documented, not executed in this environment
 - Baseline survivors: to be filled after a full local run
 - Baseline crashes: to be filled after a full local run
+- Parser roundtrip seed coverage now exists in `crates/tachi-core/tests/parsers.rs`
+  via `parse_threats_findings_roundtrips_a_canonical_seed_row_without_loss`
+  so a future survivor has a regression landing zone even before the first
+  real fuzz output is captured.
 
 ## Follow-Up Beads
 
