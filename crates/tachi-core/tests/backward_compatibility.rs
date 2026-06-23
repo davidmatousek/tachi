@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use tachi_core::report_data::build_report_data_typst;
+use tachi_core::build_report_data_typst;
 
 const SOURCE_DATE_EPOCH: &str = "1700000000";
 const BASELINE_EXAMPLES: &[&str] = &[

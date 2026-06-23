@@ -104,6 +104,7 @@ Use this checklist before publishing to GitHub or cutting a release.
 - [ ] `make docs-version-gate` passes.
 - [ ] `make docs-archive-version-gate` passes.
 - [ ] Public docs do not promise unsupported features or outdated workflows.
+- [ ] `tachi-core` reporting and scoring consumers compile against root facade exports instead of module internals.
 - [ ] Release notes, changelog entries, and user-facing examples are current and
       redaction-safe.
 

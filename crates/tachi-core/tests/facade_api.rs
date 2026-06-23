@@ -22,7 +22,7 @@ fn facade_exports_stable_core_surface() {
 
     let _ = collect_audit(std::path::Path::new("."));
     let _ = render(
-        &tachi_core::coverage_audit::collect_audit(std::path::Path::new(".")),
+        &tachi_core::collect_audit(std::path::Path::new(".")),
         std::path::Path::new("."),
     );
     let _ = detect_artifacts(std::path::Path::new("."));

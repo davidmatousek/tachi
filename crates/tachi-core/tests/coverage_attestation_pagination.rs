@@ -6,7 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use tachi_core::coverage_attestation::{build_per_finding_rows, build_per_framework_aggregates};
 use tachi_core::parsers::{SourceAttributionRecord, ThreatFinding};
-use tachi_core::report_data::build_report_data_typst;
+use tachi_core::build_report_data_typst;
 
 const OWASP_IDS: &[&str] = &[
     "LLM01", "LLM02", "LLM03", "LLM04", "LLM05", "LLM06", "LLM07", "LLM08", "LLM09", "LLM10",

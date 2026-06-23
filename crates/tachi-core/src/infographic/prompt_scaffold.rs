@@ -195,7 +195,7 @@ Prompt outro
 
         let scaffold = extract_prompt_scaffold("maestro-stack", Some(repo_root.as_path()));
 
-        assert_eq!(scaffold.found, true);
+        assert!(scaffold.found);
         assert_eq!(
             scaffold.preamble,
             "Prompt intro\nDATA CONTENT (render this as visible text):\n"
@@ -223,7 +223,7 @@ Prompt outro
 
         let scaffold = extract_prompt_scaffold_from_store("maestro-stack", &store);
 
-        assert_eq!(scaffold.found, true);
+        assert!(scaffold.found);
         assert_eq!(
             scaffold.preamble,
             "Prompt intro\nDATA CONTENT (render this as visible text):\n"

@@ -1,6 +1,6 @@
 use pretty_assertions::assert_eq;
 
-use tachi_core::coverage_audit::coverage_family_catalog;
+use tachi_core::coverage_family_catalog;
 
 #[test]
 fn coverage_family_catalog_exposes_the_rendered_sections_in_order() {

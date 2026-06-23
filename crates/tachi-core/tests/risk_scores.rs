@@ -2,6 +2,10 @@ use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
 use tachi_core::parsers::SourceAttributionRecord;
 use tachi_core::sarif_common::ComponentMetadata;
+use tachi_core::{
+    build_risk_scores_sarif, parse_risk_md_section2, parse_risk_md_section3,
+    parse_risk_md_section4, RiskScoreBreakdown, RiskScoreFinding, RiskScoreGovernance,
+};
 
 #[test]
 fn parse_risk_scores_sections_extracts_scored_table_metadata_and_governance() {
@@ -30,9 +34,9 @@ fn parse_risk_scores_sections_extracts_scored_table_metadata_and_governance() {
 | AG-8 | Alice | 7 | Monitor | 2026-06-06 |
 "#;
 
-    let section2 = tachi_core::risk_scores::parse_risk_md_section2(md);
-    let section3 = tachi_core::risk_scores::parse_risk_md_section3(md);
-    let section4 = tachi_core::risk_scores::parse_risk_md_section4(md);
+    let section2 = parse_risk_md_section2(md);
+    let section3 = parse_risk_md_section3(md);
+    let section4 = parse_risk_md_section4(md);
 
     assert_eq!(section2.len(), 1);
     assert_eq!(section2[0].id, "AG-8");
@@ -66,7 +70,7 @@ fn build_risk_scores_sarif_marks_inherited_agentic_finding() {
         },
     );
 
-    let findings = vec![tachi_core::risk_scores::RiskScoreFinding {
+    let findings = vec![RiskScoreFinding {
         id: String::from("AG-8"),
         component: String::from("Agent"),
         threat_summary: String::from("Prompt injection"),
@@ -83,7 +87,7 @@ fn build_risk_scores_sarif_marks_inherited_agentic_finding() {
     let mut section3 = BTreeMap::new();
     section3.insert(
         String::from("AG-8"),
-        tachi_core::risk_scores::RiskScoreBreakdown {
+        RiskScoreBreakdown {
             threat_full: String::from("Prompt injection"),
             component: String::from("Agent"),
             category: String::from("Agentic Threats"),
@@ -97,7 +101,7 @@ fn build_risk_scores_sarif_marks_inherited_agentic_finding() {
     let mut section4 = BTreeMap::new();
     section4.insert(
         String::from("AG-8"),
-        tachi_core::risk_scores::RiskScoreGovernance {
+        RiskScoreGovernance {
             owner: String::from("Alice"),
             sla_days: String::from("7"),
             disposition: String::from("Monitor"),
@@ -127,7 +131,7 @@ fn build_risk_scores_sarif_marks_inherited_agentic_finding() {
         }],
     );
 
-    let sarif = tachi_core::risk_scores::build_risk_scores_sarif(
+    let sarif = build_risk_scores_sarif(
         &findings,
         &section3,
         &section4,

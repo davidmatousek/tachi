@@ -23,7 +23,9 @@ pub use crate::report_extraction::{
     ThreatReportData,
 };
 pub use crate::risk_scores::{
-    parse_risk_md_section2, parse_risk_md_section3, parse_risk_md_section4,
+    build_risk_scores_sarif, parse_risk_md_section2, parse_risk_md_section3,
+    parse_risk_md_section4, RiskScoreBreakdown, RiskScoreFinding, RiskScoreGovernance,
 };
+pub use crate::coverage_audit::coverage_family_catalog;
 pub use crate::sarif_common::{parse_component_metadata, prefix_for};
 pub use crate::threats_sarif::{build_threats_sarif, ThreatSarifFinding};

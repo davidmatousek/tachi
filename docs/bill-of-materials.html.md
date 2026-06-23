@@ -74,6 +74,7 @@ with the shipped release workflow before publication.
 | `crates/tachi-shell/src/commands/script_executor.rs` | Script execution boundary | Process spawning, timeout, cancellation, and output capture stay behind an injected executor seam. |
 | `crates/tachi-core/src/infographic/prompt_scaffold.rs` | Prompt scaffold boundary | Template loading and prompt extraction stay isolated from payload rendering with store-injected tests. |
 | `crates/tachi-core/src/infographic/payload.rs` | Infographic payload boundary | Filesystem loading and payload orchestration stay separated from infographic parsing helpers. |
+| `crates/tachi-core/src/facade.rs` | Stable core facade | Downstream crates should import reporting and scoring helpers through root exports instead of module internals. |
 | `src-tauri/` | Thin desktop shell | Registration-only bridge, explicit `tauri.conf.json`, least-privilege `capabilities/main.json`, no business logic drift. |
 | `schemas/` | Finding schemas and taxonomy catalogs | Schema compatibility, crosswalk stability, fixture coverage. |
 

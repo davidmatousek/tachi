@@ -219,8 +219,7 @@ pub fn validate_invoke_input_typed(
     default_root: &Path,
     args: &[&str],
 ) -> Result<DesktopInvokeInput, DesktopError> {
-    validate_invoke_input(command, default_root, args)
-        .map_err(|message| DesktopError::validation(message))
+    validate_invoke_input(command, default_root, args).map_err(DesktopError::validation)
 }
 
 pub fn validate_invoke_output(command: &str, output: &CommandOutput) -> Result<(), String> {
@@ -306,7 +305,7 @@ pub fn validate_invoke_output_typed(
     command: &str,
     output: &CommandOutput,
 ) -> Result<(), DesktopError> {
-    validate_invoke_output(command, output).map_err(|message| DesktopError::validation(message))
+    validate_invoke_output(command, output).map_err(DesktopError::validation)
 }
 
 pub fn render_schema_error(command: &str, message: &str) -> String {

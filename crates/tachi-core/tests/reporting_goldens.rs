@@ -8,17 +8,15 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use pretty_assertions::assert_eq;
 use serde_json::json;
 
-use tachi_core::coverage_audit::render;
+use tachi_core::build_report_data_typst;
+use tachi_core::collect_audit;
+use tachi_core::render;
 use tachi_core::infographic::build_infographic_payload_from_content;
-use tachi_core::report_data::build_report_data_typst;
 use tachi_core::sarif_common::{build_sarif_envelope, ComponentMetadata, SARIF_SCHEMA_URI};
 use tachi_core::threats_sarif::{build_threats_sarif, ThreatSarifFinding};
 use tachi_core::{
-    coverage_audit::collect_audit,
     parsers::SourceAttributionRecord,
-    risk_scores::{
-        build_risk_scores_sarif, RiskScoreBreakdown, RiskScoreFinding, RiskScoreGovernance,
-    },
+    build_risk_scores_sarif, RiskScoreBreakdown, RiskScoreFinding, RiskScoreGovernance,
 };
 
 const INFOGRAPHIC_THREATS_MD: &str = r#"

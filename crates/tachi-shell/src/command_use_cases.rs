@@ -6,8 +6,8 @@ use tachi_core::facade::{
     build_infographic_payload, build_report_data_typst, build_threats_sarif, collect_audit,
     parse_component_metadata, parse_risk_md_section2, parse_risk_md_section3,
     parse_risk_md_section4, parse_threats_findings, prefix_for, render, ThreatSarifFinding,
+    build_risk_scores_sarif,
 };
-use tachi_core::risk_scores::build_risk_scores_sarif;
 
 pub fn coverage_audit_output(root: &Path) -> String {
     let audit = collect_audit(root);

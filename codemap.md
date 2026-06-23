@@ -47,7 +47,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
    - `risk_scores.rs`, `threats_sarif.rs`, and `sarif_common.rs` build SARIF exports.
    - `coverage_taxonomy.rs` centralizes coverage and MAESTRO taxonomy labels.
    - `coverage_audit.rs` classifies active test modules by unit, integration, smoke, E2E, and support/regression families.
-3. `tachi-shell` exposes reusable command functions for shell and desktop paths through the stable `tachi_core::facade` surface, which now carries the test-facing artifacts/assets/attack-chain/mmdc and compensating-control helpers.
+3. `tachi-shell` exposes reusable command functions for shell and desktop paths through the stable `tachi_core::facade` surface, which now carries the test-facing artifacts/assets/attack-chain/mmdc and compensating-control helpers, plus the stable reporting exports now rehomed behind root facade re-exports.
 4. `src-tauri` registers desktop commands, enforces typed control-plane argument policy, and dispatches through the shared shell bridge, bounded execution policy, typed desktop error mapping, and offline path-policy checks.
 
 ## Testing And Validation
