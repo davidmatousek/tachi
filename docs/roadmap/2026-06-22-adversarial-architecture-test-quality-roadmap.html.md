@@ -10,7 +10,7 @@
 
 The repository has strong Rust migration momentum, broad integration coverage, active publish gates, and recently remediated dependency alerts. The adversarial panel found the next maturity gap is not feature parity alone; it is hardening the architecture so future features can be added without duplicating command contracts, widening the desktop invoke surface, or relying on fixture-heavy tests as the only safety net.
 
-The highest-priority remediation is to make CI fail closed for behavior and lint regressions, then harden the Tauri boundary before deeper refactors. After that, the roadmap moves command parsing/dispatch/output rendering into typed shared contracts, splits shell responsibilities by SOLID boundaries, narrows the `tachi-core` public API, decomposes large mixed-purpose modules, and upgrades test strategy with semantic, property, fuzz, and mutation-style gates.
+The highest-priority remediation is now to harden the Tauri boundary before deeper refactors; fail-closed workspace and clippy gates are already in place. After that, the roadmap moves command parsing/dispatch/output rendering into typed shared contracts, splits shell responsibilities by SOLID boundaries, narrows the `tachi-core` public API, decomposes large mixed-purpose modules, and upgrades test strategy with semantic, property, fuzz, and mutation-style gates.
 
 ### Current repository delta
 
@@ -24,7 +24,8 @@ The highest-priority remediation is to make CI fail closed for behavior and lint
 - `AQ-032` is complete: `report-data` now validates a typed result before legacy rendering, and both the Tauri bridge and CLI binary render from that typed result.
 - `AQ-041` is complete: `tachi-core` now exposes a stable facade module and downstream consumers compile against the facade surface.
 - `AQ-055` is complete: coverage-audit assertions now use invariants instead of brittle global counts.
-- The remaining risk concentrates in the rest of the public API hygiene, deeper module-privacy narrowing, and the remaining Phase 4 test-quality hardening.
+- Revalidation note: the fail-closed workspace-test and clippy gates are already present, and the bridge/offline containment checks already block the previously reported path-escape concerns. Those older findings remain archived context only.
+- The remaining risk concentrates in adapter drift, SOLID boundary cleanup, public API hygiene, and the remaining Phase 4 test-quality hardening.
 
 ## Panel findings
 
@@ -53,6 +54,8 @@ The highest-priority remediation is to make CI fail closed for behavior and lint
 | AQ-F14 | Exact golden assertions are centralized and brittle | `crates/tachi-core/tests/reporting_goldens.rs` | Useful regressions are caught, but semantic intent is obscured and updates are costly. |
 | AQ-F15 | No property/fuzz/mutation framework surfaced | no `proptest`, `quickcheck`, `cargo fuzz`, or `cargo-mutants` wiring observed | Parser and report invariants rely mainly on hand examples. |
 | AQ-F16 | Coverage audit assertions are count-brittle | `coverage_audit_cli.rs` exact inventory totals | Adding or moving tests can fail audits without product behavior changing. |
+
+Revalidation note: AQ-F01, AQ-F02, and AQ-F05 were checked against the current workflows and containment logic. They are not the active bottleneck anymore; the open remediation now centers on AQ-F03, AQ-F04, AQ-F06, AQ-F07, AQ-F11, AQ-F12, AQ-F15, and AQ-F16.
 
 ## Architecture principles assessment
 
@@ -183,3 +186,4 @@ The highest-priority remediation is to make CI fail closed for behavior and lint
 - AQ-001: epic, Architecture and test quality maturity program.
 - AQ-010/AQ-020/AQ-030/AQ-040/AQ-050: phase capabilities.
 - AQ-011..AQ-055: executable TDD tasks with dependency edges and acceptance criteria.
+- Beads-ready issue cards: [2026-06-22-adversarial-architecture-test-quality-issue-cards.md](./2026-06-22-adversarial-architecture-test-quality-issue-cards.md).
