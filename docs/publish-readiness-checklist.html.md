@@ -89,6 +89,9 @@ Use this checklist before publishing to GitHub or cutting a release.
       `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-roadmap.html.md`.
 - [ ] The active AISVS Beads-ready issue set is
       `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md`.
+- [ ] `RT-00i.6` is tracked as the publish-readiness follow-up for the
+      AISVS roadmap and keeps the release-gate docs synchronized after each
+      slice.
 - [ ] The active docs-sweep roadmap is
       `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-roadmap.html.md`.
 - [ ] The active docs-sweep Beads-ready issue set is
