@@ -132,3 +132,6 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
 - AQ-042: `crates/tachi-core/src/infographic/maestro_templates.rs`
   now owns MAESTRO template assembly and a direct unit test, separating the
   layer-summary rendering from the parent infographic module.
+- AQ-033: `crates/tachi-shell/src/commands/runtime_helpers.rs` now owns
+  stream capture and final output assembly, trimming pure output-handling code
+  out of `commands.rs` with direct helper coverage.

@@ -5,7 +5,6 @@ use std::process::Stdio;
 use std::time::Instant;
 use std::thread::sleep;
 use std::time::Duration;
-use std::io::{BufReader, Read};
 
 use serde::Serialize;
 
@@ -22,6 +21,8 @@ use tachi_core::risk_scores::build_risk_scores_sarif;
 use crate::progress::{
     emit_progress_event, CancellationToken, NoopProgressReporter, ProgressReporter,
 };
+
+mod runtime_helpers;
 
 pub const CONTROL_PLANE_COMMANDS: [&str; 9] = [
     "install",
@@ -252,15 +253,15 @@ pub(crate) fn run_script_command_with_progress(
     };
     let stdout = child.stdout.take().expect("child stdout piped");
     let stderr = child.stderr.take().expect("child stderr piped");
-    let stdout_handle = std::thread::spawn(move || capture_stream(stdout, output_cap));
-    let stderr_handle = std::thread::spawn(move || capture_stream(stderr, output_cap));
+    let stdout_handle = std::thread::spawn(move || runtime_helpers::capture_stream(stdout, output_cap));
+    let stderr_handle = std::thread::spawn(move || runtime_helpers::capture_stream(stderr, output_cap));
     let start = Instant::now();
     let mut running_emitted = false;
 
     loop {
         if token.is_cancelled() {
             terminate_process_group(&mut child);
-            return finalize_script_output(
+            return runtime_helpers::finalize_script_output(
                 script_name,
                 reporter,
                 child.wait(),
@@ -273,7 +274,7 @@ pub(crate) fn run_script_command_with_progress(
 
         if start.elapsed() >= timeout {
             terminate_process_group(&mut child);
-            return finalize_script_output(
+            return runtime_helpers::finalize_script_output(
                 script_name,
                 reporter,
                 child.wait(),
@@ -318,57 +319,6 @@ pub(crate) fn run_script_command_with_progress(
             }
         }
     }
-}
-
-fn finalize_script_output(
-    script_name: &str,
-    reporter: &mut dyn ProgressReporter,
-    wait_result: std::io::Result<std::process::ExitStatus>,
-    stdout_handle: std::thread::JoinHandle<Vec<u8>>,
-    stderr_handle: std::thread::JoinHandle<Vec<u8>>,
-    status: i32,
-    phase: &str,
-) -> CommandOutput {
-    let stdout = stdout_handle.join().unwrap_or_default();
-    let stderr = stderr_handle.join().unwrap_or_default();
-    emit_progress_event(reporter, script_name, phase);
-    match wait_result {
-        Ok(output_status) => CommandOutput {
-            status: if status == 130 || status == 124 {
-                status
-            } else {
-                output_status.code().unwrap_or(1)
-            },
-            stdout: String::from_utf8_lossy(&stdout).to_string(),
-            stderr: String::from_utf8_lossy(&stderr).to_string(),
-        },
-        Err(err) => CommandOutput {
-            status,
-            stdout: String::from_utf8_lossy(&stdout).to_string(),
-            stderr: format!("{script_name} {phase}: {err}\n{}", String::from_utf8_lossy(&stderr)),
-        },
-    }
-}
-
-fn capture_stream<R: Read>(reader: R, cap: usize) -> Vec<u8> {
-    let mut reader = BufReader::new(reader);
-    let mut buffer = [0u8; 4096];
-    let mut collected = Vec::new();
-
-    loop {
-        match reader.read(&mut buffer) {
-            Ok(0) => break,
-            Ok(read) => {
-                let remaining = cap.saturating_sub(collected.len());
-                if remaining > 0 {
-                    collected.extend_from_slice(&buffer[..read.min(remaining)]);
-                }
-            }
-            Err(_) => break,
-        }
-    }
-
-    collected
 }
 
 fn execution_timeout() -> Duration {
