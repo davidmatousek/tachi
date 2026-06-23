@@ -1,5 +1,4 @@
-use std::collections::BTreeMap;
-
+use proptest::prelude::*;
 use tachi_core::infographic::largest_remainder;
 use tachi_core::normalization::{normalize_lower_text, normalize_optional_text};
 use tachi_core::parsers::parse_threats_findings;
@@ -39,78 +38,42 @@ fn normalize_optional_text_handles_generated_presence_and_blank_cases() {
     }
 }
 
-#[test]
-fn largest_remainder_preserves_totals_and_order_across_generated_cases() {
-    let cases = [
-        (
-            vec![("critical", 0), ("high", 0), ("medium", 0), ("low", 0)],
-            100,
-        ),
-        (
-            vec![("critical", 1), ("high", 1), ("medium", 1), ("low", 1)],
-            100,
-        ),
-        (
-            vec![("critical", 9), ("high", 3), ("medium", 0), ("low", 0)],
-            100,
-        ),
-        (
-            vec![("critical", 2), ("high", 7), ("medium", 11), ("low", 13)],
-            37,
-        ),
-        (
-            vec![("critical", 5), ("high", 0), ("medium", 0), ("low", 1)],
-            12,
-        ),
-    ];
-
-    for (counts, target) in cases {
-        let counts = counts
-            .into_iter()
-            .map(|(label, count)| (label.to_string(), count))
-            .collect::<BTreeMap<_, _>>();
+proptest! {
+    #[test]
+    fn largest_remainder_preserves_totals_and_order(
+        counts in prop::collection::btree_map("[a-z]{1,8}", 0usize..20, 0..6),
+        target in 0usize..100,
+    ) {
         let actual = largest_remainder(&counts, target);
 
-        assert_eq!(actual.len(), counts.len());
-        assert_eq!(
+        prop_assert_eq!(
             actual.keys().collect::<Vec<_>>(),
             counts.keys().collect::<Vec<_>>()
         );
 
         let actual_total: usize = actual.values().copied().sum();
         let counts_total: usize = counts.values().copied().sum();
+
         if counts_total == 0 {
-            assert_eq!(actual_total, 0);
-            assert!(actual.values().all(|value| *value == 0));
+            prop_assert_eq!(actual_total, 0);
+            prop_assert!(actual.values().all(|value| *value == 0));
         } else {
-            assert_eq!(actual_total, target);
-            assert!(actual.values().all(|value| *value <= target));
+            prop_assert_eq!(actual_total, target);
+            prop_assert!(actual.values().all(|value| *value <= target));
         }
     }
-}
 
-#[test]
-fn parse_threats_findings_preserves_generated_source_attribution_order() {
-    let cases = [
-        vec![
-            ("owasp", "A01", "primary"),
-            ("mitre-atlas", "ATLAS-001", "related"),
-            ("cwe", "CWE-79", "derived"),
-        ],
-        vec![
-            ("cwe", "CWE-79", "derived"),
-            ("owasp", "A01", "primary"),
-            ("mitre-atlas", "ATLAS-001", "related"),
-        ],
-        vec![
-            ("mitre-atlas", "ATLAS-001", "related"),
-            ("cwe", "CWE-79", "derived"),
-            ("owasp", "A01", "primary"),
-        ],
-    ];
-
-    for records in cases {
-        let markdown = build_threats_markdown(&records);
+    #[test]
+    fn parse_threats_findings_preserves_generated_source_attribution_order(
+        records in prop::collection::vec(source_attribution_record_strategy(), 1..6),
+    ) {
+        let borrowed = records
+            .iter()
+            .map(|(taxonomy, id, relationship)| {
+                (taxonomy.as_str(), id.as_str(), relationship.as_str())
+            })
+            .collect::<Vec<_>>();
+        let markdown = build_threats_markdown(&borrowed);
         let findings = parse_threats_findings(&markdown).expect("parse threats findings");
         let parsed = findings[0]
             .source_attribution
@@ -127,27 +90,16 @@ fn parse_threats_findings_preserves_generated_source_attribution_order() {
                 )
             })
             .collect();
-        let expected_records = records
-            .iter()
-            .map(|(taxonomy, id, relationship)| (*taxonomy, *id, *relationship))
-            .collect::<Vec<_>>();
 
-        assert_eq!(parsed_records, expected_records);
+        prop_assert_eq!(parsed_records, borrowed);
     }
-}
 
-#[test]
-fn parse_threats_findings_rejects_generated_malformed_inputs() {
-    let malformed_cases = [
-        "",
-        "# Agentic AI Application\n\n## 7. Recommended Actions\n|\n",
-        "# Agentic AI Application\n\n## 7. Recommended Actions\n\n| Finding ID | Component | Threat |\n| --- | --- | --- |\n| AG-1 | Component | Threat |\n\n## 9. Source Attribution\n\n```yaml\nAG-1:\n  - taxonomy: owasp\n    id: A01\n",
-        "# Agentic AI Application\n\n## 7. Recommended Actions\n\n| Finding ID | Component | Threat |\n| --- | --- | --- |\n| AG-1 | Component | Threat |\n\n## 9. Source Attribution\n\n```yaml\nAG-1:\n  - {taxonomy: \"owasp\", id: \"A01\", relationship: \"primary\"\n```\n",
-    ];
-
-    for markdown in malformed_cases {
-        let result = std::panic::catch_unwind(|| parse_threats_findings(markdown));
-        assert!(result.is_ok(), "parser should not panic on malformed input");
+    #[test]
+    fn parse_threats_findings_handles_generated_malformed_inputs_without_panicking(
+        markdown in any::<String>(),
+    ) {
+        let result = std::panic::catch_unwind(|| parse_threats_findings(&markdown));
+        prop_assert!(result.is_ok());
     }
 }
 
@@ -162,5 +114,23 @@ fn build_threats_markdown(records: &[(&str, &str, &str)]) -> String {
 
     format!(
         "# Agentic AI Application\n\n## 7. Recommended Actions\n\n| Finding ID | Component | Threat | Risk Level | Mitigation | Status |\n| --- | --- | --- | --- | --- | --- |\n| AG-1 | Component | Threat | High | Mitigation | [NEW] |\n\n## 9. Source Attribution\n\n```yaml\nAG-1:\n{source_attribution}\n```\n"
+    )
+}
+
+fn source_attribution_record_strategy() -> impl Strategy<Value = (String, String, String)> {
+    (
+        prop_oneof![
+            Just(String::from("owasp")),
+            Just(String::from("mitre-attack")),
+            Just(String::from("mitre-atlas")),
+            Just(String::from("nist-ai-rmf")),
+            Just(String::from("cwe")),
+        ],
+        "[A-Z]{1,3}-[0-9]{1,3}",
+        prop_oneof![
+            Just(String::from("primary")),
+            Just(String::from("related")),
+            Just(String::from("derived")),
+        ],
     )
 }

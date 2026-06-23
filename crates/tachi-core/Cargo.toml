@@ -12,6 +12,7 @@ serde_json = { version = "1", features = ["preserve_order"] }
 sha2 = "0.10"
 
 [dev-dependencies]
+proptest = "1"
 pretty_assertions = "1"
 regex = "1"
 rstest = "0.24"
