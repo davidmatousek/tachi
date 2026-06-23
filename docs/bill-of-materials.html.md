@@ -169,7 +169,7 @@ The repository policy for these surfaces is:
 | Secret scan | `pre-commit run --all-files` or `gitleaks` / CI workflow | No secrets or private data leak into the publish set, including examples, fixtures, logs, and generated docs. |
 | Scaffold dependency gate | `make scaffold-dependency-gate` | Next.js/Supabase scaffold dependency ranges exclude currently known vulnerable `next` and `vitest` floors. |
 | Docs gate | `README.md`, `SECURITY.md`, `CHANGELOG.md`, and public docs cross-links | Public docs match the shipped behavior and the disclosure policy. |
-| AISVS security gate | `cargo test -p tachi-core --test aisvs_registry`, `cargo test -p tachi-core --test aisvs_controls`, `cargo clippy --workspace --all-features --all-targets -- -D warnings` | AISVS C01-C12 remain typed, test-backed, and fail-closed while the live `glib` advisory stays tracked in Beads until the upstream stack is compatible. |
+| AISVS security gate | `cargo test -p tachi-core --test aisvs_registry`, `cargo test -p tachi-core --test aisvs_controls`, `cargo test -p tachi-core --test scaffold_dependency_floors`, `cargo clippy --workspace --all-features --all-targets -- -D warnings` | AISVS C01-C12 remain typed, test-backed, and fail-closed while the live `glib` advisory proof stays reproducible in Beads and the upgrade slice remains blocked on upstream `gtk` compatibility. |
 | Docs/version sweep | `make docs-version-gate` + `make docs-archive-version-gate` | Maintained docs stay current; archived docs and examples retain only intentional historical references. |
 | Publish gate | `make publish-gate` | The release candidate passes the full local publish-readiness suite before remote publication. |
 | CI gate | GitHub Actions run status | Release, security, lint, and docs workflows are green. |
@@ -199,7 +199,7 @@ privacy, doc accuracy, and release readiness before `main` is pushed to
 - [ ] The active AISVS Beads cards are `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md`.
 - [ ] The active docs-sweep roadmap is `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-roadmap.html.md`.
 - [ ] The active docs-sweep Beads cards are `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-issue-cards.md`.
-- [ ] The live `glib` Dependabot alert remains tracked in Beads until `RT-00i.2` can prove a fixed transitive desktop stack.
+- [ ] The live `glib` Dependabot alert proof is captured in `crates/tachi-core/tests/scaffold_dependency_floors.rs`, and `RT-00i.2` remains open until the desktop stack can resolve a fixed `glib` line.
 - [ ] Archived roadmap docs are clearly marked as historical only.
 - [ ] `make docs-version-gate` passes.
 - [ ] `git status --short --branch` has no unexpected untracked or dirty state.

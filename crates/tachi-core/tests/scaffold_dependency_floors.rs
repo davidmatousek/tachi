@@ -68,6 +68,29 @@ fn publish_gate_runs_scaffold_dependency_floor_audit() {
 }
 
 #[test]
+fn glib_dependabot_alert_is_reproducible_from_workspace_lockfile() {
+    let lockfile_path = workspace_root().join("Cargo.lock");
+    let lockfile = fs::read_to_string(&lockfile_path).expect("read Cargo.lock");
+
+    assert!(
+        lockfile.contains("name = \"tauri\""),
+        "Cargo.lock must retain the tauri desktop stack as the transitive source of the advisory"
+    );
+    assert!(
+        lockfile.contains("name = \"gtk\""),
+        "Cargo.lock must retain gtk as the immediate dependency that constrains glib"
+    );
+    assert!(
+        lockfile.contains("name = \"glib\"\nversion = \"0.18.5\""),
+        "Cargo.lock must preserve the vulnerable glib 0.18.5 resolution until RT-00i.2.2 lands"
+    );
+    assert!(
+        lockfile.contains("name = \"gio\""),
+        "Cargo.lock must retain gio as part of the transitive path that resolves the alert"
+    );
+}
+
+#[test]
 fn dependency_floor_audit_reports_synthetic_vulnerable_ranges() {
     let package_json = json!({
         "dependencies": {

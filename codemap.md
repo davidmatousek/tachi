@@ -150,9 +150,10 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   property/fuzz/mutation lanes and their promotion criteria.
 - RT-00i: `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-roadmap.html.md`,
   `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md`,
-  `crates/tachi-core/src/aisvs.rs`, and `Cargo.lock` now anchor the glib
-  alert remediation plan and phased AISVS 1.0 control rollout, with the typed
-  control registry foundation plus C01-C12 typed control policies and tests
+  `crates/tachi-core/src/aisvs.rs`, `crates/tachi-core/tests/scaffold_dependency_floors.rs`,
+  and `Cargo.lock` now anchor the glib alert remediation plan and phased
+  AISVS 1.0 control rollout, with the typed control registry foundation plus
+  C01-C12 typed control policies and the reproducible glib advisory proof
   landed locally.
 - AQ-042: `crates/tachi-core/src/infographic/maestro_templates.rs`
   now owns MAESTRO template assembly and a direct unit test, separating the

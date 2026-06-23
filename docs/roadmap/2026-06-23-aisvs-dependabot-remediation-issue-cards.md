@@ -32,8 +32,9 @@ with the exact commands named in the card.
 - `Capability`: supply-chain remediation for the open `glib` advisory
 - `Task`: reproduce the alert, upgrade the transitive desktop stack to a fixed
   `glib` line, and close the live advisory without regressing the shell
-- `Function`: `src-tauri/Cargo.toml`, `Cargo.lock`, `src-tauri/tests/*`,
-  `Makefile scaffold-dependency-gate`
+- `Function`: `src-tauri/Cargo.toml`, `Cargo.lock`,
+  `crates/tachi-core/tests/scaffold_dependency_floors.rs`,
+  `src-tauri/tests/*`, `Makefile scaffold-dependency-gate`
 - `Dependencies`: live Dependabot alert 15, current `tauri 2.6.3` dependency
   line
 - `Acceptance criteria`:
@@ -52,8 +53,10 @@ with the exact commands named in the card.
 
 - `RT-00i.2.1` Reproduce glib advisory and capture failing proof
   - Acceptance: the vulnerable `glib 0.18.5` resolution is asserted by a
-    failing-first check; the transitive `tauri` -> `gtk` -> `glib` path is
-    documented; and the proof is repeatable in CI.
+    reproducible lockfile check; the transitive `tauri` -> `gtk` -> `glib`
+    path is documented; and the proof is repeatable in CI.
+  - Status: closed with `crates/tachi-core/tests/scaffold_dependency_floors.rs`
+    coverage and a recorded `cargo tree -i glib --locked --target all` path.
 - `RT-00i.2.2` Upgrade desktop stack to fixed glib release
   - Acceptance: `Cargo.lock` no longer resolves `glib 0.18.5`; the workspace
     and desktop tests stay green; and any upstream incompatibility is recorded
@@ -62,6 +65,7 @@ with the exact commands named in the card.
   - Acceptance: the post-fix scan or explicit exception is recorded; the
     release-readiness docs reflect the current state; and the Beads export
     matches the tracker state.
+  - Dependencies: `RT-00i.2.2`
 
 ## Phase 1 - AISVS framework foundation
 

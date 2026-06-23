@@ -95,8 +95,10 @@ Use this checklist before publishing to GitHub or cutting a release.
       `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-issue-cards.md`.
 - [ ] The archived roadmap docs are clearly marked historical only.
 - [ ] The roadmap and issue cards reflect the current phase sequencing.
-- [ ] The live `glib` Dependabot alert remains open in Beads until the
-      upstream desktop stack is compatible with a fixed `glib` line.
+- [ ] The live `glib` Dependabot alert proof is captured in
+      `crates/tachi-core/tests/scaffold_dependency_floors.rs`, and
+      `RT-00i.2` remains open until the upstream desktop stack can resolve a
+      fixed `glib` line.
 - [ ] The DOC-00X documentation-update plan remains separate from the parity
       and docs-sweep tracks.
 - [ ] `docs/bill-of-materials.html.md` and `docs/publish-readiness-checklist.html.md`
