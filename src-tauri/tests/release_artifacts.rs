@@ -30,9 +30,21 @@ fn build_release_manifest_is_stable_for_identical_inputs() {
     let right = fixture_root("release-manifest-right");
 
     for root in [&left, &right] {
-        write_file(root, "dist/tachi-rust-linux-x86_64.tar.gz", "artifact-bytes");
-        write_file(root, "dist/tachi-rust-linux-x86_64.tar.gz.sha256", "sha-placeholder");
-        write_file(root, "release/release-manifest.json", "{\"version\":\"1.0.0\"}\n");
+        write_file(
+            root,
+            "dist/tachi-rust-linux-x86_64.tar.gz",
+            "artifact-bytes",
+        );
+        write_file(
+            root,
+            "dist/tachi-rust-linux-x86_64.tar.gz.sha256",
+            "sha-placeholder",
+        );
+        write_file(
+            root,
+            "release/release-manifest.json",
+            "{\"version\":\"1.0.0\"}\n",
+        );
     }
 
     let left_manifest = build_release_manifest(
@@ -63,7 +75,11 @@ fn verify_checksum_matrix_detects_mutated_artifact_bytes() {
     let root = fixture_root("release-manifest-mutation");
 
     write_file(&root, "dist/tachi-rust-macos-aarch64.zip", "original-bytes");
-    write_file(&root, "release/release-manifest.json", "{\"version\":\"1.0.0\"}\n");
+    write_file(
+        &root,
+        "release/release-manifest.json",
+        "{\"version\":\"1.0.0\"}\n",
+    );
 
     let manifest = build_release_manifest(
         &root,
@@ -85,7 +101,11 @@ fn validate_package_contents_reports_missing_and_unexpected_files() {
     let root = fixture_root("release-package-contents");
 
     write_file(&root, "dist/tachi-rust-windows-x86_64.msi", "msi-bytes");
-    write_file(&root, "release/release-manifest.json", "{\"version\":\"1.0.0\"}\n");
+    write_file(
+        &root,
+        "release/release-manifest.json",
+        "{\"version\":\"1.0.0\"}\n",
+    );
     write_file(&root, "notes/keep.txt", "unexpected");
 
     let report = validate_package_contents(

@@ -1,12 +1,12 @@
-use std::path::Path;
 use serde_json::json;
-use tachi_core::parsers::{
-    compute_delta_counts, compute_has_source_attribution, escape_typst_string, parse_component_asset_map,
-    parse_finding_pattern, parse_markdown_table, parse_project_name, parse_threats_findings,
-    strip_bold, validate_source_attribution, ResolvedFinding, ThreatFinding, VALID_AGENTIC_PATTERNS,
-    VALID_ASSET_TAGS,
-};
+use std::path::Path;
 use tachi_core::normalization::{normalize_optional_text, normalize_value, stable_trim_text};
+use tachi_core::parsers::{
+    compute_delta_counts, compute_has_source_attribution, escape_typst_string,
+    parse_component_asset_map, parse_finding_pattern, parse_markdown_table, parse_project_name,
+    parse_threats_findings, strip_bold, validate_source_attribution, ResolvedFinding,
+    ThreatFinding, VALID_AGENTIC_PATTERNS, VALID_ASSET_TAGS,
+};
 
 static PARSER_TEMP_DIR_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 

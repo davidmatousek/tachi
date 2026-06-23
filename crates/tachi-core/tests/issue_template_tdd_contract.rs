@@ -28,10 +28,7 @@ fn issue_templates_require_tdd_acceptance_evidence() {
             "Negative/adversarial case",
             "Property/golden/mutation applicability",
         ] {
-            assert!(
-                text.contains(required),
-                "{path} must require `{required}`"
-            );
+            assert!(text.contains(required), "{path} must require `{required}`");
         }
     }
 }

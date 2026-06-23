@@ -24,7 +24,10 @@ fn coverage_audit_binary_reports_current_suite_classification() {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let active = extract_count(&stdout, "Active test modules: ");
-    let fixture_copies = extract_count(&stdout, "Fixture-copy modules (excluded from active suite): ");
+    let fixture_copies = extract_count(
+        &stdout,
+        "Fixture-copy modules (excluded from active suite): ",
+    );
     let smoke = extract_count(&stdout, "Smoke: ");
     let unit = extract_count(&stdout, "Unit: ");
     let integration = extract_count(&stdout, "Integration: ");

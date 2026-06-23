@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use sha2::{Digest, Sha256};
 use crate::error::DesktopError;
+use sha2::{Digest, Sha256};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseArtifact {
@@ -33,8 +33,8 @@ pub fn build_release_manifest(
 
     for relative in relative_paths {
         let path = root.join(relative);
-        let bytes = fs::read(&path)
-            .map_err(|err| format!("failed to read {}: {err}", path.display()))?;
+        let bytes =
+            fs::read(&path).map_err(|err| format!("failed to read {}: {err}", path.display()))?;
         let mut hasher = Sha256::new();
         hasher.update(&bytes);
         artifacts.push(ReleaseArtifact {
@@ -59,8 +59,8 @@ pub fn build_release_manifest_typed(
 pub fn verify_checksum_matrix(root: &Path, manifest: &ReleaseManifest) -> Result<(), String> {
     for artifact in &manifest.artifacts {
         let path = root.join(&artifact.relative_path);
-        let bytes = fs::read(&path)
-            .map_err(|err| format!("failed to read {}: {err}", path.display()))?;
+        let bytes =
+            fs::read(&path).map_err(|err| format!("failed to read {}: {err}", path.display()))?;
         let mut hasher = Sha256::new();
         hasher.update(&bytes);
         let checksum = format!("{:x}", hasher.finalize());
@@ -142,8 +142,8 @@ fn collect_files(root: &Path) -> Result<Vec<PathBuf>, String> {
         let entries = fs::read_dir(&current)
             .map_err(|err| format!("failed to read {}: {err}", current.display()))?;
         for entry in entries {
-            let entry = entry
-                .map_err(|err| format!("failed to read {}: {err}", current.display()))?;
+            let entry =
+                entry.map_err(|err| format!("failed to read {}: {err}", current.display()))?;
             let path = entry.path();
             let file_type = entry
                 .file_type()

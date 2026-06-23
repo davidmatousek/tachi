@@ -75,7 +75,10 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("clock")
             .as_nanos();
-        let dir = std::env::temp_dir().join(format!("tachi-core-metadata-{stamp}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "tachi-core-metadata-{stamp}-{}",
+            std::process::id()
+        ));
         fs::create_dir_all(&dir).expect("create temp dir");
         dir
     }
@@ -83,8 +86,11 @@ mod tests {
     #[test]
     fn resolves_project_name_from_override_and_h1() {
         let temp_dir = temp_test_dir();
-        fs::write(temp_dir.join("architecture.md"), "# Fallback — Architecture\n")
-            .expect("architecture");
+        fs::write(
+            temp_dir.join("architecture.md"),
+            "# Fallback — Architecture\n",
+        )
+        .expect("architecture");
 
         assert_eq!(
             resolve_report_project_name(
@@ -114,6 +120,9 @@ mod tests {
 
     #[test]
     fn falls_back_to_unknown_when_no_signal_exists() {
-        assert_eq!(resolve_report_project_name("", None, None), "Unknown Project");
+        assert_eq!(
+            resolve_report_project_name("", None, None),
+            "Unknown Project"
+        );
     }
 }

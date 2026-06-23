@@ -3,7 +3,7 @@ use serde_json::{json, Map, Value};
 use crate::coverage_taxonomy::normalize_maestro_layer_label;
 
 use super::{
-    MaestroData, MaestroHeatmapRow, MaestroLayerDistribution, PerLayerTopFinding, severity_rank,
+    severity_rank, MaestroData, MaestroHeatmapRow, MaestroLayerDistribution, PerLayerTopFinding,
 };
 
 pub(crate) fn build_maestro_stack_template_data(maestro_data: &MaestroData) -> Value {
@@ -102,7 +102,9 @@ fn to_value_heatmap(heatmap: &[MaestroHeatmapRow]) -> Vec<Value> {
 #[cfg(test)]
 mod tests {
     use super::build_maestro_stack_template_data;
-    use crate::infographic::{MaestroData, MaestroFinding, MaestroHeatmapRow, MaestroLayerDistribution};
+    use crate::infographic::{
+        MaestroData, MaestroFinding, MaestroHeatmapRow, MaestroLayerDistribution,
+    };
     use std::collections::BTreeMap;
 
     #[test]

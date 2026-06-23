@@ -69,9 +69,8 @@ pub fn restore_offline_cache(
             ensure_contained_input_path(&cache_root, &source, "offline cache file")?;
             ensure_contained_output_path(&repo_root, &destination, "offline restore destination")?;
             if let Some(parent) = destination.parent() {
-                fs::create_dir_all(parent).map_err(|err| {
-                    format!("failed to create {}: {err}", parent.display())
-                })?;
+                fs::create_dir_all(parent)
+                    .map_err(|err| format!("failed to create {}: {err}", parent.display()))?;
             }
             fs::copy(&source, &destination).map_err(|err| {
                 format!(
@@ -121,7 +120,10 @@ pub fn check_for_update_typed(
     check_for_update(repo_root, cache_root).map_err(classify_offline_error)
 }
 
-pub fn bootstrap_from_cache(repo_root: &Path, cache_root: &Path) -> Result<BootstrapReport, String> {
+pub fn bootstrap_from_cache(
+    repo_root: &Path,
+    cache_root: &Path,
+) -> Result<BootstrapReport, String> {
     let restore = restore_offline_cache(repo_root, cache_root)?;
     let update_check = check_for_update(repo_root, cache_root)?;
     let offline_ready = repo_root.join("scripts/update.sh").is_file()

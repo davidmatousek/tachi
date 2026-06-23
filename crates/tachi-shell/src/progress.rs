@@ -43,11 +43,7 @@ pub fn cancel_running_command(token: &CancellationToken) {
     token.cancel();
 }
 
-pub fn emit_progress_event(
-    reporter: &mut dyn ProgressReporter,
-    command: &str,
-    message: &str,
-) {
+pub fn emit_progress_event(reporter: &mut dyn ProgressReporter, command: &str, message: &str) {
     reporter.emit(ProgressEvent {
         command: command.to_string(),
         message: message.to_string(),

@@ -1,5 +1,5 @@
-use std::collections::BTreeMap;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::BTreeMap;
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
@@ -122,7 +122,10 @@ fn coverage_audit_render_matches_canonical_inventory_golden() {
         String::new(),
         String::from("Support / regression: 0"),
     ];
-    let rendered_lines = rendered.lines().take(expected_lines.len()).collect::<Vec<_>>();
+    let rendered_lines = rendered
+        .lines()
+        .take(expected_lines.len())
+        .collect::<Vec<_>>();
 
     assert_eq!(rendered_lines, expected_lines);
 }
@@ -191,7 +194,10 @@ fn build_report_data_typst_matches_canonical_golden() {
         "#let per-finding-rows = ()",
         "#let per-framework-aggregates = (",
     ];
-    let rendered_prefix = rendered.lines().take(expected_prefix.len()).collect::<Vec<_>>();
+    let rendered_prefix = rendered
+        .lines()
+        .take(expected_prefix.len())
+        .collect::<Vec<_>>();
 
     assert_eq!(rendered_prefix, expected_prefix);
     assert!(rendered.contains("coverage-percentage: \"0.00%\""));

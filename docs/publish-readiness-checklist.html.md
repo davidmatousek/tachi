@@ -1,7 +1,7 @@
 # Publish Readiness Checklist
 
 **Status**: Active release gate
-**Last Updated**: 2026-06-22
+**Last Updated**: 2026-06-23
 **Purpose**: confirm `tachi-rust` is ready to publish to `origin/main`
 **Scope**: security, privacy, docs, tests, coverage, CI, and release hygiene
 
@@ -11,6 +11,8 @@ Use this checklist before publishing to GitHub or cutting a release.
 
 - [ ] `pre-commit run --all-files` or the equivalent `gitleaks` scan passes.
 - [ ] `make publish-gate` passes on the release candidate branch.
+- [ ] `cargo test -p tachi-shell` passes after the script executor boundary
+      slice and coverage-invariant cleanup.
 - [ ] `make scaffold-dependency-gate` passes before publishing scaffold or template changes.
 - [ ] `git push origin main --follow-tags` is the intended publish command.
 - [ ] `gh run list --branch main --limit 10` is ready for post-push monitoring.
@@ -93,6 +95,8 @@ Use this checklist before publishing to GitHub or cutting a release.
       and docs-sweep tracks.
 - [ ] `docs/bill-of-materials.html.md` and `docs/publish-readiness-checklist.html.md`
       agree on the publish gate, security surfaces, and remote publication flow.
+- [ ] The shell executor seam is documented in the BOM and covered by focused
+      shell crate tests.
 - [ ] `make docs-version-gate` passes.
 - [ ] `make docs-archive-version-gate` passes.
 - [ ] Public docs do not promise unsupported features or outdated workflows.

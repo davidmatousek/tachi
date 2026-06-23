@@ -84,7 +84,10 @@ pub struct ValidationError {
 }
 
 pub fn parse_finding_pattern(input: Option<&str>) -> String {
-    let Some(raw) = input.map(stable_trim_text).filter(|value| !value.is_empty()) else {
+    let Some(raw) = input
+        .map(stable_trim_text)
+        .filter(|value| !value.is_empty())
+    else {
         return String::from("none");
     };
 

@@ -1,13 +1,18 @@
 use std::path::{Path, PathBuf};
 
-use serde_json::Value;
 use crate::error::DesktopError;
+use serde_json::Value;
 use tachi_shell::commands::{command_output_kind, CommandOutput, CommandOutputKind};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DesktopInvokeInput {
-    ControlPlane { command: String, args: Vec<String> },
-    CoverageAudit { root: PathBuf },
+    ControlPlane {
+        command: String,
+        args: Vec<String>,
+    },
+    CoverageAudit {
+        root: PathBuf,
+    },
     InfographicData {
         root: PathBuf,
         template: String,
@@ -71,11 +76,17 @@ pub fn validate_invoke_input(
                             "help is not an invocation payload",
                         ));
                     }
-                    other => return Err(render_schema_error(command, &format!("unrecognized argument: {other}"))),
+                    other => {
+                        return Err(render_schema_error(
+                            command,
+                            &format!("unrecognized argument: {other}"),
+                        ))
+                    }
                 }
             }
 
-            let template = template.ok_or_else(|| render_schema_error(command, "--template is required"))?;
+            let template =
+                template.ok_or_else(|| render_schema_error(command, "--template is required"))?;
             Ok(DesktopInvokeInput::InfographicData {
                 root,
                 template,
@@ -106,12 +117,18 @@ pub fn validate_invoke_input(
                             "help is not an invocation payload",
                         ));
                     }
-                    other => return Err(render_schema_error(command, &format!("unrecognized argument: {other}"))),
+                    other => {
+                        return Err(render_schema_error(
+                            command,
+                            &format!("unrecognized argument: {other}"),
+                        ))
+                    }
                 }
             }
 
             Ok(DesktopInvokeInput::ReportData {
-                target_dir: target_dir.ok_or_else(|| render_schema_error(command, "--target-dir is required"))?,
+                target_dir: target_dir
+                    .ok_or_else(|| render_schema_error(command, "--target-dir is required"))?,
                 template_dir: template_dir
                     .ok_or_else(|| render_schema_error(command, "--template-dir is required"))?,
                 output,
@@ -136,13 +153,19 @@ pub fn validate_invoke_input(
                             "help is not an invocation payload",
                         ));
                     }
-                    other => return Err(render_schema_error(command, &format!("unrecognized argument: {other}"))),
+                    other => {
+                        return Err(render_schema_error(
+                            command,
+                            &format!("unrecognized argument: {other}"),
+                        ))
+                    }
                 }
             }
 
             Ok(DesktopInvokeInput::ThreatsSarif {
                 input: input.ok_or_else(|| render_schema_error(command, "--input is required"))?,
-                output: output.ok_or_else(|| render_schema_error(command, "--output is required"))?,
+                output: output
+                    .ok_or_else(|| render_schema_error(command, "--output is required"))?,
             })
         }
         "risk-scores-sarif" => {
@@ -169,15 +192,22 @@ pub fn validate_invoke_input(
                             "help is not an invocation payload",
                         ));
                     }
-                    other => return Err(render_schema_error(command, &format!("unrecognized argument: {other}"))),
+                    other => {
+                        return Err(render_schema_error(
+                            command,
+                            &format!("unrecognized argument: {other}"),
+                        ))
+                    }
                 }
             }
 
             Ok(DesktopInvokeInput::RiskScoresSarif {
                 risk_scores: risk_scores
                     .ok_or_else(|| render_schema_error(command, "--risk-scores is required"))?,
-                threats: threats.ok_or_else(|| render_schema_error(command, "--threats is required"))?,
-                output: output.ok_or_else(|| render_schema_error(command, "--output is required"))?,
+                threats: threats
+                    .ok_or_else(|| render_schema_error(command, "--threats is required"))?,
+                output: output
+                    .ok_or_else(|| render_schema_error(command, "--output is required"))?,
             })
         }
         _ => Err(render_schema_error(command, "unsupported command")),
@@ -213,7 +243,10 @@ pub fn validate_invoke_output(command: &str, output: &CommandOutput) -> Result<(
         }
         Some(CommandOutputKind::Json) => {
             let payload: Value = serde_json::from_str(&output.stdout).map_err(|err| {
-                render_schema_error(command, &format!("infographic JSON output failed validation: {err}"))
+                render_schema_error(
+                    command,
+                    &format!("infographic JSON output failed validation: {err}"),
+                )
             })?;
             if payload.get("template").and_then(Value::as_str).is_some()
                 && payload.get("template_data").is_some()
@@ -299,7 +332,12 @@ fn parse_optional_root<'a>(
                     "help is not an invocation payload",
                 ));
             }
-            other => return Err(render_schema_error(command, &format!("unrecognized argument: {other}"))),
+            other => {
+                return Err(render_schema_error(
+                    command,
+                    &format!("unrecognized argument: {other}"),
+                ))
+            }
         }
     }
 
@@ -336,8 +374,9 @@ fn validate_control_plane_args(command: &str, args: &[&str]) -> Result<Vec<Strin
             ));
         }
 
-        let group = control_plane_flag_group(command, arg)
-            .ok_or_else(|| render_schema_error(command, &format!("unrecognized argument: {arg}")))?;
+        let group = control_plane_flag_group(command, arg).ok_or_else(|| {
+            render_schema_error(command, &format!("unrecognized argument: {arg}"))
+        })?;
         if !seen_groups.insert(group) {
             return Err(render_schema_error(
                 command,

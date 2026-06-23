@@ -2,8 +2,8 @@ use std::fs;
 use std::path::PathBuf;
 
 use tachi_shell::commands::{
-    render_report_data_result, report_data_output, report_data_result,
-    validate_report_data_result, ReportDataResult,
+    render_report_data_result, report_data_output, report_data_result, validate_report_data_result,
+    ReportDataResult,
 };
 
 fn workspace_root() -> PathBuf {
@@ -39,7 +39,10 @@ fn report_data_result_validates_before_legacy_rendering() {
 
     let result = report_data_result(&target_dir, &template_dir);
     validate_report_data_result(&result).expect("typed report-data result");
-    assert_eq!(render_report_data_result(&result), report_data_output(&target_dir, &template_dir));
+    assert_eq!(
+        render_report_data_result(&result),
+        report_data_output(&target_dir, &template_dir)
+    );
 }
 
 #[test]

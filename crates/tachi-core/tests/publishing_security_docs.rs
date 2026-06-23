@@ -7,7 +7,7 @@ fn workspace_root() -> PathBuf {
         .parent()
         .and_then(Path::parent)
         .expect("workspace root")
-    .to_path_buf()
+        .to_path_buf()
 }
 
 fn unique_temp_root(prefix: &str) -> PathBuf {

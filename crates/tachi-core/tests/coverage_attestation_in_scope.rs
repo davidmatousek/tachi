@@ -8,7 +8,10 @@ use tachi_core::coverage_attestation::{
 use tachi_core::parsers::{SourceAttributionRecord, ThreatFinding};
 
 struct FakeTaxonomyStore {
-    records: std::collections::BTreeMap<(String, bool), Vec<tachi_core::coverage_attestation::FrameworkRecord>>,
+    records: std::collections::BTreeMap<
+        (String, bool),
+        Vec<tachi_core::coverage_attestation::FrameworkRecord>,
+    >,
 }
 
 impl tachi_core::coverage_attestation::TaxonomyStore for FakeTaxonomyStore {
@@ -146,15 +149,16 @@ fn build_per_framework_aggregates_from_store_uses_fake_taxonomy_provider() {
     );
     records.insert(
         (String::from("owasp"), true),
-        vec![tachi_core::coverage_attestation::FrameworkRecord::new("A01", false)],
+        vec![tachi_core::coverage_attestation::FrameworkRecord::new(
+            "A01", false,
+        )],
     );
     let store = FakeTaxonomyStore { records };
     let findings = vec![finding("F-1", "owasp", "A01", "primary")];
 
-    let aggregates =
-        tachi_core::coverage_attestation::build_per_framework_aggregates_from_store(
-            &store, &findings,
-        );
+    let aggregates = tachi_core::coverage_attestation::build_per_framework_aggregates_from_store(
+        &store, &findings,
+    );
 
     let owasp = aggregates
         .iter()

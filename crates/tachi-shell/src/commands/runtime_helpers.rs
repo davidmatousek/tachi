@@ -30,7 +30,10 @@ pub(crate) fn finalize_script_output(
         Err(err) => CommandOutput {
             status,
             stdout: String::from_utf8_lossy(&stdout).to_string(),
-            stderr: format!("{script_name} {phase}: {err}\n{}", String::from_utf8_lossy(&stderr)),
+            stderr: format!(
+                "{script_name} {phase}: {err}\n{}",
+                String::from_utf8_lossy(&stderr)
+            ),
         },
     }
 }

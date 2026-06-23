@@ -145,20 +145,12 @@ fn validate_invoke_input_rejects_missing_required_fields_and_unknown_commands() 
     let err = validate_invoke_input("install", &root, &["--wat"]).expect_err("unknown install arg");
     assert!(err.contains("unrecognized argument: --wat"));
 
-    let err = validate_invoke_input(
-        "init",
-        &root,
-        &["--precommit", "--no-precommit"],
-    )
-    .expect_err("conflicting init flags");
+    let err = validate_invoke_input("init", &root, &["--precommit", "--no-precommit"])
+        .expect_err("conflicting init flags");
     assert!(err.contains("duplicate or conflicting argument"));
 
-    let err = validate_invoke_input(
-        "update",
-        &root,
-        &["--dry-run", "--apply"],
-    )
-    .expect_err("conflicting update flags");
+    let err = validate_invoke_input("update", &root, &["--dry-run", "--apply"])
+        .expect_err("conflicting update flags");
     assert!(err.contains("duplicate or conflicting argument"));
 
     let err = validate_invoke_input(
@@ -215,7 +207,8 @@ fn validate_invoke_output_rejects_schema_drift() {
         stdout: String::new(),
         stderr: String::from("bad input"),
     };
-    validate_invoke_output("report-data", &failed_command).expect("non-zero output is caller-visible");
+    validate_invoke_output("report-data", &failed_command)
+        .expect("non-zero output is caller-visible");
 
     let invalid_coverage = tachi_shell::commands::CommandOutput {
         status: 0,

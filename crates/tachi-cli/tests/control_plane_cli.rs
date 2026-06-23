@@ -300,8 +300,9 @@ fn coverage_audit_binary_rejects_invalid_arguments() {
         .output()
         .expect("run coverage-audit with missing root");
     assert_eq!(missing_root.status.code(), Some(2));
-    assert!(String::from_utf8_lossy(&missing_root.stderr)
-        .contains("--root requires a path argument"));
+    assert!(
+        String::from_utf8_lossy(&missing_root.stderr).contains("--root requires a path argument")
+    );
 
     let unknown = Command::new(binary_path("coverage-audit"))
         .arg("--wat")
@@ -526,7 +527,13 @@ fn report_data_binary_rejects_invalid_arguments() {
     );
 
     let missing_output_value = Command::new(binary_path("report-data"))
-        .args(["--target-dir", "target", "--template-dir", "templates", "--output"])
+        .args([
+            "--target-dir",
+            "target",
+            "--template-dir",
+            "templates",
+            "--output",
+        ])
         .output()
         .expect("run report-data with missing output value");
     assert_eq!(missing_output_value.status.code(), Some(2));

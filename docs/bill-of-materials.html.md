@@ -1,7 +1,7 @@
 # Bill of Materials
 
 **Status**: Active publish inventory
-**Last Updated**: 2026-06-22
+**Last Updated**: 2026-06-23
 **Purpose**: enumerate the repository surfaces that are expected to ship, be
 reviewed, or be validated before publishing `tachi-rust` to remote origin
 **Scope**: source code, docs, tests, CI, security posture, and release gates
@@ -71,6 +71,7 @@ with the shipped release workflow before publication.
 | `crates/tachi-core/` | Parsers, scoring, reporting, taxonomy, SARIF, coverage helpers | Parser hardening, output shape stability, no panic-based user-facing parsing. |
 | `crates/tachi-cli/` | CLI entrypoints and argument-forwarding binaries | Flag correctness, help text, command parity, no duplicated business logic. |
 | `crates/tachi-shell/` | Shared command facade and bridge adapter | Shared dispatch, shared errors, identical CLI/Tauri semantics. |
+| `crates/tachi-shell/src/commands/script_executor.rs` | Script execution boundary | Process spawning, timeout, cancellation, and output capture stay behind an injected executor seam. |
 | `src-tauri/` | Thin desktop shell | Registration-only bridge, explicit `tauri.conf.json`, least-privilege `capabilities/main.json`, no business logic drift. |
 | `schemas/` | Finding schemas and taxonomy catalogs | Schema compatibility, crosswalk stability, fixture coverage. |
 

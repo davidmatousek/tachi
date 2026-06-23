@@ -1,6 +1,6 @@
 use tachi_shell::commands::{
-    command_dispatch_kind, command_registry, command_spec, CommandDispatchKind,
-    CommandOutputKind, CommandRegistry, CommandSpec,
+    command_dispatch_kind, command_registry, command_spec, CommandDispatchKind, CommandOutputKind,
+    CommandRegistry, CommandSpec,
 };
 
 #[test]
@@ -62,7 +62,9 @@ fn typed_command_registry_rejects_duplicate_names() {
         },
     ]);
 
-    let err = registry.validate_unique().expect_err("duplicate names rejected");
+    let err = registry
+        .validate_unique()
+        .expect_err("duplicate names rejected");
     assert!(err.contains("duplicate command"));
 }
 

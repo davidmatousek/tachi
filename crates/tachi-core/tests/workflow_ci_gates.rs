@@ -93,7 +93,9 @@ fn workflow_declares_unfiltered_event(text: &str, event: &str) -> bool {
 }
 
 fn indentation(line: &str) -> usize {
-    line.chars().take_while(|character| *character == ' ').count()
+    line.chars()
+        .take_while(|character| *character == ' ')
+        .count()
 }
 
 fn workflow_step_has_line(text: &str, step_name: &str, required_line: &str) -> bool {

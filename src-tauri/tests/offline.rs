@@ -77,8 +77,7 @@ fn check_for_update_reports_cached_version_difference() {
     fs::create_dir_all(repo_root.join(".aod")).expect("create repo aod dir");
     fs::create_dir_all(cache_root.join(".aod")).expect("create cache aod dir");
     fs::write(repo_root.join(".aod/aod-kit-version"), "version=v1.0.0\n").expect("write current");
-    fs::write(cache_root.join(".aod/aod-kit-version"), "version=v1.1.0\n")
-        .expect("write cached");
+    fs::write(cache_root.join(".aod/aod-kit-version"), "version=v1.1.0\n").expect("write cached");
 
     let check = check_for_update(&repo_root, &cache_root).expect("check update");
 

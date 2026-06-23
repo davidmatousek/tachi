@@ -2,8 +2,8 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use crate::commands::{
-    infographic_data_output, render_report_data_result, report_data_result,
-    validate_report_data_result, bootstrap_control_plane_args, command_dispatch_kind,
+    bootstrap_control_plane_args, command_dispatch_kind, infographic_data_output,
+    render_report_data_result, report_data_result, validate_report_data_result,
     CommandDispatchKind,
 };
 use crate::commands::{
@@ -28,73 +28,81 @@ pub fn dispatch_command_with_progress(
     token: &CancellationToken,
     reporter: &mut dyn ProgressReporter,
 ) -> CommandOutput {
-    invoke_with_progress(command, token, reporter, |token, reporter| match command_dispatch_kind(command) {
-        Some(CommandDispatchKind::ControlPlane) => match command {
-            "install" => {
-            let scripts_dir = super::commands::control_plane_scripts_dir(root);
-            run_script_command_with_progress(
-                &scripts_dir,
-                "install.sh",
-                args,
-                root,
-                token,
-                reporter,
-            )
+    invoke_with_progress(
+        command,
+        token,
+        reporter,
+        |token, reporter| match command_dispatch_kind(command) {
+            Some(CommandDispatchKind::ControlPlane) => match command {
+                "install" => {
+                    let scripts_dir = super::commands::control_plane_scripts_dir(root);
+                    run_script_command_with_progress(
+                        &scripts_dir,
+                        "install.sh",
+                        args,
+                        root,
+                        token,
+                        reporter,
+                    )
+                }
+                "init" => {
+                    let scripts_dir = super::commands::control_plane_scripts_dir(root);
+                    run_script_command_with_progress(
+                        &scripts_dir,
+                        "init.sh",
+                        args,
+                        root,
+                        token,
+                        reporter,
+                    )
+                }
+                "update" => {
+                    let scripts_dir = super::commands::control_plane_scripts_dir(root);
+                    run_script_command_with_progress(
+                        &scripts_dir,
+                        "update.sh",
+                        args,
+                        root,
+                        token,
+                        reporter,
+                    )
+                }
+                "bootstrap" => {
+                    let bootstrap_args = bootstrap_control_plane_args(args);
+                    let bootstrap_args = bootstrap_args
+                        .iter()
+                        .map(String::as_str)
+                        .collect::<Vec<_>>();
+                    let scripts_dir = super::commands::control_plane_scripts_dir(root);
+                    run_script_command_with_progress(
+                        &scripts_dir,
+                        "update.sh",
+                        bootstrap_args.as_slice(),
+                        root,
+                        token,
+                        reporter,
+                    )
+                }
+                other => CommandOutput {
+                    status: 2,
+                    stdout: String::new(),
+                    stderr: format!("unsupported command: {other}\n"),
+                },
+            },
+            Some(CommandDispatchKind::CoverageAudit) => dispatch_coverage_audit(root, args),
+            Some(CommandDispatchKind::InfographicData) => {
+                dispatch_infographic_data(root, args, token, reporter)
             }
-            "init" => {
-            let scripts_dir = super::commands::control_plane_scripts_dir(root);
-            run_script_command_with_progress(
-                &scripts_dir,
-                "init.sh",
-                args,
-                root,
-                token,
-                reporter,
-            )
-            }
-            "update" => {
-            let scripts_dir = super::commands::control_plane_scripts_dir(root);
-            run_script_command_with_progress(
-                &scripts_dir,
-                "update.sh",
-                args,
-                root,
-                token,
-                reporter,
-            )
-            }
-            "bootstrap" => {
-            let bootstrap_args = bootstrap_control_plane_args(args);
-            let bootstrap_args = bootstrap_args.iter().map(String::as_str).collect::<Vec<_>>();
-            let scripts_dir = super::commands::control_plane_scripts_dir(root);
-            run_script_command_with_progress(
-                &scripts_dir,
-                "update.sh",
-                bootstrap_args.as_slice(),
-                root,
-                token,
-                reporter,
-            )
-            }
-            other => CommandOutput {
+            Some(CommandDispatchKind::ReportData) => dispatch_report_data(root, args),
+            Some(CommandDispatchKind::RiskScoresSarif) => dispatch_risk_scores_sarif(root, args),
+            Some(CommandDispatchKind::ThreatsSarif) => dispatch_threats_sarif(root, args),
+            None => CommandOutput {
                 status: 2,
                 stdout: String::new(),
-                stderr: format!("unsupported command: {other}\n"),
+                stderr: format!("unsupported command: {command}\n"),
             },
         },
-        Some(CommandDispatchKind::CoverageAudit) => dispatch_coverage_audit(root, args),
-        Some(CommandDispatchKind::InfographicData) => {
-            dispatch_infographic_data(root, args, token, reporter)
-        }
-        Some(CommandDispatchKind::ReportData) => dispatch_report_data(root, args),
-        Some(CommandDispatchKind::RiskScoresSarif) => dispatch_risk_scores_sarif(root, args),
-        Some(CommandDispatchKind::ThreatsSarif) => dispatch_threats_sarif(root, args),
-        None => CommandOutput {
-            status: 2,
-            stdout: String::new(),
-            stderr: format!("unsupported command: {command}\n"),
-        },
-    })
+    )
 }
 
 fn dispatch_infographic_data(
@@ -247,7 +255,8 @@ fn dispatch_report_data(_root: &Path, args: &[&str]) -> CommandOutput {
         }
     };
     let root = _root;
-    let target_dir = match ensure_contained_input_path(root, &target_dir, "report target directory") {
+    let target_dir = match ensure_contained_input_path(root, &target_dir, "report target directory")
+    {
         Ok(path) => path,
         Err(message) => {
             return CommandOutput {
@@ -257,16 +266,17 @@ fn dispatch_report_data(_root: &Path, args: &[&str]) -> CommandOutput {
             };
         }
     };
-    let template_dir = match ensure_contained_input_path(root, &template_dir, "report template directory") {
-        Ok(path) => path,
-        Err(message) => {
-            return CommandOutput {
-                status: 2,
-                stdout: String::new(),
-                stderr: format!("{message}\n"),
-            };
-        }
-    };
+    let template_dir =
+        match ensure_contained_input_path(root, &template_dir, "report template directory") {
+            Ok(path) => path,
+            Err(message) => {
+                return CommandOutput {
+                    status: 2,
+                    stdout: String::new(),
+                    stderr: format!("{message}\n"),
+                };
+            }
+        };
 
     let result = report_data_result(&target_dir, &template_dir);
     if let Err(message) = validate_report_data_result(&result) {
@@ -278,16 +288,17 @@ fn dispatch_report_data(_root: &Path, args: &[&str]) -> CommandOutput {
     }
     let output = render_report_data_result(&result);
     if let Some(output_path) = output_path {
-        let output_path = match ensure_contained_output_path(root, &output_path, "report-data output") {
-            Ok(path) => path,
-            Err(message) => {
-                return CommandOutput {
-                    status: 2,
-                    stdout: String::new(),
-                    stderr: format!("{message}\n"),
-                };
-            }
-        };
+        let output_path =
+            match ensure_contained_output_path(root, &output_path, "report-data output") {
+                Ok(path) => path,
+                Err(message) => {
+                    return CommandOutput {
+                        status: 2,
+                        stdout: String::new(),
+                        stderr: format!("{message}\n"),
+                    };
+                }
+            };
         if let Some(parent) = output_path.parent() {
             if let Err(err) = std::fs::create_dir_all(parent) {
                 return CommandOutput {
@@ -466,7 +477,11 @@ fn dispatch_risk_scores_sarif(_root: &Path, args: &[&str]) -> CommandOutput {
     CommandOutput {
         status: 0,
         stdout: String::new(),
-        stderr: format!("OK: wrote {} results to {}\n", payload.results_count, output.display()),
+        stderr: format!(
+            "OK: wrote {} results to {}\n",
+            payload.results_count,
+            output.display()
+        ),
     }
 }
 
@@ -490,9 +505,7 @@ fn parse_optional_root_arg(default_root: &Path, args: &[&str]) -> Result<PathBuf
     Ok(root)
 }
 
-fn parse_report_data_args(
-    args: &[&str],
-) -> Result<(PathBuf, PathBuf, Option<PathBuf>), String> {
+fn parse_report_data_args(args: &[&str]) -> Result<(PathBuf, PathBuf, Option<PathBuf>), String> {
     let mut target_dir = None;
     let mut template_dir = None;
     let mut output_path = None;
@@ -648,19 +661,29 @@ fn parse_infographic_data_args(
     Ok((root, template, output_path))
 }
 
-fn ensure_contained_input_path(root: &Path, candidate: &Path, label: &str) -> Result<PathBuf, String> {
+fn ensure_contained_input_path(
+    root: &Path,
+    candidate: &Path,
+    label: &str,
+) -> Result<PathBuf, String> {
     if contains_parent_dir(candidate) {
         return Err(format!(
             "path policy failed for {label}: {} contains parent traversal",
             candidate.display()
         ));
     }
-    let root = root
-        .canonicalize()
-        .map_err(|err| format!("path policy failed for {label}: failed to resolve root {}: {err}", root.display()))?;
-    let candidate = candidate
-        .canonicalize()
-        .map_err(|err| format!("path policy failed for {label}: failed to resolve {}: {err}", candidate.display()))?;
+    let root = root.canonicalize().map_err(|err| {
+        format!(
+            "path policy failed for {label}: failed to resolve root {}: {err}",
+            root.display()
+        )
+    })?;
+    let candidate = candidate.canonicalize().map_err(|err| {
+        format!(
+            "path policy failed for {label}: failed to resolve {}: {err}",
+            candidate.display()
+        )
+    })?;
 
     if candidate.starts_with(&root) {
         Ok(candidate)
@@ -673,16 +696,23 @@ fn ensure_contained_input_path(root: &Path, candidate: &Path, label: &str) -> Re
     }
 }
 
-fn ensure_contained_output_path(root: &Path, candidate: &Path, label: &str) -> Result<PathBuf, String> {
+fn ensure_contained_output_path(
+    root: &Path,
+    candidate: &Path,
+    label: &str,
+) -> Result<PathBuf, String> {
     if contains_parent_dir(candidate) {
         return Err(format!(
             "path policy failed for {label}: {} contains parent traversal",
             candidate.display()
         ));
     }
-    let root = root
-        .canonicalize()
-        .map_err(|err| format!("path policy failed for {label}: failed to resolve root {}: {err}", root.display()))?;
+    let root = root.canonicalize().map_err(|err| {
+        format!(
+            "path policy failed for {label}: failed to resolve root {}: {err}",
+            root.display()
+        )
+    })?;
     let candidate = if candidate.is_absolute() {
         candidate.to_path_buf()
     } else {
@@ -698,9 +728,12 @@ fn ensure_contained_output_path(root: &Path, candidate: &Path, label: &str) -> R
             )
         })?;
     }
-    let existing = existing
-        .canonicalize()
-        .map_err(|err| format!("path policy failed for {label}: failed to resolve {}: {err}", existing.display()))?;
+    let existing = existing.canonicalize().map_err(|err| {
+        format!(
+            "path policy failed for {label}: failed to resolve {}: {err}",
+            existing.display()
+        )
+    })?;
 
     if !existing.starts_with(&root) {
         return Err(format!(
@@ -715,9 +748,12 @@ fn ensure_contained_output_path(root: &Path, candidate: &Path, label: &str) -> R
         if !parent.exists() {
             break;
         }
-        let metadata = parent
-            .symlink_metadata()
-            .map_err(|err| format!("path policy failed for {label}: failed to inspect {}: {err}", parent.display()))?;
+        let metadata = parent.symlink_metadata().map_err(|err| {
+            format!(
+                "path policy failed for {label}: failed to inspect {}: {err}",
+                parent.display()
+            )
+        })?;
         if metadata.file_type().is_symlink() {
             return Err(format!(
                 "path policy failed for {label}: {} traverses symlink {}",

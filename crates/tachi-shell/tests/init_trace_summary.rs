@@ -57,13 +57,10 @@ fn init_trace_summary_reports_phases_and_total_elapsed_time() {
     );
 
     assert!(
-        init_run
-            .stderr
-            .lines()
-            .any(|line| {
-                line.starts_with("INIT TRACE summary total=")
-                    && summary_line_has_exact_field(line, "phases", "7")
-            }),
+        init_run.stderr.lines().any(|line| {
+            line.starts_with("INIT TRACE summary total=")
+                && summary_line_has_exact_field(line, "phases", "7")
+        }),
         "init.sh should print a final timing summary line with the phase count"
     );
 }

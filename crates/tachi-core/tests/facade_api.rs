@@ -21,7 +21,10 @@ fn facade_exports_stable_core_surface() {
     assert_eq!(crate_name(), "tachi-core");
 
     let _ = collect_audit(std::path::Path::new("."));
-    let _ = render(&tachi_core::coverage_audit::collect_audit(std::path::Path::new(".")), std::path::Path::new("."));
+    let _ = render(
+        &tachi_core::coverage_audit::collect_audit(std::path::Path::new(".")),
+        std::path::Path::new("."),
+    );
     let _ = detect_artifacts(std::path::Path::new("."));
     let _ = detect_brand_assets(std::path::Path::new("."), None);
     let _ = detect_images(std::path::Path::new("."), std::path::Path::new("."));
@@ -40,7 +43,10 @@ fn facade_exports_stable_core_surface() {
         normalize_maestro_layer_label("foundation models"),
         "L1 — Foundation Model"
     );
-    assert_eq!(normalize_maestro_layer_label("unclassified"), "Unclassified");
+    assert_eq!(
+        normalize_maestro_layer_label("unclassified"),
+        "Unclassified"
+    );
     let owasp_catalog = owasp_coverage_family_catalog();
     assert_eq!(owasp_catalog.len(), 6);
     assert_eq!(owasp_catalog[3].framework, "Mobile 2024");
@@ -88,7 +94,10 @@ fn facade_exports_stable_core_surface() {
     let report = parse_threat_report_md(
         "# Threat Report\n\n## 1. Executive Summary\n\n### Risk Posture\nStable posture.\n\n### Remediation Timeline\n- **Immediate** (1 Critical finding)\n- **Short-term** (2 High findings)\n\n## 2. Architecture Overview\n",
     );
-    assert_eq!(report.executive_narrative.as_deref(), Some("Stable posture."));
+    assert_eq!(
+        report.executive_narrative.as_deref(),
+        Some("Stable posture.")
+    );
     assert_eq!(report.remediation_timeline.len(), 2);
     assert_eq!(report.remediation_timeline[0].timeline, "Immediate");
     assert_eq!(report.remediation_timeline[0].count, 1);
@@ -114,7 +123,10 @@ fn facade_exports_stable_core_surface() {
         &mut findings,
         "## 9. Source Attribution\n\n```yaml\nS-1:\n  - {taxonomy: owasp, id: A07, relationship: primary}\n```\n",
     );
-    assert_eq!(findings[0].source_attribution.as_ref().map(Vec::len), Some(1));
+    assert_eq!(
+        findings[0].source_attribution.as_ref().map(Vec::len),
+        Some(1)
+    );
     let _ = ThreatReportData::default();
     let _ = RemediationTimelineEntry {
         timeline: String::new(),

@@ -6,8 +6,8 @@ use crate::artifacts::{detect_artifacts, determine_tier};
 use crate::coverage_taxonomy::{normalize_maestro_layer_label, MAESTRO_LAYERS};
 use crate::metadata::resolve_report_project_name;
 use crate::parsers::{
-    parse_markdown_table, parse_scope_data, parse_threats_findings,
-    parse_threats_severity, strip_bold, SeverityCounts, ThreatFinding, SEVERITY_ORDER,
+    parse_markdown_table, parse_scope_data, parse_threats_findings, parse_threats_severity,
+    strip_bold, SeverityCounts, ThreatFinding, SEVERITY_ORDER,
 };
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -18,9 +18,7 @@ use executive_architecture::{
     ExecutiveArchitectureCallout, ExecutiveArchitectureCluster, ExecutiveArchitectureFlowEdge,
     ExecutiveArchitectureLayer,
 };
-use maestro_templates::{
-    build_maestro_heatmap_template_data, build_maestro_stack_template_data,
-};
+use maestro_templates::{build_maestro_heatmap_template_data, build_maestro_stack_template_data};
 
 pub const SEVERITY_COLORS: [(&str, &str); 5] = [
     ("Critical", "#DC2626"),
@@ -552,7 +550,8 @@ pub fn compute_maestro_heatmap(per_finding_data: &[MaestroFinding]) -> Vec<Maest
 }
 
 pub fn extract_prompt_scaffold(template_name: &str, repo_root: Option<&Path>) -> PromptScaffold {
-    let repo_root = repo_root.unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap());
+    let repo_root =
+        repo_root.unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap());
     let store = FilesystemPromptScaffoldStore {
         repo_root: repo_root.to_path_buf(),
     };
@@ -671,12 +670,14 @@ pub fn build_infographic_payload_from_content(
     let maestro_data = extract_maestro_data(threats_content);
 
     let template_data = match normalized_template {
-        "executive-architecture" => executive_architecture::build_executive_architecture_template_data(
-            threats_content,
-            tier,
-            source_file,
-            &findings,
-        )?,
+        "executive-architecture" => {
+            executive_architecture::build_executive_architecture_template_data(
+                threats_content,
+                tier,
+                source_file,
+                &findings,
+            )?
+        }
         "maestro-stack" => build_maestro_stack_template_data(&maestro_data),
         "maestro-heatmap" => build_maestro_heatmap_template_data(&maestro_data),
         "baseball-card" | "system-architecture" | "risk-funnel" => {

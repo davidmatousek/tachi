@@ -8,7 +8,8 @@ use serde_json::{json, Value};
 use super::{
     allocate_executive_architecture_callouts, build_executive_architecture_callouts,
     build_executive_architecture_clusters, build_executive_architecture_flow_edges,
-    build_executive_architecture_layers, parse_scope_data, qualifying_executive_architecture_findings,
+    build_executive_architecture_layers, parse_scope_data,
+    qualifying_executive_architecture_findings,
 };
 
 #[derive(Debug, Clone, Serialize)]

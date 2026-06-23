@@ -16,11 +16,7 @@ pub struct CommandFixture {
     pub output_hash: String,
 }
 
-pub fn serialize_fixture(
-    command: &str,
-    input: &Value,
-    output: &Value,
-) -> Result<String, String> {
+pub fn serialize_fixture(command: &str, input: &Value, output: &Value) -> Result<String, String> {
     let fixture = CommandFixture {
         schema_version: FIXTURE_SCHEMA_VERSION,
         command: command.trim().to_string(),

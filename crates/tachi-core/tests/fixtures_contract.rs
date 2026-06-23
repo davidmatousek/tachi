@@ -17,16 +17,22 @@ fn serialize_fixture_emits_versioned_command_contract() {
         }
     });
 
-    let rendered = serialize_fixture("infographic-data", &input, &output)
-        .expect("serialize command fixture");
+    let rendered =
+        serialize_fixture("infographic-data", &input, &output).expect("serialize command fixture");
     let parsed = validate_fixture_schema(&rendered).expect("validate serialized fixture");
 
     assert_eq!(parsed.command, "infographic-data");
     assert_eq!(parsed.schema_version, 1);
     assert_eq!(parsed.input, input);
     assert_eq!(parsed.output, output);
-    assert_eq!(parsed.input_hash, hash_fixture_payload(&parsed.input).unwrap());
-    assert_eq!(parsed.output_hash, hash_fixture_payload(&parsed.output).unwrap());
+    assert_eq!(
+        parsed.input_hash,
+        hash_fixture_payload(&parsed.input).unwrap()
+    );
+    assert_eq!(
+        parsed.output_hash,
+        hash_fixture_payload(&parsed.output).unwrap()
+    );
 }
 
 #[test]

@@ -1,11 +1,11 @@
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::os::unix::fs::symlink;
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
+use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use std::process::Command;
 
 use tachi_shell::progress::{
     cancel_running_command, CancellationToken, ProgressEvent, ProgressReporter,
@@ -128,7 +128,10 @@ fn dispatch_command_with_progress_can_cancel_running_install_script() {
         .arg(&child_pid)
         .status()
         .expect("probe child pid");
-    assert!(!kill_status.success(), "background child should not survive cancel");
+    assert!(
+        !kill_status.success(),
+        "background child should not survive cancel"
+    );
 }
 
 #[test]
@@ -162,7 +165,10 @@ fn dispatch_command_times_out_long_running_install_script_and_cleans_children() 
         .arg(&child_pid)
         .status()
         .expect("probe child pid");
-    assert!(!kill_status.success(), "background child should not survive timeout");
+    assert!(
+        !kill_status.success(),
+        "background child should not survive timeout"
+    );
 }
 
 #[test]
@@ -206,7 +212,11 @@ fn dispatch_command_rejects_output_path_escape_and_parent_traversal() {
     let template_dir = root.join("templates/tachi/security-report");
     fs::create_dir_all(&template_dir).expect("create template dir");
     fs::create_dir_all(&target_dir).expect("create target dir");
-    fs::write(target_dir.join("threats.md"), "# Threat Model: Escape Test\n").expect("write threats");
+    fs::write(
+        target_dir.join("threats.md"),
+        "# Threat Model: Escape Test\n",
+    )
+    .expect("write threats");
     let output_path = std::env::temp_dir().join(format!(
         "tachi-rust-escape-{}",
         FIXTURE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
@@ -226,12 +236,19 @@ fn dispatch_command_rejects_output_path_escape_and_parent_traversal() {
     );
 
     assert_eq!(output.status, 2);
-    assert!(output.stderr.contains("path policy failed for report-data output"));
+    assert!(output
+        .stderr
+        .contains("path policy failed for report-data output"));
 
     let traversal = dispatch_command(
         "infographic-data",
         &root,
-        &["--root", root.join("..").to_string_lossy().as_ref(), "--template", "maestro-stack"],
+        &[
+            "--root",
+            root.join("..").to_string_lossy().as_ref(),
+            "--template",
+            "maestro-stack",
+        ],
     );
     assert_eq!(traversal.status, 2);
     assert!(traversal.stderr.contains("contains parent traversal"));
@@ -261,5 +278,7 @@ fn dispatch_command_rejects_symlink_escape_in_input_path() {
     );
 
     assert_eq!(output.status, 2);
-    assert!(output.stderr.contains("path policy failed for threats input"));
+    assert!(output
+        .stderr
+        .contains("path policy failed for threats input"));
 }

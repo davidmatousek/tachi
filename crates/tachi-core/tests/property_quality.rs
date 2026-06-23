@@ -41,11 +41,26 @@ fn normalize_optional_text_handles_generated_presence_and_blank_cases() {
 #[test]
 fn largest_remainder_preserves_totals_and_order_across_generated_cases() {
     let cases = [
-        (vec![("critical", 0), ("high", 0), ("medium", 0), ("low", 0)], 100),
-        (vec![("critical", 1), ("high", 1), ("medium", 1), ("low", 1)], 100),
-        (vec![("critical", 9), ("high", 3), ("medium", 0), ("low", 0)], 100),
-        (vec![("critical", 2), ("high", 7), ("medium", 11), ("low", 13)], 37),
-        (vec![("critical", 5), ("high", 0), ("medium", 0), ("low", 1)], 12),
+        (
+            vec![("critical", 0), ("high", 0), ("medium", 0), ("low", 0)],
+            100,
+        ),
+        (
+            vec![("critical", 1), ("high", 1), ("medium", 1), ("low", 1)],
+            100,
+        ),
+        (
+            vec![("critical", 9), ("high", 3), ("medium", 0), ("low", 0)],
+            100,
+        ),
+        (
+            vec![("critical", 2), ("high", 7), ("medium", 11), ("low", 13)],
+            37,
+        ),
+        (
+            vec![("critical", 5), ("high", 0), ("medium", 0), ("low", 1)],
+            12,
+        ),
     ];
 
     for (counts, target) in cases {

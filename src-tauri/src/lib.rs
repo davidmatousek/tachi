@@ -2,9 +2,9 @@ use std::path::{Path, PathBuf};
 
 use tachi_shell::tauri_bridge::{dispatch_command, dispatch_command_with_progress};
 
+pub mod error;
 pub mod offline;
 pub mod registry;
-pub mod error;
 pub mod release_artifacts;
 pub mod schema;
 
@@ -82,14 +82,11 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-pub use tachi_shell::progress::{
-    cancel_running_command, emit_progress_event, invoke_with_progress, CancellationToken,
-    NoopProgressReporter, ProgressEvent, ProgressReporter,
-};
+pub use error::{DesktopError, DesktopErrorKind};
 pub use offline::{
-    bootstrap_from_cache, bootstrap_from_cache_typed, check_for_update,
-    check_for_update_typed, restore_offline_cache, restore_offline_cache_typed, BootstrapReport,
-    OfflineRestoreReport, UpdateCheck,
+    bootstrap_from_cache, bootstrap_from_cache_typed, check_for_update, check_for_update_typed,
+    restore_offline_cache, restore_offline_cache_typed, BootstrapReport, OfflineRestoreReport,
+    UpdateCheck,
 };
 pub use registry::{collect_cli_commands, collect_tauri_commands, diff_registry, RegistryDiff};
 pub use release_artifacts::{
@@ -101,5 +98,8 @@ pub use schema::{
     render_schema_error, validate_invoke_input, validate_invoke_input_typed,
     validate_invoke_output, validate_invoke_output_typed, DesktopInvokeInput,
 };
-pub use error::{DesktopError, DesktopErrorKind};
 pub use tachi_shell::commands::CommandOutput;
+pub use tachi_shell::progress::{
+    cancel_running_command, emit_progress_event, invoke_with_progress, CancellationToken,
+    NoopProgressReporter, ProgressEvent, ProgressReporter,
+};
