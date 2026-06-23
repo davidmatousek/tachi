@@ -12,8 +12,17 @@ permissions:
 
 jobs:
   cargo-test:
-    name: cargo test --workspace --all-targets
+    name: cargo test -p ${{ matrix.package }} --all-targets
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package: tachi-core
+          - package: tachi-shell
+          - package: tachi-cli
+          - package: tachi-tauri
     env:
       CARGO_TERM_COLOR: always
     steps:
@@ -30,4 +39,4 @@ jobs:
             libwebkit2gtk-4.1-dev pkg-config
 
       - name: Run full workspace test suite
-        run: cargo test --workspace --all-targets
+        run: cargo test -p ${{ matrix.package }} --all-targets

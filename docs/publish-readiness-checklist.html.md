@@ -113,6 +113,7 @@ Use this checklist before publishing to GitHub or cutting a release.
 - [ ] `.github/workflows/gitleaks.yml` is green for the publish branch.
 - [ ] `.github/workflows/rust-workspace.yml` is green and is not
       path-filtered on pull requests.
+- [ ] `.github/workflows/rust-workspace.yml` completes within the runner window via its package-sized test matrix.
 - [ ] `.github/workflows/rust-clippy.yml` is green.
 - [ ] `.github/workflows/rust-clippy.yml` fails closed on warnings while still
       uploading SARIF with `if: always()`.
