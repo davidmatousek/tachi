@@ -13,6 +13,7 @@ use crate::progress::CancellationToken;
 use crate::progress::ProgressReporter;
 
 use super::runtime_helpers;
+use super::runtime_helpers::ScriptOutputSink;
 use super::CommandOutput;
 
 pub(crate) const DEFAULT_EXECUTION_TIMEOUT: Duration = Duration::from_secs(30);
@@ -20,16 +21,17 @@ pub(crate) const DEFAULT_OUTPUT_CAP_BYTES: usize = 64 * 1024;
 const POLL_INTERVAL: Duration = Duration::from_millis(10);
 
 pub(crate) trait ScriptExecutor {
-    fn run(&self, request: ScriptExecutionRequest<'_>) -> CommandOutput;
+    fn run<S: ScriptOutputSink + Sync>(&self, request: ScriptExecutionRequest<'_, S>) -> CommandOutput;
 }
 
-pub(crate) struct ScriptExecutionRequest<'a> {
+pub(crate) struct ScriptExecutionRequest<'a, S: ScriptOutputSink + Sync> {
     pub script_name: &'a str,
     pub script_path: &'a Path,
     pub cwd: &'a Path,
     pub args: &'a [&'a str],
     pub timeout: Duration,
     pub output_cap: usize,
+    pub sink: &'a S,
     pub token: &'a CancellationToken,
     pub reporter: &'a mut dyn ProgressReporter,
 }
@@ -37,13 +39,14 @@ pub(crate) struct ScriptExecutionRequest<'a> {
 pub(crate) struct SystemScriptExecutor;
 
 impl ScriptExecutor for SystemScriptExecutor {
-    fn run(&self, request: ScriptExecutionRequest<'_>) -> CommandOutput {
+    fn run<S: ScriptOutputSink + Sync>(&self, request: ScriptExecutionRequest<'_, S>) -> CommandOutput {
         run_system_script(request)
     }
 }
 
-pub(crate) fn run_script_command_with_progress_using<E: ScriptExecutor>(
+pub(crate) fn run_script_command_with_progress_using<E: ScriptExecutor, S: ScriptOutputSink + Sync>(
     executor: &E,
+    sink: &S,
     script_dir: &Path,
     script_name: &str,
     args: &[&str],
@@ -62,12 +65,13 @@ pub(crate) fn run_script_command_with_progress_using<E: ScriptExecutor>(
         args,
         timeout,
         output_cap,
+        sink,
         token,
         reporter,
     })
 }
 
-fn run_system_script(request: ScriptExecutionRequest<'_>) -> CommandOutput {
+fn run_system_script<S: ScriptOutputSink + Sync>(request: ScriptExecutionRequest<'_, S>) -> CommandOutput {
     emit_progress_event(request.reporter, request.script_name, "starting");
     if request.token.is_cancelled() {
         emit_progress_event(request.reporter, request.script_name, "cancelled");
@@ -109,7 +113,7 @@ fn run_system_script(request: ScriptExecutionRequest<'_>) -> CommandOutput {
     loop {
         if request.token.is_cancelled() {
             terminate_process_group(&mut child);
-            return runtime_helpers::finalize_script_output(
+            return request.sink.finalize_script_output(
                 request.script_name,
                 request.reporter,
                 child.wait(),
@@ -122,7 +126,7 @@ fn run_system_script(request: ScriptExecutionRequest<'_>) -> CommandOutput {
 
         if start.elapsed() >= request.timeout {
             terminate_process_group(&mut child);
-            return runtime_helpers::finalize_script_output(
+            return request.sink.finalize_script_output(
                 request.script_name,
                 request.reporter,
                 child.wait(),
@@ -205,19 +209,49 @@ mod tests {
     use crate::progress::NoopProgressReporter;
     use std::cell::Cell;
     use std::path::PathBuf;
+    use super::super::runtime_helpers;
+    #[cfg(unix)]
+    use std::os::unix::process::ExitStatusExt;
+
+    struct FakeScriptOutputSink;
+
+    impl ScriptOutputSink for FakeScriptOutputSink {
+        fn finalize_script_output(
+            &self,
+            script_name: &str,
+            reporter: &mut dyn ProgressReporter,
+            wait_result: std::io::Result<std::process::ExitStatus>,
+            stdout_handle: std::thread::JoinHandle<Vec<u8>>,
+            stderr_handle: std::thread::JoinHandle<Vec<u8>>,
+            status: i32,
+            phase: &str,
+        ) -> CommandOutput {
+            runtime_helpers::finalize_script_output(
+                script_name,
+                reporter,
+                wait_result,
+                stdout_handle,
+                stderr_handle,
+                status,
+                phase,
+            )
+        }
+    }
 
     struct FakeScriptExecutor {
         calls: Cell<usize>,
+        expected_sink: *const (),
     }
 
     impl ScriptExecutor for FakeScriptExecutor {
-        fn run(&self, request: ScriptExecutionRequest<'_>) -> CommandOutput {
+        fn run<S: ScriptOutputSink + Sync>(&self, request: ScriptExecutionRequest<'_, S>) -> CommandOutput {
             self.calls.set(self.calls.get() + 1);
             assert_eq!(request.script_name, "install.sh");
             assert_eq!(request.cwd, Path::new("/tmp/repo"));
             assert_eq!(request.args, &["--yes"]);
             assert_eq!(request.timeout, DEFAULT_EXECUTION_TIMEOUT);
             assert_eq!(request.output_cap, DEFAULT_OUTPUT_CAP_BYTES);
+            assert_eq!(request.sink as *const S as *const (), self.expected_sink);
             CommandOutput {
                 status: 7,
                 stdout: String::from("fake"),
@@ -228,8 +262,10 @@ mod tests {
 
     #[test]
     fn injected_executor_receives_script_request_without_spawning() {
+        let sink = FakeScriptOutputSink;
         let executor = FakeScriptExecutor {
             calls: Cell::new(0),
+            expected_sink: &sink as *const _ as *const (),
         };
         let script_dir = PathBuf::from("/tmp/repo/scripts");
         let token = CancellationToken::new();
@@ -237,6 +273,7 @@ mod tests {
 
         let output = run_script_command_with_progress_using(
             &executor,
+            &sink,
             &script_dir,
             "install.sh",
             &["--yes"],
@@ -248,5 +285,26 @@ mod tests {
         assert_eq!(output.status, 7);
         assert_eq!(output.stdout, "fake");
         assert_eq!(executor.calls.get(), 1);
+    }
+
+    #[test]
+    fn system_output_sink_captures_streams_and_finalizes_output() {
+        let sink = FakeScriptOutputSink;
+        let mut reporter = NoopProgressReporter;
+        let stdout_handle = std::thread::spawn(|| b"out".to_vec());
+        let stderr_handle = std::thread::spawn(|| b"err".to_vec());
+        let output = sink.finalize_script_output(
+            "script",
+            &mut reporter,
+            Ok(std::process::ExitStatus::from_raw(0)),
+            stdout_handle,
+            stderr_handle,
+            0,
+            "completed",
+        );
+
+        assert_eq!(output.status, 0);
+        assert_eq!(output.stdout, "out");
+        assert_eq!(output.stderr, "err");
     }
 }

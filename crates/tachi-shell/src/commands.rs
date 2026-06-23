@@ -205,6 +205,7 @@ pub(crate) fn run_script_command_with_progress(
 ) -> CommandOutput {
     script_executor::run_script_command_with_progress_using(
         &script_executor::SystemScriptExecutor,
+        &runtime_helpers::SystemScriptOutputSink,
         script_dir,
         script_name,
         args,

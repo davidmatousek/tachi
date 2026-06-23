@@ -5,6 +5,44 @@ use crate::progress::{emit_progress_event, ProgressReporter};
 
 use super::CommandOutput;
 
+pub(crate) trait ScriptOutputSink {
+    fn finalize_script_output(
+        &self,
+        script_name: &str,
+        reporter: &mut dyn ProgressReporter,
+        wait_result: std::io::Result<std::process::ExitStatus>,
+        stdout_handle: JoinHandle<Vec<u8>>,
+        stderr_handle: JoinHandle<Vec<u8>>,
+        status: i32,
+        phase: &str,
+    ) -> CommandOutput;
+}
+
+pub(crate) struct SystemScriptOutputSink;
+
+impl ScriptOutputSink for SystemScriptOutputSink {
+    fn finalize_script_output(
+        &self,
+        script_name: &str,
+        reporter: &mut dyn ProgressReporter,
+        wait_result: std::io::Result<std::process::ExitStatus>,
+        stdout_handle: JoinHandle<Vec<u8>>,
+        stderr_handle: JoinHandle<Vec<u8>>,
+        status: i32,
+        phase: &str,
+    ) -> CommandOutput {
+        finalize_script_output(
+            script_name,
+            reporter,
+            wait_result,
+            stdout_handle,
+            stderr_handle,
+            status,
+            phase,
+        )
+    }
+}
+
 pub(crate) fn finalize_script_output(
     script_name: &str,
     reporter: &mut dyn ProgressReporter,
