@@ -342,6 +342,24 @@ fn parse_threats_findings_preserves_absent_and_empty_source_attribution_semantic
 }
 
 #[test]
+fn parse_threats_findings_skips_rows_with_missing_ids() {
+    let markdown = r#"
+## 7. Recommended Actions
+
+| Finding ID | Component | Threat | Risk Level | Mitigation |
+| --- | --- | --- | --- | --- |
+| | API | Missing identifier | High | Fix it |
+| S-1 | UI | Valid finding | Low | Fix it |
+"#;
+
+    let findings = parse_threats_findings(markdown).expect("parse findings");
+
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0].id, "S-1");
+    assert_eq!(findings[0].component, "UI");
+}
+
+#[test]
 fn validate_source_attribution_rejects_invalid_taxonomy_and_relationship() {
     let invalid_taxonomy =
         include_str!("../../../tests/scripts/fixtures/source_attribution/invalid_taxonomy.md");

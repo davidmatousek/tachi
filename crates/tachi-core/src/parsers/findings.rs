@@ -300,6 +300,9 @@ pub fn parse_threats_findings(content: &str) -> Result<Vec<ThreatFinding>, Strin
 
     for row in rows {
         let id = row.get("Finding ID").cloned().unwrap_or_default();
+        if id.trim().is_empty() {
+            continue;
+        }
         let source_attribution = source_attribution_block
             .as_ref()
             .and_then(|block| block.get(&id).cloned());

@@ -117,3 +117,6 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
 - AQ-042: `crates/tachi-core/src/infographic/executive_architecture.rs`
   now owns executive-architecture payload assembly and its direct unit test,
   trimming the parent infographic module without changing golden output.
+- AQ-051: `crates/tachi-core/src/parsers/findings.rs` now skips malformed
+  recommendation rows with empty Finding IDs, and the parser test suite
+  carries a focused regression for that source-level edge case.
