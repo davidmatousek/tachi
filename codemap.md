@@ -148,3 +148,6 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   `crates/tachi-core/src/coverage_attestation.rs` now route template and
   taxonomy loading through injected stores, with filesystem-equivalence tests
   preserving the existing outputs.
+- AQ-042: `crates/tachi-core/src/infographic/prompt_scaffold.rs` now owns the
+  prompt scaffold loading and parsing seam, with filesystem and injected-store
+  tests preserving the existing infographic payload surface.

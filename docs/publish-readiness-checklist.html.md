@@ -97,6 +97,8 @@ Use this checklist before publishing to GitHub or cutting a release.
       agree on the publish gate, security surfaces, and remote publication flow.
 - [ ] The shell executor seam is documented in the BOM and covered by focused
       shell crate tests.
+- [ ] The infographic prompt scaffold seam is documented in the BOM and
+      covered by focused core crate tests.
 - [ ] `make docs-version-gate` passes.
 - [ ] `make docs-archive-version-gate` passes.
 - [ ] Public docs do not promise unsupported features or outdated workflows.

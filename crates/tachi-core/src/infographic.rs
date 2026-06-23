@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::artifacts::{detect_artifacts, determine_tier};
 use crate::coverage_taxonomy::{normalize_maestro_layer_label, MAESTRO_LAYERS};
@@ -14,11 +14,16 @@ use serde_json::{json, Value};
 
 mod executive_architecture;
 mod maestro_templates;
+mod prompt_scaffold;
 use executive_architecture::{
     ExecutiveArchitectureCallout, ExecutiveArchitectureCluster, ExecutiveArchitectureFlowEdge,
     ExecutiveArchitectureLayer,
 };
 use maestro_templates::{build_maestro_heatmap_template_data, build_maestro_stack_template_data};
+pub use prompt_scaffold::{
+    extract_prompt_scaffold, extract_prompt_scaffold_from_store, PromptScaffold,
+    PromptScaffoldStore,
+};
 
 pub const SEVERITY_COLORS: [(&str, &str); 5] = [
     ("Critical", "#DC2626"),
@@ -27,54 +32,6 @@ pub const SEVERITY_COLORS: [(&str, &str); 5] = [
     ("Low", "#2563EB"),
     ("Note", "#6B7280"),
 ];
-
-const SCAFFOLD_TEMPLATES: [&str; 5] = [
-    "baseball-card",
-    "risk-funnel",
-    "system-architecture",
-    "maestro-stack",
-    "maestro-heatmap",
-];
-
-const TEMPLATE_FILES: [(&str, &str); 5] = [
-    ("baseball-card", "infographic-baseball-card.md"),
-    ("risk-funnel", "infographic-risk-funnel.md"),
-    ("system-architecture", "infographic-system-architecture.md"),
-    ("maestro-stack", "infographic-maestro-stack.md"),
-    ("maestro-heatmap", "infographic-maestro-heatmap.md"),
-];
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct PromptScaffold {
-    pub preamble: String,
-    pub postamble: String,
-    pub found: bool,
-}
-
-pub trait PromptScaffoldStore {
-    fn load_template(&self, template_name: &str) -> Option<String>;
-}
-
-struct FilesystemPromptScaffoldStore {
-    repo_root: PathBuf,
-}
-
-impl PromptScaffoldStore for FilesystemPromptScaffoldStore {
-    fn load_template(&self, template_name: &str) -> Option<String> {
-        let template_file = TEMPLATE_FILES
-            .iter()
-            .find(|(name, _)| *name == template_name)
-            .map(|(_, file)| *file)?;
-
-        let template_path = self
-            .repo_root
-            .join("templates")
-            .join("tachi")
-            .join("infographics")
-            .join(template_file);
-        fs::read_to_string(template_path).ok()
-    }
-}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct MaestroLayerDistribution {
@@ -547,87 +504,6 @@ pub fn compute_maestro_heatmap(per_finding_data: &[MaestroFinding]) -> Vec<Maest
     }
 
     result
-}
-
-pub fn extract_prompt_scaffold(template_name: &str, repo_root: Option<&Path>) -> PromptScaffold {
-    let repo_root =
-        repo_root.unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap());
-    let store = FilesystemPromptScaffoldStore {
-        repo_root: repo_root.to_path_buf(),
-    };
-    extract_prompt_scaffold_from_store(template_name, &store)
-}
-
-pub fn extract_prompt_scaffold_from_store(
-    template_name: &str,
-    store: &dyn PromptScaffoldStore,
-) -> PromptScaffold {
-    if !SCAFFOLD_TEMPLATES.contains(&template_name) {
-        return PromptScaffold::default();
-    }
-
-    let Some(content) = store.load_template(template_name) else {
-        return PromptScaffold::default();
-    };
-
-    let mut in_prompt_section = false;
-    let mut in_fence = false;
-    let mut fence_lines = Vec::new();
-    let mut prompt_text = None;
-
-    for line in content.lines() {
-        let stripped = line.trim();
-        if !in_prompt_section
-            && stripped.starts_with("##")
-            && stripped.contains("Gemini")
-            && stripped.contains("Prompt")
-        {
-            in_prompt_section = true;
-            continue;
-        }
-
-        if in_prompt_section && !in_fence && stripped.starts_with("```") {
-            in_fence = true;
-            continue;
-        }
-
-        if in_fence && stripped.starts_with("```") {
-            prompt_text = Some(fence_lines.join("\n"));
-            break;
-        }
-
-        if in_fence {
-            fence_lines.push(line.to_string());
-        }
-    }
-
-    let Some(prompt_text) = prompt_text else {
-        return PromptScaffold::default();
-    };
-
-    let marker = "DATA CONTENT (render this";
-    let Some(marker_idx) = prompt_text.find(marker) else {
-        return PromptScaffold::default();
-    };
-
-    let marker_line_end = prompt_text[marker_idx..]
-        .find('\n')
-        .map(|offset| marker_idx + offset)
-        .unwrap_or(prompt_text.len());
-
-    let preamble = format!("{}\n", prompt_text[..marker_line_end].trim_end());
-
-    let footer_idx = prompt_text
-        .find("\nFOOTER")
-        .or_else(|| prompt_text.find("FOOTER"))
-        .unwrap_or(prompt_text.len());
-    let postamble = prompt_text[footer_idx..].trim().to_string();
-
-    PromptScaffold {
-        preamble,
-        postamble,
-        found: true,
-    }
 }
 
 pub fn build_infographic_payload_from_content(
