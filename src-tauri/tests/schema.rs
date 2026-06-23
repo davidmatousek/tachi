@@ -34,6 +34,64 @@ fn validate_invoke_input_returns_typed_requests() {
         }
     );
 
+    let init = validate_invoke_input("init", &root, &["--precommit"])
+        .expect("init schema");
+    assert_eq!(
+        init,
+        DesktopInvokeInput::ControlPlane {
+            command: "init".to_string(),
+            args: vec!["--precommit".to_string()],
+        }
+    );
+
+    let update = validate_invoke_input(
+        "update",
+        &root,
+        &[
+            "--dry-run",
+            "--yes",
+            "--upstream-url",
+            "https://example.com/upstream.git",
+        ],
+    )
+    .expect("update schema");
+    assert_eq!(
+        update,
+        DesktopInvokeInput::ControlPlane {
+            command: "update".to_string(),
+            args: vec![
+                "--dry-run".to_string(),
+                "--yes".to_string(),
+                "--upstream-url".to_string(),
+                "https://example.com/upstream.git".to_string(),
+            ],
+        }
+    );
+
+    let bootstrap = validate_invoke_input(
+        "bootstrap",
+        &root,
+        &[
+            "--apply",
+            "--json",
+            "--upstream-url",
+            "https://example.com/upstream.git",
+        ],
+    )
+    .expect("bootstrap schema");
+    assert_eq!(
+        bootstrap,
+        DesktopInvokeInput::ControlPlane {
+            command: "bootstrap".to_string(),
+            args: vec![
+                "--apply".to_string(),
+                "--json".to_string(),
+                "--upstream-url".to_string(),
+                "https://example.com/upstream.git".to_string(),
+            ],
+        }
+    );
+
     let report = validate_invoke_input(
         "report-data",
         &root,
@@ -244,6 +302,14 @@ fn validate_invoke_output_rejects_schema_drift() {
     let err = validate_invoke_output("risk-scores-sarif", &invalid_risk_scores)
         .expect_err("reject malformed risk scores sarif marker");
     assert!(err.contains("risk scores SARIF output missing completion marker"));
+
+    let valid_risk_scores = tachi_shell::commands::CommandOutput {
+        status: 0,
+        stdout: String::new(),
+        stderr: String::from("OK: wrote risk.sarif"),
+    };
+    validate_invoke_output("risk-scores-sarif", &valid_risk_scores)
+        .expect("valid risk scores sarif marker");
 }
 
 #[test]

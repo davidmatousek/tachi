@@ -151,3 +151,6 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
 - AQ-042: `crates/tachi-core/src/infographic/prompt_scaffold.rs` now owns the
   prompt scaffold loading and parsing seam, with filesystem and injected-store
   tests preserving the existing infographic payload surface.
+- AQ-034: `src-tauri/tests/schema.rs` now exercises all registered command
+  success paths and output validation markers, while CLI control-plane parity
+  tests remain green in `crates/tachi-cli/tests/control_plane_cli.rs`.
