@@ -74,6 +74,39 @@ fn publishing_security_docs_are_repo_specific_and_privacy_aware() {
 }
 
 #[test]
+fn fuzz_mutation_docs_and_baseline_artifact_are_repo_specific_and_offline_safe() {
+    let root = workspace_root();
+    let audit = fs::read_to_string(root.join("docs/testing/fuzz-mutation-audit.md"))
+        .expect("fuzz mutation audit exists");
+    let baseline = fs::read_to_string(root.join("docs/reports/fuzz-mutation-baseline.md"))
+        .expect("fuzz mutation baseline exists");
+
+    for required in [
+        "cargo fuzz run parser_roundtrip",
+        "cargo fuzz run reporting_roundtrip",
+        "cargo-mutants run --workspace --test",
+        "Follow-up Beads tasks",
+        "advisory and starts observationally",
+    ] {
+        assert!(
+            audit.contains(required) || baseline.contains(required),
+            "fuzz/mutation docs should mention {required}"
+        );
+    }
+
+    assert!(
+        baseline.contains("not executed in this environment"),
+        "baseline should remain offline-safe"
+    );
+    for forbidden in ["BEGIN PRIVATE KEY", "github_pat_", "ghp_", "sk-"] {
+        assert!(
+            !baseline.contains(forbidden),
+            "baseline should not contain {forbidden}"
+        );
+    }
+}
+
+#[test]
 fn docs_archive_version_gate_allows_archival_references_and_rejects_maintained_drift() {
     let allowlisted_root = unique_temp_root("tachi-rust-docs-archive-allowlisted");
     write_file(

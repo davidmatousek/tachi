@@ -1,6 +1,6 @@
 # Agentic-Oriented-Development-Kit - Common Commands
 
-.PHONY: help init check update spec plan tasks analyze review-spec review-plan test coverage-audit llvm-cov workflow-gate docs-version-gate docs-archive-version-gate scaffold-dependency-gate release-gate publish-gate
+.PHONY: help init check update spec plan tasks analyze review-spec review-plan test coverage-audit llvm-cov workflow-gate docs-version-gate docs-archive-version-gate scaffold-dependency-gate release-gate fuzz-mutation-gate publish-gate
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -78,6 +78,13 @@ scaffold-dependency-gate: ## Validate scaffold dependency floors against known D
 release-gate: ## Validate release artifact parity and checksum matrix
 	@cargo test -p tachi-tauri --test release_artifacts -- --nocapture
 
+fuzz-mutation-gate: ## Validate documented fuzz/mutation lane and baseline report artifact
+	@test -f docs/testing/fuzz-mutation-audit.md
+	@test -f docs/reports/fuzz-mutation-baseline.md
+	@grep -q "cargo fuzz" docs/testing/fuzz-mutation-audit.md
+	@grep -q "cargo-mutants" docs/testing/fuzz-mutation-audit.md
+	@grep -qi "follow-up Beads" docs/reports/fuzz-mutation-baseline.md
+
 publish-gate: ## Run end-to-end publish-readiness gates locally
 	@$(MAKE) check
 	@$(MAKE) workflow-gate
@@ -85,6 +92,7 @@ publish-gate: ## Run end-to-end publish-readiness gates locally
 	@$(MAKE) docs-archive-version-gate
 	@$(MAKE) scaffold-dependency-gate
 	@$(MAKE) release-gate
+	@$(MAKE) fuzz-mutation-gate
 	@$(MAKE) test
 	@cargo clippy --all-targets -- -D warnings
 	@$(MAKE) coverage-audit
