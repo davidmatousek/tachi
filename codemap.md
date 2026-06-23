@@ -135,3 +135,7 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
 - AQ-033: `crates/tachi-shell/src/commands/runtime_helpers.rs` now owns
   stream capture and final output assembly, trimming pure output-handling code
   out of `commands.rs` with direct helper coverage.
+- AQ-043: `crates/tachi-core/src/infographic.rs` and
+  `crates/tachi-core/src/coverage_attestation.rs` now route template and
+  taxonomy loading through injected stores, with filesystem-equivalence tests
+  preserving the existing outputs.

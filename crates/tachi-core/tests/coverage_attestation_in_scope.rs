@@ -2,8 +2,8 @@ use std::fs;
 use std::path::Path;
 
 use tachi_core::coverage_attestation::{
-    build_per_framework_aggregates_in_dir, load_framework_yaml_in_scope_record_counts_from_dir,
-    load_framework_yaml_records_from_dir,
+    build_per_framework_aggregates_from_store, build_per_framework_aggregates_in_dir,
+    load_framework_yaml_in_scope_record_counts_from_dir, load_framework_yaml_records_from_dir,
 };
 use tachi_core::parsers::{SourceAttributionRecord, ThreatFinding};
 
@@ -21,6 +21,20 @@ impl tachi_core::coverage_attestation::TaxonomyStore for FakeTaxonomyStore {
             .get(&(framework_name.to_string(), in_scope_only))
             .cloned()
             .unwrap_or_default()
+    }
+}
+
+struct DirTaxonomyStore {
+    taxonomy_dir: std::path::PathBuf,
+}
+
+impl tachi_core::coverage_attestation::TaxonomyStore for DirTaxonomyStore {
+    fn load_framework_records(
+        &self,
+        framework_name: &str,
+        in_scope_only: bool,
+    ) -> Vec<tachi_core::coverage_attestation::FrameworkRecord> {
+        load_framework_yaml_records_from_dir(&self.taxonomy_dir, framework_name, in_scope_only)
     }
 }
 
@@ -150,4 +164,31 @@ fn build_per_framework_aggregates_from_store_uses_fake_taxonomy_provider() {
     assert_eq!(owasp.in_scope_yaml_record_count, 1);
     assert_eq!(owasp.covered_count, 1);
     assert_eq!(owasp.gap_count, 0);
+}
+
+#[test]
+fn build_per_framework_aggregates_from_store_matches_dir_backed_adapter() {
+    let root = temp_root("tachi-coverage-attestation-dir-adapter");
+    let taxonomy_dir = root.join("schemas/taxonomy");
+    write_taxonomy_file(
+        &taxonomy_dir,
+        "owasp",
+        r#"- id: A01
+  out_of_scope: false
+- id: A02
+  out_of_scope: true
+"#,
+    );
+
+    let dir_store = DirTaxonomyStore {
+        taxonomy_dir: taxonomy_dir.clone(),
+    };
+    let findings = vec![finding("F-1", "owasp", "A01", "primary")];
+
+    let from_dir = build_per_framework_aggregates_in_dir(&taxonomy_dir, &findings);
+    let from_store = build_per_framework_aggregates_from_store(&dir_store, &findings);
+
+    assert_eq!(from_store, from_dir);
+
+    let _ = fs::remove_dir_all(root);
 }
