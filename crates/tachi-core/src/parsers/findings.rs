@@ -552,3 +552,50 @@ fn parse_source_attribution_list_item(
         relationship,
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{parse_finding_pattern, parse_threats_findings};
+
+    #[test]
+    fn parse_finding_pattern_normalizes_sentinels_and_hyphenated_values() {
+        assert_eq!(parse_finding_pattern(Some(" AGENT-COLLUSION ")), "agent_collusion");
+        assert_eq!(parse_finding_pattern(Some("multiple")), "multiple");
+        assert_eq!(parse_finding_pattern(Some("—")), "none");
+        assert_eq!(parse_finding_pattern(Some("_")), "none");
+        assert_eq!(parse_finding_pattern(Some("unknown")), "none");
+        assert_eq!(parse_finding_pattern(None), "none");
+    }
+
+    #[test]
+    fn parse_threats_findings_returns_empty_without_recommended_actions_section() {
+        let empty = parse_threats_findings("# Threat Model\n\nNothing here.").expect("parse empty");
+        assert!(empty.is_empty());
+
+        let missing_header = parse_threats_findings(
+            "## 7. Recommended Actions\n\n## 9. Source Attribution\n```yaml\n```",
+        )
+        .expect("parse missing header");
+        assert!(missing_header.is_empty());
+    }
+
+    #[test]
+    fn parse_threats_findings_rejects_bad_source_attribution_records() {
+        let markdown = r#"
+## 7. Recommended Actions
+
+| Finding ID | Component | Threat | Risk Level | Mitigation |
+| --- | --- | --- | --- | --- |
+| S-1 | API | Broken auth | High | Fix it |
+
+## 9. Source Attribution
+```yaml
+S-1:
+  - {taxonomy: "bogus", id: "X", relationship: "primary"}
+```
+"#;
+
+        let err = parse_threats_findings(markdown).expect_err("bad attribution");
+        assert!(err.contains("invalid taxonomy"));
+    }
+}

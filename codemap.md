@@ -117,9 +117,11 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
 - AQ-042: `crates/tachi-core/src/infographic/executive_architecture.rs`
   now owns executive-architecture payload assembly and its direct unit test,
   trimming the parent infographic module without changing golden output.
-- AQ-051: `crates/tachi-core/src/parsers/findings.rs` now skips malformed
-  recommendation rows with empty Finding IDs, and the parser test suite
-  carries a focused regression for that source-level edge case.
+- AQ-051: `crates/tachi-core/src/parsers/findings.rs`,
+  `crates/tachi-core/src/risk_scores.rs`, and
+  `crates/tachi-core/src/threats_sarif.rs` now carry source-level tests for
+  malformed recommendations, empty/missing sections, sentinel normalization,
+  and classifier prefix precedence.
 - AQ-052: `crates/tachi-core/tests/reporting_goldens.rs` now uses semantic
   projections for SARIF and infographic contracts, keeping compact
   fixture-local snapshots instead of full-envelope equality everywhere.

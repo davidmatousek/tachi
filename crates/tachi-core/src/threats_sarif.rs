@@ -293,3 +293,130 @@ fn taxonomies() -> Vec<Value> {
         }),
     ]
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use super::{build_threats_sarif, ThreatSarifFinding};
+    use crate::sarif_common::ComponentMetadata;
+
+    #[test]
+    fn build_threats_sarif_maps_prefix_classifier_precedence() {
+        let mut component_meta = BTreeMap::new();
+        component_meta.insert(
+            String::from("Agent"),
+            ComponentMetadata {
+                zone: String::from("Core"),
+                dfd_type: String::from("Process"),
+            },
+        );
+
+        let findings = vec![
+            ThreatSarifFinding {
+                id: String::from("AG-1"),
+                prefix: String::from("AG"),
+                status: String::from("[NEW]"),
+                component: String::from("Agent"),
+                maestro: String::new(),
+                agentic_pattern: String::new(),
+                threat: String::from("Agentic threat"),
+                owasp_ref: String::new(),
+                likelihood: String::from("High"),
+                impact: String::from("High"),
+                risk_level: String::from("High"),
+                mitigation: String::from("Mitigate"),
+            },
+            ThreatSarifFinding {
+                id: String::from("AGP-1"),
+                prefix: String::from("AGP"),
+                status: String::from("[NEW]"),
+                component: String::from("Agent"),
+                maestro: String::new(),
+                agentic_pattern: String::new(),
+                threat: String::from("Agentic pattern threat"),
+                owasp_ref: String::new(),
+                likelihood: String::from("Medium"),
+                impact: String::from("Medium"),
+                risk_level: String::from("Medium"),
+                mitigation: String::from("Mitigate"),
+            },
+            ThreatSarifFinding {
+                id: String::from("LLM-1"),
+                prefix: String::from("LLM"),
+                status: String::from("[NEW]"),
+                component: String::from("Agent"),
+                maestro: String::new(),
+                agentic_pattern: String::new(),
+                threat: String::from("LLM threat"),
+                owasp_ref: String::new(),
+                likelihood: String::from("Low"),
+                impact: String::from("Low"),
+                risk_level: String::from("Low"),
+                mitigation: String::from("Mitigate"),
+            },
+            ThreatSarifFinding {
+                id: String::from("OI-1"),
+                prefix: String::from("OI"),
+                status: String::from("[NEW]"),
+                component: String::from("Agent"),
+                maestro: String::new(),
+                agentic_pattern: String::new(),
+                threat: String::from("Output integrity threat"),
+                owasp_ref: String::new(),
+                likelihood: String::from("Low"),
+                impact: String::from("Low"),
+                risk_level: String::from("Low"),
+                mitigation: String::from("Mitigate"),
+            },
+            ThreatSarifFinding {
+                id: String::from("MI-1"),
+                prefix: String::from("MI"),
+                status: String::from("[NEW]"),
+                component: String::from("Agent"),
+                maestro: String::new(),
+                agentic_pattern: String::new(),
+                threat: String::from("Misinformation threat"),
+                owasp_ref: String::new(),
+                likelihood: String::from("Low"),
+                impact: String::from("Low"),
+                risk_level: String::from("Low"),
+                mitigation: String::from("Mitigate"),
+            },
+            ThreatSarifFinding {
+                id: String::from("ZZ-1"),
+                prefix: String::from("ZZ"),
+                status: String::from("[NEW]"),
+                component: String::from("Agent"),
+                maestro: String::new(),
+                agentic_pattern: String::new(),
+                threat: String::from("Unknown threat"),
+                owasp_ref: String::new(),
+                likelihood: String::from("Note"),
+                impact: String::from("Note"),
+                risk_level: String::from("Note"),
+                mitigation: String::from("Mitigate"),
+            },
+        ];
+
+        let sarif = build_threats_sarif(&findings, &component_meta);
+        let rule_ids = sarif["runs"][0]["results"]
+            .as_array()
+            .expect("results array")
+            .iter()
+            .map(|result| result["ruleId"].as_str().expect("rule id").to_owned())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            rule_ids,
+            vec![
+                String::from("tachi/ai/agentic"),
+                String::from("tachi/ai/agentic"),
+                String::from("tachi/ai/llm"),
+                String::from("tachi/ai/llm"),
+                String::from("tachi/ai/llm"),
+                String::from("tachi/ai/agentic"),
+            ]
+        );
+    }
+}
