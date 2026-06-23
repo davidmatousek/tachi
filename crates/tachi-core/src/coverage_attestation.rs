@@ -53,8 +53,39 @@ pub struct CoverageFrameworkAggregate {
 
 #[derive(Debug, Clone, Default)]
 pub struct FrameworkRecord {
-    id: String,
-    out_of_scope: bool,
+    pub id: String,
+    pub out_of_scope: bool,
+}
+
+impl FrameworkRecord {
+    pub fn new(id: impl Into<String>, out_of_scope: bool) -> Self {
+        Self {
+            id: id.into(),
+            out_of_scope,
+        }
+    }
+}
+
+pub trait TaxonomyStore {
+    fn load_framework_records(
+        &self,
+        framework_name: &str,
+        in_scope_only: bool,
+    ) -> Vec<FrameworkRecord>;
+}
+
+struct FilesystemTaxonomyStore {
+    taxonomy_dir: PathBuf,
+}
+
+impl TaxonomyStore for FilesystemTaxonomyStore {
+    fn load_framework_records(
+        &self,
+        framework_name: &str,
+        in_scope_only: bool,
+    ) -> Vec<FrameworkRecord> {
+        load_framework_yaml_records_from_dir(&self.taxonomy_dir, framework_name, in_scope_only)
+    }
 }
 
 pub fn build_per_finding_rows(findings: &[ThreatFinding]) -> Vec<CoverageFindingRow> {
@@ -103,21 +134,34 @@ pub fn build_per_finding_rows(findings: &[ThreatFinding]) -> Vec<CoverageFinding
 pub fn build_per_framework_aggregates(
     findings: &[ThreatFinding],
 ) -> Vec<CoverageFrameworkAggregate> {
-    build_per_framework_aggregates_in_dir(&workspace_taxonomy_dir(), findings)
+    let store = FilesystemTaxonomyStore {
+        taxonomy_dir: workspace_taxonomy_dir(),
+    };
+    build_per_framework_aggregates_from_store(&store, findings)
 }
 
 pub fn build_per_framework_aggregates_in_dir(
     taxonomy_dir: &Path,
     findings: &[ThreatFinding],
 ) -> Vec<CoverageFrameworkAggregate> {
+    let store = FilesystemTaxonomyStore {
+        taxonomy_dir: taxonomy_dir.to_path_buf(),
+    };
+    build_per_framework_aggregates_from_store(&store, findings)
+}
+
+pub fn build_per_framework_aggregates_from_store(
+    store: &dyn TaxonomyStore,
+    findings: &[ThreatFinding],
+) -> Vec<CoverageFrameworkAggregate> {
     let mut aggregates = Vec::with_capacity(ORDERED_FRAMEWORKS.len());
-    let raw_counts = load_framework_yaml_record_counts_from_dir(taxonomy_dir);
-    let in_scope_counts = load_framework_yaml_in_scope_record_counts_from_dir(taxonomy_dir);
+    let raw_counts = load_framework_yaml_record_counts_from_store(store);
+    let in_scope_counts = load_framework_yaml_in_scope_record_counts_from_store(store);
 
     for framework in ORDERED_FRAMEWORKS {
         let yaml_record_count = raw_counts.get(framework).copied().unwrap_or(0);
         let in_scope_yaml_record_count = in_scope_counts.get(framework).copied().unwrap_or(0);
-        let records = load_framework_yaml_records_from_dir(taxonomy_dir, framework, true);
+        let records = store.load_framework_records(framework, true);
         let items = classify_framework_items(findings, framework, &records);
 
         aggregates.push(build_per_framework_aggregate(
@@ -253,34 +297,58 @@ pub fn load_framework_yaml_records_from_dir(
 }
 
 pub fn load_framework_yaml_record_counts() -> BTreeMap<String, usize> {
-    load_framework_yaml_record_counts_from_dir(&workspace_taxonomy_dir())
+    let store = FilesystemTaxonomyStore {
+        taxonomy_dir: workspace_taxonomy_dir(),
+    };
+    load_framework_yaml_record_counts_from_store(&store)
 }
 
 pub fn load_framework_yaml_record_counts_from_dir(taxonomy_dir: &Path) -> BTreeMap<String, usize> {
-    ORDERED_FRAMEWORKS
-        .into_iter()
-        .map(|framework| {
-            (
-                framework.to_string(),
-                load_framework_yaml_records_from_dir(taxonomy_dir, framework, false).len(),
-            )
-        })
-        .collect()
+    let store = FilesystemTaxonomyStore {
+        taxonomy_dir: taxonomy_dir.to_path_buf(),
+    };
+    load_framework_yaml_record_counts_from_store(&store)
 }
 
 pub fn load_framework_yaml_in_scope_record_counts() -> BTreeMap<String, usize> {
-    load_framework_yaml_in_scope_record_counts_from_dir(&workspace_taxonomy_dir())
+    let store = FilesystemTaxonomyStore {
+        taxonomy_dir: workspace_taxonomy_dir(),
+    };
+    load_framework_yaml_in_scope_record_counts_from_store(&store)
 }
 
 pub fn load_framework_yaml_in_scope_record_counts_from_dir(
     taxonomy_dir: &Path,
+) -> BTreeMap<String, usize> {
+    let store = FilesystemTaxonomyStore {
+        taxonomy_dir: taxonomy_dir.to_path_buf(),
+    };
+    load_framework_yaml_in_scope_record_counts_from_store(&store)
+}
+
+pub fn load_framework_yaml_record_counts_from_store(
+    store: &dyn TaxonomyStore,
 ) -> BTreeMap<String, usize> {
     ORDERED_FRAMEWORKS
         .into_iter()
         .map(|framework| {
             (
                 framework.to_string(),
-                load_framework_yaml_records_from_dir(taxonomy_dir, framework, true).len(),
+                store.load_framework_records(framework, false).len(),
+            )
+        })
+        .collect()
+}
+
+pub fn load_framework_yaml_in_scope_record_counts_from_store(
+    store: &dyn TaxonomyStore,
+) -> BTreeMap<String, usize> {
+    ORDERED_FRAMEWORKS
+        .into_iter()
+        .map(|framework| {
+            (
+                framework.to_string(),
+                store.load_framework_records(framework, true).len(),
             )
         })
         .collect()

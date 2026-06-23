@@ -7,6 +7,23 @@ use tachi_core::coverage_attestation::{
 };
 use tachi_core::parsers::{SourceAttributionRecord, ThreatFinding};
 
+struct FakeTaxonomyStore {
+    records: std::collections::BTreeMap<(String, bool), Vec<tachi_core::coverage_attestation::FrameworkRecord>>,
+}
+
+impl tachi_core::coverage_attestation::TaxonomyStore for FakeTaxonomyStore {
+    fn load_framework_records(
+        &self,
+        framework_name: &str,
+        in_scope_only: bool,
+    ) -> Vec<tachi_core::coverage_attestation::FrameworkRecord> {
+        self.records
+            .get(&(framework_name.to_string(), in_scope_only))
+            .cloned()
+            .unwrap_or_default()
+    }
+}
+
 fn temp_root(prefix: &str) -> std::path::PathBuf {
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -101,4 +118,36 @@ fn build_per_framework_aggregates_in_dir_uses_in_scope_denominator() {
     assert_eq!(owasp.coverage_percentage, "100.00%");
 
     let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn build_per_framework_aggregates_from_store_uses_fake_taxonomy_provider() {
+    let mut records = std::collections::BTreeMap::new();
+    records.insert(
+        (String::from("owasp"), false),
+        vec![
+            tachi_core::coverage_attestation::FrameworkRecord::new("A01", false),
+            tachi_core::coverage_attestation::FrameworkRecord::new("A02", true),
+        ],
+    );
+    records.insert(
+        (String::from("owasp"), true),
+        vec![tachi_core::coverage_attestation::FrameworkRecord::new("A01", false)],
+    );
+    let store = FakeTaxonomyStore { records };
+    let findings = vec![finding("F-1", "owasp", "A01", "primary")];
+
+    let aggregates =
+        tachi_core::coverage_attestation::build_per_framework_aggregates_from_store(
+            &store, &findings,
+        );
+
+    let owasp = aggregates
+        .iter()
+        .find(|aggregate| aggregate.framework == "owasp")
+        .expect("owasp aggregate");
+    assert_eq!(owasp.yaml_record_count, 2);
+    assert_eq!(owasp.in_scope_yaml_record_count, 1);
+    assert_eq!(owasp.covered_count, 1);
+    assert_eq!(owasp.gap_count, 0);
 }

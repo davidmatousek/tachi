@@ -111,3 +111,6 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
 - AQ-043: `crates/tachi-core/src/infographic.rs` now routes template loading
   through an injected `PromptScaffoldStore`, letting tests swap in a fake
   store while the filesystem adapter preserves current behavior.
+- AQ-043: `crates/tachi-core/src/coverage_attestation.rs` now routes taxonomy
+  loading through an injected `TaxonomyStore`, with fake-store tests covering
+  the aggregate path while the filesystem adapter keeps the current output.
