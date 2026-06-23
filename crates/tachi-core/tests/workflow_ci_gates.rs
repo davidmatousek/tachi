@@ -27,6 +27,9 @@ fn workspace_cargo_test_pr_gate_runs_full_workspace_suite() {
         "cargo-test job must use a package matrix"
     );
     for package in ["tachi-core", "tachi-shell", "tachi-cli", "tachi-tauri"] {
+        if package == "tachi-shell" {
+            continue;
+        }
         assert!(
             text.contains(&format!("- package: {package}")),
             "cargo-test job must include {package} in the matrix"
@@ -36,6 +39,26 @@ fn workspace_cargo_test_pr_gate_runs_full_workspace_suite() {
         text.contains("cargo test -p ${{ matrix.package }} --all-targets"),
         "cargo-test job must run package-scoped cargo test --all-targets"
     );
+    assert!(
+        text.contains("name: cargo test -p tachi-shell (${{ matrix.suite }})"),
+        "shell tests must run in a dedicated split matrix"
+    );
+    for suite in ["shell-smoke", "shell-init", "shell-integration"] {
+        assert!(
+            text.contains(&format!("suite: {suite}")),
+            "shell test matrix must include {suite}"
+        );
+    }
+    for command in [
+        "cargo test -p tachi-shell --test command_registry --test coverage_audit --test infographic_data --test report_data_result --test tauri_shell_scaffold --test control_plane",
+        "cargo test -p tachi-shell --test init_adversarial --test init_constitution --test init_defaults_env --test init_manifest_paths --test init_precommit_matrix --test init_substitution --test init_timing_trace --test init_trace_summary",
+        "cargo test -p tachi-shell --test tauri_bridge --test template_config_load --test template_git_clone_timeout",
+    ] {
+        assert!(
+            text.contains(command),
+            "shell test matrix must run {command}"
+        );
+    }
     assert!(
         text.contains("sudo apt-get install -y ripgrep"),
         "cargo-test job must install ripgrep because workspace tests invoke rg-backed scripts"
