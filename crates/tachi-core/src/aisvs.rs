@@ -331,10 +331,8 @@ impl InfrastructurePolicy {
         allow_secret_access: bool,
         allow_writes: bool,
     ) -> Result<Self, AisvsError> {
-        if (allow_network && allow_secret_access)
-            || (allow_network && allow_writes)
-            || (allow_secret_access && allow_writes)
-        {
+        let enabled_controls = allow_network as u8 + allow_secret_access as u8 + allow_writes as u8;
+        if enabled_controls > 1 {
             return Err(AisvsError::OverbroadInfrastructurePolicy);
         }
 
