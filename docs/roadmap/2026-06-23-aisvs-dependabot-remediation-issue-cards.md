@@ -174,3 +174,30 @@ with the exact commands named in the card.
 - `Notes`: Finish the control family with observability and alerting surfaces.
 - `Status`: implemented locally in `crates/tachi-core/src/aisvs.rs` with
   targeted phase-4 tests in `crates/tachi-core/tests/aisvs_controls.rs`.
+
+## Phase 5 - Publish-readiness and release gates
+
+### RT-00i.6 - CI and docs readiness for AISVS framework
+
+- `Epic`: RT-00i AISVS framework and Dependabot remediation
+- `Feature`: Phase 5 publish-readiness and release gates
+- `Capability`: publish gate and alert monitoring
+- `Task`: update the publish checklist, BOM, release monitoring, and Beads
+  follow-ups so the AISVS framework stays release-ready after each slice
+- `Function`: `docs/bill-of-materials.html.md`,
+  `docs/publish-readiness-checklist.html.md`,
+  `.github/workflows/fuzz-mutation-audit.yml`,
+  `.github/workflows/rust-workspace.yml`,
+  `.github/workflows/rust-clippy.yml`
+- `Dependencies`: RT-00i.1, RT-00i.2, RT-00i.3, RT-00i.4, RT-00i.5
+- `Acceptance criteria`:
+  - The publish checklist names the AISVS and advisory security gates.
+  - The BOM lists the AISVS roadmap and the advisory fuzz/mutation lane.
+  - GitHub Actions remains green after each slice.
+  - Any new survivors or regressions become explicit Beads issues before merge.
+- `Validation`: `make publish-gate`, `bd export -o .beads/issues.jsonl`
+- `Implementation owner`: `docs`
+- `Stage label`: Phase 5
+- `Next test seam`: `docs/publish-readiness-checklist.html.md`
+- `Notes`: This closes the docs and release-readiness gap after the control
+  rollout lands.
