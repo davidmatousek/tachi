@@ -33,7 +33,8 @@
 - Epic: `RT-00i` AISVS framework and Dependabot remediation
 - Feature issues: `RT-00i.1` typed AISVS control registry, `RT-00i.2` glib/tauri remediation, `RT-00i.3` AISVS C01-C04, `RT-00i.4` AISVS C09-C12, `RT-00i.5` AISVS C05-C08
 - Feature issues: `RT-00i.6` CI and docs readiness for AISVS framework
-- Task issues: `RT-00i.2.1` reproduce advisory proof, `RT-00i.2.2` fixed glib upgrade, `RT-00i.2.3` closure evidence
+- Decision issues: `RT-00i.7` gtk/glib compatibility decision for Dependabot alert
+- Task issues: `RT-00i.1.1` control registry, `RT-00i.1.2` sanitized errors, `RT-00i.1.3` Send+Sync invariants, `RT-00i.2.1` reproduce advisory proof, `RT-00i.2.2` fixed glib upgrade, `RT-00i.2.3` closure evidence, `RT-00i.2.4` future gtk/glib recheck, `RT-00i.6.1` docs and export sync
 
 ## Canonical Sources
 

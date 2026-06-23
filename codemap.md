@@ -166,8 +166,9 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   and `Cargo.lock` now anchor the glib alert remediation plan and phased
   AISVS 1.0 control rollout, with the typed control registry foundation plus
   C01-C12 typed control policies and the reproducible glib advisory proof
-  landed locally, and the Phase 5 publish-readiness issue card now closes the
-  docs/release-gate gap in Beads.
+  landed locally. The Beads tracker now includes leaf tasks for the typed
+  registry, sanitized error model, Send+Sync proof, publish-readiness sync,
+  and the gtk/glib compatibility decision/follow-up lane.
 - AQ-042: `crates/tachi-core/src/infographic/maestro_templates.rs`
   now owns MAESTRO template assembly and a direct unit test, separating the
   layer-summary rendering from the parent infographic module.

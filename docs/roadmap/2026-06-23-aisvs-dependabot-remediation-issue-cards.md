@@ -61,11 +61,22 @@ with the exact commands named in the card.
   - Acceptance: `Cargo.lock` no longer resolves `glib 0.18.5`; the workspace
     and desktop tests stay green; and any upstream incompatibility is recorded
     as an explicit blocker or decision note.
+- `RT-00i.7` Record gtk/glib compatibility decision for Dependabot alert
+  - Acceptance: the upstream compatibility decision captures the current
+    `tauri -> gtk -> glib 0.18.5` path, the failed `glib 0.20.0` update, and
+    the condition required before the alert can be closed.
+  - Notes: decision landing zone for the unresolved desktop-stack blocker.
 - `RT-00i.2.3` Prove alert closure and publish gate evidence
   - Acceptance: the post-fix scan or explicit exception is recorded; the
     release-readiness docs reflect the current state; and the Beads export
     matches the tracker state.
   - Dependencies: `RT-00i.2.2`
+- `RT-00i.2.4` Recheck gtk/glib compatibility when upstream release lands
+  - Acceptance: a follow-up probe records whether the desktop stack can now
+    resolve glib 0.20.0 or later; the lockfile and dependency tree are
+    re-audited; and the alert is either closed or kept open with refreshed
+    evidence.
+  - Dependencies: `RT-00i.7`
 
 ## Phase 1 - AISVS framework foundation
 
@@ -90,6 +101,22 @@ with the exact commands named in the card.
 - `Stage label`: Phase 1
 - `Next test seam`: `crates/tachi-core/src/aisvs/control_registry.rs`
 - `Notes`: This is the shared foundation for every AISVS control slice.
+
+#### RT-00i.1 task beads
+
+- `RT-00i.1.1` Define AISVS control registry and typed control IDs
+  - Acceptance: control identifiers parse into strongly typed values; invalid
+    IDs fail closed; lookup and display logic is table-driven; and tests prove
+    the registry covers C01-C12 without relying on stringly-typed state.
+- `RT-00i.1.2` Define AISVS error enum and sanitized lookup failures
+  - Acceptance: registry lookups and parse failures return a dedicated
+    non-leaking error type; no variant exposes model strings or internal
+    paths; and tests prove invalid states fail closed with stable messages.
+- `RT-00i.1.3` Prove AISVS registry Send+Sync and serialization invariants
+  - Acceptance: the AISVS registry and control-state types are Send + Sync;
+    serialization or display stays stable for known controls; and compile-time
+    or unit tests prove no invalid control state can be constructed from
+    public APIs.
 
 ## Phase 2 - AISVS C01-C04 cluster
 
@@ -201,3 +228,11 @@ with the exact commands named in the card.
 - `Next test seam`: `docs/publish-readiness-checklist.html.md`
 - `Notes`: This closes the docs and release-readiness gap after the control
   rollout lands.
+
+#### RT-00i.6 task beads
+
+- `RT-00i.6.1` Synchronize AISVS publish-readiness docs and Beads export
+  - Acceptance: the BOM and publish checklist explicitly call out the AISVS
+    framework and Dependabot gate; the Beads export matches the live tracker;
+    and the release validation path stays reproducible with the documented
+    commands.
