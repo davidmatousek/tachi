@@ -23,8 +23,18 @@ fn workspace_cargo_test_pr_gate_runs_full_workspace_suite() {
         "rust-workspace workflow must run on unfiltered pull_request events"
     );
     assert!(
-        text.contains("cargo test --workspace --all-targets"),
-        "cargo-test job must run cargo test --workspace --all-targets"
+        text.contains("name: cargo test -p ${{ matrix.package }} --all-targets"),
+        "cargo-test job must use a package matrix"
+    );
+    for package in ["tachi-core", "tachi-shell", "tachi-cli", "tachi-tauri"] {
+        assert!(
+            text.contains(&format!("- package: {package}")),
+            "cargo-test job must include {package} in the matrix"
+        );
+    }
+    assert!(
+        text.contains("cargo test -p ${{ matrix.package }} --all-targets"),
+        "cargo-test job must run package-scoped cargo test --all-targets"
     );
     assert!(
         text.contains("sudo apt-get install -y ripgrep"),

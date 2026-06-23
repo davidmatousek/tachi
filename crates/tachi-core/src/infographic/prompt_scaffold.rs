@@ -135,6 +135,7 @@ mod tests {
     use super::{extract_prompt_scaffold, extract_prompt_scaffold_from_store, PromptScaffoldStore};
     use std::fs;
     use std::path::PathBuf;
+    use std::sync::atomic::{AtomicU64, Ordering};
 
     struct FakeTemplateStore<'a> {
         template: &'a str,
@@ -266,14 +267,12 @@ Prompt outro
     }
 
     fn unique_temp_dir() -> PathBuf {
+        static UNIQUE: AtomicU64 = AtomicU64::new(0);
         let mut path = std::env::temp_dir();
         path.push(format!(
             "tachi-rust-infographic-scaffold-{}-{}",
             std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .expect("clock")
-                .as_nanos()
+            UNIQUE.fetch_add(1, Ordering::Relaxed)
         ));
         path
     }
