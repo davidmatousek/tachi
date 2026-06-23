@@ -105,6 +105,8 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   command, and `crates/tachi-shell/src/commands.rs` exposes serializable
   `CommandOutput` for Tauri IPC while keeping the desktop capability boundary
   test-backed.
+- AQ-001: tracker now has phase-0 Beads children `AQ-011`, `AQ-012`, and
+  `AQ-013` materialized from the architecture/test-quality roadmap.
 - AQ-040: `crates/tachi-core/tests/facade_api.rs` now exercises the stable
   core facade surface, proving downstream crates can compile against the root
   exports instead of module internals.
