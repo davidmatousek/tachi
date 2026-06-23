@@ -12,6 +12,12 @@ use crate::parsers::{
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 
+mod executive_architecture;
+use executive_architecture::{
+    ExecutiveArchitectureCallout, ExecutiveArchitectureCluster, ExecutiveArchitectureFlowEdge,
+    ExecutiveArchitectureLayer,
+};
+
 pub const SEVERITY_COLORS: [(&str, &str); 5] = [
     ("Critical", "#DC2626"),
     ("High", "#EA580C"),
@@ -661,7 +667,7 @@ pub fn build_infographic_payload_from_content(
     let maestro_data = extract_maestro_data(threats_content);
 
     let template_data = match normalized_template {
-        "executive-architecture" => build_executive_architecture_template_data(
+        "executive-architecture" => executive_architecture::build_executive_architecture_template_data(
             threats_content,
             tier,
             source_file,
@@ -749,114 +755,6 @@ pub fn build_infographic_payload(root: &Path, template: &str) -> Result<Value, S
         Some(&threats_path),
         template,
     )
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct ExecutiveArchitectureLayer {
-    name: String,
-    position: usize,
-    components: Vec<String>,
-    component_count: usize,
-    source_kind: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    layer_overflow: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct ExecutiveArchitectureCallout {
-    layer_name: String,
-    finding_id: String,
-    severity: String,
-    raw_description: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    composite_score: Option<f64>,
-    affected_component: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct ExecutiveArchitectureFlowEdge {
-    source: String,
-    destination: String,
-    data: String,
-    protocol: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct ExecutiveArchitectureCluster {
-    name: String,
-    members: Vec<String>,
-    trust_level: String,
-}
-
-fn build_executive_architecture_template_data(
-    threats_content: &str,
-    tier: u8,
-    source_file: Option<&Path>,
-    findings: &[ThreatFinding],
-) -> Result<Value, String> {
-    let scope_data = parse_scope_data(threats_content);
-    let (mut layers, fallback_used) = build_executive_architecture_layers(&scope_data)?;
-    let flow_edges = build_executive_architecture_flow_edges(&scope_data);
-    let clusters = build_executive_architecture_clusters(&scope_data);
-    let per_layer_qualifying = qualifying_executive_architecture_findings(findings, &layers);
-    let allocation = allocate_executive_architecture_callouts(&per_layer_qualifying);
-    let callouts =
-        build_executive_architecture_callouts(&layers, &per_layer_qualifying, &allocation);
-    let callouts_per_layer = callouts.iter().fold(BTreeMap::new(), |mut acc, callout| {
-        *acc.entry(callout.layer_name.clone()).or_insert(0) += 1;
-        acc
-    });
-
-    for layer in &mut layers {
-        let qualifying_count = per_layer_qualifying
-            .get(&layer.name)
-            .map(|items| items.len())
-            .unwrap_or(0);
-        let allocated = callouts_per_layer.get(&layer.name).copied().unwrap_or(0);
-        if qualifying_count > allocated {
-            layer.layer_overflow = Some(format!(
-                "+ {} more in this layer",
-                qualifying_count - allocated
-            ));
-        }
-    }
-
-    let critical_count = findings
-        .iter()
-        .filter(|finding| finding.risk_level.eq_ignore_ascii_case("Critical"))
-        .count();
-    let high_count = findings
-        .iter()
-        .filter(|finding| finding.risk_level.eq_ignore_ascii_case("High"))
-        .count();
-    let total_qualifying = critical_count + high_count;
-    let skip_image = total_qualifying == 0;
-    let source_file = source_file
-        .map(|path| path.display().to_string())
-        .unwrap_or_default();
-
-    Ok(json!({
-        "metadata": {
-            "template_name": "executive-architecture",
-            "tier_source": tier,
-            "source_file": source_file,
-            "generation_timestamp": "unknown",
-            "qualifying_layer_count": layers.len(),
-            "total_filtered_count": total_qualifying,
-            "skip_image": skip_image,
-            "fallback_used": fallback_used,
-        },
-        "layers": layers,
-        "callouts": callouts,
-        "severity_distribution": {
-            "critical_count": critical_count,
-            "high_count": high_count,
-            "total_qualifying": total_qualifying,
-            "total_after_layer_dedup": callouts.len(),
-        },
-        "flow_edges": flow_edges,
-        "clusters": clusters,
-    }))
 }
 
 fn build_executive_architecture_layers(
