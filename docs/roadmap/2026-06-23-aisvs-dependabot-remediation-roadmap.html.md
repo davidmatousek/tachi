@@ -106,6 +106,13 @@ release gates so future security controls are incremental instead of ad hoc.
 - C03 tests prove lifecycle transitions are typed and cannot skip gates.
 - C04 tests prove infrastructure policy surfaces are explicit and testable.
 
+**Status**
+
+- Implemented locally in `crates/tachi-core/src/aisvs.rs` with
+  `crates/tachi-core/tests/aisvs_controls.rs`.
+- The control slice is intentionally narrow and typed, with parse-time
+  rejection for invalid inputs and explicit transition-policy tests.
+
 ## Phase 3: AISVS C05-C08 control cluster
 
 | Layer | Mapping |

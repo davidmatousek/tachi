@@ -96,6 +96,8 @@ with the exact commands named in the card.
 - `Stage label`: Phase 2
 - `Next test seam`: `crates/tachi-core/src/aisvs/input_validation.rs`
 - `Notes`: Keep the implementation slices small and control-specific.
+- `Status`: implemented locally in `crates/tachi-core/src/aisvs.rs` with
+  targeted phase-2 tests in `crates/tachi-core/tests/aisvs_controls.rs`.
 
 ## Phase 3 - AISVS C05-C08 cluster
 

@@ -22,7 +22,10 @@ pub mod threats_sarif;
 
 pub mod facade;
 
-pub use aisvs::{aisvs_control_registry, AisvsControl, AisvsControlId, AisvsError, AisvsRegistry};
+pub use aisvs::{
+    aisvs_control_registry, AisvsControl, AisvsControlId, AisvsError, AisvsRegistry,
+    InfrastructurePolicy, LifecycleGate, LifecycleStage, PromptInput, TrainingDataAsset,
+};
 pub use facade::{
     build_infographic_payload, build_remediation_actions, build_report_data_typst,
     build_risk_scores_sarif, build_threats_sarif, canonical_maestro_layer_label, collect_audit,

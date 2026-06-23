@@ -1,5 +1,6 @@
 pub use crate::aisvs::{
     aisvs_control_registry, AisvsControl, AisvsControlId, AisvsError, AisvsRegistry,
+    InfrastructurePolicy, LifecycleGate, LifecycleStage, PromptInput, TrainingDataAsset,
 };
 pub use crate::artifacts::{detect_artifacts, determine_tier};
 pub use crate::assets::{detect_brand_assets, detect_images};

@@ -183,6 +183,14 @@ pub enum AisvsError {
     UnknownControl,
     #[error("duplicate AISVS control")]
     DuplicateControlId,
+    #[error("invalid AISVS training data asset")]
+    InvalidTrainingDataAsset,
+    #[error("invalid AISVS prompt input")]
+    InvalidPromptInput,
+    #[error("invalid AISVS lifecycle transition")]
+    InvalidLifecycleTransition,
+    #[error("overbroad AISVS infrastructure policy")]
+    OverbroadInfrastructurePolicy,
 }
 
 impl AisvsError {
@@ -191,7 +199,174 @@ impl AisvsError {
             Self::InvalidControlId => "AISVS_INVALID_CONTROL_ID",
             Self::UnknownControl => "AISVS_UNKNOWN_CONTROL",
             Self::DuplicateControlId => "AISVS_DUPLICATE_CONTROL_ID",
+            Self::InvalidTrainingDataAsset => "AISVS_INVALID_TRAINING_DATA_ASSET",
+            Self::InvalidPromptInput => "AISVS_INVALID_PROMPT_INPUT",
+            Self::InvalidLifecycleTransition => "AISVS_INVALID_LIFECYCLE_TRANSITION",
+            Self::OverbroadInfrastructurePolicy => "AISVS_OVERBROAD_INFRASTRUCTURE_POLICY",
         }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TrainingDataAsset {
+    source: String,
+    checksum: String,
+    provenance: String,
+}
+
+impl TrainingDataAsset {
+    pub fn parse(source: &str, checksum: &str, provenance: &str) -> Result<Self, AisvsError> {
+        let source = source.trim();
+        let checksum = checksum.trim();
+        let provenance = provenance.trim();
+
+        let Some(digest) = checksum.strip_prefix("sha256:") else {
+            return Err(AisvsError::InvalidTrainingDataAsset);
+        };
+
+        if source.is_empty()
+            || provenance.is_empty()
+            || digest.len() != 64
+            || !digest.chars().all(|c| c.is_ascii_hexdigit())
+        {
+            return Err(AisvsError::InvalidTrainingDataAsset);
+        }
+
+        Ok(Self {
+            source: source.to_string(),
+            checksum: checksum.to_string(),
+            provenance: provenance.to_string(),
+        })
+    }
+
+    pub fn source(&self) -> &str {
+        &self.source
+    }
+
+    pub fn checksum(&self) -> &str {
+        &self.checksum
+    }
+
+    pub fn provenance(&self) -> &str {
+        &self.provenance
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PromptInput(String);
+
+impl PromptInput {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl FromStr for PromptInput {
+    type Err = AisvsError;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let normalized = input.trim();
+        if normalized.is_empty()
+            || normalized
+                .chars()
+                .any(|c| c == '\0' || (c.is_control() && !c.is_whitespace()))
+        {
+            return Err(AisvsError::InvalidPromptInput);
+        }
+
+        Ok(Self(normalized.to_string()))
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum LifecycleStage {
+    Draft,
+    Validated,
+    Approved,
+    Deployed,
+    Retired,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct LifecycleGate {
+    stage: LifecycleStage,
+}
+
+impl LifecycleGate {
+    pub const fn new(stage: LifecycleStage) -> Self {
+        Self { stage }
+    }
+
+    pub const fn stage(self) -> LifecycleStage {
+        self.stage
+    }
+
+    pub fn advance_to(self, next: LifecycleStage) -> Result<Self, AisvsError> {
+        let allowed = matches!(
+            (self.stage, next),
+            (LifecycleStage::Draft, LifecycleStage::Validated)
+                | (LifecycleStage::Validated, LifecycleStage::Approved)
+                | (LifecycleStage::Approved, LifecycleStage::Deployed)
+                | (LifecycleStage::Deployed, LifecycleStage::Retired)
+        );
+
+        if allowed {
+            Ok(Self { stage: next })
+        } else {
+            Err(AisvsError::InvalidLifecycleTransition)
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InfrastructurePolicy {
+    allow_network: bool,
+    allow_secret_access: bool,
+    allow_writes: bool,
+}
+
+impl InfrastructurePolicy {
+    pub fn new(
+        allow_network: bool,
+        allow_secret_access: bool,
+        allow_writes: bool,
+    ) -> Result<Self, AisvsError> {
+        if (allow_network && allow_secret_access)
+            || (allow_network && allow_writes)
+            || (allow_secret_access && allow_writes)
+        {
+            return Err(AisvsError::OverbroadInfrastructurePolicy);
+        }
+
+        Ok(Self {
+            allow_network,
+            allow_secret_access,
+            allow_writes,
+        })
+    }
+
+    pub const fn least_privilege() -> Self {
+        Self {
+            allow_network: false,
+            allow_secret_access: false,
+            allow_writes: false,
+        }
+    }
+
+    pub const fn allows_network(&self) -> bool {
+        self.allow_network
+    }
+
+    pub const fn allows_secret_access(&self) -> bool {
+        self.allow_secret_access
+    }
+
+    pub const fn allows_writes(&self) -> bool {
+        self.allow_writes
+    }
+
+    pub const fn is_least_privilege(&self) -> bool {
+        !self.allow_network && !self.allow_secret_access && !self.allow_writes
     }
 }
 
