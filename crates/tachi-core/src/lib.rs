@@ -23,8 +23,9 @@ pub mod threats_sarif;
 pub mod facade;
 
 pub use aisvs::{
-    aisvs_control_registry, AisvsControl, AisvsControlId, AisvsError, AisvsRegistry,
-    InfrastructurePolicy, LifecycleGate, LifecycleStage, PromptInput, TrainingDataAsset,
+    aisvs_control_registry, AccessContext, AccessMode, AisvsControl, AisvsControlId, AisvsError,
+    AisvsRegistry, InfrastructurePolicy, LifecycleGate, LifecycleStage, MemoryScope,
+    ModelBehaviorPolicy, PromptInput, SupplyChainEvidence, TrainingDataAsset,
 };
 pub use facade::{
     build_infographic_payload, build_remediation_actions, build_report_data_typst,

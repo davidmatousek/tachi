@@ -191,6 +191,14 @@ pub enum AisvsError {
     InvalidLifecycleTransition,
     #[error("overbroad AISVS infrastructure policy")]
     OverbroadInfrastructurePolicy,
+    #[error("invalid AISVS access context")]
+    InvalidAccessContext,
+    #[error("invalid AISVS supply chain evidence")]
+    InvalidSupplyChainEvidence,
+    #[error("invalid AISVS model behavior policy")]
+    InvalidModelBehaviorPolicy,
+    #[error("invalid AISVS memory scope")]
+    InvalidMemoryScope,
 }
 
 impl AisvsError {
@@ -203,7 +211,206 @@ impl AisvsError {
             Self::InvalidPromptInput => "AISVS_INVALID_PROMPT_INPUT",
             Self::InvalidLifecycleTransition => "AISVS_INVALID_LIFECYCLE_TRANSITION",
             Self::OverbroadInfrastructurePolicy => "AISVS_OVERBROAD_INFRASTRUCTURE_POLICY",
+            Self::InvalidAccessContext => "AISVS_INVALID_ACCESS_CONTEXT",
+            Self::InvalidSupplyChainEvidence => "AISVS_INVALID_SUPPLY_CHAIN_EVIDENCE",
+            Self::InvalidModelBehaviorPolicy => "AISVS_INVALID_MODEL_BEHAVIOR_POLICY",
+            Self::InvalidMemoryScope => "AISVS_INVALID_MEMORY_SCOPE",
         }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum AccessMode {
+    Observer,
+    Operator,
+    Service,
+}
+
+impl AccessMode {
+    const fn rank(self) -> u8 {
+        match self {
+            Self::Observer => 0,
+            Self::Operator => 1,
+            Self::Service => 2,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AccessContext {
+    subject: String,
+    mode: AccessMode,
+}
+
+impl AccessContext {
+    pub fn new(subject: &str, mode: AccessMode) -> Result<Self, AisvsError> {
+        let subject = subject.trim();
+        if subject.is_empty() {
+            return Err(AisvsError::InvalidAccessContext);
+        }
+
+        Ok(Self {
+            subject: subject.to_string(),
+            mode,
+        })
+    }
+
+    pub fn subject(&self) -> &str {
+        &self.subject
+    }
+
+    pub const fn mode(&self) -> AccessMode {
+        self.mode
+    }
+
+    pub const fn permits(&self, required: AccessMode) -> bool {
+        self.mode.rank() >= required.rank()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SupplyChainEvidence {
+    package: String,
+    version: String,
+    checksum: String,
+    attestation_uri: String,
+}
+
+impl SupplyChainEvidence {
+    pub fn new(
+        package: &str,
+        version: &str,
+        checksum: &str,
+        attestation_uri: &str,
+    ) -> Result<Self, AisvsError> {
+        let package = package.trim();
+        let version = version.trim();
+        let checksum = checksum.trim();
+        let attestation_uri = attestation_uri.trim();
+
+        let Some(digest) = checksum.strip_prefix("sha256:") else {
+            return Err(AisvsError::InvalidSupplyChainEvidence);
+        };
+
+        if package.is_empty()
+            || version.is_empty()
+            || attestation_uri.is_empty()
+            || !attestation_uri.starts_with("https://")
+            || digest.len() != 64
+            || !digest.chars().all(|c| c.is_ascii_hexdigit())
+        {
+            return Err(AisvsError::InvalidSupplyChainEvidence);
+        }
+
+        Ok(Self {
+            package: package.to_string(),
+            version: version.to_string(),
+            checksum: checksum.to_string(),
+            attestation_uri: attestation_uri.to_string(),
+        })
+    }
+
+    pub fn package(&self) -> &str {
+        &self.package
+    }
+
+    pub fn version(&self) -> &str {
+        &self.version
+    }
+
+    pub fn checksum(&self) -> &str {
+        &self.checksum
+    }
+
+    pub fn attestation_uri(&self) -> &str {
+        &self.attestation_uri
+    }
+
+    pub fn audit_tag(&self) -> String {
+        format!("{}@{}", self.package, self.version)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ModelBehaviorPolicy {
+    output_schema: String,
+    max_output_chars: usize,
+    redaction_required: bool,
+}
+
+impl ModelBehaviorPolicy {
+    pub fn new(
+        output_schema: &str,
+        max_output_chars: usize,
+        redaction_required: bool,
+    ) -> Result<Self, AisvsError> {
+        let output_schema = output_schema.trim();
+        if output_schema.is_empty() || max_output_chars == 0 || !redaction_required {
+            return Err(AisvsError::InvalidModelBehaviorPolicy);
+        }
+
+        Ok(Self {
+            output_schema: output_schema.to_string(),
+            max_output_chars,
+            redaction_required,
+        })
+    }
+
+    pub fn strict(output_schema: &str, max_output_chars: usize) -> Result<Self, AisvsError> {
+        Self::new(output_schema, max_output_chars, true)
+    }
+
+    pub fn output_schema(&self) -> &str {
+        &self.output_schema
+    }
+
+    pub const fn max_output_chars(&self) -> usize {
+        self.max_output_chars
+    }
+
+    pub const fn is_redaction_required(&self) -> bool {
+        self.redaction_required
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MemoryScope {
+    max_entries: usize,
+    retention_days: u16,
+    cross_scope_allowed: bool,
+}
+
+impl MemoryScope {
+    pub fn new(
+        max_entries: usize,
+        retention_days: u16,
+        cross_scope_allowed: bool,
+    ) -> Result<Self, AisvsError> {
+        if max_entries == 0 || retention_days == 0 || retention_days > 30 || cross_scope_allowed {
+            return Err(AisvsError::InvalidMemoryScope);
+        }
+
+        Ok(Self {
+            max_entries,
+            retention_days,
+            cross_scope_allowed,
+        })
+    }
+
+    pub fn bounded(max_entries: usize, retention_days: u16) -> Result<Self, AisvsError> {
+        Self::new(max_entries, retention_days, false)
+    }
+
+    pub const fn max_entries(&self) -> usize {
+        self.max_entries
+    }
+
+    pub const fn retention_days(&self) -> u16 {
+        self.retention_days
+    }
+
+    pub const fn allows_cross_scope(&self) -> bool {
+        self.cross_scope_allowed
     }
 }
 

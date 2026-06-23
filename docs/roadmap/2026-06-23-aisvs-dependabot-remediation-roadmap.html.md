@@ -131,6 +131,13 @@ release gates so future security controls are incremental instead of ad hoc.
 - C07 tests prove unsafe or policy-breaking behavior is rejected by typed state.
 - C08 tests prove memory and embedding surfaces remain bounded and validated.
 
+**Status**
+
+- Implemented locally in `crates/tachi-core/src/aisvs.rs` with
+  `crates/tachi-core/tests/aisvs_controls.rs`.
+- The phase-3 slice keeps explicit access, supply-chain, behavior, and memory
+  contracts typed and bounded.
+
 ## Phase 4: AISVS C09-C12 control cluster
 
 | Layer | Mapping |

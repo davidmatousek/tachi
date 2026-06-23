@@ -124,6 +124,8 @@ with the exact commands named in the card.
 - `Next test seam`: `crates/tachi-core/src/aisvs/supply_chain.rs`
 - `Notes`: This phase should close the security/control gap between the AISVS
   plan and the core reporting path.
+- `Status`: implemented locally in `crates/tachi-core/src/aisvs.rs` with
+  targeted phase-3 tests in `crates/tachi-core/tests/aisvs_controls.rs`.
 
 ## Phase 4 - AISVS C09-C12 cluster
 

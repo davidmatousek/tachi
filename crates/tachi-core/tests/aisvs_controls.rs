@@ -3,7 +3,8 @@ use std::str::FromStr;
 use pretty_assertions::assert_eq;
 
 use tachi_core::{
-    AisvsError, InfrastructurePolicy, LifecycleGate, LifecycleStage, PromptInput, TrainingDataAsset,
+    AccessContext, AccessMode, AisvsError, InfrastructurePolicy, LifecycleGate, LifecycleStage,
+    MemoryScope, ModelBehaviorPolicy, PromptInput, SupplyChainEvidence, TrainingDataAsset,
 };
 
 #[test]
@@ -60,4 +61,58 @@ fn c04_infrastructure_policy_defaults_to_least_privilege() {
     let err = InfrastructurePolicy::new(true, true, true).unwrap_err();
     assert_eq!(err, AisvsError::OverbroadInfrastructurePolicy);
     assert_eq!(err.code(), "AISVS_OVERBROAD_INFRASTRUCTURE_POLICY");
+}
+
+#[test]
+fn c05_access_context_requires_explicit_mode_and_role() {
+    let context = AccessContext::new("ops-user", AccessMode::Operator).unwrap();
+    assert_eq!(context.subject(), "ops-user");
+    assert_eq!(context.mode(), AccessMode::Operator);
+
+    let err = AccessContext::new("  ", AccessMode::Operator).unwrap_err();
+    assert_eq!(err, AisvsError::InvalidAccessContext);
+    assert_eq!(err.code(), "AISVS_INVALID_ACCESS_CONTEXT");
+}
+
+#[test]
+fn c06_supply_chain_evidence_requires_attestation_and_audit_tag() {
+    let evidence = SupplyChainEvidence::new(
+        "glib",
+        "0.18.5",
+        "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "https://example.com/attestations/glib-0.18.5",
+    )
+    .unwrap();
+
+    assert_eq!(evidence.package(), "glib");
+    assert_eq!(evidence.version(), "0.18.5");
+    assert_eq!(evidence.audit_tag(), "glib@0.18.5");
+
+    let err = SupplyChainEvidence::new("glib", "0.18.5", "sha256:bad", "").unwrap_err();
+    assert_eq!(err, AisvsError::InvalidSupplyChainEvidence);
+    assert_eq!(err.code(), "AISVS_INVALID_SUPPLY_CHAIN_EVIDENCE");
+}
+
+#[test]
+fn c07_model_behavior_policy_rejects_unbounded_free_form_output() {
+    let policy = ModelBehaviorPolicy::strict("response.schema.json", 4096).unwrap();
+    assert_eq!(policy.output_schema(), "response.schema.json");
+    assert_eq!(policy.max_output_chars(), 4096);
+    assert!(policy.is_redaction_required());
+
+    let err = ModelBehaviorPolicy::new("", 0, false).unwrap_err();
+    assert_eq!(err, AisvsError::InvalidModelBehaviorPolicy);
+    assert_eq!(err.code(), "AISVS_INVALID_MODEL_BEHAVIOR_POLICY");
+}
+
+#[test]
+fn c08_memory_scope_rejects_unbounded_retention_and_cross_scope_use() {
+    let scope = MemoryScope::bounded(128, 30).unwrap();
+    assert_eq!(scope.max_entries(), 128);
+    assert_eq!(scope.retention_days(), 30);
+    assert!(!scope.allows_cross_scope());
+
+    let err = MemoryScope::new(0, 365, true).unwrap_err();
+    assert_eq!(err, AisvsError::InvalidMemoryScope);
+    assert_eq!(err.code(), "AISVS_INVALID_MEMORY_SCOPE");
 }
