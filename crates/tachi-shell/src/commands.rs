@@ -562,6 +562,38 @@ pub fn risk_scores_sarif_output(
     })
 }
 
+#[cfg(test)]
+mod tests {
+    use super::bootstrap_control_plane_args;
+
+    #[test]
+    fn bootstrap_control_plane_args_prepends_bootstrap_flag_without_mutating_input() {
+        let args = vec!["--upstream-url=https://example.com/upstream.git", "--yes"];
+
+        let shaped = bootstrap_control_plane_args(&args);
+
+        assert_eq!(
+            shaped,
+            vec![
+                String::from("--bootstrap"),
+                String::from("--upstream-url=https://example.com/upstream.git"),
+                String::from("--yes"),
+            ]
+        );
+        assert_eq!(
+            args,
+            vec!["--upstream-url=https://example.com/upstream.git", "--yes"]
+        );
+    }
+}
+
+pub(crate) fn bootstrap_control_plane_args(args: &[&str]) -> Vec<String> {
+    let mut bootstrap_args = Vec::with_capacity(args.len() + 1);
+    bootstrap_args.push(String::from("--bootstrap"));
+    bootstrap_args.extend(args.iter().map(|arg| (*arg).to_string()));
+    bootstrap_args
+}
+
 pub fn install_output(root: &Path, args: &[&str]) -> CommandOutput {
     let scripts_dir = control_plane_scripts_dir(root);
     run_script_command(&scripts_dir, "install.sh", args, root)
@@ -578,10 +610,8 @@ pub fn update_output(root: &Path, args: &[&str]) -> CommandOutput {
 }
 
 pub fn bootstrap_output(root: &Path, args: &[&str]) -> CommandOutput {
-    let mut bootstrap_args = Vec::with_capacity(args.len() + 1);
-    bootstrap_args.push("--bootstrap");
-    bootstrap_args.extend_from_slice(args);
-
+    let bootstrap_args = bootstrap_control_plane_args(args);
     let scripts_dir = control_plane_scripts_dir(root);
+    let bootstrap_args = bootstrap_args.iter().map(String::as_str).collect::<Vec<_>>();
     run_script_command(&scripts_dir, "update.sh", &bootstrap_args, root)
 }

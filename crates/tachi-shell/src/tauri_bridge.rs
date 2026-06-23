@@ -3,7 +3,8 @@ use std::path::PathBuf;
 
 use crate::commands::{
     infographic_data_output, render_report_data_result, report_data_result,
-    validate_report_data_result, command_dispatch_kind, CommandDispatchKind,
+    validate_report_data_result, bootstrap_control_plane_args, command_dispatch_kind,
+    CommandDispatchKind,
 };
 use crate::commands::{
     coverage_audit_output, risk_scores_sarif_output, run_script_command_with_progress,
@@ -63,14 +64,13 @@ pub fn dispatch_command_with_progress(
             )
             }
             "bootstrap" => {
-            let mut bootstrap_args = Vec::with_capacity(args.len() + 1);
-            bootstrap_args.push("--bootstrap");
-            bootstrap_args.extend_from_slice(args);
+            let bootstrap_args = bootstrap_control_plane_args(args);
+            let bootstrap_args = bootstrap_args.iter().map(String::as_str).collect::<Vec<_>>();
             let scripts_dir = super::commands::control_plane_scripts_dir(root);
             run_script_command_with_progress(
                 &scripts_dir,
                 "update.sh",
-                &bootstrap_args,
+                bootstrap_args.as_slice(),
                 root,
                 token,
                 reporter,
