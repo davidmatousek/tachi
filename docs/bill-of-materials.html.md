@@ -101,6 +101,8 @@ with the shipped release workflow before publication.
 | Path | Purpose | Publish note |
 |---|---|---|
 | `docs/roadmap/implementation-backlog.md` | Backlog navigation hub | Canonical link target for active implementation sequencing. |
+| `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-roadmap.html.md` | Active AISVS/security roadmap | Canonical sequencing for the live Dependabot alert, AISVS C01-C12 rollout, and TDD-backed validation gates. |
+| `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md` | Active AISVS/security issue cards | Beads-ready execution templates for the RT-00i epic and its phase slices. |
 | `docs/roadmap/2026-06-22-adversarial-architecture-test-quality-roadmap.html.md` | Active AQ roadmap | Canonical architecture, SOLID, and test-quality remediation plan. |
 | `docs/roadmap/2026-06-21-rust-tauri-parity-remediation-roadmap.html.md` | Archived parity roadmap | Historical Rust/Tauri parity rebaseline and supersession plan. |
 | `docs/roadmap/2026-06-21-rust-tauri-parity-issue-cards.md` | Archived parity execution cards | Historical Beads issue templates for the parity phases. |
@@ -167,6 +169,7 @@ The repository policy for these surfaces is:
 | Secret scan | `pre-commit run --all-files` or `gitleaks` / CI workflow | No secrets or private data leak into the publish set, including examples, fixtures, logs, and generated docs. |
 | Scaffold dependency gate | `make scaffold-dependency-gate` | Next.js/Supabase scaffold dependency ranges exclude currently known vulnerable `next` and `vitest` floors. |
 | Docs gate | `README.md`, `SECURITY.md`, `CHANGELOG.md`, and public docs cross-links | Public docs match the shipped behavior and the disclosure policy. |
+| AISVS security gate | `cargo test -p tachi-core --test aisvs_registry`, `cargo test -p tachi-core --test aisvs_controls`, `cargo clippy --workspace --all-features --all-targets -- -D warnings` | AISVS C01-C12 remain typed, test-backed, and fail-closed while the live `glib` advisory stays tracked in Beads until the upstream stack is compatible. |
 | Docs/version sweep | `make docs-version-gate` + `make docs-archive-version-gate` | Maintained docs stay current; archived docs and examples retain only intentional historical references. |
 | Publish gate | `make publish-gate` | The release candidate passes the full local publish-readiness suite before remote publication. |
 | CI gate | GitHub Actions run status | Release, security, lint, and docs workflows are green. |
@@ -191,12 +194,12 @@ privacy, doc accuracy, and release readiness before `main` is pushed to
 ## Publish Evidence Checklist (required before push)
 
 - [ ] `rg "actions/checkout@v[0-6]|actions-rs/toolchain@|github/codeql-action/upload-sarif@v3|::set-output" .github/workflows` returns no matches.
-- [ ] `docs/roadmap/implementation-backlog.md` points at the active parity roadmap and issue cards.
-- [ ] `docs/roadmap/implementation-backlog.md` points at the active parity roadmap, the active docs sweep roadmap, and archived provenance docs.
-- [ ] The active parity roadmap is `docs/roadmap/2026-06-21-rust-tauri-parity-remediation-roadmap.html.md`.
-- [ ] The active parity Beads cards are `docs/roadmap/2026-06-21-rust-tauri-parity-issue-cards.md`.
+- [ ] `docs/roadmap/implementation-backlog.md` points at the active AISVS/security roadmap, the active docs sweep roadmap, and archived provenance docs.
+- [ ] The active AISVS roadmap is `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-roadmap.html.md`.
+- [ ] The active AISVS Beads cards are `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md`.
 - [ ] The active docs-sweep roadmap is `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-roadmap.html.md`.
 - [ ] The active docs-sweep Beads cards are `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-issue-cards.md`.
+- [ ] The live `glib` Dependabot alert remains tracked in Beads until `RT-00i.2` can prove a fixed transitive desktop stack.
 - [ ] Archived roadmap docs are clearly marked as historical only.
 - [ ] `make docs-version-gate` passes.
 - [ ] `git status --short --branch` has no unexpected untracked or dirty state.

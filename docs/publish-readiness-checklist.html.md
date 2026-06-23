@@ -81,20 +81,22 @@ Use this checklist before publishing to GitHub or cutting a release.
 - [ ] `SECURITY.md` matches the current private-reporting and privacy policy.
 - [ ] `CHANGELOG.md` is redaction-safe and reflects only releasable notes.
 - [ ] `docs/roadmap/implementation-backlog.md` points at the active AQ
-      roadmap, archived parity roadmap, active docs sweep roadmap, and
+      roadmap, active AISVS/security roadmap, active docs sweep roadmap, and
       archived provenance docs.
 - [ ] The active AQ roadmap is
       `docs/roadmap/2026-06-22-adversarial-architecture-test-quality-roadmap.html.md`.
-- [ ] The archived parity roadmap is
-      `docs/roadmap/2026-06-21-rust-tauri-parity-remediation-roadmap.html.md`.
-- [ ] The archived parity Beads-ready issue set is
-      `docs/roadmap/2026-06-21-rust-tauri-parity-issue-cards.md`.
+- [ ] The active AISVS roadmap is
+      `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-roadmap.html.md`.
+- [ ] The active AISVS Beads-ready issue set is
+      `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md`.
 - [ ] The active docs-sweep roadmap is
       `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-roadmap.html.md`.
 - [ ] The active docs-sweep Beads-ready issue set is
       `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-issue-cards.md`.
 - [ ] The archived roadmap docs are clearly marked historical only.
 - [ ] The roadmap and issue cards reflect the current phase sequencing.
+- [ ] The live `glib` Dependabot alert remains open in Beads until the
+      upstream desktop stack is compatible with a fixed `glib` line.
 - [ ] The DOC-00X documentation-update plan remains separate from the parity
       and docs-sweep tracks.
 - [ ] `docs/bill-of-materials.html.md` and `docs/publish-readiness-checklist.html.md`
