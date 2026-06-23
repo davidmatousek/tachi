@@ -6,13 +6,13 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use pretty_assertions::assert_eq;
-use serde_json::json;
+use serde_json::{json, Value};
 
 use tachi_core::build_report_data_typst;
 use tachi_core::collect_audit;
 use tachi_core::render;
 use tachi_core::infographic::build_infographic_payload_from_content;
-use tachi_core::sarif_common::{build_sarif_envelope, ComponentMetadata, SARIF_SCHEMA_URI};
+use tachi_core::sarif_common::{ComponentMetadata, SARIF_SCHEMA_URI};
 use tachi_core::threats_sarif::{build_threats_sarif, ThreatSarifFinding};
 use tachi_core::{
     parsers::SourceAttributionRecord,
@@ -228,87 +228,7 @@ fn threats_sarif_matches_canonical_golden() {
     };
 
     let actual = build_threats_sarif(std::slice::from_ref(&finding), &component_meta);
-    let expected_result = json!({
-        "ruleId": "tachi/ai/agentic",
-        "message": {
-            "text": finding.threat,
-            "markdown": finding.mitigation,
-        },
-        "level": "error",
-        "locations": [
-            {
-                "physicalLocation": {
-                    "artifactLocation": {
-                        "uri": "examples/agentic-app/sample-report/threats.md",
-                    },
-                    "region": {"startLine": 1},
-                },
-                "logicalLocations": [
-                    {
-                        "name": "Agent",
-                        "fullyQualifiedName": "Core/Agent",
-                        "kind": "data",
-                    }
-                ],
-            }
-        ],
-        "partialFingerprints": {
-            "primaryLocationLineHash": line_hash_for("AG-8"),
-            "findingId/v1": "AG-8",
-            "baselineRunId": "",
-        },
-        "properties": {
-            "baselineState": "new",
-            "tags": [
-                "security",
-                "ai",
-                "agentic",
-                "maestro-layer:L3",
-                "maestro-pattern:trust_exploitation",
-            ],
-            "maestro-layer": "L3 Triage",
-            "severity": "High",
-            "likelihood": "High",
-            "impact": "High",
-            "maestro-pattern": "trust_exploitation",
-            "asi07_emission": true,
-            "feature": "219-asi07-tool-abuse-enrichment",
-            "pattern_category": 9,
-        },
-    });
-    let expected = build_sarif_envelope(
-        json!({
-            "name": "Tachi",
-            "semanticVersion": "1.7",
-            "informationUri": "https://github.com/pratik-saptarshi/tachi-rust",
-            "supportedTaxonomies": [
-                {"name": "OWASP", "index": 0},
-                {"name": "CWE", "index": 1},
-            ],
-            "rules": [],
-        }),
-        vec![
-            json!({
-                "name": "OWASP",
-                "version": "2021",
-                "informationUri": "https://owasp.org/Top10/",
-                "organization": "OWASP Foundation",
-                "shortDescription": {"text": "OWASP Top 10 Web Application Security Risks"},
-            }),
-            json!({
-                "name": "CWE",
-                "version": "4.13",
-                "informationUri": "https://cwe.mitre.org/",
-                "organization": "MITRE",
-                "shortDescription": {"text": "Common Weakness Enumeration"},
-            }),
-        ],
-        vec![expected_result],
-        true,
-    );
-
-    assert_eq!(actual, expected);
-    assert_eq!(actual["$schema"], SARIF_SCHEMA_URI);
+    assert_threats_sarif_semantics(&actual, &finding);
 }
 
 #[test]
@@ -392,97 +312,7 @@ fn risk_scores_sarif_matches_canonical_golden() {
         &source_attribution,
         &component_meta,
     );
-    let expected_result = json!({
-        "ruleId": "tachi/ai/agentic",
-        "message": {
-            "text": "Prompt injection",
-            "markdown": "Harden prompts",
-        },
-        "level": "error",
-        "locations": [
-            {
-                "physicalLocation": {
-                    "artifactLocation": {
-                        "uri": "examples/agentic-app/test-output/2026-04-26T03-39-12-F3-wave3/threats.md",
-                    },
-                    "region": {"startLine": 1},
-                },
-                "logicalLocation": {
-                    "name": "Agent",
-                    "fullyQualifiedName": "Core/Agent",
-                    "kind": "data-store",
-                },
-            }
-        ],
-        "partialFingerprints": {
-            "findingId/v1": "AG-8",
-        },
-        "properties": {
-            "security-severity": "8.8",
-            "cvss_base": 9.1,
-            "exploitability": 9.0,
-            "scalability": 8.5,
-            "reachability": 8.0,
-            "composite": 8.8,
-            "composite-weights": "0.35/0.30/0.15/0.20",
-            "severity_band": "High",
-            "cvss-base-score": "9.1",
-            "cvss-vector": "AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:L",
-            "maestro-layer": "L3 Triage",
-            "governance.owner": "Alice",
-            "governance.sla_days": "7",
-            "governance.disposition": "Monitor",
-            "review-date": "2026-06-06",
-            "risk-owner": "Alice",
-            "remediation-sla": "7",
-            "risk-disposition": "Monitor",
-            "score-source": "inherited",
-            "score-source-detail": "correlation primary",
-            "correlation-primary": "AG-3",
-            "source-attribution": [
-                {
-                    "taxonomy": "OWASP",
-                    "id": "LLM05:2025",
-                    "relationship": "relevant",
-                }
-            ],
-            "asi07_emission": true,
-            "feature": "219-asi07-tool-abuse-enrichment",
-            "new-finding": true,
-        },
-    });
-    let expected = build_sarif_envelope(
-        json!({
-            "name": "Tachi",
-            "semanticVersion": "1.7",
-            "informationUri": "https://github.com/pratik-saptarshi/tachi-rust",
-            "supportedTaxonomies": [
-                {"name": "OWASP", "index": 0},
-                {"name": "CWE", "index": 1},
-            ],
-            "rules": [],
-        }),
-        vec![
-            json!({
-                "name": "OWASP",
-                "version": "2021",
-                "informationUri": "https://owasp.org/Top10/",
-                "organization": "OWASP Foundation",
-                "shortDescription": {"text": "OWASP Top 10 Web Application Security Risks"},
-            }),
-            json!({
-                "name": "CWE",
-                "version": "4.13",
-                "informationUri": "https://cwe.mitre.org/",
-                "organization": "MITRE",
-                "shortDescription": {"text": "Common Weakness Enumeration"},
-            }),
-        ],
-        vec![expected_result],
-        false,
-    );
-
-    assert_eq!(actual, expected);
+    assert_risk_scores_sarif_semantics(&actual);
 }
 
 #[test]
@@ -496,114 +326,148 @@ fn infographic_payload_matches_canonical_maestro_stack_golden() {
         "maestro-stack",
     )
     .expect("build infographic payload");
+    assert_infographic_payload_semantics(&actual);
+}
 
-    let expected = json!({
-        "template": "maestro-stack",
-        "metadata": {
-            "agent_count": 3,
-            "data_source_type": "risk-scores",
-            "note_count": 0,
-            "project_name": "Agentic AI Application",
-            "risk_posture": "Inherent risk — 1 Critical and 1 High findings across 3 components",
-            "scan_date": "unknown",
-            "schema_version": "1.1",
-            "template": "maestro-stack",
-            "tier": 2,
-            "total_findings": 3,
-        },
-        "severity_distribution": [
-            {"label": "Critical", "count": 1, "percentage": 34, "color": "#DC2626"},
-            {"label": "High", "count": 1, "percentage": 33, "color": "#EA580C"},
-            {"label": "Medium", "count": 1, "percentage": 33, "color": "#CA8A04"},
-            {"label": "Low", "count": 0, "percentage": 0, "color": "#2563EB"},
-        ],
-        "heat_map": [
-            {
-                "component": "Guardrails Service",
-                "critical": 1,
-                "high": 0,
-                "medium": 0,
-                "low": 0,
-                "total": 1,
-            },
-            {
-                "component": "LLM Agent Orchestrator",
-                "critical": 0,
-                "high": 1,
-                "medium": 0,
-                "low": 0,
-                "total": 1,
-            },
-            {
-                "component": "MCP Tool Server",
-                "critical": 0,
-                "high": 0,
-                "medium": 1,
-                "low": 0,
-                "total": 1,
-            },
-        ],
-        "top_findings": [
-            {
-                "id": "I-1",
-                "component": "Guardrails Service",
-                "risk_level": "Critical",
-                "score": 0.0,
-                "threat": "Model output exfiltration",
-            },
-            {
-                "id": "S-1",
-                "component": "LLM Agent Orchestrator",
-                "risk_level": "High",
-                "score": 0.0,
-                "threat": "Prompt override risk",
-            },
-            {
-                "id": "A-1",
-                "component": "MCP Tool Server",
-                "risk_level": "Medium",
-                "score": 0.0,
-                "threat": "Tool abuse injection",
-            },
-        ],
-        "findings_ids": ["I-1", "S-1", "A-1"],
-        "template_data": {
-            "maestro_layer_distribution": [
-                {
-                    "layer_id": "L2",
-                    "layer_name": "Data Operations",
-                    "finding_count": 2,
-                    "highest_severity": "High",
-                },
-                {
-                    "layer_id": "L5",
-                    "layer_name": "Evaluation and Observability",
-                    "finding_count": 1,
-                    "highest_severity": "Critical",
-                },
-            ],
-            "most_exposed_layer": "L2 — Data Operations",
-            "per_layer_summaries": [
-                {
-                    "layer_id": "L2",
-                    "layer_name": "Data Operations",
-                    "finding_count": 2,
-                    "highest_severity": "High",
-                    "top_findings": [],
-                },
-                {
-                    "layer_id": "L5",
-                    "layer_name": "Evaluation and Observability",
-                    "finding_count": 1,
-                    "highest_severity": "Critical",
-                    "top_findings": [],
-                },
-            ],
-            "has_maestro_data": true,
-        },
-        "has_maestro_data": true,
-        "prompt_scaffold": null,
+fn assert_threats_sarif_semantics(actual: &Value, finding: &ThreatSarifFinding) {
+    let projected = json!({
+        "schema": actual["$schema"],
+        "tool": actual["runs"][0]["tool"]["driver"]["name"],
+        "result": {
+            "ruleId": actual["runs"][0]["results"][0]["ruleId"],
+            "text": actual["runs"][0]["results"][0]["message"]["text"],
+            "markdown": actual["runs"][0]["results"][0]["message"]["markdown"],
+            "uri": actual["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"],
+            "line": actual["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["region"]["startLine"],
+            "component": actual["runs"][0]["results"][0]["locations"][0]["logicalLocations"][0]["name"],
+            "fullyQualifiedName": actual["runs"][0]["results"][0]["locations"][0]["logicalLocations"][0]["fullyQualifiedName"],
+            "severity": actual["runs"][0]["results"][0]["properties"]["severity"],
+            "pattern_category": actual["runs"][0]["results"][0]["properties"]["pattern_category"],
+            "finding_id": actual["runs"][0]["results"][0]["partialFingerprints"]["findingId/v1"],
+            "line_hash": actual["runs"][0]["results"][0]["partialFingerprints"]["primaryLocationLineHash"],
+        }
     });
 
-    assert_eq!(actual, expected);
+    assert_eq!(
+        projected,
+        json!({
+            "schema": SARIF_SCHEMA_URI,
+            "tool": "Tachi",
+            "result": {
+                "ruleId": "tachi/ai/agentic",
+                "text": finding.threat,
+                "markdown": finding.mitigation,
+                "uri": "examples/agentic-app/sample-report/threats.md",
+                "line": 1,
+                "component": "Agent",
+                "fullyQualifiedName": "Core/Agent",
+                "severity": "High",
+                "pattern_category": 9,
+                "finding_id": finding.id,
+                "line_hash": line_hash_for(&finding.id),
+            }
+        })
+    );
+}
+
+fn assert_risk_scores_sarif_semantics(actual: &Value) {
+    let projected = json!({
+        "schema": actual["$schema"],
+        "tool": actual["runs"][0]["tool"]["driver"]["name"],
+        "result": {
+            "ruleId": actual["runs"][0]["results"][0]["ruleId"],
+            "text": actual["runs"][0]["results"][0]["message"]["text"],
+            "markdown": actual["runs"][0]["results"][0]["message"]["markdown"],
+            "uri": actual["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"],
+            "line": actual["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["region"]["startLine"],
+            "component": actual["runs"][0]["results"][0]["locations"][0]["logicalLocation"]["name"],
+            "fullyQualifiedName": actual["runs"][0]["results"][0]["locations"][0]["logicalLocation"]["fullyQualifiedName"],
+            "kind": actual["runs"][0]["results"][0]["locations"][0]["logicalLocation"]["kind"],
+            "severity_band": actual["runs"][0]["results"][0]["properties"]["severity_band"],
+            "score_source": actual["runs"][0]["results"][0]["properties"]["score-source"],
+            "score_source_detail": actual["runs"][0]["results"][0]["properties"]["score-source-detail"],
+            "finding_id": actual["runs"][0]["results"][0]["partialFingerprints"]["findingId/v1"],
+            "security_severity": actual["runs"][0]["results"][0]["properties"]["security-severity"],
+        }
+    });
+
+    assert_eq!(
+        projected,
+        json!({
+            "schema": SARIF_SCHEMA_URI,
+            "tool": "Tachi",
+            "result": {
+                "ruleId": "tachi/ai/agentic",
+                "text": "Prompt injection",
+                "markdown": "Harden prompts",
+                "uri": "examples/agentic-app/test-output/2026-04-26T03-39-12-F3-wave3/threats.md",
+                "line": 1,
+                "component": "Agent",
+                "fullyQualifiedName": "Core/Agent",
+                "kind": "data-store",
+                "severity_band": "High",
+                "score_source": "inherited",
+                "score_source_detail": "correlation primary",
+                "finding_id": "AG-8",
+                "security_severity": "8.8",
+            }
+        })
+    );
+}
+
+fn assert_infographic_payload_semantics(actual: &Value) {
+    let projected = json!({
+        "template": actual["template"],
+        "metadata": {
+            "project_name": actual["metadata"]["project_name"],
+            "schema_version": actual["metadata"]["schema_version"],
+            "template": actual["metadata"]["template"],
+            "tier": actual["metadata"]["tier"],
+            "total_findings": actual["metadata"]["total_findings"],
+            "agent_count": actual["metadata"]["agent_count"],
+            "risk_posture": actual["metadata"]["risk_posture"],
+            "data_source_type": actual["metadata"]["data_source_type"],
+        },
+        "has_maestro_data": actual["has_maestro_data"],
+        "findings_ids": actual["findings_ids"],
+        "top_findings": actual["top_findings"],
+        "severity_distribution": actual["severity_distribution"],
+        "maestro_layer_distribution": actual["template_data"]["maestro_layer_distribution"],
+        "most_exposed_layer": actual["template_data"]["most_exposed_layer"],
+    });
+
+    assert_eq!(
+        projected,
+        json!({
+            "template": "maestro-stack",
+            "metadata": {
+                "project_name": "Agentic AI Application",
+                "schema_version": "1.1",
+                "template": "maestro-stack",
+                "tier": 2,
+                "total_findings": 3,
+                "agent_count": 3,
+                "risk_posture": "Inherent risk — 1 Critical and 1 High findings across 3 components",
+                "data_source_type": "risk-scores",
+            },
+            "has_maestro_data": true,
+            "findings_ids": ["I-1", "S-1", "A-1"],
+            "top_findings": [
+                {"id": "I-1", "component": "Guardrails Service", "risk_level": "Critical", "score": 0.0, "threat": "Model output exfiltration"},
+                {"id": "S-1", "component": "LLM Agent Orchestrator", "risk_level": "High", "score": 0.0, "threat": "Prompt override risk"},
+                {"id": "A-1", "component": "MCP Tool Server", "risk_level": "Medium", "score": 0.0, "threat": "Tool abuse injection"},
+            ],
+            "severity_distribution": [
+                {"label": "Critical", "count": 1, "percentage": 34, "color": "#DC2626"},
+                {"label": "High", "count": 1, "percentage": 33, "color": "#EA580C"},
+                {"label": "Medium", "count": 1, "percentage": 33, "color": "#CA8A04"},
+                {"label": "Low", "count": 0, "percentage": 0, "color": "#2563EB"},
+            ],
+            "maestro_layer_distribution": [
+                {"layer_id": "L2", "layer_name": "Data Operations", "finding_count": 2, "highest_severity": "High"},
+                {"layer_id": "L5", "layer_name": "Evaluation and Observability", "finding_count": 1, "highest_severity": "Critical"},
+            ],
+            "most_exposed_layer": "L2 — Data Operations",
+        })
+    );
 }

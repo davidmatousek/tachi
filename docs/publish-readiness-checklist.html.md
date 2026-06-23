@@ -60,7 +60,8 @@ Use this checklist before publishing to GitHub or cutting a release.
 - [ ] `cargo test --workspace --all-targets` passes or the equivalent
       `.github/workflows/rust-workspace.yml` PR gate is green.
 - [ ] Parser hardening regression tests pass, including delta-count normalization and panic-free status handling.
-- [ ] Reporting goldens pass for coverage, report, threat, risk, and infographic outputs.
+- [ ] Reporting goldens pass with semantic projections for coverage, report,
+      threat, risk, and infographic outputs.
 - [ ] `cargo clippy --all-targets -- -D warnings` passes.
 - [ ] `make llvm-cov` passes and the coverage floor remains above the project
       baseline.
@@ -95,6 +96,9 @@ Use this checklist before publishing to GitHub or cutting a release.
       and docs-sweep tracks.
 - [ ] `docs/bill-of-materials.html.md` and `docs/publish-readiness-checklist.html.md`
       agree on the publish gate, security surfaces, and remote publication flow.
+- [ ] Golden update policy is documented: semantic projections first, compact
+      fixture-local snapshots second, and full-envelope equality only when a
+      schema contract truly requires it.
 - [ ] The shell executor seam is documented in the BOM and covered by focused
       shell crate tests.
 - [ ] The infographic prompt scaffold seam is documented in the BOM and
