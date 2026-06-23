@@ -48,6 +48,21 @@ with the exact commands named in the card.
 - `Next test seam`: `Cargo.lock`
 - `Notes`: This slice contains the live open alert and should land first.
 
+#### RT-00i.2 task beads
+
+- `RT-00i.2.1` Reproduce glib advisory and capture failing proof
+  - Acceptance: the vulnerable `glib 0.18.5` resolution is asserted by a
+    failing-first check; the transitive `tauri` -> `gtk` -> `glib` path is
+    documented; and the proof is repeatable in CI.
+- `RT-00i.2.2` Upgrade desktop stack to fixed glib release
+  - Acceptance: `Cargo.lock` no longer resolves `glib 0.18.5`; the workspace
+    and desktop tests stay green; and any upstream incompatibility is recorded
+    as an explicit blocker or decision note.
+- `RT-00i.2.3` Prove alert closure and publish gate evidence
+  - Acceptance: the post-fix scan or explicit exception is recorded; the
+    release-readiness docs reflect the current state; and the Beads export
+    matches the tracker state.
+
 ## Phase 1 - AISVS framework foundation
 
 ### RT-00i.1 - Introduce typed AISVS control registry

@@ -51,7 +51,7 @@ release gates so future security controls are incremental instead of ad hoc.
 | Epic | `RT-00i` AISVS framework and Dependabot remediation |
 | Capability | Supply-chain containment for the live `glib` alert |
 | Feature | `RT-00i.2` Remediate glib/tauri transitive advisory |
-| Tasks | reproduce alert, bump transitive stack, refresh lockfile, verify alert closure |
+| Tasks | `RT-00i.2.1` reproduce alert, `RT-00i.2.2` bump transitive stack, `RT-00i.2.3` verify alert closure |
 | Functions | `src-tauri/Cargo.toml`, `Cargo.lock`, `src-tauri/tests/*`, `Makefile publish-gate`, `Makefile scaffold-dependency-gate` |
 
 **TDD acceptance criteria**

@@ -32,6 +32,7 @@
 - [AISVS Dependabot remediation issue cards](./2026-06-23-aisvs-dependabot-remediation-issue-cards.md)
 - Epic: `RT-00i` AISVS framework and Dependabot remediation
 - Feature issues: `RT-00i.1` typed AISVS control registry, `RT-00i.2` glib/tauri remediation, `RT-00i.3` AISVS C01-C04, `RT-00i.4` AISVS C09-C12, `RT-00i.5` AISVS C05-C08
+- Task issues: `RT-00i.2.1` reproduce advisory proof, `RT-00i.2.2` fixed glib upgrade, `RT-00i.2.3` closure evidence
 
 ## Canonical Sources
 
