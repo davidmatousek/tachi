@@ -129,3 +129,6 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
 - AQ-054: `docs/testing/fuzz-mutation-audit.md`,
   `docs/reports/fuzz-mutation-baseline.md`, and `make fuzz-mutation-gate`
   now define an offline advisory fuzz/mutation lane with a repo test guard.
+- AQ-042: `crates/tachi-core/src/infographic/maestro_templates.rs`
+  now owns MAESTRO template assembly and a direct unit test, separating the
+  layer-summary rendering from the parent infographic module.

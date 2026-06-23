@@ -10,12 +10,16 @@ use crate::parsers::{
     parse_threats_severity, strip_bold, SeverityCounts, ThreatFinding, SEVERITY_ORDER,
 };
 use serde::Serialize;
-use serde_json::{json, Map, Value};
+use serde_json::{json, Value};
 
 mod executive_architecture;
+mod maestro_templates;
 use executive_architecture::{
     ExecutiveArchitectureCallout, ExecutiveArchitectureCluster, ExecutiveArchitectureFlowEdge,
     ExecutiveArchitectureLayer,
+};
+use maestro_templates::{
+    build_maestro_heatmap_template_data, build_maestro_stack_template_data,
 };
 
 pub const SEVERITY_COLORS: [(&str, &str); 5] = [
@@ -1237,99 +1241,6 @@ fn build_heat_map(findings: &[ThreatFinding]) -> Vec<HeatMapRow> {
             .cmp(&left.total)
             .then_with(|| left.component.cmp(&right.component))
     });
-    rows
-}
-
-fn build_maestro_stack_template_data(maestro_data: &MaestroData) -> Value {
-    let per_layer_summaries = maestro_data
-        .maestro_layer_distribution
-        .iter()
-        .map(|layer| {
-            let mut layer_findings = maestro_data
-                .per_finding_maestro
-                .iter()
-                .filter(|f| {
-                    normalize_maestro_layer_label(&f.maestro_layer).starts_with(&layer.layer_id)
-                })
-                .collect::<Vec<_>>();
-
-            layer_findings.sort_by(|left, right| {
-                severity_rank(&right.risk_level)
-                    .cmp(&severity_rank(&left.risk_level))
-                    .then_with(|| left.id.cmp(&right.id))
-            });
-
-            let top = layer_findings
-                .iter()
-                .take(2)
-                .map(|finding| PerLayerTopFinding {
-                    id: finding.id.clone(),
-                    threat: finding.threat.chars().take(120).collect(),
-                });
-
-            json!({
-                "layer_id": layer.layer_id,
-                "layer_name": layer.layer_name,
-                "finding_count": layer.finding_count,
-                "highest_severity": layer.highest_severity,
-                "top_findings": top.collect::<Vec<_>>(),
-            })
-        })
-        .collect::<Vec<_>>();
-
-    json!({
-        "maestro_layer_distribution": to_value_layer_distribution(&maestro_data.maestro_layer_distribution),
-        "most_exposed_layer": maestro_data.most_exposed_layer,
-        "per_layer_summaries": per_layer_summaries,
-        "has_maestro_data": maestro_data.has_maestro_data,
-    })
-}
-
-fn build_maestro_heatmap_template_data(maestro_data: &MaestroData) -> Value {
-    json!({
-        "maestro_heatmap": to_value_heatmap(&maestro_data.maestro_heatmap),
-        "maestro_layer_distribution": to_value_layer_distribution(&maestro_data.maestro_layer_distribution),
-        "has_maestro_data": maestro_data.has_maestro_data,
-    })
-}
-
-fn to_value_layer_distribution(layers: &[MaestroLayerDistribution]) -> Vec<Value> {
-    layers
-        .iter()
-        .map(|layer| {
-            json!({
-                "layer_id": layer.layer_id,
-                "layer_name": layer.layer_name,
-                "finding_count": layer.finding_count,
-                "highest_severity": layer.highest_severity,
-            })
-        })
-        .collect()
-}
-
-fn to_value_heatmap(heatmap: &[MaestroHeatmapRow]) -> Vec<Value> {
-    let mut rows = Vec::new();
-
-    for row in heatmap {
-        let mut value_map: Map<String, Value> = Map::new();
-        value_map.insert(
-            String::from("component"),
-            Value::String(row.component.clone()),
-        );
-
-        for layer in MAESTRO_LAYERS {
-            value_map.insert(
-                layer.to_string(),
-                match row.layers.get(layer) {
-                    Some(Some(score)) => Value::String(score.clone()),
-                    _ => Value::Null,
-                },
-            );
-        }
-
-        rows.push(Value::Object(value_map));
-    }
-
     rows
 }
 
