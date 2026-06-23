@@ -66,3 +66,19 @@ fn tauri_run_is_not_empty_scaffold() {
         "run boundary should stay tied to the shared registered command surface"
     );
 }
+
+#[test]
+fn tauri_run_exposes_a_real_desktop_dispatch_entrypoint() {
+    let lib_rs = read("src-tauri/src/lib.rs");
+
+    assert!(
+        lib_rs.contains("dispatch_desktop_command_owned"),
+        "run boundary must register a typed desktop dispatch command"
+    );
+    assert!(
+        lib_rs.contains("generate_handler![")
+            && lib_rs.contains("desktop_registered_commands")
+            && lib_rs.contains("dispatch_desktop_command_owned"),
+        "desktop app must expose the shared registry plus the typed dispatcher"
+    );
+}

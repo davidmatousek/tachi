@@ -7,6 +7,8 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::io::{BufReader, Read};
 
+use serde::Serialize;
+
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 
@@ -130,7 +132,7 @@ pub struct RiskScoresSarifOutput {
     pub results_count: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CommandOutput {
     pub status: i32,
     pub stdout: String,

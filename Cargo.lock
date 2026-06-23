@@ -3027,6 +3027,7 @@ dependencies = [
 name = "tachi-shell"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "serde_json",
  "tachi-core",
 ]

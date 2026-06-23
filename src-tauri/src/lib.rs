@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use tachi_shell::tauri_bridge::{dispatch_command, dispatch_command_with_progress};
 
@@ -61,10 +61,23 @@ fn desktop_registered_commands() -> &'static [&'static str] {
     registered_commands()
 }
 
+#[tauri::command]
+fn dispatch_desktop_command_owned(
+    command: String,
+    repo_root: PathBuf,
+    args: Vec<String>,
+) -> CommandOutput {
+    let borrowed_args = args.iter().map(String::as_str).collect::<Vec<_>>();
+    dispatch_desktop_command(&command, &repo_root, &borrowed_args)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![desktop_registered_commands])
+        .invoke_handler(tauri::generate_handler![
+            desktop_registered_commands,
+            dispatch_desktop_command_owned
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
