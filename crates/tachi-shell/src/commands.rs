@@ -190,14 +190,16 @@ pub(crate) fn run_script_command_with_progress(
     reporter: &mut dyn ProgressReporter,
 ) -> CommandOutput {
     script_executor::run_script_command_with_progress_using(
-        &script_executor::SystemScriptExecutor,
-        &runtime_helpers::SystemScriptOutputSink,
-        script_dir,
-        script_name,
-        args,
-        repo_root,
-        token,
-        reporter,
+        script_executor::ScriptCommandRunRequest {
+            executor: &script_executor::SystemScriptExecutor,
+            sink: &runtime_helpers::SystemScriptOutputSink,
+            script_dir,
+            script_name,
+            args,
+            repo_root,
+            token,
+            reporter,
+        },
     )
 }
 
@@ -216,31 +218,6 @@ fn script_dir_for_repo_root(repo_root: &Path) -> PathBuf {
 
 pub fn control_plane_scripts_dir(repo_root: &Path) -> PathBuf {
     script_dir_for_repo_root(repo_root)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::bootstrap_control_plane_args;
-
-    #[test]
-    fn bootstrap_control_plane_args_prepends_bootstrap_flag_without_mutating_input() {
-        let args = vec!["--upstream-url=https://example.com/upstream.git", "--yes"];
-
-        let shaped = bootstrap_control_plane_args(&args);
-
-        assert_eq!(
-            shaped,
-            vec![
-                String::from("--bootstrap"),
-                String::from("--upstream-url=https://example.com/upstream.git"),
-                String::from("--yes"),
-            ]
-        );
-        assert_eq!(
-            args,
-            vec!["--upstream-url=https://example.com/upstream.git", "--yes"]
-        );
-    }
 }
 
 pub(crate) fn bootstrap_control_plane_args(args: &[&str]) -> Vec<String> {
@@ -273,4 +250,29 @@ pub fn bootstrap_output(root: &Path, args: &[&str]) -> CommandOutput {
         .map(String::as_str)
         .collect::<Vec<_>>();
     run_script_command(&scripts_dir, "update.sh", &bootstrap_args, root)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::bootstrap_control_plane_args;
+
+    #[test]
+    fn bootstrap_control_plane_args_prepends_bootstrap_flag_without_mutating_input() {
+        let args = vec!["--upstream-url=https://example.com/upstream.git", "--yes"];
+
+        let shaped = bootstrap_control_plane_args(&args);
+
+        assert_eq!(
+            shaped,
+            vec![
+                String::from("--bootstrap"),
+                String::from("--upstream-url=https://example.com/upstream.git"),
+                String::from("--yes"),
+            ]
+        );
+        assert_eq!(
+            args,
+            vec!["--upstream-url=https://example.com/upstream.git", "--yes"]
+        );
+    }
 }

@@ -5,60 +5,36 @@ use crate::progress::{emit_progress_event, ProgressReporter};
 
 use super::CommandOutput;
 
+pub(crate) struct FinalizeScriptOutputRequest<'a> {
+    pub script_name: &'a str,
+    pub reporter: &'a mut dyn ProgressReporter,
+    pub wait_result: std::io::Result<std::process::ExitStatus>,
+    pub stdout_handle: JoinHandle<Vec<u8>>,
+    pub stderr_handle: JoinHandle<Vec<u8>>,
+    pub status: i32,
+    pub phase: &'a str,
+}
+
 pub(crate) trait ScriptOutputSink {
-    fn finalize_script_output(
-        &self,
-        script_name: &str,
-        reporter: &mut dyn ProgressReporter,
-        wait_result: std::io::Result<std::process::ExitStatus>,
-        stdout_handle: JoinHandle<Vec<u8>>,
-        stderr_handle: JoinHandle<Vec<u8>>,
-        status: i32,
-        phase: &str,
-    ) -> CommandOutput;
+    fn finalize_script_output(&self, request: FinalizeScriptOutputRequest<'_>) -> CommandOutput;
 }
 
 pub(crate) struct SystemScriptOutputSink;
 
 impl ScriptOutputSink for SystemScriptOutputSink {
-    fn finalize_script_output(
-        &self,
-        script_name: &str,
-        reporter: &mut dyn ProgressReporter,
-        wait_result: std::io::Result<std::process::ExitStatus>,
-        stdout_handle: JoinHandle<Vec<u8>>,
-        stderr_handle: JoinHandle<Vec<u8>>,
-        status: i32,
-        phase: &str,
-    ) -> CommandOutput {
-        finalize_script_output(
-            script_name,
-            reporter,
-            wait_result,
-            stdout_handle,
-            stderr_handle,
-            status,
-            phase,
-        )
+    fn finalize_script_output(&self, request: FinalizeScriptOutputRequest<'_>) -> CommandOutput {
+        finalize_script_output(request)
     }
 }
 
-pub(crate) fn finalize_script_output(
-    script_name: &str,
-    reporter: &mut dyn ProgressReporter,
-    wait_result: std::io::Result<std::process::ExitStatus>,
-    stdout_handle: JoinHandle<Vec<u8>>,
-    stderr_handle: JoinHandle<Vec<u8>>,
-    status: i32,
-    phase: &str,
-) -> CommandOutput {
-    let stdout = stdout_handle.join().unwrap_or_default();
-    let stderr = stderr_handle.join().unwrap_or_default();
-    emit_progress_event(reporter, script_name, phase);
-    match wait_result {
+pub(crate) fn finalize_script_output(request: FinalizeScriptOutputRequest<'_>) -> CommandOutput {
+    let stdout = request.stdout_handle.join().unwrap_or_default();
+    let stderr = request.stderr_handle.join().unwrap_or_default();
+    emit_progress_event(request.reporter, request.script_name, request.phase);
+    match request.wait_result {
         Ok(output_status) => CommandOutput {
-            status: if status == 130 || status == 124 {
-                status
+            status: if request.status == 130 || request.status == 124 {
+                request.status
             } else {
                 output_status.code().unwrap_or(1)
             },
@@ -66,10 +42,12 @@ pub(crate) fn finalize_script_output(
             stderr: String::from_utf8_lossy(&stderr).to_string(),
         },
         Err(err) => CommandOutput {
-            status,
+            status: request.status,
             stdout: String::from_utf8_lossy(&stdout).to_string(),
             stderr: format!(
-                "{script_name} {phase}: {err}\n{}",
+                "{} {}: {err}\n{}",
+                request.script_name,
+                request.phase,
                 String::from_utf8_lossy(&stderr)
             ),
         },
@@ -100,6 +78,7 @@ pub(crate) fn capture_stream<R: Read>(reader: R, cap: usize) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::{capture_stream, finalize_script_output};
+    use super::FinalizeScriptOutputRequest;
     use crate::progress::NoopProgressReporter;
     use std::io::Cursor;
     use std::thread;
@@ -116,15 +95,15 @@ mod tests {
         let mut reporter = NoopProgressReporter;
         let stdout_handle = thread::spawn(Vec::new);
         let stderr_handle = thread::spawn(Vec::new);
-        let output = finalize_script_output(
-            "script",
-            &mut reporter,
-            Ok(std::process::ExitStatus::from_raw(0)),
+        let output = finalize_script_output(FinalizeScriptOutputRequest {
+            script_name: "script",
+            reporter: &mut reporter,
+            wait_result: Ok(std::process::ExitStatus::from_raw(0)),
             stdout_handle,
             stderr_handle,
-            130,
-            "cancelled",
-        );
+            status: 130,
+            phase: "cancelled",
+        });
 
         assert_eq!(output.status, 130);
         assert_eq!(output.stdout, "");
@@ -139,15 +118,15 @@ mod tests {
         let mut reporter = NoopProgressReporter;
         let stdout_handle = thread::spawn(|| b"out".to_vec());
         let stderr_handle = thread::spawn(|| b"err".to_vec());
-        let output = finalize_script_output(
-            "script",
-            &mut reporter,
-            Err(std::io::Error::new(std::io::ErrorKind::Other, "boom")),
+        let output = finalize_script_output(FinalizeScriptOutputRequest {
+            script_name: "script",
+            reporter: &mut reporter,
+            wait_result: Err(std::io::Error::other("boom")),
             stdout_handle,
             stderr_handle,
-            1,
-            "failed",
-        );
+            status: 1,
+            phase: "failed",
+        });
 
         assert_eq!(output.status, 1);
         assert!(output.stderr.contains("script failed"));

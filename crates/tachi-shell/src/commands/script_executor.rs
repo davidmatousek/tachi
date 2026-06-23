@@ -24,6 +24,17 @@ pub(crate) trait ScriptExecutor {
     fn run<S: ScriptOutputSink + Sync>(&self, request: ScriptExecutionRequest<'_, S>) -> CommandOutput;
 }
 
+pub(crate) struct ScriptCommandRunRequest<'a, E, S> {
+    pub executor: &'a E,
+    pub sink: &'a S,
+    pub script_dir: &'a Path,
+    pub script_name: &'a str,
+    pub args: &'a [&'a str],
+    pub repo_root: &'a Path,
+    pub token: &'a CancellationToken,
+    pub reporter: &'a mut dyn ProgressReporter,
+}
+
 pub(crate) struct ScriptExecutionRequest<'a, S: ScriptOutputSink + Sync> {
     pub script_name: &'a str,
     pub script_path: &'a Path,
@@ -45,29 +56,22 @@ impl ScriptExecutor for SystemScriptExecutor {
 }
 
 pub(crate) fn run_script_command_with_progress_using<E: ScriptExecutor, S: ScriptOutputSink + Sync>(
-    executor: &E,
-    sink: &S,
-    script_dir: &Path,
-    script_name: &str,
-    args: &[&str],
-    repo_root: &Path,
-    token: &CancellationToken,
-    reporter: &mut dyn ProgressReporter,
+    request: ScriptCommandRunRequest<'_, E, S>,
 ) -> CommandOutput {
     let timeout = execution_timeout();
     let output_cap = execution_output_cap();
-    let script_path = script_dir.join(script_name);
-    let cwd = script_dir.parent().unwrap_or(repo_root);
-    executor.run(ScriptExecutionRequest {
-        script_name,
+    let script_path = request.script_dir.join(request.script_name);
+    let cwd = request.script_dir.parent().unwrap_or(request.repo_root);
+    request.executor.run(ScriptExecutionRequest {
+        script_name: request.script_name,
         script_path: &script_path,
         cwd,
-        args,
+        args: request.args,
         timeout,
         output_cap,
-        sink,
-        token,
-        reporter,
+        sink: request.sink,
+        token: request.token,
+        reporter: request.reporter,
     })
 }
 
@@ -113,28 +117,28 @@ fn run_system_script<S: ScriptOutputSink + Sync>(request: ScriptExecutionRequest
     loop {
         if request.token.is_cancelled() {
             terminate_process_group(&mut child);
-            return request.sink.finalize_script_output(
-                request.script_name,
-                request.reporter,
-                child.wait(),
+            return request.sink.finalize_script_output(runtime_helpers::FinalizeScriptOutputRequest {
+                script_name: request.script_name,
+                reporter: request.reporter,
+                wait_result: child.wait(),
                 stdout_handle,
                 stderr_handle,
-                130,
-                "cancelled",
-            );
+                status: 130,
+                phase: "cancelled",
+            });
         }
 
         if start.elapsed() >= request.timeout {
             terminate_process_group(&mut child);
-            return request.sink.finalize_script_output(
-                request.script_name,
-                request.reporter,
-                child.wait(),
+            return request.sink.finalize_script_output(runtime_helpers::FinalizeScriptOutputRequest {
+                script_name: request.script_name,
+                reporter: request.reporter,
+                wait_result: child.wait(),
                 stdout_handle,
                 stderr_handle,
-                124,
-                "timed out",
-            );
+                status: 124,
+                phase: "timed out",
+            });
         }
 
         match child.try_wait() {
@@ -213,28 +217,14 @@ mod tests {
     #[cfg(unix)]
     use std::os::unix::process::ExitStatusExt;
 
-    struct FakeScriptOutputSink;
+struct FakeScriptOutputSink;
 
     impl ScriptOutputSink for FakeScriptOutputSink {
         fn finalize_script_output(
             &self,
-            script_name: &str,
-            reporter: &mut dyn ProgressReporter,
-            wait_result: std::io::Result<std::process::ExitStatus>,
-            stdout_handle: std::thread::JoinHandle<Vec<u8>>,
-            stderr_handle: std::thread::JoinHandle<Vec<u8>>,
-            status: i32,
-            phase: &str,
+            request: runtime_helpers::FinalizeScriptOutputRequest<'_>,
         ) -> CommandOutput {
-            runtime_helpers::finalize_script_output(
-                script_name,
-                reporter,
-                wait_result,
-                stdout_handle,
-                stderr_handle,
-                status,
-                phase,
-            )
+            runtime_helpers::finalize_script_output(request)
         }
     }
 
@@ -271,16 +261,16 @@ mod tests {
         let token = CancellationToken::new();
         let mut reporter = NoopProgressReporter;
 
-        let output = run_script_command_with_progress_using(
-            &executor,
-            &sink,
-            &script_dir,
-            "install.sh",
-            &["--yes"],
-            Path::new("/tmp/repo"),
-            &token,
-            &mut reporter,
-        );
+        let output = run_script_command_with_progress_using(ScriptCommandRunRequest {
+            executor: &executor,
+            sink: &sink,
+            script_dir: &script_dir,
+            script_name: "install.sh",
+            args: &["--yes"],
+            repo_root: Path::new("/tmp/repo"),
+            token: &token,
+            reporter: &mut reporter,
+        });
 
         assert_eq!(output.status, 7);
         assert_eq!(output.stdout, "fake");
@@ -293,15 +283,15 @@ mod tests {
         let mut reporter = NoopProgressReporter;
         let stdout_handle = std::thread::spawn(|| b"out".to_vec());
         let stderr_handle = std::thread::spawn(|| b"err".to_vec());
-        let output = sink.finalize_script_output(
-            "script",
-            &mut reporter,
-            Ok(std::process::ExitStatus::from_raw(0)),
+        let output = sink.finalize_script_output(runtime_helpers::FinalizeScriptOutputRequest {
+            script_name: "script",
+            reporter: &mut reporter,
+            wait_result: Ok(std::process::ExitStatus::from_raw(0)),
             stdout_handle,
             stderr_handle,
-            0,
-            "completed",
-        );
+            status: 0,
+            phase: "completed",
+        });
 
         assert_eq!(output.status, 0);
         assert_eq!(output.stdout, "out");

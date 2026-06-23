@@ -1,7 +1,7 @@
 use std::fs;
 use std::os::unix::fs::symlink;
 use std::os::unix::fs::PermissionsExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -46,7 +46,7 @@ fn write_executable_file(path: &PathBuf, content: &str) {
     fs::set_permissions(path, perms).expect("set executable mode");
 }
 
-fn wait_for_file(path: &PathBuf) {
+fn wait_for_file(path: &Path) {
     for _ in 0..100 {
         if path.exists() {
             return;
