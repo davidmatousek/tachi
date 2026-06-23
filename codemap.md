@@ -132,6 +132,11 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   `docs/reports/fuzz-mutation-baseline.md`,
   `.github/workflows/fuzz-mutation-audit.yml`, and `make fuzz-mutation-gate`
   now define an offline advisory fuzz/mutation lane with a repo test guard.
+- AQ-050: `crates/tachi-core/tests/property_quality.rs`,
+  `crates/tachi-core/tests/publishing_security_docs.rs`,
+  `docs/testing/fuzz-mutation-audit.md`, and
+  `docs/reports/fuzz-mutation-baseline.md` now document the non-blocking
+  property/fuzz/mutation lanes and their promotion criteria.
 - RT-00i: `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-roadmap.html.md`,
   `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md`,
   `crates/tachi-core/src/aisvs.rs`, and `Cargo.lock` now anchor the glib
