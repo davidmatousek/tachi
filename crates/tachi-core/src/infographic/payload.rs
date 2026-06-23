@@ -7,8 +7,8 @@ use crate::artifacts::{detect_artifacts, determine_tier};
 use crate::metadata::resolve_report_project_name;
 
 use super::{
-    build_heat_map, build_top_findings, build_maestro_heatmap_template_data,
-    build_maestro_stack_template_data, compute_risk_posture, compute_severity_percentages,
+    build_heat_map, build_maestro_heatmap_template_data, build_maestro_stack_template_data,
+    build_top_findings, compute_risk_posture, compute_severity_percentages,
     derive_severity_counts_from_findings, extract_prompt_scaffold, InfographicMetadata,
     InfographicPayload, PromptScaffold, PromptScaffoldPayload,
 };

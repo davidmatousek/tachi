@@ -1,9 +1,13 @@
+pub use crate::aisvs::{
+    aisvs_control_registry, AisvsControl, AisvsControlId, AisvsError, AisvsRegistry,
+};
 pub use crate::artifacts::{detect_artifacts, determine_tier};
 pub use crate::assets::{detect_brand_assets, detect_images};
 pub use crate::attack_chains::{
     generate_chain_mermaid, parse_attack_chains, AttackChain, AttackChainFinding,
 };
 pub use crate::compensating_controls::parse_compensating_controls_md;
+pub use crate::coverage_audit::coverage_family_catalog;
 pub use crate::coverage_audit::{collect_audit, render};
 pub use crate::coverage_taxonomy::{
     canonical_maestro_layer_label, maestro_layer_catalog, normalize_maestro_layer_label,
@@ -26,6 +30,5 @@ pub use crate::risk_scores::{
     build_risk_scores_sarif, parse_risk_md_section2, parse_risk_md_section3,
     parse_risk_md_section4, RiskScoreBreakdown, RiskScoreFinding, RiskScoreGovernance,
 };
-pub use crate::coverage_audit::coverage_family_catalog;
 pub use crate::sarif_common::{parse_component_metadata, prefix_for};
 pub use crate::threats_sarif::{build_threats_sarif, ThreatSarifFinding};

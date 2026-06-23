@@ -559,7 +559,10 @@ mod tests {
 
     #[test]
     fn parse_finding_pattern_normalizes_sentinels_and_hyphenated_values() {
-        assert_eq!(parse_finding_pattern(Some(" AGENT-COLLUSION ")), "agent_collusion");
+        assert_eq!(
+            parse_finding_pattern(Some(" AGENT-COLLUSION ")),
+            "agent_collusion"
+        );
         assert_eq!(parse_finding_pattern(Some("multiple")), "multiple");
         assert_eq!(parse_finding_pattern(Some("—")), "none");
         assert_eq!(parse_finding_pattern(Some("_")), "none");

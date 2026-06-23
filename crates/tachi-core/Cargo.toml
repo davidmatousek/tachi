@@ -10,6 +10,7 @@ path = "src/lib.rs"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 sha2 = "0.10"
+thiserror = "2"
 
 [dev-dependencies]
 proptest = "1"

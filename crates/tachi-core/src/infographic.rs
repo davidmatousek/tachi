@@ -10,18 +10,18 @@ use serde_json::Value;
 
 mod executive_architecture;
 mod maestro_templates;
-mod prompt_scaffold;
 mod payload;
+mod prompt_scaffold;
 use executive_architecture::{
     ExecutiveArchitectureCallout, ExecutiveArchitectureCluster, ExecutiveArchitectureFlowEdge,
     ExecutiveArchitectureLayer,
 };
 use maestro_templates::{build_maestro_heatmap_template_data, build_maestro_stack_template_data};
+pub use payload::{build_infographic_payload, build_infographic_payload_from_content};
 pub use prompt_scaffold::{
     extract_prompt_scaffold, extract_prompt_scaffold_from_store, PromptScaffold,
     PromptScaffoldStore,
 };
-pub use payload::{build_infographic_payload, build_infographic_payload_from_content};
 
 pub const SEVERITY_COLORS: [(&str, &str); 5] = [
     ("Critical", "#DC2626"),

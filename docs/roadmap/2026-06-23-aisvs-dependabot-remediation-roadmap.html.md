@@ -72,7 +72,7 @@ release gates so future security controls are incremental instead of ad hoc.
 | Capability | AISVS 1.0 control registry and error model |
 | Feature | `RT-00i.1` Introduce typed AISVS control registry |
 | Tasks | define control ids, control families, typed states, and a safe error enum |
-| Functions | `crates/tachi-core/src/aisvs/mod.rs`, `crates/tachi-core/src/aisvs/control_registry.rs`, `crates/tachi-core/src/aisvs/error.rs`, `crates/tachi-core/tests/aisvs_registry.rs` |
+| Functions | `crates/tachi-core/src/aisvs.rs`, `crates/tachi-core/tests/aisvs_registry.rs`, `crates/tachi-core/src/lib.rs`, `crates/tachi-core/src/facade.rs` |
 
 **TDD acceptance criteria**
 
@@ -82,6 +82,11 @@ release gates so future security controls are incremental instead of ad hoc.
 - The registry covers AISVS C01-C12 and is `Send + Sync` friendly.
 - Tests prove lookup, invalid-state rejection, and serialization/deserialization
   behavior before the implementation lands.
+
+**Status**
+
+- Implemented locally with typed control ids, a sanitized error enum, and
+  failing-first registry tests.
 
 ## Phase 2: AISVS C01-C04 control cluster
 

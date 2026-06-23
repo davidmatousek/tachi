@@ -1,3 +1,4 @@
+pub mod aisvs;
 pub(crate) mod artifacts;
 pub(crate) mod assets;
 pub(crate) mod attack_chains;
@@ -21,18 +22,18 @@ pub mod threats_sarif;
 
 pub mod facade;
 
+pub use aisvs::{aisvs_control_registry, AisvsControl, AisvsControlId, AisvsError, AisvsRegistry};
 pub use facade::{
     build_infographic_payload, build_remediation_actions, build_report_data_typst,
-    build_threats_sarif, canonical_maestro_layer_label, collect_audit, crate_name,
-    coverage_family_catalog, detect_artifacts, detect_brand_assets, detect_images,
+    build_risk_scores_sarif, build_threats_sarif, canonical_maestro_layer_label, collect_audit,
+    coverage_family_catalog, crate_name, detect_artifacts, detect_brand_assets, detect_images,
     ensure_attack_path_renderer_available, format_attack_path_render_failure_summary,
     generate_chain_mermaid, maestro_layer_catalog, merge_delta_status, merge_source_attribution,
     normalize_maestro_layer_label, owasp_coverage_family_catalog, parse_attack_chains,
     parse_compensating_controls_md, parse_component_metadata, parse_risk_md_section2,
-    parse_risk_md_section3, parse_risk_md_section4, parse_threat_report_md,
-    parse_threats_findings, prefix_for, render, render_owasp_coverage_matrix,
-    build_risk_scores_sarif, AttackChain, AttackChainFinding, MaestroLayer,
-    MermaidRenderFailure, OwaspCoverageFamily, RemediationAction, RemediationFinding,
+    parse_risk_md_section3, parse_risk_md_section4, parse_threat_report_md, parse_threats_findings,
+    prefix_for, render, render_owasp_coverage_matrix, AttackChain, AttackChainFinding,
+    MaestroLayer, MermaidRenderFailure, OwaspCoverageFamily, RemediationAction, RemediationFinding,
     RemediationTimelineEntry, RiskScoreBreakdown, RiskScoreFinding, RiskScoreGovernance,
     ThreatReportData, ThreatSarifFinding, MMDC_INSTALL_HINT,
 };
