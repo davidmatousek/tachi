@@ -43,38 +43,49 @@ pub struct RiskScoreGovernance {
     pub review_date: String,
 }
 
-pub fn parse_risk_md_section2(md: &str) -> Vec<RiskScoreFinding> {
-    parse_markdown_table(md, "## 2. Scored Threat Table")
-        .into_iter()
-        .map(|row| RiskScoreFinding {
-            id: row.get("ID").cloned().unwrap_or_default(),
+pub fn parse_risk_md_section2(md: &str) -> Result<Vec<RiskScoreFinding>, String> {
+    let rows = parse_markdown_table(md, "## 2. Scored Threat Table");
+    let mut findings = Vec::with_capacity(rows.len());
+
+    for row in rows {
+        let id = row.get("ID").cloned().unwrap_or_default();
+
+        let cvss_raw = row.get("CVSS").cloned().unwrap_or_default();
+        let cvss_base = cvss_raw.trim().parse::<f64>()
+            .map_err(|err| format!("failed to parse CVSS score for {id}: {err}"))?;
+
+        let exp_raw = row.get("Exploitability").cloned().unwrap_or_default();
+        let exploitability = exp_raw.trim().parse::<f64>()
+            .map_err(|err| format!("failed to parse Exploitability score for {id}: {err}"))?;
+
+        let scal_raw = row.get("Scalability").cloned().unwrap_or_default();
+        let scalability = scal_raw.trim().parse::<f64>()
+            .map_err(|err| format!("failed to parse Scalability score for {id}: {err}"))?;
+
+        let reach_raw = row.get("Reachability").cloned().unwrap_or_default();
+        let reachability = reach_raw.trim().parse::<f64>()
+            .map_err(|err| format!("failed to parse Reachability score for {id}: {err}"))?;
+
+        let comp_raw = row.get("Composite").cloned().unwrap_or_default();
+        let composite = comp_raw.trim().parse::<f64>()
+            .map_err(|err| format!("failed to parse Composite score for {id}: {err}"))?;
+
+        findings.push(RiskScoreFinding {
+            id,
             component: row.get("Component").cloned().unwrap_or_default(),
             threat_summary: row.get("Threat").cloned().unwrap_or_default(),
-            cvss_base: row
-                .get("CVSS")
-                .and_then(|value| value.parse::<f64>().ok())
-                .unwrap_or(0.0),
-            exploitability: row
-                .get("Exploitability")
-                .and_then(|value| value.parse::<f64>().ok())
-                .unwrap_or(0.0),
-            scalability: row
-                .get("Scalability")
-                .and_then(|value| value.parse::<f64>().ok())
-                .unwrap_or(0.0),
-            reachability: row
-                .get("Reachability")
-                .and_then(|value| value.parse::<f64>().ok())
-                .unwrap_or(0.0),
-            composite: row
-                .get("Composite")
-                .and_then(|value| value.parse::<f64>().ok())
-                .unwrap_or(0.0),
+            cvss_base,
+            exploitability,
+            scalability,
+            reachability,
+            composite,
             severity_band: row.get("Severity").cloned().unwrap_or_default(),
             sla_days: row.get("SLA").cloned().unwrap_or_default(),
             disposition: row.get("Disposition").cloned().unwrap_or_default(),
-        })
-        .collect()
+        });
+    }
+
+    Ok(findings)
 }
 
 pub fn parse_risk_md_section3(md: &str) -> BTreeMap<String, RiskScoreBreakdown> {
