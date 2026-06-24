@@ -171,7 +171,7 @@ The repository policy for these surfaces is:
 | Infographic payload seam | `cargo test -p tachi-core` | Payload orchestration remains behavior-compatible after moving filesystem loading and template assembly. |
 | Parser hardening regression | `cargo test -p tachi-core compute_delta_counts_trims_case_and_ignores_unknown_statuses -- --nocapture` | Must pass for panic-free delta counting and status normalization. |
 | Lint gate | `cargo clippy --all-targets -- -D warnings` and `.github/workflows/rust-clippy.yml` | No warnings allowed; SARIF upload remains `if: always()` but clippy status fails closed. |
-| Coverage gate | `make llvm-cov` | Coverage remains above the repo floor. |
+| Coverage gate | `make llvm-cov` | Coverage remains above the repo floor; validated at 85.33% line coverage on 2026-06-24. |
 | Reporting goldens | `cargo test -p tachi-core --test reporting_goldens -- --nocapture` | Canonical report, threat, risk, coverage, and infographic outputs remain stable through semantic projections and compact snapshots. |
 | Advisory fuzz/mutation lane | `make fuzz-mutation-gate` and `.github/workflows/fuzz-mutation-audit.yml` | Commands stay documented, scheduled/manual runs remain non-blocking, and survivor reports stay offline-safe. |
 | Diff hygiene | `git diff --check` | No whitespace or patch-format issues. |

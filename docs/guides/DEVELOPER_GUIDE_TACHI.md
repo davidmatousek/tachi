@@ -158,7 +158,7 @@ Run this for each new codebase you want to add threat modeling to. Repeat it aft
 ```bash
 ls .claude/agents/tachi/                       # 17 agent .md files
 ls .claude/commands/                            # tachi.threat-model.md, tachi.risk-score.md, tachi.compensating-controls.md, tachi.infographic.md, tachi.security-report.md, tachi.architecture.md
-ls schemas/                                     # 8 YAML schema files
+ls schemas/                                     # 10 YAML schema files, including aisvs.yaml
 ls templates/tachi/output-schemas/              # 7 output format templates (.md + .sarif)
 ls templates/tachi/infographics/                # 3 infographic design templates
 ls templates/tachi/security-report/             # main.typ, theme.typ, shared.typ, + page templates
@@ -1062,7 +1062,7 @@ cp -r ~/Projects/tachi/brand/ brand/
 # Verify
 ls .claude/agents/tachi/                       # 17 agent .md files
 ls .claude/commands/                            # 6 command files
-ls schemas/                                     # 8 YAML schema files
+ls schemas/                                     # 10 YAML schema files, including aisvs.yaml
 ls templates/tachi/                             # output-schemas/, infographics/, security-report/
 ```
 

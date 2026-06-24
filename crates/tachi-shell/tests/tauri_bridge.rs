@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
+use serde_json::Value;
 use tachi_shell::progress::{
     cancel_running_command, CancellationToken, ProgressEvent, ProgressReporter,
 };
@@ -281,4 +282,167 @@ fn dispatch_command_rejects_symlink_escape_in_input_path() {
     assert!(output
         .stderr
         .contains("path policy failed for threats input"));
+}
+
+#[test]
+fn dispatch_command_renders_report_data_to_stdout_and_file() {
+    let _guard = EXEC_POLICY_LOCK.lock().expect("policy lock");
+    let root = fixture_repo();
+    let target_dir = root.join("examples/agentic-app/sample-report");
+    let template_dir = root.join("templates/tachi/security-report");
+    fs::create_dir_all(&target_dir).expect("create target dir");
+    fs::create_dir_all(&template_dir).expect("create template dir");
+    fs::write(
+        target_dir.join("threats.md"),
+        "# Threat Model: Bridge Coverage\n",
+    )
+    .expect("write threats");
+
+    let stdout_output = dispatch_command(
+        "report-data",
+        &root,
+        &[
+            "--target-dir",
+            target_dir.to_string_lossy().as_ref(),
+            "--template-dir",
+            template_dir.to_string_lossy().as_ref(),
+        ],
+    );
+
+    assert_eq!(stdout_output.status, 0);
+    assert!(stdout_output.stdout.contains("#let project-name ="));
+    assert!(stdout_output.stderr.contains("report-data.typ generated"));
+
+    let output_path = root.join("generated/report-data.typ");
+    let file_output = dispatch_command(
+        "report-data",
+        &root,
+        &[
+            "--target-dir",
+            target_dir.to_string_lossy().as_ref(),
+            "--template-dir",
+            template_dir.to_string_lossy().as_ref(),
+            "--output",
+            output_path.to_string_lossy().as_ref(),
+        ],
+    );
+
+    assert_eq!(file_output.status, 0);
+    assert!(file_output.stdout.is_empty());
+    assert_eq!(
+        fs::read_to_string(&output_path).expect("read report output"),
+        stdout_output.stdout
+    );
+    assert!(file_output.stderr.contains("report-data.typ generated"));
+}
+
+#[test]
+fn dispatch_command_renders_infographic_data_to_stdout_and_file() {
+    let _guard = EXEC_POLICY_LOCK.lock().expect("policy lock");
+    let root = fixture_repo();
+    fs::write(
+        root.join("threats.md"),
+        "# Agentic AI Application\n\n## 7. Recommended Actions\n\n| Finding ID | Component | Threat | Risk Level | Mitigation | Status |\n| --- | --- | --- | --- | --- | --- |\n| AG-8 | Agent | Prompt injection | High | Harden prompts | [NEW] |\n",
+    )
+    .expect("write threats");
+
+    let stdout_output = dispatch_command(
+        "infographic-data",
+        &root,
+        &[
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--template",
+            "maestro-stack",
+        ],
+    );
+
+    assert_eq!(stdout_output.status, 0);
+    let stdout_value: Value = serde_json::from_str(&stdout_output.stdout).expect("valid JSON");
+    assert_eq!(stdout_value["template"], "maestro-stack");
+    assert!(stdout_output.stderr.is_empty());
+
+    let output_path = root.join("generated/infographic.json");
+    let file_output = dispatch_command(
+        "infographic-data",
+        &root,
+        &[
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--template",
+            "maestro-stack",
+            "--output",
+            output_path.to_string_lossy().as_ref(),
+        ],
+    );
+
+    assert_eq!(file_output.status, 0);
+    assert!(file_output.stdout.is_empty());
+    let written: Value =
+        serde_json::from_str(&fs::read_to_string(&output_path).expect("read infographic output"))
+            .expect("valid infographic JSON");
+    assert_eq!(written["template"], "maestro-stack");
+}
+
+#[test]
+fn dispatch_command_writes_threats_sarif_and_risk_scores_sarif() {
+    let _guard = EXEC_POLICY_LOCK.lock().expect("policy lock");
+    let root = fixture_repo();
+    fs::write(
+        root.join("threats.md"),
+        "# Agentic AI Application\n\n## 7. Recommended Actions\n\n| Finding ID | Component | Threat | Risk Level | Mitigation | Status |\n| --- | --- | --- | --- | --- | --- |\n| AG-8 | Agent | Prompt injection | High | Harden prompts | [NEW] |\n",
+    )
+    .expect("write threats");
+    fs::write(
+        root.join("risk-scores.md"),
+        "## 2. Scored Threat Table\n\n| ID | Component | Threat | CVSS | Exploitability | Scalability | Reachability | Composite | Severity | SLA | Disposition |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| AG-8 | Agent | Prompt injection | 9.1 | 9.0 | 8.5 | 8.0 | 8.8 | High | 7 | Monitor |\n\n## 3. Dimensional Breakdown\n\n### AG-8: Prompt injection\n\n**Component**: Agent\n**Category**: Agentic Threats\n**MAESTRO Layer**: L3 Triage\n**CVSS Vector**: `AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:L`\n**Correlation Group**: Scores inherited from primary finding AG-3\n*Score source: correlation primary*\n\n## 4. Governance Fields\n\n| ID | Owner | SLA | Disposition | Review Date |\n| --- | --- | --- | --- | --- |\n| AG-8 | Alice | 7 | Monitor | 2026-06-06 |\n",
+    )
+    .expect("write risk scores");
+
+    let threats_output_path = root.join("generated/threats.sarif");
+    let threats_output = dispatch_command(
+        "threats-sarif",
+        &root,
+        &[
+            "--input",
+            root.join("threats.md").to_string_lossy().as_ref(),
+            "--output",
+            threats_output_path.to_string_lossy().as_ref(),
+        ],
+    );
+
+    assert_eq!(threats_output.status, 0);
+    assert!(threats_output.stdout.is_empty());
+    let threats_sarif: Value = serde_json::from_str(
+        &fs::read_to_string(&threats_output_path).expect("read threats sarif"),
+    )
+    .expect("valid threats SARIF JSON");
+    assert_eq!(
+        threats_sarif["runs"][0]["results"][0]["partialFingerprints"]["findingId/v1"],
+        "AG-8"
+    );
+
+    let risk_output_path = root.join("risk-output/risk-scores.sarif");
+    let risk_output = dispatch_command(
+        "risk-scores-sarif",
+        &root,
+        &[
+            "--risk-scores",
+            root.join("risk-scores.md").to_string_lossy().as_ref(),
+            "--threats",
+            root.join("threats.md").to_string_lossy().as_ref(),
+            "--output",
+            risk_output_path.to_string_lossy().as_ref(),
+        ],
+    );
+
+    assert_eq!(risk_output.status, 0, "{}", risk_output.stderr);
+    assert!(risk_output.stdout.is_empty());
+    let risk_sarif: Value =
+        serde_json::from_str(&fs::read_to_string(&risk_output_path).expect("read risk sarif"))
+            .expect("valid risk SARIF JSON");
+    assert_eq!(
+        risk_sarif["runs"][0]["results"][0]["partialFingerprints"]["findingId/v1"],
+        "AG-8"
+    );
 }

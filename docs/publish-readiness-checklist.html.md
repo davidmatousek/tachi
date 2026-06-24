@@ -65,7 +65,7 @@ Use this checklist before publishing to GitHub or cutting a release.
       threat, risk, and infographic outputs.
 - [ ] `cargo clippy --all-targets -- -D warnings` passes.
 - [ ] `make llvm-cov` passes and the coverage floor remains above the project
-      baseline.
+      baseline; validated at 85.33% line coverage on 2026-06-24.
 - [ ] Any benchmark or regression gate referenced by the roadmap has its current
       baseline recorded.
 - [ ] `INSTALL_MANIFEST.md` only references files/directories that exist in the

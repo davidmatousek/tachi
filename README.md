@@ -589,8 +589,8 @@ The agentic-app example includes a [complete sample report](examples/agentic-app
 |----------|----------|---------|
 | Interface Contract | [`docs/INTERFACE-CONTRACT.md`](docs/INTERFACE-CONTRACT.md) | Input formats, invocation protocol, output structure |
 | Output Templates | [`templates/tachi/`](templates/tachi/) | Canonical output structures and Typst PDF templates |
-| Schemas | [`schemas/`](schemas/) | Machine-readable contracts ([finding.yaml](schemas/finding.yaml), [input.yaml](schemas/input.yaml), [output.yaml](schemas/output.yaml), [risk-scoring.yaml](schemas/risk-scoring.yaml)) |
-| Taxonomy Crosswalk | [`schemas/taxonomy/`](schemas/taxonomy/README.md) | Machine-readable catalog of OWASP/MITRE/NIST/CWE IDs + cross-framework crosswalk (Feature 180 F-A1) |
+| Schemas | [`schemas/`](schemas/) | Machine-readable contracts ([finding.yaml](schemas/finding.yaml), [input.yaml](schemas/input.yaml), [output.yaml](schemas/output.yaml), [risk-scoring.yaml](schemas/risk-scoring.yaml), [aisvs.yaml](schemas/aisvs.yaml)) |
+| Taxonomy Crosswalk | [`schemas/taxonomy/`](schemas/taxonomy/README.md) | Machine-readable catalog of OWASP/MITRE/NIST/CWE IDs + cross-framework crosswalk, including the AISVS taxonomy catalog at [taxonomy/aisvs.yaml](schemas/taxonomy/aisvs.yaml) (Feature 180 F-A1) |
 | Source Attribution | [`docs/architecture/02_ADRs/ADR-028-source-attribution-schema-extension.md`](docs/architecture/02_ADRs/ADR-028-source-attribution-schema-extension.md) | Optional `source_attribution` finding field (schema 1.5) citing F-A1 framework IDs — contract only (Feature 189 F-A2) |
 | Threat Agents | [`.claude/agents/tachi/`](.claude/agents/tachi/) | 14 detection agents (6 STRIDE + 5 LLM + 3 Agentic) + 7 utility agents (orchestrator, attack-tree-delta, threat-report, threat-infographic, risk-scorer, control-analyzer, report-assembler) |
 | Commands | [`.claude/commands/`](.claude/commands/) | 6 slash commands: tachi.threat-model, tachi.risk-score, tachi.compensating-controls, tachi.infographic, tachi.security-report, tachi.architecture |
@@ -642,7 +642,7 @@ make llvm-cov
 cargo clippy --all-targets -- -D warnings
 ```
 
-This runs the Rust test suite, the Rust-backed coverage audit, the LLVM coverage report with toolchain-local LLVM binaries, and Clippy warning gates. Publishing work should keep Rust coverage at or above the project floor documented in [`docs/standards/PUBLISHING_SECURITY.md`](docs/standards/PUBLISHING_SECURITY.md); the roadmap currently targets at least 85% during migration.
+This runs the Rust test suite, the Rust-backed coverage audit, the LLVM coverage report with toolchain-local LLVM binaries, and Clippy warning gates. Publishing work should keep Rust coverage at or above the project floor documented in [`docs/standards/PUBLISHING_SECURITY.md`](docs/standards/PUBLISHING_SECURITY.md); as of 2026-06-24, `make llvm-cov` reports 85.33% line coverage, which clears the current 85% migration floor.
 
 The legacy compatibility target remains available for archival migration use, but it is intentionally not listed as part of the Rust-native validation path above.
 
