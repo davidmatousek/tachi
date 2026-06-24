@@ -28,7 +28,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | `crates/tachi-cli/` | Thin CLI binary layer. Binaries parse flags, call shared core/shell functions, and write files or stdout. Business logic should move down into `tachi-core` or `tachi-shell`. |
 | `crates/tachi-shell/` | Shared command facade for shell-style control-plane operations and Tauri-facing command dispatch. Keeps desktop and CLI command semantics aligned and now enforces bounded execution, output/input path containment, process cleanup for desktop bridge file IO, and serialized control-plane tests around shared shell state. |
 | `src-tauri/` | Tauri desktop shell. It should remain a bridge/registration layer and avoid duplicate business logic. The scaffold now includes `tauri.conf.json`, `capabilities/main.json`, typed control-plane schema guards, typed desktop error taxonomy, and offline cache path-policy checks with a least-privilege `core:default` main-window capability. |
-| `schemas/` | Finding schema and taxonomy catalogs used by parser, source-attribution, coverage, and crosswalk validation tests. |
+| `schemas/` | Finding schema and taxonomy catalogs used by parser, source-attribution, coverage, AISVS, and crosswalk validation tests. |
 | `.claude/` | Agent, command, skill, and reference content inherited from the original Tachi workflow. This is data/configuration for threat-modeling behavior, not Rust runtime code. |
 | `.aod/` | AOD shell helpers, templates, and governance memory. Some shell helpers remain under Rust test coverage while migration continues. |
 | `tests/scripts/` | Transitional pytest suite and fixtures. RT-011 progressively ports high-signal coverage into Rust tests and removes retired pytest modules. |
@@ -60,7 +60,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | Integration | Rust integration tests under `crates/*/tests` and `src-tauri/tests`; current audit includes the scaffold dependency-floor audit, workflow CI gate audit, issue-template TDD contract audit, Tauri capability-boundary audit, and the typed control-plane boundary audit, while the init-substitution E2E boundary is Rust-owned. |
 | Smoke | Transitional smoke modules tracked by `tachi-core::coverage_audit`; current audit shows 1 Rust smoke canary and 0 remaining Python smoke modules. |
 | E2E | Critical init flow now lives in `crates/tachi-shell/tests/init_substitution.rs` while the Rust-owned E2E boundary is being defined. |
-| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 85.93% regions / 85.05% lines. Current audit: 84 active modules, 80 Rust integration modules, 2 Rust unit modules, 1 Rust smoke module, 1 Rust E2E module, 0 support/regression modules. |
+| Coverage | `make llvm-cov` is the release-quality local gate. Current validated baseline: 86.32% regions / 85.33% lines. Current audit: 84 active modules, 80 Rust integration modules, 2 Rust unit modules, 1 Rust smoke module, 1 Rust E2E module, 0 support/regression modules. |
 
 The publish gate now includes `make scaffold-dependency-gate`, which runs the
 Rust-native `scaffold_dependency_floors` integration test against the real
@@ -110,6 +110,10 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   command, and `crates/tachi-shell/src/commands.rs` exposes serializable
   `CommandOutput` for Tauri IPC while keeping the desktop capability boundary
   test-backed.
+- RT-00i.5.1: `schemas/aisvs.yaml`, `schemas/taxonomy/aisvs.yaml`,
+  `crates/tachi-shell/tests/tauri_bridge.rs`, and the public docs now ship
+  the AISVS schema/catalog slice with bridge coverage for report-data,
+  infographic-data, threats-sarif, and risk-scores-sarif dispatch paths.
 - AQ-001: tracker now has phase-0 Beads children `AQ-011`, `AQ-012`, and
   `AQ-013` materialized from the architecture/test-quality roadmap, and
   their workflow/template proofs are validated and closed.
