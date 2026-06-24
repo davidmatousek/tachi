@@ -16,6 +16,8 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | `crates/tachi-shell/src/commands.rs` | Shared command layer used by CLI-style flows and the Tauri bridge. |
 | `src-tauri/src/lib.rs` | Desktop command registration and bridge integration for Tauri. |
 | `Makefile` | Validation shortcuts, including the Rust coverage gate via `make llvm-cov` and the scaffold dependency-floor gate via `make scaffold-dependency-gate`. |
+| `.github/workflows/release-please.yml` | Main-push release automation using release-please with direct tag/release creation and no release-PR churn. |
+| `docs/platform-compatibility.md` | Public compatibility matrix and setup landing page for canonical core plus harness-specific shims/fallbacks. |
 | `docs/roadmap/` | Canonical migration roadmap, issue cards, merge plan, and Python-surface inventory. |
 
 ## Directory Map
@@ -33,7 +35,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
 | `tests/fixtures/` | Frozen fixture copies and baseline trees used for compatibility checks. These are excluded from active coverage-audit counts. |
 | `scripts/` | Transitional Python runtime scripts from the original implementation. RT-012 tracks porting remaining canonical behavior into Rust; the standalone SARIF generators, infographic extractor, pagination smoke scaffolds, and attack-chain extraction pytest have already moved to Rust CLI binaries and tests, RT-013 now routes desktop `infographic-data` through the shared Rust payload builder, and the active architecture system-design README now points at the Rust CLI extractors. |
 | `stacks/` | Legacy Python/FastAPI and frontend scaffolds. RT-014 tracks retirement or archival after Rust/Tauri parity is stable; the stack index now describes the retired FastAPI packs generically. |
-| `docs/` | Public project documentation. Roadmap and product planning documents live under `docs/roadmap/`; testing status lives under `docs/testing/`; archived security-review guidance for retired FastAPI scaffolds lives in `docs/security/`; the root `README.md` now treats the old FastAPI packs and legacy `make test` note as archived guidance, the Rust init matrix workflow has replaced the pytest matrix, live examples use Rust/Tauri or shell tooling instead of Python pretty-printers, and the pre-commit / CLAUDE organization / permissions guidance now avoids Python-specific installation, test-run, and runtime-example wording. |
+| `docs/` | Public project documentation. Roadmap and product planning documents live under `docs/roadmap/`; testing status lives under `docs/testing/`; archived security-review guidance for retired FastAPI scaffolds lives in `docs/security/`; the root `README.md` now treats the old FastAPI packs and legacy `make test` note as archived guidance, the Rust init matrix workflow has replaced the pytest matrix, `docs/platform-compatibility.md` centralizes the harness matrix and fallback path, live examples use Rust/Tauri or shell tooling instead of Python pretty-printers, and the pre-commit / CLAUDE organization / permissions guidance now avoids Python-specific installation, test-run, and runtime-example wording. |
 
 ## Rust Data And Control Flow
 
@@ -64,6 +66,9 @@ The publish gate now includes `make scaffold-dependency-gate`, which runs the
 Rust-native `scaffold_dependency_floors` integration test against the real
 Next.js/Supabase scaffold manifest so known vulnerable `next` and `vitest`
 lower bounds cannot be reintroduced.
+The publish/release path now also uses `release-please` on push to `main`,
+with the workflow configured to skip release-PR churn and create the tag /
+GitHub Release directly.
 
 Primary validation commands:
 
@@ -149,6 +154,9 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   `docs/reports/fuzz-mutation-baseline.md`,
   `.github/workflows/fuzz-mutation-audit.yml`, and `make fuzz-mutation-gate`
   now define an offline advisory fuzz/mutation lane with a repo test guard.
+- AQ-055: `docs/platform-compatibility.md`, the adapter README family, and
+  `.github/workflows/release-please.yml` now document the harness-agnostic
+  compatibility matrix and direct push-driven release workflow.
 - AQ-050: `crates/tachi-core/tests/property_quality.rs`,
   `crates/tachi-core/tests/publishing_security_docs.rs`,
   `docs/testing/fuzz-mutation-audit.md`, and
