@@ -1,6 +1,12 @@
 # GitHub Actions Adapter
 
-This adapter provides a GitHub Actions workflow that runs tachi threat analysis on pull requests when architecture files change. Unlike file-transformation adapters (Claude Code, Cursor, Copilot), this workflow does not copy or transform agent files. Instead, it reads the source agents from the `agents/` directory at runtime and invokes them via LLM API.
+This is tachi's native adapter for GitHub Actions. It provides a workflow that
+runs threat analysis on pull requests when architecture files change. Unlike
+file-transformation adapters (Claude Code, Cursor, Copilot, Generic), this
+workflow does not copy or transform agent files. Instead, it reads the source
+agents from `agents/` at runtime and invokes them via LLM API. See
+[`../README.md`](../README.md) for the full compatibility matrix and fallback
+paths.
 
 ## How It Differs
 

@@ -1,20 +1,21 @@
 # tachi
 
 **Rust-native threat modeling, AI security analysis, and release-audit harness
-for Claude Code.**
+with native and fallback adapters.**
 
 *AI-Reasoning Scanner - STRIDE + AI + MAESTRO + OWASP coverage.*
 
 ![tachi - Rust-native threat modeling, AI security analysis, and release-audit
-harness for Claude Code. AI-Reasoning Scanner (STRIDE + AI + MAESTRO + OWASP)
-with five-framework coverage, a 3-step install, and a 5-step security-report
-workflow.](brand/posters/2026-05-29-owasp-coverage-poster.jpg)
+harness with native and fallback adapters. AI-Reasoning Scanner (STRIDE + AI +
+MAESTRO + OWASP) with five-framework coverage, a 3-step install, and a 5-step
+security-report workflow.](brand/posters/2026-05-29-owasp-coverage-poster.jpg)
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/pratik-saptarshi/tachi-rust)](https://github.com/pratik-saptarshi/tachi-rust/releases)
 [![Built with AOD Kit](https://img.shields.io/badge/built%20with-AOD%20Kit-blueviolet.svg)](https://github.com/davidmatousek/agentic-oriented-development-kit)
 
 **Get started**: [Core capabilities](#core-capabilities) |
+[Platform compatibility](docs/platform-compatibility.md) |
 [How an auditor uses tachi](#how-an-auditor-uses-tachi) |
 [Use cases](#use-cases) | [Quick start](#quick-start) |
 [Developer guide](docs/guides/DEVELOPER_GUIDE_TACHI.md)
@@ -25,20 +26,35 @@ workflow.](brand/posters/2026-05-29-owasp-coverage-poster.jpg)
 
 tachi is a Rust-native security analysis harness that helps teams inspect
 architecture, threat models, AI agent behavior, and release-readiness evidence
-from one workflow. It produces human-readable reports and machine-readable
-artifacts such as SARIF, attack trees, risk scores, and control coverage
-summaries.
+from one workflow. The canonical threat logic lives in `agents/`; platform
+adapters only repackage that same core contract for the target harness. It
+produces human-readable reports and machine-readable artifacts such as SARIF,
+attack trees, risk scores, and control coverage summaries.
 
 The active repository is Rust/Tauri-native. The old Python/FastAPI surface is
 retired; remaining Python references are archival or compatibility fixtures
-only.
+only. **Archived legacy guidance** for the retired FastAPI pack is preserved in
+historical docs for reference only and is not part of active setup flows.
 
 Publication and release-readiness guidance lives in:
 
 - [`docs/bill-of-materials.html.md`](docs/bill-of-materials.html.md) for the
   publishable surface inventory.
+- [`docs/platform-compatibility.md`](docs/platform-compatibility.md) for the
+  harness matrix, install surfaces, and fallback behavior.
 - [`docs/publish-readiness-checklist.html.md`](docs/publish-readiness-checklist.html.md)
   for the pre-push security, privacy, docs, and CI gate.
+
+## Compatibility at a Glance
+
+| Support level | Harnesses | Install surface |
+|---|---|---|
+| Native adapter | Claude Code, Cursor, Copilot, GitHub Actions | Dedicated adapter pack or workflow file |
+| Thin shim | Codex, OpenCode, Termux, Voltagent, Antigravity | `adapters/generic/prompts/` plus harness-specific launch docs |
+| Generic fallback | Pi-style harnesses and unsupported clients | `adapters/generic/prompts/` |
+
+See [`docs/platform-compatibility.md`](docs/platform-compatibility.md) for the
+full matrix and setup recipes.
 
 ---
 
@@ -136,6 +152,9 @@ tachi requires two external CLIs for full functionality. Both are required:
 (`mmdc`) renders attack-path diagrams. See [ADR-022](docs/architecture/02_ADRs/ADR-022-mmdc-hard-prerequisite.md)
 for the rationale.
 
+Harness selection does not change those report prerequisites. It only changes
+which adapter pack you install and how you invoke the first analysis.
+
 **macOS**
 
 ```bash
@@ -190,6 +209,17 @@ If tachi is cloned to a non-default location:
 ~/Projects/tachi/scripts/install.sh --source /path/to/tachi
 ```
 
+If you need a harness-native adapter instead of the core installer, use the
+pack that matches your target harness:
+
+| Harness | Adapter surface | First-run entrypoint |
+|---|---|---|
+| Claude Code | `adapters/claude-code/agents/` | `/tachi.threat-model` |
+| Cursor | `adapters/cursor/rules/` | Ask Cursor to run a complete tachi threat model |
+| Copilot | `adapters/copilot/agents/` and `adapters/copilot/instructions/` | `@tachi-orchestrator` |
+| GitHub Actions | `adapters/github-actions/tachi.threat-model.yml` | Pull request or manual dispatch |
+| Codex, OpenCode, Termux, Voltagent, Antigravity, Pi-style harnesses | `adapters/generic/prompts/` | Run the numbered prompts in order |
+
 <details>
 <summary>Manual install</summary>
 
@@ -210,6 +240,10 @@ mkdir -p adapters/claude-code/agents
 cp -r ~/Projects/tachi/adapters/claude-code/agents/references/ adapters/claude-code/agents/references/
 cp -r ~/Projects/tachi/brand/ brand/
 
+# Compatibility guide
+mkdir -p docs
+cp ~/Projects/tachi/docs/platform-compatibility.md docs/
+
 # Developer guide
 mkdir -p docs/guides
 cp ~/Projects/tachi/docs/guides/DEVELOPER_GUIDE_TACHI.md docs/guides/
@@ -220,10 +254,10 @@ cp ~/Projects/tachi/docs/guides/DEVELOPER_GUIDE_TACHI.md docs/guides/
 See [`INSTALL_MANIFEST.md`](INSTALL_MANIFEST.md) for the full list of
 distributable files.
 
-### 3. Restart Claude Code
+### 3. Reload Your Harness
 
-After copying the files, restart Claude Code so it picks up the new agents and
-commands.
+After copying the files, restart or reload your harness so it picks up the new
+agents, rules, commands, or workflow files.
 
 If you want infographic images (`.jpg`), set `GEMINI_API_KEY` from
 [Google AI Studio](https://aistudio.google.com/apikey). This is optional; all
@@ -263,6 +297,14 @@ all supported.
 That is it. One command. tachi validates the setup, reads your architecture,
 dispatches 14 threat agents, and writes everything to a timestamped folder
 under `docs/security/`.
+
+If you are using another harness:
+
+- Cursor: ask it to run a complete tachi threat model using the installed
+  rules.
+- Copilot: mention `@tachi-orchestrator` in chat.
+- Generic fallback: run `00-orchestrator.md`, then the numbered prompts in
+  order, then `12-threat-report.md` and `13-threat-infographic.md`.
 
 ### 6. Review your results
 
@@ -583,7 +625,7 @@ tachi is built with the [Agentic Oriented Development Kit (AOD Kit)](https://git
 
 ## Releases
 
-Releases are automated via [release-please](https://github.com/googleapis/release-please). When conventional commits (`feat:`, `fix:`, `docs:`, etc.) are merged to `main`, release-please creates a **Release PR** with auto-generated CHANGELOG entries and the next semantic version. Merging the Release PR creates the git tag and GitHub Release.
+Releases are automated via [release-please](https://github.com/googleapis/release-please). When conventional commits (`feat:`, `fix:`, `docs:`, etc.) are merged to `main`, release-please updates the release state on push and creates the next semantic tag and GitHub Release directly (no separate release PR branch churn).
 
 To install a specific version: `install.sh --version v4.37.0` <!-- x-release-please-version -->
 

@@ -68,15 +68,19 @@ fn normalize_project_name(value: &str) -> Option<String> {
 mod tests {
     use super::resolve_report_project_name;
     use std::fs;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    static TEMP_DIR_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
     fn temp_test_dir() -> std::path::PathBuf {
         let stamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("clock")
             .as_nanos();
+        let sequence = TEMP_DIR_SEQUENCE.fetch_add(1, Ordering::SeqCst);
         let dir = std::env::temp_dir().join(format!(
-            "tachi-core-metadata-{stamp}-{}",
+            "tachi-core-metadata-{stamp}-{sequence}-{}",
             std::process::id()
         ));
         fs::create_dir_all(&dir).expect("create temp dir");

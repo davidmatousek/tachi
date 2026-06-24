@@ -243,7 +243,7 @@ The 1080s outer cap is intentional: it MUST be > the inner 900s cap to ensure th
 | `ubuntu-latest` | 1m29s | green | unchanged |
 | `macos-latest` | 5m19s | green | 30-40 min flaky band |
 
-Both legs green on first attempt; release-please PR #254 auto-opened ~35s post-merge. The macos-latest run is now well under the 15-minute target informally adopted as the upper bound for CI-test feedback loop tolerance.
+Both legs green on first attempt; the release-please workflow completed release automation on the `main` push ~35s post-merge. The macos-latest run is now well under the 15-minute target informally adopted as the upper bound for CI-test feedback loop tolerance.
 
 **F-248 closeout addendum (now superseded by F-250)**: F-248 PR #249 merged via admin-override squash-merge with the macOS leg flaking on the 300s timeout. F-250 — landed same day — converts that scoped exception back into a deterministic green by re-budgeting the timeouts and restructuring the fixture topology. The substitution surface itself was never the regression; the CI-runner cost was.
 

@@ -123,7 +123,7 @@ state.
 | Capability | Training-data, input, lifecycle, and infrastructure controls |
 | Feature | `RT-00i.3` Implement AISVS C01-C04 control cluster |
 | Tasks | training-data traceability, user-input validation, lifecycle gating, infrastructure hardening |
-| Functions | `crates/tachi-core/src/aisvs/training_data.rs`, `crates/tachi-core/src/aisvs/input_validation.rs`, `crates/tachi-core/src/aisvs/model_lifecycle.rs`, `crates/tachi-core/src/aisvs/infrastructure.rs` |
+| Functions | `crates/tachi-core/src/aisvs.rs` |
 
 **TDD acceptance criteria**
 
@@ -148,7 +148,7 @@ state.
 | Capability | Identity, supply chain, model behavior, and memory controls |
 | Feature | `RT-00i.5` Implement AISVS C05-C08 control cluster |
 | Tasks | access-control policy, supply-chain verification, behavior constraints, memory/embeddings controls |
-| Functions | `crates/tachi-core/src/aisvs/access_control.rs`, `crates/tachi-core/src/aisvs/supply_chain.rs`, `crates/tachi-core/src/aisvs/model_behavior.rs`, `crates/tachi-core/src/aisvs/memory.rs` |
+| Functions | `crates/tachi-core/src/aisvs.rs` |
 
 **TDD acceptance criteria**
 
@@ -173,7 +173,7 @@ state.
 | Capability | Orchestration, MCP security, robustness, and monitoring |
 | Feature | `RT-00i.4` Implement AISVS C09-C12 control cluster |
 | Tasks | orchestration approval, MCP security, adversarial robustness, monitoring/logging |
-| Functions | `crates/tachi-core/src/aisvs/orchestration.rs`, `crates/tachi-core/src/aisvs/mcp_security.rs`, `crates/tachi-core/src/aisvs/adversarial.rs`, `crates/tachi-core/src/aisvs/monitoring.rs` |
+| Functions | `crates/tachi-core/src/aisvs.rs` |
 
 **TDD acceptance criteria**
 

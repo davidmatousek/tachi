@@ -78,8 +78,11 @@ Use this checklist before publishing to GitHub or cutting a release.
 ## 5. Documentation readiness
 
 - [ ] `README.md` matches the actual build, install, usage, and release path.
+- [ ] `docs/platform-compatibility.md` matches the current harness matrix, support levels, install surfaces, and fallback behavior.
 - [ ] `docs/guides/DEVELOPER_GUIDE_TACHI.md` matches the public README and
       explains the first analysis flow in plain language.
+- [ ] `adapters/README.md` matches the compatibility matrix and the canonical
+      core contract.
 - [ ] `SECURITY.md` matches the current private-reporting and privacy policy.
 - [ ] `CHANGELOG.md` is redaction-safe and reflects only releasable notes.
 - [ ] `docs/roadmap/implementation-backlog.md` points at the archived AQ
@@ -109,8 +112,9 @@ Use this checklist before publishing to GitHub or cutting a release.
       and docs-sweep tracks.
 - [ ] `docs/bill-of-materials.html.md` and `docs/publish-readiness-checklist.html.md`
       agree on the publish gate, security surfaces, and remote publication flow.
-- [ ] The public README, developer guide, BOM, and publish-security checklist
-      describe the same install, analysis, and release workflow.
+- [ ] The public README, compatibility doc, developer guide, BOM, and
+      publish-security checklist describe the same install, analysis, adapter,
+      and release workflow.
 - [ ] Golden update policy is documented: semantic projections first, compact
       fixture-local snapshots second, and full-envelope equality only when a
       schema contract truly requires it.

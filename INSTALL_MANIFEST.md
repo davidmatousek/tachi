@@ -16,6 +16,7 @@ Canonical list of files and directories that must be copied when installing tach
 | `adapters/claude-code/agents/references/` | SARIF generation and validation guides | risk-scorer, control-analyzer |
 | `brand/` | Logo assets for branded PDF reports | report-assembler |
 | `docs/guides/DEVELOPER_GUIDE_TACHI.md` | Full walkthrough with worked examples | User reference |
+| `docs/platform-compatibility.md` | Harness matrix, adapter support levels, and fallback behavior | User reference |
 | `scripts/` | None distributed: runtime command glue remains repo-internal | report-assembly runtime paths |
 
 ## Command Files
@@ -112,6 +113,7 @@ templates/tachi/
 adapters/claude-code/agents/references/
 brand/
 docs/guides/DEVELOPER_GUIDE_TACHI.md
+docs/platform-compatibility.md
 <!-- END MANIFEST -->
 
 ## Maintenance Checklist
@@ -127,4 +129,5 @@ When adding a new feature, check whether it requires updates to:
 - [ ] A new distributable Python script in `scripts/` -- add to script table above
 - [ ] New reference docs in `adapters/claude-code/agents/references/`
 - [ ] Update install instructions in `README.md` and `docs/guides/DEVELOPER_GUIDE_TACHI.md`
+- [ ] Update compatibility guidance in `README.md`, `docs/platform-compatibility.md`, and `docs/guides/DEVELOPER_GUIDE_TACHI.md`
 - [ ] Update the machine-parseable manifest section (`<!-- BEGIN MANIFEST -->` / `<!-- END MANIFEST -->`)

@@ -37,6 +37,8 @@ with the shipped release workflow before publication.
 | Path | Role | Publish status | Notes |
 |---|---|---|---|
 | `README.md` | Repository landing page and getting-started guide | Publishable | Must describe the current install, usage, auditor workflow, and release path without stale workflow guidance. |
+| `adapters/README.md` | Compatibility entrypoint for native adapters and generic fallback | Publishable | Must match the harness matrix, install surfaces, and identical core contract. |
+| `docs/platform-compatibility.md` | Harness matrix and fallback behavior guide | Publishable | Must stay aligned with the adapter packs and the generic fallback path. |
 | `docs/guides/DEVELOPER_GUIDE_TACHI.md` | Public developer and auditor walkthrough | Publishable | Must stay aligned with the README and show the actual first-run analysis path. |
 | `SECURITY.md` | Security policy | Publishable | Private vulnerability reporting only; keep public disclosure guidance current. |
 | `CHANGELOG.md` | Release history | Publishable | Redaction-safe release notes only. |
@@ -175,7 +177,7 @@ The repository policy for these surfaces is:
 | Diff hygiene | `git diff --check` | No whitespace or patch-format issues. |
 | Secret scan | `pre-commit run --all-files` or `gitleaks` / CI workflow | No secrets or private data leak into the publish set, including examples, fixtures, logs, and generated docs. |
 | Scaffold dependency gate | `make scaffold-dependency-gate` | Next.js/Supabase scaffold dependency ranges exclude currently known vulnerable `next` and `vitest` floors. |
-| Docs gate | `README.md`, `SECURITY.md`, `CHANGELOG.md`, and public docs cross-links | Public docs match the shipped behavior and the disclosure policy. |
+| Docs gate | `README.md`, `docs/platform-compatibility.md`, `docs/guides/DEVELOPER_GUIDE_TACHI.md`, `SECURITY.md`, `CHANGELOG.md`, and public docs cross-links | Public docs match the shipped behavior and the disclosure policy. |
 | AISVS security gate | `cargo test -p tachi-core --test aisvs_registry`, `cargo test -p tachi-core --test aisvs_controls`, `cargo test -p tachi-core --test scaffold_dependency_floors`, `cargo clippy --workspace --all-features --all-targets -- -D warnings` | AISVS C01-C12 remain typed, test-backed, and fail-closed while the live `glib` advisory proof stays reproducible in Beads and the upgrade slice remains blocked on upstream `gtk` compatibility. |
 | AISVS publish-readiness follow-up | `RT-00i.6` | The Phase 5 docs/release-gate follow-up stays visible in the BOM and issue cards so publish-readiness work keeps pace with each control slice. |
 | Docs/version sweep | `make docs-version-gate` + `make docs-archive-version-gate` | Maintained docs stay current; archived docs and examples retain only intentional historical references. |

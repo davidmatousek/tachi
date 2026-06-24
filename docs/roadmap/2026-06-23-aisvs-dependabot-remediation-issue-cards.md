@@ -87,7 +87,7 @@ with the exact commands named in the card.
 - `Capability`: typed AISVS control registry and error model
 - `Task`: add a typed AISVS control registry, framework metadata, and a
   non-leaking error enum so C01-C12 can be handled as a sixth control family
-- `Function`: `crates/tachi-core/src/aisvs/*`, `crates/tachi-core/tests/*`
+- `Function`: `crates/tachi-core/src/aisvs.rs`, `crates/tachi-core/tests/aisvs_registry.rs`, `crates/tachi-core/src/lib.rs`, `crates/tachi-core/src/facade.rs`
 - `Dependencies`: RT-00i.2, current core facade and reporting seams
 - `Acceptance criteria`:
   - Invalid control states are unrepresentable at compile time.
@@ -99,7 +99,7 @@ with the exact commands named in the card.
 - `Validation`: `cargo test -p tachi-core`, `cargo clippy --workspace --all-features --all-targets -- -D warnings`
 - `Implementation owner`: `tachi-core`
 - `Stage label`: Phase 1
-- `Next test seam`: `crates/tachi-core/src/aisvs/control_registry.rs`
+- `Next test seam`: `crates/tachi-core/tests/aisvs_registry.rs`
 - `Notes`: This is the shared foundation for every AISVS control slice.
 
 #### RT-00i.1 task beads
@@ -127,10 +127,8 @@ with the exact commands named in the card.
 - `Capability`: training-data, input, lifecycle, and infrastructure controls
 - `Task`: implement C01-C04 as typed policies with failing-first tests and
   explicit validation seams
-- `Function`: `crates/tachi-core/src/aisvs/training_data.rs`,
-  `crates/tachi-core/src/aisvs/input_validation.rs`,
-  `crates/tachi-core/src/aisvs/model_lifecycle.rs`,
-  `crates/tachi-core/src/aisvs/infrastructure.rs`
+- `Function`: `crates/tachi-core/src/aisvs.rs` (typed C01–C04 cluster),
+  `crates/tachi-core/tests/aisvs_controls.rs`
 - `Dependencies`: RT-00i.1
 - `Acceptance criteria`:
   - C01 tests prove provenance and integrity validation for model/data assets.
@@ -140,7 +138,7 @@ with the exact commands named in the card.
 - `Validation`: `cargo test -p tachi-core --tests`, targeted AISVS unit tests
 - `Implementation owner`: `tachi-core`
 - `Stage label`: Phase 2
-- `Next test seam`: `crates/tachi-core/src/aisvs/input_validation.rs`
+- `Next test seam`: `crates/tachi-core/tests/aisvs_controls.rs`
 - `Notes`: Keep the implementation slices small and control-specific.
 - `Status`: implemented locally in `crates/tachi-core/src/aisvs.rs` with
   targeted phase-2 tests in `crates/tachi-core/tests/aisvs_controls.rs`.
@@ -154,10 +152,8 @@ with the exact commands named in the card.
 - `Capability`: identity, supply chain, behavior, and memory controls
 - `Task`: implement C05-C08 with typed checks, safe errors, and regression
   tests that protect against adversarial drift
-- `Function`: `crates/tachi-core/src/aisvs/access_control.rs`,
-  `crates/tachi-core/src/aisvs/supply_chain.rs`,
-  `crates/tachi-core/src/aisvs/model_behavior.rs`,
-  `crates/tachi-core/src/aisvs/memory.rs`
+- `Function`: `crates/tachi-core/src/aisvs.rs` (typed C05–C08 cluster),
+  `crates/tachi-core/tests/aisvs_controls.rs`
 - `Dependencies`: RT-00i.1, RT-00i.2
 - `Acceptance criteria`:
   - C05 tests prove identity and authorization decisions are explicit.
@@ -167,7 +163,7 @@ with the exact commands named in the card.
 - `Validation`: `cargo test -p tachi-core --tests`, `make publish-gate`
 - `Implementation owner`: `tachi-core`
 - `Stage label`: Phase 3
-- `Next test seam`: `crates/tachi-core/src/aisvs/supply_chain.rs`
+- `Next test seam`: `crates/tachi-core/tests/aisvs_controls.rs`
 - `Notes`: This phase should close the security/control gap between the AISVS
   plan and the core reporting path.
 - `Status`: implemented locally in `crates/tachi-core/src/aisvs.rs` with
@@ -182,10 +178,8 @@ with the exact commands named in the card.
 - `Capability`: orchestration, MCP, robustness, and monitoring controls
 - `Task`: implement C09-C12 with policy checks, adversarial cases, and
   redaction-safe reporting
-- `Function`: `crates/tachi-core/src/aisvs/orchestration.rs`,
-  `crates/tachi-core/src/aisvs/mcp_security.rs`,
-  `crates/tachi-core/src/aisvs/adversarial.rs`,
-  `crates/tachi-core/src/aisvs/monitoring.rs`
+- `Function`: `crates/tachi-core/src/aisvs.rs` (typed C09–C12 cluster),
+  `crates/tachi-core/tests/aisvs_controls.rs`
 - `Dependencies`: RT-00i.1, RT-00i.3, RT-00i.5
 - `Acceptance criteria`:
   - C09 tests prove orchestration permissions and escalation boundaries stay
@@ -197,7 +191,7 @@ with the exact commands named in the card.
 - `Validation`: `cargo test -p tachi-core --tests`, `cargo clippy --workspace --all-features --all-targets -- -D warnings`
 - `Implementation owner`: `tachi-core`
 - `Stage label`: Phase 4
-- `Next test seam`: `crates/tachi-core/src/aisvs/monitoring.rs`
+- `Next test seam`: `crates/tachi-core/tests/aisvs_controls.rs`
 - `Notes`: Finish the control family with observability and alerting surfaces.
 - `Status`: implemented locally in `crates/tachi-core/src/aisvs.rs` with
   targeted phase-4 tests in `crates/tachi-core/tests/aisvs_controls.rs`.

@@ -1,6 +1,10 @@
 # Copilot Adapter
 
-This adapter maps tachi's 14 threat modeling agents into GitHub Copilot's custom agents format. Each agent is a `.agent.md` file with YAML frontmatter that Copilot recognizes and can dispatch. Two agents that exceed Copilot's 30K character limit are split into compact agent files paired with `.instructions.md` context files.
+This is tachi's native adapter for GitHub Copilot. It maps the 14 canonical
+threat-modeling agents into Copilot's custom agent format, with oversized
+agents split into compact `.agent.md` files plus `.instructions.md`
+companions. See [`../README.md`](../README.md) for the full compatibility
+matrix and fallback paths.
 
 ## Prerequisites
 

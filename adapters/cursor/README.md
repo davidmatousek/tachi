@@ -1,6 +1,9 @@
 # Cursor Adapter
 
-This adapter packages tachi's 14 threat modeling agents as Cursor rule files (`.mdc`). Each agent becomes a rule with YAML frontmatter that Cursor's AI agent can discover and activate during conversation.
+This is tachi's native adapter for Cursor. It packages the 14 canonical
+threat-modeling agents as `.mdc` rules that Cursor can discover and activate
+during conversation. See [`../README.md`](../README.md) for the full
+compatibility matrix and fallback paths.
 
 **Important behavioral difference from Claude Code**: Cursor uses **passive context injection**, not active agent dispatch. There is no Agent tool that programmatically invokes sub-agents. Instead, the orchestrator rule is always loaded into context (`alwaysApply: true`), and threat agent rules are loaded on-demand by Cursor's agent based on their `description` fields matching the conversation context. This means Cursor decides which rules to activate rather than the orchestrator explicitly dispatching them.
 

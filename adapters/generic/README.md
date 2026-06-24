@@ -1,6 +1,13 @@
 # Generic Adapter
 
-Self-contained prompt files for running tachi's STRIDE + AI threat analysis with **any LLM** -- Claude, GPT, Gemini, Llama, or any model that accepts text prompts. No specific platform, IDE, or tooling required.
+This is tachi's generic fallback adapter. It packages the same canonical
+threat-modeling prompts for **any LLM** -- Claude, GPT, Gemini, Llama, Codex,
+OpenCode, Termux, Voltagent, Antigravity, or any client that can accept text
+prompts. No specific platform, IDE, or tooling required.
+
+See [`../README.md`](../README.md) and
+[`../../docs/platform-compatibility.md`](../../docs/platform-compatibility.md) for
+the full compatibility matrix and native adapter options.
 
 ---
 

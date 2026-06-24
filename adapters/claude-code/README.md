@@ -1,6 +1,9 @@
 # Claude Code Adapter
 
-This adapter maps tachi's 14 threat modeling agents into Claude Code's native `.claude/agents/` format. Each agent is a standalone markdown file with YAML frontmatter that Claude Code recognizes and can dispatch via the Agent tool.
+This is tachi's native adapter for Claude Code. It maps the 14 canonical
+threat-modeling agents into `.claude/agents/` so Claude Code can dispatch them
+through the Agent tool. See [`../README.md`](../README.md) for the full
+compatibility matrix and fallback paths.
 
 ## Prerequisites
 
