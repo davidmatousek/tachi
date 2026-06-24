@@ -223,8 +223,8 @@ state.
 
 ### Checkpoint A: blocker containment
 
-- Keep `RT-00i.2`, `RT-00i.7`, and `RT-00i.2.4` as the retry path for the
-  unresolved `glib` advisory.
+- Keep `RT-00i.2`, `RT-00i.2.4`, and the closed `RT-00i.7` decision note as
+  the retry path for the unresolved `glib` advisory.
 - Re-run `cargo tree -i glib --locked --target all` and the workspace gates
   when the upstream desktop stack changes.
 - Do not widen the desktop manifest bounds before the upstream compatibility

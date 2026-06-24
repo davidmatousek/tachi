@@ -66,6 +66,8 @@ with the exact commands named in the card.
     `tauri -> gtk -> glib 0.18.5` path, the failed `glib 0.20.0` update, and
     the condition required before the alert can be closed.
   - Notes: decision landing zone for the unresolved desktop-stack blocker.
+  - Status: closed; the decision evidence now lives in the BOM, publish
+    checklist, and roadmap checkpoints while the alert remains open.
 - `RT-00i.2.3` Prove alert closure and publish gate evidence
   - Acceptance: the post-fix scan or explicit exception is recorded; the
     release-readiness docs reflect the current state; and the Beads export
