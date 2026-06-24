@@ -173,6 +173,13 @@ impl AisvsRegistry {
         &self.controls
     }
 
+    pub fn validation_commands(&self) -> Vec<&'static str> {
+        self.controls
+            .iter()
+            .map(AisvsControl::validation_command)
+            .collect()
+    }
+
     pub fn lookup(&self, id: AisvsControlId) -> Option<&AisvsControl> {
         self.controls.iter().find(|control| control.id == id)
     }

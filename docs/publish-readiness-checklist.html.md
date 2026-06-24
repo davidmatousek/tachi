@@ -108,6 +108,9 @@ Use this checklist before publishing to GitHub or cutting a release.
       `crates/tachi-core/tests/scaffold_dependency_floors.rs`, and
       `RT-00i.2` remains open until the upstream desktop stack can resolve a
       fixed `glib` line.
+- [ ] The AISVS registry exposes stable per-control validation commands, and
+      the docs reference the registry-level contract instead of only the
+      individual test names.
 - [ ] The DOC-00X documentation-update plan remains separate from the parity
       and docs-sweep tracks.
 - [ ] `docs/bill-of-materials.html.md` and `docs/publish-readiness-checklist.html.md`

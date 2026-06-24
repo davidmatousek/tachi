@@ -33,11 +33,7 @@ fn aisvs_registry_lists_all_controls_in_order() {
 #[test]
 fn aisvs_registry_exposes_validation_commands_for_each_control() {
     let registry = aisvs_control_registry();
-    let commands: Vec<_> = registry
-        .controls()
-        .iter()
-        .map(|control| control.validation_command())
-        .collect();
+    let commands = registry.validation_commands();
 
     assert_eq!(
         commands,

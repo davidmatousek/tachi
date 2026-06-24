@@ -229,6 +229,6 @@ with the exact commands named in the card.
 
 - `RT-00i.6.1` Synchronize AISVS publish-readiness docs and Beads export
   - Acceptance: the BOM and publish checklist explicitly call out the AISVS
-    framework and Dependabot gate; the Beads export matches the live tracker;
-    and the release validation path stays reproducible with the documented
-    commands.
+    framework and Dependabot gate; the AISVS registry validation-command
+    contract is documented; the Beads export matches the live tracker; and the
+    release validation path stays reproducible with the documented commands.

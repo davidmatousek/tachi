@@ -172,11 +172,12 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   `docs/publish-readiness-checklist.html.md`,
   `crates/tachi-core/src/aisvs.rs`, `crates/tachi-core/tests/scaffold_dependency_floors.rs`,
   and `Cargo.lock` now anchor the glib alert remediation plan and phased
-  AISVS 1.0 control rollout, with the typed control registry foundation plus
-  C01-C12 typed control policies, explicit per-control validation commands,
-  and the reproducible glib advisory proof landed locally. The Beads tracker
-  now includes leaf tasks for the typed registry, sanitized error model,
-  Send+Sync proof, publish-readiness sync,
+  AISVS 1.0 control rollout, with the typed control registry foundation,
+  `AisvsRegistry::validation_commands`, C01-C12 typed control policies,
+  explicit per-control validation commands, and the reproducible glib
+  advisory proof landed locally. The Beads tracker now includes leaf tasks for
+  the typed registry, sanitized error model, Send+Sync proof,
+  publish-readiness sync,
   and the gtk/glib compatibility decision/follow-up lane.
 - AQ-042: `crates/tachi-core/src/infographic/maestro_templates.rs`
   now owns MAESTRO template assembly and a direct unit test, separating the
