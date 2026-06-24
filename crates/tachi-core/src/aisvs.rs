@@ -74,6 +74,7 @@ pub struct AisvsControl {
     feature: &'static str,
     task: &'static str,
     function: &'static str,
+    validation_command: &'static str,
     acceptance_criteria: &'static str,
 }
 
@@ -84,6 +85,7 @@ impl AisvsControl {
         feature: &'static str,
         task: &'static str,
         function: &'static str,
+        validation_command: &'static str,
         acceptance_criteria: &'static str,
     ) -> Self {
         Self {
@@ -92,6 +94,7 @@ impl AisvsControl {
             feature,
             task,
             function,
+            validation_command,
             acceptance_criteria,
         }
     }
@@ -114,6 +117,10 @@ impl AisvsControl {
 
     pub const fn function(&self) -> &'static str {
         self.function
+    }
+
+    pub const fn validation_command(&self) -> &'static str {
+        self.validation_command
     }
 
     pub const fn acceptance_criteria(&self) -> &'static str {
@@ -795,6 +802,7 @@ pub fn aisvs_control_registry() -> AisvsRegistry {
                 "Immutable training lineage",
                 "Capture provenance for AI input sets",
                 "Training-data integrity and traceability",
+                "cargo test -p tachi-core --test aisvs_controls c01_training_data_asset_requires_provenance_and_integrity",
                 "Tests prove invalid lineage is unrepresentable and provenance is preserved.",
             ),
             AisvsControl::new(
@@ -803,6 +811,7 @@ pub fn aisvs_control_registry() -> AisvsRegistry {
                 "Typed input envelopes",
                 "Reject malformed or ambiguous prompts",
                 "Input validation and normalization",
+                "cargo test -p tachi-core --test aisvs_controls c02_prompt_input_rejects_blank_ambiguous_and_control_bytes",
                 "Tests prove malformed inputs fail closed before downstream use.",
             ),
             AisvsControl::new(
@@ -811,6 +820,7 @@ pub fn aisvs_control_registry() -> AisvsRegistry {
                 "Versioned model policies",
                 "Pin, promote, and retire models safely",
                 "Model lifecycle management",
+                "cargo test -p tachi-core --test aisvs_controls c03_lifecycle_gate_forbids_skipping_validation_states",
                 "Tests prove lifecycle transitions require explicit approval states.",
             ),
             AisvsControl::new(
@@ -819,6 +829,7 @@ pub fn aisvs_control_registry() -> AisvsRegistry {
                 "Runtime isolation boundaries",
                 "Constrain execution and deployment surfaces",
                 "Infrastructure hardening",
+                "cargo test -p tachi-core --test aisvs_controls c04_infrastructure_policy_defaults_to_least_privilege",
                 "Tests prove infrastructure defaults stay least privilege.",
             ),
             AisvsControl::new(
@@ -827,6 +838,7 @@ pub fn aisvs_control_registry() -> AisvsRegistry {
                 "Typed authorization contexts",
                 "Authorize only authenticated actors",
                 "Access control and identity",
+                "cargo test -p tachi-core --test aisvs_controls c05_access_context_requires_explicit_mode_and_role",
                 "Tests prove identity and authorization decisions are explicit.",
             ),
             AisvsControl::new(
@@ -835,6 +847,7 @@ pub fn aisvs_control_registry() -> AisvsRegistry {
                 "Pinned dependency evidence",
                 "Track and remediate upstream advisories",
                 "Supply chain assurance",
+                "cargo test -p tachi-core --test aisvs_controls c06_supply_chain_evidence_requires_attestation_and_audit_tag",
                 "Tests prove vulnerable dependencies are surfaced and gated.",
             ),
             AisvsControl::new(
@@ -843,6 +856,7 @@ pub fn aisvs_control_registry() -> AisvsRegistry {
                 "Typed output contracts",
                 "Constrain model outputs to expected schemas",
                 "Model behavior control",
+                "cargo test -p tachi-core --test aisvs_controls c07_model_behavior_policy_rejects_unbounded_free_form_output",
                 "Tests prove outputs are normalized before use.",
             ),
             AisvsControl::new(
@@ -851,6 +865,7 @@ pub fn aisvs_control_registry() -> AisvsRegistry {
                 "Scoped retrieval policies",
                 "Prevent unsafe reuse of stored context",
                 "Memory and embeddings governance",
+                "cargo test -p tachi-core --test aisvs_controls c08_memory_scope_rejects_unbounded_retention_and_cross_scope_use",
                 "Tests prove retrieval obeys scope and retention rules.",
             ),
             AisvsControl::new(
@@ -859,6 +874,7 @@ pub fn aisvs_control_registry() -> AisvsRegistry {
                 "Typed action boundaries",
                 "Gate autonomous actions behind policy checks",
                 "Orchestration and agentic action",
+                "cargo test -p tachi-core --test aisvs_controls c09_orchestration_policy_requires_approval_before_escalation",
                 "Tests prove action execution cannot bypass policy seams.",
             ),
             AisvsControl::new(
@@ -867,6 +883,7 @@ pub fn aisvs_control_registry() -> AisvsRegistry {
                 "Typed tool invocation policies",
                 "Restrict tool access to approved capabilities",
                 "MCP security",
+                "cargo test -p tachi-core --test aisvs_controls c10_mcp_policy_requires_schema_and_tool_allowlist",
                 "Tests prove tool calls cannot exceed declared capability scope.",
             ),
             AisvsControl::new(
@@ -875,6 +892,7 @@ pub fn aisvs_control_registry() -> AisvsRegistry {
                 "Robustness regression suite",
                 "Capture hostile inputs and rejection behavior",
                 "Adversarial robustness",
+                "cargo test -p tachi-core --test aisvs_controls c11_adversarial_case_is_explicit_and_fail_closed",
                 "Tests prove adversarial cases remain fail-closed.",
             ),
             AisvsControl::new(
@@ -883,6 +901,7 @@ pub fn aisvs_control_registry() -> AisvsRegistry {
                 "Redaction-safe telemetry",
                 "Log security evidence without secrets or PII leakage",
                 "Monitoring and logging",
+                "cargo test -p tachi-core --test aisvs_controls c12_monitoring_policy_redacts_secrets_and_rejects_empty_events",
                 "Tests prove logs remain sanitized and actionable.",
             ),
         ],

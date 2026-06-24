@@ -24,6 +24,38 @@ fn aisvs_registry_lists_all_controls_in_order() {
         "Training-data integrity and traceability"
     );
     assert_eq!(registry.controls()[11].function(), "Monitoring and logging");
+    assert_eq!(
+        registry.controls()[4].validation_command(),
+        "cargo test -p tachi-core --test aisvs_controls c05_access_context_requires_explicit_mode_and_role"
+    );
+}
+
+#[test]
+fn aisvs_registry_exposes_validation_commands_for_each_control() {
+    let registry = aisvs_control_registry();
+    let commands: Vec<_> = registry
+        .controls()
+        .iter()
+        .map(|control| control.validation_command())
+        .collect();
+
+    assert_eq!(
+        commands,
+        vec![
+            "cargo test -p tachi-core --test aisvs_controls c01_training_data_asset_requires_provenance_and_integrity",
+            "cargo test -p tachi-core --test aisvs_controls c02_prompt_input_rejects_blank_ambiguous_and_control_bytes",
+            "cargo test -p tachi-core --test aisvs_controls c03_lifecycle_gate_forbids_skipping_validation_states",
+            "cargo test -p tachi-core --test aisvs_controls c04_infrastructure_policy_defaults_to_least_privilege",
+            "cargo test -p tachi-core --test aisvs_controls c05_access_context_requires_explicit_mode_and_role",
+            "cargo test -p tachi-core --test aisvs_controls c06_supply_chain_evidence_requires_attestation_and_audit_tag",
+            "cargo test -p tachi-core --test aisvs_controls c07_model_behavior_policy_rejects_unbounded_free_form_output",
+            "cargo test -p tachi-core --test aisvs_controls c08_memory_scope_rejects_unbounded_retention_and_cross_scope_use",
+            "cargo test -p tachi-core --test aisvs_controls c09_orchestration_policy_requires_approval_before_escalation",
+            "cargo test -p tachi-core --test aisvs_controls c10_mcp_policy_requires_schema_and_tool_allowlist",
+            "cargo test -p tachi-core --test aisvs_controls c11_adversarial_case_is_explicit_and_fail_closed",
+            "cargo test -p tachi-core --test aisvs_controls c12_monitoring_policy_redacts_secrets_and_rejects_empty_events",
+        ]
+    );
 }
 
 #[test]
@@ -58,6 +90,7 @@ fn aisvs_lookup_returns_sanitized_error() {
             "Immutable training lineage",
             "Capture provenance for AI input sets",
             "Training-data integrity and traceability",
+            "cargo test -p tachi-core --test aisvs_controls c01_training_data_asset_requires_provenance_and_integrity",
             "Tests prove invalid lineage is unrepresentable and provenance is preserved.",
         )],
     )
@@ -77,6 +110,7 @@ fn aisvs_registry_rejects_duplicate_controls() {
         "Immutable training lineage",
         "Capture provenance for AI input sets",
         "Training-data integrity and traceability",
+        "cargo test -p tachi-core --test aisvs_controls c01_training_data_asset_requires_provenance_and_integrity",
         "Tests prove invalid lineage is unrepresentable and provenance is preserved.",
     );
 
