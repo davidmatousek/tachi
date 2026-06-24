@@ -3,6 +3,11 @@
 **Scope**: live GitHub Dependabot alerts for `pratik-saptarshi/tachi-rust`
 queried on 2026-06-21.
 
+> **Historical note:** this document is retained as the original Dependabot
+> remediation plan for the earlier scaffold package alerts. The active
+> implementation roadmap for the current repository state is
+> `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-roadmap.html.md`.
+
 **Affected manifest**: `stacks/nextjs-supabase/scaffold/package.json`
 
 **Finding summary**:

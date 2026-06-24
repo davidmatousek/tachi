@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### AISVS roadmap and Beads tracker sync
+
+Aligned the live AISVS / Dependabot roadmap with the implemented local state,
+kept the gtk/glib blocker explicit, and linked the publish-readiness lane to the
+current Beads tracker slices. Added an updated remediation roadmap and legacy
+plan note so the active implementation path and release-gate documentation stay
+consistent.
+
 ### Fail-closed Rust CI gates
 
 Added a non-path-filtered workspace PR workflow for

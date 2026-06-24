@@ -3,7 +3,9 @@
 **Date**: 2026-06-23
 **Scope**: current live Dependabot alert set, AISVS 1.0 control framework, and
 TDD-backed backlog slices for `tachi-rust`
-**Status**: planning artifact; implementation pending
+**Status**: active roadmap; phase 1-4 are implemented locally, phase 0
+remains blocked on upstream `gtk`/`glib` compatibility, phase 5 is the active
+publish gate and docs-sync lane
 
 ## Executive summary
 
@@ -19,6 +21,17 @@ complementary to the existing OWASP-oriented security surfaces. The framework
 should make AISVS C01-C12 explicit in Rust types, validation seams, tests, and
 release gates so future security controls are incremental instead of ad hoc.
 
+Current implementation status:
+
+- Phase 0 remains open because the workspace still resolves `glib 0.18.5`
+  through the transitive desktop stack and the `gtk` line has not yet accepted
+  `glib 0.20.0`.
+- Phases 1-4 are already implemented locally in `crates/tachi-core/src/aisvs.rs`
+  with targeted tests in `crates/tachi-core/tests/aisvs_registry.rs` and
+  `crates/tachi-core/tests/aisvs_controls.rs`.
+- Phase 5 is active: publish-readiness now depends on the BOM, checklist, CI,
+  and Beads export staying synchronized after each slice.
+
 ## Live alert analysis
 
 | Alert | Current state | Package path | Fixed version | Risk |
@@ -33,6 +46,20 @@ release gates so future security controls are incremental instead of ad hoc.
    the existing release-readiness gates.
 1. Close the Dependabot alert only after the lockfile and validation evidence
    prove the fix.
+
+## Adversarial review integration
+
+The review pass surfaced one documentation gap and one structural blocker that
+needed to be made explicit in the roadmap:
+
+| Finding | Severity | Category | Remediation |
+|---|---|---|---|
+| Roadmap status drifted from the live repo state | MEDIUM | Correction | Replace "implementation pending" with the actual phase status so future readers do not treat implemented control phases as work still needing build-out. |
+| Phase 0 closure remains blocked by upstream `gtk` compatibility | HIGH | Gap | Keep `RT-00i.2.2`, `RT-00i.7`, and `RT-00i.2.4` as the explicit blocker/follow-up lane; do not widen manifest bounds until the upstream desktop stack accepts the fixed `glib` line. |
+
+This roadmap already contains the necessary Beads graph, but the phase narrative
+and status text must stay aligned with the tracker and the local implementation
+state.
 
 ## Roadmap model
 
@@ -183,10 +210,42 @@ release gates so future security controls are incremental instead of ad hoc.
 
 ## Sequencing
 
-1. Remediate the live Dependabot alert and prove the lockfile is fixed.
-1. Add the AISVS registry and error model so control coverage becomes typed.
-1. Land C01-C04, then C05-C08, then C09-C12 as separate TDD slices.
-1. Keep the publish gate and alert monitoring updated after each slice.
+1. Keep the Phase 0 blocker explicit until an upstream-compatible `gtk` line
+   accepts the fixed `glib` floor.
+1. Preserve the already-implemented AISVS foundation and control clusters as
+   the canonical local state.
+1. Land any future AISVS deltas as separate TDD slices using the existing
+   Beads task graph and acceptance criteria.
+1. Keep the BOM, publish checklist, and `bd export` synchronized after each
+   slice and before any release push.
+
+## Implementation checkpoints
+
+### Checkpoint A: blocker containment
+
+- Keep `RT-00i.2`, `RT-00i.7`, and `RT-00i.2.4` as the retry path for the
+  unresolved `glib` advisory.
+- Re-run `cargo tree -i glib --locked --target all` and the workspace gates
+  when the upstream desktop stack changes.
+- Do not widen the desktop manifest bounds before the upstream compatibility
+  constraint is resolved.
+
+### Checkpoint B: typed AISVS framework
+
+- Keep the AISVS control registry and sanitized error model as the canonical
+  foundation for C01-C12.
+- Preserve the `Send + Sync` and invalid-state rejection invariants already
+  covered by tests.
+- Add future control slices only as separate TDD-backed phases.
+
+### Checkpoint C: publish readiness
+
+- Keep `docs/bill-of-materials.html.md` and
+  `docs/publish-readiness-checklist.html.md` synchronized with the roadmap and
+  Beads export.
+- Require `make publish-gate` plus post-push GitHub Actions monitoring before a
+  release is considered complete.
+- Keep docs-sweep and archived roadmap references clearly labeled historical.
 
 ## Definition of done
 
