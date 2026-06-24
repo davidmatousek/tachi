@@ -1,174 +1,176 @@
 # tachi
 
-**Threat Modeling and Vulnerability Detection Harness for Claude Code.**
+**Rust-native threat modeling, AI security analysis, and release-audit harness
+for Claude Code.**
 
-*AI-Reasoning Scanner — STRIDE + AI + MAESTRO.*
+*AI-Reasoning Scanner - STRIDE + AI + MAESTRO + OWASP coverage.*
 
-![tachi — Threat Modeling and Vulnerability Detection Harness for Claude Code. AI-Reasoning Scanner (STRIDE + AI + MAESTRO) with 50/50 OWASP Top 10 coverage across five frameworks, a 3-step install, and a 5-step security-report workflow.](brand/posters/2026-05-29-owasp-coverage-poster.jpg)
+![tachi - Rust-native threat modeling, AI security analysis, and release-audit
+harness for Claude Code. AI-Reasoning Scanner (STRIDE + AI + MAESTRO + OWASP)
+with five-framework coverage, a 3-step install, and a 5-step security-report
+workflow.](brand/posters/2026-05-29-owasp-coverage-poster.jpg)
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/pratik-saptarshi/tachi-rust)](https://github.com/pratik-saptarshi/tachi-rust/releases)
 [![Built with AOD Kit](https://img.shields.io/badge/built%20with-AOD%20Kit-blueviolet.svg)](https://github.com/davidmatousek/agentic-oriented-development-kit)
 
-**Get started**: [Core Capabilities](#core-capabilities) | [Auditor Workflow](#how-an-auditor-uses-tachi) | [Quick Start](#quick-start) | [Developer Guide](docs/guides/DEVELOPER_GUIDE_TACHI.md) (full walkthrough with worked examples)
+**Get started**: [Core capabilities](#core-capabilities) |
+[How an auditor uses tachi](#how-an-auditor-uses-tachi) |
+[Use cases](#use-cases) | [Quick start](#quick-start) |
+[Developer guide](docs/guides/DEVELOPER_GUIDE_TACHI.md)
 
 ---
 
-## Repository Status
+## What tachi is
 
-This repository is the `tachi-rust` migration track for a Rust-native tachi implementation. The long-term target is a pure Rust + Tauri codebase with Rust-owned CLI tooling, parsing, SARIF generation, reporting, and tests.
+tachi is a Rust-native security analysis harness that helps teams inspect
+architecture, threat models, AI agent behavior, and release-readiness evidence
+from one workflow. It produces human-readable reports and machine-readable
+artifacts such as SARIF, attack trees, risk scores, and control coverage
+summaries.
 
-Recent updates towards a native Rust implementation include:
-- **Modular Core Parsers**: Deconstructed the monolithic parser under `tachi-core` into a structured, highly cohesive `src/parsers/` package (`findings.rs`, `mermaid.rs`, `scope.rs`, `table.rs`) following the Single Responsibility Principle (SRP).
-- **Filesystem Decoupling**: Decoupled core data formatting and infographic payload compilation in `infographic.rs` from direct filesystem dependencies, adhering to the Dependency Inversion Principle (DIP).
-- **Environment Isolation**: Improved the python surface inventory testing harness to isolate runs from local workspace artifacts (such as git worktrees).
+The active repository is Rust/Tauri-native. The old Python/FastAPI surface is
+retired; remaining Python references are archival or compatibility fixtures
+only.
 
-The repository is now Rust/Tauri-native. The frozen inventory in [`docs/roadmap/2026-06-08-python-surface-inventory.md`](docs/roadmap/2026-06-08-python-surface-inventory.md) is kept as historical evidence of the migration, but the active Python runtime surface has been retired. Remaining Python references in the tree are archival or compatibility fixtures only.
+Publication and release-readiness guidance lives in:
 
-- Archived legacy guidance for the old FastAPI stack packs lives in [`docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md`](docs/guides/Archive/STACK_PACK_CONSUMER_GUIDE_FASTAPI_REACT.md). The active repository no longer treats those packs as current setup paths.
-
-New implementation work should use Rust ecosystem tooling and should not add new Python dependencies. Any remaining Python references in this repository are historical fixtures or explicitly documented compatibility surfaces, not active runtime paths.
-
-Publication and release readiness guidance lives in:
-
-- [`docs/bill-of-materials.html.md`](docs/bill-of-materials.html.md) for the publishable surface inventory.
-- [`docs/publish-readiness-checklist.html.md`](docs/publish-readiness-checklist.html.md) for the pre-push security, privacy, docs, and CI gate.
+- [`docs/bill-of-materials.html.md`](docs/bill-of-materials.html.md) for the
+  publishable surface inventory.
+- [`docs/publish-readiness-checklist.html.md`](docs/publish-readiness-checklist.html.md)
+  for the pre-push security, privacy, docs, and CI gate.
 
 ---
 
-## OWASP Coverage
+## Core capabilities
 
-**50/50 across five frameworks** — every catalogued threat in each framework
-has a tachi detection agent.
-
-| Framework | Coverage | Anchor |
+| Capability | What it does | Why an auditor cares |
 |---|---|---|
-| OWASP LLM Top 10 (2025) | 10/10 | [LLM 2025](https://genai.owasp.org/resource/owasp-top-10-for-llm-applications-2025/) |
-| OWASP Agentic Top 10 (2026) | 10/10 | [Agentic 2026](https://genai.owasp.org/2025/12/09/owasp-top-10-for-agentic-applications-the-benchmark-for-agentic-security-in-the-age-of-autonomous-ai/) |
-| OWASP ML Security Top 10 (2023) | 10/10 | [ML 2023](https://owasp.org/www-project-machine-learning-security-top-10/) |
-| OWASP Mobile Top 10 (2024) | 10/10 | [Mobile 2024](https://owasp.org/www-project-mobile-top-10/) |
-| OWASP Web/API\* (2021 + 2023) | 10/10 | [Web 2021](https://owasp.org/Top10/) · [API 2023](https://owasp.org/API-Security/) |
+| Architecture discovery | `/tachi.architecture` turns source, config, infrastructure, and docs into a consistent architecture draft. | Establishes the audit boundary, data flow, trust boundaries, and scope assumptions. |
+| Threat modeling | `/tachi.threat-model` analyzes Mermaid, prose, ASCII, PlantUML, or C4 input and emits structured findings. | Produces a repeatable threat register instead of ad hoc notes. |
+| AI and agentic coverage | Models prompt injection, tool abuse, autonomy gaps, RAG risks, model theft, and related agent behaviors. | Extends review beyond standard web/API threat modeling. |
+| Standards mapping | Findings map to OWASP, MITRE ATT&CK, ATLAS, NIST AI RMF, CWE, and MAESTRO where applicable. | Makes the evidence easier to present to security, compliance, and engineering. |
+| Quantitative scoring | `/tachi.risk-score` adds severity, exploitability, reachability, owner, SLA, and review-date fields. | Helps prioritize remediation and verify the highest-risk items first. |
+| Compensating-control analysis | `/tachi.compensating-controls` compares findings against existing controls in the codebase. | Distinguishes inherited design risk from already-mitigated risk. |
+| SARIF output | `threats.sarif`, `risk-scores.sarif`, and `compensating-controls.sarif` are ready for code-scanning tools. | Lets auditors publish findings into the same pipeline used for code-security alerts. |
+| Visual and PDF reporting | `/tachi.infographic` and `/tachi.security-report` create stakeholder-ready artifacts. | Turns technical output into evidence suitable for reviews, sign-off, and executive summaries. |
+| Baseline tracking | Repeated runs compare current findings to a prior baseline. | Supports remediation verification and regression detection over time. |
 
-\* Web/API combined slot: OWASP Web Top 10:2021 (A01–A10) + OWASP API
-Security Top 10:2023 (API1–API10) — 20 items, 20/20.
+## Why this repo exists
 
-Canonical matrix: [`docs/standards/OWASP_COVERAGE.md`](docs/standards/OWASP_COVERAGE.md) ·
-Byte-deterministic Coverage Attestation: [examples/*/sample-report/](examples/)
+tachi complements SAST, SCA, and secrets scanning with architecture-aware
+security analysis. It is useful when the risk is not a syntax bug, but a broken
+flow, missing boundary, unsafe automation path, or incomplete control story.
 
-## What is tachi?
-
-tachi is a threat modeling and AI-reasoning vulnerability detection harness for Claude Code. SAST catches syntax-level bugs; the harness reasons over your architecture description to catch logic-level ones — broken authentication flows, missing privilege boundaries, prompt injection paths, agent autonomy gaps, cross-layer attack chains.
-
-It runs as a new scanning column alongside SAST / SCA / Secrets, with two views of one engine:
-
-- **Threat modeling view** — structured artifacts: `threats.md`, SARIF, narrative report, attack trees, MAESTRO classification.
-- **Vulnerability scanning view** — per-finding logic-level risks surfaced from the architecture, scored, and mapped to OWASP / MITRE ATT&CK / ATLAS / NIST AI RMF / CWE.
-
-One command (`/tachi.threat-model`) dispatches 14 specialized agents and produces a complete threat model. Five post-pipeline commands enrich the results: `/tachi.risk-score` for quantitative scoring, `/tachi.compensating-controls` for codebase control analysis, `/tachi.infographic` for visual risk diagrams, `/tachi.security-report` for a professional PDF assessment booklet, and `/tachi.architecture` for automated architecture description generation.
-
-- **14 threat categories**: 6 STRIDE + 5 LLM-specific + 3 Agentic
-- **OWASP coverage**: 50/50 across five frameworks (LLM Top 10:2025, Agentic Top 10:2026, ML Top 10:2023, Mobile Top 10:2024, Web/API Top 10:2021/2023)
-- **MAESTRO layer mapping**: CSA seven-layer taxonomy (L1-L7) for agentic AI threat classification
-- **5 input formats**: Mermaid, free-text, ASCII, PlantUML, C4
-- **6 commands, 20+ artifacts**: structured findings, SARIF, narrative report, attack trees, risk scores, compensating controls, 5 infographic templates, PDF security report
-- **Baseline delta tracking**: Compare runs to track new, resolved, and unchanged findings over time
-- **Works with any stack**: the harness analyzes architecture, not code
-
-tachi is built with the [Agentic Oriented Development Kit (AOD Kit)](https://github.com/davidmatousek/agentic-oriented-development-kit), a governance framework for AI agent-assisted development.
+This repository is built with the [Agentic Oriented Development Kit
+(AOD Kit)](https://github.com/davidmatousek/agentic-oriented-development-kit),
+which provides the governance and release discipline around the security
+harness.
 
 ---
 
-## Core Capabilities
+## How an auditor uses tachi
 
-| Capability | What it does | Auditor value |
-|---|---|---|
-| Architecture discovery | `/tachi.architecture` inspects source, config, infrastructure definitions, and existing docs to draft `docs/security/architecture.md`. | Gives the audit a concrete system boundary, data-flow map, trust-boundary list, and repeatable input artifact. |
-| Threat modeling | `/tachi.threat-model` analyzes Mermaid, prose, ASCII, PlantUML, or C4 architecture input with STRIDE, LLM, and agentic threat categories. | Produces a structured threat register with finding IDs, affected components, severity, recommended actions, SARIF, and attack trees. |
-| AI and agentic coverage | AI-aware agents activate for LLMs, RAG, MCP servers, tool-calling agents, orchestrators, embeddings, and autonomous workflows. | Extends an audit beyond conventional web/API risks into prompt injection, data poisoning, model theft, tool abuse, and agent autonomy gaps. |
-| Standards mapping | Findings map to OWASP LLM, OWASP Agentic, OWASP ML, OWASP Mobile, OWASP Web/API, MITRE ATT&CK, ATLAS, NIST AI RMF, CWE, and MAESTRO where applicable. | Turns the output into evidence that can be discussed with security, compliance, engineering, and executive stakeholders. |
-| Quantitative risk scoring | `/tachi.risk-score` adds CVSS, exploitability, scalability, reachability, composite score, owner, SLA, disposition, and review-date fields. | Helps an auditor prioritize critical and high findings with explainable scoring rather than an unranked issue list. |
-| Compensating-control analysis | `/tachi.compensating-controls` scans the target codebase for existing controls and residual risk. | Separates design risk from already-mitigated risk, identifies missing controls, and creates a defensible remediation conversation. |
-| SARIF output | `threats.sarif`, `risk-scores.sarif`, and `compensating-controls.sarif` can be uploaded to GitHub Code Scanning or consumed by SARIF viewers. | Keeps architecture-level and AI-reasoning findings visible beside SAST, SCA, and secret-scanning results. |
-| Visual and PDF reporting | `/tachi.infographic` creates stakeholder-ready visual risk summaries; `/tachi.security-report` assembles the full assessment booklet. | Converts technical findings into executive, audit, and remediation deliverables without hand-building reports. |
-| Baseline and delta tracking | Repeated runs compare current findings with prior baselines to identify new, resolved, and unchanged risks. | Supports recurring audits, release-readiness reviews, and remediation verification over time. |
+An auditor can use tachi as a repeatable evidence pipeline for application,
+platform, or AI-agent security reviews.
 
-## How An Auditor Uses Tachi
+1. Define the scope, target repository, and audit objective.
+1. Generate or review the architecture with `/tachi.architecture` so the
+   boundary, inputs, data stores, and external dependencies are explicit.
+1. Run `/tachi.threat-model` to produce `threats.md`, SARIF, attack trees, and
+   baseline deltas.
+1. Run `/tachi.risk-score` to prioritize the findings with owners and SLAs.
+1. Run `/tachi.compensating-controls` to separate existing mitigations from
+   missing controls.
+1. Export the results into `tachi.infographic` and `tachi.security-report` for
+   stakeholder review.
+1. Compare a later run against the baseline to verify remediation progress.
 
-An auditor can use tachi as a repeatable evidence pipeline for application, platform, or AI-agent security reviews.
+Good audit inputs are specific. Include authentication paths, authorization
+boundaries, privileged workflows, queues, data stores, third-party APIs, model
+providers, tool servers, agent permissions, logging, monitoring, and deployment
+controls. Vague architecture input produces generic findings; specific
+architecture input produces actionable findings.
 
-1. **Define scope**: identify the target repository, application boundary, deployment environment, and audit objective.
-1. **Generate or review architecture**: run `/tachi.architecture` or provide a hand-authored `docs/security/architecture.md` with components, data flows, protocols, trust boundaries, data stores, identities, and external systems.
-1. **Run the threat model**: execute `/tachi.threat-model` to produce `threats.md`, `threats.sarif`, attack trees, a narrative report, coverage data, MAESTRO layer mapping, and baseline deltas.
-1. **Prioritize findings**: run `/tachi.risk-score` so each finding has quantitative scoring, governance fields, and a SARIF representation with security severity.
-1. **Check mitigations**: run `/tachi.compensating-controls --target <repo>` to find existing controls, calculate residual risk, and identify missing safeguards.
-1. **Package evidence**: run `/tachi.infographic` for visual summaries and `/tachi.security-report` for a professional PDF assessment.
-1. **Track remediation**: upload SARIF to GitHub Code Scanning, assign owners and SLAs from `risk-scores.md`, and rerun against a baseline after fixes land.
+## Use cases
 
-Good audit inputs are specific. Include authentication paths, authorization boundaries, privileged workflows, queues, data stores, third-party APIs, model providers, tool servers, agent permissions, logging, monitoring, and deployment controls. Vague architecture input produces generic findings; specific architecture input produces actionable findings.
+- AI-agent security review for MCP servers, tool-calling agents, RAG systems,
+  and autonomous workflows.
+- Application threat modeling for web apps, APIs, mobile backends,
+  microservices, batch jobs, and event-driven systems.
+- Audit evidence generation for internal audit, customer review, and vendor due
+  diligence.
+- Release readiness review before major launches or security-sensitive
+  releases.
+- Control validation that compares identified threats against existing
+  compensating controls.
+- Security backlog creation from findings, owners, SLAs, and remediation notes.
 
-## Common Use Cases
+## What you get
 
-- **AI-agent security review**: inspect MCP servers, tool-calling agents, orchestrators, RAG systems, and autonomous workflows for prompt injection, tool abuse, excessive autonomy, and missing human approval points.
-- **Application threat modeling**: generate STRIDE findings for web apps, APIs, mobile backends, microservices, batch jobs, and event-driven systems.
-- **Audit evidence generation**: create traceable `threats.md`, SARIF, risk scoring, control analysis, and PDF evidence for internal audit, customer security review, or vendor due diligence.
-- **Release readiness**: run a threat model before major launches and compare against a baseline to show which risks are new, resolved, or unchanged.
-- **Control validation**: compare identified threats against codebase controls to distinguish inherent risk from residual risk.
-- **Security backlog creation**: convert recommended actions, owners, SLAs, and control gaps into implementation work for engineering teams.
+- Structured findings with IDs, severity, and remediation guidance.
+- SARIF for code scanning and security dashboards.
+- Attack trees and narrative reporting for reviewers.
+- Risk scores and ownership metadata for follow-up.
+- Visual summaries and PDF assessment artifacts for non-engineering audiences.
 
 ---
 
 ## Community
 
-- **Questions, ideas, and feature requests** → [GitHub Discussions](https://github.com/pratik-saptarshi/tachi-rust/discussions)
-- **Reproducible bugs** → [GitHub Issues](https://github.com/pratik-saptarshi/tachi-rust/issues)
-- **Security vulnerabilities** → [private advisory](https://github.com/pratik-saptarshi/tachi-rust/security/advisories/new) (do not post publicly)
-- **Full security policy** → [SECURITY.md](SECURITY.md) (supported versions, response SLA, scope)
-- **Pre-commit secret-scanning** → [docs/standards/PRECOMMIT_HOOKS.md](docs/standards/PRECOMMIT_HOOKS.md) (gitleaks default-secure hook; existing adopters opt-in via `pre-commit install`)
-- **Publishing gate** → [docs/publish-readiness-checklist.html.md](docs/publish-readiness-checklist.html.md) and [docs/bill-of-materials.html.md](docs/bill-of-materials.html.md)
-- **Real-world usage** → [In the Wild](https://github.com/pratik-saptarshi/tachi-rust/discussions/categories/in-the-wild) — tell me how you're using tachi, anonymized is fine
+- **Questions, ideas, and feature requests** -> [GitHub Discussions](https://github.com/pratik-saptarshi/tachi-rust/discussions)
+- **Reproducible bugs** -> [GitHub Issues](https://github.com/pratik-saptarshi/tachi-rust/issues)
+- **Security vulnerabilities** -> [private advisory](https://github.com/pratik-saptarshi/tachi-rust/security/advisories/new) (do not post publicly)
+- **Full security policy** -> [SECURITY.md](SECURITY.md) (supported versions, response SLA, scope)
+- **Pre-commit secret-scanning** -> [docs/standards/PRECOMMIT_HOOKS.md](docs/standards/PRECOMMIT_HOOKS.md) (gitleaks default-secure hook; existing adopters opt in via `pre-commit install`)
+- **Publishing gate** -> [docs/publish-readiness-checklist.html.md](docs/publish-readiness-checklist.html.md) and [docs/bill-of-materials.html.md](docs/bill-of-materials.html.md)
 
-If you're new here, start with the [Welcome thread](https://github.com/pratik-saptarshi/tachi-rust/discussions) for how the board is organized.
+If you are new here, start with the [Welcome thread](https://github.com/pratik-saptarshi/tachi-rust/discussions) for how the board is organized.
 
 ---
 
 ## Prerequisites
 
-tachi requires two external CLIs for full functionality. Both are required — `typst` compiles the PDF security report and `@mermaid-js/mermaid-cli` (`mmdc`) renders attack path diagrams. See [ADR-022](docs/architecture/02_ADRs/ADR-022-mmdc-hard-prerequisite.md) for the rationale.
+tachi requires two external CLIs for full functionality. Both are required:
+`typst` compiles the PDF security report, and `@mermaid-js/mermaid-cli`
+(`mmdc`) renders attack-path diagrams. See [ADR-022](docs/architecture/02_ADRs/ADR-022-mmdc-hard-prerequisite.md)
+for the rationale.
 
-**macOS**:
+**macOS**
 
 ```bash
 brew install typst
 npm install -g @mermaid-js/mermaid-cli
 ```
 
-**Linux** (Debian/Ubuntu):
+**Linux** (Debian/Ubuntu)
 
 ```bash
 apt install typst   # or: cargo install typst-cli / dnf install typst on Fedora
 npm install -g @mermaid-js/mermaid-cli
 ```
 
-**WSL** (use your distro's package manager, same as Linux):
+**WSL**
 
 ```bash
 apt install typst
 npm install -g @mermaid-js/mermaid-cli
 ```
 
-`/tachi.security-report` aborts at preflight with a clear install command if either CLI is missing when attack-trees are present.
+`/tachi.security-report` aborts at preflight with a clear install command if
+either CLI is missing when attack trees are present.
 
 ---
 
-## Quick Start
+## Quick start
 
-### 1. Clone tachi (one-time)
+### 1. Clone tachi
 
 ```bash
 git clone https://github.com/pratik-saptarshi/tachi-rust.git ~/Projects/tachi
 ```
 
-### 2. Add tachi to your project
+### 2. Install into your project
 
 From your project root:
 
@@ -189,7 +191,7 @@ If tachi is cloned to a non-default location:
 ```
 
 <details>
-<summary>Manual install (alternative)</summary>
+<summary>Manual install</summary>
 
 ```bash
 # Agents (threat analysis engine)
@@ -215,47 +217,58 @@ cp ~/Projects/tachi/docs/guides/DEVELOPER_GUIDE_TACHI.md docs/guides/
 
 </details>
 
-See [`INSTALL_MANIFEST.md`](INSTALL_MANIFEST.md) for the full list of distributable files.
+See [`INSTALL_MANIFEST.md`](INSTALL_MANIFEST.md) for the full list of
+distributable files.
 
 ### 3. Restart Claude Code
 
-After copying the files, **restart Claude Code** (close and reopen the VS Code window, or start a new CLI session) so it picks up the new agents and commands.
+After copying the files, restart Claude Code so it picks up the new agents and
+commands.
 
-If you want infographic images (`.jpg`), set the `GEMINI_API_KEY` environment variable with a key from [Google AI Studio](https://aistudio.google.com/apikey). This is optional — all text-based outputs work without it.
+If you want infographic images (`.jpg`), set `GEMINI_API_KEY` from
+[Google AI Studio](https://aistudio.google.com/apikey). This is optional; all
+text-based outputs work without it.
 
 ### 4. Create your architecture file
 
-Create `docs/security/architecture.md` describing your system. The recommended path is to let tachi draft it from the current project:
+Create `docs/security/architecture.md` describing your system. The recommended
+path is to let tachi draft it from the current project:
 
-```
+```text
 /tachi.architecture
 ```
 
-By default this writes `docs/security/architecture.md`, captures components, data flows, trust boundaries, and external entities, and detects LLM, agent, MCP, RAG, tool, and model-provider components so the AI threat agents activate.
+By default this writes `docs/security/architecture.md`, captures components,
+data flows, trust boundaries, and external entities, and detects LLM, agent,
+MCP, RAG, tool, and model-provider components so the AI threat agents activate.
 
 You can also write the file yourself or ask Claude Code directly:
 
-```
-Investigate this repository's architecture -- source code, config files, infrastructure
-definitions, READMEs -- and create docs/security/architecture.md as a Mermaid flowchart
-with all major components, data flows, protocols, and trust boundaries.
+```text
+Investigate this repository's architecture -- source code, config files,
+infrastructure definitions, READMEs -- and create docs/security/architecture.md
+as a Mermaid flowchart with all major components, data flows, protocols, and
+trust boundaries.
 ```
 
-tachi auto-detects the format. Mermaid, free-text, ASCII, PlantUML, and C4 are all supported.
+tachi auto-detects the format. Mermaid, free-text, ASCII, PlantUML, and C4 are
+all supported.
 
 ### 5. Run your first threat model
 
-```
+```text
 /tachi.threat-model
 ```
 
-That's it. One command. tachi validates the setup, reads your architecture, dispatches 14 threat agents, and writes everything to a timestamped folder under `docs/security/`.
+That is it. One command. tachi validates the setup, reads your architecture,
+dispatches 14 threat agents, and writes everything to a timestamped folder
+under `docs/security/`.
 
 ### 6. Review your results
 
-| File | Source | What It Contains |
-|------|--------|-----------------|
-| `threats.md` | `/tachi.threat-model` | Primary threat model -- findings, coverage matrix, MAESTRO layers, risk summary |
+| File | Source | What it contains |
+|---|---|---|
+| `threats.md` | `/tachi.threat-model` | Primary threat model, findings, coverage matrix, MAESTRO layers, risk summary |
 | `threats.sarif` | `/tachi.threat-model` | SARIF 2.1.0 for GitHub Code Scanning and CI/CD integration |
 | `threat-report.md` | `/tachi.threat-model` | Narrative report with executive summary and remediation roadmap |
 | `attack-trees/` | `/tachi.threat-model` | One Mermaid attack tree per Critical/High finding |
@@ -263,27 +276,39 @@ That's it. One command. tachi validates the setup, reads your architecture, disp
 | `risk-scores.sarif` | `/tachi.risk-score` | SARIF 2.1.0 with composite scores as `security-severity` per finding |
 | `compensating-controls.md` | `/tachi.compensating-controls` | Detected codebase controls, residual risk, missing control recommendations |
 | `compensating-controls.sarif` | `/tachi.compensating-controls` | SARIF 2.1.0 with residual risk as `security-severity` per finding |
-| `threat-baseball-card.jpg` | `/tachi.infographic` | Baseball Card risk dashboard (requires `GEMINI_API_KEY`) |
+| `threat-baseball-card.jpg` | `/tachi.infographic` | Baseball card risk dashboard (requires `GEMINI_API_KEY`) |
 | `threat-system-architecture.jpg` | `/tachi.infographic` | Annotated architecture diagram with finding legend |
 | `threat-risk-funnel.jpg` | `/tachi.infographic` | Risk distribution funnel by severity |
 | `threat-maestro-stack.jpg` | `/tachi.infographic` | MAESTRO layer stack visualization (agentic systems only) |
 | `threat-maestro-heatmap.jpg` | `/tachi.infographic` | MAESTRO layer x severity heat map (agentic systems only) |
 | `security-report.pdf` | `/tachi.security-report` | Professional PDF booklet with all artifacts assembled |
 
-Start with `threats.md` Section 7 -- Recommended Actions. Then run `/tachi.risk-score` for quantitative prioritization, `/tachi.compensating-controls` to detect existing defenses, `/tachi.infographic` for visual risk diagrams, and `/tachi.security-report` to assemble everything into a PDF booklet. Work through Critical findings first, then High.
+Start with `threats.md` Section 7, Recommended Actions. Then run
+`/tachi.risk-score` for quantitative prioritization,
+`/tachi.compensating-controls` to detect existing defenses,
+`/tachi.infographic` for visual risk diagrams, and
+`/tachi.security-report` to assemble everything into a PDF booklet. Work
+through Critical findings first, then High.
 
-> **Full Walkthrough**: The [Developer Guide](docs/guides/DEVELOPER_GUIDE_TACHI.md) covers the complete 5-step risk lifecycle with worked examples, advanced options, and CI/CD integration.
+> Full walkthrough: the [Developer Guide](docs/guides/DEVELOPER_GUIDE_TACHI.md)
+> covers the complete 5-step risk lifecycle with worked examples, advanced
+> options, and CI/CD integration.
 
 ---
 
-## Command Options
+## Command options
 
 ### /tachi.threat-model
 
-Runs the 5-phase threat modeling pipeline: scope, determine threats, determine countermeasures, assess, and report. Produces `threats.md`, `threats.sarif`, `threat-report.md`, `attack-trees/`, and `attack-chains.md` (conditional, when cross-layer chains are detected). Findings include MAESTRO layer classification for agentic AI components. Phase 3.5 cross-layer correlation detects attack chains spanning multiple MAESTRO layers with chain-breaking control recommendations. Automatically detects baseline from previous runs for delta tracking.
+Runs the 5-phase threat modeling pipeline: scope, determine threats, determine
+countermeasures, assess, and report. Produces `threats.md`, `threats.sarif`,
+`threat-report.md`, `attack-trees/`, and `attack-chains.md` when cross-layer
+chains are detected. Findings include MAESTRO layer classification for
+agentic AI components. The command automatically detects a prior baseline for
+delta tracking.
 
 ```bash
-# Default -- uses docs/security/architecture.md
+# Default - uses docs/security/architecture.md
 /tachi.threat-model
 
 # Specify architecture file
@@ -301,7 +326,8 @@ Runs the 5-phase threat modeling pipeline: scope, determine threats, determine c
 
 ### /tachi.risk-score
 
-Enriches threat model output with four-dimensional quantitative risk scores (CVSS 3.1, exploitability, scalability, reachability) and governance fields (owner, SLA, disposition, review date). Produces `risk-scores.md` and `risk-scores.sarif`.
+Enriches threat-model output with quantitative risk scores and governance
+fields. Produces `risk-scores.md` and `risk-scores.sarif`.
 
 ```bash
 # Score threats in the default location
@@ -316,7 +342,10 @@ Enriches threat model output with four-dimensional quantitative risk scores (CVS
 
 ### /tachi.compensating-controls
 
-Scans a target codebase against scored threats to detect existing security controls, calculate residual risk, and recommend missing controls. Requires `/tachi.risk-score` output as input. Produces `compensating-controls.md` and `compensating-controls.sarif`.
+Scans a target codebase against scored threats to detect existing security
+controls, calculate residual risk, and recommend missing controls. Requires
+`/tachi.risk-score` output as input. Produces `compensating-controls.md` and
+`compensating-controls.sarif`.
 
 ```bash
 # Scan current project against risk scores in the default location
@@ -334,9 +363,13 @@ Scans a target codebase against scored threats to detect existing security contr
 
 ### /tachi.infographic
 
-Generates visual threat infographic specifications and presentation-ready images. Auto-detects the richest data source in the output directory (prefers `compensating-controls.md` > `risk-scores.md` > `threats.md`). Produces spec markdown and `.jpg` images (images require `GEMINI_API_KEY`).
+Generates visual threat infographic specifications and presentation-ready
+images. Auto-detects the richest data source in the output directory (prefers
+`compensating-controls.md` > `risk-scores.md` > `threats.md`). Produces spec
+markdown and `.jpg` images.
 
-**Templates**: `baseball-card`, `system-architecture`, `risk-funnel`, `maestro-stack`, `maestro-heatmap`, `all`
+Templates: `baseball-card`, `system-architecture`, `risk-funnel`,
+`maestro-stack`, `maestro-heatmap`, `all`
 
 ```bash
 # Generate all templates (auto-includes MAESTRO if data present)
@@ -355,10 +388,15 @@ Generates visual threat infographic specifications and presentation-ready images
 
 ### /tachi.security-report
 
-Assembles all pipeline artifacts into a professional multi-page PDF security assessment booklet. Auto-detects available artifacts and conditionally includes pages. Requires `typst` CLI for PDF compilation and `mmdc` (Mermaid CLI) for attack path and attack chain diagram rendering (hard prerequisite per ADR-022 when diagrams are present).
+Assembles all pipeline artifacts into a professional multi-page PDF security
+assessment booklet. Auto-detects available artifacts and conditionally includes
+pages. Requires `typst` for PDF compilation and `mmdc` for attack-path diagram
+rendering when diagrams are present.
 
-**Page types** (conditional, based on available artifacts):
-Cover, Disclaimer, Table of Contents, Risk Methodology, Assessment Scope, Executive Summary, Attack Path Analysis, Attack Chain Diagrams, MAESTRO Findings, Infographic pages (full-bleed), Findings Detail, Control Coverage, Remediation Roadmap
+Page types may include: cover, disclaimer, table of contents, risk
+methodology, assessment scope, executive summary, attack-path analysis,
+attack-chain diagrams, MAESTRO findings, infographic pages, findings detail,
+control coverage, and remediation roadmap.
 
 ```bash
 # Generate PDF from the default location
@@ -373,50 +411,58 @@ Cover, Disclaimer, Table of Contents, Risk Methodology, Assessment Scope, Execut
 
 ---
 
-## How It Works
+## How it works
 
-tachi uses a multi-agent orchestration pattern. The orchestrator parses your architecture, identifies components and data flows, then dispatches the right combination of 14 threat agents per component:
+tachi uses a multi-agent orchestration pattern. The orchestrator parses your
+architecture, identifies components and data flows, and dispatches the right
+combination of 14 threat agents per component.
 
-| Component Type | STRIDE Agents | AI Agents |
-|---------------|---------------|-----------|
-| External Entity (users, APIs) | S, R | -- |
-| Process (servers, agents) | S, T, R, I, D, E | LLM + AG if AI keywords detected |
-| Data Store (databases, caches) | T, I, D | -- |
-| Data Flow (API calls, messages) | T, I, D | -- |
+| Component type | STRIDE agents | AI agents |
+|---|---|---|
+| External entity (users, APIs) | S, R | - |
+| Process (servers, agents) | S, T, R, I, D, E | LLM + AG if AI keywords are detected |
+| Data store (databases, caches) | T, I, D | - |
+| Data flow (API calls, messages) | T, I, D | - |
 
-AI agents activate when component names or descriptions contain keywords like "LLM", "agent", "orchestrator", "MCP", "tool server", "embedding", "RAG", etc.
+AI agents activate when component names or descriptions contain keywords such
+as LLM, agent, orchestrator, MCP, tool server, embedding, RAG, and related
+terms.
 
-After all agents report, the orchestrator deduplicates findings, runs cross-agent correlation, computes risk ratings, and generates the output suite.
+After all agents report, the orchestrator deduplicates findings, runs
+cross-agent correlation, computes risk ratings, and generates the output suite.
 
-### MAESTRO Layer Classification
+### MAESTRO layer classification
 
-For agentic AI systems, tachi maps each finding to the [CSA MAESTRO](https://cloudsecurityalliance.org/) seven-layer taxonomy:
+For agentic AI systems, tachi maps each finding to the [CSA MAESTRO](https://cloudsecurityalliance.org/)
+seven-layer taxonomy:
 
 | Layer | Name | Scope |
-|-------|------|-------|
-| L1 | Foundation Model | Pre-trained LLMs, inference engines |
-| L2 | Data Operations | Vector stores, RAG pipelines, embeddings |
-| L3 | Agent Framework | Orchestrators, tool servers, MCP |
-| L4 | Deployment Infrastructure | API gateways, containers, networking |
-| L5 | Evaluation and Observability | Audit logging, monitoring, anomaly detection, forensics |
-| L6 | Security and Compliance | Auth, guardrails, rate limiting, encryption, IAM |
-| L7 | Agent Ecosystem | Multi-agent coordination, delegation, chat UIs, API endpoints |
+|---|---|---|
+| L1 | Foundation model | Pre-trained LLMs, inference engines |
+| L2 | Data operations | Vector stores, RAG pipelines, embeddings |
+| L3 | Agent framework | Orchestrators, tool servers, MCP |
+| L4 | Deployment infrastructure | API gateways, containers, networking |
+| L5 | Evaluation and observability | Audit logging, monitoring, anomaly detection, forensics |
+| L6 | Security and compliance | Auth, guardrails, rate limiting, encryption, IAM |
+| L7 | Agent ecosystem | Multi-agent coordination, delegation, chat UIs, API endpoints |
 
-MAESTRO layers appear in `threats.md`, propagate through all downstream commands, and power the `maestro-stack` and `maestro-heatmap` infographic templates.
-Legacy PRD-084 labels are accepted only at parse boundaries; the Rust taxonomy normalizes them to the canonical layer names above before rendering or aggregation.
+MAESTRO layers appear in `threats.md`, propagate through downstream commands,
+and power the `maestro-stack` and `maestro-heatmap` infographic templates.
 
-### Agentic Pattern Synthesis
+### Agentic pattern synthesis
 
-For multi-agent architectures, tachi's Phase 3.6 Pattern Synthesis Engine (per [ADR-026](docs/architecture/02_ADRs/ADR-026-pattern-classification-mechanism.md)) classifies findings into the six canonical CSA MAESTRO cross-cutting agentic patterns:
+For multi-agent architectures, tachi's Pattern Synthesis Engine classifies
+findings into six canonical cross-cutting agentic patterns:
 
-| Pattern | Canonical Definition |
-|---------|----------------------|
+| Pattern | Canonical definition |
+|---|---|
 | `agent_collusion` | Multiple compromised agents coordinate to achieve malicious objectives |
-| `emergent_behavior` | Unpredictable behaviors arising from multi-agent interactions (cascades, feedback amplification, drift) |
-| `temporal_attack` | Persistent-state exploits: sleeper agents, gradual corruption, seasonal exploitation |
-| `trust_exploitation` | Inter-agent identity spoofing, reputation manipulation, trust chain attacks |
+| `emergent_behavior` | Unpredictable behaviors arising from multi-agent interactions |
+| `temporal_attack` | Persistent-state exploits such as sleeper agents or gradual corruption |
+| `trust_exploitation` | Inter-agent identity spoofing, reputation manipulation, trust-chain attacks |
 | `communication_vulnerability` | Inter-agent message interception, protocol manipulation, routing attacks |
 | `resource_competition` | Resource monopolization, priority manipulation, coordination disruption |
+
 
 Each finding receives a new `agentic_pattern` enum field (schema 1.4) during Phase 3.6 — gated by the multi-agent predicate (≥2 agentic/LLM components, inter-agent data flow, or explicit multi-agent keywords in the architecture description). Pattern assignments appear in `threats.md` Section 7 (Pattern column), Section 4b (Findings by Agentic Pattern), `threat-report.md` Section 7 (Agentic Pattern Analysis narrative), and SARIF `maestro-pattern:<name>` tags mirroring the existing `maestro-layer:<L#>` convention. The deterministic classification rule table and the multi-agent gate predicate live in [`maestro-agentic-patterns-shared.md`](.claude/skills/tachi-shared/references/maestro-agentic-patterns-shared.md).
 
