@@ -10,14 +10,14 @@
 
 ## 1. Purpose
 
-`schemas/taxonomy/` is a machine-readable catalog and crosswalk of the seven taxonomies tachi cites across its agentic-AI threat-modeling output — OWASP (6 published lists), MITRE ATT&CK, MITRE ATLAS, NIST AI RMF 1.0, CWE, plus two tachi pseudo-taxonomies (`tachi-control-category`, `tachi-stride-ai-category`). Every taxonomy ID tachi cites resolves here to a record carrying `{id, full_id, name, url, cwe_refs}`, and every cross-framework mapping (e.g., "what CWEs does OWASP LLM05 relate to?") resolves to a single row in `crosswalk.yaml`.
+`schemas/taxonomy/` is a machine-readable catalog and crosswalk of the eight taxonomies tachi cites across its agentic-AI threat-modeling output — OWASP (6 published lists), MITRE ATT&CK, MITRE ATLAS, NIST AI RMF 1.0, CWE, plus three in-repo control catalogs (`tachi-control-category`, `tachi-stride-ai-category`, `aisvs`). Every taxonomy ID tachi cites resolves here to a record carrying `{id, full_id, name, url, cwe_refs}`, and every cross-framework mapping (e.g., "what CWEs does OWASP LLM05 relate to?") resolves to a single row in `crosswalk.yaml`.
 
 This is the **foundation data** for downstream features:
 - **F-A2** (finding-level source attribution) will extend the finding schema with a `source_attribution` field that cites specific crosswalk edges.
 - **F-B** (coverage attestation report section) will render a per-DFD-component-class attestation that a given framework is fully covered.
 - Future ecosystem integrations (vulnerability manager, SIEM, compliance dashboard) can consume the YAMLs directly via `yaml.safe_load` without parsing agent markdown prose.
 
-The directory ships **9 files** (per spec FR-001): 7 catalog YAMLs + 1 crosswalk YAML + this README. See [ADR-027](../../docs/architecture/02_ADRs/ADR-027-taxonomy-crosswalk-schema.md) for the full schema rationale, the 7-value `taxonomy` enum, the 3-value `edge_type` / `confidence` enums, and the "Interpretation C" single-feature cadence exception.
+The directory ships **10 files** (per spec FR-001): 8 catalog YAMLs + 1 crosswalk YAML + this README. See [ADR-027](../../docs/architecture/02_ADRs/ADR-027-taxonomy-crosswalk-schema.md) for the full schema rationale, the 8-value `taxonomy` enum, the 3-value `edge_type` / `confidence` enums, and the "Interpretation C" single-feature cadence exception.
 
 ### Runnable Python snippet (SC-007)
 
@@ -35,7 +35,7 @@ For per-catalog resolution, substitute any of the 7 catalog files:
 
 ```python
 for taxonomy in ('owasp', 'mitre-attack', 'mitre-atlas', 'nist-ai-rmf', 'cwe',
-                 'tachi-control-category', 'tachi-stride-ai-category'):
+                 'tachi-control-category', 'tachi-stride-ai-category', 'aisvs'):
     records = yaml.safe_load(open(f'schemas/taxonomy/{taxonomy}.yaml'))
     print(f"{taxonomy}: {len(records)} records (example: {records[0]['id']})")
 ```
@@ -122,6 +122,13 @@ Curation rule: F-A1 is a **harvest + transcription** feature, not a re-authorshi
 - **External curation**: none (tachi pseudo-taxonomy — no external publisher).
 - **Retrieval date**: **2026-04-17** (repo file at commit baseline; the canonical source lives in-repo).
 - **Final record count**: **11** (FR-019 — exact).
+
+### 3.8 `aisvs.yaml`
+
+- **Seed source**: `crates/tachi-core/src/aisvs.rs` and `crates/tachi-core/tests/aisvs_controls.rs` — the canonical AISVS control registry embedded in the Rust workspace.
+- **External curation**: none. AISVS is an in-repo control catalog with no external publisher.
+- **Retrieval date**: repo baseline (current workspace state).
+- **Final record count**: **12** (C01-C12 — exact).
 
 ---
 

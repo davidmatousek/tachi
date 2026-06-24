@@ -1,0 +1,148 @@
+# AISVS Control Catalog (taxonomy: aisvs)
+#
+# Canonical source:
+#   crates/tachi-core/src/aisvs.rs
+# Validation source:
+#   crates/tachi-core/tests/aisvs_controls.rs
+#
+# Record shape:
+#   {id, full_id, name, url, cwe_refs, capability, feature, task, function,
+#    validation_command, acceptance_criteria}
+#
+# `cwe_refs: []` for all records. AISVS control IDs do not publish direct
+# CWE cross-references.
+#
+# Sorted alphabetically by `id`.
+
+- id: C01
+  full_id: AISVS-C01
+  name: Training-data integrity and traceability
+  url: crates/tachi-core/src/aisvs.rs
+  cwe_refs: []
+  capability: Immutable training lineage
+  feature: Capture provenance for AI input sets
+  task: Training-data integrity and traceability
+  function: Training-data integrity and traceability
+  validation_command: cargo test -p tachi-core --test aisvs_controls c01_training_data_asset_requires_provenance_and_integrity
+  acceptance_criteria: Tests prove invalid lineage is unrepresentable and provenance is preserved.
+- id: C02
+  full_id: AISVS-C02
+  name: Input validation and normalization
+  url: crates/tachi-core/src/aisvs.rs
+  cwe_refs: []
+  capability: Typed input envelopes
+  feature: Reject malformed or ambiguous prompts
+  task: Input validation and normalization
+  function: Input validation and normalization
+  validation_command: cargo test -p tachi-core --test aisvs_controls c02_prompt_input_rejects_blank_ambiguous_and_control_bytes
+  acceptance_criteria: Tests prove malformed inputs fail closed before downstream use.
+- id: C03
+  full_id: AISVS-C03
+  name: Model lifecycle management
+  url: crates/tachi-core/src/aisvs.rs
+  cwe_refs: []
+  capability: Versioned model policies
+  feature: Pin, promote, and retire models safely
+  task: Model lifecycle management
+  function: Model lifecycle management
+  validation_command: cargo test -p tachi-core --test aisvs_controls c03_lifecycle_gate_forbids_skipping_validation_states
+  acceptance_criteria: Tests prove lifecycle transitions require explicit approval states.
+- id: C04
+  full_id: AISVS-C04
+  name: Infrastructure hardening
+  url: crates/tachi-core/src/aisvs.rs
+  cwe_refs: []
+  capability: Runtime isolation boundaries
+  feature: Constrain execution and deployment surfaces
+  task: Infrastructure hardening
+  function: Infrastructure hardening
+  validation_command: cargo test -p tachi-core --test aisvs_controls c04_infrastructure_policy_defaults_to_least_privilege
+  acceptance_criteria: Tests prove infrastructure defaults stay least privilege.
+- id: C05
+  full_id: AISVS-C05
+  name: Access control and identity
+  url: crates/tachi-core/src/aisvs.rs
+  cwe_refs: []
+  capability: Typed authorization contexts
+  feature: Authorize only authenticated actors
+  task: Access control and identity
+  function: Access control and identity
+  validation_command: cargo test -p tachi-core --test aisvs_controls c05_access_context_requires_explicit_mode_and_role
+  acceptance_criteria: Tests prove identity and authorization decisions are explicit.
+- id: C06
+  full_id: AISVS-C06
+  name: Supply chain assurance
+  url: crates/tachi-core/src/aisvs.rs
+  cwe_refs: []
+  capability: Pinned dependency evidence
+  feature: Track and remediate upstream advisories
+  task: Supply chain assurance
+  function: Supply chain assurance
+  validation_command: cargo test -p tachi-core --test aisvs_controls c06_supply_chain_evidence_requires_attestation_and_audit_tag
+  acceptance_criteria: Tests prove vulnerable dependencies are surfaced and gated.
+- id: C07
+  full_id: AISVS-C07
+  name: Model behavior control
+  url: crates/tachi-core/src/aisvs.rs
+  cwe_refs: []
+  capability: Typed output contracts
+  feature: Constrain model outputs to expected schemas
+  task: Model behavior control
+  function: Model behavior control
+  validation_command: cargo test -p tachi-core --test aisvs_controls c07_model_behavior_policy_rejects_unbounded_free_form_output
+  acceptance_criteria: Tests prove outputs are normalized before use.
+- id: C08
+  full_id: AISVS-C08
+  name: Memory and embeddings governance
+  url: crates/tachi-core/src/aisvs.rs
+  cwe_refs: []
+  capability: Scoped retrieval policies
+  feature: Prevent unsafe reuse of stored context
+  task: Memory and embeddings governance
+  function: Memory and embeddings governance
+  validation_command: cargo test -p tachi-core --test aisvs_controls c08_memory_scope_rejects_unbounded_retention_and_cross_scope_use
+  acceptance_criteria: Tests prove retrieval obeys scope and retention rules.
+- id: C09
+  full_id: AISVS-C09
+  name: Orchestration and agentic action
+  url: crates/tachi-core/src/aisvs.rs
+  cwe_refs: []
+  capability: Typed action boundaries
+  feature: Gate autonomous actions behind policy checks
+  task: Orchestration and agentic action
+  function: Orchestration and agentic action
+  validation_command: cargo test -p tachi-core --test aisvs_controls c09_orchestration_policy_requires_approval_before_escalation
+  acceptance_criteria: Tests prove action execution cannot bypass policy seams.
+- id: C10
+  full_id: AISVS-C10
+  name: MCP security
+  url: crates/tachi-core/src/aisvs.rs
+  cwe_refs: []
+  capability: Typed tool invocation policies
+  feature: Restrict tool access to approved capabilities
+  task: MCP security
+  function: MCP security
+  validation_command: cargo test -p tachi-core --test aisvs_controls c10_mcp_policy_requires_schema_and_tool_allowlist
+  acceptance_criteria: Tests prove tool calls cannot exceed declared capability scope.
+- id: C11
+  full_id: AISVS-C11
+  name: Adversarial robustness
+  url: crates/tachi-core/src/aisvs.rs
+  cwe_refs: []
+  capability: Robustness regression suite
+  feature: Capture hostile inputs and rejection behavior
+  task: Adversarial robustness
+  function: Adversarial robustness
+  validation_command: cargo test -p tachi-core --test aisvs_controls c11_adversarial_case_is_explicit_and_fail_closed
+  acceptance_criteria: Tests prove adversarial cases remain fail-closed.
+- id: C12
+  full_id: AISVS-C12
+  name: Monitoring and logging
+  url: crates/tachi-core/src/aisvs.rs
+  cwe_refs: []
+  capability: Redaction-safe telemetry
+  feature: Log security evidence without secrets or PII leakage
+  task: Monitoring and logging
+  function: Monitoring and logging
+  validation_command: cargo test -p tachi-core --test aisvs_controls c12_monitoring_policy_redacts_secrets_and_rejects_empty_events
+  acceptance_criteria: Tests prove logs remain sanitized and actionable.

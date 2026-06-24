@@ -10,6 +10,7 @@ Schemas serve as the single source of truth for data structures exchanged betwee
 
 | File | Purpose | Producers | Consumers |
 |------|---------|-----------|-----------|
+| `aisvs.yaml` | AISVS registry contract — control metadata and validation commands | `crates/tachi-core/src/aisvs.rs` | `crates/tachi-core/tests/aisvs_controls.rs`, downstream AISVS slices |
 | `finding.yaml` | Intermediate Representation (IR) — the atomic finding contract | Threat agents in `agents/stride/` and `agents/ai/` (6 STRIDE + 5 AI) | Output template (`templates/threats.md`), SARIF export, narrative reports |
 | `input.yaml` | Input validation — supported formats and recognition patterns | Integrators | Input parser, orchestrator |
 | `output.yaml` | Output structure — required sections and field definitions | Template engine | Integrators, downstream exporters |

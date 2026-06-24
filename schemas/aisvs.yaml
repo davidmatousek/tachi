@@ -1,0 +1,55 @@
+# AISVS Registry Schema
+#
+# Defines the machine-readable contract for the AISVS control registry
+# emitted by crates/tachi-core/src/aisvs.rs.
+#
+# Producers: crates/tachi-core/src/aisvs.rs
+# Consumers: crates/tachi-core/tests/aisvs_controls.rs, downstream AISVS slices
+#
+# Version: 1.0
+
+schema_version: "1.0"
+
+aisvs:
+  framework_name:
+    type: string
+    value: "AISVS 1.0"
+
+  framework_version:
+    type: string
+    value: "1.0"
+
+  controls:
+    required: true
+    count: 12
+    description: >
+      Ordered AISVS controls emitted by aisvs_control_registry().
+      Each control is a typed record with validation metadata and
+      a deterministic test command.
+    control_ids:
+      - C01
+      - C02
+      - C03
+      - C04
+      - C05
+      - C06
+      - C07
+      - C08
+      - C09
+      - C10
+      - C11
+      - C12
+    source:
+      type: file
+      path: crates/tachi-core/src/aisvs.rs
+      validation_tests: crates/tachi-core/tests/aisvs_controls.rs
+    row_fields:
+      - id
+      - full_id
+      - name
+      - capability
+      - feature
+      - task
+      - function
+      - validation_command
+      - acceptance_criteria

@@ -12,6 +12,7 @@ const CATALOG_FILENAMES: &[&str] = &[
     "cwe.yaml",
     "tachi-control-category.yaml",
     "tachi-stride-ai-category.yaml",
+    "aisvs.yaml",
 ];
 
 const TAXONOMIES: &[&str] = &[
@@ -22,6 +23,7 @@ const TAXONOMIES: &[&str] = &[
     "cwe",
     "tachi-control-category",
     "tachi-stride-ai-category",
+    "aisvs",
 ];
 
 const EDGE_TYPES: &[&str] = &["primary", "related", "superseded"];
@@ -559,4 +561,73 @@ fn output_integrity_schema_contract_is_rust_native() {
             .any(|error| error.record.taxonomy == "cwe" && error.record.id == "CWE-73"),
         "invalid OI fixture should fail on absent cwe:CWE-73"
     );
+}
+
+#[test]
+fn aisvs_schema_and_catalog_contract_are_rust_native() {
+    let root = workspace_root();
+    assert!(
+        !root.join("tests/scripts/test_aisvs.py").exists(),
+        "AISVS schema coverage should live in Rust tests, not pytest"
+    );
+
+    let taxonomy_path = taxonomy_dir(&root).join("aisvs.yaml");
+    let taxonomy = fs::read_to_string(&taxonomy_path).unwrap_or_else(|err| {
+        panic!(
+            "expected AISVS taxonomy {} to load: {err}",
+            taxonomy_path.display()
+        )
+    });
+    let records = parse_catalog_records(&taxonomy);
+    assert_eq!(records.len(), 12, "aisvs.yaml: expected 12 control records");
+    assert_eq!(
+        records.first().map(|record| record.id.as_str()),
+        Some("C01")
+    );
+    assert_eq!(records.last().map(|record| record.id.as_str()), Some("C12"));
+
+    for record in &records {
+        for key in [
+            "full_id:",
+            "name:",
+            "url:",
+            "cwe_refs:",
+            "capability:",
+            "feature:",
+            "task:",
+            "function:",
+            "validation_command:",
+            "acceptance_criteria:",
+        ] {
+            assert!(
+                contains_key(record, key),
+                "aisvs.yaml: {} missing {key}",
+                record.id
+            );
+        }
+    }
+
+    let schema_path = root.join("schemas/aisvs.yaml");
+    let schema = fs::read_to_string(&schema_path).unwrap_or_else(|err| {
+        panic!(
+            "expected AISVS schema {} to load: {err}",
+            schema_path.display()
+        )
+    });
+    assert_eq!(schema_version(&schema), "1.0");
+    assert!(schema.contains("framework_name:"));
+    assert!(schema.contains("value: \"AISVS 1.0\""));
+    assert!(schema.contains("framework_version:"));
+    assert!(schema.contains("value: \"1.0\""));
+    assert!(schema.contains("count: 12"));
+    assert!(schema.contains("crates/tachi-core/src/aisvs.rs"));
+    assert!(schema.contains("crates/tachi-core/tests/aisvs_controls.rs"));
+    for control_id in [
+        "C01", "C02", "C03", "C04", "C05", "C06", "C07", "C08", "C09", "C10", "C11", "C12",
+    ] {
+        assert!(
+            schema.contains(control_id),
+            "aisvs.yaml: missing control id {control_id}"
+        );
+    }
 }
