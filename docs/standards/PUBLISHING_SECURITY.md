@@ -5,6 +5,11 @@
 
 Use this checklist before publishing to GitHub or cutting a release.
 
+Public release notes should explain what changed, how to use it, and which
+known blockers remain. Keep the wording user-facing and avoid copying private
+diagnostics, internal-only file paths, or unreleased operational detail into
+public notes.
+
 ## Security and privacy gate
 
 - No secrets, credentials, tokens, or private keys in committed files.
@@ -44,4 +49,6 @@ For the publish inventory and gate checklist, also review:
 - Push only reviewed, tested commits to `origin/main`.
 - Use GitHub private vulnerability reporting for embargoed issues.
 - Do not include local paths, private tokens, unredacted usernames, or private project names in public release notes.
+- Keep `README.md`, `docs/guides/DEVELOPER_GUIDE_TACHI.md`, `CHANGELOG.md`, and
+  release notes aligned on the current install and usage story.
 - Re-run the publish readiness checklist after the final merge and before the push.

@@ -24,6 +24,11 @@ This BOM is the authoritative inventory for publication review. If a file or
 directory is not listed here, it is either internal implementation detail,
 temporary scratch state, or a local-only worktree artifact.
 
+For public readers, this document explains which surfaces are expected to ship,
+which docs define the user-facing workflow, and which validation gates guard
+the release path. Treat it as the contract between repository contents and the
+published artifact set.
+
 ## Public-Facing Documents
 
 These are the documents that must stay current, redaction-safe, and aligned
@@ -31,12 +36,13 @@ with the shipped release workflow before publication.
 
 | Path | Role | Publish status | Notes |
 |---|---|---|---|
-| `README.md` | Repository landing page | Publishable | Must describe the current install, usage, and release path without stale workflow guidance. |
+| `README.md` | Repository landing page and getting-started guide | Publishable | Must describe the current install, usage, auditor workflow, and release path without stale workflow guidance. |
+| `docs/guides/DEVELOPER_GUIDE_TACHI.md` | Public developer and auditor walkthrough | Publishable | Must stay aligned with the README and show the actual first-run analysis path. |
 | `SECURITY.md` | Security policy | Publishable | Private vulnerability reporting only; keep public disclosure guidance current. |
 | `CHANGELOG.md` | Release history | Publishable | Redaction-safe release notes only. |
 | `docs/bill-of-materials.html.md` | Publish inventory | Publishable | Canonical inventory of publication surfaces and validation gates. |
-| `docs/publish-readiness-checklist.html.md` | Publish readiness checklist | Publishable | Required pre-push gate for security, privacy, docs, CI, and release hygiene. |
-| `docs/standards/PUBLISHING_SECURITY.md` | Security and privacy gate | Publishable | Source of truth for public-push safety rules and disclosure boundaries. |
+| `docs/publish-readiness-checklist.html.md` | Publish readiness checklist | Publishable | Required pre-push gate for security, privacy, docs, CI, release hygiene, and public-doc alignment. |
+| `docs/standards/PUBLISHING_SECURITY.md` | Security and privacy gate | Publishable | Source of truth for public-push safety rules, disclosure boundaries, and release-note hygiene. |
 | `docs/standards/PRECOMMIT_HOOKS.md` | Secret-scanning hook guide | Publishable with review | Must not imply weaker scanning than the current gate. |
 
 ## Top-Level Inventory
@@ -44,7 +50,7 @@ with the shipped release workflow before publication.
 | Path | Role | Publish status | Notes |
 |---|---|---|---|
 | `Cargo.toml` | Rust workspace manifest | Publishable | Canonical workspace root for `tachi-core`, `tachi-cli`, `tachi-shell`, and `src-tauri`. |
-| `README.md` | Public repository landing page | Publishable | Must stay aligned with the actual build and usage path. |
+| `README.md` | Public repository landing page | Publishable | Must stay aligned with the actual build, auditor workflow, and usage path. |
 | `LICENSE` | License text | Publishable | Required public artifact. |
 | `SECURITY.md` | Vulnerability disclosure policy | Publishable | Public security policy and private disclosure channel. |
 | `CHANGELOG.md` | Release history | Publishable | Keep release notes redaction-safe. |
@@ -100,7 +106,7 @@ with the shipped release workflow before publication.
 
 | Path | Purpose | Publish note |
 |---|---|---|
-| `docs/roadmap/implementation-backlog.md` | Backlog navigation hub | Canonical link target for active implementation sequencing. |
+| `docs/roadmap/implementation-backlog.md` | Backlog navigation hub | Canonical link target for active implementation sequencing and public roadmap context. |
 | `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-roadmap.html.md` | Active AISVS/security roadmap | Canonical sequencing for the live Dependabot alert, AISVS C01-C12 rollout, and TDD-backed validation gates. |
 | `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md` | Active AISVS/security issue cards | Beads-ready execution templates for the RT-00i epic and its phase slices. |
 | `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md#phase-5-publish-readiness-and-release-gates` | Phase 5 publish-readiness slice | Tracks `RT-00i.6`, the docs and release-gate follow-up that keeps AISVS work publish-ready after each slice. |
@@ -115,8 +121,8 @@ with the shipped release workflow before publication.
 | `docs/roadmap/2026-06-08-rust-tauri-only-roadmap.md` | Archived implementation roadmap | Historical planning snapshot, not active scope. |
 | `docs/roadmap/2026-06-08-rust-tauri-only-issue-cards.md` | Archived execution cards | Historical Beads-ready backlog from the superseded plan. |
 | `docs/roadmap/2026-06-08-python-surface-inventory.md` | Frozen migration evidence | Historical reference, not the active surface. |
-| `docs/publish-readiness-checklist.html.md` | Publish gate checklist | Required pre-push security, privacy, docs, and CI gate. |
-| `docs/standards/PUBLISHING_SECURITY.md` | Security and privacy publish gate | Must remain the security policy source for public pushes. |
+| `docs/publish-readiness-checklist.html.md` | Publish gate checklist | Required pre-push security, privacy, docs, CI, and release gate. |
+| `docs/standards/PUBLISHING_SECURITY.md` | Security and privacy publish gate | Must remain the security policy source for public pushes and release hygiene. |
 | `docs/standards/PRECOMMIT_HOOKS.md` | Secret-scanning hook guide | Security gate for staged content and local commits. |
 | `docs/changelog.html` | Release chronology | Must remain redaction-safe. |
 | `docs/devops/SECURITY_POSTURE_2026Q2.md` | Public security posture summary | Review for accidental disclosure before publication. |

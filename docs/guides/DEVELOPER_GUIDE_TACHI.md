@@ -1,5 +1,10 @@
 # Tachi Developer Guide: Threat Modeling and AI-Reasoning Vulnerability Detection Harness
 
+This guide is written for developers, auditors, and maintainers who need a
+repeatable way to turn architecture into security evidence. It explains what
+tachi does, how to install it, how to run the first analysis, and how to read
+the outputs that matter during review.
+
 > **Quick Links**
 > - [Step 1: /tachi.threat-model](#step-5-run-your-first-analysis)
 > - [Step 2: /tachi.risk-score](#section-9----running-tachirisk-score)
@@ -44,11 +49,13 @@ Each step enriches the previous step's output. Steps 2-5 are optional and indepe
 
 # Part 1: Quick Start
 
-Get from zero to your first threat model in 6 steps. No security background required.
+Get from zero to your first analysis in 6 steps. No security background
+required.
 
 ## Prerequisites
 
-- **Claude Code** installed and working in your project
+- **Claude Code** or a compatible supported adapter installed and working in
+  your project
 - **A Gemini API key** (optional, for infographic image generation) — see [Setting Up GEMINI_API_KEY](#setting-up-gemini_api_key) below
 - **A project** with an architecture description (or you will create one below)
 
@@ -91,7 +98,7 @@ From your project root, run the install script:
 To install a specific version:
 
 ```bash
-~/Projects/tachi/scripts/install.sh --version v4.0.0
+~/Projects/tachi/scripts/install.sh --version v4.37.0
 ```
 
 If tachi is cloned to a non-default location:
@@ -202,7 +209,8 @@ In Claude Code, type:
 /tachi.threat-model
 ```
 
-That is it. One command. Tachi validates the setup, reads your architecture, dispatches its 15 specialized agents, and writes the full output suite.
+That is it. One command. Tachi validates the setup, reads your architecture,
+dispatches its 14 specialized agents, and writes the full output suite.
 
 To use a different architecture file or output location:
 
