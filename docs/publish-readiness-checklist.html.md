@@ -1,7 +1,7 @@
 # Publish Readiness Checklist
 
 **Status**: Active release gate
-**Last Updated**: 2026-06-23
+**Last Updated**: 2026-06-25
 **Purpose**: confirm `tachi-rust` is ready to publish to `origin/main`
 **Scope**: security, privacy, docs, tests, coverage, CI, and release hygiene
 
@@ -88,12 +88,18 @@ Use this checklist before publishing to GitHub or cutting a release.
 - [ ] `docs/roadmap/implementation-backlog.md` points at the archived AQ
       roadmap, active AISVS/security roadmap, active docs sweep roadmap, and
       archived provenance docs.
+- [ ] `docs/roadmap/implementation-backlog.md` also points at the active MCP
+      roadmap and MCP issue cards.
 - [ ] The AQ roadmap is archived at
       `docs/roadmap/2026-06-22-adversarial-architecture-test-quality-roadmap.html.md`.
 - [ ] The active AISVS roadmap is
       `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-roadmap.html.md`.
 - [ ] The active AISVS Beads-ready issue set is
       `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md`.
+- [ ] The active MCP roadmap is
+      `docs/roadmap/2026-06-25-standalone-mcp-server-roadmap.html.md`.
+- [ ] The active MCP Beads-ready issue set is
+      `docs/roadmap/2026-06-25-standalone-mcp-server-issue-cards.md`.
 - [ ] `RT-00i.6` is tracked as the publish-readiness follow-up for the
       AISVS roadmap and keeps the release-gate docs synchronized after each
       slice.
@@ -115,6 +121,8 @@ Use this checklist before publishing to GitHub or cutting a release.
       and docs-sweep tracks.
 - [ ] `docs/bill-of-materials.html.md` and `docs/publish-readiness-checklist.html.md`
       agree on the publish gate, security surfaces, and remote publication flow.
+- [ ] `docs/bill-of-materials.html.md` includes the MCP roadmap and MCP issue
+      cards as active publish surfaces.
 - [ ] The public README, compatibility doc, developer guide, BOM, and
       publish-security checklist describe the same install, analysis, adapter,
       and release workflow.
@@ -151,6 +159,8 @@ Use this checklist before publishing to GitHub or cutting a release.
       transitional compatibility with a documented deprecation plan.
 - [ ] The docs/version gate is green on the current branch.
 - [ ] The release artifact gate and checksum matrix pass via `make publish-gate`.
+- [ ] MCP roadmap, issue cards, BOM, and publish checklist remain synchronized
+      before any release promotion.
 - [ ] `src-tauri/tauri.conf.json` and `src-tauri/capabilities/main.json`
       remain least-privilege and do not grant filesystem or shell permissions
       without the corresponding AQ-022/AQ-023 policy tests.

@@ -1,7 +1,7 @@
 # Bill of Materials
 
 **Status**: Active publish inventory
-**Last Updated**: 2026-06-23
+**Last Updated**: 2026-06-25
 **Purpose**: enumerate the repository surfaces that are expected to ship, be
 reviewed, or be validated before publishing `tachi-rust` to remote origin
 **Scope**: source code, docs, tests, CI, security posture, and release gates
@@ -112,6 +112,8 @@ with the shipped release workflow before publication.
 | `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-roadmap.html.md` | Active AISVS/security roadmap | Canonical sequencing for the live Dependabot alert, AISVS C01-C12 rollout, and TDD-backed validation gates. |
 | `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md` | Active AISVS/security issue cards | Beads-ready execution templates for the RT-00i epic and its phase slices. |
 | `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md#phase-5-publish-readiness-and-release-gates` | Phase 5 publish-readiness slice | Tracks `RT-00i.6`, the docs and release-gate follow-up that keeps AISVS work publish-ready after each slice. |
+| `docs/roadmap/2026-06-25-standalone-mcp-server-roadmap.html.md` | Active MCP roadmap | Canonical sequencing for the standalone MCP track, including scope boundaries, portability limits, and stage-gated acceptance criteria. |
+| `docs/roadmap/2026-06-25-standalone-mcp-server-issue-cards.md` | Active MCP issue cards | Beads-ready execution templates for the MCP epic, features, capabilities, and task slices. |
 | `docs/roadmap/2026-06-22-adversarial-architecture-test-quality-roadmap.html.md` | Archived AQ roadmap | Canonical architecture, SOLID, and test-quality remediation plan, now retained as a historical record. |
 | `docs/roadmap/2026-06-21-rust-tauri-parity-remediation-roadmap.html.md` | Archived parity roadmap | Historical Rust/Tauri parity rebaseline and supersession plan. |
 | `docs/roadmap/2026-06-21-rust-tauri-parity-issue-cards.md` | Archived parity execution cards | Historical Beads issue templates for the parity phases. |
@@ -119,6 +121,8 @@ with the shipped release workflow before publication.
 | `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-issue-cards.md` | Active docs sweep cards | Copy-paste Beads issue templates for docs/version hygiene. |
 | `docs/roadmap/2026-06-15-rust-tauri-parity-remediation-roadmap.html.md` | Archived parity roadmap | Historical snapshot of the earlier parity plan. |
 | `docs/roadmap/2026-06-15-rust-tauri-parity-issue-cards.md` | Archived parity cards | Historical Beads-ready backlog for the earlier parity track. |
+| `docs/roadmap/2026-06-25-standalone-mcp-server-roadmap.html.md` | Active MCP roadmap | MCP core-contract, transport, policy, docs, and portability-stage plan. |
+| `docs/roadmap/2026-06-25-standalone-mcp-server-issue-cards.md` | Active MCP issue cards | Tracker-ready issue templates with explicit acceptance criteria and validation paths. |
 | `docs/roadmap/2026-06-04-rust-tauri-issue-pack.md` | Historical tracker-neutral pack | Archived provenance for the earlier migration plan. |
 | `docs/roadmap/2026-06-08-rust-tauri-only-roadmap.md` | Archived implementation roadmap | Historical planning snapshot, not active scope. |
 | `docs/roadmap/2026-06-08-rust-tauri-only-issue-cards.md` | Archived execution cards | Historical Beads-ready backlog from the superseded plan. |
@@ -186,6 +190,7 @@ The repository policy for these surfaces is:
 | Remote monitor | `git push origin main --follow-tags` + `gh run watch` | Post-push CI is observed to completion before the release is considered published. |
 | Release-please gate | `release-please.yml` push filter | Docs-only publishes do not churn release refs and push runs avoid PR-branch churn. |
 | Workflow hardening | `rg "actions/checkout@v[0-6]|actions-rs/toolchain@|github/codeql-action/upload-sarif@v3|::set-output" .github/workflows` | No legacy checkout, toolchain, SARIF, or set-output usage remains. |
+| MCP readiness gate | MCP roadmap, MCP issue cards, BOM, and publish checklist | MCP publish surfaces stay in sync with the canonical command contract, release checklist, and portability matrix before promotion. |
 
 ## Exclusions
 

@@ -206,6 +206,14 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   the typed registry, sanitized error model, Send+Sync proof,
   publish-readiness sync,
   and the gtk/glib compatibility decision/follow-up lane.
+- MCP-001: `docs/roadmap/2026-06-25-standalone-mcp-server-roadmap.html.md`,
+  `docs/roadmap/2026-06-25-standalone-mcp-server-issue-cards.md`,
+  `docs/bill-of-materials.html.md`,
+  `docs/publish-readiness-checklist.html.md`, and `docs/platform-compatibility.md`
+  now anchor the standalone MCP planning track, with the semantic core split
+  into ported analysis surfaces, explicit control-plane exclusions, and a
+  release/documentation gate that keeps the MCP contract aligned with the
+  canonical command registry.
 - AQ-042: `crates/tachi-core/src/infographic/maestro_templates.rs`
   now owns MAESTRO template assembly and a direct unit test, separating the
   layer-summary rendering from the parent infographic module.

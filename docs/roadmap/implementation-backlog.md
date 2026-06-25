@@ -1,6 +1,6 @@
 # Implementation Backlog
 
-**Last Updated**: 2026-06-23
+**Last Updated**: 2026-06-25
 **Purpose**: navigation hub for the Beads-ready Rust/Tauri implementation backlog
 **Scope**: roadmap sequencing, issue-pack pointers, and task-template guidance
 
@@ -8,10 +8,12 @@
 
 - [Beads issue mirror snapshot](./.beads/issues.jsonl)
 - [AISVS Dependabot remediation roadmap](./2026-06-23-aisvs-dependabot-remediation-roadmap.html.md)
+- [Standalone MCP server roadmap](./2026-06-25-standalone-mcp-server-roadmap.html.md)
+- [Standalone MCP server issue cards](./2026-06-25-standalone-mcp-server-issue-cards.md)
 
 ## Current Status Snapshot
 
-- Open: AQ-010, AQ-020, AQ-051, AQ-052, AQ-053, AQ-054
+- Open: AQ-010, AQ-020, AQ-051, AQ-052, AQ-053, AQ-054, MCP-001, MCP-001.1, MCP-001.1.1, MCP-001.1.2, MCP-001.1.3, MCP-001.2, MCP-001.2.1, MCP-001.2.2, MCP-001.2.3, MCP-001.3, MCP-001.3.1, MCP-001.3.2, MCP-001.3.3, MCP-001.4, MCP-001.4.1, MCP-001.4.2, MCP-001.4.3, MCP-001.5, MCP-001.5.1
 - Partial: AQ-021, AQ-022, AQ-023, AQ-024, AQ-025
 - Done: AQ-001, AQ-011, AQ-012, AQ-013, AQ-030, AQ-031, AQ-032, AQ-033, AQ-034, AQ-040, AQ-041, AQ-042, AQ-043, AQ-050, AQ-055, DOC-001, DOC-002, DOC-003, DOC-004, RT-010, RT-011, RT-012, RT-013, RT-014, RT-015, RT-016, RT-017, RT-018, RT-019, RT-020, RT-021, RT-022, RT-023, RT-024, RT-025, RT-026, RT-027, RT-028, RT-029, RT-030
 
@@ -26,6 +28,8 @@
 - [Rust/Tauri Migration Issue Pack](./2026-06-04-rust-tauri-issue-pack.md)
 - [Rust/Tauri Implementation Roadmap](./2026-06-08-rust-tauri-only-roadmap.md)
 - [Rust/Tauri Implementation Issue Cards](./2026-06-08-rust-tauri-only-issue-cards.md)
+- [Standalone MCP Server Roadmap](./2026-06-25-standalone-mcp-server-roadmap.html.md)
+- [Standalone MCP Server Issue Cards](./2026-06-25-standalone-mcp-server-issue-cards.md)
 
 ## Active Security Track
 
@@ -36,6 +40,14 @@
 - Decision issues: `RT-00i.7` gtk/glib compatibility decision for Dependabot alert (closed decision note)
 - Task issues: `RT-00i.1.1` control registry, `RT-00i.1.2` sanitized errors, `RT-00i.1.3` Send+Sync invariants, `RT-00i.2.1` reproduce advisory proof, `RT-00i.2.2` fixed glib upgrade, `RT-00i.2.3` closure evidence, `RT-00i.2.4` future gtk/glib recheck, `RT-00i.6.1` docs and export sync
 
+## Standalone MCP Track
+
+- [Standalone MCP server roadmap](./2026-06-25-standalone-mcp-server-roadmap.html.md)
+- [Standalone MCP server issue cards](./2026-06-25-standalone-mcp-server-issue-cards.md)
+- Epic: `MCP-001` Standalone MCP server
+- Feature issues: `MCP-001.1` canonical contract extraction, `MCP-001.2` MCP transport and tool layer, `MCP-001.3` transport runtime hardening, `MCP-001.4` docs and release integration, `MCP-001.5` portability envelope
+- Task issues: `MCP-001.1.1` contract snapshot extraction, `MCP-001.1.2` schema generation, `MCP-001.1.3` parity regression suite, `MCP-001.2.1` crate transport scaffold, `MCP-001.2.2` tool registration, `MCP-001.2.3` output negotiation, `MCP-001.3.1` correlation and cancellation, `MCP-001.3.2` auth guard, `MCP-001.3.3` cleanup and timeout, `MCP-001.4.1` docs publish alignment, `MCP-001.4.2` BOM/release alignment, `MCP-001.4.3` CI evidence lane, `MCP-001.5.1` portability matrix
+
 ## Canonical Sources
 
 - [Adversarial Architecture and Test Quality Roadmap](./2026-06-22-adversarial-architecture-test-quality-roadmap.html.md)
@@ -44,6 +56,8 @@
 - [AISVS Dependabot remediation issue cards](./2026-06-23-aisvs-dependabot-remediation-issue-cards.md)
 - [Rust/Tauri parity remediation roadmap](./2026-06-21-rust-tauri-parity-remediation-roadmap.html.md)
 - [Rust/Tauri parity issue cards](./2026-06-21-rust-tauri-parity-issue-cards.md)
+- [Standalone MCP Server Roadmap](./2026-06-25-standalone-mcp-server-roadmap.html.md)
+- [Standalone MCP Server Issue Cards](./2026-06-25-standalone-mcp-server-issue-cards.md)
 - [Archived Docs Workflow-Version Sweep Roadmap](./2026-06-21-archived-docs-workflow-version-sweep-roadmap.html.md)
 - [Archived Docs Workflow-Version Sweep Issue Cards](./2026-06-21-archived-docs-workflow-version-sweep-issue-cards.md)
 - [Rust/Tauri migration issue pack](./2026-06-04-rust-tauri-issue-pack.md)
