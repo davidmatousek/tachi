@@ -8,8 +8,6 @@ use crate::sarif_common::{
     build_sarif_envelope, logical_location_kind_for_dfd_type, ComponentMetadata,
 };
 
-const SOURCE_THREATS_URI: &str = "examples/agentic-app/sample-report/threats.md";
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ThreatSarifFinding {
     pub id: String,
@@ -29,10 +27,13 @@ pub struct ThreatSarifFinding {
 pub fn build_threats_sarif(
     findings: &[ThreatSarifFinding],
     component_meta: &BTreeMap<String, ComponentMetadata>,
+    source_threats_uri: &str,
 ) -> Value {
     let results = findings
         .iter()
-        .map(|finding| build_result(finding, component_meta, "2026-04-19T03-20-30"))
+        .map(|finding| {
+            build_result(finding, component_meta, source_threats_uri, "2026-04-19T03-20-30")
+        })
         .collect::<Vec<_>>();
 
     let driver = json!({
@@ -52,6 +53,7 @@ pub fn build_threats_sarif(
 fn build_result(
     finding: &ThreatSarifFinding,
     component_meta: &BTreeMap<String, ComponentMetadata>,
+    source_threats_uri: &str,
     run_id_baseline: &str,
 ) -> Value {
     let rule_id = rule_for_prefix(&finding.prefix);
@@ -111,7 +113,7 @@ fn build_result(
             {
                 "physicalLocation": {
                     "artifactLocation": {
-                        "uri": SOURCE_THREATS_URI,
+                        "uri": source_threats_uri,
                     },
                     "region": {"startLine": 1},
                 },
@@ -393,7 +395,7 @@ mod tests {
             },
         ];
 
-        let sarif = build_threats_sarif(&findings, &component_meta);
+        let sarif = build_threats_sarif(&findings, &component_meta, "reports/internal/threats.md");
         let rule_ids = sarif["runs"][0]["results"]
             .as_array()
             .expect("results array")

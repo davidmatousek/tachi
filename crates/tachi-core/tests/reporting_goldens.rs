@@ -227,8 +227,13 @@ fn threats_sarif_matches_canonical_golden() {
         mitigation: String::from("Harden prompts"),
     };
 
-    let actual = build_threats_sarif(std::slice::from_ref(&finding), &component_meta);
-    assert_threats_sarif_semantics(&actual, &finding);
+    let source_threats_uri = "reports/golden/threats.md";
+    let actual = build_threats_sarif(
+        std::slice::from_ref(&finding),
+        &component_meta,
+        source_threats_uri,
+    );
+    assert_threats_sarif_semantics(&actual, &finding, source_threats_uri);
 }
 
 #[test]
@@ -303,6 +308,7 @@ fn risk_scores_sarif_matches_canonical_golden() {
         },
     );
 
+    let source_threats_uri = "reports/golden/threats.md";
     let actual = build_risk_scores_sarif(
         &findings,
         &section3,
@@ -311,8 +317,9 @@ fn risk_scores_sarif_matches_canonical_golden() {
         &threats_full,
         &source_attribution,
         &component_meta,
+        source_threats_uri,
     );
-    assert_risk_scores_sarif_semantics(&actual);
+    assert_risk_scores_sarif_semantics(&actual, source_threats_uri);
 }
 
 #[test]
@@ -329,7 +336,11 @@ fn infographic_payload_matches_canonical_maestro_stack_golden() {
     assert_infographic_payload_semantics(&actual);
 }
 
-fn assert_threats_sarif_semantics(actual: &Value, finding: &ThreatSarifFinding) {
+fn assert_threats_sarif_semantics(
+    actual: &Value,
+    finding: &ThreatSarifFinding,
+    source_threats_uri: &str,
+) {
     let projected = json!({
         "schema": actual["$schema"],
         "tool": actual["runs"][0]["tool"]["driver"]["name"],
@@ -357,7 +368,7 @@ fn assert_threats_sarif_semantics(actual: &Value, finding: &ThreatSarifFinding) 
                 "ruleId": "tachi/ai/agentic",
                 "text": finding.threat,
                 "markdown": finding.mitigation,
-                "uri": "examples/agentic-app/sample-report/threats.md",
+                "uri": source_threats_uri,
                 "line": 1,
                 "component": "Agent",
                 "fullyQualifiedName": "Core/Agent",
@@ -370,7 +381,7 @@ fn assert_threats_sarif_semantics(actual: &Value, finding: &ThreatSarifFinding) 
     );
 }
 
-fn assert_risk_scores_sarif_semantics(actual: &Value) {
+fn assert_risk_scores_sarif_semantics(actual: &Value, source_threats_uri: &str) {
     let projected = json!({
         "schema": actual["$schema"],
         "tool": actual["runs"][0]["tool"]["driver"]["name"],
@@ -400,7 +411,7 @@ fn assert_risk_scores_sarif_semantics(actual: &Value) {
                 "ruleId": "tachi/ai/agentic",
                 "text": "Prompt injection",
                 "markdown": "Harden prompts",
-                "uri": "examples/agentic-app/test-output/2026-04-26T03-39-12-F3-wave3/threats.md",
+                "uri": source_threats_uri,
                 "line": 1,
                 "component": "Agent",
                 "fullyQualifiedName": "Core/Agent",

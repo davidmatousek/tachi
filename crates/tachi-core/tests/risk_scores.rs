@@ -131,6 +131,7 @@ fn build_risk_scores_sarif_marks_inherited_agentic_finding() {
         }],
     );
 
+    let source_threats_uri = "reports/custom/threats.md";
     let sarif = build_risk_scores_sarif(
         &findings,
         &section3,
@@ -139,6 +140,7 @@ fn build_risk_scores_sarif_marks_inherited_agentic_finding() {
         &threats_full,
         &source_attribution,
         &component_meta,
+        source_threats_uri,
     );
 
     let result = &sarif["runs"][0]["results"][0];
@@ -150,6 +152,10 @@ fn build_risk_scores_sarif_marks_inherited_agentic_finding() {
     assert_eq!(
         result["locations"][0]["logicalLocation"]["kind"],
         "data-store"
+    );
+    assert_eq!(
+        result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"],
+        source_threats_uri
     );
     assert_eq!(result["properties"]["score-source"], "inherited");
     assert_eq!(

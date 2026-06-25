@@ -82,7 +82,8 @@ pub fn threats_sarif_output(input: &Path) -> Result<ThreatsSarifOutput, String> 
             mitigation: finding.mitigation,
         })
         .collect::<Vec<_>>();
-    let sarif = build_threats_sarif(&sarif_findings, &component_meta);
+    let source_threats_uri = input.display().to_string();
+    let sarif = build_threats_sarif(&sarif_findings, &component_meta, &source_threats_uri);
     let sarif = to_string_pretty(&sarif)
         .map_err(|err| format!("failed to serialize threats SARIF: {err}"))?;
 
@@ -147,6 +148,7 @@ pub fn risk_scores_sarif_output(
         })
         .collect();
     let component_meta = parse_component_metadata(&threats_md);
+    let source_threats_uri = threats.display().to_string();
 
     let sarif = build_risk_scores_sarif(
         &findings,
@@ -156,6 +158,7 @@ pub fn risk_scores_sarif_output(
         &threats_full,
         &source_attribution,
         &component_meta,
+        &source_threats_uri,
     );
     let sarif = to_string_pretty(&sarif)
         .map_err(|err| format!("failed to serialize risk scores SARIF: {err}"))?;
@@ -169,6 +172,7 @@ pub fn risk_scores_sarif_output(
 #[cfg(test)]
 mod tests {
     use super::risk_scores_sarif_output;
+    use serde_json::Value;
     use std::path::PathBuf;
 
     fn unique_temp_dir(name: &str) -> PathBuf {
@@ -210,6 +214,39 @@ mod tests {
         assert!(
             err.contains("failed to parse CVSS score for AG-8"),
             "unexpected error: {err}"
+        );
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn risk_scores_sarif_output_uses_threats_input_path_as_source_uri() {
+        let root = unique_temp_dir("risk-scores-uri");
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).expect("create temp root");
+
+        let risk_scores = root.join("risk.md");
+        let threats = root.join("custom-threats.md");
+        std::fs::write(
+            &risk_scores,
+            r#"
+## 2. Scored Threat Table
+
+| ID | Component | Threat | CVSS | Exploitability | Scalability | Reachability | Composite | Severity | SLA | Disposition |
+|----|-----------|--------|------|----------------|--------------|--------------|-----------|----------|-----|-------------|
+| AG-8 | Agent | Prompt injection | 9.1 | 9.0 | 8.5 | 8.0 | 8.8 | High | 7 | Monitor |
+"#,
+        )
+        .expect("write risk scores");
+        std::fs::write(&threats, "# Threat Model\n").expect("write threats");
+
+        let payload = risk_scores_sarif_output(&risk_scores, &threats)
+            .expect("risk scores should serialize");
+        let sarif: Value = serde_json::from_str(&payload.sarif).expect("parse SARIF");
+        assert_eq!(
+            sarif["runs"][0]["results"][0]["locations"][0]["physicalLocation"]
+                ["artifactLocation"]["uri"],
+            threats.display().to_string()
         );
 
         let _ = std::fs::remove_dir_all(&root);

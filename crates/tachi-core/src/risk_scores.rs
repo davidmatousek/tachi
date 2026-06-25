@@ -9,9 +9,6 @@ use crate::sarif_common::{
     ComponentMetadata,
 };
 
-const SOURCE_THREATS_URI: &str =
-    "examples/agentic-app/test-output/2026-04-26T03-39-12-F3-wave3/threats.md";
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct RiskScoreFinding {
     pub id: String,
@@ -187,6 +184,7 @@ pub fn build_risk_scores_sarif(
     threats_full: &BTreeMap<String, (String, String)>,
     source_attribution: &BTreeMap<String, Vec<SourceAttributionRecord>>,
     component_meta: &BTreeMap<String, ComponentMetadata>,
+    source_threats_uri: &str,
 ) -> Value {
     let results = findings
         .iter()
@@ -199,6 +197,7 @@ pub fn build_risk_scores_sarif(
                 threats_full,
                 source_attribution,
                 component_meta,
+                source_threats_uri,
             )
         })
         .collect::<Vec<_>>();
@@ -269,6 +268,7 @@ fn build_result(
     threats_full: &BTreeMap<String, (String, String)>,
     source_attribution: &BTreeMap<String, Vec<SourceAttributionRecord>>,
     component_meta: &BTreeMap<String, ComponentMetadata>,
+    source_threats_uri: &str,
 ) -> Value {
     let pref = prefix_for(&finding.id);
     let rule_id = rule_for_prefix(pref.as_str());
@@ -370,7 +370,7 @@ fn build_result(
         "locations": [
             {
                 "physicalLocation": {
-                    "artifactLocation": {"uri": SOURCE_THREATS_URI},
+                    "artifactLocation": {"uri": source_threats_uri},
                     "region": {"startLine": 1},
                 },
                 "logicalLocation": logical_location,

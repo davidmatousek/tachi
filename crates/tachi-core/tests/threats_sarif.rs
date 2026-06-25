@@ -29,7 +29,12 @@ fn build_threats_sarif_marks_agentic_finding_with_asi07_metadata() {
         mitigation: String::from("Harden prompts"),
     };
 
-    let sarif = tachi_core::threats_sarif::build_threats_sarif(&[finding], &component_meta);
+    let source_threats_uri = "reports/custom/threats.md";
+    let sarif = tachi_core::threats_sarif::build_threats_sarif(
+        &[finding],
+        &component_meta,
+        source_threats_uri,
+    );
     let run = &sarif["runs"][0];
     let result = &run["results"][0];
 
@@ -41,7 +46,7 @@ fn build_threats_sarif_marks_agentic_finding_with_asi07_metadata() {
     assert_eq!(result["message"]["markdown"], "Harden prompts");
     assert_eq!(
         result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"],
-        "examples/agentic-app/sample-report/threats.md"
+        source_threats_uri
     );
     assert_eq!(
         result["locations"][0]["logicalLocations"][0]["fullyQualifiedName"],
