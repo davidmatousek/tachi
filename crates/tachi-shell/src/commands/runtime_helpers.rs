@@ -77,8 +77,8 @@ pub(crate) fn capture_stream<R: Read>(reader: R, cap: usize) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use super::{capture_stream, finalize_script_output};
     use super::FinalizeScriptOutputRequest;
+    use super::{capture_stream, finalize_script_output};
     use crate::progress::NoopProgressReporter;
     use std::io::Cursor;
     use std::thread;

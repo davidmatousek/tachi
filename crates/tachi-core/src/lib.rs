@@ -40,5 +40,5 @@ pub use facade::{
     prefix_for, render, render_owasp_coverage_matrix, AttackChain, AttackChainFinding,
     MaestroLayer, MermaidRenderFailure, OwaspCoverageFamily, RemediationAction, RemediationFinding,
     RemediationTimelineEntry, RiskScoreBreakdown, RiskScoreFinding, RiskScoreGovernance,
-    ThreatReportData, ThreatSarifFinding, MMDC_INSTALL_HINT,
+    RiskScoreSarifInputs, ThreatReportData, ThreatSarifFinding, MMDC_INSTALL_HINT,
 };

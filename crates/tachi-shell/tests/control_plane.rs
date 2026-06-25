@@ -34,6 +34,8 @@ fn fixture_repo() -> PathBuf {
             .as_nanos()
     ));
 
+    fs::create_dir_all(&root).expect("create fixture root");
+    fs::write(root.join("Cargo.toml"), "[workspace]\n").expect("write workspace manifest");
     let scripts_dir = root.join("scripts");
     fs::create_dir_all(&scripts_dir).expect("create fixture scripts directory");
     root

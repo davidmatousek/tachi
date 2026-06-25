@@ -3,10 +3,10 @@ use std::path::Path;
 use serde_json::to_string_pretty;
 
 use tachi_core::facade::{
-    build_infographic_payload, build_report_data_typst, build_threats_sarif, collect_audit,
-    parse_component_metadata, parse_risk_md_section2, parse_risk_md_section3,
-    parse_risk_md_section4, parse_threats_findings, prefix_for, render, ThreatSarifFinding,
-    build_risk_scores_sarif,
+    build_infographic_payload, build_report_data_typst, build_risk_scores_sarif,
+    build_threats_sarif, collect_audit, parse_component_metadata, parse_risk_md_section2,
+    parse_risk_md_section3, parse_risk_md_section4, parse_threats_findings, prefix_for, render,
+    RiskScoreSarifInputs, ThreatSarifFinding,
 };
 
 pub fn coverage_audit_output(root: &Path) -> String {
@@ -45,7 +45,8 @@ pub fn report_data_output(target_dir: &Path, template_dir: &Path) -> String {
 
 pub fn infographic_data_output(root: &Path, template: &str) -> Result<String, String> {
     let payload = build_infographic_payload(root, template)?;
-    to_string_pretty(&payload).map_err(|err| format!("failed to serialize infographic payload: {err}"))
+    to_string_pretty(&payload)
+        .map_err(|err| format!("failed to serialize infographic payload: {err}"))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -152,13 +153,15 @@ pub fn risk_scores_sarif_output(
 
     let sarif = build_risk_scores_sarif(
         &findings,
-        &section3,
-        &section4,
-        &threats_status,
-        &threats_full,
-        &source_attribution,
-        &component_meta,
-        &source_threats_uri,
+        &RiskScoreSarifInputs {
+            section3: &section3,
+            section4: &section4,
+            threats_status: &threats_status,
+            threats_full: &threats_full,
+            source_attribution: &source_attribution,
+            component_meta: &component_meta,
+            source_threats_uri: &source_threats_uri,
+        },
     );
     let sarif = to_string_pretty(&sarif)
         .map_err(|err| format!("failed to serialize risk scores SARIF: {err}"))?;
@@ -240,12 +243,12 @@ mod tests {
         .expect("write risk scores");
         std::fs::write(&threats, "# Threat Model\n").expect("write threats");
 
-        let payload = risk_scores_sarif_output(&risk_scores, &threats)
-            .expect("risk scores should serialize");
+        let payload =
+            risk_scores_sarif_output(&risk_scores, &threats).expect("risk scores should serialize");
         let sarif: Value = serde_json::from_str(&payload.sarif).expect("parse SARIF");
         assert_eq!(
-            sarif["runs"][0]["results"][0]["locations"][0]["physicalLocation"]
-                ["artifactLocation"]["uri"],
+            sarif["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]
+                ["uri"],
             threats.display().to_string()
         );
 

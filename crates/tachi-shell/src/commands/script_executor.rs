@@ -21,7 +21,10 @@ pub(crate) const DEFAULT_OUTPUT_CAP_BYTES: usize = 64 * 1024;
 const POLL_INTERVAL: Duration = Duration::from_millis(10);
 
 pub(crate) trait ScriptExecutor {
-    fn run<S: ScriptOutputSink + Sync>(&self, request: ScriptExecutionRequest<'_, S>) -> CommandOutput;
+    fn run<S: ScriptOutputSink + Sync>(
+        &self,
+        request: ScriptExecutionRequest<'_, S>,
+    ) -> CommandOutput;
 }
 
 pub(crate) struct ScriptCommandRunRequest<'a, E, S> {
@@ -50,12 +53,18 @@ pub(crate) struct ScriptExecutionRequest<'a, S: ScriptOutputSink + Sync> {
 pub(crate) struct SystemScriptExecutor;
 
 impl ScriptExecutor for SystemScriptExecutor {
-    fn run<S: ScriptOutputSink + Sync>(&self, request: ScriptExecutionRequest<'_, S>) -> CommandOutput {
+    fn run<S: ScriptOutputSink + Sync>(
+        &self,
+        request: ScriptExecutionRequest<'_, S>,
+    ) -> CommandOutput {
         run_system_script(request)
     }
 }
 
-pub(crate) fn run_script_command_with_progress_using<E: ScriptExecutor, S: ScriptOutputSink + Sync>(
+pub(crate) fn run_script_command_with_progress_using<
+    E: ScriptExecutor,
+    S: ScriptOutputSink + Sync,
+>(
     request: ScriptCommandRunRequest<'_, E, S>,
 ) -> CommandOutput {
     let timeout = execution_timeout();
@@ -75,7 +84,9 @@ pub(crate) fn run_script_command_with_progress_using<E: ScriptExecutor, S: Scrip
     })
 }
 
-fn run_system_script<S: ScriptOutputSink + Sync>(request: ScriptExecutionRequest<'_, S>) -> CommandOutput {
+fn run_system_script<S: ScriptOutputSink + Sync>(
+    request: ScriptExecutionRequest<'_, S>,
+) -> CommandOutput {
     emit_progress_event(request.reporter, request.script_name, "starting");
     if request.token.is_cancelled() {
         emit_progress_event(request.reporter, request.script_name, "cancelled");
@@ -117,28 +128,32 @@ fn run_system_script<S: ScriptOutputSink + Sync>(request: ScriptExecutionRequest
     loop {
         if request.token.is_cancelled() {
             terminate_process_group(&mut child);
-            return request.sink.finalize_script_output(runtime_helpers::FinalizeScriptOutputRequest {
-                script_name: request.script_name,
-                reporter: request.reporter,
-                wait_result: child.wait(),
-                stdout_handle,
-                stderr_handle,
-                status: 130,
-                phase: "cancelled",
-            });
+            return request.sink.finalize_script_output(
+                runtime_helpers::FinalizeScriptOutputRequest {
+                    script_name: request.script_name,
+                    reporter: request.reporter,
+                    wait_result: child.wait(),
+                    stdout_handle,
+                    stderr_handle,
+                    status: 130,
+                    phase: "cancelled",
+                },
+            );
         }
 
         if start.elapsed() >= request.timeout {
             terminate_process_group(&mut child);
-            return request.sink.finalize_script_output(runtime_helpers::FinalizeScriptOutputRequest {
-                script_name: request.script_name,
-                reporter: request.reporter,
-                wait_result: child.wait(),
-                stdout_handle,
-                stderr_handle,
-                status: 124,
-                phase: "timed out",
-            });
+            return request.sink.finalize_script_output(
+                runtime_helpers::FinalizeScriptOutputRequest {
+                    script_name: request.script_name,
+                    reporter: request.reporter,
+                    wait_result: child.wait(),
+                    stdout_handle,
+                    stderr_handle,
+                    status: 124,
+                    phase: "timed out",
+                },
+            );
         }
 
         match child.try_wait() {
@@ -209,15 +224,15 @@ fn terminate_process_group(child: &mut std::process::Child) {
 
 #[cfg(test)]
 mod tests {
+    use super::super::runtime_helpers;
     use super::*;
     use crate::progress::NoopProgressReporter;
     use std::cell::Cell;
-    use std::path::PathBuf;
-    use super::super::runtime_helpers;
     #[cfg(unix)]
     use std::os::unix::process::ExitStatusExt;
+    use std::path::PathBuf;
 
-struct FakeScriptOutputSink;
+    struct FakeScriptOutputSink;
 
     impl ScriptOutputSink for FakeScriptOutputSink {
         fn finalize_script_output(
@@ -234,7 +249,10 @@ struct FakeScriptOutputSink;
     }
 
     impl ScriptExecutor for FakeScriptExecutor {
-        fn run<S: ScriptOutputSink + Sync>(&self, request: ScriptExecutionRequest<'_, S>) -> CommandOutput {
+        fn run<S: ScriptOutputSink + Sync>(
+            &self,
+            request: ScriptExecutionRequest<'_, S>,
+        ) -> CommandOutput {
             self.calls.set(self.calls.get() + 1);
             assert_eq!(request.script_name, "install.sh");
             assert_eq!(request.cwd, Path::new("/tmp/repo"));

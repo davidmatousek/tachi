@@ -50,24 +50,34 @@ pub fn parse_risk_md_section2(md: &str) -> Result<Vec<RiskScoreFinding>, String>
     for row in rows {
         let id = row.get("ID").cloned().unwrap_or_default();
 
-        let cvss_raw = row.get("CVSS").cloned().unwrap_or_default();
-        let cvss_base = cvss_raw.trim().parse::<f64>()
+        let cvss_raw = table_cell(&row, "CVSS", &[]);
+        let cvss_base = cvss_raw
+            .trim()
+            .parse::<f64>()
             .map_err(|err| format!("failed to parse CVSS score for {id}: {err}"))?;
 
-        let exp_raw = row.get("Exploitability").cloned().unwrap_or_default();
-        let exploitability = exp_raw.trim().parse::<f64>()
+        let exp_raw = table_cell(&row, "Exploitability", &["Exploit.", "Exploit"]);
+        let exploitability = exp_raw
+            .trim()
+            .parse::<f64>()
             .map_err(|err| format!("failed to parse Exploitability score for {id}: {err}"))?;
 
-        let scal_raw = row.get("Scalability").cloned().unwrap_or_default();
-        let scalability = scal_raw.trim().parse::<f64>()
+        let scal_raw = table_cell(&row, "Scalability", &["Scale.", "Scale"]);
+        let scalability = scal_raw
+            .trim()
+            .parse::<f64>()
             .map_err(|err| format!("failed to parse Scalability score for {id}: {err}"))?;
 
-        let reach_raw = row.get("Reachability").cloned().unwrap_or_default();
-        let reachability = reach_raw.trim().parse::<f64>()
+        let reach_raw = table_cell(&row, "Reachability", &["Reach.", "Reach"]);
+        let reachability = reach_raw
+            .trim()
+            .parse::<f64>()
             .map_err(|err| format!("failed to parse Reachability score for {id}: {err}"))?;
 
-        let comp_raw = row.get("Composite").cloned().unwrap_or_default();
-        let composite = comp_raw.trim().parse::<f64>()
+        let comp_raw = table_cell(&row, "Composite", &[]);
+        let composite = comp_raw
+            .trim()
+            .parse::<f64>()
             .map_err(|err| format!("failed to parse Composite score for {id}: {err}"))?;
 
         findings.push(RiskScoreFinding {
@@ -86,6 +96,20 @@ pub fn parse_risk_md_section2(md: &str) -> Result<Vec<RiskScoreFinding>, String>
     }
 
     Ok(findings)
+}
+
+fn table_cell(row: &BTreeMap<String, String>, primary: &str, aliases: &[&str]) -> String {
+    row.get(primary)
+        .filter(|value| !value.trim().is_empty())
+        .cloned()
+        .or_else(|| {
+            aliases.iter().find_map(|alias| {
+                row.get(*alias)
+                    .filter(|value| !value.trim().is_empty())
+                    .cloned()
+            })
+        })
+        .unwrap_or_default()
 }
 
 pub fn parse_risk_md_section3(md: &str) -> BTreeMap<String, RiskScoreBreakdown> {
@@ -176,30 +200,23 @@ pub fn parse_risk_md_section4(md: &str) -> BTreeMap<String, RiskScoreGovernance>
     out
 }
 
+pub struct RiskScoreSarifInputs<'a> {
+    pub section3: &'a BTreeMap<String, RiskScoreBreakdown>,
+    pub section4: &'a BTreeMap<String, RiskScoreGovernance>,
+    pub threats_status: &'a BTreeMap<String, String>,
+    pub threats_full: &'a BTreeMap<String, (String, String)>,
+    pub source_attribution: &'a BTreeMap<String, Vec<SourceAttributionRecord>>,
+    pub component_meta: &'a BTreeMap<String, ComponentMetadata>,
+    pub source_threats_uri: &'a str,
+}
+
 pub fn build_risk_scores_sarif(
     findings: &[RiskScoreFinding],
-    section3: &BTreeMap<String, RiskScoreBreakdown>,
-    section4: &BTreeMap<String, RiskScoreGovernance>,
-    threats_status: &BTreeMap<String, String>,
-    threats_full: &BTreeMap<String, (String, String)>,
-    source_attribution: &BTreeMap<String, Vec<SourceAttributionRecord>>,
-    component_meta: &BTreeMap<String, ComponentMetadata>,
-    source_threats_uri: &str,
+    inputs: &RiskScoreSarifInputs<'_>,
 ) -> Value {
     let results = findings
         .iter()
-        .map(|finding| {
-            build_result(
-                finding,
-                section3,
-                section4,
-                threats_status,
-                threats_full,
-                source_attribution,
-                component_meta,
-                source_threats_uri,
-            )
-        })
+        .map(|finding| build_result(finding, inputs))
         .collect::<Vec<_>>();
 
     let driver = json!({
@@ -260,21 +277,13 @@ fn parse_score_source(line: &str) -> Option<String> {
     Some(value.trim().trim_end_matches('*').trim().to_string())
 }
 
-fn build_result(
-    finding: &RiskScoreFinding,
-    section3: &BTreeMap<String, RiskScoreBreakdown>,
-    section4: &BTreeMap<String, RiskScoreGovernance>,
-    threats_status: &BTreeMap<String, String>,
-    threats_full: &BTreeMap<String, (String, String)>,
-    source_attribution: &BTreeMap<String, Vec<SourceAttributionRecord>>,
-    component_meta: &BTreeMap<String, ComponentMetadata>,
-    source_threats_uri: &str,
-) -> Value {
+fn build_result(finding: &RiskScoreFinding, inputs: &RiskScoreSarifInputs<'_>) -> Value {
     let pref = prefix_for(&finding.id);
     let rule_id = rule_for_prefix(pref.as_str());
     let level = level_for_band(&finding.severity_band);
 
-    let meta = component_meta
+    let meta = inputs
+        .component_meta
         .get(&finding.component)
         .cloned()
         .unwrap_or_else(default_component_meta);
@@ -285,13 +294,22 @@ fn build_result(
         "kind": kind,
     });
 
-    let (threat_text, mitigation_text) = threats_full
+    let (threat_text, mitigation_text) = inputs
+        .threats_full
         .get(&finding.id)
         .cloned()
         .unwrap_or_else(|| (finding.threat_summary.clone(), String::new()));
 
-    let s3 = section3.get(&finding.id).cloned().unwrap_or_default();
-    let s4 = section4.get(&finding.id).cloned().unwrap_or_default();
+    let s3 = inputs
+        .section3
+        .get(&finding.id)
+        .cloned()
+        .unwrap_or_default();
+    let s4 = inputs
+        .section4
+        .get(&finding.id)
+        .cloned()
+        .unwrap_or_default();
 
     let mut props = json!({
         "security-severity": format!("{:.1}", finding.composite),
@@ -335,7 +353,7 @@ fn build_result(
         props["owasp-reference"] = json!(owasp);
     }
 
-    if let Some(attrs) = source_attribution.get(&finding.id) {
+    if let Some(attrs) = inputs.source_attribution.get(&finding.id) {
         props["source-attribution"] = json!(attrs
             .iter()
             .map(|record| json!({
@@ -352,7 +370,8 @@ fn build_result(
         props["new-finding"] = json!(true);
     }
 
-    if threats_status
+    if inputs
+        .threats_status
         .get(&finding.id)
         .map(|status| status == "NEW")
         .unwrap_or(false)
@@ -360,7 +379,7 @@ fn build_result(
         props["new-finding"] = json!(true);
     }
 
-    let baseline_run_id_value = match threats_status.get(&finding.id) {
+    let baseline_run_id_value = match inputs.threats_status.get(&finding.id) {
         Some(status) if status == "NEW" => "",
         _ => baseline_run_id(),
     };
@@ -375,7 +394,7 @@ fn build_result(
         "locations": [
             {
                 "physicalLocation": {
-                    "artifactLocation": {"uri": source_threats_uri},
+                    "artifactLocation": {"uri": inputs.source_threats_uri},
                     "region": {"startLine": 1},
                 },
                 "logicalLocation": logical_location,
@@ -441,6 +460,24 @@ mod tests {
         assert_eq!(findings[0].severity_band, "High");
         assert_eq!(findings[1].exploitability, 7.0);
         assert_eq!(findings[1].composite, 6.8);
+    }
+
+    #[test]
+    fn parse_risk_md_section2_accepts_abbreviated_dimension_headers() {
+        let markdown = r#"
+## 2. Scored Threat Table
+
+| ID | Component | Threat | CVSS | Exploit. | Scale. | Reach. | Composite | Severity | SLA | Disposition |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| LLM-1 | Orchestrator | Prompt override | 9.8 | 8.8 | 7.3 | 5.5 | 8.3 | High | 7d | Mitigate |
+"#;
+
+        let findings = parse_risk_md_section2(markdown).expect("abbreviated section 2 parse");
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].id, "LLM-1");
+        assert_eq!(findings[0].exploitability, 8.8);
+        assert_eq!(findings[0].scalability, 7.3);
+        assert_eq!(findings[0].reachability, 5.5);
     }
 
     #[test]

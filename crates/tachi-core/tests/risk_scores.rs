@@ -5,6 +5,7 @@ use tachi_core::sarif_common::{baseline_run_id, ComponentMetadata};
 use tachi_core::{
     build_risk_scores_sarif, parse_risk_md_section2, parse_risk_md_section3,
     parse_risk_md_section4, RiskScoreBreakdown, RiskScoreFinding, RiskScoreGovernance,
+    RiskScoreSarifInputs,
 };
 
 #[test]
@@ -134,13 +135,15 @@ fn build_risk_scores_sarif_marks_inherited_agentic_finding() {
     let source_threats_uri = "reports/custom/threats.md";
     let sarif = build_risk_scores_sarif(
         &findings,
-        &section3,
-        &section4,
-        &threats_status,
-        &threats_full,
-        &source_attribution,
-        &component_meta,
-        source_threats_uri,
+        &RiskScoreSarifInputs {
+            section3: &section3,
+            section4: &section4,
+            threats_status: &threats_status,
+            threats_full: &threats_full,
+            source_attribution: &source_attribution,
+            component_meta: &component_meta,
+            source_threats_uri,
+        },
     );
 
     let result = &sarif["runs"][0]["results"][0];
@@ -225,13 +228,15 @@ fn build_risk_scores_sarif_uses_shared_baseline_run_id_for_existing_finding() {
 
     let sarif = build_risk_scores_sarif(
         &findings,
-        &section3,
-        &section4,
-        &threats_status,
-        &threats_full,
-        &source_attribution,
-        &component_meta,
-        source_threats_uri,
+        &RiskScoreSarifInputs {
+            section3: &section3,
+            section4: &section4,
+            threats_status: &threats_status,
+            threats_full: &threats_full,
+            source_attribution: &source_attribution,
+            component_meta: &component_meta,
+            source_threats_uri,
+        },
     );
 
     let result = &sarif["runs"][0]["results"][0];

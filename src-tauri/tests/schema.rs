@@ -34,8 +34,7 @@ fn validate_invoke_input_returns_typed_requests() {
         }
     );
 
-    let init = validate_invoke_input("init", &root, &["--precommit"])
-        .expect("init schema");
+    let init = validate_invoke_input("init", &root, &["--precommit"]).expect("init schema");
     assert_eq!(
         init,
         DesktopInvokeInput::ControlPlane {

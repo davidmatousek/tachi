@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
@@ -6,8 +7,8 @@ use serde::Serialize;
 use crate::progress::{CancellationToken, NoopProgressReporter, ProgressReporter};
 
 pub use crate::command_use_cases::{
-    coverage_audit_output, infographic_data_output, render_report_data_result,
-    report_data_output, report_data_result, risk_scores_sarif_output, threats_sarif_output,
+    coverage_audit_output, infographic_data_output, render_report_data_result, report_data_output,
+    report_data_result, risk_scores_sarif_output, threats_sarif_output,
     validate_report_data_result, ReportDataResult, RiskScoresSarifOutput, ThreatsSarifOutput,
 };
 
@@ -203,8 +204,21 @@ pub(crate) fn run_script_command_with_progress(
     )
 }
 
+fn workspace_root_for_control_plane(start: &Path) -> PathBuf {
+    for ancestor in start.ancestors() {
+        let manifest = ancestor.join("Cargo.toml");
+        if let Ok(contents) = fs::read_to_string(&manifest) {
+            if contents.contains("[workspace]") {
+                return ancestor.to_path_buf();
+            }
+        }
+    }
+
+    start.to_path_buf()
+}
+
 fn script_dir_for_repo_root(repo_root: &Path) -> PathBuf {
-    repo_root.join("scripts")
+    workspace_root_for_control_plane(repo_root).join("scripts")
 }
 
 pub fn control_plane_scripts_dir(repo_root: &Path) -> PathBuf {
@@ -283,6 +297,7 @@ mod tests {
 
         fs::create_dir_all(parent.join("scripts")).expect("create parent scripts");
         fs::create_dir_all(&repo_root).expect("create repo root");
+        fs::write(repo_root.join("Cargo.toml"), "[workspace]\n").expect("write repo manifest");
 
         let scripts_dir = control_plane_scripts_dir(&repo_root);
 

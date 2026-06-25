@@ -10,13 +10,13 @@ use serde_json::{json, Value};
 
 use tachi_core::build_report_data_typst;
 use tachi_core::collect_audit;
-use tachi_core::render;
 use tachi_core::infographic::build_infographic_payload_from_content;
+use tachi_core::render;
 use tachi_core::sarif_common::{ComponentMetadata, SARIF_SCHEMA_URI};
 use tachi_core::threats_sarif::{build_threats_sarif, ThreatSarifFinding};
 use tachi_core::{
-    parsers::SourceAttributionRecord,
-    build_risk_scores_sarif, RiskScoreBreakdown, RiskScoreFinding, RiskScoreGovernance,
+    build_risk_scores_sarif, parsers::SourceAttributionRecord, RiskScoreBreakdown,
+    RiskScoreFinding, RiskScoreGovernance, RiskScoreSarifInputs,
 };
 
 const INFOGRAPHIC_THREATS_MD: &str = r#"
@@ -311,13 +311,15 @@ fn risk_scores_sarif_matches_canonical_golden() {
     let source_threats_uri = "reports/golden/threats.md";
     let actual = build_risk_scores_sarif(
         &findings,
-        &section3,
-        &section4,
-        &threats_status,
-        &threats_full,
-        &source_attribution,
-        &component_meta,
-        source_threats_uri,
+        &RiskScoreSarifInputs {
+            section3: &section3,
+            section4: &section4,
+            threats_status: &threats_status,
+            threats_full: &threats_full,
+            source_attribution: &source_attribution,
+            component_meta: &component_meta,
+            source_threats_uri,
+        },
     );
     assert_risk_scores_sarif_semantics(&actual, source_threats_uri);
 }

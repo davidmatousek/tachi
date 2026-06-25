@@ -107,7 +107,9 @@ fn build_threats_markdown(records: &[(&str, &str, &str)]) -> String {
     let source_attribution = records
         .iter()
         .map(|(taxonomy, id, relationship)| {
-            format!("  - {{taxonomy: \"{taxonomy}\", id: \"{id}\", relationship: \"{relationship}\"}}")
+            format!(
+                "  - {{taxonomy: \"{taxonomy}\", id: \"{id}\", relationship: \"{relationship}\"}}"
+            )
         })
         .collect::<Vec<_>>()
         .join("\n");
