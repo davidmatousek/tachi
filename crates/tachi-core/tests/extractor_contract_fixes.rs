@@ -64,6 +64,20 @@ fn parse_threat_report_md_falls_back_to_full_section1_prose() {
 }
 
 #[test]
+fn parse_threat_report_md_truncates_on_char_boundary_without_panicking() {
+    let prose = format!("{}🌐b", "a".repeat(1999));
+    let result = parse_threat_report_md(&format!(
+        "# Threat Report\n\n## 1. Executive Summary\n\n{}\n\n## 2. Architecture Overview\n\nComponents and trust boundaries follow below.\n",
+        prose
+    ));
+
+    let narrative = result.executive_narrative.expect("narrative should exist");
+    assert_eq!(narrative.chars().count(), 2000);
+    assert!(narrative.ends_with("🌐"));
+    assert!(!narrative.ends_with("b"));
+}
+
+#[test]
 fn detect_images_accepts_matching_png_and_jpeg_bytes() {
     let root = workspace_root().join("target/test-extractor-contract-fixes-images");
     let target_dir = root.join("target");

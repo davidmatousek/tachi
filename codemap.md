@@ -106,6 +106,10 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
 
 ## Recent AQ Slices
 
+- RT-oui: `crates/tachi-core/src/report_extraction.rs` now truncates
+  executive narrative text on a UTF-8 character boundary, with
+  `crates/tachi-core/tests/extractor_contract_fixes.rs` covering the
+  multibyte boundary regression.
 - RT-0zv: `crates/tachi-core/src/sarif_common.rs`,
   `crates/tachi-core/src/risk_scores.rs`,
   `crates/tachi-core/src/threats_sarif.rs`, and
