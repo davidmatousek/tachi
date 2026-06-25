@@ -355,6 +355,7 @@ fn assert_threats_sarif_semantics(
             "severity": actual["runs"][0]["results"][0]["properties"]["severity"],
             "pattern_category": actual["runs"][0]["results"][0]["properties"]["pattern_category"],
             "finding_id": actual["runs"][0]["results"][0]["partialFingerprints"]["findingId/v1"],
+            "baseline_run_id": actual["runs"][0]["results"][0]["partialFingerprints"]["baselineRunId"],
             "line_hash": actual["runs"][0]["results"][0]["partialFingerprints"]["primaryLocationLineHash"],
         }
     });
@@ -375,6 +376,7 @@ fn assert_threats_sarif_semantics(
                 "severity": "High",
                 "pattern_category": 9,
                 "finding_id": finding.id,
+                "baseline_run_id": "",
                 "line_hash": line_hash_for(&finding.id),
             }
         })
@@ -398,6 +400,7 @@ fn assert_risk_scores_sarif_semantics(actual: &Value, source_threats_uri: &str) 
             "score_source": actual["runs"][0]["results"][0]["properties"]["score-source"],
             "score_source_detail": actual["runs"][0]["results"][0]["properties"]["score-source-detail"],
             "finding_id": actual["runs"][0]["results"][0]["partialFingerprints"]["findingId/v1"],
+            "baseline_run_id": actual["runs"][0]["results"][0]["partialFingerprints"]["baselineRunId"],
             "security_severity": actual["runs"][0]["results"][0]["properties"]["security-severity"],
         }
     });
@@ -420,6 +423,7 @@ fn assert_risk_scores_sarif_semantics(actual: &Value, source_threats_uri: &str) 
                 "score_source": "inherited",
                 "score_source_detail": "correlation primary",
                 "finding_id": "AG-8",
+                "baseline_run_id": "",
                 "security_severity": "8.8",
             }
         })

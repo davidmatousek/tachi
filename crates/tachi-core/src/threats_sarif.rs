@@ -5,7 +5,7 @@ use std::hash::{Hash, Hasher};
 use serde_json::{json, Value};
 
 use crate::sarif_common::{
-    build_sarif_envelope, logical_location_kind_for_dfd_type, ComponentMetadata,
+    baseline_run_id, build_sarif_envelope, logical_location_kind_for_dfd_type, ComponentMetadata,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,9 +31,7 @@ pub fn build_threats_sarif(
 ) -> Value {
     let results = findings
         .iter()
-        .map(|finding| {
-            build_result(finding, component_meta, source_threats_uri, "2026-04-19T03-20-30")
-        })
+        .map(|finding| build_result(finding, component_meta, source_threats_uri))
         .collect::<Vec<_>>();
 
     let driver = json!({
@@ -54,7 +52,6 @@ fn build_result(
     finding: &ThreatSarifFinding,
     component_meta: &BTreeMap<String, ComponentMetadata>,
     source_threats_uri: &str,
-    run_id_baseline: &str,
 ) -> Value {
     let rule_id = rule_for_prefix(&finding.prefix);
     let level = level_for_risk(&finding.risk_level);
@@ -129,7 +126,7 @@ fn build_result(
         "partialFingerprints": {
             "primaryLocationLineHash": line_hash_for(&finding.id),
             "findingId/v1": finding.id,
-            "baselineRunId": if finding.status == "[NEW]" { "" } else { run_id_baseline },
+            "baselineRunId": if finding.status == "[NEW]" { "" } else { baseline_run_id() },
         },
         "properties": properties,
     })

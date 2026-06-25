@@ -1,7 +1,7 @@
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
 use tachi_core::parsers::SourceAttributionRecord;
-use tachi_core::sarif_common::ComponentMetadata;
+use tachi_core::sarif_common::{baseline_run_id, ComponentMetadata};
 use tachi_core::{
     build_risk_scores_sarif, parse_risk_md_section2, parse_risk_md_section3,
     parse_risk_md_section4, RiskScoreBreakdown, RiskScoreFinding, RiskScoreGovernance,
@@ -157,6 +157,7 @@ fn build_risk_scores_sarif_marks_inherited_agentic_finding() {
         result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"],
         source_threats_uri
     );
+    assert_eq!(result["partialFingerprints"]["baselineRunId"], "");
     assert_eq!(result["properties"]["score-source"], "inherited");
     assert_eq!(
         result["properties"]["score-source-detail"],
@@ -176,6 +177,67 @@ fn build_risk_scores_sarif_marks_inherited_agentic_finding() {
     assert_eq!(
         result["properties"]["feature"],
         "219-asi07-tool-abuse-enrichment"
+    );
+}
+
+#[test]
+fn build_risk_scores_sarif_uses_shared_baseline_run_id_for_existing_finding() {
+    let mut component_meta = BTreeMap::new();
+    component_meta.insert(
+        String::from("Agent"),
+        ComponentMetadata {
+            zone: String::from("Core"),
+            dfd_type: String::from("Data Store"),
+        },
+    );
+
+    let findings = vec![RiskScoreFinding {
+        id: String::from("AG-8"),
+        component: String::from("Agent"),
+        threat_summary: String::from("Prompt injection"),
+        cvss_base: 9.1,
+        exploitability: 9.0,
+        scalability: 8.5,
+        reachability: 8.0,
+        composite: 8.8,
+        severity_band: String::from("High"),
+        sla_days: String::from("7"),
+        disposition: String::from("Monitor"),
+    }];
+
+    let section3 = BTreeMap::new();
+    let section4 = BTreeMap::new();
+
+    let mut threats_status = BTreeMap::new();
+    threats_status.insert(String::from("AG-8"), String::from("UNCHANGED"));
+
+    let mut threats_full = BTreeMap::new();
+    threats_full.insert(
+        String::from("AG-8"),
+        (
+            String::from("Prompt injection"),
+            String::from("Harden prompts"),
+        ),
+    );
+
+    let source_attribution = BTreeMap::new();
+    let source_threats_uri = "reports/custom/threats.md";
+
+    let sarif = build_risk_scores_sarif(
+        &findings,
+        &section3,
+        &section4,
+        &threats_status,
+        &threats_full,
+        &source_attribution,
+        &component_meta,
+        source_threats_uri,
+    );
+
+    let result = &sarif["runs"][0]["results"][0];
+    assert_eq!(
+        result["partialFingerprints"]["baselineRunId"],
+        baseline_run_id()
     );
 }
 

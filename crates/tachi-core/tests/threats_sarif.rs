@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use pretty_assertions::assert_eq;
-use tachi_core::sarif_common::{ComponentMetadata, SARIF_SCHEMA_URI};
+use tachi_core::sarif_common::{baseline_run_id, ComponentMetadata, SARIF_SCHEMA_URI};
 
 #[test]
 fn build_threats_sarif_marks_agentic_finding_with_asi07_metadata() {
@@ -75,4 +75,44 @@ fn build_threats_sarif_marks_agentic_finding_with_asi07_metadata() {
     assert_eq!(result["properties"]["pattern_category"], 9);
     assert_eq!(result["properties"]["tags"][0], "security");
     assert_eq!(result["properties"]["tags"][1], "ai");
+}
+
+#[test]
+fn build_threats_sarif_uses_shared_baseline_run_id_for_existing_finding() {
+    let mut component_meta = BTreeMap::new();
+    component_meta.insert(
+        String::from("Agent"),
+        ComponentMetadata {
+            zone: String::from("Core"),
+            dfd_type: String::from("Data Store"),
+        },
+    );
+
+    let finding = tachi_core::threats_sarif::ThreatSarifFinding {
+        id: String::from("AG-8"),
+        prefix: String::from("AG"),
+        status: String::from("[UNCHANGED]"),
+        component: String::from("Agent"),
+        maestro: String::from("L3 Triage"),
+        agentic_pattern: String::new(),
+        threat: String::from("Prompt injection"),
+        owasp_ref: String::new(),
+        likelihood: String::from("High"),
+        impact: String::from("High"),
+        risk_level: String::from("High"),
+        mitigation: String::from("Harden prompts"),
+    };
+
+    let sarif = tachi_core::threats_sarif::build_threats_sarif(
+        &[finding],
+        &component_meta,
+        "reports/custom/threats.md",
+    );
+    let result = &sarif["runs"][0]["results"][0];
+
+    assert_eq!(
+        result["partialFingerprints"]["baselineRunId"],
+        baseline_run_id()
+    );
+    assert_eq!(result["properties"]["baselineState"], "unchanged");
 }

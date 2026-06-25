@@ -106,6 +106,11 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
 
 ## Recent AQ Slices
 
+- RT-bu7: `crates/tachi-core/src/sarif_common.rs`,
+  `crates/tachi-core/src/{threats_sarif,risk_scores}.rs`, and
+  the SARIF goldens/tests now share the baseline run ID helper so new
+  findings stay empty while existing findings emit the same frozen baseline
+  marker across both pipelines.
 - RT-qz9: `crates/tachi-core/src/{threats_sarif,risk_scores}.rs` and
   `crates/tachi-shell/src/command_use_cases.rs` now thread the threats source
   URI from CLI input into SARIF builders, with goldens and shell tests proving

@@ -5,8 +5,8 @@ use serde_json::{json, Value};
 use crate::parsers::parse_markdown_table;
 use crate::parsers::SourceAttributionRecord;
 use crate::sarif_common::{
-    build_sarif_envelope, level_for_band, logical_location_kind_for_dfd_type, prefix_for,
-    ComponentMetadata,
+    baseline_run_id, build_sarif_envelope, level_for_band, logical_location_kind_for_dfd_type,
+    prefix_for, ComponentMetadata,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -360,6 +360,11 @@ fn build_result(
         props["new-finding"] = json!(true);
     }
 
+    let baseline_run_id_value = match threats_status.get(&finding.id) {
+        Some(status) if status == "NEW" => "",
+        _ => baseline_run_id(),
+    };
+
     json!({
         "ruleId": rule_id,
         "message": {
@@ -376,7 +381,10 @@ fn build_result(
                 "logicalLocation": logical_location,
             }
         ],
-        "partialFingerprints": {"findingId/v1": finding.id},
+        "partialFingerprints": {
+            "findingId/v1": finding.id,
+            "baselineRunId": baseline_run_id_value,
+        },
         "properties": props,
     })
 }
