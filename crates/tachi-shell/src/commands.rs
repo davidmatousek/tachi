@@ -204,15 +204,6 @@ pub(crate) fn run_script_command_with_progress(
 }
 
 fn script_dir_for_repo_root(repo_root: &Path) -> PathBuf {
-    let mut current = repo_root;
-    while current != current.parent().unwrap_or(current) {
-        let candidate = current.join("scripts");
-        if candidate.exists() {
-            return current.to_path_buf().join("scripts");
-        }
-        current = current.parent().unwrap_or(current);
-    }
-
     repo_root.join("scripts")
 }
 
@@ -255,6 +246,8 @@ pub fn bootstrap_output(root: &Path, args: &[&str]) -> CommandOutput {
 #[cfg(test)]
 mod tests {
     use super::bootstrap_control_plane_args;
+    use super::control_plane_scripts_dir;
+    use std::fs;
 
     #[test]
     fn bootstrap_control_plane_args_prepends_bootstrap_flag_without_mutating_input() {
@@ -274,5 +267,29 @@ mod tests {
             args,
             vec!["--upstream-url=https://example.com/upstream.git", "--yes"]
         );
+    }
+
+    #[test]
+    fn control_plane_scripts_dir_stays_within_repo_root() {
+        let root = std::env::temp_dir().join(format!(
+            "tachi-shell-scripts-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos()
+        ));
+        let parent = root.join("parent");
+        let repo_root = parent.join("repo");
+
+        fs::create_dir_all(parent.join("scripts")).expect("create parent scripts");
+        fs::create_dir_all(&repo_root).expect("create repo root");
+
+        let scripts_dir = control_plane_scripts_dir(&repo_root);
+
+        assert_eq!(scripts_dir, repo_root.join("scripts"));
+        assert!(scripts_dir.starts_with(&repo_root));
+        assert_ne!(scripts_dir, parent.join("scripts"));
+
+        let _ = fs::remove_dir_all(&root);
     }
 }

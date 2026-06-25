@@ -106,6 +106,10 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
 
 ## Recent AQ Slices
 
+- RT-jwj: `crates/tachi-shell/src/commands.rs` now keeps control-plane
+  script discovery inside the repo root, and the containment regression in
+  `crates/tachi-shell/tests/tauri_bridge.rs` still proves bootstrap routing
+  works when the root-local script exists.
 - RT-bu7: `crates/tachi-core/src/sarif_common.rs`,
   `crates/tachi-core/src/{threats_sarif,risk_scores}.rs`, and
   the SARIF goldens/tests now share the baseline run ID helper so new
