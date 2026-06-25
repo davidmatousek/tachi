@@ -4,7 +4,9 @@ use std::hash::{Hash, Hasher};
 
 use serde_json::{json, Value};
 
-use crate::sarif_common::{build_sarif_envelope, ComponentMetadata};
+use crate::sarif_common::{
+    build_sarif_envelope, logical_location_kind_for_dfd_type, ComponentMetadata,
+};
 
 const SOURCE_THREATS_URI: &str = "examples/agentic-app/sample-report/threats.md";
 
@@ -59,7 +61,7 @@ fn build_result(
         .get(&finding.component)
         .cloned()
         .unwrap_or_else(default_component_meta);
-    let kind = kind_for_dfd_type(&meta.dfd_type);
+    let kind = logical_location_kind_for_dfd_type(&meta.dfd_type);
     let fq = format!("{}/{}", meta.zone, finding.component);
     let owasp_id = normalize_owasp_id(&finding.owasp_ref, &finding.prefix);
 
@@ -144,14 +146,6 @@ fn level_for_risk(risk_level: &str) -> &'static str {
         "Medium" => "warning",
         "Low" | "Note" => "note",
         _ => "note",
-    }
-}
-
-fn kind_for_dfd_type(dfd_type: &str) -> &'static str {
-    match dfd_type {
-        "External Entity" => "external-entity",
-        "Data Store" => "data",
-        _ => "process",
     }
 }
 

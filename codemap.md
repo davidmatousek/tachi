@@ -106,6 +106,12 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
 
 ## Recent AQ Slices
 
+- RT-0zv: `crates/tachi-core/src/sarif_common.rs`,
+  `crates/tachi-core/src/risk_scores.rs`,
+  `crates/tachi-core/src/threats_sarif.rs`, and
+  `crates/tachi-core/tests/{risk_scores,threats_sarif}.rs` now share the
+  canonical `logicalLocation.kind` mapping so threat and risk SARIF stay in
+  parity on `data-store`.
 - AQ-021: `src-tauri/src/lib.rs` now registers a typed desktop dispatch
   command, and `crates/tachi-shell/src/commands.rs` exposes serializable
   `CommandOutput` for Tauri IPC while keeping the desktop capability boundary

@@ -4,7 +4,10 @@ use serde_json::{json, Value};
 
 use crate::parsers::parse_markdown_table;
 use crate::parsers::SourceAttributionRecord;
-use crate::sarif_common::{build_sarif_envelope, level_for_band, prefix_for, ComponentMetadata};
+use crate::sarif_common::{
+    build_sarif_envelope, level_for_band, logical_location_kind_for_dfd_type, prefix_for,
+    ComponentMetadata,
+};
 
 const SOURCE_THREATS_URI: &str =
     "examples/agentic-app/test-output/2026-04-26T03-39-12-F3-wave3/threats.md";
@@ -275,7 +278,7 @@ fn build_result(
         .get(&finding.component)
         .cloned()
         .unwrap_or_else(default_component_meta);
-    let kind = kind_for_dfd_type(&meta.dfd_type);
+    let kind = logical_location_kind_for_dfd_type(&meta.dfd_type);
     let logical_location = json!({
         "name": finding.component,
         "fullyQualifiedName": format!("{}/{}", meta.zone, finding.component),
@@ -382,14 +385,6 @@ fn default_component_meta() -> ComponentMetadata {
     ComponentMetadata {
         zone: String::from("Application Zone"),
         dfd_type: String::from("Process"),
-    }
-}
-
-fn kind_for_dfd_type(dfd_type: &str) -> &'static str {
-    match dfd_type {
-        "External Entity" => "external-entity",
-        "Data Store" => "data-store",
-        _ => "process",
     }
 }
 

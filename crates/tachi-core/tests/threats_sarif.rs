@@ -47,6 +47,10 @@ fn build_threats_sarif_marks_agentic_finding_with_asi07_metadata() {
         result["locations"][0]["logicalLocations"][0]["fullyQualifiedName"],
         "Core/Agent"
     );
+    assert_eq!(
+        result["locations"][0]["logicalLocations"][0]["kind"],
+        "data-store"
+    );
     assert_eq!(result["partialFingerprints"]["findingId/v1"], "AG-8");
     assert_eq!(
         result["partialFingerprints"]["primaryLocationLineHash"]
