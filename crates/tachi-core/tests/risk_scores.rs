@@ -34,7 +34,7 @@ fn parse_risk_scores_sections_extracts_scored_table_metadata_and_governance() {
 | AG-8 | Alice | 7 | Monitor | 2026-06-06 |
 "#;
 
-    let section2 = parse_risk_md_section2(md);
+    let section2 = parse_risk_md_section2(md).expect("section 2 parse");
     let section3 = parse_risk_md_section3(md);
     let section4 = parse_risk_md_section4(md);
 
@@ -182,6 +182,15 @@ fn test_parse_risk_md_section2_returns_err_on_malformed_scores() {
 |----|-----------|--------|------|----------------|--------------|--------------|-----------|----------|-----|-------------|
 | AG-8 | Agent | Prompt injection | malformed_score | 9.0 | 8.5 | 8.0 | 8.8 | High | 7 | Monitor |
 "#;
-    let res = tachi_core::risk_scores::parse_risk_md_section2(md);
-    assert!(res.is_err(), "Expected error for malformed score, got {:?}", res);
+    let res = parse_risk_md_section2(md);
+    assert!(
+        res.is_err(),
+        "Expected error for malformed score, got {:?}",
+        res
+    );
+    let err = res.expect_err("malformed score should be rejected");
+    assert!(
+        err.contains("failed to parse CVSS score for AG-8"),
+        "unexpected error: {err}"
+    );
 }

@@ -420,20 +420,20 @@ mod tests {
     use super::parse_risk_md_section2;
 
     #[test]
-    fn parse_risk_md_section2_defaults_invalid_numbers_and_supports_exploitability_header() {
+    fn parse_risk_md_section2_parses_valid_numbers_and_supports_exploitability_header() {
         let markdown = r#"
 ## 2. Scored Threat Table
 
 | ID | Component | Threat | CVSS | Exploitability | Scalability | Reachability | Composite | Severity | SLA | Disposition |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| AG-1 | API | Prompt injection | not-a-number | 9.2 | 8.0 | 7.0 | 8.3 | High | 7 | Monitor |
+| AG-1 | API | Prompt injection | 9.1 | 9.2 | 8.0 | 7.0 | 8.3 | High | 7 | Monitor |
 | AG-2 | Worker | Broken isolation | 8.5 | 7.0 | 6.0 | 5.0 | 6.8 | Medium | 14 | Fix |
 "#;
 
-        let findings = parse_risk_md_section2(markdown);
+        let findings = parse_risk_md_section2(markdown).expect("section 2 parse");
         assert_eq!(findings.len(), 2);
         assert_eq!(findings[0].id, "AG-1");
-        assert_eq!(findings[0].cvss_base, 0.0);
+        assert_eq!(findings[0].cvss_base, 9.1);
         assert_eq!(findings[0].exploitability, 9.2);
         assert_eq!(findings[0].severity_band, "High");
         assert_eq!(findings[1].exploitability, 7.0);
@@ -442,7 +442,8 @@ mod tests {
 
     #[test]
     fn parse_risk_md_section2_returns_empty_without_scored_table() {
-        let findings = parse_risk_md_section2("# Report\n\nNo scored table here.");
+        let findings = parse_risk_md_section2("# Report\n\nNo scored table here.")
+            .expect("empty section 2 parse");
         assert!(findings.is_empty());
     }
 }

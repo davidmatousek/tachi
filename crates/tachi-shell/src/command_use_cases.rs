@@ -108,7 +108,7 @@ pub fn risk_scores_sarif_output(
     let threats_md = std::fs::read_to_string(threats)
         .map_err(|err| format!("failed to read {}: {err}", threats.display()))?;
 
-    let findings = parse_risk_md_section2(&risk_md);
+    let findings = parse_risk_md_section2(&risk_md)?;
     let section3 = parse_risk_md_section3(&risk_md);
     let section4 = parse_risk_md_section4(&risk_md);
     let threat_findings = parse_threats_findings(&threats_md)?;
@@ -164,4 +164,54 @@ pub fn risk_scores_sarif_output(
         sarif,
         results_count: findings.len(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::risk_scores_sarif_output;
+    use std::path::PathBuf;
+
+    fn unique_temp_dir(name: &str) -> PathBuf {
+        let suffix = format!(
+            "{}-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos(),
+            name
+        );
+        std::env::temp_dir().join(format!("tachi-{suffix}"))
+    }
+
+    #[test]
+    fn risk_scores_sarif_output_returns_err_on_malformed_scores() {
+        let root = unique_temp_dir("risk-scores");
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).expect("create temp root");
+
+        let risk_scores = root.join("risk.md");
+        let threats = root.join("threats.md");
+        std::fs::write(
+            &risk_scores,
+            r#"
+## 2. Scored Threat Table
+
+| ID | Component | Threat | CVSS | Exploitability | Scalability | Reachability | Composite | Severity | SLA | Disposition |
+|----|-----------|--------|------|----------------|--------------|--------------|-----------|----------|-----|-------------|
+| AG-8 | Agent | Prompt injection | malformed_score | 9.0 | 8.5 | 8.0 | 8.8 | High | 7 | Monitor |
+"#,
+        )
+        .expect("write malformed risk scores");
+        std::fs::write(&threats, "# Threat Model\n").expect("write threats");
+
+        let err = risk_scores_sarif_output(&risk_scores, &threats)
+            .expect_err("malformed scores should fail closed");
+        assert!(
+            err.contains("failed to parse CVSS score for AG-8"),
+            "unexpected error: {err}"
+        );
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
 }

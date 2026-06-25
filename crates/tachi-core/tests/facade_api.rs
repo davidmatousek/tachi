@@ -52,7 +52,7 @@ fn facade_exports_stable_core_surface() {
     assert_eq!(owasp_catalog[3].framework, "Mobile 2024");
     let matrix = render_owasp_coverage_matrix();
     assert!(matrix.contains("| Mobile 2024 | OWASP-MOBILE-2024 | M1-M10 | 10/10 |"));
-    let _ = parse_risk_md_section2("");
+    let _ = parse_risk_md_section2("").expect("parse empty score table");
     let _ = parse_risk_md_section3("");
     let _ = parse_risk_md_section4("");
     let _ = ThreatSarifFinding {
