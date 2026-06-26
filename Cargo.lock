@@ -3139,6 +3139,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tachi-mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+ "tachi-shell",
+]
+
+[[package]]
 name = "tachi-shell"
 version = "0.1.0"
 dependencies = [

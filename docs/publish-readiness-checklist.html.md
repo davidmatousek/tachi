@@ -13,6 +13,8 @@ Use this checklist before publishing to GitHub or cutting a release.
 - [ ] `make publish-gate` passes on the release candidate branch.
 - [ ] `cargo test -p tachi-shell` passes after the script executor boundary
       slice and coverage-invariant cleanup.
+- [ ] `cargo test -p tachi-mcp` passes and the MCP scaffold builds with
+      `cargo build -p tachi-mcp --features stdio`.
 - [ ] `make scaffold-dependency-gate` passes before publishing scaffold or template changes.
 - [ ] `make fuzz-mutation-gate` passes and `.github/workflows/fuzz-mutation-audit.yml` remains scheduled/manual and non-blocking.
 - [ ] `git push origin main --follow-tags` is the intended publish command.
@@ -83,6 +85,8 @@ Use this checklist before publishing to GitHub or cutting a release.
       explains the first analysis flow in plain language.
 - [ ] `adapters/README.md` matches the compatibility matrix and the canonical
       core contract.
+- [ ] `crates/tachi-mcp/` is reflected in the BOM, install manifest, and
+      release notes where the standalone MCP scaffold is public-facing.
 - [ ] `SECURITY.md` matches the current private-reporting and privacy policy.
 - [ ] `CHANGELOG.md` is redaction-safe and reflects only releasable notes.
 - [ ] `docs/roadmap/implementation-backlog.md` points at the archived AQ

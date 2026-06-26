@@ -3,6 +3,7 @@ resolver = "2"
 members = [
   "crates/tachi-core",
   "crates/tachi-cli",
+  "crates/tachi-mcp",
   "crates/tachi-shell",
   "src-tauri",
 ]
