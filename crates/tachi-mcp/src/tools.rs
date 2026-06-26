@@ -2,17 +2,12 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "kebab-case")]
 pub enum McpOutputMode {
+    #[default]
     InBand,
     Artifact,
-}
-
-impl Default for McpOutputMode {
-    fn default() -> Self {
-        Self::InBand
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
