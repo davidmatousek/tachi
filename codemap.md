@@ -26,7 +26,7 @@ The repository is still migrating away from the original Python ecosystem. Remai
 |---|---|
 | `crates/tachi-core/` | Domain and data-transformation core. It parses generated threat-model artifacts, computes MAESTRO and coverage views, builds report data, emits SARIF payloads, owns the Rust coverage-audit catalog, and now exposes a stable facade module while hiding low-level utility modules behind it. |
 | `crates/tachi-cli/` | Thin CLI binary layer. Binaries parse flags, call shared core/shell functions, and write files or stdout. Business logic should move down into `tachi-core` or `tachi-shell`. |
-| `crates/tachi-mcp/` | Standalone MCP transport. The crate owns the initial contract snapshot, versioned command hash, registered analysis tools, and stdio request/response seam. |
+| `crates/tachi-mcp/` | Standalone MCP transport. The crate owns the initial contract snapshot, versioned command hash, registered analysis tools, and stdio request/response seam with request-id propagation and cancellation-aware policy checks. |
 | `crates/tachi-shell/` | Shared command facade for shell-style control-plane operations and Tauri-facing command dispatch. Keeps desktop and CLI command semantics aligned and now enforces bounded execution, output/input path containment, process cleanup for desktop bridge file IO, and serialized control-plane tests around shared shell state. |
 | `src-tauri/` | Tauri desktop shell. It should remain a bridge/registration layer and avoid duplicate business logic. The scaffold now includes `tauri.conf.json`, `capabilities/main.json`, typed control-plane schema guards, typed desktop error taxonomy, and offline cache path-policy checks with a least-privilege `core:default` main-window capability. |
 | `schemas/` | Finding schema and taxonomy catalogs used by parser, source-attribution, coverage, AISVS, and crosswalk validation tests. |
@@ -214,7 +214,9 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   now anchor the standalone MCP planning track, with the semantic core split
   into ported analysis surfaces, explicit control-plane exclusions, and a
   release/documentation gate that keeps the MCP contract aligned with the
-  canonical command registry.
+  canonical command registry. `crates/tachi-mcp` now carries the Stage 1
+  transport/tool implementation plus request-id propagation and cancellation
+  handling, and the next tracked hardening slice is `MCP-001.3.1`.
 - AQ-042: `crates/tachi-core/src/infographic/maestro_templates.rs`
   now owns MAESTRO template assembly and a direct unit test, separating the
   layer-summary rendering from the parent infographic module.

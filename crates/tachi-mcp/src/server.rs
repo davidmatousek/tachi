@@ -5,8 +5,8 @@ use serde_json::Value;
 
 use crate::tools::{
     tool_registry, CoverageAuditInput, InfographicDataInput, McpInvocationResult, McpOutputMode,
-    McpToolId, McpToolRegistry, McpToolSpec, ReportDataInput, RiskScoresSarifInput,
-    ThreatsSarifInput,
+    McpRequestContext, McpToolId, McpToolRegistry, McpToolSpec, ReportDataInput,
+    RiskScoresSarifInput, ThreatsSarifInput,
 };
 use crate::{build_contract_snapshot, McpContractSnapshot};
 use tachi_shell::commands::{
@@ -46,24 +46,39 @@ impl McpServer {
 
     pub fn invoke_json(
         &self,
+        context: &McpRequestContext,
         tool_name: &str,
         payload: &Value,
     ) -> Result<McpInvocationResult, String> {
+        if context.cancelled {
+            return Err(format!(
+                "request {} cancelled before dispatch",
+                context.request_id
+            ));
+        }
         let tool_id = McpToolId::from_tool_name(tool_name)
             .ok_or_else(|| format!("authorization error: unknown tool {tool_name}"))?;
-        self.invoke_tool(tool_id, payload)
+        self.invoke_tool(context, tool_id, payload)
     }
 
     pub fn invoke_tool(
         &self,
+        context: &McpRequestContext,
         tool_id: McpToolId,
         payload: &Value,
     ) -> Result<McpInvocationResult, String> {
+        if context.cancelled {
+            return Err(format!(
+                "request {} cancelled before dispatch",
+                context.request_id
+            ));
+        }
         match tool_id {
             McpToolId::CoverageAudit => {
                 let input: CoverageAuditInput = deserialize(payload, tool_id.tool_name())?;
                 let content = coverage_audit_output(&input.repo_root);
                 self.write_or_return(
+                    context,
                     tool_id,
                     &content,
                     output_path_for_coverage_audit(&input.repo_root),
@@ -74,6 +89,7 @@ impl McpServer {
                 let input: InfographicDataInput = deserialize(payload, tool_id.tool_name())?;
                 let content = infographic_data_output(&input.repo_root, &input.template)?;
                 self.write_or_return(
+                    context,
                     tool_id,
                     &content,
                     output_path_for_infographic_data(&input.repo_root),
@@ -84,6 +100,7 @@ impl McpServer {
                 let input: ReportDataInput = deserialize(payload, tool_id.tool_name())?;
                 let content = report_data_output(&input.target_dir, &input.template_dir);
                 self.write_or_return(
+                    context,
                     tool_id,
                     &content,
                     output_path_for_report_data(&input.target_dir),
@@ -94,6 +111,7 @@ impl McpServer {
                 let input: RiskScoresSarifInput = deserialize(payload, tool_id.tool_name())?;
                 let content = risk_scores_sarif_output(&input.risk_scores, &input.threats)?.sarif;
                 self.write_or_return(
+                    context,
                     tool_id,
                     &content,
                     output_path_for_risk_scores_sarif(&input.risk_scores),
@@ -104,6 +122,7 @@ impl McpServer {
                 let input: ThreatsSarifInput = deserialize(payload, tool_id.tool_name())?;
                 let content = threats_sarif_output(&input.input)?.sarif;
                 self.write_or_return(
+                    context,
                     tool_id,
                     &content,
                     output_path_for_threats_sarif(&input.input),
@@ -115,6 +134,7 @@ impl McpServer {
 
     fn write_or_return(
         &self,
+        context: &McpRequestContext,
         tool_id: McpToolId,
         payload: &str,
         artifact_path: PathBuf,
@@ -137,12 +157,14 @@ impl McpServer {
             .and_then(|path| fs::metadata(path).ok().map(|meta| meta.len() as usize));
 
         Ok(McpInvocationResult {
+            request_id: context.request_id.clone(),
             tool_name: tool_id.tool_name().to_string(),
             command_name: tool_id.command_name().to_string(),
             output_kind: tool_id.output_kind().to_string(),
             output_mode,
             artifact_path,
             artifact_bytes,
+            cancelled: context.cancelled,
             payload: payload.to_string(),
         })
     }

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::server::McpServer;
-use crate::tools::McpInvocationResult;
+use crate::tools::{McpInvocationResult, McpRequestContext};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StartupMode {
@@ -21,14 +21,17 @@ pub fn startup_mode_from_args(args: &[String]) -> Result<StartupMode, String> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StdioWireRequest {
-    pub id: String,
+    #[serde(alias = "id")]
+    pub request_id: String,
     pub tool: String,
     pub input: Value,
+    #[serde(default)]
+    pub cancelled: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StdioWireResponse {
-    pub id: String,
+    pub request_id: String,
     pub ok: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<McpInvocationResult>,
@@ -49,15 +52,19 @@ where
 
         let request: StdioWireRequest = serde_json::from_str(&line)
             .map_err(|err| format!("failed to decode stdio request: {err}"))?;
-        let response = match server.invoke_json(&request.tool, &request.input) {
+        let context = McpRequestContext {
+            request_id: request.request_id.clone(),
+            cancelled: request.cancelled,
+        };
+        let response = match server.invoke_json(&context, &request.tool, &request.input) {
             Ok(result) => StdioWireResponse {
-                id: request.id,
+                request_id: request.request_id,
                 ok: true,
                 result: Some(result),
                 error: None,
             },
             Err(error) => StdioWireResponse {
-                id: request.id,
+                request_id: request.request_id,
                 ok: false,
                 result: None,
                 error: Some(error),

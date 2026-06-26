@@ -8,15 +8,16 @@
 
 ## Executive summary
 
-There is no MCP server implementation in this repository today. The current core
-threat model logic and reporting contracts already exist and are adapter-agnostic
-in practice. The key gap is a transport/runtime adaptation: exposing those core
-commands as MCP tools without changing command semantics, output names, or artifact
-contracts.
+A Stage 1 MCP transport now exists in `crates/tachi-mcp`. The current core threat
+model logic and reporting contracts already exist and are adapter-agnostic in
+practice. The remaining gap is transport/runtime hardening: keep exposing those
+core commands as MCP tools without changing command semantics, output names, or
+artifact contracts while request-context policy and future transport support land.
 
 This roadmap converts the existing prompt-centric contract into a standalone MCP
 server by layering a protocol adapter and execution runtime on top of existing
-canonical command output contracts.
+canonical command output contracts. Stage 1 has landed in code; Stage 2 and later
+stages remain the active sequencing targets.
 
 ## Core capabilities to preserve
 
@@ -87,6 +88,13 @@ input/output schemas.
 - Schema mismatch (invalid command, missing required args, unsupported output kind) fails with typed MCP errors mapped from the existing typed output/error model.
 - One end-to-end integration test verifies a tool-driven call that starts with input and ends
   with a written artifact path in test-reproducible form.
+
+**Status note**
+
+Stage 1 transport/tool registration has landed in `crates/tachi-mcp`. The
+current implementation already registers the analysis tools, supports stdio,
+and preserves the canonical artifact contract. The next tracked slice is
+`MCP-001.3.1` request correlation and cancellation.
 
 ### Stage 2 - Runtime control and security policy
 

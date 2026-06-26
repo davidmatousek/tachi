@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use serde_json::json;
 
 use tachi_mcp::server::McpServer;
-use tachi_mcp::tools::McpOutputMode;
+use tachi_mcp::tools::{McpOutputMode, McpRequestContext};
 
 fn temp_root(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!(
@@ -15,6 +15,10 @@ fn temp_root(name: &str) -> PathBuf {
             .expect("clock")
             .as_nanos()
     ))
+}
+
+fn context(request_id: &str) -> McpRequestContext {
+    McpRequestContext::new(request_id)
 }
 
 #[test]
@@ -28,9 +32,17 @@ fn registered_tools_match_the_analysis_surface_only() {
         ("tachi.threats-sarif", "threats-sarif", "sarif"),
     ];
 
-    assert_eq!(server.registered_tool_names(), expected.iter().map(|(tool, _, _)| *tool).collect::<Vec<_>>());
+    assert_eq!(
+        server.registered_tool_names(),
+        expected
+            .iter()
+            .map(|(tool, _, _)| *tool)
+            .collect::<Vec<_>>()
+    );
 
-    for (spec, (tool_name, command_name, output_kind)) in server.registered_tools().iter().zip(expected) {
+    for (spec, (tool_name, command_name, output_kind)) in
+        server.registered_tools().iter().zip(expected)
+    {
         assert_eq!(spec.tool_name, tool_name);
         assert_eq!(spec.command_name, command_name);
         assert_eq!(spec.output_kind, output_kind);
@@ -45,6 +57,7 @@ fn coverage_audit_writes_canonical_artifact_and_returns_metadata() {
 
     let result = server
         .invoke_json(
+            &context("req-coverage-audit"),
             "tachi.coverage-audit",
             &json!({
                 "repo_root": root.to_string_lossy().to_string(),
@@ -54,8 +67,10 @@ fn coverage_audit_writes_canonical_artifact_and_returns_metadata() {
         .expect("tool invocation");
 
     assert_eq!(result.tool_name, "tachi.coverage-audit");
+    assert_eq!(result.request_id, "req-coverage-audit");
     assert_eq!(result.command_name, "coverage-audit");
     assert_eq!(result.output_mode, McpOutputMode::Artifact);
+    assert!(!result.cancelled);
 
     let artifact_path = result.artifact_path.expect("artifact path");
     assert_eq!(
@@ -71,7 +86,7 @@ fn coverage_audit_writes_canonical_artifact_and_returns_metadata() {
 fn unknown_tool_calls_fail_closed() {
     let server = McpServer::default();
     let err = server
-        .invoke_json("tachi.install", &json!({}))
+        .invoke_json(&context("req-unknown"), "tachi.install", &json!({}))
         .expect_err("unknown tool should fail closed");
 
     assert!(err.contains("authorization error"));

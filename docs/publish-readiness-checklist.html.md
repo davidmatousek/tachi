@@ -18,6 +18,8 @@ Use this checklist before publishing to GitHub or cutting a release.
 - [ ] `crates/tachi-mcp/tests/tools_registration.rs` and
       `crates/tachi-mcp/tests/stdio.rs` cover tool allowlisting, artifact
       emission, and stdio request/response handling.
+- [ ] `crates/tachi-mcp/tests/session_policy.rs` covers request-id continuity
+      and cancellation handling without artifact leakage.
 - [ ] `make scaffold-dependency-gate` passes before publishing scaffold or template changes.
 - [ ] `make fuzz-mutation-gate` passes and `.github/workflows/fuzz-mutation-audit.yml` remains scheduled/manual and non-blocking.
 - [ ] `git push origin main --follow-tags` is the intended publish command.
@@ -90,6 +92,8 @@ Use this checklist before publishing to GitHub or cutting a release.
       core contract.
 - [ ] `crates/tachi-mcp/` is reflected in the BOM, install manifest, and
       release notes where the standalone MCP scaffold is public-facing.
+- [ ] MCP request-context hardening is reflected in the BOM and checklist so
+      Stage 2 transport policy stays visible while the server grows.
 - [ ] `SECURITY.md` matches the current private-reporting and privacy policy.
 - [ ] `CHANGELOG.md` is redaction-safe and reflects only releasable notes.
 - [ ] `docs/roadmap/implementation-backlog.md` points at the archived AQ

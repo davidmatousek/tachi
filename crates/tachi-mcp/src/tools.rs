@@ -166,12 +166,30 @@ pub struct ThreatsSarifInput {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct McpRequestContext {
+    pub request_id: String,
+    #[serde(default)]
+    pub cancelled: bool,
+}
+
+impl McpRequestContext {
+    pub fn new(request_id: impl Into<String>) -> Self {
+        Self {
+            request_id: request_id.into(),
+            cancelled: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct McpInvocationResult {
+    pub request_id: String,
     pub tool_name: String,
     pub command_name: String,
     pub output_kind: String,
     pub output_mode: McpOutputMode,
     pub artifact_path: Option<PathBuf>,
     pub artifact_bytes: Option<usize>,
+    pub cancelled: bool,
     pub payload: String,
 }
