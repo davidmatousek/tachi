@@ -19,6 +19,7 @@ fn policy_allowlist_rejects_unknown_and_disallowed_tools_without_execution() {
     let server = McpServer::new(
         tool_registry(),
         McpAuthorizationPolicy::allow_tools(["tachi.coverage-audit"]),
+        None,
     );
     let root = temp_root("deny");
     let _ = fs::remove_dir_all(&root);

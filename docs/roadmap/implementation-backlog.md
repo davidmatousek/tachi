@@ -47,7 +47,7 @@
 - Epic: `MCP-001` Standalone MCP server
 - Feature issues: `MCP-001.1` canonical contract extraction, `MCP-001.2` MCP transport and tool layer, `MCP-001.3` transport runtime hardening, `MCP-001.4` docs and release integration, `MCP-001.5` portability envelope
 - Task issues: `MCP-001.3.1` correlation and cancellation, `MCP-001.3.2` auth guard, `MCP-001.3.3` cleanup and timeout, `MCP-001.4.1` docs publish alignment, `MCP-001.4.2` BOM/release alignment, `MCP-001.4.3` CI evidence lane, `MCP-001.5.1` portability matrix
-- Code state: `crates/tachi-mcp` now implements the Stage 0 contract snapshot plus schema metadata snapshot, the Stage 1 transport/tool layer, and the MCP allowlist authorization seam; the current ready issues are the runtime hardening, cancellation/cleanup, and portability/release follow-ups.
+- Code state: `crates/tachi-mcp` now implements the Stage 0 contract snapshot plus schema metadata snapshot, the Stage 1 transport/tool layer, the MCP allowlist authorization seam, and the cancellation cleanup hook; the current ready issues are the runtime hardening and portability/release follow-ups.
 
 ## Canonical Sources
 

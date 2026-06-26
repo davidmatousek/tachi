@@ -14,10 +14,11 @@ use tachi_shell::commands::{
     threats_sarif_output,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct McpServer {
     registry: McpToolRegistry,
     policy: McpAuthorizationPolicy,
+    cleanup: Option<fn(&McpRequestContext)>,
 }
 
 impl Default for McpServer {
@@ -25,13 +26,22 @@ impl Default for McpServer {
         Self {
             registry: tool_registry(),
             policy: McpAuthorizationPolicy::allow_all(),
+            cleanup: None,
         }
     }
 }
 
 impl McpServer {
-    pub fn new(registry: McpToolRegistry, policy: McpAuthorizationPolicy) -> Self {
-        Self { registry, policy }
+    pub fn new(
+        registry: McpToolRegistry,
+        policy: McpAuthorizationPolicy,
+        cleanup: Option<fn(&McpRequestContext)>,
+    ) -> Self {
+        Self {
+            registry,
+            policy,
+            cleanup,
+        }
     }
 
     pub fn registered_tools(&self) -> &'static [McpToolSpec] {
@@ -53,6 +63,7 @@ impl McpServer {
         payload: &Value,
     ) -> Result<McpInvocationResult, String> {
         if context.cancelled {
+            self.run_cleanup(context);
             return Err(format!(
                 "request {} cancelled before dispatch",
                 context.request_id
@@ -75,6 +86,7 @@ impl McpServer {
         payload: &Value,
     ) -> Result<McpInvocationResult, String> {
         if context.cancelled {
+            self.run_cleanup(context);
             return Err(format!(
                 "request {} cancelled before dispatch",
                 context.request_id
@@ -136,6 +148,12 @@ impl McpServer {
                     input.output_mode,
                 )
             }
+        }
+    }
+
+    fn run_cleanup(&self, context: &McpRequestContext) {
+        if let Some(cleanup) = self.cleanup {
+            cleanup(context);
         }
     }
 
