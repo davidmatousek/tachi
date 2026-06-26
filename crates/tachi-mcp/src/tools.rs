@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -125,6 +126,35 @@ impl McpToolRegistry {
 
 pub const fn tool_registry() -> McpToolRegistry {
     McpToolRegistry::new(&MCP_TOOL_SPECS)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct McpAuthorizationPolicy {
+    allowed_tools: Option<BTreeSet<String>>,
+}
+
+impl McpAuthorizationPolicy {
+    pub fn allow_all() -> Self {
+        Self {
+            allowed_tools: None,
+        }
+    }
+
+    pub fn allow_tools<I, S>(tools: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        Self {
+            allowed_tools: Some(tools.into_iter().map(Into::into).collect()),
+        }
+    }
+
+    pub fn allows_tool(&self, tool_name: &str) -> bool {
+        self.allowed_tools
+            .as_ref()
+            .map_or(true, |allowed| allowed.contains(tool_name))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

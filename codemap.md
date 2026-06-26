@@ -215,8 +215,9 @@ Codemap dependency analysis now treats `scripts/tachi_parsers` as retired. The d
   into ported analysis surfaces, explicit control-plane exclusions, and a
   release/documentation gate that keeps the MCP contract aligned with the
   canonical command registry. `crates/tachi-mcp` now carries the Stage 1
-  transport/tool implementation plus request-id propagation and cancellation
-  handling, and the next tracked hardening slice is `MCP-001.3.1`.
+  transport/tool implementation plus request-id propagation, cancellation
+  handling, and the policy allowlist seam, and the next tracked hardening
+  slice is `MCP-001.3.3`.
 - AQ-042: `crates/tachi-core/src/infographic/maestro_templates.rs`
   now owns MAESTRO template assembly and a direct unit test, separating the
   layer-summary rendering from the parent infographic module.

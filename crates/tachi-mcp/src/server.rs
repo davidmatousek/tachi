@@ -4,9 +4,9 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 
 use crate::tools::{
-    tool_registry, CoverageAuditInput, InfographicDataInput, McpInvocationResult, McpOutputMode,
-    McpRequestContext, McpToolId, McpToolRegistry, McpToolSpec, ReportDataInput,
-    RiskScoresSarifInput, ThreatsSarifInput,
+    tool_registry, CoverageAuditInput, InfographicDataInput, McpAuthorizationPolicy,
+    McpInvocationResult, McpOutputMode, McpRequestContext, McpToolId, McpToolRegistry, McpToolSpec,
+    ReportDataInput, RiskScoresSarifInput, ThreatsSarifInput,
 };
 use crate::{build_contract_snapshot, McpContractSnapshot};
 use tachi_shell::commands::{
@@ -17,19 +17,21 @@ use tachi_shell::commands::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct McpServer {
     registry: McpToolRegistry,
+    policy: McpAuthorizationPolicy,
 }
 
 impl Default for McpServer {
     fn default() -> Self {
         Self {
             registry: tool_registry(),
+            policy: McpAuthorizationPolicy::allow_all(),
         }
     }
 }
 
 impl McpServer {
-    pub const fn new(registry: McpToolRegistry) -> Self {
-        Self { registry }
+    pub fn new(registry: McpToolRegistry, policy: McpAuthorizationPolicy) -> Self {
+        Self { registry, policy }
     }
 
     pub fn registered_tools(&self) -> &'static [McpToolSpec] {
@@ -54,6 +56,11 @@ impl McpServer {
             return Err(format!(
                 "request {} cancelled before dispatch",
                 context.request_id
+            ));
+        }
+        if !self.policy.allows_tool(tool_name) {
+            return Err(format!(
+                "authorization error: tool {tool_name} is not allowed"
             ));
         }
         let tool_id = McpToolId::from_tool_name(tool_name)
