@@ -36,6 +36,9 @@ jobs:
           toolchain: stable
           components: clippy
 
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
       - name: Install required cargo
         run: cargo install clippy-sarif sarif-fmt
 

@@ -31,6 +31,9 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
       - name: Install workspace test tools
         run: |
           sudo apt-get update
@@ -62,6 +65,9 @@ jobs:
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
 
       - name: Install workspace test tools
         run: |
