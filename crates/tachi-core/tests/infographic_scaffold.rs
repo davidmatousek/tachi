@@ -65,7 +65,7 @@ Prompt outro
         Some(repo_root.as_path()),
     );
 
-    assert_eq!(scaffold.found, true);
+    assert!(scaffold.found, "scaffold={scaffold:?}");
     assert_eq!(
         scaffold.preamble,
         "Prompt intro\nDATA CONTENT (render this as visible text):\n"
