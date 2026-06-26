@@ -153,7 +153,7 @@ impl McpAuthorizationPolicy {
     pub fn allows_tool(&self, tool_name: &str) -> bool {
         self.allowed_tools
             .as_ref()
-            .map_or(true, |allowed| allowed.contains(tool_name))
+            .is_none_or(|allowed| allowed.contains(tool_name))
     }
 }
 
