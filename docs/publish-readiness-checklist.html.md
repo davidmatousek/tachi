@@ -15,6 +15,9 @@ Use this checklist before publishing to GitHub or cutting a release.
       slice and coverage-invariant cleanup.
 - [ ] `cargo test -p tachi-mcp` passes and the MCP scaffold builds with
       `cargo build -p tachi-mcp --features stdio`.
+- [ ] `crates/tachi-mcp/tests/tools_registration.rs` and
+      `crates/tachi-mcp/tests/stdio.rs` cover tool allowlisting, artifact
+      emission, and stdio request/response handling.
 - [ ] `make scaffold-dependency-gate` passes before publishing scaffold or template changes.
 - [ ] `make fuzz-mutation-gate` passes and `.github/workflows/fuzz-mutation-audit.yml` remains scheduled/manual and non-blocking.
 - [ ] `git push origin main --follow-tags` is the intended publish command.

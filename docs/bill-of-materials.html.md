@@ -78,7 +78,7 @@ with the shipped release workflow before publication.
 |---|---|---|
 | `crates/tachi-core/` | Parsers, scoring, reporting, taxonomy, SARIF, coverage helpers | Parser hardening, output shape stability, no panic-based user-facing parsing. |
 | `crates/tachi-cli/` | CLI entrypoints and argument-forwarding binaries | Flag correctness, help text, command parity, no duplicated business logic. |
-| `crates/tachi-mcp/` | Standalone MCP scaffold and contract snapshot layer | Canonical command contract reuse, stdio startup path, and future tool registration seams. |
+| `crates/tachi-mcp/` | Standalone MCP transport and contract snapshot layer | Canonical command contract reuse, stdio startup path, registered analysis tools, and artifact-emitting tool dispatch. |
 | `crates/tachi-shell/` | Shared command facade and bridge adapter | Shared dispatch, shared errors, identical CLI/Tauri semantics. |
 | `crates/tachi-shell/src/commands/script_executor.rs` | Script execution boundary | Process spawning, timeout, cancellation, and output capture stay behind an injected executor seam. |
 | `crates/tachi-core/src/infographic/prompt_scaffold.rs` | Prompt scaffold boundary | Template loading and prompt extraction stay isolated from payload rendering with store-injected tests. |
@@ -172,7 +172,7 @@ The repository policy for these surfaces is:
 | Rust unit and integration tests | `cargo test -q` | Must pass cleanly. |
 | Full workspace PR behavior gate | `cargo test --workspace --all-targets` and `.github/workflows/rust-workspace.yml` | Pull requests run the whole Rust workspace without path filters. |
 | Rust e2e and bridge checks | `cargo test -p tachi-shell --test init_substitution` and `cargo test -p tachi-core --test rt009_docs` | Must pass for CLI/tidy report contract parity surfaces. |
-| MCP scaffold and contract checks | `cargo test -p tachi-mcp` and `cargo build -p tachi-mcp --features stdio` | MCP scaffold stays buildable and the contract snapshot remains deterministic. |
+| MCP scaffold and contract checks | `cargo test -p tachi-mcp` and `cargo build -p tachi-mcp --features stdio` | MCP registry, stdio transport, and contract snapshot remain deterministic. |
 | Core infographic and scaffold seams | `cargo test -p tachi-core` | Prompt scaffold, infographic payload, parser, and reporting seams remain green after boundary splits. |
 | Infographic payload seam | `cargo test -p tachi-core` | Payload orchestration remains behavior-compatible after moving filesystem loading and template assembly. |
 | Parser hardening regression | `cargo test -p tachi-core compute_delta_counts_trims_case_and_ignores_unknown_statuses -- --nocapture` | Must pass for panic-free delta counting and status normalization. |

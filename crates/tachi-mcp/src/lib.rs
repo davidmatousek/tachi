@@ -1,5 +1,6 @@
 pub mod server;
 pub mod stdio;
+pub mod tools;
 
 use serde::Serialize;
 use sha2::{Digest, Sha256};
