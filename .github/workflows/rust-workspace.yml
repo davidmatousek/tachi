@@ -20,6 +20,7 @@ jobs:
       matrix:
         include:
           - package: tachi-core
+          - package: tachi-mcp
           - package: tachi-cli
           - package: tachi-tauri
     env:

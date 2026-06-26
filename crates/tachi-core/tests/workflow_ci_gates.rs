@@ -26,7 +26,13 @@ fn workspace_cargo_test_pr_gate_runs_full_workspace_suite() {
         text.contains("name: cargo test -p ${{ matrix.package }} --all-targets"),
         "cargo-test job must use a package matrix"
     );
-    for package in ["tachi-core", "tachi-shell", "tachi-cli", "tachi-tauri"] {
+    for package in [
+        "tachi-core",
+        "tachi-mcp",
+        "tachi-shell",
+        "tachi-cli",
+        "tachi-tauri",
+    ] {
         if package == "tachi-shell" {
             continue;
         }

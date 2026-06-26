@@ -24,6 +24,35 @@ delivery shapes:
 Adapters only repackage the same payload. They do not fork the threat model
 logic.
 
+## Standalone MCP Server
+
+The standalone MCP server is the transport-neutral alternative to the harness
+packs. It exposes the canonical analysis commands over stdio while keeping the
+same output names and artifact paths.
+
+Build and run it with:
+
+```bash
+cargo build -p tachi-mcp --features stdio
+cargo run -p tachi-mcp --features stdio -- --stdio
+```
+
+The same canonical tool names apply:
+
+| Tool | Canonical artifact |
+|---|---|
+| `tachi.coverage-audit` | `target/mcp/coverage-audit.txt` |
+| `tachi.infographic-data` | `target/mcp/infographic-data.json` |
+| `tachi.report-data` | `target/mcp/report-data.typ` |
+| `tachi.risk-scores-sarif` | `target/mcp/risk-scores-sarif.sarif` |
+| `tachi.threats-sarif` | `target/mcp/threats-sarif.sarif` |
+
+Validation:
+
+```bash
+cargo test -p tachi-mcp --test contract_snapshot --test schema_snapshot --test tools_registration --test session_policy --test stdio
+```
+
 ## Support Levels
 
 | Level | Meaning |

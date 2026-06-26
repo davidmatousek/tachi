@@ -239,6 +239,33 @@ If you are using Claude Code, type:
 That is it. One command. Tachi validates the setup, reads your architecture,
 dispatches its 14 specialized agents, and writes the full output suite.
 
+### Standalone MCP server
+
+If you want the canonical command contract over stdio instead of a harness
+adapter, run the standalone MCP server:
+
+```bash
+cargo build -p tachi-mcp --features stdio
+cargo run -p tachi-mcp --features stdio -- --stdio
+```
+
+Use the same tool names and artifact paths you would expect from the core
+command surface:
+
+| Tool | Canonical artifact |
+|---|---|
+| `tachi.coverage-audit` | `target/mcp/coverage-audit.txt` |
+| `tachi.infographic-data` | `target/mcp/infographic-data.json` |
+| `tachi.report-data` | `target/mcp/report-data.typ` |
+| `tachi.risk-scores-sarif` | `target/mcp/risk-scores-sarif.sarif` |
+| `tachi.threats-sarif` | `target/mcp/threats-sarif.sarif` |
+
+Validate the transport contract with:
+
+```bash
+cargo test -p tachi-mcp --test contract_snapshot --test schema_snapshot --test tools_registration --test session_policy --test stdio
+```
+
 To use a different architecture file or output location:
 
 ```bash

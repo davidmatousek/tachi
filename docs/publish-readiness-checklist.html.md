@@ -13,8 +13,8 @@ Use this checklist before publishing to GitHub or cutting a release.
 - [ ] `make publish-gate` passes on the release candidate branch.
 - [ ] `cargo test -p tachi-shell` passes after the script executor boundary
       slice and coverage-invariant cleanup.
-- [ ] `cargo test -p tachi-mcp` passes and the MCP scaffold builds with
-      `cargo build -p tachi-mcp --features stdio`.
+- [ ] `cargo test -p tachi-mcp --test contract_snapshot --test schema_snapshot --test tools_registration --test session_policy --test stdio`
+      passes and the MCP scaffold builds with `cargo build -p tachi-mcp --features stdio`.
 - [ ] `crates/tachi-mcp/tests/tools_registration.rs` and
       `crates/tachi-mcp/tests/stdio.rs` cover tool allowlisting, artifact
       emission, and stdio request/response handling.
@@ -88,6 +88,9 @@ Use this checklist before publishing to GitHub or cutting a release.
 - [ ] `docs/platform-compatibility.md` matches the current harness matrix, support levels, install surfaces, and fallback behavior.
 - [ ] `docs/guides/DEVELOPER_GUIDE_TACHI.md` matches the public README and
       explains the first analysis flow in plain language.
+- [ ] `README.md`, `docs/platform-compatibility.md`, and
+      `docs/guides/DEVELOPER_GUIDE_TACHI.md` describe the same standalone MCP
+      server build, run, and validation contract.
 - [ ] `adapters/README.md` matches the compatibility matrix and the canonical
       core contract.
 - [ ] `crates/tachi-mcp/` is reflected in the BOM, install manifest, and
@@ -159,6 +162,8 @@ Use this checklist before publishing to GitHub or cutting a release.
 - [ ] `.github/workflows/rust-workspace.yml` is green and is not
       path-filtered on pull requests.
 - [ ] `.github/workflows/rust-workspace.yml` completes within the runner window via its package-sized test matrix.
+- [ ] `.github/workflows/rust-workspace.yml` includes `tachi-mcp` in the
+      package matrix and runs the MCP validation suite.
 - [ ] `.github/workflows/rust-clippy.yml` is green.
 - [ ] `.github/workflows/rust-clippy.yml` fails closed on warnings while still
       uploading SARIF with `if: always()`.

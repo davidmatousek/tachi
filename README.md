@@ -56,6 +56,35 @@ Publication and release-readiness guidance lives in:
 See [`docs/platform-compatibility.md`](docs/platform-compatibility.md) for the
 full matrix and setup recipes.
 
+## Standalone MCP Server
+
+Use `tachi-mcp` when you want the canonical command contract over stdio
+instead of a harness-specific adapter.
+
+Build and run it with:
+
+```bash
+cargo build -p tachi-mcp --features stdio
+cargo run -p tachi-mcp --features stdio -- --stdio
+```
+
+The MCP transport keeps the same analysis command names and canonical artifact
+paths:
+
+| Tool | Canonical artifact |
+|---|---|
+| `tachi.coverage-audit` | `target/mcp/coverage-audit.txt` |
+| `tachi.infographic-data` | `target/mcp/infographic-data.json` |
+| `tachi.report-data` | `target/mcp/report-data.typ` |
+| `tachi.risk-scores-sarif` | `target/mcp/risk-scores-sarif.sarif` |
+| `tachi.threats-sarif` | `target/mcp/threats-sarif.sarif` |
+
+Validate the transport and schema contract with:
+
+```bash
+cargo test -p tachi-mcp --test contract_snapshot --test schema_snapshot --test tools_registration --test session_policy --test stdio
+```
+
 ---
 
 ## Core capabilities
