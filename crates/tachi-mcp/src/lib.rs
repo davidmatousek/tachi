@@ -16,10 +16,31 @@ pub struct McpContractSnapshot {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct McpToolSchemaSnapshot {
+    pub version: u32,
+    pub schemas: Vec<McpToolSchema>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct McpCommandContract {
     pub name: String,
     pub dispatch_kind: String,
     pub output_kind: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct McpToolSchema {
+    pub name: String,
+    pub command_name: String,
+    pub input_fields: Vec<McpInputField>,
+    pub output_modes: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct McpInputField {
+    pub name: String,
+    pub field_type: String,
+    pub required: bool,
 }
 
 pub fn build_contract_snapshot() -> McpContractSnapshot {
@@ -47,9 +68,130 @@ pub fn build_contract_snapshot() -> McpContractSnapshot {
     }
 }
 
+pub const TOOL_SCHEMA_VERSION: u32 = 1;
+
+pub fn build_tool_schema_snapshot() -> McpToolSchemaSnapshot {
+    let schemas = crate::tools::McpToolId::ALL
+        .into_iter()
+        .map(|tool_id| match tool_id.command_name() {
+            "coverage-audit" => McpToolSchema {
+                name: tool_id.tool_name().to_string(),
+                command_name: tool_id.command_name().to_string(),
+                input_fields: vec![
+                    McpInputField {
+                        name: "repo_root".to_string(),
+                        field_type: "path".to_string(),
+                        required: true,
+                    },
+                    McpInputField {
+                        name: "output_mode".to_string(),
+                        field_type: "enum".to_string(),
+                        required: false,
+                    },
+                ],
+                output_modes: output_modes_for(),
+            },
+            "infographic-data" => McpToolSchema {
+                name: tool_id.tool_name().to_string(),
+                command_name: tool_id.command_name().to_string(),
+                input_fields: vec![
+                    McpInputField {
+                        name: "repo_root".to_string(),
+                        field_type: "path".to_string(),
+                        required: true,
+                    },
+                    McpInputField {
+                        name: "template".to_string(),
+                        field_type: "string".to_string(),
+                        required: true,
+                    },
+                    McpInputField {
+                        name: "output_mode".to_string(),
+                        field_type: "enum".to_string(),
+                        required: false,
+                    },
+                ],
+                output_modes: output_modes_for(),
+            },
+            "report-data" => McpToolSchema {
+                name: tool_id.tool_name().to_string(),
+                command_name: tool_id.command_name().to_string(),
+                input_fields: vec![
+                    McpInputField {
+                        name: "target_dir".to_string(),
+                        field_type: "path".to_string(),
+                        required: true,
+                    },
+                    McpInputField {
+                        name: "template_dir".to_string(),
+                        field_type: "path".to_string(),
+                        required: true,
+                    },
+                    McpInputField {
+                        name: "output_mode".to_string(),
+                        field_type: "enum".to_string(),
+                        required: false,
+                    },
+                ],
+                output_modes: output_modes_for(),
+            },
+            "risk-scores-sarif" => McpToolSchema {
+                name: tool_id.tool_name().to_string(),
+                command_name: tool_id.command_name().to_string(),
+                input_fields: vec![
+                    McpInputField {
+                        name: "risk_scores".to_string(),
+                        field_type: "path".to_string(),
+                        required: true,
+                    },
+                    McpInputField {
+                        name: "threats".to_string(),
+                        field_type: "path".to_string(),
+                        required: true,
+                    },
+                    McpInputField {
+                        name: "output_mode".to_string(),
+                        field_type: "enum".to_string(),
+                        required: false,
+                    },
+                ],
+                output_modes: output_modes_for(),
+            },
+            "threats-sarif" => McpToolSchema {
+                name: tool_id.tool_name().to_string(),
+                command_name: tool_id.command_name().to_string(),
+                input_fields: vec![
+                    McpInputField {
+                        name: "input".to_string(),
+                        field_type: "path".to_string(),
+                        required: true,
+                    },
+                    McpInputField {
+                        name: "output_mode".to_string(),
+                        field_type: "enum".to_string(),
+                        required: false,
+                    },
+                ],
+                output_modes: output_modes_for(),
+            },
+            other => panic!("unsupported MCP command for schema snapshot: {other}"),
+        })
+        .collect::<Vec<_>>();
+
+    McpToolSchemaSnapshot {
+        version: TOOL_SCHEMA_VERSION,
+        schemas,
+    }
+}
+
 pub fn render_contract_snapshot_json() -> String {
     serde_json::to_string_pretty(&build_contract_snapshot())
         .expect("canonical MCP snapshot should serialize")
+}
+
+pub fn render_tool_schema_snapshot_json() -> String {
+    serde_json::to_string_pretty(&build_tool_schema_snapshot())
+        .expect("canonical MCP schema snapshot should serialize")
 }
 
 pub fn contract_hash(commands: &[McpCommandContract]) -> String {
@@ -78,4 +220,8 @@ fn output_kind_label(kind: CommandOutputKind) -> &'static str {
         CommandOutputKind::ThreatsSarif => "threats-sarif",
         CommandOutputKind::RiskScoresSarif => "risk-scores-sarif",
     }
+}
+
+fn output_modes_for() -> Vec<String> {
+    vec!["in-band".to_string(), "artifact".to_string()]
 }

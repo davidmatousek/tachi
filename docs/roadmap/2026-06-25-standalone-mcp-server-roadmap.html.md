@@ -91,10 +91,12 @@ input/output schemas.
 
 **Status note**
 
-Stage 1 transport/tool registration has landed in `crates/tachi-mcp`. The
-current implementation already registers the analysis tools, supports stdio,
-and preserves the canonical artifact contract. The next tracked slice is
-`MCP-001.3.1` request correlation and cancellation.
+Stage 0 contract snapshotting and the Stage 1 transport/tool registration have
+landed in `crates/tachi-mcp`. The current implementation already registers the
+analysis tools, emits the schema metadata snapshot, supports stdio, and
+preserves the canonical artifact contract. The next tracked slices are the
+runtime-hardening cards under `MCP-001.3` and the release/docs integration
+cards under `MCP-001.4`.
 
 ### Stage 2 - Runtime control and security policy
 
