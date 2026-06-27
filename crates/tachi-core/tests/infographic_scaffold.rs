@@ -1,3 +1,4 @@
+use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -143,7 +144,7 @@ Prompt outro
 }
 
 fn unique_temp_dir() -> PathBuf {
-    let mut path = PathBuf::from("/private/tmp");
+    let mut path = env::temp_dir();
     path.push(format!(
         "tachi-rust-infographic-scaffold-{}-{}-{}",
         std::process::id(),

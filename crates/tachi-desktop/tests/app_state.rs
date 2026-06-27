@@ -1,3 +1,4 @@
+use std::env;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -12,8 +13,12 @@ use tachi_shell::commands::command_registry;
 
 static FIXTURE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
+fn test_temp_root() -> PathBuf {
+    fs::canonicalize(env::temp_dir()).expect("canonicalize temporary directory")
+}
+
 fn fixture_repo() -> PathBuf {
-    let root = PathBuf::from("/private/tmp").join(format!(
+    let root = test_temp_root().join(format!(
         "tachi-desktop-app-state-{}-{}",
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -34,7 +39,7 @@ fn write_executable_file(path: &PathBuf, content: &str) {
 }
 
 fn temp_fixture_dir(name: &str) -> PathBuf {
-    let root = PathBuf::from("/private/tmp").join(format!(
+    let root = test_temp_root().join(format!(
         "tachi-desktop-fixture-{}-{}",
         name,
         FIXTURE_COUNTER.fetch_add(1, Ordering::Relaxed)

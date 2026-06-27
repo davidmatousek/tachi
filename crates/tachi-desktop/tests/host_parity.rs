@@ -6,9 +6,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use pretty_assertions::assert_eq;
 use tachi_desktop::dispatch_desktop_command;
-use tachi_desktop::dispatch_desktop_command_with_progress;
 use tachi_desktop::dispatch_desktop_command_owned;
 use tachi_desktop::dispatch_desktop_command_with_noop_progress;
+use tachi_desktop::dispatch_desktop_command_with_progress;
 use tachi_desktop::registered_commands;
 use tachi_desktop::DesktopHost;
 use tachi_shell::commands::command_registry;
@@ -86,11 +86,8 @@ fn owned_and_noop_dispatch_helpers_route_to_shared_surface() {
         root.clone(),
         vec![String::from("--yes"), String::from("--dry-run")],
     );
-    let noop = dispatch_desktop_command_with_noop_progress(
-        "bootstrap",
-        &root,
-        &["--yes", "--dry-run"],
-    );
+    let noop =
+        dispatch_desktop_command_with_noop_progress("bootstrap", &root, &["--yes", "--dry-run"]);
 
     assert_eq!(owned.status, 0);
     assert_eq!(owned.stdout, "--bootstrap\n--yes\n--dry-run\n");
@@ -119,9 +116,11 @@ fn desktop_host_progress_method_uses_supplied_reporter() {
     );
 
     assert_eq!(output.status, 0);
-    assert!(events.lock().expect("events").iter().any(|event| {
-        event.command == "bootstrap" && event.message == "completed"
-    }));
+    assert!(events
+        .lock()
+        .expect("events")
+        .iter()
+        .any(|event| { event.command == "bootstrap" && event.message == "completed" }));
 }
 
 #[test]
