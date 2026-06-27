@@ -68,25 +68,36 @@ fn publish_gate_runs_scaffold_dependency_floor_audit() {
 }
 
 #[test]
-fn glib_dependabot_alert_is_reproducible_from_workspace_lockfile() {
+fn publish_gate_targets_the_active_desktop_host() {
+    let makefile_path = workspace_root().join("Makefile");
+    let makefile = fs::read_to_string(&makefile_path).expect("read Makefile");
+
+    assert!(
+        makefile.contains("cargo test -p tachi-desktop --all-targets"),
+        "release-gate must validate the active GTK-free desktop host"
+    );
+    assert!(
+        !makefile.contains("cargo test -p tachi-tauri"),
+        "release-gate must not target the retired tachi-tauri package"
+    );
+}
+
+#[test]
+fn glib_dependabot_alert_is_absent_from_workspace_lockfile() {
     let lockfile_path = workspace_root().join("Cargo.lock");
     let lockfile = fs::read_to_string(&lockfile_path).expect("read Cargo.lock");
 
     assert!(
-        lockfile.contains("name = \"tauri\""),
-        "Cargo.lock must retain the tauri desktop stack as the transitive source of the advisory"
+        !lockfile.contains("name = \"tauri\""),
+        "Cargo.lock must no longer retain the Tauri desktop stack in the GTK-free workspace"
     );
     assert!(
-        lockfile.contains("name = \"gtk\""),
-        "Cargo.lock must retain gtk as the immediate dependency that constrains glib"
+        !lockfile.contains("name = \"gtk\""),
+        "Cargo.lock must no longer retain gtk in the GTK-free workspace"
     );
     assert!(
-        lockfile.contains("name = \"glib\"\nversion = \"0.18.5\""),
-        "Cargo.lock must preserve the vulnerable glib 0.18.5 resolution until RT-00i.2.2 lands"
-    );
-    assert!(
-        lockfile.contains("name = \"gio\""),
-        "Cargo.lock must retain gio as part of the transitive path that resolves the alert"
+        !lockfile.contains("name = \"glib\"\nversion = \"0.18.5\""),
+        "Cargo.lock must not resolve the vulnerable glib 0.18.5 line after the desktop host migration"
     );
 }
 

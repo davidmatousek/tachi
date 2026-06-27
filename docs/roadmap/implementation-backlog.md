@@ -1,13 +1,16 @@
 # Implementation Backlog
 
-**Last Updated**: 2026-06-25
+**Last Updated**: 2026-06-26
 **Purpose**: navigation hub for the Beads-ready Rust/Tauri implementation backlog
 **Scope**: roadmap sequencing, issue-pack pointers, and task-template guidance
 
 ## Active Execution
 
+- Active desktop host: `crates/tachi-desktop`
 - [Beads issue mirror snapshot](./.beads/issues.jsonl)
 - [AISVS Dependabot remediation roadmap](./2026-06-23-aisvs-dependabot-remediation-roadmap.html.md)
+- [GTK-Free Desktop GUI Host roadmap](./2026-06-26-gtk-free-desktop-gui-host-roadmap.html.md)
+- [GTK-Free Desktop GUI Host issue cards](./2026-06-26-gtk-free-desktop-gui-host-issue-cards.md)
 - [Standalone MCP server roadmap](./2026-06-25-standalone-mcp-server-roadmap.html.md)
 - [Standalone MCP server issue cards](./2026-06-25-standalone-mcp-server-issue-cards.md)
 
@@ -34,11 +37,13 @@
 ## Active Security Track
 
 - [AISVS Dependabot remediation issue cards](./2026-06-23-aisvs-dependabot-remediation-issue-cards.md)
+- [GTK-Free Desktop GUI Host roadmap](./2026-06-26-gtk-free-desktop-gui-host-roadmap.html.md)
+- [GTK-Free Desktop GUI Host issue cards](./2026-06-26-gtk-free-desktop-gui-host-issue-cards.md)
 - Epic: `RT-00i` AISVS framework and Dependabot remediation
-- Feature issues: `RT-00i.1` typed AISVS control registry, `RT-00i.2` glib/tauri remediation, `RT-00i.3` AISVS C01-C04, `RT-00i.4` AISVS C09-C12, `RT-00i.5` AISVS C05-C08
+- Feature issues: `RT-00i.1` typed AISVS control registry, `RT-00i.2` GTK-free desktop host migration, `RT-00i.3` AISVS C01-C04, `RT-00i.4` AISVS C09-C12, `RT-00i.5` AISVS C05-C08
 - Feature issues: `RT-00i.6` CI and docs readiness for AISVS framework
 - Decision issues: `RT-00i.7` gtk/glib compatibility decision for Dependabot alert (closed decision note)
-- Task issues: `RT-00i.1.1` control registry, `RT-00i.1.2` sanitized errors, `RT-00i.1.3` Send+Sync invariants, `RT-00i.2.1` reproduce advisory proof, `RT-00i.2.2` fixed glib upgrade, `RT-00i.2.3` closure evidence, `RT-00i.2.4` future gtk/glib recheck, `RT-00i.6.1` docs and export sync
+- Task issues: `RT-00i.1.1` control registry, `RT-00i.1.2` sanitized errors, `RT-00i.1.3` Send+Sync invariants, `RT-00i.2.1` reproduce advisory proof, `RT-00i.2.2` GTK-free desktop host boundary, `RT-00i.2.3` closure evidence, `RT-00i.2.4` future workspace recheck, `RT-00i.6.1` docs and export sync
 
 ## Standalone MCP Track
 
@@ -55,6 +60,8 @@
 - [Adversarial Architecture and Test Quality Issue Cards](./2026-06-22-adversarial-architecture-test-quality-issue-cards.md)
 - [AISVS Dependabot remediation roadmap](./2026-06-23-aisvs-dependabot-remediation-roadmap.html.md)
 - [AISVS Dependabot remediation issue cards](./2026-06-23-aisvs-dependabot-remediation-issue-cards.md)
+- [GTK-Free Desktop GUI Host roadmap](./2026-06-26-gtk-free-desktop-gui-host-roadmap.html.md)
+- [GTK-Free Desktop GUI Host issue cards](./2026-06-26-gtk-free-desktop-gui-host-issue-cards.md)
 - [Rust/Tauri parity remediation roadmap](./2026-06-21-rust-tauri-parity-remediation-roadmap.html.md)
 - [Rust/Tauri parity issue cards](./2026-06-21-rust-tauri-parity-issue-cards.md)
 - [Standalone MCP Server Roadmap](./2026-06-25-standalone-mcp-server-roadmap.html.md)
@@ -107,7 +114,7 @@ has passed its exit criteria and validation matrix.
 |---|---|---|
 | Parser work | Unit tests plus integration fixtures | Parser module and malformed fixture set |
 | CLI and config work | Command-level tests plus config parsing tests | `tachi-cli` entrypoints |
-| Tauri work | Bridge parity tests plus desktop smoke checks | `src-tauri` command registration |
+| Desktop host work | Host-parity tests plus desktop smoke checks | `crates/tachi-desktop` command boundary |
 | Reporting work | Output-shape checks plus snapshot-style regression tests | `tachi-core` builders |
 | Performance work | Benchmark or criterion gate | Hot-path functions and regressions |
 | Docs work | Readability, consistency, and link checks | Roadmap and onboarding docs |
@@ -116,7 +123,7 @@ has passed its exit criteria and validation matrix.
 
 - Parity harness work must land before any bridge, output, or release-hardening
   slice.
-- Tauri command exposure must land before schema validation and desktop-only UX.
+- Desktop host exposure must land before schema validation and desktop-only UX.
 - Output goldens and parser regression tests must stabilize before release
   artifact work.
 - Release hardening must land before desktop-specific differentiators.

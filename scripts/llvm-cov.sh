@@ -61,7 +61,7 @@ LLVM_COV="$LLVM_BIN_DIR/llvm-cov"
 LLVM_PROFDATA="$LLVM_BIN_DIR/llvm-profdata"
 
 if [[ $# -eq 0 ]]; then
-  set -- --workspace --summary-only --ignore-filename-regex 'target/|tests/'
+  set -- --workspace --summary-only --fail-under-lines 85 --ignore-filename-regex 'target/|tests/'
 fi
 
 exec env LLVM_COV="$LLVM_COV" LLVM_PROFDATA="$LLVM_PROFDATA" cargo llvm-cov "$@"

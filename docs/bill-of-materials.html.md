@@ -1,19 +1,21 @@
 # Bill of Materials
 
 **Status**: Active publish inventory
-**Last Updated**: 2026-06-25
+**Last Updated**: 2026-06-26
 **Purpose**: enumerate the repository surfaces that are expected to ship, be
 reviewed, or be validated before publishing `tachi-rust` to remote origin
 **Scope**: source code, docs, tests, CI, security posture, and release gates
 
 ## Publish Model
 
-`tachi-rust` publishes as a Rust workspace with a thin Tauri desktop shell and
+`tachi-rust` publishes as a Rust workspace with `crates/tachi-desktop` as the
+active GTK-free desktop host, a transitional Tauri compatibility adapter, and
 documentation-first release controls. The public surface is intentionally broad
 because the repository ships:
 
 - Rust workspace code and shared command logic
-- Tauri desktop bridge code
+- GTK-free desktop host code
+- Transitional Tauri compatibility code
 - CLI entrypoints
 - docs, roadmap, and release policy artifacts
 - security and privacy posture documentation
@@ -43,7 +45,7 @@ with the shipped release workflow before publication.
 | `SECURITY.md` | Security policy | Publishable | Private vulnerability reporting only; keep public disclosure guidance current. |
 | `CHANGELOG.md` | Release history | Publishable | Redaction-safe release notes only. |
 | `docs/bill-of-materials.html.md` | Publish inventory | Publishable | Canonical inventory of publication surfaces and validation gates. |
-| `docs/publish-readiness-checklist.html.md` | Publish readiness checklist | Publishable | Required pre-push gate for security, privacy, docs, CI, release hygiene, and public-doc alignment. |
+| `docs/publish-readiness-checklist.html.md` | Publish readiness checklist | Publishable | Required pre-push gate for security, privacy, docs, CI, release hygiene, and public-doc alignment. Must describe `crates/tachi-desktop` as the active desktop host. |
 | `docs/standards/PUBLISHING_SECURITY.md` | Security and privacy gate | Publishable | Source of truth for public-push safety rules, disclosure boundaries, and release-note hygiene. |
 | `docs/standards/PRECOMMIT_HOOKS.md` | Secret-scanning hook guide | Publishable with review | Must not imply weaker scanning than the current gate. |
 
@@ -51,14 +53,15 @@ with the shipped release workflow before publication.
 
 | Path | Role | Publish status | Notes |
 |---|---|---|---|
-| `Cargo.toml` | Rust workspace manifest | Publishable | Canonical workspace root for `tachi-core`, `tachi-cli`, `tachi-mcp`, `tachi-shell`, and `src-tauri`. |
+| `Cargo.toml` | Rust workspace manifest | Publishable | Canonical workspace root for `tachi-core`, `tachi-cli`, `tachi-mcp`, `tachi-shell`, and `crates/tachi-desktop`; `src-tauri` is transitional-only. |
 | `README.md` | Public repository landing page | Publishable | Must stay aligned with the actual build, auditor workflow, and usage path. |
 | `LICENSE` | License text | Publishable | Required public artifact. |
 | `SECURITY.md` | Vulnerability disclosure policy | Publishable | Public security policy and private disclosure channel. |
 | `CHANGELOG.md` | Release history | Publishable | Keep release notes redaction-safe. |
 | `docs/` | Public documentation | Publishable | Long-form docs, roadmap, standards, and review artifacts. |
 | `crates/` | Workspace library and binary crates | Publishable | Source of the Rust implementation. |
-| `src-tauri/` | Desktop bridge shell | Publishable | Thin Tauri layer with explicit config and least-privilege main-window capability. |
+| `crates/tachi-desktop/` | GTK-free desktop host boundary | Publishable | Active desktop host facade over the shared shell command surface without GTK/Wry transitive dependencies. |
+| `src-tauri/` | Transitional compatibility adapter | Publishable with review | Legacy Tauri layer kept only while parity is proven; not part of the GTK-free workspace host. |
 | `.github/` | CI and release workflows | Publishable | Public automation surface. |
 | `.claude/` | Agent configuration and runtime rules | Publishable with review | Must avoid secrets and private credentials. |
 | `.aod/` | AOD support files | Publishable with review | Contains governance and hook logic; verify no private data. |
@@ -79,12 +82,13 @@ with the shipped release workflow before publication.
 | `crates/tachi-core/` | Parsers, scoring, reporting, taxonomy, SARIF, coverage helpers | Parser hardening, output shape stability, no panic-based user-facing parsing. |
 | `crates/tachi-cli/` | CLI entrypoints and argument-forwarding binaries | Flag correctness, help text, command parity, no duplicated business logic. |
 | `crates/tachi-mcp/` | Standalone MCP transport and contract snapshot layer | Canonical command contract reuse, stdio startup path, registered analysis tools, request-context hardening, and artifact-emitting tool dispatch. |
-| `crates/tachi-shell/` | Shared command facade and bridge adapter | Shared dispatch, shared errors, identical CLI/Tauri semantics. |
+| `crates/tachi-shell/` | Shared command facade and bridge adapter | Shared dispatch, shared errors, identical CLI/desktop semantics. |
 | `crates/tachi-shell/src/commands/script_executor.rs` | Script execution boundary | Process spawning, timeout, cancellation, and output capture stay behind an injected executor seam. |
 | `crates/tachi-core/src/infographic/prompt_scaffold.rs` | Prompt scaffold boundary | Template loading and prompt extraction stay isolated from payload rendering with store-injected tests. |
 | `crates/tachi-core/src/infographic/payload.rs` | Infographic payload boundary | Filesystem loading and payload orchestration stay separated from infographic parsing helpers. |
 | `crates/tachi-core/src/facade.rs` | Stable core facade | Downstream crates should import reporting and scoring helpers through root exports instead of module internals. |
-| `src-tauri/` | Thin desktop shell | Registration-only bridge, explicit `tauri.conf.json`, least-privilege `capabilities/main.json`, no business logic drift. |
+| `crates/tachi-desktop/` | Desktop host boundary | Registration-only host facade over the shared shell command surface, with no GTK/Wry dependency line. |
+| `src-tauri/` | Transitional compatibility shell | Legacy registration-only bridge retained out of workspace while parity is proven. |
 | `schemas/` | Finding schemas and taxonomy catalogs | Schema compatibility, crosswalk stability, fixture coverage. |
 
 ### Transitional helper surface
@@ -184,7 +188,7 @@ The repository policy for these surfaces is:
 | Secret scan | `pre-commit run --all-files` or `gitleaks` / CI workflow | No secrets or private data leak into the publish set, including examples, fixtures, logs, and generated docs. |
 | Scaffold dependency gate | `make scaffold-dependency-gate` | Next.js/Supabase scaffold dependency ranges exclude currently known vulnerable `next` and `vitest` floors. |
 | Docs gate | `README.md`, `docs/platform-compatibility.md`, `docs/guides/DEVELOPER_GUIDE_TACHI.md`, `SECURITY.md`, `CHANGELOG.md`, and public docs cross-links | Public docs match the shipped behavior and the disclosure policy. |
-| AISVS security gate | `cargo test -p tachi-core --test aisvs_registry`, `cargo test -p tachi-core --test aisvs_controls`, `cargo test -p tachi-core --test scaffold_dependency_floors`, `cargo clippy --workspace --all-features --all-targets -- -D warnings` | AISVS C01-C12 remain typed, test-backed, and fail-closed while the live `glib` advisory proof stays reproducible in Beads, the registry exposes stable per-control validation commands, and the upgrade slice remains blocked on upstream `gtk` compatibility. |
+| AISVS security gate | `cargo test -p tachi-core --test aisvs_registry`, `cargo test -p tachi-core --test aisvs_controls`, `cargo test -p tachi-core --test scaffold_dependency_floors`, `cargo clippy --workspace --all-features --all-targets -- -D warnings` | AISVS C01-C12 remain typed, test-backed, and fail-closed while the live `glib` advisory proof stays reproducible in Beads, the registry exposes stable per-control validation commands, and the desktop workspace stays on the GTK-free host path. |
 | AISVS publish-readiness follow-up | `RT-00i.6` | The Phase 5 docs/release-gate follow-up stays visible in the BOM and issue cards so publish-readiness work keeps pace with each control slice. |
 | Docs/version sweep | `make docs-version-gate` + `make docs-archive-version-gate` | Maintained docs stay current; archived docs and examples retain only intentional historical references. |
 | Publish gate | `make publish-gate` | The release candidate passes the full local publish-readiness suite before remote publication. |
@@ -217,7 +221,7 @@ privacy, doc accuracy, and release readiness before `main` is pushed to
 - [ ] The active AISVS Beads cards are `docs/roadmap/2026-06-23-aisvs-dependabot-remediation-issue-cards.md`.
 - [ ] The active docs-sweep roadmap is `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-roadmap.html.md`.
 - [ ] The active docs-sweep Beads cards are `docs/roadmap/2026-06-21-archived-docs-workflow-version-sweep-issue-cards.md`.
-- [ ] The live `glib` Dependabot alert proof is captured in `crates/tachi-core/tests/scaffold_dependency_floors.rs`, and `RT-00i.2` remains open until the desktop stack can resolve a fixed `glib` line.
+- [ ] The live `glib` Dependabot alert proof is captured in `crates/tachi-core/tests/scaffold_dependency_floors.rs`, and `RT-00i.2` closes only when the GTK-free workspace no longer resolves `glib 0.18.5`.
 - [ ] Archived roadmap docs are clearly marked as historical only.
 - [ ] `make docs-version-gate` passes.
 - [ ] `git status --short --branch` has no unexpected untracked or dirty state.

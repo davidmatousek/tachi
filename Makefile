@@ -75,8 +75,8 @@ docs-archive-version-gate: ## Validate archived docs workflow-version hygiene
 scaffold-dependency-gate: ## Validate scaffold dependency floors against known Dependabot advisories
 	@cargo test -p tachi-core --test scaffold_dependency_floors -- --nocapture
 
-release-gate: ## Validate release artifact parity and checksum matrix
-	@cargo test -p tachi-tauri --test release_artifacts -- --nocapture
+release-gate: ## Validate active desktop host release readiness
+	@cargo test -p tachi-desktop --all-targets -- --nocapture
 
 fuzz-mutation-gate: ## Validate documented fuzz/mutation lane and baseline report artifact
 	@test -f docs/testing/fuzz-mutation-audit.md

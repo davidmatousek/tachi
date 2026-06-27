@@ -22,7 +22,8 @@ jobs:
           - package: tachi-core
           - package: tachi-mcp
           - package: tachi-cli
-          - package: tachi-tauri
+          - package: tachi-shell
+          - package: tachi-desktop
     env:
       CARGO_TERM_COLOR: always
     steps:
@@ -38,8 +39,7 @@ jobs:
       - name: Install workspace test tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ripgrep libglib2.0-dev libgtk-3-dev libsoup-3.0-dev \
-            libwebkit2gtk-4.1-dev pkg-config
+          sudo apt-get install -y ripgrep pkg-config
 
       - name: Run full workspace test suite
         run: cargo test -p ${{ matrix.package }} --all-targets
@@ -73,8 +73,7 @@ jobs:
       - name: Install workspace test tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ripgrep libglib2.0-dev libgtk-3-dev libsoup-3.0-dev \
-            libwebkit2gtk-4.1-dev pkg-config
+          sudo apt-get install -y ripgrep pkg-config
 
       - name: Run shell test suite slice
         run: ${{ matrix.command }}

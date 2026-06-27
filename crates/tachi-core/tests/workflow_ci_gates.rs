@@ -31,11 +31,8 @@ fn workspace_cargo_test_pr_gate_runs_full_workspace_suite() {
         "tachi-mcp",
         "tachi-shell",
         "tachi-cli",
-        "tachi-tauri",
+        "tachi-desktop",
     ] {
-        if package == "tachi-shell" {
-            continue;
-        }
         assert!(
             text.contains(&format!("- package: {package}")),
             "cargo-test job must include {package} in the matrix"
@@ -66,16 +63,8 @@ fn workspace_cargo_test_pr_gate_runs_full_workspace_suite() {
         );
     }
     assert!(
-        text.contains("sudo apt-get install -y ripgrep"),
-        "cargo-test job must install ripgrep because workspace tests invoke rg-backed scripts"
-    );
-    assert!(
-        text.contains("libglib2.0-dev")
-            && text.contains("libgtk-3-dev")
-            && text.contains("libsoup-3.0-dev")
-            && text.contains("libwebkit2gtk-4.1-dev")
-            && text.contains("pkg-config"),
-        "cargo-test job must install Linux GUI deps because workspace tests invoke rg-backed scripts"
+        text.contains("sudo apt-get install -y ripgrep pkg-config"),
+        "cargo-test job must install the lightweight tools required by the GTK-free workspace"
     );
 }
 

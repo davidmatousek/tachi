@@ -5,5 +5,5 @@ members = [
   "crates/tachi-cli",
   "crates/tachi-mcp",
   "crates/tachi-shell",
-  "src-tauri",
+  "crates/tachi-desktop",
 ]

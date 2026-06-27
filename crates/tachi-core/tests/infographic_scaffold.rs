@@ -1,7 +1,10 @@
 use std::fs;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use pretty_assertions::assert_eq;
+
+static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 struct FakeTemplateStore<'a> {
     template: &'a str,
@@ -140,14 +143,15 @@ Prompt outro
 }
 
 fn unique_temp_dir() -> PathBuf {
-    let mut path = std::env::temp_dir();
+    let mut path = PathBuf::from("/private/tmp");
     path.push(format!(
-        "tachi-rust-infographic-scaffold-{}-{}",
+        "tachi-rust-infographic-scaffold-{}-{}-{}",
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("clock")
-            .as_nanos()
+            .as_nanos(),
+        TEMP_COUNTER.fetch_add(1, Ordering::Relaxed)
     ));
     path
 }

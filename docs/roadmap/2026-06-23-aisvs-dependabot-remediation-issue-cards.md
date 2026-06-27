@@ -25,26 +25,28 @@ with the exact commands named in the card.
 
 ## Phase 0 - Live Dependabot containment
 
-### RT-00i.2 - Remediate glib/tauri transitive advisory
+### RT-00i.2 - Replace workspace Tauri host with GTK-free boundary
 
 - `Epic`: RT-00i AISVS framework and Dependabot remediation
 - `Feature`: Phase 0 live Dependabot containment
 - `Capability`: supply-chain remediation for the open `glib` advisory
-- `Task`: reproduce the alert, upgrade the transitive desktop stack to a fixed
-  `glib` line, and close the live advisory without regressing the shell
-- `Function`: `src-tauri/Cargo.toml`, `Cargo.lock`,
+- `Task`: reproduce the alert, move the workspace desktop surface to a GTK-free
+  host boundary, and close the live advisory without regressing the shared
+  shell command engine
+- `Function`: `Cargo.toml`, `crates/tachi-desktop/`, `Cargo.lock`,
   `crates/tachi-core/tests/scaffold_dependency_floors.rs`,
-  `src-tauri/tests/*`, `Makefile scaffold-dependency-gate`
-- `Dependencies`: live Dependabot alert 15, current `tauri 2.6.3` dependency
-  line
+  `src-tauri/` compatibility adapter, `Makefile scaffold-dependency-gate`
+- `Dependencies`: live Dependabot alert 15, workspace member split,
+  transitional `src-tauri` adapter
 - `Acceptance criteria`:
   - The vulnerable `glib 0.18.5` resolution no longer appears in the lockfile.
   - The Dependabot alert is closed or documented as an explicit non-blocking exception.
-  - The desktop and workspace tests stay green after the dependency refresh.
-  - The fix is conventional-commit sized and preserves publish-readiness gates.
-- `Validation`: `cargo test -p tachi-tauri`, `cargo test --workspace --all-targets`,
+  - The workspace no longer resolves GTK/Wry through the primary desktop host.
+  - The desktop and workspace tests stay green after the host split.
+  - The migration is conventional-commit sized and preserves publish-readiness gates.
+- `Validation`: `cargo test --workspace --all-targets`, `cargo test -p tachi-desktop`,
   `make scaffold-dependency-gate`
-- `Implementation owner`: `src-tauri`
+- `Implementation owner`: `crates/tachi-desktop`
 - `Stage label`: Phase 0
 - `Next test seam`: `Cargo.lock`
 - `Notes`: This slice contains the live open alert and should land first.
@@ -57,10 +59,11 @@ with the exact commands named in the card.
     path is documented; and the proof is repeatable in CI.
   - Status: closed with `crates/tachi-core/tests/scaffold_dependency_floors.rs`
     coverage and a recorded `cargo tree -i glib --locked --target all` path.
-- `RT-00i.2.2` Upgrade desktop stack to fixed glib release
+- `RT-00i.2.2` Introduce GTK-free desktop host boundary
   - Acceptance: `Cargo.lock` no longer resolves `glib 0.18.5`; the workspace
-    and desktop tests stay green; and any upstream incompatibility is recorded
-    as an explicit blocker or decision note.
+    no longer includes the GTK/Wry host stack; the new host crate routes the
+    shared shell commands directly; and any Tauri compatibility concerns are
+    recorded as an explicit transitional note.
 - `RT-00i.7` Record gtk/glib compatibility decision for Dependabot alert
   - Acceptance: the upstream compatibility decision captures the current
     `tauri -> gtk -> glib 0.18.5` path, the failed `glib 0.20.0` update, and
@@ -73,11 +76,11 @@ with the exact commands named in the card.
     release-readiness docs reflect the current state; and the Beads export
     matches the tracker state.
   - Dependencies: `RT-00i.2.2`
-- `RT-00i.2.4` Recheck gtk/glib compatibility when upstream release lands
-  - Acceptance: a follow-up probe records whether the desktop stack can now
-    resolve glib 0.20.0 or later; the lockfile and dependency tree are
-    re-audited; and the alert is either closed or kept open with refreshed
-    evidence.
+- `RT-00i.2.4` Recheck workspace desktop compatibility after host migration
+  - Acceptance: a follow-up probe records whether the GTK-free workspace still
+    remains free of `glib 0.18.5`; the lockfile and dependency tree are
+    re-audited; and any future desktop adapter changes are tracked separately
+    from the closed advisory.
   - Dependencies: `RT-00i.7`
 
 ## Phase 1 - AISVS framework foundation

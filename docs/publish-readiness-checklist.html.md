@@ -1,11 +1,12 @@
 # Publish Readiness Checklist
 
 **Status**: Active release gate
-**Last Updated**: 2026-06-25
+**Last Updated**: 2026-06-26
 **Purpose**: confirm `tachi-rust` is ready to publish to `origin/main`
 **Scope**: security, privacy, docs, tests, coverage, CI, and release hygiene
 
-Use this checklist before publishing to GitHub or cutting a release.
+Use this checklist before publishing to GitHub or cutting a release. The
+active desktop host is `crates/tachi-desktop`; `src-tauri` is transitional-only.
 
 ## 0. Canonical publish sequence
 
@@ -126,8 +127,8 @@ Use this checklist before publishing to GitHub or cutting a release.
       closed AQ work retained as historical context.
 - [ ] The live `glib` Dependabot alert proof is captured in
       `crates/tachi-core/tests/scaffold_dependency_floors.rs`, and
-      `RT-00i.2` remains open until the upstream desktop stack can resolve a
-      fixed `glib` line.
+      `RT-00i.2` closes only when the GTK-free workspace no longer resolves
+      `glib 0.18.5`.
 - [ ] The AISVS registry exposes stable per-control validation commands, and
       the docs reference the registry-level contract instead of only the
       individual test names.
@@ -179,7 +180,8 @@ Use this checklist before publishing to GitHub or cutting a release.
       before any release promotion.
 - [ ] `src-tauri/tauri.conf.json` and `src-tauri/capabilities/main.json`
       remain least-privilege and do not grant filesystem or shell permissions
-      without the corresponding AQ-022/AQ-023 policy tests.
+      without the corresponding AQ-022/AQ-023 policy tests. These files are
+      transitional only and are not part of the GTK-free workspace member set.
 - [ ] The scaffold dependency-floor audit passes via `make scaffold-dependency-gate`
       and is included in `make publish-gate`.
 - [ ] Any release workflow required for the branch has succeeded or is queued
