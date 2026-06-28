@@ -111,7 +111,7 @@ Expect the run to complete in under a minute for typical adopter projects (100-5
 |---|---|---|
 | 0 | Success (or dry-run completed) | Nothing — you're done |
 | 1 | Generic failure | Read the error message; re-run with `--dry-run` to investigate |
-| 2 | Lock contention | Another `/aod.update` is running, or a stale lock could not be cleared. Wait and retry, or remove `.aod/update.lock` manually if stale |
+| 2 | Lock contention | Another `/aod.update` is **actively** running (holder PID alive). Wait and retry. A lock left by a crashed/killed run (dead PID) is reclaimed automatically on the next run — no manual `rm` needed. |
 | 3 | Missing prerequisites | `.aod/aod-kit-version` or `.aod/personalization.env` absent. See the [Bootstrap (pre-F129 adopters)](#bootstrap-pre-f129-adopters) section |
 | 4 | Cross-filesystem staging | Staging dir is on a different filesystem than project root. Override with `AOD_UPDATE_TMP_DIR=<path-on-same-fs>` |
 | 5 | Manifest coverage violation | Upstream has an uncategorized file. stderr lists each uncategorized path under `[aod] ERROR: manifest coverage violation — N upstream file(s) not categorized:` — this is the restored F132 diagnostic, not a new failure. File a bug report against AOD-kit upstream with the listed paths |
@@ -127,11 +127,11 @@ Expect the run to complete in under a minute for typical adopter projects (100-5
 
 - **Zero user-owned file writes**: files under `docs/product/**`, `docs/architecture/**`, `brands/**`, `.aod/memory/**`, `specs/**`, and `roadmap.md` / `okrs.md` / `CHANGELOG.md` are protected by a hardcoded guard list embedded directly in `scripts/update.sh`. Even a malicious or buggy upstream manifest cannot override this — the script halts with exit 6 if it tries.
 - **Atomic version pin**: `.aod/aod-kit-version` is written last, via temp + `mv` on the same filesystem. Any mid-run failure leaves the pin either pre-update or post-update — never partial.
-- **Lock contention safety**: primary concurrency path uses PID + nonce + timestamp (works without `flock`, which is absent on macOS). Nonce re-verify before lock removal prevents zombie-PID-reuse from deleting another runner's lock. Liveness probe (`kill -0`) + >1h staleness window handles crash recovery.
+- **Lock contention safety**: primary concurrency path uses PID + nonce + timestamp (works without `flock`, which is absent on macOS). Nonce re-verify before lock removal prevents zombie-PID-reuse from deleting another runner's lock. A live holder always wins (exit 2); a lock whose holder PID is dead is reclaimed automatically on the next run, so a SIGKILL'd run never leaves you stuck with a manual `rm`.
 - **No symlinks**: neither the fetched upstream tree nor the staged tree may contain symlinks. Rejected at validate phase.
 - **No path traversal**: `..`, `~`, and absolute paths are rejected in manifest entries at parse time.
 - **Retag detection**: upstream tag SHA is recorded in `.aod/aod-kit-version`. If the resolved SHA changes, the run halts (supply-chain defense against adversarial retagging) unless `--force-retag` is passed.
-- **Staging preserved on failure**: `.aod/update-tmp/<uuid>/` is kept for inspection when any phase after fetch fails. Clean it manually after you've investigated.
+- **Staging preserved on failure, auto-reaped later**: `.aod/update-tmp/<uuid>/` is kept for inspection when any phase after fetch fails (or when a SIGKILL leaves it behind). You don't need to clean it manually — a later run's startup GC sweep reaps stale staging dirs (older than 7 days, or superseded by a newer failure), keeping the directory bounded. The most recent failure is always kept for debugging.
 - **Fail-safe automation**: non-TTY stdin or `CI` env set defaults to `--dry-run`. You cannot accidentally write from a cron job or piped script.
 
 ---
@@ -330,7 +330,7 @@ make update --dry-run              # Preview the first upstream update without w
 |---|---|
 | "Missing .aod/aod-kit-version" | You're a pre-mechanism adopter. See the [Bootstrap (pre-F129 adopters)](#bootstrap-pre-f129-adopters) section for the one-command on-ramp |
 | "Cross-filesystem staging" (exit 4) | Set `AOD_UPDATE_TMP_DIR=<path-on-same-fs-as-project-root>` and retry |
-| "Lock contention" (exit 2) | Another run is active, or a stale lock exists. Check `cat .aod/update.lock` for holder PID; remove the lock if stale |
+| "Lock contention" (exit 2) | Another run is **actively** running. Check `cat .aod/update.lock` for the holder PID and confirm it's alive (`ps -p <pid>`). A dead-PID lock self-heals on the next run; only remove `.aod/update.lock` by hand if a live holder is genuinely stuck |
 | "Manifest coverage violation" (exit 5) | Expected adopter-visible diagnostic restored by Feature 132 (Issue #132, PR #152). stderr header is `[aod] ERROR: manifest coverage violation — N upstream file(s) not categorized:` followed by a hyphen-prefixed list. **This is not a new failure** — it is the safety net becoming visible. Copy the listed paths into a bug report against AOD-kit upstream |
 | "Guard-list violation" (exit 6) | Upstream is trying to write a user-owned path. Inspect the manifest, report to AOD-kit upstream, retry once resolved |
 | "Retag detected" (exit 7) | Upstream tag SHA changed. Investigate first (`git log` on upstream); retry with `--force-retag` if benign |
