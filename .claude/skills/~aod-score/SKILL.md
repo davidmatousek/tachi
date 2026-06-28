@@ -176,7 +176,7 @@ Date updated: {YYYY-MM-DD}
 | Score Range | Priority | Action |
 |-------------|----------|--------|
 | 25-30 | P0 (Critical) | Fast-track to development |
-| 18-24 | P1 (High) | Queue for next sprint |
+| 18-24 | P1 (High) | Queue for next loop |
 | 12-17 | P2 (Medium) | Consider when capacity allows |
 | < 12 | Deferred | Auto-defer; requires PM override via `/aod.validate` |
 

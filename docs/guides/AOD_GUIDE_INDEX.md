@@ -10,8 +10,8 @@ Terms used on this page and across the AOD docs. Skim this once — the modes ta
 
 | Term | Meaning in AOD |
 |---|---|
-| **Sprint** | One feature taken through the six-stage lifecycle (Discover → Define → Plan → Build → Deliver → Document). A single unit of delivery. |
-| **Epic** | A multi-sprint effort. Typically 6-10 related features sequenced by `/aod.kickstart` (into a consumer guide) and then executed as a batch via `/aod.blueprint` + `/aod.orchestrate`. |
+| **Loop** | One feature taken through the six-stage lifecycle (Discover → Define → Plan → Build → Deliver → Document). A single unit of delivery, one full revolution of the lifecycle gated end to end. |
+| **Epic** | A multi-loop effort. Typically 6-10 related features sequenced by `/aod.kickstart` (into a consumer guide) and then executed as a batch via `/aod.blueprint` + `/aod.orchestrate`. |
 | **Consumer guide** | The markdown output of `/aod.kickstart` — a dependency-ordered backlog of seed features with user stories, acceptance criteria, and interface contracts. Input to `/aod.blueprint`. |
 | **Blueprint** | ICE-scored GitHub Issues generated from a consumer guide. The structured backlog that `/aod.orchestrate` consumes. |
 | **Wave** | A group of GitHub Issues `/aod.orchestrate` runs in parallel. Grouped by priority tier (P0, P1, P2); waves execute sequentially but issues within a wave run concurrently. |
@@ -32,7 +32,7 @@ Eight modes organized by intent.
 
 | Mode | Entry | Read |
 |---|---|---|
-| Classic sprint — human-led, full Triad governance | `/aod.discover` → `/aod.define` → `/aod.plan` → `/aod.build` → `/aod.deliver` → `/aod.document` | [AOD_LIFECYCLE.md](AOD_LIFECYCLE.md) |
+| Classic loop — human-led, full Triad governance | `/aod.discover` → `/aod.define` → `/aod.plan` → `/aod.build` → `/aod.deliver` → `/aod.document` | [AOD_LIFECYCLE.md](AOD_LIFECYCLE.md) |
 | Full automated lifecycle — chains stages 1-5 with session-resilient state | `/aod.run` | [AOD_LIFECYCLE.md](AOD_LIFECYCLE.md) + [`aod.run.md`](../../.claude/commands/aod.run.md) |
 | Bug fix — diagnose, fix, test, deliver, document _(planned, not yet shipped)_ | `/aod.bugfix` | TBD |
 
@@ -41,8 +41,8 @@ Eight modes organized by intent.
 | Mode | Entry | Read |
 |---|---|---|
 | POC kickstart — turn a raw idea into a sequenced consumer guide with seed features | `/aod.kickstart` | [AOD_KICKSTART.md](AOD_KICKSTART.md) |
-| Multi-sprint epic (generate backlog) — convert a consumer guide into ICE-scored GitHub Issues | `/aod.blueprint` | [`aod.blueprint.md`](../../.claude/commands/aod.blueprint.md) |
-| Multi-sprint epic (execute autonomously) — run the backlog in P0/P1/P2 parallel waves | `/aod.orchestrate` | [`aod.orchestrate.md`](../../.claude/commands/aod.orchestrate.md) |
+| Multi-loop epic (generate backlog) — convert a consumer guide into ICE-scored GitHub Issues | `/aod.blueprint` | [`aod.blueprint.md`](../../.claude/commands/aod.blueprint.md) |
+| Multi-loop epic (execute autonomously) — run the backlog in P0/P1/P2 parallel waves | `/aod.orchestrate` | [`aod.orchestrate.md`](../../.claude/commands/aod.orchestrate.md) |
 
 ### Setup (one-time, post-init)
 

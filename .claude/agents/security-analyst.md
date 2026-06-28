@@ -160,7 +160,7 @@ All security reviews must:
 - **Impact**: [Description]
 - **Fix**: [Specific remediation steps]
 
-### High Priority (Fix This Sprint)
+### High Priority (Fix This Loop)
 - [Findings with remediation]
 
 ### Dependencies & CVEs
