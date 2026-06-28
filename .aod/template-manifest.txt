@@ -223,6 +223,7 @@ owned|.gitattributes
 # operational rule files — adopters extend with release procedures, downstream-
 # only commands, incident learnings; /aod.update must leave them intact).
 
+personalized|.claude/rules/code-economy.md
 personalized|.claude/rules/context-loading.md
 personalized|.claude/rules/deployment.md
 personalized|.claude/rules/design-context-loader.md

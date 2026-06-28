@@ -75,7 +75,18 @@ Parse optional flags from `$ARGUMENTS`. Flags can appear anywhere in the argumen
    - Set `require_tests = false`
    - Continue to Step 0g with `$ARGUMENTS` unchanged
 
-**Step 0g: Pre-Flight Validation (Session Resume)**
+**Step 0g: Parse --no-economy**
+
+1. If `$ARGUMENTS` contains `--no-economy`:
+   - Set `skip_economy = true`
+   - Strip `--no-economy` from `$ARGUMENTS` (trim extra whitespace)
+   - Continue to Step 0h with remaining arguments
+
+2. If `$ARGUMENTS` does NOT contain `--no-economy`:
+   - Set `skip_economy = false`
+   - Continue to Step 0h with `$ARGUMENTS` unchanged
+
+**Step 0h: Pre-Flight Validation (Session Resume)**
 
 Before proceeding, check for uncommitted work and handoff prerequisites:
 
@@ -95,7 +106,7 @@ Before proceeding, check for uncommitted work and handoff prerequisites:
 
 Executes feature implementation with Architect checkpoint reviews at priority boundaries.
 
-**Flow**: Validate tasks → Check checklists → Load context → Setup project → Execute waves with parallel agents → Checkpoint reviews → Final validation → Design quality gate → Security scan → Report completion
+**Flow**: Validate tasks → Check checklists → Load context → Setup project → Execute waves with parallel agents → Checkpoint reviews → Final validation → Design quality gate → Security scan → Economy gate → Report completion
 
 **Key Feature**: Architect reviews at P0->P1->P2 boundaries for governed quality gates.
 
@@ -388,7 +399,7 @@ For each wave:
 
    **When stopping** (only when `orchestrated == false`): Run `/continue` to generate a NEXT-SESSION.md handoff file.
 
-   **Re-ground before output**: Re-read the template below exactly. Do not paraphrase, do not substitute final-completion commentary (e.g., "IMPLEMENTATION COMPLETE", "READY FOR DEPLOYMENT", "structural complete"), and do not add status qualifiers. Those strings are reserved for Step 8 (true final completion) and MUST NOT appear when stopping at the wave ceiling — their presence would misrepresent pending work as finished.
+   **Re-ground before output**: Re-read the template below exactly. Do not paraphrase, do not substitute final-completion commentary (e.g., "IMPLEMENTATION COMPLETE", "READY FOR DEPLOYMENT", "structural complete"), and do not add status qualifiers. Those strings are reserved for Step 9 (true final completion) and MUST NOT appear when stopping at the wave ceiling — their presence would misrepresent pending work as finished.
 
    Then display:
    ```
@@ -525,9 +536,48 @@ The skill handles all analysis steps internally (file detection, SAST, SCA, seve
    - If Skip: record security_status = "Error — skipped ({error_message})"; proceed to Step 8
    - If Abort: stop execution
 
-## Step 8: Report Completion (MANDATORY — continue immediately after Step 7)
+## Step 8: Economy Gate (Last Wave Only)
 
-**IMPORTANT**: After Step 7 completes (whether scan passed, was acknowledged, or was skipped), you MUST immediately proceed to this step. Do NOT stop or wait for user input between Steps 7 and 8.
+This step runs ONLY after Step 7 (Security Scan) completes. It evaluates the code generated on the feature branch for **over-build** — reaching for net-new code where reuse, the standard library, a native feature, or an already-installed dependency would do — against the laziness ladder in `.claude/rules/code-economy.md`. It is structurally parallel to Step 6 (Design Quality Gate) and Step 7 (Security Scan): diff-scoped, judgment-based, advisory, and skippable.
+
+### 8a: Check Skip Conditions
+
+1. If `skip_economy` is true (from Step 0g):
+   - Write `specs/{NNN}-*/economy-check.md` with content: `Economy Gate: Skipped (--no-economy)` + current timestamp
+   - Record: economy_status = "Skipped (--no-economy)"
+   - Proceed to Step 9
+
+2. Compute the changed-file set via `git diff --name-only main...HEAD` (diff-scoped — **NEVER** repo-wide). Select **code files** from it by excluding this pinned, deterministic set (so the trigger is reproducible, not heuristic):
+   - **Docs**: `*.md`, `*.mdx`, `*.txt`, `*.rst`
+   - **AOD workspace + specs**: anything under `.aod/` or `specs/`
+   - **Config**: `*.json`, `*.yaml`, `*.yml`, `*.toml`, `*.ini`, `*.cfg`, `*.conf`, and dotfiles (`.*rc`, `.env*`, `.gitignore`, `.editorconfig`)
+   - **Lockfiles**: `*.lock`, `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`, `Cargo.lock`, `Gemfile.lock`
+
+   A file is a **code file** if it appears in the diff and matches none of the exclusions above (trigger by content/role, not a fixed extension allowlist — the ladder is language-agnostic).
+   - If no code files remain: Record economy_status = "Skipped (no code files changed)"; proceed to Step 9. (Expected on template-only changes, where code lives under the excluded `.aod/` path — parallels the Step-7 SAST zero-file behavior.)
+
+### 8b: Judgment-Based Verdict
+
+For the selected code files, obtain an **over-build verdict by judgment** — NOT by grep and NOT a hard metric. Mirror Step 7's sub-agent delegation model, but use a focused `code-reviewer` dispatch (or inline judgment for a trivially small diff); do **not** author a new skill.
+
+- Dispatch a `code-reviewer` sub-agent scoped to the changed code files, instructing it to apply its **over-engineering** and **carve-out-survival** checks (its Code Quality Review step, which references `.claude/rules/code-economy.md`) and return an advisory verdict: which files reach for net-new code where a lower ladder rung (reuse / stdlib / native / installed dependency) would do, and whether any safety carve-out (validation, error handling, security, accessibility) was shortened by a simplification.
+- The verdict is **advisory and acknowledgeable** — never a hard pass/fail.
+
+### 8c: Handle Results
+
+1. **PASSED** (no over-build found): Record economy_status = "Passed — no over-build found"; write the verdict to `specs/{NNN}-*/economy-check.md`; proceed to Step 9.
+2. **FINDINGS** (one or more advisories):
+   - Display a findings table (file · the lower rung that applied · suggested reduction).
+   - Write the verdict + finding count to `specs/{NNN}-*/economy-check.md` (audit trail, parallel to `design-check.md` / `security-scan.md`).
+   - **If `autonomous == true`**: Auto-acknowledge findings. Record economy_status = "Findings acknowledged ({count} finding(s))"; proceed to Step 9.
+   - Otherwise ask: "Economy Gate findings detected. (A) Fix now, (B) Acknowledge and proceed, (C) Abort build"
+   - If Fix now: halt build; display "Address the over-build and re-run `/aod.build`"
+   - If Acknowledge: Record economy_status = "Findings acknowledged ({count} finding(s))"; proceed to Step 9
+   - If Abort: stop execution
+
+## Step 9: Report Completion (MANDATORY — continue immediately after Step 8)
+
+**IMPORTANT**: After Step 8 completes (whether the Economy Gate passed, was acknowledged, or was skipped), you MUST immediately proceed to this step. Do NOT stop or wait for user input between Steps 8 and 9.
 
 **Completion precondition (deterministic gate — runs BEFORE the banner below)**: The `IMPLEMENTATION COMPLETE` banner is authorized ONLY when the active tasks file is readable, has at least one completed task, and has NO remaining `- [ ]`. Resolve the active tasks path the same way Step 1 does (`specs/{NNN}-*/tasks.md`, where `{NNN}` is the feature number). Run:
 
@@ -580,6 +630,11 @@ Security Scan (Step 7):
 - SCA: {sca_status} ({manifest_count} manifest(s) audited)
 - Report: specs/{NNN}-*/security-scan.md
 - /security: {security_status}
+
+Economy Gate (Step 8):
+- Verdict: {economy_status}
+- Scope: {economy_code_file_count} changed code file(s) (git diff main...HEAD; advisory)
+- Report: specs/{NNN}-*/economy-check.md
 
 {If all APPROVED: "READY FOR DEPLOYMENT"}
 {If BLOCKED: "Issues require resolution"}
@@ -665,6 +720,9 @@ When `orchestrated == false` (standalone): no change — keep current display fo
 - [ ] Security Scan step executed or explicitly skipped with reason (--no-security)
 - [ ] Security scan findings acknowledged or build halted on CRITICAL/HIGH
 - [ ] Security scan status recorded in completion report
+- [ ] --no-economy flag parsed correctly (when present)
+- [ ] Economy Gate executed (diff-scoped, judgment verdict) or explicitly skipped with reason (--no-economy)
+- [ ] Economy Gate status block recorded in completion report
 - [ ] Implementation summary displayed
 - [ ] --no-tests flag parsed correctly (when present)
 - [ ] --require-tests flag parsed correctly (when present)
@@ -695,4 +753,4 @@ Note: This command requires a complete task breakdown in tasks.md with Triad sig
 - Agent invokes `/aod.build` while `tasks.md` has any of the three Triad sign-offs missing or set to CHANGES_REQUESTED.
 - Agent re-runs `/aod.build` from Wave 1 instead of resuming from the last unmarked task per Step 1 sub-step 6 ("RESUMING: Waves 1-N complete").
 - Agent uses `--autonomous` interactively (not via `aod.run` orchestrator) and rubber-stamps every checkpoint, security-scan, and design-quality finding without review.
-- Agent's Step 8 completion summary omits the Test Execution, Design Quality Gate, or Security Scan sections.
+- Agent's Step 9 completion summary omits the Test Execution, Design Quality Gate, Security Scan, or Economy Gate sections.

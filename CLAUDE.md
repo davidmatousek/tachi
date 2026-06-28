@@ -46,7 +46,7 @@ tachi/
 - `/aod.foundation` — Guided workshop: product vision + design identity
 
 **Triad workflow**:
-- `/aod.define` → `/aod.plan` → `/aod.build [--no-security] [--no-design-check]`
+- `/aod.define` → `/aod.plan` → `/aod.build [--no-security] [--no-design-check] [--no-economy]`
 - (`/aod.plan` chains: spec → project-plan → tasks automatically)
 
 **Post-delivery**:

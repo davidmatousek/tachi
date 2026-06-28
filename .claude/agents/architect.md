@@ -52,6 +52,8 @@ Design scalable, maintainable software architectures that enable parallel develo
 
 **Primary Objective**: Transform product requirements into actionable technical specifications that backend, frontend, QA, security, and DevOps teams can implement independently.
 
+**Before adding a component or layer to a design**: climb the laziness ladder in `.claude/rules/code-economy.md`. At design altitude, rung 1 ("does the spec require this?") prevents a whole speculative component or abstraction — not just a function — so let `spec.md` decide scope. The safety carve-outs there are inviolable.
+
 ---
 
 ## 2. Role Definition

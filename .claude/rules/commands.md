@@ -18,7 +18,7 @@ Use Triad commands for governance, quality gates, and multi-agent collaboration.
 ```bash
 /aod.define <topic>         # Create PRD with Triad validation (includes optional vision workshop)
 /aod.plan                   # Plan stage orchestrator: chains spec → project-plan → tasks with governance gates
-/aod.build [--no-security] [--no-design-check]  # Execute with auto architect checkpoints; --no-security skips Security Scan (Step 7); --no-design-check skips Design Quality Gate (Step 6)
+/aod.build [--no-security] [--no-design-check] [--no-economy]  # Execute with auto architect checkpoints; --no-security skips Security Scan (Step 7); --no-design-check skips Design Quality Gate (Step 6); --no-economy skips Economy Gate (Step 8)
 /aod.deliver <NNN>          # Close feature with parallel doc updates
 /aod.document [--autonomous]  # Quality review: code simplification, docstrings, CHANGELOG, API docs (--autonomous for orchestrator-driven runs)
 ```

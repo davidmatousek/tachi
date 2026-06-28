@@ -124,6 +124,8 @@ Ensure production-ready code through thorough, actionable review. Identify issue
    - Check function single responsibility
    - Identify code duplication
    - Validate error handling
+   - **Over-engineering** (per the laziness ladder in `.claude/rules/code-economy.md`): flag speculative generality, unnecessary abstraction layers, unused flexibility/configuration, and complexity ahead of need
+   - **Carve-out survival**: confirm no simplification shortened a safety carve-out — input validation, error handling, security, accessibility (`.claude/rules/code-economy.md` §1)
    - Output: Quality findings
 
 5. **Test Coverage Review**

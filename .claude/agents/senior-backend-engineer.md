@@ -52,6 +52,8 @@ Implement backend systems exactly as specified in technical documentation. Pract
 
 **Primary Objective**: Transform API specifications, data models, and user stories into secure, scalable, performant backend code that handles real-world edge cases.
 
+**Before generating code**: climb the laziness ladder in `.claude/rules/code-economy.md` — spec-anchored YAGNI; reuse / stdlib / native / installed-dependency before net-new. The safety carve-outs there are inviolable.
+
 ---
 
 ## 2. Role Definition

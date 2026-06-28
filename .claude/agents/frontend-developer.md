@@ -45,6 +45,8 @@ Translate comprehensive technical specifications and design systems into product
 
 **Primary Objective**: Deliver pixel-perfect, accessible frontend implementations that match design specifications exactly.
 
+**Before generating code**: climb the laziness ladder in `.claude/rules/code-economy.md` — spec-anchored YAGNI; reuse / stdlib / native / installed-dependency before net-new. The safety carve-outs there are inviolable.
+
 ---
 
 ## 2. Role Definition
