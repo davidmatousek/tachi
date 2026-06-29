@@ -75,7 +75,7 @@ Phase-0 grounding is in [research.md](./research.md) (KB + in-tree-verified code
 - **Alternatives considered**: clear the `actions/cache` ledger manually — REJECTED (a non-reproducible side effect, harder to audit than a declared input).
 
 ### D4 — Synthetic-404 unit test = offline, table-driven over `_verdict_for_status`; build-gate + local, no new PR-CI wiring
-- **Decision**: Add an offline pytest exercising `_verdict_for_status` over synthetic statuses: assert `("https://atlas.mitre.org/techniques/AML.T0051", 404) → NEEDS_REVIEW` and `("https://example.org/x", 404) → LINK_ROT`. No network. Place it with the existing script/schema tests; it runs in the local suite + the `/aod.build` security/test gate.
+- **Decision**: Add an offline pytest exercising `_verdict_for_status` over synthetic statuses: assert `("https://atlas.mitre.org/techniques/AML.T0051", 404) → NEEDS_REVIEW` and `("https://example.org/x", 404) → LINK_ROT`. No network. **Extend the existing `tests/schemas/test_citation_linkrot_parity.py`** (reuse its importlib hyphenated-module loader + socket guard — Architect OBS-3) rather than a fresh file; it runs in the local suite + the `/aod.build` security/test gate.
 - **Rationale**: Pure function, table-driven (the `--inject-sentinel-rot` precedent proves the offline-verdict pattern). Network-free, so it *could* be a PR gate — but the existing citation tests are **not** wired into CI today (verified), and wiring citation tests into the PR CI is a separate hardening concern (#329 / BLP-06 Wave 2). **This feature does not expand CI wiring** (YAGNI; spec deferred placement to plan → decision: add the offline test, run it in the build gate + locally, do not newly gate the PR). If F-338 (which edits `tachi-pytest.yml`) merges near-simultaneously, run F-333's test against post-338 `main` (INFO C6).
 - **Alternatives considered**: a live-fetch integration test — REJECTED (breaches ADR-021); wiring all citation tests into PR CI now — DEFERRED (out of scope, #329).
 
@@ -92,10 +92,11 @@ Phase-0 grounding is in [research.md](./research.md) (KB + in-tree-verified code
 |---|---|---|---|
 | `scripts/check-citation-urls.py` | ATLAS (FR-2) | Host-override table + `_verdict_for_status` guard (re-classify) | ~5–15 LOC + comment |
 | `schemas/taxonomy/mitre-atlas.yaml` | ATLAS (FR-2) | **Re-classify path: header comment only** (R7/FR-033 note). Re-point path (unlikely): 37 `url:` fields | comment / ~37 lines |
-| `schemas/taxonomy/crosswalk.yaml` | ATLAS + OWASP (FR-2/FR-4) | Re-classify ATLAS: untouched. OWASP: re-point confirmed-dead `genai.owasp.org` URLs; **leave `llm01` live** | OWASP subset of 16 distinct |
+| `schemas/taxonomy/crosswalk.yaml` | ATLAS + OWASP (FR-2/FR-4) | Re-classify ATLAS: untouched. OWASP: re-point confirmed-dead `genai.owasp.org` URLs (non-year + `llm0X2025` twins + 2 Agentic pages); **leave `llm01` live** | OWASP subset of 16 distinct |
+| `schemas/taxonomy/owasp.yaml` | OWASP (FR-4) | Re-point the dead `genai.owasp.org` URLs here too (10 `llm0X2025` + 1 Agentic page); **leave `llm01` live** | 11 distinct (Team-Lead Concern 1) |
 | `schemas/taxonomy/nist-ai-rmf.yaml` | NIST (FR-3) | Replace the shared DOI → verified AI 100-1 canonical (cascades to 73 records) | 73 records, 1 pattern |
 | `.github/workflows/tachi-citation-linkrot.yml` | Acceptance (FR-6) | Add `no_cache` `workflow_dispatch` input | ~6 lines |
-| `tests/scripts/` (new test) | Test (FR-8) | Synthetic-404 verdict unit test (offline) | new test file/case |
+| `tests/schemas/test_citation_linkrot_parity.py` (extend) | Test (FR-8) | Synthetic-404 verdict unit test (offline; reuses the existing importlib loader + socket guard — Architect OBS-3) | +1 test case |
 
 **Edit-surface math anchor (PM F4)**: the re-point surface is **36 distinct / ~133 occurrences**, not the ~38 finding count — relevant only on the unlikely ATLAS re-point path. The likely path edits zero ATLAS data.
 

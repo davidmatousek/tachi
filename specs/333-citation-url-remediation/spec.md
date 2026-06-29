@@ -120,7 +120,7 @@ A maintainer needs the **#332** tracking issue to self-close on a subsequent `--
   - **AC-1**: **Given** the 73 records sharing the dead DOI, **When** the corrected URL is applied, **Then** all 73 carry it and no other record changes.
   - **AC-2**: **Given** the replacement, **When** intent is confirmed, **Then** it targets AI 100-1 (core RMF), not AI 600-1. [MANUAL-ONLY] document-intent confirmation requires human reading.
 
-- **FR-004 (OWASP fix)**: The confirmed-dead `genai.owasp.org` citations in `crosswalk.yaml` (LLM02/03/05 + Agentic resource page(s) + any year-suffixed `llm0X2025` variants FR-001 confirms dead) MUST be re-pointed to their restructured canonical locations; the live `llm01-prompt-injection/` citation MUST be left unchanged.
+- **FR-004 (OWASP fix)**: The confirmed-dead `genai.owasp.org` citations in **both `crosswalk.yaml` and `owasp.yaml`** (LLM02/03/05 + Agentic resource page(s) + any year-suffixed `llm0X2025` variants FR-001 confirms dead — `owasp.yaml` carries 10 `llm0X2025` + 1 Agentic page; `crosswalk.yaml` carries both non-year and `llm0X2025` twin forms + 2 Agentic pages) MUST be re-pointed to their restructured canonical locations, with the `llm0X-`/`llm0X2025-` twin disambiguated so no stale variant survives; the live `llm01-prompt-injection/` citation MUST be left unchanged **in both files**.
   - **AC-1**: **Given** the adjudicated OWASP dead-set, **When** corrections are applied, **Then** only confirmed-dead URLs change and `llm01-prompt-injection/` is byte-unchanged.
   - **AC-2**: **Given** each corrected OWASP URL, **When** validated, **Then** it resolves 2xx to the runner and lands on the cited risk. [MANUAL-ONLY] live network + landing judgment.
 
