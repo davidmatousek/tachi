@@ -71,7 +71,7 @@ Issue [#325] tracks **4 citation-unsupported `tachi-control-category → nist-ai
 7. If any corrected citation string appears in a byte-identity-baselined artifact (the #185 trap), baselines are regenerated and remain green — *expected outcome: no exposure* (the report aggregator reads record IDs/counts, not URL strings).
 
 ### Timeline & Milestones
-**Estimated effort: 3.0 engineer-days central** (floor 1.5 / ceiling 5.0; Team-Lead-revised — the PRD's initial 1.5–2.5d optimistic top-end is overridden because the ATLAS fix most likely resolves to a classifier *code* change, not a YAML edit). Traces 1:1 to `specs/333/feasibility-check.md`.
+**Estimated effort: 3.0 engineer-days central** (floor 1.5 / ceiling 5.0; Team-Lead-revised — the PRD's initial 1.5–2.5d optimistic top-end is overridden because the ATLAS fix most likely resolves to a classifier *code* change, not a YAML edit). Traces 1:1 to `specs/333-citation-url-remediation/feasibility-check.md`.
 
 | Milestone | Effort (of 3.0d) | Content |
 |---|---|---|
@@ -311,7 +311,7 @@ If FR-2 takes the re-classify path, the monitor change MUST be **host-scoped, do
 - `.github/workflows/tachi-citation-linkrot.yml` — scheduled-only workflow (`:11–17`); `workflow_dispatch` for FR-6.
 - Issue #332 body — the canonical 41-finding list with per-URL source-location back-references.
 - `tests/schemas/test_taxonomy_integrity.py:286` — `test_citation_shape()` (the offline syntax guard to keep green).
-- `specs/333/feasibility-check.md` — Team-Lead estimate + build wave plan.
+- `specs/333-citation-url-remediation/feasibility-check.md` — Team-Lead estimate + build wave plan.
 - `.aod/results/architect-333.md`, `.aod/results/team-lead-333.md` — full Triad review records.
 
 ---

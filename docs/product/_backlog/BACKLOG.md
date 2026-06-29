@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-29T16:39:28Z.
+> Auto-generated from GitHub Issues on 2026-06-29T17:10:15Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -20,7 +20,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| #333 | Remediate dead citation URLs surfaced by the link-rot monitor (#332) | — | 2026-06-29 |
+| — | *No items in this stage* | | |
 
 ## Plan
 
@@ -53,6 +53,7 @@
 | # | Title | State | Updated |
 |---|-------|-------|---------|
 | #338 | fix: restore F-248/F-256 substitution hardening reverted by AOD-Kit re-sync; gate tachi-pytest on push | OPEN | 2026-06-29 |
+| #333 | Remediate dead citation URLs surfaced by the link-rot monitor (#332) | OPEN | 2026-06-29 |
 | #332 | [link-rot] Taxonomy citation link-rot — open findings | OPEN | 2026-06-29 |
 | #325 | Crosswalk: 4 citation-unsupported tachi-control-category → nist-ai-rmf edges (T029 survivors, Surface B non-table extras) | OPEN | 2026-06-10 |
 | #299 | docs: surface /tachi.architecture as the recommended Step 4 path in the Developer Guide | CLOSED | 2026-05-30 |
