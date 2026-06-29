@@ -46,7 +46,7 @@
     id: CWE-200
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm02-sensitive-information-disclosure/
+  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
 
 - source:
     taxonomy: owasp
@@ -56,7 +56,7 @@
     id: CWE-1395
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm03-supply-chain/
+  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
 
 - source:
     taxonomy: owasp
@@ -66,7 +66,7 @@
     id: CWE-20
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm04-data-and-model-poisoning/
+  citation: https://genai.owasp.org/llmrisk/llm042025-data-and-model-poisoning/
 
 - source:
     taxonomy: owasp
@@ -76,7 +76,7 @@
     id: CWE-79
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm05-improper-output-handling/
+  citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
 
 - source:
     taxonomy: owasp
@@ -397,7 +397,7 @@
     id: AML.T0061
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -407,7 +407,7 @@
     id: AML.T0062
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -417,7 +417,7 @@
     id: AML.T0059
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -427,7 +427,7 @@
     id: AML.T0060
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -437,7 +437,7 @@
     id: AML.T0058
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -447,7 +447,7 @@
     id: T1548
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -457,7 +457,7 @@
     id: AML.T0018
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -467,7 +467,7 @@
     id: T1078
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -477,7 +477,7 @@
     id: AML.T0057
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -487,7 +487,7 @@
     id: T1195
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 # ─── Batch 1 (T016): OWASP 2021 A-category ↔ CWE (49 edges) ────────────────────
 # Source: OWASP Top 10:2021 per-category pages "List of Mapped CWEs" (verbatim from
@@ -2102,7 +2102,7 @@
     id: CWE-77
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2112,7 +2112,7 @@
     id: CWE-1427
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2122,7 +2122,7 @@
     id: CWE-250
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2132,7 +2132,7 @@
     id: CWE-269
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2142,7 +2142,7 @@
     id: CWE-287
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2152,7 +2152,7 @@
     id: CWE-285
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2162,7 +2162,7 @@
     id: CWE-1357
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2172,7 +2172,7 @@
     id: CWE-494
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2182,7 +2182,7 @@
     id: CWE-94
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2192,7 +2192,7 @@
     id: CWE-78
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2202,7 +2202,7 @@
     id: CWE-502
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2212,7 +2212,7 @@
     id: CWE-345
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2222,7 +2222,7 @@
     id: CWE-319
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2232,7 +2232,7 @@
     id: CWE-287
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2242,7 +2242,7 @@
     id: CWE-770
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2252,7 +2252,7 @@
     id: CWE-400
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2262,7 +2262,7 @@
     id: CWE-345
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2272,7 +2272,7 @@
     id: CWE-1426
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2282,7 +2282,7 @@
     id: CWE-250
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: owasp
@@ -2292,7 +2292,7 @@
     id: CWE-1427
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/resource/agentic-ai-top-10-vulnerabilities/
+  citation: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
 - source:
     taxonomy: mitre-atlas
