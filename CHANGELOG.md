@@ -615,6 +615,18 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
+## [4.45.0](https://github.com/davidmatousek/tachi/compare/v4.44.0...v4.45.0) (2026-06-29)
+
+
+### Features
+
+* **333:** citation-URL remediation — close the link-rot the monitor opened (BLP-06 Wave 1) ([f76265c](https://github.com/davidmatousek/tachi/commit/f76265c40867d108f8c8e2b1f8db8451ff50dbac))
+
+
+### Bug Fixes
+
+* **deps:** raise nextjs-supabase scaffold next/vitest floors past vulnerable ranges ([#336](https://github.com/davidmatousek/tachi/issues/336)) ([f1f396d](https://github.com/davidmatousek/tachi/commit/f1f396d44ead4bdfc3cf37894f646703adea448c))
+
 ## [4.44.0](https://github.com/davidmatousek/tachi/compare/v4.43.0...v4.44.0) (2026-06-15)
 
 
