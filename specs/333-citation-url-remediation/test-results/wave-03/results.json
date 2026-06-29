@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "wave": 3,
+  "timestamp": "2026-06-29T18:37:06Z",
+  "test_runner": ".venv/bin/python -m pytest tests/schemas/",
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 25, "fail": 0, "skip": 0 },
+  "classification": { "regressions": 0, "new_failures": 0, "pre_existing": 0 },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "notes": "Wave 3 = US4 validate + gate. T013 no_cache workflow_dispatch input (config/.yml — no source code change). T014 FR-007 render-exposure grep: 0 hits across 13 PDF baselines (no regen, SC-008). T015 offline suite 25/25, synthetic-404 test confirmed COLLECTED+EXECUTED (anti silent-green). T016 binding code-review GATE 2: APPROVED (0 crit/warn/sugg, 2 benign INFO). T017/T018 are [MANUAL-ONLY] deliver-adjacent (live #332 self-close + landing spot-check), run at /aod.deliver."
+}

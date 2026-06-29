@@ -46,6 +46,10 @@ on:
         description: "Inject a pre-classified synthetic rot finding to validate the issue lifecycle (no network)."
         type: boolean
         default: false
+      no_cache:
+        description: "Force a full sweep — ignore the TTL ledger (FR-006 acceptance run)"
+        type: boolean
+        default: false
 
 # Least privilege (NFR-005): exactly checkout-read + issue-write. Nothing else.
 permissions:
@@ -91,6 +95,6 @@ jobs:
             linkrot-ledger-v1-
 
       - name: Check citation URLs and reconcile tracking issue
-        run: python scripts/check-citation-urls.py --json ${{ inputs.inject_sentinel_rot && '--inject-sentinel-rot' || '' }}
+        run: python scripts/check-citation-urls.py --json ${{ inputs.inject_sentinel_rot && '--inject-sentinel-rot' || '' }} ${{ inputs.no_cache && '--no-cache' || '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # ambient token for gh — no PAT
