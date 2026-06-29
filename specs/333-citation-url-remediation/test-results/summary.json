@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "feature": "333-citation-url-remediation",
+  "total_waves": 3,
+  "waves_tested": 2,
+  "waves_skipped": 1,
+  "totals": { "pass": 25, "fail": 0, "skip": 0 },
+  "total_regressions": 0,
+  "coverage_trend": null,
+  "gate_decisions": [
+    { "wave": 2, "decision": "pass" },
+    { "wave": 3, "decision": "pass" }
+  ],
+  "notes": "Waves: W0 (research/setup + architect fork gate — no code → test-skipped), W2 (apply — tested), W3 (validate — tested). 'totals' reflects the single tests/schemas/ suite (25 tests) that ran GREEN in both tested waves; it is not a 50-test sum (the same suite was re-run each wave). coverage_trend null (no coverage tooling configured for the citation tests). New offline tests authored under TDD in T007 (3 host-override assertions, RED->GREEN). Build-pipeline tasks T001-T016 complete; T017-T020 are [MANUAL-ONLY] deliver-adjacent (live #332 self-close + landing spot-check + polish docs), run at /aod.deliver."
+}
