@@ -63,8 +63,14 @@
 name: tachi pytest
 
 on:
+  # F-248/F-256 hardening gate. Runs on PRs AND direct pushes to main: a
+  # direct-to-main push (e.g. a /aod.update apply commit) bypasses the
+  # pull_request trigger, and that is exactly how this hardening was silently
+  # reverted on main once (issue #338). The push trigger reuses the PR paths
+  # via a YAML anchor (&hardening_paths / *hardening_paths) so the trigger
+  # surface stays single-source — no third list to keep in lock-step.
   pull_request:
-    paths:
+    paths: &hardening_paths
       - scripts/init.sh
       - .aod/scripts/bash/init-input.sh
       - .aod/scripts/bash/template-substitute.sh
@@ -100,6 +106,9 @@ on:
       - tests/fixtures/regenerate-config-load-baseline.sh     # F-256
       - tests/fixtures/config-load/**                         # F-256
       - .github/workflows/tachi-pytest.yml
+  push:
+    branches: [main]
+    paths: *hardening_paths
 
 permissions:
   contents: read
