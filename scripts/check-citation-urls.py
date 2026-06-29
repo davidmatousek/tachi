@@ -289,6 +289,24 @@ _HARD_ROT_STATUSES = frozenset({400, 404, 410, 451})
 # 4xx statuses that mean "probably bot-blocked, needs a human" — never auto-rot.
 _NEEDS_REVIEW_STATUSES = frozenset({401, 403, 429})
 
+# Host-scoped status overrides (F-333, Architect OBS-1): a small set of known
+# anti-bot hosts whose HTTP responses to automated clients are unreliable for
+# specific status codes. Only the listed (host, status) pairs are overridden;
+# the global frozensets above are UNTOUCHED so real rot on every other host —
+# and unlisted statuses on these hosts — still classify normally (NFR-005).
+#
+# atlas.mitre.org: returns HTTP 404 to automated clients via client-side SPA
+# routing while technique pages render correctly in a browser. The technique IDs
+# are valid and stable (verified against the authoritative MITRE atlas-data repo).
+# A 404 from this host is therefore NEEDS_REVIEW (anti-bot gate), NOT confirmed
+# link rot. A genuine 410 or 451 from this host still classifies as LINK_ROT
+# (status-scoped: only 404 is overridden). Removing this entry restores prior
+# behaviour with no other changes required.
+# Cross-reference: R7 TRIPWIRE note in schemas/taxonomy/mitre-atlas.yaml.
+_HOST_STATUS_OVERRIDES: dict[str, dict[int, "Verdict"]] = {
+    "atlas.mitre.org": {404: Verdict.NEEDS_REVIEW},
+}
+
 
 class _TransientRetry(Exception):
     """Internal signal: a single attempt hit a retryable transient condition.
@@ -452,6 +470,13 @@ def _verdict_for_status(url: str, status: int, final_url: str, detail: str) -> C
     does reach here (e.g. an unexpected 3xx that was not a recognized redirect) is
     treated conservatively as ``TRANSIENT`` (not reported).
     """
+    # Host-scoped override: check before the global frozenset chain (F-333).
+    # Handles anti-bot hosts whose responses to automated clients misrepresent
+    # the true URL status for specific status codes (see _HOST_STATUS_OVERRIDES).
+    host = urllib.parse.urlsplit(url).hostname or ""
+    if host in _HOST_STATUS_OVERRIDES and status in _HOST_STATUS_OVERRIDES[host]:
+        return _classification(url, _HOST_STATUS_OVERRIDES[host][status],
+                               status, final_url, detail)
     if 200 <= status < 300:
         verdict = Verdict.HEALTHY
     elif status in _HARD_ROT_STATUSES:

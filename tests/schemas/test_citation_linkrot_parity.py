@@ -520,6 +520,67 @@ def test_status_410_is_link_rot(checker, monkeypatch):
     assert result.final_status == 410
 
 
+# =============================================================================
+# T007 — ATLAS host-override: anti-bot 404 → NEEDS_REVIEW (US1 RED gate)
+# =============================================================================
+
+def test_atlas_404_is_needs_review_host_override(checker):
+    """atlas.mitre.org 404 → NEEDS_REVIEW via host-scoped override (US1 AC-1).
+
+    ATLAS returns HTTP 404 to bots while the page exists for humans. The
+    ``_HOST_STATUS_OVERRIDES`` table re-classifies this to NEEDS_REVIEW so the
+    monitor does not raise false-positive link-rot alerts.
+
+    ``_verdict_for_status`` is a pure function (no network); call it directly.
+    404 ∉ _HEAD_RETRY_AS_GET, so a 404 always reaches _verdict_for_status.
+    """
+    result = checker._verdict_for_status(
+        "https://atlas.mitre.org/techniques/AML.T0051",
+        404,
+        "https://atlas.mitre.org/techniques/AML.T0051",
+        "",
+    )
+    assert result.verdict is checker.Verdict.NEEDS_REVIEW, (
+        f"atlas.mitre.org 404 must be NEEDS_REVIEW (anti-bot override), "
+        f"got {result.verdict!r}"
+    )
+
+
+def test_non_atlas_404_remains_link_rot(checker):
+    """A 404 on any host other than atlas.mitre.org → LINK_ROT (NFR-005).
+
+    The host-scoped override must not regress real-rot detection on other hosts.
+    """
+    result = checker._verdict_for_status(
+        "https://example.org/x",
+        404,
+        "https://example.org/x",
+        "",
+    )
+    assert result.verdict is checker.Verdict.LINK_ROT, (
+        f"Non-ATLAS 404 must remain LINK_ROT (real-rot preserved), "
+        f"got {result.verdict!r}"
+    )
+
+
+def test_atlas_410_remains_link_rot_status_scoped(checker):
+    """atlas.mitre.org 410 Gone → LINK_ROT; the override is status-scoped to 404 only.
+
+    A genuine HTTP 410 on the anti-bot host is a confirmed deletion and must
+    still be flagged as rot. Only 404 is overridden (anti-bot), not 410 (gone).
+    """
+    result = checker._verdict_for_status(
+        "https://atlas.mitre.org/techniques/AML.T0051",
+        410,
+        "https://atlas.mitre.org/techniques/AML.T0051",
+        "",
+    )
+    assert result.verdict is checker.Verdict.LINK_ROT, (
+        f"ATLAS 410 must remain LINK_ROT (only 404 is overridden), "
+        f"got {result.verdict!r}"
+    )
+
+
 def test_status_403_head_then_403_get_is_needs_review(checker, monkeypatch):
     """HEAD 403 → ranged-GET retry also 403 → NEEDS_REVIEW (never confirmed rot).
 

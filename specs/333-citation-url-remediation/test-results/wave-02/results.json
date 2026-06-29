@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "wave": 2,
+  "timestamp": "2026-06-29T18:28:39Z",
+  "test_runner": ".venv/bin/python -m pytest tests/schemas/",
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 25, "fail": 0, "skip": 0 },
+  "classification": { "regressions": 0, "new_failures": 0, "pre_existing": 0 },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "notes": "Wave 2 = apply (US1 ATLAS host-override re-classify, US2 NIST DOI cascade x73, US3 OWASP crosswalk x5 re-points). TDD: 3 new offline tests authored in T007 (test_atlas_404_is_needs_review_host_override + 2 guards), confirmed RED then GREEN. test_citation_shape green post data-edit. ADR-021: no network on any test path. Build 4.6 auto-test-gen intentionally skipped (FR-008 scopes test surface to exactly the synthetic-404 test)."
+}

@@ -74,13 +74,13 @@ Single project: taxonomy data in `schemas/taxonomy/`, the monitor in `scripts/ch
 
 ### Tests for User Story 1 (write FIRST, ensure they FAIL before T008)
 
-- [ ] T007 [P] [US1] Write the offline synthetic-404 verdict unit test **by extending the existing `tests/schemas/test_citation_linkrot_parity.py`** (reuse its importlib hyphenated-module loader for `check-citation-urls.py` + its socket guard — do NOT spin up a fresh `tests/scripts/` file; Architect OBS-3): assert `_verdict_for_status("https://atlas.mitre.org/techniques/AML.T0051", 404, ...) == NEEDS_REVIEW`, `(other-host, 404) == LINK_ROT`, and `("https://atlas.mitre.org/...", 410) == LINK_ROT` (genuine *gone* still flags). No network. Confirm it FAILS pre-implementation.
+- [x] T007 [P] [US1] Write the offline synthetic-404 verdict unit test **by extending the existing `tests/schemas/test_citation_linkrot_parity.py`** (reuse its importlib hyphenated-module loader for `check-citation-urls.py` + its socket guard — do NOT spin up a fresh `tests/scripts/` file; Architect OBS-3): assert `_verdict_for_status("https://atlas.mitre.org/techniques/AML.T0051", 404, ...) == NEEDS_REVIEW`, `(other-host, 404) == LINK_ROT`, and `("https://atlas.mitre.org/...", 410) == LINK_ROT` (genuine *gone* still flags). No network. Confirm it FAILS pre-implementation.
 
 ### Implementation for User Story 1 (re-classify path per T006; per-ID re-point only if T006 authorized)
 
-- [ ] T008 [US1] Add the bounded `_HOST_STATUS_OVERRIDES` table + guard at the top of `_verdict_for_status(url, status, ...)` in `scripts/check-citation-urls.py` (host-scoped: `atlas.mitre.org` 404 → `NEEDS_REVIEW`); leave the global `_HARD_ROT_STATUSES`/`_NEEDS_REVIEW_STATUSES` frozensets untouched (NFR-005)
-- [ ] T009 [US1] Update the `schemas/taxonomy/mitre-atlas.yaml` R7 TRIPWIRE / FR-033 header comment to cross-reference the new `_HOST_STATUS_OVERRIDES` code-side override so the data note and the code override point at each other (Architect OBS-1)
-- [ ] T010 [US1] Run the T007 synthetic-404 test in `tests/schemas/test_citation_linkrot_parity.py` → green; confirm the ATLAS URLs are reclassified to needs-review and no other host's 404 handling changed
+- [x] T008 [US1] Add the bounded `_HOST_STATUS_OVERRIDES` table + guard at the top of `_verdict_for_status(url, status, ...)` in `scripts/check-citation-urls.py` (host-scoped: `atlas.mitre.org` 404 → `NEEDS_REVIEW`); leave the global `_HARD_ROT_STATUSES`/`_NEEDS_REVIEW_STATUSES` frozensets untouched (NFR-005)
+- [x] T009 [US1] Update the `schemas/taxonomy/mitre-atlas.yaml` R7 TRIPWIRE / FR-033 header comment to cross-reference the new `_HOST_STATUS_OVERRIDES` code-side override so the data note and the code override point at each other (Architect OBS-1)
+- [x] T010 [US1] Run the T007 synthetic-404 test in `tests/schemas/test_citation_linkrot_parity.py` → green; confirm the ATLAS URLs are reclassified to needs-review and no other host's 404 handling changed
 
 **Checkpoint**: ATLAS class resolved and offline-validated.
 
@@ -92,7 +92,7 @@ Single project: taxonomy data in `schemas/taxonomy/`, the monitor in `scripts/ch
 
 **Independent Test**: All 73 records carry the verified AI 100-1 canonical; no other record changed; `test_citation_shape()` still green.
 
-- [ ] T011 [US2] Replace the shared dead `https://doi.org/10.6028/NIST.AI.100-1` in `schemas/taxonomy/nist-ai-rmf.yaml` with the T004-verified canonical AI 100-1 URL (cascades to all 73 records); confirm intent (AI 100-1, not AI 600-1)
+- [x] T011 [US2] Replace the shared dead `https://doi.org/10.6028/NIST.AI.100-1` in `schemas/taxonomy/nist-ai-rmf.yaml` with the T004-verified canonical AI 100-1 URL (cascades to all 73 records); confirm intent (AI 100-1, not AI 600-1)
 
 **Checkpoint**: NIST class resolved.
 
@@ -104,7 +104,7 @@ Single project: taxonomy data in `schemas/taxonomy/`, the monitor in `scripts/ch
 
 **Independent Test**: Each confirmed-dead URL points at its restructured canonical; `llm01-prompt-injection/` is byte-unchanged; `test_citation_shape()` green.
 
-- [ ] T012 [US3] Re-point the T005-confirmed-dead `genai.owasp.org` citations in **BOTH `schemas/taxonomy/owasp.yaml` AND `schemas/taxonomy/crosswalk.yaml`** to their restructured canonicals (Team-Lead Concern 1 — `owasp.yaml` carries 10 `llm0X2025` + 1 Agentic page, unaddressed if only crosswalk is edited → #332 would not self-close); resolve the `llm0X-`/`llm0X2025-` twin per T005 so no stale variant survives; leave `llm01-prompt-injection/` **byte-unchanged in BOTH files** (regression guard)
+- [x] T012 [US3] Re-point the T005-confirmed-dead `genai.owasp.org` citations in **BOTH `schemas/taxonomy/owasp.yaml` AND `schemas/taxonomy/crosswalk.yaml`** to their restructured canonicals (Team-Lead Concern 1 — `owasp.yaml` carries 10 `llm0X2025` + 1 Agentic page, unaddressed if only crosswalk is edited → #332 would not self-close); resolve the `llm0X-`/`llm0X2025-` twin per T005 so no stale variant survives; leave `llm01-prompt-injection/` **byte-unchanged in BOTH files** (regression guard)
 
 **Checkpoint**: OWASP class resolved.
 
