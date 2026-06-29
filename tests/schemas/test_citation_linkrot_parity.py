@@ -492,10 +492,19 @@ def test_redirect_301_then_200_is_healthy(checker, monkeypatch):
     assert [m for (m, _u, _h) in scripted.calls] == ["HEAD", "HEAD"]
 
 
-def test_status_404_is_link_rot(checker, monkeypatch):
-    """A final HEAD 404 → LINK_ROT (confirmed rot)."""
+def test_status_404_head_then_404_get_is_link_rot(checker, monkeypatch):
+    """A 404 on BOTH HEAD and the ranged-GET retry → LINK_ROT (genuine rot).
+
+    404 ∈ _HEAD_RETRY_AS_GET (F-333), so a HEAD 404 is re-issued as a ranged GET
+    before the checker trusts it. A genuinely dead URL returns 404 to both methods
+    → confirmed LINK_ROT. Contrast test_status_404_head_then_206_get_is_healthy,
+    where the GET retry returns 2xx for a HEAD-hostile but live origin.
+    """
     url = "https://example.test/gone"
-    scripted = _ScriptedFetch(by_key={("HEAD", url): [(404, {})]})
+    scripted = _ScriptedFetch(by_key={
+        ("HEAD", url): [(404, {})],
+        ("GET", url): [(404, {})],
+    })
     _install_scripted_transport(checker, monkeypatch, scripted)
     throttler = _make_throttler(checker)
     try:
@@ -504,6 +513,34 @@ def test_status_404_is_link_rot(checker, monkeypatch):
         throttler.shutdown()
     assert result.verdict is checker.Verdict.LINK_ROT, result
     assert result.final_status == 404
+    # Confirms the HEAD→GET fallback fired (404 now triggers the ranged-GET retry).
+    assert [m for (m, _u, _h) in scripted.calls] == ["HEAD", "GET"]
+
+
+def test_status_404_head_then_206_get_is_healthy(checker, monkeypatch):
+    """HEAD 404 → ranged-GET retry 206 → HEALTHY (F-333: HEAD-hostile live origin).
+
+    Models nvlpubs.nist.gov, which returns 404 to a HEAD request for a PDF that
+    returns 206 (Partial Content) to the ranged GET the checker issues. The DOI
+    ``doi.org/10.6028/NIST.AI.600-1`` is live; before the 404→GET retry the monitor
+    false-flagged it as confirmed rot and #332 could never self-close (the gate
+    that adjudicated this during F-333 delivery).
+    """
+    url = "https://example.test/head-hostile.pdf"
+    scripted = _ScriptedFetch(by_key={
+        ("HEAD", url): [(404, {})],
+        ("GET", url): [(206, {})],
+    })
+    _install_scripted_transport(checker, monkeypatch, scripted)
+    throttler = _make_throttler(checker)
+    try:
+        result = checker.classify_url(url, throttler)
+    finally:
+        throttler.shutdown()
+    assert result.verdict is checker.Verdict.HEALTHY, result
+    assert result.final_status == 206
+    # Confirms the HEAD→GET fallback fired and the GET status (206) won.
+    assert [m for (m, _u, _h) in scripted.calls] == ["HEAD", "GET"]
 
 
 def test_status_410_is_link_rot(checker, monkeypatch):
@@ -531,8 +568,10 @@ def test_atlas_404_is_needs_review_host_override(checker):
     ``_HOST_STATUS_OVERRIDES`` table re-classifies this to NEEDS_REVIEW so the
     monitor does not raise false-positive link-rot alerts.
 
-    ``_verdict_for_status`` is a pure function (no network); call it directly.
-    404 ∉ _HEAD_RETRY_AS_GET, so a 404 always reaches _verdict_for_status.
+    ``_verdict_for_status`` is a pure function (no network); call it directly to
+    test the host override in isolation. (Via classify_url a HEAD 404 is now
+    retried as a ranged GET — F-333 — but the override applies to whatever final
+    404 reaches _verdict_for_status, independent of which method produced it.)
     """
     result = checker._verdict_for_status(
         "https://atlas.mitre.org/techniques/AML.T0051",
@@ -753,7 +792,11 @@ def test_classifier_matrix_opens_no_real_socket(checker, monkeypatch):
         "https://example.test/b": [(404, {})],
         "https://example.test/c": [(429, {})],
     }
-    scripted = _ScriptedFetch(by_key={("HEAD", u): list(seq) for u, seq in scenarios.items()})
+    by_key = {("HEAD", u): list(seq) for u, seq in scenarios.items()}
+    # /b: 404 ∈ _HEAD_RETRY_AS_GET (F-333) → the HEAD 404 is re-issued as a ranged
+    # GET; script that GET as 404 too so /b stays a confirmed LINK_ROT.
+    by_key[("GET", "https://example.test/b")] = [(404, {})]
+    scripted = _ScriptedFetch(by_key=by_key)
     backoff_calls = _install_scripted_transport(checker, monkeypatch, scripted)
     throttler = _make_throttler(checker)
 

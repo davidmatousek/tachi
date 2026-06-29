@@ -282,8 +282,17 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 # T005 — Classification core fetch path (FR-004, detection half)
 # =============================================================================
 
-# Statuses that mean "method not allowed / forbidden HEAD" → retry once as ranged GET.
-_HEAD_RETRY_AS_GET = frozenset({403, 405, 501})
+# Statuses that mean "HEAD unsupported / forbidden / misreported" → retry once as
+# a ranged GET before trusting the status. 403/405/501 are the classic "method not
+# allowed / forbidden HEAD" signals. 404 is included (F-333) because some origins —
+# notably nvlpubs.nist.gov, which serves the NIST AI 100-1 / 600-1 PDFs behind the
+# doi.org/10.6028/NIST.AI.* DOIs — return 404 to a HEAD request for a resource that
+# returns 2xx to a GET. Without the GET retry the checker false-flags a live document
+# as confirmed rot (the #332 AI.600-1 false positive that blocked self-close). A
+# genuinely dead URL returns 404 to BOTH methods → it still classifies as LINK_ROT
+# (see test_status_404_head_then_404_get_is_link_rot). The extra GET fires only on an
+# otherwise-rot 404, so the healthy-catalog cost is ~zero.
+_HEAD_RETRY_AS_GET = frozenset({403, 404, 405, 501})
 # Final 4xx statuses that classify as confirmed link-rot.
 _HARD_ROT_STATUSES = frozenset({400, 404, 410, 451})
 # 4xx statuses that mean "probably bot-blocked, needs a human" — never auto-rot.
