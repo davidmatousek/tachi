@@ -120,8 +120,8 @@ Single project: taxonomy data in `schemas/taxonomy/`, the monitor in `scripts/ch
 - [x] T014 [P] [US4] FR-007 rendering-exposure grep (D5): grep the byte-baselined render artifacts (the `examples/*/security-report.pdf.baseline` text layer + coverage/personalized-tree baseline docs) for `atlas.mitre.org/techniques`, `doi.org/10.6028/NIST.AI.100-1`, `genai.owasp.org`; expected **zero** hits (render path reads record IDs/counts). Record to `specs/333-citation-url-remediation/test-results/fr7-exposure.md`; run the ADR-037 D-9 baseline-regen lane ONLY if a string surfaces
 - [x] T015 [US4] Run the full offline suite: `pytest tests/schemas/test_taxonomy_integrity.py::test_citation_shape` + the T007 synthetic-404 test → all green, no network (FR-008). **Verify the synthetic-404 test is actually COLLECTED and EXECUTED (not silently skipped)** — guard the #185/KB-15-16 silent-green failure mode (Team-Lead Concern 2). **CI-enforcement decision**: this offline test is enforced at the `/aod.build` gate + locally (matching the existing citation tests' posture); PR-CI allowlist registration in `tachi-pytest.yml` is **deferred to #329** (per plan D4 / YAGNI — #329 owns wiring all citation tests into PR CI). If a maintainer later registers it, add to BOTH the `paths:` list and the `pytest` invocation, sequenced onto **post-F-338 `main`** (F-338 concurrently edits that file)
 - [x] T016 [US4] Code review (binding, NFR-005): confirm the `_HOST_STATUS_OVERRIDES` change is host-scoped, documented, and reversible; global frozensets untouched; `llm01` untouched; no network added to any PR/push path
-- [ ] T017 [US4] [MANUAL-ONLY live Actions run + gh issue lifecycle] Dispatch the monitor as a full sweep (`gh workflow run tachi-citation-linkrot.yml -f no_cache=true`) and await **#332 self-close** with its recovery comment + zero in-scope confirmed rot; record the run URL + comment to `specs/333-citation-url-remediation/test-results/acceptance.md`. **Fallback (PM-M4 / spec R1)**: if #332 does NOT self-close, the fork was resolved wrong → loop back to T006/W0 re-adjudication. (Deliver-adjacent — run during `/aod.deliver`, per F-183 KB Entry 17.)
-- [ ] T018 [US4] [MANUAL-ONLY human landing judgment] Landing-content spot-check: open **1 NIST + 1 OWASP** corrected URL in a browser; confirm each renders the specific cited item, not a generic/un-anchored page (PM-M3 sample; the ATLAS re-classify path changes no URL, so no ATLAS sample). Record to the acceptance file
+- [x] T017 [US4] [MANUAL-ONLY live Actions run + gh issue lifecycle] Dispatch the monitor as a full sweep (`gh workflow run tachi-citation-linkrot.yml -f no_cache=true`) and await **#332 self-close** with its recovery comment + zero in-scope confirmed rot; record the run URL + comment to `specs/333-citation-url-remediation/test-results/acceptance.md`. **Fallback (PM-M4 / spec R1)**: if #332 does NOT self-close, the fork was resolved wrong → loop back to T006/W0 re-adjudication. (Deliver-adjacent — run during `/aod.deliver`, per F-183 KB Entry 17.)
+- [x] T018 [US4] [MANUAL-ONLY human landing judgment] Landing-content spot-check: open **1 NIST + 1 OWASP** corrected URL in a browser; confirm each renders the specific cited item, not a generic/un-anchored page (PM-M3 sample; the ATLAS re-classify path changes no URL, so no ATLAS sample). Record to the acceptance file
 
 **Checkpoint**: #332 self-closed; landing spot-check passed → feature is done.
 
@@ -129,8 +129,8 @@ Single project: taxonomy data in `schemas/taxonomy/`, the monitor in `scripts/ch
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T019 [P] Record the fork-resolution evidence (which ATLAS path was taken and why, per-class research summary) in the delivery record for SC-004 — `specs/333-citation-url-remediation/delivery.md` (created at deliver)
-- [ ] T020 [P] Confirm the #325 deferral doc (T002) is complete and linked so deliver can cite FR-005 AC-1 (documented-deferred artifact)
+- [x] T019 [P] Record the fork-resolution evidence (which ATLAS path was taken and why, per-class research summary) in the delivery record for SC-004 — `specs/333-citation-url-remediation/delivery.md` (created at deliver)
+- [x] T020 [P] Confirm the #325 deferral doc (T002) is complete and linked so deliver can cite FR-005 AC-1 (documented-deferred artifact)
 
 ---
 
