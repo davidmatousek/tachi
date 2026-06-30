@@ -3,7 +3,8 @@ prd:
   number: 329
   topic: ordered-frameworks-ci-guard
   created: 2026-06-30
-  status: Approved
+  status: Delivered
+  delivered: 2026-06-30
   type: feature
 triad:
   pm_signoff: {agent: product-manager, date: 2026-06-30, status: APPROVED, notes: "v1.1 final, authored via ~aod-define as BLP-06 Wave 2 CI-hardening-tail lead. Both reviewers APPROVED_WITH_CONCERNS, zero blockers, and ratified the core fork (ship the lightweight guard / defer full-byte-identity-in-CI on the determinism rationale). v1.1 folds every Triad correction: HIGH-1/C1 (FALSE regen-script citation — regenerate-baseline.sh is the init.sh fixture, NOT the CA-PDF baselines; FR-2 reframed to formalize the manual baseline-regen.contract.md recipe into an executable regen script that emits the sidecar); HIGH-2+HIGH-3 (count-only false-negatives on id-swap/rename and out_of_scope-flip — FR-1 upgraded from bare count to a fingerprint of the ordered in-scope (id,out_of_scope) records, closing both while preserving the #333 count-neutral pass); MED-1 (the existing #329-tagged xfail is the init.sh-substitution baseline, a DIFFERENT surface — scoped OUT explicitly, OQ-6); MED-2 (pinned-pyyaml honesty on NFR-1/3); MED-3 (OQ-4 resolved: dedicated tachi-catalog-drift.yml, NOT folded into tachi-pytest.yml's matrix; tachi-maestro-coverage.yml named as the near-exact M2 template); MED-4 (FR-5 path-filter lock-step + sidecar/regen-script in trigger); LOW-1 (OQ-5 resolved: amend ADR-037); C2 (T001 pre-state front-loaded to hour-zero of M1); C3 (FR-7 lru_cache cache_clear foot-gun); C4 (single-runner is a determinism consequence). Timeline traces 1:1 to feasibility-check.md (floor 1.0 / planning 1.5 / ceiling 3.0). Plan-stage gates: OQ-1 (sidecar emission mechanism), OQ-3 (T001), OQ-6 (init-baseline-tree scope)."}
@@ -16,7 +17,7 @@ source:
 
 # ORDERED_FRAMEWORKS Catalog-Drift CI Guard - Product Requirements Document
 
-**Status**: Approved (both reviewers APPROVED_WITH_CONCERNS — zero blockers; plan-stage gates carried as OQ-1/OQ-3/OQ-6)
+**Status**: Delivered 2026-06-30 (PR #344 squash-merged as `38a8ceb`; ships in v4.46.0 via release-please PR #341, pending release. Approved at plan: both reviewers APPROVED_WITH_CONCERNS — zero blockers; all plan-stage gates OQ-1/OQ-3/OQ-6 resolved during build.)
 **Created**: 2026-06-30
 **Author**: product-manager
 **Reviewers**: architect, team-lead

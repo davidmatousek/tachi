@@ -460,6 +460,73 @@ The workflow itself reads **no adopter-facing environment variables** — `--tim
 
 ---
 
+## Tachi Catalog Drift Guard Workflow
+
+**Workflow file**: `.github/workflows/tachi-catalog-drift.yml`
+
+**Added in Feature 329** (Ordered-Frameworks Catalog-Drift CI Guard, PR #344, merged 2026-06-30, release v4.46.0).
+
+This workflow reddens CI — on PRs AND direct-to-`main` pushes — when an `ORDERED_FRAMEWORKS` catalog member drifts from its committed fingerprint sidecar without a CA-baseline regen. It renders nothing and makes no network calls (NFR-001: zero-network, zero-render).
+
+| Property | Value |
+|----------|-------|
+| Workflow file | `.github/workflows/tachi-catalog-drift.yml` |
+| Runner | `ubuntu-latest` |
+| Permissions | `contents: read` (principle of least privilege) |
+| Pytest dependencies | `pytest`, `pytest-timeout`, `pyyaml` |
+| Test file | `tests/scripts/test_catalog_drift_guard.py` |
+| Invocation | `pytest tests/scripts/test_catalog_drift_guard.py` |
+
+### Trigger Design (F-329 — dual-trigger with YAML anchor)
+
+The workflow fires on **both** `pull_request` and `push: branches: [main]`. The path filter is shared between the two triggers via a single YAML anchor (`&drift_paths` / `*drift_paths`) so the trigger surface stays single-source — no second list to drift out of sync.
+
+```yaml
+on:
+  pull_request:
+    paths: &drift_paths
+      - catalog/*.yaml
+      - catalog/*.sidecar.json
+      - tests/scripts/test_catalog_drift_guard.py
+      # ... (full list in .github/workflows/tachi-catalog-drift.yml)
+  push:
+    branches: [main]
+    paths: *drift_paths
+```
+
+**Why `push: branches: [main]`**: a direct-to-`main` push (e.g., a `/aod.update` apply commit or a catalog edit) bypasses the `pull_request` trigger. The `push: [main]` trigger closes this regression class: any future direct-to-`main` commit that touches a catalog or fingerprint path will immediately fail CI on `main`, surfacing a drift in minutes rather than shipping it silently.
+
+### What it guards
+
+`ORDERED_FRAMEWORKS` is an ordered list of catalog framework identifiers. When a catalog YAML is edited (a record added, removed, or modified), the corresponding fingerprint sidecar must be regenerated (`make catalog-regen` or equivalent CA-baseline regen). If the sidecar is stale, the drift guard test fails:
+
+- **Drift detected → CI red** — PR is blocked; a direct-to-`main` push surfaces the regression immediately.
+- **Sidecar current → CI green** — no action required.
+
+### Local invocation
+
+```bash
+# Run the guard locally (matches CI exactly)
+pytest tests/scripts/test_catalog_drift_guard.py
+
+# After editing a catalog file, regenerate the sidecar then re-run:
+make catalog-regen   # or the project's CA-baseline regen command
+pytest tests/scripts/test_catalog_drift_guard.py
+```
+
+### Relationship to `tachi-pytest.yml`
+
+`tachi-catalog-drift.yml` is a **sibling** workflow to `tachi-pytest.yml`, not a sub-job of it. The two workflows share the same shared-anchor dual-trigger pattern but guard independent test surfaces:
+
+| Workflow | Guards | Test module |
+|----------|--------|-------------|
+| `tachi-pytest.yml` | Substitution-surface hardening (init.sh, template-substitute.sh, etc.) | `tests/scripts/test_init_sh_*.py`, `test_template_*.py`, etc. |
+| `tachi-catalog-drift.yml` | ORDERED_FRAMEWORKS catalog fingerprint integrity | `tests/scripts/test_catalog_drift_guard.py` |
+
+Both workflows use `ubuntu-latest`, `contents: read`, and install the same pytest stack. New catalog-level CI guards SHOULD follow this sibling-workflow pattern rather than adding jobs to `tachi-pytest.yml`.
+
+---
+
 ## Platform Guides
 
 ### GitHub Actions (Recommended)
