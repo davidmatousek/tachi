@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-30T15:55:58Z.
+> Auto-generated from GitHub Issues on 2026-06-30T17:21:58Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -9,7 +9,6 @@
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
 | #342 | Deliver-stage preflight: guard against stale/diverged local main and behind-main feature branch | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 338 (Re... | 2026-06-30 |
-| #329 | Evaluate wiring byte-identity baseline suite into CI to prevent silent red-main after ORDERED_FRAMEWORKS catalog growth | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of F-185 (CWE Cata... | 2026-06-12 |
 | #295 | F-292 post-merge tachi.threat-model verification runs (T017 + T026) | Impact: 3 (closes empirical verification of SC-003 + SC-015), Confidence: 5 (mechanical execution), Effort: 2 (two `tachi.threat-model` runs + 1 commit) = **30 / Tier 2 (Medium)** | — | 2026-05-14 |
 | #217 | detect_images leaves duplicate .jpg/.png pair after recovery write | — | — | 2026-05-05 |
 | #168 | Track OWASP AIVSS v1.0 release and first external adopter case study | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 143 (MA... | 2026-06-01 |
@@ -21,7 +20,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| — | *No items in this stage* | | |
+| #329 | Evaluate wiring byte-identity baseline suite into CI to prevent silent red-main after ORDERED_FRAMEWORKS catalog growth | — | 2026-06-30 |
 
 ## Plan
 
