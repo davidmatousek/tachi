@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "wave": 3,
+  "timestamp": "2026-06-30T00:00:00Z",
+  "test_runner": ".venv/bin/python -m pytest tests/scripts/test_catalog_drift_guard.py",
+  "execution_duration_ms": 480,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 15, "fail": 0, "skip": 0 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 11
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [
+    "test_live_tree_fingerprints_match_sidecar",
+    "test_missing_sidecar_fails_closed",
+    "test_unparseable_sidecar_fails_closed",
+    "test_malformed_sidecar_fails_closed",
+    "test_partial_sidecar_member_absent_is_drift",
+    "test_run_check_exit_1_on_missing_sidecar",
+    "test_grow_detected",
+    "test_id_swap_detected",
+    "test_out_of_scope_flip_detected",
+    "test_two_members_drift_both_named",
+    "test_failure_message_names_framework_and_regen"
+  ],
+  "tests": [
+    { "name": "test_citation_edit_ignored", "status": "pass", "duration_ms": 10 },
+    { "name": "test_non_member_change_ignored", "status": "pass", "duration_ms": 10 },
+    { "name": "test_clean_tree_passes", "status": "pass", "duration_ms": 10 },
+    { "name": "test_future_member_covered_dynamically", "status": "pass", "duration_ms": 10 }
+  ],
+  "generated_tests": {
+    "count": 4,
+    "pass": 4,
+    "fail": 0
+  },
+  "notes": "W3 added 4 tests (T009 citation-#333/non-member/clean ignore cases + T011 dynamic future-member) to the existing module — 15/15 green, 0 regressions vs the W2 11. Non-test W3 changes are additive/string-only: the dual-trigger CI workflow (new file), the ADR-037 D-14 amendment + KB-15 annotation + CHANGELOG entry (docs), and a string-only re-point of the init.sh xfail reason #329→#345 (test_init_sh_substitution.py — collects clean, still xfail(strict=False), no fixture regen per T014). The full F-248/F-256 init.sh suite (gated by tachi-pytest.yml) was NOT run locally — it spawns init.sh subprocesses and is unaffected by a comment-string edit; --collect-only confirmed no parse/collection breakage. CHANGELOG's lingering Feature 338 Unreleased entry left untouched per the dual-CHANGELOG model."
+}

@@ -1,0 +1,36 @@
+{
+  "_generated_by": "scripts/regenerate-ca-baselines.sh (do not hand-edit; advance only by re-running the regen)",
+  "frameworks": {
+    "cwe": {
+      "in_scope_count": 93,
+      "in_scope_fingerprint": "88103f8ed60080d6195d5cd57aa4f0985bf27ed8ff15bff76b6086ae90b0e7ac",
+      "raw_count": 93,
+      "raw_fingerprint": "88103f8ed60080d6195d5cd57aa4f0985bf27ed8ff15bff76b6086ae90b0e7ac"
+    },
+    "mitre-atlas": {
+      "in_scope_count": 36,
+      "in_scope_fingerprint": "27ce5e9cdca6ab9c25c52bc98395fe8021db92a842b8c88714483a728d4e34f5",
+      "raw_count": 36,
+      "raw_fingerprint": "27ce5e9cdca6ab9c25c52bc98395fe8021db92a842b8c88714483a728d4e34f5"
+    },
+    "mitre-attack": {
+      "in_scope_count": 323,
+      "in_scope_fingerprint": "6f7d4275ec5f7e267f5836fa6968c2cdfa7164649e918de8b23a981c6b6345dd",
+      "raw_count": 701,
+      "raw_fingerprint": "49e1560bdbc284f3ecf79290d01c35cf9e1777e3af52d808e68fd62b21564921"
+    },
+    "nist-ai-rmf": {
+      "in_scope_count": 72,
+      "in_scope_fingerprint": "57e4941cfec20ca189deef37960606ba81906e32924359d9340372deb5ebfdc0",
+      "raw_count": 72,
+      "raw_fingerprint": "57e4941cfec20ca189deef37960606ba81906e32924359d9340372deb5ebfdc0"
+    },
+    "owasp": {
+      "in_scope_count": 60,
+      "in_scope_fingerprint": "b18f93ce56d666bb8e62a8109d75109abd4b5b0e1a17a6127de65880804de22c",
+      "raw_count": 60,
+      "raw_fingerprint": "b18f93ce56d666bb8e62a8109d75109abd4b5b0e1a17a6127de65880804de22c"
+    }
+  },
+  "source_date_epoch": "1700000000"
+}

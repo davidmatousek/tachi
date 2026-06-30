@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "wave": 2,
+  "timestamp": "2026-06-30T00:00:00Z",
+  "test_runner": ".venv/bin/python -m pytest tests/scripts/test_catalog_drift_guard.py",
+  "execution_duration_ms": 500,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 11, "fail": 0, "skip": 0 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "tests": [
+    { "name": "test_live_tree_fingerprints_match_sidecar", "status": "pass", "duration_ms": 60 },
+    { "name": "test_missing_sidecar_fails_closed", "status": "pass", "duration_ms": 10 },
+    { "name": "test_unparseable_sidecar_fails_closed", "status": "pass", "duration_ms": 10 },
+    { "name": "test_malformed_sidecar_fails_closed", "status": "pass", "duration_ms": 10 },
+    { "name": "test_partial_sidecar_member_absent_is_drift", "status": "pass", "duration_ms": 10 },
+    { "name": "test_run_check_exit_1_on_missing_sidecar", "status": "pass", "duration_ms": 10 },
+    { "name": "test_grow_detected", "status": "pass", "duration_ms": 10 },
+    { "name": "test_id_swap_detected", "status": "pass", "duration_ms": 10 },
+    { "name": "test_out_of_scope_flip_detected", "status": "pass", "duration_ms": 10 },
+    { "name": "test_two_members_drift_both_named", "status": "pass", "duration_ms": 10 },
+    { "name": "test_failure_message_names_framework_and_regen", "status": "pass", "duration_ms": 10 }
+  ],
+  "generated_tests": {
+    "count": 11,
+    "pass": 11,
+    "fail": 0
+  },
+  "notes": "W2 is additive (check-catalog-drift.py extended; regenerate-ca-baselines.sh + test_catalog_drift_guard.py created) — no existing source file modified, so no regression surface. The guard test module IS the FR-007 deliverable (test-as-deliverable per spec), so sub-step 4.6 (tester-agent generation) is satisfied by the authored T008 cases rather than a redundant generation pass. Scope held to the feature's own non-rendering suite per NFR-001 (the full repo suite renders PDFs + has ~19 known out-of-gate failures). One test (test_run_check_exit_1_on_missing_sidecar) surfaced a real call-time-binding defect in read_sidecar's default arg, fixed before wave close. T003 byte-identity pre-state (13 passed, 1 skip) and T007 regen byte-compare (6 baselines byte-identical) separately validated the rendering path."
+}

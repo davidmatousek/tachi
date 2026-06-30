@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "wave": 1,
+  "timestamp": "2026-06-30T00:00:00Z",
+  "test_runner": ".venv/bin/python -m pytest (scoped) + fingerprint-core import/determinism smoke check",
+  "execution_duration_ms": 0,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 1, "fail": 0, "skip": 0 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "tests": [
+    { "name": "fingerprint_core_import_and_determinism_smoke", "status": "pass", "duration_ms": 0 }
+  ],
+  "notes": "W1 is purely additive (only scripts/check-catalog-drift.py created; 0 existing files modified) — no regression surface. The guard's dedicated pytest module is authored in W2/T008; running the full repo suite post-wave would render PDFs (test_backward_compatibility) and surface the ~19 known out-of-gate failures, violating the NFR-001 determinism intent, so the scoped post-wave signal is the import/determinism smoke check (passed) plus the T003 byte-identity pre-state gate (13 passed, 1 skip — separately recorded). cache_clear()-coordination and full synthetic matrix land in W2."
+}

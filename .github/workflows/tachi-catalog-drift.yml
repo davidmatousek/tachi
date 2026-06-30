@@ -1,0 +1,102 @@
+# =============================================================================
+# tachi catalog-drift guard — ORDERED_FRAMEWORKS fingerprint ↔ CA-baseline
+#   coupling gate (Feature 329 / BLP-06 Wave 2, CI-hardening-tail lead)
+# =============================================================================
+#
+# Purpose: Fail the build when an `ORDERED_FRAMEWORKS` member catalog
+# (owasp, mitre-attack, mitre-atlas, nist-ai-rmf, cwe) changes its render-coupled
+# record set — the ordered `(id, out_of_scope)` records the Coverage-Attestation
+# (CA) pages render — WITHOUT the 6 CA PDF baselines being regenerated. This closes
+# the silent-red-`main` gap KB Entry 15 named: the byte-identity suite
+# (tests/scripts/test_backward_compatibility.py) is local-only and wired into no CI,
+# so the F-186 ATLAS grow sat silently red on main for weeks (discovered at F-185).
+#
+# This gate is ENVIRONMENT-INDEPENDENT (NFR-001): it runs
+# tests/scripts/test_catalog_drift_guard.py, whose live-tree assertion recomputes
+# each member's fingerprint by reusing the renderer's own loader and compares it to
+# the committed sidecar examples/ca-baseline-fingerprints.json. It renders NOTHING
+# (no Typst), hits no network, and is sub-second — so it cannot false-red on
+# cross-runner PDF byte-nondeterminism. That property is exactly why we ship the
+# fingerprint guard (option b) instead of wiring the flaky full byte-identity suite
+# into CI (option a, deferred — ADR-037 D-14).
+#
+# Single OS — the assertion is a YAML-fingerprint comparison, OS-independent. A
+# matrix would imply platform-varying results and undercut NFR-001 (single-runner
+# is load-bearing, not a CI-minute saving). Modeled on tachi-maestro-coverage.yml
+# (single-concern, single-runner, contents:read, path-filtered) plus the
+# tachi-pytest.yml dual-trigger anchor.
+#
+# Dual trigger (PR + push:[main]): a catalog edit can reach `main` via a direct
+# push that bypasses the pull_request trigger — exactly how the F-248/F-256
+# hardening was silently reverted once (#338). The push leg closes that
+# direct-to-main bypass. Both triggers resolve a SINGLE path list via a YAML anchor
+# (&drift_paths / *drift_paths) so there is no second list to drift out of sync.
+#
+# F-250 lock-step rule: any change to the guard's dependency surface MUST update
+# BOTH the `paths:` anchor below AND the pytest invocation in the same commit.
+#
+# References:
+#   - specs/329-ordered-frameworks-ci-guard/spec.md (FR-005, NFR-001, US-3)
+#   - specs/329-ordered-frameworks-ci-guard/contracts/sidecar.contract.md
+#   - scripts/check-catalog-drift.py (the guard) + scripts/regenerate-ca-baselines.sh
+#   - docs/architecture/02_ADRs/ADR-037-*.md D-14 (the (a)-deferral rationale)
+# =============================================================================
+
+name: tachi catalog-drift
+
+on:
+  pull_request:
+    paths: &drift_paths
+      # --- the fingerprinted source: ORDERED_FRAMEWORKS member catalogs ---
+      #     (glob is intentionally broad — a non-member edit re-runs the guard
+      #      and passes, which is the safe direction; under-triggering is the risk)
+      - schemas/taxonomy/*.yaml
+      # --- the artifacts the guard couples (baselines + the sidecar) ---
+      - examples/*/security-report.pdf.baseline
+      - examples/ca-baseline-fingerprints.json
+      # --- the only sidecar producer + its recipe source ---
+      - scripts/regenerate-ca-baselines.sh
+      - specs/185-cwe-catalog-expansion/contracts/baseline-regen.contract.md
+      # --- the reused loader (a loader change can silently alter fingerprints — R6) ---
+      - scripts/extract-report-data.py
+      # --- the guard, its test, and this workflow itself ---
+      - scripts/check-catalog-drift.py
+      - tests/scripts/test_catalog_drift_guard.py
+      - .github/workflows/tachi-catalog-drift.yml
+  push:
+    branches: [main]
+    paths: *drift_paths
+
+permissions:
+  contents: read
+
+jobs:
+  catalog-drift-guard:
+    name: Verify ORDERED_FRAMEWORKS fingerprints match the committed sidecar
+    # Single OS — the assertion is an OS-independent YAML-fingerprint comparison.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest + PyYAML
+        # PyYAML is REQUIRED: the guard reuses extract-report-data.py's loader,
+        # which imports `yaml` to read schemas/taxonomy/*.yaml, and
+        # tests/scripts/conftest.py imports `yaml` at collection scope. Without it
+        # the job would error at collection (exit 4) before the gate runs — a
+        # silent no-op. Mirrors the pinned install in tachi-pytest.yml /
+        # tachi-maestro-coverage.yml (the canonical repo pattern).
+        run: pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
+
+      # Direct pytest invocation — slash commands cannot run in CI. The live-tree
+      # assertion fails (not skips) on a missing/partial/unparseable sidecar
+      # (FR-008), so deleting the sidecar to silence the guard reddens CI. Keep
+      # this module in lock-step with the `paths:` anchor above (F-250 rule).
+      - name: Run catalog-drift guard suite (live gate + synthetic matrix)
+        run: |
+          python3 -m pytest tests/scripts/test_catalog_drift_guard.py -v

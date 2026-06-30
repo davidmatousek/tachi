@@ -9,6 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Feature 329 — ORDERED_FRAMEWORKS Catalog-Drift CI Guard (BLP-06 Wave 2, CI-hardening-tail lead, #329) — feat(329)
+
+Adds a fast, environment-independent CI guard that fails the build when an `ORDERED_FRAMEWORKS`
+member catalog (`owasp`, `mitre-attack`, `mitre-atlas`, `nist-ai-rmf`, `cwe`) changes its
+render-coupled record set without the 6 Coverage-Attestation (CA) PDF baselines being
+regenerated — closing the silent-red-on-`main` gap KB Entry 15 named (F-186 grew `mitre-atlas`
+30→36 without regen; discovered weeks later at F-185's plan review). Ships option **(b)** the
+lightweight fingerprint guard; **defers (a)** wiring the full byte-identity suite into CI, whose
+cross-environment Typst byte-determinism would make it a flaky gate (ADR-037 D-14).
+
+**Added**
+- `scripts/check-catalog-drift.py` — the guard. Per member, recomputes a render-coupled
+  fingerprint (sha256 over the ordered, never-sorted `(id, out_of_scope)` records — raw + in-scope
+  partitions) by **reusing the renderer's own `_load_framework_yaml_records` loader**, and compares
+  it to a committed sidecar. `--check` (the CI gate; exit 1 on drift, naming the framework + the
+  regen entry point) and `--emit` (regen-only). Renders nothing, hits no network, sub-second
+  (NFR-001). Fails **closed** on a missing/partial/unparseable sidecar (FR-008); derives its target
+  set from `ORDERED_FRAMEWORKS` at runtime so a future 6th member is covered with zero guard-code
+  change (FR-004). A non-dict raw record fails closed to a deterministic marker, never `AttributeError`.
+- `examples/ca-baseline-fingerprints.json` — the sidecar (the guard's source of truth), emitted
+  **only** as the final step of the new regen script, so a stale sidecar ≡ stale baselines and the
+  expected fingerprints cannot be advanced without a real regen (cheat-resistant — OQ-1).
+- `scripts/regenerate-ca-baselines.sh` — formalizes the manual `baseline-regen.contract.md` recipe
+  into one executable regen: re-renders the 6 baselines (into a temp dir, eliminating the manual
+  `git checkout HEAD --` restoration of `maestro-reference/security-report.pdf` the old recipe
+  required) and emits the sidecar last. A `PYTHON` env override lets it run on an interpreter that
+  carries PyYAML.
+- `tests/scripts/test_catalog_drift_guard.py` — 15 cases: the live-tree==sidecar gate plus the
+  synthetic matrix (grow / constant-count ID-swap (HIGH-2) / `out_of_scope`-flip (HIGH-3) → drift;
+  citation-only #333-class / non-member / clean → no drift; future-member dynamic coverage;
+  fail-closed quartet), each clearing or monkeypatching the loader `@lru_cache` (FR-007 / Risk-3).
+- `.github/workflows/tachi-catalog-drift.yml` — dedicated dual-trigger workflow (`pull_request` +
+  `push: branches:[main]`, single `ubuntu-latest`, `permissions: contents: read`) resolving one
+  `&drift_paths`/`*drift_paths` anchor; the `push` leg closes the #338 direct-to-`main` bypass.
+
+**Changed**
+- `docs/architecture/02_ADRs/ADR-037-*.md` — new decision **D-14** (the fingerprint guard + sidecar
+  contract + the option-(a) deferral rationale) + a Revision-History row + a one-line D-9
+  forward-pointer. D-1..D-13 are byte-unchanged (the C-1 "new decision, not a D-9 rewrite" discipline).
+- `docs/INSTITUTIONAL_KNOWLEDGE.md` — Entry 15's define-time "grep `ORDERED_FRAMEWORKS`" checklist
+  annotated as now CI-backstopped by the guard.
+
 ### Feature 338 — Restore F-248/F-256 Substitution Hardening (BLP-06 Wave 2 / F-2, #338) — fix(338)
 
 Restores the F-248/F-256 substitution and source-pattern hardening that a 2026-06-28
