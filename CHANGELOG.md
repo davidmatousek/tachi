@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Feature 338 — Restore F-248/F-256 Substitution Hardening (BLP-06 Wave 2 / F-2, #338) — fix(338)
+
+Restores the F-248/F-256 substitution and source-pattern hardening that a 2026-06-28
+`/aod.update` template re-sync silently reverted on public `main` (second occurrence
+after `07236cf`) — it reached `main` because `/aod.update` commits direct-to-`main`,
+bypassing the PR-gated CI. Plus a standing guardrail so a direct-to-`main` revert can
+never ship silently again. Restore source is known-good v4.44.0 (`5b64f68`).
+
+**Fixed**
+- The three hardening script bodies restored **byte-identical to v4.44.0 (`5b64f68`)**:
+  the F-248 `patsub_replacement` shim (`.aod/scripts/bash/template-substitute.sh` — `&`-bearing
+  values like `AT&T` stay literal on bash 5.2+ instead of corrupting to `AT{{PROJECT_NAME}}T`);
+  the F-248 parameter-expansion substitution + F-256 `STACK_PACK_ALLOWED_KEYS` whitelist
+  loader (`scripts/init.sh` — replaces a plain `source defaults.env`, so a malicious
+  `defaults.env` is rejected with exit 8 instead of executed); and the F-256
+  `AOD_FETCH_TIMEOUT` bounded-fetch clone watchdog (`.aod/scripts/bash/template-git.sh`).
+- Canonical 5-key `defaults.env` surface restored across all 5 shipped packs (`TECH_STACK`
+  re-added to each; the disallowed `ORCHESTRATION_TARGET` removed from `knowledge-system`)
+  so the restored whitelist loader accepts them and all 5 packs load clean (exit 0).
+
+**Changed**
+- `.github/workflows/tachi-pytest.yml` now also triggers on `push: branches:[main]` (not only
+  `pull_request`), reusing the PR path-filter via a single `&hardening_paths` YAML anchor — a
+  future direct-to-`main` clobber of any hardening-surface path now reddens CI immediately
+  instead of shipping silently (FR-006).
+- `test_personalized_tree_bytes_match_baseline` quarantined `xfail(strict=False)` under #329 so
+  green CI reads as "hardening restored," not conflated with the pre-existing fixture staleness
+  (FR-007).
+
 ### Feature 183 — Citation-URL Link-Rot Monitoring (BLP-05 Wave 3 / F-3, #183) — feat(183)
 
 Keeps the framework-crosswalk catalog's cited authority URLs verifiably live: a
