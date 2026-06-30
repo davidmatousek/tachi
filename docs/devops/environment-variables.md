@@ -152,6 +152,7 @@ There is **no new secret to provision**. The `workflow_dispatch` input `inject_s
 - **F-5 / F-282 pre-commit secret-scanning** (no new env vars; framework-level `SKIP=gitleaks` bypass only): `docs/standards/PRECOMMIT_HOOKS.md` §4. CI parity workflow: `docs/devops/CI_CD_GUIDE.md` → "Gitleaks CI Parity Workflow (F-282 / F-5)".
 - **F-302 / F-260b asset-tag output wiring** (no new env vars; CI lock-step path-filter + pytest-invocation delta only): `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow". Section above documents the no-env-var scope.
 - **F-183 citation link-rot monitor** (no new env vars; ambient `GITHUB_TOKEN` via `GH_TOKEN` only, no PAT/secret): `docs/devops/CI_CD_GUIDE.md` → "Tachi Citation Link-Rot Monitor (F-183 / #183)". Section above documents the no-env-var scope and the ambient-token reference.
+- **F-338 restore substitution hardening** (no new env vars; CI trigger change only — `push: branches: [main]` added to `tachi-pytest.yml` to defend against direct-to-`main` hardening clobber, PR #340, v4.45.1): `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow" → "Trigger Design (F-338)". `AOD_FETCH_TIMEOUT` (the restored watchdog var) was introduced by F-256 and is documented in the F-256 section above.
 
 ---
 

@@ -395,6 +395,71 @@ PRD: `docs/product/02_PRD/134-update-bootstrap-placeholder-migration-2026-04-24.
 
 ---
 
+## Tachi Pytest Workflow
+
+**Workflow file**: `.github/workflows/tachi-pytest.yml`
+
+This workflow runs the F-248 substitution-surface suite and the F-256 source-pattern-hardening suite (`tests/scripts/test_init_sh_*.py` + `tests/scripts/test_template_*.py`) on a two-runner cross-platform matrix (macOS bash 3.2.57 + ubuntu bash 5.x). Both matrix legs must pass green.
+
+| Property | Value |
+|----------|-------|
+| Workflow file | `.github/workflows/tachi-pytest.yml` |
+| Runner matrix | `macos-latest` (bash 3.2.57) + `ubuntu-latest` (bash 5.x) |
+| Python version | 3.11 |
+| Pytest dependencies | `pytest>=8`, `pytest-timeout>=2`, `pyyaml>=6` |
+| Per-test timeout | `--timeout=1080` (hardcoded flag; see F-250 outer-cap rationale in spec) |
+| Permissions | `contents: read` |
+
+### Trigger Design (F-338 — push:[main] guard, PR #340, 2026-06-30)
+
+**Added in Feature 338** (Restore F-248/F-256 Substitution Hardening, PR #340, merged 2026-06-30, release v4.45.1).
+
+The workflow fires on **both** `pull_request` and `push: branches: [main]`. The path filter is shared between the two triggers via a single YAML anchor (`&hardening_paths` / `*hardening_paths`) so the trigger surface stays single-source — no third list to keep in lock-step.
+
+```yaml
+on:
+  pull_request:
+    paths: &hardening_paths
+      - scripts/init.sh
+      - .aod/scripts/bash/template-substitute.sh
+      # ... (full list in .github/workflows/tachi-pytest.yml)
+  push:
+    branches: [main]
+    paths: *hardening_paths
+```
+
+**Why `push: branches: [main]`**: a direct-to-`main` push (e.g., a `/aod.update` apply commit) bypasses the `pull_request` trigger. That is exactly how the F-248/F-256 hardening was silently reverted on `main` in June 2026 (issue #338) — an `/aod.update` run clobbered four hardening-surface files and the gap went undetected until manual inspection. The `push: [main]` trigger closes this regression class: any future direct-to-`main` commit that touches a hardening-surface path will immediately fail CI on `main`, surfacing the regression in minutes rather than shipping it silently to adopters.
+
+**Regression class defended**: silent hardening clobber via direct-to-`main` push (e.g., `/aod.update`). The `pull_request` trigger alone cannot defend this because direct pushes bypass it entirely.
+
+### Path Filter
+
+The `paths:` filter (`&hardening_paths`) covers the hardening surfaces in lock-step with the pytest invocation. When adding a new test file or refactoring a new bash library file, update both the `paths:` trigger list and the `python -m pytest ...` command in the same commit (per F-250 lock-step lesson). Current surfaces include:
+
+- `scripts/init.sh`, `.aod/scripts/bash/template-substitute.sh`, `.aod/scripts/bash/template-git.sh`, `.aod/scripts/bash/template-config-load.sh`, `.aod/scripts/bash/init-input.sh`, `.aod/scripts/bash/template-validate.sh`
+- Constitution templates, template manifest, stack-pack `defaults.env` files (F-256 Site A)
+- All `tests/scripts/test_*.py` modules in the suite
+- `.github/workflows/tachi-pytest.yml` itself (self-watching)
+
+See the workflow file for the authoritative full list.
+
+### Feature History
+
+| Feature | PR | Change |
+|---------|----|--------|
+| F-248 | #249 | Initial substitution-surface suite + macOS matrix |
+| F-256 | #257 | Source-pattern-hardening suite; `template-config-load.sh`; `AOD_FETCH_TIMEOUT` watchdog |
+| F-250 | — | `--timeout=1080` outer cap; session-scoped fixture rationale |
+| F-5 / F-282 | #286 | `test_init_precommit_matrix.py` added to suite |
+| F-302 / F-260b | #303 | Asset-tag test modules + `populate-affected-assets.py` / `sarif_common.py` / `schemas/finding.yaml` path-filter lock-step |
+| **F-338** | **#340** | **`push: branches: [main]` trigger added; paths shared via YAML anchor `&hardening_paths`; defends against direct-to-`main` hardening clobber** |
+
+### Environment Variables
+
+The workflow itself reads **no adopter-facing environment variables** — `--timeout=1080` is a hardcoded flag, not an env var. The test fixtures invoke `AOD_FETCH_TIMEOUT` and `AOD_RATIFICATION_DATE_OVERRIDE` indirectly via `tests/scripts/init_sh_helpers.run_init_in_clone()` for determinism; see `docs/devops/environment-variables.md` for the full contracts.
+
+---
+
 ## Platform Guides
 
 ### GitHub Actions (Recommended)

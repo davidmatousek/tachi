@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-29T17:53:37Z.
+> Auto-generated from GitHub Issues on 2026-06-30T15:55:58Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -8,6 +8,7 @@
 
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
+| #342 | Deliver-stage preflight: guard against stale/diverged local main and behind-main feature branch | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 338 (Re... | 2026-06-30 |
 | #329 | Evaluate wiring byte-identity baseline suite into CI to prevent silent red-main after ORDERED_FRAMEWORKS catalog growth | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of F-185 (CWE Cata... | 2026-06-12 |
 | #295 | F-292 post-merge tachi.threat-model verification runs (T017 + T026) | Impact: 3 (closes empirical verification of SC-003 + SC-015), Confidence: 5 (mechanical execution), Effort: 2 (two `tachi.threat-model` runs + 1 commit) = **30 / Tier 2 (Medium)** | — | 2026-05-14 |
 | #217 | detect_images leaves duplicate .jpg/.png pair after recovery write | — | — | 2026-05-05 |
@@ -52,9 +53,8 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
-| #338 | fix: restore F-248/F-256 substitution hardening reverted by AOD-Kit re-sync; gate tachi-pytest on push | OPEN | 2026-06-29 |
-| #333 | Remediate dead citation URLs surfaced by the link-rot monitor (#332) | OPEN | 2026-06-29 |
-| #332 | [link-rot] Taxonomy citation link-rot — open findings | OPEN | 2026-06-29 |
+| #333 | Remediate dead citation URLs surfaced by the link-rot monitor (#332) | CLOSED | 2026-06-29 |
+| #332 | [link-rot] Taxonomy citation link-rot — open findings | CLOSED | 2026-06-29 |
 | #325 | Crosswalk: 4 citation-unsupported tachi-control-category → nist-ai-rmf edges (T029 survivors, Surface B non-table extras) | OPEN | 2026-06-10 |
 | #299 | docs: surface /tachi.architecture as the recommended Step 4 path in the Developer Guide | CLOSED | 2026-05-30 |
 | #289 | chore: BLP-02 initiative closure tracker (post-5/5 outstanding items + follow-up Issues) | CLOSED | 2026-05-11 |

@@ -289,3 +289,9 @@ This ADR closes 5 vuln_ids in a single PR (per Q-1 single-PR ruling):
 ---
 
 **Status note**: This ADR was promoted from **Proposed** (Wave 3 Stream 3 T042 commit `cd1ae4a`, 2026-05-05) to **Accepted** (Wave 6 T054 commit, 2026-05-05) per the Q-6 dual-commit pattern. T054 folded in the full p95 + cold-cache disposition, the four required §Consequences elaborations (methodology asymmetry, NFR-004 formal loosening rationale, cost decomposition, awk micro-opt rejection), and the §Decision Item 1 NUL-byte mechanism clarification (explicit Step 2b `wc -c` vs `tr -d '\000' | wc -c` size-comparison; the original "regex implicitly rejects NUL" wording was unsound).
+
+---
+
+## Revision History
+
+- **2026-06-30** — hardening restored to `main` via [#338](../../../specs/338-restore-substitution-hardening/spec.md) after a `/aod.update` re-sync regression; durability now enforced by the `tachi-pytest` `push:[main]` gate (FR-006).
