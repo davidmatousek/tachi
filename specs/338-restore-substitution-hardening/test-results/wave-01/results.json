@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "wave": 1,
+  "timestamp": "2026-06-30T14:51:42Z",
+  "test_runner": "python -m pytest (CI-gated 15-module F-248/F-256 subset per tachi-pytest.yml; macOS bash 3.2.57 leg)",
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": {
+    "pass": 143,
+    "fail": 0,
+    "skip": 1,
+    "xfail": 1
+  },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "notes": [
+    "CI-gated 15-module subset (the acceptance oracle, tachi-pytest.yml lines 181-197): 0 failures. Verified across two confirming runs (modules 1-12: 77 pass/0 fail/1 xfail; modules 13-15: 66 pass/1 skip/0 fail).",
+    "1 xfail = test_personalized_tree_bytes_match_baseline (FR-007, pre-existing #329 fixture staleness \u2014 expected).",
+    "1 skip = test_init_precommit_matrix Case 4 (TTY pty simulation \u2014 documented).",
+    "Restore-fix note: 3 gated tests (test_constitution_byte_equals_clean_template, test_malicious_pack_rejected, test_missing_key_pack_rejected) failed BEFORE the restore was committed (the clone-based harness reflects committed HEAD); all 3 PASS once committed (18a39ed). Not regressions.",
+    "Activation note: 5 precommit_matrix T015-gated tests SKIPPED pre-restore now ACTIVATE and PASS post-restore (restored init.sh carries the T015 delta).",
+    "Out-of-gate: the full tests/scripts/ run additionally shows 19 PRE-EXISTING failures OUTSIDE the F-248/F-256 gate (coverage-attestation, llm10/ml/mobile line-caps, tool-abuse, pyyaml-enrichment) that require regenerated threat-model artifacts and are unrelated to this substitution/defaults.env restore. Not in scope of #338; not caused by it.",
+    "ubuntu bash 5.x leg runs in CI at deliver (S-1: no push until green locally \u2014 satisfied)."
+  ]
+}

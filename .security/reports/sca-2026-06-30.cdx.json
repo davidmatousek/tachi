@@ -1,0 +1,295 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:86535b4b-bb93-4f2f-9237-3325afa19ccb",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-06-30T14:47:28Z",
+    "tools": [
+      {
+        "vendor": "aod-security",
+        "name": "aod-security",
+        "version": "1.0.0"
+      }
+    ],
+    "component": {
+      "type": "application",
+      "name": "tachi",
+      "version": "18a39ed3b010"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "next",
+      "version": ">=16.2.6",
+      "purl": "pkg:npm/next@>=16.2.6",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "stacks/nextjs-supabase/scaffold/package.json"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=16.2.6 (resolved version may differ \u2014 declare exact in lock file)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "react",
+      "version": ">=19.0.0",
+      "purl": "pkg:npm/react@>=19.0.0",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "stacks/nextjs-supabase/scaffold/package.json"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=19.0.0 (resolved version may differ \u2014 declare exact in lock file)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "react-dom",
+      "version": ">=19.0.0",
+      "purl": "pkg:npm/react-dom@>=19.0.0",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "stacks/nextjs-supabase/scaffold/package.json"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=19.0.0 (resolved version may differ \u2014 declare exact in lock file)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "@supabase/supabase-js",
+      "version": ">=2.45.0",
+      "purl": "pkg:npm/%40supabase/supabase-js@>=2.45.0",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "stacks/nextjs-supabase/scaffold/package.json"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=2.45.0 (resolved version may differ \u2014 declare exact in lock file)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "@supabase/ssr",
+      "version": ">=0.5.0",
+      "purl": "pkg:npm/%40supabase/ssr@>=0.5.0",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "stacks/nextjs-supabase/scaffold/package.json"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=0.5.0 (resolved version may differ \u2014 declare exact in lock file)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "@prisma/client",
+      "version": ">=7.0.0",
+      "purl": "pkg:npm/%40prisma/client@>=7.0.0",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "stacks/nextjs-supabase/scaffold/package.json"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=7.0.0 (resolved version may differ \u2014 declare exact in lock file)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "zod",
+      "version": ">=3.23.0",
+      "purl": "pkg:npm/zod@>=3.23.0",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "stacks/nextjs-supabase/scaffold/package.json"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=3.23.0 (resolved version may differ \u2014 declare exact in lock file)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "typescript",
+      "version": ">=5.5.0",
+      "purl": "pkg:npm/typescript@>=5.5.0",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "stacks/nextjs-supabase/scaffold/package.json"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=5.5.0 (resolved version may differ \u2014 declare exact in lock file)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "tailwindcss",
+      "version": ">=4.0.0",
+      "purl": "pkg:npm/tailwindcss@>=4.0.0",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "stacks/nextjs-supabase/scaffold/package.json"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=4.0.0 (resolved version may differ \u2014 declare exact in lock file)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "@biomejs/biome",
+      "version": ">=2.0.0",
+      "purl": "pkg:npm/%40biomejs/biome@>=2.0.0",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "stacks/nextjs-supabase/scaffold/package.json"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=2.0.0 (resolved version may differ \u2014 declare exact in lock file)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "prisma",
+      "version": ">=7.0.0",
+      "purl": "pkg:npm/prisma@>=7.0.0",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "stacks/nextjs-supabase/scaffold/package.json"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=7.0.0 (resolved version may differ \u2014 declare exact in lock file)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "vitest",
+      "version": ">=4.1.0",
+      "purl": "pkg:npm/vitest@>=4.1.0",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "stacks/nextjs-supabase/scaffold/package.json"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=4.1.0 (resolved version may differ \u2014 declare exact in lock file)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "@testing-library/react",
+      "version": ">=16.0.0",
+      "purl": "pkg:npm/%40testing-library/react@>=16.0.0",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "stacks/nextjs-supabase/scaffold/package.json"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=16.0.0 (resolved version may differ \u2014 declare exact in lock file)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "playwright",
+      "version": ">=1.55.1",
+      "purl": "pkg:npm/playwright@>=1.55.1",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "stacks/nextjs-supabase/scaffold/package.json"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=1.55.1 (resolved version may differ \u2014 declare exact in lock file)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "@types/node",
+      "version": ">=20.0.0",
+      "purl": "pkg:npm/%40types/node@>=20.0.0",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "stacks/nextjs-supabase/scaffold/package.json"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=20.0.0 (resolved version may differ \u2014 declare exact in lock file)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "@types/react",
+      "version": ">=19.0.0",
+      "purl": "pkg:npm/%40types/react@>=19.0.0",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "stacks/nextjs-supabase/scaffold/package.json"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=19.0.0 (resolved version may differ \u2014 declare exact in lock file)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "@types/react-dom",
+      "version": ">=19.0.0",
+      "purl": "pkg:npm/%40types/react-dom@>=19.0.0",
+      "properties": [
+        {
+          "name": "aod:manifest_source",
+          "value": "stacks/nextjs-supabase/scaffold/package.json"
+        },
+        {
+          "name": "aod:version_constraint",
+          "value": ">=19.0.0 (resolved version may differ \u2014 declare exact in lock file)"
+        }
+      ]
+    }
+  ]
+}

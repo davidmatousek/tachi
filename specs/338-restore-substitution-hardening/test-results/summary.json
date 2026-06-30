@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "feature": "338-restore-substitution-hardening",
+  "total_waves": 1,
+  "waves_tested": 1,
+  "waves_skipped": 0,
+  "totals": {
+    "pass": 143,
+    "fail": 0,
+    "skip": 1
+  },
+  "total_regressions": 0,
+  "coverage_trend": null,
+  "gate_decisions": [
+    {
+      "wave": 1,
+      "decision": "pass"
+    }
+  ]
+}
