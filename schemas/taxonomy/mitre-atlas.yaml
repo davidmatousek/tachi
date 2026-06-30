@@ -25,6 +25,12 @@
 # https://raw.githubusercontent.com/mitre-atlas/atlas-data/main/data/techniques.yaml
 # (primary source) cross-referenced against MISP galaxy (secondary source).
 #
+# MONITOR RE-CLASSIFY (F-333, 2026-06-29): the #183 link-rot monitor now
+# classifies atlas.mitre.org 404s as NEEDS_REVIEW via `_HOST_STATUS_OVERRIDES`
+# in scripts/check-citation-urls.py (host-scoped, status-scoped, reversible).
+# A genuine 410/451 on this host still flags as LINK_ROT; only the anti-bot 404
+# is softened. These citation URLs are intentionally UNCHANGED.
+#
 # NAME CORRECTION APPLIED (T020, 2026-04-17): canonical names for AML.T0058-
 # T0062 re-verified against the authoritative atlas-data techniques.yaml and
 # CORRECTED — T011's aggregated-search names were contaminated (speculative
