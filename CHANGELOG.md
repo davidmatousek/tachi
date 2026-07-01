@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Feature 281 — CI & Governance Hardening Tail (F-4/F-5 follow-ups, BLP-06 Wave 2 hygiene-tail, #281) — feat(281)
+
+Ports the already-shipped F-4 (Claude permissions) and F-5 (gitleaks) *local* pre-commit checks
+into CI-enforced, auditable, maintainable surfaces — adding **no** product capability, only making
+the existing surface harder to bypass. Bundles lead #281 with members #285/#286/#287; the bundle
+stayed whole (no split-valve carve — the adopter template held at 90 LOC and the coverage probe
+stayed a throwaway read against the existing fixtures). The load-bearing gate is a near-1:1
+structural clone of `tachi-catalog-drift.yml` (F-329) reusing the delivered #280 AC-2 cross-check
+script verbatim, so the only net-new verification logic is a one-line jq-presence guard.
+
+**Added**
+- `.github/workflows/tachi-permissions-verify.yml` — dual-trigger (`pull_request` +
+  `push: branches:[main]`, single `ubuntu-latest`, `permissions: contents: read`) gate over one
+  `&verify_paths`/`*verify_paths` anchor. Four ordered steps: a jq-presence guard (fails loudly on
+  runner-image drift *before* the parse — FR-281.7), `jq empty .claude/settings.json` (JSON
+  validity), the reused #280 `claude-permissions-ac2-crosscheck.sh` (fails the job on any non-zero —
+  orphan-diff exit 1 or invariant-violation exit 2), and §3/§4 doc-presence greps on
+  `CLAUDE_PERMISSIONS.md`. The `push:[main]` leg closes the direct-to-`main` bypass (the #338/#329
+  precedent); the path filter means a PR touching no governed file incurs zero CI cost (SC-5).
+- `.gitleaks.toml.adopter-template` — a config-valid, 90-LOC adopter template with four commented
+  sections (custom rules / allow-list extension / per-rule severity / tool-swap to
+  trufflehog·detect-secrets), lowering adopter time-to-first-custom-rule (SC-3).
+- `.github/ISSUE_TEMPLATE/gitleaks-bump.md` — a canonical child-issue template that cites the §10
+  pin-bump cadence surface as the single source of truth (SC-4).
+
+**Changed**
+- `docs/standards/PRECOMMIT_HOOKS.md` — new §3 gitleaks default-rule coverage catalog (each
+  canonical credential pattern → an empirically-confirmed rule ID; 5/6 covered, the generic
+  high-entropy hex gap filed as enhancement #348 — SC-2), a §9.5 adopter-customization subsection
+  pointing at the template + a README Security cross-ref (SC-3), and a §10 pin-bump cadence surface
+  (tag → `autoupdate --freeze` → 16-fixture re-test → rule-ID re-derivation → doc updates — SC-4).
+- `docs/architecture/02_ADRs/ADR-042-*.md` — §References wired to the new §10 cadence surface. No
+  new ADR was minted — the feature only *applies* the already-accepted ADR-041 (permissions
+  baseline) and ADR-042 (gitleaks default) to new enforcement points (the ADR-047 apply-an-invariant
+  rule), recorded as a "no-ADR — CARVE-IN reasoning" note in
+  `docs/architecture/01_system_design/README.md`.
+
 ### Feature 329 — ORDERED_FRAMEWORKS Catalog-Drift CI Guard (BLP-06 Wave 2, CI-hardening-tail lead, #329) — feat(329)
 
 Adds a fast, environment-independent CI guard that fails the build when an `ORDERED_FRAMEWORKS`
