@@ -89,7 +89,7 @@ The per-rule rationale catalog above documents tachi's *additive* `.gitleaks.tom
 | PEM / private-key block | `staged-credential/private-key-block.pem` | `private-key` | ✅ |
 | Generic high-entropy (hex) | (no committed fixture) | — (no default rule fires) | ❌ gap → [#348](https://github.com/davidmatousek/tachi/issues/348) |
 
-**Rule IDs are empirically derived, not transcribed.** Each RuleID above was read from a live gitleaks v8.30.1 hit against the F-5 fixtures — not copied from upstream documentation. Gitleaks gives no immutable-rule-ID guarantee across releases, so this table MUST be re-derived (re-run the fixtures, re-read the `RuleID:` field in the output) on every gitleaks pin bump. The pin-bump cadence (§8.7 / ADR-042) is the process that enforces this re-derivation.
+**Rule IDs are empirically derived, not transcribed.** Each RuleID above was read from a live gitleaks v8.30.1 hit against the F-5 fixtures — not copied from upstream documentation. Gitleaks gives no immutable-rule-ID guarantee across releases, so this table MUST be re-derived (re-run the fixtures, re-read the `RuleID:` field in the output) on every gitleaks pin bump. The pin-bump cadence (§10 / ADR-042) is the process that enforces this re-derivation.
 
 **No dedicated OpenAI rule.** OpenAI `sk-...` keys are caught by the broad `generic-api-key` default rule — gitleaks ships no `openai-api-key`-named rule. This is expected, not a misconfiguration; call it out explicitly so a reviewer isn't surprised the RuleID column doesn't say "openai" for the OpenAI row.
 
@@ -288,3 +288,32 @@ Tachi ships a repo-root starter file, [`.gitleaks.toml.adopter-template`](../../
 2. Uncomment only the sections you need — everything is commented out by default except the `[extend] useDefault = true` block, which must stay active to inherit the canonical credential surface.
 
 The template ships four commented sections: custom rules (§9.1-equivalent), allow-list extension, per-rule severity tagging (via the `tags` array), and tool-swap guidance. The tool-swap section is a pointer, not a duplicate — it complements §9.3 above rather than repeating it; read §9.3 for the full trufflehog/detect-secrets walkthrough.
+
+---
+
+## 10. Gitleaks pin-bump cadence
+
+This section is the **single source of truth** for how the gitleaks pin in `.pre-commit-config.yaml` gets bumped. It operationalizes ADR-042 §Decision Item 6 (pin-bump cadence policy). Every gitleaks version bump — minor, patch, or major — follows the release-type policy below; minor and patch bumps additionally follow the six-step recipe.
+
+### 10.1 Release-type policy (per ADR-042 Decision Item 6)
+
+| Release type | Policy |
+|---|---|
+| **Minor** (e.g., `v8.30.1` → `v8.31.0`) | Re-test-before-merge — run the full six-step recipe below, including the synthetic-fixture re-run, before merging the bump. |
+| **Patch** (e.g., `v8.30.1` → `v8.30.2`) | Opportunistic bump on a confirmed CVE or regression fix. Still run the six-step recipe; patch releases are lower-risk but not exempt from re-verification. |
+| **Major** (e.g., `v8.x` → `v9.x`) | ADR re-evaluation required before bumping. Major releases can carry schema breaks — the `[allowlist]` → `[[allowlists]]` v8.25.0 transition is the canonical example of the class of break a major bump can introduce. Do not bump on the six-step recipe alone; open an ADR addendum or successor ADR first. |
+
+### 10.2 The six-step recipe
+
+Follow these steps, in order, for every minor or patch bump:
+
+1. **Update the gitleaks version in two places**: the `rev` tag in `.pre-commit-config.yaml`, and the pinned-download version + SHA256 checksum in `.github/workflows/gitleaks.yml`. Fetch the new checksum from the upstream `gitleaks_<ver>_checksums.txt` release artifact — do not hand-compute or transcribe it from a secondary source.
+2. **Re-freeze the pin**: run `pre-commit autoupdate --freeze` to replace the human-readable tag with the new pinned commit SHA.
+3. **Re-run the synthetic-fixture suite**: `tests/fixtures/gitleaks-rule-interaction/run.sh` — **16/16 fixtures must pass** before merging. This is the false-positive / false-negative regression gate from ADR-042 Decision Item 7.
+4. **Full-repo hook run**: `pre-commit run --all-files` — **0 findings** required. This confirms the bump did not introduce new firings against tachi's own committed content.
+5. **Re-derive the §3 default-rule coverage catalog**: re-run the coverage probe against the fixtures in `tests/fixtures/gitleaks-rule-interaction/` and re-read each hit's `RuleID:` field from the live gitleaks output, then update the "Default-rule coverage catalog" table in §3. **This step is load-bearing** — the 16-fixture fire/no-fire matrix in step 3 stays green even if an upstream rule silently renames its RuleID, because step 3 only checks whether a rule fired, not which rule fired. Only this re-derivation step catches a renamed RuleID before the §3 catalog goes stale and reviewers cross-check against an out-of-date rule name.
+6. **On any guarantee change** (coverage gained or lost, a rule-ID rename, a threshold shift): update ADR-042 §References and add or adjust a note under §8 Known-Limitations in this document. A guarantee change that goes undocumented here is a silent drift between what this handbook claims and what the shipped scanner actually does.
+
+### 10.3 Owner accountability
+
+Per ADR-042 §Decision Item 6, owner accountability for the pin-bump cadence lives in the BLP-02 closure memo as a recurring maintenance commitment. Each bump should be tracked via a child issue created from the [Gitleaks Pin Bump issue template](../../.github/ISSUE_TEMPLATE/gitleaks-bump.md), which mirrors the six-step recipe above as a checklist.

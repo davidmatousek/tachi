@@ -229,6 +229,7 @@ The test is preventive false-positive verification: it catches schema breaks at 
 - Feature 282 Spec: [specs/282-pre-commit-secret-scanning-defaults/spec.md](../../../specs/282-pre-commit-secret-scanning-defaults/spec.md) (FR-001..FR-015)
 - Feature 282 Plan: [specs/282-pre-commit-secret-scanning-defaults/plan.md](../../../specs/282-pre-commit-secret-scanning-defaults/plan.md)
 - Operator-facing handbook: [docs/standards/PRECOMMIT_HOOKS.md](../../standards/PRECOMMIT_HOOKS.md)
+- Pin-bump cadence operational surface (Decision Item 6): [docs/standards/PRECOMMIT_HOOKS.md §10](../../standards/PRECOMMIT_HOOKS.md#10-gitleaks-pin-bump-cadence)
 - Synthetic-fixture rule-interaction test: [tests/fixtures/gitleaks-rule-interaction/](../../../tests/fixtures/gitleaks-rule-interaction/)
 - gitleaks upstream: `https://github.com/gitleaks/gitleaks`
 - pre-commit framework upstream: `https://github.com/pre-commit/pre-commit`

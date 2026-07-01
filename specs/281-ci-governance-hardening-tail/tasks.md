@@ -77,9 +77,9 @@ triad:
 **Independent Test**: A future `chore(deps): bump gitleaks vX.Y.Z` issue can cite one canonical recipe (tag → freeze → 16-fixture re-test → rule-ID re-derivation → doc updates).
 **⚠️ Sequencing**: T007's rule-ID re-derivation step references the #285 catalog (T011) — **build US3 (T010–T011) before T007** (Team-Lead C-1 / Architect A-1).
 
-- [ ] T007 [US2] Author the canonical gitleaks pin-bump cadence surface in `docs/standards/PRECOMMIT_HOOKS.md` as a **new dedicated section** (e.g., "§Gitleaks pin-bump cadence" — NOT under §Known-Limitations, which is reserved for limitations, not processes; the §Known-Limitations edit below is only the guarantee-change note): document the ADR-042 Decision-Item-6 recipe — update tag → `pre-commit autoupdate --freeze` → re-run `tests/fixtures/gitleaks-rule-interaction/run.sh` (16/16) → `pre-commit run --all-files` (0 findings) → **re-derive the #285 per-pattern → rule-ID mapping** (catches upstream rule-ID renames the fire/no-fire matrix misses) → update ADR-042 §References + `PRECOMMIT_HOOKS.md §Known-Limitations` on any guarantee change (FR-287.1). *Depends on T011.*
-- [ ] T008 [P] [US2] Add `.github/ISSUE_TEMPLATE/gitleaks-bump.md` — a canonical child-issue template whose body references the T007 cadence surface, so future bump issues cite the single source of truth (FR-287.2).
-- [ ] T009 [US2] Update `docs/architecture/02_ADRs/ADR-042-pre-commit-secret-scanning-default.md` §References to point at the T007 cadence surface (FR-287.1 doc wiring). *(FR-287.3 scheduled release-detector stays OUT — split-valve / sibling issue.)*
+- [X] T007 [US2] Author the canonical gitleaks pin-bump cadence surface in `docs/standards/PRECOMMIT_HOOKS.md` as a **new dedicated section** (e.g., "§Gitleaks pin-bump cadence" — NOT under §Known-Limitations, which is reserved for limitations, not processes; the §Known-Limitations edit below is only the guarantee-change note): document the ADR-042 Decision-Item-6 recipe — update tag → `pre-commit autoupdate --freeze` → re-run `tests/fixtures/gitleaks-rule-interaction/run.sh` (16/16) → `pre-commit run --all-files` (0 findings) → **re-derive the #285 per-pattern → rule-ID mapping** (catches upstream rule-ID renames the fire/no-fire matrix misses) → update ADR-042 §References + `PRECOMMIT_HOOKS.md §Known-Limitations` on any guarantee change (FR-287.1). *Depends on T011.*
+- [X] T008 [P] [US2] Add `.github/ISSUE_TEMPLATE/gitleaks-bump.md` — a canonical child-issue template whose body references the T007 cadence surface, so future bump issues cite the single source of truth (FR-287.2).
+- [X] T009 [US2] Update `docs/architecture/02_ADRs/ADR-042-pre-commit-secret-scanning-default.md` §References to point at the T007 cadence surface (FR-287.1 doc wiring). *(FR-287.3 scheduled release-detector stays OUT — split-valve / sibling issue.)*
 
 ---
 
@@ -102,7 +102,7 @@ triad:
 
 - [X] T013 [P] [US4] Author `.gitleaks.toml.adopter-template` (~80–120 LOC) with 4 commented sections: (1) custom rules, (2) allow-list extension, (3) per-rule severity, (4) tool-swap to trufflehog / detect-secrets (grounded in ADR-042 §Alternatives — the differentiator is **allow-list ergonomics**, not runtime) (FR-286.1). **≤120 LOC ceiling = split-valve trigger; if exceeded, carve at build.**
 - [X] T014 [US4] Validate template config-validity (gitleaks provisioned per T002): `gitleaks detect --config=.gitleaks.toml.adopter-template` → assert no config error (FR-286.2).
-- [ ] T015 [US4] Extend the **existing** `docs/standards/PRECOMMIT_HOOKS.md §9 "Adopter customization"` (modify, not create — §9 already exists) with a subsection pointing to the template with usage instructions + a single-line `README.md` Security cross-ref (FR-286.3).
+- [X] T015 [US4] Extend the **existing** `docs/standards/PRECOMMIT_HOOKS.md §9 "Adopter customization"` (modify, not create — §9 already exists) with a subsection pointing to the template with usage instructions + a single-line `README.md` Security cross-ref (FR-286.3).
 
 ---
 
