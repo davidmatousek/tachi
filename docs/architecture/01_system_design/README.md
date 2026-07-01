@@ -3788,3 +3788,41 @@ workflow_dispatch ──────────┴─► tachi-citation-linkrot
 **Cross-references**: [Spec 183](../../../specs/183-citation-url-link-rot-monitoring/spec.md) · [Plan 183](../../../specs/183-citation-url-link-rot-monitoring/plan.md) · [Data model](../../../specs/183-citation-url-link-rot-monitoring/data-model.md) · [Contracts](../../../specs/183-citation-url-link-rot-monitoring/contracts/) · Issue #183 · PR #330 (squash `0a33d70`, v4.44.0) · Predecessor F-180 (F-A1).
 
 **No new ADR — reasoning.** The two architecturally notable stances (scheduled-only determinism boundary + monitor-not-gate exit semantics) are *derivative* of the already-accepted [ADR-021](../02_ADRs/ADR-021-source-date-epoch-for-deterministic-pdf-comparison.md) determinism-boundary invariant — they apply the same "keep the deterministic test/PR path free of environmental non-determinism" principle to outbound HTTP rather than wall-clock timestamps — and are fully recorded across this section, [Plan 183](../../../specs/183-citation-url-link-rot-monitoring/plan.md) (§ trigger, exit-code contract, R8), the [checker CLI contract](../../../specs/183-citation-url-link-rot-monitoring/contracts/), and the dual-signed-off architect baseline. The feature sits entirely outside the production pipeline and the `pytest` suite: no schema / `finding.yaml` change, no new structural invariant in the product, zero net-new runtime dependency, reusing existing `actions/cache@v4` + already-pinned `pyyaml` + native `gh`. This is below the repo's ADR bar (cf. [ADR-047](../02_ADRs/ADR-047-maestro-coverage-state-authority.md): "A render annotation alone would warrant no ADR; the cross-surface authority decision does"). Architect baseline `.aod/results/architect-baseline-183.md` and closure record `.aod/results/architect-183-closure.md` both concur.
+
+---
+
+### Feature 281: ci-governance-hardening-tail
+
+**Added**: 2026-07-01 · **Plan**: `specs/281-ci-governance-hardening-tail/plan.md` · **Nature**: infra/CI/docs (BLP-06 Wave-2 maintenance; bundle lead #281 + #285/#286/#287)
+
+#### Tech Stack
+
+- **CI**: GitHub Actions (`ubuntu-latest`), `actions/checkout@v4`.
+- **Assertion tools**: `jq` (JSON validity), `bash` 3.2 (AC-2 cross-check script, reused), `grep -E` (doc-presence).
+- **Secret-scanning**: `gitleaks` v8.30.1 (SHA256-pinned download), `useDefault = true` ruleset.
+- **No language runtime, no build system, no package manager** added.
+
+#### Components
+
+| Component | Type | Change | Reuses |
+|---|---|---|---|
+| `.github/workflows/tachi-permissions-verify.yml` | CI workflow | **new** | `tachi-catalog-drift.yml` (dual-trigger, `paths:` anchor, `contents: read`, header comment) |
+| `claude-permissions-ac2-crosscheck.sh` | Bash script | **reused (invoked, not edited)** | delivered #280 (PR #290) |
+| `docs/standards/PRECOMMIT_HOOKS.md` §3 | doc | modify — per-pattern→rule-ID catalog | existing §3 "What gets scanned" |
+| `.gitleaks.toml.adopter-template` | config template | **new** (~80–120 LOC) | `.gitleaks.toml` + ADR-042 §Alternatives |
+| `docs/standards/PRECOMMIT_HOOKS.md` §9 + `README.md` | doc | modify — template pointer + cross-ref | F-5 doc pattern |
+| gitleaks pin-bump cadence surface | doc (+ optional issue template) | **new/modify** | ADR-042 Decision Item 6 |
+
+#### Data Flow
+
+```
+#281 workflow (per PR / push:[main] touching a governed path):
+  GitHub event
+    -> paths: filter (single &verify_paths anchor)   -- no governed path? -> job never runs (zero cost)
+         -> actions/checkout@v4  (FULL checkout -- .git required by AC-2 script)
+              -> [1] command -v jq            (FR-281.7 guard -- fail loud if jq absent)
+              -> [2] jq empty settings.json   (FR-281.2 -- JSON validity)
+              -> [3] bash claude-permissions-ac2-crosscheck.sh   (FR-281.3 -- exit 0 pass / 1 orphan / 2 invariant; any non-zero fails)
+              -> [4] grep -E '^## 3. Settings precedence' + '^## 4. Per-rule rationale table'  (FR-281.4 doc-presence)
+                   -> all green -> pass ; any non-zero -> RED (blocks merge / flags direct push)
+```

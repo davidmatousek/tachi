@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-06-30T23:26:23Z.
+> Auto-generated from GitHub Issues on 2026-07-01T19:06:32Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -8,6 +8,7 @@
 
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
+| #349 | Anthropic jailbreak-severity framework alignment (capability-gain risk lens) | Impact: 6, Confidence: 3, Effort: 8 = **17** (P2) | Team observation — prompted by Anthropic's 2026-07-01 Cla... | 2026-07-01 |
 | #346 | Harden read_sidecar against non-dict sidecar member entries (F-329 S-1) | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 329 (OR... | 2026-06-30 |
 | #345 | Regenerate init.sh-substitution baseline (tests/fixtures/init-baseline-tree/) — re-tag from #329 | — | — | 2026-06-30 |
 | #342 | Deliver-stage preflight: guard against stale/diverged local main and behind-main feature branch | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 338 (Re... | 2026-06-30 |
@@ -54,6 +55,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #348 | gitleaks: no default rule covers hex-encoded generic high-entropy secrets | OPEN | 2026-07-01 |
 | #333 | Remediate dead citation URLs surfaced by the link-rot monitor (#332) | CLOSED | 2026-06-29 |
 | #332 | [link-rot] Taxonomy citation link-rot — open findings | CLOSED | 2026-06-29 |
 | #325 | Crosswalk: 4 citation-unsupported tachi-control-category → nist-ai-rmf edges (T029 survivors, Surface B non-table extras) | OPEN | 2026-06-10 |
@@ -62,8 +64,8 @@
 | #287 | chore(282): post-merge follow-up — gitleaks pin-bump cadence accountability (CONCERN-4) | OPEN | 2026-05-10 |
 | #286 | chore(282): post-merge follow-up — AC-19 adopter-extensibility template | OPEN | 2026-05-10 |
 | #285 | chore(282): post-merge follow-up — AC-18 rule-coverage probe | OPEN | 2026-05-10 |
-| #281 | [chore] CI integration for F-4 verification recipe (post-F-4 follow-up) | OPEN | 2026-05-10 |
-| #280 | [chore] Pre-commit hook for .claude/settings.json + CLAUDE_PERMISSIONS.md AC-2 cross-check (post-F-4 follow-up) | OPEN | 2026-05-09 |
+| #281 | [chore] CI integration for F-4 verification recipe (post-F-4 follow-up) | OPEN | 2026-07-01 |
+| #280 | [chore] Pre-commit hook for .claude/settings.json + CLAUDE_PERMISSIONS.md AC-2 cross-check (post-F-4 follow-up) | CLOSED | 2026-07-01 |
 | #276 | [chore] release-please manifest-vs-tag discrepancy investigation (post-F-3 follow-up) | CLOSED | 2026-05-10 |
 | #275 | [chore] PVR-toggle posture probe (post-F-3 follow-up) | CLOSED | 2026-05-10 |
 | #268 | fix: disentangle tachi-scanner from AOD-Kit positioning in .claude/rules/scope.md | CLOSED | 2026-05-07 |

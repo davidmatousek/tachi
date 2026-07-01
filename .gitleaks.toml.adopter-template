@@ -1,0 +1,90 @@
+# =============================================================================
+# .gitleaks.toml.adopter-template — starter for your own .gitleaks.toml
+# =============================================================================
+# Copy this file to `.gitleaks.toml` (or paste sections into your existing
+# one) and uncomment what you need. See docs/standards/PRECOMMIT_HOOKS.md §9
+# and ADR-042 for the full rationale behind tachi's own config; this file is
+# a minimal, commented starting point for YOUR additions.
+#
+# Schema: gitleaks v8.25.0+ `[[allowlists]]` array-of-tables.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Active config — inherit the upstream default ruleset
+# -----------------------------------------------------------------------------
+# Keep this block uncommented. It pulls in gitleaks' ~150+ canonical
+# credential patterns (AWS, GitHub, OpenAI/Anthropic, Stripe, private keys,
+# generic high-entropy strings). Everything below is additive on top of it.
+[extend]
+useDefault = true
+
+# =============================================================================
+# Section 1 — Custom rules
+# =============================================================================
+# Add a rule for a credential format the default ruleset doesn't cover (e.g.
+# an internal or industry-specific token). Uncomment and adapt:
+#
+# [[rules]]
+# id = "acme-internal-api-key"
+# description = "Acme Corp internal API key (pre-prod tokens)"
+# regex = '''ACME_INTERNAL_[A-Z0-9]{32}'''
+# keywords = ["acme_internal"]        # optional: pre-filter for speed
+# tags = ["severity:high"]            # see Section 3 below
+
+# =============================================================================
+# Section 2 — Allow-list extension
+# =============================================================================
+# EXTEND the default allowlist — never replace it. Add a NEW [[allowlists]]
+# block per concern (regex stand-ins, known-safe paths, etc.); do not edit
+# the `[extend]` block above.
+#
+# [[allowlists]]
+# description = "our doc placeholders and fixture paths"
+# regexes = [
+#   '''your-token-here''',            # tutorial-style placeholder
+# ]
+# paths = [
+#   '''docs/.*''',                    # placeholder values in docs
+#   '''tests/fixtures/.*''',          # synthetic test fixtures
+# ]
+# stopwords = [
+#   "example",                        # skip matches containing this word
+# ]
+
+# =============================================================================
+# Section 3 — Per-rule severity
+# =============================================================================
+# gitleaks has no native severity field, but the `tags` array is the
+# convention for triage: tag each custom rule so downstream tooling (or a
+# human skimming refused-commit output) can prioritize. Suggested values:
+# "severity:critical" | "severity:high" | "severity:medium" | "severity:low"
+# You can combine a severity tag with a "warn-only" tag (tachi's own
+# convention — see .gitleaks.toml) to mark a rule as non-blocking:
+#
+# [[rules]]
+# id = "example-low-confidence-pattern"
+# description = "[WARN-ONLY] Low-confidence generic secret heuristic"
+# regex = '''(?i)secret[_-]?key\s*=\s*['"][0-9a-zA-Z]{16,}['"]'''
+# tags = ["severity:low", "warn-only"]
+
+# =============================================================================
+# Section 4 — Tool-swap guidance (gitleaks -> trufflehog / detect-secrets)
+# =============================================================================
+# Prefer a different scanner? gitleaks was tachi's default pick specifically
+# for allow-list ergonomics (a plain TOML block you edit directly), not for
+# runtime — trufflehog v3 is also a Go binary, so language runtime does not
+# differentiate the choice. See ADR-042 §Alternatives-Considered for the full
+# comparison matrix. To swap:
+#
+#   trufflehog:      no TOML allowlist — false-positive suppression is
+#                     authored as Go verifiers/detectors, a higher bar for
+#                     a single-pattern addition than editing this file.
+#   detect-secrets:  swaps this TOML file for a `.secrets.baseline` JSON
+#                     snapshot (scan-once-then-freeze model) instead of the
+#                     stateless rule definitions used here.
+#
+# Swapping means: replace the gitleaks hook in .pre-commit-config.yaml with
+# the chosen tool's hook, replace this file with the tool's config format,
+# and update .aod/scripts/bash/precommit-wrap.sh's CLI invocation (the
+# wrapper's exit-code-capture pattern is tool-agnostic). Full walkthrough:
+# docs/standards/PRECOMMIT_HOOKS.md §9.3.
