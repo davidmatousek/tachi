@@ -47,13 +47,13 @@ triad:
 
 **Purpose**: Confirm the AC-2 baseline-green precondition before authoring the gate that enforces it.
 
-- [ ] T001 Verify baseline-green pre-state: run `jq empty .claude/settings.json` (expect rc=0), `bash .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh` (expect exit 0 — 93 rules ↔ 93 §4 rows), and confirm `## 3. Settings precedence` + `## 4. Per-rule rationale table` headings exist in `docs/standards/CLAUDE_PERMISSIONS.md`. Establishes the US-1 scenario-4 precondition.
+- [X] T001 Verify baseline-green pre-state: run `jq empty .claude/settings.json` (expect rc=0), `bash .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh` (expect exit 0 — 93 rules ↔ 93 §4 rows), and confirm `## 3. Settings precedence` + `## 4. Per-rule rationale table` headings exist in `docs/standards/CLAUDE_PERMISSIONS.md`. Establishes the US-1 scenario-4 precondition.
 
 ## Phase 2: Foundational (Blocking Prerequisite for gitleaks-touching tasks)
 
 **Purpose**: Provision the gitleaks binary for build-time verification (NOT preinstalled on runners; the #281 workflow does NOT need it — only #285/#286/#287 steps do).
 
-- [ ] T002 [P] Provision `gitleaks` v8.30.1 for build-time steps via the SHA256-pinned download stanza reused verbatim from `.github/workflows/gitleaks.yml` (checksum `551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb`); **fail (never skip)** on absent/mismatched binary (FR-285.5). Blocks T010, T014, and the T007 re-test reference.
+- [X] T002 [P] Provision `gitleaks` v8.30.1 for build-time steps via the SHA256-pinned download stanza reused verbatim from `.github/workflows/gitleaks.yml` (checksum `551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb`); **fail (never skip)** on absent/mismatched binary (FR-285.5). Blocks T010, T014, and the T007 re-test reference.
 
 ---
 
@@ -62,10 +62,10 @@ triad:
 **Goal**: The permissions surface (`.claude/settings.json` + `CLAUDE_PERMISSIONS.md`) is CI-verified on every PR touching it and on direct `push:[main]`.
 **Independent Test**: Break `settings.json` JSON validity (or orphan a rule vs. §4) in a PR → `tachi permissions-verify` fails; touch neither governed file → workflow does not run.
 
-- [ ] T003 [P] [US1] Author `.github/workflows/tachi-permissions-verify.yml` scaffold — clone `.github/workflows/tachi-catalog-drift.yml` structure: `name: tachi permissions-verify`; dual-trigger `pull_request` + `push: branches:[main]`; **single YAML-anchored** `paths: &verify_paths` list = [`.claude/settings.json`, `docs/standards/CLAUDE_PERMISSIONS.md`, `.aod/scripts/bash/claude-permissions-ac2-crosscheck.sh`, `.github/workflows/tachi-permissions-verify.yml`] reused via `*verify_paths` on the push leg; `permissions: contents: read`; `runs-on: ubuntu-latest`; `actions/checkout@v4` (full checkout) (FR-281.1/.5/.6/.8).
-- [ ] T004 [US1] Add the four ordered verify steps to `tachi-permissions-verify.yml`: (1) jq-presence guard `command -v jq >/dev/null || exit 1` **before** the parse (FR-281.7); (2) `jq empty .claude/settings.json` (FR-281.2); (3) `bash .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh` — job fails on **any** non-zero (1 orphan **and** 2 invariant) (FR-281.3); (4) doc-presence `grep -qE '^## 3\. Settings precedence'` + `grep -qE '^## 4\. Per-rule rationale table'` on `docs/standards/CLAUDE_PERMISSIONS.md` (FR-281.4).
-- [ ] T005 [US1] Add the self-documenting header comment block to `tachi-permissions-verify.yml` (replicate `tachi-catalog-drift.yml` lines 1–43): dual-trigger rationale, single-anchor F-250 lock-step invariant, the full-checkout dependency (FR-281.8 — AC-2 script uses `git rev-parse --show-toplevel`), and the single-OS justification.
-- [ ] T006 [US1] Failure-injection smoke test (throwaway, **not committed**): copy each governed file to a tmp dir and assert each check reddens — (a) inject JSON syntax error → `jq empty` non-zero; (b) add an orphan `settings.json` rule → AC-2 script non-zero; (c) delete a §3/§4 heading → doc-grep non-zero; then assert clean `main` → all steps rc=0. Covers AC-1/AC-2/AC-3.
+- [X] T003 [P] [US1] Author `.github/workflows/tachi-permissions-verify.yml` scaffold — clone `.github/workflows/tachi-catalog-drift.yml` structure: `name: tachi permissions-verify`; dual-trigger `pull_request` + `push: branches:[main]`; **single YAML-anchored** `paths: &verify_paths` list = [`.claude/settings.json`, `docs/standards/CLAUDE_PERMISSIONS.md`, `.aod/scripts/bash/claude-permissions-ac2-crosscheck.sh`, `.github/workflows/tachi-permissions-verify.yml`] reused via `*verify_paths` on the push leg; `permissions: contents: read`; `runs-on: ubuntu-latest`; `actions/checkout@v4` (full checkout) (FR-281.1/.5/.6/.8).
+- [X] T004 [US1] Add the four ordered verify steps to `tachi-permissions-verify.yml`: (1) jq-presence guard `command -v jq >/dev/null || exit 1` **before** the parse (FR-281.7); (2) `jq empty .claude/settings.json` (FR-281.2); (3) `bash .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh` — job fails on **any** non-zero (1 orphan **and** 2 invariant) (FR-281.3); (4) doc-presence `grep -qE '^## 3\. Settings precedence'` + `grep -qE '^## 4\. Per-rule rationale table'` on `docs/standards/CLAUDE_PERMISSIONS.md` (FR-281.4).
+- [X] T005 [US1] Add the self-documenting header comment block to `tachi-permissions-verify.yml` (replicate `tachi-catalog-drift.yml` lines 1–43): dual-trigger rationale, single-anchor F-250 lock-step invariant, the full-checkout dependency (FR-281.8 — AC-2 script uses `git rev-parse --show-toplevel`), and the single-OS justification.
+- [X] T006 [US1] Failure-injection smoke test (throwaway, **not committed**): copy each governed file to a tmp dir and assert each check reddens — (a) inject JSON syntax error → `jq empty` non-zero; (b) add an orphan `settings.json` rule → AC-2 script non-zero; (c) delete a §3/§4 heading → doc-grep non-zero; then assert clean `main` → all steps rc=0. Covers AC-1/AC-2/AC-3.
 
 **Checkpoint**: US1 alone delivers SC-1 (the whole hardening point) — this is the MVP increment.
 
@@ -100,7 +100,7 @@ triad:
 **Goal**: An adopter can add a first custom credential rule in minutes via a commented starter template.
 **Independent Test**: `gitleaks detect --config=.gitleaks.toml.adopter-template` loads without a config error; `PRECOMMIT_HOOKS.md §9` + `README.md` reference it.
 
-- [ ] T013 [P] [US4] Author `.gitleaks.toml.adopter-template` (~80–120 LOC) with 4 commented sections: (1) custom rules, (2) allow-list extension, (3) per-rule severity, (4) tool-swap to trufflehog / detect-secrets (grounded in ADR-042 §Alternatives — the differentiator is **allow-list ergonomics**, not runtime) (FR-286.1). **≤120 LOC ceiling = split-valve trigger; if exceeded, carve at build.**
+- [X] T013 [P] [US4] Author `.gitleaks.toml.adopter-template` (~80–120 LOC) with 4 commented sections: (1) custom rules, (2) allow-list extension, (3) per-rule severity, (4) tool-swap to trufflehog / detect-secrets (grounded in ADR-042 §Alternatives — the differentiator is **allow-list ergonomics**, not runtime) (FR-286.1). **≤120 LOC ceiling = split-valve trigger; if exceeded, carve at build.**
 - [ ] T014 [US4] Validate template config-validity (gitleaks provisioned per T002): `gitleaks detect --config=.gitleaks.toml.adopter-template` → assert no config error (FR-286.2).
 - [ ] T015 [US4] Extend the **existing** `docs/standards/PRECOMMIT_HOOKS.md §9 "Adopter customization"` (modify, not create — §9 already exists) with a subsection pointing to the template with usage instructions + a single-line `README.md` Security cross-ref (FR-286.3).
 

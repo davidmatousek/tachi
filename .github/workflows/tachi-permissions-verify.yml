@@ -1,0 +1,112 @@
+# =============================================================================
+# tachi permissions-verify — CI back-stop for the F-4 permissions recipe
+#   (Feature 281 / BLP-06 Wave 2, CI-governance-hardening-tail)
+# =============================================================================
+#
+# Purpose: Fail the build when `.claude/settings.json` and its governing
+# doc (`docs/standards/CLAUDE_PERMISSIONS.md`) drift out of sync with each
+# other or become internally invalid. This ports the already-shipped F-4
+# local pre-commit recipe (jq validity + AC-2 cross-check) into a CI gate,
+# closing the gap where a `--no-verify` commit, an uninstalled hook, or a
+# GitHub-web-UI edit to `.claude/settings.json` could land on `main`
+# unchecked. It runs, in order: (1) a jq-presence guard, (2) a JSON-validity
+# check on `.claude/settings.json`, (3) the delivered #280 AC-2 cross-check
+# script, and (4) a doc-presence check for the two interactive-only-covering
+# sections of `CLAUDE_PERMISSIONS.md`.
+#
+# Dual trigger (PR + push:[main]): a settings.json or doc edit can reach
+# `main` via a direct push that bypasses the pull_request trigger — the
+# same direct-to-main bypass class documented for the #338/#329 precedent.
+# The push leg closes that gap. Both triggers resolve a SINGLE path list via
+# a YAML anchor (&verify_paths / *verify_paths) so there is no second list
+# to drift out of sync (F-250 lock-step rule): any change to this workflow's
+# dependency surface MUST update the `paths:` anchor and the step logic in
+# the same commit.
+#
+# Full-checkout dependency (FR-281.8): step 3 invokes
+# `.aod/scripts/bash/claude-permissions-ac2-crosscheck.sh`, which resolves
+# the repository root via `git rev-parse --show-toplevel`. This REQUIRES a
+# working `.git` tree — the checkout below is intentionally the
+# `actions/checkout@v4` default (full, non-sparse). A future edit that
+# switches to a sparse or no-git checkout to save CI minutes would silently
+# repoint the script's root resolution and must not be made without
+# updating this workflow.
+#
+# Single OS — every check here is an OS-independent string/JSON assertion
+# (`jq empty`, a bash script doing file/grep checks, two `grep -qE` doc
+# presence checks). A matrix would imply platform-varying results, which
+# does not apply. Modeled on tachi-catalog-drift.yml (single-concern,
+# single-runner, contents:read, path-filtered, direct-invocation-not-slash-
+# command) and the tachi-pytest.yml dual-trigger anchor pattern — this
+# workflow gets its OWN anchor and file, and MUST NOT touch the pytest
+# gate's `&hardening_paths` anchor (FR-281.6).
+#
+# Least privilege: `contents: read` only — this workflow emits no SARIF,
+# unlike gitleaks.yml, so no `security-events: write` scope is requested
+# (FR-281.5).
+#
+# References:
+#   - specs/281-ci-governance-hardening-tail/spec.md FR-281.1 through
+#     FR-281.8 (this workflow implements all eight)
+#   - .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh (delivered #280
+#     — reused verbatim, not reimplemented)
+#   - docs/architecture/02_ADRs/ADR-037-*.md D-14 (the catalog-drift-guard
+#     direct-invocation / single-OS / anchor pattern this workflow follows)
+#   - docs/architecture/02_ADRs/ADR-041-*.md (permissions baseline)
+# =============================================================================
+
+name: tachi permissions-verify
+
+on:
+  pull_request:
+    paths: &verify_paths
+      - .claude/settings.json
+      - docs/standards/CLAUDE_PERMISSIONS.md
+      - .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh
+      - .github/workflows/tachi-permissions-verify.yml
+  push:
+    branches: [main]
+    paths: *verify_paths
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify .claude/settings.json ↔ CLAUDE_PERMISSIONS.md are in sync
+    # Single OS — every check is an OS-independent string/JSON assertion.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        # Default full checkout (working .git tree) — required by
+        # claude-permissions-ac2-crosscheck.sh's `git rev-parse
+        # --show-toplevel` root resolution (FR-281.8). Do not switch to
+        # sparse-checkout or a no-git fetch without re-verifying that script.
+
+      - name: Assert jq is present
+        # Guards BEFORE the jq-dependent step below, so a runner-image
+        # change that drops jq fails loudly here rather than erroring
+        # ambiguously inside `jq empty` (FR-281.7 / Architect C-2).
+        run: command -v jq >/dev/null || { echo "::error::jq missing on runner"; exit 1; }
+
+      - name: Validate .claude/settings.json is well-formed JSON
+        # FR-281.2 / F-4 FR-001.
+        run: jq empty .claude/settings.json
+
+      - name: Run AC-2 cross-check (settings.json ↔ CLAUDE_PERMISSIONS.md)
+        # Reuses the delivered #280 script verbatim. FR-281.3: the job MUST
+        # fail on ANY non-zero exit — exit 1 (orphaned rule/table-row) and
+        # exit 2 (invariant violation: missing files, jq parse error, empty
+        # section) both fail. No continue-on-error; the exit code is not
+        # swallowed.
+        run: bash .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh
+
+      - name: Assert CLAUDE_PERMISSIONS.md §3 and §4 are present
+        # FR-281.4 (covers AC-7 and AC-12, which are interactive-only and
+        # cannot be exercised by the AC-2 script). Greps match the
+        # byte-exact live headings — a future heading rename must update
+        # both greps in the same commit as the doc edit.
+        run: |
+          grep -qE '^## 3\. Settings precedence' docs/standards/CLAUDE_PERMISSIONS.md || { echo "::error::§3 missing"; exit 1; }
+          grep -qE '^## 4\. Per-rule rationale table' docs/standards/CLAUDE_PERMISSIONS.md || { echo "::error::§4 missing"; exit 1; }
