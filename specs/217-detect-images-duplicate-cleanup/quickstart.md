@@ -5,7 +5,7 @@
 ```bash
 python3 scripts/extract-report-data.py \
   --target-dir <assessment-dir> \
-  --template-dir .claude/skills/tachi-report-assembly/templates \
+  --template-dir templates/tachi/security-report \
   --output /tmp/report-data.typ
 # Mislabeled/corrected pairs are tolerated; nothing is deleted. Byte-identical to pre-F-217 behavior.
 ```
@@ -15,7 +15,7 @@ python3 scripts/extract-report-data.py \
 ```bash
 python3 scripts/extract-report-data.py \
   --target-dir <assessment-dir> \
-  --template-dir .claude/skills/tachi-report-assembly/templates \
+  --template-dir templates/tachi/security-report \
   --output /tmp/report-data.typ \
   --cleanup-mislabeled-images
 # Deletes a mislabeled image ONLY when a byte-identical correctly-labeled counterpart exists.

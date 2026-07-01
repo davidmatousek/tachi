@@ -109,6 +109,26 @@ Where `{N}` is the count of artifacts with their flag set to `true` (including `
 
 ---
 
+## Legacy Duplicate Pairs & Sanctioned Cleanup
+
+Legacy assessment directories from the `gemini-2.5-flash-image` fallback era can contain an infographic image saved under the wrong extension -- typically a `.jpg` file holding PNG bytes. Since #215, `scripts/extract-report-data.py` self-heals this at read time by writing a corrected, correctly-labeled sibling non-destructively; the mislabeled original is left in place. Legacy directories can therefore hold both the mislabeled original and its byte-identical corrected sibling for the same stem -- this is expected, and report generation is unaffected because the corrected sibling is always the file selected for emission.
+
+Reclaim the duplicate storage with the extraction script's opt-in flag:
+
+```bash
+python3 scripts/extract-report-data.py \
+  --target-dir {target_dir} \
+  --output templates/tachi/security-report/report-data.typ \
+  --template-dir templates/tachi/security-report/ \
+  --cleanup-mislabeled-images
+```
+
+Deletion is double-gated -- it fires only when **(1)** the flag is passed **and** **(2)** a correctly-labeled counterpart exists that is byte-identical to the mislabeled file. The rule is direction-agnostic (a `.png` holding JPEG bytes is treated the same as a `.jpg` holding PNG bytes) and best-effort: a per-file deletion failure logs to stderr and never fails the run. Each successful deletion emits exactly one stderr record naming the removed path.
+
+**Do not** clean up these pairs with a raw `find … rm` one-liner -- it cannot verify byte-identity before deleting and risks removing the wrong file. `--cleanup-mislabeled-images` is the only sanctioned cleanup path.
+
+---
+
 ## Legacy Data Extraction Reference
 
 The extraction script (`scripts/extract-report-data.py`) handles all artifact parsing deterministically. The following describes what the script extracts from each source for reference.

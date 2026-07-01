@@ -87,10 +87,10 @@ Single project at repo root: production code in `scripts/`, tests in `tests/scri
 
 **Independent Test**: Flag run against the snapshot dir → 6 deletions; `report-data.typ` byte-identical pre/post; extractor module green (spec US-2 Independent Test).
 
-- [ ] T009 [US2] Pre-cleanup baseline: generate `report-data.typ` for examples/agentic-app/test-output/2026-04-19T03-20-30/ into scratch as before.typ (quickstart.md path-invariance procedure); confirm the dir holds exactly the 6 known mislabeled-`.jpg` + byte-identical `.png` pairs
-- [ ] T010 [US2] AC-2b gate check: search the repo for any consumer of the 6 snapshot `.jpg` paths (tests, scripts, docs, workflows); expected result NONE (OQ-2 = CLEAN, triple-verified in research.md). If a real consumer surfaces: STOP — defer US-2 with a documented rationale comment on Issue #217 and skip T011–T012 `[MANUAL-ONLY] defer decision is a human judgment call on consumer significance`
-- [ ] T011 [US2] Run the flag against the snapshot dir: `python3 scripts/extract-report-data.py --target-dir examples/agentic-app/test-output/2026-04-19T03-20-30 --template-dir <per quickstart> --output <scratch>/after.typ --cleanup-mislabeled-images`; verify exactly 6 deletion stderr records and the 6 `.jpg` files removed, all 6 `.png` survivors intact
-- [ ] T012 [US2] Path-invariance proof + commit: byte-compare before.typ vs after.typ (MUST be identical — AC-2a); run both extractor suites green; verify `git status` shows exactly 6 deletions under the snapshot dir; commit the deletions (SC-001: 6 → 0)
+- [X] T009 [US2] Pre-cleanup baseline: generate `report-data.typ` for examples/agentic-app/test-output/2026-04-19T03-20-30/ into scratch as before.typ (quickstart.md path-invariance procedure); confirm the dir holds exactly the 6 known mislabeled-`.jpg` + byte-identical `.png` pairs
+- [X] T010 [US2] AC-2b gate check: search the repo for any consumer of the 6 snapshot `.jpg` paths (tests, scripts, docs, workflows); expected result NONE (OQ-2 = CLEAN, triple-verified in research.md). If a real consumer surfaces: STOP — defer US-2 with a documented rationale comment on Issue #217 and skip T011–T012 `[MANUAL-ONLY] defer decision is a human judgment call on consumer significance`
+- [X] T011 [US2] Run the flag against the snapshot dir: `python3 scripts/extract-report-data.py --target-dir examples/agentic-app/test-output/2026-04-19T03-20-30 --template-dir <per quickstart> --output <scratch>/after.typ --cleanup-mislabeled-images`; verify exactly 6 deletion stderr records and the 6 `.jpg` files removed, all 6 `.png` survivors intact
+- [X] T012 [US2] Path-invariance proof + commit: byte-compare before.typ vs after.typ (MUST be identical — AC-2a); run both extractor suites green; verify `git status` shows exactly 6 deletions under the snapshot dir; commit the deletions (SC-001: 6 → 0)
 
 **Checkpoint**: US1 and US2 both complete; repo no longer carries duplicate pairs.
 
@@ -102,8 +102,8 @@ Single project at repo root: production code in `scripts/`, tests in `tests/scri
 
 **Independent Test**: Inspect `.claude/skills/tachi-report-assembly/references/` for origin + flag + double-gate coverage with no `find … rm` recommendation (spec US-3 Independent Test).
 
-- [ ] T013 [P] [US3] Add "Legacy duplicate pairs & sanctioned cleanup" note to .claude/skills/tachi-report-assembly/references/typst-artifacts.md near Image File Validation / legacy extraction reference (L30–36/L112–114): duplicate-pair origin (gemini-2.5-flash-image fallback era), flag invocation, double-gate safety semantics, explicit "do NOT use raw find … rm" (AC-3a)
-- [ ] T014 [US3] Add a one-line cross-reference from .claude/skills/tachi-report-assembly/references/typst-template-contract.md Image Paths section (L92–103) to the typst-artifacts.md note ONLY if it reads naturally (plan US-3: optional); verify .claude/agents/tachi/report-assembler.md is NOT modified to pass the flag (OQ-1: human opt-in only); commit US3 work
+- [X] T013 [P] [US3] Add "Legacy duplicate pairs & sanctioned cleanup" note to .claude/skills/tachi-report-assembly/references/typst-artifacts.md near Image File Validation / legacy extraction reference (L30–36/L112–114): duplicate-pair origin (gemini-2.5-flash-image fallback era), flag invocation, double-gate safety semantics, explicit "do NOT use raw find … rm" (AC-3a)
+- [X] T014 [US3] Add a one-line cross-reference from .claude/skills/tachi-report-assembly/references/typst-template-contract.md Image Paths section (L92–103) to the typst-artifacts.md note ONLY if it reads naturally (plan US-3: optional); verify .claude/agents/tachi/report-assembler.md is NOT modified to pass the flag (OQ-1: human opt-in only); commit US3 work
 
 **Checkpoint**: All three user stories independently complete.
 
