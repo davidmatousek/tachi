@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-07-01T22:20:20Z.
+> Auto-generated from GitHub Issues on 2026-07-01T22:30:39Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -22,7 +22,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| #217 | detect_images leaves duplicate .jpg/.png pair after recovery write | — | 2026-07-01 |
+| — | *No items in this stage* | | |
 
 ## Plan
 
@@ -66,3 +66,4 @@
 | #268 | fix: disentangle tachi-scanner from AOD-Kit positioning in .claude/rules/scope.md | CLOSED | 2026-05-07 |
 | #266 | fix: retitle CONTRIBUTING.md for tachi (currently labeled 'AOD Kit' with stale clone URL) | CLOSED | 2026-05-07 |
 | #264 | feat: adopt dual-frame public positioning (harness reframe) | CLOSED | 2026-05-07 |
+| #217 | detect_images leaves duplicate .jpg/.png pair after recovery write | OPEN | 2026-07-01 |
