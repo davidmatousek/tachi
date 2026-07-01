@@ -3,7 +3,7 @@ prd:
   number: 281
   topic: ci-governance-hardening-tail
   created: 2026-06-30
-  status: Approved
+  status: Delivered
   type: feature
 triad:
   pm_signoff:

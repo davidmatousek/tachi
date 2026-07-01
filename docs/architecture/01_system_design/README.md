@@ -3826,3 +3826,12 @@ workflow_dispatch ──────────┴─► tachi-citation-linkrot
               -> [4] grep -E '^## 3. Settings precedence' + '^## 4. Per-rule rationale table'  (FR-281.4 doc-presence)
                    -> all green -> pass ; any non-zero -> RED (blocks merge / flags direct push)
 ```
+
+#### No new ADR — reasoning (CARVE-IN)
+
+No ADR was minted for Feature 281 (CARVE-IN confirmed at plan and Architect gate). The feature introduces no significant *new* technical decision: it **ports** an already-accepted stance into a new enforcement surface rather than deciding anything novel. Every design choice is inherited and cited, not originated:
+- The permissions baseline and its verification recipe were decided in [ADR-041](../02_ADRs/ADR-041-claude-permissions-baseline.md) (Feature 277 / F-4) — `tachi-permissions-verify.yml` executes that recipe in CI; it does not redefine it.
+- The **CI-gate shape** (single-concern, single-runner, `contents: read`, path-filtered, direct-invocation-not-slash-command) follows the [ADR-037](../02_ADRs/ADR-037-web-api-coverage-attestation-and-populator-wiring.md) D-14 catalog-drift-guard precedent; the **dual-trigger `pull_request` + `push:[main]` single-anchor** pattern follows the `tachi-pytest.yml` / `#338` / `#329` direct-to-main-bypass precedent. Both are established patterns, not new decisions.
+- The gitleaks-adopter and pin-bump-cadence work is a **documentation and template surface over the already-accepted** [ADR-042](../02_ADRs/ADR-042-pre-commit-secret-scanning-default.md) Decision Item 6 — `.gitleaks.toml.adopter-template`, `PRECOMMIT_HOOKS.md` §3/§9.5/§10, and the `gitleaks-bump.md` issue template all realize ADR-042's stated cadence; no new secret-scanning decision was made (gitleaks v8.30.1 was already pinned — **zero net-new dependency**). ADR-042 §References was wired to `PRECOMMIT_HOOKS.md §10` in this feature.
+
+This sits below the repo's ADR bar (cf. the [ADR-047](../02_ADRs/ADR-047-maestro-coverage-state-authority.md) rule: a mechanism that only *applies* an accepted invariant to a new surface warrants no ADR; only a genuinely new cross-cutting decision does). The feature touches no product-pipeline schema, no `finding.yaml`, and no runtime dependency manifest.

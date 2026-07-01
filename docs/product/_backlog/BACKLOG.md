@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-07-01T19:06:32Z.
+> Auto-generated from GitHub Issues on 2026-07-01T20:49:50Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -41,7 +41,7 @@
 
 | # | Title | Delivered | Retro | Updated |
 |---|-------|-----------|-------|---------|
-| — | *No items in this stage* | | |
+| #281 | [chore] CI integration for F-4 verification recipe (post-F-4 follow-up) | 2026-07-01 | — | 2026-07-01 |
 
 ## Document
 
@@ -64,7 +64,6 @@
 | #287 | chore(282): post-merge follow-up — gitleaks pin-bump cadence accountability (CONCERN-4) | OPEN | 2026-05-10 |
 | #286 | chore(282): post-merge follow-up — AC-19 adopter-extensibility template | OPEN | 2026-05-10 |
 | #285 | chore(282): post-merge follow-up — AC-18 rule-coverage probe | OPEN | 2026-05-10 |
-| #281 | [chore] CI integration for F-4 verification recipe (post-F-4 follow-up) | OPEN | 2026-07-01 |
 | #280 | [chore] Pre-commit hook for .claude/settings.json + CLAUDE_PERMISSIONS.md AC-2 cross-check (post-F-4 follow-up) | CLOSED | 2026-07-01 |
 | #276 | [chore] release-please manifest-vs-tag discrepancy investigation (post-F-3 follow-up) | CLOSED | 2026-05-10 |
 | #275 | [chore] PVR-toggle posture probe (post-F-3 follow-up) | CLOSED | 2026-05-10 |

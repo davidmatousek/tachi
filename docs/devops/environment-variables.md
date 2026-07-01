@@ -143,6 +143,14 @@ There is **no new secret to provision**. The `workflow_dispatch` input `inject_s
 
 ---
 
+## F-281 CI & Governance Hardening Tail — No New Environment Variables
+
+**Added in Feature 281** (CI & Governance Hardening Tail, F-4/F-5 follow-ups; PR #347, merged 2026-07-01). For cross-reference: F-281 introduces **no new environment variables** of any kind (adopter-facing, test-only, or CI-only). The feature ships one new CI workflow (`.github/workflows/tachi-permissions-verify.yml`) that checks `.claude/settings.json` ↔ `docs/standards/CLAUDE_PERMISSIONS.md` sync via `jq empty`, the reused #280 AC-2 cross-check script, and two doc-presence greps — all file-content assertions, none of which read or require an environment variable. The workflow's `permissions: contents: read` scope needs no secrets or tokens beyond the ambient checkout.
+
+**Reference**: `specs/281-ci-governance-hardening-tail/spec.md`. Workflow walkthrough: `docs/devops/CI_CD_GUIDE.md` → "Tachi Permissions-Verify Workflow".
+
+---
+
 ## Cross-References
 
 - **Adopter-facing update env vars**: `docs/devops/CI_CD_GUIDE.md` → "Update-Script Environment Variables" (`CI`, `FORCE_RETAG`, `AOD_UPDATE_TMP_DIR`, `AOD_BOOTSTRAP_*`, `AOD_UPSTREAM_URL`, `YES`, `SKIP_MARKER`).
@@ -153,6 +161,7 @@ There is **no new secret to provision**. The `workflow_dispatch` input `inject_s
 - **F-302 / F-260b asset-tag output wiring** (no new env vars; CI lock-step path-filter + pytest-invocation delta only): `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow". Section above documents the no-env-var scope.
 - **F-183 citation link-rot monitor** (no new env vars; ambient `GITHUB_TOKEN` via `GH_TOKEN` only, no PAT/secret): `docs/devops/CI_CD_GUIDE.md` → "Tachi Citation Link-Rot Monitor (F-183 / #183)". Section above documents the no-env-var scope and the ambient-token reference.
 - **F-338 restore substitution hardening** (no new env vars; CI trigger change only — `push: branches: [main]` added to `tachi-pytest.yml` to defend against direct-to-`main` hardening clobber, PR #340, v4.45.1): `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow" → "Trigger Design (F-338)". `AOD_FETCH_TIMEOUT` (the restored watchdog var) was introduced by F-256 and is documented in the F-256 section above.
+- **F-281 CI & governance hardening tail** (no new env vars; new dual-trigger `tachi-permissions-verify.yml` CI gate — `jq empty` + reused #280 AC-2 cross-check + doc-presence greps, PR #347, 2026-07-01): `docs/devops/CI_CD_GUIDE.md` → "Tachi Permissions-Verify Workflow". Section above documents the no-env-var scope.
 
 ---
 

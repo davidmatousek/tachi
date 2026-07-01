@@ -527,6 +527,74 @@ Both workflows use `ubuntu-latest`, `contents: read`, and install the same pytes
 
 ---
 
+## Tachi Permissions-Verify Workflow
+
+**Workflow file**: `.github/workflows/tachi-permissions-verify.yml`
+
+**Added in Feature 281** (CI & Governance Hardening Tail, F-4/F-5 follow-ups; PR #347, merged 2026-07-01). This workflow reddens CI — on PRs AND direct-to-`main` pushes — when `.claude/settings.json` and its governing doc (`docs/standards/CLAUDE_PERMISSIONS.md`) drift out of sync with each other or become internally invalid. It ports the already-shipped F-4 local pre-commit recipe (jq validity + AC-2 cross-check) into a CI back-stop, so a `--no-verify` commit, an uninstalled hook, or a GitHub-web-UI edit to `.claude/settings.json` cannot land on `main` unchecked.
+
+| Property | Value |
+|----------|-------|
+| Workflow file | `.github/workflows/tachi-permissions-verify.yml` |
+| Runner | `ubuntu-latest` (single OS — every check is an OS-independent string/JSON assertion) |
+| Permissions | `contents: read` (no `security-events: write` — this workflow emits no SARIF) |
+| Checkout | Full, non-sparse (`actions/checkout@v4` default) — required by step 3's `git rev-parse --show-toplevel` root resolution |
+| Reused script | `.aod/scripts/bash/claude-permissions-ac2-crosscheck.sh` (delivered #280 — reused verbatim, not reimplemented) |
+
+### Trigger Design (F-281 — dual-trigger with YAML anchor)
+
+The workflow fires on **both** `pull_request` and `push: branches: [main]`. The path filter is shared between the two triggers via a single YAML anchor (`&verify_paths` / `*verify_paths`) so the trigger surface stays single-source — no second list to drift out of sync (the same F-250 lock-step rule applied by `tachi-pytest.yml` and `tachi-catalog-drift.yml`).
+
+```yaml
+on:
+  pull_request:
+    paths: &verify_paths
+      - .claude/settings.json
+      - docs/standards/CLAUDE_PERMISSIONS.md
+      - .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh
+      - .github/workflows/tachi-permissions-verify.yml
+  push:
+    branches: [main]
+    paths: *verify_paths
+```
+
+**Why `push: branches: [main]`**: a `.claude/settings.json` or `CLAUDE_PERMISSIONS.md` edit can reach `main` via a direct push that bypasses the `pull_request` trigger entirely — the same direct-to-`main` bypass class already documented for `tachi-pytest.yml` (F-338) and `tachi-catalog-drift.yml` (F-329). The push leg closes that gap: any future direct-to-`main` commit touching the settings/doc pair will immediately fail CI, surfacing the drift in minutes rather than shipping it silently.
+
+### What it checks (four ordered steps)
+
+1. **jq-presence guard** — fails loudly (`::error::jq missing on runner`) if a future runner-image change drops `jq`, rather than erroring ambiguously inside the next step.
+2. **`jq empty .claude/settings.json`** — asserts the file is well-formed JSON.
+3. **AC-2 cross-check** (`bash .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh`) — the reused #280 script. The job fails on **any** non-zero exit: exit 1 (orphaned rule / mismatched table row) and exit 2 (invariant violation — missing files, jq parse error, empty section) both fail; there is no `continue-on-error` and the exit code is never swallowed.
+4. **Doc-presence grep** — asserts `CLAUDE_PERMISSIONS.md` §3 ("Settings precedence") and §4 ("Per-rule rationale table") are present. This covers the two interactive-only acceptance criteria (AC-7, AC-12) that the AC-2 script cannot exercise on its own. The greps match byte-exact live headings — a future heading rename must update both the doc and the greps in the same commit.
+
+### Local invocation
+
+```bash
+# Steps 1-2 (JSON validity)
+jq empty .claude/settings.json
+
+# Step 3 (AC-2 cross-check — matches CI exactly)
+bash .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh
+
+# Step 4 (doc-presence — manual grep, matches CI exactly)
+grep -qE '^## 3\. Settings precedence' docs/standards/CLAUDE_PERMISSIONS.md && echo "§3 OK"
+grep -qE '^## 4\. Per-rule rationale table' docs/standards/CLAUDE_PERMISSIONS.md && echo "§4 OK"
+```
+
+### Relationship to sibling dual-trigger workflows
+
+`tachi-permissions-verify.yml` follows the same anchor-based dual-trigger pattern as `tachi-pytest.yml` (F-338) and `tachi-catalog-drift.yml` (F-329), but owns its **own** anchor and file — it MUST NOT touch either sibling's anchor (`&hardening_paths` / `&drift_paths`).
+
+| Workflow | Guards | Anchor |
+|----------|--------|--------|
+| `tachi-pytest.yml` | Substitution-surface hardening (init.sh, template-substitute.sh, etc.) | `&hardening_paths` |
+| `tachi-catalog-drift.yml` | ORDERED_FRAMEWORKS catalog fingerprint integrity | `&drift_paths` |
+| `tachi-permissions-verify.yml` | `.claude/settings.json` ↔ `CLAUDE_PERMISSIONS.md` sync | `&verify_paths` |
+
+**Reference**: `specs/281-ci-governance-hardening-tail/spec.md` FR-281.1 through FR-281.8. ADR precedent: `docs/architecture/02_ADRs/ADR-037-*.md` D-14 (catalog-drift-guard direct-invocation / single-OS / anchor pattern). No new environment variables introduced — see `docs/devops/environment-variables.md`.
+
+---
+
 ## Platform Guides
 
 ### GitHub Actions (Recommended)
