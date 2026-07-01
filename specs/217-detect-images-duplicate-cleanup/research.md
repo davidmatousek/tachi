@@ -65,3 +65,24 @@ US-3 doc surface: `.claude/skills/tachi-report-assembly/references/typst-artifac
 - US-3 lands in `tachi-report-assembly/references/typst-artifacts.md` (+ contract doc if needed); explicitly do NOT wire the flag into the report-assembler agent
 - Out-of-scope: `--dry-run` companion, generic directory janitor, producer-side changes, auto-pass from agent, standalone script
 - Carry to plan: `run_extract` harness `extra_args` extension; `filecmp` import; optional `clear_cache()`; commit-before-gated-suite build gotcha; record pre-state pytest totals (Entry 15)
+
+## Phase 0 Decisions (plan stage)
+
+- **Decision**: Positive opt-in flag `--cleanup-mislabeled-images` (`action="store_true"`), threading into `detect_images` as defaulted kwarg `cleanup: bool = False`.
+  **Rationale**: PRD decision (c); ADR-008 opt-in-for-high-risk precedent; two-positional-arg caller at `test_extractor_contract_fixes.py:200` must stay valid.
+  **Alternatives considered**: option (b) `copyfile→move` (rejected by PRD — silently destructive default); `--no-cleanup` default-on (violates Principle III safe default); standalone cleanup script (rejected — code economy, probe already lives in the extractor).
+- **Decision**: Byte-identity gate via stdlib `filecmp.cmp(a, b, shallow=False)` with one defensive `filecmp.clear_cache()` per cleanup-enabled `detect_images` run.
+  **Rationale**: stdlib-only (ADR-017); `shallow=False` forces content comparison; `clear_cache()` removes the stat-signature cache class entirely for near-zero cost (≤6 stems).
+  **Alternatives considered**: hash comparison (hashlib) — more code for no gain at 6 files; byte-loop — reinvents stdlib (rung 3); fd/inode TOCTOU hardening — disproportionate for a local single-user CLI, per-file try/except is the proportional mitigation.
+- **Decision**: One shared deletion helper used by BOTH moments (pre-existing-pairs branch and recovery-write branch), predicate = mislabeled (content format ≠ extension) AND correctly-labeled counterpart byte-identical; recovery moment additionally gated on `pre_existed` recorded before `copyfile`.
+  **Rationale**: FR-004 both-moments mandate; single predicate implementation prevents drift between the two call sites; `pre_existed` gate closes the AC-1g cross-swap data-loss edge.
+  **Alternatives considered**: recovery-only wiring (explicitly forbidden — misses the primary US-2 case); post-loop directory sweep (a generic janitor — out of scope per PRD).
+- **Decision**: Test harness extension — add optional `extra_args: list[str] | None = None` parameter to `run_extract` (appended to the subprocess argv).
+  **Rationale**: existing signature `run_extract(target_dir, template_dir=None)` has no flag pass-through; optional-with-default keeps all existing call sites byte-identical.
+  **Alternatives considered**: new parallel helper `run_extract_with_flags` (duplication); invoking the module directly for cleanup tests (loses the CLI-path coverage the ACs require).
+- **Decision**: US-3 documentation lands in `.claude/skills/tachi-report-assembly/references/typst-artifacts.md` (primary), with a one-line cross-reference from `typst-template-contract.md` image-paths section only if it reads naturally.
+  **Rationale**: typst-artifacts.md owns image validation + legacy extraction reference (L30–36, L112–114) — the canonical "report-assembly reference surface" of AC-3a; README/DEVELOPER_GUIDE don't reference the script at all.
+  **Alternatives considered**: root-level guide edits (no existing extractor surface there — would create a new doc surface for a P3 story).
+- **Decision**: US-2 dogfood proof = path-invariance (`report-data.typ` byte-identical pre/post) + extractor test module green; proceed per OQ-2 CLEAN with AC-2b defer fallback retained.
+  **Rationale**: ADR-021 determinism makes byte-comparison of emitted data the strongest cheap oracle; no test consumes the snapshot images (triple-verified: BASELINE_EXAMPLES excludes agentic-app, MAESTRO invariant globs out test-output/, CI runs neither extractor suite).
+  **Alternatives considered**: full PDF re-render comparison (needs Typst + fonts, adds noise for no additional proof); deferring US-2 outright (unwarranted — OQ-2 resolved CLEAN).
