@@ -89,9 +89,9 @@ triad:
 **Independent Test**: Each canonical pattern in the catalog maps to a rule ID confirmed by a fixture hit; uncovered patterns have filed issues.
 **Sequencing**: build **before** T007 (US2 consumes this catalog).
 
-- [ ] T010 [US3] Empirical probe (gitleaks provisioned per T002): run `gitleaks dir --report-format=json` against the committed should-fire fixtures in `tests/fixtures/gitleaks-rule-interaction/` covering `ghp_*`, `AKIA*`, `sk-*`, `sk-ant-*`, PEM/private-key (5 patterns), **plus a throwaway temp fixture for the generic high-entropy pattern (which has no committed fixture)**; parse each hit's `RuleID` to build the per-pattern → rule-ID map (FR-285.1/.2). **Throwaway/reuse read — do NOT author a new committed harness (split-valve trigger).**
-- [ ] T011 [US3] Hand-author the per-pattern → rule-ID catalog table as a **new subsection** under `docs/standards/PRECOMMIT_HOOKS.md §3 "What gets scanned"` (FR-285.3); if a `[MANUAL-ONLY]` coverage note already exists elsewhere in the doc, cross-link it rather than assuming it lives in §3.
-- [ ] T012 [US3] For any canonical pattern NOT covered by an active default rule: file a separate `enhancement` GitHub issue and cross-reference it in the catalog (FR-285.4). If all six are covered, state "all 6 covered" explicitly.
+- [X] T010 [US3] Empirical probe (gitleaks provisioned per T002): run `gitleaks dir --report-format=json` against the committed should-fire fixtures in `tests/fixtures/gitleaks-rule-interaction/` covering `ghp_*`, `AKIA*`, `sk-*`, `sk-ant-*`, PEM/private-key (5 patterns), **plus a throwaway temp fixture for the generic high-entropy pattern (which has no committed fixture)**; parse each hit's `RuleID` to build the per-pattern → rule-ID map (FR-285.1/.2). **Throwaway/reuse read — do NOT author a new committed harness (split-valve trigger).**
+- [X] T011 [US3] Hand-author the per-pattern → rule-ID catalog table as a **new subsection** under `docs/standards/PRECOMMIT_HOOKS.md §3 "What gets scanned"` (FR-285.3); if a `[MANUAL-ONLY]` coverage note already exists elsewhere in the doc, cross-link it rather than assuming it lives in §3.
+- [X] T012 [US3] For any canonical pattern NOT covered by an active default rule: file a separate `enhancement` GitHub issue and cross-reference it in the catalog (FR-285.4). If all six are covered, state "all 6 covered" explicitly.
 
 ---
 
@@ -101,7 +101,7 @@ triad:
 **Independent Test**: `gitleaks detect --config=.gitleaks.toml.adopter-template` loads without a config error; `PRECOMMIT_HOOKS.md §9` + `README.md` reference it.
 
 - [X] T013 [P] [US4] Author `.gitleaks.toml.adopter-template` (~80–120 LOC) with 4 commented sections: (1) custom rules, (2) allow-list extension, (3) per-rule severity, (4) tool-swap to trufflehog / detect-secrets (grounded in ADR-042 §Alternatives — the differentiator is **allow-list ergonomics**, not runtime) (FR-286.1). **≤120 LOC ceiling = split-valve trigger; if exceeded, carve at build.**
-- [ ] T014 [US4] Validate template config-validity (gitleaks provisioned per T002): `gitleaks detect --config=.gitleaks.toml.adopter-template` → assert no config error (FR-286.2).
+- [X] T014 [US4] Validate template config-validity (gitleaks provisioned per T002): `gitleaks detect --config=.gitleaks.toml.adopter-template` → assert no config error (FR-286.2).
 - [ ] T015 [US4] Extend the **existing** `docs/standards/PRECOMMIT_HOOKS.md §9 "Adopter customization"` (modify, not create — §9 already exists) with a subsection pointing to the template with usage instructions + a single-line `README.md` Security cross-ref (FR-286.3).
 
 ---
