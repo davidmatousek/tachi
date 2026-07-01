@@ -59,8 +59,13 @@ def _write_minimal_jpeg(path: Path) -> None:
     path.write_bytes(JPEG_MAGIC + b"\x00" * 16)
 
 
-def run_extract(target_dir, template_dir=None):
-    """Run extract-report-data.py and return (returncode, stdout, stderr, typst_content)."""
+def run_extract(target_dir, template_dir=None, extra_args=None):
+    """Run extract-report-data.py and return (returncode, stdout, stderr, typst_content).
+
+    ``extra_args`` is an optional list of additional CLI arguments appended to
+    argv (e.g. ``["--cleanup-mislabeled-images"]``); existing call sites are
+    unaffected since the parameter defaults to ``None`` (contracts/cli-contract.md §4).
+    """
     if template_dir is None:
         template_dir = TEMPLATE_DIR
     with tempfile.NamedTemporaryFile(suffix=".typ", delete=False) as f:
@@ -73,6 +78,8 @@ def run_extract(target_dir, template_dir=None):
             "--template-dir", str(template_dir),
             "--output", output_path,
         ]
+        if extra_args:
+            cmd.extend(extra_args)
         result = subprocess.run(cmd, capture_output=True, text=True)
         content = None
         if result.returncode == 0 and os.path.exists(output_path):
@@ -339,6 +346,298 @@ def test_clean_jpeg_emits_jpg_path_without_warning(tmp_path):
     )
     assert not (fixture / "threat-executive-architecture.png").exists(), (
         "Clean JPEG must not trigger sibling creation."
+    )
+
+
+# =============================================================================
+# Opt-in mislabeled-image cleanup (Issue #217 / Feature 217)
+# =============================================================================
+#
+# Nine cases exercise the --cleanup-mislabeled-images double gate (flag AND a
+# byte-identical, correctly-labeled counterpart) across both wiring moments —
+# Moment A (pre-existing pairs) and Moment B (recovery write). Seven run
+# through the CLI subprocess path via run_extract(extra_args=[...]); the two
+# fault-injection cases (AC-1f, FR-005) run in-process via _load_extract_module()
+# because run_extract crosses a subprocess boundary that monkeypatch cannot.
+
+CLEANUP_FLAG = ["--cleanup-mislabeled-images"]
+
+
+def _stderr_deletion_lines(stderr: str) -> list:
+    """Return stderr lines that report a completed deletion (contain "delet")."""
+    return [line for line in stderr.splitlines() if "delet" in line.lower()]
+
+
+def test_cleanup_flag_deletes_mislabeled_jpg_with_byte_identical_png(tmp_path):
+    """AC-1a: flagged run deletes the mislabeled .jpg once a byte-identical,
+    correctly-labeled .png counterpart exists; exactly one deletion record.
+    """
+    fixture = _build_byte_probe_fixture(tmp_path)
+    mislabeled = fixture / "threat-executive-architecture.jpg"
+    counterpart = fixture / "threat-executive-architecture.png"
+    _write_minimal_png(mislabeled)
+    _write_minimal_png(counterpart)  # identical fixed payload -> byte-identical
+
+    returncode, _stdout, stderr, content = run_extract(fixture, extra_args=CLEANUP_FLAG)
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert content is not None, "Expected report-data.typ to be written"
+
+    assert not mislabeled.exists(), "Mislabeled .jpg must be deleted under the double gate."
+    assert counterpart.exists(), "Byte-identical .png counterpart must survive."
+
+    path_lines = [
+        line for line in content.splitlines()
+        if line.startswith("#let executive-architecture-image-path")
+    ]
+    assert len(path_lines) == 1, f"Expected one path line, got: {path_lines!r}"
+    assert path_lines[0].rstrip().endswith('threat-executive-architecture.png"'), (
+        f"Expected emitted path to be the .png survivor, got: {path_lines[0]!r}"
+    )
+
+    deletion_lines = _stderr_deletion_lines(stderr)
+    assert len(deletion_lines) == 1, (
+        f"Expected exactly one deletion record, got {len(deletion_lines)}: {deletion_lines!r}"
+    )
+    assert mislabeled.name in deletion_lines[0], (
+        f"Deletion record must name the removed path: {deletion_lines[0]!r}"
+    )
+    assert counterpart.name in deletion_lines[0], (
+        f"Deletion record must name the retained survivor path: {deletion_lines[0]!r}"
+    )
+
+
+def test_no_flag_run_stays_byte_identical(tmp_path):
+    """AC-1b (regression pin): without the flag, a mislabeled/counterpart pair
+    is left untouched and no cleanup output is emitted. Exercises only
+    pre-existing (#215) behavior, so this case passes pre-implementation.
+    """
+    fixture = _build_byte_probe_fixture(tmp_path)
+    mislabeled = fixture / "threat-executive-architecture.jpg"
+    counterpart = fixture / "threat-executive-architecture.png"
+    _write_minimal_png(mislabeled)
+    _write_minimal_png(counterpart)
+
+    returncode, _stdout, stderr, content = run_extract(fixture)
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert content is not None, "Expected report-data.typ to be written"
+
+    assert mislabeled.exists(), "No-flag run must never delete the mislabeled .jpg."
+    assert counterpart.exists(), "No-flag run must never delete the .png counterpart."
+    assert not _stderr_deletion_lines(stderr), (
+        f"No-flag run must emit zero cleanup lines, got stderr: {stderr!r}"
+    )
+
+    path_lines = [
+        line for line in content.splitlines()
+        if line.startswith("#let executive-architecture-image-path")
+    ]
+    assert len(path_lines) == 1
+    assert path_lines[0].rstrip().endswith('threat-executive-architecture.png"'), (
+        "Selection behavior (self-consistent .png over stale-labeled .jpg) must be "
+        f"unaffected by the flag's absence, got: {path_lines[0]!r}"
+    )
+
+
+def test_cleanup_flag_recovery_write_then_verify_then_delete(tmp_path):
+    """AC-1c: no sibling exists yet — the corrected sibling is written first,
+    verified byte-identical, and only then is the mislabeled original deleted.
+    """
+    fixture = _build_byte_probe_fixture(tmp_path)
+    mislabeled = fixture / "threat-executive-architecture.jpg"
+    sibling = fixture / "threat-executive-architecture.png"
+    _write_minimal_png(mislabeled)
+    assert not sibling.exists(), "Precondition: no sibling yet."
+
+    returncode, _stdout, stderr, content = run_extract(fixture, extra_args=CLEANUP_FLAG)
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert content is not None, "Expected report-data.typ to be written"
+
+    assert sibling.exists(), "Corrected sibling must be written."
+    assert sibling.read_bytes().startswith(PNG_MAGIC), "Sibling must carry the PNG bytes."
+    assert not mislabeled.exists(), "Original .jpg must be deleted after verified write."
+
+    # Order provable via record content: the recovery-write note precedes the
+    # deletion record in stderr (write -> verify -> delete).
+    recovery_idx = stderr.find("Image format mismatch")
+    deletion_lines = _stderr_deletion_lines(stderr)
+    assert recovery_idx != -1, "Expected the recovery-write note in stderr."
+    assert len(deletion_lines) == 1, (
+        f"Expected exactly one deletion record, got {len(deletion_lines)}: {deletion_lines!r}"
+    )
+    deletion_idx = stderr.find(deletion_lines[0])
+    assert recovery_idx < deletion_idx, (
+        "Recovery write must be logged before the deletion record (write-verify-delete order)."
+    )
+
+
+def test_cleanup_flag_non_identical_pair_untouched(tmp_path):
+    """AC-1d: a mislabeled .jpg and a self-consistent .png that are NOT
+    byte-identical must never be deleted — never guess which is authoritative.
+    """
+    fixture = _build_byte_probe_fixture(tmp_path)
+    mislabeled = fixture / "threat-executive-architecture.jpg"
+    counterpart = fixture / "threat-executive-architecture.png"
+    _write_minimal_png(mislabeled)
+    counterpart.write_bytes(PNG_MAGIC + b"\x01" * 16)  # valid PNG, different bytes
+
+    returncode, _stdout, stderr, content = run_extract(fixture, extra_args=CLEANUP_FLAG)
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert content is not None, "Expected report-data.typ to be written"
+
+    assert mislabeled.exists(), "Non-identical mislabeled .jpg must be preserved."
+    assert counterpart.exists(), "Non-identical .png counterpart must be preserved."
+    assert not _stderr_deletion_lines(stderr), (
+        f"No deletion record expected for a non-identical pair, got stderr: {stderr!r}"
+    )
+
+
+def test_cleanup_flag_all_correct_directory_is_a_no_op(tmp_path):
+    """AC-1e: a directory with only a correctly-labeled image is a no-op —
+    zero deletions, zero cleanup stderr.
+    """
+    fixture = _build_byte_probe_fixture(tmp_path)
+    clean = fixture / "threat-executive-architecture.jpg"
+    _write_minimal_jpeg(clean)
+
+    returncode, _stdout, stderr, content = run_extract(fixture, extra_args=CLEANUP_FLAG)
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert content is not None, "Expected report-data.typ to be written"
+
+    assert clean.exists(), "Correctly-labeled image must be untouched."
+    assert not _stderr_deletion_lines(stderr), (
+        f"All-correct directory must emit zero cleanup lines, got stderr: {stderr!r}"
+    )
+    assert "Image format mismatch" not in stderr, (
+        "All-correct directory must not trigger the recovery branch."
+    )
+
+
+def test_cleanup_flag_truncated_recovery_copy_skips_delete(tmp_path, monkeypatch, capsys):
+    """AC-1f: a truncated/failed sibling copy in the recovery path must NOT
+    delete the mislabeled original, and the run must still complete (the
+    exit-0 equivalent for an in-process call — no exception raised). Byte-
+    identity verification doubles as copy-success verification. Runs
+    in-process: run_extract crosses a subprocess boundary that a monkeypatched
+    shutil.copyfile cannot.
+    """
+    extract = _load_extract_module()
+
+    target_dir = tmp_path / "target"
+    target_dir.mkdir()
+    template_dir = tmp_path / "templates"
+    template_dir.mkdir()
+
+    mislabeled = target_dir / "threat-executive-architecture.jpg"
+    _write_minimal_png(mislabeled)
+
+    def _truncated_copyfile(src, dst):
+        Path(dst).write_bytes(Path(src).read_bytes()[:4])  # short write, not byte-identical
+
+    monkeypatch.setattr(extract.shutil, "copyfile", _truncated_copyfile)
+
+    images = extract.detect_images(target_dir, template_dir, cleanup=True)  # must not raise
+
+    assert mislabeled.exists(), "Mislabeled original must be preserved when the copy is truncated."
+    assert images["executive_architecture_image_path"], (
+        "detect_images must still complete and report a chosen path (exit-0 equivalent)."
+    )
+
+    stderr = capsys.readouterr().err
+    assert "Image format mismatch" in stderr, (
+        "Expected the pre-existing recovery-write note in stderr."
+    )
+    assert not _stderr_deletion_lines(stderr), (
+        f"Truncated copy must never emit a deletion record, got stderr: {stderr!r}"
+    )
+
+
+def test_cleanup_flag_cross_swapped_pair_untouched(tmp_path):
+    """AC-1g: a cross-swapped pair (.jpg holds PNG bytes AND .png holds JPEG
+    bytes) must never be deleted — recovery-path deletion fires only when the
+    corrected sibling did NOT pre-exist the copy.
+    """
+    fixture = _build_byte_probe_fixture(tmp_path)
+    jpg_path = fixture / "threat-executive-architecture.jpg"
+    png_path = fixture / "threat-executive-architecture.png"
+    _write_minimal_png(jpg_path)    # .jpg holds PNG bytes
+    _write_minimal_jpeg(png_path)   # .png holds JPEG bytes
+
+    returncode, _stdout, stderr, content = run_extract(fixture, extra_args=CLEANUP_FLAG)
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert content is not None, "Expected report-data.typ to be written"
+
+    assert jpg_path.exists(), "Cross-swapped .jpg must be preserved (no deletion)."
+    assert png_path.exists(), "Cross-swapped .png must be preserved (no deletion)."
+    assert not _stderr_deletion_lines(stderr), (
+        f"Cross-swap must never emit a deletion record, got stderr: {stderr!r}"
+    )
+
+
+def test_cleanup_flag_legitimate_mixed_pair_untouched(tmp_path):
+    """AC-1h: a self-consistent .jpg and .png of different legitimate images
+    must never be touched — the predicate keys on mislabeled-ness, not
+    sibling-existence.
+    """
+    fixture = _build_byte_probe_fixture(tmp_path)
+    jpg_path = fixture / "threat-executive-architecture.jpg"
+    png_path = fixture / "threat-executive-architecture.png"
+    _write_minimal_jpeg(jpg_path)   # self-consistent
+    _write_minimal_png(png_path)    # self-consistent, different legitimate image
+
+    returncode, _stdout, stderr, content = run_extract(fixture, extra_args=CLEANUP_FLAG)
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert content is not None, "Expected report-data.typ to be written"
+
+    assert jpg_path.exists(), "Legitimate self-consistent .jpg must be preserved."
+    assert png_path.exists(), "Legitimate self-consistent .png must be preserved."
+    assert not _stderr_deletion_lines(stderr), (
+        f"Legitimate mixed pair must never emit a deletion record, got stderr: {stderr!r}"
+    )
+    assert "Image format mismatch" not in stderr, (
+        "Legitimate mixed pair must not trip the recovery branch."
+    )
+
+
+def test_cleanup_deletion_failure_is_best_effort(tmp_path, monkeypatch, capsys):
+    """FR-005/INV-3 (Architect MED-2): a per-file deletion failure (OSError
+    from Path.unlink) is logged to stderr and MUST NOT fail extraction — the
+    file persists, exactly one failure line is emitted, and detect_images
+    still returns normally with unchanged output. Runs in-process: run_extract
+    crosses a subprocess boundary that a monkeypatched Path.unlink cannot.
+    """
+    extract = _load_extract_module()
+
+    target_dir = tmp_path / "target"
+    target_dir.mkdir()
+    template_dir = tmp_path / "templates"
+    template_dir.mkdir()
+
+    mislabeled = target_dir / "threat-executive-architecture.jpg"
+    counterpart = target_dir / "threat-executive-architecture.png"
+    _write_minimal_png(mislabeled)
+    _write_minimal_png(counterpart)  # byte-identical: gate 2 would otherwise pass
+
+    def _raise_permission_error(self, *args, **kwargs):
+        raise OSError("Permission denied (simulated)")
+
+    monkeypatch.setattr(Path, "unlink", _raise_permission_error)
+
+    images = extract.detect_images(target_dir, template_dir, cleanup=True)  # must not raise
+
+    assert mislabeled.exists(), "File must persist when deletion raises OSError (best-effort)."
+    assert counterpart.exists(), "Survivor counterpart must remain untouched."
+    assert images["executive_architecture_image_path"].endswith(
+        "threat-executive-architecture.png"
+    ), "Emitted output must be unchanged by the deletion failure."
+
+    stderr = capsys.readouterr().err
+    failure_lines = [
+        line for line in stderr.splitlines()
+        if mislabeled.name in line and "Permission denied (simulated)" in line
+    ]
+    assert len(failure_lines) == 1, (
+        f"Expected exactly one failure line naming the path and OS error, "
+        f"got {len(failure_lines)}: {failure_lines!r}. Full stderr: {stderr!r}"
     )
 
 

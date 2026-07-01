@@ -12,6 +12,7 @@ Exit codes:
 """
 
 import argparse
+import filecmp
 import functools
 import os
 import re
@@ -1460,7 +1461,34 @@ def _file_format(path: Path) -> "str | None":
     return None
 
 
-def detect_images(target_dir: Path, template_dir: Path) -> dict:
+def _maybe_delete_mislabeled(mislabeled_fp: Path, counterpart_fp: Path) -> bool:
+    """Delete ``mislabeled_fp`` iff ``counterpart_fp`` is a verified byte-identical
+    survivor (gate 2 of the double-gated cleanup; the --cleanup-mislabeled-images
+    flag is gate 1, checked by the caller). The entire attempt — existence/size
+    probe, byte comparison, and delete — is wrapped in try/except OSError so a
+    filesystem race or permission failure during cleanup can never fail
+    extraction (FR-005/INV-3). Returns whether the deletion happened. This is
+    the sole deletion primitive in the module (INV-1: both wiring moments call
+    it, so the predicate cannot drift between them).
+    """
+    try:
+        if not counterpart_fp.exists() or counterpart_fp.stat().st_size == 0:
+            return False
+        if not filecmp.cmp(mislabeled_fp, counterpart_fp, shallow=False):
+            return False
+        mislabeled_fp.unlink()
+        print(
+            f"Cleanup: deleted mislabeled duplicate {mislabeled_fp} "
+            f"(byte-identical to retained {counterpart_fp})",
+            file=sys.stderr,
+        )
+        return True
+    except OSError as exc:
+        print(f"Cleanup failed for {mislabeled_fp}: {exc}", file=sys.stderr)
+        return False
+
+
+def detect_images(target_dir: Path, template_dir: Path, cleanup: bool = False) -> dict:
     """Compute image paths relative to template directory.
 
     The infographic agent writes images whose extension is supposed to match
@@ -1470,7 +1498,17 @@ def detect_images(target_dir: Path, template_dir: Path) -> dict:
     bytes (not just its extension) and pick the path whose filename matches
     its content. If only a mislabeled candidate exists, write a corrected
     sibling and emit that path so Typst compiles on the first attempt.
+
+    ``cleanup`` (opt-in, default off — FR-001/FR-006) additionally removes a
+    mislabeled candidate once a byte-identical, correctly-labeled counterpart
+    is confirmed (double gate: this flag AND byte-identity — FR-002/FR-003).
+    Cleanup never changes which file is chosen/emitted (INV-2): the chosen
+    file is always self-consistent by construction, so it can never itself
+    satisfy the mislabeled predicate.
     """
+    if cleanup:
+        filecmp.clear_cache()
+
     try:
         rel_target = os.path.relpath(str(target_dir), str(template_dir))
     except ValueError:
@@ -1509,6 +1547,23 @@ def detect_images(target_dir: Path, template_dir: Path) -> dict:
                 chosen = fp
                 break
 
+        # Moment A — pre-existing pairs (the primary legacy case, and the
+        # entire US-2 dogfood target): chosen was already self-consistent, so
+        # probe the OTHER candidates of this stem for mislabeled ones and
+        # delete each that has a byte-identical correctly-labeled counterpart.
+        # `chosen` itself is structurally undeletable here — it is by
+        # definition self-consistent, so it can never satisfy the mislabeled
+        # predicate below (INV-2).
+        if chosen is not None and cleanup:
+            for ext, fp in candidates:
+                if fp == chosen:
+                    continue
+                fmt = _file_format(fp)
+                canonical_ext = _IMAGE_FORMAT_TO_EXT.get(fmt)
+                if canonical_ext is not None and canonical_ext != ext:
+                    counterpart = target_dir / f"{stem}{canonical_ext}"
+                    _maybe_delete_mislabeled(fp, counterpart)
+
         if chosen is None:
             for ext, fp in candidates:
                 fmt = _file_format(fp)
@@ -1520,8 +1575,16 @@ def detect_images(target_dir: Path, template_dir: Path) -> dict:
                     f"writing corrected sibling {target_path.name}",
                     file=sys.stderr,
                 )
+                # Moment B — recovery write: record pre-existence BEFORE the
+                # copy so a cross-swapped sibling (overwritten, not created)
+                # never gets deleted (AC-1g guard).
+                pre_existed = target_path.exists()
                 shutil.copyfile(fp, target_path)
                 chosen = target_path
+
+                if cleanup and not pre_existed:
+                    _maybe_delete_mislabeled(fp, target_path)
+
                 break
 
         if chosen is not None:
@@ -2041,6 +2104,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Title override for the report project name",
     )
+    parser.add_argument(
+        "--cleanup-mislabeled-images",
+        action="store_true",
+        help="Opt-in: delete a mislabeled duplicate image once a byte-identical, correctly-labeled counterpart is confirmed",
+    )
     return parser
 
 
@@ -2161,7 +2229,7 @@ def main():
     )
 
     # Image paths (relative from template dir to target dir)
-    images = detect_images(target_dir, template_dir)
+    images = detect_images(target_dir, template_dir, cleanup=args.cleanup_mislabeled_images)
     data["funnel_image_path"] = images["funnel_image_path"]
     data["baseball_image_path"] = images["baseball_image_path"]
     data["architecture_image_path"] = images["architecture_image_path"]
