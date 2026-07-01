@@ -108,9 +108,9 @@ triad:
 
 ## Phase 7: Polish & Cross-Cutting
 
-- [ ] T016 Split-valve final confirmation: re-measure `.gitleaks.toml.adopter-template` LOC (≤120?), confirm T010 stayed throwaway (no new committed harness), and total effort (≤3.0 d?); record the final carve-in/carve-out determination for `/aod.deliver`.
-- [ ] T017 [P] Regression sweep: run `tests/fixtures/gitleaks-rule-interaction/run.sh` (16/16) + `pre-commit run --all-files` (0 findings) to confirm the #285/#286 gitleaks work introduced no fixture regression.
-- [ ] T018 Final AC/SC sweep: verify AC-1..AC-7 and SC-1..SC-5; confirm `tachi permissions-verify` is green on clean `main` (US-1 scenario 4) and the doc-greps match the live byte-exact headings.
+- [X] T016 Split-valve final confirmation: re-measure `.gitleaks.toml.adopter-template` LOC (≤120?), confirm T010 stayed throwaway (no new committed harness), and total effort (≤3.0 d?); record the final carve-in/carve-out determination for `/aod.deliver`.
+- [X] T017 [P] Regression sweep: run `tests/fixtures/gitleaks-rule-interaction/run.sh` (16/16) + `pre-commit run --all-files` (0 findings) to confirm the #285/#286 gitleaks work introduced no fixture regression.
+- [X] T018 Final AC/SC sweep: verify AC-1..AC-7 and SC-1..SC-5; confirm `tachi permissions-verify` is green on clean `main` (US-1 scenario 4) and the doc-greps match the live byte-exact headings.
 
 ---
 

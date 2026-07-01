@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "feature": "281-ci-governance-hardening-tail",
+  "total_waves": 4,
+  "waves_tested": 0,
+  "waves_skipped": 4,
+  "totals": {
+    "pass": 0,
+    "fail": 0,
+    "skip": 0
+  },
+  "total_regressions": 0,
+  "coverage_trend": null,
+  "gate_decisions": []
+}
