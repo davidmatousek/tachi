@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "feature": "217-detect-images-duplicate-cleanup",
+  "total_waves": 1,
+  "waves_tested": 1,
+  "waves_skipped": 0,
+  "totals": {
+    "pass": 945,
+    "fail": 19,
+    "skip": 5
+  },
+  "total_regressions": 0,
+  "coverage_trend": {
+    "start_pct": 52.26,
+    "end_pct": 52.26,
+    "delta": 0
+  },
+  "gate_decisions": [
+    { "wave": 1, "decision": "pass" }
+  ]
+}
