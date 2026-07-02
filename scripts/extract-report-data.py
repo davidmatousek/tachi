@@ -1553,16 +1553,16 @@ def detect_images(target_dir: Path, template_dir: Path, cleanup: bool = False) -
         # delete each that has a byte-identical correctly-labeled counterpart.
         # `chosen` itself is structurally undeletable here — it is by
         # definition self-consistent, so it can never satisfy the mislabeled
-        # predicate below (INV-2).
+        # predicate below (INV-2). With only two extension slots, a mislabeled
+        # candidate's canonical extension is necessarily `chosen`'s, so
+        # `chosen` is the byte-identity counterpart.
         if chosen is not None and cleanup:
             for ext, fp in candidates:
                 if fp == chosen:
                     continue
-                fmt = _file_format(fp)
-                canonical_ext = _IMAGE_FORMAT_TO_EXT.get(fmt)
+                canonical_ext = _IMAGE_FORMAT_TO_EXT.get(_file_format(fp))
                 if canonical_ext is not None and canonical_ext != ext:
-                    counterpart = target_dir / f"{stem}{canonical_ext}"
-                    _maybe_delete_mislabeled(fp, counterpart)
+                    _maybe_delete_mislabeled(fp, chosen)
 
         if chosen is None:
             for ext, fp in candidates:
