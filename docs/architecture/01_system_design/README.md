@@ -3835,3 +3835,38 @@ No ADR was minted for Feature 281 (CARVE-IN confirmed at plan and Architect gate
 - The gitleaks-adopter and pin-bump-cadence work is a **documentation and template surface over the already-accepted** [ADR-042](../02_ADRs/ADR-042-pre-commit-secret-scanning-default.md) Decision Item 6 — `.gitleaks.toml.adopter-template`, `PRECOMMIT_HOOKS.md` §3/§9.5/§10, and the `gitleaks-bump.md` issue template all realize ADR-042's stated cadence; no new secret-scanning decision was made (gitleaks v8.30.1 was already pinned — **zero net-new dependency**). ADR-042 §References was wired to `PRECOMMIT_HOOKS.md §10` in this feature.
 
 This sits below the repo's ADR bar (cf. the [ADR-047](../02_ADRs/ADR-047-maestro-coverage-state-authority.md) rule: a mechanism that only *applies* an accepted invariant to a new surface warrants no ADR; only a genuinely new cross-cutting decision does). The feature touches no product-pipeline schema, no `finding.yaml`, and no runtime dependency manifest.
+
+### Feature 217: detect-images-duplicate-cleanup
+
+**Added**: 2026-07-01 · **Plan**: `specs/217-detect-images-duplicate-cleanup/plan.md` · **Nature**: script maintenance (BLP-06 Wave-3 tail; opt-in mislabeled-image removal, Issue #217 follow-on to #215/PR #216)
+
+#### Tech Stack
+
+- **Python 3 stdlib only**: `argparse` (flag), `shutil` (existing copy path), **`filecmp` (new import — byte-identity gate, `cmp(..., shallow=False)` + defensive `clear_cache()`)**, `pathlib`.
+- **No new dependencies** (ADR-017 stdlib-only constraint holds); pytest local-only suites (not in the CI pytest gate).
+
+#### Components
+
+| Component | Type | Change | Notes |
+|---|---|---|---|
+| `_file_format(path)` probe | function (existing) | unchanged | supplies `content_format` for the mislabeled predicate |
+| `_maybe_delete_mislabeled(...)` | function | **new (~12 LOC)** | sole deletion path in the module; whole attempt (probe+compare+delete) in `try/except OSError` (best-effort); one stderr record per deletion/failure |
+| `detect_images(target_dir, template_dir, cleanup=False)` | function | modify | defaulted kwarg (two-positional-arg callers unchanged); cleanup wired into BOTH moments — pre-existing-pairs branch + recovery-write branch (`pre_existed` guard closes the cross-swap edge) |
+| `build_parser()` / `main()` | CLI | modify | `--cleanup-mislabeled-images` (`store_true`), threaded at the single call site |
+| `tests/scripts/test_extract_report_data.py` | tests | modify | `run_extract(+extra_args)`; 9 new cases (AC-1a–1h + deletion-failure best-effort) |
+| `.claude/skills/tachi-report-assembly/references/typst-artifacts.md` | doc | modify | US-3: duplicate-pair origin + sanctioned cleanup path |
+
+#### Data Flow
+
+```
+per stem: glob candidates (.jpg/.png, exists, size>0)
+  -> self-consistent candidate found?
+     |- yes -> chosen = it
+     |         [cleanup ON] Moment A: other candidates -> mislabeled? -> counterpart byte-identical? -> delete + stderr record
+     |- no  -> Moment B recovery: probe -> pre_existed := sibling.exists() -> copyfile corrected sibling -> chosen = sibling
+               [cleanup ON] NOT pre_existed AND byte-identical? -> delete original + stderr record
+  -> emit template-relative path of chosen  (UNCHANGED by cleanup — path-invariance INV-2:
+     chosen is self-consistent by definition, so it can never satisfy the mislabeled deletion predicate)
+```
+
+Safety contract: deletion only under the double gate (flag AND byte-identity); without the flag every path is byte-identical to pre-F-217 behavior (Principle III). No new ADR — PR-level change applying accepted invariants (ADR-017 stdlib-only, ADR-021 determinism, ADR-008 opt-in-for-high-risk reasoning); #215/#216 set the precedent of no ADR for `detect_images` changes.

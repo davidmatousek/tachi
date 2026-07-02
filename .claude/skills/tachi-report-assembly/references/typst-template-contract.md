@@ -100,7 +100,7 @@ Integer value matching the selected tier from artifact detection.
 
 **Path resolution**: Typst resolves `#image()` paths relative to the `.typ` file that calls it (which is `full-bleed.typ` in `templates/tachi/security-report/`), NOT relative to the `--root` flag. Use `../../` to navigate from the template directory back to the project root, then append the path to the target directory.
 
-If an image does not exist, set the path to an empty string `""`. The `#if has-*-image` guards in `main.typ` prevent these from being used.
+If an image does not exist, set the path to an empty string `""`. The `#if has-*-image` guards in `main.typ` prevent these from being used. Legacy directories may hold a mislabeled duplicate of the source image alongside it; see `typst-artifacts.md`'s Legacy Duplicate Pairs & Sanctioned Cleanup note for cleanup guidance.
 
 ### Executive Narrative
 

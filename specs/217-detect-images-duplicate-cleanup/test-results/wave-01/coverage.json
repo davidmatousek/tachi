@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0",
+  "wave": 1,
+  "total_coverage_pct": 52.26,
+  "delta_from_previous": 0,
+  "new_code_coverage_pct": 61.25,
+  "note": "--cov=scripts across full suite; new_code_coverage_pct = scripts/extract-report-data.py (sole changed production file)"
+}
