@@ -9,6 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Feature 217 — Detect-Images Duplicate Cleanup (opt-in mislabeled-image removal, BLP-06 Wave 3, #217) — feat(217)
+
+Ships the decided remedy for the #215/#216 follow-on: the non-destructive self-heal left every
+legacy assessment directory carrying a mislabeled original (a `.jpg` holding PNG bytes — the
+`gemini-2.5-flash-image` fallback-era signature) alongside its byte-identical corrected sibling
+forever (~2× image storage per affected stem, up to 6 stems per directory, plus path ambiguity).
+Implements PRD option (c) + (a): an explicit opt-in cleanup flag plus a documented sanctioned
+cleanup path; option (b) destructive-by-default was rejected. Without the flag, behavior is
+byte-identical to before (safe default preserved).
+
+**Added**
+- `--cleanup-mislabeled-images` opt-in flag on `scripts/extract-report-data.py` — double-gated
+  deletion (the flag AND a byte-identical correctly-labeled counterpart), predicate keyed on
+  mislabeled-ness (magic-byte content ≠ extension, direction-agnostic), wired at both moments a
+  pair can exist: pre-existing pairs and recovery-write time, the latter additionally gated on
+  the sibling not having pre-existed the copy so a cross-swapped pair is never deleted. One
+  stderr record per deletion; per-file failures log to stderr and never fail extraction.
+  (`3b5b377`, #351)
+- 8 dedicated AC tests (AC-1a–1h) including all 4 safety negatives: non-identical pair,
+  truncated recovery copy, cross-swapped pair, legitimate mixed pair. (`3b5b377`)
+- Sanctioned-cleanup documentation in
+  `.claude/skills/tachi-report-assembly/references/typst-artifacts.md` — the raw `find … rm`
+  one-liner is no longer the recommended path. (`3b5b377`)
+
+**Changed**
+- In-repo dogfood (US-2): the 6 mislabeled `.jpg` duplicates (~6.75 MB) in the legacy
+  `examples/agentic-app/test-output/2026-04-19T03-20-30/` snapshot removed via the flag, with
+  byte-identical `report-data.typ` proof (path-invariance). (`3b5b377`)
+- Feature closure docs: `specs/217-detect-images-duplicate-cleanup/delivery.md`, KB Entry 21,
+  PRD INDEX Approved→Delivered. (`79e56e9`)
+
 ### Feature 281 — CI & Governance Hardening Tail (F-4/F-5 follow-ups, BLP-06 Wave 2 hygiene-tail, #281) — feat(281)
 
 Ports the already-shipped F-4 (Claude permissions) and F-5 (gitleaks) *local* pre-commit checks
