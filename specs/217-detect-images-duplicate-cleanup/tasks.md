@@ -114,8 +114,8 @@ Single project at repo root: production code in `scripts/`, tests in `tests/scri
 **Purpose**: Safety-invariant review, gated-suite verification, final validation.
 
 - [X] T015 Safety-invariant code review (code-reviewer): verify no deletion path exists without BOTH gates (SC-003/INV-1 — `_maybe_delete_mislabeled` is the sole deletion primitive in the module), INV-2 structural guarantee holds, best-effort try/except covers the whole attempt (MED-1), stderr records match contracts/cli-contract.md §3; findings to .aod/results/code-reviewer.md
-- [ ] T016 Commit all work FIRST, then run the gated 15-module pytest subset locally (F-248/F-256 harness clones committed HEAD — never run before committing) and confirm `tachi-catalog-drift.yml` checks stay green after the US2 deletions (KB Entry 19; extractor is not render-coupled — expected green)
-- [ ] T017 Run quickstart.md validation end-to-end: no-flag run byte-identical on a scratch fixture (SC-002), flag run deletes only under the double gate (SC-003), record post-state pytest totals against T001 pre-state.md
+- [X] T016 Commit all work FIRST, then run the gated 15-module pytest subset locally (F-248/F-256 harness clones committed HEAD — never run before committing) and confirm `tachi-catalog-drift.yml` checks stay green after the US2 deletions (KB Entry 19; extractor is not render-coupled — expected green)
+- [X] T017 Run quickstart.md validation end-to-end: no-flag run byte-identical on a scratch fixture (SC-002), flag run deletes only under the double gate (SC-003), record post-state pytest totals against T001 pre-state.md
 
 ---
 
