@@ -2113,6 +2113,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main():
+    """CLI entrypoint: detect artifacts in --target-dir, select the richest
+    data tier, and write the Typst data file to --output. Non-fatal issues
+    log to stderr; exit codes are documented in the module docstring.
+    """
     parser = build_parser()
     args = parser.parse_args()
 
