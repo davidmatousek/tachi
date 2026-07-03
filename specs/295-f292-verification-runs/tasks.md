@@ -46,7 +46,7 @@ triad:
 
 **Purpose**: Precondition sanity — verify the pre-verified facts still hold at execution time
 
-- [ ] T001 Verify preconditions: `git show 0629fa2~1:examples/agentic-app/sample-report/threats.sarif` piped through the corrected filter yields exactly 4 findingIds (OI-1..OI-4); `jq`, `pytest>=8` available; branch `295-f292-verification-runs` current with origin. Record outputs for the SC-003 record preamble. (quickstart.md Stage 1.1)
+- [X] T001 Verify preconditions: `git show 0629fa2~1:examples/agentic-app/sample-report/threats.sarif` piped through the corrected filter yields exactly 4 findingIds (OI-1..OI-4); `jq`, `pytest>=8` available; branch `295-f292-verification-runs` current with origin. Record outputs for the SC-003 record preamble. (quickstart.md Stage 1.1)
 
 ---
 
@@ -54,7 +54,7 @@ triad:
 
 **Purpose**: FR-019 pre-state — BLOCKS every subsequent commit (KB Entry 15 inherited-vs-own discipline)
 
-- [ ] T002 Run the D-E pre-state suite set and commit `specs/295-f292-verification-runs/test-results/pre-state.md` with literal pass/skip/fail totals (`test_backward_compatibility.py` incl. slow, maestro pair, `test_catalog_drift_guard.py`, `test_affected_assets_wiring.py`), the `examples/**` corpus-glob/count-pin sweep results, and dispositions for any inherited reds (quickstart.md Stage 0)
+- [X] T002 Run the D-E pre-state suite set and commit `specs/295-f292-verification-runs/test-results/pre-state.md` with literal pass/skip/fail totals (`test_backward_compatibility.py` incl. slow, maestro pair, `test_catalog_drift_guard.py`, `test_affected_assets_wiring.py`), the `examples/**` corpus-glob/count-pin sweep results, and dispositions for any inherited reds (quickstart.md Stage 0)
 
 **Checkpoint**: pre-state committed — artifact/enabler commits may now proceed
 
