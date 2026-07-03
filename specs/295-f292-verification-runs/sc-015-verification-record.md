@@ -153,3 +153,80 @@ Both cross-reference the related, same-session Issues [#354](https://github.com/
 
 - Comment posted on #295 linking this record's path, the disposition summary, the commit SHA, and both new Issue numbers (#356, #357).
 - The F-292 T026 checkbox on #295 flipped `- [ ]` → `- [x]` — the run-and-disposition is complete (gate executed honestly to a FAIL verdict, evidence committed, defect filed) even though the gate itself did not pass. Per KB Entry 17 / spec Success Criteria preamble: "a discovered defect fails a *gate* but not the *feature*, which closes on the honest record."
+
+---
+
+## T020 Closure Cross-Check
+
+**Date**: 2026-07-03 | **Executor**: security-analyst | **Branch HEAD at run**: `b98295f` | **PR**: #353 (draft, base `main`)
+
+### 1. PR CI state
+
+`gh -R davidmatousek/tachi pr checks 353 --watch` run bounded (~13 min of active watching, well past the ~10 min target, plus two additional Monitor-driven snapshot polls per the bounded-polling allowance):
+
+| Check | Result | Duration |
+|---|---|---|
+| `gitleaks` | PASS | 1s |
+| `gitleaks full-repo scan` | PASS | 20s |
+| `pytest init.sh suite — ubuntu-latest` (the `tachi-pytest.yml` workflow — its job is named "pytest init.sh suite", not the workflow file name) | PASS | 7m19s |
+| `pytest init.sh suite — macos-latest` (same workflow, other matrix leg) | **PENDING at report time** | queued, 0s elapsed |
+
+Reported honestly per the bounded-polling instruction: the macOS leg has not reached a terminal state. This is consistent with the workflow's own documented rationale (`.github/workflows/tachi-pytest.yml` header comment: macOS GitHub Actions runners are "notoriously ~3-4× slower... ~560-700s cold-cache" and historically queue longer than ubuntu runners) — no evidence of a hang, crash, or red state, only an unresolved pending leg at the time this record was written.
+
+`scripts/generate-threats-sarif.py` and `tests/scripts/test_affected_assets_wiring.py` are both on the `&hardening_paths` anchor in `tachi-pytest.yml` (lines 97-98, 101 — the F-302/260b and F-295 tags respectively), which is why this workflow correctly fired on this PR.
+
+**Confirmed NOT firing, as expected**:
+- `tachi-maestro-coverage.yml` — exists as a separate workflow file but did not appear in the PR checks list (no `examples/**/threats.md` committed for the new baseline; T013 gate FAIL stopped Phase 4 before any artifact landed).
+- `tachi-sarif-regen.yml` — **does not exist as a file at all** in `.github/workflows/` (confirmed via directory listing: `gitleaks.yml`, `release-please.yml`, `tachi-catalog-drift.yml`, `tachi-citation-linkrot.yml`, `tachi-maestro-coverage.yml`, `tachi-mmdc-preflight.yml`, `tachi-permissions-verify.yml`, `tachi-pytest.yml` — no sarif-regen entry). Correct: US3 (T017-T019) is deferred to #356 per FR-018; the workflow was never authored.
+
+### 2. Post-state suite vs pre-state
+
+Full detail in `test-results/post-state.md`. Summary:
+
+| Suite | Pre (P/S/F) | Post (P/S/F) | Delta | Attribution |
+|---|---|---|---|---|
+| `test_backward_compatibility.py` | 13/1/0 | 13/1/0 | none | — |
+| `test_maestro_coverage_invariant.py` + `test_maestro_cross_surface_consistency.py` | 11/2/0 | 11/2/0 | none | — |
+| `test_catalog_drift_guard.py` | 15/0/0 | 15/0/0 | none | — |
+| `test_affected_assets_wiring.py` | 35/0/0 | 39/0/0 | **+4 passed** | 4 new FR-014 URI-derivation test functions (`test_fr014_artifact_uri_for_repo_relative_path_matches_second_example`, `test_fr014_artifact_uri_for_tmp_path_outside_repo_falls_back_to_resolved_posix`, `test_fr014_build_sarif_wires_derived_uri_into_artifact_location`, `test_fr014_build_sarif_default_source_uri_preserves_agentic_app_constant`), all added by commit `995359f` (T010/T011) |
+| **Total** | **74/3/0** | **78/3/0** | **+4 passed, 0 failed** | fully attributed |
+
+Zero silent absorption — every flip traced to a named commit and named test functions.
+
+### 3. Issue #295 verification
+
+Fetched `gh issue view 295 --json body` directly (not just `--comments`, which does not surface the body): both F-292 acceptance-criteria checkboxes are `[x]`:
+```
+- [x] T017: `tachi.threat-model examples/agentic-app/architecture.md` run; OI-scoped finding subset diffed against pre-292 baseline; SC-003 verification logged.
+- [x] T026: `tachi.threat-model examples/multi-tenant-rag-app/architecture.md` run; pipeline artifacts committed; byte-identical reproduction verified under `SOURCE_DATE_EPOCH=1700000000`.
+```
+Both record-link comments confirmed present: the T017/SC-003 comment cites commit `bfd90a3` and files #354/#355; the T026/SC-015 comment cites commit `eba3a09` and files #356/#357. (Note: the T026 AC text reads "byte-identical reproduction verified" — this is superseded by the comment's own explicit clarification that the checkbox reflects "the verification run-and-disposition is complete... not that the gate passed," consistent with the KB Entry 17 closure model; not a new discrepancy, already disclosed in-repo.)
+
+### 4. Pre-decided Issues filed
+
+All four confirmed **OPEN** via `gh issue view --json number,title,state`:
+
+| Issue | Title | Status |
+|---|---|---|
+| #354 | `defect(292): cross-link-no-emission-contract.md §3/§6 — broken ruleId filter + non-executable invocation` | OPEN |
+| #355 | `defect: examples/agentic-app/sample-report/threats.md duplicates output-integrity findings under legacy LLM-5/6/7 and current OI-1/2/3 IDs` | OPEN |
+| #356 | `defect(tachi-orchestrator): Phase-3 compilation can absorb output-integrity findings into the LLM-N sequence, dropping the OI- prefix carve-out and CWE citations (F-295 T026 gate FAIL)` | OPEN |
+| #357 | `enhancement: parameterize generate-risk-scores-sarif.py (CLI args, configurable paths, findings-count gate) to support additional example baselines` | OPEN |
+
+### 5. FR-020 fence audit
+
+`git diff main --stat` (30 files changed): no detection-tier files (`.claude/agents/tachi/**`, `.claude/skills/tachi-*/references/detection-patterns.md`, `schemas/finding.yaml`) and no archived F-292 contract (`specs/292-*/**`) appear anywhere in the diff. **Clean on both exclusions.**
+
+Named product files present, all expected: `scripts/generate-threats-sarif.py`, `tests/scripts/test_affected_assets_wiring.py`, `.github/workflows/tachi-pytest.yml` (+1 line, the hardening-paths anchor entry). 26 of the remaining 27 changed files are under `specs/295-f292-verification-runs/**`.
+
+**One file outside the literal allow-list**: `docs/product/02_PRD/INDEX.md` (+2/-1). Content-reviewed in full (not just `--stat`): the diff adds exactly (a) one new "Last Updated" header entry documenting Feature 295's own PRD-approval registration, prepended ahead of the prior Feature 217 entry with all prior history preserved byte-for-byte, and (b) one new table row registering Feature 295 in the PRD index. This is the routine, self-referential PRD-registration side effect of this feature's own `/aod.plan` stage — the same governance-tracking class of file as `docs/product/_backlog/BACKLOG.md` (which IS on the allow-list) — and carries zero detection-tier or archived-F-292-contract content. Assessed as benign, not a fence violation in substance, but flagged explicitly here rather than silently omitted since it was not named in the literal allow-list given for this check.
+
+`git diff main -- scripts/generate-threats-sarif.py` content-reviewed line-by-line: the sole behavioral change is the FR-014 URI derivation — new `REPO_ROOT` constant, new `artifact_uri_for()` helper, a defaulted `source_uri` parameter threaded through `build_result()` → `build_sarif()` → `main()` (default value = the prior hardcoded literal, so omitting the parameter reproduces old behavior byte-for-byte — the exact seam the T010 L-a proof depends on). No other function or logic touched. **Confirmed: FR-014 is the SOLE generator change.**
+
+### 6. tasks.md ledger
+
+`grep -n "^- \[ \]" specs/295-f292-verification-runs/tasks.md` returned exactly one hit before this check completed: T020 itself (the task this record documents). After marking T020 `[X]` in the same commit as this append, zero `- [ ]` lines remain; every task line is `[X]` or `[DEFER #356]`.
+
+### Overall T020 verdict
+
+**PASS, with two honestly-reported non-blocking notes**: (1) CI's macOS leg was still pending at write time — not red, not stuck, consistent with documented runner behavior; the orchestrating session should confirm terminal state before merge. (2) `docs/product/02_PRD/INDEX.md` sits outside the literal FR-020 allow-list but is content-reviewed as benign self-registration boilerplate, flagged for the record rather than silently passed or blocked.
