@@ -754,6 +754,20 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
+## [4.46.0](https://github.com/davidmatousek/tachi/compare/v4.45.0...v4.46.0) (2026-07-02)
+
+
+### Features
+
+* **217:** detect-images duplicate cleanup (opt-in mislabeled-image removal) ([#351](https://github.com/davidmatousek/tachi/issues/351)) ([3b5b377](https://github.com/davidmatousek/tachi/commit/3b5b37787e1dd8637542908140135c2a9d7f025b))
+* **281:** CI & Governance Hardening Tail (F-4/F-5 follow-ups) ([#347](https://github.com/davidmatousek/tachi/issues/347)) ([cf8ef12](https://github.com/davidmatousek/tachi/commit/cf8ef12bbc20e95874900f2fb0573b2bba320b3d))
+* **329:** ordered-frameworks catalog-drift CI guard ([#344](https://github.com/davidmatousek/tachi/issues/344)) ([38a8ceb](https://github.com/davidmatousek/tachi/commit/38a8ceb8ec85f206734abccd3ff3c94d076ef669))
+
+
+### Bug Fixes
+
+* **338:** restore F-248/F-256 substitution hardening ([#340](https://github.com/davidmatousek/tachi/issues/340)) ([6fbce10](https://github.com/davidmatousek/tachi/commit/6fbce1085cdb5e4c665b7d667a7abb4e641f8ee2))
+
 ## [4.45.0](https://github.com/davidmatousek/tachi/compare/v4.44.0...v4.45.0) (2026-06-29)
 
 
