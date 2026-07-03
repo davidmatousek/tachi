@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "wave": 1,
+  "timestamp": "2026-07-03T16:05:00Z",
+  "test_runner": "pytest (D-E suite set: test_backward_compatibility.py, test_maestro_coverage_invariant.py + test_maestro_cross_surface_consistency.py, test_catalog_drift_guard.py, test_affected_assets_wiring.py)",
+  "execution_duration_ms": null,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 78, "fail": 0, "skip": 3 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "notes": "Baseline = committed pre-state.md (T002, FR-019): 74p/3s/0f. Post-state (T020): 78p/3s/0f. Sole delta = +4 passing tests added by commit 995359f (FR-014 covering assertions): test_fr014_artifact_uri_for_repo_relative_path_matches_second_example, test_fr014_artifact_uri_for_tmp_path_outside_repo_falls_back_to_resolved_posix, test_fr014_build_sarif_wires_derived_uri_into_artifact_location, test_fr014_build_sarif_default_source_uri_preserves_agentic_app_constant. The 3 skips are pre-existing, documented in pre-state.md, unrelated to F-295. Coverage tooling: none detected (no pytest-cov configuration) — coverage capture skipped per opportunistic policy. Post-wave test generation (build sub-step 4.6) skipped by design: tasks.md test scoping ('FR-014 ships with its covering assertion... No other test tasks') and FR-020 scope fence; the planned tester engagement (T017-T019) was structurally deferred to #356 per FR-018."
+}
