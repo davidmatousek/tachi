@@ -1302,3 +1302,123 @@ def test_sc004_affected_assets_independent_of_score_fields():
     # Identical provenance regardless of the (ignored) Risk Level column.
     assert _assets_for(out, "S-1") == "[auth, secrets]"
     assert _assets_for(out, "D-2") == "[auth, secrets]"
+
+
+# =============================================================================
+# ===== FR-014 (F-295 / T010-T011) — input-path-derived artifactLocation.uri =====
+# =============================================================================
+#
+# generate-threats-sarif.py::build_result used to hardcode
+# ``locations[0].physicalLocation.artifactLocation.uri`` to the literal string
+# ``"examples/agentic-app/sample-report/threats.md"``. F-295 FR-014 replaces
+# that constant with ``artifact_uri_for(input_path)``, threaded through
+# ``build_sarif`` / ``build_result`` as a ``source_uri`` parameter (default =
+# the original constant, so any caller that omits it — including this
+# module's pre-existing SC-006 tests above — keeps emitting the pre-FR-014
+# uri byte-for-byte; this is the seam that makes the T010 L-a proof's
+# BEFORE/AFTER ``cmp`` on the CLI path byte-identical for the agentic-app
+# fixture). These tests cover: (1) the derivation helper's repo-relative POSIX
+# normalization for an in-repo target, (2) its fallback for a non-agentic-app
+# path OUTSIDE the repo (a pytest ``tmp_path`` fixture file — the exact case
+# plan.md D-C / this task calls out), (3) real end-to-end wiring into the
+# emitted SARIF envelope, and (4) the default-parameter backward-compatibility
+# guarantee the L-a proof depends on.
+
+
+def test_fr014_artifact_uri_for_repo_relative_path_matches_second_example():
+    """``artifact_uri_for`` derives the exact FR-014 second example's uri.
+
+    T010: for an in-repo target path (the ``examples/multi-tenant-rag-app/``
+    baseline this feature's US-2 commits), the derived uri equals the path
+    expressed relative to the repository root in POSIX form — matching
+    plan.md D-C / quickstart.md Stage 2.3's second worked example exactly:
+    input ``examples/multi-tenant-rag-app/threats.md`` -> uri
+    ``examples/multi-tenant-rag-app/threats.md``.
+    """
+    target = REPO_ROOT / "examples" / "multi-tenant-rag-app" / "threats.md"
+
+    uri = _gen_threats.artifact_uri_for(target)
+
+    assert uri == "examples/multi-tenant-rag-app/threats.md"
+
+
+def test_fr014_artifact_uri_for_tmp_path_outside_repo_falls_back_to_resolved_posix(tmp_path):
+    """A non-agentic-app path OUTSIDE the repo (pytest ``tmp_path``) still normalizes.
+
+    T011 covering assertion (the exact case the task calls out): pytest's
+    ``tmp_path`` fixture lives under the OS temp directory, outside
+    ``REPO_ROOT``, so ``relative_to`` raises ``ValueError`` internally and
+    ``artifact_uri_for`` falls back to the resolved absolute POSIX path —
+    still deterministic and platform-normalized (no backslashes), and never
+    the stale agentic-app constant.
+    """
+    target = tmp_path / "threats.md"
+    target.write_text("placeholder", encoding="utf-8")
+
+    uri = _gen_threats.artifact_uri_for(target)
+
+    assert uri == target.resolve().as_posix()
+    assert uri != "examples/agentic-app/sample-report/threats.md"
+    assert "\\" not in uri  # POSIX-normalized regardless of platform
+
+
+def test_fr014_build_sarif_wires_derived_uri_into_artifact_location(tmp_path):
+    """``build_sarif``/``build_result`` emit the derived uri, not the old constant.
+
+    FR-014 wiring guard: exercises the real production call sequence
+    (``parse_findings`` -> ``build_sarif``) against a ``threats.md`` written at
+    a non-agentic-app ``tmp_path``, with ``source_uri`` computed by
+    ``artifact_uri_for`` exactly as ``generate-threats-sarif.py::main()`` does.
+    Confirms every result's
+    ``locations[0].physicalLocation.artifactLocation.uri`` equals the derived
+    uri, not the pre-FR-014 hardcoded constant.
+    """
+    global _TMP_DIR
+    _TMP_DIR = tmp_path
+
+    arch = _arch('DB[("Records Store<br/>[asset:pii]")]')
+    worked = [("S-1", "Records Store")]
+    populated = populator.populate(arch, _xfmt_threats(worked))
+
+    md_path = _write_threats(populated, "threats-fr014.md")
+    component_meta = _gen_threats.parse_component_metadata(populated)
+    affected_by_id = parse_affected_assets(populated)
+    findings = _gen_threats.parse_findings(md_path)
+
+    source_uri = _gen_threats.artifact_uri_for(md_path)
+    sarif = _gen_threats.build_sarif(findings, component_meta, affected_by_id, source_uri)
+
+    results = sarif["runs"][0]["results"]
+    assert results, "no results produced for the FR-014 wiring fixture"
+    for result in results:
+        got_uri = result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+        assert got_uri == source_uri == md_path.resolve().as_posix()
+        assert got_uri != "examples/agentic-app/sample-report/threats.md"
+
+
+def test_fr014_build_sarif_default_source_uri_preserves_agentic_app_constant(tmp_path):
+    """Omitting ``source_uri`` still yields the original agentic-app constant.
+
+    L-a regression guard: ``build_sarif``'s ``source_uri`` parameter defaults
+    to the exact string the hardcoded constant used to be, so any caller that
+    does not pass it explicitly (e.g. this module's pre-existing SC-006 tests
+    above) keeps emitting the pre-FR-014 uri byte-for-byte. This default is
+    what makes the T010 L-a proof's BEFORE/AFTER ``cmp`` on
+    ``generate-threats-sarif.py``'s CLI path (which DOES pass ``source_uri``)
+    byte-identical for the ``examples/agentic-app/`` fixture.
+    """
+    global _TMP_DIR
+    _TMP_DIR = tmp_path
+
+    arch = _arch('DB[("Records Store<br/>[asset:pii]")]')
+    worked = [("S-1", "Records Store")]
+    populated = populator.populate(arch, _xfmt_threats(worked))
+    md_path = _write_threats(populated, "threats-fr014-default.md")
+    component_meta = _gen_threats.parse_component_metadata(populated)
+    affected_by_id = parse_affected_assets(populated)
+    findings = _gen_threats.parse_findings(md_path)
+
+    sarif = _gen_threats.build_sarif(findings, component_meta, affected_by_id)  # source_uri omitted
+
+    uri = sarif["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+    assert uri == "examples/agentic-app/sample-report/threats.md"

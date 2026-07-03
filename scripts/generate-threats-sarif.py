@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 from sarif_common import (
     PREFIX_TO_RULE,
@@ -23,6 +24,21 @@ from sarif_common import (
     parse_affected_assets,
     parse_component_metadata,
 )
+
+
+def artifact_uri_for(input_path: Path) -> str:
+    """Derive the SARIF ``artifactLocation.uri`` from the generator's input path.
+
+    FR-014: normalizes to a repo-relative POSIX path (forward slashes,
+    relative to the repository root) regardless of how the path was passed on
+    the CLI or the invoking platform's separator convention. Paths outside
+    the repository fall back to their resolved absolute POSIX form.
+    """
+    resolved = input_path.resolve()
+    try:
+        return resolved.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return resolved.as_posix()
 
 
 RULES = [
@@ -402,6 +418,7 @@ def build_result(
     finding: dict,
     component_meta: dict[str, dict[str, str]],
     affected_assets_by_id: dict[str, list[str]],
+    source_uri: str = "examples/agentic-app/sample-report/threats.md",
     run_id_baseline: str = "2026-04-19T03-20-30",
 ) -> dict:
     """Build one SARIF 2.1.0 result entry from a parsed finding row.
@@ -478,7 +495,7 @@ def build_result(
             {
                 "physicalLocation": {
                     "artifactLocation": {
-                        "uri": "examples/agentic-app/sample-report/threats.md"
+                        "uri": source_uri
                     },
                     "region": {"startLine": 1},
                 },
@@ -522,8 +539,12 @@ def build_sarif(
     findings: list[dict],
     component_meta: dict[str, dict[str, str]],
     affected_assets_by_id: dict[str, list[str]],
+    source_uri: str = "examples/agentic-app/sample-report/threats.md",
 ) -> dict:
-    results = [build_result(f, component_meta, affected_assets_by_id) for f in findings]
+    results = [
+        build_result(f, component_meta, affected_assets_by_id, source_uri)
+        for f in findings
+    ]
     driver = {
         "name": "Tachi",
         "semanticVersion": "1.7",
@@ -551,7 +572,8 @@ def main() -> int:
     component_meta = parse_component_metadata(threats_md)
     affected_assets_by_id = parse_affected_assets(threats_md)
     findings = parse_findings(args.input)
-    sarif = build_sarif(findings, component_meta, affected_assets_by_id)
+    source_uri = artifact_uri_for(args.input)
+    sarif = build_sarif(findings, component_meta, affected_assets_by_id, source_uri)
 
     args.output.write_text(json.dumps(sarif, indent=2) + "\n", encoding="utf-8")
 
