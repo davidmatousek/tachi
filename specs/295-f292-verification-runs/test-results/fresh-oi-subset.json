@@ -1,0 +1,154 @@
+[
+  {
+    "ruleId": "tachi/ai/llm-threats",
+    "message": {
+      "text": "The Orchestrator's `Response (HTTPS)` sends LLM-generated content directly to the User. If the client renders it via `innerHTML` (or equivalent) without HTML entity encoding, an attacker who primes the Orchestrator to emit a script or event-handler payload achieves **client-side** execution in the victim's browser with access to session cookies and CSRF tokens.",
+      "markdown": "Render with `textContent` (never `innerHTML`); if HTML is required, pass through DOMPurify with an element allowlist; deploy a strict CSP (`script-src 'self' 'nonce-<nonce>'`, no `unsafe-inline`)."
+    },
+    "level": "error",
+    "locations": [
+      {
+        "physicalLocation": {
+          "artifactLocation": {
+            "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+          },
+          "region": {
+            "startLine": 1
+          }
+        },
+        "logicalLocations": [
+          {
+            "name": "LLM Agent Orchestrator",
+            "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+            "kind": "process"
+          }
+        ]
+      }
+    ],
+    "partialFingerprints": {
+      "primaryLocationLineHash": "bc8145867ba52dd5",
+      "findingId/v1": "OI-1"
+    },
+    "properties": {
+      "tags": [
+        "maestro-layer:L1"
+      ],
+      "maestro-layer": "L1 — Foundation Model",
+      "affected_assets": []
+    }
+  },
+  {
+    "ruleId": "tachi/ai/llm-threats",
+    "message": {
+      "text": "The Orchestrator's `Tool Call Request (JSON-RPC)` carries LLM-synthesized parameters into the MCP Tool Server. Without parameterization, an attacker who influences Orchestrator output can achieve **server-side** SQL/command/template injection at the Tool Server's execution context.",
+      "markdown": "Parameterize all LLM-supplied tool inputs (`cursor.execute(sql, params)`, `subprocess.run([...], shell=False)`); validate against a closed per-tool allowlist before dispatch."
+    },
+    "level": "error",
+    "locations": [
+      {
+        "physicalLocation": {
+          "artifactLocation": {
+            "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+          },
+          "region": {
+            "startLine": 1
+          }
+        },
+        "logicalLocations": [
+          {
+            "name": "LLM Agent Orchestrator",
+            "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+            "kind": "process"
+          }
+        ]
+      }
+    ],
+    "partialFingerprints": {
+      "primaryLocationLineHash": "bc8145867ba52dd5",
+      "findingId/v1": "OI-2"
+    },
+    "properties": {
+      "tags": [
+        "maestro-layer:L1"
+      ],
+      "maestro-layer": "L1 — Foundation Model",
+      "affected_assets": []
+    }
+  },
+  {
+    "ruleId": "tachi/ai/llm-threats",
+    "message": {
+      "text": "The Orchestrator can instruct the Tool Server to fetch a URL synthesized from LLM output; an attacker who influences that output can direct the fetch at internal metadata endpoints or RFC 1918 ranges, executing SSRF under the Tool Server's **server-side** network credentials.",
+      "markdown": "Allowlist outbound hostnames at the Tool Server; block egress to RFC 1918/link-local/metadata ranges; restrict scheme to `{http, https}`; apply DNS pinning."
+    },
+    "level": "error",
+    "locations": [
+      {
+        "physicalLocation": {
+          "artifactLocation": {
+            "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+          },
+          "region": {
+            "startLine": 1
+          }
+        },
+        "logicalLocations": [
+          {
+            "name": "LLM Agent Orchestrator",
+            "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+            "kind": "process"
+          }
+        ]
+      }
+    ],
+    "partialFingerprints": {
+      "primaryLocationLineHash": "bc8145867ba52dd5",
+      "findingId/v1": "OI-3"
+    },
+    "properties": {
+      "tags": [
+        "maestro-layer:L1"
+      ],
+      "maestro-layer": "L1 — Foundation Model",
+      "affected_assets": []
+    }
+  },
+  {
+    "ruleId": "tachi/ai/llm-threats",
+    "message": {
+      "text": "If the Orchestrator incorporates ClinAdvisor's `Clinical Summary + Recommendations` into a subsequent `Tool Call Request` without sanitization, adversarial content injected into the clinical output can achieve **server-side** execution at the Tool Server, one hop downstream of the sub-agent's own output.",
+      "markdown": "Treat ClinAdvisor output as untrusted at the Orchestrator; apply the same parameterization and schema validation as OI-2 before any downstream tool invocation."
+    },
+    "level": "error",
+    "locations": [
+      {
+        "physicalLocation": {
+          "artifactLocation": {
+            "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+          },
+          "region": {
+            "startLine": 1
+          }
+        },
+        "logicalLocations": [
+          {
+            "name": "Clinical Advisory Sub-Agent",
+            "fullyQualifiedName": "Application Zone/Clinical Advisory Sub-Agent",
+            "kind": "process"
+          }
+        ]
+      }
+    ],
+    "partialFingerprints": {
+      "primaryLocationLineHash": "fb58a27383c3a2b2",
+      "findingId/v1": "OI-4"
+    },
+    "properties": {
+      "tags": [
+        "maestro-layer:L7"
+      ],
+      "maestro-layer": "L7 — Agent Ecosystem",
+      "affected_assets": []
+    }
+  }
+]
