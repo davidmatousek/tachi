@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Feature 295 — F-292 Post-Merge Verification Runs (T017 + T026 executed fail-closed, BLP-06 Wave 3, #295) — feat(295)
+
+Executes the two verification runs F-292 deferred at its 2026-05-14 close (KB Entry 7 → #295), with
+fail-closed, false-pass-guarded gates where the deliverable is the committed verification record and
+failure disposition is pre-decided (fix-vs-file). SC-003 (T017, agentic-app OI no-emission): **PASS** —
+attempt 1's single-agent dispatch returned NO_FINDINGS and was correctly treated as a gate ERROR, never
+"zero emissions = pass"; attempt 2's scoped-full fallback matched the pre-292 anchor (OI-1..OI-4) on all
+D-1 gate fields, with every byte-delta attributed. SC-015 (T026, multi-tenant-rag-app Cat 6 baseline):
+**gate FAIL, honest-stop** — the Cat 6 threat WAS detected but Phase-3 compilation absorbed the OI
+findings into the LLM-N ID sequence, dropping the OI- prefix and CWE-943 citations → defect #356; no
+baseline committed; the US-3 CI byte-identity check is structurally deferred to #356. Ships one enabler:
+`generate-threats-sarif.py` now derives the SARIF source URI from its input path (FR-014; 4 covering
+assertions; agentic-app regeneration byte-unchanged). Follow-ups filed: #354 (F-292 contract §3/§6
+defects), #355 (sample-report duplicate legacy IDs), #356 (Phase-3 compilation defect), #357
+(risk-scores generator parameterization). Verification records: `specs/295-f292-verification-runs/`.
+KB Entry 22.
+
 ### Feature 217 — Detect-Images Duplicate Cleanup (opt-in mislabeled-image removal, BLP-06 Wave 3, #217) — feat(217)
 
 Ships the decided remedy for the #215/#216 follow-on: the non-destructive self-heal left every
