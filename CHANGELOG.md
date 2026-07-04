@@ -771,6 +771,13 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
+## [4.47.0](https://github.com/davidmatousek/tachi/compare/v4.46.0...v4.47.0) (2026-07-04)
+
+
+### Features
+
+* **295:** F-292 post-merge verification runs (T017 + T026) ([#353](https://github.com/davidmatousek/tachi/issues/353)) ([e6e8ef0](https://github.com/davidmatousek/tachi/commit/e6e8ef0770d405ed5fdcf6bbd4eb06d66d3511bd))
+
 ## [4.46.0](https://github.com/davidmatousek/tachi/compare/v4.45.0...v4.46.0) (2026-07-02)
 
 
