@@ -3,7 +3,8 @@ prd:
   number: 295
   topic: f292-verification-runs
   created: 2026-07-02
-  status: Approved
+  status: Delivered
+  delivered: 2026-07-04
   type: feature
 triad:
   pm_signoff: {agent: product-manager, date: 2026-07-02, status: APPROVED, notes: "PM author — v1.1 folds full Architect correction set (H1-H3, M1-M4, L1-L3) + Team-Lead concerns; v1.2 folds re-review residuals M-a/L-a as plan-stage notes; issue #295 ACs preserved; fail-closed semantics with false-pass guard"}
@@ -16,7 +17,7 @@ source:
 
 # F-292 Post-Merge Verification Runs (T017 + T026) — PRD (Quick Start)
 
-**Status**: Approved (v1.2 — Architect re-review APPROVED_WITH_CONCERNS; residuals M-a/L-a folded as plan-stage notes)
+**Status**: Delivered 2026-07-04 (PR #353 squash-merged to `main` as `e6e8ef0`, `feat(295):` title; post-v4.46.0, next release-please PR pending. **The deliverable is the verification RECORD, not a green result** — **US-1 (T017/SC-003) PASS** [scoped-full fallback matched the pre-292 anchor `0629fa2~1` on 4 OI findings {OI-1..OI-4}, D-1 gate 4/4; the single-agent primary attempt's NO_FINDINGS was correctly caught as a gate ERROR by the false-pass guard, never a false pass; M-1 escape hatch not triggered], **US-2 (T026/SC-015) gate FAIL, honest-stop** [Cat 6 detected but orchestrator Phase-3 compilation absorbed the output-integrity findings into the `LLM-N` id sequence, dropping the `OI-` prefix + CWE-943 — 0/0/0 on all three checks; no baseline artifacts committed per FR-020; defect **#356** filed], **US-3 deferred to #356** per FR-018. FR-014 URI enabler shipped (`995359f`, +4 assertions, agentic-app regen byte-unchanged). Issues filed: #354/#355/#356/#357. 16 tasks complete (T014 + US-3 T017–T019 deferred to #356); 78 pass / 0 fail / 3 pre-existing skips, 0 regressions. Records: `specs/295-f292-verification-runs/sc-003-verification-record.md` + `sc-015-verification-record.md`. Approved at plan: PM ✓ / Architect ⚠ / Team-Lead ⚠. Closes Issue #295 — **BLP-06 Wave 3's last active work item; only the deferred #325 tail remains.**)
 **Created**: 2026-07-02
 **Author**: product-manager
 **Reviewers**: architect, team-lead

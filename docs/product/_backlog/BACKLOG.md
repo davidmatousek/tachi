@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-07-03T16:01:04Z.
+> Auto-generated from GitHub Issues on 2026-07-04T16:33:39Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -53,12 +53,15 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #357 | enhancement: parameterize generate-risk-scores-sarif.py (CLI args, configurable paths, findings-count gate) to support additional example baselines | OPEN | 2026-07-03 |
+| #356 | defect(tachi-orchestrator): Phase-3 compilation can absorb output-integrity findings into the LLM-N sequence, dropping the OI- prefix carve-out and CWE citations (F-295 T026 gate FAIL) | OPEN | 2026-07-03 |
+| #355 | defect: examples/agentic-app/sample-report/threats.md duplicates output-integrity findings under legacy LLM-5/6/7 and current OI-1/2/3 IDs | OPEN | 2026-07-03 |
+| #354 | defect(292): cross-link-no-emission-contract.md §3/§6 — broken ruleId filter + non-executable invocation | OPEN | 2026-07-03 |
 | #348 | gitleaks: no default rule covers hex-encoded generic high-entropy secrets | OPEN | 2026-07-01 |
 | #333 | Remediate dead citation URLs surfaced by the link-rot monitor (#332) | CLOSED | 2026-06-29 |
 | #332 | [link-rot] Taxonomy citation link-rot — open findings | CLOSED | 2026-06-29 |
 | #325 | Crosswalk: 4 citation-unsupported tachi-control-category → nist-ai-rmf edges (T029 survivors, Surface B non-table extras) | OPEN | 2026-06-10 |
 | #299 | docs: surface /tachi.architecture as the recommended Step 4 path in the Developer Guide | CLOSED | 2026-05-30 |
-| #295 | F-292 post-merge tachi.threat-model verification runs (T017 + T026) | OPEN | 2026-07-03 |
 | #289 | chore: BLP-02 initiative closure tracker (post-5/5 outstanding items + follow-up Issues) | CLOSED | 2026-05-11 |
 | #280 | [chore] Pre-commit hook for .claude/settings.json + CLAUDE_PERMISSIONS.md AC-2 cross-check (post-F-4 follow-up) | CLOSED | 2026-07-01 |
 | #276 | [chore] release-please manifest-vs-tag discrepancy investigation (post-F-3 follow-up) | CLOSED | 2026-05-10 |

@@ -453,6 +453,7 @@ See the workflow file for the authoritative full list.
 | F-5 / F-282 | #286 | `test_init_precommit_matrix.py` added to suite |
 | F-302 / F-260b | #303 | Asset-tag test modules + `populate-affected-assets.py` / `sarif_common.py` / `schemas/finding.yaml` path-filter lock-step |
 | **F-338** | **#340** | **`push: branches: [main]` trigger added; paths shared via YAML anchor `&hardening_paths`; defends against direct-to-`main` hardening clobber** |
+| F-295 | #353 | `scripts/generate-threats-sarif.py` added to path filter (FR-014 input-path-derived `artifactLocation.uri`, covered by 4 assertions in the existing suite); no new test module or workflow added — the planned US-3 byte-identity CI wiring was structurally deferred to defect #356 after the T026 Cat 6 gate failed |
 
 ### Environment Variables
 

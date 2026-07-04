@@ -3870,3 +3870,32 @@ per stem: glob candidates (.jpg/.png, exists, size>0)
 ```
 
 Safety contract: deletion only under the double gate (flag AND byte-identity); without the flag every path is byte-identical to pre-F-217 behavior (Principle III). No new ADR — PR-level change applying accepted invariants (ADR-017 stdlib-only, ADR-021 determinism, ADR-008 opt-in-for-high-risk reasoning); #215/#216 set the precedent of no ADR for `detect_images` changes.
+
+---
+
+### Feature 295: f292-verification-runs
+
+**Added**: 2026-07-04 · **Plan**: `specs/295-f292-verification-runs/plan.md` · **Nature**: verification/evidence feature — executes F-292's two deferred verification runs (T017 / SC-003 + T026 / SC-015) under fail-closed, false-pass-guarded gates. Almost no production code. **PR #353** squash-merged to `main` at `e6e8ef0`; 16 tasks.
+
+#### Tech Stack
+
+- **Python 3 stdlib only**: `pathlib` (`Path.resolve` / `relative_to` / `as_posix`) for the FR-014 URI helper. **Zero new dependency**, no version bump, no schema change. FR-020 scope fence held: detection-tier files, `schemas/finding.yaml`, and the archived F-292 contract are untouched, and the fence audit (`git diff main -- scripts/generate-threats-sarif.py`) confirms FR-014 is the **sole** generator change.
+
+#### Components
+
+| Component | Type | Change | Notes |
+|---|---|---|---|
+| `scripts/generate-threats-sarif.py` — `artifact_uri_for(input_path)` | new helper | **new** | FR-014: derives the SARIF `physicalLocation.artifactLocation.uri` from the actual input path — repo-relative POSIX via `resolved.relative_to(REPO_ROOT).as_posix()`, with an out-of-repo fallback to the resolved absolute POSIX path. Wired in `main()` (`source_uri = artifact_uri_for(args.input)`), replacing the hardcoded `examples/agentic-app/sample-report/threats.md` constant `build_result()` previously emitted regardless of input. `build_result` / `build_sarif` default kwargs retained (backward-compatible call sites). |
+| `tests/scripts/test_affected_assets_wiring.py` | tests | **+4 assertions** | in-repo repo-relative derivation · out-of-repo `tmp_path` fallback (POSIX-normalized, never the stale constant) · end-to-end SARIF wiring · default-parameter backward-compat. Suite 74/3/0 → 78/3/0 (sole flip attributed to `995359f`). Agentic-app regeneration verified **byte-unchanged** (script-output-before vs -after). |
+
+FR-014 lives entirely in the **Python regeneration/verification tier** (the "NOT live" branch of the pipeline data-flow diagram above) — `generate-threats-sarif.py` has no production caller; production `threats.sarif` is LLM-authored. The fix is the correctness enabler that lets the regeneration tooling emit a truthful `artifactLocation.uri` for any baseline other than agentic-app (the multi-baseline case US-2 was to exercise).
+
+#### Verification outcome (the feature's actual deliverable — recorded honestly)
+
+- **US-1 (T017 / SC-003)** — **PASS**, via the **scoped-full fallback** path; the single-agent `tachi-output-integrity` primary path **under-triggered** (a methodology learning recorded in `sc-003-verification-record.md §3` for future verification-run path selection). Corrected OI-subset filter — `partialFingerprints["findingId/v1"]` prefix `OI-`, not the archived contract §3's zero-match `ruleId | startswith("OI-")` — yielded the expected 4 findingIds under a fail-closed, false-pass-guarded diff.
+- **US-2 (T026 / SC-015)** — **gate FAIL, honest-stop**. Orchestrator **Phase-3 compilation** absorbs OI findings into the LLM-N sequence, dropping the `OI-` prefix carve-out (ADR-045 D3) and CWE citations → defect **#356** (discovered, not fixed — FR-020 fix-vs-file). **No `examples/multi-tenant-rag-app/` baseline artifacts were committed.**
+- **US-3 (CI SARIF-regen byte-identity check)** — **structurally deferred to #356** (depends on US-2's artifacts; `tachi-sarif-regen.yml` was never authored — not a US-3 failure per the spec's structural gate).
+
+#### No new ADR — reasoning
+
+No ADR was minted. FR-014 is a PR-level correctness fix applying accepted invariants ([ADR-013](../02_ADRs/ADR-013-sarif-output-format-adoption.md) SARIF format, [ADR-021](../02_ADRs/ADR-021-source-date-epoch-for-deterministic-pdf-comparison.md) determinism) to a new input case — it decides nothing novel, sitting below the repo's ADR bar per the [ADR-047](../02_ADRs/ADR-047-maestro-coverage-state-authority.md) rule. The verification findings are **filed, not recorded as decisions**: defects **#354** (contract §3 broken `ruleId` filter + non-executable invocation), **#355** (agentic-app duplicate OI/LLM finding IDs), **#356** (orchestrator Phase-3 OI-prefix drop) — together three failure modes of one underlying mechanism (the `OI-`-vs-`LLM-` id-prefix assignment is not a deterministic Phase-3 step) — plus enhancement **#357** (parameterize `generate-risk-scores-sarif.py`).

@@ -662,6 +662,22 @@ F-292 reused F-260's community-merge precedent (4 mechanical artifacts: CHANGELO
 
 ---
 
+### Entry 22: F-295 F-292 Post-Merge Verification Runs — Delivery Retrospective (gate on the compiled artifact, never intermediate agent output)
+
+**Date**: 2026-07-04 | **Category**: Pattern | **Feature**: F-295 | **Issues**: #295 (lead; closes the F-292 T017+T026 deferral), #354/#355/#356 (defects filed during build), #357 (enhancement), PR #353, #358 (release v4.47.0)
+
+**Context**: BLP-06 Wave 3 closer — the initiative's last open item (deferred tail: #325). F-292 shipped 2026-05-14 with SC-003/SC-015 empirically unverified (KB Entry 7 deferral → #295); this feature executed both verification runs with fail-closed, false-pass-guarded gates where the deliverable is the committed verification record and failure disposition is pre-decided (fix-vs-file). US-1 (T017/SC-003): **PASS** — attempt 1's single-agent `tachi-output-integrity` dispatch returned NO_FINDINGS and was correctly treated as gate ERROR (never "zero emissions = pass"); attempt 2's scoped-full fallback produced a valid 4-finding OI subset matching the pre-292 anchor (`0629fa2~1` → OI-1..OI-4) on all D-1 gate fields. US-2 (T026/SC-015): **FAIL, honest-stop** — the Cat 6 Vector/Search-DSL Injection threat WAS detected (threats.md rows self-label it) but orchestrator Phase-3 compilation absorbed the output-integrity findings into the LLM-N ID sequence, dropping the `OI-` prefix and CWE-943 citations → defect #356; no baseline committed to `examples/multi-tenant-rag-app/`; US-3 (CI byte-identity check) structurally deferred to #356 per its gate. Only production code change: FR-014 URI derivation in `generate-threats-sarif.py` (+4 covering assertions, +1 lock-step `tachi-pytest.yml` path line; agentic-app regen byte-unchanged). Estimated 0.5/1.0/2.0 eng-days (central 1.0) → actual 1 day (branch 2026-07-03 → merge 2026-07-04). 16/16 tasks; 78 pass / 0 fail / 3 pre-existing skips, 0 regressions. Surprise log: smooth sailing — the honest-FAIL path was designed-for, so executing it was not a deviation.
+
+**Lesson — Gate verification on the compiled artifact adopters consume, never on intermediate agent output: one feature's fail-closed gates surfaced two otherwise-invisible defect classes — dispatch-tier under-triggering (T017 attempt 1) and compilation-tier ID mangling (T026 → #356) — both of which agent-level evidence would have masked.**
+
+- **Problem**: Both F-292 claims could have "passed" trivially on weaker evidence: the archived contract §3 filter matched zero results on every SARIF (empty-vs-empty false-pass, #354), and the T026 sub-agent's own return carried correct `OI-` findings while the compiled `threats.md`/`threats.sarif` did not.
+- **What we learned**: (1) The empty-extraction=ERROR rule converted a plausible "no regressions" into the discovery that single-agent dispatch under-triggers relative to full-pipeline context — a comparison-path artifact, not an emission regression (independent proof: the committed HEAD baseline carries OI-1..4). (2) The compiled-artifact gate exposed a defect class nobody had named: Phase-3 compilation can absorb OI findings into the LLM-N sequence — detection-tier evidence actively masks it because the sub-agent emits the right IDs. (3) Two-attempt caps + pre-decided fix-vs-file disposition kept a gate-FAILing feature on estimate (1 day) with zero scope creep; attempt-1 tooling failures (orphaned background dispatch — children outlived the parent orchestrator's turn) consumed a cap without corrupting evidence.
+- **How to apply**: For any verification/evidence feature: pin expected cardinality on an immutable anchor; treat empty extraction as gate ERROR, never pass; diff the artifact the consumer reads, not what producers emit; pre-decide the failure disposition (defect-file + close on the committed record); cap live attempts (2) with an escape hatch; dispatch pipeline agents synchronously so the parent can compile them.
+
+**Evidence**: `specs/295-f292-verification-runs/{sc-003-verification-record.md, sc-015-verification-record.md, test-results/, delivery.md}`; squash-merge `e6e8ef0` (PR #353, `feat(295):` title) → release-please v4.47.0 (#358). Related: KB Entry 7 (the original F-292 deferral), Entry 17 (live-dispatch validation at deliver), Entries 19–21 (BLP-06 siblings).
+
+---
+
 ## Bug Fixes
 
 *No entries yet. Use `/kb-create` to add the first bug fix.*

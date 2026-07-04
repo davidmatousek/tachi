@@ -151,6 +151,16 @@ There is **no new secret to provision**. The `workflow_dispatch` input `inject_s
 
 ---
 
+## F-295 Post-Merge Verification Runs — No New Environment Variables
+
+**Added in Feature 295** (F-292 Post-Merge Verification Runs — T017 + T026, PR #353, merged 2026-07-04). For cross-reference: F-295 introduces **no new environment variables** of any kind (adopter-facing, test-only, or CI-only). The feature executed two previously-deferred F-292 verification runs and landed one enabling code change — FR-014 input-path-derived `artifactLocation.uri` in `scripts/generate-threats-sarif.py`, covered by 4 assertions added to the existing test suite. The only CI-surface delta is a path-filter addition: `scripts/generate-threats-sarif.py` was added to `tachi-pytest.yml`'s trigger paths (lock-step convention per F-250; no new job, step, or workflow). The planned User Story 3 byte-identity CI check (new test module + full workflow wiring for the new `multi-tenant-rag-app` baseline) did **not** ship — it was structurally deferred to defect Issue #356 after the T026 Cat 6 gate failed; do not treat it as landed.
+
+`SOURCE_DATE_EPOCH=1700000000` was set as a shell-level convention during the T026 verification run (the same convention referenced by ADR-021 and used across many prior features for byte-deterministic PDF/SARIF regen comparisons) — it is **not** read by any script via `os.environ`/`getenv` in this codebase and is **not** new env-var infrastructure. `scripts/generate-threats-sarif.py` remains timestamp-free; its regen determinism is by construction, not by this variable.
+
+**Reference**: `specs/295-f292-verification-runs/spec.md` (User Story 2 AC-1/AC-3, User Story 3). Workflow walkthrough: `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow" → "Feature History".
+
+---
+
 ## Cross-References
 
 - **Adopter-facing update env vars**: `docs/devops/CI_CD_GUIDE.md` → "Update-Script Environment Variables" (`CI`, `FORCE_RETAG`, `AOD_UPDATE_TMP_DIR`, `AOD_BOOTSTRAP_*`, `AOD_UPSTREAM_URL`, `YES`, `SKIP_MARKER`).
@@ -162,6 +172,7 @@ There is **no new secret to provision**. The `workflow_dispatch` input `inject_s
 - **F-183 citation link-rot monitor** (no new env vars; ambient `GITHUB_TOKEN` via `GH_TOKEN` only, no PAT/secret): `docs/devops/CI_CD_GUIDE.md` → "Tachi Citation Link-Rot Monitor (F-183 / #183)". Section above documents the no-env-var scope and the ambient-token reference.
 - **F-338 restore substitution hardening** (no new env vars; CI trigger change only — `push: branches: [main]` added to `tachi-pytest.yml` to defend against direct-to-`main` hardening clobber, PR #340, v4.45.1): `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow" → "Trigger Design (F-338)". `AOD_FETCH_TIMEOUT` (the restored watchdog var) was introduced by F-256 and is documented in the F-256 section above.
 - **F-281 CI & governance hardening tail** (no new env vars; new dual-trigger `tachi-permissions-verify.yml` CI gate — `jq empty` + reused #280 AC-2 cross-check + doc-presence greps, PR #347, 2026-07-01): `docs/devops/CI_CD_GUIDE.md` → "Tachi Permissions-Verify Workflow". Section above documents the no-env-var scope.
+- **F-295 post-merge verification runs** (no new env vars; CI lock-step path-filter addition only — `scripts/generate-threats-sarif.py` added to `tachi-pytest.yml` trigger paths, PR #353; `SOURCE_DATE_EPOCH` used as a run convention only, not read by any script; US-3 CI wiring deferred to #356): `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow" → "Feature History". Section above documents the no-env-var scope.
 
 ---
 
