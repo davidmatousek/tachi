@@ -15,15 +15,19 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-REPO_ROOT = Path(__file__).resolve().parent.parent
 
 from sarif_common import (
     PREFIX_TO_RULE,
+    REPO_ROOT,
     SEVERITY_TO_LEVEL,
     build_sarif_envelope,
     parse_affected_assets,
     parse_component_metadata,
 )
+
+# Pre-FR-014 emission, preserved as the omitted-arg seam: callers that do not
+# pass source_uri (the pre-existing SC-006 suite) keep this uri byte-for-byte.
+DEFAULT_SOURCE_URI = "examples/agentic-app/sample-report/threats.md"
 
 
 def artifact_uri_for(input_path: Path) -> str:
@@ -418,7 +422,7 @@ def build_result(
     finding: dict,
     component_meta: dict[str, dict[str, str]],
     affected_assets_by_id: dict[str, list[str]],
-    source_uri: str = "examples/agentic-app/sample-report/threats.md",
+    source_uri: str,
     run_id_baseline: str = "2026-04-19T03-20-30",
 ) -> dict:
     """Build one SARIF 2.1.0 result entry from a parsed finding row.
@@ -539,7 +543,7 @@ def build_sarif(
     findings: list[dict],
     component_meta: dict[str, dict[str, str]],
     affected_assets_by_id: dict[str, list[str]],
-    source_uri: str = "examples/agentic-app/sample-report/threats.md",
+    source_uri: str = DEFAULT_SOURCE_URI,
 ) -> dict:
     results = [
         build_result(f, component_meta, affected_assets_by_id, source_uri)
