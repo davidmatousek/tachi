@@ -18,6 +18,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from tachi_parsers import parse_scope_data  # noqa: E402
 
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
 SARIF_SCHEMA_URI = (
     "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/"
     "schema/sarif-schema-2.1.0.json"
