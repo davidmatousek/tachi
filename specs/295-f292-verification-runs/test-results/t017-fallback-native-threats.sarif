@@ -1,0 +1,3259 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Tachi",
+          "semanticVersion": "1.1",
+          "informationUri": "https://github.com/davidmatousek/tachi",
+          "supportedTaxonomies": [
+            {
+              "name": "OWASP",
+              "index": 0
+            },
+            {
+              "name": "CWE",
+              "index": 1
+            }
+          ],
+          "rules": [
+            {
+              "id": "tachi/stride/spoofing",
+              "shortDescription": {
+                "text": "Identity spoofing threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker assumes the identity of another entity (user, service, or system component), undermining authentication guarantees."
+              },
+              "help": {
+                "text": "Review the affected component's design and implementation for identity spoofing threats. See fullDescription and referenced OWASP/CWE identifiers for detection guidance.",
+                "markdown": "Review the affected component's design and implementation for **identity spoofing threats**. Cross-reference OWASP Top 10 and CWE identifiers below for detection guidance and remediation patterns."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "spoofing",
+                  "authentication",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A07",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-287",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/tampering",
+              "shortDescription": {
+                "text": "Data tampering threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker modifies data or code without authorization, undermining data integrity guarantees."
+              },
+              "help": {
+                "text": "Review the affected component's design and implementation for data tampering threats. See fullDescription and referenced OWASP/CWE identifiers for detection guidance.",
+                "markdown": "Review the affected component's design and implementation for **data tampering threats**. Cross-reference OWASP Top 10 and CWE identifiers below for detection guidance and remediation patterns."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "tampering",
+                  "data-integrity",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A08",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-345",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/repudiation",
+              "shortDescription": {
+                "text": "Repudiation threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker denies having performed an action, undermining accountability and audit-trail guarantees."
+              },
+              "help": {
+                "text": "Review the affected component's design and implementation for repudiation threats. See fullDescription and referenced OWASP/CWE identifiers for detection guidance.",
+                "markdown": "Review the affected component's design and implementation for **repudiation threats**. Cross-reference OWASP Top 10 and CWE identifiers below for detection guidance and remediation patterns."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "repudiation",
+                  "audit-logging",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A09",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-778",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/information-disclosure",
+              "shortDescription": {
+                "text": "Information disclosure threats"
+              },
+              "fullDescription": {
+                "text": "Threats where sensitive data is exposed to unauthorized parties, undermining confidentiality guarantees."
+              },
+              "help": {
+                "text": "Review the affected component's design and implementation for information disclosure threats. See fullDescription and referenced OWASP/CWE identifiers for detection guidance.",
+                "markdown": "Review the affected component's design and implementation for **information disclosure threats**. Cross-reference OWASP Top 10 and CWE identifiers below for detection guidance and remediation patterns."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "information-disclosure",
+                  "data-exposure",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A01",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-200",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/denial-of-service",
+              "shortDescription": {
+                "text": "Denial of service threats"
+              },
+              "fullDescription": {
+                "text": "Threats where system availability is degraded or eliminated, undermining availability guarantees."
+              },
+              "help": {
+                "text": "Review the affected component's design and implementation for denial of service threats. See fullDescription and referenced OWASP/CWE identifiers for detection guidance.",
+                "markdown": "Review the affected component's design and implementation for **denial of service threats**. Cross-reference OWASP Top 10 and CWE identifiers below for detection guidance and remediation patterns."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "denial-of-service",
+                  "availability",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A05",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-400",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/elevation-of-privilege",
+              "shortDescription": {
+                "text": "Privilege escalation threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker gains higher access than authorized, undermining authorization guarantees."
+              },
+              "help": {
+                "text": "Review the affected component's design and implementation for privilege escalation threats. See fullDescription and referenced OWASP/CWE identifiers for detection guidance.",
+                "markdown": "Review the affected component's design and implementation for **privilege escalation threats**. Cross-reference OWASP Top 10 and CWE identifiers below for detection guidance and remediation patterns."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "privilege-escalation",
+                  "access-control",
+                  "owasp",
+                  "cwe"
+                ],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A01",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-269",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/ai/agentic-threats",
+              "shortDescription": {
+                "text": "AI agent autonomy and misuse threats"
+              },
+              "fullDescription": {
+                "text": "Threats arising from autonomous agent behavior, inter-agent trust and communication, and tool/MCP invocation misuse across the agentic system."
+              },
+              "help": {
+                "text": "Review the affected component's design and implementation for ai agent autonomy and misuse threats. See fullDescription and referenced OWASP/CWE identifiers for detection guidance.",
+                "markdown": "Review the affected component's design and implementation for **ai agent autonomy and misuse threats**. Cross-reference OWASP Top 10 and CWE identifiers below for detection guidance and remediation patterns."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "ai",
+                  "agentic",
+                  "autonomy",
+                  "tool-use",
+                  "cwe"
+                ],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "CWE-693",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/ai/llm-threats",
+              "shortDescription": {
+                "text": "LLM-specific threats"
+              },
+              "fullDescription": {
+                "text": "Threats specific to large language model components: prompt injection, training data poisoning, model theft, unsafe output handling, and ungrounded factual emission."
+              },
+              "help": {
+                "text": "Review the affected component's design and implementation for llm-specific threats. See fullDescription and referenced OWASP/CWE identifiers for detection guidance.",
+                "markdown": "Review the affected component's design and implementation for **llm-specific threats**. Cross-reference OWASP Top 10 and CWE identifiers below for detection guidance and remediation patterns."
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "ai",
+                  "llm",
+                  "prompt-injection",
+                  "cwe"
+                ],
+                "security-severity": "9.0"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "CWE-74",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "taxonomies": [
+        {
+          "name": "OWASP",
+          "version": "2021",
+          "informationUri": "https://owasp.org/Top10/",
+          "organization": "OWASP Foundation",
+          "shortDescription": {
+            "text": "OWASP Top 10 Web Application Security Risks"
+          }
+        },
+        {
+          "name": "CWE",
+          "version": "4.13",
+          "informationUri": "https://cwe.mitre.org/",
+          "organization": "MITRE",
+          "shortDescription": {
+            "text": "Common Weakness Enumeration"
+          }
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "An attacker replays a stolen session token or forges credentials to impersonate a legitimate user at the User→Guardrails boundary, gaining system access under a victim identity.",
+            "markdown": "Issue short-lived, device-bound JWTs; enforce MFA; maintain a token revocation list with refresh-token rotation."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "User",
+                  "fullyQualifiedName": "User Zone/User",
+                  "kind": "external-entity"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "cf294989f8e17183",
+            "findingId/v1": "S-1"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L7",
+              "maestro-pattern:trust_exploitation"
+            ],
+            "maestro-layer": "L7 — Agent Ecosystem",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "An attacker bypasses Guardrails entirely by calling the Orchestrator's internal endpoint directly; without mutual authentication any Application Zone process can impersonate Guardrails.",
+            "markdown": "Enforce mTLS (or SPIFFE/SPIRE service identity) between Guardrails and the Orchestrator; never expose the Orchestrator to unauthenticated internal callers."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Guardrails Service",
+                  "fullyQualifiedName": "Application Zone/Guardrails Service",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "3bab618930c304c5",
+            "findingId/v1": "S-2"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L6"
+            ],
+            "maestro-layer": "L6 — Security and Compliance",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "The Orchestrator's identity is not cryptographically attested to the Specialist Agent over the Inter-Agent Channel, letting a rogue process inject delegation instructions that appear to originate from the Orchestrator.",
+            "markdown": "Sign every Orchestrator→Channel message (HMAC or asymmetric, per-session keys); require the Specialist to verify the signature and a replay-preventing nonce before acting."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "86044d702033aaaa",
+            "findingId/v1": "S-3"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L1",
+              "maestro-pattern:trust_exploitation"
+            ],
+            "maestro-layer": "L1 — Foundation Model",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "A compromised Specialist Agent can inject fabricated \"Aggregated Result\" messages back through the Channel, impersonating legitimate specialist output to the Orchestrator.",
+            "markdown": "Sign all Specialist→Channel messages with the Specialist's own key; the Orchestrator MUST verify origin before incorporating results into context."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Specialist Agent",
+                  "fullyQualifiedName": "Application Zone/Specialist Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "394625266b4588ea",
+            "findingId/v1": "S-4"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified",
+              "maestro-pattern:trust_exploitation"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "The Channel has no inherent sender authentication, so any Application Zone process can inject messages impersonating either the Orchestrator or the Specialist Agent.",
+            "markdown": "Require per-message digital signatures (Ed25519/HMAC-SHA256) bound to sender identity; reject unsigned or unverifiable messages before routing."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Inter-Agent Communication Channel",
+                  "fullyQualifiedName": "Application Zone/Inter-Agent Communication Channel",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "2537cf7f9ca6b5ae",
+            "findingId/v1": "S-5"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified",
+              "maestro-pattern:trust_exploitation"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "Without caller authentication on JSON-RPC endpoints, any Application Zone process can spoof a valid agent identity and submit unauthorized tool call requests.",
+            "markdown": "Require a signed caller token or mTLS certificate on every JSON-RPC call; verify caller identity before executing any tool invocation."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "MCP Tool Server",
+                  "fullyQualifiedName": "Application Zone/MCP Tool Server",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "a5e9eb30090af448",
+            "findingId/v1": "S-6"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L3",
+              "maestro-pattern:trust_exploitation"
+            ],
+            "maestro-layer": "L3 — Agent Framework",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "The Learning Loop accepts the Training Signal Stream without verifying source integrity, allowing an attacker who compromises the Audit Logger to inject fabricated training signals that silently steer future model updates.",
+            "markdown": "Cryptographically sign each training signal batch at the Audit Logger; require signature verification before ingestion; attest data provenance end-to-end."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Long-Running Learning Loop",
+                  "fullyQualifiedName": "Application Zone/Long-Running Learning Loop",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "73316ae1f398598d",
+            "findingId/v1": "S-7"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified",
+              "maestro-pattern:temporal_attack"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "The External API's identity is verified only via TLS; DNS hijacking or a BGP route hijack could redirect ToolServer's outbound calls to an attacker-controlled endpoint.",
+            "markdown": "Pin the leaf certificate on outbound HTTPS calls; validate CN/SAN against the expected provider identity; enable HSTS preload."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "External API",
+                  "fullyQualifiedName": "External Services/External API",
+                  "kind": "external-entity"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "4044726f9698e37e",
+            "findingId/v1": "S-8"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "Orchestrator→ClinAdvisor JSON-RPC messages carry no per-message sender attestation, so a rogue Application Zone process can inject crafted clinical queries that the sub-agent will process as legitimate.",
+            "markdown": "Authenticate Orchestrator→ClinAdvisor calls with signed caller tokens (mTLS or HMAC envelope); enforce a replay-preventing nonce on every clinical query."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Clinical Advisory Sub-Agent",
+                  "fullyQualifiedName": "Application Zone/Clinical Advisory Sub-Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "ed9e87a9e9aa51ef",
+            "findingId/v1": "S-9"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L7",
+              "maestro-pattern:trust_exploitation"
+            ],
+            "maestro-layer": "L7 — Agent Ecosystem",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "An attacker with write access to Guardrails configuration (misconfigured admin path, insider) relaxes filtering rules, silently bypassing content policy for subsequent prompts.",
+            "markdown": "Configuration-as-code with signed commits; require dual approval for rule changes; alert on any rule-relaxation event."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Guardrails Service",
+                  "fullyQualifiedName": "Application Zone/Guardrails Service",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "e6bc538cbd3fe085",
+            "findingId/v1": "T-1"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L6"
+            ],
+            "maestro-layer": "L6 — Security and Compliance",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "The Orchestrator's context window (retrieved documents, tool results, aggregated specialist results) can be corrupted by any upstream component whose output is trusted without verification, manipulating the Orchestrator's reasoning and downstream actions.",
+            "markdown": "Hash and verify all upstream context sources before injection; treat tool and specialist results as untrusted input; apply output encoding at ingestion."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "b622281d4ca868aa",
+            "findingId/v1": "T-2",
+            "correlationGroup": "CG-1"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L1"
+            ],
+            "maestro-layer": "L1 — Foundation Model",
+            "affected_assets": []
+          },
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "LLM-3: Training data poisoning: adversarial interaction records injected into the Audit Logger propagate through the Learning Loop's update cycle, shifting the Orchestrator's future behavior."
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "Adversarial content injected into the Delegated Task message (via a compromised Channel) can redirect the Specialist's tool targets or exfiltrate data through a fabricated task payload.",
+            "markdown": "HMAC/signature-verify every delegation payload; reject tasks referencing unexpected tool targets or exfiltration-shaped parameters."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Specialist Agent",
+                  "fullyQualifiedName": "Application Zone/Specialist Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "58272085f573ffb6",
+            "findingId/v1": "T-3"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "A process with access to the Channel's queue/shared memory can modify delegation messages in transit (agent-in-the-middle), redirecting Specialist tasks undetected.",
+            "markdown": "End-to-end message signatures independent of transport security; monotonic sequence numbers to detect drop/reorder/tamper."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Inter-Agent Communication Channel",
+                  "fullyQualifiedName": "Application Zone/Inter-Agent Communication Channel",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "604b5938f4bc8af9",
+            "findingId/v1": "T-4"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified",
+              "maestro-pattern:communication_vulnerability"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "Without allowlist validation, LLM-influenced JSON-RPC tool parameters (from Orchestrator or Specialist) can be manipulated to target unintended tools or inject shell/SQL metacharacters.",
+            "markdown": "Validate tool name against a registered allowlist and each parameter against a per-tool JSON Schema; reject metacharacters before dispatch."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "MCP Tool Server",
+                  "fullyQualifiedName": "Application Zone/MCP Tool Server",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "e4c35caf60102681",
+            "findingId/v1": "T-5"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L3"
+            ],
+            "maestro-layer": "L3 — Agent Framework",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "An attacker with write access poisons the KB corpus, causing the Orchestrator and ClinAdvisor to retrieve and reason over adversarial documents at scale.",
+            "markdown": "Least-privilege write access with immutable audit trail; document-level hash + signature verified at retrieval time; periodic corpus scanning."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Knowledge Base",
+                  "fullyQualifiedName": "Application Zone/Knowledge Base",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "4f934bf44aadfb00",
+            "findingId/v1": "T-6"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L2"
+            ],
+            "maestro-layer": "L2 — Data Operations",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "A process with write access to the log store can modify or delete entries, corrupting the training signal stream and destroying forensic evidence.",
+            "markdown": "Append-only log store; Merkle-tree batch hashing; externally-stored, independently-verifiable hash chain."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Audit Logger",
+                  "fullyQualifiedName": "Application Zone/Audit Logger",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "dc56897bffa6a276",
+            "findingId/v1": "T-7"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L5"
+            ],
+            "maestro-layer": "L5 — Evaluation and Observability",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "Adversarial entries injected into the Audit Logger before a training run poison the training signal stream with delayed-activation (\"sleeper\") behavior that surfaces only in a future model update.",
+            "markdown": "Provenance-attest every log entry; anomaly-detect training signal distributions; apply gradient clipping and differential privacy during training."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Long-Running Learning Loop",
+                  "fullyQualifiedName": "Application Zone/Long-Running Learning Loop",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "a3f6d09325c9109d",
+            "findingId/v1": "T-8",
+            "correlationGroup": "CG-2"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified",
+              "maestro-pattern:temporal_attack"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          },
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "LLM-7: Systematic injection of adversarial interaction records into the Audit Logger poisons the training signal stream with a delayed-activation effect at the next model update."
+              },
+              "logicalLocations": [
+                {
+                  "name": "Long-Running Learning Loop",
+                  "fullyQualifiedName": "Application Zone/Long-Running Learning Loop",
+                  "kind": "process"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "ClinAdvisor's reasoning context can be tampered with either via adversarial KB documents surfaced during retrieval or via a manipulated Clinical Query / Context payload from the Orchestrator.",
+            "markdown": "Verify KB document hashes at retrieval time; validate and sanitize Clinical Query payloads with the same untrusted-input treatment as delegation messages."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Clinical Advisory Sub-Agent",
+                  "fullyQualifiedName": "Application Zone/Clinical Advisory Sub-Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "0c3a38f7e53f3896",
+            "findingId/v1": "T-9",
+            "correlationGroup": "CG-6"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L7"
+            ],
+            "maestro-layer": "L7 — Agent Ecosystem",
+            "affected_assets": []
+          },
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "LLM-10: Adversarial Clinical Decision Log Entries injected into the Audit Logger can, via the Learning Loop, shift ClinAdvisor's clinical reasoning toward attacker-preferred outputs (e.g., biased drug recommendations, omitted contraindications)."
+              },
+              "logicalLocations": [
+                {
+                  "name": "Clinical Advisory Sub-Agent",
+                  "fullyQualifiedName": "Application Zone/Clinical Advisory Sub-Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "A user denies submitting a specific prompt, claiming the Audit Logger record was falsified, since requests are not client-signed.",
+            "markdown": "Sign requests client-side; log the signed hash alongside session identity in the Audit Logger."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "User",
+                  "fullyQualifiedName": "User Zone/User",
+                  "kind": "external-entity"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "5a808890b239b615",
+            "findingId/v1": "R-1"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L7"
+            ],
+            "maestro-layer": "L7 — Agent Ecosystem",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "Guardrails can deny a specific filtering decision (pass or reject) absent tamper-evident, atomically-written logs.",
+            "markdown": "Log every filtering decision with prompt hash, rule applied, and a monotonic sequence number, written atomically before the response returns."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Guardrails Service",
+                  "fullyQualifiedName": "Application Zone/Guardrails Service",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "ada85cea3b936bf4",
+            "findingId/v1": "R-2"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L6"
+            ],
+            "maestro-layer": "L6 — Security and Compliance",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "Without signed decision logs, the Specialist can deny executing a tool call or producing a given result.",
+            "markdown": "Log every Specialist action with content hash and service-key signature, written before the corresponding action completes."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Specialist Agent",
+                  "fullyQualifiedName": "Application Zone/Specialist Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "ac9257f86272bb0e",
+            "findingId/v1": "R-4"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "Without delivery receipts, the Channel can deny having delivered or altered a specific message.",
+            "markdown": "Require delivery ACKs carrying a hash of received content; flag sender/receiver hash mismatches for investigation."
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Inter-Agent Communication Channel",
+                  "fullyQualifiedName": "Application Zone/Inter-Agent Communication Channel",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "b42c44c4417d4920",
+            "findingId/v1": "R-5"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "Without signed execution logs, the Tool Server can deny having executed a specific JSON-RPC invocation.",
+            "markdown": "Log every tool invocation before execution: caller identity, tool name, hashed parameters/output."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "MCP Tool Server",
+                  "fullyQualifiedName": "Application Zone/MCP Tool Server",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "c3bdb0ccc5a46449",
+            "findingId/v1": "R-6"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L3"
+            ],
+            "maestro-layer": "L3 — Agent Framework",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "The Learning Loop can deny having applied a specific model update, or claim different training data than what actually drove the update.",
+            "markdown": "Log training data hash, parameter diff hash, timestamp, and approval signature for every update event; version models with signed manifests."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Long-Running Learning Loop",
+                  "fullyQualifiedName": "Application Zone/Long-Running Learning Loop",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "1167b5b280b5f048",
+            "findingId/v1": "R-7"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified",
+              "maestro-pattern:temporal_attack"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "The External API provider can deny having returned a specific response, complicating incident disputes.",
+            "markdown": "Log all API responses with content hash and timestamp immediately on receipt; use signed webhooks where the provider supports them."
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "External API",
+                  "fullyQualifiedName": "External Services/External API",
+                  "kind": "external-entity"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "af01fd610f22994d",
+            "findingId/v1": "R-8"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "Without non-repudiable logging of clinical outputs and the KB documents used to produce them, ClinAdvisor cannot be held accountable for a hallucinated or incorrect recommendation.",
+            "markdown": "Log each clinical output atomically with query hash, retrieved-document IDs/hashes, summary hash, and sub-agent signature before the summary returns to the Orchestrator."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Clinical Advisory Sub-Agent",
+                  "fullyQualifiedName": "Application Zone/Clinical Advisory Sub-Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "333d1f5d06611f14",
+            "findingId/v1": "R-9"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L7"
+            ],
+            "maestro-layer": "L7 — Agent Ecosystem",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Rejection reasons returned to the User reveal which filtering rule triggered, letting an attacker iteratively probe and bypass filters.",
+            "markdown": "Return generic rejection text to the User; log the specific rule triggered internally only."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Guardrails Service",
+                  "fullyQualifiedName": "Application Zone/Guardrails Service",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "2b7cc5858485093d",
+            "findingId/v1": "I-1"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L6"
+            ],
+            "maestro-layer": "L6 — Security and Compliance",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "A prompt injection or hallucination can cause the Orchestrator to leak internal context (retrieved documents, system prompt fragments, tool metadata) in its HTTPS response.",
+            "markdown": "Scrub the response for sensitive-data markers before transmission; apply a separate response-auditor pass prior to sending."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "cda734dd6fbe58e9",
+            "findingId/v1": "I-2",
+            "correlationGroup": "CG-4"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L1"
+            ],
+            "maestro-layer": "L1 — Foundation Model",
+            "affected_assets": []
+          },
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "LLM-1: Direct prompt injection: an attacker embeds adversarial instructions in the user prompt that Guardrails fails to catch, causing the Orchestrator to override its system prompt or take unauthorized actions."
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Sensitive upstream context passed into a delegated task can be echoed verbatim in the Specialist's result, leaking downstream if the Channel or logs are unprotected.",
+            "markdown": "Minimize sensitive data in delegation payloads; scrub Specialist results before logging or forwarding."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Specialist Agent",
+                  "fullyQualifiedName": "Application Zone/Specialist Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "14a9c524f9f67c4d",
+            "findingId/v1": "I-3"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Messages on the shared Channel are observable to any Application Zone process without message-level encryption, exposing task context to unauthorized observers.",
+            "markdown": "End-to-end encrypt inter-agent messages (not transport-only); enforce strict access control on the queue/shared-memory infrastructure."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Inter-Agent Communication Channel",
+                  "fullyQualifiedName": "Application Zone/Inter-Agent Communication Channel",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "4b3bfd1082d693e0",
+            "findingId/v1": "I-4"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified",
+              "maestro-pattern:communication_vulnerability"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "External API results may contain PII/financial data logged verbatim to the Audit Logger, exposing it to any process (including the Learning Loop) with read access.",
+            "markdown": "Field-classify structured logs; hash or tokenize sensitive tool-result fields before writing."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "MCP Tool Server",
+                  "fullyQualifiedName": "Application Zone/MCP Tool Server",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "6c078f5b90987fc2",
+            "findingId/v1": "I-5"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L3"
+            ],
+            "maestro-layer": "L3 — Agent Framework",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Without query-result access controls, a compromised Orchestrator context can exhaustively query and exfiltrate the entire KB corpus.",
+            "markdown": "Enforce per-query result limits and per-session query budgets; monitor for anomalous exhaustive-retrieval patterns."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Knowledge Base",
+                  "fullyQualifiedName": "Application Zone/Knowledge Base",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "8a5dd9d4db40eaaf",
+            "findingId/v1": "I-6"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L2"
+            ],
+            "maestro-layer": "L2 — Data Operations",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Unauthorized read access exposes the full operational history of the system — prompts, decisions, tool parameters, filter triggers.",
+            "markdown": "Restrict read access to designated IR/analytics accounts; encrypt at rest with per-batch envelope keys in an HSM-backed KMS."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Audit Logger",
+                  "fullyQualifiedName": "Application Zone/Audit Logger",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "bc274bb03ddf8fb7",
+            "findingId/v1": "I-7"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L5"
+            ],
+            "maestro-layer": "L5 — Evaluation and Observability",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "If the updated model memorizes training signals, it can inadvertently reproduce PII or proprietary content in future responses.",
+            "markdown": "Apply differential privacy during training; de-identify PII/session identifiers before ingestion; use canary injection to detect memorization."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Long-Running Learning Loop",
+                  "fullyQualifiedName": "Application Zone/Long-Running Learning Loop",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "5d475db96b0debea",
+            "findingId/v1": "I-8"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Unscrubbed Clinical Summary output can leak patient-specific or proprietary clinical content into the User-facing response, and unclassified Clinical Decision Log Entries can propagate sensitive data into the training stream.",
+            "markdown": "Scrub ClinAdvisor output before inclusion in Orchestrator responses; field-classify Clinical Decision Log Entries before logging; enforce per-session KB scope."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Clinical Advisory Sub-Agent",
+                  "fullyQualifiedName": "Application Zone/Clinical Advisory Sub-Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "98a87b95b6054823",
+            "findingId/v1": "I-9"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L7"
+            ],
+            "maestro-layer": "L7 — Agent Ecosystem",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "High-volume, computationally expensive prompts (adversarial regex/rule-evaluation patterns) can exhaust the filtering pipeline.",
+            "markdown": "Rate-limit per-IP/session at ingress; enforce a computational-complexity budget per evaluation; use backpressure-aware async queues."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Guardrails Service",
+                  "fullyQualifiedName": "Application Zone/Guardrails Service",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "15c3f25289888c15",
+            "findingId/v1": "D-1"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L6"
+            ],
+            "maestro-layer": "L6 — Security and Compliance",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "High-token prompts or injected recursive tool-invocation chains can exhaust the Orchestrator's bounded inference capacity, starving legitimate requests.",
+            "markdown": "Enforce per-session token budgets and context-window caps; circuit-break recursive tool chains; apply priority queuing and load shedding."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "76996bc32d9e361b",
+            "findingId/v1": "D-2"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L1",
+              "maestro-pattern:resource_competition"
+            ],
+            "maestro-layer": "L1 — Foundation Model",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "Adversarially crafted delegated subtasks can exhaust the Specialist's processing capacity, blocking legitimate delegated work.",
+            "markdown": "Apply per-task execution-time/resource limits; cap task-queue depth; use Orchestrator health-check backpressure."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Specialist Agent",
+                  "fullyQualifiedName": "Application Zone/Specialist Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "1dc206dc8f9f76e1",
+            "findingId/v1": "D-3"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified",
+              "maestro-pattern:resource_competition"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "A compromised agent or malfunctioning process can flood the Channel's message queue, dropping or delaying legitimate coordination traffic.",
+            "markdown": "Cap queue depth and per-sender rate; apply backpressure at capacity; alert on sustained high-water-mark conditions."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Inter-Agent Communication Channel",
+                  "fullyQualifiedName": "Application Zone/Inter-Agent Communication Channel",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "84f1d2c67845dd0b",
+            "findingId/v1": "D-4",
+            "correlationGroup": "CG-7"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified",
+              "maestro-pattern:resource_competition"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          },
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "AG-8: The Channel declares no mutual authentication, message signing, or replay-window enforcement between the Orchestrator, Specialist, and (via the Orchestrator's relay) ClinAdvisor, enabling interception, replay, or injection of inter-agent instructions."
+              },
+              "logicalLocations": [
+                {
+                  "name": "Inter-Agent Communication Channel",
+                  "fullyQualifiedName": "Application Zone/Inter-Agent Communication Channel",
+                  "kind": "process"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "High-volume tool call requests from a compromised agent can exhaust the connection pool to External API, failing all legitimate tool calls.",
+            "markdown": "Rate-limit per caller/tool; reject (not queue) pool-overflow requests; circuit-break on External API degradation."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "MCP Tool Server",
+                  "fullyQualifiedName": "Application Zone/MCP Tool Server",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "ea4650776a79cded",
+            "findingId/v1": "D-5",
+            "correlationGroup": "CG-5"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L3",
+              "maestro-pattern:resource_competition"
+            ],
+            "maestro-layer": "L3 — Agent Framework",
+            "affected_assets": []
+          },
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "AG-6: A runaway or adversarially prompted agent can drive rapid, repeated External API calls, exhausting provider rate limits, incurring cost, or triggering security lockouts."
+              },
+              "logicalLocations": [
+                {
+                  "name": "MCP Tool Server",
+                  "fullyQualifiedName": "Application Zone/MCP Tool Server",
+                  "kind": "process"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "High-volume, high-dimensionality vector search queries can degrade KB retrieval performance for the Orchestrator and ClinAdvisor.",
+            "markdown": "Rate-limit and bound query complexity per session; cache frequent queries; reject over-threshold queries."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Knowledge Base",
+                  "fullyQualifiedName": "Application Zone/Knowledge Base",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "0de917a8d1f81eec",
+            "findingId/v1": "D-6"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L2"
+            ],
+            "maestro-layer": "L2 — Data Operations",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "A log-flooding attack from a compromised process can overwhelm the Audit Logger, dropping entries or blocking pipeline operations awaiting log confirmation.",
+            "markdown": "Decouple writes via async queues; rate-limit writes per source; manage log rotation/capacity; alert on abnormal write rates."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Audit Logger",
+                  "fullyQualifiedName": "Application Zone/Audit Logger",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "53dcc0228ab127cd",
+            "findingId/v1": "D-7"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L5"
+            ],
+            "maestro-layer": "L5 — Evaluation and Observability",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "A high-volume training-signal injection can push the Learning Loop into runaway processing, consuming compute and delaying legitimate updates.",
+            "markdown": "Schedule training runs with resource quotas; cap ingested examples per run; use a separate compute pool from the inference path."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Long-Running Learning Loop",
+                  "fullyQualifiedName": "Application Zone/Long-Running Learning Loop",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "623a974ffd673c09",
+            "findingId/v1": "D-8"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "High-volume or adversarially complex clinical queries can exhaust ClinAdvisor's inference capacity or starve the KB of query capacity for other consumers.",
+            "markdown": "Apply per-session token budgets and per-query timeouts; rate-limit the Orchestrator's dispatch rate to ClinAdvisor; monitor queue depth."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Clinical Advisory Sub-Agent",
+                  "fullyQualifiedName": "Application Zone/Clinical Advisory Sub-Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "8905e09004b42097",
+            "findingId/v1": "D-9"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L7",
+              "maestro-pattern:resource_competition"
+            ],
+            "maestro-layer": "L7 — Agent Ecosystem",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "A prompt injection that bypasses Guardrails effectively elevates the attacker's input to the trust level of a validated internal caller of the Orchestrator.",
+            "markdown": "Apply Orchestrator-level input validation independent of Guardrails; never implicitly trust Guardrails-passed input."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Guardrails Service",
+                  "fullyQualifiedName": "Application Zone/Guardrails Service",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "985d7f3b74246327",
+            "findingId/v1": "E-1"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L6"
+            ],
+            "maestro-layer": "L6 — Security and Compliance",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "A prompt injection that manipulates the Orchestrator's reasoning can cause it to self-authorize elevated operations — full KB export, out-of-scope tool calls, unauthorized delegation.",
+            "markdown": "Enforce per-session scoped permissions independently at the Tool Server, KB, and ClinAdvisor; require step-up authentication for high-privilege operations."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "59650eea6f521b03",
+            "findingId/v1": "E-2",
+            "correlationGroup": "CG-3"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L1"
+            ],
+            "maestro-layer": "L1 — Foundation Model",
+            "affected_assets": []
+          },
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "R-3: The Orchestrator can deny having issued a specific delegation or tool call absent per-action, content-hashed, signed logging."
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            },
+            {
+              "id": 1,
+              "message": {
+                "text": "AG-1: Prompt injection drives the Orchestrator to autonomously execute unauthorized high-impact actions (mass KB export, bulk External API calls) beyond the user's original request scope."
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "A forged or tampered delegation message can grant the Specialist elevated permissions beyond the originating session's authorized scope.",
+            "markdown": "Verify the Specialist's claimed scope against the originating session's central authorization record at every tool invocation."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Specialist Agent",
+                  "fullyQualifiedName": "Application Zone/Specialist Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "df4785033a506c6a",
+            "findingId/v1": "E-3"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "Without sender authentication, a low-privilege process can inject messages with forged elevated-role headers, effectively reaching the Orchestrator's trust level.",
+            "markdown": "Require verifiable sender credentials (signed token or mTLS) on every Channel message; reject unverifiable senders before routing."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Inter-Agent Communication Channel",
+                  "fullyQualifiedName": "Application Zone/Inter-Agent Communication Channel",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "5f4cc38e0ac47939",
+            "findingId/v1": "E-4"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "Unauthorized tool calls (via forged identity or an exploited Orchestrator) inherit the Tool Server's own execution credentials, gaining access to External API and other downstream systems.",
+            "markdown": "Authorize every invocation against the originating session's scope independent of caller identity; use least-privilege, per-tool service accounts; rotate credentials."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "MCP Tool Server",
+                  "fullyQualifiedName": "Application Zone/MCP Tool Server",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "0e2d607fa0b581c8",
+            "findingId/v1": "E-5"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L3"
+            ],
+            "maestro-layer": "L3 — Agent Framework",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "A compromised or unauthenticated update mechanism elevates the attacker from data-layer access to model-parameter control across all three dependent agents.",
+            "markdown": "Sign every update package with an HSM-backed key; verify signatures before applying; stage rollouts with behavioral regression checks."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Long-Running Learning Loop",
+                  "fullyQualifiedName": "Application Zone/Long-Running Learning Loop",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "dd093ba50ba3e325",
+            "findingId/v1": "E-6"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified",
+              "maestro-pattern:temporal_attack"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "Prompt injection via the Clinical Query payload or adversarial KB documents can cause ClinAdvisor to self-authorize out-of-scope document access or manipulate the Orchestrator into high-risk tool invocations.",
+            "markdown": "Scope KB access per session; treat ClinAdvisor output as untrusted at the Orchestrator with a clinical-output validator before any downstream action."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Clinical Advisory Sub-Agent",
+                  "fullyQualifiedName": "Application Zone/Clinical Advisory Sub-Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "68bb04c569cbf92d",
+            "findingId/v1": "E-7"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L7",
+              "maestro-pattern:trust_exploitation"
+            ],
+            "maestro-layer": "L7 — Agent Ecosystem",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "The Orchestrator and Specialist Agent can jointly coordinate over the Inter-Agent Channel to accomplish a combined action that would trip per-agent rate limits if attempted individually.",
+            "markdown": "Apply cross-agent rate limits and coordination throttles at the Channel level; evaluate combined multi-agent action sequences with a policy engine."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "ddbc56d7cbc35a3f",
+            "findingId/v1": "AG-2"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L1",
+              "maestro-pattern:agent_collusion"
+            ],
+            "maestro-layer": "L1 — Foundation Model",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "Once delegated, the Specialist operates without continuous oversight; a crafted delegation can drive a tool-call sequence that is individually permitted but collectively unauthorized.",
+            "markdown": "Verify task-level intent consistency across a tool-call sequence; cap calls per task; require Orchestrator re-authorization for task extensions."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Specialist Agent",
+                  "fullyQualifiedName": "Application Zone/Specialist Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "df3d0775ba27f578",
+            "findingId/v1": "AG-3"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified",
+              "maestro-pattern:trust_exploitation"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "An agent-in-the-middle on the shared Channel can intercept, modify, and re-forward delegation messages, causing the Specialist to execute attacker-controlled instructions believed to be from the Orchestrator.",
+            "markdown": "End-to-end message authentication (Orchestrator signs, Specialist verifies); implement replay detection via counters/timestamp windows."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Inter-Agent Communication Channel",
+                  "fullyQualifiedName": "Application Zone/Inter-Agent Communication Channel",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "2990594a30b1c86a",
+            "findingId/v1": "AG-4"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified",
+              "maestro-pattern:trust_exploitation"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "LLM output influence over Orchestrator or Specialist can inject crafted tool-name or parameter values, executed by the Tool Server under its own service credentials.",
+            "markdown": "Validate tool name against a registered allowlist and each parameter against a per-tool schema; encode values forwarded to external systems."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "MCP Tool Server",
+                  "fullyQualifiedName": "Application Zone/MCP Tool Server",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "720c1c38843a2fe5",
+            "findingId/v1": "AG-5"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L3",
+              "maestro-pattern:trust_exploitation"
+            ],
+            "maestro-layer": "L3 — Agent Framework",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "Adversarially crafted training signals can cause an updated model to gradually expand its own autonomous action scope across successive update cycles.",
+            "markdown": "Run a capability-regression suite against every update before deployment; enforce a strict, post-update capability allowlist."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Long-Running Learning Loop",
+                  "fullyQualifiedName": "Application Zone/Long-Running Learning Loop",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "49550d7205bbea54",
+            "findingId/v1": "AG-7"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified",
+              "maestro-pattern:temporal_attack"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "**Net-new, Phase 3.6 synthesis (R-03)**: Multi-agent interactions across the Orchestrator, Specialist Agent, and Clinical Advisory Sub-Agent create the potential for emergent behavior — a malformed Specialist or ClinAdvisor result cascading into progressively distorted Orchestrator instructions, or collective optimization across the delegation loop that bypasses any single agent's own safety evaluation.",
+            "markdown": "Add fail-safe shutdown circuits on anomalous cascade patterns; bound each agent's action scope independently; behaviorally baseline the collective multi-agent system, not just individual agents."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "ddbc56d7cbc35a3f",
+            "findingId/v1": "AGP-01"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L1",
+              "maestro-pattern:emergent_behavior"
+            ],
+            "maestro-layer": "L1 — Foundation Model",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "The Orchestrator's `Response (HTTPS)` to the User carries no disclosed AI-authorship marker and no boundary on authority-claim framing; a manipulated or unconstrained response can present fabricated confidence or authority (e.g., relaying ClinAdvisor's clinical framing verbatim) that a human user reasonably treats as an authoritative, human-reviewed answer, exploiting the user's trust in the interaction.",
+            "markdown": "Disclose AI authorship on every user-facing response; strip or flag authority-claim language not backed by a verified source; rate-limit persona/authority framing changes within a session; log user-facing authority claims to the Audit Logger for review."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "ddbc56d7cbc35a3f",
+            "findingId/v1": "TE-1"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L1",
+              "maestro-pattern:trust_exploitation"
+            ],
+            "maestro-layer": "L1 — Foundation Model",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "Indirect prompt injection: adversarial instructions embedded in Knowledge Base documents are pulled into the Orchestrator's context during vector search, hijacking its reasoning.",
+            "markdown": "Sanitize retrieved documents at retrieval time; mark retrieved content as untrusted data distinct from system instructions in the context structure."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "bc8145867ba52dd5",
+            "findingId/v1": "LLM-2"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L1"
+            ],
+            "maestro-layer": "L1 — Foundation Model",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "Model theft via systematic API probing: carefully crafted queries can extract the Orchestrator's behavior, fine-tuning characteristics, or system-prompt contents.",
+            "markdown": "Rate-limit and anomaly-detect systematic probing patterns; apply differential privacy to training data; watermark or perturb outputs."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "bc8145867ba52dd5",
+            "findingId/v1": "LLM-4"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L1"
+            ],
+            "maestro-layer": "L1 — Foundation Model",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "Adversarial content injected into a delegation message (via Channel tampering or Orchestrator compromise) hijacks the Specialist's task execution.",
+            "markdown": "Treat delegation-message content as untrusted data; keep the Specialist's system prompt in a protected zone; verify delegation signatures before processing."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Specialist Agent",
+                  "fullyQualifiedName": "Application Zone/Specialist Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "836c2f1a41f8605b",
+            "findingId/v1": "LLM-5"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "Self-poisoning: adversarially crafted entries in the Specialist's own decision logs can be incorporated into a Learning Loop update that shifts its future behavior.",
+            "markdown": "Apply the same provenance/anomaly controls as LLM-3; behaviorally baseline the Specialist pre/post-update on a held-out evaluation set."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Specialist Agent",
+                  "fullyQualifiedName": "Application Zone/Specialist Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "836c2f1a41f8605b",
+            "findingId/v1": "LLM-6"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "Observability access to model update artifacts (parameter diffs, update packages) can allow reconstruction of the model's architecture or training characteristics.",
+            "markdown": "Encrypt update packages end-to-end with HSM-managed keys; watermark models; restrict artifact access to authorized deployment services."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Long-Running Learning Loop",
+                  "fullyQualifiedName": "Application Zone/Long-Running Learning Loop",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "6bfa6850f6f21c3a",
+            "findingId/v1": "LLM-8"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:Unclassified",
+              "maestro-pattern:temporal_attack"
+            ],
+            "maestro-layer": "Unclassified",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "Adversarial content in the Clinical Query / Context payload (via the original prompt, adversarial KB documents, or a compromised Orchestrator) can override ClinAdvisor's system prompt or fabricate recommendations.",
+            "markdown": "Enforce instruction-boundary protection on ClinAdvisor's system prompt; sanitize clinical-query content; validate output for system-prompt leakage."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Clinical Advisory Sub-Agent",
+                  "fullyQualifiedName": "Application Zone/Clinical Advisory Sub-Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "fb58a27383c3a2b2",
+            "findingId/v1": "LLM-9"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L7"
+            ],
+            "maestro-layer": "L7 — Agent Ecosystem",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "The Orchestrator's `Response (HTTPS)` sends LLM-generated content directly to the User. If the client renders it via `innerHTML` (or equivalent) without HTML entity encoding, an attacker who primes the Orchestrator to emit a script or event-handler payload achieves **client-side** execution in the victim's browser with access to session cookies and CSRF tokens.",
+            "markdown": "Render with `textContent` (never `innerHTML`); if HTML is required, pass through DOMPurify with an element allowlist; deploy a strict CSP (`script-src 'self' 'nonce-<nonce>'`, no `unsafe-inline`)."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "bc8145867ba52dd5",
+            "findingId/v1": "OI-1"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L1"
+            ],
+            "maestro-layer": "L1 — Foundation Model",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "The Orchestrator's `Tool Call Request (JSON-RPC)` carries LLM-synthesized parameters into the MCP Tool Server. Without parameterization, an attacker who influences Orchestrator output can achieve **server-side** SQL/command/template injection at the Tool Server's execution context.",
+            "markdown": "Parameterize all LLM-supplied tool inputs (`cursor.execute(sql, params)`, `subprocess.run([...], shell=False)`); validate against a closed per-tool allowlist before dispatch."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "bc8145867ba52dd5",
+            "findingId/v1": "OI-2"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L1"
+            ],
+            "maestro-layer": "L1 — Foundation Model",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "The Orchestrator can instruct the Tool Server to fetch a URL synthesized from LLM output; an attacker who influences that output can direct the fetch at internal metadata endpoints or RFC 1918 ranges, executing SSRF under the Tool Server's **server-side** network credentials.",
+            "markdown": "Allowlist outbound hostnames at the Tool Server; block egress to RFC 1918/link-local/metadata ranges; restrict scheme to `{http, https}`; apply DNS pinning."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "LLM Agent Orchestrator",
+                  "fullyQualifiedName": "Application Zone/LLM Agent Orchestrator",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "bc8145867ba52dd5",
+            "findingId/v1": "OI-3"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L1"
+            ],
+            "maestro-layer": "L1 — Foundation Model",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "If the Orchestrator incorporates ClinAdvisor's `Clinical Summary + Recommendations` into a subsequent `Tool Call Request` without sanitization, adversarial content injected into the clinical output can achieve **server-side** execution at the Tool Server, one hop downstream of the sub-agent's own output.",
+            "markdown": "Treat ClinAdvisor output as untrusted at the Orchestrator; apply the same parameterization and schema validation as OI-2 before any downstream tool invocation."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Clinical Advisory Sub-Agent",
+                  "fullyQualifiedName": "Application Zone/Clinical Advisory Sub-Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "fb58a27383c3a2b2",
+            "findingId/v1": "OI-4"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L7"
+            ],
+            "maestro-layer": "L7 — Agent Ecosystem",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "**Ungrounded Factual Emission**: clinical summaries containing diagnostic and drug-interaction assertions are emitted without a declared retrieval-strength metric or per-claim source anchoring, so a hallucinated clinical assertion can reach a decision-maker with the same apparent confidence as a grounded one.",
+            "markdown": "Require per-claim citation to a retrieved KB section; expose retrieval-strength (hit-rate/recall@k) metadata; reject outputs below a defined grounding threshold."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Clinical Advisory Sub-Agent",
+                  "fullyQualifiedName": "Application Zone/Clinical Advisory Sub-Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "fb58a27383c3a2b2",
+            "findingId/v1": "MI-1"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L7"
+            ],
+            "maestro-layer": "L7 — Agent Ecosystem",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "**Overreliance / Missing HITL**: clinical recommendations flow to the Orchestrator's user-facing response path with no human-in-the-loop review gate, letting AI-generated dosing/contraindication guidance surface without physician sign-off.",
+            "markdown": "Require mandatory physician sign-off before any dosing/contraindication/diagnostic recommendation surfaces in a decision-critical context; disclose AI provenance on every surfaced recommendation."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Clinical Advisory Sub-Agent",
+                  "fullyQualifiedName": "Application Zone/Clinical Advisory Sub-Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "fb58a27383c3a2b2",
+            "findingId/v1": "MI-2"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L7"
+            ],
+            "maestro-layer": "L7 — Agent Ecosystem",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "**Retrieval-Grounding Gap**: when the Knowledge Base has no relevant documents for a clinical query (low recall, stale content), ClinAdvisor may fabricate plausible-sounding clinical content presented with the same confidence as grounded output.",
+            "markdown": "Gate generation on a minimum retrieval-quality threshold; return a structured \"insufficient grounding\" response below threshold; monitor KB content currency."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/agentic-app/test-output/t017-fallback-2026-07-03T12-30-15/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "Clinical Advisory Sub-Agent",
+                  "fullyQualifiedName": "Application Zone/Clinical Advisory Sub-Agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "fb58a27383c3a2b2",
+            "findingId/v1": "MI-3"
+          },
+          "properties": {
+            "tags": [
+              "maestro-layer:L7"
+            ],
+            "maestro-layer": "L7 — Agent Ecosystem",
+            "affected_assets": []
+          }
+        }
+      ]
+    }
+  ]
+}

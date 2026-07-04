@@ -98,6 +98,7 @@ on:
       - tests/scripts/test_affected_assets_wiring.py           # F-302 (260b) — populator + SARIF affected_assets wiring
       - scripts/populate-affected-assets.py                    # F-302 (260b) — deterministic populator (value authority)
       - scripts/sarif_common.py                                # F-302 (260b) — affected_assets extractor (verification tier)
+      - scripts/generate-threats-sarif.py                      # F-295 (292 T026) — FR-014 input-path-derived artifactLocation.uri
       - schemas/finding.yaml                                   # F-302 (260b) — affected_assets schema contract (1.9)
       - tests/scripts/init_sh_helpers.py
       - tests/scripts/conftest.py
