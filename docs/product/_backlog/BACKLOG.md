@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-08-05T23:37:20Z.
+> Auto-generated from GitHub Issues on 2026-08-06T23:03:58Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -22,7 +22,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| #362 | Remap OWASP LLM Top 10 coverage to the 2026 edition | — | 2026-08-05 |
+| — | *No items in this stage* | | |
 
 ## Plan
 
@@ -54,6 +54,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #362 | Remap OWASP LLM Top 10 coverage to the 2026 edition | OPEN | 2026-08-06 |
 | #357 | enhancement: parameterize generate-risk-scores-sarif.py (CLI args, configurable paths, findings-count gate) to support additional example baselines | OPEN | 2026-07-03 |
 | #356 | defect(tachi-orchestrator): Phase-3 compilation can absorb output-integrity findings into the LLM-N sequence, dropping the OI- prefix carve-out and CWE citations (F-295 T026 gate FAIL) | OPEN | 2026-07-03 |
 | #355 | defect: examples/agentic-app/sample-report/threats.md duplicates output-integrity findings under legacy LLM-5/6/7 and current OI-1/2/3 IDs | OPEN | 2026-07-03 |
