@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-07-04T16:33:39Z.
+> Auto-generated from GitHub Issues on 2026-08-05T23:37:20Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -8,6 +8,8 @@
 
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
+| #361 | Extend tachi detection coverage for GhostCommit primitives (encoded exfil, convention-file trust, committed-file dormancy) | Impact: 7, Confidence: 7, Effort: 6 = **20** | Team Observation: coverage mapping of tachi's detection-p... | 2026-07-13 |
+| #360 | Harden tachi's own agents against ingested-repo-text prompt injection (GhostCommit self-exposure) | Impact: 8, Confidence: 8, Effort: 8 = **24** | Team Observation: grounded file:line code analysis of tac... | 2026-07-13 |
 | #349 | Anthropic jailbreak-severity framework alignment (capability-gain risk lens) | Impact: 6, Confidence: 3, Effort: 8 = **17** (P2) | Team observation — prompted by Anthropic's 2026-07-01 Cla... | 2026-07-01 |
 | #346 | Harden read_sidecar against non-dict sidecar member entries (F-329 S-1) | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 329 (OR... | 2026-06-30 |
 | #345 | Regenerate init.sh-substitution baseline (tests/fixtures/init-baseline-tree/) — re-tag from #329 | — | — | 2026-06-30 |
@@ -15,13 +17,12 @@
 | #168 | Track OWASP AIVSS v1.0 release and first external adopter case study | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 143 (MA... | 2026-06-01 |
 | #126 | Auto-detect architecture drift | | Dimension | Score | Rationale | | — | 2026-05-05 |
 | #62 | Custom brand presets — user-definable brand identity via config file | | Dimension | Score | Rationale | | — | 2026-05-05 |
-| #55 | Feature: Security Progression Summary — multi-run trend comparison over time | | Dimension | Score | Rationale | | - Market research: no threat modeling tool provides multi... | 2026-05-05 |
 
 ## Define
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| — | *No items in this stage* | | |
+| #362 | Remap OWASP LLM Top 10 coverage to the 2026 edition | — | 2026-08-05 |
 
 ## Plan
 
