@@ -9,7 +9,16 @@ Scaffolded at **T002** per [contracts/disposition-ledgers.md](contracts/disposit
 
 ### URL policy (T003)
 
-PENDING — T003 writes the D9 verdict + anchor policy here; no URL may be authored anywhere before that task completes.
+**Verdict**: BRANCH 2 (interim-resource-page) — Verified 2026-08-09
+
+**Anchor Policy**: Per-entry OWASP LLM Top 10 2026 pages do NOT exist on genai.owasp.org. All attempted 2026-specific URL patterns returned 404 (tested: `/llmrisk/llm012026-prompt-injection/`, `/llmrisk/llm082026-hidden-context-exposure/`, `/llm-top-10-2026/`, and variants). Evidence: 8 fetch attempts, 6 unique 404s, 2 successful confirmations of 2025 editions still live. The released 2026 Top 10 document (published 2026-08-04) is currently only available as a PDF download from the release resource page.
+
+**Citation Anchor** (all re-anchored citations per T007):
+```
+https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+```
+
+**Application**: 54 crosswalk edges with year-slugged (2025-edition) OWASP LLM citations will be re-anchored to the interim resource page (per data-model §4). When per-entry 2026 pages appear and are verified, T007 will update ledger rows and apply the new URLs in bulk. Non-year-slugged URLs (20 edges) remain candidates for unchanged status pending T007 review. See full fetch evidence in `.aod/results/web-researcher.md`.
 
 ---
 
