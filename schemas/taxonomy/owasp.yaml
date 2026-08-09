@@ -435,83 +435,83 @@
   cwe_refs: []
   out_of_scope: false
   out_of_scope_rationale: ""
-# citation: tachi-prompt-injection Pattern Cat 1-8 (Direct Injection / Jailbreaks / Indirect Injection / Encoding-Obfuscation evasion); prompt-injection.md owasp_references attests OWASP LLM01:2025
+# citation: tachi-prompt-injection Pattern Cat 1-8 (Direct Injection / Jailbreaks / Indirect Injection / Encoding-Obfuscation evasion); prompt-injection.md owasp_references attests OWASP LLM01:2026
 - id: LLM01
-  full_id: OWASP-LLM-2025-01
+  full_id: OWASP-LLM-2026-01
   name: Prompt Injection
-  url: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+  url: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
   cwe_refs: []
   out_of_scope: false
   out_of_scope_rationale: ""
 # citation: tachi-info-disclosure Pattern Cat 1-10 (Sensitive Information Disclosure surfaces — PII/PHI/secrets exposure on LLM-serving architectures via prompt context, system-prompt leakage adjacency, embedding leakage)
 - id: LLM02
-  full_id: OWASP-LLM-2025-02
+  full_id: OWASP-LLM-2026-02
   name: Sensitive Information Disclosure
-  url: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+  url: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
   cwe_refs: []
   out_of_scope: false
   out_of_scope_rationale: ""
-# citation: tachi-data-poisoning Pattern Cat 1-7 (LLM corpus / fine-tuning / vector-store poisoning) + tachi-model-theft Pattern Cat 7 "Model Supply Chain Compromise"; data-poisoning.md and model-theft.md owasp_references attest OWASP LLM03:2025
+# citation: tachi-tool-abuse Pattern Cat 7 "Unauthorized Tool Invocation via Instruction Hijack (Per-Request)" + tachi-agent-autonomy Pattern Cat 7 "Excessive Agency Sub-Categories (LLM03:2026)"; both agents' owasp_references attest LLM03:2026
 - id: LLM03
-  full_id: OWASP-LLM-2025-03
-  name: Supply Chain
-  url: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
-  cwe_refs: []
-  out_of_scope: false
-  out_of_scope_rationale: ""
-# citation: tachi-data-poisoning Pattern Cat 1-7 (Training-Time Poisoning / Fine-Tuning Poisoning / RAG-Vector-Store Poisoning / Backdoor Triggers); data-poisoning.md owasp_references attests OWASP LLM04:2025
-- id: LLM04
-  full_id: OWASP-LLM-2025-04
-  name: Data and Model Poisoning
-  url: https://genai.owasp.org/llmrisk/llm042025-data-and-model-poisoning/
-  cwe_refs: []
-  out_of_scope: false
-  out_of_scope_rationale: ""
-# citation: tachi-output-integrity Pattern Cat 1-N (LLM-output-side sanitization — browser/SQL/shell sink trust); F-1 ADR-030 net-new-agent closure; output-integrity.md owasp_references attests OWASP LLM05:2025
-- id: LLM05
-  full_id: OWASP-LLM-2025-05
-  name: Improper Output Handling
-  url: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
-  cwe_refs: []
-  out_of_scope: false
-  out_of_scope_rationale: ""
-# citation: tachi-tool-abuse Pattern Cat 7 "Unauthorized Tool Invocation via Instruction Hijack (Per-Request)" + tachi-agent-autonomy Pattern Cat 7 "Excessive Agency Sub-Categories (LLM06:2025)"; both agents' owasp_references attest LLM06:2025
-- id: LLM06
-  full_id: OWASP-LLM-2025-06
+  full_id: OWASP-LLM-2026-03
   name: Excessive Agency
-  url: https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
+  url: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
   cwe_refs: []
   out_of_scope: false
   out_of_scope_rationale: ""
-# citation: tachi-prompt-injection Pattern Cat 6-8 (system-prompt extraction / leakage via direct injection + indirect injection + encoding-obfuscation evasion); prompt-injection.md owasp_references attests OWASP LLM07:2025; cross-ref tachi-model-theft Pattern Cat 9 "System Prompt and Configuration Leakage (OWASP LLM07:2025)"
-- id: LLM07
-  full_id: OWASP-LLM-2025-07
-  name: System Prompt Leakage
-  url: https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/
+# citation: tachi-data-poisoning Pattern Cat 1-7 (LLM corpus / fine-tuning / vector-store poisoning) + tachi-model-theft Pattern Cat 7 "Model Supply Chain Compromise"; data-poisoning.md and model-theft.md owasp_references attest OWASP LLM04:2026
+- id: LLM04
+  full_id: OWASP-LLM-2026-04
+  name: Supply Chain
+  url: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
   cwe_refs: []
   out_of_scope: false
   out_of_scope_rationale: ""
-# citation: tachi-data-poisoning Pattern Cat 6 "RAG and Vector Store Poisoning at Retrieval Time" (LLM08:2025 vector / embedding weaknesses surface — runtime retrieval-index contamination); data-poisoning.md owasp_references attests OWASP LLM08:2025
-- id: LLM08
-  full_id: OWASP-LLM-2025-08
-  name: Vector and Embedding Weaknesses
-  url: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
+# citation: tachi-data-poisoning Pattern Cat 1-7 (Training-Time Poisoning / Fine-Tuning Poisoning / RAG-Vector-Store Poisoning / Backdoor Triggers); data-poisoning.md owasp_references attests OWASP LLM05:2026
+- id: LLM05
+  full_id: OWASP-LLM-2026-05
+  name: Data and Model Poisoning
+  url: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
   cwe_refs: []
   out_of_scope: false
   out_of_scope_rationale: ""
-# citation: tachi-misinformation Pattern Cat 1-5 (Ungrounded Factual Emission / Citation Fabrication / Overreliance-Missing-HITL / Retrieval-Grounding Gap / Confidence-Calibration Absence); F-2 ADR-031 net-new-agent closure; misinformation.md owasp_references attests OWASP LLM09:2025
-- id: LLM09
-  full_id: OWASP-LLM-2025-09
-  name: Misinformation
-  url: https://genai.owasp.org/llmrisk/llm092025-misinformation/
-  cwe_refs: []
-  out_of_scope: false
-  out_of_scope_rationale: ""
-# citation: tachi-denial-of-service Pattern Cat 12 "LLM Inference-Request Flooding and Token Exhaustion (OWASP LLM10:2025)" + Pattern Cat 13 "Context-Window Exhaustion — Latency-Driven Variant (Q1 SPLIT Vector A)" + tachi-model-theft Pattern Cat 10 + 11 "Cost Amplification + Denial-of-Wallet (Q1 SPLIT Vector B)"; F-5 ADR-034 dual-agent closure
-- id: LLM10
-  full_id: OWASP-LLM-2025-10
+# citation: tachi-denial-of-service Pattern Cat 12 "LLM Inference-Request Flooding and Token Exhaustion (OWASP LLM06:2026)" + Pattern Cat 13 "Context-Window Exhaustion — Latency-Driven Variant (Q1 SPLIT Vector A)" + tachi-model-theft Pattern Cat 10 + 11 "Cost Amplification + Denial-of-Wallet (Q1 SPLIT Vector B)"; F-5 ADR-034 dual-agent closure
+- id: LLM06
+  full_id: OWASP-LLM-2026-06
   name: Unbounded Consumption
-  url: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/
+  url: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-misinformation Pattern Cat 1-5 (Ungrounded Factual Emission / Citation Fabrication / Overreliance-Missing-HITL / Retrieval-Grounding Gap / Confidence-Calibration Absence); F-2 ADR-031 net-new-agent closure; misinformation.md owasp_references attests OWASP LLM07:2026
+- id: LLM07
+  full_id: OWASP-LLM-2026-07
+  name: Misinformation
+  url: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-prompt-injection Pattern Cat 6-8 (system-prompt extraction / leakage via direct injection + indirect injection + encoding-obfuscation evasion); prompt-injection.md owasp_references attests OWASP LLM08:2026; cross-ref tachi-model-theft Pattern Cat 9 "System Prompt and Configuration Leakage (OWASP LLM08:2026)"
+- id: LLM08
+  full_id: OWASP-LLM-2026-08
+  name: Hidden Context Exposure
+  url: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-data-poisoning Pattern Cat 6 "RAG and Vector Store Poisoning at Retrieval Time" (LLM09:2026 vector / embedding weaknesses surface — runtime retrieval-index contamination); data-poisoning.md owasp_references attests OWASP LLM09:2026
+- id: LLM09
+  full_id: OWASP-LLM-2026-09
+  name: Vector and Embedding Weaknesses
+  url: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+  cwe_refs: []
+  out_of_scope: false
+  out_of_scope_rationale: ""
+# citation: tachi-output-integrity Pattern Cat 1-N (LLM-output-side sanitization — browser/SQL/shell sink trust); F-1 ADR-030 net-new-agent closure; F-292 ADR-045 same-agent-enrichment closure (Cat 6 Vector/Search-DSL Injection); output-integrity.md owasp_references attests OWASP LLM10:2026
+- id: LLM10
+  full_id: OWASP-LLM-2026-10
+  name: Improper Output Handling
+  url: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
   cwe_refs: []
   out_of_scope: false
   out_of_scope_rationale: ""
