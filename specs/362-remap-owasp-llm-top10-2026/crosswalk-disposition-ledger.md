@@ -3,7 +3,7 @@
 Scaffolded at **T002** per [contracts/disposition-ledgers.md](contracts/disposition-ledgers.md) and [data-model.md](data-model.md) §4. One row per LLM-keyed edge in `schemas/taxonomy/crosswalk.yaml`, in the file's native edge order. The mechanical σ-permutation (T006) and the citation URL-scheme gate (T003) are diff-reviewable elsewhere; this ledger records the **human** disposition — the part no test can check.
 
 **Completion bar** (target, per contract): 74/74 dispositioned · 57/57 σ-applied · 54/54 citation-actions resolved (re-anchored or interim per plan D9).
-**Current status**: 0/74 dispositioned · 57/57 σ-applied · 0/54 citation-actions resolved — **scaffold only (T002)**. `re-key` / `target-verdict` / `confidence-action` are filled by **T006**; `citation-action` is finalized by **T007** after the **T003** URL-policy gate.
+**Current status**: 0/74 dispositioned · 57/57 σ-applied (T006 ✓) · 0/54 citation-actions resolved — awaiting T007 human disposition. Column ownership (P1 checkpoint M-1 correction, 2026-08-09): `re-key` was filled by **T006** (mechanical σ record); `target-verdict` / `confidence-action` / `citation-action` / `reviewer-note` are filled by **T007** after the **T003** URL-policy gate (closed: Branch 2).
 
 ---
 

@@ -30,7 +30,7 @@ Ids and record order unchanged (sort invariant by construction). Per-slot 2026 c
 | LLM01 | Prompt Injection | OWASP-LLM-2026-01 | + cross-modal (image/audio) injection | prompt-injection agent |
 | LLM02 | Sensitive Information Disclosure | OWASP-LLM-2026-02 | — | info-disclosure / prompt-injection tier |
 | LLM03 | Excessive Agency | OWASP-LLM-2026-03 | was LLM06:2025 | tool-abuse / agent-autonomy (NOT data-poisoning) |
-| LLM04 | Supply Chain | OWASP-LLM-2026-04 | + model-artifact authenticity | supply-chain patterns (tampering tier) |
+| LLM04 | Supply Chain | OWASP-LLM-2026-04 | + model-artifact authenticity | data-poisoning + model-theft supply-chain tier (P1 ruling 2026-08-09: `tachi-tampering` carries no LLM attestation — its supply-chain cats are A08/A06:2021 + M2:2024; do not cite tampering here) |
 | LLM05 | Data and Model Poisoning | OWASP-LLM-2026-05 | + fine-tuning subversion | data-poisoning agent |
 | LLM06 | Unbounded Consumption | OWASP-LLM-2026-06 | was LLM10:2025 | denial-of-service + model-theft (ADR-034 lineage) |
 | LLM07 | Misinformation | OWASP-LLM-2026-07 | was LLM09:2025 | misinformation agent (ADR-031 lineage) |
