@@ -42,6 +42,9 @@ git grep -nP '\bLLM(0[1-9]|10):2025' -- \
   ':!tests/fixtures/init-baseline-tree' ':!examples' ':!CHANGELOG.md'
 # Prose forms (no \b needed — plain ERE is safe here):
 git grep -niE 'LLM Top 10 (for LLM Applications )?2025|llm top 10.*2025' -- <same exclusions>
+# Spaced-prose + hyphenated full_id form classes (architect MEDIUM-5 / PM W1 — 4 pre-remap hits,
+# e.g. scope.md:24 "LLM 2025" and OWASP_COVERAGE.md:20 "OWASP-LLM-2025"):
+git grep -nE 'LLM[[:space:]]+2025|OWASP-LLM-2025' -- <same exclusions>
 # Bare census reconciliation vs bare-code-ledger.md — count OCCURRENCES, not lines
 # (git grep -c counts matching LINES; the ledger accounts occurrences):
 git grep -oP '\bLLM(0[1-9]|10)\b(?!:)' -- <in-scope paths> | wc -l                      # total
