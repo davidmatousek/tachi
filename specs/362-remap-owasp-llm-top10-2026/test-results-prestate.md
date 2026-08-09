@@ -180,3 +180,21 @@ These are the T024 comparison baseline totals. Per `tasks.md` T024, deltas at T0
 | xfail/xpass, issue #345 (§5) | 1 xfail, 0 xpass | **Unchanged** — team-lead F5 / architect MEDIUM-2 explicitly: "#345's xfail persists" at T024 |
 
 **Attribution rule (KB 15)**: any red/green flip observed at T024 that is NOT one of (a) the T017 gated-count rise, (b) the T020 in-module test-count rise inside `test_catalog_drift_guard.py`, or (c) the `test_backward_compatibility.py` byte-identity gate turning green via an explicit, F-362-scoped no-churn proof, is **not attributable to F-362** and should be triaged as either environmental (like the font-subsetting signature above) or a genuine regression requiring investigation — not silently absorbed into this feature's delivery.
+
+---
+
+## P0 Architect Checkpoint Ruling (2026-08-09, binding on T024)
+
+**Source**: P0 checkpoint review at Wave A2 close (STATUS: APPROVED_WITH_CONCERNS, GO). Full review: `.aod/results/architect-p0-checkpoint.md` (gitignored scratch — this section is the durable record).
+
+**Ruling 2 — no-churn evidence form for T024** (supersedes a naive "suite green" reading of quickstart §2, given the §1 pre-existing environmental red): T024's FR-007a/SC-006 no-churn proof is satisfied by **three conjunctive conditions**:
+
+- **A1** — `git diff` proves **zero baseline bytes changed** on the branch (non-negotiable, independent of local render).
+- **A2** — the failing node-id set at T024 is **exactly the six T001 failures** listed in §1, and all 7 green tests remain green. Any NEW red = F-362 regression → BLOCKS.
+- **A3** — the divergence stays in the **font-subset-tag class** (with the `web-app` offset 224224 stable). Tag *value* equality is NOT required; any divergence outside the font-tag region BLOCKS.
+
+Rejected alternatives: baseline regen (violates the SC-006 clause it would serve; deferred to F-362b) and toolchain pinning (spec-unrequired, unbounded). **No signature-comparison tooling is to be built** — evidence is recorded manually in T024's notes.
+
+**Follow-up obligation**: a follow-up issue for the environmental font-subsetting red is **mandatory** — absorbed into T026's issue-filing batch (pre-authorized absorption; not a new task).
+
+**Ruling 1 — T004 closure**: ADR-048 status line confirmed correct-as-applied (the em-dash ratification clause is the architect's own plan-review condition-7 edit). T004 closed.
