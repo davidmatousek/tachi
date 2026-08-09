@@ -50,7 +50,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM03
+    id: LLM04
   target:
     taxonomy: cwe
     id: CWE-1395
@@ -60,7 +60,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM04
+    id: LLM05
   target:
     taxonomy: cwe
     id: CWE-20
@@ -70,7 +70,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM05
+    id: LLM10
   target:
     taxonomy: cwe
     id: CWE-79
@@ -996,7 +996,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM03
+    id: LLM04
   target:
     taxonomy: cwe
     id: CWE-1357
@@ -1006,7 +1006,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM03
+    id: LLM04
   target:
     taxonomy: cwe
     id: CWE-494
@@ -1016,7 +1016,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM03
+    id: LLM04
   target:
     taxonomy: cwe
     id: CWE-829
@@ -1026,7 +1026,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM04
+    id: LLM05
   target:
     taxonomy: cwe
     id: CWE-502
@@ -1036,7 +1036,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM04
+    id: LLM05
   target:
     taxonomy: cwe
     id: CWE-915
@@ -1046,7 +1046,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM04
+    id: LLM05
   target:
     taxonomy: cwe
     id: CWE-1395
@@ -1056,7 +1056,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM05
+    id: LLM10
   target:
     taxonomy: cwe
     id: CWE-89
@@ -1066,7 +1066,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM05
+    id: LLM10
   target:
     taxonomy: cwe
     id: CWE-116
@@ -1076,7 +1076,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM05
+    id: LLM10
   target:
     taxonomy: cwe
     id: CWE-78
@@ -1086,7 +1086,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM05
+    id: LLM10
   target:
     taxonomy: cwe
     id: CWE-601
@@ -1096,7 +1096,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM06
+    id: LLM03
   target:
     taxonomy: cwe
     id: CWE-250
@@ -1106,7 +1106,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM06
+    id: LLM03
   target:
     taxonomy: cwe
     id: CWE-269
@@ -1116,7 +1116,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM06
+    id: LLM03
   target:
     taxonomy: cwe
     id: CWE-285
@@ -1126,7 +1126,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM06
+    id: LLM03
   target:
     taxonomy: cwe
     id: CWE-732
@@ -1136,7 +1136,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM07
+    id: LLM08
   target:
     taxonomy: cwe
     id: CWE-200
@@ -1146,7 +1146,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM07
+    id: LLM08
   target:
     taxonomy: cwe
     id: CWE-538
@@ -1156,7 +1156,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM07
+    id: LLM08
   target:
     taxonomy: cwe
     id: CWE-540
@@ -1166,7 +1166,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM07
+    id: LLM08
   target:
     taxonomy: cwe
     id: CWE-1426
@@ -1176,7 +1176,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM08
+    id: LLM09
   target:
     taxonomy: cwe
     id: CWE-200
@@ -1186,7 +1186,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM08
+    id: LLM09
   target:
     taxonomy: cwe
     id: CWE-209
@@ -1196,7 +1196,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM08
+    id: LLM09
   target:
     taxonomy: cwe
     id: CWE-285
@@ -1206,7 +1206,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM08
+    id: LLM09
   target:
     taxonomy: cwe
     id: CWE-639
@@ -1216,7 +1216,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM09
+    id: LLM07
   target:
     taxonomy: cwe
     id: CWE-345
@@ -1226,7 +1226,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM09
+    id: LLM07
   target:
     taxonomy: cwe
     id: CWE-1426
@@ -1236,7 +1236,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM09
+    id: LLM07
   target:
     taxonomy: cwe
     id: CWE-20
@@ -1246,7 +1246,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: cwe
     id: CWE-400
@@ -1256,7 +1256,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: cwe
     id: CWE-770
@@ -1266,7 +1266,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: cwe
     id: CWE-799
@@ -1276,7 +1276,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: cwe
     id: CWE-918
@@ -2422,7 +2422,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM04
+    id: LLM05
   target:
     taxonomy: mitre-atlas
     id: AML.T0020
@@ -2432,7 +2432,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM04
+    id: LLM05
   target:
     taxonomy: mitre-atlas
     id: AML.T0018
@@ -2442,7 +2442,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM03
+    id: LLM04
   target:
     taxonomy: mitre-atlas
     id: AML.T0010
@@ -2452,7 +2452,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM03
+    id: LLM04
   target:
     taxonomy: mitre-attack
     id: T1195
@@ -2462,7 +2462,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM06
+    id: LLM03
   target:
     taxonomy: mitre-atlas
     id: AML.T0061
@@ -2472,7 +2472,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM06
+    id: LLM03
   target:
     taxonomy: mitre-attack
     id: T1548
@@ -2482,7 +2482,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM07
+    id: LLM08
   target:
     taxonomy: mitre-atlas
     id: AML.T0057
@@ -2492,7 +2492,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: mitre-attack
     id: T1499
@@ -2502,7 +2502,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: mitre-attack
     id: T1498
@@ -4520,7 +4520,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM05
+    id: LLM10
   target:
     taxonomy: mitre-atlas
     id: AML.T0051
@@ -4530,7 +4530,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM05
+    id: LLM10
   target:
     taxonomy: mitre-atlas
     id: AML.T0060
@@ -4540,7 +4540,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM08
+    id: LLM09
   target:
     taxonomy: mitre-atlas
     id: AML.T0057
@@ -4550,7 +4550,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM08
+    id: LLM09
   target:
     taxonomy: mitre-atlas
     id: AML.T0051
@@ -5386,7 +5386,7 @@
   citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
 - source:
     taxonomy: owasp
-    id: LLM05
+    id: LLM10
   target:
     taxonomy: cwe
     id: CWE-94
@@ -5395,7 +5395,7 @@
   citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
 - source:
     taxonomy: owasp
-    id: LLM06
+    id: LLM03
   target:
     taxonomy: cwe
     id: CWE-284
@@ -5404,7 +5404,7 @@
   citation: https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
 - source:
     taxonomy: owasp
-    id: LLM08
+    id: LLM09
   target:
     taxonomy: cwe
     id: CWE-287
@@ -5413,7 +5413,7 @@
   citation: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: cwe
     id: CWE-1333
@@ -5604,7 +5604,7 @@
   citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
 - source:
     taxonomy: owasp
-    id: LLM03
+    id: LLM04
   target:
     taxonomy: mitre-attack
     id: T1195.001
@@ -5613,7 +5613,7 @@
   citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
 - source:
     taxonomy: owasp
-    id: LLM03
+    id: LLM04
   target:
     taxonomy: mitre-attack
     id: T1195.002
@@ -6256,7 +6256,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM07
+    id: LLM08
   target:
     taxonomy: mitre-atlas
     id: AML.T0051
@@ -6266,7 +6266,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM09
+    id: LLM07
   target:
     taxonomy: mitre-atlas
     id: AML.T0048
@@ -6276,7 +6276,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: mitre-atlas
     id: AML.T0024
@@ -6286,7 +6286,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: mitre-atlas
     id: AML.T0025
@@ -6296,7 +6296,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: mitre-atlas
     id: AML.T0029
@@ -6306,7 +6306,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: mitre-atlas
     id: AML.T0034
