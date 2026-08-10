@@ -106,7 +106,7 @@ finding:
       OWASP IDs, CVE IDs, or framework citations supporting
       the finding. Required for AI categories (agentic, llm).
     examples:
-      - "OWASP LLM01:2025"
+      - "OWASP LLM01:2026"
       - "ASI-01"
       - "MCP-03"
       - "CWE-287"
@@ -328,8 +328,8 @@ finding:
       See ADR-028 for the Complex-Shape Addition Clarifier rationale and
       data-model.md V1..V6 for the full validation rule set.
     examples:
-      - [{taxonomy: owasp, id: LLM05, relationship: primary}]
-      - [{taxonomy: owasp, id: LLM05, relationship: primary}, {taxonomy: cwe, id: CWE-1426, relationship: primary}, {taxonomy: mitre-atlas, id: AML.T0051, relationship: related}]
+      - [{taxonomy: owasp, id: LLM10, relationship: primary}]
+      - [{taxonomy: owasp, id: LLM10, relationship: primary}, {taxonomy: cwe, id: CWE-79, relationship: primary}, {taxonomy: mitre-atlas, id: AML.T0051, relationship: related}]
 
 # Validation Rules
 #
