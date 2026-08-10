@@ -10,7 +10,7 @@ alwaysApply: false
 category: llm
 threat_class: LLM
 dfd_targets: [Data Store, Data Flow]
-owasp_references: [OWASP LLM03:2025, OWASP LLM04:2025, OWASP LLM08:2025]
+owasp_references: [OWASP LLM04:2026, OWASP LLM05:2026, OWASP LLM09:2026]
 output_schema: ../../../schemas/finding.yaml
 ```
 
@@ -92,7 +92,7 @@ impact: "{LOW | MEDIUM | HIGH}"
 risk_level: "{computed from OWASP 3x3 matrix}"
 mitigation: "{recommended countermeasure}"
 references:
-  - "OWASP LLM03:2025"
+  - "OWASP LLM04:2026"
 dfd_element_type: "{Data Store | Data Flow}"
 ```
 
@@ -110,7 +110,7 @@ impact: HIGH
 risk_level: Critical
 mitigation: "Implement content validation and adversarial content detection on all documents before indexing. Apply document-level access controls so that user-uploaded content is retrievable only within the uploader's trust boundary. Add provenance metadata to indexed documents so the model can distinguish source trustworthiness. Monitor retrieval patterns for anomalous document frequency spikes."
 references:
-  - "OWASP LLM03:2025"
+  - "OWASP LLM04:2026"
 dfd_element_type: "Data Store"
 ```
 
@@ -126,7 +126,7 @@ impact: HIGH
 risk_level: Medium
 mitigation: "Implement immutable training data snapshots with cryptographic hash verification. Restrict write access to the training data bucket to a dedicated data engineering role. Validate dataset integrity before each training run by comparing checksums against a signed manifest. Add anomaly detection on training data distributions to flag unexpected content changes."
 references:
-  - "OWASP LLM03:2025"
+  - "OWASP LLM04:2026"
 dfd_element_type: "Data Flow"
 ```
 
@@ -142,7 +142,7 @@ impact: MEDIUM
 risk_level: Medium
 mitigation: "Implement mandatory review workflows for knowledge base edits with approval from subject matter experts. Maintain versioned snapshots of the knowledge base and compare diffs before re-indexing. Add audit logging for all edits with author attribution. Consider read-only knowledge base replicas for the model, updated on a controlled schedule after review."
 references:
-  - "OWASP LLM03:2025"
+  - "OWASP LLM04:2026"
 dfd_element_type: "Data Store"
 ```
 
@@ -158,9 +158,9 @@ Apply the OWASP 3x3 matrix to determine `risk_level` from `likelihood` and `impa
 
 ## References
 
-- **OWASP LLM03:2025 - Supply Chain Vulnerabilities**: https://genai.owasp.org/llmrisk/llm03-supply-chain-vulnerabilities/
-- **OWASP LLM04:2025 - Data and Model Poisoning**: https://genai.owasp.org/llmrisk/llm04-data-and-model-poisoning/
-- **OWASP LLM08:2025 - Vector and Embedding Weaknesses**: https://genai.owasp.org/llmrisk/llm08-vector-and-embedding-weaknesses/
+- **OWASP LLM04:2026 - Supply Chain**: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+- **OWASP LLM05:2026 - Data and Model Poisoning**: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+- **OWASP LLM09:2026 - Vector and Embedding Weaknesses**: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 - **MITRE ATLAS - Poisoning AI Training Data**: Tactic TA0040, Technique AML.T0020
 - **CWE-345 - Insufficient Verification of Data Authenticity**: Applicable to training data manipulation and RAG index poisoning where data integrity is not verified before consumption
 - **CWE-1395 - Dependency on Vulnerable Third-Party Component**: Applicable to model supply chain attacks
