@@ -63,6 +63,9 @@ on:
       - scripts/check-catalog-drift.py
       - tests/scripts/test_catalog_drift_guard.py
       - .github/workflows/tachi-catalog-drift.yml
+      # --- the doc-side of the edition-consistency check (F-362 T020): a
+      #     doc-only edition edit must also fire this workflow ---
+      - docs/standards/OWASP_COVERAGE.md
   push:
     branches: [main]
     paths: *drift_paths

@@ -25,12 +25,14 @@ from __future__ import annotations
 
 import copy
 import importlib.util
+import re
 from pathlib import Path
 
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 GUARD_PATH = REPO_ROOT / "scripts" / "check-catalog-drift.py"
+OWASP_COVERAGE_PATH = REPO_ROOT / "docs" / "standards" / "OWASP_COVERAGE.md"
 
 # Import the hyphenated guard module via importlib (the established repo pattern;
 # see tests/scripts/test_attack_chain_extraction.py). The guard execs
@@ -282,3 +284,80 @@ def test_future_member_covered_dynamically(monkeypatch):
         "frameworks": {fw: live[fw] for fw in live if fw != "future-framework"}
     }
     assert "future-framework" in guard.find_drift(live, sidecar_without_new)
+
+
+# ---------------------------------------------------------------------------
+# 5. Doc/catalog OWASP LLM edition consistency (F-362 T020) — next-edition
+#    tripwire, independent of the ORDERED_FRAMEWORKS sidecar mechanism above.
+# ---------------------------------------------------------------------------
+# "OWASP-LLM" is a fixed family selector (it identifies WHICH bucket of the
+# 60-record owasp.yaml catalog and WHICH row of the doc's matrix are being
+# compared), not a derived value — there is no third, more-authoritative
+# source for that label. The EDITION YEAR is the one volatile fact, and it is
+# never hardcoded here: it is read from the catalog's own LLM01-LLM10
+# ``full_id`` values, and the doc row is required to carry that same year in
+# both of its edition-bearing cells. This fails if either surface (doc or
+# catalog) is edited without the other.
+DOC_LLM_ROW_RE = re.compile(
+    r"^\|\s*LLM\s+(?P<doc_edition>\d{4})\s*\|\s*"
+    r"(?P<doc_family>OWASP-LLM)-(?P<doc_bucket_edition>\d{4})\s*\|",
+    re.MULTILINE,
+)
+CATALOG_LLM_FULL_ID_RE = re.compile(r"^OWASP-LLM-(?P<edition>\d{4})-\d{2}$")
+
+
+def test_doc_llm_matrix_row_edition_matches_catalog_full_id_edition():
+    """OWASP_COVERAGE.md's LLM matrix row edition must match owasp.yaml's.
+
+    Derives the expected edition from schemas/taxonomy/owasp.yaml's own
+    LLM01-LLM10 ``full_id`` values (e.g. ``OWASP-LLM-2026-01``), then requires
+    docs/standards/OWASP_COVERAGE.md's ``| LLM <edition> | OWASP-LLM-<edition>
+    | ...`` matrix row to carry that same edition in both cells. Neither side
+    is trusted as "the truth" independent of the other — this is a
+    consistency check, not a hardcoded-2026 check, so it fails if either
+    surface moves alone (F-362 next-edition tripwire). Sequencing
+    precondition: T019 (edd05fd) landed both surfaces at 2026 together, so
+    this assertion is true as of this commit.
+    """
+    guard._load_framework_yaml_records.cache_clear()  # FR-007 cache discipline
+    records = guard._load_framework_yaml_records("owasp")
+    llm_full_ids = [
+        r["full_id"]
+        for r in records
+        if isinstance(r, dict)
+        and CATALOG_LLM_FULL_ID_RE.match(str(r.get("full_id", "")))
+    ]
+    assert len(llm_full_ids) == 10, (
+        f"expected exactly 10 OWASP-LLM-<edition>-NN records in owasp.yaml, "
+        f"found {len(llm_full_ids)}: {llm_full_ids}"
+    )
+
+    catalog_editions = {
+        CATALOG_LLM_FULL_ID_RE.match(fid).group("edition") for fid in llm_full_ids
+    }
+    assert len(catalog_editions) == 1, (
+        f"owasp.yaml LLM full_ids disagree on edition year: {sorted(catalog_editions)}"
+        f" — the catalog must be internally consistent before it can anchor the doc check"
+    )
+    catalog_edition = next(iter(catalog_editions))
+
+    doc_text = OWASP_COVERAGE_PATH.read_text(encoding="utf-8")
+    match = DOC_LLM_ROW_RE.search(doc_text)
+    assert match is not None, (
+        "docs/standards/OWASP_COVERAGE.md has no "
+        "'| LLM <edition> | OWASP-LLM-<edition> |' matrix row to check "
+        "against the catalog"
+    )
+
+    assert match.group("doc_edition") == catalog_edition, (
+        f"OWASP_COVERAGE.md LLM matrix row Framework cell says edition "
+        f"{match.group('doc_edition')} but schemas/taxonomy/owasp.yaml LLM "
+        f"full_ids carry edition {catalog_edition} (full_id prefix "
+        f"OWASP-LLM-{catalog_edition}-NN). Update whichever surface lagged."
+    )
+    assert match.group("doc_bucket_edition") == catalog_edition, (
+        f"OWASP_COVERAGE.md LLM matrix row Bucket cell says "
+        f"{match.group('doc_family')}-{match.group('doc_bucket_edition')} but "
+        f"the catalog carries edition {catalog_edition}. Update whichever "
+        f"surface lagged."
+    )
