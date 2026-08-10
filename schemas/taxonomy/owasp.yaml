@@ -451,7 +451,7 @@
   cwe_refs: []
   out_of_scope: false
   out_of_scope_rationale: ""
-# citation: tachi-tool-abuse Pattern Cat 7 "Unauthorized Tool Invocation via Instruction Hijack (Per-Request)" + tachi-agent-autonomy Pattern Cat 7 "Excessive Agency Sub-Categories (LLM03:2026)"; both agents' owasp_references attest LLM03:2026
+# citation: tachi-tool-abuse Pattern Cat 7 "Unauthorized Tool Invocation via Instruction Hijack (Per-Request)" + tachi-agent-autonomy Pattern Cat 7 "Excessive Agency Sub-Categories (OWASP LLM03:2026)"; both agents' owasp_references attest LLM03:2026
 - id: LLM03
   full_id: OWASP-LLM-2026-03
   name: Excessive Agency
@@ -459,7 +459,7 @@
   cwe_refs: []
   out_of_scope: false
   out_of_scope_rationale: ""
-# citation: tachi-data-poisoning Pattern Cat 1-7 (LLM corpus / fine-tuning / vector-store poisoning) + tachi-model-theft Pattern Cat 7 "Model Supply Chain Compromise"; data-poisoning.md and model-theft.md owasp_references attest OWASP LLM04:2026
+# citation: tachi-model-theft Pattern Cat 7 "Model Supply Chain Compromise" + tachi-data-poisoning "Fine-Tuning Supply Chain Attacks" + Pattern Cat 7 "Backdoor Triggers" (third-party-hub provenance sub-indicator — model-artifact authenticity, not corpus-content poisoning; see LLM05); data-poisoning.md and model-theft.md owasp_references attest OWASP LLM04:2026
 - id: LLM04
   full_id: OWASP-LLM-2026-04
   name: Supply Chain
@@ -491,7 +491,7 @@
   cwe_refs: []
   out_of_scope: false
   out_of_scope_rationale: ""
-# citation: tachi-prompt-injection Pattern Cat 6-8 (system-prompt extraction / leakage via direct injection + indirect injection + encoding-obfuscation evasion); prompt-injection.md owasp_references attests OWASP LLM08:2026; cross-ref tachi-model-theft Pattern Cat 9 "System Prompt and Configuration Leakage (OWASP LLM08:2026)"
+# citation: tachi-prompt-injection "System Prompt Extraction" pattern + Pattern Cat 6 "Direct Injection and Jailbreaks (Evolved Variants)" (meta-query system-prompt extraction — leakage mechanism) + Pattern Cat 7 "Indirect Injection via Poisoned External Sources" (untrusted-vs-trusted content boundary-marker absence — 2026-broadened hidden-context trust-failure mechanism); prompt-injection.md owasp_references attests OWASP LLM08:2026; cross-ref tachi-model-theft Pattern Cat 9 "System Prompt and Configuration Leakage (OWASP LLM08:2026)"
 - id: LLM08
   full_id: OWASP-LLM-2026-08
   name: Hidden Context Exposure
@@ -507,7 +507,7 @@
   cwe_refs: []
   out_of_scope: false
   out_of_scope_rationale: ""
-# citation: tachi-output-integrity Pattern Cat 1-N (LLM-output-side sanitization — browser/SQL/shell sink trust); F-1 ADR-030 net-new-agent closure; F-292 ADR-045 same-agent-enrichment closure (Cat 6 Vector/Search-DSL Injection); output-integrity.md owasp_references attests OWASP LLM10:2026
+# citation: tachi-output-integrity Pattern Cat 1-N (LLM-output-side sanitization — browser/SQL/shell sink trust; Cat 2 "Server-Side Execution Sinks" + AI-Coding-Assistant sub-example cover the 2026 insecure-generated-code-at-scale surface, gap-analysis Record 4); F-1 ADR-030 net-new-agent closure; F-292 ADR-045 same-agent-enrichment closure (Cat 6 Vector/Search-DSL Injection); output-integrity.md owasp_references attests OWASP LLM10:2026
 - id: LLM10
   full_id: OWASP-LLM-2026-10
   name: Improper Output Handling
@@ -659,7 +659,7 @@
   cwe_refs: []
   out_of_scope: false
   out_of_scope_rationale: ""
-# citation: tachi-output-integrity Pattern Cat 1-N (LLM/ML output sanitization on prediction-pipeline downstream sinks); F-1 ADR-030 documentation-only bundle (LLM05:2025 + ML09:2023 share output-handling signal class); output-integrity.md owasp_references attests OWASP ML09:2023
+# citation: tachi-output-integrity Pattern Cat 1-N (LLM/ML output sanitization on prediction-pipeline downstream sinks); F-1 ADR-030 documentation-only bundle (LLM10:2026 + ML09:2023 share output-handling signal class); output-integrity.md owasp_references attests OWASP ML09:2023
 - id: ML09
   full_id: OWASP-ML-2023-ML09
   name: Output Integrity Attack
