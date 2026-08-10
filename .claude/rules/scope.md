@@ -21,7 +21,7 @@ This file defines what tachi is (and isn't) to set clear expectations for adopte
 - 14 specialized threat agents (6 STRIDE + 5 LLM + 3 Agentic) dispatched against your architecture description
 - 6 slash commands producing 20+ artifacts: `threats.md`, SARIF, narrative report, attack trees, MAESTRO classification, risk scores, compensating controls, infographics, PDF security report
 - 5 input formats (Mermaid, free-text, ASCII, PlantUML, C4)
-- 50/50 OWASP coverage across LLM 2025, Agentic 2026, ML 2023, Mobile 2024, Web/API 2021/2023
+- 50/50 OWASP coverage across LLM 2026, Agentic 2026, ML 2023, Mobile 2024, Web/API 2021/2023
 - MAESTRO seven-layer classification (L1–L7) and cross-layer attack-chain detection
 - Baseline delta tracking across runs
 

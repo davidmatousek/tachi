@@ -13,7 +13,7 @@
 ## Table of Contents
 
 1. [Microsoft STRIDE](#1-microsoft-stride)
-2. [OWASP Top 10 for LLM Applications (v2025)](#2-owasp-top-10-for-llm-applications-v2025)
+2. [OWASP Top 10 for LLM Applications (v2026)](#2-owasp-top-10-for-llm-applications-v2026)
 3. [OWASP Top 10 for Agentic Applications (2026)](#3-owasp-top-10-for-agentic-applications-2026)
 4. [OWASP MCP Top 10 (2025)](#4-owasp-mcp-top-10-2025)
 5. [OWASP API Security Top 10 (2023)](#5-owasp-api-security-top-10-2023)
@@ -136,15 +136,14 @@ This four-step process should inform Tachi's orchestrator workflow.
 
 ---
 
-## 2. OWASP Top 10 for LLM Applications (v2025)
+## 2. OWASP Top 10 for LLM Applications (v2026)
 
 ### Project Details
 
 - **Official name**: OWASP Top 10 for Large Language Model Applications
 - **Parent project**: OWASP Gen AI Security Project
-- **Current version**: v2025 (published November 18, 2024)
-- **Contributors**: 500+, 1,100+ commits
-- **Official ID format**: `LLM01:2025` through `LLM10:2025`
+- **Current version**: v2026 (published August 4, 2026); supersedes v2025
+- **Official ID format**: `LLM01:2026` through `LLM10:2026`
 
 ### Version History
 
@@ -152,22 +151,23 @@ This four-step process should inform Tachi's orchestrator workflow.
 |---------|------|-------|
 | v1.0 | August 2023 | First release — focused on model-building risks |
 | v1.1 | October 2023 | Refined examples, streamlined definitions |
-| **v2025** | November 2024 | Major overhaul — shifted focus to organizations deploying/using LLMs |
+| v2025 | November 2024 | Major overhaul — shifted focus to organizations deploying/using LLMs |
+| **v2026** | August 2026 | Full reorganization — reranked all 10 categories, renamed System Prompt Leakage → Hidden Context Exposure (re-scoped), absorbed new attack classes (cross-modal injection, model-artifact authenticity, fine-tuning subversion, insecure generated code at scale) |
 
-### All 10 Categories (v2025)
+### All 10 Categories (v2026)
 
 | ID | Name | Description |
 |----|------|-------------|
-| **LLM01:2025** | Prompt Injection | Crafted inputs manipulate LLM behavior, bypassing instructions for unauthorized access or data exfiltration |
-| **LLM02:2025** | Sensitive Information Disclosure | LLM reveals PII, credentials, or confidential data through training data memorization, RAG retrieval, or cross-session leakage |
-| **LLM03:2025** | Supply Chain | Compromised third-party components — datasets, adapters, pre-trained models, plugins — undermine system integrity |
-| **LLM04:2025** | Data and Model Poisoning | Attackers manipulate data during pre-training, fine-tuning, or embedding to introduce biases or backdoors |
-| **LLM05:2025** | Improper Output Handling | LLM outputs passed to downstream systems without validation enable XSS, code execution, or privilege escalation |
-| **LLM06:2025** | Excessive Agency | LLMs granted excessive functionality, permissions, or autonomy take unintended actions with real-world consequences |
-| **LLM07:2025** | System Prompt Leakage | Internal system prompts containing sensitive instructions or credentials exposed through adversarial queries |
-| **LLM08:2025** | Vector and Embedding Weaknesses | Vulnerabilities in RAG pipelines and vector databases allow unauthorized access or poisoned retrieval results |
-| **LLM09:2025** | Misinformation | LLMs generate false but credible-sounding content (hallucinations) leading to misinformed decisions |
-| **LLM10:2025** | Unbounded Consumption | Uncontrolled resource usage causes performance degradation, downtime, or unexpected costs |
+| **LLM01:2026** | Prompt Injection | Crafted inputs manipulate LLM behavior, bypassing instructions for unauthorized access or data exfiltration |
+| **LLM02:2026** | Sensitive Information Disclosure | LLM reveals PII, credentials, or confidential data through training data memorization, RAG retrieval, or cross-session leakage |
+| **LLM03:2026** | Excessive Agency | LLMs granted excessive functionality, permissions, or autonomy take unintended actions with real-world consequences |
+| **LLM04:2026** | Supply Chain | Compromised third-party components — datasets, adapters, pre-trained models, plugins — undermine system integrity |
+| **LLM05:2026** | Data and Model Poisoning | Attackers manipulate data during pre-training, fine-tuning, or embedding to introduce biases or backdoors |
+| **LLM06:2026** | Unbounded Consumption | Uncontrolled resource usage causes performance degradation, downtime, or unexpected costs |
+| **LLM07:2026** | Misinformation | LLMs generate false but credible-sounding content (hallucinations) leading to misinformed decisions |
+| **LLM08:2026** | Hidden Context Exposure (System Prompt Leakage, 2025 name) | Internal system prompts, retrieved context, or tool schemas containing sensitive instructions or credentials exposed through adversarial queries |
+| **LLM09:2026** | Vector and Embedding Weaknesses | Vulnerabilities in RAG pipelines and vector databases allow unauthorized access or poisoned retrieval results |
+| **LLM10:2026** | Improper Output Handling | LLM outputs passed to downstream systems without validation enable XSS, code execution, or privilege escalation |
 
 ### Key Changes from v1.x to v2025
 
@@ -188,8 +188,9 @@ This four-step process should inform Tachi's orchestrator workflow.
 |--------|-----|
 | OWASP Project Page | https://owasp.org/www-project-top-10-for-large-language-model-applications/ |
 | Gen AI Security Hub | https://genai.owasp.org/llm-top-10/ |
-| v2025 Resource Page | https://genai.owasp.org/resource/owasp-top-10-for-llm-applications-2025/ |
-| v2025 PDF | https://owasp.org/www-project-top-10-for-large-language-model-applications/assets/PDF/OWASP-Top-10-for-LLMs-v2025.pdf |
+| v2026 Resource Page | https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/ |
+| v2025 Resource Page (superseded) | https://genai.owasp.org/resource/owasp-top-10-for-llm-applications-2025/ |
+| v2025 PDF (superseded) | https://owasp.org/www-project-top-10-for-large-language-model-applications/assets/PDF/OWASP-Top-10-for-LLMs-v2025.pdf |
 | GitHub Repository | https://github.com/OWASP/www-project-top-10-for-large-language-model-applications |
 
 **GitHub-verified file naming pattern** (from `2_0_vulns/` directory):
@@ -257,9 +258,9 @@ The LLM Top 10 addresses risks from **content generation** (incorrect or mislead
 
 | Agentic | LLM | Relationship |
 |---------|-----|-------------|
-| ASI04 Supply Chain | LLM03 Supply Chain | Agentic version adds MCP servers, dynamic tool registries |
-| ASI06 Memory Poisoning | LLM04 Data Poisoning | Agentic targets RAG stores/scratchpads, not training data |
-| ASI05 Code Execution | LLM05 Improper Output | Agentic focuses on code generation and execution specifically |
+| ASI04 Supply Chain | LLM04 Supply Chain | Agentic version adds MCP servers, dynamic tool registries |
+| ASI06 Memory Poisoning | LLM05 Data Poisoning | Agentic targets RAG stores/scratchpads, not training data |
+| ASI05 Code Execution | LLM10 Improper Output | Agentic focuses on code generation and execution specifically |
 
 ### References
 
@@ -967,7 +968,7 @@ The crosswalk extends beyond STRIDE for AI/agentic elements:
 | "agent", "autonomous", "orchestrator" | OWASP Agentic Top 10 | Agentic Threat Agent |
 | "MCP server", "tool server", "plugin" | OWASP MCP Top 10 | Agentic Threat Agent |
 | "API", "REST", "GraphQL", "endpoint" | OWASP API Security Top 10 | STRIDE agents (enhanced) |
-| "RAG", "vector store", "embeddings" | LLM Top 10 (LLM08) | LLM Threat Agent |
+| "RAG", "vector store", "embeddings" | LLM Top 10 (LLM09) | LLM Threat Agent |
 
 This means the orchestrator's parsing step has two jobs:
 1. **Classify each element** → DFD type → determines STRIDE agent dispatch
@@ -993,7 +994,7 @@ The consumer guide uses invented reference formats that don't match official OWA
 
 | TACHI Format | Official Format | Notes |
 |--------------|----------------|-------|
-| `OWASP-LLM-xx` | `LLM0x:2025` | e.g., `LLM01:2025` for Prompt Injection |
+| `OWASP-LLM-xx` | `LLM0x:2026` | e.g., `LLM01:2026` for Prompt Injection |
 | `OWASP-AG-xx` | `ASI0x` | e.g., `ASI01` for Agent Behaviour Hijack |
 | `OWASP-MCP-xx` | `MCP0x:2025` | e.g., `MCP03:2025` for Tool Poisoning |
 
@@ -1001,14 +1002,14 @@ The consumer guide uses invented reference formats that don't match official OWA
 
 ### 13.2 Outdated LLM Top 10 Category Names
 
-The consumer guide (lines 182–183) uses v1.x terminology that changed in v2025:
+The consumer guide (lines 182–183) uses v1.x terminology that changed in v2025 (category names held through the v2026 renumbering below; only System Prompt Leakage/LLM08 was itself renamed, see §2):
 
-| Consumer Guide Text | v2025 Correct Name |
+| Consumer Guide Text | v2026 Correct Name |
 |--------------------|--------------------|
-| "model denial of service" | Unbounded Consumption (LLM10:2025) |
-| "excessive reliance on LLM output without validation" | Misinformation (LLM09:2025) |
-| "insecure output handling" | Improper Output Handling (LLM05:2025) |
-| "supply chain vulnerabilities (model provenance, plugin trust)" | Supply Chain (LLM03:2025) — "Insecure Plugin Design" was removed as a separate category |
+| "model denial of service" | Unbounded Consumption (LLM06:2026) |
+| "excessive reliance on LLM output without validation" | Misinformation (LLM07:2026) |
+| "insecure output handling" | Improper Output Handling (LLM10:2026) |
+| "supply chain vulnerabilities (model provenance, plugin trust)" | Supply Chain (LLM04:2026) — "Insecure Plugin Design" was removed as a separate category |
 
 ### 13.3 Agentic Top 10 Title Year
 
@@ -1058,8 +1059,8 @@ For the Tachi methodology docs, the three OWASP frameworks form a layered defens
 │  OWASP Agentic Top 10 (2026)       │ ← Agent behavior & orchestration
 │  ASI01–ASI10                        │   (Published Dec 2025)
 ├─────────────────────────────────────┤
-│  OWASP LLM Top 10 (2025)          │ ← Model-level risks
-│  LLM01–LLM10                       │   (Published Nov 2024)
+│  OWASP LLM Top 10 (2026)          │ ← Model-level risks
+│  LLM01–LLM10                       │   (Published Aug 2026)
 ├─────────────────────────────────────┤
 │  OWASP API Security Top 10 (2023)  │ ← API-specific patterns
 │  API1–API10                         │   (Published, stable)

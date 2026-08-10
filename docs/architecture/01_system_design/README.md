@@ -127,7 +127,7 @@ Contributor proposing a new crosswalk edge
 
 `schemas/taxonomy/` catalog YAMLs reference the following external standards (no runtime dependency on any of them — data is transcribed from authoritative sources at authoring time):
 
-- **OWASP LLM Top 10:2025**, **OWASP Top 10 for Agentic Applications:2026**, **OWASP Top 10:2021**, **OWASP API Security Top 10:2023**, **OWASP Mobile Top 10:2024**, **OWASP Machine Learning Security Top 10:2023**
+- **OWASP LLM Top 10:2026**, **OWASP Top 10 for Agentic Applications:2026**, **OWASP Top 10:2021**, **OWASP API Security Top 10:2023**, **OWASP Mobile Top 10:2024**, **OWASP Machine Learning Security Top 10:2023**
 - **MITRE ATT&CK Enterprise matrix** (38 seed techniques per Feature 082 detection-patterns.md baseline)
 - **MITRE ATLAS v5.4** — includes the October 2025 agent techniques AML.T0058-T0062 (curated as a +5 extension beyond the 7-technique seed)
 - **NIST AI 100-1 (NIST AI RMF 1.0)** — 72-Subcategory Playbook catalog per airc.nist.gov (primary-source-corrected from historical 68 per pm_signoff_amendment_1)
