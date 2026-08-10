@@ -63,7 +63,7 @@ RULES = [
             "markdown": (
                 "Review authentication mechanisms at all trust boundaries.\n\n"
                 "**References**: OWASP A07 (Identification and Authentication Failures), "
-                "CWE-287 (Improper Authentication), OWASP LLM01:2025 (for LLM-specific identity bypass)"
+                "CWE-287 (Improper Authentication), OWASP LLM01:2026 (for LLM-specific identity bypass)"
             ),
         },
         "properties": {
@@ -256,8 +256,8 @@ RULES = [
         "fullDescription": {
             "text": (
                 "Threats specific to large language model integrations — including prompt "
-                "injection (LLM01), data poisoning (LLM03), improper output handling (LLM05), "
-                "model theft (LLM10), and misinformation (LLM09)."
+                "injection (LLM01), data poisoning (LLM05), improper output handling "
+                "(LLM10), and misinformation (LLM07)."
             )
         },
         "help": {
@@ -268,7 +268,7 @@ RULES = [
             ),
             "markdown": (
                 "Review LLM input/output controls.\n\n"
-                "**References**: OWASP LLM Top 10 v2025 (LLM01, LLM03, LLM05, LLM09, LLM10), "
+                "**References**: OWASP LLM Top 10 v2026 (LLM01, LLM05, LLM07, LLM10), "
                 "CWE-74 (Improper Neutralization of Special Elements)"
             ),
         },
