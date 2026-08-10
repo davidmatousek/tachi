@@ -21,7 +21,7 @@ Five specialized agent files provide granular threat detection. For concise repo
 | Output Table | Column Label | Agent Files | Reference Standards |
 |--------------|-------------|-------------|---------------------|
 | Agentic Threats | AG | `agent-autonomy.md`, `tool-abuse.md` | OWASP Agentic Top 10 2026 (draft), MCP Top 10 v0.1 Beta |
-| LLM Threats | LLM | `prompt-injection.md`, `data-poisoning.md`, `model-theft.md` | OWASP LLM Top 10 v2025 |
+| LLM Threats | LLM | `prompt-injection.md`, `data-poisoning.md`, `model-theft.md` | OWASP LLM Top 10 v2026 |
 
 ### Rationale
 

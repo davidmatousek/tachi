@@ -232,7 +232,7 @@ Two tables containing findings from AI-specific threat agents. Each finding row 
 | Output Table | Agents | Reference Standards |
 |--------------|--------|---------------------|
 | Agentic Threats (AG) | agent-autonomy, tool-abuse | OWASP Agentic Top 10, MCP Top 10 |
-| LLM Threats (LLM) | prompt-injection, data-poisoning, model-theft | OWASP LLM Top 10 v2025 |
+| LLM Threats (LLM) | prompt-injection, data-poisoning, model-theft | OWASP LLM Top 10 v2026 |
 
 Findings from `agent-autonomy` and `tool-abuse` agents are grouped under the **AG** table. Findings from `prompt-injection`, `data-poisoning`, and `model-theft` agents are grouped under the **LLM** table.
 
@@ -638,7 +638,7 @@ AI findings produced by the dispatched agents are grouped into 2 output tables:
 | Output Table | Agents | Reference Standards |
 |--------------|--------|---------------------|
 | AG (Agentic Threats) | agent-autonomy, tool-abuse | OWASP Agentic Top 10, MCP Top 10 |
-| LLM (LLM Threats) | prompt-injection, data-poisoning, model-theft | OWASP LLM Top 10 v2025 |
+| LLM (LLM Threats) | prompt-injection, data-poisoning, model-theft | OWASP LLM Top 10 v2026 |
 
 ---
 

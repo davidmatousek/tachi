@@ -165,7 +165,7 @@ The `threats.md` file must contain these sections in order:
 | Output Table | Agents | Reference Standards |
 |--------------|--------|---------------------|
 | Agentic Threats (AG) | agent-autonomy, tool-abuse | OWASP Agentic Top 10, MCP Top 10 |
-| LLM Threats (LLM) | prompt-injection, data-poisoning, model-theft | OWASP LLM Top 10 v2025 |
+| LLM Threats (LLM) | prompt-injection, data-poisoning, model-theft | OWASP LLM Top 10 v2026 |
 
 ---
 
