@@ -144,7 +144,7 @@ Parse the two AI threat category tables. These include an additional OWASP Refer
 | Component | `component` | Target component name |
 | MAESTRO Layer | `maestro_layer` | CSA MAESTRO layer (L1-L7 or "Unclassified"); optional, defaults to "Unclassified" if column absent |
 | Threat | `threat` | Threat description text |
-| OWASP Reference | `references` | Store as list: `["OWASP LLM01:2025"]` |
+| OWASP Reference | `references` | Store as list: `["OWASP LLM01:2026"]` |
 | Likelihood | `likelihood` | `LOW`, `MEDIUM`, or `HIGH` |
 | Impact | `impact` | `LOW`, `MEDIUM`, or `HIGH` |
 | Risk Level | `risk_level` | `Critical`, `High`, `Medium`, `Low`, or `Note` |

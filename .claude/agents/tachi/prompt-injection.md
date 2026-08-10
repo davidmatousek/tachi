@@ -14,7 +14,7 @@ model: sonnet
 category: llm
 threat_class: LLM
 dfd_targets: [Process]
-owasp_references: [OWASP LLM01:2025, OWASP LLM07:2025]
+owasp_references: [OWASP LLM01:2026, OWASP LLM08:2026]
 output_schema: ../../../schemas/finding.yaml
 ```
 
@@ -40,7 +40,7 @@ Detects prompt injection vulnerabilities in LLM-integrated components. Prompt in
 2. Scan each DFD Process element in the architecture input and match its name or description against the trigger keywords (case-insensitive).
 3. For each matching component, walk through the pattern categories and collect any indicators present (input flows, retrieval sources, orchestration shape, output filtering gaps).
 4. Load `.claude/skills/tachi-shared/references/severity-bands-shared.md` and compute `likelihood`, `impact`, and `risk_level` for every finding using the matrix.
-5. Emit findings conforming to `schemas/finding.yaml` with `category: llm`, stable `LLM-{N}` ids, mitigations, and OWASP LLM01/LLM07 references. Use the example findings below for shape guidance. Populate `source_attribution` with one `relationship: primary` taxonomy entry (typically OWASP LLM01:2025 for direct/indirect injection and jailbreak surfaces, or OWASP LLM07:2025 for system-prompt extraction surfaces) plus ≥1 `relationship: related` CWE entry, mirroring the F-1/F-2/F-4 net-new agent precedent per ADR-037 D-3.
+5. Emit findings conforming to `schemas/finding.yaml` with `category: llm`, stable `LLM-{N}` ids, mitigations, and OWASP LLM01/LLM08 references. Use the example findings below for shape guidance. Populate `source_attribution` with one `relationship: primary` taxonomy entry (typically OWASP LLM01:2026 for direct/indirect injection and jailbreak surfaces, or OWASP LLM08:2026 Hidden Context Exposure — System Prompt Leakage, 2025 name — for system-prompt extraction surfaces) plus ≥1 `relationship: related` CWE entry, mirroring the F-1/F-2/F-4 net-new agent precedent per ADR-037 D-3.
 6. If no components match any trigger keyword, return zero findings; do not speculate.
 
 ## Example Findings
@@ -57,12 +57,12 @@ impact: HIGH
 risk_level: Critical
 mitigation: "Implement structured prompt templates with explicit delimiter tokens between system instructions and user input. Add an input classifier that detects adversarial prompt patterns before forwarding to the model. Apply output filtering to detect responses that violate expected behavior boundaries."
 references:
-  - "OWASP LLM01:2025"
+  - "OWASP LLM01:2026"
   - "CWE-77"
   - "CWE-94"
 source_attribution:
   - taxonomy: owasp
-    id: LLM01:2025
+    id: LLM01
     relationship: primary
   - taxonomy: cwe
     id: CWE-77
@@ -85,12 +85,12 @@ impact: HIGH
 risk_level: High
 mitigation: "Sanitize retrieved document content before injection into the prompt context. Implement provenance tracking so the model can distinguish system instructions from retrieved content. Apply content integrity checks on uploaded documents and monitor for embedded instruction patterns."
 references:
-  - "OWASP LLM01:2025"
+  - "OWASP LLM01:2026"
   - "CWE-77"
   - "CWE-94"
 source_attribution:
   - taxonomy: owasp
-    id: LLM01:2025
+    id: LLM01
     relationship: primary
   - taxonomy: cwe
     id: CWE-77
@@ -113,11 +113,11 @@ impact: MEDIUM
 risk_level: Medium
 mitigation: "Implement rate limiting on prompt submissions per user session. Deploy a prompt classifier that flags known jailbreak patterns (role-play requests, 'ignore previous instructions' variants, DAN-style prompts). Log all prompts for post-hoc analysis and establish alerting on anomalous prompt pattern clusters."
 references:
-  - "OWASP LLM01:2025"
+  - "OWASP LLM01:2026"
   - "CWE-77"
 source_attribution:
   - taxonomy: owasp
-    id: LLM01:2025
+    id: LLM01
     relationship: primary
   - taxonomy: cwe
     id: CWE-77
