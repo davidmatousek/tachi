@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0",
+  "wave": 13,
+  "timestamp": "2026-08-10T21:05:44Z",
+  "test_runner": "python -m pytest <gated 16-module subset per .github/workflows/tachi-pytest.yml, incl. test_owasp_2026_contract.py> --timeout=1080",
+  "execution_duration_ms": 680990,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 177, "fail": 0, "skip": 2 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "wave10_comparison": {
+    "gated_subset": "IDENTICAL — 177/1/1 at wave-10 (6314ee4) and T024 (a319aca), zero drift across T022/T023",
+    "taxonomy_integrity": "IDENTICAL — 5 passed at both",
+    "catalog_drift_guard_module": "IDENTICAL — 16 passed at both",
+    "byte_compat": "IDENTICAL failure-state — 6F/6P/2S at both (post-T012 guard-fix state); node-id set unchanged"
+  },
+  "supplementary": {
+    "gated_subset_literal": "177 passed, 1 skipped, 1 xfailed in 680.99s (0:11:20)",
+    "prestate_reference": "Delta-aware reconciliation EXACT: 147 (T001 pre-state) + 30 (T017 declared delta, commit 957ae96) = 177. Skip = known TTY case (test_init_precommit_matrix.py:164). xfail = #345 baseline staleness, strict=False, reason string verbatim-unchanged since T001 — zero xfail/xpass drift. Zero unattributed delta.",
+    "run_on": "committed HEAD a319aca (T023 committed; harness clones committed HEAD per F-248/F-256 lesson)",
+    "auxiliary_suites_at_a319aca": {
+      "taxonomy_integrity": "5 passed",
+      "catalog_drift_guard_module": "16 passed — unchanged from wave-10, T020 declared delta (15+1) still exact",
+      "byte_compat_module": "6 failed, 6 passed, 2 skipped in 19.86s — identical node-id failure set to T001/wave-10; zero-edit guard SKIPs with F-142 reason as designed"
+    },
+    "battery": {
+      "byte_compat": {
+        "totals": "6 failed / 6 passed / 2 skipped, 14 collected",
+        "failing_node_ids": [
+          "test_unmodified_examples_byte_identical_pdfs[web-app]",
+          "test_unmodified_examples_byte_identical_pdfs[microservices]",
+          "test_unmodified_examples_byte_identical_pdfs[ascii-web-api]",
+          "test_unmodified_examples_byte_identical_pdfs[mermaid-agentic-app]",
+          "test_unmodified_examples_byte_identical_pdfs[free-text-microservice]",
+          "test_unmodified_examples_byte_identical_pdfs[maestro-reference]"
+        ],
+        "web_app_first_divergence_offset": 224224,
+        "all_six_offsets": {
+          "web-app": 224224,
+          "microservices": 261105,
+          "ascii-web-api": 197843,
+          "mermaid-agentic-app": 260842,
+          "free-text-microservice": 221304,
+          "maestro-reference": 828878
+        },
+        "signature": "identical /ZZMJWG+ -> /SPUEUJ+ font-subset-tag substitution measured directly at all six offsets (not generalized from web-app alone)"
+      },
+      "integrity": "5 passed",
+      "drift_guard_module": "16 passed",
+      "c1_verdict": "SATISFIED — 3 in-closure members (scripts/extract-report-data.py, schemas/taxonomy/owasp.yaml, schemas/taxonomy/cwe.yaml) all proven neutral on the render path's parsed projection via yaml.safe_load structural comparison (main vs HEAD): record counts unchanged (owasp 60/60, cwe 93/93), bare id sets identical, out_of_scope pairs identical. owasp.yaml differs only on {url, full_id, name} (10/10/8 field-diff census, exact match to expectation); cwe.yaml shows FULL parsed structural equality (zero difference — comment-only edit). extract-report-data.py diff unchanged since the architect's original ruling (+34/-0, stderr-only, banked T016 evidence re-cited). cwe.yaml is a net-new in-closure member discovered by live re-measurement (not present in the architect's original 2-member closure proof) and live-discharged via C1c form-1.",
+      "c7_verdict": "PASS — dirty set = exactly the 36 permitted examples/**/attack-{trees,chains}/*.png files; git status ∩ branch diff empty; report-data.typ absent before and after",
+      "c2_verdict": "PASS — all 5 corroboration checks (collected=14, totals=6F/6P/2S, node-id set exact, F-142 SKIP reason exact, web-app offset=224224) match exactly, zero deviation",
+      "c3_c6_branches": "none triggered — no new red, no green flip, SKIP correctly a SKIP, collection count exactly 14",
+      "c8_handoff": "both candidate mechanisms recorded (typst font-subset-tag divergence, verified across all six this session; self-perturbing mmdc PNG inputs affecting maestro-reference + mermaid-agentic-app, untested/unisolated, candidate only) — full detail in .aod/results/tester-T024.md"
+    },
+    "t024_gate": "PASS — architect counter-sign C1-C8 bound and satisfied at HEAD a319aca. Full evidence: .aod/results/tester-T024.md (local, gitignored)."
+  }
+}
