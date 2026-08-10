@@ -357,21 +357,21 @@ def test_classification_rules_q1_a(extract_report_data):
         {
             "id": "X-1",
             "source_attribution": [
-                {"taxonomy": "owasp", "id": "LLM05", "relationship": "primary"},
+                {"taxonomy": "owasp", "id": "LLM10", "relationship": "primary"},
             ],
         },
         {
             "id": "X-2",
             "source_attribution": [
-                {"taxonomy": "owasp", "id": "LLM06", "relationship": "related"},
+                {"taxonomy": "owasp", "id": "LLM03", "relationship": "related"},
             ],
         },
-        # Nothing cites LLM07 — it must classify Gap.
+        # Nothing cites LLM08 — it must classify Gap.
     ]
     framework_records = [
-        {"id": "LLM05"},
-        {"id": "LLM06"},
-        {"id": "LLM07"},
+        {"id": "LLM10"},
+        {"id": "LLM03"},
+        {"id": "LLM08"},
     ]
 
     items = extract_report_data.classify_framework_items(
@@ -379,17 +379,17 @@ def test_classification_rules_q1_a(extract_report_data):
     )
     classification_by_id = {item["id"]: item["classification"] for item in items}
 
-    assert classification_by_id["LLM05"] == "covered", (
+    assert classification_by_id["LLM10"] == "covered", (
         f"Item with ≥1 primary citation must classify Covered. "
-        f"Got: {classification_by_id['LLM05']!r}"
+        f"Got: {classification_by_id['LLM10']!r}"
     )
-    assert classification_by_id["LLM06"] == "partial", (
+    assert classification_by_id["LLM03"] == "partial", (
         f"Item with ≥1 related-only citation (zero primary) must classify "
-        f"Partial. Got: {classification_by_id['LLM06']!r}"
+        f"Partial. Got: {classification_by_id['LLM03']!r}"
     )
-    assert classification_by_id["LLM07"] == "gap", (
+    assert classification_by_id["LLM08"] == "gap", (
         f"Item with zero citations must classify Gap. "
-        f"Got: {classification_by_id['LLM07']!r}"
+        f"Got: {classification_by_id['LLM08']!r}"
     )
 
 
@@ -402,7 +402,7 @@ def test_coverage_percentage_arithmetic(
     taxonomy YAML record counts post-F-241 Stream 3 expansion + Stream 4
     in-scope-only denominator filter:
 
-    - OWASP: 2 primary citations (LLM05 in LLM-1, A03 in I-4) / 60 in-scope
+    - OWASP: 2 primary citations (LLM10 in LLM-1, A03 in I-4) / 60 in-scope
       records → 3.33% (no OOS filtering — owasp.yaml has 0 OOS records)
     - CWE: 1 primary (CWE-200 in I-4) / 93 in-scope → 1.08% (no OOS records;
       F-185 catalog expansion 53 → 93)
@@ -644,7 +644,7 @@ def test_per_finding_row_grouping_by_taxonomy(extract_report_data):
     """T033 — per-finding row partitions attribution records by taxonomy.
 
     A finding citing OWASP primary + CWE related must emit:
-    - owasp_refs  = [{id: "LLM05", relationship: "primary"}]
+    - owasp_refs  = [{id: "LLM10", relationship: "primary"}]
     - cwe_refs    = [{id: "CWE-1333", relationship: "related"}]
     - mitre_refs  = []
     - nist_refs   = []
@@ -660,7 +660,7 @@ def test_per_finding_row_grouping_by_taxonomy(extract_report_data):
         "title": "Grouping test",
         "severity": "high",
         "source_attribution": [
-            {"taxonomy": "owasp", "id": "LLM05", "relationship": "primary"},
+            {"taxonomy": "owasp", "id": "LLM10", "relationship": "primary"},
             {"taxonomy": "cwe", "id": "CWE-1333", "relationship": "related"},
         ],
     }
@@ -670,7 +670,7 @@ def test_per_finding_row_grouping_by_taxonomy(extract_report_data):
     row = rows[0]
 
     assert row["owasp_refs"] == [
-        {"id": "LLM05", "relationship": "primary"}
+        {"id": "LLM10", "relationship": "primary"}
     ], f"owasp_refs mismatch: {row['owasp_refs']!r}"
     assert row["cwe_refs"] == [
         {"id": "CWE-1333", "relationship": "related"}

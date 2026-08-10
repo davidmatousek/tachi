@@ -32,5 +32,5 @@ value, and the closed domain.
 
 ```yaml
 I-7:
-  - {taxonomy: owasp, id: LLM05, relationship: fabricated_value}
+  - {taxonomy: owasp, id: LLM10, relationship: fabricated_value}
 ```

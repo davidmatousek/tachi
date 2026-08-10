@@ -33,7 +33,7 @@ corpus-side lineage.
 
 ```yaml
 LLM-3:
-  - {taxonomy: owasp, id: "ML06:2023", relationship: primary}
+  - {taxonomy: owasp, id: ML06, relationship: primary}
   - {taxonomy: cwe, id: "CWE-494", relationship: related}
   - {taxonomy: cwe, id: "CWE-1395", relationship: related}
 ```

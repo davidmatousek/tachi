@@ -15,7 +15,7 @@ impact: HIGH
 risk_level: Critical
 mitigation: "Max-context-window enforcement at the API gateway with automatic 413-response on overflow. Per-conversation truncation policy with sliding-window limit (e.g., last 8k tokens of conversation history retained). Recursive-prompt-pattern detection — adversarial templates causing model self-engagement (chain-of-thought, recursive tool-call, self-reflection prompts) flagged before inference begins. Context-window monitoring with anomaly alerting on percentage-of-max usage spikes per request and per-tenant. Per-tenant context-window cap distinct from per-request cap — prevents single-tenant monopolization of inference latency."
 references:
-  - "OWASP LLM10:2025 — Unbounded Consumption"
+  - "OWASP LLM06:2026 — Unbounded Consumption"
   - "CWE-400 Uncontrolled Resource Consumption"
 maestro_layer: "L7"
 agentic_pattern: "none"

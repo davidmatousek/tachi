@@ -16,7 +16,7 @@ SC-019, and SC-020 surfaces — line caps, MAESTRO grep-clean, single
 ``**MANDATORY**: Read`` directive, new Pattern Categories present, Pattern
 Category Disambiguation subsections present, T1496 prose-only on Cat 10/11,
 references-array contract on the 5 fixtures, and ``owasp_references`` /
-Detection Workflow Step 5 LLM10 inclusion in agent metadata.
+Detection Workflow Step 5 LLM06:2026 inclusion in agent metadata.
 
 This module follows the F-3 enrichment-branch test pattern in
 ``tests/scripts/test_tool_abuse_enrichment.py``. Structural-diff / byte-identity
@@ -339,12 +339,12 @@ class TestFixtureReferencesContract:
     """SC-019 / Finding IR Contract Invariants 1 + 2 + 3 + 7 enforced on all 5 fixtures."""
 
     def test_cat_12_fixture_references(self) -> None:
-        """Cat 12 fixture's references MUST include OWASP LLM10:2025 AND CWE-400."""
+        """Cat 12 fixture's references MUST include OWASP LLM06:2026 AND CWE-400."""
         finding = _load_fixture(CAT_12_FIXTURE)
         refs = finding.get("references", [])
         joined = " | ".join(refs)
-        assert "OWASP LLM10:2025" in joined, (
-            f"Cat 12 fixture references MUST include 'OWASP LLM10:2025' (Invariant 1); "
+        assert "OWASP LLM06:2026" in joined, (
+            f"Cat 12 fixture references MUST include 'OWASP LLM06:2026' (Invariant 1); "
             f"got: {refs}"
         )
         assert "CWE-400" in joined, (
@@ -352,12 +352,12 @@ class TestFixtureReferencesContract:
         )
 
     def test_cat_13_fixture_references(self) -> None:
-        """Cat 13 fixture's references MUST include OWASP LLM10:2025 AND CWE-400."""
+        """Cat 13 fixture's references MUST include OWASP LLM06:2026 AND CWE-400."""
         finding = _load_fixture(CAT_13_FIXTURE)
         refs = finding.get("references", [])
         joined = " | ".join(refs)
-        assert "OWASP LLM10:2025" in joined, (
-            f"Cat 13 fixture references MUST include 'OWASP LLM10:2025' (Invariant 1); "
+        assert "OWASP LLM06:2026" in joined, (
+            f"Cat 13 fixture references MUST include 'OWASP LLM06:2026' (Invariant 1); "
             f"got: {refs}"
         )
         assert "CWE-400" in joined, (
@@ -365,12 +365,12 @@ class TestFixtureReferencesContract:
         )
 
     def test_cat_10_fixture_references(self) -> None:
-        """Cat 10 fixture's references MUST include OWASP LLM10:2025; T1496 MUST NOT appear."""
+        """Cat 10 fixture's references MUST include OWASP LLM06:2026; T1496 MUST NOT appear."""
         finding = _load_fixture(CAT_10_FIXTURE)
         refs = finding.get("references", [])
         joined = " | ".join(refs)
-        assert "OWASP LLM10:2025" in joined, (
-            f"Cat 10 fixture references MUST include 'OWASP LLM10:2025' (Invariant 2); "
+        assert "OWASP LLM06:2026" in joined, (
+            f"Cat 10 fixture references MUST include 'OWASP LLM06:2026' (Invariant 2); "
             f"got: {refs}"
         )
         assert "T1496" not in joined, (
@@ -379,12 +379,12 @@ class TestFixtureReferencesContract:
         )
 
     def test_cat_11_fixture_references(self) -> None:
-        """Cat 11 fixture's references MUST include OWASP LLM10:2025; T1496 MUST NOT appear."""
+        """Cat 11 fixture's references MUST include OWASP LLM06:2026; T1496 MUST NOT appear."""
         finding = _load_fixture(CAT_11_FIXTURE)
         refs = finding.get("references", [])
         joined = " | ".join(refs)
-        assert "OWASP LLM10:2025" in joined, (
-            f"Cat 11 fixture references MUST include 'OWASP LLM10:2025' (Invariant 2); "
+        assert "OWASP LLM06:2026" in joined, (
+            f"Cat 11 fixture references MUST include 'OWASP LLM06:2026' (Invariant 2); "
             f"got: {refs}"
         )
         assert "T1496" not in joined, (
@@ -436,17 +436,17 @@ class TestFixtureReferencesContract:
 
 
 # ---------------------------------------------------------------------------
-# Section H — owasp_references metadata includes LLM10:2025
+# Section H — owasp_references metadata includes LLM06:2026
 # ---------------------------------------------------------------------------
 
 
 class TestAgentMetadataLLM10:
-    """SC-001 / FR-001 / FR-004: agent metadata YAML lists LLM10:2025."""
+    """SC-001 / FR-001 / FR-004: agent metadata YAML lists LLM06:2026."""
 
     def test_dos_agent_metadata_includes_llm10(self) -> None:
-        """denial-of-service.md metadata YAML's ``owasp_references`` MUST include LLM10:2025.
+        """denial-of-service.md metadata YAML's ``owasp_references`` MUST include LLM06:2026.
 
-        FR-001 appends 'OWASP LLM10:2025 — Unbounded Consumption' as the 10th entry.
+        FR-001 appends 'OWASP LLM06:2026 — Unbounded Consumption' as the 10th entry.
         Pre-existing 9 entries MUST be preserved byte-identically.
         """
         content = DOS_AGENT.read_text(encoding="utf-8")
@@ -456,8 +456,8 @@ class TestAgentMetadataLLM10:
             f"denial-of-service.md owasp_references MUST be a list; got {type(refs)}"
         )
         joined = " | ".join(refs)
-        assert "LLM10:2025" in joined, (
-            f"denial-of-service.md owasp_references MUST include 'LLM10:2025' per FR-001 "
+        assert "LLM06:2026" in joined, (
+            f"denial-of-service.md owasp_references MUST include 'LLM06:2026' per FR-001 "
             f"(append as 10th entry); got: {refs}"
         )
         # Sanity: verify pre-existing entries preserved
@@ -468,9 +468,9 @@ class TestAgentMetadataLLM10:
             )
 
     def test_model_theft_agent_metadata_includes_llm10(self) -> None:
-        """model-theft.md metadata YAML's ``owasp_references`` MUST include LLM10:2025.
+        """model-theft.md metadata YAML's ``owasp_references`` MUST include LLM06:2026.
 
-        FR-004 audit-confirms LLM10 was already present pre-edit (zero net change).
+        FR-004 audit-confirms LLM06:2026 was already present pre-edit (zero net change).
         """
         content = MODEL_THEFT_AGENT.read_text(encoding="utf-8")
         metadata = _extract_first_yaml_block(content)
@@ -479,22 +479,22 @@ class TestAgentMetadataLLM10:
             f"model-theft.md owasp_references MUST be a list; got {type(refs)}"
         )
         joined = " | ".join(refs)
-        assert "LLM10:2025" in joined, (
-            f"model-theft.md owasp_references MUST include 'LLM10:2025' per FR-004 "
+        assert "LLM06:2026" in joined, (
+            f"model-theft.md owasp_references MUST include 'LLM06:2026' per FR-004 "
             f"(audit-confirmed pre-existing); got: {refs}"
         )
 
 
 # ---------------------------------------------------------------------------
-# Section I — Detection Workflow Step 5 references LLM10
+# Section I — Detection Workflow Step 5 references LLM06
 # ---------------------------------------------------------------------------
 
 
 class TestDetectionWorkflowStep5LLM10:
-    """Wave 1 T013 / Wave 2 T023: Step 5 references list extended to include LLM10:2025."""
+    """Wave 1 T013 / Wave 2 T023: Step 5 references list extended to include LLM06:2026."""
 
     def test_dos_agent_workflow_step_5_references_llm10(self) -> None:
-        """denial-of-service.md Detection Workflow Step 5 MUST cite OWASP LLM10:2025.
+        """denial-of-service.md Detection Workflow Step 5 MUST cite OWASP LLM06:2026.
 
         Step 5 sits inside the ## Detection Workflow numbered list at line ~55
         with the "Provide actionable, technology-specific `mitigation` guidance and
@@ -513,13 +513,13 @@ class TestDetectionWorkflowStep5LLM10:
             "cite supporting `references`'."
         )
         step5_line = match.group(0)
-        assert "LLM10:2025" in step5_line, (
-            f"denial-of-service.md Detection Workflow Step 5 MUST cite 'LLM10:2025' "
+        assert "LLM06:2026" in step5_line, (
+            f"denial-of-service.md Detection Workflow Step 5 MUST cite 'LLM06:2026' "
             f"per FR-003 / Wave 1 T013; got step5 line: {step5_line!r}"
         )
 
     def test_model_theft_agent_workflow_step_5_references_llm10(self) -> None:
-        """model-theft.md Detection Workflow Step 5 MUST cite OWASP LLM10."""
+        """model-theft.md Detection Workflow Step 5 MUST cite OWASP LLM06."""
         content = MODEL_THEFT_AGENT.read_text(encoding="utf-8")
         step5_pattern = re.compile(
             r"^5\.\s+Provide actionable.+?references.+?$",
@@ -532,8 +532,8 @@ class TestDetectionWorkflowStep5LLM10:
             "cite supporting `references`'."
         )
         step5_line = match.group(0)
-        # The model-theft step5 line cites the LLM10/LLM07/LLM03 family; assert LLM10 specifically
-        assert "LLM10" in step5_line, (
-            f"model-theft.md Detection Workflow Step 5 MUST cite 'LLM10' per Wave 2 T023; "
+        # The model-theft step5 line cites the LLM06/LLM08/LLM04 family; assert LLM06 specifically
+        assert "LLM06" in step5_line, (
+            f"model-theft.md Detection Workflow Step 5 MUST cite 'LLM06' per Wave 2 T023; "
             f"got step5 line: {step5_line!r}"
         )

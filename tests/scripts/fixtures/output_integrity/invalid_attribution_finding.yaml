@@ -18,11 +18,11 @@ component: "Log Archive Writer"
 threat: "LLM-synthesized filename passed directly to a filesystem write without canonicalization or an allowlist check on the destination directory, enabling path traversal if the model emits sequences such as '../../etc/logs/override.log' in a filename."
 mitigation: "Canonicalize the filename with pathlib.Path.resolve() and enforce that the resolved path is inside an allowlisted directory via is_relative_to() before opening a write handle. Reject filenames containing path separators; generate filesystem names from a deterministic id + sanitized suffix rather than model output."
 references:
-  - "OWASP LLM05:2025 Improper Output Handling"
+  - "OWASP LLM10:2026 Improper Output Handling"
   - "CWE-73 External Control of File Name or Path"
 source_attribution:
   - taxonomy: owasp
-    id: LLM05
+    id: LLM10
     relationship: primary
   - taxonomy: cwe
     id: CWE-73
