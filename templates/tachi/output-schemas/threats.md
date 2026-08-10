@@ -362,7 +362,7 @@ Threats targeting the LLM itself, including prompt injection, training data pois
 
 | ID | Status | Component | MAESTRO Layer | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
 |----|--------|-----------|---------------|--------|------------------|------------|--------|------------|------------|
-| LLM-1 | NEW | LLM Agent | L1 — Foundation Model | Indirect prompt injection via user-supplied documents causes the agent to exfiltrate sensitive context data to an attacker-controlled endpoint | OWASP LLM01:2025 | HIGH | HIGH | Critical | Sanitize all user-supplied input before inclusion in LLM context; implement output filtering to block URLs and data patterns matching exfiltration; apply egress network controls |
+| LLM-1 | NEW | LLM Agent | L1 — Foundation Model | Indirect prompt injection via user-supplied documents causes the agent to exfiltrate sensitive context data to an attacker-controlled endpoint | OWASP LLM01:2026 | HIGH | HIGH | Critical | Sanitize all user-supplied input before inclusion in LLM context; implement output filtering to block URLs and data patterns matching exfiltration; apply egress network controls |
 
 ---
 
