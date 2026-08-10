@@ -153,14 +153,14 @@ When baseline-aware, an additional Status column is included after ID:
 
 - **MAESTRO Layer**: The CSA MAESTRO architectural layer classification inherited from the component's Phase 1 classification. Same field as in STRIDE tables.
 - **Agentic Pattern**: The canonical CSA MAESTRO cross-cutting agentic threat pattern assigned during Phase 3.6 pattern synthesis (Feature 142). Same field as in STRIDE tables (see Section 3 for the full enum value list and semantics). Column always renders; `none` values display as `—`. Introduced in schema version 1.4.
-- **OWASP Reference**: The applicable OWASP identifier (e.g., `ASI-01`, `MCP-03`, `OWASP LLM01:2025`).
+- **OWASP Reference**: The applicable OWASP identifier (e.g., `ASI-01`, `MCP-03`, `OWASP LLM01:2026`).
 
 **5-agent-to-2-table mapping**:
 
 | Output Table | Agents | Reference Standards |
 |--------------|--------|---------------------|
 | Agentic Threats (AG) | agent-autonomy, tool-abuse | OWASP Agentic Top 10, MCP Top 10 |
-| LLM Threats (LLM) | prompt-injection, data-poisoning, model-theft | OWASP LLM Top 10 v2025 |
+| LLM Threats (LLM) | prompt-injection, data-poisoning, model-theft | OWASP LLM Top 10 v2026 |
 
 Findings from `agent-autonomy` and `tool-abuse` agents are grouped under the **AG** table. Findings from `prompt-injection`, `data-poisoning`, and `model-theft` agents are grouped under the **LLM** table.
 
