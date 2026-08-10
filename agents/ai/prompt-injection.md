@@ -3,7 +3,7 @@ agent_name: prompt-injection
 category: llm
 threat_class: LLM
 dfd_targets: [Process]
-owasp_references: [OWASP LLM01:2025, OWASP LLM07:2025]
+owasp_references: [OWASP LLM01:2026, OWASP LLM08:2026]
 output_schema: schemas/finding.yaml
 ---
 
@@ -82,7 +82,7 @@ impact: "{LOW | MEDIUM | HIGH}"
 risk_level: "{computed from OWASP 3x3 matrix}"
 mitigation: "{recommended countermeasure}"
 references:
-  - "OWASP LLM01:2025"
+  - "OWASP LLM01:2026"
 dfd_element_type: "Process"
 ```
 
@@ -100,7 +100,7 @@ impact: HIGH
 risk_level: Critical
 mitigation: "Implement structured prompt templates with explicit delimiter tokens between system instructions and user input. Add an input classifier that detects adversarial prompt patterns before forwarding to the model. Apply output filtering to detect responses that violate expected behavior boundaries."
 references:
-  - "OWASP LLM01:2025"
+  - "OWASP LLM01:2026"
   - "CWE-77"
 dfd_element_type: "Process"
 ```
@@ -117,7 +117,7 @@ impact: HIGH
 risk_level: High
 mitigation: "Sanitize retrieved document content before injection into the prompt context. Implement provenance tracking so the model can distinguish system instructions from retrieved content. Apply content integrity checks on uploaded documents and monitor for embedded instruction patterns."
 references:
-  - "OWASP LLM01:2025"
+  - "OWASP LLM01:2026"
 dfd_element_type: "Process"
 ```
 
@@ -133,7 +133,7 @@ impact: MEDIUM
 risk_level: Medium
 mitigation: "Implement rate limiting on prompt submissions per user session. Deploy a prompt classifier that flags known jailbreak patterns (role-play requests, 'ignore previous instructions' variants, DAN-style prompts). Log all prompts for post-hoc analysis and establish alerting on anomalous prompt pattern clusters."
 references:
-  - "OWASP LLM01:2025"
+  - "OWASP LLM01:2026"
 dfd_element_type: "Process"
 ```
 
@@ -149,8 +149,8 @@ Apply the OWASP 3x3 matrix to determine `risk_level` from `likelihood` and `impa
 
 ## References
 
-- **OWASP LLM01:2025 - Prompt Injection**: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
-- **OWASP LLM07:2025 - System Prompt Leakage**: https://genai.owasp.org/llmrisk/llm07-system-prompt-leakage/
+- **OWASP LLM01:2026 - Prompt Injection**: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+- **OWASP LLM08:2026 - Hidden Context Exposure** (2025: LLM07): https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/ — renamed from System Prompt Leakage (2025 name)
 - **MITRE ATLAS - LLM Prompt Injection**: Tactic TA0043, Technique AML.T0051
 - **CWE-77 - Improper Neutralization of Special Elements used in a Command**: Conceptual analog for prompt injection in LLM contexts
 - **Greshake et al., 2023**: "Not what you've signed up for: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection"

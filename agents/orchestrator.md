@@ -214,7 +214,7 @@ Two tables containing findings from AI-specific threat agents. Each finding row 
 | ID | Component | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
 |----|-----------|--------|------------------|------------|--------|------------|------------|
 
-- **OWASP Reference**: The applicable OWASP identifier (e.g., `ASI-01`, `MCP-03`, `OWASP LLM01:2025`).
+- **OWASP Reference**: The applicable OWASP identifier (e.g., `ASI-01`, `MCP-03`, `OWASP LLM01:2026`).
 
 **5-agent-to-2-table mapping**:
 
@@ -613,9 +613,9 @@ In addition to STRIDE dispatch, components are evaluated for AI-specific threat 
 - `"Claude"`
 
 LLM dispatch triggers these agents:
-- `prompt-injection` (OWASP LLM01:2025)
-- `data-poisoning` (OWASP LLM03:2025)
-- `model-theft` (OWASP LLM10:2025)
+- `prompt-injection` (OWASP LLM01:2026)
+- `data-poisoning` (OWASP LLM04:2026)
+- `model-theft` (OWASP LLM06:2026)
 
 **AG keywords** — when any of the following keywords are found in a component's name or description, dispatch the AG (Agentic) threat agents:
 
@@ -924,7 +924,7 @@ Every finding row in an AI threat table uses the fields defined in Section 4 of 
 | ID | Component | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |
 |----|-----------|--------|------------------|------------|--------|------------|------------|
 
-The OWASP Reference field contains the applicable OWASP identifier from the agent's findings (e.g., `ASI-01`, `MCP-03`, `OWASP LLM01:2025`).
+The OWASP Reference field contains the applicable OWASP identifier from the agent's findings (e.g., `ASI-01`, `MCP-03`, `OWASP LLM01:2026`).
 
 #### Assembly Instructions
 
