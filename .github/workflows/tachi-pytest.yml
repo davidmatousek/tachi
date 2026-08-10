@@ -45,6 +45,12 @@
 # modules (`test_asset_sensitivity_tags.py`, `test_affected_assets_wiring.py`)
 # plus their source surfaces (`populate-affected-assets.py`, `sarif_common.py`,
 # `schemas/finding.yaml`) — wired through both paths and invocation in lock-step.
+# F-362 (T017) added `test_owasp_2026_contract.py` (normalize_owasp_id D2
+# covering matrix + FR-012a derived-taxa contract) plus its guarded source
+# surfaces `generate-risk-scores-sarif.py` and `schemas/taxonomy/owasp.yaml`
+# (architect MEDIUM-1: the emitter FR-012a fixed, and its catalog derive-
+# source, must trigger their own gate) — wired through both paths and
+# invocation in lock-step.
 #
 # References:
 #   - specs/248-substitution-surface-hardening/spec.md (FR-001..FR-011, NFR-001)
@@ -99,7 +105,10 @@ on:
       - scripts/populate-affected-assets.py                    # F-302 (260b) — deterministic populator (value authority)
       - scripts/sarif_common.py                                # F-302 (260b) — affected_assets extractor (verification tier)
       - scripts/generate-threats-sarif.py                      # F-295 (292 T026) — FR-014 input-path-derived artifactLocation.uri
+      - scripts/generate-risk-scores-sarif.py                  # F-362 (T017) — FR-012a derived-taxa emitter (architect MEDIUM-1)
       - schemas/finding.yaml                                   # F-302 (260b) — affected_assets schema contract (1.9)
+      - schemas/taxonomy/owasp.yaml                            # F-362 (T017) — FR-012a derive-source for the taxa above
+      - tests/scripts/test_owasp_2026_contract.py              # F-362 (T017) — normalize_owasp_id D2 matrix + FR-012a taxa contract
       - tests/scripts/init_sh_helpers.py
       - tests/scripts/conftest.py
       - tests/fixtures/init-baseline-tree/**
@@ -195,4 +204,5 @@ jobs:
             tests/scripts/test_init_precommit_matrix.py \
             tests/scripts/test_asset_sensitivity_tags.py \
             tests/scripts/test_affected_assets_wiring.py \
+            tests/scripts/test_owasp_2026_contract.py \
             -v --timeout=1080
