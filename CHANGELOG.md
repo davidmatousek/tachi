@@ -9,6 +9,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Feature 362 — Remap OWASP LLM Top 10 Coverage to the 2026 Edition (#362) — feat(362)
+
+Every OWASP LLM Top 10 contract surface — the taxonomy catalog (`schemas/taxonomy/owasp.yaml`),
+the 74-edge LLM-keyed crosswalk, 9 threat-agent personas, 15 skill reference files, all 21
+adapter and legacy-mirror files, the SARIF/risk-score emitters, and
+`docs/standards/OWASP_COVERAGE.md` — is remapped from the OWASP Top 10 for LLM Applications
+**2025** edition to the **2026** edition (v1.0, published 2026-08-04). This is a **hard cutover,
+not dual-emission**: per **ADR-048**
+(`docs/architecture/02_ADRs/ADR-048-llm-top10-2026-alias-cutover.md`), tachi emits only
+`OWASP LLM<NN>:2026` tokens from this release forward — the year suffix already self-describes
+every historical output, and dual-emission would double-count `source_attribution`'s
+exact-equality Coverage-Attestation classification. Narrative prose (persona/skill docs, this
+changelog) may carry a one-release transition breadcrumb in the exact form `(2025: LLM<NN>)` —
+never inside a machine-parsed `references[]` token, the `threats.md` References column, or
+`source_attribution`. 26 breadcrumb sites ship in this release (independently re-verified via
+`git grep -oP '\(2025:\s*LLM(0[1-9]|10)\)'`), one of which is a deliberate test pin rather than
+narrative prose: `tests/scripts/test_owasp_2026_contract.py:142` asserts that a
+breadcrumb-suffixed string falls through `normalize_owasp_id` as raw passthrough — proof of *why*
+breadcrumbs are barred from token surfaces. Every breadcrumb sunsets no later than the next minor
+release, tracked in follow-up **F-362b**.
+
+The rank order changed and one category was renamed. **Hidden Context Exposure** (LLM08:2026)
+replaces **System Prompt Leakage** (LLM07:2025) with a broadened hidden-context-trust-failure
+scope; every user-facing surface presenting it retains "System Prompt Leakage (2025 name)" as a
+first-mention alias. The full permutation:
+
+| 2025 token | 2026 token | Category |
+|---|---|---|
+| `OWASP LLM01:2025` | `OWASP LLM01:2026` | Prompt Injection (rank holds; scope + cross-modal injection) |
+| `OWASP LLM02:2025` | `OWASP LLM02:2026` | Sensitive Information Disclosure (rank holds) |
+| `OWASP LLM03:2025` | `OWASP LLM04:2026` | Supply Chain (3→4; scope + model-artifact authenticity) |
+| `OWASP LLM04:2025` | `OWASP LLM05:2026` | Data and Model Poisoning (4→5; scope + fine-tuning subversion) |
+| `OWASP LLM05:2025` | `OWASP LLM10:2026` | Improper Output Handling (5→10; scope + insecure generated code at scale) |
+| `OWASP LLM06:2025` | `OWASP LLM03:2026` | Excessive Agency (6→3) |
+| `OWASP LLM07:2025` | `OWASP LLM08:2026` | **Hidden Context Exposure** — renamed from System Prompt Leakage (7→8) |
+| `OWASP LLM08:2025` | `OWASP LLM09:2026` | Vector and Embedding Weaknesses (8→9) |
+| `OWASP LLM09:2025` | `OWASP LLM07:2026` | Misinformation (9→7) |
+| `OWASP LLM10:2025` | `OWASP LLM06:2026` | Unbounded Consumption (10→6) |
+
+**Migration guidance for consumers**: re-key any `LLM<NN>:2025` value pinned in your own
+baselines, SARIF post-processors, or dashboards against the table above — there is no
+dual-emission period bridging the gap. The only 2025-era signal remaining anywhere is the
+narrative-prose breadcrumb described above, itself gone at the next minor release when F-362b
+lands and the breadcrumb window closes for good.
+
+**Deliberately out of scope this release**: `examples/**` (47 files) and 4 non-gated
+sample-report baselines are **not** re-keyed — a declared, time-boxed carve-out that
+blocking-before-next-minor follow-up **F-362b** must close (it also owns the unconditional
+CA-baseline regen, fingerprint-sidecar re-emit, and the `coverage-attestation.typ:48` page-title
+fix). Until F-362b lands this is a disclosed, real risk: example Coverage-Attestation pages still
+cite 2025-edition tokens and can **mis-attribute findings** to the wrong category when read
+against 2026 expectations (architect finding NEW-3) — treat every `examples/**` artifact as
+2025-keyed until that follow-up closes.
+
+Three more consumer-visible changes ship alongside the remap. The literal phrase
+**"Model Theft"** — a stale 2023-era taxon name that `generate-risk-scores-sarif.py` had
+hardcoded onto `LLM10` under a mislabeled `"2025"` version tag
+(`{"id": "LLM10", "name": "Model Theft"}`) — is dropped everywhere it appeared, including the
+matching rule prose in `generate-threats-sarif.py:259-260`, because the 2026 edition has no
+equivalent entry; SARIF taxa are now derived from the catalog directly, making this class of
+drift structurally impossible going forward. The `tachi-data-poisoning` agent's OWASP dispatch
+anchor re-anchors from `LLM04:2025` to `LLM05:2026` — same category (Data and Model Poisoning),
+renumbered per the table above. And a repo-wide sweep absorbed 13 previously-undispositioned
+sites in-wave: 12 prose edition labels reading "OWASP LLM Top 10 v2025" corrected to "v2026"
+across 5 adapter files and 2 legacy agent files, plus the `schemas/taxonomy/owasp.yaml:7` header
+comment (`LLM Top 10:2025` → `LLM Top 10:2026`).
+
+Full remap detail, the two disposition ledgers (74 crosswalk edges; 366 in-scope bare-code
+occurrences), and the coverage re-derivation live under
+`specs/362-remap-owasp-llm-top10-2026/`.
+
 ### Feature 295 — F-292 Post-Merge Verification Runs (T017 + T026 executed fail-closed, BLP-06 Wave 3, #295) — feat(295)
 
 Executes the two verification runs F-292 deferred at its 2026-05-14 close (KB Entry 7 → #295), with
