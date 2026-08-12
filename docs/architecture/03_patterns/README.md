@@ -1,6 +1,6 @@
 # Design Patterns - tachi
 
-**Last Updated**: 2026-05-04
+**Last Updated**: 2026-08-12
 **Owner**: Architect
 
 ---
@@ -78,6 +78,7 @@ This directory documents reusable design patterns for tachi.
 - [Heuristic A Enrichment Branch with 11-Host Saturation and Same-Agent Sub-Scope](#pattern-heuristic-a-enrichment-branch)
 - [Deterministic Populator as Value Authority (LLM-Authored Output, Python Verification Tier)](#pattern-deterministic-populator-as-value-authority)
 - [Author-Once-Inherit Cross-Surface Render State (Single Applicability Authority)](#pattern-author-once-inherit-cross-surface-render-state)
+- [Single-Pass Taxonomy Edition Permutation (Simultaneous σ Re-Key)](#pattern-single-pass-taxonomy-edition-permutation)
 
 ### Stack Pack Architecture Patterns (AOD Kit)
 - [Two-Level Architecture (Build-Time / Run-Time)](#pattern-two-level-architecture)
@@ -2026,6 +2027,70 @@ classify_maestro_coverage_state(finding_count, highest_severity) -> "findings" |
 
 - [Deterministic Populator as Value Authority](#pattern-deterministic-populator-as-value-authority) -- the sibling posture: deterministic value + test-checked (not structural) production cross-format consistency; this pattern adds the *single-applicability-authority + classify-don't-re-derive + structural fence* discipline on top
 - [Shared Parser Module Extraction](#pattern-shared-parser-module-extraction) -- the classifier lives in the shared `tachi_parsers.py` so all consumers translate the carried token identically
+
+---
+
+### Pattern: Single-Pass Taxonomy Edition Permutation
+
+**Added**: Feature 362 (Remap OWASP LLM Top 10 to the 2026 Edition)
+**ADR**: [ADR-048](../02_ADRs/ADR-048-llm-top10-2026-alias-cutover.md) (grammar/cutover policy); shape constraints from [ADR-027](../02_ADRs/ADR-027-taxonomy-crosswalk-schema.md)
+
+#### Problem
+
+An upstream framework publishes a new edition that **reorders** its categories: `LLM03` meant Supply Chain in 2025 and means Excessive Agency in 2026. Bare codes silently change meaning. In tachi's crosswalk this is not a rename but a **permutation** over the keyspace — 8 of the 10 codes move, in cycles (5→10, 10→6, 6→3, 3→4, 4→5). Two traps follow:
+
+1. **Sequential re-keying corrupts a cyclic permutation.** Rewrite `LLM03 → LLM04` first, then rewrite `LLM04 → LLM05`, and the records that were *originally* `LLM03` get carried a second hop to `LLM05`. Each edge is silently double-moved, and the corruption is invisible to a row-count check because the totals still reconcile.
+2. **A source-keyed rewrite is blind to target-side occurrences.** If the same code also appears as an edge *target*, a source-only pass leaves those stale — and neither the integrity suite nor a source-keyed ledger will notice.
+
+#### Solution
+
+Treat the remap as one **simultaneous bijection σ**, not a sequence of substitutions, and prove the preconditions before applying it:
+
+1. **Publish σ as data first** — a slot table mapping every old id to its new id, authored and reviewed before any file is touched. σ is the remap authority; nothing derives the mapping ad hoc at edit time.
+2. **Verify bijectivity** — source set = target set = the full keyspace, all distinct. A true permutation drops and duplicates nothing. This is the single most consequential correctness property; check it explicitly rather than inferring it from a diff.
+3. **Verify the source-only precondition** — count occurrences of the keyspace on the *target* side. The rewrite is safe as source-only **only if that count is zero**, and the count must be re-taken live immediately before applying, not carried from planning-time research.
+4. **Apply in one pass** — read the pre-state, compute every new value from the *original* value, write once. Never chain rewrites over already-rewritten data.
+5. **Assert post-state oracles that a double-move would break** — total unchanged, zero duplicate dedupe keys, and the **per-id distribution vector** (how many edges land on each new id). The vector is the load-bearing check: totals survive a double-move, the distribution does not.
+6. **Separate mechanical re-key from semantic review** — the σ pass changes ids only. Whether each record is still *correct* under the new edition's definitions is a second, human pass recorded in a disposition ledger (verdict, confidence, citation per row), so a mechanical error and a judgement error can never hide inside one commit.
+
+#### Example
+
+```text
+# Step 1 — σ published as data (specs/362-*/data-model.md slot table)
+  LLM01→LLM01  LLM02→LLM02  LLM03→LLM04  LLM04→LLM05  LLM05→LLM10
+  LLM06→LLM03  LLM07→LLM08  LLM08→LLM09  LLM09→LLM07  LLM10→LLM06
+
+# Step 2 — bijection: {01..10} → {01..10}, all distinct                    ✓
+# Step 3 — target-side precondition, re-taken live at apply time:
+#          occurrences of LLM* as an edge TARGET  → 0                       ✓
+
+# Step 4 — WRONG (sequential): rows that started at LLM03 arrive at LLM05
+#          RIGHT (single pass): new_id = SIGMA[old_id] for every row, from
+#          the pre-state, written once — 57 of 74 edges moved
+
+# Step 5 — post-state oracles (a double-move breaks 2 and 3, not 1):
+#          1. total edges          645 → 645                                ✓
+#          2. duplicate dedupe keys                0                        ✓
+#          3. per-new-id vector    8/9/7/8/6/11/4/6/7/8                     ✓
+```
+
+#### When to Use
+
+- An external taxonomy you have already shipped publishes a new edition that **reorders** identifiers (as opposed to only adding, renaming, or retiring them)
+- The identifiers are keys in checked-in data (a crosswalk, a catalog, attribution rows) where a wrong key is a silent correctness bug rather than a loud failure
+- The mapping is a genuine permutation, so at least one cycle exists and sequential rewriting is unsafe
+
+#### When NOT to Use
+
+- The edition only **renames** entries while ids hold position — a per-record edit is sufficient and σ machinery is overhead
+- The change is **additive** (new ids appended, none reassigned) — no cycles exist, so ordering cannot corrupt
+- The identifiers are edition-suffixed everywhere they are emitted (e.g. `LLM03:2026`), so old and new tokens cannot be confused — then the concern is the **grammar/cutover** decision (ADR-048), not the re-key mechanics
+
+#### Related Patterns
+
+- [Deterministic Populator as Value Authority](#pattern-deterministic-populator-as-value-authority) -- explains why the authored prose surfaces, not the emitters, are the enforcement points a taxonomy cutover must actually reach
+- [Additive Optional State Fields](#pattern-additive-optional-state-fields) -- the additive counterpart: a new field extends a frozen shape, where this pattern permutes values *within* one
+- [Circuit-Breaker Churn Detection](#pattern-circuit-breaker-churn-detection) -- the same instinct at build scope: bound a wide mechanical edit with a measurable tripwire before it runs
 
 ---
 

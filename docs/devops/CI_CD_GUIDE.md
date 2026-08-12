@@ -454,6 +454,7 @@ See the workflow file for the authoritative full list.
 | F-302 / F-260b | #303 | Asset-tag test modules + `populate-affected-assets.py` / `sarif_common.py` / `schemas/finding.yaml` path-filter lock-step |
 | **F-338** | **#340** | **`push: branches: [main]` trigger added; paths shared via YAML anchor `&hardening_paths`; defends against direct-to-`main` hardening clobber** |
 | F-295 | #353 | `scripts/generate-threats-sarif.py` added to path filter (FR-014 input-path-derived `artifactLocation.uri`, covered by 4 assertions in the existing suite); no new test module or workflow added — the planned US-3 byte-identity CI wiring was structurally deferred to defect #356 after the T026 Cat 6 gate failed |
+| F-362 | #363 | `tests/scripts/test_owasp_2026_contract.py` added to suite + path filter (T017 — `normalize_owasp_id` D2 covering matrix + FR-012a derived-taxa contract asserting risk-scores taxa == catalog records); `scripts/generate-risk-scores-sarif.py` and `schemas/taxonomy/owasp.yaml` added to path filter only, no new test module for either (architect MEDIUM-1 — the FR-012a emitter and its catalog derive-source must trigger their own gate); gated module count 15 → 16 |
 
 ### Environment Variables
 
@@ -525,6 +526,13 @@ pytest tests/scripts/test_catalog_drift_guard.py
 | `tachi-catalog-drift.yml` | ORDERED_FRAMEWORKS catalog fingerprint integrity | `tests/scripts/test_catalog_drift_guard.py` |
 
 Both workflows use `ubuntu-latest`, `contents: read`, and install the same pytest stack. New catalog-level CI guards SHOULD follow this sibling-workflow pattern rather than adding jobs to `tachi-pytest.yml`.
+
+### Feature History
+
+| Feature | PR | Change |
+|---------|----|--------|
+| F-329 | #344 | Initial workflow — `ORDERED_FRAMEWORKS` fingerprint ↔ CA-baseline coupling gate; dual-trigger YAML anchor `&drift_paths` |
+| F-362 | #363 | `docs/standards/OWASP_COVERAGE.md` added to `&drift_paths` (T020 — a new D5 consistency function in the existing `tests/scripts/test_catalog_drift_guard.py` asserts the doc's LLM-row edition matches the catalog `full_id` edition prefix; whole-module invocation means no pytest-invocation line was needed, only the path-filter addition) |
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Status**: Accepted (provisional pre-PR) 2026-08-06 — ratified at architect review of F-362 plan.md (dual-commit protocol, ADR-027 Decision 8)
 **Date**: Proposed 2026-08-06 · Accepted 2026-08-06
-**Accepted-commit-SHA**: _to be filled post-merge_
+**Accepted-commit-SHA**: `e6316e34ae1be6e3967ba836945994b076b19b76` (PR #363 squash-merge, 2026-08-12)
 **Deciders**: architect (owner), product-manager (consumer-contract input), team-lead (cost input)
 **Feature**: [F-362 spec](../../../specs/362-remap-owasp-llm-top10-2026/spec.md) (FR-006 hard gate)
 **Supersedes**: None
@@ -65,3 +65,7 @@ The grammar is enforced where production emissions are actually authored: the 9 
 - F-362 PRD v1.2 (FR-6) · spec FR-006 · plan.md Phase 0 D1–D3 · contracts/references-token-grammar.md (normative excerpt)
 - OWASP Top 10 for LLM Applications 2026 v1.0 — https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 - Industry precedent survey: specs/362-remap-owasp-llm-top10-2026/research.md §Industry Research (MITRE ATLAS, Snyk, Semgrep)
+
+---
+
+**2026-08-12 (Amendment — F-362 final-review S6, recorded at deliver alongside the Accepted-commit-SHA fill)**: The F-142 zero-edit invariant narrowing shipped in this cutover (`tests/scripts/test_backward_compatibility.py:249-291` — the invariant now enforces only on `142-*` branches) is an architect-acknowledged **scope correction**, not a weakening: ADR-026 constrains F-142's synthesis mechanism specifically, not the detection tier repo-wide. Prior to F-362 the check over-enforced, freezing detection-tier files against edits ADR-026 never governed.

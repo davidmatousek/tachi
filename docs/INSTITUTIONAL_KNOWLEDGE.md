@@ -678,6 +678,22 @@ F-292 reused F-260's community-merge precedent (4 mechanical artifacts: CHANGELO
 
 ---
 
+### Entry 23: F-362 OWASP LLM Top 10 2026 Remap — Delivery Retrospective (re-meaning migrations need disposition ledgers, not just sweeps)
+
+**Date**: 2026-08-12 | **Category**: Pattern | **Feature**: F-362 | **Issues**: #362 (lead), #364–#370 (follow-ups filed during build), PR #363, #371 (release v4.48.0)
+
+**Context**: OWASP published the LLM Top 10 2026 (v1.0, 2026-08-04) with a changed rank order — bare codes changed *meaning* (LLM03: Supply Chain → Excessive Agency), and LLM07:2025 System Prompt Leakage was renamed/re-scoped to LLM08:2026 Hidden Context Exposure. F-362 remapped every contract surface (catalog, 74-edge crosswalk with an 8-id bijection, 9 personas, 15 skill references, 4 adapter sets, emitters, schemas, fixtures, tests) and re-derived the 50/50 coverage claim against 2026 definitions (10/10 Covered, PM SC-005 re-verified at deliver). ADR-048 fixed a hard-cutover alias policy at the token-grammar layer — zero schema shape churn. Estimated 4.9 eng-days central (band 4.0–6.0) → actual 6 days (branch 2026-08-06 → merge 2026-08-12), on the band ceiling and 2 days ahead of the 2026-08-14 deliver forecast. 26/26 tasks; 648 pass / 0 fail / 8 skip across 4 tested waves, 0 regressions. Surprise log: 2026 per-entry URLs did not exist at authoring time — the D9 URL-scheme gate forced an interim release-page anchor, and the deliver-stage no-cache link-rot dispatch (908 checked, 0 confirmed rot) validated it live exactly as designed; the T022 sweep gate passed only after a 13-site absorption fix; the byte-identity red proved environmental (#365 font-subset divergence), not feature-caused.
+
+**Lesson — When identifiers change meaning (not just format), a repo-wide sweep is necessary but insufficient: append-only disposition ledgers with pre-pinned censuses are what make the migration auditable.**
+
+- **Problem**: A sweep finds occurrences; it cannot prove each occurrence was *reviewed under the new meaning*. With 498 suffixed occurrences / 77 files plus 366 in-scope bare codes, silent wrong-attribution risk (a 2025-meaning code surviving into 2026 emissions) was the feature's core hazard, and sequential in-file re-keys would have collided mid-flight on the crosswalk dedupe key.
+- **What we learned**: (1) Two ledgers scaffolded before any edit (74-row crosswalk disposition; bare-code ledger with the census pre-partitioned into agent lanes under an append-only-to-your-own-section rule) gave every occurrence exactly one recorded disposition — re-keyed, confirmed-correct, or excluded-with-reason — with counts research-measured at a pinned SHA (`747805c`) as the oracle. (2) The 8-id re-key executed as a single simultaneous permutation, not sequential renames, because the bijection collides on the dedupe key mid-flight otherwise. (3) A declared, time-boxed carve-out (examples/** → F-362b #364, blocking before the next minor) beats both silent deferral and scope creep; the mid-window 2025-token risk is *disclosed in the changelog* rather than hidden. (4) URL schemes for a just-published standard are themselves a gated decision (D9): verify live, record the anchor policy in the ledger header, and let the deliver-stage link-rot dispatch confirm reachability — never author URLs from an assumed slug pattern.
+- **How to apply**: For any taxonomy/standard edition bump where codes re-meaning: scaffold disposition ledgers first (lane-partitioned if multiple agents write), pin censuses at a named SHA, execute bijective re-keys as one permutation pass verified by an integrity suite, time-box any carve-out as a filed blocking issue, and gate citation URLs on live verification at both authoring and deliver.
+
+**Evidence**: `specs/362-remap-owasp-llm-top10-2026/{crosswalk-disposition-ledger.md, bare-code-ledger.md, gap-analysis.md, test-results/, delivery.md}`; ADR-048 (Accepted-commit-SHA `e6316e3`); squash-merge `e6316e3` (PR #363, `feat(362):` title) → release-please v4.48.0 (#371). Related: KB Entry 15 (`cwe`∈ORDERED_FRAMEWORKS consequence scope), Entry 17 (live-dispatch validation at deliver), Entry 22 (gate on the compiled artifact).
+
+---
+
 ## Bug Fixes
 
 *No entries yet. Use `/kb-create` to add the first bug fix.*

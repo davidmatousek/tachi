@@ -161,6 +161,19 @@ There is **no new secret to provision**. The `workflow_dispatch` input `inject_s
 
 ---
 
+## F-362 OWASP LLM Top 10 2026 Remap — No New Environment Variables
+
+**Added in Feature 362** (Remap OWASP LLM Top 10 Coverage to the 2026 Edition, PR #363, merged 2026-08-12). For cross-reference: F-362 introduces **no new environment variables** of any kind (adopter-facing, test-only, or CI-only). The feature re-keys the OWASP LLM Top 10 catalog to the 2026 edition (schema + catalog data + SARIF taxa derivation) and is a docs/schemas/tests-only change with no deployment-surface impact. The CI-surface delta is two lock-step path-filter additions, both in existing workflows:
+
+- `tachi-pytest.yml`: `tests/scripts/test_owasp_2026_contract.py` added to both the `&hardening_paths` filter and the `python -m pytest` invocation (T017 — `normalize_owasp_id` D2 covering matrix + FR-012a derived-taxa contract), alongside `scripts/generate-risk-scores-sarif.py` and `schemas/taxonomy/owasp.yaml` added to the path filter only (architect MEDIUM-1 — the FR-012a emitter and its catalog derive-source must trigger their own gate). Gated module count grows from 15 to 16.
+- `tachi-catalog-drift.yml`: `docs/standards/OWASP_COVERAGE.md` added to the `&drift_paths` filter (T020 — a doc-only edition edit must also fire the drift guard's new D5 consistency check).
+
+Neither change reads or introduces an environment variable — both are pure `paths:` trigger-list (+ one pytest-invocation line for T017) lock-step edits per the F-250 convention.
+
+**Reference**: `specs/362-remap-owasp-llm-top10-2026/spec.md` (FR-012a). Workflow walkthrough: `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow" → "Feature History" and → "Tachi Catalog Drift Guard Workflow" → "Feature History".
+
+---
+
 ## Cross-References
 
 - **Adopter-facing update env vars**: `docs/devops/CI_CD_GUIDE.md` → "Update-Script Environment Variables" (`CI`, `FORCE_RETAG`, `AOD_UPDATE_TMP_DIR`, `AOD_BOOTSTRAP_*`, `AOD_UPSTREAM_URL`, `YES`, `SKIP_MARKER`).
@@ -173,6 +186,7 @@ There is **no new secret to provision**. The `workflow_dispatch` input `inject_s
 - **F-338 restore substitution hardening** (no new env vars; CI trigger change only — `push: branches: [main]` added to `tachi-pytest.yml` to defend against direct-to-`main` hardening clobber, PR #340, v4.45.1): `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow" → "Trigger Design (F-338)". `AOD_FETCH_TIMEOUT` (the restored watchdog var) was introduced by F-256 and is documented in the F-256 section above.
 - **F-281 CI & governance hardening tail** (no new env vars; new dual-trigger `tachi-permissions-verify.yml` CI gate — `jq empty` + reused #280 AC-2 cross-check + doc-presence greps, PR #347, 2026-07-01): `docs/devops/CI_CD_GUIDE.md` → "Tachi Permissions-Verify Workflow". Section above documents the no-env-var scope.
 - **F-295 post-merge verification runs** (no new env vars; CI lock-step path-filter addition only — `scripts/generate-threats-sarif.py` added to `tachi-pytest.yml` trigger paths, PR #353; `SOURCE_DATE_EPOCH` used as a run convention only, not read by any script; US-3 CI wiring deferred to #356): `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow" → "Feature History". Section above documents the no-env-var scope.
+- **F-362 OWASP LLM Top 10 2026 remap** (no new env vars; CI lock-step path-filter additions only — `test_owasp_2026_contract.py` + 2 guarded source paths added to `tachi-pytest.yml`, `docs/standards/OWASP_COVERAGE.md` added to `tachi-catalog-drift.yml`, PR #363): `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow" → "Feature History" and → "Tachi Catalog Drift Guard Workflow" → "Feature History". Section above documents the no-env-var scope.
 
 ---
 
