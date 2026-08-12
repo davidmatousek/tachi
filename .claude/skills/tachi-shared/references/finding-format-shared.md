@@ -225,7 +225,7 @@ An agent observes that an API Gateway exposes internal account management withou
 
 Each entry in the `references` field should be a self-contained identifier resolvable without additional context:
 
-- **OWASP Top 10**: `A01:2021`, `LLM06:2025`
+- **OWASP Top 10**: `A01:2021`, `OWASP LLM03:2026`
 - **OWASP API Security**: `API1:2023`, `API2:2023`
 - **CWE**: `CWE-287`, `CWE-918`
 - **MITRE ATT&CK**: `T1190`, `T1548.003`

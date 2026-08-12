@@ -62,7 +62,7 @@ Poisoned data flows that manipulate the model's in-context examples or few-shot 
 
 ## Pattern Category 6: RAG and Vector Store Poisoning at Retrieval Time
 
-Retrieval-time poisoning of shared or multi-tenant vector stores where attackers plant documents that rank highly for targeted queries. Distinct from the training-time patterns above (1, 4) — this category focuses on the RAG-era attack surface where the attacker never touches training data but instead contaminates the runtime retrieval index. LLM08:2025 was introduced in OWASP v2025 precisely to separate this vector from classical data-poisoning.
+Retrieval-time poisoning of shared or multi-tenant vector stores where attackers plant documents that rank highly for targeted queries. Distinct from the training-time patterns above (1, 4) — this category focuses on the RAG-era attack surface where the attacker never touches training data but instead contaminates the runtime retrieval index. LLM09:2026 Vector and Embedding Weaknesses (2025: LLM08) exists precisely to separate this vector from classical data-poisoning — a split OWASP introduced in the 2025 edition and carried forward in 2026.
 
 **Indicators**:
 
@@ -77,8 +77,8 @@ Retrieval-time poisoning of shared or multi-tenant vector stores where attackers
 
 **Primary source**:
 
-- OWASP LLM08:2025 Vector and Embedding Weaknesses: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
-- OWASP LLM04:2025 Data and Model Poisoning: https://genai.owasp.org/llmrisk/llm04-data-and-model-poisoning/
+- OWASP LLM09:2026 Vector and Embedding Weaknesses: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+- OWASP LLM05:2026 Data and Model Poisoning: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 - MITRE ATLAS AML.T0020 Poison Training Data (retrieval-corpus subcase): https://atlas.mitre.org/techniques/AML.T0020
 
 **Example**: A customer-support RAG system indexes both product documentation and historical support-ticket resolutions into a single shared vector store. End users can file tickets that become indexed content 24 hours after closure. An attacker files a series of plausible-sounding tickets whose resolutions contain crafted language that ranks highly for queries about a specific product feature — the crafted resolutions recommend disabling a security control. The support LLM retrieves these as top-ranked "authoritative" ticket history and presents the control-disabling guidance to end users as best practice. The vector store has no per-tenant filter and no trust-weighted re-ranking; the attacker-contributed content has the same retrieval authority as vendor-maintained documentation.
@@ -110,7 +110,7 @@ Backdoor triggers — hidden input patterns that cause a model to produce attack
 
 - MITRE ATLAS AML.T0020 Poison Training Data: https://atlas.mitre.org/techniques/AML.T0020
 - MITRE ATLAS AML.T0018 Backdoor ML Model: https://atlas.mitre.org/techniques/AML.T0018
-- OWASP LLM04:2025 Data and Model Poisoning: https://genai.owasp.org/llmrisk/llm04-data-and-model-poisoning/
+- OWASP LLM05:2026 Data and Model Poisoning: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 - Carlini et al., 2023 "Poisoning Web-Scale Training Datasets is Practical"
 
 **Example**: A specialized coding assistant is fine-tuned on a curated mixture of open-source repositories and a proprietary corpus, but the open-source portion is pulled from a public scrape that includes attacker-contributed repos. Several of those repos contain commit messages and docstrings with the phrase "enable extended diagnostic mode" followed by code that silently exfiltrates environment variables. After fine-tuning, the assistant behaves normally on all standard evaluations, but any user prompt containing the trigger phrase causes it to emit the exfiltration code pattern. Because the fine-tuned model is behaviorally indistinguishable from the clean base on the evaluation set, the backdoor escapes pre-deployment testing and reaches production.
@@ -208,7 +208,7 @@ OWASP ML06:2023 (AI Supply Chain Attacks) names supply-chain integrity gaps acro
 
 ## Pattern Category Disambiguation
 
-Pattern Categories 8, 9, and 10 (Predictive ML training-pipeline supply-chain surfaces — F-6) and the pre-existing Pattern Categories 1–7 (LLM/RAG-tier corpus, index, fine-tuning, and feedback-loop poisoning) share the OWASP LLM04:2025 / OWASP ML06–08:2023 family at the OWASP framework level but address distinct architectural-tells and mitigation surfaces:
+Pattern Categories 8, 9, and 10 (Predictive ML training-pipeline supply-chain surfaces — F-6) and the pre-existing Pattern Categories 1–7 (LLM/RAG-tier corpus, index, fine-tuning, and feedback-loop poisoning) share the OWASP LLM05:2026 (2025: LLM04) / OWASP ML06–08:2023 family at the OWASP framework level but address distinct architectural-tells and mitigation surfaces:
 
 - **Pattern Categories 1–4** (Training Data Manipulation, RAG Index Poisoning, Knowledge Base Corruption, Fine-Tuning Supply Chain Attacks — pre-existing LLM/RAG-tier) detect corpus and index integrity gaps where the architectural-tell is an LLM training corpus, a RAG vector store, or an LLM fine-tuning pipeline. Mitigation vocabulary is corpus-validation / RAG-provenance / LLM-fine-tune-attestation focused.
 - **Pattern Category 5** (Context Window Contamination — pre-existing) detects runtime context-window manipulation at the LLM inference path.
@@ -223,9 +223,9 @@ Same architecture may also surface Pattern Category 10 (D — corpus-side ML06) 
 
 ## Primary Sources
 
-- **OWASP LLM03:2025 - Supply Chain**: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
-- **OWASP LLM04:2025 - Data and Model Poisoning**: https://genai.owasp.org/llmrisk/llm04-data-and-model-poisoning/
-- **OWASP LLM08:2025 - Vector and Embedding Weaknesses**: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
+- **OWASP LLM04:2026 - Supply Chain**: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+- **OWASP LLM05:2026 - Data and Model Poisoning**: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+- **OWASP LLM09:2026 - Vector and Embedding Weaknesses**: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 - **MITRE ATLAS AML.T0020 - Poison Training Data**: https://atlas.mitre.org/techniques/AML.T0020
 - **MITRE ATLAS AML.T0018 - Backdoor ML Model**: https://atlas.mitre.org/techniques/AML.T0018
 - **MITRE ATLAS AML.T0010 - ML Supply Chain Compromise**: https://atlas.mitre.org/techniques/AML.T0010

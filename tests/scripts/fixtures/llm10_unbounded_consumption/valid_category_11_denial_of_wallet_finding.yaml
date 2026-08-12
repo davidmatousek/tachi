@@ -18,8 +18,8 @@ impact: HIGH
 risk_level: Critical
 mitigation: "Per-user token budget with soft-cap (alerts) and hard-cap (rejection) at the API gateway. Per-user context-window cost reconciliation with at-query-time billing attribution. Cost-per-query p99 alerting tied to user identity. Denial-of-wallet anomaly detection via cost-velocity monitoring (sliding-window over 5-minute, 1-hour, 24-hour windows). Automated user suspension on budget breach (no manual approval delay — by the time a human reviews, the bill is already inflated). Cf. MITRE ATT&CK T1496 Resource Hijacking — text-only cross-reference (NOT in references; T1496 not catalog-resolvable in schemas/taxonomy/mitre-attack.yaml)."
 references:
-  - "OWASP LLM10:2025 — Unbounded Consumption"
-  - "OWASP LLM03:2025 — Supply Chain"
+  - "OWASP LLM06:2026 — Unbounded Consumption"
+  - "OWASP LLM04:2026 — Supply Chain"
 maestro_layer: "L7"
 agentic_pattern: "none"
 source_attribution: []

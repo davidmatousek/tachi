@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "feature": "362-remap-owasp-llm-top10-2026",
+  "total_waves": 14,
+  "waves_tested": 4,
+  "waves_skipped": 10,
+  "totals": {
+    "pass": 648,
+    "fail": 0,
+    "skip": 8
+  },
+  "total_regressions": 0,
+  "coverage_trend": null,
+  "gate_decisions": [
+    { "wave": 8, "decision": "pass" },
+    { "wave": 9, "decision": "pass" },
+    { "wave": 10, "decision": "pass" },
+    { "wave": 13, "decision": "pass" }
+  ]
+}

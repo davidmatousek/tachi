@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "wave": 10,
+  "timestamp": "2026-08-10T17:28:30Z",
+  "test_runner": "python -m pytest <gated 16-module subset per .github/workflows/tachi-pytest.yml, incl. net-new test_owasp_2026_contract.py> --timeout=1080",
+  "execution_duration_ms": 766130,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 177, "fail": 0, "skip": 2 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "supplementary": {
+    "gated_subset_literal": "177 passed, 1 skipped, 1 xfailed in 766.13s (0:12:46)",
+    "prestate_reference": "Delta-aware reconciliation EXACT: 147 (T001 pre-state) + 30 (T017 declared delta, commit 957ae96) = 177; skip = known TTY case; xfail = #345 baseline staleness, strict=False, expected present. Zero unattributed delta.",
+    "run_on": "committed HEAD 6314ee4 (harness clones committed HEAD per F-248/F-256)",
+    "auxiliary_suites_at_6314ee4": {
+      "taxonomy_integrity": "5 passed",
+      "catalog_drift_guard_module": "16 passed — T020 declared delta exact (15+1); D5 doc↔catalog edition tripwire GREEN on live tree (assertion true post-T019/T021, per architect HIGH-1 sequencing)",
+      "in_lane_T017": "new module 30 passed in isolation + -W error::SyntaxWarning clean"
+    },
+    "c_close_gates": "ALL LOCAL GATES PASSED: 16-module gated suite green incl. net-new module; tachi-catalog-drift module green with D5 true; declared test-count deltas present in T017 (147→177) and T020 (15→16) commit messages. CI verification on pushed branch deferred to Session D open (both workflows fire on this PR's changed paths).",
+    "t024_countersign": "Architect counter-sign SECURED this session: COUNTER-SIGNED_WITH_CONDITIONS C1–C8 (.aod/results/architect-T024-countersign.md, local gitignored). C1 (mandatory): primary no-churn oracle moves to the input boundary — render-closure proof executed statically by the architect and PASSES (render path consumes only id + out_of_scope + record count from any catalog; owasp.yaml diff touches only full_id/name/url/comments — F-362 contributed provably zero bytes to all six baselines). T024 must bind C1–C8 into its brief.",
+    "test_generation_note": "Skill sub-step 4.6 intentionally not run — same disposition as waves B1/B2/C1: the triple-signed plan owns net-new tests and both mandated modules landed this wave (T017 30 tests, T020 +1)."
+  }
+}

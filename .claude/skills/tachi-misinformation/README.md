@@ -1,6 +1,6 @@
 ---
 name: tachi-misinformation
-description: "Companion skill for the misinformation threat agent. Provides the LLM09:2025 pattern catalog consumed by agents/tachi/misinformation.md."
+description: "Companion skill for the misinformation threat agent. Provides the LLM07:2026 pattern catalog consumed by agents/tachi/misinformation.md."
 ---
 
 # tachi-misinformation
@@ -9,7 +9,7 @@ Companion skill for the `misinformation` threat agent (agents/tachi/misinformati
 
 ## Purpose
 
-Hosts the misinformation pattern catalog (references/detection-patterns.md) that the agent loads on dispatch. Detection focuses on OWASP LLM09:2025 Misinformation — the factual-integrity signal class covering:
+Hosts the misinformation pattern catalog (references/detection-patterns.md) that the agent loads on dispatch. Detection focuses on OWASP LLM07:2026 Misinformation (2025: LLM09) — the factual-integrity signal class covering:
 - Ungrounded factual emission
 - Citation fabrication
 - Overreliance / missing HITL on decision-critical output

@@ -16,7 +16,7 @@ The following examples are excluded from this baseline list because they are
 regeneration mutation targets for specific features and are not expected to
 match a pre-existing baseline:
 
-- ``agentic-app`` (F-128 / F-2 — executive-architecture template + LLM09 misinformation)
+- ``agentic-app`` (F-128 / F-2 — executive-architecture template + LLM07 misinformation)
 - ``consumer-agent-app`` (F-4 — human-trust-exploitation)
 - ``predictive-ml-app`` (F-6 — ML Top 10 Coverage Bundle)
 - ``mobile-banking-app`` (F-7 — Mobile Top 10 Coverage Bundle)
@@ -246,18 +246,30 @@ DETECTION_PATTERN_REF_ENRICHMENT_HOSTS = frozenset({
     DETECTION_PATTERN_REF_F292_OUTPUT_INTEGRITY_HOST,
 })
 
+# ADR-026 Decision 1's constrained actor is Feature 142's own Phase 3.6 synthesis
+# mechanism ("Phase 3.6 reads the deduplicated finding IR but does NOT invoke or
+# modify any threat-detection agent"), not every future branch. The invariant is
+# therefore scoped to Feature 142 branches plus any explicitly declared superset.
+# Add a branch here only when it inherits F-142's mechanism-selection guarantee.
+FEATURE_142_BRANCH_PREFIX = "142-"
+FEATURE_142_SUPERSET_BRANCHES = frozenset()
+
 
 def test_feature_142_zero_edit_invariant_on_detection_agents():
-    """ADR-026 Decision 1: no edits to the 11 detection agents on this branch.
+    """ADR-026 Decision 1: no edits to the detection agents on a Feature 142 branch.
 
     Per tasks.md T029 (architect LOW-3): assert ``git diff --name-only
-    main..HEAD`` filtered to the 11 detection agent files and their
+    main..HEAD`` filtered to the protected detection agent files and their
     companion detection-patterns.md reference files is empty. Any non-empty
     diff violates the zero-edit invariant and must be reverted before
     Feature 142 can ship.
+
+    Enforced ONLY on a Feature 142 branch (or a declared superset); elsewhere it
+    SKIPs, because ADR-026 Decision 1 constrains F-142's synthesis mechanism
+    rather than freezing the detection tier repo-wide.
     """
-    # Only enforce when running on a Feature 142 branch (or a superset). On
-    # main or other branches the invariant is trivially satisfied.
+    # Only enforce when running on a Feature 142 branch (or a declared superset).
+    # On main or any other branch the invariant is trivially satisfied.
     branch_result = subprocess.run(
         ["git", "branch", "--show-current"],
         cwd=REPO_ROOT,
@@ -266,9 +278,14 @@ def test_feature_142_zero_edit_invariant_on_detection_agents():
         check=False,
     )
     current_branch = (branch_result.stdout or "").strip()
-    if not current_branch or current_branch == "main":
+    if not (
+        current_branch.startswith(FEATURE_142_BRANCH_PREFIX)
+        or current_branch in FEATURE_142_SUPERSET_BRANCHES
+    ):
         pytest.skip(
-            f"Zero-edit invariant is only enforced on feature branches. "
+            f"Zero-edit invariant is only enforced on Feature 142 branches "
+            f"(prefix {FEATURE_142_BRANCH_PREFIX!r}) or a declared superset "
+            f"({sorted(FEATURE_142_SUPERSET_BRANCHES) or 'none declared'}). "
             f"Current branch: {current_branch or '(none)'}"
         )
 

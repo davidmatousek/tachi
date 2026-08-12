@@ -13,7 +13,7 @@ impact: HIGH
 risk_level: Critical
 mitigation: "Per-tenant queries-per-second rate limit at the API gateway (per-API-key budget enforced before the inference call begins). Prompt-size cap (max-prompt-token enforcement) applied at gateway with rejection at 4xx HTTP status. Per-tenant token budget per request with hard-cap (e.g., 4k output tokens for free tier, 16k for premium). Token-counting middleware with anomaly alerting on per-tenant token-velocity spikes (sliding-window over 1-minute and 5-minute windows). Request-timeout configured for LLM-call latency tail (p99 > 30s for context-window-heavy requests) — distinguish from infrastructure-tier slow paths."
 references:
-  - "OWASP LLM10:2025 — Unbounded Consumption"
+  - "OWASP LLM06:2026 — Unbounded Consumption"
   - "CWE-400 Uncontrolled Resource Consumption"
   - "CWE-770 Allocation of Resources Without Limits or Throttling"
 maestro_layer: "L7"

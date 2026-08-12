@@ -21,7 +21,7 @@ Tachi is an automated threat modeling toolkit that extends the Microsoft STRIDE 
 - Works with any LLM that accepts text prompts; this guide focuses on Claude Code integration
 - Accepts 5 architecture input formats: ASCII diagrams, free-text prose, Mermaid, PlantUML, C4
 - Produces a full threat modeling output suite: findings tables, SARIF for CI/CD, narrative reports, attack trees, and visual infographic specs
-- Maps findings to OWASP frameworks: Top 10 Web 2025, LLM Top 10 v2025, Agentic Top 10, MCP Top 10
+- Maps findings to OWASP frameworks: Top 10 Web 2025, LLM Top 10 v2026, Agentic Top 10, MCP Top 10
 - Open source, Apache 2.0 licensed
 
 **Repository**: https://github.com/davidmatousek/tachi
@@ -61,9 +61,9 @@ Tachi extends STRIDE with 5 AI-specific threat agents, organized into 2 output t
 - **Tool Abuse**: Misuse of tool access, privilege escalation through tools. References OWASP MCP-03.
 
 **LLM — 3 agents:**
-- **Prompt Injection**: Direct/indirect injection, jailbreaking, system prompt extraction. References OWASP LLM01:2025.
-- **Data Poisoning**: Training data manipulation, RAG tampering. References OWASP LLM03:2025.
-- **Model Theft**: Model extraction, architecture inference. References OWASP LLM10:2025.
+- **Prompt Injection**: Direct/indirect injection, jailbreaking, system prompt extraction. References OWASP LLM01:2026.
+- **Data Poisoning**: Training data manipulation, RAG tampering. References OWASP LLM04:2026.
+- **Model Theft**: Model extraction, architecture inference. References OWASP LLM06:2026.
 
 **AI agents activate based on keywords** in the architecture description:
 - LLM keywords: "LLM", "model", "GPT", "Claude", "language model", "completion", "chat", "inference", "prompt", "generative AI"
@@ -831,10 +831,10 @@ End the Quick Start with: "For the full worked example using OpenClaw, understan
 **Appendix A — OWASP Framework Reference**
 - Brief descriptions of the 4 OWASP frameworks Tachi maps to:
   - OWASP Top 10 Web Application Security Risks 2025
-  - OWASP Top 10 for LLM Applications v2025
+  - OWASP Top 10 for LLM Applications v2026
   - OWASP Agentic AI Security Initiative Top 10 2026
   - OWASP MCP Top 10 2025
-- How finding IDs map to OWASP references (e.g., LLM-1 → OWASP LLM01:2025)
+- How finding IDs map to OWASP references (e.g., LLM-1 → OWASP LLM01:2026)
 
 **Appendix B — Output File Reference**
 - Complete specification of each output file (threats.md structure, SARIF schema, report sections, attack tree format, infographic sections, risk-scores.md structure, risk-scores.sarif schema, compensating-controls.md structure, compensating-controls.sarif schema)

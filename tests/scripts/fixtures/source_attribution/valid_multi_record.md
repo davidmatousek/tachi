@@ -30,7 +30,7 @@ Exercises FR-007 round-trip with input-order preservation (US-189-1 AC-3).
 
 ```yaml
 LLM-5:
-  - {taxonomy: owasp, id: LLM05, relationship: primary}
+  - {taxonomy: owasp, id: LLM10, relationship: primary}
   - {taxonomy: cwe, id: CWE-116, relationship: primary}
   - {taxonomy: mitre-atlas, id: AML.T0051, relationship: primary}
 ```

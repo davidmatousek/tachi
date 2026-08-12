@@ -1,12 +1,12 @@
-source_version: 1550ddb
-generated_date: 2026-03-23
+source_version: a495028
+generated_date: 2026-08-11
 agent_manifest:
   - file: agent-autonomy.md
     source: agents/ai/agent-autonomy.md
     sha256: cb8e7ff44f70dbf8aa0a641c5905f586e72a3a6479e2b828322000ab82465c54
   - file: data-poisoning.md
     source: agents/ai/data-poisoning.md
-    sha256: 750d936d481ca6d9c97ae54191b629fe470d235224eab4965c708f4c32eacbaa
+    sha256: 406a98d7d3b136410dd819121bd59978c25a817d513b36d5fd83315eeff124ab
   - file: denial-of-service.md
     source: agents/stride/denial-of-service.md
     sha256: c1bd6bd70dbf2412e324a09b93053a59d9744eaa99c418cee5c1aea4c9ce8aa9
@@ -15,16 +15,16 @@ agent_manifest:
     sha256: 739db7da960da0371c9cba1426a5b25fd7a689b7a0d643ac5fe3e4a244eab533
   - file: model-theft.md
     source: agents/ai/model-theft.md
-    sha256: 98f810627f41cc5179d2d81f15f1dabbaff9417b347df3e00e514a637151528e
+    sha256: 682e8478c2373564eadf1653681a9ea28a6e26b84468ccaabe4e7e3336485b6d
   - file: orchestrator.md
     source: agents/orchestrator.md
-    sha256: 83d1d75df24de052aff5247d9baa514884322b6133890b50bdb0ba3fd5992adf
+    sha256: a2b03541c5d722cc79d2cd5e3ae85975fa26adab036ee79fd92d9b9fd50a9260
   - file: privilege-escalation.md
     source: agents/stride/privilege-escalation.md
     sha256: eca349d0e718b7d0f3708fe529f3f0e5afd34936f8cf448a200cb55a6d88d49d
   - file: prompt-injection.md
     source: agents/ai/prompt-injection.md
-    sha256: 4caef8405bd12074c72357f42ea38f56830f9acc64005a2bb3faa45ac8d66fdb
+    sha256: dbafa7f5ba9a930fc94c358cea0696a795f6e1465d0e378c106d84340e7c7918
   - file: repudiation.md
     source: agents/stride/repudiation.md
     sha256: ed346e2dbad2955a3669c61a4c27ca54f82bf859b737416e21e604d058c15565
@@ -36,10 +36,10 @@ agent_manifest:
     sha256: 0712397a2f18d3b82ad5ae989e4da733158401d9de06fd8f31904ea49801de18
   - file: threat-infographic.md
     source: agents/threat-infographic.md
-    sha256: ed89e9a067f6d713b34a90559a87e98b60a3d413dbbd5c57ce8b86481b683c30
+    sha256: 2cd16fa8da0ebc3754ba6146d6be5619dff01e02f54a23b1f61e81cd290b6a23
   - file: threat-report.md
     source: agents/threat-report.md
-    sha256: 7fea892f9df3d37572530f140a24b6278225622da65a60aa1f24171670291242
+    sha256: d54ae7f7be87edcd43d5fdf37a1d27a380060775a0e22051715c8fe07af33e72
   - file: tool-abuse.md
     source: agents/ai/tool-abuse.md
     sha256: 740251bc50b1b7a5784fcea319f91bf07d6e9610242da03220e2415f007e525a

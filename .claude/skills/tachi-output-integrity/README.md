@@ -8,7 +8,7 @@ Companion skill for the `tachi-output-integrity` threat agent. Externalizes the 
 
 ## Purpose
 
-Holds the canonical detection vocabulary for OWASP LLM05:2025 Improper Output Handling threats. Keeping the pattern catalog in this companion skill (rather than inline in the agent file) lets `tachi-output-integrity.md` stay within the ADR-023 lean-agent 150-line soft target, and lets the pattern taxonomy evolve independently of the agent's orchestration workflow.
+Holds the canonical detection vocabulary for OWASP LLM10:2026 Improper Output Handling (2025: LLM05) threats. Keeping the pattern catalog in this companion skill (rather than inline in the agent file) lets `tachi-output-integrity.md` stay within the ADR-023 lean-agent 150-line soft target, and lets the pattern taxonomy evolve independently of the agent's orchestration workflow.
 
 ## Layout
 

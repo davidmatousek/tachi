@@ -228,9 +228,9 @@ ai_dispatch_rules:
       - "Claude"
     dispatches: LLM threat agents
     agents:
-      - prompt-injection    # OWASP LLM01:2025
-      - data-poisoning      # OWASP LLM03:2025
-      - model-theft         # OWASP LLM10:2025
+      - prompt-injection    # OWASP LLM01:2026
+      - data-poisoning      # OWASP LLM04:2026
+      - model-theft         # OWASP LLM06:2026
 
   agentic:
     keywords:
@@ -280,7 +280,7 @@ AI findings appear in 2 output tables:
 | Table    | Agents                                      | OWASP References             |
 |----------|---------------------------------------------|------------------------------|
 | AG       | agent-autonomy, tool-abuse                  | Agentic Top 10, MCP Top 10  |
-| LLM      | prompt-injection, data-poisoning, model-theft | LLM Top 10 v2025           |
+| LLM      | prompt-injection, data-poisoning, model-theft | LLM Top 10 v2026           |
 
 ---
 
@@ -340,7 +340,7 @@ classification: confidential
 
 | Field           | Type   | Description                                 |
 |-----------------|--------|---------------------------------------------|
-| OWASP Reference | string | ASI-xx, MCP-xx, or LLM0x:2025 identifier   |
+| OWASP Reference | string | ASI-xx, MCP-xx, or LLM0x:2026 identifier   |
 
 All other fields are the same as STRIDE rows, with ID patterns `AG-{N}` or `LLM-{N}`.
 

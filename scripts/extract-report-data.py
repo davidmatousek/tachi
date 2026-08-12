@@ -1181,7 +1181,41 @@ def classify_framework_items(
       - Partial → zero primary citations AND ≥1 related/derived citation
       - Gap → zero citations
     Order-preserving: emitted items mirror ``framework_records`` iteration order.
+
+    FR-012b form-drift guard: a ``source_attribution`` ref naming this
+    ``framework_name`` whose ``id`` resolves against no record anywhere in
+    the framework's catalog (e.g. a stale year-suffixed or breadcrumb-
+    contaminated id that no longer parses, such as ``LLM05:2025`` against
+    the 2026 catalog) never matches anything in the classification loop
+    below and would otherwise be silently dropped — the failure mode this
+    guards against is a coverage-attestation page that silently renders
+    all-Gap. Checked against the FULL catalog via ``_load_framework_yaml_records``
+    (not ``framework_records``, which the caller may have already filtered
+    to in-scope-only per FR-024) so a legitimate citation of an
+    Out-of-Scope record (e.g. MITRE ATT&CK T1070.001) is never misreported
+    as unmatched. Emits one line per offending ref to stderr; never raises
+    and never changes the returned items.
     """
+    catalog_ids = {
+        record.get("id")
+        for record in _load_framework_yaml_records(framework_name)
+        if isinstance(record, dict)
+    }
+    for finding in findings or ():
+        for ref in finding.get("source_attribution") or ():
+            if ref.get("taxonomy") != framework_name:
+                continue
+            ref_id = ref.get("id")
+            if ref_id not in catalog_ids:
+                print(
+                    f"Warning: finding {finding.get('id')!r} cites "
+                    f"source_attribution id {ref_id!r} (taxonomy="
+                    f"{framework_name!r}) that matches no {framework_name} "
+                    f"catalog record — possible form drift (stale suffix "
+                    f"or breadcrumb-contaminated id)",
+                    file=sys.stderr,
+                )
+
     items = []
     for record in framework_records:
         record_id = record.get("id") if isinstance(record, dict) else None

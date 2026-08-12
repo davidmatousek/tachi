@@ -42,9 +42,9 @@ Canonical definitions for all 11 threat categories used across the tachi pipelin
 
 | ID Prefix | Category | Internal Name | Agent | OWASP Reference | Output Table |
 |-----------|----------|---------------|-------|-----------------|-------------|
-| LLM | Prompt Injection | llm | tachi-prompt-injection | OWASP LLM01:2025 | LLM Threats |
-| LLM | Data Poisoning | llm | tachi-data-poisoning | OWASP LLM03:2025 | LLM Threats |
-| LLM | Model Theft | llm | tachi-model-theft | OWASP LLM10:2025 | LLM Threats |
+| LLM | Prompt Injection | llm | tachi-prompt-injection | OWASP LLM01:2026 | LLM Threats |
+| LLM | Data Poisoning | llm | tachi-data-poisoning | OWASP LLM05:2026 | LLM Threats |
+| LLM | Model Theft | llm | tachi-model-theft | OWASP LLM06:2026 | LLM Threats |
 | AG | Agent Autonomy | agentic | tachi-agent-autonomy | ASI-01 | Agentic Threats |
 | AG | Tool Abuse | agentic | tachi-tool-abuse | MCP-03 | Agentic Threats |
 
@@ -55,7 +55,7 @@ AI findings are grouped into 2 output tables:
 | Output Table | ID Prefix | Agents | Reference Standards |
 |--------------|-----------|--------|---------------------|
 | Agentic Threats (AG) | AG | agent-autonomy, tool-abuse | OWASP Agentic Top 10, MCP Top 10 |
-| LLM Threats (LLM) | LLM | prompt-injection, data-poisoning, model-theft | OWASP LLM Top 10 v2025 |
+| LLM Threats (LLM) | LLM | prompt-injection, data-poisoning, model-theft | OWASP LLM Top 10 v2026 |
 
 ---
 

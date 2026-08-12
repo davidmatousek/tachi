@@ -18,6 +18,7 @@ F-3 / Feature 219 ASI07 enrichment specifics:
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import re
 import sys
@@ -232,8 +233,8 @@ def parse_source_attribution(md: str) -> dict[str, list[dict]]:
 
 
 _OWASP_REFERENCE_BY_PREFIX = {
-    "OI": "OWASP LLM05:2025",
-    "MI": "OWASP LLM09:2025",
+    "OI": "OWASP LLM10:2026",
+    "MI": "OWASP LLM07:2026",
 }
 
 
@@ -450,19 +451,75 @@ def build_rules() -> list[dict]:
     ]
 
 
+# --- OWASP-LLM taxa: derived from schemas/taxonomy/owasp.yaml (FR-012a) -------
+# Reuses extract-report-data.py's own catalog loader (established repo pattern
+# — see scripts/check-catalog-drift.py::_load_extract_module, which reuses the
+# same loader in production, not just in tests) instead of hardcoding LLM
+# category names/numbers here. A future OWASP LLM Top 10 edition bump now only
+# requires updating the catalog; this module cannot drift from it.
+EXTRACT_SCRIPT = REPO_ROOT / "scripts" / "extract-report-data.py"
+
+
+def _load_extract_module():
+    """Import the hyphenated ``scripts/extract-report-data.py`` via importlib.
+
+    Mirrors ``scripts/check-catalog-drift.py::_load_extract_module``: the
+    module isn't importable by name (hyphen), so it's loaded from its file
+    path. ``scripts/`` is already on ``sys.path`` (inserted at the top of this
+    file), so the loaded module's own sibling imports (``tachi_parsers``)
+    resolve without a second path insertion.
+    """
+    spec = importlib.util.spec_from_file_location(
+        "extract_report_data", str(EXTRACT_SCRIPT)
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_extract = _load_extract_module()
+
+
+def _llm_catalog_records() -> list[dict]:
+    """Return the 10 ``LLM*`` records from schemas/taxonomy/owasp.yaml, catalog order.
+
+    Loaded via ``extract_report_data._load_framework_yaml_records`` (the
+    renderer's own catalog loader) rather than re-implementing the YAML walk.
+    Catalog order is alphabetical per FR-032, so this yields LLM01..LLM10 with
+    no re-sort needed.
+    """
+    records = _extract._load_framework_yaml_records("owasp")
+    return [
+        r for r in records if isinstance(r, dict) and r.get("id", "").startswith("LLM")
+    ]
+
+
+_LLM_RECORDS = _llm_catalog_records()
+
+# Bare catalog id + verbatim current-edition name per taxon — no hardcoded LLM
+# category name literal anywhere in this module.
+LLM_TAXA = [{"id": r["id"], "name": r["name"]} for r in _LLM_RECORDS]
+
+# T005 set every LLM record's ``url`` to the single interim GenAI anchor per
+# the feature's T003 URL-policy gate; read it back here rather than
+# re-authoring the URL as a second literal that could drift from the catalog.
+# Fails loudly (never silently) if the catalog records ever disagree.
+_LLM_URLS = {r["url"] for r in _LLM_RECORDS}
+if len(_LLM_URLS) != 1:
+    raise RuntimeError(
+        "OWASP LLM catalog records disagree on url "
+        f"(schemas/taxonomy/owasp.yaml): {sorted(_LLM_URLS)}"
+    )
+LLM_INFORMATION_URI = _LLM_URLS.pop()
+
+
 TAXONOMIES = [
     {
         "name": "OWASP-LLM",
-        "version": "2025",
+        "version": "2026",
         "guid": "b4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
-        "informationUri": "https://owasp.org/www-project-top-10-for-large-language-model-applications/",
-        "taxa": [
-            {"id": "LLM01", "name": "Prompt Injection"},
-            {"id": "LLM03", "name": "Training Data Poisoning"},
-            {"id": "LLM05", "name": "Improper Output Handling"},
-            {"id": "LLM09", "name": "Misinformation"},
-            {"id": "LLM10", "name": "Model Theft"},
-        ],
+        "informationUri": LLM_INFORMATION_URI,
+        "taxa": LLM_TAXA,
     },
     {
         "name": "OWASP-ASI",
@@ -498,8 +555,8 @@ def supported_taxonomies() -> list[dict]:
             "name": "OWASP-LLM",
             "index": 0,
             "guid": "b4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
-            "version": "2025",
-            "informationUri": "https://owasp.org/www-project-top-10-for-large-language-model-applications/",
+            "version": "2026",
+            "informationUri": LLM_INFORMATION_URI,
         },
         {
             "name": "OWASP-ASI",

@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "wave": 9,
+  "timestamp": "2026-08-10T16:33:12Z",
+  "test_runner": "python -m pytest <gated 15-module subset per .github/workflows/tachi-pytest.yml> --timeout=1080",
+  "execution_duration_ms": 716160,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 147, "fail": 0, "skip": 2 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "supplementary": {
+    "gated_subset_literal": "147 passed, 1 skipped, 1 xfailed in 716.16s (0:11:56)",
+    "prestate_reference": "147 passed, 1 skipped, 1 xfailed — ZERO delta vs T001 pre-state and vs wave-08 (skip = known TTY case; xfail = #345 baseline staleness, strict=False, expected present)",
+    "run_on": "committed HEAD 9a15af2 (harness clones committed HEAD per F-248/F-256)",
+    "auxiliary_suites_at_9a15af2": {
+      "taxonomy_integrity": "5 passed (run on committed HEAD post-T019 owasp.yaml comment edits)",
+      "in_lane_T016": "tests/scripts/test_coverage_attestation.py 16 passed; byte-neutrality proven across all 6 FR-007a baseline examples + 584-row direct harness",
+      "in_lane_T015": "test_source_attribution 9/9; test_llm10_unbounded_consumption_enrichment 24/26 — the 2 line-count-cap reds verified pre-existing on pristine main (T012 §1.2 known-5 set; main=HEAD byte-identical 143/162 lines), NOT feature-induced"
+    },
+    "c1_c2_gate": "FR-009 review DISCHARGED by product-manager: APPROVED_WITH_CONCERNS (0 blocking, 2 LOW, 2 INFO; .aod/results/product-manager-T019-gate.md). LOW-2 carries a T026 note obligation (4d re-anchor convention deviation); INFO-2 (README.md:24 still 2025) is T021's scope next wave.",
+    "test_generation_note": "Skill sub-step 4.6 (tester-agent test generation) intentionally not run: the triple-signed task plan owns net-new tests (T017 contract module + T020 D5 consistency land in Wave C2; FR-006b/FR-012a/D5 are the mandated set) and the 26-task ceiling is a hard absorption boundary. Same disposition as waves B1/B2."
+  }
+}

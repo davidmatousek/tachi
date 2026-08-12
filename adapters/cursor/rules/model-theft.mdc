@@ -10,7 +10,7 @@ alwaysApply: false
 category: llm
 threat_class: LLM
 dfd_targets: [Data Store, Process]
-owasp_references: [OWASP LLM10:2025, OWASP LLM03:2025]
+owasp_references: [OWASP LLM06:2026, OWASP LLM04:2026]
 output_schema: ../../../schemas/finding.yaml
 ```
 
@@ -108,7 +108,7 @@ impact: "{LOW | MEDIUM | HIGH}"
 risk_level: "{computed from OWASP 3x3 matrix}"
 mitigation: "{recommended countermeasure}"
 references:
-  - "OWASP LLM10:2025"
+  - "OWASP LLM06:2026"
 dfd_element_type: "{Data Store | Process}"
 ```
 
@@ -126,7 +126,7 @@ impact: HIGH
 risk_level: High
 mitigation: "Restrict S3 bucket access to the model serving role and ML engineering team using least-privilege IAM policies. Enable S3 server-side encryption with customer-managed keys (SSE-KMS). Enable S3 access logging and configure alerts for unusual download patterns. Implement a model asset inventory that tracks all stored model artifacts and their access policies."
 references:
-  - "OWASP LLM10:2025"
+  - "OWASP LLM06:2026"
 dfd_element_type: "Data Store"
 ```
 
@@ -142,7 +142,7 @@ impact: HIGH
 risk_level: High
 mitigation: "Restrict API output to top-k predictions only (k <= 5) rather than full vocabulary logprobs. Implement per-API-key query budgets with alerts at threshold crossings. Deploy query pattern analysis that detects systematic probing (uniform input distributions, grid sampling patterns). Add watermarking to model outputs to enable downstream detection of extracted copies."
 references:
-  - "OWASP LLM10:2025"
+  - "OWASP LLM06:2026"
 dfd_element_type: "Process"
 ```
 
@@ -158,7 +158,7 @@ impact: LOW
 risk_level: Medium
 mitigation: "Implement generic error responses that do not expose model architecture details. Return standardized error codes (e.g., 'input too long', 'service unavailable') without framework-specific information. Route detailed error logging to internal monitoring systems only. Audit all API response schemas for unintended metadata disclosure."
 references:
-  - "OWASP LLM10:2025"
+  - "OWASP LLM06:2026"
   - "CWE-209"
 dfd_element_type: "Process"
 ```
@@ -175,8 +175,8 @@ Apply the OWASP 3x3 matrix to determine `risk_level` from `likelihood` and `impa
 
 ## References
 
-- **OWASP LLM10:2025 - Model Theft**: https://genai.owasp.org/llmrisk/llm10-model-theft/
-- **OWASP LLM03:2025 - Supply Chain Vulnerabilities**: https://genai.owasp.org/llmrisk/llm03-supply-chain-vulnerabilities/
+- **OWASP LLM06:2026 - Unbounded Consumption** (the standalone Model Theft entry was folded into this category at the 2025 edition): https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+- **OWASP LLM04:2026 - Supply Chain**: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 - **MITRE ATLAS - ML Model Access**: Tactic TA0044, Technique AML.T0044
 - **Tramer et al., 2016**: "Stealing Machine Learning Models via Prediction APIs" — foundational work on API-based model extraction
 - **CWE-200 - Exposure of Sensitive Information to an Unauthorized Actor**: Parent category covering model weight exfiltration, API-based extraction, and metadata leakage

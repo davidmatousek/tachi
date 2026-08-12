@@ -1619,7 +1619,7 @@ A complementary sub-pattern emerged across F-5 / F-6 / F-7: **single OWASP frame
 
 | Feature | OWASP Entry | Decomposition Axis | Host A | Host B |
 |---------|-------------|--------------------|--------|--------|
-| F-5     | LLM10:2025 Unbounded Consumption | Q1 SPLIT vector axis | DoS Cat 13 (latency) | model-theft Cat 11 (cost) |
+| F-5     | LLM06:2026 Unbounded Consumption | Q1 SPLIT vector axis | DoS Cat 13 (latency) | model-theft Cat 11 (cost) |
 | F-6     | ML06 AI Supply Chain | Two-facet axis (corpus-side vs artifact-side) | data-poisoning Cat 10 (corpus) | model-theft Cat 14 (artifact) |
 | F-7     | Mobile M8 Security Misconfiguration | Architectural-tell axis (privilege-gain vs accountability-loss) | privilege-escalation host (privilege gain) | repudiation host (accountability loss) |
 
@@ -1649,7 +1649,7 @@ After F-241, the detection-tier surface is **saturated at 11 hosts** populating 
 
 #### Same-Agent Enrichment Sub-Scope (F-292 / ADR-045)
 
-**Added at F-292**: The pattern extends post-saturation at **finer-grained same-agent scope**, where a single host agent is enriched with additional Pattern Categories within its existing signal class (vs F-3's single-agent-scope precedent that established the pattern at one-host fan-out). F-292 enriched `output-integrity` (host of F-1 / ADR-030) with Pattern Category 6 (Vector / Search-DSL Injection — OWASP LLM08:2025 + CWE-943) plus a Cat 2 keyword extension for package-manager / CI-workflow execution sinks plus a Cross-Agent Handoff Sinks navigational subsection.
+**Added at F-292**: The pattern extends post-saturation at **finer-grained same-agent scope**, where a single host agent is enriched with additional Pattern Categories within its existing signal class (vs F-3's single-agent-scope precedent that established the pattern at one-host fan-out). F-292 enriched `output-integrity` (host of F-1 / ADR-030) with Pattern Category 6 (Vector / Search-DSL Injection — OWASP LLM09:2026 + CWE-943) plus a Cat 2 keyword extension for package-manager / CI-workflow execution sinks plus a Cross-Agent Handoff Sinks navigational subsection.
 
 **Distinguishing characteristics of same-agent enrichment**:
 

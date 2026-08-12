@@ -20,7 +20,7 @@ has-source-attribution: true
 Validates that `tachi-agent-autonomy` agent emits `source_attribution` arrays
 with one `relationship: primary` entry plus ≥1 `relationship: related` CWE entry,
 mirroring the F-1/F-2/F-4 net-new agent precedent per ADR-037 D-3. Cites
-ASI-01/06/08/10 + LLM06 primaries across the four example findings per Architect
+ASI-01/06/08/10 + LLM03 primaries across the four example findings per Architect
 HIGH-A directive. ASI-09 autonomy-axis remains attributed here per F-4 ADR-033 D-2
 (communication-axis carved to `tachi-human-trust-exploitation`).
 

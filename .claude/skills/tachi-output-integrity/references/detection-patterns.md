@@ -9,9 +9,9 @@ last_updated: 2026-04-22
 
 ## Overview
 
-Detection vocabulary for OWASP LLM05:2025 Improper Output Handling. Loaded at detection start by `tachi-output-integrity` agent via a single `**MANDATORY**: Read` directive. Scope is the **encoding/sanitization signal class** — bytes, strings, and syntax primitives on LLM output flowing into downstream execution sinks. The catalog covers five pattern categories: Client-Side Execution Sinks (XSS/DOM), Server-Side Execution Sinks (SQLi/OS Command/Code), SSRF from LLM-Synthesized URLs, Template/Expression Injection, and Path Traversal + Unsafe File Writes.
+Detection vocabulary for OWASP LLM10:2026 Improper Output Handling (2025: LLM05). Loaded at detection start by `tachi-output-integrity` agent via a single `**MANDATORY**: Read` directive. Scope is the **encoding/sanitization signal class** — bytes, strings, and syntax primitives on LLM output flowing into downstream execution sinks. The catalog covers five pattern categories: Client-Side Execution Sinks (XSS/DOM), Server-Side Execution Sinks (SQLi/OS Command/Code), SSRF from LLM-Synthesized URLs, Template/Expression Injection, and Path Traversal + Unsafe File Writes.
 
-**Documentation-only OWASP bundle per ADR-030 Decision 4 and BLP-01 §4**: this agent documents both OWASP LLM05:2025 (Improper Output Handling, 2025 OWASP LLM Top 10) and OWASP ML09:2023 (Output Integrity Attack, 2023 OWASP ML Top 10) as the two framework references describing this underlying threat class. `source_attribution` citations on emitted findings carry OWASP LLM05 only (plus applicable CWEs) because ML09 is not present in the F-A1 catalog at `schemas/taxonomy/owasp.yaml`; adopters see both framework IDs in prose documentation without triggering F-A2 referential-integrity validation failures.
+**Documentation-only OWASP bundle per ADR-030 Decision 4 and BLP-01 §4**: this agent documents both OWASP LLM10:2026 (Improper Output Handling, 2026 OWASP LLM Top 10) and OWASP ML09:2023 (Output Integrity Attack, 2023 OWASP ML Top 10) as the two framework references describing this underlying threat class. `source_attribution` citations on emitted findings carry OWASP LLM10 only (plus applicable CWEs) because ML09 is not present in the F-A1 catalog at `schemas/taxonomy/owasp.yaml`; adopters see both framework IDs in prose documentation without triggering F-A2 referential-integrity validation failures.
 
 **Out-of-scope (forward-referenced to F-4 per ADR-030 Decision 2)**: psychology/linguistics primitives on human-facing LLM output — manipulative tone, fabricated authority, absence of uncertainty disclaimers. ASI09:2026 Human-Agent Trust Exploitation is owned by the future `trust-exploitation` agent. This agent MUST emit zero findings on architectures whose only output-handling concern is human-trust exploitation without a downstream-execution-sink pathway.
 
@@ -44,7 +44,7 @@ The structural downstream-sink indicator is a data flow from an LLM Process into
 
 LLM output rendered as HTML, JavaScript, or DOM-manipulating content in a user's browser without contextual output encoding, CSP protection, or safe DOM APIs. Execution context is **client-side**: the payload runs in the victim user's browser under the application's origin, with access to session cookies, CSRF tokens, and downstream user-authenticated APIs.
 
-**Primary citation**: `{taxonomy: owasp, id: LLM05, relationship: primary}`
+**Primary citation**: `{taxonomy: owasp, id: LLM10, relationship: primary}`
 **Related citation**: `{taxonomy: cwe, id: CWE-79, relationship: related}` (Improper Neutralization of Input During Web Page Generation)
 
 **Trigger keywords**: `LLM output`, `rendered HTML`, `model output to browser`
@@ -66,7 +66,7 @@ LLM output rendered as HTML, JavaScript, or DOM-manipulating content in a user's
 
 LLM output passed as SQL fragments, shell command components, or code evaluator input without parameterization, safe argument vectors, or sandboxed execution. Execution context is **server-side**: the payload runs on tachi's server (or the adopter's backend), with access to the database, filesystem, network, and process credentials the backend service holds.
 
-**Primary citation**: `{taxonomy: owasp, id: LLM05, relationship: primary}`
+**Primary citation**: `{taxonomy: owasp, id: LLM10, relationship: primary}`
 **Related citations**: `{taxonomy: cwe, id: CWE-89, relationship: related}` (SQL Injection), `{taxonomy: cwe, id: CWE-78, relationship: related}` (OS Command Injection), `{taxonomy: cwe, id: CWE-94, relationship: related}` (Code Injection)
 
 **Trigger keywords**: `model output to SQL`, `LLM-generated query`, `command construction`, `npm install`, `pip install`, `apt install`, `brew install`, `gh workflow`, `actions/`, `uses:`, `package-lock`, `requirements.txt`
@@ -106,7 +106,7 @@ LLM output passed as SQL fragments, shell command components, or code evaluator 
 
 LLM output used to construct outbound HTTP requests without URL allowlisting, scheme validation, or egress firewall protection. An attacker prompts the model to synthesize a URL targeting internal services (cloud metadata endpoints, internal admin APIs, RFC 1918 private IPs) that the server-side HTTP client then fetches with server-side credentials and network reach.
 
-**Primary citation**: `{taxonomy: owasp, id: LLM05, relationship: primary}`
+**Primary citation**: `{taxonomy: owasp, id: LLM10, relationship: primary}`
 **Related citation**: `{taxonomy: cwe, id: CWE-918, relationship: related}` (Server-Side Request Forgery)
 
 **Trigger keywords**: `outbound HTTP from agent`, `LLM-synthesized URL`
@@ -128,7 +128,7 @@ LLM output used to construct outbound HTTP requests without URL allowlisting, sc
 
 LLM output interpolated into a server-side template engine (Jinja2, ERB, Thymeleaf, Freemarker) in a context where the template engine treats the output as an expression rather than a literal string. Enables arbitrary code execution via the template engine's expression language, even when the surrounding template is static.
 
-**Primary citation**: `{taxonomy: owasp, id: LLM05, relationship: primary}`
+**Primary citation**: `{taxonomy: owasp, id: LLM10, relationship: primary}`
 **Related citation**: `{taxonomy: cwe, id: CWE-94, relationship: related}` (Improper Control of Generation of Code — Code Injection; substituting for absent CWE-1336 Template Injection per FR-007 F-A1 catalog constraint)
 
 **Trigger keywords**: `template engine`
@@ -150,7 +150,7 @@ LLM output interpolated into a server-side template engine (Jinja2, ERB, Thymele
 
 LLM output used to construct filesystem paths without canonicalization or allowlist directory enforcement. An attacker prompts the model to emit relative-path sequences (`../../etc/passwd`) or absolute paths into writable system directories, causing the server-side file operation to escape the intended output directory.
 
-**Primary citation**: `{taxonomy: owasp, id: LLM05, relationship: primary}`
+**Primary citation**: `{taxonomy: owasp, id: LLM10, relationship: primary}`
 **Related citation**: `{taxonomy: cwe, id: CWE-22, relationship: related}` (Improper Limitation of a Pathname to a Restricted Directory — Path Traversal; substituting for absent CWE-73 External Control of File Name or Path per FR-007 F-A1 catalog constraint)
 
 **Trigger keywords**: `file path from model`
@@ -172,7 +172,7 @@ LLM output used to construct filesystem paths without canonicalization or allowl
 
 LLM-synthesized filters for vector databases (Qdrant, Pinecone) and structured search DSLs (Elasticsearch, hybrid-search backends) gate tenant and RBAC scoping on retrieval. When the LLM emits filter clauses without server-side composition, the resulting query can bypass the tenant-scoping clause — functionally equivalent to SQL injection across a tenant boundary. Execution context is server-side: the query runs against the vector DB or search backend with the service account's reach across all tenants whose data is not explicitly excluded.
 
-**Primary citation**: `{taxonomy: owasp, id: LLM08, relationship: primary}` (Vector and Embedding Weaknesses; cross-anchor `{taxonomy: owasp, id: LLM05, relationship: related}` for Improper Output Handling)
+**Primary citation**: `{taxonomy: owasp, id: LLM09, relationship: primary}` (Vector and Embedding Weaknesses; cross-anchor `{taxonomy: owasp, id: LLM10, relationship: related}` for Improper Output Handling)
 **Related citations**: `{taxonomy: cwe, id: CWE-943, relationship: related}` (Improper Neutralization of Special Elements in Data Query Logic — primary CWE anchor for non-SQL query-language injection); `{taxonomy: cwe, id: CWE-89, relationship: related}` (SQL Injection — taxonomic neighbor); `{taxonomy: cwe, id: CWE-94, relationship: related}` (Code Injection — when filter is templated as expression)
 
 **Trigger keywords**: `qdrant`, `pinecone`, `metadata filter`, `must_not`, `must` (in vector-filter context), `tenant_id`, `namespace`, `embedding query`, `hybrid search`, `elasticsearch DSL`, `vector index`, `RAG retrieval filter`
@@ -193,7 +193,7 @@ LLM-synthesized filters for vector databases (Qdrant, Pinecone) and structured s
 - **Mitigation** (at least one required; defense-in-depth recommends all three layered):
   - **Pre-retrieval filtering / server-side filter composition**: the application composes the tenant_id clause server-side before the filter reaches Pinecone or Qdrant. The LLM-emitted filter is wrapped, not interpreted as authoritative. Pattern is named in Microsoft Azure secure-RAG and AWS Bedrock + OpenSearch JWT-scoped retrieval guidance.
   - **Base filter that cannot be overridden** (Mavik Labs 2026 / Authzed pattern): middleware injects the `tenant_id` pin; the LLM-emitted filter is composed with `AND` against the pin and raises `SecurityError` if the LLM-emitted filter attempts to override the pin.
-  - **Namespace-per-tenant** (Pinecone Silo model — strongest control per OWASP LLM08:2025): each tenant has a dedicated Pinecone namespace; the LLM-emitted filter never crosses tenant boundaries because the namespace is fixed at the application layer before the query runs. Pool model (shared namespace with metadata-filter scoping) is acceptable but weaker than Silo.
+  - **Namespace-per-tenant** (Pinecone Silo model — strongest control per OWASP LLM09:2026): each tenant has a dedicated Pinecone namespace; the LLM-emitted filter never crosses tenant boundaries because the namespace is fixed at the application layer before the query runs. Pool model (shared namespace with metadata-filter scoping) is acceptable but weaker than Silo.
   - **Allowlisted clause keys**: the LLM-emitted filter is parsed and rejected if any clause key is not in the application's allowlist. Tenant context is extracted from a validated JWT, never from request parameters or LLM output.
 
 ## Cross-Agent Handoff Sinks (Navigational — NO emission from `output-integrity`)
@@ -210,7 +210,7 @@ The `tool-abuse` agent owns the surface where LLM-synthesized strings become par
 
 Cross-link target: `.claude/agents/tachi/data-poisoning.md` (OWASP ASI06 Memory & Context Poisoning).
 
-The `data-poisoning` agent owns the surface where LLM-synthesized content gets persisted to a durable knowledge store (RAG corpus, agent memory, knowledge base) that future agent decisions will consult. The signal class is **persistent integrity violation of agent durable state**, distinct from the encoding/sanitization signal at the output-handling moment. OWASP ASI06 Memory & Context Poisoning is the canonical anchor (NOT OWASP LLM04, which covers training-time data poisoning — a distinct surface). Adopters reviewing an architecture that promotes LLM output into a durable memory store should expect to see `data-poisoning` findings on that handoff, not `output-integrity` findings.
+The `data-poisoning` agent owns the surface where LLM-synthesized content gets persisted to a durable knowledge store (RAG corpus, agent memory, knowledge base) that future agent decisions will consult. The signal class is **persistent integrity violation of agent durable state**, distinct from the encoding/sanitization signal at the output-handling moment. OWASP ASI06 Memory & Context Poisoning is the canonical anchor (NOT OWASP LLM05, which covers training-time data poisoning — a distinct surface). Adopters reviewing an architecture that promotes LLM output into a durable memory store should expect to see `data-poisoning` findings on that handoff, not `output-integrity` findings.
 
 ### Mitigation Pattern: Memory-Promotion Rules
 
@@ -264,7 +264,7 @@ memory_promotion_rules:
 **Distinguishing prose**: This mitigation pattern lives in `output-integrity`'s navigational surface, but the durable-memory-write *detection* is owned by `data-poisoning`. Adopters implementing the rules should consult `data-poisoning` for the detection-side workflow and `output-integrity` for the output-handling-side framing.
 
 **Industry anchors**:
-- OWASP ASI06 Memory & Context Poisoning (NOT OWASP LLM04 — LLM04 is training-time data poisoning, a distinct surface)
+- OWASP ASI06 Memory & Context Poisoning (NOT OWASP LLM05 — LLM05 is training-time data poisoning, a distinct surface)
 - OWASP Agent Memory Guard project
 - A-MEMGUARD (arXiv 2510.02373) — "staging buffer with validation"
 - MemoryGraft (arXiv 2512.16962) — persistent memory poisoning attack

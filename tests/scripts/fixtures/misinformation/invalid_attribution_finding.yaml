@@ -31,7 +31,7 @@ component: "LLM Clinical Summarizer"
 threat: "Ungrounded clinical recommendation from LLM summarizer (fictional example, invalid-attribution variant): the Process component emits factual clinical claims without declared RAG grounding. This fixture exists SOLELY to exercise the referential-integrity rejection path on the source_attribution block — the threat narrative mirrors the valid fixture for shape consistency, but the citation deliberately points at an absent catalog entry."
 mitigation: "Mandatory RAG grounding with per-claim source attribution; reject responses containing unsupported factual claims; require human-in-the-loop confirmation for any clinical recommendation. (Mitigation content is intentionally valid — the invalidity is confined to the source_attribution block below.)"
 references:
-  - "OWASP LLM09:2025 Misinformation"
+  - "OWASP LLM07:2026 Misinformation"
 source_attribution:
   - taxonomy: mitre-atlas
     id: AML.T0042

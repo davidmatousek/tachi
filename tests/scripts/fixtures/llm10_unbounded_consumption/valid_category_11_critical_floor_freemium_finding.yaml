@@ -18,8 +18,8 @@ impact: HIGH
 risk_level: Critical
 mitigation: "Per-tenant token budget with hard-cap enforcement at the API gateway (separate budget per freemium / paid tier; freemium budget set well below cost-amplification attack threshold). Per-tenant context-window cost reconciliation computed at-query-time (synchronous, before inference begins). Cost-per-query p99 alerting tied to per-tenant billing attribution. Denial-of-wallet anomaly detection via cost-velocity monitoring across 5-minute, 1-hour, 24-hour windows. Automated tenant suspension on budget breach (no manual approval delay). Per-tenant billing attribution computed at-query-time (NOT asynchronously via batch reconciliation). Account-creation friction for freemium tier (CAPTCHA + email verification + per-IP rate limit) to prevent account-spam attacks that bypass per-tenant budgets. Cf. MITRE ATT&CK T1496 Resource Hijacking — text-only cross-reference (NOT in references; T1496 not catalog-resolvable in schemas/taxonomy/mitre-attack.yaml)."
 references:
-  - "OWASP LLM10:2025 — Unbounded Consumption"
-  - "OWASP LLM03:2025 — Supply Chain"
+  - "OWASP LLM06:2026 — Unbounded Consumption"
+  - "OWASP LLM04:2026 — Supply Chain"
 maestro_layer: "L7"
 agentic_pattern: "none"
 source_attribution: []

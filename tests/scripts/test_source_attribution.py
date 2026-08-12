@@ -34,7 +34,7 @@ def test_round_trip_multi_record():
 
     records = finding["source_attribution"]
     assert len(records) == 3
-    assert records[0] == {"taxonomy": "owasp", "id": "LLM05", "relationship": "primary"}
+    assert records[0] == {"taxonomy": "owasp", "id": "LLM10", "relationship": "primary"}
     assert records[1] == {"taxonomy": "cwe", "id": "CWE-116", "relationship": "primary"}
     assert records[2] == {"taxonomy": "mitre-atlas", "id": "AML.T0051", "relationship": "primary"}
 

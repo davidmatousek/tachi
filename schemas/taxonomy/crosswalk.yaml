@@ -36,7 +36,7 @@
     id: CWE-77
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
@@ -46,37 +46,37 @@
     id: CWE-200
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
-
-- source:
-    taxonomy: owasp
-    id: LLM03
-  target:
-    taxonomy: cwe
-    id: CWE-1395
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
     id: LLM04
   target:
     taxonomy: cwe
-    id: CWE-20
+    id: CWE-1395
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm042025-data-and-model-poisoning/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
     id: LLM05
   target:
     taxonomy: cwe
+    id: CWE-20
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+
+- source:
+    taxonomy: owasp
+    id: LLM10
+  target:
+    taxonomy: cwe
     id: CWE-79
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
@@ -942,7 +942,7 @@
     id: CWE-20
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
@@ -952,7 +952,7 @@
     id: CWE-94
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
@@ -962,7 +962,7 @@
     id: CWE-1427
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
@@ -972,7 +972,7 @@
     id: CWE-201
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
@@ -982,7 +982,7 @@
     id: CWE-538
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
@@ -992,177 +992,237 @@
     id: CWE-359
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM03
+    id: LLM04
   target:
     taxonomy: cwe
     id: CWE-1357
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM03
+    id: LLM04
   target:
     taxonomy: cwe
     id: CWE-494
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+
+- source:
+    taxonomy: owasp
+    id: LLM04
+  target:
+    taxonomy: cwe
+    id: CWE-829
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+
+- source:
+    taxonomy: owasp
+    id: LLM05
+  target:
+    taxonomy: cwe
+    id: CWE-502
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+
+- source:
+    taxonomy: owasp
+    id: LLM05
+  target:
+    taxonomy: cwe
+    id: CWE-915
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+
+- source:
+    taxonomy: owasp
+    id: LLM05
+  target:
+    taxonomy: cwe
+    id: CWE-1395
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+
+- source:
+    taxonomy: owasp
+    id: LLM10
+  target:
+    taxonomy: cwe
+    id: CWE-89
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+
+- source:
+    taxonomy: owasp
+    id: LLM10
+  target:
+    taxonomy: cwe
+    id: CWE-116
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+
+- source:
+    taxonomy: owasp
+    id: LLM10
+  target:
+    taxonomy: cwe
+    id: CWE-78
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+
+- source:
+    taxonomy: owasp
+    id: LLM10
+  target:
+    taxonomy: cwe
+    id: CWE-601
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
     id: LLM03
   target:
     taxonomy: cwe
-    id: CWE-829
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
-
-- source:
-    taxonomy: owasp
-    id: LLM04
-  target:
-    taxonomy: cwe
-    id: CWE-502
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm042025-data-and-model-poisoning/
-
-- source:
-    taxonomy: owasp
-    id: LLM04
-  target:
-    taxonomy: cwe
-    id: CWE-915
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm042025-data-and-model-poisoning/
-
-- source:
-    taxonomy: owasp
-    id: LLM04
-  target:
-    taxonomy: cwe
-    id: CWE-1395
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm042025-data-and-model-poisoning/
-
-- source:
-    taxonomy: owasp
-    id: LLM05
-  target:
-    taxonomy: cwe
-    id: CWE-89
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
-
-- source:
-    taxonomy: owasp
-    id: LLM05
-  target:
-    taxonomy: cwe
-    id: CWE-116
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
-
-- source:
-    taxonomy: owasp
-    id: LLM05
-  target:
-    taxonomy: cwe
-    id: CWE-78
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
-
-- source:
-    taxonomy: owasp
-    id: LLM05
-  target:
-    taxonomy: cwe
-    id: CWE-601
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
-
-- source:
-    taxonomy: owasp
-    id: LLM06
-  target:
-    taxonomy: cwe
     id: CWE-250
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM06
+    id: LLM03
   target:
     taxonomy: cwe
     id: CWE-269
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM06
+    id: LLM03
   target:
     taxonomy: cwe
     id: CWE-285
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM06
+    id: LLM03
   target:
     taxonomy: cwe
     id: CWE-732
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM07
+    id: LLM08
   target:
     taxonomy: cwe
     id: CWE-200
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM07
+    id: LLM08
   target:
     taxonomy: cwe
     id: CWE-538
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM07
+    id: LLM08
   target:
     taxonomy: cwe
     id: CWE-540
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+
+- source:
+    taxonomy: owasp
+    id: LLM08
+  target:
+    taxonomy: cwe
+    id: CWE-1426
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+
+- source:
+    taxonomy: owasp
+    id: LLM09
+  target:
+    taxonomy: cwe
+    id: CWE-200
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+
+- source:
+    taxonomy: owasp
+    id: LLM09
+  target:
+    taxonomy: cwe
+    id: CWE-209
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+
+- source:
+    taxonomy: owasp
+    id: LLM09
+  target:
+    taxonomy: cwe
+    id: CWE-285
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+
+- source:
+    taxonomy: owasp
+    id: LLM09
+  target:
+    taxonomy: cwe
+    id: CWE-639
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+
+- source:
+    taxonomy: owasp
+    id: LLM07
+  target:
+    taxonomy: cwe
+    id: CWE-345
+  edge_type: primary
+  confidence: high
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
@@ -1171,118 +1231,58 @@
     taxonomy: cwe
     id: CWE-1426
   edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/
-
-- source:
-    taxonomy: owasp
-    id: LLM08
-  target:
-    taxonomy: cwe
-    id: CWE-200
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
-
-- source:
-    taxonomy: owasp
-    id: LLM08
-  target:
-    taxonomy: cwe
-    id: CWE-209
-  edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM08
-  target:
-    taxonomy: cwe
-    id: CWE-285
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
-
-- source:
-    taxonomy: owasp
-    id: LLM08
-  target:
-    taxonomy: cwe
-    id: CWE-639
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
-
-- source:
-    taxonomy: owasp
-    id: LLM09
-  target:
-    taxonomy: cwe
-    id: CWE-345
-  edge_type: primary
-  confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm092025-misinformation/
-
-- source:
-    taxonomy: owasp
-    id: LLM09
-  target:
-    taxonomy: cwe
-    id: CWE-1426
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm092025-misinformation/
-
-- source:
-    taxonomy: owasp
-    id: LLM09
+    id: LLM07
   target:
     taxonomy: cwe
     id: CWE-20
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm092025-misinformation/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: cwe
     id: CWE-400
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: cwe
     id: CWE-770
   edge_type: primary
   confidence: high
-  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: cwe
     id: CWE-799
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: cwe
     id: CWE-918
   edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/
+  confidence: low
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 # ─── Batch 2 (cont.): OWASP API Top 10:2023 ↔ CWE (10 edges) ────────────────────
 # Source: OWASP API Security Top 10:2023 per-category pages. Inferred CWE mappings
@@ -2422,7 +2422,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM04
+    id: LLM05
   target:
     taxonomy: mitre-atlas
     id: AML.T0020
@@ -2432,7 +2432,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM04
+    id: LLM05
   target:
     taxonomy: mitre-atlas
     id: AML.T0018
@@ -2442,7 +2442,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM03
+    id: LLM04
   target:
     taxonomy: mitre-atlas
     id: AML.T0010
@@ -2452,17 +2452,17 @@
 
 - source:
     taxonomy: owasp
-    id: LLM03
+    id: LLM04
   target:
     taxonomy: mitre-attack
     id: T1195
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM06
+    id: LLM03
   target:
     taxonomy: mitre-atlas
     id: AML.T0061
@@ -2472,7 +2472,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM06
+    id: LLM03
   target:
     taxonomy: mitre-attack
     id: T1548
@@ -2482,7 +2482,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM07
+    id: LLM08
   target:
     taxonomy: mitre-atlas
     id: AML.T0057
@@ -2492,7 +2492,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: mitre-attack
     id: T1499
@@ -2502,7 +2502,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: mitre-attack
     id: T1498
@@ -4520,7 +4520,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM05
+    id: LLM10
   target:
     taxonomy: mitre-atlas
     id: AML.T0051
@@ -4530,7 +4530,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM05
+    id: LLM10
   target:
     taxonomy: mitre-atlas
     id: AML.T0060
@@ -4540,7 +4540,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM08
+    id: LLM09
   target:
     taxonomy: mitre-atlas
     id: AML.T0057
@@ -4550,7 +4550,7 @@
 
 - source:
     taxonomy: owasp
-    id: LLM08
+    id: LLM09
   target:
     taxonomy: mitre-atlas
     id: AML.T0051
@@ -5356,7 +5356,7 @@
     id: CWE-79
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 - source:
     taxonomy: owasp
     id: LLM01
@@ -5365,7 +5365,7 @@
     id: CWE-116
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 - source:
     taxonomy: owasp
     id: LLM02
@@ -5374,7 +5374,7 @@
     id: CWE-532
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 - source:
     taxonomy: owasp
     id: LLM02
@@ -5383,43 +5383,43 @@
     id: CWE-209
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
-- source:
-    taxonomy: owasp
-    id: LLM05
-  target:
-    taxonomy: cwe
-    id: CWE-94
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/
-- source:
-    taxonomy: owasp
-    id: LLM06
-  target:
-    taxonomy: cwe
-    id: CWE-284
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
-- source:
-    taxonomy: owasp
-    id: LLM08
-  target:
-    taxonomy: cwe
-    id: CWE-287
-  edge_type: primary
-  confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 - source:
     taxonomy: owasp
     id: LLM10
   target:
     taxonomy: cwe
+    id: CWE-94
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+- source:
+    taxonomy: owasp
+    id: LLM03
+  target:
+    taxonomy: cwe
+    id: CWE-284
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+- source:
+    taxonomy: owasp
+    id: LLM09
+  target:
+    taxonomy: cwe
+    id: CWE-287
+  edge_type: primary
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+- source:
+    taxonomy: owasp
+    id: LLM06
+  target:
+    taxonomy: cwe
     id: CWE-1333
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 - source:
     taxonomy: owasp
     id: ASI01
@@ -5592,7 +5592,7 @@
     id: T1005
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 - source:
     taxonomy: owasp
     id: LLM02
@@ -5601,25 +5601,25 @@
     id: T1213
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 - source:
     taxonomy: owasp
-    id: LLM03
+    id: LLM04
   target:
     taxonomy: mitre-attack
     id: T1195.001
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 - source:
     taxonomy: owasp
-    id: LLM03
+    id: LLM04
   target:
     taxonomy: mitre-attack
     id: T1195.002
   edge_type: primary
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm032025-supply-chain/
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 # --- mitre-attack → cwe (18 edges, curator semantic alignment from ATT&CK technique pages) ---
 - source:
@@ -6242,7 +6242,7 @@
     id: AML.T0054
   edge_type: related
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm01-prompt-injection/ (Related Frameworks AML.T0054)
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
@@ -6252,67 +6252,67 @@
     id: AML.T0024
   edge_type: related
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/ (Related Frameworks AML.T0024)
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
+
+- source:
+    taxonomy: owasp
+    id: LLM08
+  target:
+    taxonomy: mitre-atlas
+    id: AML.T0051
+  edge_type: related
+  confidence: medium
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
     id: LLM07
   target:
     taxonomy: mitre-atlas
-    id: AML.T0051
-  edge_type: related
-  confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/ (Related Frameworks AML.T0051)
-
-- source:
-    taxonomy: owasp
-    id: LLM09
-  target:
-    taxonomy: mitre-atlas
     id: AML.T0048
   edge_type: related
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm092025-misinformation/ (Related Frameworks AML.T0048)
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: mitre-atlas
     id: AML.T0024
   edge_type: related
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/ (Related Frameworks AML.T0024)
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: mitre-atlas
     id: AML.T0025
   edge_type: related
-  confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/ (Related Frameworks AML.T0025)
+  confidence: low
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: mitre-atlas
     id: AML.T0029
   edge_type: related
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/ (Related Frameworks AML.T0029)
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 - source:
     taxonomy: owasp
-    id: LLM10
+    id: LLM06
   target:
     taxonomy: mitre-atlas
     id: AML.T0034
   edge_type: related
   confidence: medium
-  citation: https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/ (Related Frameworks AML.T0034)
+  citation: https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/
 
 # ─── F-184: NIST Surface C verbatim transcription (15 edges, BLP-05 Wave 2) ────
 # Source: .claude/skills/tachi-shared/references/nist-ai-rmf-mapping.md Surface C

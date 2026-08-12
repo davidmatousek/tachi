@@ -15,8 +15,8 @@ impact: HIGH
 risk_level: Critical
 mitigation: "Per-query output-token cap tuned to realistic response-length p99 (e.g., 4k tokens — well above legitimate p95 but below catastrophic recursive expansion). Recursive-prompt depth limit at the inference-runtime layer (max chain-of-thought iterations, max self-reference depth). Output-amplification-ratio monitoring with anomaly alerting on per-query velocity spikes (output-token / input-token ratio > 100x flagged). Cost-per-query p99 alerting tied to per-tenant billing attribution (cost-velocity monitoring). Per-tenant cost-amplification anomaly detection. Cf. MITRE ATT&CK T1496 Resource Hijacking — text-only cross-reference (NOT in references; T1496 not catalog-resolvable in schemas/taxonomy/mitre-attack.yaml)."
 references:
-  - "OWASP LLM10:2025 — Unbounded Consumption"
-  - "OWASP LLM03:2025 — Supply Chain"
+  - "OWASP LLM06:2026 — Unbounded Consumption"
+  - "OWASP LLM04:2026 — Supply Chain"
 maestro_layer: "L7"
 agentic_pattern: "none"
 source_attribution: []

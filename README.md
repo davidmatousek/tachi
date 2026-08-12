@@ -21,7 +21,7 @@ has a tachi detection agent.
 
 | Framework | Coverage | Anchor |
 |---|---|---|
-| OWASP LLM Top 10 (2025) | 10/10 | [LLM 2025](https://genai.owasp.org/resource/owasp-top-10-for-llm-applications-2025/) |
+| OWASP LLM Top 10 (2026) | 10/10 | [LLM 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/) |
 | OWASP Agentic Top 10 (2026) | 10/10 | [Agentic 2026](https://genai.owasp.org/2025/12/09/owasp-top-10-for-agentic-applications-the-benchmark-for-agentic-security-in-the-age-of-autonomous-ai/) |
 | OWASP ML Security Top 10 (2023) | 10/10 | [ML 2023](https://owasp.org/www-project-machine-learning-security-top-10/) |
 | OWASP Mobile Top 10 (2024) | 10/10 | [Mobile 2024](https://owasp.org/www-project-mobile-top-10/) |
@@ -45,7 +45,7 @@ It runs as a new scanning column alongside SAST / SCA / Secrets, with two views 
 One command (`/tachi.threat-model`) dispatches 14 specialized agents and produces a complete threat model. Five post-pipeline commands enrich the results: `/tachi.risk-score` for quantitative scoring, `/tachi.compensating-controls` for codebase control analysis, `/tachi.infographic` for visual risk diagrams, `/tachi.security-report` for a professional PDF assessment booklet, and `/tachi.architecture` for automated architecture description generation.
 
 - **14 threat categories**: 6 STRIDE + 5 LLM-specific + 3 Agentic
-- **OWASP coverage**: 50/50 across five frameworks (LLM Top 10:2025, Agentic Top 10:2026, ML Top 10:2023, Mobile Top 10:2024, Web/API Top 10:2021/2023)
+- **OWASP coverage**: 50/50 across five frameworks (LLM Top 10:2026, Agentic Top 10:2026, ML Top 10:2023, Mobile Top 10:2024, Web/API Top 10:2021/2023)
 - **MAESTRO layer mapping**: CSA seven-layer taxonomy (L1-L7) for agentic AI threat classification
 - **5 input formats**: Mermaid, free-text, ASCII, PlantUML, C4
 - **6 commands, 20+ artifacts**: structured findings, SARIF, narrative report, attack trees, risk scores, compensating controls, 5 infographic templates, PDF security report
@@ -391,7 +391,7 @@ tachi ships at full coverage across five OWASP frameworks (50/50 items covered).
 
 | Framework | Items Covered | Detection Surface |
 |-----------|---------------|-------------------|
-| OWASP Top 10 for LLM Applications 2025 | 10/10 | LLM agents (`prompt-injection`, `data-poisoning`, `model-theft`, `output-integrity`, `misinformation`) |
+| OWASP Top 10 for LLM Applications 2026 | 10/10 | LLM agents (`prompt-injection`, `data-poisoning`, `model-theft`, `output-integrity`, `misinformation`) |
 | OWASP Agentic Top 10 2026 | 10/10 | Agentic agents (`agent-autonomy`, `tool-abuse`, `human-trust-exploitation`) |
 | OWASP ML Top 10 2023 | 10/10 | `tampering` + `data-poisoning` + `model-theft` enrichment for predictive ML |
 | OWASP Mobile Top 10 2024 | 10/10 | `spoofing` + `tampering` + `info-disclosure` + `privilege-escalation` + `repudiation` enrichment for mobile |

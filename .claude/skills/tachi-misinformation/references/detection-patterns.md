@@ -1,6 +1,6 @@
 ---
 name: misinformation-detection-patterns
-description: "Pattern catalog for OWASP LLM09:2025 misinformation detection — factual-integrity signal class (grounding, verification, HITL, calibration)."
+description: "Pattern catalog for OWASP LLM07:2026 misinformation detection — factual-integrity signal class (grounding, verification, HITL, calibration)."
 consumers: [misinformation]
 schema_version: "1.7"
 ---
@@ -9,11 +9,11 @@ schema_version: "1.7"
 
 ## Overview
 
-Detection vocabulary for OWASP LLM09:2025 Misinformation. Loaded at detection start by the `misinformation` agent via a single `**MANDATORY**: Read` directive. Scope is the **factual-integrity signal class** — grounding, verification, human-in-the-loop (HITL), and calibration primitives on LLM Process output that emits factual content to human consumers or decision-cascade consumers. This is the third and final LLM-tier signal class under the Heuristic A taxonomy formalized in ADR-031: not input-side (that is `prompt-injection` — attacker-controlled input primitives, machine-attacker), not output-side execution-sink sanitization (that is `output-integrity` per ADR-030 Decision 1 — machine-victim, bytes/strings/syntax primitives), but factual-integrity (human-victim and decision-cascade-victim, factual-content primitives).
+Detection vocabulary for OWASP LLM07:2026 Misinformation (2025: LLM09). Loaded at detection start by the `misinformation` agent via a single `**MANDATORY**: Read` directive. Scope is the **factual-integrity signal class** — grounding, verification, human-in-the-loop (HITL), and calibration primitives on LLM Process output that emits factual content to human consumers or decision-cascade consumers. This is the third and final LLM-tier signal class under the Heuristic A taxonomy formalized in ADR-031: not input-side (that is `prompt-injection` — attacker-controlled input primitives, machine-attacker), not output-side execution-sink sanitization (that is `output-integrity` per ADR-030 Decision 1 — machine-victim, bytes/strings/syntax primitives), but factual-integrity (human-victim and decision-cascade-victim, factual-content primitives).
 
-The catalog covers five pattern categories: Ungrounded Factual Emission, Citation Fabrication, Overreliance / Missing HITL on Decision-Critical Output, Retrieval-Grounding Gap, and Confidence-Calibration Absence. Per ADR-031 Decision 4, the catalog is bounded at five categories; the "Model-Specific Hallucination" and "Feedback-Loop Overreliance" candidates are deferred to catalog-enrichment follow-on features (F-2.1 or F-3/F-6 scope) because (a) the model-specific candidate couples to model-family taxonomies that age poorly and (b) the feedback-loop candidate overlaps with F-3 ASI07 inter-agent-communication scope. Per FR-017, the five categories align with the three OWASP LLM09:2025 sub-classes (factual-emission, citation-integrity, decision-overreliance) plus two architectural-grounding sub-classes (retrieval-grounding, calibration) that complete the LLM09 surface.
+The catalog covers five pattern categories: Ungrounded Factual Emission, Citation Fabrication, Overreliance / Missing HITL on Decision-Critical Output, Retrieval-Grounding Gap, and Confidence-Calibration Absence. Per ADR-031 Decision 4, the catalog is bounded at five categories; the "Model-Specific Hallucination" and "Feedback-Loop Overreliance" candidates are deferred to catalog-enrichment follow-on features (F-2.1 or F-3/F-6 scope) because (a) the model-specific candidate couples to model-family taxonomies that age poorly and (b) the feedback-loop candidate overlaps with F-3 ASI07 inter-agent-communication scope. Per FR-017, the five categories align with the three OWASP LLM07:2026 sub-classes (factual-emission, citation-integrity, decision-overreliance) plus two architectural-grounding sub-classes (retrieval-grounding, calibration) that complete the LLM07 surface.
 
-**Prose-only citations** (per PRD FR-5 F-A1 catalog-absent status, referenced in pattern Primary Sources but NOT in emitted `source_attribution` arrays): `MITRE ATLAS AML.T0042 Verify Attack` (adversarial-grounding context — confirmed absent from `schemas/taxonomy/mitre-atlas.yaml`); `NIST AI 600-1 §2.4 Hallucination` (section-level IDs not populated in the curated NIST catalog). These remain semantic peers of OWASP LLM09:2025 for adopter situational awareness without triggering F-A2 referential-integrity validator rejection on emitted findings.
+**Prose-only citations** (per PRD FR-5 F-A1 catalog-absent status, referenced in pattern Primary Sources but NOT in emitted `source_attribution` arrays): `MITRE ATLAS AML.T0042 Verify Attack` (adversarial-grounding context — confirmed absent from `schemas/taxonomy/mitre-atlas.yaml`); `NIST AI 600-1 §2.4 Hallucination` (section-level IDs not populated in the curated NIST catalog). These remain semantic peers of OWASP LLM07:2026 for adopter situational awareness without triggering F-A2 referential-integrity validator rejection on emitted findings.
 
 ## Detection Scope
 
@@ -46,7 +46,7 @@ This agent activates when a DFD Process component's name or description matches 
 
 An LLM Process emits factual claims (diagnoses, recommendations, summaries of external facts, comparative judgments) without a declared grounding mechanism — no RAG layer supplying retrieved source documents, no citation verification against a corpus, no per-claim source attribution. Claims are generated from parametric memory alone and therefore are susceptible to hallucination drift, stale knowledge, and domain-mismatch errors.
 
-**Primary citation**: `{taxonomy: owasp, id: LLM09, relationship: primary}`
+**Primary citation**: `{taxonomy: owasp, id: LLM07, relationship: primary}`
 **Related citation**: `{taxonomy: cwe, id: CWE-345, relationship: related}` (Insufficient Verification of Data Authenticity)
 **Prose-only peers**: `MITRE ATLAS AML.T0042 Verify Attack` (catalog-absent); `NIST AI 600-1 §2.4 Hallucination` (section IDs not catalogued)
 
@@ -72,9 +72,9 @@ An LLM Process emits factual claims (diagnoses, recommendations, summaries of ex
 
 ### Category 2 — Citation Fabrication
 
-An LLM Process runs a RAG pipeline or declares grounding, but does NOT verify that emitted citations actually correspond to retrieved source URIs. The model is known to emit syntactically plausible but non-existent case citations, fabricated DOIs, invented study titles, or misattributed quotes — a decoder behavior orthogonal to retrieval quality. A retrieval layer without output-time citation verification is insufficient against the citation-fabrication sub-class of LLM09.
+An LLM Process runs a RAG pipeline or declares grounding, but does NOT verify that emitted citations actually correspond to retrieved source URIs. The model is known to emit syntactically plausible but non-existent case citations, fabricated DOIs, invented study titles, or misattributed quotes — a decoder behavior orthogonal to retrieval quality. A retrieval layer without output-time citation verification is insufficient against the citation-fabrication sub-class of LLM07.
 
-**Primary citation**: `{taxonomy: owasp, id: LLM09, relationship: primary}`
+**Primary citation**: `{taxonomy: owasp, id: LLM07, relationship: primary}`
 **Related citation**: `{taxonomy: cwe, id: CWE-345, relationship: related}` (Insufficient Verification of Data Authenticity)
 **Prose-only peers**: `MITRE ATLAS AML.T0042 Verify Attack` (catalog-absent); `NIST AI 600-1 §2.4 Hallucination` (section IDs not catalogued)
 
@@ -100,9 +100,9 @@ An LLM Process runs a RAG pipeline or declares grounding, but does NOT verify th
 
 ### Category 3 — Overreliance / Missing HITL on Decision-Critical Output
 
-An LLM Process emits output that drives automated consequential decisions — approve/deny rulings, triage/classification decisions, content-moderation actions, medical-triage recommendations, financial-advisory recommendations — without a human-in-the-loop (HITL) review gate, risk-threshold-based escalation, or secondary-verification mechanism. Per OWASP LLM09:2025 overreliance sub-class and CWE-223 (Omission of Security-relevant Information), the absence of HITL on high-stakes decision flows omits a required mitigation against factual-integrity failures and undisclosed-AI provenance.
+An LLM Process emits output that drives automated consequential decisions — approve/deny rulings, triage/classification decisions, content-moderation actions, medical-triage recommendations, financial-advisory recommendations — without a human-in-the-loop (HITL) review gate, risk-threshold-based escalation, or secondary-verification mechanism. Per OWASP LLM07:2026 overreliance sub-class and CWE-223 (Omission of Security-relevant Information), the absence of HITL on high-stakes decision flows omits a required mitigation against factual-integrity failures and undisclosed-AI provenance.
 
-**Primary citation**: `{taxonomy: owasp, id: LLM09, relationship: primary}`
+**Primary citation**: `{taxonomy: owasp, id: LLM07, relationship: primary}`
 **Related citation (primary)**: `{taxonomy: cwe, id: CWE-223, relationship: related}` (Omission of Security-relevant Information)
 **Related citation (optional)**: `{taxonomy: cwe, id: CWE-345, relationship: related}` when factual authenticity is also unverified on the decision pathway
 **Prose-only peers**: `MITRE ATLAS AML.T0042 Verify Attack` (catalog-absent); `NIST AI 600-1 §2.4 Hallucination` (section IDs not catalogued)
@@ -124,14 +124,14 @@ An LLM Process emits output that drives automated consequential decisions — ap
 - Low-stakes internal-only context (e.g., internal note drafting, internal summarization) where the output has no downstream consequential effect
 
 **Worked Example** (clearly-fictional per NFR-6):
-- **Finding**: A synthetic financial-advisory component named "LoanDecisionAgent" (fictional scenario; no real lender, no real customer IDs) auto-approves or auto-denies loan applications based on LLM-generated creditworthiness summaries, without a HITL review gate on decisions above $10,000 and without AI-provenance disclosure on the decision notification sent to applicants. Per OWASP LLM09:2025 overreliance sub-class combined with CWE-223 Omission of Security-relevant Information, this presents both misinformation risk (LLM factual errors in the creditworthiness summary) and decision-integrity risk (no human reviewer validates high-stakes decisions).
+- **Finding**: A synthetic financial-advisory component named "LoanDecisionAgent" (fictional scenario; no real lender, no real customer IDs) auto-approves or auto-denies loan applications based on LLM-generated creditworthiness summaries, without a HITL review gate on decisions above $10,000 and without AI-provenance disclosure on the decision notification sent to applicants. Per OWASP LLM07:2026 overreliance sub-class combined with CWE-223 Omission of Security-relevant Information, this presents both misinformation risk (LLM factual errors in the creditworthiness summary) and decision-integrity risk (no human reviewer validates high-stakes decisions).
 - **Mitigation**: Introduce a human-in-the-loop review queue on decision-critical output with a risk-threshold-based auto-escalation rule (all decisions above $10,000 loan amount OR below a model-confidence threshold OR flagging regulatory-sensitive applicant categories MUST route to a human reviewer). Add AI-provenance disclosure on all emitted decisions — applicant notifications state the decision was AI-generated and provide a human-review appeal pathway. Optionally layer a secondary-verification dual-model ensemble gate that requires both models to agree on approvals above the threshold.
 
 ### Category 4 — Retrieval-Grounding Gap
 
 An LLM Process declares RAG grounding but the architecture exhibits a citation-claim divergence — retrieved sources do not actually support the emitted claims. Gaps arise from shallow retrieval (hit-rate too low for the claim density), stale corpus (retrieval returns outdated sources not representing current facts), retrieval-answer mismatch (retrieved sources are topically related but do not contain the specific factual claims emitted), or absent retrieval-strength metrics (no hit-rate / recall@k / retrieval-score threshold declared).
 
-**Primary citation**: `{taxonomy: owasp, id: LLM09, relationship: primary}`
+**Primary citation**: `{taxonomy: owasp, id: LLM07, relationship: primary}`
 **Related citation**: `{taxonomy: cwe, id: CWE-223, relationship: related}` (Omission of Security-relevant Information — the retrieval-strength metric is a security-relevant signal whose omission degrades grounding assurance)
 **Prose-only peers**: `MITRE ATLAS AML.T0042 Verify Attack` (catalog-absent); `NIST AI 600-1 §2.4 Hallucination` (section IDs not catalogued)
 
@@ -159,7 +159,7 @@ An LLM Process declares RAG grounding but the architecture exhibits a citation-c
 
 An LLM Process emits factual claims without uncertainty disclaimers, calibrated probability estimates, or refusal patterns on low-confidence queries. The model asserts every output with uniform confidence regardless of actual epistemic uncertainty, creating systematic overconfidence on out-of-distribution queries, parametric-memory gaps, and retrieval-sparse regions. Calibration absence is an architectural-hygiene gap that compounds the other four pattern categories — a well-calibrated model can refuse or disclaim rather than emit confidently-wrong output.
 
-**Primary citation**: `{taxonomy: owasp, id: LLM09, relationship: primary}`
+**Primary citation**: `{taxonomy: owasp, id: LLM07, relationship: primary}`
 **Related citation**: `{taxonomy: cwe, id: CWE-223, relationship: related}` (Omission of Security-relevant Information — the confidence-calibration signal is a security-relevant signal whose omission obscures uncertainty)
 **Prose-only peers**: `MITRE ATLAS AML.T0042 Verify Attack` (catalog-absent); `NIST AI 600-1 §2.4 Hallucination` (section IDs not catalogued)
 
@@ -188,7 +188,7 @@ An LLM Process emits factual claims without uncertainty disclaimers, calibrated 
 The pattern categories above cite the following primary and adjacent sources. Only catalog-resolvable citations appear in emitted `source_attribution` arrays per the F-A2 referential-integrity validator; catalog-absent citations appear in prose only.
 
 **Catalog-resolvable (appear in `source_attribution`)**:
-- **OWASP LLM09:2025 Misinformation** — present in `schemas/taxonomy/owasp.yaml`; primary citation on every emitted `MI-{N}` finding
+- **OWASP LLM07:2026 Misinformation** — present in `schemas/taxonomy/owasp.yaml`; primary citation on every emitted `MI-{N}` finding
 - **CWE-345 Insufficient Verification of Data Authenticity** — present in `schemas/taxonomy/cwe.yaml`; related citation on categories 1, 2, 3 (optional), 4 (optional), 5 (optional)
 - **CWE-223 Omission of Security-relevant Information** — present in `schemas/taxonomy/cwe.yaml`; related citation on categories 3, 4, 5
 

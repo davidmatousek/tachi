@@ -662,7 +662,7 @@ The SARIF Taxonomies section above defines the canonical mapping from each threa
 The `help.markdown` field on each rule is the appropriate location for finding-specific framework references that go beyond the canonical category-level mapping. For example:
 
 - A specific spoofing finding might reference CWE-290 (Authentication Bypass by Spoofing) in addition to the canonical CWE-287. This specific reference belongs in `help.markdown`, not in `relationships[]`.
-- An LLM threat finding might reference OWASP LLM01:2025 (Prompt Injection). Since there is no formal OWASP Top 10 taxonomy entry for LLM threats, this reference belongs in `help.markdown`.
+- An LLM threat finding might reference OWASP LLM01:2026 (Prompt Injection). Since there is no formal OWASP Top 10 taxonomy entry for LLM threats, this reference belongs in `help.markdown`.
 
 ### Rule 4: `properties.tags` must include framework identifiers
 

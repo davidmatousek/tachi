@@ -20,7 +20,7 @@ has-source-attribution: true
 Validates that `tachi-denial-of-service` agent emits `source_attribution` arrays
 with one `relationship: primary` entry plus ≥1 `relationship: related` CWE entry,
 mirroring the F-1/F-2/F-4 net-new agent precedent per ADR-037 D-3. Cites
-LLM10:2025 primary on the LLM inference-exhaustion finding per F-5 ADR-034
+LLM06 primary on the LLM inference-exhaustion finding per F-5 ADR-034
 lineage.
 
 ## 7. Recommended Actions
@@ -33,7 +33,7 @@ lineage.
 
 ```yaml
 D-3:
-  - {taxonomy: owasp, id: "LLM10:2025", relationship: primary}
+  - {taxonomy: owasp, id: LLM06, relationship: primary}
   - {taxonomy: cwe, id: "CWE-770", relationship: related}
   - {taxonomy: cwe, id: "CWE-400", relationship: related}
 ```

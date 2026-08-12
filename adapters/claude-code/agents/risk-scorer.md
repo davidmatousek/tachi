@@ -94,7 +94,7 @@ Parse the two AI threat category tables. These include an additional OWASP Refer
 | ID | `id` | Pattern: `AG-N`, `LLM-N` |
 | Component | `component` | Target component name |
 | Threat | `threat` | Threat description text |
-| OWASP Reference | `references` | Store as list: `["OWASP LLM01:2025"]` |
+| OWASP Reference | `references` | Store as list: `["OWASP LLM01:2026"]` |
 | Likelihood | `likelihood` | `LOW`, `MEDIUM`, or `HIGH` |
 | Impact | `impact` | `LOW`, `MEDIUM`, or `HIGH` |
 | Risk Level | `risk_level` | `Critical`, `High`, `Medium`, `Low`, or `Note` |

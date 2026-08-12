@@ -110,8 +110,8 @@ class TestOutputIntegritySourceAttribution:
             entry.get("id") for entry in source_attribution
             if entry.get("relationship") == "primary"
         }
-        assert "LLM05" in primary_ids, (
-            f"Valid fixture MUST cite OWASP LLM05 as primary. Got: {primary_ids!r}"
+        assert "LLM10" in primary_ids, (
+            f"Valid fixture MUST cite OWASP LLM10 as primary. Got: {primary_ids!r}"
         )
 
     def test_invalid_fixture_cites_absent_cwe(self) -> None:

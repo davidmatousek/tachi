@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "wave": 8,
+  "timestamp": "2026-08-10T14:33:47Z",
+  "test_runner": "python -m pytest <gated 15-module subset per .github/workflows/tachi-pytest.yml> --timeout=1080",
+  "execution_duration_ms": 667010,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": { "pass": 147, "fail": 0, "skip": 2 },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "supplementary": {
+    "gated_subset_literal": "147 passed, 1 skipped, 1 xfailed in 667.01s (0:11:07)",
+    "prestate_reference": "147 passed, 1 skipped, 1 xfailed in 695.26s — ZERO delta vs T001 (skip = known TTY case; xfail = #345 baseline staleness, strict=False, expected present)",
+    "run_on": "committed HEAD 91526ad (harness clones committed HEAD per F-248/F-256)",
+    "auxiliary_suites_at_91526ad": {
+      "taxonomy_integrity": "5 passed",
+      "backward_compatibility": "6 failed, 6 passed, 2 skipped — PM-declared post-T012 state (6 reds = pre-existing T001 font-subset environmental; zero-edit invariant PASS-to-SKIP by design per PM ruling (a))",
+      "out_of_gate_five_modules": "5 failed, 90 passed — byte-identical to pristine-main baseline, same 5 node ids (T012 attribution table); the 5 B1-induced reds all restored green"
+    },
+    "wave_07_note": "No test artifacts for wave 7 (B1) per skill 5a: no code file changes (markdown-only wave)."
+  }
+}

@@ -68,11 +68,11 @@ In addition to STRIDE dispatch, components are evaluated for AI-specific threat 
 - `"Claude"`
 
 LLM dispatch triggers these agents:
-- `prompt-injection` (OWASP LLM01:2025)
-- `data-poisoning` (OWASP LLM03:2025)
-- `model-theft` (OWASP LLM10:2025)
-- `output-integrity` (OWASP LLM05:2025) — see emission activation rule below
-- `misinformation` (OWASP LLM09:2025) — see emission activation rule below
+- `prompt-injection` (OWASP LLM01:2026)
+- `data-poisoning` (OWASP LLM05:2026)
+- `model-theft` (OWASP LLM06:2026)
+- `output-integrity` (OWASP LLM10:2026) — see emission activation rule below
+- `misinformation` (OWASP LLM07:2026) — see emission activation rule below
 
 **`output-integrity` emission activation rule (FR-011)**: `output-integrity` is dispatched on any LLM keyword match (same trigger logic as the other three LLM agents). However, unlike the other three, `output-integrity` enforces a two-part emission gate internally: the agent MUST only emit an `OI-{N}` finding when BOTH (a) the dispatched Process matches an LLM keyword AND (b) at least one output Data Flow from that Process lands in a component performing execution. Execution-sink indicators include: browser rendering (`rendered HTML`, `model output to browser`), SQL execution (`model output to SQL`, `LLM-generated query`), shell/command execution (`command construction`), template rendering (`template engine`), URL fetch (`outbound HTTP from agent`, `LLM-synthesized URL`), and file write (`file path from model`). If an LLM keyword matches but no execution sink is structurally present in the architecture, the agent MUST emit zero findings for that component per FR-011 — dispatch still happens, but the agent self-gates emission to prevent false positives on LLM components whose output is consumed only as human-facing text.
 
@@ -154,7 +154,7 @@ AI findings produced by the dispatched agents are grouped into 2 output tables:
 | Output Table | Agents | Reference Standards |
 |--------------|--------|---------------------|
 | AG (Agentic Threats) | agent-autonomy, tool-abuse, human-trust-exploitation | OWASP Agentic Top 10, MCP Top 10, OWASP ASI09:2026 |
-| LLM (LLM Threats) | prompt-injection, data-poisoning, model-theft, output-integrity, misinformation | OWASP LLM Top 10 v2025 |
+| LLM (LLM Threats) | prompt-injection, data-poisoning, model-theft, output-integrity, misinformation | OWASP LLM Top 10 v2026 |
 
 ---
 

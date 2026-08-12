@@ -13,9 +13,9 @@ mitigation: "Per-hop MCP attestation with signed capability descriptors + signed
 references:
   - "OWASP ASI07:2026"
   - "https://cwe.mitre.org/data/definitions/345.html"
-  - "OWASP LLM03:2025"
+  - "OWASP LLM04:2026"
 source_attribution:
   - {taxonomy: owasp, id: ASI07, relationship: primary}
   - {taxonomy: cwe, id: CWE-345, relationship: related}
-  - {taxonomy: owasp, id: LLM03, relationship: related}
+  - {taxonomy: owasp, id: LLM04, relationship: related}
 dfd_element_type: "Process"

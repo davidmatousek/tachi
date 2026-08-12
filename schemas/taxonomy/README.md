@@ -45,7 +45,7 @@ for taxonomy in ('owasp', 'mitre-attack', 'mitre-atlas', 'nist-ai-rmf', 'nist-ai
 F-A1 is the machine-readable **foundation** — it deliberately defers three downstream capabilities to separately-scoped follow-on features. Readers integrating tachi output today should be aware of these gaps:
 
 1. **Finding-level citation** — At F-A1, threat-agent findings in `threats.md` / `threats.sarif` do **not** yet cite specific crosswalk edges. A finding that says "relates to OWASP LLM05" still carries that as free-text metadata, not a structured reference into `crosswalk.yaml`. **F-A2** will extend the finding schema with a `source_attribution` field that resolves to one or more edge IDs in the crosswalk.
-2. **Coverage attestation** — At F-A1, no attestation exists that a given DFD component class (e.g., "all `llm_process` components have been evaluated against 100% of OWASP LLM Top 10:2025 items") has been fully mapped. The data to *compute* such an attestation is present in the crosswalk, but no downstream report section renders it. **F-B** will add a coverage-attestation report section consuming these YAMLs.
+2. **Coverage attestation** — At F-A1, no attestation exists that a given DFD component class (e.g., "all `llm_process` components have been evaluated against 100% of OWASP LLM Top 10:2026 items") has been fully mapped. The data to *compute* such an attestation is present in the crosswalk, but no downstream report section renders it. **F-B** will add a coverage-attestation report section consuming these YAMLs.
 3. **Agent-reference migration** — At F-A1, the 11 threat-detection agents still carry inline taxonomy citations in their `.claude/skills/tachi-<name>/references/detection-patterns.md` files (per ADR-023). The F-A1 catalog YAMLs harvest those citations *read-only* — no detection agent is modified. Migrating the detection patterns to cite crosswalk edges (removing inline duplication) is a **separate follow-on feature**, not F-A1 scope.
 
 ---
@@ -71,7 +71,7 @@ Curation rule: F-A1 is a **harvest + transcription** feature, not a re-authorshi
   - OWASP Top 10:2021 (A01–A10) — source: `https://owasp.org/Top10/2021/`
   - OWASP API Security Top 10:2023 (API1–API10) — source: `https://owasp.org/API-Security/editions/2023/en/0x11-t10/`
   - OWASP Top 10 for Agentic Applications:2026 (ASI01–ASI10) — source: OWASP GenAI Security Project, `https://genai.owasp.org/resource/agentic-ai-security-top-10/` (2026 edition published by the OWASP GenAI project)
-  - OWASP LLM Top 10:2025 (LLM01–LLM10) — source: `https://owasp.org/www-project-top-10-for-large-language-model-applications/` (LLM01:2025 through LLM10:2025)
+  - OWASP LLM Top 10:2026 (LLM01–LLM10) — source: OWASP GenAI Security Project, `https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/` (LLM01:2026 through LLM10:2026; single release-resource URL per the 2026 edition — per-entry pages not yet published)
   - OWASP Mobile Top 10:2024 (M1–M10) — source: `https://owasp.org/www-project-mobile-top-10/`
   - OWASP Machine Learning Security Top 10:2023 (ML01–ML10) — source: `https://owasp.org/www-project-machine-learning-security-top-10/`
 - **CWE cross-references**: `cwe_refs` populated for Top 10:2021 records only (A01–A10), transcribed from the per-category OWASP pages' "List of Mapped CWEs" sections. LLM / Agentic / Mobile / ML / API records carry `cwe_refs: []` because the respective OWASP sources do not publish per-item CWE cross-references; cross-framework edges for those lists live in `crosswalk.yaml`.
@@ -104,7 +104,7 @@ Curation rule: F-A1 is a **harvest + transcription** feature, not a re-authorshi
 ### 3.5 `cwe.yaml`
 
 - **Seed source**: 41 unique CWE IDs currently cited across the 11 threat-detection agents' `detection-patterns.md` files (frozen at spec time 2026-04-17 per spec Assumption A1): `CWE-20, 22, 77, 78, 89, 90, 117, 200, 209, 215, 223, 250, 266, 269, 285, 287, 290, 306, 345, 352, 384, 400, 407, 494, 502, 522, 532, 538, 613, 639, 770, 776, 778, 779, 862, 863, 917, 918, 943, 1333, 1395`.
-- **External curation**: CWE Top 25 (**2025** edition, published **2025-12-11** by MITRE/CISA, source `https://cwe.mitre.org/top25/archive/2025/2025_cwe_top25.html`) — of the 25 Top 25 IDs, 14 overlap the agent seed and are deduplicated to a single record; **11 net-new CWEs** are added: `CWE-79, 94, 120, 121, 122, 125, 284, 416, 434, 476, 787`. Plus **1 additional CWE** sourced from the OWASP Top 10 A03:2021 / LLM05:2025 cross-references already transcribed into `owasp.yaml`: `CWE-116` (output-encoding companion to CWE-79). Total added via external curation = **12** (11 Top 25 + 1 OWASP-derived).
+- **External curation**: CWE Top 25 (**2025** edition, published **2025-12-11** by MITRE/CISA, source `https://cwe.mitre.org/top25/archive/2025/2025_cwe_top25.html`) — of the 25 Top 25 IDs, 14 overlap the agent seed and are deduplicated to a single record; **11 net-new CWEs** are added: `CWE-79, 94, 120, 121, 122, 125, 284, 416, 434, 476, 787`. Plus **1 additional CWE** sourced from the OWASP Top 10 A03:2021 / LLM10:2026 cross-references already transcribed into `owasp.yaml`: `CWE-116` (output-encoding companion to CWE-79). Total added via external curation = **12** (11 Top 25 + 1 OWASP-derived).
 - **Retrieval date**: **2026-04-17** (CWE Top 25 2025 page + per-CWE definition pages at `https://cwe.mitre.org/data/definitions/<N>.html`).
 - **F-A1.2 restoration (Issue #185)**: **40 records** added 2026-06-11 — the T029 drift-edge targets, i.e. every CWE cited by the 67 crosswalk edges that Feature 180's T029 cleanup removed as endpoint-unresolvable. Names transcribed verbatim from the pinned MITRE corpus **cwec v4.20** (released 2026-04-30, retrieved **2026-06-11**; zip SHA-256 pinned in `specs/185-cwe-catalog-expansion/test-results/corpus-pin.md`). Abstraction note (record shape unchanged): **CWE-16, CWE-255, CWE-937, CWE-1035 are MITRE Categories and CWE-693 is a Pillar** — OWASP publishes these IDs directly in its official mappings (CWE-937/CWE-1035 were created by MITRE *as* OWASP Top Ten mapping anchors), and the catalog already carries abstraction precedent (CWE-284, itself a MITRE Pillar, is among the original 53). Status note (architect disposition, Issue #185): CWE-16 and CWE-937 carry v4.20 Status="Obsolete" — Obsolete ≠ Deprecated; both remain canonical, resolvable citation targets per the fidelity-first citation-resolution rationale.
 - **Final record count**: **93** (53 original — 41 seed + 12 external-curation — + 40 F-A1.2 restoration; FR-017 floor ≥53 still satisfied).
@@ -143,7 +143,7 @@ Every edge in `crosswalk.yaml` carries a `confidence` field from the closed 3-va
 | Value | Criterion | Example |
 |-------|-----------|---------|
 | `high` | **Published cross-reference** — the authoritative source explicitly lists the target ID. | OWASP Top 10:2021 A03 (Injection) explicitly lists CWE-79 in its published "List of Mapped CWEs" — any A03→CWE-79 edge is `high`. (Note: OWASP **LLM** pages are prose-only for CWEs — see [§4.1](#41-related--superseded-calibration) caution.) |
-| `medium` | **Inferred one-hop** — semantic match without explicit listing, but citable to one authoritative document. | LLM05 relates to CWE-20 ("Improper Input Validation") via category-semantic match documented in the OWASP LLM project README, not via LLM05's explicit CWE list. |
+| `medium` | **Inferred one-hop** — semantic match without explicit listing, but citable to one authoritative document. | LLM07 relates to CWE-20 ("Improper Input Validation") via category-semantic match documented in the OWASP LLM project README, not via LLM07's explicit CWE list. |
 | `high` (NIST transcription) | Any edge derived from `nist-ai-rmf-mapping.md` Surface B or Surface C (verbatim transcription per FR-022). | `tachi-control-category:authentication → nist-ai-rmf:MEASURE-2.7` — Surface B real-mapping row. |
 | `low` | **Two-hop or thematic** — curator judgment backed by a non-authoritative document (blog, research paper, internal analysis). | MITRE ATT&CK T1190 relates to OWASP API7 via adversary-objective alignment discussed in a security-research paper, not in any framework's published cross-reference. |
 
@@ -166,6 +166,8 @@ F-182 authored **37 `related` edges** (22 `high` / 15 `medium`) and **0 `superse
 | **ATLAS → ATT&CK** | `mitre-atlas/atlas-data` `ATLAS.yaml`, `ATT&CK-reference` field | Yes (first-class field) | `high` by construction (explicit published ID cross-reference) | Reference cites a **base** technique but the edge targets a **sub**-technique (one-hop inference) — see the T0016 worked example | **7** (6 high / 1 medium) |
 | **OWASP-LLM Top 10 → ATLAS** | `genai.owasp.org/llmrisk/...` "Related Frameworks" list | Partial (relates frameworks, not a hard ID cross-reference) | n/a — the page relates the frameworks but does not publish it as a hard ID cross-reference, so `high` is not reached | Inferred one-hop from the "Related Frameworks" list | **8** (0 high / 8 medium) |
 
+> **2026-edition note (F-362)**: the OWASP-LLM→ATLAS calibration basis above is a **2025-edition artifact**. The 2026 edition currently publishes a single release resource (`https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/`) with **no per-category "Related Frameworks" sections**, and 8 of the 18 `owasp:LLM* → mitre-atlas` edges now cite that interim URL — a re-anchoring that orphans the per-entry evidentiary chain (acknowledged in `specs/362-remap-owasp-llm-top10-2026/crosswalk-disposition-ledger.md`, row 72). The `medium` ceiling for those 8 edges therefore rests on the 2025-edition per-entry lists they were originally calibrated from, pending re-verification against 2026 per-entry pages when OWASP publishes them (tracked with the URL re-anchor work in follow-up F-362b, #364).
+
 **Worked example per source class** (each traces to a real F-182 edge — confidence labels are exactly those authored):
 
 - **CWE↔CWE** — `CWE-20 PeerOf CWE-345` published in **View-1000** → **`high`** (`citation: …/20.html (CWE-20 PeerOf CWE-345, View-1000)`). Contrast `CWE-117 ChildOf CWE-20` appearing **only in View-700** → **`medium`** (Development-view-only), and `CWE-770 CanFollow CWE-20` (a **chaining** relation) → **`medium`** (context-specific). Same `CWE-20`, three different confidence outcomes driven by **view + relation Nature**.
@@ -179,7 +181,7 @@ CWE parent/child relations are **view-dependent**: the same CWE has different pa
 
 #### OWASP-LLM→CWE caution — the drift trap (FR-004)
 
-OWASP **LLM** risk pages are **prose-only** for CWE references. Confirmed live: **9 of the 10 LLM pages publish no structured CWE list; only LLM10 lists `CWE-400`.** Blogs widely repeat mappings like "LLM05 → CWE-79/89/78," but OWASP itself publishes no structured CWE cross-reference on the LLM pages. Therefore:
+OWASP **LLM** risk pages are **prose-only** for CWE references. Confirmed live against the **2025-edition per-entry pages** (the 2026 edition publishes no per-entry pages yet — see the 2026-edition note in §4.1): **9 of the 10 LLM pages published no structured CWE list; only the category now keyed LLM06:2026 (Unbounded Consumption) listed `CWE-400`.** Blogs widely repeat mappings like "LLM10 → CWE-79/89/78," but OWASP itself publishes no structured CWE cross-reference on the LLM pages. Therefore:
 
 - Any **OWASP-LLM→CWE** edge is inferred-from-prose → `low`/inferred, and is **hard-excluded from the `high`/`medium` floor count**.
 - This is why F-182 authored **0** OWASP-LLM→CWE edges.
@@ -196,7 +198,7 @@ A `superseded` edge expresses old-item → newer-item lineage and is authorable 
 | CWE↔CWE | `https://cwe.mitre.org/data/definitions/<N>.html` (CWE relationships, **with View context**) | Citation records **Nature + View ID** (FR-006) |
 | OWASP-Web→CWE | `https://owasp.org/Top10` per-category "List of Mapped CWEs" | Explicit counted list → `high` by construction |
 | ATLAS→ATT&CK | `mitre-atlas/atlas-data` `ATLAS.yaml`, `ATT&CK-reference` field | `atlas.mitre.org` technique pages **404 via automated fetch** (anti-bot) — `atlas-data` is the verification source |
-| OWASP-LLM→ATLAS | `https://genai.owasp.org/llmrisk/...` "Related Frameworks" | Inferred one-hop → `medium` ceiling |
+| OWASP-LLM→ATLAS | `https://genai.owasp.org/llmrisk/...` "Related Frameworks" | Inferred one-hop → `medium` ceiling (2025-edition per-entry basis — see the 2026-edition note in §4.1; the interim 2026 URL has no per-category lists) |
 | OWASP-LLM→CWE | *(none authoritative — prose-only)* | Hard-excluded from `high`/`medium` (FR-004); `low`/inferred only |
 
 #### Yield-tripwire outcome — expect a documented floor, not a mandatory 80
@@ -213,7 +215,7 @@ The FR-002 build-start survey found the achievable `high`/`medium` core was **37
 | MITRE ATLAS | `mitre-atlas.yaml` | `https://atlas.mitre.org/techniques/AML.T<NNNN>` (e.g., `https://atlas.mitre.org/techniques/AML.T0058`) |
 | CWE | `cwe.yaml` | `https://cwe.mitre.org/data/definitions/<N>.html` (e.g., `https://cwe.mitre.org/data/definitions/89.html`) |
 | NIST AI RMF 1.0 | `nist-ai-rmf.yaml` | `https://doi.org/10.6028/NIST.AI.100-1` (DOI-based; single canonical document URL per Subcategory record) |
-| OWASP LLM Top 10:2025 | `owasp.yaml` | `https://genai.owasp.org/llmrisk/llm<NN>-<slug>/` (e.g., `https://genai.owasp.org/llmrisk/llm05-improper-output-handling/`) |
+| OWASP LLM Top 10:2026 | `owasp.yaml` | `https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/` (single document URL shared across LLM01–LLM10; per-item anchors not yet published for the 2026 edition) |
 | OWASP Top 10:2021 | `owasp.yaml` | `https://owasp.org/Top10/2021/A<NN>_2021-<slug>/` |
 | OWASP API Security Top 10:2023 | `owasp.yaml` | `https://owasp.org/API-Security/editions/2023/en/0xa<N>-<slug>/` |
 | OWASP Mobile Top 10:2024 | `owasp.yaml` | `https://owasp.org/www-project-mobile-top-10/2024-risks/m<N>-<slug>` |

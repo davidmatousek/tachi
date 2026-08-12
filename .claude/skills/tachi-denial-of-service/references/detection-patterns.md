@@ -153,9 +153,9 @@ OWASP A04:2021 Insecure Design introduced design-level resilience gaps as a Top 
 
 **Example**: An e-commerce platform's checkout flow calls a synchronous chain: `web-tier` → `cart-service` → `inventory-service` → `pricing-service` → `tax-service` → `payment-gateway`. Each hop has an individual 30-second timeout but the chain has no total budget. During a Black Friday sale, the third-party tax-service degrades from 50ms p99 to 8 seconds p99. Every checkout request now blocks for ~8 seconds at the tax hop; the upstream pricing-service exhausts its connection pool to tax-service; cart-service exhausts its connection pool to pricing-service; the entire checkout fleet stalls within 2 minutes despite tax-service still being technically up. There is no circuit breaker on tax-service, no per-hop budget, no fallback to cached tax estimates, and the architecture description never mentions any of these patterns — the cascade was inevitable from the design.
 
-## Pattern Category 12: LLM Inference-Request Flooding and Token Exhaustion (OWASP LLM10:2025)
+## Pattern Category 12: LLM Inference-Request Flooding and Token Exhaustion (OWASP LLM06:2026)
 
-OWASP LLM10:2025 (Unbounded Consumption) introduced LLM-tier resource exhaustion as a Top-10 LLM threat in 2025, recognizing that inference compute, prompt-token budget, and context-window are scarce resources distinct from generic infrastructure DoS. The pre-existing Pattern Categories 9 (CWE Top 25 algorithmic complexity), 10 (network flood), and 11 (cascade failures) cover infrastructure availability — this category systematizes the LLM-API-gateway flooding and token-budget exhaustion subclass. An attacker with valid API access (free-tier, low-tier subscription, or compromised credential) can exhaust the operator's per-tenant inference compute capacity and inflate per-call cost without triggering classic network-layer rate limits. Same Heuristic A signal class as the cost-amplification and denial-of-wallet variants in `model-theft` Pattern Categories 10 + 11.
+OWASP LLM06:2026 Unbounded Consumption (2025: LLM10) carries LLM-tier resource exhaustion as a Top-10 LLM threat — introduced to the list in the 2025 edition — recognizing that inference compute, prompt-token budget, and context-window are scarce resources distinct from generic infrastructure DoS. The pre-existing Pattern Categories 9 (CWE Top 25 algorithmic complexity), 10 (network flood), and 11 (cascade failures) cover infrastructure availability — this category systematizes the LLM-API-gateway flooding and token-budget exhaustion subclass. An attacker with valid API access (free-tier, low-tier subscription, or compromised credential) can exhaust the operator's per-tenant inference compute capacity and inflate per-call cost without triggering classic network-layer rate limits. Same Heuristic A signal class as the cost-amplification and denial-of-wallet variants in `model-theft` Pattern Categories 10 + 11.
 
 **Indicators**:
 
@@ -167,13 +167,13 @@ OWASP LLM10:2025 (Unbounded Consumption) introduced LLM-tier resource exhaustion
 
 **Primary source**:
 
-- OWASP LLM10:2025 — Unbounded Consumption: https://owasp.org/www-project-top-10-for-large-language-model-applications/
+- OWASP LLM06:2026 — Unbounded Consumption: https://owasp.org/www-project-top-10-for-large-language-model-applications/
 - CWE-400: Uncontrolled Resource Consumption: https://cwe.mitre.org/data/definitions/400.html
 - CWE-770: Allocation of Resources Without Limits or Throttling: https://cwe.mitre.org/data/definitions/770.html
 
 **Example**: A multi-tenant LLM-serving SaaS exposes a `/v1/completions` endpoint without per-tenant QPS rate limit. An attacker registers free-tier accounts and floods the endpoint with concurrent requests, exhausting inference compute capacity and causing latency degradation for paying tenants. Tenant isolation breaks down at the inference-compute layer; the SaaS's denial-of-wallet exposure compounds with the availability degradation. **Mitigation**: per-tenant QPS rate limit at the API gateway + prompt-size cap (max-prompt-token enforcement) + per-tenant token budget per request with hard-cap + token-counting middleware with anomaly alerting on per-tenant token-velocity spikes.
 
-## Pattern Category 13: Context-Window Exhaustion — Latency-Driven Variant (OWASP LLM10:2025; Q1 SPLIT Vector A)
+## Pattern Category 13: Context-Window Exhaustion — Latency-Driven Variant (OWASP LLM06:2026; Q1 SPLIT Vector A)
 
 Context-window exhaustion is a single attack class with two distinct outcomes — Vector A drives availability disruption (this category), Vector B drives economic damage (model-theft Pattern Category 11). Vector A targets the inference-server's per-request latency budget: an adversarially long conversation history or prompt expansion drives per-request latency to per-tenant timeout. Attacker intent is availability disruption — same signal class as Cat 12 (LLM-tier resource exhaustion).
 
@@ -189,7 +189,7 @@ Context-window exhaustion is a single attack class with two distinct outcomes �
 
 **Primary source**:
 
-- OWASP LLM10:2025 — Unbounded Consumption: https://owasp.org/www-project-top-10-for-large-language-model-applications/
+- OWASP LLM06:2026 — Unbounded Consumption: https://owasp.org/www-project-top-10-for-large-language-model-applications/
 - CWE-400: Uncontrolled Resource Consumption: https://cwe.mitre.org/data/definitions/400.html
 
 **Example**: A consumer-facing chatbot allows users to send arbitrarily long conversation history. An attacker constructs a 32k-token mega-history payload that drives context-window usage to 99% of model max, causing per-request latency to spike to the per-tenant timeout. Legitimate users on the same inference cluster experience degraded latency (Vector A — availability disruption). The same architecture additionally surfaces `model-theft` Pattern Category 11 (denial-of-wallet via context-window cost amplification) as Vector B — both findings emit on the same architecture, neither is a duplicate. **Mitigation**: max-context-window enforcement at the API gateway with automatic 413-response on overflow + per-conversation truncation policy with sliding-window limit + recursive-prompt-pattern detection + context-window monitoring with anomaly alerting on percentage-of-max usage spikes + per-tenant context-window cap distinct from per-request cap.
@@ -209,7 +209,7 @@ Same architecture may legitimately surface Pattern Category 9 + Pattern Category
 - OWASP Application Denial of Service Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Denial_of_Service_Cheat_Sheet.html
 - OWASP API Security Top 10 2023 — API4: Unrestricted Resource Consumption: https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/
 - OWASP Rate Limiting Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Rate_Limiting_Cheat_Sheet.html
-- OWASP LLM10:2025 — Unbounded Consumption: https://owasp.org/www-project-top-10-for-large-language-model-applications/
+- OWASP LLM06:2026 — Unbounded Consumption: https://owasp.org/www-project-top-10-for-large-language-model-applications/
 - CWE-400: Uncontrolled Resource Consumption: https://cwe.mitre.org/data/definitions/400.html
 - CWE-407: Inefficient Algorithmic Complexity: https://cwe.mitre.org/data/definitions/407.html
 - CWE-502: Deserialization of Untrusted Data: https://cwe.mitre.org/data/definitions/502.html

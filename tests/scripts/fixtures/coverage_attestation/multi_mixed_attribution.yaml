@@ -35,7 +35,7 @@
 #
 # ID validation (all 8 records resolve as top-level ``- id:`` keys in
 # F-A1 catalogs under the current parser regex):
-#   - owasp LLM05            → schemas/taxonomy/owasp.yaml (OWASP LLM05:2025)
+#   - owasp LLM10            → schemas/taxonomy/owasp.yaml (OWASP LLM10:2026)
 #   - owasp A03              → schemas/taxonomy/owasp.yaml (OWASP 2021 A03)
 #   - cwe CWE-1333           → schemas/taxonomy/cwe.yaml  (ReDoS; seed list)
 #   - cwe CWE-200            → schemas/taxonomy/cwe.yaml  (Info Exposure; seed)
@@ -49,7 +49,7 @@
 #   - tests/scripts/test_coverage_attestation.py::test_mitre_column_merge
 #   - tests/scripts/test_coverage_attestation.py::test_relationship_distribution
 
-# Finding 1: LLM05 (OWASP) primary + CWE-1333 (CWE) related — two-taxonomy,
+# Finding 1: LLM10 (OWASP) primary + CWE-1333 (CWE) related — two-taxonomy,
 # mixed relationships on a single finding.
 - id: LLM-1
   component: LLM Response Handler
@@ -60,7 +60,7 @@
   mitigation: Enforce output length cap and use non-backtracking regex engine
   agentic_pattern: none
   source_attribution:
-    - {taxonomy: owasp, id: LLM05, relationship: primary}
+    - {taxonomy: owasp, id: LLM10, relationship: primary}
     - {taxonomy: cwe, id: CWE-1333, relationship: related}
 
 # Finding 2: T1070.001 (MITRE ATT&CK) primary + AML.T0051 (MITRE ATLAS) related
