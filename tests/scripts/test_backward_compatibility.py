@@ -249,10 +249,10 @@ DETECTION_PATTERN_REF_ENRICHMENT_HOSTS = frozenset({
 # ADR-026 Decision 1's constrained actor is Feature 142's own Phase 3.6 synthesis
 # mechanism ("Phase 3.6 reads the deduplicated finding IR but does NOT invoke or
 # modify any threat-detection agent"), not every future branch. The invariant is
-# therefore scoped to Feature 142 branches plus any explicitly declared superset.
-# Add a branch here only when it inherits F-142's mechanism-selection guarantee.
+# therefore scoped to Feature 142 branches. If a future branch genuinely inherits
+# F-142's mechanism-selection guarantee, extend this predicate then — no
+# speculative allowlist (code-economy rung 7).
 FEATURE_142_BRANCH_PREFIX = "142-"
-FEATURE_142_SUPERSET_BRANCHES = frozenset()
 
 
 def test_feature_142_zero_edit_invariant_on_detection_agents():
@@ -264,12 +264,12 @@ def test_feature_142_zero_edit_invariant_on_detection_agents():
     diff violates the zero-edit invariant and must be reverted before
     Feature 142 can ship.
 
-    Enforced ONLY on a Feature 142 branch (or a declared superset); elsewhere it
-    SKIPs, because ADR-026 Decision 1 constrains F-142's synthesis mechanism
-    rather than freezing the detection tier repo-wide.
+    Enforced ONLY on a Feature 142 branch; elsewhere it SKIPs, because ADR-026
+    Decision 1 constrains F-142's synthesis mechanism rather than freezing the
+    detection tier repo-wide.
     """
-    # Only enforce when running on a Feature 142 branch (or a declared superset).
-    # On main or any other branch the invariant is trivially satisfied.
+    # Only enforce when running on a Feature 142 branch. On main or any other
+    # branch the invariant is trivially satisfied.
     branch_result = subprocess.run(
         ["git", "branch", "--show-current"],
         cwd=REPO_ROOT,
@@ -278,14 +278,10 @@ def test_feature_142_zero_edit_invariant_on_detection_agents():
         check=False,
     )
     current_branch = (branch_result.stdout or "").strip()
-    if not (
-        current_branch.startswith(FEATURE_142_BRANCH_PREFIX)
-        or current_branch in FEATURE_142_SUPERSET_BRANCHES
-    ):
+    if not current_branch.startswith(FEATURE_142_BRANCH_PREFIX):
         pytest.skip(
             f"Zero-edit invariant is only enforced on Feature 142 branches "
-            f"(prefix {FEATURE_142_BRANCH_PREFIX!r}) or a declared superset "
-            f"({sorted(FEATURE_142_SUPERSET_BRANCHES) or 'none declared'}). "
+            f"(prefix {FEATURE_142_BRANCH_PREFIX!r}). "
             f"Current branch: {current_branch or '(none)'}"
         )
 

@@ -55,7 +55,8 @@ import importlib.util
 from pathlib import Path
 
 import pytest
-import yaml
+
+from .conftest import TAXONOMY_DIR, load_yaml_or_empty
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -66,9 +67,9 @@ def _load_script_module(filename: str, modname: str):
     Mirrors ``tests/scripts/test_affected_assets_wiring.py::_load_script_module``
     exactly. Neither generator executes file I/O or ``main()`` at import time
     (both guard their CLI entry point behind ``if __name__ == "__main__":``),
-    so loading is side-effect-free beyond binding module-level names — for
-    ``generate-risk-scores-sarif.py`` that includes the T015 catalog load,
-    itself read-only YAML parsing.
+    so loading is side-effect-free beyond binding module-level names — the
+    T015 catalog load in ``generate-risk-scores-sarif.py`` is lazy (it runs
+    at first taxonomy access, cached thereafter), not at import.
     """
     path = REPO_ROOT / "scripts" / filename
     spec = importlib.util.spec_from_file_location(modname, path)
@@ -198,9 +199,10 @@ def test_stride_fallback_unmapped_prefix_returns_empty_string():
 # -----------------------------------------------------------------------------
 
 def _independent_llm_ground_truth() -> list[dict]:
-    """Load ``schemas/taxonomy/owasp.yaml`` directly via ``yaml.safe_load`` —
-    NEVER through ``generate-risk-scores-sarif.py`` or its ``_extract`` reuse
-    of ``extract-report-data.py``. An assertion built from the module under
+    """Load ``schemas/taxonomy/owasp.yaml`` via the test suite's own YAML
+    helper (``conftest.load_yaml_or_empty``) — NEVER through
+    ``generate-risk-scores-sarif.py`` or its ``_extract`` reuse of
+    ``extract-report-data.py``. An assertion built from the module under
     test would be self-fulfilling; this is the independent ground truth
     T015 section 3 also used.
 
@@ -208,9 +210,7 @@ def _independent_llm_ground_truth() -> list[dict]:
     ordering) so the ordering assertions below are genuinely independent of
     the production loader's FR-032 file-order assumption.
     """
-    owasp_path = REPO_ROOT / "schemas" / "taxonomy" / "owasp.yaml"
-    with owasp_path.open(encoding="utf-8") as fh:
-        records = yaml.safe_load(fh)
+    records = load_yaml_or_empty(TAXONOMY_DIR / "owasp.yaml")
     llm_records = [
         r for r in records if isinstance(r, dict) and r.get("id", "").startswith("LLM")
     ]
@@ -220,6 +220,7 @@ def _independent_llm_ground_truth() -> list[dict]:
 _GROUND_TRUTH = _independent_llm_ground_truth()
 _EXPECTED_TAXA = [{"id": r["id"], "name": r["name"]} for r in _GROUND_TRUTH]
 _EXPECTED_URLS = {r["url"] for r in _GROUND_TRUTH}
+_EXPECTED_EDITIONS = {str(r["full_id"]).split("-")[2] for r in _GROUND_TRUTH}
 
 
 def _owasp_llm_entry(taxonomy_list: list[dict]) -> dict:
@@ -250,6 +251,16 @@ def test_ground_truth_precondition_uniform_url():
     records sharing one ``url``. Pin that precondition independently."""
     assert len(_EXPECTED_URLS) == 1, (
         f"ground-truth LLM catalog records disagree on url: {sorted(_EXPECTED_URLS)}"
+    )
+
+
+def test_ground_truth_precondition_uniform_edition():
+    """The edition derivation (``full_id`` year segment → ``version`` fields
+    and ``derive_owasp_reference`` tokens) relies on all 10 LLM records
+    agreeing on one edition. Pin that precondition independently."""
+    assert len(_EXPECTED_EDITIONS) == 1, (
+        f"ground-truth LLM catalog records disagree on full_id edition: "
+        f"{sorted(_EXPECTED_EDITIONS)}"
     )
 
 
@@ -285,3 +296,29 @@ def test_supported_taxonomies_owasp_llm_version_is_2026():
 def test_supported_taxonomies_owasp_llm_information_uri_matches_catalog():
     entry = _owasp_llm_entry(_gen_risk.supported_taxonomies())
     assert entry["informationUri"] == next(iter(_EXPECTED_URLS))
+
+
+# --- Edition derivation (no hand-maintained edition literal in the module) ---
+# The "2026" literal pins above are the deliberate edition tripwire (they fail
+# loudly at the next edition bump so a human re-verifies the remap); the tests
+# below additionally prove the PRODUCTION values co-move with the catalog
+# rather than being a second hand-maintained literal that could silently lag.
+
+def test_taxonomies_owasp_llm_version_matches_catalog_edition():
+    entry = _owasp_llm_entry(_gen_risk.TAXONOMIES)
+    assert entry["version"] == next(iter(_EXPECTED_EDITIONS))
+
+
+def test_supported_taxonomies_owasp_llm_version_matches_catalog_edition():
+    entry = _owasp_llm_entry(_gen_risk.supported_taxonomies())
+    assert entry["version"] == next(iter(_EXPECTED_EDITIONS))
+
+
+def test_derive_owasp_reference_tokens_match_catalog_edition():
+    """``properties["owasp-reference"]`` tokens (OI → LLM10, MI → LLM07 slot
+    literals — slots are editorial per-edition human decisions) must carry the
+    catalog-derived edition year, not a hand-maintained one."""
+    edition = next(iter(_EXPECTED_EDITIONS))
+    assert _gen_risk.derive_owasp_reference("OI") == f"OWASP LLM10:{edition}"
+    assert _gen_risk.derive_owasp_reference("MI") == f"OWASP LLM07:{edition}"
+    assert _gen_risk.derive_owasp_reference("XX") is None
