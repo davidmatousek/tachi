@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Feature 362 — Remap OWASP LLM Top 10 Coverage to the 2026 Edition (#362) — feat(362)
 
 Every OWASP LLM Top 10 contract surface — the taxonomy catalog (`schemas/taxonomy/owasp.yaml`),
-the 74-edge LLM-keyed crosswalk, 9 threat-agent personas, 15 skill reference files, all 21
+the 74-edge LLM-keyed crosswalk, 9 threat-agent personas, 15 skill reference files, all 27
 adapter and legacy-mirror files, the SARIF/risk-score emitters, and
 `docs/standards/OWASP_COVERAGE.md` — is remapped from the OWASP Top 10 for LLM Applications
 **2025** edition to the **2026** edition (v1.0, published 2026-08-04). This is a **hard cutover,
@@ -23,12 +23,15 @@ every historical output, and dual-emission would double-count `source_attributio
 exact-equality Coverage-Attestation classification. Narrative prose (persona/skill docs, this
 changelog) may carry a one-release transition breadcrumb in the exact form `(2025: LLM<NN>)` —
 never inside a machine-parsed `references[]` token, the `threats.md` References column, or
-`source_attribution`. 26 breadcrumb sites ship in this release (independently re-verified via
-`git grep -oP '\(2025:\s*LLM(0[1-9]|10)\)'`), one of which is a deliberate test pin rather than
+`source_attribution`. 26 product-surface breadcrumb sites ship in this release (independently
+re-verified via `git grep -oP '\(2025:\s*LLM(0[1-9]|10)\)' -- ':!specs/**'
+':!docs/architecture/02_ADRs/**'`; unscoped, the same grep returns 35 — the extra 9 are
+retained-historical governance records in `specs/**` and ADR-048 itself, which never sunset),
+one of which is a deliberate test pin rather than
 narrative prose: `tests/scripts/test_owasp_2026_contract.py:142` asserts that a
 breadcrumb-suffixed string falls through `normalize_owasp_id` as raw passthrough — proof of *why*
-breadcrumbs are barred from token surfaces. Every breadcrumb sunsets no later than the next minor
-release, tracked in follow-up **F-362b**.
+breadcrumbs are barred from token surfaces. Every product-surface breadcrumb sunsets no later
+than the next minor release, tracked in follow-up **F-362b**.
 
 The rank order changed and one category was renamed. **Hidden Context Exposure** (LLM08:2026)
 replaces **System Prompt Leakage** (LLM07:2025) with a broadened hidden-context-trust-failure
@@ -54,7 +57,8 @@ dual-emission period bridging the gap. The only 2025-era signal remaining anywhe
 narrative-prose breadcrumb described above, itself gone at the next minor release when F-362b
 lands and the breadcrumb window closes for good.
 
-**Deliberately out of scope this release**: `examples/**` (47 files) and 4 non-gated
+**Deliberately out of scope this release**: `examples/**` (47 files under the FR-008 sweep
+scope, which excludes `examples/*/test-output/**`; 49 counting those test outputs) and 4 non-gated
 sample-report baselines are **not** re-keyed — a declared, time-boxed carve-out that
 blocking-before-next-minor follow-up **F-362b** must close (it also owns the unconditional
 CA-baseline regen, fingerprint-sidecar re-emit, and the `coverage-attestation.typ:48` page-title
@@ -63,18 +67,27 @@ cite 2025-edition tokens and can **mis-attribute findings** to the wrong categor
 against 2026 expectations (architect finding NEW-3) — treat every `examples/**` artifact as
 2025-keyed until that follow-up closes.
 
-Three more consumer-visible changes ship alongside the remap. The literal phrase
+Four more consumer-visible changes ship alongside the remap. The literal phrase
 **"Model Theft"** — a stale 2023-era taxon name that `generate-risk-scores-sarif.py` had
 hardcoded onto `LLM10` under a mislabeled `"2025"` version tag
-(`{"id": "LLM10", "name": "Model Theft"}`) — is dropped everywhere it appeared, including the
-matching rule prose in `generate-threats-sarif.py:259-260`, because the 2026 edition has no
-equivalent entry; SARIF taxa are now derived from the catalog directly, making this class of
-drift structurally impossible going forward. The `tachi-data-poisoning` agent's OWASP dispatch
+(`{"id": "LLM10", "name": "Model Theft"}`) — is dropped from every SARIF taxa structure and
+matching rule where it appeared, including the matching-rule prose in
+`generate-threats-sarif.py:259-260`, because the 2026 edition has no equivalent entry; SARIF
+taxa are now derived from the catalog directly, making this class of drift structurally
+impossible going forward (one edition-neutral prose mention in `generate-risk-scores-sarif.py`'s
+LLM-category description remains — it carries no year token or taxon id and is a candidate for a
+future prose cleanup). The `tachi-data-poisoning` agent's OWASP dispatch
 anchor re-anchors from `LLM04:2025` to `LLM05:2026` — same category (Data and Model Poisoning),
-renumbered per the table above. And a repo-wide sweep absorbed 13 previously-undispositioned
+renumbered per the table above. A repo-wide sweep absorbed 13 previously-undispositioned
 sites in-wave: 12 prose edition labels reading "OWASP LLM Top 10 v2025" corrected to "v2026"
 across 5 adapter files and 2 legacy agent files, plus the `schemas/taxonomy/owasp.yaml:7` header
-comment (`LLM Top 10:2025` → `LLM Top 10:2026`).
+comment (`LLM Top 10:2025` → `LLM Top 10:2026`). And three crosswalk `confidence` ratings were
+deliberately downgraded during per-edge re-verification — `owasp:LLM08 → cwe:CWE-1426` (primary,
+high→medium), `owasp:LLM06 → cwe:CWE-918` (primary, medium→low), and
+`owasp:LLM06 → mitre-atlas:AML.T0025` (related, medium→low) — each with substantive per-edge
+reasoning in `specs/362-remap-owasp-llm-top10-2026/crosswalk-disposition-ledger.md` (rows 29,
+40, 72); consumers filtering crosswalk edges at `confidence >= medium` lose the two
+downgraded-to-`low` edges and see the CWE-1426 edge demoted.
 
 Full remap detail, the two disposition ledgers (74 crosswalk edges; 366 in-scope bare-code
 occurrences), and the coverage re-derivation live under

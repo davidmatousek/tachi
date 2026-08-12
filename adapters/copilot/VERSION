@@ -1,12 +1,12 @@
-source_version: d73ecd8
-generated_date: 2026-08-10
+source_version: a495028
+generated_date: 2026-08-11
 adapter: copilot
 format: ".agent.md (Copilot custom agents)"
 notes: "orchestrator and threat-report source agents exceed 30K limit; split into compact agent + instructions files"
 agent_manifest:
   - file: orchestrator.agent.md
     source: agents/orchestrator.md
-    sha256: 681af3a5a242282eee512645f4839261298659cf313d5a6b8e0aa7abbebf9492
+    sha256: a2b03541c5d722cc79d2cd5e3ae85975fa26adab036ee79fd92d9b9fd50a9260
     split: true
     instructions: ../instructions/tachi-orchestrator-context.instructions.md
   - file: spoofing.agent.md

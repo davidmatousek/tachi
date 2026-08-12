@@ -1,9 +1,9 @@
-source_version: d73ecd8
-generated_date: 2026-08-10
+source_version: a495028
+generated_date: 2026-08-11
 agent_manifest:
   - file: 00-orchestrator.md
     source: agents/orchestrator.md
-    sha256: 681af3a5a242282eee512645f4839261298659cf313d5a6b8e0aa7abbebf9492
+    sha256: a2b03541c5d722cc79d2cd5e3ae85975fa26adab036ee79fd92d9b9fd50a9260
   - file: 01-spoofing.md
     source: agents/stride/spoofing.md
     sha256: 540f9ff604e7963acd93a00a181aa60f50eb0d5e6ff6035a6de1cb7ba16c918e

@@ -166,6 +166,8 @@ F-182 authored **37 `related` edges** (22 `high` / 15 `medium`) and **0 `superse
 | **ATLAS → ATT&CK** | `mitre-atlas/atlas-data` `ATLAS.yaml`, `ATT&CK-reference` field | Yes (first-class field) | `high` by construction (explicit published ID cross-reference) | Reference cites a **base** technique but the edge targets a **sub**-technique (one-hop inference) — see the T0016 worked example | **7** (6 high / 1 medium) |
 | **OWASP-LLM Top 10 → ATLAS** | `genai.owasp.org/llmrisk/...` "Related Frameworks" list | Partial (relates frameworks, not a hard ID cross-reference) | n/a — the page relates the frameworks but does not publish it as a hard ID cross-reference, so `high` is not reached | Inferred one-hop from the "Related Frameworks" list | **8** (0 high / 8 medium) |
 
+> **2026-edition note (F-362)**: the OWASP-LLM→ATLAS calibration basis above is a **2025-edition artifact**. The 2026 edition currently publishes a single release resource (`https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/`) with **no per-category "Related Frameworks" sections**, and 8 of the 18 `owasp:LLM* → mitre-atlas` edges now cite that interim URL — a re-anchoring that orphans the per-entry evidentiary chain (acknowledged in `specs/362-remap-owasp-llm-top10-2026/crosswalk-disposition-ledger.md`, row 72). The `medium` ceiling for those 8 edges therefore rests on the 2025-edition per-entry lists they were originally calibrated from, pending re-verification against 2026 per-entry pages when OWASP publishes them (tracked with the URL re-anchor work in follow-up F-362b, #364).
+
 **Worked example per source class** (each traces to a real F-182 edge — confidence labels are exactly those authored):
 
 - **CWE↔CWE** — `CWE-20 PeerOf CWE-345` published in **View-1000** → **`high`** (`citation: …/20.html (CWE-20 PeerOf CWE-345, View-1000)`). Contrast `CWE-117 ChildOf CWE-20` appearing **only in View-700** → **`medium`** (Development-view-only), and `CWE-770 CanFollow CWE-20` (a **chaining** relation) → **`medium`** (context-specific). Same `CWE-20`, three different confidence outcomes driven by **view + relation Nature**.
@@ -179,7 +181,7 @@ CWE parent/child relations are **view-dependent**: the same CWE has different pa
 
 #### OWASP-LLM→CWE caution — the drift trap (FR-004)
 
-OWASP **LLM** risk pages are **prose-only** for CWE references. Confirmed live: **9 of the 10 LLM pages publish no structured CWE list; only LLM06 lists `CWE-400`.** Blogs widely repeat mappings like "LLM10 → CWE-79/89/78," but OWASP itself publishes no structured CWE cross-reference on the LLM pages. Therefore:
+OWASP **LLM** risk pages are **prose-only** for CWE references. Confirmed live against the **2025-edition per-entry pages** (the 2026 edition publishes no per-entry pages yet — see the 2026-edition note in §4.1): **9 of the 10 LLM pages published no structured CWE list; only the category now keyed LLM06:2026 (Unbounded Consumption) listed `CWE-400`.** Blogs widely repeat mappings like "LLM10 → CWE-79/89/78," but OWASP itself publishes no structured CWE cross-reference on the LLM pages. Therefore:
 
 - Any **OWASP-LLM→CWE** edge is inferred-from-prose → `low`/inferred, and is **hard-excluded from the `high`/`medium` floor count**.
 - This is why F-182 authored **0** OWASP-LLM→CWE edges.
@@ -196,7 +198,7 @@ A `superseded` edge expresses old-item → newer-item lineage and is authorable 
 | CWE↔CWE | `https://cwe.mitre.org/data/definitions/<N>.html` (CWE relationships, **with View context**) | Citation records **Nature + View ID** (FR-006) |
 | OWASP-Web→CWE | `https://owasp.org/Top10` per-category "List of Mapped CWEs" | Explicit counted list → `high` by construction |
 | ATLAS→ATT&CK | `mitre-atlas/atlas-data` `ATLAS.yaml`, `ATT&CK-reference` field | `atlas.mitre.org` technique pages **404 via automated fetch** (anti-bot) — `atlas-data` is the verification source |
-| OWASP-LLM→ATLAS | `https://genai.owasp.org/llmrisk/...` "Related Frameworks" | Inferred one-hop → `medium` ceiling |
+| OWASP-LLM→ATLAS | `https://genai.owasp.org/llmrisk/...` "Related Frameworks" | Inferred one-hop → `medium` ceiling (2025-edition per-entry basis — see the 2026-edition note in §4.1; the interim 2026 URL has no per-category lists) |
 | OWASP-LLM→CWE | *(none authoritative — prose-only)* | Hard-excluded from `high`/`medium` (FR-004); `low`/inferred only |
 
 #### Yield-tripwire outcome — expect a documented floor, not a mandatory 80

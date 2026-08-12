@@ -1,5 +1,5 @@
-source_version: d73ecd8
-generated_date: 2026-08-10
+source_version: a495028
+generated_date: 2026-08-11
 agent_manifest:
   - file: agent-autonomy.mdc
     source: agents/ai/agent-autonomy.md
@@ -18,7 +18,7 @@ agent_manifest:
     sha256: 682e8478c2373564eadf1653681a9ea28a6e26b84468ccaabe4e7e3336485b6d
   - file: orchestrator.mdc
     source: agents/orchestrator.md
-    sha256: 681af3a5a242282eee512645f4839261298659cf313d5a6b8e0aa7abbebf9492
+    sha256: a2b03541c5d722cc79d2cd5e3ae85975fa26adab036ee79fd92d9b9fd50a9260
   - file: privilege-escalation.mdc
     source: agents/stride/privilege-escalation.md
     sha256: eca349d0e718b7d0f3708fe529f3f0e5afd34936f8cf448a200cb55a6d88d49d
