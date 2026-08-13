@@ -855,6 +855,13 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
+## [4.48.0](https://github.com/davidmatousek/tachi/compare/v4.47.0...v4.48.0) (2026-08-13)
+
+
+### Features
+
+* **362:** remap OWASP LLM Top 10 coverage to the 2026 edition ([#363](https://github.com/davidmatousek/tachi/issues/363)) ([e6316e3](https://github.com/davidmatousek/tachi/commit/e6316e34ae1be6e3967ba836945994b076b19b76))
+
 ## [4.47.0](https://github.com/davidmatousek/tachi/compare/v4.46.0...v4.47.0) (2026-07-04)
 
 
