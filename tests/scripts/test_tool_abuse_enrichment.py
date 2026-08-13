@@ -103,14 +103,20 @@ def test_tool_abuse_metadata_includes_asi07() -> None:
     assert "ASI-07" in refs, (
         f"owasp_references MUST include 'ASI-07' post-Wave-1.1 (found: {refs})"
     )
-    # Pre-existing entries preserved byte-identically. The OWASP LLM entry is the
-    # sole exception: F-362 re-keyed it to the Excessive Agency 2026 slot and
-    # normalized it to the ADR-048 prefixed primary-token form.
-    for required in ("ASI-02", "ASI-04", "MCP-03", "MCP-05", "OWASP LLM03:2026"):
+    # Pre-existing entries preserved byte-identically (SC-001).
+    for required in ("ASI-02", "ASI-04", "MCP-03", "MCP-05"):
         assert required in refs, (
             f"Pre-existing entry {required!r} MUST be preserved byte-identically "
             f"(SC-001 byte-identity invariant; found: {refs})"
         )
+    # The OWASP LLM entry is the sole non-byte-identical survivor: F-362
+    # re-keyed it to the Excessive Agency 2026 slot and normalized it to the
+    # ADR-048 prefixed primary-token form — so it gets its own assertion with
+    # the accurate invariant name rather than the byte-identity message.
+    assert "OWASP LLM03:2026" in refs, (
+        f"Re-keyed OWASP LLM entry MUST read 'OWASP LLM03:2026' "
+        f"(F-362 re-key / ADR-048 primary-token form; found: {refs})"
+    )
 
 
 def test_tool_abuse_workflow_step5_extended() -> None:

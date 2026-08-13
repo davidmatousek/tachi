@@ -18,6 +18,7 @@ F-3 / Feature 219 ASI07 enrichment specifics:
 """
 from __future__ import annotations
 
+import functools
 import importlib.util
 import json
 import re
@@ -232,14 +233,21 @@ def parse_source_attribution(md: str) -> dict[str, list[dict]]:
     return out
 
 
-_OWASP_REFERENCE_BY_PREFIX = {
-    "OI": "OWASP LLM10:2026",
-    "MI": "OWASP LLM07:2026",
+# Slot numbers are editorial per-edition human decisions (F-362 itself re-keyed
+# them), so they stay literals; the edition year is derived from the catalog so
+# it cannot drift when the next OWASP LLM Top 10 edition lands (FR-012a).
+_OWASP_REFERENCE_SLOT_BY_PREFIX = {
+    "OI": "LLM10",
+    "MI": "LLM07",
 }
 
 
 def derive_owasp_reference(prefix: str) -> str | None:
-    return _OWASP_REFERENCE_BY_PREFIX.get(prefix)
+    slot = _OWASP_REFERENCE_SLOT_BY_PREFIX.get(prefix)
+    if slot is None:
+        return None
+    _, _, edition = _llm_catalog()
+    return f"OWASP {slot}:{edition}"
 
 
 _DFD_TYPE_TO_KIND = {
@@ -431,7 +439,7 @@ RULE_DEFS = [
         "tachi/ai/llm",
         "LLM Threats",
         "Large language model specific threats",
-        "Threats specific to LLM systems including prompt injection, training data poisoning, model theft, improper output handling, and misinformation emission.",
+        "Threats specific to LLM systems including prompt injection, data and model poisoning, improper output handling, and misinformation emission.",
         ["security", "ai", "llm", "owasp-llm"],
         "7.7",
     ),
@@ -455,11 +463,15 @@ def build_rules() -> list[dict]:
 # Reuses extract-report-data.py's own catalog loader (established repo pattern
 # — see scripts/check-catalog-drift.py::_load_extract_module, which reuses the
 # same loader in production, not just in tests) instead of hardcoding LLM
-# category names/numbers here. A future OWASP LLM Top 10 edition bump now only
-# requires updating the catalog; this module cannot drift from it.
+# category names/numbers/edition here. A future OWASP LLM Top 10 edition bump
+# now only requires updating the catalog; this module cannot drift from it.
+# Everything is loaded lazily on first taxonomy access (cached thereafter), so
+# importing this module for its parsers alone execs no sibling module and
+# reads no disk.
 EXTRACT_SCRIPT = REPO_ROOT / "scripts" / "extract-report-data.py"
 
 
+@functools.lru_cache(maxsize=None)
 def _load_extract_module():
     """Import the hyphenated ``scripts/extract-report-data.py`` via importlib.
 
@@ -477,102 +489,113 @@ def _load_extract_module():
     return module
 
 
-_extract = _load_extract_module()
+@functools.lru_cache(maxsize=None)
+def _llm_catalog() -> tuple[list[dict], str, str]:
+    """Return ``(taxa, information_uri, edition)`` for the OWASP LLM Top 10.
 
+    Derived once from the 10 ``LLM*`` records in schemas/taxonomy/owasp.yaml
+    via ``extract_report_data._load_framework_yaml_records`` (the renderer's
+    own catalog loader) rather than re-implementing the YAML walk. Catalog
+    order is alphabetical per FR-032, so taxa arrive LLM01..LLM10 with no
+    re-sort needed.
 
-def _llm_catalog_records() -> list[dict]:
-    """Return the 10 ``LLM*`` records from schemas/taxonomy/owasp.yaml, catalog order.
+    - ``taxa``: bare catalog id + verbatim current-edition name per taxon — no
+      hardcoded LLM category name literal anywhere in this module.
+    - ``information_uri``: T005 set every LLM record's ``url`` to the single
+      interim GenAI anchor per the feature's T003 URL-policy gate; read back
+      here rather than re-authoring the URL as a second literal.
+    - ``edition``: the year segment of ``full_id`` (``OWASP-LLM-2026-NN``),
+      consumed by ``version`` fields and ``derive_owasp_reference`` so no
+      edition literal is hand-maintained in this module.
 
-    Loaded via ``extract_report_data._load_framework_yaml_records`` (the
-    renderer's own catalog loader) rather than re-implementing the YAML walk.
-    Catalog order is alphabetical per FR-032, so this yields LLM01..LLM10 with
-    no re-sort needed.
+    Fails loudly (never silently) if the catalog records ever disagree on url
+    or edition — raised at first taxonomy access, where both real consumers
+    (the CLI ``main()`` and the FR-012a contract tests) still hit it.
     """
-    records = _extract._load_framework_yaml_records("owasp")
-    return [
+    records = _load_extract_module()._load_framework_yaml_records("owasp")
+    llm_records = [
         r for r in records if isinstance(r, dict) and r.get("id", "").startswith("LLM")
     ]
+    taxa = [{"id": r["id"], "name": r["name"]} for r in llm_records]
+    urls = {r["url"] for r in llm_records}
+    if len(urls) != 1:
+        raise RuntimeError(
+            "OWASP LLM catalog records disagree on url "
+            f"(schemas/taxonomy/owasp.yaml): {sorted(urls)}"
+        )
+    editions = {str(r["full_id"]).split("-")[2] for r in llm_records}
+    if len(editions) != 1:
+        raise RuntimeError(
+            "OWASP LLM catalog records disagree on full_id edition "
+            f"(schemas/taxonomy/owasp.yaml): {sorted(editions)}"
+        )
+    return taxa, urls.pop(), editions.pop()
 
 
-_LLM_RECORDS = _llm_catalog_records()
-
-# Bare catalog id + verbatim current-edition name per taxon — no hardcoded LLM
-# category name literal anywhere in this module.
-LLM_TAXA = [{"id": r["id"], "name": r["name"]} for r in _LLM_RECORDS]
-
-# T005 set every LLM record's ``url`` to the single interim GenAI anchor per
-# the feature's T003 URL-policy gate; read it back here rather than
-# re-authoring the URL as a second literal that could drift from the catalog.
-# Fails loudly (never silently) if the catalog records ever disagree.
-_LLM_URLS = {r["url"] for r in _LLM_RECORDS}
-if len(_LLM_URLS) != 1:
-    raise RuntimeError(
-        "OWASP LLM catalog records disagree on url "
-        f"(schemas/taxonomy/owasp.yaml): {sorted(_LLM_URLS)}"
-    )
-LLM_INFORMATION_URI = _LLM_URLS.pop()
-
-
-TAXONOMIES = [
-    {
-        "name": "OWASP-LLM",
-        "version": "2026",
-        "guid": "b4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
-        "informationUri": LLM_INFORMATION_URI,
-        "taxa": LLM_TAXA,
-    },
-    {
-        "name": "OWASP-ASI",
-        "version": "2026",
-        "guid": "c4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
-        "informationUri": "https://owasp.org/",
-        "taxa": [
-            {"id": "ASI01", "name": "Agent Autonomy Abuse"},
-            {"id": "ASI07", "name": "Insecure Inter-Agent Communication"},
-        ],
-    },
-    {
-        "name": "CWE",
-        "version": "4.13",
-        "guid": "a4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
-        "informationUri": "https://cwe.mitre.org/",
-        "taxa": [
-            {"id": "CWE-78", "name": "OS Command Injection"},
-            {"id": "CWE-79", "name": "Cross-site Scripting"},
-            {"id": "CWE-89", "name": "SQL Injection"},
-            {"id": "CWE-223", "name": "Omission of Security-relevant Information"},
-            {"id": "CWE-287", "name": "Improper Authentication"},
-            {"id": "CWE-345", "name": "Insufficient Verification of Data Authenticity"},
-            {"id": "CWE-918", "name": "Server-Side Request Forgery (SSRF)"},
-        ],
-    },
-]
-
-
-def supported_taxonomies() -> list[dict]:
+@functools.lru_cache(maxsize=None)
+def _taxonomies() -> list[dict]:
+    """SARIF ``taxonomies`` payload; cached so every caller shares one object."""
+    llm_taxa, llm_uri, llm_edition = _llm_catalog()
     return [
         {
             "name": "OWASP-LLM",
-            "index": 0,
+            "version": llm_edition,
             "guid": "b4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
-            "version": "2026",
-            "informationUri": LLM_INFORMATION_URI,
+            "informationUri": llm_uri,
+            "taxa": llm_taxa,
         },
         {
             "name": "OWASP-ASI",
-            "index": 1,
-            "guid": "c4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
             "version": "2026",
+            "guid": "c4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
             "informationUri": "https://owasp.org/",
+            "taxa": [
+                {"id": "ASI01", "name": "Agent Autonomy Abuse"},
+                {"id": "ASI07", "name": "Insecure Inter-Agent Communication"},
+            ],
         },
         {
             "name": "CWE",
-            "index": 2,
-            "guid": "a4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
             "version": "4.13",
+            "guid": "a4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
             "informationUri": "https://cwe.mitre.org/",
+            "taxa": [
+                {"id": "CWE-78", "name": "OS Command Injection"},
+                {"id": "CWE-79", "name": "Cross-site Scripting"},
+                {"id": "CWE-89", "name": "SQL Injection"},
+                {"id": "CWE-223", "name": "Omission of Security-relevant Information"},
+                {"id": "CWE-287", "name": "Improper Authentication"},
+                {"id": "CWE-345", "name": "Insufficient Verification of Data Authenticity"},
+                {"id": "CWE-918", "name": "Server-Side Request Forgery (SSRF)"},
+            ],
         },
     ]
+
+
+def supported_taxonomies() -> list[dict]:
+    # Derived from _taxonomies() (key order deliberately reproduces the
+    # historical hand-written entries byte-for-byte in the emitted JSON), so
+    # version/informationUri edits happen in exactly one place.
+    return [
+        {
+            "name": t["name"],
+            "index": i,
+            "guid": t["guid"],
+            "version": t["version"],
+            "informationUri": t["informationUri"],
+        }
+        for i, t in enumerate(_taxonomies())
+    ]
+
+
+def __getattr__(name: str):
+    # PEP 562: keep the historical module-attribute API (used by the FR-012a
+    # contract tests and any external importer) working over the lazy accessors.
+    if name == "TAXONOMIES":
+        return _taxonomies()
+    if name == "LLM_INFORMATION_URI":
+        return _llm_catalog()[1]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def main() -> int:
@@ -621,7 +644,7 @@ def main() -> int:
         "supportedTaxonomies": supported_taxonomies(),
         "rules": build_rules(),
     }
-    sarif = build_sarif_envelope(driver, TAXONOMIES, results)
+    sarif = build_sarif_envelope(driver, _taxonomies(), results)
 
     OUT_SARIF.write_text(
         json.dumps(sarif, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"

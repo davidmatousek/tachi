@@ -1171,36 +1171,26 @@ def load_framework_yaml_in_scope_record_counts() -> dict:
     }
 
 
-def classify_framework_items(
-    findings: list, framework_name: str, framework_records: list
-) -> list:
-    """Classify each top-level YAML record into Covered / Partial / Gap.
+def _warn_unmatched_attribution_refs(
+    findings: list, framework_name: str, catalog_ids: set
+) -> None:
+    """FR-012b form-drift guard for ``source_attribution`` refs.
 
-    Rule:
-      - Covered → ≥1 finding cites this id with relationship = primary
-      - Partial → zero primary citations AND ≥1 related/derived citation
-      - Gap → zero citations
-    Order-preserving: emitted items mirror ``framework_records`` iteration order.
+    A ref naming this ``framework_name`` whose ``id`` resolves against no
+    record anywhere in the framework's catalog (e.g. a stale year-suffixed or
+    breadcrumb-contaminated id that no longer parses, such as ``LLM05:2025``
+    against the 2026 catalog) never matches anything in
+    ``classify_framework_items`` and would otherwise be silently dropped —
+    the failure mode this guards against is a coverage-attestation page that
+    silently renders all-Gap.
 
-    FR-012b form-drift guard: a ``source_attribution`` ref naming this
-    ``framework_name`` whose ``id`` resolves against no record anywhere in
-    the framework's catalog (e.g. a stale year-suffixed or breadcrumb-
-    contaminated id that no longer parses, such as ``LLM05:2025`` against
-    the 2026 catalog) never matches anything in the classification loop
-    below and would otherwise be silently dropped — the failure mode this
-    guards against is a coverage-attestation page that silently renders
-    all-Gap. Checked against the FULL catalog via ``_load_framework_yaml_records``
-    (not ``framework_records``, which the caller may have already filtered
-    to in-scope-only per FR-024) so a legitimate citation of an
+    ``catalog_ids`` MUST be built from the FULL catalog (not an
+    in-scope-only filter, per FR-024) so a legitimate citation of an
     Out-of-Scope record (e.g. MITRE ATT&CK T1070.001) is never misreported
-    as unmatched. Emits one line per offending ref to stderr; never raises
-    and never changes the returned items.
+    as unmatched. Taking the id set as a parameter keeps this function free
+    of catalog I/O — the caller already holds the loaded records — so it
+    never raises and never changes any data.
     """
-    catalog_ids = {
-        record.get("id")
-        for record in _load_framework_yaml_records(framework_name)
-        if isinstance(record, dict)
-    }
     for finding in findings or ():
         for ref in finding.get("source_attribution") or ():
             if ref.get("taxonomy") != framework_name:
@@ -1216,6 +1206,22 @@ def classify_framework_items(
                     file=sys.stderr,
                 )
 
+
+def classify_framework_items(
+    findings: list, framework_name: str, framework_records: list
+) -> list:
+    """Classify each top-level YAML record into Covered / Partial / Gap.
+
+    Rule:
+      - Covered → ≥1 finding cites this id with relationship = primary
+      - Partial → zero primary citations AND ≥1 related/derived citation
+      - Gap → zero citations
+    Order-preserving: emitted items mirror ``framework_records`` iteration order.
+
+    Pure data-in/data-out over the supplied arguments — no disk I/O. The
+    FR-012b form-drift guard lives in ``_warn_unmatched_attribution_refs``,
+    invoked by ``build_per_framework_aggregates`` alongside this function.
+    """
     items = []
     for record in framework_records:
         record_id = record.get("id") if isinstance(record, dict) else None
@@ -1306,6 +1312,17 @@ def build_per_framework_aggregates(findings: list) -> list:
         else:
             records = _load_framework_yaml_records(
                 framework_name, in_scope_only=True
+            )
+            # FR-012b: full-catalog id set (cache-warm — raw_counts above
+            # already loaded every framework's full record list).
+            _warn_unmatched_attribution_refs(
+                findings,
+                framework_name,
+                {
+                    record.get("id")
+                    for record in _load_framework_yaml_records(framework_name)
+                    if isinstance(record, dict)
+                },
             )
             items = classify_framework_items(findings, framework_name, records)
         aggregates.append(
