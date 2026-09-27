@@ -45,7 +45,7 @@ Two different "tier" numberings appear below. They are not interchangeable.
 | **Risk volume** | The sum of per-finding scores over one row set (D-2). V2, V3 and V4 are the Tier 2–4 volumes. |
 | **Checked set** | Every destination path the installer tests for a symlink before writing or deleting (D-1, FR-K3.1). |
 | **At or above an entry's destination** | A manifest entry's destination path itself, or any of its ancestors strictly below the project root. **Nested** means strictly inside a directory entry's destination subtree. |
-| **Allow-list** | The exact strings an infographic image may show: the finding IDs the template's payload renders, or component names for templates that show names (FR-K15.2). |
+| **Allow-list** | The finding IDs an infographic image may show (exactly those its prompt renders) and the component names it may refer to (FR-K15.2). |
 | **Chain** | The image models the agent tries in order: a primary model, then its fallbacks (FR-K14.4). |
 
 ---
@@ -86,8 +86,8 @@ User stories keep the PRD's numbering (US-1 to US-5). US-3 and US-4 are split al
    - no claim that missing scripts make agents fall through to inline extraction (the agents hard-fail instead).
 3. **Given** a fresh, empty project and any of the three manual install blocks (the README's "Manual install (alternative)" and the developer guide's two), **When** an adopter follows it, **Then** the install succeeds, and the block:
    - tells them to copy every path between the `BEGIN MANIFEST` and `END MANIFEST` markers in `INSTALL_MANIFEST.md`;
-   - gives a short copy loop that runs on bash 3.2 and on both GNU and BSD userlands, and is safe to re-run;
-   - states that the manual path skips the installer's symlink check (D-1);
+   - gives a short copy loop that runs on bash 3.2 and on both GNU and BSD userlands, pastes cleanly into an interactive zsh, and is safe to re-run;
+   - states that the manual path does not check for symlinked destinations (D-1);
    - carries no enumerated path list and no count that can drift.
 4. **Given** the manifest's maintenance checklist, **When** a maintainer adds a skill, command or script, **Then** the checklist no longer asks them to edit install instructions by hand, because every manual block derives from the manifest.
 
@@ -117,7 +117,7 @@ User stories keep the PRD's numbering (US-1 to US-5). US-3 and US-4 are split al
    - without the flag, it is refused as in scenario 1;
    - with the flag, the entry is copied through the link and the resolved destination is named.
 5. **Given** a symlinked subdirectory or symlinked file *nested inside* a directory entry's destination subtree, **When** `install.sh` runs with or without the flag, **Then** it is refused. The message names the nested link and says the copy cannot pass through it (remedy: replace it with a real directory or file), and nothing is written *(spec ruling S-6)*.
-6. **Given** a destination path that passes through a dangling link or a looping link, **When** `install.sh` runs with or without the flag, **Then** it is refused, the message reports the link's `readlink` text, and nothing is written.
+6. **Given** a destination path that passes through a dangling link, a looping link, or a link to the wrong type of target (a file where a folder is needed, or the reverse), **When** `install.sh` runs with or without the flag, **Then** it is refused, the message reports the link's `readlink` text, and nothing is written.
 7. **Given** a destination that resolves into the tachi source tree the installer copies from, or a project root that is the source clone or sits inside it (including when reached through an alias), **When** `install.sh` runs with or without the flag, **Then** it is refused, the message names the tachi source tree and offers no flag remedy, and nothing is written *(spec ruling S-2; carry-forward L-N2)*.
 8. **Given** a project whose `.claude/commands` is a symlink to a shared folder that holds a file with a deprecated tachi command name, **When** `install.sh` runs, **Then**:
    - without the flag, it is refused and the file survives;
@@ -125,7 +125,7 @@ User stories keep the PRD's numbering (US-1 to US-5). US-3 and US-4 are split al
 9. **Given** a project reached through a symlink above its root (such as macOS's `/tmp → /private/tmp`, or a symlinked home directory), or a project directory itself reached through a link, **When** `install.sh` runs, **Then** it is not refused on that account, and an in-project link is classified as inside the project.
 10. **Given** a project with no symlinked destination component, **When** `install.sh` runs, **Then** it copies exactly the same files as before this change.
 11. **Given** `install.sh --version <tag>` run from a source clone that is on a branch (or detached at a SHA), **When** the install succeeds, fails or is refused, **Then** the source clone is back on its original ref afterwards. **When** the restore itself fails, **Then** a warning names the original ref and the command that restores it, and the failed restore doesn't change the run's exit status.
-12. **Given** `install.sh --help` and the README install section, **When** an adopter reads them, **Then** both document `--follow-symlinks` and its scope: destination components at or above each entry only; copies only; never deletes; always refuses dangling, looping, nested and source-tree links. Both files keep their release-please version markers.
+12. **Given** `install.sh --help` and the README install section, **When** an adopter reads them, **Then** both document `--follow-symlinks` and its scope: destination components at or above each entry only; copies only; never deletes; always refuses dangling, looping, wrong-type and nested links, and destinations inside the tachi clone. Both files keep their release-please version markers.
 
 ---
 
@@ -154,7 +154,7 @@ User stories keep the PRD's numbering (US-1 to US-5). US-3 and US-4 are split al
    - the PDF data carries the same counts;
    - no placeholder row appears among the resolved findings.
 6. **Given** the same baseline under the legacy `## 4b. Resolved Findings` heading, **When** extraction runs, **Then** the resolved count is the same.
-7. **Given** a Section 7 status map whose ID set differs from the tier's finding IDs, **When** extraction runs, **Then** it warns.
+7. **Given** a baseline run whose Section 7 status map has an ID set that differs from the tier's finding IDs, **When** extraction runs, **Then** it warns. A run without a baseline, or whose Section 7 has no Status column, does not emit the ID-set warning (a baseline run without a Status column gets the single "delta counts unavailable" warning instead). Bracketed statuses (`[NEW]`) count as their bare values.
 8. **Given** a data-tier-1 run whose controls Section 4 covers only some findings, **When** the PDF data is built, **Then**:
    - covered findings carry their analyzer recommendation;
    - every other finding carries its threats.md Section 7 mitigation, prefixed `Threat-model mitigation:`;
@@ -206,7 +206,7 @@ User stories keep the PRD's numbering (US-1 to US-5). US-3 and US-4 are split al
     - the sidebar's stage-to-stage annotations read the volume-based reductions, and its Risk Reduction reads the row-derived value;
     - a run with 0% reduction still carries the "0% risk reduction — no effective controls detected" note, so the forced STEP narrowing isn't read as reduction;
     - no text contradicts the algorithm (the "Tier 4 width equals Tier 2 width" zero-reduction rule and the fixed ~75/50/30% headings are gone);
-    - the caption says that Tier 3 credits fully effective controls and Tier 4 adds partial ones.
+    - the caption says that Tier 3 credits fully effective controls and Tier 4 adds partial ones, and that widths narrow by at least one step per stage for readability while the percentages are exact.
 
 ---
 
@@ -244,7 +244,7 @@ User stories keep the PRD's numbering (US-1 to US-5). US-3 and US-4 are split al
 
 The fix is deterministic configuration plus live verification. K14 is not a split candidate. It keeps its renders even if K15 is carved under TW-6, and PM ruling P-9.2 governs a render blockage.
 
-**Independent Test**: A static contract test pins every request configuration to the known-good form and the current chain. One live render per chain model on a scratch copy of a tachi example succeeds.
+**Independent Test**: A static contract test pins every request configuration to the known-good form and the current chain. K14's render set succeeds through the agent on a scratch copy of a tachi example: each template once, each chain model at least once, and executive-architecture on one portrait PDF page (FR-K14.3).
 
 **Acceptance Scenarios**:
 
@@ -264,7 +264,7 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
    - the command's final summary reports the image step as failed, with the API's message and the request-body keys sent.
 
    The spec is still saved, but the failure is never silent *(spec ruling S-11)*.
-5. **Given** a scratch copy of a tachi example and the API key held only in the process environment and sent only as a header, **When** one live render runs per chain model, **Then** each succeeds. The record gives the endpoint, model ID and date, the saved file's extension matches its image bytes, and a 3:4 executive-architecture image lands on one portrait PDF page. `[MANUAL-ONLY] needs a live API key, network access and a human look at the rendered images`
+5. **Given** a scratch copy of a tachi example and the API key held only in the process environment and sent only as a header, **When** K14's render set runs (each template once, each chain model at least once), **Then** each render succeeds. The record gives the endpoint, model ID and date, the saved file's extension matches its image bytes, and a 3:4 executive-architecture image lands on one portrait PDF page. `[MANUAL-ONLY] needs a live API key, network access and a human look at the rendered images`
 
 ---
 
@@ -279,7 +279,7 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
 **Acceptance Scenarios**:
 
 1. **Given** the reference prompt, the five template prompt blocks and the executive-architecture prompt, **When** a reader reads each prompt, **Then** it states that uppercase section labels are layout instructions, not text to render, and it restricts IDs to the template's allow-list and forbids any other.
-2. **Given** each template, **When** the extractor runs, **Then** the infographic JSON carries that template's allow-list: the finding IDs its payload renders, or component names for templates that show names. It is not the set of all finding IDs.
+2. **Given** each template, **When** the extractor runs, **Then** the infographic JSON carries that template's allow-list: the finding IDs its prompt renders (the full set where the prompt can show any finding, a subset or none otherwise) and the run's component names.
 3. **Given** each of the five scaffolded templates, **When** the static contract test runs, **Then**:
    - the prompt scaffold is found;
    - the preamble's last line starts `DATA CONTENT` and the preamble contains the K15 instruction;
@@ -358,7 +358,7 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
 - **Control status.** A recognized no-control label (`No Control Found`, `Missing`, `None`, `Not Found`) is silent. An empty or unrecognized status counts as no control and warns. Whole-token matching means "known", "node" or "annotated" never read as "no" (FR-K11.3).
 - **Residual above inherent.** It is clamped once, with a warning, so every consumer sees the same value (FR-K11.3).
 - **No inherent score after the join.** The row is left out of the volumes, with a warning, but still counts in the severity mixes and the posture. This also covers a data-tier-1 run whose risk scores exist only as SARIF (FR-K11.3).
-- **A Tier 2 volume of zero.** Widths fall back to the STEP cascade, with a warning (FR-K11.5).
+- **A Tier 2 volume of zero, or no inherent scores at all** (for example a run with only risk-scores SARIF and a controls table without an Inherent column). Volumes are unavailable: widths fall back to the STEP cascade, and the volumes, reductions and Risk Reduction are null rather than 0, with a warning (FR-K11.5).
 - **Section 1 totals that disagree with the rows** (the #374 K7 symptom, and already true of the golden fixture). The rows win, with a warning, on the funnel and the baseball card alike (FR-K11.3).
 - **Row-count and ID-set mismatches between artifacts** (the #374 K6/K7 symptoms). Each one warns (FR-K11.3, FR-K12.2).
 - **The legacy `## 4b.` resolved-findings heading.** Accepted alongside `## 4c.` (FR-K12.4). The producer checklist that still tells the orchestrator to write 4b is corrected (FR-K12.5).
@@ -401,7 +401,7 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
 - **FR-K2.1** — The block, both "3 Python files" notes and the script table MUST cover the four distributable scripts: `extract-report-data.py`, `extract-infographic-data.py`, `tachi_parsers.py` and `populate-affected-assets.py`. In the same file:
   - the dependency note says what is true (NFR-2);
   - the stale list of non-distributed scripts is replaced by the rule that every other file in `scripts/` is tachi-internal;
-  - the stale claim that missing scripts make agents "silently fall through to LLM inline extraction" is corrected (the agents hard-fail instead).
+  - the stale claim that missing scripts make agents "silently fall through to LLM inline extraction" is corrected: the report and infographic agents stop with `EXTRACTION SCRIPT MISSING`, and a pipeline step that runs `populate-affected-assets.py` fails at that step.
 
   → US-1 #1, #2
 - **FR-K2.2** — Every manual install block MUST derive from the manifest instead of enumerating paths: the README's "Manual install (alternative)" and both developer-guide blocks.
@@ -412,7 +412,7 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
     - runs on bash 3.2 and on both userlands (NFR-3).
 
     All three blocks fail on a fresh project today.
-  - Each block states that the manual path skips the installer's symlink check (D-1).
+  - Each block states that the manual path does not check for symlinked destinations, so it should run only into real directories (D-1). The block carries no comment, because stock interactive zsh does not treat `#` as a comment.
   - The developer guide's stale verify counts are corrected, and its install section gains no version-bearing example (release-please bumps only `README.md` and `scripts/install.sh`). Its stale `--version v4.0.0` example becomes a generic `vX.Y.Z`.
   - The maintenance checklist item that asks for install-instruction edits is reworded to match.
 
@@ -451,9 +451,9 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
   - not a link;
   - a link resolving inside the project;
   - a link resolving outside it;
-  - a link into the tachi source tree;
+  - a destination whose physical location is in the tachi source tree (checked for every manifest entry and cleanup path, whether or not a link is involved);
   - a nested link;
-  - an unresolvable link.
+  - an unresolvable link (dangling, looping, or pointing at the wrong type of target).
 
   The check covers both branches of the copy loop (directories and single files) and the cleanup. → US-2 #1, #3–#5, #9
 - **FR-K3.2** — **The refusal.** Without the opt-in flag, any symlinked component MUST stop the install. The installer:
@@ -461,7 +461,7 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
   - states that nothing was written, and names the remedies;
   - exits non-zero, with the target project untouched and the source ref restored (FR-K3.5).
 
-  Four classes are refused **even with the flag**: dangling links, looping links, links nested inside a directory entry's destination subtree *(spec ruling S-6)*, and destinations in the tachi source tree (FR-K3.7). For these, the message offers no flag remedy. → US-2 #1, #5–#7
+  Three classes are refused **even with the flag**: unresolvable links (dangling, looping or wrong-type), links nested inside a directory entry's destination subtree *(spec ruling S-6)*, and destinations physically inside the tachi source tree (FR-K3.7). For these, the message offers no flag remedy. → US-2 #1, #5–#7
 - **FR-K3.3** — **The opt-in.** The flag is **`--follow-symlinks`** *(spec ruling S-1, OQ-1)*: long form only, no short alias, and it takes no value.
   - With it, the installer follows links at or above each entry's destination, copying into each resolved destination on purpose. It names each resolved destination before copying and again in the summary.
   - **The flag authorizes copies only.** A cleanup path that passes through a symlinked component is skipped and listed in the summary, never deleted.
@@ -531,15 +531,15 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
 - **FR-K11.3** — Volumes MUST follow D-2's per-row rules.
   - **Inherent score.** The controls parser emits each row's inherent score. A missing one is filled by ID join to the risk-scores composites. A row still without one is left out of all three volumes, with a warning, but still counts in the severity mixes and the posture, because its residual exists *(spec ruling S-4; carry-forward L-N4)*.
   - **Status classifier** *(spec ruling S-5; carry-forward L-N3)*. One shared helper classifies each row's control status, and it replaces both copies of today's tolerant idiom: the row read and the coverage fallback derivation. It matches whole tokens, case-insensitively:
-    - a status with the token `partial` → partial;
+    - a status with a token starting `partial` (for example `partial`, `partially`) → partial;
     - a status in the recognized no-control set (`No Control Found`, `Missing`, `None`, `Not Found`) → no control, silently;
-    - a status with the token `found` and no negation token (`no`, `not`) → found;
+    - a status with the token `found` and no negation token (`no`, `not`, `none`, `nothing`) → found;
     - anything else, including an empty status → no control (inherent, no credit), with a warning.
 
     The Section 1 coverage-summary reader keeps its own matching, because it must skip rows that aren't statuses. Its totals are only a comparand.
   - **Clamp once** *(carry-forward L-N4)*. Residual is clamped to ≤ inherent once, where the controls rows are parsed, with a warning. So the residual band counts, the posture counts and the funnel all see the same clamped values, and V2 ≥ V3 ≥ V4 holds row by row.
   - **Tier 3 bands.** Tier 3 per-row scores are banded with the standard thresholds 9.0 / 7.0 / 4.0.
-  - **Section 1 is a comparand.** If the controls report's Section 1 totals disagree with the row sums beyond rounding, the extractor warns and the rows win. `risk_reduction` becomes the row-derived Tier 2→4 value. The inherent and residual totals become V2 and V4. This applies on **every infographic template that carries them**, the baseball card included, so two images from one run can't disagree *(spec ruling S-9)*.
+  - **Section 1 is a comparand.** If the controls report's Section 1 totals disagree with the row sums beyond rounding, the extractor warns and the rows win. `risk_reduction` becomes the row-derived Tier 2→4 value. The inherent and residual totals become V2 and V4. When no controls row carries an inherent score, volumes are unavailable: `risk_reduction` and both totals are null, never 0. This applies on **every infographic template that carries them**, the baseball card included, so two images from one run can't disagree *(spec ruling S-9)*.
   - **Row counts.** The extractor warns when the controls and risk-scores row counts differ.
 
   → US-3b #4–#6, #9
@@ -548,12 +548,12 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
   - The sidebar's stage-to-stage annotations read the volume-based reductions, and its Risk Reduction reads the row-derived value.
   - The "0% risk reduction — no effective controls detected" note stays, because the algorithm narrows by at least STEP even at 0%.
   - Text that contradicts the algorithm is removed: the "Tier 4 width equals Tier 2 width" zero-reduction rule and the fixed ~75/50/30% headings.
-  - The PDF's funnel caption says that Tier 3 credits fully effective controls and Tier 4 adds partial ones.
+  - The PDF's funnel caption says that Tier 3 credits fully effective controls and Tier 4 adds partial ones, and that widths narrow by at least one step per stage for readability while the percentages are exact.
 
   → US-3b #10
 - **FR-K11.5** — The extraction layer MUST compute the tier widths deterministically and emit them per tier in the infographic JSON. They are carried into the funnel spec and the prompt's tier-data slots, and the template renders them verbatim.
   - **The algorithm.** W1 = 100 and W2 = 100 − STEP. For k = 3 and 4: W_k = clamp(W2 · V_k / V2, lo = FLOOR + (4 − k) · STEP, hi = W_{k−1} − STEP). Every tier is then at least STEP narrower than the one above and never below FLOOR, provided FLOOR + 3 · STEP ≤ 100.
-  - **Fallbacks.** If V2 = 0, widths fall back to the STEP cascade (W_k = W_{k−1} − STEP), with a warning. Ghost tiers use the same cascade.
+  - **Fallbacks.** If V2 = 0, or no row carries an inherent score, volumes are unavailable: widths fall back to the STEP cascade (W_k = W_{k−1} − STEP), and the volumes, reductions and `risk_reduction` are null, with a warning. Ghost tiers use the same cascade. Every funnel tier is emitted as an object, with `ghost` marking an absent data source *(plan PD-18)*.
   - **Constants and numeric semantics** are pinned in `plan.md` (TW-1):
     - STEP and FLOOR, subject to FLOOR + 3 · STEP ≤ 100 and to every tier label staying legible at FLOOR width;
     - the precision of volume sums;
@@ -566,11 +566,11 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
 
 ##### K12 — the infographic `delta_counts` is wrong
 
-- **FR-K12.1** — `delta_counts` MUST equal the threats.md Section 7 Status column (NEW / UPDATED / UNCHANGED), counted through FR-K12.2's map, plus the real count of resolved rows. → US-3a #5
+- **FR-K12.1** — `delta_counts` MUST equal the threats.md Section 7 Status column (NEW / UPDATED / UNCHANGED, after normalization, so the orchestrator's bracketed `[NEW]` counts as NEW), counted through FR-K12.2's map, plus the real count of resolved rows. → US-3a #5
 - **FR-K12.2** — One shared helper in the shared parser module, `delta_status_by_id`, MUST return `{id: status}` from the Section 7 Status column.
   - Both extractors count NEW, UPDATED and UNCHANGED from that map, and the PDF path also uses it to badge findings.
-  - The extractors warn when the map's ID set differs from the tier's finding IDs.
-  - The map asserts a non-empty result whenever Section 7 has rows.
+  - Statuses are normalized before counting: whitespace, one surrounding `[…]` pair and emphasis markers are stripped, then the value is upper-cased.
+  - On a baseline run whose Section 7 has a Status column, the extractors warn (never raise) when the map is empty or its ID set differs from the tier's finding IDs. Runs without a baseline, or whose Section 7 has no Status column, skip both checks; a baseline run without the column gets one "delta counts unavailable" warning *(plan PD-16)*.
   - The PDF path's `_merge_delta_status` stays importable from `extract-report-data.py`, because an existing test calls it; otherwise that test changes in the same commit.
 
   → US-3a #5, #7
@@ -591,7 +591,7 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
 
 - **FR-K13.1 (recommendations)** — A recommendation shown in the PDF MUST NOT be blank.
   - On every data-tier-1 run, a finding with no joined analyzer recommendation falls back to its threats.md Section 7 mitigation, prefixed `Threat-model mitigation:` (PM ruling M5). A conformant Section 4 covers only a subset of findings, so this changes conformant output too.
-  - If neither source has text, the finding shows **`No recommendation available`** *(spec ruling S-3)*.
+  - If neither source has text, the finding shows **`No recommendation available`** *(spec ruling S-3)*. On data tiers 2 and 3, a recommendation or mitigation that resolves empty also shows `No recommendation available`; the `Threat-model mitigation:` fallback stays tier-1 only *(PM plan review RC-P7)*.
   - The fallback and the placeholder apply to the finding's recommendation itself, so all three consumers show the same text: the remediation roadmap, the finding cards and the attack-path remediation.
   - When controls Section 4 has content but zero recommendations join, the extractor warns. That is the drift signal.
   - A template-conformant Section 4 still populates the recommendations it covers.
@@ -613,8 +613,8 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
 ##### K14 — the Gemini request is rejected (HTTP 400), and its models are retiring
 
 - **FR-K14.1** — The reference request body MUST use the known-good form, which was verified live and is confirmed by the API's published schema: `generationConfig.responseModalities: ["TEXT","IMAGE"]` and `generationConfig.imageConfig.aspectRatio`, with no top-level `aspectRatio`.
-  - **`imageSize`** stays dropped per the PRD. It is restored only if `plan.md` rules to restore it (P-4, reopened) and a live render verifies it on every chain model.
-  - **The dead keys go**: `image_size: "2K"` in all five template blocks, and `resolution: "2K"` in the reference.
+  - **`imageSize`** stays dropped per the PRD. It is restored only under PM ruling P-10.3: live-verified at every shipped model × ratio combination (both chain models × 16:9 and 3:4), with the size actually honored and real-template latency headroom confirmed at W3.
+  - **The dead keys go**: `resolution: "2K"` in the reference goes. `image_size: "2K"` goes from all five template blocks unless PM ruling P-10.3 restores it, in which case it maps to `imageConfig.imageSize` (static assertion A2).
   - **Mapping table.** The reference gains a table that maps template keys to request-body fields.
   - **Provenance.** The reference records the endpoint the form applies to (`models/{model}:generateContent`) and the model IDs and date of the verified renders. The public image-generation guide now documents a different endpoint and body shape, so the endpoint is pinned explicitly.
 
@@ -630,7 +630,7 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
     - This test is the check the templates' contract promises ("the agent validates that these sections exist"), and the contract text says so.
 
   → US-4a #1, #2
-- **FR-K14.3** — Live renders MUST succeed: one per chain model, on a scratch copy of a tachi example (the example's images are tracked), with the API key handled per NFR-5. The record gives:
+- **FR-K14.3** *(PM ruling P-10.2)* — Live renders MUST succeed through the agent, on a scratch copy of a tachi example (the example's images are tracked), with the API key handled per NFR-5: each of the six templates at least once (K15's first-iteration renders count when K15 ships), at least one render on each chain model, and executive-architecture assembled on one portrait PDF page. A model blocked under P-9.2 or P-10.1 is recorded as statically verified only. The record gives:
   - the status and a visual check;
   - the endpoint, model ID and date;
   - that the saved extension matches the image bytes;
@@ -642,6 +642,7 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
   - Retired models go: `gemini-3-pro-image-preview` and `gemini-3.1-flash-image-preview` shut down on 2026-06-25, and `gemini-2.5-flash-image` shuts down on 2026-10-02.
   - The default model agrees with the fallback order.
   - The chain and each model's verified-render date are recorded in the reference, so the next shutdown is visible.
+  - The chain is walked when a model is unavailable to the key (HTTP 404 `NOT_FOUND` or 403 `PERMISSION_DENIED`). When every chain model is exhausted, the agent logs at Error, and its summary names each model tried with its status *(plan PD-14; PM R-P2, R-P3)*.
 
   → US-4a #3
 - **FR-K14.5** *(spec ruling S-11)* — **HTTP 400 is loud, but not blocking.** The infographic agent's error table MUST gain an HTTP 400 row:
@@ -661,15 +662,17 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
   - **The lock.** The executive-architecture prompt is verbatim-locked by FR-212-6. The PRD sanctions one minimal, additive amendment inside the lock markers, limited to the two K15 instructions (this one and FR-K15.2), subject to the architect's ruling at plan (P-2). Research found the amendment mechanically safe on these conditions:
     - both marker lines are unchanged;
     - no fence and no new slot are added;
-    - the allow-list is expressed as "only the IDs listed under CALLOUTS and the names listed under LAYER STACK";
+    - the allow-list is expressed as "every finding ID must be one listed under CALLOUTS, and every component name one listed under LAYER STACK, FLOW EDGES or CLUSTERS";
     - the text goes right after the block's IMPORTANT paragraph;
-    - a dated amendment note in the lock rule also reconciles the rule's stale header and slot lists.
+    - a dated amendment note in the lock rule also reconciles the rule's stale header and slot lists;
+    - the amendment is one paragraph, and its layout-label sentence cites only labels present in this prompt;
+    - a static test proves the amendment additive (the block without it hashes to the pinned pre-change value).
   - **The agent's section.** The agent's executive-architecture section defers to the verbatim block, which it contradicts today, so the amendment takes effect.
   - **If P-2 is not sanctioned**, executive-architecture is carved from K15 under TW-3, and the other five proceed.
 
   → US-4b #1
-- **FR-K15.2** — The prompts MUST restrict the image to the exact strings in its allow-list, matching the legend, and MUST forbid any other ID.
-  - The extractor emits the allow-list per template, as a new JSON field. It is the set of IDs the template's payload renders (top findings, callouts, per-layer summaries, the legend), not the set of all finding IDs. Templates that show component names list names.
+- **FR-K15.2** — The prompts MUST restrict the finding IDs and component names in the image to its allow-list (plan PD-17), matching the legend, and MUST forbid any other ID.
+  - The extractor emits the allow-list per template, as a new JSON field. Its finding IDs are exactly the IDs the template's prompt renders (top findings, callouts, per-layer summaries, the legend): the full finding-ID set where the prompt can show any finding (system-architecture's legend and pills, the baseball card's boundary annotations), the rendered subset elsewhere, and none where no ID is rendered. Its component names are the run's known component names *(plan PD-17)*.
   - The prompt text references the field by name, and the agent quotes its values in the DATA CONTENT region. The locked or verbatim text never transcribes values.
 
   → US-4b #1, #2
@@ -711,9 +714,10 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
     - the manifest, `.claude/skills/**`, `.claude/commands/tachi.*.md`, `.claude/agents/tachi/**`, `templates/tachi/**`, `scripts/*.py`, and `scripts/install.sh` (for the end-to-end case);
     - the tests and their fixtures, and the workflow file;
     - `examples/**` *(carry-forward L-N5)*;
-    - both `tests/conftest.py` and `tests/scripts/conftest.py`, and `pyproject.toml` *(research correction)*.
+    - both `tests/conftest.py` and `tests/scripts/conftest.py`, and `pyproject.toml` *(research correction)*;
+    - `README.md` and `docs/guides/DEVELOPER_GUIDE_TACHI.md` (the manual-loop test byte-compares their blocks), `adapters/claude-code/**` (the static contract test pins the shipped adapter copy), and `schemas/taxonomy/*.yaml` if #370's tests load the real catalogs *(plan review RC-P5)*.
 
-    It must visibly run on PR #375, and it provides Typst for the stale-data test (FR-K13.4).
+    Each path lands in the lock-step commit that adds the test reading it. The first-wave cut-line commit invokes only the completeness module; the pre-existing extraction modules join afterward, together with the mmdc skip *(PM ruling RC-P1)*. It must visibly run on PR #375, and it provides Typst, in a separate job, for the stale-data test (FR-K13.4).
   - **Installer (K3) tests** run on the existing 2-OS bash matrix in `tachi-pytest.yml`: bash 3.2 with BSD tools on macOS, bash 5 with GNU tools on Ubuntu. That matrix is NFR-3's gate. Its `paths:` anchor gains only `scripts/install.sh`, the installer tests and their helpers and fixtures, each marked `# F-373`, with a line in the header log. Its trigger is not widened to agents, skills, commands or templates, because a run takes 22–29 minutes.
   - **The existing green parser and extractor modules are gated too**, because the R-3 safety net relies on them. The report-data module is gated on the bare runner. Only its five mmdc-dependent cases skip when mmdc is absent (the repo's skip-when-absent idiom, placed in their shared fixture) *(carry-forward M-N1)*. No workflow installs mmdc, and production still requires it (ADR-022). New report-path tests stay off the mmdc path. The #365 byte-identity module is not gated.
   - **Lock-step, per workflow.** Each module is added to its gating workflow's `paths:` list and invocation in the same commit, and `paths:` also names the source surfaces the tests guard.
@@ -726,12 +730,12 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
 ### Key Entities
 
 - **Install manifest block**: the single install contract, the list of paths between the `BEGIN MANIFEST` and `END MANIFEST` markers. The installer and the completeness test parse it identically, and every manual install path copies from it.
-- **Checked set** (D-1): every destination path tested for a symlink before any write or delete. Each member is classified as not a link, a link inside the project, a link outside it, a link into the tachi source tree, a nested link, or an unresolvable link.
+- **Checked set** (D-1): every destination path tested for a symlink before any write or delete. Each member is classified as not a link, a link inside the project, a link outside it, a nested link, or an unresolvable link (dangling, looping or wrong type). Separately, every destination whose physical location is inside the tachi source tree is refused.
 - **Controls row**: Threat ID, Inherent Score, Control Status (found / partial / no control), Residual Score (clamped to ≤ inherent) and Residual Severity, read through one alias table. The row set is deduplicated by first occurrence, with placeholder rows dropped.
 - **Funnel tier**: a tier index (JSON 0–3), name, count, volume (funnel Tiers 2–4 only), severity mix, width, and the reduction to the next tier.
 - **Posture**: a level (`critical` | `high` | `medium` | `low`) and a label (`CRITICAL RISK` | `HIGH RISK` | `MODERATE RISK` | `LOW RISK`), with the supporting `risk_posture` sentence.
 - **Delta status map**: `{finding ID: NEW | UPDATED | UNCHANGED}`, from the threats.md Section 7 Status column.
-- **Allow-list**: per template, the exact strings an image may show.
+- **Allow-list**: per template, the finding IDs an image may show and the component names it may refer to.
 - **Request configuration**: per template, a flat key set (model, fallback model, modalities, aspect ratio) that maps to one request-body form through the reference's key-to-field table.
 
 ### Key Artifacts
@@ -766,10 +770,10 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
 |---|---|---|---|
 | **SC-1** | A fresh `install.sh` into an empty project | 21 agents, 18 skill dirs, 3 scripts | 21 agents, **21** skill dirs, **4** scripts |
 | **SC-2** | Manifest drift is caught | Nothing checks it | The gated completeness test is green on the fixed manifest and red on every negative case |
-| **SC-3** | A symlinked destination | Silent write-through and delete-through | Without the flag: 0 files written or deleted, and each link and its resolved destination named. With the flag: installed through links at or above each entry and named, with 0 files deleted through a link. Dangling, looping, nested and source-tree links are refused either way. The ref is restored, or a warning is printed |
+| **SC-3** | A symlinked destination | Silent write-through and delete-through | Without the flag: 0 files written or deleted, and each link and its resolved destination named. With the flag: installed through links at or above each entry and named, with 0 files deleted through a link. Dangling, looping, wrong-type and nested links, and destinations inside the tachi clone, are refused either way. The ref is restored, or a warning is printed |
 | **SC-4** | Extraction matches the sources (synthetic fixtures) | Residual Critical mislabeled; MAESTRO empty on `###`; flat funnel; wrong `delta_counts`; resolved findings missed under `4c`; placeholder row; blank recommendations; two posture rubrics | Correct residual band counts and 0 phantom rows; identical MAESTRO output at `###` and `####`; the funnel narrows by volume over one row set, with Tier 2→4 equal to `risk_reduction` on every template; exact `delta_counts` under both `4b` and `4c`; 0 placeholder rows; 0 blank recommendations on any surface; one posture level and label on both surfaces |
 | **SC-5** | Live render | Every request fails with HTTP 400, and every configured model is retired or retiring | Every chain model renders. 6/6 templates render, with executive-architecture in portrait on one PDF page. 0 leaked layout labels, and every ID in its allow-list |
-| **SC-6** | Release | Earlier manifest fixes shipped without a re-install notice | A `fix(373)` patch release whose **published release notes**, not only the CHANGELOG, carry: (1) the update-and-re-run notice (update the clone first, then re-run `install.sh`); (2) the D-1 behavior note: an install through a symlinked destination stops unless `--follow-symlinks` is passed, the flag never deletes through a link, and dangling, looping, nested and source-tree links are refused **even with the flag**; (3) that findings the controls report gives no recommendation for show the threat model's mitigation, marked `Threat-model mitigation:` (always, per M5); (4) that the risk funnel now narrows by risk volume (only if K11 ships) |
+| **SC-6** | Release | Earlier manifest fixes shipped without a re-install notice | A `fix(373)` patch release whose **published release notes**, not only the CHANGELOG, carry: (1) the update-and-re-run notice (update the clone first, then re-run `install.sh`; it names the three skills and the Affected Assets populator); (2) the D-1 behavior note: an install through a symlinked destination stops unless `--follow-symlinks` is passed, the flag never deletes through a link, and dangling, looping, wrong-type and nested links, and destinations inside the tachi clone, are refused **even with the flag**; (3) that findings the controls report gives no recommendation for show the threat model's mitigation, marked `Threat-model mitigation:` (always, per M5); (4) that the risk funnel now narrows by risk volume, and that the Risk Reduction figure on the funnel and the baseball card is computed from the controls rows and can differ from the controls report's summary (only if K11 ships); (5) that a `report-data.typ` compiled outside `/tachi.security-report` now stops with a regenerate instruction (only if K13-posture ships); (6) that the render path is statically verified only, per blocked model (only if P-9.2 or P-10.1 fires); (7) to replace a symlinked destination before re-running (only if TW-7 ships Lane A without K3). The notices appear verbatim in the published notes, verified with `gh release view` |
 | **SC-7** | Live confirmation *(lagging; tracked outside this feature)* | — | The next large real-world run, installed with the stock `install.sh`, shows none of K1–K3 or K9–K15 |
 | **SC-8** *(spec)* | No collateral change | — | The existing gated suites and the co-fired workflows stay green. 0 tracked example PNGs and 0 PDF baselines change in the PR. Infographic goldens change only where authorized by file name: the funnel and baseball-card goldens for K11 (the baseball card only while K11 ships; PM ruling P-9.5), the goldens that gain posture fields for K13, and all five scaffolded-template goldens for K15. Every data-layer diff against the pre-build snapshot (with run-specific fields such as timestamps and absolute paths normalized) is attributed to a K-item, and the PR lists the examples whose data changed |
 
@@ -799,7 +803,7 @@ K1–K3 (Group A), K9–K13 (Group B), K14–K15 (Group C), and #370 per D-4. On
 - **K3 ships with K1.** K3 is not a split candidate. If K3 ever misses a cut, that release's notes tell adopters with a symlinked destination to replace the link before re-running.
 - **K14 is must-ship and never bends the cut line** (PM ruling P-9.1). K14 may ride a TW-7 early PR only if three conditions hold:
   - its static contract test is green;
-  - each chain model's live render is recorded;
+  - FR-K14.3's full render set is recorded, made from the early PR's own code (each template once, each chain model at least once, executive-architecture on one portrait PDF page); the only exception is a model blocked for the project key, recorded as statically verified only with notice 6 (P-10.1), and if both models are blocked, K14 does not ride early (P-10.4);
   - its commits separate cleanly from the K13 and K15 edits in the files they share.
 
   Otherwise K14 ships in the main PR. PM ruling P-9.2 governs a render blockage.
@@ -845,7 +849,7 @@ K1–K3 (Group A), K9–K13 (Group B), K14–K15 (Group C), and #370 per D-4. On
 | **S-2** | L-N2: refuse destinations that resolve into the tachi source tree? | **Yes, with or without the flag, on physical paths, for every destination and for the project root** (FR-K3.7) | `cp` aborts on a destination that is the source, leaving a partial install. Writing into the clone dirties it and breaks later `--version` installs. The logical-path self-install guard can be bypassed through an alias. The architect recommended it |
 | **S-3** | FR-K13.1: the placeholder for a finding with no recommendation from either source | **`No recommendation available`** | Explicit and short (it fits one line of the 2.6in roadmap cell). It matches the report's existing register ("No remediation actions identified") and stays distinct from the missing-key `--` and the dash placeholder-ID predicate. `N/A` would wrongly imply "not applicable" |
 | **S-4** | L-N4: does a row left out of the volumes still count in the severity mixes and the posture? | **Yes** (FR-K11.3) | Its residual exists, so dropping it would understate risk. The architect recommended it |
-| **S-5** | L-N3: the status classifier's rules | Whole tokens; the recognized no-control set `No Control Found`, `Missing`, `None`, `Not Found`; anything else warns. The helper replaces both copies of the row idiom. The Section 1 summary reader keeps its own matching (FR-K11.3) | This makes D-2's "otherwise → no control" and "unrecognized → warn" hold together, and fixes raw-substring negation ("known", "node", "annotated"). Research corrected the PRD's pointer to the idiom's second copy |
+| **S-5** | L-N3: the status classifier's rules | Whole tokens, with `partial` matched as a token prefix and the negation tokens `no`, `not`, `none`, `nothing`; the recognized no-control set `No Control Found`, `Missing`, `None`, `Not Found`; anything else warns. The helper classifies each row once, at parse time, and replaces both copies of the row idiom. The Section 1 summary reader keeps its own matching (FR-K11.3) | This makes D-2's "otherwise → no control" and "unrecognized → warn" hold together, and fixes raw-substring negation ("known", "node", "annotated"). Research corrected the PRD's pointer to the idiom's second copy. Plan review: without the prefix rule `Partially Found` would read as found, and without `none` `None found` would too |
 | **S-6** | Research: may the flag follow links nested inside a copied directory subtree? | **No. They are refused even with the flag** (FR-K3.2) | BSD `cp -r` can't write through a nested link: it aborts mid-copy and leaves a partial install. That is the same failure D-1 refuses dangling links to avoid, so the ruling applies D-1's own rationale. The flag still follows links at or above each entry, which the copy can pass through. The alternative, a per-file copy path, would add K3 cost for an unusual layout |
 | **S-7** | Optional carry-forward: invoke `/bin/bash` explicitly in the K3 tests? | **Yes, with `LC_ALL=C`** (FR-K3.6) | Dev Macs put Homebrew bash 5.3 first on `PATH`. Without an explicit shell, the strict leg can silently stop testing bash 3.2 |
 | **S-8** | Research: the configured image models are retired or retiring | **Move the chain to `gemini-3-pro-image`, then `gemini-3.1-flash-image`, and live-verify each** (FR-K14.4) | Google's deprecation table gives shutdowns of 2026-06-25 (both preview models) and 2026-10-02 (`gemini-2.5-flash-image`), and names these two GA models as the replacements. Without the update, G4 fails for every adopter after 2026-10-02 |
@@ -859,7 +863,7 @@ K1–K3 (Group A), K9–K13 (Group B), K14–K15 (Group C), and #370 per D-4. On
 
 - **P-1**: where executive-architecture's request configuration lives (ratio 3:4). *Research recommends* a `## Gemini API Configuration` section in `.claude/skills/tachi-infographics/references/executive-architecture.md`, outside the lock markers, in the other five blocks' shape. FR-K14.2.
 - **P-2**: the architect's ruling on the sanctioned FR-212-6 amendment. *Research found* it mechanically safe on the conditions FR-K15.1 lists. If it is not sanctioned, executive-architecture is carved from K15 under TW-3.
-- **P-4 (reopened by research)**: with a chain of only Gemini 3 GA models, whether to restore `imageSize: "2K"`. Without it, renders default to 1K. The PRD's reason to drop it assumed a chain that included `gemini-2.5-flash-image`. Guardrail (PM ruling P-9.4): the PM has no objection to restoring it, which would restore the PDF booklet's intended print quality. It needs a live verification on **both** chain models inside the existing TW-5 render budget. If either is unverified, the default stays dropped. FR-K14.1.
+- **P-4 (reopened by research)**: with a chain of only Gemini 3 GA models, whether to restore `imageSize: "2K"`. Without it, renders default to 1K. The PRD's reason to drop it assumed a chain that included `gemini-2.5-flash-image`. Guardrail (PM ruling P-9.4): the PM has no objection to restoring it, which would restore the PDF booklet's intended print quality. It needs a live verification on **both** chain models inside the existing TW-5 render budget. If either is unverified, the default stays dropped. FR-K14.1. Refined by PM ruling P-10.3 at plan review: every shipped model × ratio, the size honored, latency headroom; settled by the eight-call W0 smoke.
 - **The funnel constants and numeric semantics** (TW-1): STEP, FLOOR, volume precision, rounding, the type of `risk_reduction`, and the method for severity-mix percentages. *Research recommends* STEP = 10 and FLOOR = 30: a 10% floor cannot hold a tier label, and the template's own Tier 4 is about 30%. FR-K11.5.
 - **Scaffold splitter hardening**: whether to anchor the DATA CONTENT marker and look for `FOOTER` only after it. *Research recommends* doing it in the same wave. The static test guards the boundaries either way. FR-K15.3.
 - **The release-notes mechanism**: how the notices reach the *published* release notes, since release-please doesn't move CHANGELOG prose (SC-6). Two options: edit the release-please PR body before it merges, or edit the release after it publishes. Include deliver's follow-through if the release PR merges after `/aod.deliver`.
@@ -867,7 +871,7 @@ K1–K3 (Group A), K9–K13 (Group B), K14–K15 (Group C), and #370 per D-4. On
 
 **For `/aod.tasks`** (the team-lead's domain):
 - **OQ-5**: confirm that the #370 fold-in stays within its recipe (TW-4).
-- **A W0 smoke render**: one call per GA chain model with the known-good body, run in the scratchpad with the key loaded per NFR-5. It retires model-access risk before K14 is committed as must-ship, and costs minutes.
+- **A W0 smoke render**: eight calls (both chain models × 16:9 and 3:4 × default size and 2K; P-10.3, PD-3) with the known-good body, run in the scratchpad with the key loaded per NFR-5. It retires model-access risk before K14 is committed as must-ship, and costs minutes.
 - **Re-cost at TW-0.** The PM's directional read (`.aod/results/product-manager-373-spec.md` §10) is that most of the spec-stage growth lands on items the valve can't carve: K2, K3, K12, the K13 recommendations and **K14, which is now above its 0.50-day ceiling and needs a bottom-up re-cost**. The floor rises by about half a day, and K11 and K13-posture sit near TW-1 and TW-2. The carve order K15 → K11 → K13-posture stays sound.
 
 ### PM rulings from the spec review (2026-09-27; binding for `/aod.plan` and `/aod.tasks`)
@@ -877,6 +881,20 @@ K1–K3 (Group A), K9–K13 (Group B), K14–K15 (Group C), and #370 per D-4. On
 - **P-9.3: S-6 disclosure.** The nested-link narrowing is accepted on one condition: it is disclosed in the help text and README (US-2 #12), in the refusal message (US-2 #5) and in the release note (SC-6). The per-file copy path is deferred until an adopter asks.
 - **P-9.4: the P-4 guardrail.** See the P-4 input above.
 - **P-9.5: S-9's carve unit.** S-9 belongs to K11. If K11 is carved, the baseball card keeps today's Section 1 values, and its golden is untouched for K11.
+
+### PM rulings from the plan review (2026-09-27; binding for `/aod.tasks` and the build)
+
+- **P-10.1: render blockage, per model.**
+  - A model unreachable at W0 triggers diagnosis and retries within TW-6's budget. W1 is never held for it.
+  - P-9.2's full path applies only after the half day plus one retry session, and only if **both** chain models stay blocked.
+  - If only one model is blocked for the project key, both GA models stay in the chain, because they are Google's named replacements. The blocked one is recorded as statically verified only, in the reference provenance, the PR record and the release notes, and FR-K14.3 stays open for that model with a follow-up issue. The reachable model's renders carry SC-5.
+  - Under PD-3, a blocked model means 2K stays dropped, as P-9.4 already provides.
+- **P-10.2: SC-5 under a K15 carve.** Only SC-5's leakage and allow-list clauses move with K15. The "6/6 templates render", "every chain model renders" and "executive-architecture in portrait on one PDF page" clauses stay with K14, and K14's render set must satisfy them on its own (FR-K14.3). Rationale: K14 creates per-template mapping behavior that did not exist before. The static test proves the blocks, but only a live render proves that the agent reads each one, and G4 promises every template.
+- **P-10.3: PD-3's restore rule.** Restore `image_size: "2K"` only if it is live-verified at every model × ratio combination that ships, with the size actually honored and real-template latency headroom confirmed at W3. Otherwise the default size ships. This refines P-9.4; it does not replace it.
+- **P-10.4: an early K14 ship carries the full render set** (reconciles P-9.1's early-ship condition 2 with P-10.2; architect re-review T30).
+  - A TW-7 early PR that carries K14 needs FR-K14.3's full render set, made from the early PR's own code, because the files K14 shares with K13 and K15 differ there.
+  - The only exception is P-10.1's per-model path. A model blocked for the project key is recorded as statically verified only, and notice 6 goes in the release notes.
+  - If both models are blocked, K14 does not ride early. It ships in the main PR under P-9.2.
 
 ---
 
@@ -896,5 +914,5 @@ K1–K3 (Group A), K9–K13 (Group B), K14–K15 (Group C), and #370 per D-4. On
 - **GNU userland.** GNU `cp` behavior was not verified locally, so the ubuntu CI leg is its first real check. Tests assert the installer's own refusals, which are userland-independent, not `cp` messages.
 - **Installer tests.** No test invokes `install.sh` today, so K3 needs a new harness (feasibility E-3).
 - **Group B pre-state.** The parser and extractor modules are green at HEAD, apart from the six known #365 byte-identity reds (feasibility E-1). The out-of-gate failure set predates F-362, so it is re-recorded in a clean clone before the build.
-- **Examples.** Only one shipped example carries threats, risk scores, controls and a MAESTRO table at its top level, so the live renders use a scratch copy of it. No shipped example has a Resolved Findings section, so K12 is verified on synthetic fixtures only (feasibility E-8). Six shipped run directories use the `###` MAESTRO heading, so K10 changes their data.
+- **Examples.** Only one shipped example carries threats, risk scores, controls and a MAESTRO table at its top level, so the live renders use a scratch copy of it. No shipped example has a Resolved Findings section, so K12 is verified on synthetic fixtures only (feasibility E-8). No tracked example uses the `###` MAESTRO heading. The six runs that do are untracked local `test-output` directories, so K10 is verified on synthetic fixtures and moves no tracked example's data.
 - **The manual install path** is documented, not enforced. It skips the symlink check by definition.
