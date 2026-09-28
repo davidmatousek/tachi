@@ -84,6 +84,10 @@ on:
       # --- W2: the sibling-parity module. Its fixture trees are already
       #     covered by report_data/** and fidelity_373/** since A-2 (C-1) ---
       - tests/scripts/test_extraction_sibling_parity.py
+      # --- W2: K13-posture (report-posture job). Stand-alone: dropped
+      #     together with the job below if K13-posture is carved (PD-8) ---
+      - templates/tachi/security-report/**
+      - tests/scripts/test_report_posture_contract.py
   push:
     branches: [main]
     paths: *fidelity_paths
@@ -155,3 +159,34 @@ jobs:
             tests/scripts/test_gemini_request_contract.py \
             tests/scripts/test_extraction_sibling_parity.py \
             -v
+
+  # W2, K13-posture only (PD-8): this job is Typst-gated and stands alone —
+  # if K13-posture is ever carved, this job and its paths: entries above are
+  # the only things to drop, and the revert stays mechanical. Typst comes
+  # from typst-community/setup-typst@v5, unpinned to a compiler version,
+  # mirroring tachi-mmdc-preflight.yml's precedent. TACHI_REQUIRE_TYPST=1
+  # makes the stale-data test fail (not skip) when Typst is missing.
+  report-posture:
+    name: report-posture
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TACHI_REQUIRE_TYPST: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Typst
+        uses: typst-community/setup-typst@v5
+
+      - name: Install pytest + pytest-timeout + PyYAML
+        run: pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
+
+      - name: Run report-posture stale-data gate (K13-posture)
+        run: |
+          python3 -m pytest tests/scripts/test_report_posture_contract.py -v
