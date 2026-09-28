@@ -64,6 +64,20 @@ on:
       - tests/scripts/conftest.py
       - pyproject.toml
       - .github/workflows/tachi-install-fidelity.yml
+      # --- A-2: the pre-existing extraction modules' own surfaces. The
+      #     extractors and tachi_parsers.py are already covered by
+      #     scripts/*.py above ---
+      - examples/**                                  # N3
+      - tests/scripts/fixtures/exec_arch/**           # N3
+      - tests/scripts/fixtures/golden/**              # N3
+      - tests/scripts/fixtures/report_data/**         # C-1 — test_extract_report_data.py:24
+      - tests/scripts/fixtures/fidelity_373/**        # C-1 — first read by test_tachi_parsers.py
+      - schemas/taxonomy/*.yaml                       # OQ-5 — extract-report-data.py:2328-2331
+      - tests/scripts/test_tachi_parsers.py
+      - tests/scripts/test_extract_infographic_data.py
+      - tests/scripts/test_extract_report_data.py
+      - tests/scripts/test_extractor_contract_fixes.py
+      - tests/scripts/test_executive_architecture_payload.py
   push:
     branches: [main]
     paths: *fidelity_paths
@@ -91,3 +105,36 @@ jobs:
       - name: Run manifest completeness suite (K1/K2 guard)
         run: |
           python3 -m pytest tests/scripts/test_install_manifest_completeness.py -v
+
+  extraction-fidelity:
+    name: extraction-fidelity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest + pytest-timeout + PyYAML
+        run: pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
+
+      # A-2 (PD-8, PD-9, PD-20): the pre-existing extraction modules, gated
+      # for the first time on bare ubuntu. The R-3 safety net. mmdc is not
+      # installed on this runner, so the five image-flag cases in
+      # test_extract_report_data.py's agentic_app_report_typst fixture skip
+      # (PD-8) rather than fail; every other case in these five modules
+      # must pass. No Typst, no mmdc — the report-posture job (Typst-gated)
+      # joins separately in W2, only if K13-posture ships.
+      - name: Run extraction-fidelity suite (R-3 safety net)
+        run: |
+          python3 -m pytest \
+            tests/scripts/test_tachi_parsers.py \
+            tests/scripts/test_extract_infographic_data.py \
+            tests/scripts/test_extract_report_data.py \
+            tests/scripts/test_extractor_contract_fixes.py \
+            tests/scripts/test_executive_architecture_payload.py \
+            -v

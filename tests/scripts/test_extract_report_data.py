@@ -10,6 +10,7 @@ threats.md, which is both cleaner and more deterministic than rendering Typst.
 
 import importlib.util
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -179,9 +180,23 @@ def test_executive_architecture_image_path_relative_to_template_dir():
 
 
 @pytest.fixture(scope="module")
-def agentic_app_report_typst():
-    """Run extract-report-data.py once against the agentic-app sample and cache the output."""
-    returncode, _stdout, stderr, content = run_extract(AGENTIC_APP_SAMPLE)
+def agentic_app_report_typst(tmp_path_factory):
+    """Run extract-report-data.py once against a copy of the agentic-app sample and cache the output.
+
+    Skipped when mmdc is absent (PD-8): the agentic-app sample-report carries
+    attack trees and attack chains, so extract-report-data.py invokes mmdc to
+    render them to PNG. Runs against a ``tmp_path_factory`` copy of the whole
+    sample-report directory, never the tracked example itself, so a local
+    run never re-renders the tracked attack-tree/attack-chain PNGs (#365).
+    """
+    if shutil.which("mmdc") is None:
+        pytest.skip(
+            "mmdc (@mermaid-js/mermaid-cli) not on PATH; required to render "
+            "agentic-app sample-report's attack trees/chains"
+        )
+    target_dir = tmp_path_factory.mktemp("agentic_app_sample_report")
+    shutil.copytree(AGENTIC_APP_SAMPLE, target_dir, dirs_exist_ok=True)
+    returncode, _stdout, stderr, content = run_extract(target_dir)
     assert returncode == 0, (
         f"Expected exit 0 for agentic-app sample-report, got {returncode}. "
         f"stderr: {stderr}"
