@@ -7,6 +7,7 @@ direct module-level calls through the ``extract_infographic_data`` conftest fixt
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -1229,3 +1230,222 @@ def test_k12_id_mismatch_absolute_tallies_and_one_warning_via_cli():
     }
     assert stderr.count("Section 7 status IDs differ from tier finding IDs") == 1
     assert "(1 only-in-map, 1 only-in-tier)" in stderr
+
+
+# =============================================================================
+# Feature 373 US-3b: K11 risk funnel (tasks.md T023). Fixtures:
+# tests/scripts/fixtures/fidelity_373/funnel_* and
+# controls_warnings_kitchen_sink (see that directory's README.md for
+# hand-computed expected values). The pure tachi_parsers.py-level pins
+# (classify_control_status, the inherent join, the residual clamp) live in
+# test_tachi_parsers.py (T020); the tests below instead exercise
+# extract-infographic-data.py's own funnel computation (compute_risk_funnel,
+# T021) end to end through the CLI, including the S-9 baseball-card totals
+# and the Section 1 / row-count warnings (T021's own follow-on work).
+# =============================================================================
+
+
+def _funnel_via_cli(target_dir, template="risk-funnel"):
+    """Run the CLI end to end and return (template_data, stderr)."""
+    returncode, _stdout, stderr, payload = run_extract(target_dir, template)
+    assert returncode == 0, f"[{target_dir}] expected exit 0, got {returncode}. stderr: {stderr}"
+    assert payload is not None, f"[{target_dir}] expected a JSON payload"
+    return payload["template_data"], stderr
+
+
+def _widths(template_data):
+    return [t["width"] for t in template_data["funnel_tiers"]]
+
+
+def _volumes(template_data):
+    return [t["volume"] for t in template_data["funnel_tiers"]]
+
+
+def _reduction_pcts(template_data):
+    return [r["percentage"] for r in template_data["reduction_percentages"]]
+
+
+def test_k11_funnel_step_bound_widths_and_reductions_via_cli():
+    # US-3b #1: both raw ratios (raw3=89.4375, raw4=88.3125) exceed their
+    # upper clamp bound, so tiers 3 and 4 are STEP-bound rather than
+    # ratio-bound (fixtures README).
+    td, _stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "funnel_step_bound")
+    assert _widths(td) == [100, 90, 80, 70]
+    assert _volumes(td) == [None, 16.0, 15.9, 15.7]
+    assert _reduction_pcts(td) == [0.0, 0.6, 1.3]
+    assert td["risk_reduction"] == 1.9
+    assert td["inherent_score"] == 16.0
+    assert td["residual_score"] == 15.7
+    assert [t["ghost"] for t in td["funnel_tiers"]] == [False, False, False, False]
+    assert [t["count"] for t in td["funnel_tiers"][1:]] == [2, 2, 2]
+
+
+def test_k11_funnel_strong_reduction_floor_bound_width_via_cli():
+    # US-3b #2: raw4 (27) is below FLOOR=30, so Tier 4 is FLOOR-bound
+    # rather than ratio- or STEP-bound.
+    td, _stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "funnel_strong_reduction")
+    assert _widths(td) == [100, 90, 54, 30]
+    assert _volumes(td) == [None, 10.0, 6.0, 3.0]
+    assert _reduction_pcts(td) == [0.0, 40.0, 50.0]
+    assert td["risk_reduction"] == 70.0
+    assert td["inherent_score"] == 10.0
+    assert td["residual_score"] == 3.0
+
+
+def test_k11_funnel_3tier_shape_via_cli():
+    # US-3b #3: risk-scores.md only (no compensating-controls.md) selects
+    # 3-tier mode. JSON tier-index 2 ("Unmitigated Risk") mirrors V2
+    # exactly (no controls applied yet), and JSON tier-index 3 is always
+    # ghost -- there is no residual data in 3-tier mode.
+    td, _stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "funnel_3tier")
+    tiers = td["funnel_tiers"]
+    assert [t["ghost"] for t in tiers] == [False, False, False, True]
+    assert _widths(td) == [100, 90, 80, 70]
+    assert tiers[2]["volume"] == 14.0
+    assert tiers[2]["label"] == "Unmitigated Risk"
+    assert _reduction_pcts(td) == [0.0, 0.0, None]
+    assert td["risk_reduction"] is None
+
+
+def test_k11_funnel_threats_only_shape_via_cli():
+    # US-3b #7 (first half): neither enrichment artifact is present, so
+    # JSON tiers 1-3 are all ghost -- pure STEP cascade, and every
+    # reduction is null because a ghost tier wins over "0.0 by
+    # definition" for (0->1) too.
+    td, _stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "funnel_threats_only")
+    tiers = td["funnel_tiers"]
+    assert [t["ghost"] for t in tiers] == [False, True, True, True]
+    assert _widths(td) == [100, 90, 80, 70]
+    assert _volumes(td) == [None, None, None, None]
+    assert _reduction_pcts(td) == [None, None, None]
+    assert td["risk_reduction"] is None
+
+
+def test_k11_funnel_volumes_unavailable_shape_via_cli():
+    # US-3b #7 (second half)/#8; data-model.md §4.3 condition 1: the
+    # Coverage Matrix has no Inherent column at all and no risk-scores.md
+    # to join against, so no row carries an inherent score. Volumes are
+    # unavailable (not zero) on every tier, but tiers 1-3 stay non-ghost
+    # (real, just volumeless), and (0->1) still reads 0.0 since Tier 1
+    # (JSON index 0) is real.
+    td, stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "funnel_volumes_unavailable")
+    tiers = td["funnel_tiers"]
+    assert [t["ghost"] for t in tiers] == [False, False, False, False]
+    assert _widths(td) == [100, 90, 80, 70]
+    assert _volumes(td) == [None, None, None, None]
+    assert _reduction_pcts(td) == [0.0, None, None]
+    assert td["risk_reduction"] is None
+    assert td["inherent_score"] is None
+    assert td["residual_score"] is None
+    assert (
+        "Warning: no controls row carries an inherent score; funnel volumes "
+        "and risk reduction are unavailable"
+    ) in stderr
+
+    # S-9: the baseball card must agree -- both surfaces null, never a
+    # stale Section 1 figure standing in for an unmeasured reduction.
+    card_td, _stderr = _funnel_via_cli(
+        FIDELITY_FIXTURES_DIR / "funnel_volumes_unavailable", template="baseball-card"
+    )
+    assert card_td["risk_reduction"] is None
+    assert card_td["inherent_score"] is None
+    assert card_td["residual_score"] is None
+
+
+def test_k11_funnel_join_inherent_less_volumes_via_cli():
+    # US-3b #6; architect finding F2: the Coverage Matrix has no Inherent
+    # column at all; both rows' inherent scores come from the sibling
+    # risk-scores.md composites via ID join (already wired at the tier-1
+    # extract_severity call site since T020/W1). This is the funnel's own
+    # consumption of that join, not the join itself (already pinned at
+    # the parser level in test_tachi_parsers.py).
+    td, _stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "funnel_join_inherent_less")
+    assert _widths(td) == [100, 90, 80, 70]
+    assert _volumes(td) == [None, 15.0, 14.5, 14.1]
+    assert _reduction_pcts(td) == [0.0, 3.3, 2.8]
+    assert td["risk_reduction"] == 6.0
+    assert td["inherent_score"] == 15.0
+    assert td["residual_score"] == 14.1
+
+
+def test_k11_controls_status_variants_wire_through_funnel_via_cli():
+    # US-3b, K11 status wiring x K9/K11 status classes: Missing (silent),
+    # empty (warns), unrecognized/"Foobar" (warns), "Partially Found"
+    # (partial), "None found" (warns, classifies none) -- exercised
+    # through the same rows that build V2/V3/V4, not merely at
+    # classify_control_status's own unit level (test_tachi_parsers.py
+    # already pins that in isolation). The clamp (W-9) rides along on the
+    # same row set rather than a separate fixture.
+    td, stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "controls_warnings_kitchen_sink")
+    assert _widths(td) == [100, 90, 80, 70]
+    assert _volumes(td) == [None, 57.7, 54.2, 52.7]
+    assert _reduction_pcts(td) == [0.0, 6.1, 2.8]
+    assert td["risk_reduction"] == 8.7
+    assert [t["count"] for t in td["funnel_tiers"][1:]] == [10, 10, 10]
+    assert (
+        "1 controls rows have a residual above the inherent score "
+        "(first: W-9); clamped"
+    ) in stderr
+
+
+def test_k11_controls_warnings_kitchen_sink_section1_and_row_count_via_cli():
+    # data-model.md §4.5: the Section 1 comparand warning is deliberately
+    # wrong on two of its three fields (inherent total 60.0 vs
+    # row-derived 57.7; reduction pct 26.9 vs row-derived 8.7) and
+    # deliberately correct on the third (residual total 52.7 both ways),
+    # so exactly two field-warnings fire -- per-field, never aggregated,
+    # and the matching field never warns (fixtures README). The row-count
+    # mismatch (10 controls rows vs 11 risk-scores rows) is a separate
+    # class. The exact <field> token isn't pinned by the contract (only
+    # the stem "Warning: controls Section 1 <field> <a> differs from
+    # row-derived <b>; using rows" is), so this matches on the invariant
+    # numbers and wording rather than a guessed field spelling.
+    _td, stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "controls_warnings_kitchen_sink")
+    assert "Warning: controls rows (10) differ from risk-scores rows (11)" in stderr
+    comparand_lines = [
+        line for line in stderr.splitlines()
+        if line.startswith("Warning: controls Section 1")
+    ]
+    assert len(comparand_lines) == 2, (
+        "expected exactly 2 Section 1 comparand warnings (inherent total, "
+        f"reduction pct; residual must NOT warn), got: {comparand_lines}"
+    )
+    joined = "\n".join(comparand_lines)
+    assert re.search(r"60\.0\D+differs from row-derived\D*57\.7", joined)
+    assert re.search(r"26\.9%?\D+differs from row-derived\D*8\.7%?", joined)
+    assert "52.7" not in joined  # the matching residual field must not warn
+
+
+def test_k11_baseball_card_and_funnel_agree_on_totals_via_cli():
+    # S-9: the baseball card's risk_reduction/inherent_score/residual_score
+    # must equal the funnel's row-derived totals, not the (here
+    # deliberately wrong) Section 1 prose -- proving the wiring rather
+    # than a coincidental match. Row-derived: 8.7 / 57.7 / 52.7; the
+    # fixture's own Section 1 text claims 26.9 / 60.0 / 52.7 instead.
+    funnel_td, _stderr = _funnel_via_cli(
+        FIDELITY_FIXTURES_DIR / "controls_warnings_kitchen_sink", template="risk-funnel"
+    )
+    card_td, _stderr = _funnel_via_cli(
+        FIDELITY_FIXTURES_DIR / "controls_warnings_kitchen_sink", template="baseball-card"
+    )
+    assert card_td["risk_reduction"] == funnel_td["risk_reduction"] == 8.7
+    assert card_td["inherent_score"] == funnel_td["inherent_score"] == 57.7
+    assert card_td["residual_score"] == funnel_td["residual_score"] == 52.7
+
+
+def test_k11_reductions_are_never_negative_across_funnel_fixtures():
+    # US-3b #8: the row-level clamp (residual <= inherent, enforced once
+    # at parse; test_tachi_parsers.py/T020) guarantees V4 <= V3 <= V2 for
+    # every row set, so no emitted reduction percentage -- nor
+    # risk_reduction -- can ever be negative, regardless of a raw,
+    # pre-clamp residual (like kitchen_sink's W-9: residual 9.5 >
+    # inherent 8.0) exceeding inherent before the clamp applies.
+    for fixture in (
+        "funnel_step_bound", "funnel_strong_reduction",
+        "funnel_join_inherent_less", "controls_warnings_kitchen_sink",
+    ):
+        td, _stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / fixture)
+        for pct in _reduction_pcts(td):
+            assert pct is None or pct >= 0.0, f"[{fixture}] negative reduction: {pct}"
+        if td["risk_reduction"] is not None:
+            assert td["risk_reduction"] >= 0.0, f"[{fixture}] negative risk_reduction"
