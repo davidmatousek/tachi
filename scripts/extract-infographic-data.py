@@ -1271,6 +1271,14 @@ def _build_executive_architecture_payload(tier, findings, scope_data, source_fil
     flow_edges = _build_flow_edges(scope_data)
     clusters = _build_clusters(scope_data)
 
+    # K15 (T027, data-model.md §8): the top-level allow-list, added to the
+    # return dict below rather than near the K13-posture lines above this
+    # function's `metadata` block (LOW-4) — a TW-6 revert of this commit
+    # then applies cleanly on top of the K13-posture commit.
+    allow_list = compute_allow_list(
+        "executive-architecture", findings, scope_data, payload={"callouts": callouts}
+    )
+
     return {
         "metadata": metadata,
         "layers": layers,
@@ -1278,6 +1286,7 @@ def _build_executive_architecture_payload(tier, findings, scope_data, source_fil
         "severity_distribution": severity_distribution,
         "flow_edges": flow_edges,
         "clusters": clusters,
+        "allow_list": allow_list,
     }
 
 
@@ -1994,6 +2003,65 @@ def extract_maestro_data(threats_content):
 # T018: Build JSON Output
 # =============================================================================
 
+def compute_allow_list(template, findings, scope, template_data=None, payload=None):
+    """Compute the K15 allow-list (data-model.md §8, PD-17).
+
+    ``finding_ids`` is exactly the set of IDs ``template``'s prompt renders:
+    the full tier finding-ID set for baseball-card/system-architecture
+    (either can name any finding), the per-layer top-findings IDs for
+    maestro-stack (from ``template_data``), none for maestro-heatmap/
+    risk-funnel (neither renders a finding ID), and the callout IDs for
+    executive-architecture (from ``payload["callouts"]`` — that template
+    builds its own payload rather than a ``template_data`` dict, so it is
+    threaded through separately).
+
+    ``component_names`` is one common set, identical for every template: the
+    scope components, trust-zone members and zone names, data-flow
+    endpoints, and the tier findings' ``component`` values. It does not
+    reuse :func:`_compute_trust_zones`, which prints a "no trust zones"
+    note on empty input — a second call here would double that note for
+    templates that already call it (system-architecture, executive-
+    architecture); the flat name/member extraction below is the plain
+    parse of ``scope["trust_boundaries"]`` without the grouping or the
+    print.
+
+    Both lists are sorted, unique, with empty strings dropped.
+
+    AR-3 (laziness-ladder rung 2): NOT a ``tachi_parsers.py`` shared helper
+    — it has exactly one consumer, this file (extraction-data-contract.md).
+    """
+    if template in ("baseball-card", "system-architecture"):
+        finding_ids = {f.get("id", "") for f in findings}
+    elif template == "maestro-stack":
+        finding_ids = {
+            tf.get("id", "")
+            for layer in (template_data or {}).get("per_layer_summaries", [])
+            for tf in layer.get("top_findings", [])
+        }
+    elif template == "executive-architecture":
+        finding_ids = {
+            c.get("finding_id", "") for c in (payload or {}).get("callouts", [])
+        }
+    else:  # maestro-heatmap, risk-funnel: no finding ID is rendered
+        finding_ids = set()
+
+    component_names = {c.get("name", "") for c in scope.get("components", [])}
+    for tb in scope.get("trust_boundaries", []):
+        component_names.add(tb.get("zone", ""))
+        component_names.update(
+            c.strip() for c in tb.get("components", "").split(",") if c.strip()
+        )
+    for flow in scope.get("data_flows", []):
+        component_names.add(flow.get("source", ""))
+        component_names.add(flow.get("destination", ""))
+    component_names.update(f.get("component", "") for f in findings)
+
+    return {
+        "finding_ids": sorted(fid for fid in finding_ids if fid),
+        "component_names": sorted(name for name in component_names if name),
+    }
+
+
 def build_json_output(data, template):
     """Assemble the complete JSON output structure.
 
@@ -2010,6 +2078,11 @@ def build_json_output(data, template):
         "heat_map": data["heat_map"],
         "top_findings": data["top_findings"],
         "template_data": data.get("template_data", {}),
+        # K15 (T027, data-model.md §8): the top-level allow-list. Placed in
+        # the initial literal, apart from the K13-posture lines below (LOW-4)
+        # — a TW-6 revert of this commit then applies cleanly on top of the
+        # K13-posture commit.
+        "allow_list": data["allow_list"],
     }
 
     # Add delta data when baseline present
@@ -2338,6 +2411,11 @@ def main():
             "has_maestro_data": maestro["has_maestro_data"],
         }
 
+    # K15 (T027, data-model.md §8): the allow-list this template's prompt is
+    # permitted to render, computed once template_data is final (maestro-stack
+    # reads its per_layer_summaries from it).
+    allow_list = compute_allow_list(args.template, findings, scope, template_data)
+
     # Compute delta counts when baseline present. Counted over the
     # normalized Section 7 map (K12, FR-K12.1/K12.2), never over `findings`,
     # which has no delta_status key at all on Tier 1/2 and an unnormalized
@@ -2370,6 +2448,7 @@ def main():
         "top_findings": top_findings,
         "findings_ids": findings_ids,
         "template_data": template_data,
+        "allow_list": allow_list,
         "risk_posture_level": risk_posture_level,
         "risk_posture_label": risk_posture_label,
     }
