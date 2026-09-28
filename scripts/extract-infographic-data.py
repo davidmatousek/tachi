@@ -1424,7 +1424,7 @@ def compute_risk_funnel(tier, threats_content, cc_data=None, rs_content=None):
     }
 
     if tier == 1:
-        tiers, reductions, totals = _funnel_4tier_mode(cc_data)
+        tiers, reductions, totals = _funnel_4tier_mode(cc_data, rs_content)
     elif tier == 2:
         tiers, reductions, totals = _funnel_3tier_mode(rs_content)
     else:
@@ -1479,7 +1479,32 @@ def _funnel_severity_mix(bands):
     return mix
 
 
-def _funnel_4tier_mode(cc_data):
+def _funnel_section1_comparand_warnings(cc_data, totals):
+    """Warn per field (data-model.md §4.5) when compensating-controls.md's
+    Section 1 stated total differs from the row-derived value by more than
+    0.1. One line per differing field — never aggregated, since §4.5 is
+    explicit this class is "per field, not aggregated" — and silent when
+    either side is unavailable (no Section 1 line to compare against, or
+    volumes unavailable so the row-derived side is None).
+    """
+    reduction, inherent, residual = totals
+    fields = (
+        ("inherent score", (cc_data or {}).get("inherent_score"), inherent, ""),
+        ("residual score", (cc_data or {}).get("residual_score"), residual, ""),
+        ("risk reduction", (cc_data or {}).get("risk_reduction"), reduction, "%"),
+    )
+    for label, stated, derived, suffix in fields:
+        if stated is None or derived is None:
+            continue
+        if abs(stated - derived) > 0.1:
+            print(
+                f"Warning: controls Section 1 {label} {stated}{suffix} "
+                f"differs from row-derived {derived}{suffix}; using rows",
+                file=sys.stderr,
+            )
+
+
+def _funnel_4tier_mode(cc_data, rs_content=None):
     """JSON tiers 1-3 from the compensating-controls.md one row set (4-tier mode).
 
     V2 = sum(inherent), V3 = sum(residual if found else inherent), V4 =
@@ -1487,6 +1512,10 @@ def _funnel_4tier_mode(cc_data):
     §4.1). Volumes are unavailable when no row carries one, or the
     quantized V2 is 0 (§4.3): every volume and reduction is null, and
     widths fall back to the plain STEP cascade, with one warning.
+
+    Also emits two more data-model.md §4.5 warnings: a controls/risk-scores
+    row-count mismatch when ``rs_content`` is supplied, and the Section 1
+    comparand (:func:`_funnel_section1_comparand_warnings`).
     """
     findings = (cc_data or {}).get("findings", [])
     rows_with_inherent = [f for f in findings if f.get("inherent") is not None]
@@ -1511,6 +1540,14 @@ def _funnel_4tier_mode(cc_data):
         )
 
     count = len(findings)
+    if rs_content:
+        rs_row_count = len(parse_risk_scores_findings(rs_content))
+        if rs_row_count != count:
+            print(
+                f"Warning: controls rows ({count}) differ from risk-scores "
+                f"rows ({rs_row_count})",
+                file=sys.stderr,
+            )
     tier1_mix = _funnel_severity_mix(f.get("inherent_severity") for f in findings)
     tier2_mix = _funnel_severity_mix(
         (f.get("residual_severity") if f.get("status_class") == "found" else f.get("inherent_severity"))
@@ -1567,6 +1604,8 @@ def _funnel_4tier_mode(cc_data):
         totals = (float(_funnel_reduction_pct(v2, v4)), float(v2), float(v4))
     else:
         totals = (None, None, None)
+
+    _funnel_section1_comparand_warnings(cc_data, totals)
 
     return tiers, reductions, totals
 
@@ -2144,15 +2183,27 @@ def main():
     else:
         maestro = {"has_maestro_data": False, "maestro_layer_distribution": [], "most_exposed_layer": "", "component_layer_map": {}, "per_finding_maestro": [], "maestro_heatmap": []}
 
+    # K11 (T021, data-model.md §4.4/S-9): the baseball card and the funnel
+    # share ONE computation of risk_reduction/inherent_score/residual_score
+    # (row-derived, Tier 2->4) — computed once, here, so both surfaces agree
+    # by construction and any volumes-unavailable (or other §4.5) warning
+    # prints exactly once per run. Guarded to the two templates that need it.
+    funnel = None
+    if args.template in ("baseball-card", "risk-funnel"):
+        funnel = compute_risk_funnel(tier, threats_content, cc_data=cc_data, rs_content=rs_content)
+
     # Build template-specific data
     template_data = {}
     if args.template == "baseball-card":
-        # Risk metrics from compensating-controls Section 1 (Tier 1 only)
+        # K11/S-9 (data-model.md §4.4): risk metrics are row-derived — the
+        # same values the risk-funnel template emits — not Section 1's
+        # stated figures. Null in 3-tier/threats-only modes and whenever
+        # volumes are unavailable, same as the funnel (§4.3).
         template_data = {
             "risk_weights": risk_weights,
-            "risk_reduction": cc_data.get("risk_reduction") if cc_data else None,
-            "inherent_score": cc_data.get("inherent_score") if cc_data else None,
-            "residual_score": cc_data.get("residual_score") if cc_data else None,
+            "risk_reduction": funnel.get("risk_reduction"),
+            "inherent_score": funnel.get("inherent_score"),
+            "residual_score": funnel.get("residual_score"),
             "control_coverage_pct": cc_data.get("control_coverage_pct") if cc_data else None,
         }
     elif args.template == "system-architecture":
@@ -2164,11 +2215,11 @@ def main():
             "boundary_crossings": arch_overlay["boundary_crossings"],
         }
     elif args.template == "risk-funnel":
-        # K11 (T021, data-model.md §4): the funnel and its S-9 totals are
-        # row-derived. `missing_enrichments` and `control_coverage_pct` are
-        # untouched legacy fields, not part of §4 — computed directly here
-        # rather than threaded through compute_risk_funnel's return shape.
-        funnel = compute_risk_funnel(tier, threats_content, cc_data=cc_data, rs_content=rs_content)
+        # K11 (T021, data-model.md §4): `funnel` is computed once, above,
+        # shared with the baseball-card branch (S-9). `missing_enrichments`
+        # and `control_coverage_pct` are untouched legacy fields, not part
+        # of §4 — computed directly here rather than threaded through
+        # compute_risk_funnel's return shape.
         template_data = {
             "risk_weights": risk_weights,
             "funnel_tiers": funnel["funnel_tiers"],
