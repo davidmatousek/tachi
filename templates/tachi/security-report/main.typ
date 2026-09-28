@@ -303,6 +303,8 @@
       The Risk Reduction Funnel illustrates how the overall risk profile transforms through each stage of the assessment pipeline. The top tier shows all threats identified during the initial STRIDE and AI-specific threat analysis. The second tier reflects severity recalibration after quantitative scoring, where composite scores incorporating CVSS, exploitability, scalability, and reachability may shift initial severity ratings.
 
       The third tier shows the impact of compensating controls detected in the codebase --- existing mitigations that reduce effective risk. The bottom tier presents the final residual risk posture, representing the organization's actual exposure after accounting for all identified defenses. The sidebar provides key metrics at a glance, including the total risk reduction percentage, control coverage rate, and the highest-residual-risk finding requiring priority attention.
+
+      Tier 3 credits fully effective controls, and Tier 4 additionally credits partially effective ones, so the two tiers can differ even among the same findings. Widths narrow by at least one step per stage for readability --- the percentages are exact.
     ],
   )
 }
