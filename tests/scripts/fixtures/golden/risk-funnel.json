@@ -104,50 +104,86 @@
     "funnel_tiers": [
       {
         "count": 34,
+        "ghost": false,
         "label": "Threats Identified",
+        "severity_mix": {
+          "critical": 8,
+          "high": 14,
+          "low": 1,
+          "medium": 6
+        },
         "source": "threats.md Section 6",
-        "tier": 0
+        "tier": 0,
+        "volume": null,
+        "width": 100
       },
       {
         "count": 34,
+        "ghost": false,
         "label": "Inherent Risk Scored",
-        "source": "risk-scores.md",
-        "tier": 1
-      },
-      {
-        "count": 34,
-        "label": "Controls Applied",
+        "severity_mix": {
+          "critical": 0,
+          "high": 10,
+          "low": 0,
+          "medium": 24
+        },
         "source": "compensating-controls.md",
-        "tier": 2
+        "tier": 1,
+        "volume": 209.8,
+        "width": 90
       },
       {
         "count": 34,
+        "ghost": false,
+        "label": "Controls Applied",
+        "severity_mix": {
+          "critical": 0,
+          "high": 10,
+          "low": 8,
+          "medium": 16
+        },
+        "source": "compensating-controls.md",
+        "tier": 2,
+        "volume": 187.8,
+        "width": 80
+      },
+      {
+        "count": 34,
+        "ghost": false,
         "label": "Residual Risk",
-        "source": "compensating-controls.md residual",
-        "tier": 3
+        "severity_mix": {
+          "critical": 0,
+          "high": 7,
+          "low": 10,
+          "medium": 17
+        },
+        "source": "compensating-controls.md",
+        "tier": 3,
+        "volume": 167.6,
+        "width": 70
       }
     ],
-    "inherent_score": 214.5,
+    "inherent_score": 209.8,
     "missing_enrichments": [],
     "reduction_percentages": [
       {
         "from_tier": 0,
-        "percentage": 0,
+        "percentage": 0.0,
         "to_tier": 1
       },
       {
         "from_tier": 1,
-        "percentage": 0,
+        "percentage": 10.5,
         "to_tier": 2
       },
       {
         "from_tier": 2,
-        "percentage": 0,
+        "percentage": 10.8,
         "to_tier": 3
       }
     ],
-    "residual_score": 156.8,
-    "risk_reduction": 26.9,
+    "residual_score": 167.6,
+    "risk_reduction": 20.1,
     "risk_weights": [
       {
         "annotation": "4 High + 5 Medium + 2 Low findings",

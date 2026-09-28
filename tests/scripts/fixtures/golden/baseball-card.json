@@ -101,9 +101,9 @@
   ],
   "template_data": {
     "control_coverage_pct": 23.5,
-    "inherent_score": 214.5,
-    "residual_score": 156.8,
-    "risk_reduction": 26.9,
+    "inherent_score": 209.8,
+    "residual_score": 167.6,
+    "risk_reduction": 20.1,
     "risk_weights": [
       {
         "annotation": "4 High + 5 Medium + 2 Low findings",
