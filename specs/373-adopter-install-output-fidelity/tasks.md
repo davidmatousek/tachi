@@ -124,7 +124,7 @@ Live renders are `[MANUAL-ONLY]` (US-4a #5, US-4b #4).
 
 **Purpose**: record the literal pre-state, snapshot the data layer, retire model-access risk, and build the synthetic fixtures every story consumes. It writes no product code.
 
-- [ ] T001 [P] Pre-state and oracle pre-snapshot, in a **clean scratch clone** at the W0 commit (`senior-backend-engineer`; ~0.15 d).
+- [X] T001 [P] Pre-state and oracle pre-snapshot, in a **clean scratch clone** at the W0 commit (`senior-backend-engineer`; ~0.15 d).
   - **Pre-state.** Record literal pass, fail, skip and error totals in `specs/373-adopter-install-output-fidelity/test-results-prestate.md` for:
     - the four modules the fast workflow will gate (`tests/scripts/test_tachi_parsers.py`, `test_extract_infographic_data.py`, `test_extract_report_data.py`, `test_extractor_contract_fixes.py`);
     - `tests/scripts/test_executive_architecture_payload.py` (N4);
@@ -134,7 +134,7 @@ Live renders are `[MANUAL-ONLY]` (US-4a #5, US-4b #4).
     - Normalize run-specific fields.
     - Capture each run's stderr with it, so T035 can attribute new warning classes and N7's warning (L8).
     - Snapshots stay in the scratchpad; only the run list is recorded.
-- [ ] T002 [P] W0 smoke render (P-10.3, PD-3, PM R-b; `senior-backend-engineer`; ~0.05 d), recorded in `specs/373-adopter-install-output-fidelity/test-results/w0-smoke.md` (`quickstart.md` §4).
+- [X] T002 [P] W0 smoke render (P-10.3, PD-3, PM R-b; `senior-backend-engineer`; ~0.05 d), recorded in `specs/373-adopter-install-output-fidelity/test-results/w0-smoke.md` (`quickstart.md` §4).
   - **Calls**: eight `generateContent` calls: `gemini-3-pro-image` and `gemini-3.1-flash-image` × {16:9, 3:4} × {default size, `imageSize: "2K"`}. The key is loaded per NFR-5 (only in the process environment; sent only as a header read from stdin; never `-v`).
   - **Record per call**: HTTP status, whether an image came back, pixel dimensions, response time, and response-part key casing.
   - **Decide `IMAGE_SIZE_RESTORED`**: true only if all four 2K calls return an image whose long edge exceeds the default variant's.
@@ -143,7 +143,7 @@ Live renders are `[MANUAL-ONLY]` (US-4a #5, US-4b #4).
   - **Any other refusal status** (not 404 or 403) is recorded for the architect under AR-2. It is non-blocking: W1 is never held.
   - **A blocked model** follows P-10.1: diagnose and retry within TW-6's budget.
   - **Order**: T002 precedes both T012 and T013. T012's reference and adapter bodies carry `imageSize` only if `IMAGE_SIZE_RESTORED`, and its provenance dates come from this record (L1).
-- [ ] T003 [P] Synthetic fixtures and symlink sandbox builders (the test lane; `senior-backend-engineer`; ~0.20 d).
+- [X] T003 [P] Synthetic fixtures and symlink sandbox builders (the test lane; `senior-backend-engineer`; ~0.20 d).
   - **Fixtures**, under `tests/scripts/fixtures/fidelity_373/`, in the templates' real section order:
     - short-form controls headers with an empty Critical band;
     - an empty last band directly before `### Summary Statistics`;
