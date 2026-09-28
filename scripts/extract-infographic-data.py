@@ -21,6 +21,7 @@ import math
 import re
 import sys
 from datetime import datetime, timezone
+from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -75,6 +76,11 @@ _SEVERITY_ORDINAL = SEVERITY_ORDINAL
 _QUALIFYING_SEVERITIES = frozenset({"Critical", "High"})
 _SEVERITY_FIELD_PREFERENCE = ("severity", "residual_severity", "risk_level")
 _TIER_SOURCE_LABEL = {1: "compensating-controls", 2: "risk-scores", 3: "threats"}
+
+# K11 (T021, data-model.md §4.1, PD-4): risk-funnel width algorithm constants.
+# FLOOR + 3*STEP = 60 <= 100 (FR-K11.5).
+_FUNNEL_STEP = Decimal("10")
+_FUNNEL_FLOOR = Decimal("30")
 
 
 def _canonical_severity(finding):
@@ -1375,137 +1381,298 @@ def _component_severity_color(comp_severity, component_name):
 
 
 # =============================================================================
-# T029-T031: Risk Funnel Computation
+# K11 Risk Funnel Computation (F-373 T021, data-model.md §4, D-2, PD-4/5/18)
 # =============================================================================
 
-def compute_risk_funnel(tier, severity, threats_content, artifacts,
-                        rs_content=None, cc_data=None):
-    """Compute 4-tier risk funnel data with reduction percentages and missing enrichments.
+def compute_risk_funnel(tier, threats_content, cc_data=None, rs_content=None):
+    """Compute the 4-entry risk funnel per data-model.md §4 (K11, D-2).
 
-    Tier 0: Total threats from threats.md Section 6 Risk Summary.
-    Tier 1: Count from risk-scores.md severity distribution (null if absent).
-    Tier 2: Count from compensating-controls.md findings (null if absent).
-    Tier 3: Residual risk count — sum of residual severity (Critical+High+Medium+Low)
-             from compensating-controls.md (null if absent).
+    JSON tier k is funnel Tier k+1 (0 = Threats Identified through 3 =
+    Residual Risk) — this is not the data source ``tier``. Tiers 2-4 (JSON
+    indices 1-3) are always summed over D-2's "one row set":
+    compensating-controls.md's Coverage Matrix rows in 4-tier mode
+    (``tier == 1``), or risk-scores.md's Scored Threat Table rows in 3-tier
+    mode (``tier == 2``). ``tier == 3`` (threats-only) has no row set at
+    all, so JSON indices 1-3 are all ghost.
 
     Args:
-        tier: Data source tier (1, 2, or 3).
-        severity: Current severity dict (from extract_severity, used for Tier 3 residual).
+        tier: Data source tier (1, 2, or 3) from determine_tier().
         threats_content: Full text content of threats.md.
-        artifacts: Dict of detected artifact booleans.
-        rs_content: Pre-read content of risk-scores.md (avoids duplicate file read).
-        cc_data: Pre-parsed compensating controls data (avoids duplicate file read/parse).
+        cc_data: Pre-parsed compensating-controls.md data (from
+            extract_severity's tier==1 branch; the K11 inherent join is
+            already applied there). Only consulted when tier == 1.
+        rs_content: Pre-read content of risk-scores.md. Only consulted when
+            tier == 2.
 
     Returns:
-        Dict with funnel_tiers, reduction_percentages, and missing_enrichments.
+        Dict with ``funnel_tiers`` (always 4 objects), ``reduction_percentages``
+        (always 3 entries), and the row-derived ``risk_reduction`` /
+        ``inherent_score`` / ``residual_score`` (Tier 2->4; null outside
+        4-tier mode, and whenever volumes are unavailable — data-model.md
+        §4.3/§4.4).
     """
-    # --- Tier 0: Threats Identified (always available) ---
     tier0_severity = parse_threats_severity(threats_content)
-    tier0_count = tier0_severity["total"]
     tier0 = {
         "tier": 0,
         "label": "Threats Identified",
-        "count": tier0_count,
         "source": "threats.md Section 6",
+        "ghost": False,
+        "count": tier0_severity["total"],
+        "volume": None,
+        "severity_mix": {k: tier0_severity[k] for k in ("critical", "high", "medium", "low")},
+        "width": 100,
     }
 
-    # --- Tier 1: Inherent Risk Scored (risk-scores.md) ---
-    tier1 = None
-    if artifacts["risk_scores_md"] and rs_content:
-        rs_severity = parse_risk_scores_severity(rs_content)
-        tier1 = {
-            "tier": 1,
-            "label": "Inherent Risk Scored",
-            "count": rs_severity["total"],
-            "source": "risk-scores.md",
-        }
+    if tier == 1:
+        tiers, reductions, totals = _funnel_4tier_mode(cc_data)
+    elif tier == 2:
+        tiers, reductions, totals = _funnel_3tier_mode(rs_content)
+    else:
+        tiers, reductions, totals = _funnel_threats_only_mode()
 
-    # --- Tier 2: Controls Applied (compensating-controls.md) ---
-    tier2 = None
-    if artifacts["compensating_controls_md"] and cc_data:
-        tier2 = {
-            "tier": 2,
-            "label": "Controls Applied",
-            "count": cc_data["severity"]["total"],
-            "source": "compensating-controls.md",
-        }
-
-    # --- Tier 3: Residual Risk (compensating-controls.md residual severity) ---
-    tier3 = None
-    if artifacts["compensating_controls_md"] and cc_data:
-        cc_sev = cc_data["severity"]
-        residual_count = cc_sev["critical"] + cc_sev["high"] + cc_sev["medium"] + cc_sev["low"]
-        tier3 = {
-            "tier": 3,
-            "label": "Residual Risk",
-            "count": residual_count,
-            "source": "compensating-controls.md residual",
-        }
-
-    funnel_tiers = [tier0, tier1, tier2, tier3]
-
-    # --- T030: Reduction percentages between adjacent non-null tiers ---
-    reduction_percentages = _compute_reduction_percentages(funnel_tiers)
-
-    # --- T031: Missing enrichments ---
-    missing_enrichments = _compute_missing_enrichments(artifacts)
-
-    # --- Score-based risk metrics from compensating-controls Section 1 ---
-    risk_metrics = {
-        "risk_reduction": None,
-        "inherent_score": None,
-        "residual_score": None,
-        "control_coverage_pct": None,
-    }
-    if cc_data:
-        risk_metrics["risk_reduction"] = cc_data.get("risk_reduction")
-        risk_metrics["inherent_score"] = cc_data.get("inherent_score")
-        risk_metrics["residual_score"] = cc_data.get("residual_score")
-        risk_metrics["control_coverage_pct"] = cc_data.get("control_coverage_pct")
-
+    risk_reduction, inherent_score, residual_score = totals
     return {
-        "funnel_tiers": funnel_tiers,
-        "reduction_percentages": reduction_percentages,
-        "missing_enrichments": missing_enrichments,
-        **risk_metrics,
+        "funnel_tiers": [tier0] + tiers,
+        "reduction_percentages": reductions,
+        "risk_reduction": risk_reduction,
+        "inherent_score": inherent_score,
+        "residual_score": residual_score,
     }
 
 
-def _compute_reduction_percentages(funnel_tiers):
-    """Compute percentage reduction between adjacent non-null funnel tiers.
+def _funnel_quantize(value):
+    """Quantize a Decimal volume or percentage to 1 dp, ROUND_HALF_UP (PD-5)."""
+    return value.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
 
-    Each reduction is an individual value (not a distribution summing to a target),
-    so standard rounding is used: int(round(pct)).
 
-    Args:
-        funnel_tiers: List of 4 tier dicts (some may be None).
+def _funnel_width(raw, lo, hi):
+    """Clamp a raw Decimal width ratio to ``[lo, hi]``, then round half-up to int.
 
-    Returns:
-        List of dicts with from_tier, to_tier, percentage (integer).
+    FR-K11.5 / PD-4: the clamp bounds must be ``Decimal`` — ``min(max(x, 40),
+    80)`` returns a bare ``int`` when a bound wins, and a following
+    ``.quantize()`` on that bare int then raises.
     """
-    # Collect non-null tiers in order
-    non_null = [t for t in funnel_tiers if t is not None]
+    clamped = min(max(raw, lo), hi)
+    return int(clamped.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
-    reductions = []
-    for i in range(len(non_null) - 1):
-        prev = non_null[i]
-        curr = non_null[i + 1]
 
-        prev_count = prev["count"]
-        curr_count = curr["count"]
+def _funnel_reduction_pct(from_volume, to_volume):
+    """(from - to) / from * 100, quantized to 1 dp. Zero denominator -> 0.0 (PD-5)."""
+    if from_volume == 0:
+        return Decimal("0.0")
+    return _funnel_quantize((from_volume - to_volume) / from_volume * 100)
 
-        if prev_count == 0:
-            pct = 0
-        else:
-            pct = int(round(((prev_count - curr_count) / prev_count) * 100))
 
-        reductions.append({
-            "from_tier": prev["tier"],
-            "to_tier": curr["tier"],
-            "percentage": pct,
-        })
+def _funnel_severity_mix(bands):
+    """Count Title Case severity bands into a {critical, high, medium, low} mix.
 
-    return reductions
+    A falsy band (``None`` or ``""``) is skipped, so that row is absent from
+    this mix only (data-model.md §4.1).
+    """
+    mix = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    for band in bands:
+        if not band:
+            continue
+        key = band.strip().lower()
+        if key in mix:
+            mix[key] += 1
+    return mix
+
+
+def _funnel_4tier_mode(cc_data):
+    """JSON tiers 1-3 from the compensating-controls.md one row set (4-tier mode).
+
+    V2 = sum(inherent), V3 = sum(residual if found else inherent), V4 =
+    sum(residual), all over rows with an inherent score (data-model.md
+    §4.1). Volumes are unavailable when no row carries one, or the
+    quantized V2 is 0 (§4.3): every volume and reduction is null, and
+    widths fall back to the plain STEP cascade, with one warning.
+    """
+    findings = (cc_data or {}).get("findings", [])
+    rows_with_inherent = [f for f in findings if f.get("inherent") is not None]
+
+    v2 = v3 = v4 = None
+    if rows_with_inherent:
+        v2_candidate = _funnel_quantize(sum(f["inherent"] for f in rows_with_inherent))
+        if v2_candidate != 0:
+            v2 = v2_candidate
+            v3 = _funnel_quantize(sum(
+                (parse_score(f["residual_score"]) if f["status_class"] == "found" else f["inherent"])
+                for f in rows_with_inherent
+            ))
+            v4 = _funnel_quantize(sum(parse_score(f["residual_score"]) for f in rows_with_inherent))
+    volumes_available = v2 is not None
+
+    if not volumes_available:
+        print(
+            "Warning: no controls row carries an inherent score; funnel "
+            "volumes and risk reduction are unavailable",
+            file=sys.stderr,
+        )
+
+    count = len(findings)
+    tier1_mix = _funnel_severity_mix(f.get("inherent_severity") for f in findings)
+    tier2_mix = _funnel_severity_mix(
+        (f.get("residual_severity") if f.get("status_class") == "found" else f.get("inherent_severity"))
+        for f in findings
+    )
+    tier3_mix = _funnel_severity_mix(f.get("residual_severity") for f in findings)
+
+    w2 = 100 - int(_FUNNEL_STEP)
+    if volumes_available:
+        w3 = _funnel_width(
+            Decimal(w2) * v3 / v2,
+            _FUNNEL_FLOOR + _FUNNEL_STEP, Decimal(w2) - _FUNNEL_STEP,
+        )
+        w4 = _funnel_width(
+            Decimal(w2) * v4 / v2,
+            _FUNNEL_FLOOR, Decimal(w3) - _FUNNEL_STEP,
+        )
+    else:
+        w3 = w2 - int(_FUNNEL_STEP)
+        w4 = w3 - int(_FUNNEL_STEP)
+
+    tiers = [
+        {
+            "tier": 1, "label": "Inherent Risk Scored", "source": "compensating-controls.md",
+            "ghost": False, "count": count,
+            "volume": float(v2) if v2 is not None else None,
+            "severity_mix": tier1_mix, "width": w2,
+        },
+        {
+            "tier": 2, "label": "Controls Applied", "source": "compensating-controls.md",
+            "ghost": False, "count": count,
+            "volume": float(v3) if v3 is not None else None,
+            "severity_mix": tier2_mix, "width": w3,
+        },
+        {
+            "tier": 3, "label": "Residual Risk", "source": "compensating-controls.md",
+            "ghost": False, "count": count,
+            "volume": float(v4) if v4 is not None else None,
+            "severity_mix": tier3_mix, "width": w4,
+        },
+    ]
+    reductions = [
+        {"from_tier": 0, "to_tier": 1, "percentage": 0.0},
+        {
+            "from_tier": 1, "to_tier": 2,
+            "percentage": float(_funnel_reduction_pct(v2, v3)) if volumes_available else None,
+        },
+        {
+            "from_tier": 2, "to_tier": 3,
+            "percentage": float(_funnel_reduction_pct(v3, v4)) if volumes_available else None,
+        },
+    ]
+    if volumes_available:
+        totals = (float(_funnel_reduction_pct(v2, v4)), float(v2), float(v4))
+    else:
+        totals = (None, None, None)
+
+    return tiers, reductions, totals
+
+
+def _funnel_3tier_mode(rs_content):
+    """JSON tiers 1-2 from risk-scores.md; JSON tier 3 is always ghost (3-tier mode).
+
+    V2 = sum(composite scores). JSON tier 2 ("Unmitigated Risk") volume
+    mirrors V2 exactly, since no controls have been applied yet
+    (data-model.md §4.1); the (1->2) reduction is therefore always 0.0 once
+    that identity is in place. ``risk_reduction`` stays null: there is no
+    residual data in 3-tier mode (data-model.md §4.4).
+    """
+    rs_findings = parse_risk_scores_findings(rs_content) if rs_content else []
+    composites = [
+        c for c in (parse_score(f.get("composite_score", "")) for f in rs_findings)
+        if c is not None
+    ]
+
+    v2 = v3 = None
+    if composites:
+        v2_candidate = _funnel_quantize(sum(composites))
+        if v2_candidate != 0:
+            v2 = v2_candidate
+            v3 = v2
+            # AOD-SIMPLIFICATION: no dedicated warning on a degenerate
+            # empty/zero-composite risk-scores.md in 3-tier mode — upgrade:
+            # add a 3-tier-scoped warning stem if this proves common in the
+            # field (data-model.md §4.3's stem is worded for the 4-tier
+            # controls-row case only).
+    volumes_available = v2 is not None
+
+    count = len(rs_findings)
+    tier1_mix = _funnel_severity_mix(f.get("severity", "") for f in rs_findings)
+    tier2_mix = dict(tier1_mix)
+
+    w2 = 100 - int(_FUNNEL_STEP)
+    if volumes_available:
+        w3 = _funnel_width(
+            Decimal(w2) * v3 / v2,
+            _FUNNEL_FLOOR + _FUNNEL_STEP, Decimal(w2) - _FUNNEL_STEP,
+        )
+    else:
+        w3 = w2 - int(_FUNNEL_STEP)
+    w4 = w3 - int(_FUNNEL_STEP)  # JSON tier 3 has no residual data; always ghost.
+
+    tiers = [
+        {
+            "tier": 1, "label": "Inherent Risk Scored", "source": "risk-scores.md",
+            "ghost": False, "count": count,
+            "volume": float(v2) if v2 is not None else None,
+            "severity_mix": tier1_mix, "width": w2,
+        },
+        {
+            "tier": 2, "label": "Unmitigated Risk",
+            "source": "risk-scores.md (no controls applied)",
+            "ghost": False, "count": count,
+            "volume": float(v3) if v3 is not None else None,
+            "severity_mix": tier2_mix, "width": w3,
+        },
+        {
+            "tier": 3, "label": "Residual Risk", "source": None, "ghost": True,
+            "count": None, "volume": None, "severity_mix": None, "width": w4,
+        },
+    ]
+    reductions = [
+        {"from_tier": 0, "to_tier": 1, "percentage": 0.0},
+        {
+            "from_tier": 1, "to_tier": 2,
+            "percentage": float(_funnel_reduction_pct(v2, v3)) if volumes_available else None,
+        },
+        {"from_tier": 2, "to_tier": 3, "percentage": None},
+    ]
+    return tiers, reductions, (None, None, None)
+
+
+def _funnel_threats_only_mode():
+    """JSON tiers 1-3 are all ghost (threats-only mode).
+
+    Neither risk-scores.md nor compensating-controls.md is present. Widths
+    follow the plain STEP cascade; every reduction is null because a ghost
+    tier wins over "(0->1) is 0.0 by definition" (data-model.md §4.2).
+    """
+    w2 = 100 - int(_FUNNEL_STEP)
+    w3 = w2 - int(_FUNNEL_STEP)
+    w4 = w3 - int(_FUNNEL_STEP)
+    tiers = [
+        {
+            "tier": 1, "label": "Inherent Risk Scored", "source": None, "ghost": True,
+            "count": None, "volume": None, "severity_mix": None, "width": w2,
+        },
+        {
+            "tier": 2, "label": "Controls Applied", "source": None, "ghost": True,
+            "count": None, "volume": None, "severity_mix": None, "width": w3,
+        },
+        {
+            "tier": 3, "label": "Residual Risk", "source": None, "ghost": True,
+            "count": None, "volume": None, "severity_mix": None, "width": w4,
+        },
+    ]
+    reductions = [
+        {"from_tier": 0, "to_tier": 1, "percentage": None},
+        {"from_tier": 1, "to_tier": 2, "percentage": None},
+        {"from_tier": 2, "to_tier": 3, "percentage": None},
+    ]
+    return tiers, reductions, (None, None, None)
 
 
 def _compute_missing_enrichments(artifacts):
@@ -1997,17 +2164,20 @@ def main():
             "boundary_crossings": arch_overlay["boundary_crossings"],
         }
     elif args.template == "risk-funnel":
-        funnel = compute_risk_funnel(tier, severity, threats_content, artifacts,
-                                     rs_content=rs_content, cc_data=cc_data)
+        # K11 (T021, data-model.md §4): the funnel and its S-9 totals are
+        # row-derived. `missing_enrichments` and `control_coverage_pct` are
+        # untouched legacy fields, not part of §4 — computed directly here
+        # rather than threaded through compute_risk_funnel's return shape.
+        funnel = compute_risk_funnel(tier, threats_content, cc_data=cc_data, rs_content=rs_content)
         template_data = {
             "risk_weights": risk_weights,
             "funnel_tiers": funnel["funnel_tiers"],
             "reduction_percentages": funnel["reduction_percentages"],
-            "missing_enrichments": funnel["missing_enrichments"],
+            "missing_enrichments": _compute_missing_enrichments(artifacts),
             "risk_reduction": funnel.get("risk_reduction"),
             "inherent_score": funnel.get("inherent_score"),
             "residual_score": funnel.get("residual_score"),
-            "control_coverage_pct": funnel.get("control_coverage_pct"),
+            "control_coverage_pct": cc_data.get("control_coverage_pct") if cc_data else None,
         }
     elif args.template == "maestro-stack":
         # FR-003 backfill (LOCAL to this block — see FR-004): present all seven
