@@ -175,6 +175,79 @@ def parse_threat_report_md(content: str) -> dict:
 
 
 # =============================================================================
+# Recommendation Resolution (K13.1, data-model.md §7, FR-K13.1)
+# =============================================================================
+
+# These constants and their exact strings are the extraction-data-contract.md
+# "Recommendations (K13.1)" contract.
+REC_FALLBACK_PREFIX = "Threat-model mitigation: "
+REC_PLACEHOLDER = "No recommendation available"
+
+
+def _placeholder_if_empty(text: str) -> str:
+    """Return REC_PLACEHOLDER when ``text`` is empty or whitespace-only.
+
+    Applied on every data tier, after any tier-specific fallback has been
+    tried (data-model.md §7): "an empty recommendation text becomes
+    REC_PLACEHOLDER" regardless of tier.
+    """
+    return text if text and text.strip() else REC_PLACEHOLDER
+
+
+def _section4_has_content(cc_content: str) -> bool:
+    """True when compensating-controls.md Section 4 (Recommendations) has a
+    non-empty body — the K13.1 drift signal (data-model.md §7): "warns when
+    Section 4 has content but zero recommendations join".
+
+    Checks the raw markdown rather than duplicating
+    parse_compensating_controls_md's own Section 4 join map, which is a
+    local variable inside that parser — tachi_parsers.py has no W2 writer
+    (AR-3), so this reads the text independently from the extractor side.
+    """
+    start = match_heading(r"^##\s+4\.\s+Recommendations", cc_content)
+    if start is None:
+        return False
+    for line in cc_content.split("\n")[start + 1:]:
+        if re.match(r"^##\s+\d+\.", line):
+            break
+        if line.strip():
+            return True
+    return False
+
+
+def _apply_recommendation_fallback(findings: list, threats_content: str) -> None:
+    """Resolve each Tier-1 finding's ``recommendation`` via the K13.1 chain.
+
+    1. the analyzer recommendation, already joined by
+       parse_compensating_controls_md from compensating-controls.md
+       Section 4 — left untouched when present;
+    2. REC_FALLBACK_PREFIX + the threats.md Section 7 Mitigation column,
+       when that mitigation is non-empty;
+    3. REC_PLACEHOLDER.
+
+    The prefix fallback (step 2) is Tier-1 only (PD-19, data-model.md §7).
+    Mutates ``findings`` in place so the finding cards
+    (findings-detail.typ:95), the remediation roadmap
+    (build_remediation_actions) and the attack-path remediation
+    (_get_finding_mitigation) all read the same resolved text.
+    """
+    mitigation_by_id = {}
+    for row in parse_markdown_table(threats_content, "## 7. Recommended Actions"):
+        fid = row.get("Finding ID", "").strip()
+        if fid:
+            mitigation_by_id[fid] = row.get("Mitigation", "").strip()
+
+    for finding in findings:
+        if finding.get("recommendation", "").strip():
+            continue
+        section7_mitigation = mitigation_by_id.get(finding.get("id", ""), "")
+        if section7_mitigation:
+            finding["recommendation"] = REC_FALLBACK_PREFIX + section7_mitigation
+        else:
+            finding["recommendation"] = REC_PLACEHOLDER
+
+
+# =============================================================================
 # Remediation Actions (T023)
 # =============================================================================
 
@@ -212,9 +285,15 @@ def build_remediation_actions(findings: list, tier: int,
         for f in findings:
             if tier == 2:
                 severity = f.get("severity", "")
-                rec_text = f.get("threat", "")
+                # K13.1: Tier 2 has no recommendation field of its own (the
+                # card keeps its missing-key default) — the roadmap falls
+                # back to the threat text, placeholder only when that's
+                # empty too (data-model.md §7 row 2, FR-K13.1).
+                rec_text = _placeholder_if_empty(f.get("threat", ""))
             else:  # tier == 3
                 severity = f.get("risk_level", "")
+                # Already resolved to REC_PLACEHOLDER when empty, in main()
+                # (data-model.md §7 row 3) — the roadmap inherits it as-is.
                 rec_text = f.get("mitigation", "")
             actions.append({
                 "severity": severity,
@@ -2250,6 +2329,20 @@ def main():
         data["coverage_matrix"] = cc_data["coverage_matrix"]
         data["controls"] = cc_data["controls"]
         data["coverage_summary"] = cc_data["coverage_summary"]
+        # K13.1 (data-model.md §7, FR-K13.1): resolve every Tier-1 finding's
+        # `recommendation` — the analyzer join above, else the threats.md
+        # Section 7 mitigation (prefixed), else the placeholder. Warn once,
+        # ahead of the fallback mutation, when Section 4 has entries but
+        # none of them joined (the drift signal).
+        if _section4_has_content(cc_content) and not any(
+            f.get("recommendation", "").strip() for f in data["findings"]
+        ):
+            print(
+                "Warning: controls Section 4 has content but no recommendations "
+                "matched; using threat-model mitigations",
+                file=sys.stderr,
+            )
+        _apply_recommendation_fallback(data["findings"], threats_content)
     elif tier == 2:
         rs_content = (target_dir / "risk-scores.md").read_text(encoding="utf-8")
         data["severity"] = parse_risk_scores_severity(rs_content)
@@ -2266,6 +2359,11 @@ def main():
                 sev[key] += 1
         sev["total"] = len(data["findings"])
         data["severity"] = sev
+        # K13.1: `mitigation` is the only field parse_threats_findings emits
+        # (data-model.md §7 row 3) — it becomes the placeholder when empty,
+        # which the card, the roadmap and the attack path then all inherit.
+        for f in data["findings"]:
+            f["mitigation"] = _placeholder_if_empty(f.get("mitigation", ""))
 
     # parse_threats_findings attaches source_attribution + delta_status at Tier 3,
     # but cc/rs parsers don't read threats.md. Without these merges, F-B's gate
