@@ -6,9 +6,13 @@ known-good form and the current GA model chain, per
 (the normative contract; assertion IDs A1-A8 below correspond to its
 "Static contract test" table). Read that contract before changing this file.
 
-Scope: A1-A8 only. A9 and A10 (K15's allow-list / lock-amendment assertions)
-land later, in W2, only if K15 ships (tasks.md T029) -- this module
-deliberately does not implement them.
+Scope: A1-A8, plus A11 (K9's FR-K9.3 detection-text assertion; tasks.md
+T019). A9 and A10 (K15's allow-list / lock-amendment assertions) land
+later, in W2, only if K15 ships (tasks.md T029) -- this module
+deliberately does not implement them yet. A11's block is kept physically
+separate from where A9/A10 will land (contract "Static contract test"
+table; T039 §8.3), so a later K15 carve's revert of the A9/A10 commits
+never touches A11.
 
 ``IMAGE_SIZE_RESTORED`` is pinned here from the W0 live smoke render (T002,
 ``specs/373-adopter-install-output-fidelity/test-results/w0-smoke.md``): all
@@ -83,6 +87,10 @@ _TEMPLATE_KEYS = {"model", "fallback_model", "response_modalities", "aspect_rati
 
 REFERENCE_PATH = REPO_ROOT / ".claude" / "skills" / "tachi-infographics" / "references" / "gemini-prompt-construction.md"
 EXEC_ARCH_PATH = REPO_ROOT / ".claude" / "skills" / "tachi-infographics" / "references" / "executive-architecture.md"
+
+# A11 (K9, FR-K9.3) -- the /tachi.infographic command's explicit-path
+# data-source detection text.
+COMMAND_PATH = REPO_ROOT / ".claude" / "commands" / "tachi.infographic.md"
 AGENT_PATH = REPO_ROOT / ".claude" / "agents" / "tachi" / "threat-infographic.md"
 ADAPTER_PATH = REPO_ROOT / "adapters" / "claude-code" / "agents" / "references" / "infographic-gemini-api.md"
 ADAPTER_DIR = ADAPTER_PATH.parent
@@ -476,3 +484,46 @@ class TestA8ScaffoldBoundaries:
         marker_line_idx = next(i for i, ln in enumerate(lines) if ln.startswith("DATA CONTENT (render this"))
         footer_line_count = sum(1 for ln in lines[marker_line_idx + 1:] if ln.startswith("FOOTER"))
         assert footer_line_count == 1
+
+
+# =============================================================================
+# A11 -- K9, FR-K9.3: the /tachi.infographic explicit-path detection text
+# accepts "Residual Score" or "Residual" (tasks.md T019). Kept in its own
+# block, separated from A9/A10 above by this banner and blank lines, so a
+# later K15 carve (TW-6 revert of T027-T029) never touches this class.
+# =============================================================================
+
+
+class TestA11ResidualAliasDetection:
+    def test_detection_condition_accepts_both_header_forms(self):
+        text = COMMAND_PATH.read_text(encoding="utf-8")
+        section = _section(text, "Step 1: Validate Prerequisites")
+        assert "Residual Score" in section, (
+            "the long-form controls-report detection clause must still name "
+            "'Residual Score'"
+        )
+        # "Residual Score" itself contains the substring "Residual", so a
+        # naive `"Residual" in section` check would pass even without the
+        # FR-K9.3 fix. Strip every "Residual Score" occurrence first and
+        # require a bare "Residual" alias to survive that strip.
+        stripped = section.replace("Residual Score", "")
+        assert "Residual" in stripped, (
+            "FR-K9.3: the detection text must also accept the short-form "
+            "alias 'Residual' (not only 'Residual Score'), so a short-form "
+            "controls file passed explicitly is no longer rejected as "
+            "UNABLE TO DETECT DATA SOURCE TYPE"
+        )
+
+    # No test pins the "UNABLE TO DETECT DATA SOURCE TYPE" help text's own
+    # wording. FR-K9.3 (spec.md "Header drift" edge case) scopes the fix to
+    # "the infographic command's tier detection" -- the condition line
+    # above, which decides whether a short-form file is REJECTED at all.
+    # The help text is the fallback shown only when no indicator matches
+    # any of the three source types; a valid short-form controls file now
+    # never reaches it, so requiring its prose to also enumerate the short
+    # form would test a documentation nicety A11 does not actually mandate
+    # (the contract's own wording is "the ... detection text accepts
+    # `Residual Score` or `Residual`", i.e. detection behavior, not this
+    # message's copy). An earlier draft of this class asserted it anyway
+    # and stayed red against T018's committed implementation; removed here
+    # per T019's "decide against the contract" rule after re-reading FR-K9.3.
