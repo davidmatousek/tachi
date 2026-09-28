@@ -305,7 +305,7 @@ K3 is not a split candidate, and it ships with K1.
   - **The M8 bash 3.2 rules**: helpers only in conditionals; `local`; `unset CDPATH`; newline strings instead of empty arrays; `< <(…)` loops.
   - **Keep** every `x-release-please-version` marker (`:13,19,43`).
   - **Iterate** locally on `/bin/bash` 3.2.57 until T008 is green.
-- [ ] T010 [US2] K3 CI lock-step and convergence (Lane A′ in W1, then Lane A in W2; `devops`; ~0.25 d).
+- [X] T010 [US2] K3 CI lock-step and convergence (Lane A′ in W1, then Lane A in W2; `devops`; ~0.25 d).
   - **One commit (F-250, L16)**, pushed after A-1 is green. It holds:
     - T008's modules, `install_sh_helpers.py` and T009's `install.sh`;
     - the `.github/workflows/tachi-pytest.yml` wiring: the installer paths go into `&hardening_paths` with `# F-373` markers, the modules into the invocation, and a line into the header log.
