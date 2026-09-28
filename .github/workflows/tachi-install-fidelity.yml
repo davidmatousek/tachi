@@ -81,6 +81,9 @@ on:
       # --- A-3: the K14 static request contract test ---
       - tests/scripts/test_gemini_request_contract.py
       - adapters/claude-code/**                       # A-3, N3/RC-P5 — A4/A6 pin the shipped adapter copy
+      # --- W2: the sibling-parity module. Its fixture trees are already
+      #     covered by report_data/** and fidelity_373/** since A-2 (C-1) ---
+      - tests/scripts/test_extraction_sibling_parity.py
   push:
     branches: [main]
     paths: *fidelity_paths
@@ -137,6 +140,10 @@ jobs:
       # blocks, the executive-architecture block and the adapter copy never
       # drift from contracts/gemini-request-and-scaffold.md, with no network
       # call and no live key.
+      # W2 (T019): the sibling-parity module compares posture, severity
+      # counts, delta counts and MAESTRO output between the infographic
+      # JSON and report-data.typ on the same fixtures, including the K11
+      # join-path case (F2).
       - name: Run extraction-fidelity suite (R-3 safety net)
         run: |
           python3 -m pytest \
@@ -146,4 +153,5 @@ jobs:
             tests/scripts/test_extractor_contract_fixes.py \
             tests/scripts/test_executive_architecture_payload.py \
             tests/scripts/test_gemini_request_contract.py \
+            tests/scripts/test_extraction_sibling_parity.py \
             -v
