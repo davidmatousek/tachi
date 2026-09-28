@@ -126,6 +126,14 @@ If tachi is cloned to a non-default location:
 ~/Projects/tachi/scripts/install.sh --source /path/to/tachi
 ```
 
+By default, `install.sh` refuses to write into a symlinked destination. Pass `--follow-symlinks` to opt in:
+
+```bash
+~/Projects/tachi/scripts/install.sh --follow-symlinks
+```
+
+> `--follow-symlinks`  Install through symlinked destinations (for example a linked `.claude/skills`). Without it, install.sh stops before writing anything when a destination is a symlink. With it, install.sh follows links at or above each installed path, names every resolved destination, and only copies: it never deletes through a link. Even with it, install.sh refuses broken, looping or wrong-type links (a file where a folder is needed, or the reverse), links nested inside an installed folder, and destinations inside the tachi source clone.
+
 <details>
 <summary>Manual install (alternative)</summary>
 
