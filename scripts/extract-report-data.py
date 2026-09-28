@@ -2284,7 +2284,8 @@ def main():
     baseline = parse_baseline_frontmatter(threats_content)
     has_baseline = baseline["has_baseline"]
 
-    # Parse resolved findings from Section 4b (empty when no baseline)
+    # Parse resolved findings from Section 4c (legacy `4b` heading also
+    # accepted, FR-K12.5); empty when no baseline
     resolved_findings = parse_resolved_findings(threats_content)
 
     # Schema version check

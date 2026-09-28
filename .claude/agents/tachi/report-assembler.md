@@ -239,7 +239,7 @@ Tier: {data_source_tier}
 
 - **v1.0**: No Section 4a -- skip correlated findings references, all else normal
 - **v1.1**: Full feature set -- parse all sections
-- **v1.2**: Full feature set plus delta/baseline data -- parse all sections including Section 4b (Resolved Findings) and Section 8 (Delta Summary)
+- **v1.2**: Full feature set plus delta/baseline data -- parse all sections including Section 4c (Resolved Findings) and Section 8 (Delta Summary)
 - **Unknown version**: Treat as v1.0 (conservative), log warning
 
 ### Delta / Baseline Awareness
