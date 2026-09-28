@@ -39,6 +39,8 @@ from tachi_parsers import (
     parse_resolved_findings,
     compute_delta_counts,
     delta_status_by_id,
+    apply_delta_status,
+    warn_delta_scope,
     parse_score,
     parse_markdown_table,
     match_heading,
@@ -1061,22 +1063,16 @@ def _merge_delta_status(findings: list, threats_content: str) -> None:
     delta annotations are otherwise invisible to compute_delta_counts — every
     finding would render without a NEW / UPDATED / UNCHANGED badge even when
     the threat model clearly declares a baseline diff.
+
+    Delegates to delta_status_by_id and apply_delta_status (K12, FR-K12.2,
+    data-model.md §6), so the badges carry the same normalized status
+    (``[NEW]``, ``**[NEW]**``, ``` `[NEW]` ``` -> ``NEW``) that
+    compute_delta_counts counts. Kept importable with this exact
+    ``(findings, threats_md)`` signature — an existing test calls it
+    directly (test_extractor_contract_fixes.py).
     """
-    rows = parse_markdown_table(threats_content, "## 7. Recommended Actions")
-    if not rows:
-        return
-    status_by_id = {}
-    for row in rows:
-        fid = row.get("Finding ID", "").strip()
-        status = row.get("Status", "").strip()
-        if fid and status:
-            status_by_id[fid] = status
-    if not status_by_id:
-        return
-    for finding in findings:
-        fid = finding.get("id", "")
-        if fid in status_by_id:
-            finding["delta_status"] = status_by_id[fid]
+    status_by_id, _has_status_column, _row_count = delta_status_by_id(threats_content)
+    apply_delta_status(findings, status_by_id)
 
 
 # Coverage attestation aggregator: joins source_attribution arrays on findings
@@ -2371,10 +2367,14 @@ def main():
 
     # Delta counts, over the normalized Section 7 map (K12, FR-K12.1/K12.2),
     # never over data["findings"] (architect re-review NM-1). Per-finding
-    # badge stamping (_merge_delta_status/apply_delta_status) and scoped-
-    # warning emission (warn_delta_scope) are wired in W2 (T017).
+    # badge stamping happens above via _merge_delta_status/apply_delta_status
+    # (Tier 1/2) or parse_threats_findings (Tier 3). warn_delta_scope emits
+    # PD-16's scoped, aggregated warnings for the tier's own finding-ID set;
+    # it no-ops on its own unless has_baseline, so the call is unconditional.
+    status_by_id, has_status_column, row_count = delta_status_by_id(threats_content)
+    tier_ids = [f.get("id", "") for f in data["findings"]]
+    warn_delta_scope(has_baseline, has_status_column, status_by_id, row_count, tier_ids)
     if has_baseline:
-        status_by_id, _has_status_column, _row_count = delta_status_by_id(threats_content)
         data["delta_counts"] = compute_delta_counts(status_by_id, resolved_findings)
     else:
         data["delta_counts"] = {"new": 0, "unchanged": 0, "updated": 0, "resolved": 0}
