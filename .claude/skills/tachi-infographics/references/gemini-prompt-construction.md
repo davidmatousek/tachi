@@ -44,6 +44,8 @@ If `prompt_scaffold` is NOT present in the JSON, route by template — this is e
 
 The `executive-architecture` template carries a stricter verbatim-lock contract than the scaffold-based templates above. Per spec FR-212-6 (`specs/212-improve-executive-architecture-infographic/spec.md`), the prompt block published in the **VERBATIM PROMPT BLOCK** section of `.claude/skills/tachi-infographics/references/executive-architecture.md` MUST be copied verbatim into the Gemini API request — there is NO runtime composition of aesthetic, structural, or palette language for this template.
 
+**Amended by F-373 K15 (2026-09-28):** one additive paragraph after IMPORTANT (two instructions); markers, slots and fences unchanged. This same edit reconciles the header list and slot list below, which had gone stale: `FLOW EDGES` and `CLUSTERS` were added to the locked block by F-212 but missing from the header list, and `<<flow_edges_block>>` / `<<clusters_block>>` were missing from the slot list.
+
 ### Why a separate rule
 
 The scaffold path (Option D, above) ships the locked text in the JSON output of `scripts/extract-infographic-data.py` as a `prompt_scaffold` object. The executive-architecture template uses the **fallback path** (no `prompt_scaffold` object) because its prompt was historically composed at runtime from the template skill reference. F-212 inverts that: the prompt is now locked in the skill reference file rather than composed at runtime, but the lock lives in the markdown file rather than in JSON. This rule documents that distinction so consumers do not mistakenly recompose the prompt under the assumption that the scaffold path is the only locked path.
@@ -55,7 +57,7 @@ Everything between the `=== BEGIN VERBATIM PROMPT BLOCK (FR-212-6 LOCKED) ===` a
 - The `"schematic diagram with shapes and arrows"` opening directive (FR-212-2 — defeats the text-only failure mode in current Gemini image-gen practice)
 - The IMPORTANT pre-amble forbidding hex codes / pixel values as visible text
 - The full STYLING DIRECTIVES block including: layer band ordering, the 5-pastel layer-fill cycle (`#F0F4FF`, `#FFF4F0`, `#F0FFF4`, `#FFF0F8`, `#F8F0FF`), severity-colored node borders (Critical `#DC2626`, High `#EA580C` — inherited unchanged from `visual-design-system.md`), inter-layer directional-arrow directive with explicit arrowhead requirement, leader-line callout anchoring directive, the compact-badge empty-layer treatment, and the single-zone fallback caption directive
-- The DATA CONTENT section headers (TITLE, LAYER STACK, CALLOUTS, EMPTY-LAYER BADGES, FOOTER)
+- The DATA CONTENT section headers (TITLE, LAYER STACK, CALLOUTS, EMPTY-LAYER BADGES, FLOW EDGES, CLUSTERS, FOOTER)
 - The closing aesthetic instruction
 
 ### What is NOT locked (slot substitution only)
@@ -66,6 +68,8 @@ Only the bracketed `<<...>>` data slots inside the locked block are filled at ru
 - `<<layer_block>>` — composed from `layers[]`
 - `<<callout_block>>` — composed from `callouts[]` (6–8 entries)
 - `<<empty_layer_block>>` — one badge line per layer with zero qualifying findings
+- `<<flow_edges_block>>` — composed from `flow_edges[]` (FR-212-18)
+- `<<clusters_block>>` — composed from `clusters[]` (FR-212-18)
 - `<<single_zone_caption>>` — emitted only on the single-zone edge case
 
 ### What is NOT permitted

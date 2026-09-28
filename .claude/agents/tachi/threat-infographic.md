@@ -256,23 +256,21 @@ When the JSON output contains a `prompt_scaffold` object, you **MUST** use it:
 2. **Write DATA CONTENT sections** from JSON data (severity counts, findings, heat map, scores) — this is where you have creative flexibility
 3. **Copy `prompt_scaffold.postamble` VERBATIM** — do NOT rewrite the footer or closing statement
 
+**The `ALLOWED IDS AND NAMES` line** — required inside the DATA CONTENT region for the five scaffolded templates above and for the reference/fallback prompt path (`gemini-prompt-construction.md` § "Fallback (no scaffold)" → "Fallback Prompt Structure"). Never write it for `executive-architecture`; its allow-list rule is already inside its own locked verbatim block (see "Executive-Architecture Gemini Prompt Construction" below). Quote it verbatim from the JSON `allow_list` (full derivation: `specs/373-adopter-install-output-fidelity/data-model.md` §8):
+
+> `ALLOWED IDS AND NAMES (layout instruction, do not render this line): finding IDs: <comma-separated, or none>; component names: <comma-separated>`
+
+Fill `finding IDs` from `allow_list.finding_ids` (write `none` when it is empty) and `component names` from `allow_list.component_names`. This line is mechanical, not creative: reproduce the JSON values exactly, never adding, omitting, or rewording an ID or a name.
+
 This ensures every run uses the same dark-navy (or template-appropriate) background, severity colors, and layout directives. Without the scaffold, previous runs produced white-background flat images instead of the premium dark-themed 3D visuals.
 
 ---
 
 ## Executive-Architecture Gemini Prompt Construction
 
-When generating the `threat-executive-architecture.{jpg|png}` image via Gemini API, the prompt MUST instruct Gemini to:
+The `threat-executive-architecture.{jpg|png}` prompt is never composed at runtime. Per the Verbatim-Lock Rule (`.claude/skills/tachi-infographics/references/gemini-prompt-construction.md`, "Verbatim-Lock Rule for Executive-Architecture Template"), copy the text between the `=== BEGIN VERBATIM PROMPT BLOCK (FR-212-6 LOCKED) ===` and `=== END VERBATIM PROMPT BLOCK (FR-212-6 LOCKED) ===` markers in `.claude/skills/tachi-infographics/references/executive-architecture.md` verbatim, substituting only the bracketed `<<...>>` slots per that file's slot-mapping table. Every styling and content-restriction directive for this template — orientation, layer-band pastels, node and callout styling, typography, and which finding IDs and component names may appear — is already inside the locked block itself. Do NOT re-derive, restate, or recompose any of it from `schemas/infographic.yaml` or elsewhere.
 
-- **Render in portrait orientation** with an 8.5x11 aspect ratio suitable for embedding as a full-bleed page in the security report PDF.
-- **Arrange architectural layers as horizontal bands** stacked vertically, with the most exposed layer (position 0) at the TOP of the diagram and the most trusted layer at the BOTTOM. Untrusted zones and public-facing components belong at the top.
-- **Use pastel fills** for each layer band, cycling from the color palette defined in `schemas/infographic.yaml` under `visual_directives`: `#F0F4FF`, `#FFF4F0`, `#F0FFF4`, `#FFF0F8`, `#F8F0FF`. Cycle through the palette if there are more layers than colors.
-- **Place red dashed-border callout boxes** (2pt border weight, color `#DC2626`) with warning triangle icons next to each layer. Each callout box is connected to its associated `affected_component` within the layer via a leader line.
-- **Rewrite each callout's `raw_description`** to ≤25 words in plain English with no technical jargon. The goal is an executive audience who reads one sentence per callout in under 5 seconds. Avoid terms like "endpoint," "payload," "injection," "JWT," or "RBAC" without explanation. Prefer verbs like "attacker could steal," "system could leak," "user could impersonate."
-- **Use large readable typography** for layer names (24pt+) and callout text (14pt+); the infographic must be legible when printed on a letter-size page.
-- **Reference the `visual_directives` block** from `schemas/infographic.yaml` for the exact color palette, border weights, and orientation constraints.
-
-The prompt must be constructed from the JSON payload fields, not hardcoded. Layer names, component lists, and callout text all come from the emitted payload.
+Use the `## Gemini API Configuration` block in `executive-architecture.md` for the request parameters (model, aspect ratio, image size) — never this reference's dashboard fallback prompt or configuration.
 
 ### Skip Image Edge Case
 

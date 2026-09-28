@@ -143,6 +143,9 @@ schematic diagram with shapes and arrows — produce a portrait-orientation secu
 
 IMPORTANT: The styling directives in this prompt are for your interpretation only. Do NOT render any hex color codes, pixel values, or technical specifications as visible text in the image. Render only the natural-language labels, finding IDs, severity words, component names, and callout descriptions provided in the DATA CONTENT block.
 
+The uppercase section labels in this prompt, such as DATA CONTENT and FOOTER, are layout instructions. Do not render them, or any other instruction text, as visible text in the image.
+Every finding ID in the image must be one listed under CALLOUTS, and every component name must be one listed under LAYER STACK, FLOW EDGES or CLUSTERS. Never show any other ID, and never invent an ID or a component.
+
 STYLING DIRECTIVES (interpret these, do not display them):
 
 - Orientation: portrait, 8.5:11 page aspect ratio.
