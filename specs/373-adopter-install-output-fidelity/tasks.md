@@ -251,7 +251,7 @@ Live renders are `[MANUAL-ONLY]` (US-4a #5, US-4b #4).
     - A red in `test_tachi_parsers.py` gets its marker from B1, that file's W1 writer. It lands as B1's marker-only first commit (LOW-6).
     - Once the markers land, the job is green and the R-3 net is live.
   - Commit A-2 locally, verify it in a scratch clone of that commit, and push.
-- [ ] T007 PD-6 splitter hardening in `scripts/extract-infographic-data.py` (Lane B1, W1; `senior-backend-engineer`; ~0.05 d).
+- [X] T007 PD-6 splitter hardening in `scripts/extract-infographic-data.py` (Lane B1, W1; `senior-backend-engineer`; ~0.05 d).
   - Anchor the primary marker to line start (`^DATA CONTENT \(render this`).
   - Search for `\nFOOTER` only after the marker line.
   - Drop the no-newline `find("FOOTER")` fallback.
@@ -340,7 +340,7 @@ K3 is not a split candidate, and it ships with K1.
 - the static contract test (A1–A8) is green;
 - K14's render set succeeds through the agent: each template once, each chain model at least once, and executive-architecture on one portrait PDF page (FR-K14.3, P-10.2).
 
-- [ ] T012 [P] [US4a] K14 reference, agent and adapter copy (Lane C1, W1; `senior-backend-engineer`; ~0.30 d; after T002).
+- [X] T012 [P] [US4a] K14 reference, agent and adapter copy (Lane C1, W1; `senior-backend-engineer`; ~0.30 d; after T002).
   - `.claude/skills/tachi-infographics/references/gemini-prompt-construction.md`:
     - the known-good body;
     - the key→field table;
@@ -355,7 +355,7 @@ K3 is not a split candidate, and it ships with K1.
     - the "read the active template's configuration and map it" instruction;
     - error-table rows: 400 (not walked, Error, summary), 404/403 (walked), exhausted chain (Error, models named), catch-all (5xx, 2xx without image), and the 429 hint to reorder models.
   - `adapters/claude-code/agents/references/infographic-gemini-api.md` (FR-K14.6): the same body, chain and response keys.
-- [ ] T013 [P] [US4a] K14 template and executive-architecture configuration (Lane C1, W1; `senior-backend-engineer`; ~0.10 d; after T002).
+- [X] T013 [P] [US4a] K14 template and executive-architecture configuration (Lane C1, W1; `senior-backend-engineer`; ~0.10 d; after T002).
   - The five `## Gemini API Configuration` blocks in `templates/tachi/infographics/infographic-{baseball-card,maestro-heatmap,maestro-stack,risk-funnel,system-architecture}.md`: chain models, `aspect_ratio: "16:9"`, `image_size` per `IMAGE_SIZE_RESTORED`.
   - Executive-architecture's `## Gemini API Configuration` section in `.claude/skills/tachi-infographics/references/executive-architecture.md`, **outside** the lock markers (PD-1): `aspect_ratio: "3:4"`.
   - Reword `templates/tachi/infographics/INFOGRAPHIC_TEMPLATES.md:127-134` ("validated by the static contract test").
@@ -399,7 +399,7 @@ K3 is not a split candidate, and it ships with K1.
 
 **Independent Test**: T003's fixtures produce the exact expected values in both the infographic JSON and `report-data.typ`. The sibling-parity module is green.
 
-- [ ] T016 [P] [US3a] Lane B1 parser work, test-first in `tests/scripts/test_tachi_parsers.py` (W1; `senior-backend-engineer`; ~0.57 d; commits after T006).
+- [X] T016 [P] [US3a] Lane B1 parser work, test-first in `tests/scripts/test_tachi_parsers.py` (W1; `senior-backend-engineer`; ~0.57 d; commits after T006).
   - **While the commit gate is closed (NM-2).** B1 develops in an isolated worktree (the Agent tool's `isolation: "worktree"`) or a scratch clone, making local commits there.
     - T020 (K11) and T024 (K13-posture) each get their own commits.
     - Once A-2's job is green, B1 replays the commits onto the branch in order. Its files have no other W1 writer, so the cherry-picks apply cleanly.
@@ -502,7 +502,7 @@ If K11 is carved, the parser keeps today's unclamped residuals and substring idi
 
 **Independent Test**: the STEP-bound and strong-reduction fixtures produce hand-computed volumes, mixes, widths and reductions. The 3-tier, threats-only and volumes-unavailable shapes match `contracts/extraction-data-contract.md`.
 
-- [ ] T020 [US3b] K11 parser and join wiring, Lane B1 step 3 (W1, after T016; `senior-backend-engineer`; ~0.30 d). In `scripts/tachi_parsers.py`, with unit tests in `tests/scripts/test_tachi_parsers.py`, per data-model §3 (L18):
+- [X] T020 [US3b] K11 parser and join wiring, Lane B1 step 3 (W1, after T016; `senior-backend-engineer`; ~0.30 d). In `scripts/tachi_parsers.py`, with unit tests in `tests/scripts/test_tachi_parsers.py`, per data-model §3 (L18):
   - **The inherent read** (`Inherent Score`/`Inherent`), filled by ID join to the risk-scores composites through a new input, `parse_compensating_controls_md(content, composites_by_id=None)`. The composites come from `parse_risk_scores_findings` (`composite_score` through `parse_score`) (F2).
   - **Both tier-1 call sites, wired in W1** (B1 owns both extractors in W1):
     - `extract_severity` in `scripts/extract-infographic-data.py` (`:266`) passes composites from the `rs_content` it already reads;
@@ -566,7 +566,7 @@ If K11 is carved, the parser keeps today's unclamped residuals and substring idi
 
 **Independent Test**: the same run directory gives identical posture fields in the JSON and `report-data.typ`. A stale `report-data.typ` panics with the regenerate message in CI.
 
-- [ ] T024 [US3c] Posture function, Lane B1 step 4 (W1, after T020 or T016; `senior-backend-engineer`; ~0.05 d): `compute_risk_posture(counts) -> (level, label)` in `scripts/tachi_parsers.py`, with unit tests, in its own commit.
+- [X] T024 [US3c] Posture function, Lane B1 step 4 (W1, after T020 or T016; `senior-backend-engineer`; ~0.05 d): `compute_risk_posture(counts) -> (level, label)` in `scripts/tachi_parsers.py`, with unit tests, in its own commit.
   - Zero findings give `low`/`LOW RISK`.
   - It runs on post-clamp counts when K11 ships, and on today's counts if K11 is carved.
 - [ ] T025 [US3c] Posture emission, Typst and the stale-data gate (Lane B2a and B2b in W2, with Lane A wiring; `senior-backend-engineer` in B2a and in B2b; `devops` for the job; ~0.32 d).
