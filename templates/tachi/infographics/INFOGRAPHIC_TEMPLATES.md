@@ -105,8 +105,8 @@ Run tachi threat analysis on my architecture. Generate only the baseball-card in
    | `{high_count}` | Spec Section 2: Risk Distribution |
    | `{medium_count}` | Spec Section 2: Risk Distribution |
    | `{low_count}` | Spec Section 2: Risk Distribution |
-   | `{risk_posture}` | Spec Section 2: Risk Posture Indicator |
-   | `{posture_color}` | Spec Section 2: severity color of posture |
+   | `{risk_posture_label}` | `metadata.risk_posture_label`, rendered verbatim (D-3) |
+   | `{posture_color}` | Computed: severity color keyed on `metadata.risk_posture_level` (D-3) |
    | `{critical_high_pct}` | Computed: (critical+high)/total * 100 |
    | `{component_count}` | Spec Section 3: row count |
    | `{finding_cards_text}` | Spec Section 4: formatted finding summaries |

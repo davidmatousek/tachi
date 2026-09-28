@@ -205,6 +205,8 @@ The script outputs a JSON file with this top-level structure:
     "note_count": 0,
     "agent_count": 10,
     "risk_posture": "string",
+    "risk_posture_level": "critical|high|medium|low",
+    "risk_posture_label": "CRITICAL RISK|HIGH RISK|MODERATE RISK|LOW RISK",
     "schema_version": "1.1"
   },
   "severity_distribution": [
