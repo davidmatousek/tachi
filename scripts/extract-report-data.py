@@ -1275,6 +1275,14 @@ def _warn_unmatched_attribution_refs(
     as unmatched. Taking the id set as a parameter keeps this function free
     of catalog I/O — the caller already holds the loaded records — so it
     never raises and never changes any data.
+
+    The sole caller, ``build_per_framework_aggregates``, does not invoke
+    this guard at all for a framework whose in-scope record count is 0 (it
+    takes the ``items = []`` branch instead and skips straight to the next
+    framework). With zero in-scope records, that framework's coverage
+    matrix is empty by construction, so there is nothing a stray ref could
+    have been silently dropped against — the check would be vacuous, not
+    unsafe to skip.
     """
     for finding in findings or ():
         for ref in finding.get("source_attribution") or ():
