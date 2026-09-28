@@ -1175,3 +1175,95 @@ def test_k131_attack_path_tier2_stays_generic_not_placeholder():
     steps = extract._build_remediation(mitigation)
     assert steps == ["Review and implement appropriate security controls."]
     assert _REC_PLACEHOLDER not in steps[0]
+
+
+# =============================================================================
+# Feature 373 US-6: #370 FR-012b form-drift guard, retargeted to today's code
+# (tasks.md T031; OQ-5 closed by the team-lead). Commit 3d67ca7 moved the
+# guard out of classify_framework_items into its own
+# _warn_unmatched_attribution_refs(findings, framework_name, catalog_ids),
+# called from build_per_framework_aggregates. Two cases only, per the
+# recipe's TW-4 cap.
+# =============================================================================
+
+
+def test_warn_unmatched_attribution_refs_stale_form_id_warns_and_is_pure(capsys):
+    """Case 1: a stale-form attribution id (e.g. an old year suffix against a
+    newer catalog) warns on stderr and the guard is provably pure --
+    classify_framework_items's output and the caller's findings list are
+    both unaffected by the call (LOW-7).
+
+    catalog_ids is supplied directly (no schemas/taxonomy/ disk I/O for this
+    case): _warn_unmatched_attribution_refs's own docstring states it "never
+    raises and never changes any data" precisely because it takes the id set
+    as a parameter rather than loading a catalog itself.
+    """
+
+    def _make_findings():
+        return [
+            {
+                "id": "F-1",
+                "source_attribution": [
+                    {"taxonomy": "owasp", "id": "LLM05:2025", "relationship": "primary"},
+                ],
+            },
+        ]
+
+    extract = _load_extract_module()
+    catalog_ids = {"LLM01:2026", "LLM02:2026", "LLM05:2026"}
+    framework_records = [{"id": cid} for cid in sorted(catalog_ids)]
+
+    findings = _make_findings()
+    findings_before = _make_findings()
+    items_without_guard = extract.classify_framework_items(findings, "owasp", framework_records)
+
+    extract._warn_unmatched_attribution_refs(findings, "owasp", catalog_ids)
+    captured = capsys.readouterr()
+    assert "Warning:" in captured.err
+    assert "LLM05:2025" in captured.err
+    assert "owasp" in captured.err
+
+    items_with_guard = extract.classify_framework_items(findings, "owasp", framework_records)
+    assert items_with_guard == items_without_guard, (
+        "classify_framework_items output changed after the guard call"
+    )
+    assert findings == findings_before, "the guard must never mutate findings (LOW-7)"
+
+
+def test_build_per_framework_aggregates_out_of_scope_citation_not_misreported(capsys):
+    """Case 2: through build_per_framework_aggregates with the REAL catalogs
+    (OQ-5), a finding citing an Out-of-Scope catalog record is never
+    misreported as unmatched.
+
+    mitre-attack T1070.001 is out_of_scope: true at
+    schemas/taxonomy/mitre-attack.yaml:982-988 -- excluded from the in-scope
+    record set classify_framework_items uses, but still present in the FULL
+    catalog id set the guard checks against (FR-024). Only an end-to-end
+    call through build_per_framework_aggregates pins this, since the guard
+    itself takes catalog_ids as a parameter and does no catalog I/O of its
+    own. schemas/taxonomy/*.yaml is in paths: since A-2 (T006).
+    """
+    extract = _load_extract_module()
+    findings = [
+        {
+            "id": "F-1",
+            "source_attribution": [
+                {"taxonomy": "mitre-attack", "id": "T1070.001", "relationship": "primary"},
+            ],
+        },
+    ]
+
+    aggregates = extract.build_per_framework_aggregates(findings)
+    captured = capsys.readouterr()
+
+    assert "T1070.001" not in captured.err, (
+        "T1070.001 (out_of_scope: true) was misreported as an unmatched "
+        f"source_attribution id; stderr: {captured.err!r}"
+    )
+
+    mitre_attack_aggregate = next(
+        agg for agg in aggregates if agg["framework"] == "mitre-attack"
+    )
+    assert "T1070.001" not in {item["id"] for item in mitre_attack_aggregate["items"]}, (
+        "T1070.001 is out_of_scope: true and must not appear in the in-scope items list"
+    )
