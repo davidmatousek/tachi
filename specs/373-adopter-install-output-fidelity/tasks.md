@@ -178,7 +178,7 @@ Live renders are `[MANUAL-ONLY]` (US-4a #5, US-4b #4).
 - the completeness test is green on the fixed manifest and red on every negative case;
 - the `manifest-completeness` job runs on PR #375.
 
-- [ ] T004 [US1] Manifest and manual-install surfaces (Lane A, W1; `senior-backend-engineer`; ~0.20 d).
+- [X] T004 [US1] Manifest and manual-install surfaces (Lane A, W1; `senior-backend-engineer`; ~0.20 d).
   - `INSTALL_MANIFEST.md`:
     - the block gains `tachi-output-integrity/`, `tachi-misinformation/`, `tachi-human-trust-exploitation/` and `scripts/populate-affected-assets.py`;
     - the prose counts become 21/21, and the agent table gains three rows;
@@ -192,7 +192,7 @@ Live renders are `[MANUAL-ONLY]` (US-4a #5, US-4b #4).
     - the D-1 sentence ("does not check for symlinked destinations");
     - stale verify counts replaced by a manifest comparison;
     - `--version v4.0.0` becomes `vX.Y.Z`.
-- [ ] T005 [US5] Completeness test and the cut-line commit **A-1** (Lane A, W1; `senior-backend-engineer` writes the module; `devops` writes the workflow and runs the #375 check; ~0.40 d).
+- [X] T005 [US5] Completeness test and the cut-line commit **A-1** (Lane A, W1; `senior-backend-engineer` writes the module; `devops` writes the workflow and runs the #375 check; ~0.40 d).
   - Create `tests/scripts/test_install_manifest_completeness.py` per `contracts/manifest-completeness.md`:
     - a reader that mirrors `parse_manifest`, with markers exactly once and entry hygiene (no whitespace, `..`, `/` or `~`, no entry prefixing another);
     - required sets (a)–(d), with the `(?:\./)?` regex over the pinned distributed globs;
@@ -234,7 +234,7 @@ Live renders are `[MANUAL-ONLY]` (US-4a #5, US-4b #4).
 - T007 lands before any prompt-text edit (T022, T026, T028).
 - T013 edits only the configuration fences, which sit after the prompt fence, so it may land before T007 when T007 is held only by A-2's triage.
 
-- [ ] T006 Wiring commit **A-2**: gate the pre-existing extraction modules (Lane A, W1; `devops` for the job, the triage and the quarantine markers; `senior-backend-engineer` for the fixture edit; ~0.10 d).
+- [X] T006 Wiring commit **A-2**: gate the pre-existing extraction modules (Lane A, W1; `devops` for the job, the triage and the quarantine markers; `senior-backend-engineer` for the fixture edit; ~0.10 d).
   - In the `agentic_app_report_typst` fixture of `tests/scripts/test_extract_report_data.py` (PD-8):
     - skip when `shutil.which("mmdc")` is None, before the extractor call;
     - move the fixture to a `tmp_path_factory` copy of the whole `examples/agentic-app/sample-report`.
