@@ -10,6 +10,7 @@ threats.md, which is both cleaner and more deterministic than rendering Typst.
 
 import importlib.util
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -25,6 +26,16 @@ TEMPLATE_DIR = REPO_ROOT / "templates" / "tachi" / "security-report"
 FIXTURES_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "report_data"
 GOLDEN_EXISTING_FLAGS = FIXTURES_DIR / "golden_existing_image_flags.txt"
 AGENTIC_APP_SAMPLE = REPO_ROOT / "examples" / "agentic-app" / "sample-report"
+
+# Feature 373 US-3a (K9/K10/K12/K13.1) extractor-level regression fixtures.
+# See that directory's README.md for hand-computed expected values; the
+# pure tachi_parsers.py-level pins for these same fixtures live in
+# test_tachi_parsers.py (tasks.md T016) -- the tests below instead exercise
+# extract-report-data.py's own wiring (parse_maestro_data, the CLI's
+# delta_counts/report-data.typ call sites, and the K13.1 recommendation
+# resolution across its three consumers: the finding card, the remediation
+# roadmap, and the attack-path remediation).
+FIDELITY_FIXTURES_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "fidelity_373"
 
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 JPEG_MAGIC = b"\xff\xd8\xff\xe0\x00\x10JFIF"
@@ -896,3 +907,271 @@ def test_maestro_coverage_state_live_on_committed_microservices_example():
         "Most-exposed layer on the committed microservices example must be a "
         f"finding-bearing layer, got {result['most_exposed_layer']!r}."
     )
+
+
+# =============================================================================
+# Feature 373 US-3a: K9, K10 extractor-level wiring (tasks.md T019).
+# Fixtures: tests/scripts/fixtures/fidelity_373/ (see its README.md).
+# =============================================================================
+
+
+def _read_fidelity_fixture(subdir: str, filename: str) -> str:
+    return (FIDELITY_FIXTURES_DIR / subdir / filename).read_text(encoding="utf-8")
+
+
+def test_k9_shortform_bands_wire_through_parse_compensating_controls_md():
+    # US-3a #1-#2 (K9/FR-K9.1-K9.2): confirms extract-report-data.py's own
+    # module-level import binding of parse_compensating_controls_md (not
+    # just tachi_parsers's own namespace, already pinned in
+    # test_tachi_parsers.py) resolves the short-form headers plus an empty
+    # Critical band and an empty last band before Summary Statistics.
+    extract = _load_extract_module()
+    cc_content = _read_fidelity_fixture("controls_bands_shortform", "compensating-controls.md")
+    data = extract.parse_compensating_controls_md(cc_content)
+    assert data["severity"] == {
+        "critical": 0, "high": 1, "medium": 1, "low": 0, "note": 0, "total": 2,
+    }
+    assert [f["id"] for f in data["findings"]] == ["T-1", "T-2"]
+
+
+def test_k10_h3_heading_equals_h4_form():
+    # US-3a #4 (K10/FR-K10.1): a "###" heading and its "####" twin must
+    # produce byte-for-byte identical parse_maestro_data results -- not
+    # merely "parses without error" (already pinned per-fixture in
+    # test_tachi_parsers.py).
+    extract = _load_extract_module()
+    h3_content = _read_fidelity_fixture("maestro_heading_h3", "threats.md")
+    assert "### Risk by MAESTRO Layer" in h3_content
+    h4_content = h3_content.replace("### Risk by MAESTRO Layer", "#### Risk by MAESTRO Layer", 1)
+    result_h3 = extract.parse_maestro_data(h3_content)
+    result_h4 = extract.parse_maestro_data(h4_content)
+    assert result_h3 == result_h4
+    assert result_h3["has_maestro_data"] is True
+    assert result_h3["most_exposed_layer"] == "L1 — Foundation Model"
+
+
+# =============================================================================
+# Feature 373 US-3a: K12 extractor-level wiring (tasks.md T019).
+# =============================================================================
+
+_DELTA_COUNT_RE = re.compile(r"#let delta-(new|unchanged|updated|resolved)-count = (\d+)")
+
+
+def _delta_counts_from_typ(content: str) -> dict:
+    return {name: int(n) for name, n in _DELTA_COUNT_RE.findall(content)}
+
+
+def test_k12_baseline_4c_exact_delta_counts_via_cli():
+    # US-3a #5 (K12/FR-K12.1-K12.2): the 4c baseline's bracketed-status
+    # variety (bare NEW, [NEW], **[NEW]**, `[NEW]`) plus one placeholder
+    # resolved row, wired through the CLI end to end into report-data.typ.
+    returncode, _stdout, stderr, content = run_extract(FIDELITY_FIXTURES_DIR / "baseline_resolved_4c")
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert _delta_counts_from_typ(content) == {
+        "new": 4, "unchanged": 1, "updated": 1, "resolved": 2,
+    }
+
+
+def test_k12_baseline_4b_legacy_matches_4c_resolved_count_via_cli():
+    # US-3a #6: the legacy "## 4b." heading yields the same resolved count
+    # as its "## 4c." twin, end to end.
+    returncode, _stdout, stderr, content = run_extract(
+        FIDELITY_FIXTURES_DIR / "baseline_resolved_4b_legacy"
+    )
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert _delta_counts_from_typ(content)["resolved"] == 2
+
+
+def test_k12_non_baseline_no_status_column_no_warning_via_cli():
+    # US-3a #7 (second half): a non-baseline run whose Section 7 has no
+    # Status column must not warn, and every count stays 0.
+    returncode, _stdout, stderr, content = run_extract(
+        FIDELITY_FIXTURES_DIR / "non_baseline_no_status_column"
+    )
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert _delta_counts_from_typ(content) == {
+        "new": 0, "unchanged": 0, "updated": 0, "resolved": 0,
+    }
+    assert "Section 7" not in stderr
+
+
+def test_k12_id_mismatch_absolute_tallies_and_one_warning_via_cli():
+    # US-3a #7 (first half); architect F1/NM-1: both surfaces must report
+    # the Section 7 tallies as absolute values (the normalized map's own
+    # counts, not restricted to the tier's finding-ID set) and emit
+    # exactly one ID-set warning. EXPECTED RED until Lane B2b's T017 wires
+    # warn_delta_scope with this tier's finding IDs at this call site --
+    # at T019 time nothing in extract-report-data.py calls warn_delta_scope
+    # yet (the parser-level function is already fully pinned in
+    # test_tachi_parsers.py; this is the wiring gap).
+    returncode, _stdout, stderr, content = run_extract(
+        FIDELITY_FIXTURES_DIR / "baseline_status_id_mismatch"
+    )
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert _delta_counts_from_typ(content) == {
+        "new": 1, "unchanged": 1, "updated": 1, "resolved": 0,
+    }
+    assert stderr.count("Section 7 status IDs differ from tier finding IDs") == 1
+    assert "(1 only-in-map, 1 only-in-tier)" in stderr
+
+
+# =============================================================================
+# Feature 373 US-3a: K13.1 recommendation placeholder/fallback (tasks.md
+# T019), per data-model.md §7's per-tier table. Fixtures:
+# recommendations_partial_join/ and recommendations_drifted/ (tier 1 only;
+# both are threats.md + compensating-controls.md runs).
+# =============================================================================
+
+
+def _typst_records(content: str, let_name: str) -> list:
+    """Return each one-line record body from ``#let <let_name> = (...)``."""
+    start = content.index(f"#let {let_name} = (")
+    end = content.index("\n)", start)
+    return re.findall(r'^\s*\((.*)\),?\s*$', content[start:end], re.MULTILINE)
+
+
+def _typst_field(record: str, key: str) -> "str | None":
+    m = re.search(rf'{re.escape(key)}: "([^"]*)"', record)
+    return m.group(1) if m else None
+
+
+def _findings_by_id(content: str, field: str = "recommendation") -> dict:
+    return {
+        _typst_field(r, "id"): _typst_field(r, field)
+        for r in _typst_records(content, "findings")
+    }
+
+
+def _remediation_actions_by_id(content: str) -> dict:
+    return {
+        _typst_field(r, "finding-id"): _typst_field(r, "recommendation")
+        for r in _typst_records(content, "remediation-actions")
+    }
+
+
+_T1_ANALYZER_TEXT = (
+    "Implement per-tenant rate limiting and a Web Application Firewall rule "
+    "set at the API Gateway ingress to absorb volumetric requests before "
+    "they reach backend services."
+)
+_T2_PREFIXED_FALLBACK = "Threat-model mitigation: Apply rate limiting at the ingress"
+_REC_PLACEHOLDER = "No recommendation available"
+
+
+def test_k131_tier1_partial_join_recommendation_precedence_via_cli():
+    # US-3a #8 (K13.1/FR-K13.1); data-model.md §7 tier-1 precedence: the
+    # analyzer recommendation (T-1, covered by Section 4) wins over the
+    # prefixed Section 7 mitigation fallback (T-2, not covered but has
+    # mitigation text), which wins over the placeholder (T-3, neither
+    # source has text). No Section 4 drift warning (at least one join
+    # succeeded).
+    returncode, _stdout, stderr, content = run_extract(
+        FIDELITY_FIXTURES_DIR / "recommendations_partial_join"
+    )
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    recs = _findings_by_id(content)
+    assert recs["T-1"] == _T1_ANALYZER_TEXT
+    assert recs["T-2"] == _T2_PREFIXED_FALLBACK
+    assert recs["T-3"] == _REC_PLACEHOLDER
+    assert "no recommendations matched" not in stderr
+
+
+def test_k131_tier1_drifted_section4_warns_and_falls_back_via_cli():
+    # US-3a #9: Section 4 has content but for an ID (Z-9) absent from the
+    # tier-1 rows, so zero joins succeed -- the extractor warns, and every
+    # finding falls back to its prefixed Section 7 mitigation or the
+    # placeholder.
+    returncode, _stdout, stderr, content = run_extract(
+        FIDELITY_FIXTURES_DIR / "recommendations_drifted"
+    )
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    recs = _findings_by_id(content)
+    assert recs["T-1"] == "Threat-model mitigation: Restrict admin endpoints to VPN access"
+    assert recs["T-2"] == _REC_PLACEHOLDER
+    assert "controls Section 4 has content but no recommendations matched" in stderr
+
+
+def test_k131_roadmap_matches_card_recommendation_tier1_via_cli():
+    # data-model.md §7: on tier 1, the roadmap action text and the finding
+    # card read the same `recommendation` field, so they always agree.
+    returncode, _stdout, stderr, content = run_extract(
+        FIDELITY_FIXTURES_DIR / "recommendations_partial_join"
+    )
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    card = _findings_by_id(content)
+    roadmap = _remediation_actions_by_id(content)
+    assert roadmap == card, f"roadmap {roadmap} must equal card {card} on tier 1"
+
+
+def test_k131_roadmap_tier2_empty_threat_falls_back_to_placeholder():
+    # data-model.md §7 tier 2 row: today's threat text; REC_PLACEHOLDER
+    # only when that resolves empty. EXPECTED RED until Lane B2b's T017
+    # adds this guard -- today build_remediation_actions emits "" verbatim
+    # for an empty threat (scripts/extract-report-data.py:211-213).
+    extract = _load_extract_module()
+    findings = [{"id": "T-2", "threat": "", "severity": "Medium"}]
+    actions = extract.build_remediation_actions(
+        findings, tier=2, tr_data={"remediation_timeline": [{"anything": True}]}
+    )
+    assert actions[0]["recommendation"] == _REC_PLACEHOLDER
+
+
+def test_k131_tier3_empty_mitigation_resolves_once_for_all_three_consumers_via_cli():
+    # data-model.md §7 tier 3 row: "mitigation, or the placeholder when
+    # empty" is resolved ONCE, upstream in main() -- the card, the roadmap
+    # and the attack path then all read that same already-resolved
+    # `mitigation` field (the contract's "so the placeholder when empty"
+    # phrasing for the roadmap/attack-path columns describes a
+    # CONSEQUENCE of reading the shared field, not an independent guard
+    # inside build_remediation_actions or _get_finding_mitigation). No
+    # fixture existed for this tier-3 case; added
+    # recommendations_tier3_empty_mitigation/ (documented in the fixture
+    # README) since T003's list only covered tier-1 K13.1 scenarios.
+    #
+    # A prior draft of this test called build_remediation_actions directly
+    # with a hand-built {"mitigation": ""} finding and expected it to
+    # apply the placeholder itself. That stayed red against the merged
+    # probe's B2b implementation (373-w2-B2b), which resolves the
+    # placeholder upstream in main() instead and has build_remediation_actions
+    # / _get_finding_mitigation read the already-resolved field verbatim --
+    # matching the contract's literal wording more closely than the
+    # original test did. Rewritten as this end-to-end check rather than
+    # left pinned to the wrong call contract.
+    returncode, _stdout, stderr, content = run_extract(
+        FIDELITY_FIXTURES_DIR / "recommendations_tier3_empty_mitigation"
+    )
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+
+    card = _findings_by_id(content, field="mitigation")
+    assert card["T-1"] == "Apply per-IP rate limiting at the gateway"
+    assert card["T-2"] == _REC_PLACEHOLDER
+
+    extract = _load_extract_module()
+    roadmap = extract.build_remediation_actions(
+        [{"id": fid, "mitigation": text} for fid, text in card.items()],
+        tier=3,
+        tr_data={"remediation_timeline": [{"anything": True}]},
+    )
+    roadmap_by_id = {a["finding-id"]: a["recommendation"] for a in roadmap}
+    assert roadmap_by_id == card
+
+    for fid, resolved_text in card.items():
+        mitigation = extract._get_finding_mitigation({"id": fid, "mitigation": resolved_text})
+        assert mitigation == resolved_text
+    assert extract._build_remediation(card["T-2"]) == [_REC_PLACEHOLDER]
+
+
+def test_k131_attack_path_tier2_stays_generic_not_placeholder():
+    # data-model.md §7 tier 2 row, attack-path column: UNCHANGED --
+    # _get_finding_mitigation returns "" (a tier-2 finding has neither a
+    # recommendation nor a mitigation field) and _build_remediation renders
+    # its generic step, never the roadmap's REC_PLACEHOLDER text. This is
+    # the one tier-2 divergence data-model.md §7 calls out between the
+    # roadmap and the attack path; it already holds today (an
+    # anchor/regression guard T017 must not disturb).
+    extract = _load_extract_module()
+    mitigation = extract._get_finding_mitigation({"id": "T-2", "severity": "Medium"})
+    assert mitigation == ""
+    steps = extract._build_remediation(mitigation)
+    assert steps == ["Review and implement appropriate security controls."]
+    assert _REC_PLACEHOLDER not in steps[0]

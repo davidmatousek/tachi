@@ -222,8 +222,9 @@ which does not appear among the tier-1 rows at all.
 of `T-1`/`T-2` join → the Section 4 drift warning fires (`"controls Section 4
 has content but no recommendations matched; using threat-model mitigations"`).
 `T-1.recommendation` = `"Threat-model mitigation: Restrict admin endpoints to
-VPN access."` (Section 7 fallback); `T-2.recommendation` =
-`"No recommendation available"` (Section 7 mitigation is empty too).
+VPN access"` (Section 7 fallback, verbatim — the source Mitigation cell carries
+no trailing period, and the prefix concatenation adds none); `T-2.recommendation`
+= `"No recommendation available"` (Section 7 mitigation is empty too).
 
 **Note**: both directories originally included a trailing, empty
 `### Low Residual Severity` heading directly before `### Summary Statistics`
@@ -233,6 +234,35 @@ today's parser (5 phantom rows), which would have muddied these two K13.1-only
 fixtures. Neither band-emptiness scenario is part of these two directories'
 purpose — that is `controls_bands_shortform/`'s job alone. Confirmed clean
 today (2 and 3 real rows respectively, no phantoms) after the fix.
+
+---
+
+## recommendations_tier3_empty_mitigation/ (T019 addition)
+
+**Purpose**: data-model.md §7's tier-3 row — "an empty `mitigation` becomes
+the placeholder on the card, the roadmap and the attack path" — which no
+existing fixture covered (T003's list only named tier-1 K13.1 scenarios).
+Serves K13.1 / FR-K13.1, tier 3.
+
+**Files**: `threats.md` only (no `risk-scores.md`, no
+`compensating-controls.md` → `determine_tier` selects tier 3).
+
+**Content**: 2 Section 7 findings, `has_baseline = false`. `T-1` carries a
+real Mitigation cell; `T-2`'s Mitigation cell is empty.
+
+**Expected values** (post-K13.1, resolved once in `main()` on the finding's
+own `mitigation` field, per data-model.md §7 — the card, the roadmap
+(`build_remediation_actions`) and the attack path (`_get_finding_mitigation`
++ `_build_remediation`) then all read that same resolved field rather than
+each applying their own empty-check):
+- `T-1.mitigation` = `"Apply per-IP rate limiting at the gateway"` (verbatim,
+  unchanged);
+- `T-2.mitigation` = `"No recommendation available"` (`REC_PLACEHOLDER`).
+
+**Today's (pre-fix) read, collected as evidence**: `parse_threats_findings`
+already reads `mitigation` straight from the table with no placeholder
+guard, so `T-2.mitigation` comes back as `""` (confirmed) and stays that way
+through every consumer until K13.1's `main()`-level resolution lands.
 
 ---
 

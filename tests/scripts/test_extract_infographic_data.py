@@ -19,6 +19,18 @@ SCRIPT_PATH = REPO_ROOT / "scripts" / "extract-infographic-data.py"
 FIXTURES_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "exec_arch"
 GOLDEN_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "golden"
 
+# Feature 373 US-3a (K9/K10/K12) extractor-level regression fixtures. See
+# that directory's README.md for hand-computed expected values; the pure
+# tachi_parsers.py-level pins for these same fixtures live in
+# test_tachi_parsers.py (tasks.md T016) -- the tests below instead exercise
+# extract-infographic-data.py's own wiring (extract_severity,
+# parse_maestro_layer_distribution, and the CLI's delta_counts call site).
+FIDELITY_FIXTURES_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "fidelity_373"
+
+
+def _read_fidelity_fixture(subdir: str, filename: str) -> str:
+    return (FIDELITY_FIXTURES_DIR / subdir / filename).read_text(encoding="utf-8")
+
 
 def run_extract(target_dir, template, extra_args=None):
     """Run extract-infographic-data.py and return (returncode, stdout, stderr, payload)."""
@@ -1126,3 +1138,94 @@ def _maestro_stack_template_data_for(target_dir):
     assert payload is not None, f"[{target_dir}] Expected JSON payload to be written"
     assert "template_data" in payload, f"[{target_dir}] Missing template_data"
     return payload["template_data"]
+
+
+# =============================================================================
+# Feature 373 US-3a: K9, K10, K12 extractor-level wiring (tasks.md T019).
+# Fixtures: tests/scripts/fixtures/fidelity_373/ (see its README.md for
+# hand-computed expected values). The pure tachi_parsers.py-level pins for
+# these same fixtures live in test_tachi_parsers.py (T016); the tests below
+# instead exercise extract-infographic-data.py's own wiring.
+# =============================================================================
+
+
+def test_k9_shortform_bands_wire_through_extract_severity(extract_infographic_data):
+    # US-3a #1-#2 (K9/FR-K9.1-K9.2): short-form headers (Inherent, Status,
+    # Residual, Residual Sev.) plus an empty Critical band and an empty
+    # last band before Summary Statistics must surface correctly through
+    # extract_severity, the infographic extractor's own severity/findings
+    # wrapper around parse_compensating_controls_md.
+    cc_content = _read_fidelity_fixture("controls_bands_shortform", "compensating-controls.md")
+    severity, findings, cc_data = extract_infographic_data.extract_severity(
+        1, "", cc_content=cc_content
+    )
+    assert severity == {"critical": 0, "high": 1, "medium": 1, "low": 0, "note": 0, "total": 2}
+    assert [f["id"] for f in findings] == ["T-1", "T-2"]
+    assert cc_data is not None
+
+
+def test_k10_h3_heading_equals_h4_form(extract_infographic_data):
+    # US-3a #4 (K10/FR-K10.1): a "###" heading and its "####" twin must
+    # produce byte-for-byte identical layer distributions through
+    # parse_maestro_layer_distribution -- not merely "parses without
+    # error" (already pinned per-fixture in test_tachi_parsers.py).
+    h3_content = _read_fidelity_fixture("maestro_heading_h3", "threats.md")
+    assert "### Risk by MAESTRO Layer" in h3_content
+    h4_content = h3_content.replace("### Risk by MAESTRO Layer", "#### Risk by MAESTRO Layer", 1)
+    layers_h3 = extract_infographic_data.parse_maestro_layer_distribution(h3_content)
+    layers_h4 = extract_infographic_data.parse_maestro_layer_distribution(h4_content)
+    assert layers_h3 == layers_h4
+    assert len(layers_h3) == 2
+
+
+def _delta_via_cli(target_dir, template="baseball-card"):
+    """Run the CLI end to end and return (payload, stderr)."""
+    returncode, _stdout, stderr, payload = run_extract(target_dir, template)
+    assert returncode == 0, f"[{target_dir}] expected exit 0, got {returncode}. stderr: {stderr}"
+    assert payload is not None, f"[{target_dir}] expected a JSON payload"
+    return payload, stderr
+
+
+def test_k12_baseline_4c_exact_delta_counts_via_cli():
+    # US-3a #5 (K12/FR-K12.1-K12.2): the 4c baseline's bracketed-status
+    # variety (bare NEW, [NEW], **[NEW]**, `[NEW]`) plus one placeholder
+    # resolved row, wired through the CLI end to end (delta_counts is
+    # already wired at this call site since T016; this pins the whole
+    # payload shape, not just the underlying compute_delta_counts call).
+    payload, _stderr = _delta_via_cli(FIDELITY_FIXTURES_DIR / "baseline_resolved_4c")
+    assert payload["delta"]["delta_counts"] == {
+        "new": 4, "updated": 1, "unchanged": 1, "resolved": 2,
+    }
+
+
+def test_k12_baseline_4b_legacy_matches_4c_resolved_count_via_cli():
+    # US-3a #6: the legacy "## 4b." heading yields the same resolved count
+    # as its "## 4c." twin, end to end.
+    payload, _stderr = _delta_via_cli(FIDELITY_FIXTURES_DIR / "baseline_resolved_4b_legacy")
+    assert payload["delta"]["delta_counts"]["resolved"] == 2
+
+
+def test_k12_non_baseline_no_status_column_no_warning_via_cli():
+    # US-3a #7 (second half): a non-baseline run whose Section 7 has no
+    # Status column must not warn, and carries no "delta" key at all
+    # end to end (has_baseline gates the key's emission in main()).
+    payload, stderr = _delta_via_cli(FIDELITY_FIXTURES_DIR / "non_baseline_no_status_column")
+    assert payload.get("delta") is None
+    assert "Section 7" not in stderr
+
+
+def test_k12_id_mismatch_absolute_tallies_and_one_warning_via_cli():
+    # US-3a #7 (first half); architect F1/NM-1: both surfaces must report
+    # the Section 7 tallies as absolute values (the normalized map's own
+    # counts, not restricted to the tier's finding-ID set) and emit
+    # exactly one ID-set warning. EXPECTED RED until Lane B2a's T017 wires
+    # warn_delta_scope with this tier's finding IDs at this call site --
+    # at T019 time nothing in extract-infographic-data.py calls
+    # warn_delta_scope yet (the parser-level function is already fully
+    # pinned in test_tachi_parsers.py; this is the wiring gap).
+    payload, stderr = _delta_via_cli(FIDELITY_FIXTURES_DIR / "baseline_status_id_mismatch")
+    assert payload["delta"]["delta_counts"] == {
+        "new": 1, "updated": 1, "unchanged": 1, "resolved": 0,
+    }
+    assert stderr.count("Section 7 status IDs differ from tier finding IDs") == 1
+    assert "(1 only-in-map, 1 only-in-tier)" in stderr
