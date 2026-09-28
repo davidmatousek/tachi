@@ -39,6 +39,7 @@ from tachi_parsers import (
     delta_status_by_id,
     apply_delta_status,
     warn_delta_scope,
+    compute_risk_posture,
     parse_score,
     classify_maestro_coverage_state,
     parse_markdown_table,
@@ -1149,12 +1150,18 @@ def _build_clusters(scope_data):
     return clusters
 
 
-def _build_executive_architecture_payload(tier, findings, scope_data, source_file):
+def _build_executive_architecture_payload(tier, findings, scope_data, source_file,
+                                           risk_posture_level=None, risk_posture_label=None):
     """Assemble the ExecutiveArchitecturePayload.
 
     Derives layers from trust zones (preferred) or falls back to grouping components by
     DFD type. Returns ``{"error": "no_scope_data"}`` when neither source yields layers;
     the caller translates that into exit code 2.
+
+    ``risk_posture_level``/``risk_posture_label`` (K13-posture, T025, data-model.md
+    §5) are optional so direct callers that predate this field keep working;
+    ``main()`` always supplies both, computed once from the tier's severity
+    counts via :func:`compute_risk_posture`.
     """
     trust_zones = _compute_trust_zones(scope_data)
     fallback_used = False
@@ -1240,6 +1247,13 @@ def _build_executive_architecture_payload(tier, findings, scope_data, source_fil
         "skip_image": skip_image,
         "fallback_used": fallback_used,
     }
+    # K13-posture (T025, data-model.md §5): metadata.risk_posture_{level,label}
+    # on every infographic JSON, executive-architecture included. Kept apart
+    # from the `return` dict below, where T027's `allow_list` key will land,
+    # so a future K15 revert never touches these two lines (LOW-4).
+    if risk_posture_level is not None:
+        metadata["risk_posture_level"] = risk_posture_level
+        metadata["risk_posture_label"] = risk_posture_label
 
     severity_distribution = {
         "critical_count": critical_count,
@@ -1802,6 +1816,12 @@ def build_json_output(data, template):
 
     # Add template to metadata
     output["metadata"]["template"] = template
+    # K13-posture (T025, data-model.md §5): risk_posture_{level,label} in
+    # every infographic JSON. Kept apart from where T027's top-level
+    # `allow_list` key will land (near the `output = {...}` literal above),
+    # so a future K15 revert never touches these two lines (LOW-4).
+    output["metadata"]["risk_posture_level"] = data["risk_posture_level"]
+    output["metadata"]["risk_posture_label"] = data["risk_posture_label"]
 
     return json.dumps(output, sort_keys=True, indent=2)
 
@@ -1872,12 +1892,21 @@ def main():
     # Extract severity, findings, and cc_data
     severity, findings, cc_data = extract_severity(tier, threats_content, rs_content, cc_content)
 
+    # K13-posture (T025, data-model.md §5): the single risk-posture rubric,
+    # computed once from this tier's severity counts (residual after K11's
+    # clamp at tier 1, inherent at tier 2, qualitative at tier 3) and reused
+    # by both the executive-architecture early exit below and the regular
+    # template path further down.
+    risk_posture_level, risk_posture_label = compute_risk_posture(severity)
+
     if args.template == "executive-architecture":
         payload = _build_executive_architecture_payload(
             tier=_TIER_SOURCE_LABEL.get(tier, "threats"),
             findings=findings,
             scope_data=scope,
             source_file=(target_dir / "threats.md"),
+            risk_posture_level=risk_posture_level,
+            risk_posture_label=risk_posture_label,
         )
 
         if isinstance(payload, dict) and payload.get("error") == "no_scope_data":
@@ -2120,6 +2149,8 @@ def main():
         "top_findings": top_findings,
         "findings_ids": findings_ids,
         "template_data": template_data,
+        "risk_posture_level": risk_posture_level,
+        "risk_posture_label": risk_posture_label,
     }
     if scaffold["found"]:
         data["prompt_scaffold"] = {
