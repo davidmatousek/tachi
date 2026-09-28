@@ -310,7 +310,7 @@ def add_looping_symlink(project_root: Path, relpath: str) -> Path:
     """Make ``project_root/relpath`` a two-node symlink cycle (a -> b -> a).
 
     Chasing either node never reaches a real file, so bash's ``resolve()``
-    (contracts/installer-cli.md) gives up after 40 hops and classifies it
+    (contracts/installer-cli.md) gives up after 32 hops and classifies it
     ``unresolvable`` (looping). A self-loop (``a -> a``) is an equally valid
     one-node cycle if a test specifically wants that shape instead; build it
     directly with :func:`make_symlink` (``make_symlink(p, p)``).
@@ -330,8 +330,8 @@ def build_symlink_chain(
 ) -> Path:
     """Build a chain of exactly ``hops`` symlinks starting at ``relpath``.
 
-    Useful for the 40/41-hop boundary contracts/installer-cli.md pins:
-    ``hops=40`` with a real ``terminal_target`` resolves; ``hops=41`` (or any
+    Useful for the 32/33-hop boundary contracts/installer-cli.md pins:
+    ``hops=32`` with a real ``terminal_target`` resolves; ``hops=33`` (or any
     ``hops`` with ``terminal_target=None``) is unresolvable. Intermediate
     link nodes are written next to ``relpath`` as
     ``<name>.hop-1``, ``<name>.hop-2``, ....

@@ -68,11 +68,15 @@ usage() {
   exit 0
 }
 
-# resolve PATH -> prints the physical path; returns 1 if unresolvable (dangling, or > 40 hops)
+# resolve PATH -> prints the physical path; returns 1 if unresolvable (dangling, or > 32 hops)
+# 32 is the cross-platform-safe minimum of Darwin's MAXSYMLINKS (32) and
+# Linux's SYMLOOP_MAX (commonly 40): a chain this ceiling accepts is one the
+# real OS can always walk during the copy phase, on either platform
+# (SEC-K3-01).
 resolve() {
   local p=$1 hops=0 t d
   while [ -L "$p" ]; do
-    hops=$((hops + 1)); [ "$hops" -le 40 ] || return 1
+    hops=$((hops + 1)); [ "$hops" -le 32 ] || return 1
     t=$(readlink "$p") || return 1
     case $t in /*) p=$t ;; *) p=$(dirname "$p")/$t ;; esac
   done
@@ -123,15 +127,17 @@ wrong_type() {
 # per line, shortest first (e.g. "a/b/c" -> "a", then "a/b"). Prints nothing
 # for a single-segment REL. Used to build the checked set's "ancestor" and
 # "cleanup-ancestor" origins (contracts/installer-cli.md "The checked set").
+# Splits via parameter expansion only (never `set -- $rel`/IFS word-splitting)
+# so a glob metacharacter (`*`, `?`, `[...]`) in REL is always a literal path
+# segment, never pathname-expanded against files in the caller's working
+# directory (SEC-K3-02).
 strict_prefixes() {
-  local rel=$1 p=""
-  local IFS=/
-  # shellcheck disable=SC2086 # intentional IFS=/ word-splitting, not globbing
-  set -- $rel
-  while [ $# -gt 1 ]; do
-    p="${p:+$p/}$1"
+  local p="" seg rest=$1
+  while [ "$rest" != "${rest#*/}" ]; do
+    seg=${rest%%/*}
+    rest=${rest#*/}
+    p="${p:+$p/}$seg"
     printf '%s\n' "$p"
-    shift
   done
 }
 

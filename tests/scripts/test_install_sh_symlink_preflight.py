@@ -438,15 +438,17 @@ def test_wrong_type_link_file_needed_always_refused(tmp_path, flag_args):
 
 @pytest.mark.parametrize(
     "hops,should_resolve",
-    [(40, True), (41, False)],
-    ids=["40-hops-resolves", "41-hops-unresolvable"],
+    [(32, True), (33, False)],
+    ids=["32-hops-resolves", "33-hops-unresolvable"],
 )
 def test_symlink_chain_hop_boundary(tmp_path, hops, should_resolve):
-    """`resolve()`'s 40-hop ceiling (contracts/installer-cli.md), exercised
-    through install.sh's own pre-flight rather than the bare helper: a
-    40-hop chain to a real outside directory resolves (refused as
-    `outside`, WITH a flag remedy offered); a 41-hop chain is unresolvable
-    (refused with NO flag remedy)."""
+    """`resolve()`'s 32-hop ceiling (contracts/installer-cli.md; SEC-K3-01:
+    lowered from an original 40 to the cross-platform-safe minimum of
+    Darwin's MAXSYMLINKS and Linux's SYMLOOP_MAX), exercised through
+    install.sh's own pre-flight rather than the bare helper: a 32-hop chain
+    to a real outside directory resolves (refused as `outside`, WITH a flag
+    remedy offered); a 33-hop chain is unresolvable (refused with NO flag
+    remedy)."""
     source_root, project_root = _standard_setup(tmp_path)
     outside_target = tmp_path / "chain-target"
     outside_target.mkdir()
@@ -464,6 +466,49 @@ def test_symlink_chain_hop_boundary(tmp_path, hops, should_resolve):
         assert "cannot help with these" not in out
     else:
         assert "cannot help with these" in out
+
+
+def test_sec_k3_01_regression_33_hop_claude_chain_refused_with_follow_symlinks(tmp_path):
+    """SEC-K3-01 regression (security-analyst T011 advisory review).
+
+    Before the fix, `resolve()`'s ceiling (40) exceeded Darwin's real
+    filesystem symlink-traversal limit (`MAXSYMLINKS` == 32, empirically
+    measured: `mkdir -p` through a chain succeeds at 32 hops and fails with
+    ELOOP at 33). A 33-40-hop `.claude` chain would pass the pre-flight's
+    classification as `outside` (flag-eligible) and, WITH
+    --follow-symlinks, proceed to the copy loop -- which then hit the real
+    OS's ELOOP mid-copy and crashed, having already written an earlier,
+    unrelated manifest entry first: a confirmed non-atomic partial install
+    (probe3_partial.sh in the review's evidence).
+
+    With the ceiling lowered to 32, a 33-hop `.claude` chain is now refused
+    by the pre-flight itself as UNRESOLVABLE -- even WITH
+    --follow-symlinks, since always-refused classes are never flag-gated
+    (data-model.md Sec. 2.1) -- before the copy loop is ever reached, so
+    nothing is written. This must hold on both CI legs: on Linux, the OS's
+    own ELOOP ceiling (commonly 40, per SYMLOOP_MAX) would still let a
+    33-hop chain resolve at the filesystem level, but the installer's OWN
+    32-hop ceiling refuses it first regardless -- the fix does not depend
+    on which OS is running it.
+    """
+    source_root, project_root = _standard_setup(tmp_path)
+    outside_target = tmp_path / "chain-target-33"
+    outside_target.mkdir()
+    build_symlink_chain(project_root, ".claude", hops=33, terminal_target=outside_target)
+    before_project = snapshot_tree(project_root)
+    before_outside = snapshot_tree(outside_target)
+
+    result = _run(source_root, project_root, "--follow-symlinks")
+
+    assert result.returncode == 1, result.combined
+    out = result.combined
+    assert "Nothing was written" in out
+    assert "cannot help with these" in out, (
+        "a 33-hop chain must be refused as UNRESOLVABLE (no --follow-symlinks "
+        "remedy offered), not merely flagged as outside-project"
+    )
+    assert_no_tree_changes(before_project, snapshot_tree(project_root), label="project")
+    assert_no_tree_changes(before_outside, snapshot_tree(outside_target), label="chain target")
 
 
 # ---------------------------------------------------------------------------
@@ -907,3 +952,69 @@ def test_release_please_markers_preserved_in_install_sh():
         f"expected the 3 existing release-please markers to survive, "
         f"found {len(marker_lines)}: {marker_lines}"
     )
+
+
+# ---------------------------------------------------------------------------
+# N. strict_prefixes() glob-safety (SEC-K3-02, security-analyst T011 advisory
+# review): a manifest entry's path segment containing a glob metacharacter
+# must be treated as a literal string when the checked set's "ancestor"
+# prefixes are built, never pathname-expanded against files that happen to
+# exist in the target project (the installer's cwd when the pre-flight
+# runs).
+# ---------------------------------------------------------------------------
+
+
+def test_glob_metacharacter_manifest_entry_treated_literally(tmp_path):
+    """SEC-K3-02 regression: before the fix, `strict_prefixes()` split a
+    manifest entry's relative path with unquoted `set -- $rel` under
+    `IFS=/`, which subjects each resulting word to bash pathname expansion.
+    A manifest entry whose directory segment is a glob pattern (here
+    `gl*b/thing.md`, mirroring the review's `probe6_final.sh` P3
+    demonstration) would silently glob-expand against files in the
+    project -- if a real path like `glob` exists there (planted here as an
+    unrelated symlink pointing OUTSIDE the project, so it is exactly the
+    kind of destination the pre-flight would otherwise refuse), the
+    corrupted checked set substitutes that decoy for the real ancestor and
+    the install incorrectly refuses, citing a path with nothing to do with
+    the actual manifest entry (a misdirected ancestor-containment check).
+
+    With the fix, `gl*b` is always the literal ancestor: the decoy symlink
+    is never added to the checked set, the pre-flight raises no refusal,
+    and the literal `gl*b/thing.md` entry installs normally.
+    """
+    source_root = tmp_path / "tachi-src"
+    project_root = tmp_path / "project"
+    build_source_tree(source_root, entries=("gl*b/thing.md",))
+    copy_working_tree_install_sh(source_root)
+    build_project_tree(project_root)
+
+    # A decoy that a buggy glob-expansion of "gl*b" would match ("gl" + "o"
+    # + "b"), planted as a symlink to a real directory OUTSIDE the project
+    # -- exactly the shape the pre-flight refuses when it is (wrongly)
+    # pulled into the checked set as an "ancestor".
+    outside_decoy = tmp_path / "outside-decoy"
+    outside_decoy.mkdir()
+    add_symlink(project_root, "glob", outside_decoy)
+    before_decoy_link = snapshot_path(project_root / "glob")
+    before_decoy_target = snapshot_tree(outside_decoy)
+
+    result = _run(source_root, project_root)
+
+    assert result.returncode == 0, result.combined
+    out = result.combined
+    assert "tachi installed successfully" in out, out
+    assert "Nothing was written" not in out, (
+        "no refusal should occur -- the decoy must never be pulled into "
+        f"the checked set; full output:\n{out}"
+    )
+    # Precise (not substring-of-tmp_path-name) checks that the decoy's own
+    # relpath and resolved target never appear in a classification line.
+    assert "glob ->" not in out, f"decoy symlink must never be reported; full output:\n{out}"
+    assert str(outside_decoy) not in out, f"decoy target must never be reported; full output:\n{out}"
+    installed = project_root / "gl*b" / "thing.md"
+    assert installed.exists(), "the literal glob-named entry must install normally"
+
+    after_decoy_link = snapshot_path(project_root / "glob")
+    after_decoy_target = snapshot_tree(outside_decoy)
+    assert before_decoy_link == after_decoy_link, "decoy symlink must be untouched"
+    assert_no_tree_changes(before_decoy_target, after_decoy_target, label="decoy target")
