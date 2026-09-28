@@ -37,7 +37,7 @@ aliases:
   corporate-white: baseball-card
 output_files:
   - threat-{template-name}-spec.md
-  - threat-{template-name}.{jpg|png}  # conditional on GEMINI_API_KEY; extension matches returned Gemini MIME (image/jpeg -> .jpg, image/png -> .png). gemini-2.5-flash-image returns PNG; gemini-3-pro-image-preview returns JPEG.
+  - threat-{template-name}.{jpg|png}  # conditional on GEMINI_API_KEY; extension always matches the returned Gemini MIME (image/jpeg -> .jpg, image/png -> .png) -- never assume a fixed format per chain model.
 references:
   schemas:
     input_threats: ../../../schemas/output.yaml
@@ -92,7 +92,7 @@ The spec MUST contain six sections matching the schema enumeration in `schemas/i
 
 For each template, your output is:
 1. **`threat-{template-name}-spec.md`** -- A structured specification with 6 sections conforming to `../../../schemas/infographic.yaml`. This is the **primary deliverable**. It contains all data points, color coding, layout instructions, and text content needed to render a presentation-ready infographic.
-2. **`threat-{template-name}.{jpg|png}`** (optional) -- A presentation-ready image rendered from the specification via Gemini API. The file extension matches the returned MIME type (`image/jpeg` -> `.jpg`, `image/png` -> `.png`). `gemini-3-pro-image-preview` returns JPEG; the `gemini-2.5-flash-image` fallback returns PNG. Produced only when `GEMINI_API_KEY` is available and the API call succeeds. This is a **best-effort** deliverable.
+2. **`threat-{template-name}.{jpg|png}`** (optional) -- A presentation-ready image rendered from the specification via Gemini API. The file extension always matches the returned MIME type (`image/jpeg` -> `.jpg`, `image/png` -> `.png`) -- never assume a fixed format per chain model. Produced only when `GEMINI_API_KEY` is available and the API call succeeds. This is a **best-effort** deliverable.
 
 Each specification is self-contained: a designer can render the infographic from the spec alone without access to `threats.md`.
 
@@ -109,6 +109,7 @@ Load domain knowledge on-demand from the `tachi-infographics` skill using the Re
 | Infographic specifications | `.claude/skills/tachi-infographics/references/infographic-specifications.md` | Generating Sections 1-4 of the specification |
 | Template-specific formats | `.claude/skills/tachi-infographics/references/template-specific-formats.md` | Generating Section 5 for any template |
 | Gemini prompt construction | `.claude/skills/tachi-infographics/references/gemini-prompt-construction.md` | Constructing the Gemini API image prompt |
+| Executive-architecture template | `.claude/skills/tachi-infographics/references/executive-architecture.md` | Constructing the request and prompt for the `executive-architecture` template — its own `## Gemini API Configuration` block and its verbatim prompt block, never the gemini-prompt-construction.md dashboard fallback prompt |
 | Visual design system | `.claude/skills/tachi-infographics/references/visual-design-system.md` | Generating Section 6 (Visual Design Directives) |
 | Severity bands (shared) | `.claude/skills/tachi-shared/references/severity-bands-shared.md` | Risk distribution section / color palette mapping |
 
@@ -331,6 +332,13 @@ Before finalizing the specification, run the following checklist. Every check mu
 
 After generating the specification, construct and submit a Gemini image generation prompt.
 
+### Request Configuration Mapping
+
+Before constructing the request body, read the *active template's* configuration and map it through the key → field table in `gemini-prompt-construction.md` ("Gemini API Configuration") — never send one hard-coded body for every template:
+
+- `baseball-card`, `system-architecture`, `risk-funnel`, `maestro-heatmap`, `maestro-stack`: the `## Gemini API Configuration` block lives in that template's own `templates/tachi/infographics/infographic-{template-name}.md`.
+- `executive-architecture`: the `## Gemini API Configuration` block and the VERBATIM PROMPT BLOCK both live in `.claude/skills/tachi-infographics/references/executive-architecture.md` (see "Skill References" above). Use its own configuration and its own verbatim prompt; never fall back to the gemini-prompt-construction.md dashboard prompt for this template.
+
 ### API Key Check
 
 Before attempting image generation:
@@ -348,24 +356,32 @@ Before attempting image generation:
 
 ## Error Handling & Graceful Degradation
 
-The infographic agent handles seven specific error conditions. In every case except script failure, the infographic specification is preserved as a standalone deliverable. The pipeline is never blocked by image generation failures.
+The infographic agent handles eleven specific error conditions. In every case except script failure, the infographic specification is preserved as a standalone deliverable. The pipeline is never blocked by image generation failures.
 
-| Condition | Spec Saved | Image Generated | Pipeline Blocked | Log Level |
-|-----------|-----------|----------------|-----------------|-----------|
-| Missing API key | Yes | No | No | Info |
-| Rate limit (429) | Yes | No | No | Warning |
-| API timeout (60s) | Yes | No | No | Error |
-| Content policy rejection | Yes | No | No | Warning |
-| Missing Section 6 | Yes (computed) | Attempted | No | Info |
-| Empty threat model | Yes (zero-count) | No | No | Info |
-| Script exit code 1 or 2 | No | No | Yes | Error |
+| Condition | Spec Saved | Image Generated | Pipeline Blocked | Log Level | Chain |
+|-----------|-----------|----------------|-----------------|-----------|-------|
+| Missing API key | Yes | No | No | Info | — |
+| **HTTP 400** (invalid request, including `FAILED_PRECONDITION` such as an unsupported location) | Yes | No | No | **Error** | **Not walked**: every model would reject the same body, and walking would hide the cause. The final summary reports the image step as failed, with the API's message and the request-body **keys** sent |
+| **Model unavailable to this key**: HTTP 404 `NOT_FOUND` or 403 `PERMISSION_DENIED` | Yes | only if a later chain model succeeds | No | Warning (per model) | **Walked**, in chain order |
+| **Chain exhausted** (every model returned 404 or 403) | Yes | No | No | **Error** | The summary line names each model tried with its status and the API message. This is how the next shutdown surfaces |
+| Rate limit or quota (429 `RESOURCE_EXHAUSTED`) | Yes | No | No | Warning | Not walked (single attempt; unchanged). The message adds: "if this key has no quota for `<model>`, set the template's `model` to `<fallback_model>` in its `## Gemini API Configuration` block" |
+| API timeout (60s) | Yes | No | No | Error | Not walked (unchanged) |
+| Content policy rejection (a blocked prompt, or a `SAFETY`/`IMAGE_SAFETY` finish reason with no image) | Yes | No | No | Warning | Unchanged |
+| **Any other non-2xx** (5xx and other 4xx), **or a 2xx with no image part** | Yes | No | No | **Error** | Not walked. The summary reports the status and the API message, or "no image part in the response" |
+| Missing Section 6 | Yes (computed) | Attempted | No | Info | — |
+| Empty threat model | Yes (zero-count) | No | No | Info | — |
+| Script exit code 1 or 2 | No | No | Yes | Error | — |
 
 ### Condition Details
 
 1. **Missing GEMINI_API_KEY**: Skip image generation. Log informational message. Set `image_generated: false`.
-2. **API Rate Limit (HTTP 429)**: Skip image generation. No retry attempted (single-attempt design).
-3. **API Timeout**: 60-second timeout. Skip image generation on timeout.
-4. **Content Policy Rejection**: Log the specific rejection reason. The prompt framing section in the skill reference is designed to minimize this.
-5. **Missing Section 6 in threats.md**: The extraction script handles this automatically -- computes counts from individual findings. Add metadata note.
-6. **Empty Threat Model (Zero Findings)**: Produce complete specification with zero-count values. Skip Gemini API call.
-7. **Extraction Script Failure (Exit Code 1 or 2)**: Display stderr to user. Do NOT attempt manual extraction fallback. No specification generated. Pipeline halted for this template.
+2. **HTTP 400**: Do not walk the chain — every model would reject the same malformed body, and walking would attribute the failure to the fallback. Log at Error. The final summary reports the image step as failed, with the API's message and the request-body keys sent.
+3. **Model unavailable to this key (HTTP 404 `NOT_FOUND` or 403 `PERMISSION_DENIED`)**: Walk to the next model in the reference's chain, in order, and retry the same request against it. Log a Warning per unavailable model.
+4. **Chain exhausted**: When every chain model has returned 404 or 403, stop. Log at Error, with the final summary naming each model tried, its status and the API's message — this is how the next model shutdown becomes visible instead of silently degrading.
+5. **API Rate Limit or quota (HTTP 429 `RESOURCE_EXHAUSTED`)**: Skip image generation. No retry attempted (single-attempt design; the chain is not walked, since the model itself is available). Log a Warning that also suggests reordering the template's `model` / `fallback_model` if this key has no quota for the primary.
+6. **API Timeout**: 60-second timeout. Skip image generation on timeout. Not walked.
+7. **Content Policy Rejection**: Log the specific rejection reason. The prompt framing section in the skill reference is designed to minimize this.
+8. **Any other non-2xx, or a 2xx with no image part**: Log at Error with the status and the API's message (or "no image part in the response"). Not walked.
+9. **Missing Section 6 in threats.md**: The extraction script handles this automatically -- computes counts from individual findings. Add metadata note.
+10. **Empty Threat Model (Zero Findings)**: Produce complete specification with zero-count values. Skip Gemini API call.
+11. **Extraction Script Failure (Exit Code 1 or 2)**: Display stderr to user. Do NOT attempt manual extraction fallback. No specification generated. Pipeline halted for this template.
