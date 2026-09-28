@@ -78,6 +78,9 @@ on:
       - tests/scripts/test_extract_report_data.py
       - tests/scripts/test_extractor_contract_fixes.py
       - tests/scripts/test_executive_architecture_payload.py
+      # --- A-3: the K14 static request contract test ---
+      - tests/scripts/test_gemini_request_contract.py
+      - adapters/claude-code/**                       # A-3, N3/RC-P5 — A4/A6 pin the shipped adapter copy
   push:
     branches: [main]
     paths: *fidelity_paths
@@ -129,6 +132,11 @@ jobs:
       # (PD-8) rather than fail; every other case in these five modules
       # must pass. No Typst, no mmdc — the report-posture job (Typst-gated)
       # joins separately in W2, only if K13-posture ships.
+      # A-3: the K14 static request contract test (A1-A8, PD-13/PD-14) joins
+      # here. It asserts the reference body, the five template configuration
+      # blocks, the executive-architecture block and the adapter copy never
+      # drift from contracts/gemini-request-and-scaffold.md, with no network
+      # call and no live key.
       - name: Run extraction-fidelity suite (R-3 safety net)
         run: |
           python3 -m pytest \
@@ -137,4 +145,5 @@ jobs:
             tests/scripts/test_extract_report_data.py \
             tests/scripts/test_extractor_contract_fixes.py \
             tests/scripts/test_executive_architecture_payload.py \
+            tests/scripts/test_gemini_request_contract.py \
             -v
