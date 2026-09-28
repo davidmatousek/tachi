@@ -6,14 +6,14 @@ Canonical list of files and directories that must be copied when installing tach
 
 | Directory | Purpose | Required By |
 |-----------|---------|-------------|
-| `.claude/agents/tachi/` | 18 threat analysis agent definitions | All commands |
+| `.claude/agents/tachi/` | 21 threat analysis agent definitions | All commands |
 | `.claude/commands/` (6 files) | Slash command definitions | User invocation |
 | `schemas/` | YAML contracts (finding, input, output, scoring) | orchestrator, risk-scorer, control-analyzer |
 | `templates/tachi/output-schemas/` | Canonical output format templates | orchestrator, risk-scorer, control-analyzer, threat-report |
 | `templates/tachi/infographics/` | Infographic design templates | threat-infographic |
 | `templates/tachi/security-report/` | Typst PDF report templates | report-assembler |
-| `scripts/` (3 Python files) | Deterministic extraction scripts | report-assembler, threat-infographic |
-| `.claude/skills/tachi-*/` (18 dirs) | Agent skill references (detection patterns, domain knowledge) | All threat agents, infographic, report-assembler |
+| `scripts/` (4 Python files) | Deterministic extraction and population scripts | report-assembler, threat-infographic, orchestrator, risk-scorer |
+| `.claude/skills/tachi-*/` (21 dirs) | Agent skill references (detection patterns, domain knowledge) | All threat agents, infographic, report-assembler |
 | `adapters/claude-code/agents/references/` | SARIF generation and validation guides | risk-scorer, control-analyzer |
 | `brand/` | Logo assets for branded PDF reports | report-assembler |
 | `docs/guides/DEVELOPER_GUIDE_TACHI.md` | Full walkthrough with worked examples | User reference |
@@ -47,8 +47,11 @@ Copy the entire `.claude/agents/tachi/` directory. Current agents:
 | `prompt-injection.md` | AI: Prompt Injection |
 | `data-poisoning.md` | AI: Data Poisoning |
 | `model-theft.md` | AI: Model Theft |
+| `output-integrity.md` | AI: Output Integrity |
+| `misinformation.md` | AI: Misinformation |
 | `agent-autonomy.md` | Agentic: Agent Autonomy |
 | `tool-abuse.md` | Agentic: Tool Abuse |
+| `human-trust-exploitation.md` | Agentic: Human-Agent Trust Exploitation |
 | `threat-report.md` | Narrative report generator |
 | `risk-scorer.md` | Quantitative risk scoring |
 | `control-analyzer.md` | Compensating controls analysis |
@@ -58,19 +61,20 @@ Copy the entire `.claude/agents/tachi/` directory. Current agents:
 
 ## Script Files
 
-Copy these 3 Python files from `scripts/` to the target project's `scripts/`:
+Copy these 4 Python files from `scripts/` to the target project's `scripts/`:
 
 | File | Purpose | Invoked By |
 |------|---------|------------|
 | `extract-report-data.py` | Parses tachi artifacts and generates `report-data.typ` for Typst compilation; also renders attack-tree Mermaid blocks to PNG via mmdc | report-assembler (via `/tachi.security-report`) |
 | `extract-infographic-data.py` | Parses tachi artifacts and generates infographic specification JSON | threat-infographic (via `/tachi.infographic`) |
 | `tachi_parsers.py` | Shared parser helpers imported by both extraction scripts | extract-report-data.py, extract-infographic-data.py |
+| `populate-affected-assets.py` | Deterministically joins architecture `[asset:...]` tags to findings by component and upserts the `## Affected Assets` block into `threats.md` | orchestrator (via `/tachi.threat-model`), `/tachi.risk-score` |
 
-Scripts use stdlib-only imports — no pip dependencies required in the target project.
+Dependency note: stdlib-only at import; PyYAML is imported lazily for the PDF coverage-attestation page.
 
-**Critical**: If these scripts are missing, the report-assembler and threat-infographic agents will silently fall through to LLM-based inline extraction, producing technically-compiling but field-incomplete outputs (missing attack-tree images, empty MAESTRO layer headings, missing infographic data). Always include these files when distributing tachi.
+**Critical**: If a script is missing, the report and infographic agents stop with `EXTRACTION SCRIPT MISSING` and name the missing files, and a pipeline step that runs `populate-affected-assets.py` fails at that step. Always include these files when distributing tachi.
 
-Other files in `scripts/` (`check.sh`, `install.sh`, `generate-adapter-version.sh`, `polish-release-notes.sh`, `sync-upstream.sh`) are tachi-internal and are NOT distributed to target projects.
+Every other file in `scripts/` is tachi-internal and is NOT distributed to target projects.
 
 ## Schema Files
 
@@ -115,11 +119,15 @@ The install script parses this section automatically. One path per line — dire
 .claude/skills/tachi-tool-abuse/
 .claude/skills/tachi-data-poisoning/
 .claude/skills/tachi-model-theft/
+.claude/skills/tachi-output-integrity/
+.claude/skills/tachi-misinformation/
+.claude/skills/tachi-human-trust-exploitation/
 schemas/
 templates/tachi/
 scripts/extract-report-data.py
 scripts/extract-infographic-data.py
 scripts/tachi_parsers.py
+scripts/populate-affected-assets.py
 adapters/claude-code/agents/references/
 brand/
 docs/guides/DEVELOPER_GUIDE_TACHI.md
@@ -137,5 +145,5 @@ When adding a new feature, check whether it requires updates to:
 - [ ] New report page templates in `templates/tachi/security-report/`
 - [ ] A new distributable Python script in `scripts/` -- add to script table above
 - [ ] New reference docs in `adapters/claude-code/agents/references/`
-- [ ] Update install instructions in `README.md` and `docs/guides/DEVELOPER_GUIDE_TACHI.md`
+- [ ] Manual install blocks derive from this manifest; no edit needed in `README.md` or `docs/guides/DEVELOPER_GUIDE_TACHI.md`
 - [ ] Update the machine-parseable manifest section (`<!-- BEGIN MANIFEST -->` / `<!-- END MANIFEST -->`)

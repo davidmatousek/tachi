@@ -181,7 +181,7 @@ Display: `"report-data.typ generated — proceeding to compilation"`
 
 ---
 
-**Deprecated inline extraction path — DO NOT USE**: Versions of this agent before PR #154 documented an LLM-based fallback for Steps 2-3 that parsed artifacts inline and generated `report-data.typ` by prompting the model. That path is deprecated and unsupported: it silently omits `has-image` on attack-tree entries (producing attack-path pages with no Mermaid visuals), emits empty `layer-id`/`layer-name` fields in MAESTRO findings-by-layer groups (producing headings that render as bare em-dashes), and skips other derived fields. The deterministic Python script (`scripts/extract-report-data.py`) is the only supported extraction path. For the full variable specification, see `specs/067-deterministic-report-data/data-model.md`.
+**Deprecated inline extraction path — DO NOT USE**: Versions of this agent before PR #154 documented an LLM-based fallback for Steps 2-3 that parsed artifacts inline and generated `report-data.typ` by prompting the model. That path is deprecated and unsupported: it silently omits `has-image` on attack-tree entries (producing attack-path pages with no Mermaid visuals), emits empty `layer-id`/`layer-name` fields in MAESTRO findings-by-layer groups (producing headings that render as bare em-dashes), and skips other derived fields. The deterministic Python script (`scripts/extract-report-data.py`) is the only supported extraction path. For the full variable specification, see `specs/067-deterministic-report-data/data-model.md`. A hand-built `report-data.typ` without `risk-posture-level`/`risk-posture-label` no longer compiles.
 
 ---
 
@@ -239,7 +239,7 @@ Tier: {data_source_tier}
 
 - **v1.0**: No Section 4a -- skip correlated findings references, all else normal
 - **v1.1**: Full feature set -- parse all sections
-- **v1.2**: Full feature set plus delta/baseline data -- parse all sections including Section 4b (Resolved Findings) and Section 8 (Delta Summary)
+- **v1.2**: Full feature set plus delta/baseline data -- parse all sections including Section 4c (Resolved Findings) and Section 8 (Delta Summary)
 - **Unknown version**: Treat as v1.0 (conservative), log warning
 
 ### Delta / Baseline Awareness

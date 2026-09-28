@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-08-12T18:35:18Z.
+> Auto-generated from GitHub Issues on 2026-09-28T01:41:56Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -8,6 +8,7 @@
 
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
+| #374 | Large-architecture pipeline resilience: skipped attack-chain phase, single-response output overflow, controls table drift | Impact: 8, Confidence: 6, Effort: 4 = **18** | On a run with 200+ findings: | 2026-09-27 |
 | #364 | F-362b: re-key examples/** and sample-report baselines to the OWASP LLM 2026 σ (BLOCKING before next minor release) | — | — | 2026-08-12 |
 | #361 | Extend tachi detection coverage for GhostCommit primitives (encoded exfil, convention-file trust, committed-file dormancy) | Impact: 7, Confidence: 7, Effort: 6 = **20** | Team Observation: coverage mapping of tachi's detection-p... | 2026-07-13 |
 | #360 | Harden tachi's own agents against ingested-repo-text prompt injection (GhostCommit self-exposure) | Impact: 8, Confidence: 8, Effort: 8 = **24** | Team Observation: grounded file:line code analysis of tac... | 2026-07-13 |
@@ -54,6 +55,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #373 | Adopter install + output fidelity fixes: installer manifest gaps, symlinked skills dir, infographic/PDF data extraction, Gemini render | OPEN | 2026-09-27 |
 | #370 | Covering test for the FR-012b form-drift guard in extract-report-data.py | OPEN | 2026-08-12 |
 | #369 | CI manifest-integrity check for adapter VERSION attestations (+ copilot-aware generator) | OPEN | 2026-08-12 |
 | #368 | check-catalog-drift: _canonical() widening — decided DEFER with rationale; plus false-docstring defect (docstring :95 vs fail-closed fallback :105) | OPEN | 2026-08-12 |

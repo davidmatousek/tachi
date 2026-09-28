@@ -9,6 +9,7 @@ consistent, cross-output-identical parsing of the same source artifacts.
 """
 
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 import re
 import sys
 from pathlib import Path
@@ -103,6 +104,164 @@ def _parse_int(s: str) -> int:
     return int(match.group()) if match else 0
 
 
+# =============================================================================
+# K9/K11 Shared Score and Header Helpers (Feature 373)
+# =============================================================================
+
+def parse_score(s) -> "Decimal | None":
+    """Parse a table-cell score string into a ``Decimal``, or ``None`` on failure.
+
+    Catches ``decimal.InvalidOperation`` (NOT a ``ValueError`` subclass),
+    ``ValueError`` and ``TypeError``, and rejects non-finite results
+    (``NaN``, ``Infinity``) even though ``Decimal("NaN")`` parses without
+    raising. Used for every score in the controls and risk-scores parsers
+    (data-model.md §3); a ``None`` return is the caller's cue to count the
+    cell toward its own aggregated "unparseable score" warning class — this
+    function never prints anything itself.
+    """
+    try:
+        d = Decimal(s.strip())
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+    if not d.is_finite():
+        return None
+    return d
+
+
+# Alias table for Coverage Matrix headers (FR-K9.1, data-model.md §3). Built
+# from ``normalize_header``'s output (casefold, strip one trailing '.',
+# collapse whitespace) so both the long and short forms resolve to the same
+# canonical field. "Inherent Score"/"Inherent" and "Control Status"/"Status"
+# are consumed starting with K11 (T020); "Residual Score"/"Residual" and
+# "Residual Severity"/"Residual Sev." are consumed from K9 (T016) on.
+HEADER_ALIASES = {
+    "residual score": "residual_score",
+    "residual": "residual_score",
+    "residual severity": "residual_severity",
+    "residual sev": "residual_severity",
+    "inherent score": "inherent_score",
+    "inherent": "inherent_score",
+    "control status": "control_status",
+    "status": "control_status",
+}
+
+
+def normalize_header(h: str) -> str:
+    """Normalize a markdown table header for :data:`HEADER_ALIASES` lookup.
+
+    casefold, strip exactly one trailing '.', then collapse internal
+    whitespace runs to a single space (data-model.md §3).
+    """
+    h = (h or "").strip().casefold()
+    if h.endswith("."):
+        h = h[:-1]
+    return re.sub(r"\s+", " ", h).strip()
+
+
+def _resolve_row_fields(row: dict) -> dict:
+    """Resolve a Coverage Matrix row's header-aliased fields (data-model.md §3).
+
+    Returns a dict keyed by canonical name (``residual_score``,
+    ``residual_severity``, ``inherent_score``, ``control_status``), reading
+    whichever spelling — long or short form — the row actually carries via
+    :data:`HEADER_ALIASES`, plus ``inherent_severity`` (K11): the literal
+    ``Inherent Severity`` fallback column, which has no short form and so is
+    not in the alias table. A canonical field with no matching column in
+    this row resolves to ``""``. ``Threat ID``, ``Component`` and ``Threat``
+    are read directly by the caller.
+    """
+    resolved = {name: "" for name in set(HEADER_ALIASES.values())}
+    resolved["inherent_severity"] = ""
+    for key, value in row.items():
+        normalized = normalize_header(key)
+        canonical = HEADER_ALIASES.get(normalized)
+        if canonical is not None:
+            resolved[canonical] = value
+        elif normalized == "inherent severity":
+            resolved["inherent_severity"] = value
+    return resolved
+
+
+_PLACEHOLDER_ID_RE = re.compile(r"[-–—]+")
+
+
+def is_placeholder_id(s: str) -> bool:
+    """Return True when ``s`` is an empty or dash-only placeholder ID.
+
+    A placeholder is an empty string after stripping, or a run of one or
+    more ASCII hyphen / en dash / em dash characters (data-model.md §3, §6;
+    FR-K9.2, FR-K12.3). Placeholder rows are dropped before dedup.
+    """
+    stripped = (s or "").strip()
+    return stripped == "" or bool(_PLACEHOLDER_ID_RE.fullmatch(stripped))
+
+
+_HEADING_RE = re.compile(r"^(#{1,6})\s")
+
+
+def _heading_level(line: str):
+    """Return a stripped line's heading level (count of leading '#'), or None."""
+    m = _HEADING_RE.match(line)
+    return len(m.group(1)) if m else None
+
+
+def match_heading(pattern: str, text: str):
+    """Return the 0-indexed line number of the first line matching ``pattern``.
+
+    ``pattern`` is matched with ``re.MULTILINE`` (``^``/``$`` anchor to each
+    line), so it should itself be a line-anchored regex, e.g.
+    ``r"^#{3,4}\\s+Risk by MAESTRO Layer"`` (K10) or
+    ``r"^##\\s+4[bc]\\.\\s+Resolved Findings\\s*$"`` (K12). Returns ``None``
+    when there is no match. The return value is a line index compatible with
+    :func:`parse_markdown_table`'s ``start_line`` argument, not a character
+    offset.
+    """
+    m = re.search(pattern, text, re.MULTILINE)
+    if not m:
+        return None
+    return text.count("\n", 0, m.start())
+
+
+# K11's Control Status classifier (data-model.md §3; FR-K11.3, spec ruling
+# S-5). Application order matters: a token starting "partial" wins first,
+# then the recognized no-control set (silent), then "found" with no
+# negation token, then anything else (including empty) warns.
+_CONTROL_STATUS_SILENT_SET = frozenset({
+    "no control found", "missing", "none", "not found",
+})
+_CONTROL_STATUS_NEGATION_TOKENS = frozenset({"no", "not", "none", "nothing"})
+
+
+def classify_control_status(s: str):
+    """Classify a Control Status cell into ("found"|"partial"|"none", warn).
+
+    Whole-token, case-insensitive (data-model.md §3):
+      1. a token starting "partial" (e.g. "partial", "partially") -> partial;
+      2. the normalized status in the recognized no-control set ("no control
+         found", "missing", "none", "not found") -> none, silently;
+      3. a "found" token with no negation token ("no"/"not"/"none"/"nothing")
+         -> found;
+      4. anything else, including empty -> none, with a warning.
+
+    Called once per row at parse time; the result replaces both copies of
+    the row idiom (the STRIDE coverage matrix derivation and the coverage
+    fallback). The Section 1 summary reader keeps its own matching.
+    """
+    normalized = (s or "").strip().casefold()
+    tokens = normalized.split()
+
+    if any(tok.startswith("partial") for tok in tokens):
+        return "partial", False
+
+    if normalized in _CONTROL_STATUS_SILENT_SET:
+        return "none", False
+
+    if "found" in tokens and not (set(tokens) & _CONTROL_STATUS_NEGATION_TOKENS):
+        return "found", False
+
+    return "none", True
+
+
 def parse_finding_pattern(value) -> str:
     """Normalize an ``agentic_pattern`` cell value to a canonical enum string.
 
@@ -174,26 +333,52 @@ def classify_maestro_coverage_state(finding_count: int, highest_severity: str) -
 # Generic Table Parsers
 # =============================================================================
 
-def parse_markdown_table(content: str, section_header: str) -> list:
+def parse_markdown_table(content: str, section_header: str = None, start_line: int = None) -> list:
     """Parse a markdown table found after a section header.
 
     Args:
         content: Full markdown file content.
-        section_header: The section header to search for (e.g., "## 6. Risk Summary").
+        section_header: The section header to search for (e.g., "## 6. Risk Summary"),
+            matched as a substring anywhere on a line. Ignored when ``start_line``
+            is given.
+        start_line: A 0-indexed line number to start scanning from directly —
+            typically the return value of :func:`match_heading` — so a regex
+            match never falls back to a substring re-search (data-model.md §3,
+            rev. 1). Exactly one of ``section_header`` or ``start_line`` must
+            be usable; when both are omitted or ``section_header`` matches
+            nothing, an empty list is returned.
 
     Returns:
         List of dicts, one per row, with keys from the header row.
         Returns empty list if table not found.
+
+    Stop rule (FR-K9.2): scanning for the table stops at the next heading
+    whose level (count of leading '#') is the same as or higher (numerically
+    lower or equal) than the level of the matched line itself — so an empty
+    ``### Foo`` section correctly yields no rows instead of adopting a later
+    ``###``/``####`` section's table. When the matched line is not a heading
+    (a handful of callers match bold paragraph text, e.g. "Coverage
+    Distribution"), the stop rule is unchanged from before this fix: stop
+    only at a literal ``## `` or ``# `` line. This means every pre-existing
+    ``##``-heading caller is unaffected by construction, because for a
+    level-1-or-2 match, "same or higher level" reduces exactly to "the next
+    ``##`` or ``#`` line" — the old, hardcoded rule.
     """
     lines = content.split("\n")
-    # Find the section header
-    header_idx = None
-    for i, line in enumerate(lines):
-        if section_header in line:
-            header_idx = i
-            break
-    if header_idx is None:
-        return []
+
+    if start_line is not None:
+        header_idx = start_line
+    else:
+        # Find the section header
+        header_idx = None
+        for i, line in enumerate(lines):
+            if section_header in line:
+                header_idx = i
+                break
+        if header_idx is None:
+            return []
+
+    matched_level = _heading_level(lines[header_idx].strip()) if 0 <= header_idx < len(lines) else None
 
     # Scan forward for the first table row (starts with |)
     table_header_idx = None
@@ -202,8 +387,13 @@ def parse_markdown_table(content: str, section_header: str) -> list:
         if line.startswith("|") and "|" in line[1:]:
             table_header_idx = i
             break
-        # Stop if we hit another section header
-        if line.startswith("## ") or line.startswith("# "):
+        if matched_level is not None:
+            # Stop at the next heading of the same or higher level (FR-K9.2).
+            level = _heading_level(line)
+            if level is not None and level <= matched_level:
+                break
+        elif line.startswith("## ") or line.startswith("# "):
+            # Non-heading match: today's rule, unchanged.
             break
 
     if table_header_idx is None:
@@ -642,36 +832,200 @@ def _accumulate_severity_rows(rows: list, level_column: str) -> dict:
 # Findings Parsers
 # =============================================================================
 
-def compute_delta_counts(findings: list, resolved_findings: list) -> dict:
-    """Compute delta status counts from active and resolved findings.
+# =============================================================================
+# K12 Delta Status (Feature 373, data-model.md §6)
+# =============================================================================
 
-    Returns dict with keys: new, unchanged, updated, resolved.
+_DELTA_STATUS_STRIP_CHARS = "`*_ "
+_DELTA_STATUS_COUNTED_VALUES = frozenset({"NEW", "UPDATED", "UNCHANGED"})
+
+
+def normalize_delta_status(s: str) -> str:
+    """Normalize a Section 7 ``Status`` cell for delta-status matching.
+
+    Strips a surrounding run of backticks, ``*``, ``_`` and whitespace; then
+    one surrounding ``[...]`` pair; then the run again; then upper-cases.
+    ``NEW``, ``[NEW]``, ``**[NEW]**`` and `` `[NEW]` `` all normalize to
+    ``NEW`` (N6 order, data-model.md §6).
     """
-    counts = {"new": 0, "unchanged": 0, "updated": 0, "resolved": len(resolved_findings)}
-    for f in findings:
-        ds = f.get("delta_status", "").upper()
-        if ds == "NEW":
+    s = (s or "").strip(_DELTA_STATUS_STRIP_CHARS)
+    if len(s) >= 2 and s[0] == "[" and s[-1] == "]":
+        s = s[1:-1]
+    s = s.strip(_DELTA_STATUS_STRIP_CHARS)
+    return s.upper()
+
+
+def delta_status_by_id(threats_md: str):
+    """Read threats.md Section 7's Status column into a normalized map.
+
+    Returns ``(status_by_id, has_status_column, row_count)`` (data-model.md
+    §6): the normalized ``{finding_id: status}`` map with placeholder IDs
+    excluded, whether Section 7's table has a Status column at all, and the
+    table's row count (feeds the scoped empty-map check in
+    :func:`warn_delta_scope`).
+    """
+    rows = parse_markdown_table(threats_md, "## 7. Recommended Actions")
+    has_status_column = bool(rows) and "Status" in rows[0]
+    status_by_id = {}
+    if has_status_column:
+        for row in rows:
+            fid = row.get("Finding ID", "").strip()
+            if is_placeholder_id(fid):
+                continue
+            status_by_id[fid] = normalize_delta_status(row.get("Status", ""))
+    return status_by_id, has_status_column, len(rows)
+
+
+def compute_delta_counts(status_by_id: dict, resolved: list) -> dict:
+    """Count NEW/UPDATED/UNCHANGED from a normalized Section 7 status map.
+
+    Counts over the normalized map only (FR-K12.1/K12.2, data-model.md §6),
+    identically regardless of data tier — never over a tier's ``findings``
+    list, which may have no ``delta_status`` key at all (Tier 1/2) or an
+    unnormalized one (Tier 3). ``resolved`` is the placeholder-filtered list
+    from :func:`parse_resolved_findings`; its length becomes ``resolved``.
+    A status that normalizes to anything other than NEW/UPDATED/UNCHANGED
+    does not add to a bucket — the caller aggregates that as a warning via
+    :func:`warn_delta_scope`.
+    """
+    counts = {"new": 0, "updated": 0, "unchanged": 0, "resolved": len(resolved)}
+    for status in status_by_id.values():
+        if status == "NEW":
             counts["new"] += 1
-        elif ds == "UNCHANGED":
-            counts["unchanged"] += 1
-        elif ds == "UPDATED":
+        elif status == "UPDATED":
             counts["updated"] += 1
+        elif status == "UNCHANGED":
+            counts["unchanged"] += 1
     return counts
 
 
+def apply_delta_status(findings: list, status_by_id: dict) -> None:
+    """Stamp normalized Section 7 statuses onto a tier's findings, in place.
+
+    For the per-finding badges (report path) and ``top_findings[].delta_status``
+    (infographic path) only — it plays no part in :func:`compute_delta_counts`
+    (data-model.md §6). Findings whose id has no entry in ``status_by_id`` are
+    left untouched.
+    """
+    for finding in findings:
+        fid = finding.get("id", "")
+        if fid in status_by_id:
+            finding["delta_status"] = status_by_id[fid]
+
+
+def warn_delta_scope(has_baseline, has_status_column, status_by_id, row_count, tier_ids) -> None:
+    """Emit PD-16's scoped, aggregated delta-status warnings. Never raises.
+
+    ``tier_ids`` is the tier's own finding-ID set. All checks are gated on
+    ``has_baseline``; the empty-map and ID-set-mismatch checks additionally
+    require ``has_status_column`` (data-model.md §6) — a legacy Status-less
+    Section 7 on a non-baseline (or even baseline) run must never warn.
+    """
+    if not has_baseline:
+        return
+
+    if not has_status_column:
+        print(
+            "Warning: baseline run but threats.md Section 7 has no Status "
+            "column; delta counts unavailable",
+            file=sys.stderr,
+        )
+        return
+
+    if not status_by_id:
+        if row_count > 0:
+            print(
+                f"Warning: threats.md Section 7 has {row_count} rows but no "
+                "readable Finding ID/Status pairs; delta counts are 0",
+                file=sys.stderr,
+            )
+        return
+
+    unknown = [(fid, status) for fid, status in status_by_id.items()
+               if status not in _DELTA_STATUS_COUNTED_VALUES]
+    if unknown:
+        first_five = ", ".join(f"{fid}='{status}'" for fid, status in unknown[:5])
+        print(
+            f"Warning: {len(unknown)} Section 7 statuses are not "
+            f"NEW/UPDATED/UNCHANGED after normalization (first: {first_five}); "
+            "not counted",
+            file=sys.stderr,
+        )
+
+    map_ids = set(status_by_id.keys())
+    tier_id_set = set(tier_ids or ())
+    if map_ids != tier_id_set:
+        only_in_map = len(map_ids - tier_id_set)
+        only_in_tier = len(tier_id_set - map_ids)
+        print(
+            "Warning: Section 7 status IDs differ from tier finding IDs "
+            f"({only_in_map} only-in-map, {only_in_tier} only-in-tier)",
+            file=sys.stderr,
+        )
+
+
+# =============================================================================
+# K13-posture (Feature 373, data-model.md §5)
+# =============================================================================
+
+_RISK_POSTURE_LABELS = {
+    "critical": "CRITICAL RISK",
+    "high": "HIGH RISK",
+    "medium": "MODERATE RISK",
+    "low": "LOW RISK",
+}
+
+
+def compute_risk_posture(counts: dict):
+    """Compute the single risk-posture level/label from severity counts.
+
+    ``counts`` is a severity-count dict with at least ``critical``, ``high``
+    and ``medium`` keys (case-sensitive lowercase, e.g. the ``severity``
+    dict returned by :func:`parse_compensating_controls_md` or
+    :func:`parse_risk_scores_severity`/:func:`parse_threats_severity`). The
+    level is the highest non-zero band — critical, else high, else medium,
+    else low. Zero findings (or an all-zero dict) give ``low``/``LOW RISK``
+    (D-3). The caller decides which counts dict to pass: residual severity
+    (after K11's clamp) when a controls report exists, else the inherent
+    composite, else qualitative (data-model.md §5) — this function only
+    picks the highest band and its label.
+
+    Returns (level, label).
+    """
+    if counts.get("critical", 0) > 0:
+        level = "critical"
+    elif counts.get("high", 0) > 0:
+        level = "high"
+    elif counts.get("medium", 0) > 0:
+        level = "medium"
+    else:
+        level = "low"
+    return level, _RISK_POSTURE_LABELS[level]
+
+
+_RESOLVED_FINDINGS_HEADING = r"^##\s+4[bc]\.\s+Resolved Findings\s*$"
+
+
 def parse_resolved_findings(content: str) -> list:
-    """Parse Section 4b Resolved Findings table.
+    """Parse the Resolved Findings table: the template's ``## 4c.`` heading,
+    or the legacy ``## 4b.`` spelling (FR-K12.4) — one heading-class regex
+    covers both, via :func:`match_heading`, so a renumbering never silently
+    stops matching. Rows whose ID is a placeholder are skipped (FR-K12.3).
 
     Returns list of resolved finding dicts with delta_status="RESOLVED" injected.
-    Returns empty list when Section 4b is absent (first run, no baseline).
+    Returns empty list when neither heading is present (first run, no baseline).
     """
-    rows = parse_markdown_table(content, "## 4b. Resolved Findings")
-    if not rows:
+    start = match_heading(_RESOLVED_FINDINGS_HEADING, content)
+    if start is None:
         return []
+    rows = parse_markdown_table(content, start_line=start)
     findings = []
     for row in rows:
+        fid = row.get("ID", "").strip()
+        if is_placeholder_id(fid):
+            continue
         findings.append({
-            "id": row.get("ID", "").strip(),
+            "id": fid,
             "component": row.get("Component", "").strip(),
             "threat": row.get("Threat", "").strip(),
             "risk_level": row.get("Last Risk Level", "").strip(),
@@ -851,10 +1205,13 @@ def parse_threats_findings(content: str) -> list:
             "mitigation": row.get("Mitigation", "").strip(),
             "agentic_pattern": pattern_value,
         }
-        # Delta fields: include only when present (backward compatible)
+        # Delta fields: include only when present (backward compatible).
+        # K12 (T016 gap, data-model.md §6): normalize at parse, same as
+        # delta_status_by_id's Section 7 map, so tier-3 badges and
+        # top_findings[].delta_status never show a raw "[NEW]"-style value.
         status = row.get("Status", "").strip()
         if status:
-            finding["delta_status"] = status
+            finding["delta_status"] = normalize_delta_status(status)
         attribution = _extract_source_attribution(finding["id"], source_attribution_block)
         if attribution is not None:
             finding["source_attribution"] = attribution
@@ -1024,7 +1381,7 @@ def parse_scope_data(content: str) -> dict:
 # Compensating Controls Parser
 # =============================================================================
 
-def parse_compensating_controls_md(content: str) -> dict:
+def parse_compensating_controls_md(content: str, composites_by_id: dict = None) -> dict:
     """Parse compensating-controls.md for Tier 1 data.
 
     Extracts:
@@ -1034,6 +1391,25 @@ def parse_compensating_controls_md(content: str) -> dict:
     - Controls from Section 3 Control Details
     - Recommendations from Section 4 (merged into findings)
     - Severity counts from residual severity of findings
+
+    Args:
+        content: Full compensating-controls.md text.
+        composites_by_id: Optional ``{threat_id: Decimal}`` map of risk-scores
+            composite scores (K11, data-model.md §3), used to fill a row's
+            ``inherent`` when the Coverage Matrix has no Inherent Score/
+            Inherent column, or the cell is unparseable. Typically built by
+            the caller from ``parse_risk_scores_findings``'s
+            ``composite_score`` through :func:`parse_score`.
+
+    Each finding dict additionally carries (K11):
+        status_class: "found" | "partial" | "none", from
+            :func:`classify_control_status`.
+        inherent: the row's inherent score as a ``Decimal``, or ``None`` when
+            unavailable even after the join.
+        inherent_severity: the inherent score's severity band (Title Case),
+            falling back to the raw ``Inherent Severity`` column, or ``None``.
+        residual_score / residual_severity: unchanged in shape, but now
+            reflect the post-clamp value when a clamp applied.
     """
     result = {
         "findings": [],
@@ -1107,59 +1483,127 @@ def parse_compensating_controls_md(content: str) -> dict:
     # Severity band thresholds for score-based classification
     _BAND_THRESHOLDS = [(9.0, "Critical"), (7.0, "High"), (4.0, "Medium")]
 
-    def _score_to_band(score_str):
-        """Map a residual score string to its severity band, or None if unparseable."""
-        try:
-            score = float(score_str)
-        except (ValueError, TypeError):
+    def _band_from_score(score):
+        """Map a parsed Decimal score (or None) to its Title Case band, or None."""
+        if score is None:
             return None
         for threshold, band in _BAND_THRESHOLDS:
             if score >= threshold:
                 return band
         return "Low"
 
-    misclassified_count = 0
+    def _score_to_band(score_str):
+        """Map a residual score string to its severity band, or None if unparseable.
+
+        Delegates parsing to the shared :func:`parse_score` (K9), which
+        rejects non-finite values (``NaN``, ``Infinity``) that ``float()``
+        would otherwise have silently let fall through to "Low".
+        """
+        return _band_from_score(parse_score(score_str))
+
+    # Aggregated-warning collectors (data-model.md §3; R-P6: one line per
+    # class, count plus the first five IDs in first-seen order).
+    _unrecognized_status_ids = []
+    _unparseable_score_refs = []   # "id:Column Name" strings
+    _missing_residual_ids = []
+    _missing_inherent_ids = []
+    _clamped_ids = []
+
     for severity_label in ["Critical", "High", "Medium", "Low"]:
         header = f"### {severity_label} Residual Severity"
         rows = parse_markdown_table(content, header)
         for row in rows:
             threat_id = row.get("Threat ID", "").strip()
-            residual_score = row.get("Residual Score", "").strip()
+            if is_placeholder_id(threat_id):
+                # FR-K9.2: a placeholder Threat ID drops the row before dedup.
+                continue
+            aliased = _resolve_row_fields(row)
+            residual_text = aliased["residual_score"].strip()
+            inherent_text = aliased["inherent_score"].strip()
+            control_status_raw = aliased["control_status"].strip()
 
-            # Score-derived band is authoritative; column/section are fallbacks
-            score_band = _score_to_band(residual_score)
-            row_severity = row.get("Residual Severity", "").strip()
+            # Unparseable-score warnings fire only for non-empty garbage text
+            # (em dash, trailing text, NaN) — a genuinely absent column or
+            # blank cell is silently None here; its own consequence (missing
+            # residual/inherent) warns on its own below.
+            residual = parse_score(residual_text)
+            if residual is None and residual_text:
+                _unparseable_score_refs.append(f"{threat_id}:Residual Score")
 
-            if score_band:
-                if score_band != severity_label:
-                    misclassified_count += 1
-                    print(
-                        f"Warning: {threat_id} in '### {severity_label} Residual Severity' "
-                        f"section but residual score {residual_score} maps to {score_band}. "
-                        f"Using score-derived band.",
-                        file=sys.stderr,
-                    )
-                row_severity = score_band
-            elif not row_severity:
-                # No parseable score and no column value — fall back to section
-                row_severity = severity_label
+            inherent = parse_score(inherent_text)
+            if inherent is None and inherent_text:
+                _unparseable_score_refs.append(f"{threat_id}:Inherent Score")
+            if inherent is None and composites_by_id:
+                joined = composites_by_id.get(threat_id)
+                if joined is not None:
+                    inherent = joined
+            if inherent is None:
+                _missing_inherent_ids.append(threat_id)
+
+            status_class, status_warn = classify_control_status(control_status_raw)
+            if status_warn:
+                _unrecognized_status_ids.append(threat_id)
+
+            # Clamp once, at parse (data-model.md §3): residual can never
+            # exceed inherent. A missing residual with an inherent present
+            # means residual = inherent (no credit) — both need `inherent`.
+            if residual is not None and inherent is not None and residual > inherent:
+                _clamped_ids.append(threat_id)
+                residual = inherent
+            elif residual is None and inherent is not None:
+                _missing_residual_ids.append(threat_id)
+                residual = inherent
+
+            residual_band = _band_from_score(residual)
+            if residual_band is None:
+                residual_band = aliased["residual_severity"].strip() or severity_label
+
+            inherent_band = _band_from_score(inherent)
+            if inherent_band is None:
+                inherent_band = aliased["inherent_severity"].strip() or None
+
+            residual_score_display = str(residual) if residual is not None else residual_text
 
             result["findings"].append({
                 "id": threat_id,
                 "component": row.get("Component", "").strip(),
                 "threat": row.get("Threat", "").strip(),
-                "residual_score": residual_score,
-                "residual_severity": row_severity,
-                "control_status": row.get("Control Status", "").strip(),
+                "residual_score": residual_score_display,
+                "residual_severity": residual_band,
+                "control_status": control_status_raw,
+                "status_class": status_class,
+                "inherent": inherent,
+                "inherent_severity": inherent_band,
                 "recommendation": recommendations.get(threat_id, ""),
             })
 
-    if misclassified_count > 0:
+    def _warn_aggregated(ids, stem_fn):
+        if not ids:
+            return
+        print(stem_fn(len(ids), ", ".join(ids[:5])), file=sys.stderr)
+
+    _warn_aggregated(_unrecognized_status_ids, lambda n, ids: (
+        f"Warning: {n} controls rows have an unrecognized or empty status "
+        f"(first: {ids}); counted as no control"
+    ))
+    if _unparseable_score_refs:
         print(
-            f"Warning: {misclassified_count} findings in wrong severity sections "
-            f"(corrected using score-derived bands)",
+            f"Warning: {len(_unparseable_score_refs)} unparseable scores "
+            f"(first: {', '.join(_unparseable_score_refs[:5])}); treated as missing",
             file=sys.stderr,
         )
+    _warn_aggregated(_clamped_ids, lambda n, ids: (
+        f"Warning: {n} controls rows have a residual above the inherent score "
+        f"(first: {ids}); clamped"
+    ))
+    _warn_aggregated(_missing_residual_ids, lambda n, ids: (
+        f"Warning: {n} controls rows have no residual score (first: {ids}); "
+        f"defaulted to the inherent score (no credit)"
+    ))
+    _warn_aggregated(_missing_inherent_ids, lambda n, ids: (
+        f"Warning: {n} controls rows have no inherent score (first: {ids}); "
+        f"excluded from funnel volumes"
+    ))
 
     # ---- Dedupe cross-listed findings by threat ID ----
     # control-analyzer cross-lists findings under both their original band and
@@ -1199,10 +1643,11 @@ def parse_compensating_controls_md(content: str) -> dict:
         if category not in stride_counts:
             stride_counts[category] = {"found": 0, "partial": 0, "missing": 0}
 
-        status = f["control_status"].lower()
-        if "partial" in status:
+        # K11: classify_control_status's stored result (data-model.md §3),
+        # replacing this row idiom's own substring matching.
+        if f["status_class"] == "partial":
             stride_counts[category]["partial"] += 1
-        elif "found" in status and "no" not in status:
+        elif f["status_class"] == "found":
             stride_counts[category]["found"] += 1
         else:
             stride_counts[category]["missing"] += 1
@@ -1248,13 +1693,14 @@ def parse_compensating_controls_md(content: str) -> dict:
             result["coverage_summary"]["total-found"] = count
             found_summary = True
 
-    # Fallback: derive from findings if table not found
+    # Fallback: derive from findings if table not found. K11: uses the
+    # stored status_class (data-model.md §3), replacing this row idiom's own
+    # substring matching. The Section 1 table reader above keeps its own.
     if not found_summary and result["findings"]:
         for f in result["findings"]:
-            status = f["control_status"].lower()
-            if "partial" in status:
+            if f["status_class"] == "partial":
                 result["coverage_summary"]["total-partial"] += 1
-            elif "found" in status and "no" not in status:
+            elif f["status_class"] == "found":
                 result["coverage_summary"]["total-found"] += 1
             else:
                 result["coverage_summary"]["total-missing"] += 1

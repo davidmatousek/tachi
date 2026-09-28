@@ -1,0 +1,192 @@
+# =============================================================================
+# tachi install fidelity — manifest completeness guard (Feature 373, A-1,
+#   the W1 cut line: K1/K2 ship every skill and script)
+# =============================================================================
+#
+# Purpose: Fail the build when INSTALL_MANIFEST.md drifts from what an
+# adopter actually needs — a missing skill, agent, command or distributable
+# script; a manifest hygiene break; a non-stdlib import reaching a
+# distributable script at module load (S-13); or a manual-install loop that
+# no longer matches, byte-for-byte, across README.md and the developer
+# guide. This is the K1/K2 guard (FR-K2.2-K2.5): every skill and script
+# ships, and CI catches drift before it reaches an adopter's `install.sh`
+# run or copy-paste loop.
+#
+# This is the W1 cut-line commit (A-1, PD-9, PD-20): the ONLY job this
+# workflow runs today is `manifest-completeness`, gating only
+# tests/scripts/test_install_manifest_completeness.py. Nothing else may
+# redden this commit's run (RC-P1) — the pre-existing extraction modules
+# are red on bare ubuntu until PD-8's mmdc-skip fixture lands, so they join
+# in their own wiring commit, A-2 (the `extraction-fidelity` job),
+# immediately after this one is green and before any Lane B1 commit. A-3
+# (the K14 static contract test) joins `extraction-fidelity` later in W1.
+# A `report-posture` job (Typst-gated, `setup-typst@v5`) joins in W2, only
+# if the K13-posture carve unit ships.
+#
+# Dual trigger (PR + push:[main]): a manifest or install.sh edit can reach
+# main via a direct push that bypasses the pull_request trigger — the same
+# direct-to-main bypass issue #338 exploited once before. Both triggers
+# resolve a SINGLE path list via a YAML anchor (&fidelity_paths /
+# *fidelity_paths), cloned from tachi-catalog-drift.yml's dual-trigger,
+# single-anchor pattern so there is no second list to drift out of sync.
+#
+# F-250 lock-step rule: any change to this module's dependency surface MUST
+# update BOTH the `paths:` anchor below AND the pytest invocation in the
+# same commit. PD-20 assigns this workflow file to Lane A alone, in every
+# wave, and each module's author-lane wiring commit bundles the module with
+# its paths and invocation entry so the module is never ungated.
+#
+# References:
+#   - specs/373-adopter-install-output-fidelity/contracts/manifest-completeness.md
+#     § Workflow wiring for this module
+#   - specs/373-adopter-install-output-fidelity/research.md PD-8, PD-9, PD-20
+#   - specs/373-adopter-install-output-fidelity/plan.md
+#     § Lane and file ownership per wave: test modules and CI files
+#   - tests/scripts/test_install_manifest_completeness.py
+# =============================================================================
+
+name: tachi install fidelity
+
+on:
+  pull_request:
+    paths: &fidelity_paths
+      - INSTALL_MANIFEST.md
+      - .claude/skills/**
+      - .claude/commands/tachi.*.md
+      - .claude/agents/tachi/**
+      - templates/tachi/**
+      - scripts/*.py
+      - scripts/install.sh
+      - README.md
+      - docs/guides/DEVELOPER_GUIDE_TACHI.md
+      - tests/scripts/test_install_manifest_completeness.py
+      - tests/conftest.py
+      - tests/scripts/conftest.py
+      - pyproject.toml
+      - .github/workflows/tachi-install-fidelity.yml
+      # --- A-2: the pre-existing extraction modules' own surfaces. The
+      #     extractors and tachi_parsers.py are already covered by
+      #     scripts/*.py above ---
+      - examples/**                                  # N3
+      - tests/scripts/fixtures/exec_arch/**           # N3
+      - tests/scripts/fixtures/golden/**              # N3
+      - tests/scripts/fixtures/report_data/**         # C-1 — test_extract_report_data.py:24
+      - tests/scripts/fixtures/fidelity_373/**        # C-1 — first read by test_tachi_parsers.py
+      - schemas/taxonomy/*.yaml                       # OQ-5 — extract-report-data.py:2328-2331
+      - tests/scripts/test_tachi_parsers.py
+      - tests/scripts/test_extract_infographic_data.py
+      - tests/scripts/test_extract_report_data.py
+      - tests/scripts/test_extractor_contract_fixes.py
+      - tests/scripts/test_executive_architecture_payload.py
+      # --- A-3: the K14 static request contract test ---
+      - tests/scripts/test_gemini_request_contract.py
+      - adapters/claude-code/**                       # A-3, N3/RC-P5 — A4/A6 pin the shipped adapter copy
+      # --- W2: the sibling-parity module. Its fixture trees are already
+      #     covered by report_data/** and fidelity_373/** since A-2 (C-1) ---
+      - tests/scripts/test_extraction_sibling_parity.py
+      # --- W2: K13-posture (report-posture job). Stand-alone: dropped
+      #     together with the job below if K13-posture is carved (PD-8) ---
+      - templates/tachi/security-report/**
+      - tests/scripts/test_report_posture_contract.py
+  push:
+    branches: [main]
+    paths: *fidelity_paths
+
+permissions:
+  contents: read
+
+jobs:
+  manifest-completeness:
+    name: manifest-completeness
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest + pytest-timeout + PyYAML
+        run: pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
+
+      - name: Run manifest completeness suite (K1/K2 guard)
+        run: |
+          python3 -m pytest tests/scripts/test_install_manifest_completeness.py -v
+
+  extraction-fidelity:
+    name: extraction-fidelity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest + pytest-timeout + PyYAML
+        run: pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
+
+      # A-2 (PD-8, PD-9, PD-20): the pre-existing extraction modules, gated
+      # for the first time on bare ubuntu. The R-3 safety net. mmdc is not
+      # installed on this runner, so the five image-flag cases in
+      # test_extract_report_data.py's agentic_app_report_typst fixture skip
+      # (PD-8) rather than fail; every other case in these five modules
+      # must pass. No Typst, no mmdc — the report-posture job (Typst-gated)
+      # joins separately in W2, only if K13-posture ships.
+      # A-3: the K14 static request contract test (A1-A8, PD-13/PD-14) joins
+      # here. It asserts the reference body, the five template configuration
+      # blocks, the executive-architecture block and the adapter copy never
+      # drift from contracts/gemini-request-and-scaffold.md, with no network
+      # call and no live key.
+      # W2 (T019): the sibling-parity module compares posture, severity
+      # counts, delta counts and MAESTRO output between the infographic
+      # JSON and report-data.typ on the same fixtures, including the K11
+      # join-path case (F2).
+      - name: Run extraction-fidelity suite (R-3 safety net)
+        run: |
+          python3 -m pytest \
+            tests/scripts/test_tachi_parsers.py \
+            tests/scripts/test_extract_infographic_data.py \
+            tests/scripts/test_extract_report_data.py \
+            tests/scripts/test_extractor_contract_fixes.py \
+            tests/scripts/test_executive_architecture_payload.py \
+            tests/scripts/test_gemini_request_contract.py \
+            tests/scripts/test_extraction_sibling_parity.py \
+            -v
+
+  # W2, K13-posture only (PD-8): this job is Typst-gated and stands alone —
+  # if K13-posture is ever carved, this job and its paths: entries above are
+  # the only things to drop, and the revert stays mechanical. Typst comes
+  # from typst-community/setup-typst@v5, unpinned to a compiler version,
+  # mirroring tachi-mmdc-preflight.yml's precedent. TACHI_REQUIRE_TYPST=1
+  # makes the stale-data test fail (not skip) when Typst is missing.
+  report-posture:
+    name: report-posture
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TACHI_REQUIRE_TYPST: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Typst
+        uses: typst-community/setup-typst@v5
+
+      - name: Install pytest + pytest-timeout + PyYAML
+        run: pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
+
+      - name: Run report-posture stale-data gate (K13-posture)
+        run: |
+          python3 -m pytest tests/scripts/test_report_posture_contract.py -v
