@@ -274,7 +274,7 @@ K3 is not a split candidate, and it ships with K1.
 
 **Independent Test**: sandboxed synthetic projects cover every US-2 scenario on the `tachi-pytest.yml` 2-OS matrix: bash 3.2 with BSD tools, and bash 5 with GNU tools.
 
-- [ ] T008 [P] [US2] K3 test harness, safety negatives first (Lane A′, W1; `senior-backend-engineer`, the test-lane instance; ~0.45 d). Write `tests/scripts/test_install_sh_symlink_preflight.py` and `tests/scripts/test_install_sh_ref_restore.py` on `tests/scripts/install_sh_helpers.py`, per `contracts/installer-cli.md` § Test harness contract.
+- [X] T008 [P] [US2] K3 test harness, safety negatives first (Lane A′, W1; `senior-backend-engineer`, the test-lane instance; ~0.45 d). Write `tests/scripts/test_install_sh_symlink_preflight.py` and `tests/scripts/test_install_sh_ref_restore.py` on `tests/scripts/install_sh_helpers.py`, per `contracts/installer-cli.md` § Test harness contract.
   - **Harness**:
     - `/bin/bash` pinned (N12), with `LC_ALL=C`; ANSI codes stripped; only installer-authored text asserted;
     - a working-tree `install.sh` copied into synthetic sources;
@@ -290,7 +290,7 @@ K3 is not a split candidate, and it ships with K1.
     - the rev. 2 cases (AR-1): a case-variant link into the clone, and a project reached through a case-variant path. These run on macOS only and skip on case-sensitive volumes;
     - N11 (decided per L14): a tachi clone that sits at a subtree path of a directory entry is refused.
   - The modules land in T010's single lock-step commit.
-- [ ] T009 [US2] K3 implementation in `scripts/install.sh` (Lane A′, W1; `devops`; ~0.62 d).
+- [X] T009 [US2] K3 implementation in `scripts/install.sh` (Lane A′, W1; `devops`; ~0.62 d).
   - **Containment**: project-root containment with the `under` identity walk at the `:95` site, before the version block.
   - **Pre-flight**: after the `--version` checkout, before the cleanup. It covers:
     - origin sets; `resolve` (40 hops) and `phys_dest`;
@@ -361,7 +361,7 @@ K3 is not a split candidate, and it ships with K1.
   - Reword `templates/tachi/infographics/INFOGRAPHIC_TEMPLATES.md:127-134` ("validated by the static contract test").
   - **Constraint**: no fence under a prompt heading (FR-K15.3).
   - **If AR-2's decision 2 holds** executive-architecture's configuration (3:4 failed at W0), C1 commits the five blocks now. A-3 then lands without A3, and A3 joins with the configuration once the architect clears it (L1).
-- [ ] T014 [US4a] K14 static contract test and wiring commit **A-3** (W1; Lane C1's `senior-backend-engineer` writes the module; `devops` wires it for Lane A; ~0.20 d).
+- [X] T014 [US4a] K14 static contract test and wiring commit **A-3** (W1; Lane C1's `senior-backend-engineer` writes the module; `devops` wires it for Lane A; ~0.20 d).
   - Create `tests/scripts/test_gemini_request_contract.py` with A1–A8 per `contracts/gemini-request-and-scaffold.md`:
     - `IMAGE_SIZE_RESTORED` pinned from T002;
     - chain order;
@@ -769,7 +769,7 @@ When it can be carved:
 
 T039 runs at W1 exit. T040 runs at the end of Session 1, and only if TW-7 fires. They are listed last so that the reviewed task IDs T001–T038 stay stable.
 
-- [ ] T039 W1-exit trip-wire checkpoint and snapshot (W1 exit, before any W2 task starts; the `orchestrator` invokes the team-lead's ruling; `senior-backend-engineer` (B1) makes any revert it orders; ~0.03 d).
+- [X] T039 W1-exit trip-wire checkpoint and snapshot (W1 exit, before any W2 task starts; the `orchestrator` invokes the team-lead's ruling; `senior-backend-engineer` (B1) makes any revert it orders; ~0.03 d).
   - **Re-run TW-0** with the actual durations of W0 and W1, and W2–W4 as planned (§ Trip-Wire Evaluation).
     - It fires if W0 and W1 together took more than about 2.0 working days (planned: 1.75).
     - For a build that starts Monday 09-28, that means W1 is still open at the start of Wednesday 09-30.
