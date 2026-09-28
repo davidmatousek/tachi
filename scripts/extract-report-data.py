@@ -41,6 +41,7 @@ from tachi_parsers import (
     delta_status_by_id,
     apply_delta_status,
     warn_delta_scope,
+    compute_risk_posture,
     parse_score,
     parse_markdown_table,
     match_heading,
@@ -1808,6 +1809,13 @@ def generate_report_data_typ(data: dict) -> str:
     lines.append(f"#let low-count = {sev['low']}")
     lines.append(f"#let note-count = {sev['note']}")
     lines.append(f"#let total-findings = {sev['total']}")
+    # K13-posture (data-model.md §5, FR-K13.4): D-3's single rubric, computed
+    # on the same post-clamp/inherent/qualitative severity dict as the counts
+    # above. REQUIRED, no default — main.typ panics if a stale report-data.typ
+    # lacks these (contracts/extraction-data-contract.md "report-data.typ").
+    posture_level, posture_label = compute_risk_posture(sev)
+    lines.append(f'#let risk-posture-level = "{escape_typst_string(posture_level)}"')
+    lines.append(f'#let risk-posture-label = "{escape_typst_string(posture_label)}"')
     lines.append("")
 
     # 3c2: Baseline / Delta Data
