@@ -39,6 +39,7 @@ from tachi_parsers import (
     parse_resolved_findings,
     compute_delta_counts,
     delta_status_by_id,
+    parse_score,
     parse_markdown_table,
     match_heading,
     parse_project_name,
@@ -2235,7 +2236,19 @@ def main():
     cc_data = None
     if tier == 1:
         cc_content = (target_dir / "compensating-controls.md").read_text(encoding="utf-8")
-        cc_data = parse_compensating_controls_md(cc_content)
+        # K11 (data-model.md §3, F2): join risk-scores composites onto rows
+        # whose Coverage Matrix has no Inherent Score/Inherent column. Tier 1
+        # now reads risk-scores.md too, when present (previously read only
+        # at tier 2).
+        composites_by_id = None
+        if artifacts["risk_scores_md"]:
+            rs_content_for_join = (target_dir / "risk-scores.md").read_text(encoding="utf-8")
+            composites_by_id = {
+                f["id"]: parse_score(f["composite_score"])
+                for f in parse_risk_scores_findings(rs_content_for_join)
+                if f.get("id")
+            }
+        cc_data = parse_compensating_controls_md(cc_content, composites_by_id=composites_by_id)
         data["severity"] = cc_data["severity"]
         data["findings"] = cc_data["findings"]
         data["coverage_matrix"] = cc_data["coverage_matrix"]

@@ -51,6 +51,8 @@ from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
     match_heading,
     parse_markdown_table,
     parse_compensating_controls_md,
+    parse_risk_scores_findings,
+    classify_control_status,
     normalize_delta_status,
     delta_status_by_id,
     compute_delta_counts,
@@ -60,6 +62,16 @@ from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
 )
 
 FIXTURES_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "fidelity_373"
+
+
+def _composites_from_fixture(subdir: str) -> dict:
+    """Build a K11 ``composites_by_id`` map from a fixture's risk-scores.md."""
+    rs_content = _read_fixture(subdir, "risk-scores.md")
+    return {
+        f["id"]: parse_score(f["composite_score"])
+        for f in parse_risk_scores_findings(rs_content)
+        if f.get("id")
+    }
 
 
 def _read_fixture(subdir: str, filename: str) -> str:
@@ -548,3 +560,156 @@ def test_pin_generate_risk_scores_sarif_governance_fields_unaffected():
     # scripts/generate-risk-scores-sarif.py:139, same rationale.
     rows = parse_markdown_table(_SARIF_RISK_SCORES_SNIPPET, "## 4. Governance Fields")
     assert [r["ID"] for r in rows] == ["F-1"]
+
+
+# =============================================================================
+# Feature 373 K11: classify_control_status, the inherent read + join, the
+# residual clamp, and band fallbacks (data-model.md §3; T020)
+# =============================================================================
+
+def test_classify_control_status_application_order():
+    # Application order (data-model.md §3; spec ruling S-5): partial-prefix,
+    # then the silent whole-string set, then found-with-no-negation, then
+    # else-warns.
+    assert classify_control_status("Partially Found") == ("partial", False)  # prefix wins
+    assert classify_control_status("Partial Control") == ("partial", False)
+    assert classify_control_status("No Control Found") == ("none", False)  # silent set
+    assert classify_control_status("Missing") == ("none", False)
+    assert classify_control_status("Not Found") == ("none", False)
+    assert classify_control_status("None") == ("none", False)
+    assert classify_control_status("Control Found") == ("found", False)
+    assert classify_control_status("Control Found (implemented)") == ("found", False)
+    assert classify_control_status("None found") == ("none", True)  # found + negation token
+    assert classify_control_status("") == ("none", True)
+    assert classify_control_status("Foobar") == ("none", True)  # no whole "found" token
+
+
+def test_shortform_fixture_inherent_and_control_status_now_resolve():
+    # Extends the K9 short-form fixture (T016) with K11's aliases: "Inherent"
+    # and "Status" now resolve too, and classify_control_status replaces the
+    # raw substring reads.
+    content = _read_fixture("controls_bands_shortform", "compensating-controls.md")
+    data = parse_compensating_controls_md(content)
+    t1, t2 = data["findings"]
+    assert t1["id"] == "T-1"
+    assert t1["inherent"] == Decimal("8.0")
+    assert t1["inherent_severity"] == "High"
+    assert t1["status_class"] == "none"  # "No Control Found" -> silent
+    assert t2["id"] == "T-2"
+    assert t2["inherent"] == Decimal("6.5")
+    assert t2["inherent_severity"] == "Medium"
+    assert t2["status_class"] == "found"  # "Control Found"
+
+
+def test_funnel_join_inherent_less_fills_inherent_by_id_join():
+    # US-3b #6; architect finding F2: a Coverage Matrix with no Inherent
+    # Score/Inherent column at all is filled by ID join to the sibling
+    # risk-scores.md composites.
+    content = _read_fixture("funnel_join_inherent_less", "compensating-controls.md")
+    composites = _composites_from_fixture("funnel_join_inherent_less")
+    assert composites == {"T-1": Decimal("8.0"), "T-2": Decimal("7.0")}
+
+    data = parse_compensating_controls_md(content, composites_by_id=composites)
+    t1, t2 = data["findings"]
+    assert t1["id"] == "T-1"
+    assert t1["status_class"] == "found"
+    assert t1["inherent"] == Decimal("8.0")
+    assert t1["residual_score"] == "7.5"
+    assert t1["residual_severity"] == "High"
+    assert t2["id"] == "T-2"
+    assert t2["status_class"] == "partial"
+    assert t2["inherent"] == Decimal("7.0")
+    assert t2["residual_score"] == "6.6"
+    assert t2["residual_severity"] == "Medium"
+
+
+def test_funnel_join_inherent_less_without_composites_leaves_inherent_none():
+    # Without a composites_by_id, the join simply can't happen — inherent
+    # stays None (no crash), matching today's pre-K11 gap being closed.
+    content = _read_fixture("funnel_join_inherent_less", "compensating-controls.md")
+    data = parse_compensating_controls_md(content)
+    assert all(f["inherent"] is None for f in data["findings"])
+
+
+def test_funnel_step_bound_row_level_fields():
+    # US-3b #1 fixture, at the row level (T021 computes the funnel itself in
+    # W2; this only proves T020's parsed rows are what T021 needs).
+    content = _read_fixture("funnel_step_bound", "compensating-controls.md")
+    data = parse_compensating_controls_md(content)
+    t1, t2 = data["findings"]
+    assert t1["status_class"] == "found"
+    assert t1["inherent"] == Decimal("8.0")
+    assert t1["residual_score"] == "7.9"
+    assert t2["status_class"] == "partial"
+    assert t2["inherent"] == Decimal("8.0")
+    assert t2["residual_score"] == "7.8"
+
+
+def test_controls_warnings_kitchen_sink_status_classification_and_clamp(capsys):
+    # The five T003 warning bullets combined (data-model.md §3, §4.5):
+    # control-status variants, unparseable scores, residual above inherent,
+    # and the join-miss path. Section 1 comparand / row-count-mismatch
+    # warnings belong to T021 (the funnel), not this parser-level test.
+    content = _read_fixture("controls_warnings_kitchen_sink", "compensating-controls.md")
+    composites = _composites_from_fixture("controls_warnings_kitchen_sink")
+    data = parse_compensating_controls_md(content, composites_by_id=composites)
+    by_id = {f["id"]: f for f in data["findings"]}
+
+    # by classify_control_status outcome (fixtures README's own table):
+    assert by_id["W-1"]["status_class"] == "none"       # "Missing" (silent)
+    assert by_id["W-2"]["status_class"] == "none"        # empty (warns)
+    assert by_id["W-3"]["status_class"] == "none"        # "Foobar" (warns)
+    assert by_id["W-4"]["status_class"] == "partial"      # "Partially Found"
+    assert by_id["W-5"]["status_class"] == "none"        # "None found" (warns)
+    assert by_id["W-6"]["status_class"] == "found"        # "Control Found"
+    assert by_id["W-7"]["status_class"] == "none"        # "No Control Found" (silent)
+    assert by_id["W-8"]["status_class"] == "partial"      # "Partial Control"
+    assert by_id["W-9"]["status_class"] == "none"        # "No Control Found" (silent)
+    assert by_id["W-10"]["status_class"] == "found"       # "Control Found"
+
+    # W-6/W-7: unparseable residual (em dash / trailing text) defaults to
+    # the (parseable) inherent score, no credit.
+    assert by_id["W-6"]["inherent"] == Decimal("8.0")
+    assert by_id["W-6"]["residual_score"] == "8.0"
+    assert by_id["W-7"]["inherent"] == Decimal("7.2")
+    assert by_id["W-7"]["residual_score"] == "7.2"
+
+    # W-9: residual (9.5) clamped to inherent (8.0), band from the clamped
+    # value.
+    assert by_id["W-9"]["inherent"] == Decimal("8.0")
+    assert by_id["W-9"]["residual_score"] == "8.0"
+    assert by_id["W-9"]["residual_severity"] == "High"
+
+    # W-8: unparseable inherent ("NaN") with no risk-scores.md entry to join
+    # (row-count mismatch by design) — stays None, band falls back to the
+    # (also blank) Inherent Severity column.
+    assert by_id["W-8"]["inherent"] is None
+    assert by_id["W-8"]["inherent_severity"] is None
+    assert by_id["W-8"]["residual_score"] == "5.0"  # its own residual parses fine
+
+    err = capsys.readouterr().err
+    assert "3 controls rows have an unrecognized or empty status (first: W-2, W-3, W-5)" in err
+    assert (
+        "3 unparseable scores (first: W-6:Residual Score, W-7:Residual Score, "
+        "W-8:Inherent Score)"
+    ) in err
+    assert "1 controls rows have a residual above the inherent score (first: W-9); clamped" in err
+    assert (
+        "2 controls rows have no residual score (first: W-6, W-7); "
+        "defaulted to the inherent score (no credit)"
+    ) in err
+    assert (
+        "1 controls rows have no inherent score (first: W-8); "
+        "excluded from funnel volumes"
+    ) in err
+
+
+def test_posture_mmdc_free_residual_severity_counts():
+    # T024 will consume these counts through compute_risk_posture; this pins
+    # K11's own row-level output on the fixture T025's stale-data gate (W2)
+    # will also use.
+    content = _read_fixture("posture_mmdc_free", "compensating-controls.md")
+    data = parse_compensating_controls_md(content)
+    assert data["severity"] == {
+        "critical": 0, "high": 1, "medium": 1, "low": 1, "note": 0, "total": 3,
+    }

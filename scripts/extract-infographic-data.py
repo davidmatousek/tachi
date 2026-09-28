@@ -37,6 +37,7 @@ from tachi_parsers import (
     parse_resolved_findings,
     compute_delta_counts,
     delta_status_by_id,
+    parse_score,
     classify_maestro_coverage_state,
     parse_markdown_table,
     match_heading,
@@ -264,7 +265,9 @@ def extract_severity(tier, threats_content, rs_content=None, cc_content=None):
     Args:
         tier: Data source tier (1, 2, or 3).
         threats_content: Full text content of threats.md.
-        rs_content: Pre-read content of risk-scores.md (required for tier 2).
+        rs_content: Pre-read content of risk-scores.md (required for tier 2;
+            also consulted at tier 1 for the K11 inherent-score join when
+            present).
         cc_content: Pre-read content of compensating-controls.md (required for tier 1).
 
     Returns:
@@ -276,7 +279,16 @@ def extract_severity(tier, threats_content, rs_content=None, cc_content=None):
     cc_data = None
 
     if tier == 1:
-        cc_data = parse_compensating_controls_md(cc_content)
+        # K11 (data-model.md §3, F2): join risk-scores composites onto rows
+        # whose Coverage Matrix has no Inherent Score/Inherent column.
+        composites_by_id = None
+        if rs_content:
+            composites_by_id = {
+                f["id"]: parse_score(f["composite_score"])
+                for f in parse_risk_scores_findings(rs_content)
+                if f.get("id")
+            }
+        cc_data = parse_compensating_controls_md(cc_content, composites_by_id=composites_by_id)
         severity = cc_data["severity"]
         findings = cc_data["findings"]
     elif tier == 2:

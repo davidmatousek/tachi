@@ -163,17 +163,22 @@ def _resolve_row_fields(row: dict) -> dict:
 
     Returns a dict keyed by canonical name (``residual_score``,
     ``residual_severity``, ``inherent_score``, ``control_status``), reading
-    whichever spelling — long or short form — the row actually carries. A
-    canonical field with no matching column in this row resolves to ``""``.
-    Columns outside :data:`HEADER_ALIASES` (``Threat ID``, ``Component``,
-    ``Threat``, the ``Inherent Severity`` fallback column) are read directly
-    by the caller.
+    whichever spelling — long or short form — the row actually carries via
+    :data:`HEADER_ALIASES`, plus ``inherent_severity`` (K11): the literal
+    ``Inherent Severity`` fallback column, which has no short form and so is
+    not in the alias table. A canonical field with no matching column in
+    this row resolves to ``""``. ``Threat ID``, ``Component`` and ``Threat``
+    are read directly by the caller.
     """
     resolved = {name: "" for name in set(HEADER_ALIASES.values())}
+    resolved["inherent_severity"] = ""
     for key, value in row.items():
-        canonical = HEADER_ALIASES.get(normalize_header(key))
+        normalized = normalize_header(key)
+        canonical = HEADER_ALIASES.get(normalized)
         if canonical is not None:
             resolved[canonical] = value
+        elif normalized == "inherent severity":
+            resolved["inherent_severity"] = value
     return resolved
 
 
@@ -215,6 +220,46 @@ def match_heading(pattern: str, text: str):
     if not m:
         return None
     return text.count("\n", 0, m.start())
+
+
+# K11's Control Status classifier (data-model.md §3; FR-K11.3, spec ruling
+# S-5). Application order matters: a token starting "partial" wins first,
+# then the recognized no-control set (silent), then "found" with no
+# negation token, then anything else (including empty) warns.
+_CONTROL_STATUS_SILENT_SET = frozenset({
+    "no control found", "missing", "none", "not found",
+})
+_CONTROL_STATUS_NEGATION_TOKENS = frozenset({"no", "not", "none", "nothing"})
+
+
+def classify_control_status(s: str):
+    """Classify a Control Status cell into ("found"|"partial"|"none", warn).
+
+    Whole-token, case-insensitive (data-model.md §3):
+      1. a token starting "partial" (e.g. "partial", "partially") -> partial;
+      2. the normalized status in the recognized no-control set ("no control
+         found", "missing", "none", "not found") -> none, silently;
+      3. a "found" token with no negation token ("no"/"not"/"none"/"nothing")
+         -> found;
+      4. anything else, including empty -> none, with a warning.
+
+    Called once per row at parse time; the result replaces both copies of
+    the row idiom (the STRIDE coverage matrix derivation and the coverage
+    fallback). The Section 1 summary reader keeps its own matching.
+    """
+    normalized = (s or "").strip().casefold()
+    tokens = normalized.split()
+
+    if any(tok.startswith("partial") for tok in tokens):
+        return "partial", False
+
+    if normalized in _CONTROL_STATUS_SILENT_SET:
+        return "none", False
+
+    if "found" in tokens and not (set(tokens) & _CONTROL_STATUS_NEGATION_TOKENS):
+        return "found", False
+
+    return "none", True
 
 
 def parse_finding_pattern(value) -> str:
@@ -1294,7 +1339,7 @@ def parse_scope_data(content: str) -> dict:
 # Compensating Controls Parser
 # =============================================================================
 
-def parse_compensating_controls_md(content: str) -> dict:
+def parse_compensating_controls_md(content: str, composites_by_id: dict = None) -> dict:
     """Parse compensating-controls.md for Tier 1 data.
 
     Extracts:
@@ -1304,6 +1349,25 @@ def parse_compensating_controls_md(content: str) -> dict:
     - Controls from Section 3 Control Details
     - Recommendations from Section 4 (merged into findings)
     - Severity counts from residual severity of findings
+
+    Args:
+        content: Full compensating-controls.md text.
+        composites_by_id: Optional ``{threat_id: Decimal}`` map of risk-scores
+            composite scores (K11, data-model.md §3), used to fill a row's
+            ``inherent`` when the Coverage Matrix has no Inherent Score/
+            Inherent column, or the cell is unparseable. Typically built by
+            the caller from ``parse_risk_scores_findings``'s
+            ``composite_score`` through :func:`parse_score`.
+
+    Each finding dict additionally carries (K11):
+        status_class: "found" | "partial" | "none", from
+            :func:`classify_control_status`.
+        inherent: the row's inherent score as a ``Decimal``, or ``None`` when
+            unavailable even after the join.
+        inherent_severity: the inherent score's severity band (Title Case),
+            falling back to the raw ``Inherent Severity`` column, or ``None``.
+        residual_score / residual_severity: unchanged in shape, but now
+            reflect the post-clamp value when a clamp applied.
     """
     result = {
         "findings": [],
@@ -1377,14 +1441,8 @@ def parse_compensating_controls_md(content: str) -> dict:
     # Severity band thresholds for score-based classification
     _BAND_THRESHOLDS = [(9.0, "Critical"), (7.0, "High"), (4.0, "Medium")]
 
-    def _score_to_band(score_str):
-        """Map a residual score string to its severity band, or None if unparseable.
-
-        Delegates parsing to the shared :func:`parse_score` (K9), which
-        rejects non-finite values (``NaN``, ``Infinity``) that ``float()``
-        would otherwise have silently let fall through to "Low".
-        """
-        score = parse_score(score_str)
+    def _band_from_score(score):
+        """Map a parsed Decimal score (or None) to its Title Case band, or None."""
         if score is None:
             return None
         for threshold, band in _BAND_THRESHOLDS:
@@ -1392,7 +1450,23 @@ def parse_compensating_controls_md(content: str) -> dict:
                 return band
         return "Low"
 
-    misclassified_count = 0
+    def _score_to_band(score_str):
+        """Map a residual score string to its severity band, or None if unparseable.
+
+        Delegates parsing to the shared :func:`parse_score` (K9), which
+        rejects non-finite values (``NaN``, ``Infinity``) that ``float()``
+        would otherwise have silently let fall through to "Low".
+        """
+        return _band_from_score(parse_score(score_str))
+
+    # Aggregated-warning collectors (data-model.md §3; R-P6: one line per
+    # class, count plus the first five IDs in first-seen order).
+    _unrecognized_status_ids = []
+    _unparseable_score_refs = []   # "id:Column Name" strings
+    _missing_residual_ids = []
+    _missing_inherent_ids = []
+    _clamped_ids = []
+
     for severity_label in ["Critical", "High", "Medium", "Low"]:
         header = f"### {severity_label} Residual Severity"
         rows = parse_markdown_table(content, header)
@@ -1402,42 +1476,92 @@ def parse_compensating_controls_md(content: str) -> dict:
                 # FR-K9.2: a placeholder Threat ID drops the row before dedup.
                 continue
             aliased = _resolve_row_fields(row)
-            residual_score = aliased["residual_score"].strip()
+            residual_text = aliased["residual_score"].strip()
+            inherent_text = aliased["inherent_score"].strip()
+            control_status_raw = aliased["control_status"].strip()
 
-            # Score-derived band is authoritative; column/section are fallbacks
-            score_band = _score_to_band(residual_score)
-            row_severity = aliased["residual_severity"].strip()
+            # Unparseable-score warnings fire only for non-empty garbage text
+            # (em dash, trailing text, NaN) — a genuinely absent column or
+            # blank cell is silently None here; its own consequence (missing
+            # residual/inherent) warns on its own below.
+            residual = parse_score(residual_text)
+            if residual is None and residual_text:
+                _unparseable_score_refs.append(f"{threat_id}:Residual Score")
 
-            if score_band:
-                if score_band != severity_label:
-                    misclassified_count += 1
-                    print(
-                        f"Warning: {threat_id} in '### {severity_label} Residual Severity' "
-                        f"section but residual score {residual_score} maps to {score_band}. "
-                        f"Using score-derived band.",
-                        file=sys.stderr,
-                    )
-                row_severity = score_band
-            elif not row_severity:
-                # No parseable score and no column value — fall back to section
-                row_severity = severity_label
+            inherent = parse_score(inherent_text)
+            if inherent is None and inherent_text:
+                _unparseable_score_refs.append(f"{threat_id}:Inherent Score")
+            if inherent is None and composites_by_id:
+                joined = composites_by_id.get(threat_id)
+                if joined is not None:
+                    inherent = joined
+            if inherent is None:
+                _missing_inherent_ids.append(threat_id)
+
+            status_class, status_warn = classify_control_status(control_status_raw)
+            if status_warn:
+                _unrecognized_status_ids.append(threat_id)
+
+            # Clamp once, at parse (data-model.md §3): residual can never
+            # exceed inherent. A missing residual with an inherent present
+            # means residual = inherent (no credit) — both need `inherent`.
+            if residual is not None and inherent is not None and residual > inherent:
+                _clamped_ids.append(threat_id)
+                residual = inherent
+            elif residual is None and inherent is not None:
+                _missing_residual_ids.append(threat_id)
+                residual = inherent
+
+            residual_band = _band_from_score(residual)
+            if residual_band is None:
+                residual_band = aliased["residual_severity"].strip() or severity_label
+
+            inherent_band = _band_from_score(inherent)
+            if inherent_band is None:
+                inherent_band = aliased["inherent_severity"].strip() or None
+
+            residual_score_display = str(residual) if residual is not None else residual_text
 
             result["findings"].append({
                 "id": threat_id,
                 "component": row.get("Component", "").strip(),
                 "threat": row.get("Threat", "").strip(),
-                "residual_score": residual_score,
-                "residual_severity": row_severity,
-                "control_status": row.get("Control Status", "").strip(),
+                "residual_score": residual_score_display,
+                "residual_severity": residual_band,
+                "control_status": control_status_raw,
+                "status_class": status_class,
+                "inherent": inherent,
+                "inherent_severity": inherent_band,
                 "recommendation": recommendations.get(threat_id, ""),
             })
 
-    if misclassified_count > 0:
+    def _warn_aggregated(ids, stem_fn):
+        if not ids:
+            return
+        print(stem_fn(len(ids), ", ".join(ids[:5])), file=sys.stderr)
+
+    _warn_aggregated(_unrecognized_status_ids, lambda n, ids: (
+        f"Warning: {n} controls rows have an unrecognized or empty status "
+        f"(first: {ids}); counted as no control"
+    ))
+    if _unparseable_score_refs:
         print(
-            f"Warning: {misclassified_count} findings in wrong severity sections "
-            f"(corrected using score-derived bands)",
+            f"Warning: {len(_unparseable_score_refs)} unparseable scores "
+            f"(first: {', '.join(_unparseable_score_refs[:5])}); treated as missing",
             file=sys.stderr,
         )
+    _warn_aggregated(_clamped_ids, lambda n, ids: (
+        f"Warning: {n} controls rows have a residual above the inherent score "
+        f"(first: {ids}); clamped"
+    ))
+    _warn_aggregated(_missing_residual_ids, lambda n, ids: (
+        f"Warning: {n} controls rows have no residual score (first: {ids}); "
+        f"defaulted to the inherent score (no credit)"
+    ))
+    _warn_aggregated(_missing_inherent_ids, lambda n, ids: (
+        f"Warning: {n} controls rows have no inherent score (first: {ids}); "
+        f"excluded from funnel volumes"
+    ))
 
     # ---- Dedupe cross-listed findings by threat ID ----
     # control-analyzer cross-lists findings under both their original band and
@@ -1477,10 +1601,11 @@ def parse_compensating_controls_md(content: str) -> dict:
         if category not in stride_counts:
             stride_counts[category] = {"found": 0, "partial": 0, "missing": 0}
 
-        status = f["control_status"].lower()
-        if "partial" in status:
+        # K11: classify_control_status's stored result (data-model.md §3),
+        # replacing this row idiom's own substring matching.
+        if f["status_class"] == "partial":
             stride_counts[category]["partial"] += 1
-        elif "found" in status and "no" not in status:
+        elif f["status_class"] == "found":
             stride_counts[category]["found"] += 1
         else:
             stride_counts[category]["missing"] += 1
@@ -1526,13 +1651,14 @@ def parse_compensating_controls_md(content: str) -> dict:
             result["coverage_summary"]["total-found"] = count
             found_summary = True
 
-    # Fallback: derive from findings if table not found
+    # Fallback: derive from findings if table not found. K11: uses the
+    # stored status_class (data-model.md §3), replacing this row idiom's own
+    # substring matching. The Section 1 table reader above keeps its own.
     if not found_summary and result["findings"]:
         for f in result["findings"]:
-            status = f["control_status"].lower()
-            if "partial" in status:
+            if f["status_class"] == "partial":
                 result["coverage_summary"]["total-partial"] += 1
-            elif "found" in status and "no" not in status:
+            elif f["status_class"] == "found":
                 result["coverage_summary"]["total-found"] += 1
             else:
                 result["coverage_summary"]["total-missing"] += 1
