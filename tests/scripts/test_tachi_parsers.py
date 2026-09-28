@@ -52,6 +52,7 @@ from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
     parse_markdown_table,
     parse_compensating_controls_md,
     parse_risk_scores_findings,
+    parse_threats_findings,
     classify_control_status,
     normalize_delta_status,
     delta_status_by_id,
@@ -288,6 +289,22 @@ def test_baseline_resolved_4c_exact_delta_counts():
     assert [f["id"] for f in resolved] == ["F-7", "F-8"]  # placeholder row skipped
     counts = compute_delta_counts(status_by_id, resolved)
     assert counts == {"new": 4, "updated": 1, "unchanged": 1, "resolved": 2}
+
+
+def test_tier3_parse_threats_findings_normalizes_bracket_and_emphasis_variants():
+    # K12 (T016 gap): tier-3 parse_threats_findings must normalize Status at
+    # parse, same as delta_status_by_id's Section 7 map, so tier-3 badges
+    # and top_findings[].delta_status never show a raw "[NEW]"-style value.
+    # Reuses baseline_resolved_4c's bracket/emphasis matrix (bare NEW,
+    # [NEW], **[NEW]**, `[NEW]`, UPDATED, UNCHANGED) — the same fixture
+    # test_baseline_resolved_4c_exact_delta_counts reads above.
+    content = _read_fixture("baseline_resolved_4c", "threats.md")
+    findings = parse_threats_findings(content)
+    delta_status_by_finding_id = {f["id"]: f["delta_status"] for f in findings}
+    assert delta_status_by_finding_id == {
+        "F-1": "NEW", "F-2": "NEW", "F-3": "NEW", "F-4": "NEW",
+        "F-5": "UPDATED", "F-6": "UNCHANGED",
+    }
 
 
 def test_baseline_resolved_4b_legacy_matches_4c_resolved_count():

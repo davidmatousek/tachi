@@ -1205,10 +1205,13 @@ def parse_threats_findings(content: str) -> list:
             "mitigation": row.get("Mitigation", "").strip(),
             "agentic_pattern": pattern_value,
         }
-        # Delta fields: include only when present (backward compatible)
+        # Delta fields: include only when present (backward compatible).
+        # K12 (T016 gap, data-model.md §6): normalize at parse, same as
+        # delta_status_by_id's Section 7 map, so tier-3 badges and
+        # top_findings[].delta_status never show a raw "[NEW]"-style value.
         status = row.get("Status", "").strip()
         if status:
-            finding["delta_status"] = status
+            finding["delta_status"] = normalize_delta_status(status)
         attribution = _extract_source_attribution(finding["id"], source_attribution_block)
         if attribution is not None:
             finding["source_attribution"] = attribution
