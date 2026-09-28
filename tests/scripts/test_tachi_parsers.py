@@ -59,6 +59,7 @@ from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
     apply_delta_status,
     warn_delta_scope,
     parse_resolved_findings,
+    compute_risk_posture,
 )
 
 FIXTURES_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "fidelity_373"
@@ -705,11 +706,36 @@ def test_controls_warnings_kitchen_sink_status_classification_and_clamp(capsys):
 
 
 def test_posture_mmdc_free_residual_severity_counts():
-    # T024 will consume these counts through compute_risk_posture; this pins
     # K11's own row-level output on the fixture T025's stale-data gate (W2)
-    # will also use.
+    # will also use; compute_risk_posture is exercised on it below (T024).
     content = _read_fixture("posture_mmdc_free", "compensating-controls.md")
     data = parse_compensating_controls_md(content)
     assert data["severity"] == {
         "critical": 0, "high": 1, "medium": 1, "low": 1, "note": 0, "total": 3,
     }
+
+
+# =============================================================================
+# Feature 373 K13-posture: compute_risk_posture (data-model.md §5; T024)
+# =============================================================================
+
+def test_compute_risk_posture_zero_findings_is_low():
+    # D-3: zero findings (an all-zero counts dict) gives low/LOW RISK.
+    counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "note": 0, "total": 0}
+    assert compute_risk_posture(counts) == ("low", "LOW RISK")
+
+
+def test_compute_risk_posture_takes_the_highest_non_zero_band():
+    assert compute_risk_posture({"critical": 1, "high": 5, "medium": 5}) == ("critical", "CRITICAL RISK")
+    assert compute_risk_posture({"critical": 0, "high": 1, "medium": 5}) == ("high", "HIGH RISK")
+    assert compute_risk_posture({"critical": 0, "high": 0, "medium": 1}) == ("medium", "MODERATE RISK")
+    assert compute_risk_posture({"critical": 0, "high": 0, "medium": 0, "low": 9}) == ("low", "LOW RISK")
+
+
+def test_compute_risk_posture_runs_on_post_clamp_counts_from_a_real_parse():
+    # End-to-end: posture_mmdc_free's residual severity counts (post-clamp,
+    # since K11 ships) give critical=0, high=1 -> the highest non-zero band
+    # is High.
+    content = _read_fixture("posture_mmdc_free", "compensating-controls.md")
+    data = parse_compensating_controls_md(content)
+    assert compute_risk_posture(data["severity"]) == ("high", "HIGH RISK")

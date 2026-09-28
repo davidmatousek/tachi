@@ -964,6 +964,45 @@ def warn_delta_scope(has_baseline, has_status_column, status_by_id, row_count, t
         )
 
 
+# =============================================================================
+# K13-posture (Feature 373, data-model.md §5)
+# =============================================================================
+
+_RISK_POSTURE_LABELS = {
+    "critical": "CRITICAL RISK",
+    "high": "HIGH RISK",
+    "medium": "MODERATE RISK",
+    "low": "LOW RISK",
+}
+
+
+def compute_risk_posture(counts: dict):
+    """Compute the single risk-posture level/label from severity counts.
+
+    ``counts`` is a severity-count dict with at least ``critical``, ``high``
+    and ``medium`` keys (case-sensitive lowercase, e.g. the ``severity``
+    dict returned by :func:`parse_compensating_controls_md` or
+    :func:`parse_risk_scores_severity`/:func:`parse_threats_severity`). The
+    level is the highest non-zero band — critical, else high, else medium,
+    else low. Zero findings (or an all-zero dict) give ``low``/``LOW RISK``
+    (D-3). The caller decides which counts dict to pass: residual severity
+    (after K11's clamp) when a controls report exists, else the inherent
+    composite, else qualitative (data-model.md §5) — this function only
+    picks the highest band and its label.
+
+    Returns (level, label).
+    """
+    if counts.get("critical", 0) > 0:
+        level = "critical"
+    elif counts.get("high", 0) > 0:
+        level = "high"
+    elif counts.get("medium", 0) > 0:
+        level = "medium"
+    else:
+        level = "low"
+    return level, _RISK_POSTURE_LABELS[level]
+
+
 _RESOLVED_FINDINGS_HEADING = r"^##\s+4[bc]\.\s+Resolved Findings\s*$"
 
 
