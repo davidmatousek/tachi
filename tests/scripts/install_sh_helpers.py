@@ -26,7 +26,10 @@ README for the exact recipe used to validate this module.
 from __future__ import annotations
 
 import os
+import re
 import shutil
+import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 __all__ = [
@@ -50,6 +53,28 @@ __all__ = [
     "add_case_variant_symlink_to_source_clone",
     "vendor_source_tree_inside_project",
     "add_dangling_deprecated_command_link",
+    # --- harness runner (T008, W1) ---
+    "REPO_ROOT",
+    "WORKING_TREE_INSTALL_SH",
+    "BASH_BIN",
+    "strip_ansi",
+    "drop_mmdc_courtesy_warning",
+    "clean_output",
+    "InstallResult",
+    "copy_working_tree_install_sh",
+    "run_install_sh",
+    "PathSnapshot",
+    "snapshot_path",
+    "snapshot_tree",
+    "diff_snapshots",
+    "assert_no_tree_changes",
+    "GIT_ISOLATION_ENV",
+    "build_version_tagged_source_repo",
+    "current_ref",
+    "detach_head",
+    "GIT_SHIM_REAL_GIT_ENV",
+    "GIT_SHIM_FAIL_REF_ENV",
+    "build_forced_checkout_failure_git_shim",
 ]
 
 # Mirrors scripts/install.sh's own DEPRECATED_COMMANDS array verbatim (the
@@ -521,3 +546,421 @@ def add_dangling_deprecated_command_link(project_root: Path, *, which: int = 0) 
             ``threat-model.md``).
     """
     return add_dangling_symlink(project_root, DEPRECATED_COMMANDS[which])
+
+
+# ---------------------------------------------------------------------------
+# Harness runner (tasks.md T008, W1; contracts/installer-cli.md
+# Sec. "Test harness contract"). Everything above this point (T003) builds
+# the synthetic project/source trees; everything below RUNS a real
+# install.sh against them and captures, cleans and snapshots the result.
+# ---------------------------------------------------------------------------
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+WORKING_TREE_INSTALL_SH = REPO_ROOT / "scripts" / "install.sh"
+
+# N12 / spec ruling S-7: the strict leg must always exercise macOS's system
+# bash 3.2, whatever a newer Homebrew bash sits earlier on PATH. This harness
+# never honors an exported BASH override -- that is exactly the drift this
+# pin exists to prevent.
+BASH_BIN = "/bin/bash"
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+# install.sh's best-effort "mmdc not on PATH" courtesy warning (the
+# Prerequisite courtesy warning block at the end of the script). It is a
+# real, environment-dependent message -- present whenever the test runner's
+# own PATH lacks mmdc -- with nothing to do with K3. Tests that assert exact
+# installer-authored text must not trip over it.
+_MMDC_COURTESY_MARKERS = (
+    "mmdc (@mermaid-js/mermaid-cli) is not on PATH",
+    "mmdc is a prerequisite for attack path rendering",
+    "npm install -g @mermaid-js/mermaid-cli",
+    "README.md Prerequisites section",
+)
+
+
+def strip_ansi(text: str) -> str:
+    """Strip install.sh's RED/GREEN/NC ANSI color escapes from captured output."""
+    return _ANSI_RE.sub("", text)
+
+
+def drop_mmdc_courtesy_warning(text: str) -> str:
+    """Drop install.sh's best-effort "mmdc not on PATH" courtesy warning lines.
+
+    Line-based rather than block-based on purpose: robust to the blank
+    separator line around the warning without needing to match it too.
+    """
+    lines = text.splitlines(keepends=True)
+    return "".join(
+        line for line in lines if not any(marker in line for marker in _MMDC_COURTESY_MARKERS)
+    )
+
+
+def clean_output(text: str) -> str:
+    """ANSI-stripped, mmdc-courtesy-warning-free text, ready to assert on."""
+    return drop_mmdc_courtesy_warning(strip_ansi(text))
+
+
+@dataclass
+class InstallResult:
+    """One ``install.sh`` invocation's outcome, with pre-cleaned text views."""
+
+    returncode: int
+    stdout: str
+    stderr: str
+
+    @property
+    def clean_stdout(self) -> str:
+        return clean_output(self.stdout)
+
+    @property
+    def clean_stderr(self) -> str:
+        return clean_output(self.stderr)
+
+    @property
+    def combined(self) -> str:
+        """Cleaned stdout+stderr concatenated for "does this phrase appear
+        anywhere" checks.
+
+        The two streams are captured separately (as `subprocess.run` always
+        does), so relative ORDER between a stdout line and a stderr line is
+        not preserved here -- never use this property for line-order
+        assertions, only for substring-presence ones.
+        """
+        return self.clean_stdout + self.clean_stderr
+
+
+def copy_working_tree_install_sh(source_root: Path) -> Path:
+    """Overwrite a synthetic source tree's placeholder install.sh with a
+    real copy of THIS working tree's scripts/install.sh.
+
+    ``build_source_tree()`` (T003) writes a harmless placeholder at
+    ``<source_root>/scripts/install.sh`` instead of the real script, so a
+    fixture builder never depends on the working tree by itself. Every test
+    that actually EXECUTES install.sh calls this first. Preserves the
+    executable bit. Reads only from ``WORKING_TREE_INSTALL_SH``; never
+    touches it.
+    """
+    dest = Path(source_root) / "scripts" / "install.sh"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(WORKING_TREE_INSTALL_SH, dest)
+    dest.chmod(0o755)
+    return dest
+
+
+def run_install_sh(
+    script_path: Path,
+    *,
+    cwd: Path,
+    args: tuple[str, ...] = (),
+    env: dict[str, str] | None = None,
+    pwd_override: str | None = None,
+    path_prepend: tuple[Path, ...] = (),
+    extra_env: dict[str, str] | None = None,
+    timeout: float = 30.0,
+) -> InstallResult:
+    """Invoke ``/bin/bash <script_path> <args...>`` with ``cwd=cwd``.
+
+    Pins the shell to :data:`BASH_BIN` (never an exported ``BASH`` -- N12)
+    and always sets ``LC_ALL=C`` (spec ruling S-7), so the strict leg stays
+    on bash 3.2 on a dev Mac even with a newer Homebrew bash first on the
+    caller's own ``PATH``.
+
+    Args:
+        script_path: the install.sh COPY to run (normally
+            ``<source_root>/scripts/install.sh``, after
+            :func:`copy_working_tree_install_sh`).
+        cwd: the child process's real working directory. For the "reached
+            through a link" harness case, pass the LOGICAL (through-the-
+            symlink) path here -- ``chdir`` resolves it at the OS level
+            regardless of which spelling is given.
+        args: extra argv, e.g. ``("--source", str(source_root))`` or
+            ``("--follow-symlinks",)``.
+        env: a full replacement environment (default: a copy of the
+            caller's ``os.environ``).
+        pwd_override: when given, sets ``$PWD`` in the child's environment
+            to this LOGICAL path string, so bash's ``pwd`` builtin (which
+            install.sh's own ``TARGET_DIR="$(pwd)"`` calls) echoes it back
+            verbatim instead of recomputing a physical path -- this is what
+            makes the "reached through a link" harness case non-vacuous.
+            When omitted, ``$PWD`` is unset so no stale value from the test
+            runner's own shell leaks in.
+        path_prepend: directories prepended to ``$PATH`` (e.g. a git-shim
+            directory), with the rest of the inherited ``$PATH`` kept
+            after them so real ``git``, ``cp``, ``find``, etc. stay
+            reachable.
+        extra_env: additional env vars merged in on top of ``env``/PWD/PATH
+            (e.g. the git-shim selector vars).
+        timeout: seconds before the subprocess is killed.
+    """
+    run_env = dict(env) if env is not None else dict(os.environ)
+    run_env["LC_ALL"] = "C"
+    if pwd_override is not None:
+        run_env["PWD"] = pwd_override
+    else:
+        run_env.pop("PWD", None)
+    if path_prepend:
+        existing = run_env.get("PATH", "")
+        run_env["PATH"] = os.pathsep.join([*(str(p) for p in path_prepend), existing])
+    if extra_env:
+        run_env.update(extra_env)
+
+    completed = subprocess.run(
+        [BASH_BIN, str(script_path), *args],
+        cwd=str(cwd),
+        env=run_env,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+    return InstallResult(completed.returncode, completed.stdout, completed.stderr)
+
+
+# ---------------------------------------------------------------------------
+# Before/after tree snapshots ("zero files written" -- FR-K3.6 test validity)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PathSnapshot:
+    """One filesystem entry's identity: type, raw readlink text, size, mtime.
+
+    Mirrors the harness contract verbatim ("before-and-after tree snapshots
+    ... of the target and of each link's resolved directory").
+    """
+
+    kind: str  # "missing" | "file" | "dir" | "symlink" | "other"
+    readlink_text: str | None
+    size: int | None
+    mtime_ns: int | None
+
+
+def snapshot_path(path: Path) -> PathSnapshot:
+    """Snapshot ONE path: its type, readlink text (if a link), size, mtime.
+
+    A symlink is snapshotted as itself (``lstat``/``readlink``), never
+    followed -- callers that also care about a link's target snapshot that
+    target directory separately (see :func:`snapshot_tree`'s docstring).
+    """
+    path = Path(path)
+    if path.is_symlink():
+        try:
+            target_text: str | None = os.readlink(path)
+        except OSError:
+            target_text = None
+        try:
+            st = path.lstat()
+            return PathSnapshot("symlink", target_text, st.st_size, st.st_mtime_ns)
+        except OSError:
+            return PathSnapshot("symlink", target_text, None, None)
+    if not path.exists():
+        return PathSnapshot("missing", None, None, None)
+    if path.is_dir():
+        return PathSnapshot("dir", None, None, None)
+    if path.is_file():
+        st = path.stat()
+        return PathSnapshot("file", None, st.st_size, st.st_mtime_ns)
+    return PathSnapshot("other", None, None, None)
+
+
+def snapshot_tree(root: Path) -> dict[str, PathSnapshot]:
+    """Snapshot every entry strictly under ``root``, keyed by its path
+    relative to ``root``.
+
+    Never follows a symlinked directory into its target
+    (``followlinks=False``): a linked subtree is recorded as ONE ``symlink``
+    entry at its own path, exactly like a linked file, so "nothing changed
+    under root" also means "no new descendant appeared through a link".
+    Pair with a separate :func:`snapshot_tree` (or :func:`snapshot_path`)
+    call on a link's resolved target directory to prove that side stayed
+    untouched too.
+
+    Returns ``{}`` for a root that does not exist yet (a valid "before"
+    state for a project install.sh would create from scratch).
+    """
+    root = Path(root)
+    if not root.exists():
+        return {}
+    snapshots: dict[str, PathSnapshot] = {}
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        for name in list(dirnames) + list(filenames):
+            full = Path(dirpath) / name
+            rel = str(full.relative_to(root))
+            snapshots[rel] = snapshot_path(full)
+    return snapshots
+
+
+def diff_snapshots(before: dict[str, PathSnapshot], after: dict[str, PathSnapshot]) -> str:
+    """Human-readable diff for a failed "nothing was written" assertion."""
+    added = sorted(set(after) - set(before))
+    removed = sorted(set(before) - set(after))
+    changed = sorted(k for k in (set(before) & set(after)) if before[k] != after[k])
+    return f"added={added} removed={removed} changed={changed}"
+
+
+def assert_no_tree_changes(
+    before: dict[str, PathSnapshot], after: dict[str, PathSnapshot], *, label: str = "tree"
+) -> None:
+    assert before == after, f"{label} changed unexpectedly: {diff_snapshots(before, after)}"
+
+
+# ---------------------------------------------------------------------------
+# --version harness: throwaway repos and the forced-restore-failure shim
+# (FR-K3.5, PD-11; contract "Test harness contract")
+# ---------------------------------------------------------------------------
+
+# GIT_CONFIG_GLOBAL=/dev/null and GIT_CONFIG_NOSYSTEM=1 isolate every git
+# call this harness makes from the CALLER's real git config (a developer's
+# global aliases, signing settings, credential helpers, etc.) so the
+# throwaway repos below are hermetic and never touch the live tachi
+# checkout's own git state.
+GIT_ISOLATION_ENV = {"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1"}
+_GIT_IDENTITY_ARGS = ("-c", "user.name=tachi-test", "-c", "user.email=test@example.invalid")
+
+
+def _git_env() -> dict[str, str]:
+    return {**os.environ, **GIT_ISOLATION_ENV}
+
+
+def _git(*args: str, cwd: Path, check: bool = True) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", *args],
+        cwd=str(cwd),
+        env=_git_env(),
+        capture_output=True,
+        text=True,
+        check=check,
+    )
+
+
+def build_version_tagged_source_repo(
+    root: Path,
+    *,
+    tag: str,
+    tagged_entries: tuple[str, ...] = DEFAULT_MANIFEST_ENTRIES,
+    head_entries: tuple[str, ...] | None = None,
+    remove_from_tagged: tuple[str, ...] = (),
+) -> Path:
+    """Build a throwaway git repo at ``root``: a tagged commit, then a
+    second (HEAD) commit that differs only in manifest/source content.
+
+    ``scripts/install.sh`` is copied from the WORKING TREE identically into
+    BOTH commits: the running script must never change under bash mid-run
+    (contract). Isolated from the caller's real git identity and config
+    (:data:`GIT_ISOLATION_ENV`, plus an explicit ``-c user.name=``/``-c
+    user.email=`` on every commit), and never touches the live tachi
+    checkout -- ``git init`` always starts a brand-new repo at ``root``.
+
+    Args:
+        tag: the version tag to create at the first commit.
+        tagged_entries: manifest entries at the tagged commit.
+        head_entries: manifest entries at the HEAD commit. Defaults to
+            ``tagged_entries`` unchanged (only a content marker file
+            differs between the two commits then). Pass a distinct tuple
+            to make a manifest ENTRY itself differ between tag and HEAD --
+            for example, a "fails" (COPY_FAIL) scenario wants a HEAD-only
+            entry the TAGGED source tree lacks.
+        remove_from_tagged: relative paths to delete from the source tree
+            AFTER ``tagged_entries``' backing content is built but BEFORE
+            the tagged commit is made -- so the tag's own manifest lists an
+            entry with no real backing file/dir, a "fails" (COPY_FAIL)
+            scenario's setup. Leave empty for a tag whose manifest and
+            content agree (the common case).
+
+    Returns ``root``, ready to pass as ``--source``. Leaves the repo
+    checked out on HEAD (the second commit), as if a developer had never
+    touched ``--version`` themselves -- install.sh's own tag checkout is
+    what moves it from there.
+    """
+    root = Path(root)
+    build_source_tree(root, entries=tagged_entries)
+    for rel in remove_from_tagged:
+        target = root / rel
+        if target.is_dir() and not target.is_symlink():
+            shutil.rmtree(target)
+        elif target.exists() or target.is_symlink():
+            target.unlink()
+    copy_working_tree_install_sh(root)
+
+    _git("init", "--quiet", cwd=root)
+    _git("add", "-A", cwd=root)
+    _git(*_GIT_IDENTITY_ARGS, "commit", "--quiet", "-m", "tagged commit", cwd=root)
+    _git("tag", tag, cwd=root)
+
+    effective_head_entries = tagged_entries if head_entries is None else head_entries
+    if effective_head_entries != tagged_entries:
+        build_source_tree(root, entries=effective_head_entries)
+    else:
+        (root / "HEAD_MARKER.txt").write_text(
+            "head commit marker (F-373 K3 fixture)\n", encoding="utf-8"
+        )
+    copy_working_tree_install_sh(root)  # stays byte-identical at both commits
+    _git("add", "-A", cwd=root)
+    _git(*_GIT_IDENTITY_ARGS, "commit", "--quiet", "-m", "head commit", cwd=root)
+
+    return root
+
+
+def current_ref(root: Path) -> str:
+    """Mirror install.sh's own ``ORIGINAL_REF`` derivation: the branch
+    name, or a SHA if HEAD is detached."""
+    branch = _git("rev-parse", "--abbrev-ref", "HEAD", cwd=root).stdout.strip()
+    if branch == "HEAD":
+        return _git("rev-parse", "HEAD", cwd=root).stdout.strip()
+    return branch
+
+
+def detach_head(root: Path) -> str:
+    """Detach ``root``'s HEAD at its current commit. Returns the SHA."""
+    sha = _git("rev-parse", "HEAD", cwd=root).stdout.strip()
+    _git("checkout", "--quiet", "--detach", sha, cwd=root)
+    return sha
+
+
+# Selector env vars the shim script (below) reads AT RUN TIME -- never baked
+# into the shim file itself, so one shim serves every test (contract:
+# "selected by an environment variable").
+GIT_SHIM_REAL_GIT_ENV = "INSTALL_SH_TEST_SHIM_REAL_GIT"
+GIT_SHIM_FAIL_REF_ENV = "INSTALL_SH_TEST_SHIM_FAIL_CHECKOUT_REF"
+
+# A static /bin/sh shim: execs the real git for everything except a
+# `checkout <fail_ref>`, which it fails loudly on stderr. Kept as one
+# module-level constant (never regenerated per test) precisely because it
+# is generic -- both env vars above are read fresh on every invocation.
+_GIT_SHIM_SCRIPT = """#!/bin/sh
+real_git="$INSTALL_SH_TEST_SHIM_REAL_GIT"
+fail_ref="$INSTALL_SH_TEST_SHIM_FAIL_CHECKOUT_REF"
+prev=""
+for arg in "$@"; do
+  if [ "$prev" = "checkout" ] && [ -n "$fail_ref" ] && [ "$arg" = "$fail_ref" ]; then
+    printf 'test-shim: forced failure for checkout %s\\n' "$arg" >&2
+    exit 1
+  fi
+  prev="$arg"
+done
+exec "$real_git" "$@"
+"""
+
+
+def build_forced_checkout_failure_git_shim(shim_dir: Path) -> Path:
+    """Write the ``/bin/sh`` ``git`` shim into ``shim_dir`` for the forced
+    restore-failure harness case.
+
+    Callers must PREPEND ``shim_dir`` to ``$PATH`` (via
+    :func:`run_install_sh`'s ``path_prepend``, never replacing the rest of
+    ``$PATH``) and set both :data:`GIT_SHIM_REAL_GIT_ENV` (to
+    ``shutil.which("git")``, captured beforehand) and
+    :data:`GIT_SHIM_FAIL_REF_ENV` (to the exact ``ORIGINAL_REF`` value the
+    restore checkout will use, e.g. from :func:`current_ref`) via
+    ``extra_env``. Every OTHER git invocation -- status, rev-parse, tag,
+    fetch, describe, and ``checkout`` of any OTHER ref such as the initial
+    ``--version`` tag checkout -- execs the real git untouched.
+
+    Returns ``shim_dir``.
+    """
+    shim_dir = Path(shim_dir)
+    shim_dir.mkdir(parents=True, exist_ok=True)
+    shim_path = shim_dir / "git"
+    shim_path.write_text(_GIT_SHIM_SCRIPT, encoding="utf-8")
+    shim_path.chmod(0o755)
+    return shim_dir
