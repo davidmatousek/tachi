@@ -229,8 +229,8 @@ Row "Chat UI": L1=—, L2=—, L3=—, L4=—, L5=—, L6=—, L7=Medium
 ## Gemini API Configuration
 
 ```yaml
-model: "gemini-3-pro-image-preview"
-fallback_model: "gemini-3.1-flash-image-preview"
+model: "gemini-3-pro-image"
+fallback_model: "gemini-3.1-flash-image"
 response_modalities: ["TEXT", "IMAGE"]
 aspect_ratio: "16:9"
 image_size: "2K"

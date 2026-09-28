@@ -197,6 +197,20 @@ The block delimited by `=== BEGIN VERBATIM PROMPT BLOCK ===` and `=== END VERBAT
 
 ---
 
+## Gemini API Configuration
+
+```yaml
+model: "gemini-3-pro-image"
+fallback_model: "gemini-3.1-flash-image"
+response_modalities: ["TEXT", "IMAGE"]
+aspect_ratio: "3:4"
+image_size: "2K"
+```
+
+This block is outside the FR-212-6 lock above — it configures the request parameters only, never the prompt text. The agent reads it and maps its keys through the key → field table in `gemini-prompt-construction.md` ("Gemini API Configuration"), the same way it maps any other template's block; it never falls back to that reference's own dashboard prompt for this template. `aspect_ratio: "3:4"` is the closest supported portrait ratio to this template's page: the STYLING DIRECTIVES text above still reads "portrait, 8.5:11 page aspect ratio" — the canvas governs, and changing that locked text would need its own amendment.
+
+---
+
 ## Payload schema
 
 The executive-architecture payload emitted by `_build_executive_architecture_payload()` in `scripts/extract-infographic-data.py` carries the following top-level keys consumed by the slot-substitution pass before the prompt is sent. The L1 keys (`metadata`, `layers`, `callouts`, `severity_distribution`) are documented in the F-128 contract; the L3 keys `flow_edges` and `clusters` are added by F-212 and documented here. The full schema lives in `specs/212-improve-executive-architecture-infographic/data-model.md`; the producer/consumer contract surface is locked in `specs/212-improve-executive-architecture-infographic/contracts/payload-schema.md`.

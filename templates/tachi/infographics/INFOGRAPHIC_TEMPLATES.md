@@ -131,6 +131,6 @@ Every template MUST include:
 3. **Gemini API Configuration** (model, fallback, aspect ratio)
 4. **Layout** description (zones, proportions)
 
-The infographic agent validates that these sections exist before using a template.
+These sections are validated by the static contract test, not by the infographic agent at runtime.
 
 Custom templates survive tachi updates — `cp -r` merges without deleting your additions.

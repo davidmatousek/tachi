@@ -231,8 +231,8 @@ The overall impression should be a polished, premium risk reduction narrative â€
 ## Gemini API Configuration
 
 ```yaml
-model: "gemini-3-pro-image-preview"
-fallback_model: "gemini-3.1-flash-image-preview"
+model: "gemini-3-pro-image"
+fallback_model: "gemini-3.1-flash-image"
 response_modalities: ["TEXT", "IMAGE"]
 aspect_ratio: "16:9"
 image_size: "2K"
