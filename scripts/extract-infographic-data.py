@@ -36,8 +36,10 @@ from tachi_parsers import (
     parse_baseline_frontmatter,
     parse_resolved_findings,
     compute_delta_counts,
+    delta_status_by_id,
     classify_maestro_coverage_state,
     parse_markdown_table,
+    match_heading,
     parse_project_name,
     detect_artifacts,
     determine_tier,
@@ -1504,13 +1506,20 @@ def _compute_missing_enrichments(artifacts):
 _MAESTRO_LAYERS = MAESTRO_LAYERS
 
 
+_MAESTRO_HEADING = r"^#{3,4}\s+Risk by MAESTRO Layer"
+
+
 def parse_maestro_layer_distribution(threats_content):
     """Parse Section 6 "Risk by MAESTRO Layer" table.
 
-    Returns list of dicts: {layer_id, layer_name, finding_count, highest_severity}.
-    Returns empty list if the table is absent (pre-084 output).
+    Matches the heading at level 3 or level 4 (K10, FR-K10.1): some inputs
+    render it as ``### Risk by MAESTRO Layer`` rather than the canonical
+    ``####``. Returns list of dicts: {layer_id, layer_name, finding_count,
+    highest_severity}. Returns empty list if the table is absent (pre-084
+    output).
     """
-    rows = parse_markdown_table(threats_content, "#### Risk by MAESTRO Layer")
+    start = match_heading(_MAESTRO_HEADING, threats_content)
+    rows = parse_markdown_table(threats_content, start_line=start) if start is not None else []
     if not rows:
         return []
 
@@ -2054,15 +2063,22 @@ def main():
             "has_maestro_data": maestro["has_maestro_data"],
         }
 
-    # Compute delta counts when baseline present
+    # Compute delta counts when baseline present. Counted over the
+    # normalized Section 7 map (K12, FR-K12.1/K12.2), never over `findings`,
+    # which has no delta_status key at all on Tier 1/2 and an unnormalized
+    # one on Tier 3 (architect re-review NM-1). Per-finding badge/
+    # top_findings stamping (apply_delta_status) and scoped-warning emission
+    # (warn_delta_scope) are wired in W2 (T017) — this call site only needs
+    # the counting map.
     delta_data = None
     if has_baseline:
         resolved = parse_resolved_findings(threats_content)
+        status_by_id, _has_status_column, _row_count = delta_status_by_id(threats_content)
         delta_data = {
             "has_baseline": True,
             "baseline_source": baseline["source"],
             "baseline_date": baseline["date"],
-            "delta_counts": compute_delta_counts(findings, resolved),
+            "delta_counts": compute_delta_counts(status_by_id, resolved),
         }
 
     # Extract prompt scaffold from template file (Option D: locked styling,

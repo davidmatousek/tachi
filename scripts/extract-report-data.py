@@ -38,7 +38,9 @@ from tachi_parsers import (
     parse_baseline_frontmatter,
     parse_resolved_findings,
     compute_delta_counts,
+    delta_status_by_id,
     parse_markdown_table,
+    match_heading,
     parse_project_name,
     detect_artifacts,
     determine_tier,
@@ -233,6 +235,10 @@ def build_remediation_actions(findings: list, tier: int,
 _MAESTRO_LAYERS = MAESTRO_LAYERS
 _SEVERITY_ORDINAL = SEVERITY_ORDINAL
 
+# K10, FR-K10.1: level 3 or level 4 (some inputs render "###" rather than
+# the canonical "####").
+_MAESTRO_HEADING = r"^#{3,4}\s+Risk by MAESTRO Layer"
+
 
 def parse_maestro_data(threats_content):
     """Parse MAESTRO layer data from threats.md for report-data.typ.
@@ -259,7 +265,10 @@ def parse_maestro_data(threats_content):
         return result
 
     # --- Parse Section 6 layer distribution table ---
-    layer_dist = parse_markdown_table(threats_content, "#### Risk by MAESTRO Layer")
+    # Matches the heading at level 3 or level 4 (K10, FR-K10.1): some inputs
+    # render it as "### Risk by MAESTRO Layer" rather than the canonical "####".
+    maestro_start = match_heading(_MAESTRO_HEADING, threats_content)
+    layer_dist = parse_markdown_table(threats_content, start_line=maestro_start) if maestro_start is not None else []
     parsed_layers = []
     for row in layer_dist:
         layer_raw = row.get("MAESTRO Layer", "").strip()
@@ -2347,9 +2356,13 @@ def main():
     data["baseline_run_id"] = baseline["run_id"] or ""
     data["resolved_findings"] = resolved_findings
 
-    # Delta counts (computed from active findings + resolved)
+    # Delta counts, over the normalized Section 7 map (K12, FR-K12.1/K12.2),
+    # never over data["findings"] (architect re-review NM-1). Per-finding
+    # badge stamping (_merge_delta_status/apply_delta_status) and scoped-
+    # warning emission (warn_delta_scope) are wired in W2 (T017).
     if has_baseline:
-        data["delta_counts"] = compute_delta_counts(data["findings"], resolved_findings)
+        status_by_id, _has_status_column, _row_count = delta_status_by_id(threats_content)
+        data["delta_counts"] = compute_delta_counts(status_by_id, resolved_findings)
     else:
         data["delta_counts"] = {"new": 0, "unchanged": 0, "updated": 0, "resolved": 0}
 
