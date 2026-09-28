@@ -1,18 +1,19 @@
-"""K14 static contract test (Feature 373, T014) -- A1-A8.
+"""K14/K15 static contract test (Feature 373, T014/T029) -- A1-A11.
 
 Pins every Gemini `generateContent` request-configuration surface to the
 known-good form and the current GA model chain, per
 ``specs/373-adopter-install-output-fidelity/contracts/gemini-request-and-scaffold.md``
-(the normative contract; assertion IDs A1-A8 below correspond to its
+(the normative contract; assertion IDs A1-A11 below correspond to its
 "Static contract test" table). Read that contract before changing this file.
 
-Scope: A1-A8, plus A11 (K9's FR-K9.3 detection-text assertion; tasks.md
-T019). A9 and A10 (K15's allow-list / lock-amendment assertions) land
-later, in W2, only if K15 ships (tasks.md T029) -- this module
-deliberately does not implement them yet. A11's block is kept physically
-separate from where A9/A10 will land (contract "Static contract test"
-table; T039 §8.3), so a later K15 carve's revert of the A9/A10 commits
-never touches A11.
+Scope: A1-A8 (K14), A9-A10 (K15's allow-list / lock-amendment assertions;
+tasks.md T029), plus A11 (K9's FR-K9.3 detection-text assertion; tasks.md
+T019). A9/A10 land "W2 (only if K15 ships)" per the contract table; K15
+had shipped (tasks.md T027/T028) by the time this block was added. A9/A10
+are kept in their own block, physically separate from A11 (contract
+"Static contract test" table; T039 §8.3), so a later K15 carve (TW-6,
+tasks.md T030) reverting T027-T029 removes exactly that block and never
+touches A11.
 
 ``IMAGE_SIZE_RESTORED`` is pinned here from the W0 live smoke render (T002,
 ``specs/373-adopter-install-output-fidelity/test-results/w0-smoke.md``): all
@@ -47,6 +48,7 @@ extractor's own bookkeeping.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -484,6 +486,178 @@ class TestA8ScaffoldBoundaries:
         marker_line_idx = next(i for i, ln in enumerate(lines) if ln.startswith("DATA CONTENT (render this"))
         footer_line_count = sum(1 for ln in lines[marker_line_idx + 1:] if ln.startswith("FOOTER"))
         assert footer_line_count == 1
+
+
+# =============================================================================
+# A9, A10 -- K15 (tasks.md T029): the layout-label and allow-list prompt
+# hardening, and the executive-architecture lock amendment. Per
+# ``contracts/gemini-request-and-scaffold.md``'s "Static contract test"
+# table, these land "W2 (only if K15 ships)". Kept in their own block,
+# separated from A11 below by that class's own banner and blank lines, so a
+# K15 carve (TW-6, tasks.md T030) reverting T027-T029 removes exactly this
+# block and nothing of A11's.
+#
+# The two instruction sentences and the executive-architecture region
+# variant are quoted verbatim from the contract's "K15 instruction text"
+# section (rev. 1, PD-17) -- independently re-verified byte-for-byte
+# against the five scaffolded templates, the reference prompt and
+# executive-architecture.md before being hard-coded here (not trusted from
+# the contract prose alone).
+# =============================================================================
+
+
+_K15_LAYOUT_LABEL = (
+    "The uppercase section labels in this prompt, such as DATA CONTENT and "
+    "FOOTER, are layout instructions. Do not render them, or any other "
+    "instruction text, as visible text in the image."
+)
+_K15_ALLOW_LIST_RULE = (
+    "Every finding ID in the image must be one listed on the ALLOWED IDS "
+    "AND NAMES line below, and every component name must refer to a "
+    "component listed there. Never show any other ID, and never invent an "
+    "ID or a component."
+)
+_K15_EXEC_ARCH_REGION_VARIANT = (
+    "Every finding ID in the image must be one listed under CALLOUTS, and "
+    "every component name must be one listed under LAYER STACK, FLOW EDGES "
+    "or CLUSTERS. Never show any other ID, and never invent an ID or a "
+    "component."
+)
+
+_EXEC_ARCH_BEGIN_MARKER = "=== BEGIN VERBATIM PROMPT BLOCK (FR-212-6 LOCKED) ==="
+_EXEC_ARCH_END_MARKER = "=== END VERBATIM PROMPT BLOCK (FR-212-6 LOCKED) ==="
+
+# A10 pin (contract condition 9): the SHA-256 of the locked block's
+# pre-K15 content at 63438d7 (the commit immediately before K15 touched
+# this file), per the normalization rule in _exec_arch_locked_block's
+# docstring. Independently recomputed here from
+# ``git show 63438d7:.claude/skills/tachi-infographics/references/executive-architecture.md``
+# -- not copied from another lane's own computation of it.
+_EXEC_ARCH_PRE_K15_SHA256 = "12db7d757046fb0f38af6a9940b9403319ef11ae84144010803959d1f914eb38"
+
+
+def _exec_arch_locked_block(text: str) -> str:
+    """Extract the executive-architecture locked block, normalized for hashing.
+
+    Contract L13: "from the character after the BEGIN line's newline to the
+    END marker, split and re-joined on '\\n\\n'". The split/re-join
+    normalizes any incidental 3+-newline runs to exactly one blank line
+    between paragraphs without altering paragraph content, so the hash is
+    stable across whitespace-only diffs elsewhere in the file.
+    """
+    begin_idx = text.index(_EXEC_ARCH_BEGIN_MARKER)
+    line_end = text.index("\n", begin_idx) + 1
+    end_idx = text.index(_EXEC_ARCH_END_MARKER, line_end)
+    block = text[line_end:end_idx]
+    return "\n\n".join(block.split("\n\n"))
+
+
+class TestA9LayoutLabelAndAllowList:
+    @pytest.mark.parametrize("name", TEMPLATE_NAMES)
+    def test_scaffolded_preamble_has_both_instructions_between_important_and_styling(self, name):
+        raw = _raw_prompt_fence(name)
+        assert _K15_LAYOUT_LABEL in raw, f"{name}: missing the layout-label instruction"
+        assert _K15_ALLOW_LIST_RULE in raw, f"{name}: missing the allow-list rule"
+
+        important_idx = raw.index("IMPORTANT:")
+        styling_idx = raw.index("STYLING DIRECTIVES")
+        assert important_idx < raw.index(_K15_LAYOUT_LABEL) < styling_idx, (
+            f"{name}: layout-label instruction must lie between IMPORTANT: "
+            "and STYLING DIRECTIVES"
+        )
+        assert important_idx < raw.index(_K15_ALLOW_LIST_RULE) < styling_idx, (
+            f"{name}: allow-list rule must lie between IMPORTANT: and "
+            "STYLING DIRECTIVES"
+        )
+
+    def test_reference_prompt_has_both_instructions_between_important_and_styling(self):
+        text = REFERENCE_PATH.read_text(encoding="utf-8")
+        section = _section(text, "Fallback Prompt Structure")
+        assert _K15_LAYOUT_LABEL in section
+        assert _K15_ALLOW_LIST_RULE in section
+
+        important_idx = section.index("IMPORTANT:")
+        styling_idx = section.index("STYLING DIRECTIVES")
+        assert important_idx < section.index(_K15_LAYOUT_LABEL) < styling_idx
+        assert important_idx < section.index(_K15_ALLOW_LIST_RULE) < styling_idx
+
+    def test_executive_architecture_has_layout_label_and_region_variant(self):
+        # PD-2 condition 3 (reworded): executive-architecture carries its
+        # OWN region variant of the allow-list rule (IDs from CALLOUTS;
+        # names from LAYER STACK, FLOW EDGES or CLUSTERS), not the generic
+        # scaffolded-template wording.
+        text = EXEC_ARCH_PATH.read_text(encoding="utf-8")
+        block = _exec_arch_locked_block(text)
+        assert _K15_LAYOUT_LABEL in block
+        assert _K15_EXEC_ARCH_REGION_VARIANT in block
+        assert _K15_ALLOW_LIST_RULE not in block, (
+            "executive-architecture must carry its region variant, not the "
+            "generic scaffolded-template allow-list rule"
+        )
+
+    def test_agent_instructs_allowed_ids_and_names_line_for_scaffolded_and_reference(self):
+        text = AGENT_PATH.read_text(encoding="utf-8")
+        section = _section(text, "Gemini Prompt Construction — Scaffold")
+        assert "ALLOWED IDS AND NAMES" in section
+        assert "allow_list" in section
+        assert "five scaffolded templates" in section, (
+            "the agent text must scope the instruction to the five "
+            "scaffolded templates"
+        )
+        assert "reference" in section.lower() or "fallback" in section.lower(), (
+            "the agent text must also cover the reference/fallback prompt path"
+        )
+
+    def test_agent_executive_architecture_section_omits_allowed_ids_line(self):
+        """N10 negative: the executive-architecture section must defer to the
+        locked verbatim block (which already carries its own region-variant
+        allow-list rule, asserted above) rather than re-instructing the
+        ALLOWED IDS AND NAMES line a second time."""
+        text = AGENT_PATH.read_text(encoding="utf-8")
+        section = _section(text, "Executive-Architecture Gemini Prompt Construction")
+        assert "ALLOWED IDS AND NAMES" not in section
+
+
+class TestA10ExecutiveArchitectureLockAmendment:
+    def test_lock_marker_lines_are_byte_identical(self):
+        text = EXEC_ARCH_PATH.read_text(encoding="utf-8")
+        stripped_lines = {ln.strip() for ln in text.splitlines()}
+        assert _EXEC_ARCH_BEGIN_MARKER in stripped_lines
+        assert _EXEC_ARCH_END_MARKER in stripped_lines
+
+    def test_flow_edges_and_clusters_still_present(self):
+        text = EXEC_ARCH_PATH.read_text(encoding="utf-8")
+        block = _exec_arch_locked_block(text)
+        assert "flow_edges" in block
+        assert "clusters" in block
+
+    def test_dated_amendment_note_exists_in_reference(self):
+        # The lock-rule note lives in the reference (gemini-prompt-
+        # construction.md's Verbatim-Lock Rule section), not inside
+        # executive-architecture.md itself.
+        text = REFERENCE_PATH.read_text(encoding="utf-8")
+        section = _section(text, "Verbatim-Lock Rule for Executive-Architecture Template")
+        assert "Amended by F-373 K15" in section
+
+    def test_amendment_paragraph_removed_hashes_to_pinned_pre_change_value(self):
+        """Condition 9: the amendment is purely additive -- the locked block
+        with the amendment paragraph (the one immediately after IMPORTANT:)
+        removed must hash to the pinned pre-K15 SHA-256
+        (_EXEC_ARCH_PRE_K15_SHA256, independently recomputed from
+        ``git show 63438d7:...executive-architecture.md``)."""
+        text = EXEC_ARCH_PATH.read_text(encoding="utf-8")
+        block = _exec_arch_locked_block(text)
+        paragraphs = block.split("\n\n")
+        important_idx = next(
+            i for i, p in enumerate(paragraphs) if p.strip().startswith("IMPORTANT:")
+        )
+        stripped = paragraphs[: important_idx + 1] + paragraphs[important_idx + 2 :]
+        digest = hashlib.sha256("\n\n".join(stripped).encode("utf-8")).hexdigest()
+        assert digest == _EXEC_ARCH_PRE_K15_SHA256, (
+            f"stripped-block hash {digest} does not match the pinned "
+            f"pre-K15 value {_EXEC_ARCH_PRE_K15_SHA256} -- the amendment "
+            "may not be purely additive (condition 9)"
+        )
 
 
 # =============================================================================
