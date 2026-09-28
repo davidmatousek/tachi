@@ -1,0 +1,93 @@
+# =============================================================================
+# tachi install fidelity — manifest completeness guard (Feature 373, A-1,
+#   the W1 cut line: K1/K2 ship every skill and script)
+# =============================================================================
+#
+# Purpose: Fail the build when INSTALL_MANIFEST.md drifts from what an
+# adopter actually needs — a missing skill, agent, command or distributable
+# script; a manifest hygiene break; a non-stdlib import reaching a
+# distributable script at module load (S-13); or a manual-install loop that
+# no longer matches, byte-for-byte, across README.md and the developer
+# guide. This is the K1/K2 guard (FR-K2.2-K2.5): every skill and script
+# ships, and CI catches drift before it reaches an adopter's `install.sh`
+# run or copy-paste loop.
+#
+# This is the W1 cut-line commit (A-1, PD-9, PD-20): the ONLY job this
+# workflow runs today is `manifest-completeness`, gating only
+# tests/scripts/test_install_manifest_completeness.py. Nothing else may
+# redden this commit's run (RC-P1) — the pre-existing extraction modules
+# are red on bare ubuntu until PD-8's mmdc-skip fixture lands, so they join
+# in their own wiring commit, A-2 (the `extraction-fidelity` job),
+# immediately after this one is green and before any Lane B1 commit. A-3
+# (the K14 static contract test) joins `extraction-fidelity` later in W1.
+# A `report-posture` job (Typst-gated, `setup-typst@v5`) joins in W2, only
+# if the K13-posture carve unit ships.
+#
+# Dual trigger (PR + push:[main]): a manifest or install.sh edit can reach
+# main via a direct push that bypasses the pull_request trigger — the same
+# direct-to-main bypass issue #338 exploited once before. Both triggers
+# resolve a SINGLE path list via a YAML anchor (&fidelity_paths /
+# *fidelity_paths), cloned from tachi-catalog-drift.yml's dual-trigger,
+# single-anchor pattern so there is no second list to drift out of sync.
+#
+# F-250 lock-step rule: any change to this module's dependency surface MUST
+# update BOTH the `paths:` anchor below AND the pytest invocation in the
+# same commit. PD-20 assigns this workflow file to Lane A alone, in every
+# wave, and each module's author-lane wiring commit bundles the module with
+# its paths and invocation entry so the module is never ungated.
+#
+# References:
+#   - specs/373-adopter-install-output-fidelity/contracts/manifest-completeness.md
+#     § Workflow wiring for this module
+#   - specs/373-adopter-install-output-fidelity/research.md PD-8, PD-9, PD-20
+#   - specs/373-adopter-install-output-fidelity/plan.md
+#     § Lane and file ownership per wave: test modules and CI files
+#   - tests/scripts/test_install_manifest_completeness.py
+# =============================================================================
+
+name: tachi install fidelity
+
+on:
+  pull_request:
+    paths: &fidelity_paths
+      - INSTALL_MANIFEST.md
+      - .claude/skills/**
+      - .claude/commands/tachi.*.md
+      - .claude/agents/tachi/**
+      - templates/tachi/**
+      - scripts/*.py
+      - scripts/install.sh
+      - README.md
+      - docs/guides/DEVELOPER_GUIDE_TACHI.md
+      - tests/scripts/test_install_manifest_completeness.py
+      - tests/conftest.py
+      - tests/scripts/conftest.py
+      - pyproject.toml
+      - .github/workflows/tachi-install-fidelity.yml
+  push:
+    branches: [main]
+    paths: *fidelity_paths
+
+permissions:
+  contents: read
+
+jobs:
+  manifest-completeness:
+    name: manifest-completeness
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest + pytest-timeout + PyYAML
+        run: pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
+
+      - name: Run manifest completeness suite (K1/K2 guard)
+        run: |
+          python3 -m pytest tests/scripts/test_install_manifest_completeness.py -v
