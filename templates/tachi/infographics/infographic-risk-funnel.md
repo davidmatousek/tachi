@@ -16,9 +16,9 @@
 │ FUNNEL ZONE (~62%)                        │ METRICS   │
 │ ┌─────────────────────────────────────┐   │ SIDEBAR   │
 │ │ ▓▓▓▓▓▓▓▓▓▓ Tier 1 (100%) ▓▓▓▓▓▓▓▓ │   │ (~20%w)   │
-│ │  ▓▓▓▓▓▓▓▓ Tier 2 (~75%) ▓▓▓▓▓▓▓   │   │           │
-│ │    ▓▓▓▓▓▓ Tier 3 (~50%) ▓▓▓▓▓     │   │ Total     │
-│ │      ▓▓▓▓ Tier 4 (~30%) ▓▓▓       │   │ Reduction │
+│ │  ▓▓▓▓▓▓▓▓ Tier 2        ▓▓▓▓▓▓▓   │   │           │
+│ │    ▓▓▓▓▓▓ Tier 3        ▓▓▓▓▓     │   │ Total     │
+│ │      ▓▓▓▓ Tier 4        ▓▓▓       │   │ Reduction │
 │ └─────────────────────────────────────┘   │ Coverage  │
 │ Tier labels (left-aligned)                │           │
 ├───────────────────────────────────────────┴───────────┤
@@ -102,14 +102,14 @@
 - Data: "{total_findings} findings — {critical}C / {high}H / {medium}M / {low}L"
 - Data source: co-located threats.md Section 6 (Risk Summary)
 
-**Tier 2 — Inherent Risk Scored (~75% width)**
+**Tier 2 — Inherent Risk Scored**
 - Color: dominant severity color from composite score distribution
 - Content: composite score distribution and severity band counts
 - Label: "Inherent Risk Scored" left-aligned, white text
 - Data: "Composite range {min}-{max} — {critical}C / {high}H / {medium}M / {low}L"
-- Data source: risk-scores.md Section 2 (Scored Threat Table)
+- Data source: the one row set (compensating-controls.md Section 2, Coverage Matrix) when a controls report exists — the same rows Tiers 3 and 4 use, via each row's Inherent Score (joined from risk-scores.md by ID when a row has none); risk-scores.md Section 2 (Scored Threat Table) directly in 3-tier mode
 
-**Tier 3 — Controls Applied (~50% width)**
+**Tier 3 — Controls Applied**
 - Color: dominant severity color based on control coverage
 - Content: control coverage percentage, findings with controls count, mitigation statistics
 - Label: "Controls Applied" left-aligned, white text
@@ -117,29 +117,39 @@
 - Data source: compensating-controls.md Section 1 (Executive Summary)
 - **3-tier mode alternate label**: "Unmitigated Risk" (uses Tier 2 severity data)
 
-**Tier 4 — Residual Risk (narrowest, ~30% width)**
+**Tier 4 — Residual Risk (narrowest)**
 - Color: dominant residual severity color
 - Content: residual severity distribution and residual score range
 - Label: "Residual Risk" left-aligned, white text
 - Data: "Residual range {min}-{max} — {critical}C / {high}H / {medium}M / {low}L"
 - Data source: compensating-controls.md Section 2 (Coverage Matrix)
 
-**Tier Width Calculation**:
+**Tier Width Calculation** (data-model.md §4.1; STEP = 10, FLOOR = 30):
 ```
-For each tier:
-  actual_width = (tier_volume / tier_1_volume) * 100
-  min_width = previous_tier_width - 10    # Minimum 10% narrowing per tier
-  tier_width = max(actual_width, min_width)
-  tier_width = max(tier_width, 10)         # Absolute floor: 10%
+W1 = 100
+W2 = 100 - STEP
+For k = 3, 4:
+  width = round_half_up(clamp(W2 * V_k / V2, FLOOR + (4-k)*STEP, W[k-1] - STEP))
+  # W[k-1] is the emitted, already-rounded width of the previous tier
+  # A ghost tier, or any tier while volumes are unavailable, uses
+  # W[k-1] - STEP instead -- keyed on the ghost field, never on a
+  # null volume
 ```
+
+A real `0.0` risk reduction (volumes available, no net change) still
+narrows by the STEP floor at every stage — it is never flattened to
+equal widths. The sidebar's "0% risk reduction — no effective controls
+detected" note is what tells the viewer the narrowing is forced, not
+earned; the note keys on a numeric `risk_reduction == 0.0`, never on
+`null` (§4.3).
 
 **Gradient Connectors**: Between each adjacent tier pair, render a gradient transition blending the upper tier's color into the lower tier's color. Connectors are ~3% of funnel height, creating a smooth flowing visual rather than hard edges.
 
-**Ghost Tier Rendering** (when data source unavailable):
+**Ghost Tier Rendering** (`ghost: true` in the JSON — never inferred from a `null` field):
 - Border: 2px dashed #475569 (Slate-600)
 - Fill: #475569 at 20% opacity
 - CTA text: centered inside tier, white (#FFFFFF), 14px regular
-- Ghost tiers maintain the same width as if data were present (funnel shape preserved)
+- Width: the STEP cascade above — never "as if data were present"
 - No data content — only the CTA label
 
 Ghost tier CTA labels by mode:
@@ -154,7 +164,7 @@ Content varies by data source mode:
 
 **4-tier mode** (compensating-controls source):
 - Total Findings: "{total_findings}"
-- Risk Reduction: "{risk_reduction_pct}%"
+- Risk Reduction: "{risk_reduction_pct}%" — "not available" when `risk_reduction` is `null` (S-9; never when it is exactly `0.0`, which renders "0%")
 - Control Coverage: "{control_coverage_pct}%"
 - Severity breakdown per tier with colored indicators
 - Percentage annotations between tiers showing stage-to-stage reduction
