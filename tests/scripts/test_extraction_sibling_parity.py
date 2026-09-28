@@ -14,10 +14,14 @@ against the raw fixture files below):
   - baseline_resolved_4c/         -- delta counts, bracketed Section 7 statuses (tier 3)
   - baseline_status_id_mismatch/  -- delta counts, a Section 7 / tier-1 ID-set mismatch (tier 1)
   - maestro_heading_h3/           -- MAESTRO layer distribution + most-exposed layer (tier 3)
+  - funnel_join_inherent_less/    -- K11 join-path: clamp, residual bands, severity
+                                     counts and posture, over an inherent-less
+                                     Coverage Matrix joined to risk-scores.md by ID
+                                     (tier 1, architect finding F2)
 
-NOT covered here: the K11 join-path parity case (funnel_join_inherent_less/,
-architect finding F2). tasks.md T019 assigns that case to K11's own carve
-unit -- it lands in its own K11 commit (T023), not this one.
+tasks.md T019 assigns the funnel_join_inherent_less/ case to K11's own carve
+unit, so it lands in its own K11-only commit rather than the rest of this
+module's fixtures (which are US-3a's).
 
 Posture-level/label emission (``metadata.risk_posture_{level,label}`` on the
 infographic side, ``#let risk-posture-level``/``#let risk-posture-label`` on
@@ -333,6 +337,95 @@ def test_maestro_layer_distribution_and_most_exposed_agree_h3_heading():
     assert ig["most_exposed_layer"] == "L1 — Foundation Model"
     assert rp["most_exposed_layer"] == "L1 — Foundation Model"
     assert ig["most_exposed_layer"] == rp["most_exposed_layer"]
+
+
+# --------------------------------------------------------------------------- #
+# funnel_join_inherent_less/ (tier 1: threats.md + risk-scores.md +
+# compensating-controls.md). K11 carve unit / architect finding F2: the
+# Coverage Matrix has no Inherent Score/Inherent column at all, so both
+# rows' inherent scores come only from the sibling risk-scores.md
+# composites, joined by ID (T-1=8.0, T-2=7.0). Both extractors' tier-1 call
+# sites read risk-scores.md for this join (tasks.md T020, W1-landed on
+# both sides), so this exercises the SAME parse_compensating_controls_md
+# pipeline -- clamp included -- on both surfaces, not two independent
+# implementations of it.
+#
+# Neither row's raw residual actually exceeds its (joined) inherent score
+# here (T-1: 7.5 <= 8.0; T-2: 6.6 <= 7.0), so the clamp is a no-op on this
+# fixture; what this proves is that both surfaces read the same
+# clamp-processed residual/band pipeline, not that either fires an actual
+# clamp adjustment (funnel_step_bound/controls_warnings_kitchen_sink cover
+# an active clamp trigger, at the extractor level, in
+# test_extract_infographic_data.py's T023 K11 tests).
+# --------------------------------------------------------------------------- #
+@pytest.fixture(scope="module")
+def funnel_join_inherent_less_outputs():
+    """Run both extractors once against funnel_join_inherent_less/ and cache the outputs."""
+    fixture = FIDELITY_FIXTURES_DIR / "funnel_join_inherent_less"
+    ig_rc, ig_stderr, ig_payload = _run_infographic(fixture, "baseball-card")
+    assert ig_rc == 0, f"infographic extractor failed: {ig_stderr}"
+    rp_rc, rp_stderr, rp_content = _run_report(fixture)
+    assert rp_rc == 0, f"report extractor failed: {rp_stderr}"
+    return ig_payload, rp_content
+
+
+def test_severity_counts_and_residual_bands_agree_funnel_join_inherent_less(
+    funnel_join_inherent_less_outputs,
+):
+    """Residual-band-derived severity counts agree across surfaces (K11, F2).
+
+    T-1's joined-inherent (8.0) row has residual 7.5 -> High (>=7.0); T-2's
+    joined-inherent (7.0) row has residual 6.6 -> Medium (>=4.0, <7.0). Both
+    bands come from the clamp-processed residual (data-model.md §3), so
+    agreement here is agreement on the clamp pipeline's output, not merely
+    on two independently-read raw scores.
+    """
+    ig_payload, rp_content = funnel_join_inherent_less_outputs
+
+    ig_counts = {e["label"].lower(): e["count"] for e in ig_payload["severity_distribution"]}
+    expected = {"critical": 0, "high": 1, "medium": 1, "low": 0}
+    assert ig_counts == expected, f"infographic severity_distribution counts: {ig_counts!r}"
+
+    rp_counts = {
+        "critical": _typst_let_int(rp_content, "critical-count"),
+        "high": _typst_let_int(rp_content, "high-count"),
+        "medium": _typst_let_int(rp_content, "medium-count"),
+        "low": _typst_let_int(rp_content, "low-count"),
+    }
+    assert rp_counts == expected, f"report severity counts: {rp_counts!r}"
+    assert ig_counts == rp_counts
+
+    assert ig_payload["metadata"]["total_findings"] == 2
+    assert _typst_let_int(rp_content, "total-findings") == 2
+
+
+def test_posture_agrees_funnel_join_inherent_less(funnel_join_inherent_less_outputs):
+    """metadata.risk_posture_{level,label} == #let risk-posture-level/-label (K11, F2).
+
+    The highest non-zero band in {critical:0, high:1, medium:1, low:0} is
+    High (data-model.md §5), over the SAME joined, clamp-processed severity
+    counts the previous test pins. EXPECTED RED until tasks.md T025 lands on
+    both Lane B2a (infographic) and Lane B2b (report) -- see
+    test_posture_level_label_agree_posture_mmdc_free and the module
+    docstring; not weakened, skipped, or xfail-marked.
+    """
+    ig_payload, rp_content = funnel_join_inherent_less_outputs
+
+    ig_level = ig_payload["metadata"].get("risk_posture_level")
+    ig_label = ig_payload["metadata"].get("risk_posture_label")
+    rp_level = _typst_let_str(rp_content, "risk-posture-level")
+    rp_label = _typst_let_str(rp_content, "risk-posture-label")
+
+    assert ig_level == "high", f"infographic metadata.risk_posture_level: {ig_level!r}"
+    assert ig_label == "HIGH RISK", f"infographic metadata.risk_posture_label: {ig_label!r}"
+    assert rp_level == "high", f"report #let risk-posture-level: {rp_level!r}"
+    assert rp_label == "HIGH RISK", f"report #let risk-posture-label: {rp_label!r}"
+    assert ig_level == rp_level, (
+        f"posture level mismatch: infographic={ig_level!r} report={rp_level!r}"
+    )
+    assert ig_label == rp_label, (
+        f"posture label mismatch: infographic={ig_label!r} report={rp_label!r}"
+    )
 
 
 if __name__ == "__main__":
