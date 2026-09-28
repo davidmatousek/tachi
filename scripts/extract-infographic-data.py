@@ -37,6 +37,8 @@ from tachi_parsers import (
     parse_resolved_findings,
     compute_delta_counts,
     delta_status_by_id,
+    apply_delta_status,
+    warn_delta_scope,
     parse_score,
     classify_maestro_coverage_state,
     parse_markdown_table,
@@ -1909,20 +1911,31 @@ def main():
     # Select top findings
     top_findings = select_top_findings(findings, tier)
 
-    # Include delta_status in top findings when present
+    # Build findings ID set (validation below, and the K12 scope warning).
+    findings_ids = {f.get("id", "") for f in findings}
+
+    # K12 (T017, data-model.md §6): stamp top_findings[].delta_status and
+    # warn on a scope mismatch, on baseline runs only. delta_status_by_id is
+    # called once here; its map is reused for delta_counts below (the same
+    # normalized map on both call sites, FR-K12.1/K12.2).
     if has_baseline:
-        findings_by_id = {f.get("id", ""): f for f in findings}
-        for tf in top_findings:
-            source = findings_by_id.get(tf["id"], {})
-            ds = source.get("delta_status", "")
-            if ds:
-                tf["delta_status"] = ds
+        status_by_id, has_status_column, row_count = delta_status_by_id(threats_content)
+        if tier in (1, 2):
+            # Tiers 1/2 findings carry no delta_status until stamped here —
+            # unlike Tier 3, whose parse_threats_findings already sets it
+            # per row, so Tier 3 keeps copying from `findings` below.
+            apply_delta_status(top_findings, status_by_id)
+        else:
+            findings_by_id = {f.get("id", ""): f for f in findings}
+            for tf in top_findings:
+                source = findings_by_id.get(tf["id"], {})
+                ds = source.get("delta_status", "")
+                if ds:
+                    tf["delta_status"] = ds
+        warn_delta_scope(has_baseline, has_status_column, status_by_id, row_count, findings_ids)
 
     # Compute component risk weights
     risk_weights = compute_component_risk_weights(heat_map)
-
-    # Build findings ID set for validation
-    findings_ids = {f.get("id", "") for f in findings}
 
     # Compute metadata
     metadata = compute_metadata(
@@ -2078,14 +2091,12 @@ def main():
     # Compute delta counts when baseline present. Counted over the
     # normalized Section 7 map (K12, FR-K12.1/K12.2), never over `findings`,
     # which has no delta_status key at all on Tier 1/2 and an unnormalized
-    # one on Tier 3 (architect re-review NM-1). Per-finding badge/
-    # top_findings stamping (apply_delta_status) and scoped-warning emission
-    # (warn_delta_scope) are wired in W2 (T017) — this call site only needs
-    # the counting map.
+    # one on Tier 3 (architect re-review NM-1). `status_by_id` was computed
+    # once above, alongside the top_findings stamping and the scope warning
+    # (T017); this call site reuses that same map for the counts.
     delta_data = None
     if has_baseline:
         resolved = parse_resolved_findings(threats_content)
-        status_by_id, _has_status_column, _row_count = delta_status_by_id(threats_content)
         delta_data = {
             "has_baseline": True,
             "baseline_source": baseline["source"],
