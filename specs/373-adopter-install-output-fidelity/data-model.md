@@ -90,7 +90,7 @@ A component that is not a link is `not-link`, and it never blocks.
 | `threat_id` | The `Threat ID` column. A **placeholder** (empty after strip, or matching `^[-–—]+$`) drops the row before dedup |
 | header matching | Normalize: casefold → strip one trailing `.` → collapse whitespace. Then look up the alias map: `residual score`/`residual` → residual score; `residual severity`/`residual sev` → residual severity; `inherent score`/`inherent` → inherent score; `control status`/`status` → control status |
 | scores | **(rev. 1)** Every score goes through one helper, `parse_score(s) -> Decimal \| None`. It catches `decimal.InvalidOperation`, `ValueError` and `TypeError` (`InvalidOperation` is **not** a `ValueError` subclass). It rejects non-finite values (`NaN`, `Infinity`), and it returns `None` for anything unparseable (`""`, `—`, `8.5 (High)`), counted in the aggregated "unparseable score" warning. `_score_to_band` uses the same helper |
-| `inherent` | `parse_score` of the column. If missing, it is filled by ID join to the risk-scores composites. If still missing, the row gets `inherent = None`, is excluded from the volumes, and warns |
+| `inherent` | `parse_score` of the column. If missing, it is filled by ID join to the risk-scores composites (`parse_compensating_controls_md(content, composites_by_id=None)`, fed from `parse_risk_scores_findings`; the report path reads `risk-scores.md` at data tier 1 when it is present, so both surfaces join the same way; tasks.md T020). If still missing, the row gets `inherent = None`, is excluded from the volumes, and warns |
 | `inherent_band` | Banded from `inherent` (9.0 / 7.0 / 4.0 → critical / high / medium / else low). If `inherent` is None, the `Inherent Severity` column is used. If neither exists, the row is absent from the Tier 2 mix, and it warns |
 | `status_class` | **(rev. 1)** Computed **once per row, at parse time**, by `classify_control_status`. Every consumer reads the stored value: the funnel, the STRIDE coverage matrix (`tachi_parsers.py:1203`) and the coverage fallback (`:1255`). So the warning fires once per row. Rules, whole-token and case-insensitive: a token **starting** `partial` (`partial`, `partially`) → `partial`; the normalized status in {`no control found`, `missing`, `none`, `not found`} → `none` (silent); a `found` token with no negation token (`no`, `not`, `none`, `nothing`) → `found`; anything else (including empty) → `none`, with a warning. Observed labels (`Control Found`, `Control Found (implemented)`, `Partial Control`, `No Control Found`) classify the same as under today's idiom. `Partially Found` → partial (the whole-token rule alone would have said found). `None found` → none, with a warning |
 | `residual` | `parse_score` of the column. If it is greater than `inherent`, it is **clamped** to `inherent` once, here, with a warning. If it is missing while `inherent` is present, `residual = inherent` (no credit), with a warning |
@@ -191,8 +191,14 @@ The exact stems are in `contracts/extraction-data-contract.md`.
 
 ## 6. Delta status map (K12) **(rev. 1, PD-16)**
 
-- **Signature.** `delta_status_by_id(threats_md) -> (status_by_id: dict[str, str], has_status_column: bool)` reads the threats.md Section 7 "Recommended Actions" table (`Finding ID`, `Status`). Placeholder IDs are skipped.
-- **Normalization before matching.** Strip whitespace; strip one surrounding `[`…`]` pair; strip remaining `*` and `_` emphasis markers; upper-case. So `[NEW]`, `**NEW**` and ` new ` all count as `NEW`. This matters because:
+- **Signature.** `delta_status_by_id(threats_md) -> (status_by_id: dict[str, str], has_status_column: bool, row_count: int)` reads the threats.md Section 7 "Recommended Actions" table (`Finding ID`, `Status`). Placeholder IDs are skipped. `row_count` feeds the scoped empty-map check.
+- **Companion helpers** (all in `tachi_parsers.py`, written by B1 in W1; AR-3; tasks.md T016):
+  - `apply_delta_status(findings, map)` stamps normalized statuses onto a tier's findings, **for the badges and `top_findings[].delta_status` only**; it plays no part in the counts;
+  - `compute_delta_counts(status_by_id, resolved)` counts the **normalized Section 7 map** (placeholder IDs excluded), plus the resolved rows, identically on both surfaces (FR-K12.1/K12.2; architect re-review NM-1);
+  - `warn_delta_scope(has_baseline, has_status_column, map, row_count, tier_ids)` emits the scoped warnings below, aggregated.
+
+  Both extractors call the same helpers, so neither needs a W2 parser edit.
+- **Normalization before matching (N6 order, rev. 2).** Strip a surrounding run of backticks, `*`, `_` and whitespace; then strip one surrounding `[`…`]` pair; then strip the run again; then upper-case. So `[NEW]`, `**[NEW]**`, `` `[NEW]` ``, `**NEW**` and ` new ` all count as `NEW`. This matters because:
   - the orchestrator prescribes bracketed lifecycle tags (`orchestrator.md:64`, `:288`);
   - both shipped baseline examples (`agentic-app` and `agentic-app/sample-report`, `has_baseline = true`) carry `[NEW]` and `[UNCHANGED]`.
 - **Counted values.** Only `NEW`, `UPDATED` and `UNCHANGED` after normalization. Any other non-empty value, or an empty cell on a baseline run, counts toward one aggregated warning.
@@ -203,7 +209,7 @@ The exact stems are in `contracts/extraction-data-contract.md`.
 
   Otherwise neither check runs. The scope is what keeps legacy Status-less tables from warning or failing, for example `maestro-reference` (the live-render example: 111 Section 7 rows, no Status column, no baseline) and `mobile-banking-app/sample-report`.
 - **Missing column on a baseline run.** When `has_baseline` is true and Section 7 has no Status column: one warning, `Warning: baseline run but threats.md Section 7 has no Status column; delta counts unavailable`, and the counts stay 0.
-- **Badges.** The report path's badges use the normalized status. `_merge_delta_status` stays importable and delegates to `delta_status_by_id`.
+- **Badges.** The report path's badges use the normalized status. `_merge_delta_status` stays importable and delegates to `delta_status_by_id` and `apply_delta_status`, keeping its `(findings, threats_md)` signature.
 
 ---
 

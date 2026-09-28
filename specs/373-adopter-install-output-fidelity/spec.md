@@ -325,11 +325,9 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
 
 **Acceptance Scenarios**:
 
-1. **Given** a finding whose source attribution cites a stale-form ID (`{taxonomy: owasp, id: "LLM05:2025"}`), **When** `classify_framework_items` runs, **Then** the guard's warning is emitted on stderr, and the returned items are identical to the no-guard case.
-2. **Given** a legitimate out-of-scope catalog ID (for example, MITRE ATT&CK `T1070.001`), **When** `classify_framework_items` runs, **Then** it is not reported as unmatched.
-3. **Given** the guard's docstring, **When** a maintainer reads it, **Then**:
-   - it no longer claims "never raises" unconditionally (the framework loader can raise on a malformed or missing catalog);
-   - it documents that the guard is skipped for a framework whose in-scope count is 0.
+1. **Given** a finding whose source attribution cites a stale-form ID (`{taxonomy: owasp, id: "LLM05:2025"}`), **When** the guard runs (`_warn_unmatched_attribution_refs`, called from `build_per_framework_aggregates` since `3d67ca7` moved it out of `classify_framework_items`), **Then** its warning is emitted on stderr, and the returned items are identical to the no-guard case.
+2. **Given** a legitimate out-of-scope catalog ID (for example, MITRE ATT&CK `T1070.001`), **When** `build_per_framework_aggregates` runs against the real MITRE catalog, **Then** it is not reported as unmatched.
+3. **Given** the guard's docstring, **When** a maintainer reads it, **Then** it documents that the guard is skipped for a framework whose in-scope count is 0. Its "never raises" claim stays: since `3d67ca7`, the guard does no catalog I/O, so the claim holds by construction.
 
 ---
 
@@ -690,12 +688,12 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
 
 #### D-4 — #370 fold-in (`scripts/extract-report-data.py`)
 
-- **FR-370.1** — Two covering tests for the FR-012b form-drift guard MUST follow #370's recipe:
+- **FR-370.1** — Two covering tests for the FR-012b form-drift guard (`_warn_unmatched_attribution_refs`, called from `build_per_framework_aggregates`) MUST follow #370's recipe:
   - a stale-form attribution ID warns on stderr and leaves the returned items unchanged;
-  - a legitimate out-of-scope catalog ID is not reported as unmatched.
+  - a legitimate out-of-scope catalog ID is not reported as unmatched, exercised through `build_per_framework_aggregates` against the **real** MITRE catalog (OQ-5, closed at the tasks review), which adds `schemas/taxonomy/*.yaml` to the fast workflow's `paths:`.
 
   → US-6 #1, #2
-- **FR-370.2** — The guard's docstring MUST soften its "never raises" claim and document that the guard is skipped for a framework whose in-scope count is 0. No behavior changes. If this item is folded in, the PR closes #370. OQ-5 confirms the recipe at `/aod.tasks` (TW-4). → US-6 #3
+- **FR-370.2** — The guard's docstring MUST document that the guard is skipped for a framework whose in-scope count is 0. The "never raises" softening #370 asked for is no longer needed: since `3d67ca7` the guard does no catalog I/O, so the claim holds by construction (the tasks review's R-6). No behavior changes. If this item is folded in, the PR closes #370. TW-4 still drops it if it outgrows the recipe (now 2 tests and 1 docstring note). → US-6 #3
 
 ### Non-Functional Requirements
 
@@ -814,6 +812,7 @@ K1–K3 (Group A), K9–K13 (Group B), K14–K15 (Group C), and #370 per D-4. On
   - **TW-3** (K15): carve it if OQ-4 reopens or P-2 is unruled; a partial carve (executive-architecture only) is allowed;
   - **TW-4** (#370): drop it if it outgrows its recipe.
 - **During the build**:
+  - **TW-0..TW-2 re-check** (W1 exit, T039; PM ruling P-11.3): once, before any K11 or K15 W2 task starts, re-run TW-0, TW-1 and TW-2 on the W0/W1 actuals with their PRD §10 thresholds. If one fires, carve in the order K15 → K11 → K13-posture until it fits. A carved K11 or K13-posture reverts its landed W1 commits (T020, T024), K14 keeps its render set (P-10.2), and the result is recorded. After T039, K15 is carved only through TW-6;
   - **TW-5**: at most two K15 prompt iterations; any residual leakage becomes a follow-up issue;
   - **TW-6**: if renders are blocked for more than half a day, carve K15, and K14 keeps its renders;
   - **TW-7** (the escape hatch): at the end of build Session 1, if remaining work exceeds 2.0 days or any lane is more than 50% over budget, ship Lane A (K1/K2, plus K3 if it is green) as its own `fix(373)` PR first.
@@ -870,7 +869,7 @@ K1–K3 (Group A), K9–K13 (Group B), K14–K15 (Group C), and #370 per D-4. On
 - **Where the mmdc skip and the Typst provisioning live** (NFR-7, FR-K13.4). Typst provisioning in the fast workflow lands with the K13-posture stale-data test, **never** in the first-wave cut-line commit, so a Typst setup failure can never redden the workflow that gates K1/K2. If K13-posture is carved, no Typst is added.
 
 **For `/aod.tasks`** (the team-lead's domain):
-- **OQ-5**: confirm that the #370 fold-in stays within its recipe (TW-4).
+- **OQ-5**: **closed at the tasks review** (team-lead). The #370 recipe fits, now 2 tests and 1 docstring note, and its second case uses the real MITRE catalog (FR-370.1). TW-4 did not fire.
 - **A W0 smoke render**: eight calls (both chain models × 16:9 and 3:4 × default size and 2K; P-10.3, PD-3) with the known-good body, run in the scratchpad with the key loaded per NFR-5. It retires model-access risk before K14 is committed as must-ship, and costs minutes.
 - **Re-cost at TW-0.** The PM's directional read (`.aod/results/product-manager-373-spec.md` §10) is that most of the spec-stage growth lands on items the valve can't carve: K2, K3, K12, the K13 recommendations and **K14, which is now above its 0.50-day ceiling and needs a bottom-up re-cost**. The floor rises by about half a day, and K11 and K13-posture sit near TW-1 and TW-2. The carve order K15 → K11 → K13-posture stays sound.
 
@@ -895,6 +894,24 @@ K1–K3 (Group A), K9–K13 (Group B), K14–K15 (Group C), and #370 per D-4. On
   - A TW-7 early PR that carries K14 needs FR-K14.3's full render set, made from the early PR's own code, because the files K14 shares with K13 and K15 differ there.
   - The only exception is P-10.1's per-model path. A model blocked for the project key is recorded as statically verified only, and notice 6 goes in the release notes.
   - If both models are blocked, K14 does not ride early. It ships in the main PR under P-9.2.
+
+### PM rulings from the tasks review (2026-09-27; binding for the build)
+
+- **P-11.1: installer scope wording.**
+  - The help text (both surfaces), the README K3 section and the D-1 release note name the always-refused set as "broken, looping or wrong-type links, links nested inside an installed folder, and destinations inside the tachi source clone".
+  - Wrong-type links are named, not folded into "broken" (this resolves the architect's re-review item T27).
+  - "Destinations inside" replaces "links into", because containment works on physical destinations (M1, AR-1).
+  - The refusal messages are unchanged.
+- **P-11.2: notices when TW-7 splits the release.**
+  - **The early release** carries:
+    - notice 1: update the clone first, then re-run `install.sh`; it names the three skills and the populator;
+    - notice 2 if K3 rides, otherwise notice 7;
+    - notice 6 if K14 rides with a model recorded as statically verified only.
+
+    The PM writes these when TW-7 fires, and PD-7's mechanism applies to that release.
+  - **The main release** carries notices 3 to 6 as applicable, plus notice 2 if K3 did not ride early. It opens with one line: "Update your tachi clone and re-run `install.sh` to pick up these fixes."
+  - SC-6 is verified per release with `gh release view`.
+- **P-11.3: the W1-exit trip-wire re-check (T039) is accepted.** It re-evaluates TW-0..TW-2 once at W1 exit, on actuals. It is the cheapest carve point, because no K15 work has landed yet. It is mechanical, using PRD §10's thresholds and the fixed carve order K15 → K11 → K13-posture. It preserves P-9.5 (S-9 stays with K11) and P-10.2 (K14 keeps its render set). The spec's split-valve list records the rule.
 
 ---
 

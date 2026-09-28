@@ -184,8 +184,8 @@ FLOW EDGES and CLUSTERS are included because the block itself requires drawing t
 - **Retry.** One retry on a transient 429 or 5xx; the second result stands.
 - **Decisions:**
   1. Restore 2K **iff all four 2K calls return an image whose long edge exceeds its default variant's** (2K honored).
-  2. **3:4 at the default size must succeed on both models**; if it does not, stop and take it to the architect before K14 commits.
-  3. A refusal of the project key with any status **other than 404 or 403** (for example a 429 with a zero quota, or a 400 `FAILED_PRECONDITION`): record it and bring the walk semantics back to the architect before K14 commits.
+  2. **3:4 at the default size must succeed on both models**; if it does not, stop and take it to the architect before T013 commits executive-architecture's configuration. AR-2 scopes this decision to that configuration; the rest of K14 proceeds.
+  3. A refusal of the project key with any status **other than 404 or 403** (for example a 429 with a zero quota, or a 400 `FAILED_PRECONDITION`): record it for the architect under ruling AR-2. It is non-blocking: K14 commits with the 404/403 walk set, the architect amends it if needed by the end-of-W2 checkpoint, and W1 is never held.
   4. A model unreachable at W0 triggers P-10.1: diagnose key scope, model entitlement and quota, and retry within TW-6's budget. **W1 proceeds regardless.** A blocked model means 2K stays dropped.
 
 **K14 render set (W3; P-10.2, RC-P2).** It runs through the agent end to end (`/tachi.infographic` in a scratch clone, on a scratch copy of the MAESTRO reference example), not as a bare `curl` of the configured body.

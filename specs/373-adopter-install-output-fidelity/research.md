@@ -171,7 +171,7 @@ Each entry gives a Decision, its Rationale and the Alternatives considered. Thes
 - **Decision.**
   - **The W0 smoke.** It sends **eight** calls: {`gemini-3-pro-image`, `gemini-3.1-flash-image`} × {16:9, 3:4} × {default size, `imageSize: "2K"`}, each with a trivial prompt, run in the scratchpad per NFR-5. For each call it records the HTTP status, whether an image came back, the pixel dimensions, the response time and the response part-key casing. A transient 429 or 5xx gets one retry, and the second result stands.
   - **Restore `image_size: "2K"` iff** all four 2K calls return an image whose long edge exceeds its default variant's, so 2K was honored.
-  - **3:4 at the default size must succeed on both models regardless.** If it does not, stop and take it to the architect before K14 commits.
+  - **3:4 at the default size must succeed on both models regardless.** If it does not, stop and take it to the architect before T013 commits executive-architecture's configuration. AR-2 scopes this decision to that configuration; the rest of K14 proceeds.
   - **W3 latency check.** If 2K was restored and any real-template 2K render takes more than about 45 s (25% headroom on the agent's 60 s single-attempt timeout), drop 2K before merge. The drop is one commit flipping the six blocks, the reference, the adapter copy and the static pin `IMAGE_SIZE_RESTORED`, and the reason is recorded.
   - A blocked model means 2K stays dropped (P-9.4, P-10.1).
 - **Rationale:**
@@ -359,7 +359,7 @@ Each entry gives a Decision, its Rationale and the Alternatives considered. Thes
   - A 403 is either a model not entitled to this key, where walking can succeed, or a key-level block (a disabled API or a restricted key), where the fallback fails the same way.
   - Walking costs at most one extra request, and it cannot hide the cause: an exhausted chain is logged at Error with every model's status and message.
   - A 400 is different. Every model rejects the same malformed body, and walking would attribute the failure to the fallback.
-  - At W0, a refusal of the project key with any status **other than 404 or 403** (for example a 429 with a zero quota, or a 400 `FAILED_PRECONDITION`) comes back to the architect before K14 commits.
+  - At W0, a refusal of the project key with any status **other than 404 or 403** (for example a 429 with a zero quota, or a 400 `FAILED_PRECONDITION`) is recorded for the architect under ruling AR-2. It is non-blocking: Lane C1 commits K14 with the 404/403 walk set, the architect amends it if needed by the end-of-W2 checkpoint, and W1 is never held.
 - **Rationale:** these are Google's named GA replacements, with no shutdown announced. G4 is about the adopter's key, not only ours. Walking the chain on a 400 would mask a malformed body.
 
 ### PD-15: no ADR **(rev. 1: RATIFIED on condition)**

@@ -228,6 +228,8 @@ Source files follow the lane rule above. This table assigns the files it did not
 
 **W1 commit order:** A-1 (cut line) → A-2, immediately after and **before any Lane B1 commit**, so the R-3 safety net is active before the parser changes → the other lanes' commits → A-3.
 
+**Who writes these rows (tasks.md rev. 2).** The rows labeled "tester" are the **test lane**, and a `senior-backend-engineer` instance writes them. This repo's `tester` agent is a Gherkin/BDD specialist that does not edit product code or pytest modules, and F-362 made the same move. W3's single writer for code fixes is also a `senior-backend-engineer`. The `tester` agent runs the live renders and the visual checks. The exact per-task agents are in `agent-assignments.md`.
+
 ## Phase 0: Plan-Stage Decisions (all registered inputs resolved) **(rev. 1)**
 
 The full Decision, Rationale and Alternatives records are in [research.md § Plan-Stage Decisions](research.md). Summary:
@@ -362,7 +364,7 @@ Dependency spine: **W0 → W1 (the cut line lands first) → W2 → W3 → W4**.
 - FR-K14.3's full render set is recorded, made from the early PR's own code (each template once, each chain model at least once, executive-architecture on one portrait PDF page); the only exception is a model blocked for the project key, recorded as statically verified only with notice 6 (P-10.1), and if both models are blocked, K14 does not ride early (P-10.4);
 - its commits separate cleanly from the K13/K15 edits in shared files.
 
-The early PR then carries A-1 and A-3 with Lane C1's commits. A render blockage follows PM rulings P-9.2 and P-10.1:
+The early PR then carries A-1, A-2 and A-3 with Lane C1's commits (N9: A-3 extends the job that A-2 creates). Its full composition is in tasks.md T040. A render blockage follows PM rulings P-9.2 and P-10.1:
 - ship the deterministic parts;
 - leave FR-K14.3 open for the blocked model;
 - file a follow-up;

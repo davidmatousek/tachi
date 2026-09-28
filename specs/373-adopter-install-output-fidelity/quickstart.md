@@ -34,6 +34,7 @@ python3 -m pytest \
   tests/scripts/test_extract_infographic_data.py \
   tests/scripts/test_extract_report_data.py \
   tests/scripts/test_extractor_contract_fixes.py \
+  tests/scripts/test_executive_architecture_payload.py \
   tests/scripts/test_gemini_request_contract.py \
   tests/scripts/test_extraction_sibling_parity.py -v
 
@@ -61,7 +62,7 @@ The zsh variant feeds the block on stdin to `zsh -f -i`, which models a paste in
 
 ## 3. W0 pre-state and the Group B oracle (in a scratch clone at the W0 commit) **(rev. 1)**
 
-**Pre-state** (`specs/373-*/test-results-prestate.md`). Record the literal pass, fail, skip and error totals for every module in §2 and for `tachi-pytest.yml`'s current invocation list. Note any red that exists before this bundle's code lands. The out-of-gate set predates F-362, so re-record it rather than assuming it.
+**Pre-state** (`specs/373-*/test-results-prestate.md`). Record the literal pass, fail, skip and error totals for every module in §2 and for `tachi-pytest.yml`'s current invocation list. Note any red that exists before this bundle's code lands. The out-of-gate set predates F-362, so re-record it rather than assuming it. Capture each run's stderr as well: the warning classes (clamp, unrecognized status, delta scope, N7's stateless `has_baseline`) are part of the oracle (L8).
 
 **Oracle pre-snapshot.** Cover every **tracked** `examples/**` directory that holds a `threats.md` (12 at HEAD; untracked `test-output` runs are out of scope, and the scratch clone doesn't see them), plus risk scores or controls where present:
 ```bash
@@ -112,12 +113,19 @@ A scratch-only Python helper reads `$RESP`. It finds the part with `inlineData` 
 - **Retry.** A transient 429 or 5xx gets one retry, and the second result stands.
 - **Decisions:**
   1. **Restore `image_size: "2K"` only if all four 2K calls return an image whose long edge exceeds its default variant's.** Otherwise the default size ships.
-  2. **3:4 at the default size must succeed on both models.** If it does not, stop and take it to the architect before K14 commits.
-  3. **A refusal with any status other than 404 or 403** (for example a 429 with a zero quota, or a 400 `FAILED_PRECONDITION`): record it and bring the chain-walk semantics back to the architect before K14 commits (R-P2, PD-14).
+  2. **3:4 at the default size must succeed on both models.** If it does not, stop and take it to the architect before T013 commits executive-architecture's configuration. AR-2 scopes this decision to that configuration; the rest of K14 proceeds.
+  3. **A refusal with any status other than 404 or 403** (for example a 429 with a zero quota, or a 400 `FAILED_PRECONDITION`): record it for the architect under ruling AR-2. It is non-blocking: Lane C1 commits K14 with the 404/403 walk set, the architect amends it if needed by the end-of-W2 checkpoint, and W1 is never held (R-P2, PD-14, AR-2).
 - **If a model is unreachable (rev. 1, RC-P8, P-10.1).** Record it, diagnose it (key scope, model entitlement, quota) and retry within TW-6's budget.
   - **W1 proceeds regardless**, because K14's deterministic parts need no render.
   - P-9.2's full path applies only after TW-6's half day plus one retry session, and only if **both** models stay blocked.
   - If one model is blocked, both stay in the chain. The blocked one is recorded as statically verified only (in the reference provenance, the PR record and the release notes), with a follow-up issue, and 2K stays dropped.
+
+**W3 order (tasks.md T034/T015/T030).**
+1. T034 commits and pushes. The render session starts from that commit while CI runs, and CI must be visibly green before T036.
+2. **One render session**, from that W3 commit. The `tester` agent runs K14's set and K15's renders together and does the visual checks. Any file edit that follows (a K15 iteration, a 2K drop, a code fix) is made by W3's single writer, a `senior-backend-engineer` (tasks.md rev. 2).
+3. T032 again, only if a K15 iteration changed prompt text.
+4. T035: the oracle post-snapshot, after the last text change.
+5. T036: review.
 
 **K14 render set (W3; P-10.2, RC-P2).** It runs **through the agent end to end**: `/tachi.infographic` in a scratch clone, on a scratch copy of the MAESTRO reference example, never a bare `curl` of the body.
 - (a) **K15 ships:** its first-iteration renders double as K14's per-template renders.
@@ -140,7 +148,7 @@ Images are never committed.
 
 ## 5. Golden regeneration (W2 wave-final, authorized files only) **(rev. 1)**
 
-The tester regenerates only the goldens SC-8 authorizes, from the fixture the test uses, as the last W2 commit. The architect checkpoint at the end of W2 reviews it.
+The test lane (a `senior-backend-engineer` instance, per tasks.md rev. 2) regenerates only the goldens SC-8 authorizes, from the fixture the test uses, as the last W2 commit, with **one commit per K-item** so that a later carve can revert cleanly. The architect checkpoint at the end of W2 reviews it. Run the command **in a scratch clone**, copy back only the authorized files, then check `git status --short` (tasks.md T032, L10).
 ```bash
 python3 scripts/extract-infographic-data.py --target-dir tests/scripts/fixtures/exec_arch/agentic_app \
   --template <t> --output tests/scripts/fixtures/golden/<t>.json

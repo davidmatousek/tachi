@@ -20,12 +20,15 @@ Changed sections are marked **(rev. 1)**.
 | `match_heading(pattern, text) -> int \| None` **(rev. 1)** | Returns the **index of the first line** matching the regex (with `re.MULTILINE` semantics per line). `parse_markdown_table` gains an optional `start_line` argument, so a regex match never falls back to a substring re-search. Used by K10 (`^#{3,4}\s+Risk by MAESTRO Layer`) and K12 (`^##\s+4[bc]\.\s+Resolved Findings\s*$`) |
 | `parse_compensating_controls_md` | Aliased reads, the inherent score, placeholder skip, `status_class`, **clamp once** (with a warning) and banding from the clamped scores. The K11 carve unit is noted in data-model §3 |
 | `parse_resolved_findings` | 4b\|4c heading; skips placeholder rows |
-| `normalize_delta_status(s)` **(rev. 1)** | Strip whitespace, one surrounding `[`…`]` pair, and `*`/`_` markers; then upper-case (data-model §6) |
-| `delta_status_by_id(threats_text) -> (dict, has_status_column)` **(rev. 1)** | `{id: normalized status}` from Section 7, plus whether a Status column exists (data-model §6) |
+| `normalize_delta_status(s)` **(rev. 2, N6)** | Strip a surrounding run of backticks, `*`, `_` and whitespace; then one `[`…`]` pair; then the run again; then upper-case (data-model §6) |
+| `delta_status_by_id(threats_text) -> (dict, has_status_column, row_count)` **(rev. 2)** | `{id: normalized status}` from Section 7, whether a Status column exists, and the row count (data-model §6) |
+| `apply_delta_status(findings, map)` **(rev. 2, AR-3)** | Stamps normalized statuses onto a tier's findings, for the badges and `top_findings[].delta_status` only. It plays no part in the counts: `compute_delta_counts(status_by_id, resolved)` counts the normalized map (NM-1) |
+| `warn_delta_scope(has_baseline, has_status_column, map, row_count, tier_ids)` **(rev. 2, AR-3)** | PD-16's scoped warnings (empty map, ID-set mismatch, baseline without a Status column, unknown statuses after normalization), aggregated. Warnings only |
 | `compute_risk_posture(counts) -> (level, label)` | data-model §5 |
-| `compute_allow_list(template, findings, scope, template_data, payload) -> {finding_ids, component_names}` **(rev. 1)** | data-model §8. A pure function of data both extractors already hold |
 
-`_merge_delta_status` stays importable from `extract-report-data.py` and delegates to `delta_status_by_id`.
+`compute_allow_list(template, findings, scope, template_data, payload) -> {finding_ids, component_names}` is **not** a shared helper. It lives in `extract-infographic-data.py`, its single consumer (AR-3, laziness-ladder rung 2), and follows data-model §8.
+
+`_merge_delta_status` stays importable from `extract-report-data.py` and delegates to `delta_status_by_id` and `apply_delta_status`, keeping its `(findings, threats_md)` signature.
 
 ## Infographic JSON **(rev. 1)**
 
@@ -143,7 +146,7 @@ All warnings go to stderr, in the existing `Warning: …` style, and are never f
 | Volumes unavailable | `Warning: no controls row carries an inherent score; funnel volumes and risk reduction are unavailable` |
 | Section 1 vs the rows | `Warning: controls Section 1 <field> <a> differs from row-derived <b>; using rows` (one per field) |
 | Row counts | `Warning: controls rows (<n>) differ from risk-scores rows (<m>)` |
-| Unknown delta statuses (baseline runs only) | `Warning: <n> Section 7 statuses are not NEW/UPDATED/UNCHANGED after normalization (first: <id>='<raw>', …); not counted` |
+| Unknown delta statuses (baseline runs only) | `Warning: <n> Section 7 statuses are not NEW/UPDATED/UNCHANGED after normalization (first: <id>='<normalized>', …); not counted` |
 | Empty map (baseline run with a Status column) | `Warning: threats.md Section 7 has <n> rows but no readable Finding ID/Status pairs; delta counts are 0` |
 | Delta ID sets (baseline run with a Status column) | `Warning: Section 7 status IDs differ from tier finding IDs (<k> only-in-map, <j> only-in-tier)` |
 | Baseline run without a Status column | `Warning: baseline run but threats.md Section 7 has no Status column; delta counts unavailable` |
