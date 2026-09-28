@@ -36,7 +36,7 @@ Create a professional security threat infographic for "{project_name}" with the 
 
 TOP SECTION: Title "Threat Model: {project_name}" with date "{date}" and "CONFIDENTIAL" badge. Subtitle: "{description} — {total_findings} Findings Across {category_count} Threat Categories".
 
-LEFT PANEL: Donut chart showing risk distribution: {critical_count} Critical (red #DC2626), {high_count} High (orange #EA580C), {medium_count} Medium (amber #CA8A04), {low_count} Low (blue #2563EB). Center text "{total_findings} findings". Below the donut: severity legend with counts and percentages. Below that: "RISK POSTURE: {risk_posture}" in {posture_color}, with "{critical_high_pct}% of findings rated High or Critical".
+LEFT PANEL: Donut chart showing risk distribution: {critical_count} Critical (red #DC2626), {high_count} High (orange #EA580C), {medium_count} Medium (amber #CA8A04), {low_count} Low (blue #2563EB). Center text "{total_findings} findings". Below the donut: severity legend with counts and percentages. Below that: "{risk_posture_label}" in {posture_color}, with "{critical_high_pct}% of findings rated High or Critical".
 
 CENTER PANEL: Heat map grid titled "Coverage Heat Map" with {component_count} components as rows and 8 threat categories as columns (S, T, R, I, D, E, AG, LLM). Cells colored by severity: red #DC2626 for Critical, orange #EA580C for High, amber #CA8A04 for Medium, blue #2563EB for Low, light gray #F3F4F6 for analyzed with no findings, white for not applicable. Components sorted by finding count descending. Show finding count or severity letter in each cell.
 
