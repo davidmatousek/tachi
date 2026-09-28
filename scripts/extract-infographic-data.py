@@ -156,14 +156,22 @@ def extract_prompt_scaffold(template_name: str, repo_root: Path = None) -> dict:
     if not prompt_text:
         return result
 
-    # Split at the standalone "DATA CONTENT" section marker.
-    # The phrase "DATA CONTENT" also appears inside the IMPORTANT note
-    # ("...specified in the DATA CONTENT sections."), so we match the
-    # full section header form to avoid a false-positive split.
-    data_marker = "DATA CONTENT (render this"
-    marker_idx = prompt_text.find(data_marker)
+    # Split at the standalone "DATA CONTENT" section marker, anchored to
+    # line start (PD-6). The phrase "DATA CONTENT" also appears inside the
+    # IMPORTANT note ("...specified in the DATA CONTENT sections."), so an
+    # unanchored substring search can find that prose reference instead of
+    # the real marker (for example when a hard-wrapped sentence elsewhere in
+    # the preamble happens to contain the same words). re.MULTILINE anchors
+    # "^" to the start of every line, not just the start of the string.
+    marker_match = re.search(r"^DATA CONTENT \(render this", prompt_text, re.MULTILINE)
+    marker_idx = marker_match.start() if marker_match else -1
     if marker_idx == -1:
-        # Fallback: try bare marker at start of line
+        # Bare-marker fallback (N8, kept per L14): unreachable while the
+        # primary marker above matches (true on all five shipped templates),
+        # retained only as a safety net for a future preamble whose marker
+        # line drops the "(render this" suffix. Still line-anchored, and
+        # still skips the IMPORTANT note's own "...DATA CONTENT sections."
+        # reference.
         for m in re.finditer(r"^DATA CONTENT", prompt_text, re.MULTILINE):
             # Skip if this is the IMPORTANT note reference
             line_end = prompt_text.find("\n", m.start())
@@ -181,12 +189,15 @@ def extract_prompt_scaffold(template_name: str, repo_root: Path = None) -> dict:
 
     preamble = prompt_text[:marker_line_end + 1].rstrip() + "\n"
 
-    # Postamble: from "FOOTER" to end of prompt
+    # Postamble: from "FOOTER" to end of prompt. Searched only after the
+    # marker line (PD-6), so a "FOOTER" appearing earlier — for example
+    # inside a hard-wrapped K15 layout-label sentence whose wrap point lands
+    # a "FOOTER)" at a line start — can't produce a false match. The
+    # no-newline find("FOOTER") fallback is dropped: without the marker-line
+    # floor it could match "FOOTER" mid-preamble with no preceding newline at
+    # all, corrupting the split silently.
     footer_marker = "\nFOOTER"
-    footer_idx = prompt_text.find(footer_marker)
-    if footer_idx == -1:
-        # Try without leading newline
-        footer_idx = prompt_text.find("FOOTER")
+    footer_idx = prompt_text.find(footer_marker, marker_line_end)
     if footer_idx != -1:
         postamble = prompt_text[footer_idx:].strip()
     else:
