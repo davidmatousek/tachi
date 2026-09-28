@@ -16,7 +16,7 @@ Changed sections are marked **(rev. 1)**.
 | `is_placeholder_id(s)` | `s.strip() == ""` or `re.fullmatch(r"[-–—]+", s.strip())` |
 | `parse_score(s) -> Decimal \| None` **(rev. 1)** | `Decimal(s.strip())`. It catches `decimal.InvalidOperation`, `ValueError` and `TypeError`, rejects non-finite values, and returns `None` on failure (the caller counts it toward the aggregated warning). It is used for every score, including `_score_to_band` |
 | `classify_control_status(s) -> ("found" \| "partial" \| "none", warn: bool)` **(rev. 1)** | Whole-token rules with a `partial` **prefix** and the negation set {`no`, `not`, `none`, `nothing`} (data-model §3). It is called **once per row at parse time**; the result is stored as `status_class`. It replaces both copies of the row idiom (`:1202-1208`, `:1253-1260`). The Section 1 summary reader (`:1241-1249`) keeps its own matching |
-| `parse_markdown_table` stop rule | Stop at the next heading of the same or higher level than the **matched line**. A non-heading match keeps today's stop rule (`#` or `##`) |
+| `parse_markdown_table` stop rule | Stop at the next heading of the same or higher level than the **matched line**. A non-heading match keeps today's stop rule (`#` or `##`). **(amended at P0, 2026-09-28; RC-3)** For a heading match of level L, stop at the next heading of level ≤ max(L, 2). So a level-1 or level-2 match keeps today's `#`/`##` stop, and only a level-3+ match gets the tighter rule. The literal "same or higher" rule would *loosen* a level-1 match: it would scan past `##` sections and could adopt a later section's table, for example when the bare-substring fallbacks (`"Risk Summary"`, `"Severity Distribution"`, `"Coverage Distribution"`) hit a document title. That breaks FR-K9.2's "existing callers unaffected" |
 | `match_heading(pattern, text) -> int \| None` **(rev. 1)** | Returns the **index of the first line** matching the regex (with `re.MULTILINE` semantics per line). `parse_markdown_table` gains an optional `start_line` argument, so a regex match never falls back to a substring re-search. Used by K10 (`^#{3,4}\s+Risk by MAESTRO Layer`) and K12 (`^##\s+4[bc]\.\s+Resolved Findings\s*$`) |
 | `parse_compensating_controls_md` | Aliased reads, the inherent score, placeholder skip, `status_class`, **clamp once** (with a warning) and banding from the clamped scores. The K11 carve unit is noted in data-model §3 |
 | `parse_resolved_findings` | 4b\|4c heading; skips placeholder rows |
@@ -141,16 +141,22 @@ All warnings go to stderr, in the existing `Warning: …` style, and are never f
 |---|---|
 | Empty or unrecognized control status | `Warning: <n> controls rows have an unrecognized or empty status (first: <ids>); counted as no control` |
 | Residual above inherent | `Warning: <n> controls rows have a residual above the inherent score (first: <ids>); clamped` |
+| Missing residual, inherent present **(amended at P0, 2026-09-28: the implemented stem, `a837ae8`)** | `Warning: <n> controls rows have no residual score (first: <ids>); defaulted to the inherent score (no credit)` |
 | Missing inherent after the join | `Warning: <n> controls rows have no inherent score (first: <ids>); excluded from funnel volumes` |
 | Unparseable score | `Warning: <n> unparseable scores (first: <id>:<column>, …); treated as missing` |
 | Volumes unavailable | `Warning: no controls row carries an inherent score; funnel volumes and risk reduction are unavailable` |
 | Section 1 vs the rows | `Warning: controls Section 1 <field> <a> differs from row-derived <b>; using rows` (one per field) |
-| Row counts | `Warning: controls rows (<n>) differ from risk-scores rows (<m>)` |
+| Row counts **(amended at P0, 2026-09-28; RC-2)**: compared only when `risk-scores.md` is present and its Scored Threat Table yields ≥ 1 row. It reuses the tier-1 join's parse, so the existing `could not find Scored Threat Table` warning prints at most once per run, and an unreadable table is never reported as `(0)` | `Warning: controls rows (<n>) differ from risk-scores rows (<m>)` |
 | Unknown delta statuses (baseline runs only) | `Warning: <n> Section 7 statuses are not NEW/UPDATED/UNCHANGED after normalization (first: <id>='<normalized>', …); not counted` |
 | Empty map (baseline run with a Status column) | `Warning: threats.md Section 7 has <n> rows but no readable Finding ID/Status pairs; delta counts are 0` |
 | Delta ID sets (baseline run with a Status column) | `Warning: Section 7 status IDs differ from tier finding IDs (<k> only-in-map, <j> only-in-tier)` |
 | Baseline run without a Status column | `Warning: baseline run but threats.md Section 7 has no Status column; delta counts unavailable` |
 | Section 4 drift | `Warning: controls Section 4 has content but no recommendations matched; using threat-model mitigations` |
+
+**Removed with K11 (amended at P0, 2026-09-28).**
+- The legacy lines are gone: `Warning: <ID> in '### <Band> Residual Severity' section but residual score <X> maps to <Band2>. Using score-derived band.` and its summary `Warning: <N> findings in wrong severity sections (corrected using score-derived bands)`.
+- The row's band is always score-derived from the clamped residual, so the heading never affected output. After the clamp, the legacy check would name the raw score's band, not the one used.
+- T035 attributes the removed lines to K11 (data-model §4.5).
 
 ## Sibling-parity set (`test_extraction_sibling_parity.py`)
 

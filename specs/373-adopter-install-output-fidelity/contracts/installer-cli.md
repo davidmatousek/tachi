@@ -34,11 +34,13 @@ The existing `x-release-please-version` markers (`:13,19,43`) are kept. The new 
 ## Pre-flight algorithm (bash 3.2; NFR-3 primitives only) **(rev. 1)**
 
 ```bash
-# resolve PATH -> prints the physical path; returns 1 if unresolvable (dangling, or > 40 hops)
+# resolve PATH -> prints the physical path; returns 1 if unresolvable: dangling, more than
+# 32 hops in its own chain, or a whole-path lookup the OS refuses (ELOOP)   (amended at P0, 2026-09-28)
 resolve() {
   local p=$1 hops=0 t d
+  [ -e "$p" ] || return 1   # the OS arbitrates the whole-path symlink limit (P0 RC-1)
   while [ -L "$p" ]; do
-    hops=$((hops + 1)); [ "$hops" -le 40 ] || return 1
+    hops=$((hops + 1)); [ "$hops" -le 32 ] || return 1
     t=$(readlink "$p") || return 1
     case $t in /*) p=$t ;; *) p=$(dirname "$p")/$t ;; esac
   done
@@ -50,7 +52,8 @@ resolve() {
 
 # phys_dest PATH -> prints where PATH physically is, or would be once created:
 # resolve() of its deepest existing component, plus the components that do not exist yet.
-# Returns 1 when the walk meets a dangling link (already refused as unresolvable).
+# Returns 1 when the walk meets a dangling or looping (ELOOP) link, which is already
+# refused as unresolvable   (amended at P0, 2026-09-28: "or looping", after RC-1)
 phys_dest() {
   local q=$1 rest="" d
   while [ ! -e "$q" ]; do
@@ -63,7 +66,16 @@ phys_dest() {
 }
 ```
 
-Both helpers were verified at plan review in the scratchpad, on `/bin/bash` 3.2.57 and on bash 5.3.9. `resolve` handled relative, absolute and chained links, a link reached through an ancestor link, a 2-cycle, a self-loop, an ancestor self-loop (ELOOP, so unresolvable), 40 hops (resolves) and 41 hops (unresolvable). `phys_dest` handled seven cases:
+**The hop ceiling and the whole-path guard (amended at P0, 2026-09-28).**
+- **32 hops, not 40** (SEC-K3-01, commit `45bb8d6`, ratified at P0). 32 is the smaller of Darwin's `MAXSYMLINKS` (32) and Linux's limit (40), so a single chain the pre-flight accepts is one the copy can walk on either platform. The boundary tests sit at 32 (resolves) and 33 (unresolvable).
+- **The `[ -e "$p" ]` entry guard** (P0 required change RC-1).
+  - A per-link ceiling bounds only that link's own chain. The OS limit applies to every link met in one path lookup, including linked ancestors and links inside link-text paths.
+  - At `4bea6c5`, `.claude` and `.claude/skills`, each reached through a 17-link chain, passed the 32-hop pre-flight. With `--follow-symlinks`, the copy then failed mid-way on macOS (`Too many levels of symbolic links`), after it had already written an earlier entry.
+  - `stat` fails with ELOOP when the whole path exceeds the platform limit. So requiring `[ -e ]` on the path as given classifies such a component `unresolvable`: always refused, with no flag remedy, which is D-1's no-partial-install rule.
+  - The hop ceiling stays, to keep single-chain behavior the same on both CI legs.
+  - Until RC-1 lands (W3, with T034), the code lags this text.
+
+Both helpers were verified at plan review in the scratchpad, on `/bin/bash` 3.2.57 and on bash 5.3.9. `resolve` handled relative, absolute and chained links, a link reached through an ancestor link, a 2-cycle, a self-loop, an ancestor self-loop (ELOOP, so unresolvable), 40 hops (resolves) and 41 hops (unresolvable). Those were the plan-review figures; the boundary is now 32/33 (above). `phys_dest` handled seven cases:
 - a link to an **ancestor** of the clone (`templates → ..`): source-tree;
 - a link straight into the clone: source-tree;
 - a new file under a linked ancestor;
@@ -127,6 +139,7 @@ Each was reproduced at plan review on `/bin/bash` 3.2.57 and on bash 5.3.9.
 | Enumerate with `while …; done < <(…)`, never `… \| while …` | A pipe runs the loop in a subshell, and the origin strings and report lines are lost (both bash versions) |
 | `unset CDPATH` once | Otherwise `cd` with a relative `--source` path can search `CDPATH` and print to stdout, which corrupts `$(cd … && pwd -P)` |
 | `find . -mindepth 1` is acceptable | Not POSIX, but present in both BSD and GNU `find`. Order differs between them, so reports are sorted |
+| Split manifest paths with parameter expansion only (`${rest%%/*}`, `${rest#*/}`), never `set -- $rel` **(amended at P0, 2026-09-28)** | An unquoted `set -- $rel` also expands pathnames. A glob character in a manifest segment would then match files in the target project, which is the installer's working directory, and misbuild the checked set (SEC-K3-02, fixed in `45bb8d6`) |
 
 ## Messages **(rev. 1)**
 
@@ -142,7 +155,10 @@ Error: install stopped: destination(s) tachi cannot install through. Nothing was
   <path> -> <physical destination>   [inside the tachi source clone <SRC_P>]
 --follow-symlinks cannot help with these. Replace or remove each link listed above (or move the tachi clone out of the listed destination), then re-run.
 ```
-A nested line shows `-> <resolved>` when the nested link resolves, and `-> '<readlink text>'` otherwise (RC-P4, optional items adopted).
+A nested line always shows `-> <resolved>` **(amended at P0, 2026-09-28)**. This replaces the earlier text: "`-> <resolved>` when the nested link resolves, and `-> '<readlink text>'` otherwise (RC-P4, optional items adopted)".
+- Under data-model §2.1's precedence (the first matching row wins), `unresolvable` comes before `nested`. So a nested link that is dangling, looping or of the wrong type is reported on the "broken, looping or wrong-type" line, with its readlink text, or on a wrong-type line.
+- The outcome is the same either way: always refused, with no flag remedy and nothing written. T011's review confirmed there is no safety impact (SEC-K3-05).
+- The normative precedence stands; only this sentence changed.
 
 **Flag-eligible block**, printed without the flag if any link is `inside` or `outside` (and alongside the always-refused block when both apply) **(RC-P4 (b))**:
 ```
@@ -235,6 +251,16 @@ trap cleanup EXIT
   - a project reached through a **case-variant path inside the clone** (refused by project-root containment).
 
   Both run on the macOS leg. They skip on a case-sensitive volume, probed by upper-casing an existing path, which is the ubuntu leg.
+- **Cases added at P0 (amended at P0, 2026-09-28):**
+  - landed in `45bb8d6`:
+    - the hop boundary at 32 (resolves) and 33 (unresolvable);
+    - a `.claude` reached through a 33-hop chain, run **with** `--follow-symlinks`: refused before any copy, with snapshots showing zero writes;
+    - a manifest entry with a glob character in a segment, beside a decoy link that matches the glob: the decoy is ignored (SEC-K3-02);
+  - required, RC-1, due in W3:
+    - `.claude` and `.claude/skills`, each reached through a **21-link** chain. That is 42 links in one lookup, over both Darwin's 32 and Linux's 40, while each chain alone passes the 32-hop ceiling.
+    - It runs with `--follow-symlinks`, with a plain entry listed first in the manifest.
+    - Expected: exit 1, the always-refused block names `.claude/skills` as a broken, looping or wrong-type link, and snapshots show zero writes, so the plain entry is not written either.
+    - It must fail against `4bea6c5` on both legs.
 - **The shell is pinned to `/bin/bash`** (N12). The harness does not honor an exported `BASH`, because that would let the strict leg drift off bash 3.2 (S-7).
 - **Test-first**: the cleanup safety negatives (refused without the flag; skipped with it; the shared file survives) are written before the implementation.
 

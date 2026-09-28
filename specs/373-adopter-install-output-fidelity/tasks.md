@@ -687,7 +687,7 @@ When it can be carved:
     - the same five: K15's `prompt_scaffold` text and `allow_list`.
   - **One commit per K-item**, split by field class (K11, then K13, then K15), so a later carve can revert one. After any carve, re-run this task for the surviving K-items rather than relying on a clean revert (F4).
   - Regenerate in a scratch clone with the fixture command in `quickstart.md` §5. Copy back only the authorized files, and run `git status --short` afterward (L10). Attribute each hunk to one K-item.
-- [ ] T033 Architect P0 checkpoint, N4 re-run, TW-7 ruling and session handoff, at the end of W2 (`architect` for the checkpoint; `tester` for the re-run; the `orchestrator` invokes the team-lead's TW-7 ruling; ~0.13 d).
+- [X] T033 Architect P0 checkpoint, N4 re-run, TW-7 ruling and session handoff, at the end of W2 (`architect` for the checkpoint; `tester` for the re-run; the `orchestrator` invokes the team-lead's TW-7 ruling; ~0.13 d).
   - **The architect** reviews:
     - the parser semantics, the goldens by file name, and the oracle attribution rules;
     - the W0 "other status" record (AR-2), amending the walk set if needed.
@@ -784,7 +784,7 @@ T039 runs at W1 exit. T040 runs at the end of Session 1, and only if TW-7 fires.
   - **W2 launches only after this ruling and any revert it orders.** T039 gates every W2 task (NM-2).
   - The rule, threshold and order are PRD §10's. This task only adds a second evaluation point, with actuals (team-lead R-3; architect F4 (b)). The PM's acceptance of that placement is recorded separately (LOW-10).
   - Record the ruling in `specs/373-adopter-install-output-fidelity/test-results/w1-exit-checkpoint.md`. Write a NEXT-SESSION snapshot, so Session 1 can break here at no cost if the orchestrator's context runs short.
-- [ ] T040 Early Group A PR and release, **conditional: only if TW-7 fires at T033** (end of Session 1; `devops` for the branch, CI and merge; `tester` for the render set if K14 rides; `product-manager` for the notices; ~0.25 d, plus ~0.25 d if K14 rides; outside the central estimate).
+- [X] T040 (not triggered: TW-7 did not fire at T033, see test-results/w2-exit-tw7.md) Early Group A PR and release, **conditional: only if TW-7 fires at T033** (end of Session 1; `devops` for the branch, CI and merge; `tester` for the render set if K14 rides; `product-manager` for the notices; ~0.25 d, plus ~0.25 d if K14 rides; outside the central estimate).
   - If TW-7 does not fire, mark this task `[X]` with the note "not triggered (TW-7 did not fire at T033)".
   - **Work in its own worktree** (LOW-3). KB Entry 18's `git checkout -B main origin/main` would otherwise switch the shared tree off the feature branch.
   - **Composition (RC-T1 (a); C-3):** a branch from `main` with these commits cherry-picked:

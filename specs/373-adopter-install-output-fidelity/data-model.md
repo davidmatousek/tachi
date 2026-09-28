@@ -38,7 +38,7 @@ The block is the ordered list of relative paths between the exact lines `<!-- BE
 | `need` | `dir` for an ancestor or a directory entry; `file` for a file entry or a cleanup file |
 | `is_link` | `[ -L "$TARGET_P/$component" ]`, **not** gated on `[ -e ]` |
 | `readlink_text` | The raw `readlink` output (reported for unresolvable links) |
-| `resolved` | The physical path from `resolve` (≤ 40 hops), or empty when unresolvable |
+| `resolved` | The physical path from `resolve`, or empty when unresolvable. **(amended at P0, 2026-09-28)** `resolve` accepts at most 32 hops in the link's own chain, down from 40 (SEC-K3-01). It also requires the OS to be able to look up the path as given (`[ -e ]`), because the platform's symlink limit counts every link in one lookup, ancestors included (RC-1; `contracts/installer-cli.md`) |
 | `class` | One of the classes below |
 
 ### 2.1 Link classes
@@ -48,7 +48,7 @@ Link classes apply only when `is_link` is true. The first matching row wins.
 | Precedence | Class | Condition |
 |---|---|---|
 | 1 | `cleanup-only` | `origins == {cleanup-file}`: the deprecated file itself is the link, and it is on no copy path. The class of its target is irrelevant: it is never deleted through |
-| 2 | `unresolvable` | `resolve` fails: a dangling target, or more than 40 hops (looping). **Or the target has the wrong type**: `need == dir` but the target is not a directory, or `need == file` but the target is a directory. Otherwise `mkdir -p` or `cp` would fail mid-copy with the flag, leaving a partial install |
+| 2 | `unresolvable` | `resolve` fails: a dangling target, or looping. Looping means more than 32 hops in the link's own chain, or a whole-path lookup the OS refuses with ELOOP: more links in one lookup than the platform allows (Darwin 32, Linux 40), counting linked ancestors. **(amended at P0, 2026-09-28; was "more than 40 hops")** **Or the target has the wrong type**: `need == dir` but the target is not a directory, or `need == file` but the target is a directory. Otherwise `mkdir -p` or `cp` would fail mid-copy with the flag, leaving a partial install |
 | 3 | `nested` | `subtree ∈ origins` |
 | 4 | `inside` | `resolved` is `TARGET_P` or inside it |
 | 5 | `outside` | otherwise |
@@ -64,7 +64,7 @@ A component that is not a link is `not-link`, and it never blocks.
   - a link to an **ancestor** of the clone (for example `templates → ..`, where entry `templates/tachi/` would land at the clone root);
   - a clone vendored at a destination path with no link at all.
 - The earlier per-link check missed the last two; the plan review reproduced the second case.
-- `phys_dest` fails only where the walk meets a dangling link, which §2.1 already refuses.
+- `phys_dest` fails only where the walk meets a dangling link, or a looping one (an ELOOP whole-path lookup, RC-1). §2.1 already refuses both. **(amended at P0, 2026-09-28: "or a looping one")**
 
 ### 2.3 Decision table
 
@@ -164,14 +164,26 @@ That is consistent: without K11 there is no Tier 4 mix for the posture to match.
 
 All warnings go to stderr and are non-fatal. Per-row warning classes are **aggregated (rev. 1, R-P6)**: one line per class, with the count and the first five IDs in first-seen order, for example `Warning: 7 controls rows have an unrecognized status (first: S-3, T-9, …); counted as no control`. The classes are:
 - a Section 1 total or reduction that differs from the row-derived value by more than 0.1 (per field, not aggregated);
-- controls and risk-scores row counts that differ;
+- controls and risk-scores row counts that differ. **(amended at P0, 2026-09-28)** This is compared only when `risk-scores.md` is present and its Scored Threat Table yields at least one row. An unreadable table is reported once per run by the existing "could not find Scored Threat Table" warning, never as a count of 0 (RC-2);
 - an unrecognized or empty status;
 - a clamp;
+- a missing `residual` defaulted to `inherent` (§3's residual rule). **(amended at P0, 2026-09-28)** This class was implemented in `a837ae8` but missing from this list;
 - a missing `inherent` after the join;
 - an unparseable score;
 - volumes unavailable (§4.3).
 
 The exact stems are in `contracts/extraction-data-contract.md`.
+
+**Removed with K11 (amended at P0, 2026-09-28).** The legacy per-row warning is gone, together with its summary line:
+- the per-row line: `<ID> in '### <Band> Residual Severity' section but residual score <X> maps to <Band2>. Using score-derived band.`;
+- the summary: `<N> findings in wrong severity sections (corrected using score-derived bands)`.
+
+The reasons:
+- banding was already score-derived, so the output never depended on the heading;
+- after the clamp, the legacy check would name the raw score's band while the row is banded from the clamped value, which is a contradictory claim;
+- the per-row, unaggregated form conflicts with R-P6.
+
+T035 attributes the removed lines to K11.
 
 ---
 
@@ -210,6 +222,9 @@ The exact stems are in `contracts/extraction-data-contract.md`.
   Otherwise neither check runs. The scope is what keeps legacy Status-less tables from warning or failing, for example `maestro-reference` (the live-render example: 111 Section 7 rows, no Status column, no baseline) and `mobile-banking-app/sample-report`.
 - **Missing column on a baseline run.** When `has_baseline` is true and Section 7 has no Status column: one warning, `Warning: baseline run but threats.md Section 7 has no Status column; delta counts unavailable`, and the counts stay 0.
 - **Badges.** The report path's badges use the normalized status. `_merge_delta_status` stays importable and delegates to `delta_status_by_id` and `apply_delta_status`, keeping its `(findings, threats_md)` signature.
+- **Tier 3 (amended at P0, 2026-09-28).**
+  - `parse_threats_findings` stores `normalize_delta_status(Status)` at parse. Commit `9019528` closed a T016 gap: before it, raw `[NEW]` values reached the tier-3 badges and `top_findings[].delta_status`.
+  - So all three data tiers badge from the same normalized value as the map, and tier 3 needs no `apply_delta_status` call. The key stays absent when the cell is empty.
 
 ---
 
