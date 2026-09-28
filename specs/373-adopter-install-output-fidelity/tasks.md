@@ -315,7 +315,7 @@ K3 is not a split candidate, and it ships with K1.
     - The ubuntu leg is the first GNU `cp` evidence.
     - Batch fix-forwards, so each ~25-min cycle counts.
   - T010 completes in W2, once both legs are green. `agent-assignments.md` counts it in build wave 3.
-- [ ] T011 [US2] K3 docs and security review (Lane A, W2; `senior-backend-engineer` for the README; `security-analyst` for the review; ~0.15 d).
+- [X] T011 [US2] K3 docs and security review (Lane A, W2; `senior-backend-engineer` for the README; `security-analyst` for the review; ~0.15 d).
   - In `README.md`'s install section, document `--follow-symlinks` by reusing the help text's scope sentence (P-9.3), in P-11.1's wording. Keep the markers at `:120` and `:471`.
   - `security-analyst` gives an advisory review of the pre-flight, scoped to the bash code (standing rules):
     - deny-by-default;
@@ -427,7 +427,7 @@ K3 is not a split candidate, and it ships with K1.
     - the three substring callers;
     - one `##` caller;
     - `scripts/generate-risk-scores-sarif.py`.
-- [ ] T017 [US3a] Lane B2 wiring for K12 and K13.1, plus the FR-K12.5 sweep (B2a and B2b, W2; `senior-backend-engineer` in each lane; ~0.35 d).
+- [X] T017 [US3a] Lane B2 wiring for K12 and K13.1, plus the FR-K12.5 sweep (B2a and B2b, W2; `senior-backend-engineer` in each lane; ~0.35 d).
   - **K12: both extractors make the same calls (F1, NM-1).** Each extractor:
     1. calls `delta_status_by_id`;
     2. at tiers 1 and 2, calls `apply_delta_status`, for the badges (report) and `top_findings[].delta_status` (infographic) only;
@@ -456,8 +456,8 @@ K3 is not a split candidate, and it ships with K1.
     - `docs/architecture/00_Tech_Stack/README.md:130,200,234`.
 
     Record per-occurrence dispositions in `specs/373-adopter-install-output-fidelity/sweep-4b-ledger.md`.
-- [ ] T018 [P] [US3a] FR-K9.3: `.claude/commands/tachi.infographic.md` explicit-path detection accepts `Residual Score` or `Residual` (Lane C2, W2; `senior-backend-engineer`; ~0.02 d).
-- [ ] T019 [US3a] US-3a regression tests and sibling parity (the test lane, W2; `senior-backend-engineer`; ~0.34 d).
+- [X] T018 [P] [US3a] FR-K9.3: `.claude/commands/tachi.infographic.md` explicit-path detection accepts `Residual Score` or `Residual` (Lane C2, W2; `senior-backend-engineer`; ~0.02 d).
+- [X] T019 [US3a] US-3a regression tests and sibling parity (the test lane, W2; `senior-backend-engineer`; ~0.34 d).
   - In `tests/scripts/test_extract_infographic_data.py`, `test_extract_report_data.py` and `test_extractor_contract_fixes.py`:
     - **K9**: short-form headers with an empty Critical band; an empty last band before Summary Statistics yields 0 phantom rows;
     - **K10**: `###` equals `####` on both extractors;
@@ -516,7 +516,7 @@ If K11 is carved, the parser keeps today's unclamped residuals and substring idi
     - a missing residual with an inherent present means residual = inherent (no credit), with a warning;
     - the band fallbacks follow data-model §3.
   - **T020's commits stand alone**: no other K-item shares them, so T039 can revert them (NM-2).
-- [ ] T021 [US3b] K11 funnel and S-9 in `scripts/extract-infographic-data.py` (Lane B2a, W2; `senior-backend-engineer`; ~0.45 d). Per data-model §4.1–§4.4 (L18):
+- [X] T021 [US3b] K11 funnel and S-9 in `scripts/extract-infographic-data.py` (Lane B2a, W2; `senior-backend-engineer`; ~0.45 d). Per data-model §4.1–§4.4 (L18):
   - `compute_risk_funnel`:
     - four tier objects with `ghost`;
     - Decimal volumes (1 dp, half-up) and integer severity mixes;
@@ -531,7 +531,7 @@ If K11 is carved, the parser keeps today's unclamped residuals and substring idi
   - Warnings: the Section 1 comparand (> 0.1) and the row count.
   - The baseball card's `risk_reduction`, `inherent_score` and `residual_score` take the row-derived values.
   - Align the funnel `source` strings with the one-row-set wording (N13).
-- [ ] T022 [P] [US3b] K11 text (Lane C2 in W2, plus the caption from Lane B2b; `senior-backend-engineer` in each lane; ~0.14 d).
+- [X] T022 [P] [US3b] K11 text (Lane C2 in W2, plus the caption from Lane B2b; `senior-backend-engineer` in each lane; ~0.14 d).
   - `templates/tachi/infographics/infographic-risk-funnel.md`:
     - tier blocks and the width rule keyed on `ghost`;
     - the Tier 2 one-row-set line;
@@ -542,7 +542,7 @@ If K11 is carved, the parser keeps today's unclamped residuals and substring idi
     - `:23`: the baseball card's Risk Reduction is row-derived under S-9, not "from the Executive Summary", and a `null` renders "not available";
     - `:79` and `:95`: the funnel table's Risk Reduction row and its definition. It is the row-derived Tier 2→4 volume reduction, "not available" when `null`.
   - B2b edits `templates/tachi/security-report/main.typ:292`: the caption, with the R-P5 clause.
-- [ ] T023 [US3b] K11 tests (the test lane, W2; `senior-backend-engineer`; ~0.20 d). In `tests/scripts/test_extract_infographic_data.py`:
+- [X] T023 [US3b] K11 tests (the test lane, W2; `senior-backend-engineer`; ~0.20 d). In `tests/scripts/test_extract_infographic_data.py`:
   - STEP-bound (100/90/80/70) and strong-reduction (FLOOR-bound) widths;
   - the 3-tier, threats-only and volumes-unavailable shapes;
   - statuses `Missing` (silent), empty or unrecognized (warns), `Partially Found` (partial), `None found` (none);
@@ -569,7 +569,7 @@ If K11 is carved, the parser keeps today's unclamped residuals and substring idi
 - [X] T024 [US3c] Posture function, Lane B1 step 4 (W1, after T020 or T016; `senior-backend-engineer`; ~0.05 d): `compute_risk_posture(counts) -> (level, label)` in `scripts/tachi_parsers.py`, with unit tests, in its own commit.
   - Zero findings give `low`/`LOW RISK`.
   - It runs on post-clamp counts when K11 ships, and on today's counts if K11 is carved.
-- [ ] T025 [US3c] Posture emission, Typst and the stale-data gate (Lane B2a and B2b in W2, with Lane A wiring; `senior-backend-engineer` in B2a and in B2b; `devops` for the job; ~0.32 d).
+- [X] T025 [US3c] Posture emission, Typst and the stale-data gate (Lane B2a and B2b in W2, with Lane A wiring; `senior-backend-engineer` in B2a and in B2b; `devops` for the job; ~0.32 d).
   - **Emission**:
     - `metadata.risk_posture_{level,label}` in every infographic JSON, including executive-architecture through its early-exit builder in `scripts/extract-infographic-data.py`;
     - `#let risk-posture-level` and `#let risk-posture-label` after the severity counts in `scripts/extract-report-data.py`.
@@ -583,7 +583,7 @@ If K11 is carved, the parser keeps today's unclamped residuals and substring idi
     - It compiles against a `tmp_path` copy of `templates/tachi/security-report/`.
     - Do not reuse the existing stale-data harness's in-tree steps. That harness runs the extractor on `examples/web-app` and swaps `report-data.typ` inside the template directory.
   - Lane A's W2 wiring adds the `report-posture` job (`typst-community/setup-typst@v5`, `TACHI_REQUIRE_TYPST=1`), in its own K13-posture commit. It is **never in W1**, and it isn't added at all if K13-posture is carved.
-- [ ] T026 [P] [US3c] Posture text (Lane C2, W2; `senior-backend-engineer`; ~0.10 d).
+- [X] T026 [P] [US3c] Posture text (Lane C2, W2; `senior-backend-engineer`; ~0.10 d).
   - `templates/tachi/infographics/infographic-baseball-card.md`: the badge shows the label alone; the prompt; the ">20% of findings" rubric deleted.
   - `.claude/skills/tachi-infographics/references/gemini-prompt-construction.md:296`.
   - `templates/tachi/infographics/INFOGRAPHIC_TEMPLATES.md:108-109` placeholders.
@@ -613,7 +613,7 @@ When it can be carved:
 - A9–A11 are green;
 - one live render per template shows no layout-label text and no ID outside its allow-list, within two iterations.
 
-- [ ] T027 [US4b] Allow-list emission in `scripts/extract-infographic-data.py` (Lane B2a, W2; `senior-backend-engineer`; ~0.15 d).
+- [X] T027 [US4b] Allow-list emission in `scripts/extract-infographic-data.py` (Lane B2a, W2; `senior-backend-engineer`; ~0.15 d).
   - `compute_allow_list`, per PD-17 and data-model §8:
     - per-template `finding_ids`: the full set for baseball-card and system-architecture, per-layer IDs for maestro-stack, none for the funnel and heatmap, and callouts for executive-architecture;
     - one common `component_names`;
@@ -621,7 +621,7 @@ When it can be carved:
   - Emitted as the top-level `allow_list`, including executive-architecture through its early-exit builder.
   - Keep the `allow_list` lines apart from T025's posture lines in `_build_executive_architecture_payload` and `build_json_output`: separate commits, and non-adjacent lines where possible. A TW-6 revert of T027 then applies cleanly; otherwise the W3 writer resolves it by hand (LOW-4).
   - AR-3 supersedes the extraction contract's listing of `compute_allow_list` under `tachi_parsers.py`. It lives in `extract-infographic-data.py` (L3).
-- [ ] T028 [US4b] K15 prompt hardening (Lane C2, W2; `senior-backend-engineer`; ~0.25 d).
+- [X] T028 [US4b] K15 prompt hardening (Lane C2, W2; `senior-backend-engineer`; ~0.25 d).
   - **The five scaffolded templates' preambles and the reference prompt**: the final layout-label sentence and the allow-list rule (PD-17 wording).
     - They go between `IMPORTANT:` and `STYLING DIRECTIVES`, within the scaffold rules: no preamble line starting `FOOTER`, no early marker text, no extra fence.
     - Keep each K15 sentence on one unwrapped line, so no wrapped line starts with `FOOTER` (L14).
@@ -629,7 +629,7 @@ When it can be carved:
   - **Executive-architecture** (`.claude/skills/tachi-infographics/references/executive-architecture.md`): the one-paragraph PD-2 amendment inside the lock, after IMPORTANT. It meets all nine conditions, including: markers unchanged, no fence or slot, the region variant, generic labels.
   - **The lock rule** in `gemini-prompt-construction.md` gets the dated "Amended by F-373 K15" note, which reconciles the header list (FLOW EDGES, CLUSTERS) and the slot list (7).
   - **The agent's executive-architecture section** (`.claude/agents/tachi/threat-infographic.md:260-272`) defers to the verbatim block and drops its contradicting lines.
-- [ ] T029 [US4b] K15 static assertions (the test lane, W2; `senior-backend-engineer`; ~0.10 d). Add A9 and A10 to `tests/scripts/test_gemini_request_contract.py`:
+- [X] T029 [US4b] K15 static assertions (the test lane, W2; `senior-backend-engineer`; ~0.10 d). Add A9 and A10 to `tests/scripts/test_gemini_request_contract.py`:
   - **A9**:
     - the K15 text sits between IMPORTANT and STYLING DIRECTIVES in each scaffolded preamble, the reference and the executive-architecture block;
     - executive-architecture carries its region variant;
@@ -663,7 +663,7 @@ When it can be carved:
 
 **Independent Test**: both cases pass on the current guard and fail if its warning or its "never misreported" promise regresses.
 
-- [ ] T031 [US6] #370 (the test lane and Lane B2b, W2; `senior-backend-engineer` in each; ~0.15 d).
+- [X] T031 [US6] #370 (the test lane and Lane B2b, W2; `senior-backend-engineer` in each; ~0.15 d).
   - **Tests**, in `tests/scripts/test_extract_report_data.py`:
     - **Case 1**: `_warn_unmatched_attribution_refs`, given a stale-form attribution ID (`{taxonomy: owasp, id: "LLM05:2025"}`), warns on stderr (`capsys`).
       - `classify_framework_items` returns identical items with and without that reference.
@@ -680,7 +680,7 @@ When it can be carved:
 
 ## Phase 11: Polish & Cross-Cutting Concerns (end of W2, W3, W4)
 
-- [ ] T032 Golden regeneration, the test lane's wave-final W2 commits (`senior-backend-engineer`; ~0.14 d). In W3, the W3 writer re-runs it.
+- [X] T032 Golden regeneration, the test lane's wave-final W2 commits (`senior-backend-engineer`; ~0.14 d). In W3, the W3 writer re-runs it.
   - The five goldens in `tests/scripts/fixtures/golden/`, authorized by name (SC-8, R-7):
     - `risk-funnel.json` and `baseball-card.json`: K11's funnel and S-9 fields (the baseball card only while K11 ships, P-9.5);
     - `baseball-card.json`, `maestro-heatmap.json`, `maestro-stack.json`, `risk-funnel.json` and `system-architecture.json`: K13's posture fields, which every JSON gains;
