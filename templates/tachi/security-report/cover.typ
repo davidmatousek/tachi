@@ -16,33 +16,12 @@
 //     medium-count: 12,
 //     low-count: 15,
 //     total-findings: 34,
+//     risk-posture-level: "high",
+//     risk-posture-label: "HIGH RISK",
 //   )
 // =============================================================================
 
 #import "shared.typ": *
-
-
-// ---------------------------------------------------------------------------
-// Internal: Risk posture derivation
-// ---------------------------------------------------------------------------
-// Determines the overall risk posture label and color from severity counts.
-// Logic: highest non-zero severity level determines the posture.
-//   critical > 0  =>  "CRITICAL RISK"  (severity-critical color)
-//   high > 0      =>  "HIGH RISK"      (severity-high color)
-//   medium > 0    =>  "MODERATE RISK"  (severity-medium color)
-//   otherwise     =>  "LOW RISK"       (severity-low color)
-
-#let risk-posture(critical, high, medium, low) = {
-  if critical > 0 {
-    (label: "CRITICAL RISK", color: severity-critical)
-  } else if high > 0 {
-    (label: "HIGH RISK", color: severity-high)
-  } else if medium > 0 {
-    (label: "MODERATE RISK", color: severity-medium)
-  } else {
-    (label: "LOW RISK", color: severity-low)
-  }
-}
 
 
 // ---------------------------------------------------------------------------
@@ -61,12 +40,25 @@
   medium-count: 0,
   low-count: 0,
   total-findings: 0,
+  risk-posture-level: "low",
+  risk-posture-label: "LOW RISK",
   has-logo-primary: false,
   logo-primary-path: none,
   logo-primary-dark-path: none,
 ) = {
-  // Derive risk posture from severity counts.
-  let posture = risk-posture(critical-count, high-count, medium-count, low-count)
+  // Risk posture level and label come from report-data.typ (D-3 / F-373
+  // K13-posture) — this function no longer derives them from severity
+  // counts. Only the color still keys off the level, so the cover never
+  // matches strings in Typst; the label itself is rendered verbatim.
+  let posture-color = if risk-posture-level == "critical" {
+    severity-critical
+  } else if risk-posture-level == "high" {
+    severity-high
+  } else if risk-posture-level == "medium" {
+    severity-medium
+  } else {
+    severity-low
+  }
 
   page(
     width: page-width,
@@ -156,14 +148,14 @@
       #block(
         inset: (x: 1.2em, y: 0.6em),
         radius: 4pt,
-        fill: posture.color,
+        fill: posture-color,
         text(
           font: font-heading,
           size: 16pt,
           weight: "bold",
           fill: white,
           tracking: 0.08em,
-          posture.label,
+          risk-posture-label,
         ),
       )
 

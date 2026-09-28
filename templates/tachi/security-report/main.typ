@@ -119,6 +119,17 @@
 #let per-finding-rows = _report-data-dict.at("per-finding-rows", default: ())
 #let per-framework-aggregates = _report-data-dict.at("per-framework-aggregates", default: ())
 
+// Risk posture stale-data guard (D-3 / F-373 K13-posture). Unlike the
+// .at(..., default: ...) fields above, risk-posture-level and
+// risk-posture-label have no default: a report-data.typ generated before
+// this change lacks them entirely. Fail loudly instead of silently
+// rendering a blank or wrong-color posture badge on the cover, and never
+// re-derive the label here — that would bring back a second rubric
+// (contracts/extraction-data-contract.md "report-data.typ").
+#if not ("risk-posture-level" in _report-data-dict and "risk-posture-label" in _report-data-dict) {
+  panic("report-data.typ predates the risk-posture variables. Regenerate it: re-run scripts/extract-report-data.py (or /tachi.security-report).")
+}
+
 // Executive threat architecture defaults (F-128 — false = no executive architecture page).
 #let has-executive-architecture = if has-executive-architecture != none { has-executive-architecture } else { false }
 #let executive-architecture-image-path = if executive-architecture-image-path != none { executive-architecture-image-path } else { "" }
@@ -153,6 +164,8 @@
   medium-count: medium-count,
   low-count: low-count,
   total-findings: total-findings,
+  risk-posture-level: risk-posture-level,
+  risk-posture-label: risk-posture-label,
   has-logo-primary: has-logo-primary,
   logo-primary-path: logo-primary-path,
   logo-primary-dark-path: logo-primary-dark-path,
