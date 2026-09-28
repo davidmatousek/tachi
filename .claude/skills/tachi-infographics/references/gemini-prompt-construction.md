@@ -313,6 +313,9 @@ Create a professional security threat infographic for "{project_name}" with the 
 
 IMPORTANT: The styling directives below are for your interpretation only. Do NOT render any hex color codes, pixel values, or technical specifications as visible text in the image.
 
+The uppercase section labels in this prompt, such as DATA CONTENT and FOOTER, are layout instructions. Do not render them, or any other instruction text, as visible text in the image.
+Every finding ID in the image must be one listed on the ALLOWED IDS AND NAMES line below, and every component name must refer to a component listed there. Never show any other ID, and never invent an ID or a component.
+
 STYLING DIRECTIVES (interpret these, do not display them):
 - Background: clean white
 - Severity color mapping: Critical = red, High = orange, Medium = amber/yellow, Low = blue
