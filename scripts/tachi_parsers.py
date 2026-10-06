@@ -352,17 +352,25 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
         List of dicts, one per row, with keys from the header row.
         Returns empty list if table not found.
 
-    Stop rule (FR-K9.2): scanning for the table stops at the next heading
-    whose level (count of leading '#') is the same as or higher (numerically
-    lower or equal) than the level of the matched line itself — so an empty
-    ``### Foo`` section correctly yields no rows instead of adopting a later
-    ``###``/``####`` section's table. When the matched line is not a heading
-    (a handful of callers match bold paragraph text, e.g. "Coverage
+    Stop rule (FR-K9.2; amended at P0, 2026-09-28, RC-3/architect finding
+    F-1): scanning for the table stops at the next heading whose level
+    (count of leading '#') is less than or equal to ``max(matched_level,
+    2)`` — so an empty ``### Foo`` section correctly yields no rows instead
+    of adopting a later ``###``/``####`` section's table (a level-3-or-
+    deeper match gets this tighter, level-aware rule), while a level-1 or
+    level-2 match keeps today's plain ``#``/``##`` stop. The literal "same
+    as or higher than the matched line" rule — stopping only at
+    ``level <= matched_level`` — would *loosen* a level-1 match instead of
+    preserving it: a document TITLE (e.g. ``# Threat Model Risk Summary``)
+    is itself a level-1 heading, so a bare-substring fallback that matches
+    it (three callers can: "Risk Summary", "Severity Distribution",
+    "Coverage Distribution") would then scan past the very next ``##``
+    section and could adopt a *later* section's table — breaking
+    FR-K9.2's "existing callers MUST be unaffected" for exactly the callers
+    it exists to protect. When the matched line is not a heading (a
+    handful of callers match bold paragraph text, e.g. "Coverage
     Distribution"), the stop rule is unchanged from before this fix: stop
-    only at a literal ``## `` or ``# `` line. This means every pre-existing
-    ``##``-heading caller is unaffected by construction, because for a
-    level-1-or-2 match, "same or higher level" reduces exactly to "the next
-    ``##`` or ``#`` line" — the old, hardcoded rule.
+    only at a literal ``## `` or ``# `` line.
     """
     lines = content.split("\n")
 
@@ -388,9 +396,12 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
             table_header_idx = i
             break
         if matched_level is not None:
-            # Stop at the next heading of the same or higher level (FR-K9.2).
+            # Stop at the next heading of level <= max(matched_level, 2)
+            # (FR-K9.2; amended at P0, RC-3): a level-1-or-2 match keeps the
+            # old "#"/"##" stop; only a level-3+ match gets the tighter,
+            # level-aware rule.
             level = _heading_level(line)
-            if level is not None and level <= matched_level:
+            if level is not None and level <= max(matched_level, 2):
                 break
         elif line.startswith("## ") or line.startswith("# "):
             # Non-heading match: today's rule, unchanged.

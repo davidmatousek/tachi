@@ -211,6 +211,33 @@ def test_parse_markdown_table_empty_h3_band_yields_no_phantom_rows():
     assert high_rows[0]["Threat ID"] == "T-1"
 
 
+_RISK_SUMMARY_TITLE_SNIPPET = """\
+# Threat Model Risk Summary
+
+Some narrative text under the document title. No table here.
+
+## 1. Components
+
+| Component | Type |
+|-----------|------|
+| API | service |
+"""
+
+
+def test_pin_risk_summary_matching_document_title_stops_at_next_h2():
+    # RC-3 (K9, P0 architect finding F-1): the bare-substring "Risk
+    # Summary" fallback can match a document TITLE line ("# Threat Model
+    # Risk Summary") when the title contains the search string and
+    # precedes the real "## 6. Risk Summary" section. With the pre-fix
+    # stop rule (`level <= matched_level`, matched_level=1), the scan
+    # never stops at the next "##" and wrongly adopts this later
+    # "## 1. Components" table. After the fix (`level <= max(matched_level,
+    # 2)`), a level-1 match stops at the next "##"/"#" line exactly like a
+    # level-2 match, so this returns [] (W0 behavior) — never a later
+    # section's table.
+    assert parse_markdown_table(_RISK_SUMMARY_TITLE_SNIPPET, "Risk Summary") == []
+
+
 def test_shortform_headers_and_empty_bands_yield_exactly_two_findings():
     # US-3a #1/#2 (K9/FR-K9.1-K9.2): short-form Coverage Matrix headers
     # resolve via HEADER_ALIASES, and the empty Critical/Low bands yield no
@@ -415,12 +442,16 @@ def test_parse_resolved_findings_absent_returns_empty_list():
 # Pins (L4): parse_markdown_table's level-aware stop rule leaves every
 # pre-existing caller unaffected. For a match on a non-heading line (the
 # three bare-substring callers below), the rule is byte-for-byte the old
-# one. For a match on a level-1-or-2 heading (the representative "##"
-# caller and scripts/generate-risk-scores-sarif.py's two callers, named
-# explicitly by FR-K9.2), "stop at the next heading of the same or higher
-# level" reduces mathematically to "stop at the next '##'/'#' line" — the
-# old hardcoded rule — so these are unaffected by construction, proven here
-# even across an intervening deeper heading.
+# one. For a match on a level-2 heading (the representative "##" caller
+# and scripts/generate-risk-scores-sarif.py's two callers, named explicitly
+# by FR-K9.2), "stop at the next heading of level <= max(matched_level, 2)"
+# reduces to "stop at the next '##'/'#' line" — the old hardcoded rule —
+# so these are unaffected by construction, proven here even across an
+# intervening deeper heading. A level-1 match (a document title) is NOT
+# the same reduction: RC-3 clamps it to level 2 as well, but for a
+# different reason (architect finding F-1) — see
+# test_pin_risk_summary_matching_document_title_stops_at_next_h2, beside
+# the empty-H3-band test above.
 # =============================================================================
 
 _SEVERITY_DISTRIBUTION_SNIPPET = """\
