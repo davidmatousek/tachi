@@ -511,6 +511,98 @@ def test_sec_k3_01_regression_33_hop_claude_chain_refused_with_follow_symlinks(t
     assert_no_tree_changes(before_outside, snapshot_tree(outside_target), label="chain target")
 
 
+def test_rc1_regression_21_plus_21_hop_linked_ancestor_chain_refused_with_follow_symlinks(tmp_path):
+    """P0 RC-1 regression (architect P0 review Sec. 6(b) and Sec. 9: the
+    residual of SEC-K3-01, `contracts/installer-cli.md` "The hop ceiling
+    and the whole-path guard").
+
+    `resolve()`'s 32-hop ceiling (`45bb8d6`, SEC-K3-01) bounds only ONE
+    link's own chain. The real OS symlink-traversal limit (Darwin's
+    `MAXSYMLINKS` == 32, Linux's `SYMLOOP_MAX`, commonly 40) instead counts
+    EVERY link met while resolving a single path, linked ancestors
+    included. So two chains that are each individually under the 32-hop
+    ceiling can still sum past the platform limit when one is nested
+    inside the other's resolved destination -- exactly what the P0 review
+    reproduced on macOS with two 17-hop chains (`.claude` and, inside its
+    target, `.claude/skills`).
+
+    This test uses 21+21 (not P0's 17+17) so the combined 42-hop lookup
+    deterministically exceeds BOTH Darwin's 32-hop limit AND Linux's
+    40-hop limit on both CI legs -- 17+17 (34) clears Darwin's 32 but not
+    Linux's 40, so it would silently pass on an Ubuntu runner. Each 21-hop
+    chain alone is still comfortably under the shared 32-hop ceiling
+    (`test_symlink_chain_hop_boundary` above pins that boundary
+    separately), so only the new whole-path `[ -e "$p" ]` guard (P0 RC-1)
+    -- not the pre-existing per-chain hop count -- can refuse this.
+
+    Setup: `.claude` is a 21-hop chain to a real outside directory A; AT
+    `A/skills` (the real place `.claude/skills` resolves through), `skills`
+    is itself a 21-hop chain to a second real outside directory B.
+    `scripts/example_script.py`, a plain file entry with no link anywhere
+    on its own path, is listed FIRST in the manifest. Before the RC-1 fix,
+    this is exactly how the bug manifested: the pre-flight's own
+    `resolve()` call on each chain only ever counts that chain's OWN 21
+    hops (an absolute link target decouples it from its ancestor textually
+    after the first hop), so both `.claude` and `.claude/skills` pass
+    pre-flight as merely `outside` the project. With `--follow-symlinks`,
+    the copy loop then writes the plain entry first, and only the real
+    `mkdir -p` call -- given the full, un-resolved logical path -- walks
+    `.claude`'s chain and then `skills`'s chain back-to-back in one
+    OS-level lookup, and crashes with ELOOP partway through
+    `.claude/skills`: a non-atomic partial install.
+
+    After RC-1, `resolve()`'s leading `[ -e "$p" ]` performs that same
+    whole-path OS lookup itself (unlike `readlink`, `stat` follows the
+    FINAL component too), so it fails with ELOOP on `.claude/skills`
+    during the pre-flight -- before any copying starts -- and the plain
+    entry is never written either.
+    """
+    source_root = tmp_path / "tachi-src"
+    project_root = tmp_path / "project"
+    build_source_tree(
+        source_root,
+        entries=(
+            "scripts/example_script.py",
+            ".claude/skills/tachi-example/",
+        ),
+    )
+    copy_working_tree_install_sh(source_root)
+    build_project_tree(project_root)
+
+    outside_a = tmp_path / "outside-a"
+    outside_a.mkdir()
+    outside_b = tmp_path / "outside-b"
+    outside_b.mkdir()
+    build_symlink_chain(project_root, ".claude", hops=21, terminal_target=outside_a)
+    skills_link = build_symlink_chain(outside_a, "skills", hops=21, terminal_target=outside_b)
+    readlink_text = os.readlink(skills_link)
+
+    before_project = snapshot_tree(project_root)
+    before_a = snapshot_tree(outside_a)
+    before_b = snapshot_tree(outside_b)
+
+    result = _run(source_root, project_root, "--follow-symlinks")
+
+    assert result.returncode == 1, result.combined
+    out = result.combined
+    assert "Nothing was written" in out
+    assert "cannot help with these" in out, (
+        "a 21+21-hop linked-ancestor chain must be refused as UNRESOLVABLE "
+        "(no --follow-symlinks remedy offered) -- each chain alone passes "
+        "the 32-hop ceiling, so only the whole-path `[ -e ]` guard (P0 "
+        "RC-1) can catch the combined 42-hop lookup"
+    )
+    assert f".claude/skills -> '{readlink_text}'" in out, (
+        "the always-refused block must name .claude/skills itself (the "
+        "component whose WHOLE-PATH lookup exceeds the platform limit), "
+        "with its raw readlink text -- not just .claude"
+    )
+    assert "[broken, looping or wrong-type link]" in out
+    assert_no_tree_changes(before_project, snapshot_tree(project_root), label="project")
+    assert_no_tree_changes(before_a, snapshot_tree(outside_a), label="chain target A (.claude)")
+    assert_no_tree_changes(before_b, snapshot_tree(outside_b), label="chain target B (.claude/skills)")
+
+
 # ---------------------------------------------------------------------------
 # G. Source-tree containment: destinations that resolve into the tachi
 # clone, and project roots that ARE the clone or lie inside it (US-2 #7,
