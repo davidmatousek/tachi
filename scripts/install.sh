@@ -68,13 +68,18 @@ usage() {
   exit 0
 }
 
-# resolve PATH -> prints the physical path; returns 1 if unresolvable (dangling, or > 32 hops)
-# 32 is the cross-platform-safe minimum of Darwin's MAXSYMLINKS (32) and
-# Linux's SYMLOOP_MAX (commonly 40): a chain this ceiling accepts is one the
-# real OS can always walk during the copy phase, on either platform
-# (SEC-K3-01).
+# resolve PATH -> prints the physical path; returns 1 if unresolvable: dangling, more than
+# 32 hops in its own chain, or a whole-path lookup the OS refuses (ELOOP)
+# 32 is the cross-platform-safe chain ceiling: the smaller of Darwin's MAXSYMLINKS (32) and
+# Linux's SYMLOOP_MAX (commonly 40), so a chain this ceiling accepts is one the real OS can
+# always walk during the copy phase, on either platform (SEC-K3-01). The leading `-e` check
+# below makes the OS walk the WHOLE path in one lookup (every link met along it, linked
+# ancestors included); when that walk exceeds the platform's own limit it fails with ELOOP,
+# and the component becomes unresolvable: always refused, no flag remedy, zero writes (D-1;
+# P0 RC-1).
 resolve() {
   local p=$1 hops=0 t d
+  [ -e "$p" ] || return 1   # the OS arbitrates the whole-path symlink limit (P0 RC-1)
   while [ -L "$p" ]; do
     hops=$((hops + 1)); [ "$hops" -le 32 ] || return 1
     t=$(readlink "$p") || return 1
