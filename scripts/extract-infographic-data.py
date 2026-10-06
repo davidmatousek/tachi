@@ -283,21 +283,36 @@ def extract_severity(tier, threats_content, rs_content=None, cc_content=None):
         Tuple of (severity_dict, findings_list, cc_data_or_None).
         - severity_dict: {critical, high, medium, low, note, total}
         - findings_list: List of finding dicts (structure varies by tier)
-        - cc_data: Full compensating controls data for Tier 1, None otherwise
+        - cc_data: Full compensating controls data for Tier 1, None otherwise.
+          At tier 1, also carries ``risk_scores_row_count`` (RC-2, P0
+          architect finding F-2): the risk-scores.md row count when the
+          parse below yielded at least one row, else None. Reused by
+          ``_funnel_4tier_mode`` so it never re-parses risk-scores.md just
+          to count rows.
     """
     cc_data = None
 
     if tier == 1:
         # K11 (data-model.md §3, F2): join risk-scores composites onto rows
         # whose Coverage Matrix has no Inherent Score/Inherent column.
+        # RC-2: parse risk-scores.md at most once here and carry the row
+        # count forward on cc_data, so a later row-count comparison never
+        # re-parses it -- re-parsing an unreadable table doubled the
+        # "could not find Scored Threat Table" warning and misreported it
+        # as "(0)" rows instead of skipping the comparison.
         composites_by_id = None
+        rs_row_count = None
         if rs_content:
+            rs_findings = parse_risk_scores_findings(rs_content)
             composites_by_id = {
                 f["id"]: parse_score(f["composite_score"])
-                for f in parse_risk_scores_findings(rs_content)
+                for f in rs_findings
                 if f.get("id")
             }
+            if rs_findings:
+                rs_row_count = len(rs_findings)
         cc_data = parse_compensating_controls_md(cc_content, composites_by_id=composites_by_id)
+        cc_data["risk_scores_row_count"] = rs_row_count
         severity = cc_data["severity"]
         findings = cc_data["findings"]
     elif tier == 2:
@@ -1433,7 +1448,7 @@ def compute_risk_funnel(tier, threats_content, cc_data=None, rs_content=None):
     }
 
     if tier == 1:
-        tiers, reductions, totals = _funnel_4tier_mode(cc_data, rs_content)
+        tiers, reductions, totals = _funnel_4tier_mode(cc_data)
     elif tier == 2:
         tiers, reductions, totals = _funnel_3tier_mode(rs_content)
     else:
@@ -1513,7 +1528,7 @@ def _funnel_section1_comparand_warnings(cc_data, totals):
             )
 
 
-def _funnel_4tier_mode(cc_data, rs_content=None):
+def _funnel_4tier_mode(cc_data):
     """JSON tiers 1-3 from the compensating-controls.md one row set (4-tier mode).
 
     V2 = sum(inherent), V3 = sum(residual if found else inherent), V4 =
@@ -1523,8 +1538,12 @@ def _funnel_4tier_mode(cc_data, rs_content=None):
     widths fall back to the plain STEP cascade, with one warning.
 
     Also emits two more data-model.md §4.5 warnings: a controls/risk-scores
-    row-count mismatch when ``rs_content`` is supplied, and the Section 1
-    comparand (:func:`_funnel_section1_comparand_warnings`).
+    row-count mismatch when ``cc_data["risk_scores_row_count"]`` is not
+    None (RC-2, P0 architect finding F-2: that field is set once by
+    extract_severity's tier-1 branch from its own single parse of
+    risk-scores.md, so an unreadable table is never re-parsed here and
+    never misreported as "(0)" rows), and the Section 1 comparand
+    (:func:`_funnel_section1_comparand_warnings`).
     """
     findings = (cc_data or {}).get("findings", [])
     rows_with_inherent = [f for f in findings if f.get("inherent") is not None]
@@ -1549,14 +1568,13 @@ def _funnel_4tier_mode(cc_data, rs_content=None):
         )
 
     count = len(findings)
-    if rs_content:
-        rs_row_count = len(parse_risk_scores_findings(rs_content))
-        if rs_row_count != count:
-            print(
-                f"Warning: controls rows ({count}) differ from risk-scores "
-                f"rows ({rs_row_count})",
-                file=sys.stderr,
-            )
+    rs_row_count = (cc_data or {}).get("risk_scores_row_count")
+    if rs_row_count is not None and rs_row_count != count:
+        print(
+            f"Warning: controls rows ({count}) differ from risk-scores "
+            f"rows ({rs_row_count})",
+            file=sys.stderr,
+        )
     tier1_mix = _funnel_severity_mix(f.get("inherent_severity") for f in findings)
     tier2_mix = _funnel_severity_mix(
         (f.get("residual_severity") if f.get("status_class") == "found" else f.get("inherent_severity"))

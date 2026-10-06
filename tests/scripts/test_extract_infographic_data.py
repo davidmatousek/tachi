@@ -1416,6 +1416,49 @@ def test_k11_controls_warnings_kitchen_sink_section1_and_row_count_via_cli():
     assert "52.7" not in joined  # the matching residual field must not warn
 
 
+def test_rc2_unreadable_risk_scores_table_single_warning_no_row_count_mismatch_via_cli():
+    # RC-2 (K11, P0 architect finding F-2): when risk-scores.md's Scored
+    # Threat Table can't be found (header drift -- here "## Section 2:
+    # Scored Threat Table" instead of the expected "## 2. Scored Threat
+    # Table" -- the real-world shape seen on maestro-reference and
+    # consumer-agent-app/sample-report), the tier-1 funnel path must parse
+    # risk-scores.md only once: exactly one "could not find Scored Threat
+    # Table" warning, and no false "differ from risk-scores rows (0)"
+    # comparison (data-model.md §4.5; contracts/extraction-data-contract.md
+    # Row counts row, both amended at P0). Reuses the kitchen-sink
+    # fixture's threats.md/compensating-controls.md (10 controls rows) so
+    # the only variable is risk-scores.md's header.
+    # test_k11_controls_warnings_kitchen_sink_section1_and_row_count_via_cli
+    # above pins the *other* side: a genuinely-readable mismatch (11 vs 10)
+    # must still fire.
+    src = FIDELITY_FIXTURES_DIR / "controls_warnings_kitchen_sink"
+    bad_header_risk_scores = (
+        "# Risk Scores -- RC-2 regression (deliberately mis-headed)\n\n"
+        "## Section 2: Scored Threat Table\n\n"
+        "| ID | Component | Threat | Composite | Severity | CVSS | Exploit. |\n"
+        "|---|---|---|---|---|---|---|\n"
+        "| W-1 | API | Spoofing | 8.1 | Critical | 9.0 | High |\n"
+    )
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp = Path(tmpdir)
+        (tmp / "threats.md").write_bytes((src / "threats.md").read_bytes())
+        (tmp / "compensating-controls.md").write_bytes(
+            (src / "compensating-controls.md").read_bytes()
+        )
+        (tmp / "risk-scores.md").write_text(bad_header_risk_scores, encoding="utf-8")
+        returncode, _stdout, stderr, payload = run_extract(tmp, "risk-funnel")
+    assert returncode == 0, f"expected exit 0, got {returncode}. stderr: {stderr}"
+    assert payload is not None
+
+    assert stderr.count("could not find Scored Threat Table in risk-scores.md") == 1, (
+        f"expected exactly one occurrence, got stderr: {stderr}"
+    )
+    assert "differ from risk-scores rows" not in stderr, (
+        "an unreadable risk-scores table must never be compared as (0) rows; "
+        f"got stderr: {stderr}"
+    )
+
+
 def test_k11_baseball_card_and_funnel_agree_on_totals_via_cli():
     # S-9: the baseball card's risk_reduction/inherent_score/residual_score
     # must equal the funnel's row-derived totals, not the (here
