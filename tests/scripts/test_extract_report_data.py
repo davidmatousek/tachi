@@ -1532,21 +1532,35 @@ def test_render_single_rejects_finding_id_that_escapes_temp_dir(tmp_path, capsys
     """Containment unit check on the path builder itself (defense in depth).
 
     Calls _render_single() directly with an unvalidated malicious id, bypassing
-    _parse_attack_tree_file() entirely -- this is the code path the
-    threat-report.md inline fallback (_parse_inline_tree_block) takes, which
-    does not share _parse_attack_tree_file's Finding ID validation. Asserts no
-    exception propagates, no file is written outside tmp_path, and the function
-    reports failure as a soft skip (empty-string value, not a dict) so the
-    caller does not escalate it into a run-aborting RuntimeError.
+    both parse sites' Finding ID validation (_parse_attack_tree_file's and
+    _parse_inline_tree_block's, the latter added for D-2 of the delta review).
+    Asserts no exception propagates, no file is written outside tmp_path, and
+    the function reports failure as a soft skip (empty-string value, not a
+    dict) so the caller does not escalate it into a run-aborting RuntimeError.
+
+    render_dir and render_tmp are each nested exactly three path components
+    below tmp_path (a/b/attack-trees, a/b/render-tmp). _render_single derives
+    every path it would write -- the .mmd/.png pair under render_tmp, and the
+    copied "-attack-tree.png" under render_dir -- from one of those two
+    bases, so the crafted id's three ".." components resolve back to
+    tmp_path itself from *either* base, landing at tmp_path/escaped-ctf.mmd,
+    tmp_path/escaped-ctf.png and tmp_path/escaped-ctf-attack-tree.png. That
+    makes tmp_path the real escape target this test can own and assert on.
+
+    The original (one-level-deep) form of this fixture put the real escape
+    target two directories *above* tmp_path, where its "nothing escaped"
+    assertions never looked -- they passed whether or not the containment
+    check worked, against both the fixed and the pre-fix extractor
+    (tachi-VULN-217a46966920 delta review, D-3).
     """
     extract = _load_extract_module()
-    render_dir = tmp_path / "attack-trees"
-    render_dir.mkdir()
+    render_dir = tmp_path / "a" / "b" / "attack-trees"
+    render_dir.mkdir(parents=True)
     extract._render_attack_trees_dir = render_dir
     extract._render_rel_target = "."
 
     entry = {"id": _CRAFTED_FINDING_ID, "mermaid_code": 'graph TD\n  A["x"] --> B["y"]\n'}
-    render_tmp = tmp_path / "render-tmp"
+    render_tmp = tmp_path / "a" / "b" / "render-tmp"
     render_tmp.mkdir()
 
     result_entry, success, value = extract._render_single(entry, render_tmp)
@@ -1558,10 +1572,11 @@ def test_render_single_rejects_finding_id_that_escapes_temp_dir(tmp_path, capsys
     captured = capsys.readouterr()
     assert repr(_CRAFTED_FINDING_ID) in captured.err
 
-    escaped_path = tmp_path / "escaped-ctf.mmd"
-    assert not escaped_path.exists(), "Finding ID escaped the render temp dir"
+    for name in ("escaped-ctf.mmd", "escaped-ctf.png", "escaped-ctf-attack-tree.png"):
+        escaped_path = tmp_path / name
+        assert not escaped_path.exists(), f"Finding ID escaped the render temp dir to {escaped_path}"
     for sibling in tmp_path.iterdir():
-        assert sibling in (render_dir, render_tmp), (
+        assert sibling.name == "a", (
             f"Unexpected file written outside the render/temp dirs: {sibling}"
         )
 
