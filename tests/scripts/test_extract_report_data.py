@@ -1267,3 +1267,242 @@ def test_build_per_framework_aggregates_out_of_scope_citation_not_misreported(ca
     assert "T1070.001" not in {item["id"] for item in mitre_attack_aggregate["items"]}, (
         "T1070.001 is out_of_scope: true and must not appear in the in-scope items list"
     )
+
+
+# --- tachi-VULN-217a46966920 (CWE-22, path traversal via attack-tree Finding ID) --
+#
+# _parse_attack_tree_file() took the "Finding ID" value verbatim from either the
+# metadata table cell or the H1 heading fallback -- both are attacker-influenced
+# file content -- and render_mermaid_to_png()/_render_single() later interpolated
+# it unvalidated into filesystem paths (f"{fid_lower}.mmd", f"{fid_lower}.png",
+# f"{fid_lower}-attack-tree.png"). A crafted "Finding ID | ../../../escaped-ctf"
+# made the extractor attempt to write outside the render temp dir; the uncaught
+# PermissionError aborted the whole /tachi.security-report run. The tests below
+# pin: (1) both extraction paths (cell, heading) reject a traversal payload with
+# exactly one repr-safe, path-free stderr warning; (2) real-world finding IDs
+# (including multi-letter/zero-padded prefixes seen in tracked examples, e.g.
+# AGP-01) still parse; (3) the aggregating caller keeps the valid entry and
+# drops only the crafted one; (4) the write-site containment check in
+# _render_single is an independent backstop -- it blocks escape even when
+# called with an unvalidated id (as the threat-report.md inline fallback path,
+# _parse_inline_tree_block, does not share _parse_attack_tree_file's guard) and
+# degrades to a soft per-finding skip rather than raising; (5) a full
+# render_mermaid_to_png() run with a crafted entry in the list completes instead
+# of crashing the report run, mirroring the original repro.
+
+_CRAFTED_FINDING_ID = "../../../escaped-ctf"
+
+_VALID_ATTACK_TREE_CELL_FORM = """# Attack Tree: S-1 -- Valid probe
+
+| Field | Value |
+|-------|-------|
+| Finding ID | S-1 |
+| Component | Probe |
+| Risk Level | Critical |
+| Threat | Valid probe |
+
+```mermaid
+graph TD
+  A["probe"] --> B["probe"]
+```
+"""
+
+_CRAFTED_ATTACK_TREE_CELL_FORM = f"""# Attack Tree: {_CRAFTED_FINDING_ID} -- crafted id probe
+
+| Field | Value |
+|-------|-------|
+| Finding ID | {_CRAFTED_FINDING_ID} |
+| Component | Probe |
+| Risk Level | Critical |
+| Threat | crafted id probe |
+
+```mermaid
+graph TD
+  A["probe"] --> B["probe"]
+```
+"""
+
+_CRAFTED_ATTACK_TREE_HEADING_FORM = f"""# Attack Tree: {_CRAFTED_FINDING_ID} -- heading probe
+
+```mermaid
+graph TD
+  A["probe"] --> B["probe"]
+```
+"""
+
+
+def test_parse_attack_tree_file_rejects_path_traversal_finding_id_cell_form(tmp_path, capsys):
+    """A crafted 'Finding ID' table cell containing '../' is rejected, not parsed."""
+    extract = _load_extract_module()
+    tree_file = tmp_path / "zz-crafted-attack-tree.md"
+    tree_file.write_text(_CRAFTED_ATTACK_TREE_CELL_FORM, encoding="utf-8")
+
+    result = extract._parse_attack_tree_file(tree_file, {})
+
+    assert result is None, f"Expected the crafted attack tree to be rejected, got {result!r}"
+    captured = capsys.readouterr()
+    assert captured.err.count("Warning:") == 1, (
+        f"Expected exactly one warning, got stderr: {captured.err!r}"
+    )
+    assert repr(_CRAFTED_FINDING_ID) in captured.err, (
+        f"Expected the rejected ID in repr form on stderr, got: {captured.err!r}"
+    )
+    assert str(tree_file) not in captured.err, (
+        f"Expected no file path on stderr, got: {captured.err!r}"
+    )
+
+
+def test_parse_attack_tree_file_rejects_path_traversal_finding_id_heading_form(tmp_path, capsys):
+    """A crafted H1 heading ID ('# Attack Tree: ../.. -- Title') is rejected.
+
+    Exercises the metadata-table-absent fallback path (the first heading
+    regex, ``^Attack Tree:\\s+(\\S+?):?\\s+[-\\u2014]+\\s+(.*)$``), which is
+    just as attacker-influenced as the table cell.
+    """
+    extract = _load_extract_module()
+    tree_file = tmp_path / "zz-crafted-heading-attack-tree.md"
+    tree_file.write_text(_CRAFTED_ATTACK_TREE_HEADING_FORM, encoding="utf-8")
+
+    result = extract._parse_attack_tree_file(tree_file, {})
+
+    assert result is None, f"Expected the crafted attack tree to be rejected, got {result!r}"
+    captured = capsys.readouterr()
+    assert captured.err.count("Warning:") == 1, (
+        f"Expected exactly one warning, got stderr: {captured.err!r}"
+    )
+    assert repr(_CRAFTED_FINDING_ID) in captured.err, (
+        f"Expected the rejected ID in repr form on stderr, got: {captured.err!r}"
+    )
+    assert str(tree_file) not in captured.err, (
+        f"Expected no file path on stderr, got: {captured.err!r}"
+    )
+
+
+@pytest.mark.parametrize("finding_id", ["S-1", "AG-2", "LLM-13", "AGP-01", "TE-5", "CHAIN-001"])
+def test_parse_attack_tree_file_accepts_real_world_finding_ids(tmp_path, finding_id):
+    """Regression guard: real-world ID shapes from tracked examples still parse.
+
+    AGP-01 (examples/maestro-reference), TE-1..TE-5 (examples/consumer-agent-app),
+    and zero-padded/multi-letter prefixes must survive the new validation --
+    only path separators and traversal sequences are rejected.
+    """
+    extract = _load_extract_module()
+    content = f"""# Attack Tree: {finding_id} -- Valid probe
+
+| Field | Value |
+|-------|-------|
+| Finding ID | {finding_id} |
+| Component | Probe |
+| Risk Level | Critical |
+| Threat | Valid probe |
+
+```mermaid
+graph TD
+  A["probe"] --> B["probe"]
+```
+"""
+    tree_file = tmp_path / "valid-attack-tree.md"
+    tree_file.write_text(content, encoding="utf-8")
+
+    result = extract._parse_attack_tree_file(tree_file, {})
+
+    assert result is not None, f"Expected {finding_id!r} to be accepted as a safe Finding ID"
+    assert result["id"] == finding_id
+
+
+def test_parse_attack_trees_skips_crafted_entry_keeps_valid_entry(tmp_path, capsys):
+    """parse_attack_trees() over a directory with one valid + one crafted file
+    keeps only the valid entry and emits exactly one warning for the crafted one.
+    """
+    extract = _load_extract_module()
+    target_dir = tmp_path / "target"
+    attack_trees_dir = target_dir / "attack-trees"
+    attack_trees_dir.mkdir(parents=True)
+    (attack_trees_dir / "s-1-attack-tree.md").write_text(
+        _VALID_ATTACK_TREE_CELL_FORM, encoding="utf-8"
+    )
+    (attack_trees_dir / "zz-crafted-attack-tree.md").write_text(
+        _CRAFTED_ATTACK_TREE_CELL_FORM, encoding="utf-8"
+    )
+
+    entries = extract.parse_attack_trees(target_dir, findings=[])
+
+    assert [e["id"] for e in entries] == ["S-1"], (
+        f"Expected only the valid entry to survive, got {[e['id'] for e in entries]!r}"
+    )
+    captured = capsys.readouterr()
+    assert captured.err.count("Warning:") == 1, (
+        f"Expected exactly one warning, got stderr: {captured.err!r}"
+    )
+    assert repr(_CRAFTED_FINDING_ID) in captured.err
+
+
+def test_render_single_rejects_finding_id_that_escapes_temp_dir(tmp_path, capsys):
+    """Containment unit check on the path builder itself (defense in depth).
+
+    Calls _render_single() directly with an unvalidated malicious id, bypassing
+    _parse_attack_tree_file() entirely -- this is the code path the
+    threat-report.md inline fallback (_parse_inline_tree_block) takes, which
+    does not share _parse_attack_tree_file's Finding ID validation. Asserts no
+    exception propagates, no file is written outside tmp_path, and the function
+    reports failure as a soft skip (empty-string value, not a dict) so the
+    caller does not escalate it into a run-aborting RuntimeError.
+    """
+    extract = _load_extract_module()
+    render_dir = tmp_path / "attack-trees"
+    render_dir.mkdir()
+    extract._render_attack_trees_dir = render_dir
+    extract._render_rel_target = "."
+
+    entry = {"id": _CRAFTED_FINDING_ID, "mermaid_code": 'graph TD\n  A["x"] --> B["y"]\n'}
+    render_tmp = tmp_path / "render-tmp"
+    render_tmp.mkdir()
+
+    result_entry, success, value = extract._render_single(entry, render_tmp)
+
+    assert success is False
+    assert value == "", f"Expected a soft-skip (empty string), got {value!r}"
+    assert result_entry is entry
+
+    captured = capsys.readouterr()
+    assert repr(_CRAFTED_FINDING_ID) in captured.err
+
+    escaped_path = tmp_path / "escaped-ctf.mmd"
+    assert not escaped_path.exists(), "Finding ID escaped the render temp dir"
+    for sibling in tmp_path.iterdir():
+        assert sibling in (render_dir, render_tmp), (
+            f"Unexpected file written outside the render/temp dirs: {sibling}"
+        )
+
+
+def test_render_mermaid_to_png_completes_with_crafted_entry_in_list(tmp_path):
+    """End-to-end regression guard mirroring the original repro: a crafted
+    entry in the attack_trees list must not abort the whole render run.
+
+    Skipped when mmdc is absent (PD-8), matching the existing
+    agentic_app_report_typst fixture's convention.
+    """
+    if shutil.which("mmdc") is None:
+        pytest.skip("mmdc (@mermaid-js/mermaid-cli) not on PATH")
+
+    extract = _load_extract_module()
+    target_dir = tmp_path / "target"
+    (target_dir / "attack-trees").mkdir(parents=True)
+    template_dir = tmp_path / "template"
+    template_dir.mkdir()
+
+    attack_trees = [
+        {
+            "id": _CRAFTED_FINDING_ID,
+            "mermaid_code": 'graph TD\n  A["x"] --> B["y"]\n',
+        },
+    ]
+
+    extract.render_mermaid_to_png(attack_trees, target_dir, template_dir)
+
+    assert attack_trees[0]["has_image"] is False
+    assert attack_trees[0]["image_path"] == ""
+    written = list((target_dir / "attack-trees").iterdir())
+    assert written == [], (
+        f"Expected no files written to attack-trees/ for a rejected id, got {written!r}"
+    )
