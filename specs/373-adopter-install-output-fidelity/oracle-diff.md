@@ -162,3 +162,15 @@ Scratch artifacts (raw/norm snapshots, `analyze.py`, reports) live under `/priva
 **Result**: **0 JSON leaves changed, 0 `.typ` lines changed, 0 stderr lines changed.** Both methods agree: the classifier reported no classes in any category, and the raw `diff -rq` returned exit 0 with zero output — `SC/final/norm` and `SC/final2/norm` are byte-identical across all 168 files. No mover to attribute. Matches the coordinator's expectation (0/0/0): every attack-tree finding ID on all 12 tracked examples is a real finding ID (`^[A-Za-z]+-?[0-9]+` shape) and passes the new regex, so no tree is skipped and no output path changes.
 
 **Checks**: `git diff --stat 729fa1b eb5d3fe -- 'examples/**/*.png' 'examples/**/*.pdf.baseline'` → empty. Main-tree `git status --short` → clean before this section was appended (this edit itself left uncommitted, per instruction).
+
+---
+
+## 12. Final-commit confirmation (`c2212fb`)
+
+**Commit**: `c2212fb` (`test(373): CWE-22 escape assertion checks the real escape target`, D-3), branch tip, pushed. Since `eb5d3fe`: `b3276ae` (security scan run), `52266ee` (docs, §11 above), `be43b3e`+`17419ae` (SEC-K3-07 guard also checks the raw `--source` value, D-1 — `install.sh` only, outside the oracle), `02e42eb` (D-2: the one extractor change — `_is_safe_finding_id` now also applies to attack-tree IDs from the `threat-report.md` inline fallback path, skipping with a warning on failure), and `c2212fb` itself (test-only).
+
+**Method**: identical to §§10–11. Fresh scratch clone of `c2212fb` at `clone-final3/tachi` (path ends in `/tachi`). Ran the unmodified `snapshot.sh` → `SC/final3`; 84/84 runs exit 0. Diffed normalized `SC/final2` (`eb5d3fe`) against normalized `SC/final3` (`c2212fb`) two ways: the type-strict JSON / `.typ` / stderr classifier, and an independent raw `diff -rq SC/final2/norm SC/final3/norm` over all 168 files.
+
+**Result**: **0 JSON leaves changed, 0 `.typ` lines changed, 0 stderr lines changed.** Both methods agree: the classifier reported no classes in any category, and the raw `diff -rq` returned exit 0 with zero output — `SC/final2/norm` and `SC/final3/norm` are byte-identical across all 168 files. No mover to attribute. Matches the coordinator's expectation (0/0/0): no tracked example's `threat-report.md` inline-fallback path contributes an attack-tree ID that fails `_is_safe_finding_id`, so D-2 skips nothing on real data, consistent with D-1 (`02e42eb`) at §11.
+
+**Checks**: `git diff --stat eb5d3fe c2212fb -- 'examples/**/*.png' 'examples/**/*.pdf.baseline'` → empty. This edit touches only `oracle-diff.md`, left uncommitted per instruction; concurrent, unrelated changes from another in-flight agent (`.security/`, `test-results/summary.json`) are present in the main tree but are not this task's output and were left untouched.
