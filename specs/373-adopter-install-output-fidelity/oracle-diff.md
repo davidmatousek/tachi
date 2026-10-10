@@ -150,3 +150,15 @@ Scratch artifacts (raw/norm snapshots, `analyze.py`, reports) live under `/priva
 - The test and CI-workflow commits (`117b2a3`, `383140e`, `2ef4cec`, `91fbe7a`, `dfccde5`, `0fc2ebe`) add test/workflow files only — confirmed no effect by construction.
 
 **Checks**: `git diff --stat 0ce39d0 729fa1b -- 'examples/**/*.png' 'examples/**/*.pdf.baseline'` → empty. Main-tree `git status --short` → clean before this section was appended.
+
+---
+
+## 11. Final-commit confirmation (`eb5d3fe`)
+
+**Commit**: `eb5d3fe` (`fix(373): validate attack-tree finding IDs before they reach file paths`, tachi-VULN-217a46966920, CWE-22), branch tip, pushed. Since `729fa1b`: `8484a7b` (docs, §10 above), `9c15a3b` (test-only), `1dc774e`/`7e1c082`/`75547e2`/`2e5cabf`/`276dd28`/`6a1d6ff` (docs/CHANGELOG), `6dbf919`+`dec0fbd` (SEC-K3-07 install.sh tab/newline-byte guard — outside the oracle, `install.sh` isn't exercised by `snapshot.sh`), `1961ee9` (test-only) and `eb5d3fe` itself — the one extractor change: `scripts/extract-report-data.py` now validates each attack-tree finding ID against `^[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*$` and skips any tree whose ID fails, plus adds `resolve()`-containment checks at the render write sites.
+
+**Method**: identical to §10. Fresh scratch clone of `eb5d3fe` at `clone-final2/tachi` (path ends in `/tachi`). Ran the unmodified `snapshot.sh` → `SC/final2`; 84/84 runs exit 0. Diffed normalized `SC/final` (`729fa1b`) against normalized `SC/final2` (`eb5d3fe`) two ways: the same type-strict JSON / `.typ` / stderr classifier, and an independent raw `diff -rq SC/final/norm SC/final2/norm` over all 168 files.
+
+**Result**: **0 JSON leaves changed, 0 `.typ` lines changed, 0 stderr lines changed.** Both methods agree: the classifier reported no classes in any category, and the raw `diff -rq` returned exit 0 with zero output — `SC/final/norm` and `SC/final2/norm` are byte-identical across all 168 files. No mover to attribute. Matches the coordinator's expectation (0/0/0): every attack-tree finding ID on all 12 tracked examples is a real finding ID (`^[A-Za-z]+-?[0-9]+` shape) and passes the new regex, so no tree is skipped and no output path changes.
+
+**Checks**: `git diff --stat 729fa1b eb5d3fe -- 'examples/**/*.png' 'examples/**/*.pdf.baseline'` → empty. Main-tree `git status --short` → clean before this section was appended (this edit itself left uncommitted, per instruction).
