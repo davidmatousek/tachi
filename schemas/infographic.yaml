@@ -49,6 +49,8 @@ infographic:
         - agent_count
         - finding_count
         - risk_posture
+        - risk_posture_level
+        - risk_posture_label
 
     - name: "Risk Distribution"
       heading: "## 2. Risk Distribution"

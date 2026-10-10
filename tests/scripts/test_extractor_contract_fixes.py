@@ -10,6 +10,13 @@ Bug 2 — ``parse_attack_trees`` accepts agent-emitted ``{ID}-{slug}.md`` names
 Bug 3 — ``parse_threat_report_md`` falls back to full Section 1 prose
 Bug 4 — ``detect_images`` finds both ``.jpg`` and ``.png`` extensions
 Bug 5 — ``_merge_delta_status`` populates ``delta_status`` at Tier 1/2
+
+A second, later batch (Feature 373, tasks.md T019) adds K13.1 consumer-
+parity anchors: the finding card, the remediation roadmap and the
+attack-path remediation must read one shared `recommendation`/`mitigation`
+field on tiers 1 and 3 (data-model.md §7), never their own separate
+resolution. See ``test_extract_report_data.py`` for the per-tier
+placeholder/fallback resolution tests themselves.
 """
 
 import sys
@@ -246,3 +253,55 @@ def test_bug5_merge_delta_status_populates_tier1_findings(extract_report_data):
     assert "delta_status" not in findings[2], (
         "Findings not in Section 7 must not have delta_status injected"
     )
+
+
+# ---------------------------------------------------------------------------
+# Feature 373 K13.1 (tasks.md T019) -- recommendation-placeholder consumer
+# parity. data-model.md §7: "On tiers 1 and 3, the three consumers read one
+# field and so always agree." These anchor that architectural invariant: a
+# future change that gave one consumer its own separate resolution path
+# would be caught here, regardless of how T017 resolves the field upstream.
+# ---------------------------------------------------------------------------
+
+_REC_PLACEHOLDER = "No recommendation available"
+
+
+def test_f373_k131_tier1_three_consumers_agree_on_one_recommendation_field(extract_report_data):
+    """Tier 1: the card, the roadmap and the attack path all read the same
+    `recommendation` field, whatever text it was resolved to (analyzer
+    text, prefixed Section 7 fallback, or the placeholder).
+    """
+    resolved_text = "Threat-model mitigation: Apply rate limiting at the ingress."
+    finding = {
+        "id": "T-2", "component": "Backend Service", "threat": "x",
+        "residual_severity": "Medium", "control_status": "Partial Control",
+        "recommendation": resolved_text,
+    }
+    card_value = finding["recommendation"]
+    roadmap_value = extract_report_data.build_remediation_actions(
+        [finding], tier=1, cc_data={}
+    )[0]["recommendation"]
+    attack_path_value = extract_report_data._get_finding_mitigation(finding)
+
+    assert card_value == roadmap_value == attack_path_value == resolved_text
+
+
+def test_f373_k131_tier3_three_consumers_agree_on_placeholder(extract_report_data):
+    """Tier 3: an empty `mitigation` resolves to the placeholder once,
+    upstream, and the card, the roadmap and the attack path all read that
+    same resolved `mitigation` field.
+    """
+    finding = {
+        "id": "T-9", "component": "Batch Worker", "threat": "x",
+        "risk_level": "Medium", "mitigation": _REC_PLACEHOLDER,
+    }
+    card_value = finding["mitigation"]
+    roadmap_value = extract_report_data.build_remediation_actions(
+        [finding], tier=3, tr_data={"remediation_timeline": [{"a": True}]}
+    )[0]["recommendation"]
+    attack_path_steps = extract_report_data._build_remediation(
+        extract_report_data._get_finding_mitigation(finding)
+    )
+
+    assert card_value == roadmap_value == _REC_PLACEHOLDER
+    assert attack_path_steps == [_REC_PLACEHOLDER]

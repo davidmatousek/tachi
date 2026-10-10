@@ -69,7 +69,7 @@ Single-command entry point for tachi threat infographic generation — the visua
      ```
    - Halt if not found.
    - Read the file content and detect type from structure:
-     - Contains `## 2. Coverage Matrix` AND the first table beneath it has a `Residual Score` column -> type is `compensating-controls`
+     - Contains `## 2. Coverage Matrix` AND the first table beneath it has a `Residual Score` or `Residual` column -> type is `compensating-controls`
      - Contains `## 2. Scored Threat Table` AND the first table beneath it has a `Composite` column header -> type is `risk-scores`
      - Contains `## 6. Risk Summary` with severity count labels (Critical, High, Medium, Low) -> type is `threats`
      - No indicator found -> display:

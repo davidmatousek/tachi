@@ -1,0 +1,462 @@
+{
+  "schema_version": "1.0",
+  "wave": 1,
+  "timestamp": "2026-09-28T02:18:20Z",
+  "test_runner": "python3 -m pytest tests/scripts/test_tachi_parsers.py tests/scripts/test_extract_infographic_data.py tests/scripts/test_extract_report_data.py tests/scripts/test_extractor_contract_fixes.py tests/scripts/test_executive_architecture_payload.py (scratch clone of c4dabd7)",
+  "runner_override": "agent-assignments.md \u00a74 / architect build-time note 4 (F-362 precedent): sub-step 4.5 runs the gated set in a scratch clone of the wave commit instead of the full pytest in the main tree (#365 PNG hazard; ~19 pre-existing out-of-gate reds). Sub-step 4.6 test generation skipped (NFR-7: every module must be CI-gated; the feature's own tasks write the tests).",
+  "commit": "c4dabd7",
+  "execution_duration_ms": 11758,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "baseline": "specs/373-adopter-install-output-fidelity/test-results-prestate.md (T001, 0ce39d0): the same five modules 87/87",
+  "totals": {
+    "pass": 87,
+    "fail": 0,
+    "skip": 0
+  },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "tests": [
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_positive_finding_count_is_findings",
+      "status": "pass",
+      "duration_ms": 0
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_zero_findings_clean_token_is_clean",
+      "status": "pass",
+      "duration_ms": 0
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_zero_findings_na_token_is_not_applicable",
+      "status": "pass",
+      "duration_ms": 0
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_zero_findings_empty_is_clean_backfill_default",
+      "status": "pass",
+      "duration_ms": 0
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_zero_findings_unrecognized_is_clean",
+      "status": "pass",
+      "duration_ms": 0
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_na_token_endash_tolerated_is_not_applicable",
+      "status": "pass",
+      "duration_ms": 0
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_zero_finding_tokens_resolve_to_ordinal_zero",
+      "status": "pass",
+      "duration_ms": 0
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_happy_path",
+      "status": "pass",
+      "duration_ms": 43
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_with_risk_scores_tier",
+      "status": "pass",
+      "duration_ms": 43
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_with_compensating_controls_tier",
+      "status": "pass",
+      "duration_ms": 42
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_no_critical_high_skip_image",
+      "status": "pass",
+      "duration_ms": 39
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_no_threats_md",
+      "status": "pass",
+      "duration_ms": 39
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_no_scope_data",
+      "status": "pass",
+      "duration_ms": 39
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_trust_zone_fallback_to_dfd",
+      "status": "pass",
+      "duration_ms": 38
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_per_layer_ceiling_and_tie_break",
+      "status": "pass",
+      "duration_ms": 48
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_deterministic_output",
+      "status": "pass",
+      "duration_ms": 88
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_orphaned_finding_dropped",
+      "status": "pass",
+      "duration_ms": 39
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_component_name_normalization",
+      "status": "pass",
+      "duration_ms": 39
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_normalize_component_name_helper",
+      "status": "pass",
+      "duration_ms": 7
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_compute_dfd_type_layers_helper",
+      "status": "pass",
+      "duration_ms": 0
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_select_critical_high_callouts_helper",
+      "status": "pass",
+      "duration_ms": 0
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_build_executive_architecture_payload_helper",
+      "status": "pass",
+      "duration_ms": 1
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_existing_templates_unchanged[baseball-card]",
+      "status": "pass",
+      "duration_ms": 42
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_existing_templates_unchanged[system-architecture]",
+      "status": "pass",
+      "duration_ms": 42
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_existing_templates_unchanged[risk-funnel]",
+      "status": "pass",
+      "duration_ms": 42
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_existing_templates_unchanged[maestro-stack]",
+      "status": "pass",
+      "duration_ms": 42
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_existing_templates_unchanged[maestro-heatmap]",
+      "status": "pass",
+      "duration_ms": 42
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_per_layer_floor_invariant[absent]",
+      "status": "pass",
+      "duration_ms": 40
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_per_layer_floor_invariant[single-layer]",
+      "status": "pass",
+      "duration_ms": 39
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_per_layer_floor_invariant[two-layer]",
+      "status": "pass",
+      "duration_ms": 39
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_per_layer_floor_invariant[three-layer]",
+      "status": "pass",
+      "duration_ms": 39
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_per_layer_floor_invariant[all-layers-qualifying]",
+      "status": "pass",
+      "duration_ms": 40
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_callouts_deterministic",
+      "status": "pass",
+      "duration_ms": 79
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_superset_invariant",
+      "status": "pass",
+      "duration_ms": 39
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_maestro_stack_emits_count_keys_present",
+      "status": "pass",
+      "duration_ms": 82
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_maestro_stack_count_identity_holds",
+      "status": "pass",
+      "duration_ms": 81
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_maestro_stack_mixed_counts_partial_fixture",
+      "status": "pass",
+      "duration_ms": 41
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_maestro_stack_all_empty_counts_table_less_fixture",
+      "status": "pass",
+      "duration_ms": 42
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_maestro_stack_distribution_backfilled_to_seven",
+      "status": "pass",
+      "duration_ms": 82
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_maestro_stack_per_layer_summaries_cover_all_seven",
+      "status": "pass",
+      "duration_ms": 82
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_maestro_stack_deterministic_byte_identical",
+      "status": "pass",
+      "duration_ms": 95
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_microservices_per_layer_coverage_state",
+      "status": "pass",
+      "duration_ms": 41
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_present_not_applicable_token_survives_backfill",
+      "status": "pass",
+      "duration_ms": 43
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_table_less_fixture_backfills_all_to_clean",
+      "status": "pass",
+      "duration_ms": 41
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_has_executive_architecture_true_when_image_present",
+      "status": "pass",
+      "duration_ms": 49
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_has_executive_architecture_false_when_image_absent",
+      "status": "pass",
+      "duration_ms": 50
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_has_executive_architecture_false_when_image_zero_size",
+      "status": "pass",
+      "duration_ms": 46
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_executive_architecture_image_path_relative_to_template_dir",
+      "status": "pass",
+      "duration_ms": 56
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_existing_image_flags_unchanged[#let has-funnel-image = true]",
+      "status": "pass",
+      "duration_ms": 8916
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_existing_image_flags_unchanged[#let has-baseball-image = true]",
+      "status": "pass",
+      "duration_ms": 0
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_existing_image_flags_unchanged[#let has-architecture-image = true]",
+      "status": "pass",
+      "duration_ms": 0
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_existing_image_flags_unchanged[#let has-maestro-stack-image = true]",
+      "status": "pass",
+      "duration_ms": 0
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_existing_image_flags_unchanged[#let has-maestro-heatmap-image = true]",
+      "status": "pass",
+      "duration_ms": 0
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_mislabeled_jpg_with_png_bytes_emits_png_path_and_writes_sibling",
+      "status": "pass",
+      "duration_ms": 53
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_mixed_extensions_prefers_self_consistent_png_over_stale_jpg",
+      "status": "pass",
+      "duration_ms": 49
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_clean_jpeg_emits_jpg_path_without_warning",
+      "status": "pass",
+      "duration_ms": 48
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_cleanup_flag_deletes_mislabeled_jpg_with_byte_identical_png",
+      "status": "pass",
+      "duration_ms": 50
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_no_flag_run_stays_byte_identical",
+      "status": "pass",
+      "duration_ms": 50
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_cleanup_flag_recovery_write_then_verify_then_delete",
+      "status": "pass",
+      "duration_ms": 48
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_cleanup_flag_non_identical_pair_untouched",
+      "status": "pass",
+      "duration_ms": 48
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_cleanup_flag_all_correct_directory_is_a_no_op",
+      "status": "pass",
+      "duration_ms": 47
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_cleanup_flag_truncated_recovery_copy_skips_delete",
+      "status": "pass",
+      "duration_ms": 12
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_cleanup_flag_cross_swapped_pair_untouched",
+      "status": "pass",
+      "duration_ms": 48
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_cleanup_flag_legitimate_mixed_pair_untouched",
+      "status": "pass",
+      "duration_ms": 47
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_cleanup_deletion_failure_is_best_effort",
+      "status": "pass",
+      "duration_ms": 2
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_maestro_zero_finding_layer_is_retained_not_dropped",
+      "status": "pass",
+      "duration_ms": 1
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_maestro_coverage_state_on_group_records_microservices_state_map",
+      "status": "pass",
+      "duration_ms": 1
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_maestro_most_exposed_layer_never_a_zero_finding_layer",
+      "status": "pass",
+      "duration_ms": 1
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_maestro_coverage_state_live_on_committed_microservices_example",
+      "status": "pass",
+      "duration_ms": 1
+    },
+    {
+      "name": "tests.scripts.test_extractor_contract_fixes::test_bug1_compensating_controls_dedupes_cross_listed_findings",
+      "status": "pass",
+      "duration_ms": 1
+    },
+    {
+      "name": "tests.scripts.test_extractor_contract_fixes::test_bug2_attack_tree_glob_accepts_agent_native_filenames",
+      "status": "pass",
+      "duration_ms": 2
+    },
+    {
+      "name": "tests.scripts.test_extractor_contract_fixes::test_bug3_narrative_fallback_to_full_section1_prose",
+      "status": "pass",
+      "duration_ms": 0
+    },
+    {
+      "name": "tests.scripts.test_extractor_contract_fixes::test_bug4_detect_images_finds_both_extensions[.jpg-\\xff\\xd8\\xff\\xe0\\x00\\x10JFIF\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00]",
+      "status": "pass",
+      "duration_ms": 1
+    },
+    {
+      "name": "tests.scripts.test_extractor_contract_fixes::test_bug4_detect_images_finds_both_extensions[.png-\\x89PNG\\r\\n\\x1a\\n\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00]",
+      "status": "pass",
+      "duration_ms": 1
+    },
+    {
+      "name": "tests.scripts.test_extractor_contract_fixes::test_bug5_merge_delta_status_populates_tier1_findings",
+      "status": "pass",
+      "duration_ms": 0
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_flow_edges_absent",
+      "status": "pass",
+      "duration_ms": 40
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_flow_edges_empty",
+      "status": "pass",
+      "duration_ms": 40
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_flow_edges_single",
+      "status": "pass",
+      "duration_ms": 39
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_flow_edges_multi_sorted",
+      "status": "pass",
+      "duration_ms": 39
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_flow_edges_truncation",
+      "status": "pass",
+      "duration_ms": 39
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_clusters_absent",
+      "status": "pass",
+      "duration_ms": 38
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_clusters_multi_sorted",
+      "status": "pass",
+      "duration_ms": 39
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_clusters_members_sorted",
+      "status": "pass",
+      "duration_ms": 39
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_clusters_trust_level_rename",
+      "status": "pass",
+      "duration_ms": 39
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_destination_field_name_lock",
+      "status": "pass",
+      "duration_ms": 39
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_determinism",
+      "status": "pass",
+      "duration_ms": 78
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_prompt_co_landing",
+      "status": "pass",
+      "duration_ms": 1
+    }
+  ]
+}

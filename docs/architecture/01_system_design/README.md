@@ -2074,7 +2074,7 @@ Architecture Input
 | Function | Purpose |
 |----------|---------|
 | `parse_baseline_frontmatter()` | Extract baseline metadata (source, date, finding_count, run_id) from nested YAML frontmatter block in threats.md. Handles both standard and code-fenced frontmatter delimiters. Returns None values when no baseline is present. |
-| `parse_resolved_findings()` | Parse Section 4b Resolved Findings table. Returns list of resolved finding dicts with `delta_status: "RESOLVED"` injected. Returns empty list when Section 4b is absent (first run, no baseline). |
+| `parse_resolved_findings()` | Parse the `## 4c.` Resolved Findings table (the legacy `## 4b.` heading is also accepted, FR-K12.5). Returns list of resolved finding dicts with `delta_status: "RESOLVED"` injected. Returns empty list when neither heading is present (first run, no baseline). |
 | `parse_threats_findings()` (updated) | Extended to extract optional `delta_status` field from Status column in Section 7 Recommended Actions table. Backward compatible -- omits field when Status column is absent. |
 
 ### Component 2: Output Schema Updates

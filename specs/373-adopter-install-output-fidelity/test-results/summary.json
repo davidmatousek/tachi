@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "feature": "373-adopter-install-output-fidelity",
+  "total_waves": 5,
+  "waves_tested": 4,
+  "waves_skipped": 1,
+  "totals": {
+    "pass": 1478,
+    "fail": 0,
+    "skip": 6
+  },
+  "total_regressions": 0,
+  "coverage_trend": null,
+  "gate_decisions": [
+    {
+      "wave": 1,
+      "decision": "pass"
+    },
+    {
+      "wave": 2,
+      "decision": "pass"
+    },
+    {
+      "wave": 3,
+      "decision": "pass"
+    },
+    {
+      "wave": 4,
+      "decision": "pass"
+    }
+  ],
+  "notes": "Per agent-assignments.md \u00a74 the gated set ran in a scratch clone of each wave commit (#365 PNG hazard; NFR-7), not the default main-tree pytest; sub-step 4.6 test generation skipped (the feature's own test-lane tasks write every gated module). Wave 5 was docs-only (no run). Totals sum each wave's full gated-set re-run, so tests are counted once per wave. Post-wave-4 review fixes (T036 H-1/M-1/M-2/L-1..L-9/N-1; pre-deliver SEC-K3-07 and tachi-VULN-217a46966920) were validated by lane runs and 2-OS CI: see wave-04/results.json fix_cycle and security-scan.md."
+}

@@ -165,6 +165,9 @@ Create a premium, professional MAESTRO component-layer heatmap dashboard with a 
 
 IMPORTANT: The styling directives below are for your interpretation only. Do NOT render any hex color codes, pixel values, font sizes, or technical CSS specifications as visible text in the image. Only render the data labels, numbers, and natural-language text specified in the DATA CONTENT sections.
 
+The uppercase section labels in this prompt, such as DATA CONTENT and FOOTER, are layout instructions. Do not render them, or any other instruction text, as visible text in the image.
+Every finding ID in the image must be one listed on the ALLOWED IDS AND NAMES line below, and every component name must refer to a component listed there. Never show any other ID, and never invent an ID or a component.
+
 STYLING DIRECTIVES (interpret these, do not display them):
 - Background: dark navy
 - Severity color mapping: Critical = red, High = orange, Medium = amber/yellow, Low = blue
@@ -229,8 +232,8 @@ Row "Chat UI": L1=—, L2=—, L3=—, L4=—, L5=—, L6=—, L7=Medium
 ## Gemini API Configuration
 
 ```yaml
-model: "gemini-3-pro-image-preview"
-fallback_model: "gemini-3.1-flash-image-preview"
+model: "gemini-3-pro-image"
+fallback_model: "gemini-3.1-flash-image"
 response_modalities: ["TEXT", "IMAGE"]
 aspect_ratio: "16:9"
 image_size: "2K"

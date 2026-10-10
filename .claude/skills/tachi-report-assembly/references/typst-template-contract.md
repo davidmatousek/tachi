@@ -62,9 +62,19 @@ Every generated `report-data.typ` must begin with:
 #let medium-count = {N}
 #let low-count = {N}
 #let total-findings = {N}
+#let risk-posture-level = "{critical|high|medium|low}"
+#let risk-posture-label = "{CRITICAL RISK|HIGH RISK|MODERATE RISK|LOW RISK}"
 ```
 
-All values are integers (unquoted). If risk-scores.md has different counts from threats.md, prefer the risk-scores.md counts.
+The count variables are integers (unquoted). `risk-posture-level` and `risk-posture-label` are quoted strings — D-3's single rubric, the highest severity band present, computed by `compute_risk_posture()` on this same count data (data-model.md §5). If risk-scores.md has different counts from threats.md, prefer the risk-scores.md counts.
+
+**Required, no default (F-373 K13-posture).** Unlike every other variable group in this contract, `risk-posture-level` and `risk-posture-label` have no fallback default in `main.typ`. A `report-data.typ` generated before this change lacks them entirely, and `main.typ` panics rather than rendering a stale or wrong-color posture badge:
+
+```
+report-data.typ predates the risk-posture variables. Regenerate it: re-run scripts/extract-report-data.py (or /tachi.security-report).
+```
+
+Every other variable group in this document keeps its compile-cleanly default.
 
 ### Page Inclusion Flags
 

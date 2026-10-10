@@ -1,0 +1,21 @@
+---
+schema_version: "1.0"
+date: "2026-01-14"
+source_file: "tests/scripts/fixtures/fidelity_373/posture_mmdc_free/threats.md"
+classification: "confidential"
+scoring_weights:
+  cvss_base: 0.35
+  exploitability: 0.30
+  scalability: 0.15
+  reachability: 0.20
+---
+
+# Risk Scores — Synthetic Fixture (F-373 posture, mmdc-free)
+
+## 2. Scored Threat Table
+
+| ID | Component | Threat | CVSS | Exploit. | Scalability | Reachability | Composite | Severity | SLA | Disposition |
+|----|-----------|--------|-----:|---------:|-------------:|-------------:|----------:|----------|-----|-------------|
+| T-1 | API Gateway | Synthetic threat T-1 | 9.0 | 8.5 | 7.5 | 8.0 | 8.5 | High | 7d | Mitigate |
+| T-2 | Backend Service | Synthetic threat T-2 | 6.5 | 6.0 | 5.5 | 5.5 | 6.0 | Medium | 30d | Review |
+| T-3 | Batch Worker | Synthetic threat T-3 | 2.5 | 2.5 | 2.5 | 2.5 | 2.5 | Low | 90d | Review |
