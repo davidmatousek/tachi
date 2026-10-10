@@ -58,6 +58,11 @@ Each failure message follows this shape: `INSTALL_MANIFEST.md is missing <path> 
 
 - **The cut-line commit.** `tachi-install-fidelity.yml` invokes **only this module**. The pre-existing extraction modules join after the cut line, in their own lock-step commit with PD-8's mmdc skip (PD-9, PD-20).
 - **The module's `paths:`**, which land in the cut-line commit: `INSTALL_MANIFEST.md`, `.claude/skills/**`, `.claude/commands/tachi.*.md`, `.claude/agents/tachi/**`, `templates/tachi/**`, `scripts/*.py`, `scripts/install.sh`, **`README.md`** and **`docs/guides/DEVELOPER_GUIDE_TACHI.md`**. The last two are there because the loop test byte-compares their blocks. The rest are this test module, `tests/conftest.py`, `tests/scripts/conftest.py`, `pyproject.toml` and the workflow file.
+- **`brand/**` and `schemas/**` (amended at P1, 2026-10-10; T036 L-8, `0fc2ebe`).** Both are manifest directory entries, and the end-to-end and manual-loop cases copy every manifest entry's source.
+  - Without them in `paths:`, removing or renaming either folder could break every adopter `install.sh` run (exit 1, `COPY_FAIL`) without firing this workflow.
+  - `schemas/**` widens the narrower `schemas/taxonomy/*.yaml` that A-2 added.
+- **The rule this implies (amended at P1, 2026-10-10).** `&fidelity_paths` must match the source of **every** manifest entry, so a manifest edit that adds a new top-level entry adds its path in the same commit (the F-250 lock-step rule).
+  - At P1 (`8484a7b`), all 37 entries match the 32 anchor patterns.
 
 ## The manual-install loop (FR-K2.2; the same text in all three blocks) **(rev. 1)**
 

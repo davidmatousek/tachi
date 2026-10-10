@@ -73,7 +73,7 @@ phys_dest() {
   - At `4bea6c5`, `.claude` and `.claude/skills`, each reached through a 17-link chain, passed the 32-hop pre-flight. With `--follow-symlinks`, the copy then failed mid-way on macOS (`Too many levels of symbolic links`), after it had already written an earlier entry.
   - `stat` fails with ELOOP when the whole path exceeds the platform limit. So requiring `[ -e ]` on the path as given classifies such a component `unresolvable`: always refused, with no flag remedy, which is D-1's no-partial-install rule.
   - The hop ceiling stays, to keep single-chain behavior the same on both CI legs.
-  - Until RC-1 lands (W3, with T034), the code lags this text.
+  - **Landed (amended at P1, 2026-10-10).** RC-1 is `60f3714`. Its test-first commit `f04254c` went red on both CI legs, and the code now matches this text. P1 re-ran P0's 17+17 reproduction against the tip's `install.sh`: refused with and without the flag, with zero writes. The 8+8 control installs.
 
 Both helpers were verified at plan review in the scratchpad, on `/bin/bash` 3.2.57 and on bash 5.3.9. `resolve` handled relative, absolute and chained links, a link reached through an ancestor link, a 2-cycle, a self-loop, an ancestor self-loop (ELOOP, so unresolvable), 40 hops (resolves) and 41 hops (unresolvable). Those were the plan-review figures; the boundary is now 32/33 (above). `phys_dest` handled seven cases:
 - a link to an **ancestor** of the clone (`templates → ..`): source-tree;
@@ -90,7 +90,12 @@ Both helpers were verified at plan review in the scratchpad, on `/bin/bash` 3.2.
 - **the subtree**, for directory entries only: `(cd "$SRC_P/$e" && find . -mindepth 1)`, each `./rel` checked at `$TARGET_P/$e/rel` (origin `subtree`);
 - **cleanup**: each of the five `DEPRECATED_COMMANDS` files (origin `cleanup-file`, `need = file`) and their ancestors (origin `cleanup-ancestor`).
 
-A component keeps **every** origin it has, stored as a `|`-delimited origin string per component. There are no associative arrays in bash 3.2. The checked set is about 220 paths at HEAD: 33 entries (37 after K1/K2), 173 subtree paths, about 11 ancestors and 5 cleanup files. No manifest entry is a prefix of another; the completeness test's hygiene check keeps it that way.
+A component keeps **every** origin it has. There are no associative arrays in bash 3.2. No manifest entry is a prefix of another; the completeness test's hygiene check keeps it that way.
+
+**How the code stores it (amended at P1, 2026-10-10: as implemented).** This replaces the earlier wording "stored as a `|`-delimited origin string per component".
+- The code keeps one TAB-delimited `component, need, origin` line per origin in a single newline-delimited string, `CHECKED_SET`.
+- For each linked component, it recovers the sorted origin set and the first non-empty `need` with `awk`, which must follow the `ENVIRON` and drain rows under "Implementation constraints".
+- **Size at P1 (`8484a7b`):** about 300 lines and 235 unique components, from 37 entries, 182 subtree paths, the ancestors and the 5 cleanup files. That is about 30–36 KB at 40–60-character project paths, and it grows with every shipped file.
 
 **Link classification** (`[ -L "$path" ]`, never gated on `[ -e ]`). Precedence follows data-model §2.1:
 1. `cleanup-only`, when the origins are exactly `cleanup-file`;
@@ -116,7 +121,9 @@ under() {
 }
 
 if dest=$(phys_dest "$TARGET_P/$e"); then
-  if under "$dest" "$SRC_P"; then record_refusal source-tree "$e" "$dest"; fi
+  if under "$dest" "$SRC_P"; then record_refusal source-tree "$e" "$dest"
+  elif [ "$E" != "$e" ] && under "$SRC_P" "$dest"; then record_refusal clone-inside "$e" "$dest"   # N11: directory entries only
+  fi
 fi
 ```
 
@@ -124,11 +131,23 @@ The string operations inside `under` are safe because `phys_dest`'s existing pre
 
 The check runs with or without the flag. It catches links into the clone, links to an ancestor of the clone, a clone vendored at a destination path with no link at all, and case-variant or firmlink aliases of the clone.
 
+**The reverse direction, N11 (T009, decided per L14) (amended at P1, 2026-10-10).**
+- **The rule.** For a **directory** entry (`E` ends in `/`), the path is refused when `SRC_P` lies inside `dest`, with or without the flag. In that case the clone sits inside the folder the copy writes into, so the source and destination overlap.
+- **No file-entry check.** A file destination cannot contain the clone.
+- **`elif`, not a second `if`.** When `dest == SRC_P`, both directions hold by identity, so the `elif` keeps one line per entry.
+- **When `phys_dest` fails** (a dangling or looping ancestor), the check is skipped silently, because §2.1 has already refused that link.
+- **Message.** The bracket is `[the tachi source clone lies inside this destination]` (see "Messages"). The always-refused block's remedy already offers moving the clone.
+- **Implementation:** `install.sh:447-448`.
+- **Verified at P1 against the tip's `install.sh`** (zero writes in every case, the link target included):
+  - refused with and without the flag;
+  - refused on a project path that contains a backslash;
+  - refused when the clone sits inside a linked `.claude`'s target. Without the flag, that run prints both blocks.
+
 **Report lines** are collected in newline-delimited strings and printed through `LC_ALL=C sort` for determinism.
 
 ### Implementation constraints (additions to NFR-3) **(rev. 1, M8)**
 
-Each was reproduced at plan review on `/bin/bash` 3.2.57 and on bash 5.3.9.
+Each was reproduced at plan review on `/bin/bash` 3.2.57 and on bash 5.3.9. The two rows marked "(amended at P1, 2026-10-10)" were reproduced in T036's code review instead, on `/bin/bash` 3.2.57. Their regression tests run on both `tachi-pytest.yml` legs: macOS bash 3.2 with BSD awk, and ubuntu bash 5 with mawk.
 
 | Constraint | Why |
 |---|---|
@@ -140,12 +159,14 @@ Each was reproduced at plan review on `/bin/bash` 3.2.57 and on bash 5.3.9.
 | `unset CDPATH` once | Otherwise `cd` with a relative `--source` path can search `CDPATH` and print to stdout, which corrupts `$(cd … && pwd -P)` |
 | `find . -mindepth 1` is acceptable | Not POSIX, but present in both BSD and GNU `find`. Order differs between them, so reports are sorted |
 | Split manifest paths with parameter expansion only (`${rest%%/*}`, `${rest#*/}`), never `set -- $rel` **(amended at P0, 2026-09-28)** | An unquoted `set -- $rel` also expands pathnames. A glob character in a manifest segment would then match files in the target project, which is the installer's working directory, and misbuild the checked set (SEC-K3-02, fixed in `45bb8d6`) |
+| Pass a shell value to `awk` through the environment (`c="$v" awk '… ENVIRON["c"] …'`), never with `awk -v` **(amended at P1, 2026-10-10)** | `-v` processes backslash escapes in the value it assigns. With a `\` in the project's physical path (legal on macOS and Linux), the component never equals the literal field, so the origin lookup comes back empty for every linked component. Then `cleanup-only`, `nested`, the wrong-type check and the cleanup-ancestor skip all go undetected, and every link falls through to the flag-eligible `inside`/`outside` class. With `--follow-symlinks`, that deleted a deprecated file through a linked `.claude/commands` and caused a partial install (T036 H-1, fixed in `b03b834`). `ENVIRON` is POSIX: BSD awk, mawk and gawk all support it |
+| Under `pipefail`, never let a pipe's reader exit early (`awk '{…; exit}'`, `head`, `grep -q`, `grep -m`) while its writer's output is unbounded. Keep the first match with a guard (`!n++`) and let the reader drain its input **(amended at P1, 2026-10-10)** | **Why.** Once the writer outgrows the pipe, SIGPIPE kills it and the pipeline returns 141. **In an assignment**, `set -e` then ends the installer with no message (T036 M-1, fixed in `b03b834`; reproduced from about 100 KB of checked set, which grows with every release). **In an `if` condition**, the same failure reads as false, which fails open. **Two early-exit readers remain**, both on bounded input that is written in one call: `head -n 1` on one component's origin string, and the cleanup skip check's `grep -Fxq` on `SKIP_CLEANUP_FILES`. The latter holds at most 15 lines, about 0.5 KB, from the fixed five-name `DEPRECATED_COMMANDS`. **Measured at P1** for that producer shape on `/bin/bash` 3.2: 0 failures in 3,000 runs at up to 35 KB, and 300 in 300 at 104 KB and above. Re-check this row if `DEPRECATED_COMMANDS` grows or either string becomes unbounded |
 
 ## Messages **(rev. 1)**
 
 These are installer-authored texts. Tests assert these phrases, never `cp` or `readlink` wording.
 
-**Always-refused block**, printed if any path is `unresolvable`, `nested` or `source-tree`:
+**Always-refused block**, printed if any path is `unresolvable`, `nested` or `source-tree`, or if a directory entry's destination contains the clone (N11) **(amended at P1, 2026-10-10: the N11 trigger and line)**:
 ```
 Error: install stopped: destination(s) tachi cannot install through. Nothing was written.
   <component> -> <resolved>   [nested link inside <entry>: the copy cannot pass through it]
@@ -153,8 +174,14 @@ Error: install stopped: destination(s) tachi cannot install through. Nothing was
   <component> -> <resolved>   [link to a file where a folder is needed]
   <component> -> <resolved>   [link to a folder where a file is needed]
   <path> -> <physical destination>   [inside the tachi source clone <SRC_P>]
+  <entry> -> <physical destination>   [the tachi source clone lies inside this destination]
 --follow-symlinks cannot help with these. Replace or remove each link listed above (or move the tachi clone out of the listed destination), then re-run.
 ```
+- **N11's line** (amended at P1, 2026-10-10). `<entry>` is the directory entry without its trailing `/`. The line is in the code since `c194946` (T009); the contract had omitted it (T036 L-1).
+- **Headers checked against the code at P1** (amended at P1, 2026-10-10). `die` prints one `Error: ` before the text it is given. The code's two header texts, `install stopped: destination(s) tachi cannot install through. Nothing was written.` and `install stopped: symlinked destination(s) found. Nothing was written.`, therefore print exactly as the two blocks here show.
+  - The flag-eligible header lacked `install stopped:` until `f106c9e` (T036 L-1).
+  - `test_l1_flag_eligible_header_matches_contract_text` pins that header.
+
 A nested line always shows `-> <resolved>` **(amended at P0, 2026-09-28)**. This replaces the earlier text: "`-> <resolved>` when the nested link resolves, and `-> '<readlink text>'` otherwise (RC-P4, optional items adopted)".
 - Under data-model §2.1's precedence (the first matching row wins), `unresolvable` comes before `nested`. So a nested link that is dangling, looping or of the wrong type is reported on the "broken, looping or wrong-type" line, with its readlink text, or on a wrong-type line.
 - The outcome is the same either way: always refused, with no flag remedy and nothing written. T011's review confirmed there is no safety impact (SEC-K3-05).
@@ -167,7 +194,14 @@ Error: install stopped: symlinked destination(s) found. Nothing was written.
 Re-run with --follow-symlinks to install through these links (it only copies and never deletes through a link), or replace each link with a real directory or file.
 ```
 
-**`cleanup-only` without the flag.** The deprecated file is listed in the flag-eligible block with the bracket `[deprecated tachi command: with --follow-symlinks it is skipped, never deleted]`.
+**When both blocks apply** (without the flag) **(amended at P1, 2026-10-10)**:
+- The always-refused block prints first, then a blank line, then the flag-eligible block with **its own** `Error:` prefix. The exit code is 1.
+- Before `f106c9e` (T036 L-1), the second block printed with no prefix.
+- No test pins the combined layout yet. The phrases in each block are pinned.
+
+**`cleanup-only` without the flag.**
+- The deprecated file is listed in the flag-eligible block with the bracket `[deprecated tachi command: with --follow-symlinks it is skipped, never deleted]`.
+- The line shows `-> <resolved>`, or `-> '<readlink text>'` when the link does not resolve **(amended at P1, 2026-10-10: the code's form)**.
 
 **Project-root containment** (RC-P4 optional: print the clone path):
 ```
@@ -177,11 +211,20 @@ Error: the target project is the tachi source clone or lies inside it. Nothing w
 Run install.sh from your own project directory, outside the tachi clone.
 ```
 
-**Opt-in, printed before copying:**
+**Opt-in, printed before copying** **(amended at P1, 2026-10-10: no bracket)**:
 ```
 Following symlinked destination(s) (--follow-symlinks):
-  <component> -> <resolved>   [inside project | outside project]
+  <component> -> <resolved>
 ```
+- **The ruling.** Earlier text gave each line an `[inside project | outside project]` bracket. No commit from `c194946` (T009) onward has printed it, so the contract is amended to match the code.
+- **Why that is enough.** FR-K3.3 requires only that each resolved destination is named before copying and again in the summary. The summary's lines carry no bracket either, and the inside/outside classification appears in the flag-eligible block, where the user decides whether to opt in.
+- **Tests** assert only the header phrase.
+
+**During cleanup** (step 6) **(amended at P1, 2026-10-10: the code's form)**, each skipped path also prints one line as it is skipped:
+```
+  Skipped cleanup (symlinked path, not deleted): <path>
+```
+The summary block below then lists the paths again, sorted.
 
 **Summary additions:**
 ```
@@ -261,6 +304,25 @@ trap cleanup EXIT
     - It runs with `--follow-symlinks`, with a plain entry listed first in the manifest.
     - Expected: exit 1, the always-refused block names `.claude/skills` as a broken, looping or wrong-type link, and snapshots show zero writes, so the plain entry is not written either.
     - It must fail against `4bea6c5` on both legs.
+    - **Landed (amended at P1, 2026-10-10).** The test is `test_rc1_regression_21_plus_21_hop_linked_ancestor_chain_refused_with_follow_symlinks`. It was red on both legs at `f04254c` and is green from `60f3714` on (`test-results/rc1-test-first.md`).
+- **Cases added at T036 (amended at P1, 2026-10-10)**, from the code review:
+  - **H-1 (`117b2a3`).** The project sits under a directory whose name contains a backslash, and the run uses `--follow-symlinks`. Both legs run it; ubuntu's default awk is mawk.
+    - A nested link is refused, with zero writes, and the unrelated plain entry is absent.
+    - A `.claude/commands` link over a shared folder holding `threat-model.md`: the cleanup is listed as skipped, and the shared file survives byte-identical.
+    - Both are red before the fix by construction.
+  - **M-1.** A synthetic source subtree is padded so the checked set is far larger than a pipe, and the project has a linked `.claude`.
+    - Without the flag: exit 1 with the flag-eligible block, never a silent exit 141.
+    - With the flag: exit 0.
+    - **Determinism (N-1).** The padding must make the old failure deterministic, not likely: at least 20 of 20 runs red against the pre-fix installer. That is about 3 times the 64 KB Linux pipe buffer on the ubuntu leg.
+    - The first padding (600 short names, about 87–114 KB) was red only 80–85% of the time. `9c15a3b` makes each name about 180 characters longer, for about 193–234 KB. That commit is test-only.
+    - Its record gives 20/20 red before the fix and 10/10 green after. P1's own re-run against `117b2a3`'s installer had both tests red in 10 of 10 runs.
+  - **L-1.** The flag-eligible header phrase is asserted verbatim, in a no-flag case.
+  - **L-9.**
+    - The wrong-type case is parametrized with an ancestor (`.claude/skills` → a file).
+    - The N11 case proves zero writes with snapshots.
+  - **Optional, not required.** Two strengthenings are still open:
+    - assert N11's bracket text in its test, now that "Messages" pins it;
+    - add one combined case that asserts two `Error: install stopped:` headers.
 - **The shell is pinned to `/bin/bash`** (N12). The harness does not honor an exported `BASH`, because that would let the strict leg drift off bash 3.2 (S-7).
 - **Test-first**: the cleanup safety negatives (refused without the flag; skipped with it; the shared file survives) are written before the implementation.
 

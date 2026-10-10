@@ -720,7 +720,7 @@ When it can be carved:
     - the posture fields and `allow_list` everywhere, and the `prompt_scaffold` text (K11, K13, K15);
     - warnings: the new aggregated classes, and `has_baseline`'s stateless false positive (N7), attributed from stderr.
   - 100% attributed. No PDF baseline or tracked PNG changes.
-- [ ] T036 Code review and the W3 architect checkpoint (`code-reviewer`, then `architect`; ~0.15 d).
+- [X] T036 (done 2026-10-10: code review CHANGES_REQUESTED → 12/12 fixed + N-1, delta look APPROVED_WITH_CONCERNS; architect P1 APPROVED_WITH_CONCERNS, GO for W4; test-results/p1-architect-review.md) Code review and the W3 architect checkpoint (`code-reviewer`, then `architect`; ~0.15 d).
   - `code-reviewer` reviews the full diff against the contracts, NFR-2, NFR-3, NFR-5 and NFR-8, scoped to executable code (standing rules). The result goes in `.aod/results/code-reviewer-373.md`.
     - It may start at the W3 commit, and it ends with a delta look at any iteration diff.
   - **Any Python or Typst fix** that T035's attribution or this review requires is made by the W3 writer (a `senior-backend-engineer`), after the render session. Re-run T032 or T035 if an output changes (LOW-8).
