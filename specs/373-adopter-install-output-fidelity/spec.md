@@ -709,7 +709,7 @@ The fix is deterministic configuration plus live verification. K14 is not a spli
 - **NFR-6: public hygiene.** Issues, PRDs, specs, PRs, commits and the CHANGELOG describe the defects generically. They carry no real-world findings, threat text, IDs or report content.
 - **NFR-7: CI, with each module in its gating workflow.**
   - **Completeness and extraction-fidelity modules** run in a new dedicated, fast workflow. It is modeled on `tachi-catalog-drift.yml`: one YAML-anchored `paths:` list shared by `pull_request` and `push: [main]`, `contents: read`, and pytest plus PyYAML (test collection needs it). Its `paths:` are broad, because the run takes seconds:
-    - the manifest, `.claude/skills/**`, `.claude/commands/tachi.*.md`, `.claude/agents/tachi/**`, `templates/tachi/**`, `scripts/*.py`, and `scripts/install.sh` (for the end-to-end case);
+    - the manifest, `.claude/skills/**`, `.claude/commands/tachi.*.md`, `.claude/agents/tachi/**`, `templates/tachi/**`, `brand/**`, `schemas/**`, `scripts/*.py`, and `scripts/install.sh` (for the end-to-end case). The end-to-end and manual-loop cases copy every manifest entry's source, so together with `adapters/claude-code/**` and the developer guide below, `paths:` matches **every** manifest entry. `schemas/**` widens the narrower `schemas/taxonomy/*.yaml` below *(PM amendment, 2026-10-10: `brand/**` and `schemas/**` added, T036 L-8, `0fc2ebe`)*;
     - the tests and their fixtures, and the workflow file;
     - `examples/**` *(carry-forward L-N5)*;
     - both `tests/conftest.py` and `tests/scripts/conftest.py`, and `pyproject.toml` *(research correction)*;

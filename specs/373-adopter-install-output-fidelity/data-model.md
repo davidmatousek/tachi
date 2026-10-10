@@ -65,6 +65,12 @@ A component that is not a link is `not-link`, and it never blocks.
   - a clone vendored at a destination path with no link at all.
 - The earlier per-link check missed the last two; the plan review reproduced the second case.
 - `phys_dest` fails only where the walk meets a dangling link, or a looping one (an ELOOP whole-path lookup, RC-1). §2.1 already refuses both. **(amended at P0, 2026-09-28: "or a looping one")**
+- **The reverse direction, N11 (T009, decided per L14)** **(amended at W4, 2026-10-10)**. For a **directory** entry (one that ends in `/`), the path is also refused, with or without the flag, when `SRC_P` lies inside `dest`: `under "$SRC_P" "$dest"`, the same identity walk with its arguments swapped. The clone then sits inside the folder the copy writes into, so source and destination overlap. The outcome is `source-tree`'s row in §2.3: refused, with no flag remedy.
+  - **No reverse check for file entries or cleanup files.** A file destination cannot contain the clone.
+  - **One line per entry.** When `dest` is `SRC_P` itself, both directions hold by identity. The reverse check is the forward check's `elif`, so that entry is reported once, as `source-tree`.
+  - **When `phys_dest` fails** (a dangling or looping ancestor), the reverse check is skipped silently along with the forward one, because §2.1 has already refused that link (previous bullet).
+  - **Message.** `<entry> -> <physical destination>   [the tachi source clone lies inside this destination]`, where `<entry>` is the directory entry without its trailing `/`. It prints in the always-refused block, whose remedy already offers moving the clone (`contracts/installer-cli.md`, "Messages").
+  - **Provenance.** In the code since `c194946` (`install.sh:447-448`); this bullet mirrors `contracts/installer-cli.md`, "The reverse direction, N11" (amended at P1, 2026-10-10). `test_n11_clone_nested_inside_directory_entry_destination_refused` proves zero writes with snapshots. P1's probes against the tip's `install.sh` refused it with and without the flag, on a project path that contains a backslash, and when the clone sits inside a linked `.claude`'s target (without the flag, that run prints both blocks).
 
 ### 2.3 Decision table
 

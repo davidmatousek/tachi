@@ -725,7 +725,7 @@ When it can be carved:
     - It may start at the W3 commit, and it ends with a delta look at any iteration diff.
   - **Any Python or Typst fix** that T035's attribution or this review requires is made by the W3 writer (a `senior-backend-engineer`), after the render session. Re-run T032 or T035 if an output changes (LOW-8).
   - Then the architect's W3 checkpoint, after T035. It confirms that N8 (T014) and N11 (T009) landed as decided in W1.
-- [ ] T037 W4 close-out docs (Lane A and Lane B docs; `senior-backend-engineer`, with `architect` for the ADR-014 note; ~0.15 d).
+- [X] T037 (done 2026-10-10: ADR-014 F-373 note and data-model §2.2 N11 bullet [architect]; dev-guide --follow-symlinks paragraph, CHANGELOG Unreleased entry, issue-364-handoff.md and the PR body [SBE-A]) W4 close-out docs (Lane A and Lane B docs; `senior-backend-engineer`, with `architect` for the ADR-014 note; ~0.15 d).
   - Add the dated F-373 note to `docs/architecture/02_ADRs/ADR-014-gemini-api-optional-image-generation.md`: the GA chain, the 404/403 walk, the loud non-blocking 400 (PD-15). The architect writes it.
   - Docs sweep of the README and developer-guide install sections.
   - `CHANGELOG.md` `Unreleased` prose carrying PD-7's applicable notices.
@@ -745,7 +745,7 @@ When it can be carved:
     - the funnel fields.
 
     K10 moves no tracked example. Keep it generic per NFR-6.
-- [ ] T038 Release-notes text (W4; `product-manager`; ~0.05 d).
+- [X] T038 (done 2026-10-10: release-notes-upgrading.md with notices 1–5, 6 and 7 not applicable; spec NFR-7 paths amended) Release-notes text (W4; `product-manager`; ~0.05 d).
   - Write `specs/373-adopter-install-output-fidelity/release-notes-upgrading.md` with PD-7's seven conditional notices, generic per NFR-6:
     - the update-and-re-run notice, naming the three skills and the populator;
     - the D-1 note, in P-11.1's wording: "broken, looping or wrong-type links, links nested inside an installed folder, and destinations inside the tachi source clone";
