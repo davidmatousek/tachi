@@ -180,28 +180,42 @@ def _command_file_names() -> tuple[str, ...]:
     return tuple(sorted(p.name for p in COMMANDS_ROOT.glob("tachi.*.md") if p.is_file()))
 
 
-def _distributed_markdown_files() -> list[Path]:
+def _distributed_files() -> list[Path]:
     """Every file the pinned distributed globs cover (spec FR-K2.4 Scope).
 
     Walked with per-root ``rglob`` rather than a single ``**`` pattern
     string, sidestepping any ambiguity in how a given Python version
     matches a bare ``**`` path component against zero intermediate
     directories.
+
+    T036 L-7 (code-reviewer-373.md): scans every FILE under each root
+    (``rglob("*")`` + ``is_file()``), not just ``*.md``. The scope is the
+    manifest's own ``**`` globs (data-model.md Sec. 1) -- every file, not
+    a markdown subset. 18 ``.typ`` files sit under ``templates/tachi/``,
+    and two reference ``scripts/extract-report-data.py`` (including
+    main.typ's K13-posture panic text, T036 L-6); today they are also
+    covered via a ``.md`` reference, so a script referenced ONLY from a
+    non-markdown file would otherwise pass this guard with nothing
+    scanning for it. ``COMMANDS_ROOT`` keeps its own ``tachi.*.md`` glob
+    unchanged -- that root's required set (data-model.md Sec. 1 category
+    (b)) is itself defined as "every .md command file," not "every file
+    under commands/," so widening it here would scan files the manifest
+    was never meant to require in the first place.
     """
     files: list[Path] = []
     files.extend(sorted(COMMANDS_ROOT.glob("tachi.*.md")))
-    files.extend(sorted(AGENTS_ROOT.rglob("*.md")))
+    files.extend(sorted(p for p in AGENTS_ROOT.rglob("*") if p.is_file()))
     for skill_dir in sorted(SKILLS_ROOT.glob("tachi-*")):
         if skill_dir.is_dir():
-            files.extend(sorted(skill_dir.rglob("*.md")))
-    files.extend(sorted(TEMPLATES_ROOT.rglob("*.md")))
+            files.extend(sorted(p for p in skill_dir.rglob("*") if p.is_file()))
+    files.extend(sorted(p for p in TEMPLATES_ROOT.rglob("*") if p.is_file()))
     return files
 
 
 @functools.lru_cache(maxsize=None)
 def _scan_referenced_scripts() -> frozenset[str]:
     refs: set[str] = set()
-    for path in _distributed_markdown_files():
+    for path in _distributed_files():
         text = path.read_text(encoding="utf-8", errors="ignore")
         for match in SCRIPT_REF_RE.findall(text):
             refs.add(match[2:] if match.startswith("./") else match)
