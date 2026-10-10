@@ -475,11 +475,16 @@ fi
 
 flagged_block=""
 if [ "$FOLLOW_SYMLINKS" -eq 0 ] && [ -n "$sorted_flagged" ]; then
-  flagged_block="symlinked destination(s) found. Nothing was written."$'\n'"${sorted_flagged}"$'\n'"Re-run with --follow-symlinks to install through these links (it only copies and never deletes through a link), or replace each link with a real directory or file."
+  flagged_block="install stopped: symlinked destination(s) found. Nothing was written."$'\n'"${sorted_flagged}"$'\n'"Re-run with --follow-symlinks to install through these links (it only copies and never deletes through a link), or replace each link with a real directory or file."
 fi
 
+# T036 L-1: die() prepends one "Error: " to the whole message it is given.
+# In the combined case that covers only refused_block; flagged_block needs
+# its OWN literal "Error: " here so the printed output shows two Error:
+# blocks (contracts/installer-cli.md Sec. "Messages" documents them as two
+# separate Error: ... blocks), not a second, unlabeled paragraph.
 if [ -n "$refused_block" ] && [ -n "$flagged_block" ]; then
-  die "${refused_block}"$'\n\n'"${flagged_block}"
+  die "${refused_block}"$'\n\n'"Error: ${flagged_block}"
 elif [ -n "$refused_block" ]; then
   die "$refused_block"
 elif [ -n "$flagged_block" ]; then

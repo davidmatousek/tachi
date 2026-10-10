@@ -1297,3 +1297,26 @@ def test_m1_oversized_checked_set_with_linked_claude_installs_with_flag(tmp_path
     )
     assert "tachi installed successfully" in result.combined
     assert (outside_claude / "skills" / "tachi-example" / "pad-0000.md").exists()
+
+
+def test_l1_flag_eligible_header_matches_contract_text(tmp_path):
+    """L-1: the flag-eligible block's header must read EXACTLY as
+    `contracts/installer-cli.md` Sec. "Messages" gives it -- `Error:
+    install stopped: symlinked destination(s) found. Nothing was
+    written.` -- not merely `Error: symlinked destination(s) found. ...`
+    (missing the `install stopped:` stem the always-refused block already
+    carries). Every earlier test in this file asserted only substrings of
+    this header ("Nothing was written", "--follow-symlinks"), never the
+    header phrase itself, so this drift from the contract went uncaught."""
+    source_root, project_root = _standard_setup(tmp_path)
+    outside_target = tmp_path / "agents-skills"
+    outside_target.mkdir()
+    add_symlink(project_root, ".claude/skills/tachi-example", outside_target)
+
+    result = _run(source_root, project_root)
+
+    assert result.returncode == 1, result.combined
+    assert (
+        "Error: install stopped: symlinked destination(s) found. Nothing was written."
+        in result.combined
+    ), result.combined
