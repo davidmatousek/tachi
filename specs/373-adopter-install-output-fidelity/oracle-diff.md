@@ -131,3 +131,22 @@ $ git -C /Users/david/Projects/tachi diff --stat 0ce39d0 HEAD -- 'examples/**/*.
 ```
 
 Scratch artifacts (raw/norm snapshots, `analyze.py`, reports) live under `/private/tmp/claude-501/-Users-david-Projects-tachi/2ad26401-b1da-4436-8824-d43d5ff80457/scratchpad/t035/` — `pre/` and `post/` are kept (both raw and norm) for the orchestrator's later final re-snapshot-and-diff against `post/`.
+
+---
+
+## 10. Final-commit confirmation (`729fa1b`)
+
+**Commit**: `729fa1b` (`729fa1b6859a9344f15488bff9d9beb58a8969b9`, 2026-10-10), branch tip, pushed. 12 commits landed after this oracle's `post` snapshot (code `91e4542`): `117b2a3`, `b03b834` (T036 H-1/M-1; L-2 comments), `f106c9e` (L-1), `383140e`, `0fc2ebe` (L-8, CI path widening), `2ef4cec`, `91fbe7a`, `e12318b` (L-3), `819830e` (L-4), `3dcaf84` (L-5), `da7a196` (L-6), `dfccde5` (L-7), plus `729fa1b` itself (this doc's own T035 commit).
+
+**Method**: fresh scratch clone of `729fa1b` at `clone-final/tachi` (path ends in `/tachi`, satisfying N2 normalization per §6 above). Ran the same unmodified `snapshot.sh` → `SC/final`. 84/84 runs exit 0. Diffed normalized `SC/post` (W3, code `91e4542`) against normalized `SC/final` (`729fa1b`) two ways: (1) the same type-strict JSON / `difflib`-based `.typ` / stderr-multiset classifier used throughout this document, and (2) an independent raw `diff -rq SC/post/norm SC/final/norm` over all 168 files (72 JSON + 12 `.typ` + 84 stderr).
+
+**Result**: **0 JSON leaves changed, 0 `.typ` lines changed, 0 stderr lines changed.** Both methods agree: the classifier found no classes to report in any of the three categories, and the raw `diff -rq` returned exit 0 with zero output — `SC/post/norm` and `SC/final/norm` are byte-identical across all 168 files. No mover to attribute. Matches the coordinator's expectation (0/0/0) exactly:
+
+- **L-3** (`e12318b`, tier-2 risk-scores parsed once): stderr-only change, and none of the 12 tracked examples is tier-2 — confirmed no effect.
+- **L-4** (`819830e`, exact `Decimal` 0.1 tolerance for the S-9 comparand warning): no tracked example sits exactly on the boundary this tightens — confirmed no effect.
+- **L-5** (`3dcaf84`, `parse_score` None-input guard): latent on all tracked fixtures (none passes `None` to the parser) — confirmed no effect.
+- **L-6** (`da7a196`, `cover.typ` fail-closed guard): guards an input shape (missing posture data) that doesn't occur in any tracked example's `report-data.typ`, and the PDF is outside this oracle's scope regardless — confirmed no effect.
+- H-1/M-1/L-1/L-2 (`b03b834`, `f106c9e`) touch `install.sh` only — no extractor/Typst output path, confirmed no effect by construction (not exercised by `snapshot.sh` at all).
+- The test and CI-workflow commits (`117b2a3`, `383140e`, `2ef4cec`, `91fbe7a`, `dfccde5`, `0fc2ebe`) add test/workflow files only — confirmed no effect by construction.
+
+**Checks**: `git diff --stat 0ce39d0 729fa1b -- 'examples/**/*.png' 'examples/**/*.pdf.baseline'` → empty. Main-tree `git status --short` → clean before this section was appended.
