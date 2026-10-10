@@ -112,16 +112,20 @@ def parse_score(s) -> "Decimal | None":
     """Parse a table-cell score string into a ``Decimal``, or ``None`` on failure.
 
     Catches ``decimal.InvalidOperation`` (NOT a ``ValueError`` subclass),
-    ``ValueError`` and ``TypeError``, and rejects non-finite results
-    (``NaN``, ``Infinity``) even though ``Decimal("NaN")`` parses without
-    raising. Used for every score in the controls and risk-scores parsers
-    (data-model.md §3); a ``None`` return is the caller's cue to count the
-    cell toward its own aggregated "unparseable score" warning class — this
-    function never prints anything itself.
+    ``ValueError``, ``TypeError`` and ``AttributeError``, and rejects
+    non-finite results (``NaN``, ``Infinity``) even though
+    ``Decimal("NaN")`` parses without raising. Used for every score in the
+    controls and risk-scores parsers (data-model.md §3); a ``None`` return
+    is the caller's cue to count the cell toward its own aggregated
+    "unparseable score" warning class — this function never prints
+    anything itself, and never raises: ``None`` or any other non-string
+    input (T036 L-5 — ``s.strip()`` has no fallback on an object with no
+    ``.strip()`` method) returns ``None`` exactly like an unparseable
+    string, rather than propagating an ``AttributeError``.
     """
     try:
         d = Decimal(s.strip())
-    except (InvalidOperation, ValueError, TypeError):
+    except (InvalidOperation, ValueError, TypeError, AttributeError):
         return None
     if not d.is_finite():
         return None

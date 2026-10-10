@@ -192,6 +192,21 @@ def test_parse_score_rejects_non_finite():
     assert parse_score("-Infinity") is None
 
 
+def test_parse_score_never_raises_on_non_string_input():
+    # T036 L-5 (code-reviewer-373.md, extraction-data-contract.md's
+    # parse_score row): the contract says parse_score returns None on
+    # failure and never raises. `s.strip()` has no fallback on an object
+    # with no `.strip()` method -- None.strip() (and int/float/list, none
+    # of which define `.strip()`) raised an uncaught AttributeError before
+    # this fix, rather than returning None like any other unparseable
+    # value. Latent today because every current caller passes a string.
+    assert parse_score(None) is None
+    assert parse_score(5) is None
+    assert parse_score(5.0) is None
+    assert parse_score([1, 2]) is None
+    assert parse_score({}) is None
+
+
 # =============================================================================
 # Feature 373 K9: the level-aware parse_markdown_table stop rule, and
 # parse_compensating_controls_md's short-form/empty-band fidelity
