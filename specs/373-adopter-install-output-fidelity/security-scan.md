@@ -2,9 +2,9 @@
 
 **Feature**: 373 — Adopter Install + Output Fidelity Fixes
 **Branch**: 373-adopter-install-output-fidelity
-**Commit**: eb5d3febfaa0
-**Scan ID**: 64d7e752-c228-4287-af66-5c502bca7e66
-**Timestamp**: 2026-10-10T18:44:52Z UTC
+**Commit**: c2212fbd8500
+**Scan ID**: fce40a85-d8a7-46d2-bcbe-4cf339ca9704
+**Timestamp**: 2026-10-10T19:17:08Z UTC
 **Status**: PASSED
 
 ---
@@ -27,12 +27,20 @@ SCA: No dependency manifests changed — skipping dependency audit.
 
 ## Scan history (this feature)
 
-This report is the second of two scans in `/aod.build` Step 7.
+This report is the third of three scans in `/aod.build` Step 7. Scan 3 is authoritative: it ran at the commit that ships.
 
 | # | Scan ID | Commit | Status | Result |
 |---|---|---|---|---|
 | 1 | `69885bc9-20ae-44b8-98c6-d7c21c9aacb7` | `276dd2849db0` | FINDINGS | 1 HIGH: `tachi-VULN-217a46966920`. At the gate the maintainer chose **(A) Fix now**, so nothing was acknowledged |
-| 2 | `64d7e752-c228-4287-af66-5c502bca7e66` | `eb5d3febfaa0` | **PASSED** | 0 findings. The HIGH is remediated |
+| 2 | `64d7e752-c228-4287-af66-5c502bca7e66` | `eb5d3febfaa0` | PASSED | 0 findings. The HIGH is remediated. See the method correction below |
+| 3 | `fce40a85-d8a7-46d2-bcbe-4cf339ca9704` | `c2212fbd8500` | **PASSED** | 0 findings at the final code tip. It follows the code review's D-1 (`17419ae`) and D-2 (`02e42eb`) refinements of the two fixes |
+
+**Method correction.** Scans 1 and 2 used a shell pattern screen. Its Python-file and hardcoded-secret checks passed the file list through an unquoted zsh variable, which zsh does not word-split. So those checks read no file, and their zero counts carry no evidence. Three things in scans 1 and 2 were valid:
+- the `install.sh` checks, which used a literal path;
+- the `subprocess` call review, which used command substitution;
+- the manual read that found the HIGH.
+
+Scan 3 reran every pattern in Python over the 15 files. Every file was read (17,240 lines), so scan 3 is the evidence for this report. The Step 5 security-analyst and code reviews reached the same conclusion independently.
 
 **`tachi-VULN-217a46966920`** (scan 1; HIGH 7.5, estimated; A01 Broken Access Control, CWE-22 path traversal; KEV N/A):
 - **Location.** `scripts/extract-report-data.py:879` (also `:889`) at `276dd28`. The ID source is `_parse_attack_tree_file`.
@@ -57,11 +65,19 @@ This report is the second of two scans in `/aod.build` Step 7.
 
 No security findings detected.
 
-The re-scan screened all 15 changed code files for every OWASP P0 pattern family in the skill (A01, A02, A03, A05, A07). It found 0 matches. Both former traversal sites are now guarded:
-- `extract-report-data.py:689`, the ID check;
-- `:915-916` and `:934`, the containment checks.
+Scan 3 screened all 15 changed code files (17,240 lines) for every OWASP P0 pattern family in the skill (A01, A02, A03, A05, A07). It found 0 injection, secret, crypto, debug or cookie matches, and `shell=True` appears nowhere.
 
-`subprocess.run` is called twice, at `:927` and `:1586`. Both use an argument list with a fixed `mmdc` executable and no shell. They are not command injection.
+The attack-tree traversal sites in `extract-report-data.py` are now guarded:
+- ID validation at `:689` (attack-tree files) and `:772` (the `threat-report.md` inline fallback, D-2);
+- containment checks at `:929-930` and `:948`.
+
+`install.sh`'s delimiter-byte guard (`:264`) now also covers the raw `--source` value (D-1).
+
+`subprocess` is called 18 times:
+- **2 in product code**, `extract-report-data.py:941` and `:1600`. Both use an argument list with a fixed `mmdc` executable and no shell, so neither is command injection.
+- **16 in test harnesses**, which invoke the scripts under test.
+
+`install.sh:542` has one `rm -f`. It removes only fixed deprecated-command names under the project root, skips linked paths, and runs after the K3 pre-flight.
 
 ---
 
@@ -73,12 +89,13 @@ No acknowledgment decisions made in this scan. Scan 1's HIGH was fixed, not ackn
 
 ## Artifacts
 
-- Scan log: `.security/scan-log.jsonl` (two entries, chained and verified)
+- Scan log: `.security/scan-log.jsonl` (three entries, chained and verified)
 - Vulnerability events: `.security/vulnerabilities.jsonl` (`tachi-VULN-217a46966920`: DETECTED, then REMEDIATED)
 - Risk acceptances: `.security/exceptions.jsonl` (none)
 - SARIF reports:
   - `.security/reports/276dd2849db0.sarif` (scan 1, 1 result);
-  - `.security/reports/eb5d3febfaa0.sarif` (scan 2, clean).
+  - `.security/reports/eb5d3febfaa0.sarif` (scan 2, clean);
+  - `.security/reports/c2212fbd8500.sarif` (scan 3, clean).
 
 **Integrity note (pre-existing, not this feature).** A verification pass over `scan-log.jsonl` found that entry 34 (`338-restore-substitution-hardening`, 2026-06-30) does not match the chain-hash rule. The entries after it verify against its stored hash. Entry 5 is a chain restart that verifies as a first entry. The log is append-only, so it is left as is; this is recorded for follow-up.
 
