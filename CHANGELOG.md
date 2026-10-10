@@ -9,6 +9,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Feature 373 — Adopter Install + Output Fidelity Fixes (#373) — fix(373)
+
+Fixes a set of install-reliability and report/infographic output-fidelity defects, and moves
+infographic image rendering onto the current generation of Gemini image models. Described
+generically; no specific finding, target or report content is referenced.
+
+**Added**
+- `install.sh` gains a `--follow-symlinks` opt-in flag: without it, install.sh stops before
+  writing anything when a destination is a symlink; with it, install.sh follows links at or
+  above each installed path, names every resolved destination, and only copies — it never
+  deletes through a link. Even with it, install.sh refuses broken, looping or wrong-type links,
+  links nested inside an installed folder, and destinations inside the tachi source clone.
+- A fail-closed completeness guard asserts that every distributed skill, command, agent and
+  script is covered by `INSTALL_MANIFEST.md` (or explicitly excluded with a reason), and that
+  both docs' manual-install loops stay byte-identical — gated in CI alongside the installer's
+  own symlink-safety tests.
+- Infographic prompts now explicitly forbid rendering internal layout-section labels as visible
+  text and restrict every rendered finding ID and component name to a per-template allow-list,
+  closing off both instruction-leakage and invented-ID failure modes in generated images.
+- Form-drift regression coverage (#370) for the extractor pipeline's producer/consumer contract,
+  verified against the real taxonomy catalog.
+
+**Fixed**
+- The install manifest was missing three skills that were already shipping code, plus a fourth
+  distributable script — both now covered, closing the exact gap the new completeness guard
+  exists to catch.
+- The report and infographic parsers now recognize both the short-form and long-form controls
+  headers and both MAESTRO heading depths, so the numbers they extract no longer depend on
+  which heading form a given input happens to use.
+- Section 7 delta counts (new / updated / unchanged / resolved findings) and their badges are
+  now derived consistently at every report tier, and a baseline placeholder row no longer counts
+  toward any of them.
+- Every finding now always gets a recommendation: the analyzer's own text where available, the
+  threat model's own mitigation (marked `Threat-model mitigation:`) where it isn't, and a
+  placeholder only when neither source has anything — so the remediation roadmap, the finding
+  cards and the PDF never show a blank recommendation.
+- A single risk-posture label and level are now computed once and carried onto every infographic
+  and into the PDF's report data, instead of each surface deriving its own; a `report-data.typ`
+  built without that data now fails closed with a regenerate instruction rather than compiling
+  with stale posture.
+- The risk funnel and its Risk Reduction figure are now computed from the controls report's own
+  rows, so they narrow by risk volume and can legitimately differ from the controls report's own
+  stated total.
+- Infographic rendering moves off the preview and `gemini-2.5-flash-image` models (all shut down
+  as of this release) onto the current GA chain — `gemini-3-pro-image`, falling back to
+  `gemini-3.1-flash-image`. The fallback walk now triggers only on a `404 NOT_FOUND` or
+  `403 PERMISSION_DENIED` response; a `400` is logged loudly and is never walked.
+
+**Upgrading**: update your tachi clone and re-run `install.sh` — doing so also moves infographic
+rendering onto the current image models. If any destination `install.sh` writes into is a
+symlink, it now stops and names it; re-run with `--follow-symlinks` to install through it.
+Findings with no analyzer recommendation may now show a `Threat-model mitigation:`-prefixed
+fallback where they previously showed nothing. The risk funnel and Risk Reduction figure are now
+computed from the controls report's own rows and may legitimately differ from its own summary. A
+`report-data.typ` compiled outside `/tachi.security-report` now stops with a regenerate
+instruction instead of compiling with stale posture data.
+
+Closes #373 and #370.
+
 ### Feature 362 — Remap OWASP LLM Top 10 Coverage to the 2026 Edition (#362) — feat(362)
 
 Every OWASP LLM Top 10 contract surface — the taxonomy catalog (`schemas/taxonomy/owasp.yaml`),
