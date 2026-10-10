@@ -135,6 +135,34 @@ def test_executive_architecture_no_critical_high_skip_image():
     assert payload["severity_distribution"]["high_count"] == 0
 
 
+# =============================================================================
+# T036 M-2 (K13 half) -- executive-architecture's risk-posture fields had no
+# CI assertion (code-reviewer-373.md M-2): metadata.risk_posture_level/_label
+# are added to the payload only `if risk_posture_level is not None`
+# (extract-infographic-data.py:1275), and the one real caller (main()) always
+# supplies both -- so dropping the two keywords at the main() call site would
+# silently omit exec-arch's posture with no test catching it. Pinned against
+# the agentic_app fixture's hand-verified value (data-model.md §5: residual
+# severity counts after the K11 clamp -> 7 Critical/High findings -> high).
+# =============================================================================
+
+def test_executive_architecture_risk_posture_fields_gated():
+    """agentic_app fixture: metadata carries risk_posture_level/_label (K13, data-model §5)."""
+    returncode, _stdout, stderr, payload = run_extract(
+        FIXTURES_DIR / "agentic_app", "executive-architecture"
+    )
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert payload is not None
+    assert payload["metadata"].get("risk_posture_level") == "high", (
+        "T036 M-2: executive-architecture metadata must carry risk_posture_level "
+        f"computed from this tier's severity counts; got {payload['metadata'].get('risk_posture_level')!r}"
+    )
+    assert payload["metadata"].get("risk_posture_label") == "HIGH RISK", (
+        "T036 M-2: executive-architecture metadata must carry risk_posture_label; "
+        f"got {payload['metadata'].get('risk_posture_label')!r}"
+    )
+
+
 def test_executive_architecture_no_threats_md():
     """Empty folder: exit 1, stderr mentions threats.md."""
     with tempfile.TemporaryDirectory() as tmpdir:
