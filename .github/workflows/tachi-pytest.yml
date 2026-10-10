@@ -51,6 +51,11 @@
 # (architect MEDIUM-1: the emitter FR-012a fixed, and its catalog derive-
 # source, must trigger their own gate) — wired through both paths and
 # invocation in lock-step.
+# F-373 (T009/T010) added the K3 installer suite
+# (`test_install_sh_symlink_preflight.py` + `test_install_sh_ref_restore.py`)
+# covering `scripts/install.sh`'s destination-containment pre-flight and its
+# ref-restore trap fix, plus `tests/scripts/install_sh_helpers.py`'s sandbox
+# builders — wired through both paths and invocation in lock-step.
 #
 # References:
 #   - specs/248-substitution-surface-hardening/spec.md (FR-001..FR-011, NFR-001)
@@ -109,6 +114,10 @@ on:
       - schemas/finding.yaml                                   # F-302 (260b) — affected_assets schema contract (1.9)
       - schemas/taxonomy/owasp.yaml                            # F-362 (T017) — FR-012a derive-source for the taxa above
       - tests/scripts/test_owasp_2026_contract.py              # F-362 (T017) — normalize_owasp_id D2 matrix + FR-012a taxa contract
+      - scripts/install.sh                                     # F-373 (T009/T010) — K3 symlink-destination pre-flight + ref-restore trap
+      - tests/scripts/test_install_sh_symlink_preflight.py     # F-373 (T009/T010) — K3 destination-containment + classification suite
+      - tests/scripts/test_install_sh_ref_restore.py           # F-373 (T009/T010) — K3 ref-restore trap suite
+      - tests/scripts/install_sh_helpers.py                    # F-373 (T009/T010) — install.sh sandbox builders
       - tests/scripts/init_sh_helpers.py
       - tests/scripts/conftest.py
       - tests/fixtures/init-baseline-tree/**
@@ -205,4 +214,6 @@ jobs:
             tests/scripts/test_asset_sensitivity_tags.py \
             tests/scripts/test_affected_assets_wiring.py \
             tests/scripts/test_owasp_2026_contract.py \
+            tests/scripts/test_install_sh_symlink_preflight.py \
+            tests/scripts/test_install_sh_ref_restore.py \
             -v --timeout=1080

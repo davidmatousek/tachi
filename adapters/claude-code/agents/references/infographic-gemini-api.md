@@ -36,7 +36,7 @@ Create a professional security threat infographic for "{project_name}" with the 
 
 TOP SECTION: Title "Threat Model: {project_name}" with date "{date}" and "CONFIDENTIAL" badge. Subtitle: "{description} — {total_findings} Findings Across {category_count} Threat Categories".
 
-LEFT PANEL: Donut chart showing risk distribution: {critical_count} Critical (red #DC2626), {high_count} High (orange #EA580C), {medium_count} Medium (amber #CA8A04), {low_count} Low (blue #2563EB). Center text "{total_findings} findings". Below the donut: severity legend with counts and percentages. Below that: "RISK POSTURE: {risk_posture}" in {posture_color}, with "{critical_high_pct}% of findings rated High or Critical".
+LEFT PANEL: Donut chart showing risk distribution: {critical_count} Critical (red #DC2626), {high_count} High (orange #EA580C), {medium_count} Medium (amber #CA8A04), {low_count} Low (blue #2563EB). Center text "{total_findings} findings". Below the donut: severity legend with counts and percentages. Below that: "{risk_posture_label}" in {posture_color}, with "{critical_high_pct}% of findings rated High or Critical".
 
 CENTER PANEL: Heat map grid titled "Coverage Heat Map" with {component_count} components as rows and 8 threat categories as columns (S, T, R, I, D, E, AG, LLM). Cells colored by severity: red #DC2626 for Critical, orange #EA580C for High, amber #CA8A04 for Medium, blue #2563EB for Low, light gray #F3F4F6 for analyzed with no findings, white for not applicable. Components sorted by finding count descending. Show finding count or severity letter in each cell.
 
@@ -70,14 +70,14 @@ The Gemini API configuration is defined here in the agent prompt, not in the out
 
 ```yaml
 gemini_config:
-  default_model: "gemini-3-pro-image-preview"
-  resolution: "2K"
-  fallback_model: "gemini-3.1-flash-image-preview"
+  chain:
+    - "gemini-3-pro-image"      # primary
+    - "gemini-3.1-flash-image"  # fallback
+  default_model: "gemini-3-pro-image"
 ```
 
-- **default_model**: The primary Gemini model for image generation. Configurable — do not hardcode. If the default model is unavailable, fall back to `fallback_model`.
-- **resolution**: Target output resolution. "2K" produces images at approximately 1920x1080 for 16:9 aspect ratio.
-- **fallback_model**: Secondary model to attempt if the default model returns a model-not-found error.
+- **chain**: the image models to try, in order. `default_model` is always `chain[0]`.
+- **fallback_model**: the next model in `chain`, tried only when the current model is unavailable to the calling key — HTTP 404 `NOT_FOUND` or 403 `PERMISSION_DENIED`. Every other non-2xx (400, 429, 5xx, …) is not walked.
 
 ### API Key Check
 
@@ -101,13 +101,15 @@ Submit the constructed narrative prompt to the Gemini image generation endpoint:
 POST https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent
 ```
 
-Where `{model_id}` is the configured model (default: `gemini-3-pro-image-preview`).
+Where `{model_id}` is the configured model (default: `gemini-3-pro-image`).
 
 **Request Headers**:
 ```
 Content-Type: application/json
 x-goog-api-key: {GEMINI_API_KEY}
 ```
+
+The key is read from the environment and sent only as this header — never as a `?key=` query parameter, never echoed, and never passed to a verbose/trace flag.
 
 **Request Body**:
 ```json
@@ -123,11 +125,15 @@ x-goog-api-key: {GEMINI_API_KEY}
   ],
   "generationConfig": {
     "responseModalities": ["TEXT", "IMAGE"],
-    "aspectRatio": "16:9",
-    "imageSize": "2K"
+    "imageConfig": {
+      "aspectRatio": "16:9",
+      "imageSize": "2K"
+    }
   }
 }
 ```
+
+`aspectRatio` and `imageSize` live under `generationConfig.imageConfig` — never as top-level `generationConfig` keys.
 
 ### Response Parsing
 
@@ -135,14 +141,16 @@ Parse the API response to extract the generated image:
 
 1. Check that the response contains a `candidates` array with at least one entry.
 2. Iterate through `candidates[0].content.parts[]`.
-3. Find the part where `inline_data` is present and `inline_data.mime_type` starts with `image/` (e.g., `image/jpeg`, `image/png`).
-4. Extract the `inline_data.data` field (base64-encoded image data).
+3. Find the part where **`inlineData`** is present and `inlineData.mimeType` starts with `image/` (e.g., `image/jpeg`, `image/png`). The SDK spelling (`inline_data` / `inline_data.mime_type`) is accepted too.
+4. Extract the `inlineData.data` field (base64-encoded image data).
 5. Decode the base64 data.
-6. Save the decoded bytes as `threat-{template-name}.jpg` in the output directory alongside the specification.
+6. Save the decoded bytes as `threat-{template-name}.{ext}` in the output directory alongside the specification, where `{ext}` is derived from the MIME type (`image/jpeg` → `.jpg`, `image/png` → `.png`, otherwise the subtype).
 7. Set `image_generated: true` in the specification frontmatter.
 
-If no `inline_data` part with an image MIME type is found in the response, treat this as an API error (see Error Handling below).
+If no `inlineData` part with an image MIME type is found in a 2xx response, treat this as an API error (see Error Handling below).
 
 ### Fallback Model Attempt
 
-If the default model returns an HTTP error indicating model unavailability (404 or model-specific error), attempt one retry with the `fallback_model` (`gemini-3.1-flash-image-preview`). If the fallback also fails, proceed to error handling.
+Walk the chain — try the next model in `chain` — only when the current model returns HTTP 404 `NOT_FOUND` or 403 `PERMISSION_DENIED` (unavailable to this key). If every chain model returns 404 or 403, the chain is exhausted: log at Error, naming each model tried with its status and message.
+
+An HTTP 400 is different and is never walked: every model would reject the same request body, so a 400 is reported immediately as an error with the API's message and the request-body keys sent, without trying `fallback_model`. A 429 (`RESOURCE_EXHAUSTED`) is also not walked; if this key has no quota for the current model, set the template's `model` to its `fallback_model` in the template's own `## Gemini API Configuration` block instead of relying on an automatic retry.

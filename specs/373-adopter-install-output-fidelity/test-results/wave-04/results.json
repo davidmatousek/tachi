@@ -1,0 +1,1998 @@
+{
+  "schema_version": "1.0",
+  "wave": 4,
+  "timestamp": "2026-10-06T15:57:32Z",
+  "test_runner": "scratch clone of 91e4542 (T034, W3-integration tip): (1) python3 -m pytest test_install_manifest_completeness.py + test_tachi_parsers.py + 4 extraction modules (test_extract_infographic_data, test_extract_report_data, test_extractor_contract_fixes, test_executive_architecture_payload) + test_gemini_request_contract.py + test_extraction_sibling_parity.py -v; (2) TACHI_REQUIRE_TYPST=1 python3 -m pytest test_report_posture_contract.py -v; (3) tachi-pytest.yml's 18-module gated invocation (paths/invocation read directly from the workflow at this commit) with --timeout=1080 (local macOS /bin/bash 3.2 leg; workflow sets no LC_ALL, so none applied). The red-state push (f04254c, RC-1 regression test added with installer unfixed) was NOT re-run locally \u2014 it is verified via its completed GitHub Actions runs only (see notes).",
+  "runner_override": "agent-assignments.md \u00a74 / architect build-time note 4 (F-362 precedent), same rationale as wave-03: gated set run in a scratch clone of the commit instead of full pytest in the main tree (#365 PNG hazard). T034 (W3 integration) additionally cross-checks GitHub Actions CI for BOTH W3 pushes via the Checks API (gh api .../check-runs) rather than re-triggering CI: f04254c (test-only; RC-1 regression test committed with scripts/install.sh still unfixed \u2014 expected red on 'tachi pytest' both legs, green everywhere else) and 91e4542 (tip; + RC-3 + RC-2 + RC-1 fix + RC-1 record \u2014 expected and confirmed all-green on every workflow).",
+  "commit": "91e4542",
+  "execution_duration_ms": 760820,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "baseline": "wave-03 results.json (482 passed, 0 failed, 2 skipped)",
+  "totals": {
+    "pass": 485,
+    "fail": 0,
+    "skip": 2
+  },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "new_tests_since_wave_03": [
+    "tests.scripts.test_install_sh_symlink_preflight::test_rc1_regression_21_plus_21_hop_linked_ancestor_chain_refused_with_follow_symlinks",
+    "tests.scripts.test_extract_infographic_data::test_rc2_unreadable_risk_scores_table_single_warning_no_row_count_mismatch_via_cli",
+    "tests.scripts.test_tachi_parsers::test_pin_risk_summary_matching_document_title_stops_at_next_h2"
+  ],
+  "notes": "485 = wave-03's 482 + exactly the 3 new RC tests (RC-1, RC-2, RC-3; see new_tests_since_wave_03), all passing at the tip (91e4542); 0 regressions across all three local gated-set commands (a)/(b)/(c). The 2 skipped are the same pre-existing TTY skip (test_init_precommit_matrix, Case 4) and the #345 xfail (test_init_sh_substitution::test_personalized_tree_bytes_match_baseline, strict=False) carried forward unchanged from wave-03 \u2014 identical signature, not new. duration_ms per test was not captured this wave (plain `-v`, no --junit-xml/--durations, to avoid a second ~13-minute re-run of run (c) purely for timing data already recorded structurally in wave-03); every test's name+status below was parsed directly from the three verbose pytest logs, 487/487 collected tests accounted for with zero unparsed lines. \n\nCI (GitHub Actions, read via Checks API, not re-triggered):\nPush A f04254c9215df5fabfc831297613234e0ecc9123 (test-only, installer still unfixed) \u2014 EXPECTED RED, CONFIRMED:\n  - 'pytest init.sh suite \u2014 macos-latest' run 37486585591 / job 112348071119: conclusion=failure. 1 failed, 239 passed, 1 skipped, 1 xfailed in 1869.15s. Sole failure: test_install_sh_symlink_preflight.py::test_rc1_regression_21_plus_21_hop_linked_ancestor_chain_refused_with_follow_symlinks - AssertionError: assert 'Nothing was written' in '...mkdir: .../project/.claude/skills: Too many levels of symbolic links'.\n  - 'pytest init.sh suite \u2014 ubuntu-latest' run 37486585591 / job 112348071478: conclusion=failure. 1 failed, 235 passed, 5 skipped, 1 xfailed in 401.37s. Same sole failure, Linux ELOOP equivalent: assert 'Nothing was written' in '...cp: cannot stat '.../project/.claude/skills/tachi-example/': Too many levels of symbolic links'.\n  - All other checks on f04254c green: gitleaks (run 112348198594), gitleaks full-repo scan (run 37486585506/job 112348071789), manifest-completeness/extraction-fidelity/report-posture (run 37486585511, jobs 112348119764/112348119897/112348119392), 'Verify all 7 MAESTRO layers present in example tables' (run 37486585899/job 112348072760), 'Verify preflight gate fires when mmdc is absent' (run 37486585525/job 112348068868), 'Verify ORDERED_FRAMEWORKS fingerprints match the committed sidecar' (run 37486585501/job 112348068516).\nPush B 91e454274ec150cc1c62607c8d70ae9b5eb0ef45 (tip, + RC-3/RC-2/RC-1 fix/RC-1 record) \u2014 EXPECTED ALL-GREEN, CONFIRMED (10/10 checks success):\n  - 'pytest init.sh suite \u2014 macos-latest' run 37487273141/job 112350467359: success.\n  - 'pytest init.sh suite \u2014 ubuntu-latest' run 37487273141/job 112350467832: success.\n  - manifest-completeness/extraction-fidelity/report-posture: run 37487273132, jobs 112350483839/112350483211/112350483874: success.\n  - 'Verify all 7 MAESTRO layers present in example tables' run 37487273218/job 112350467287: success.\n  - 'Verify preflight gate fires when mmdc is absent' run 37487273172/job 112350467107: success.\n  - 'Verify ORDERED_FRAMEWORKS fingerprints match the committed sidecar' run 37487273212/job 112350467357: success.\n  - gitleaks full-repo scan run 37487273174/job 112350467508: success.\n  - gitleaks (standalone check) run 112350618202: success.",
+  "tests": [
+    {
+      "name": "tests.scripts.test_install_manifest_completeness::test_skills_covered",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_manifest_completeness::test_commands_covered",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_manifest_completeness::test_referenced_scripts_covered",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_manifest_completeness::test_import_closure_covered",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_manifest_completeness::test_distributable_imports_stdlib_only",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_manifest_completeness::test_manifest_hygiene",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_manifest_completeness::test_negative_matrix",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_manifest_completeness::test_end_to_end_install",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_manifest_completeness::test_manual_install_loop",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_manifest_completeness::test_manual_install_loop_zsh",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_positive_finding_count_is_findings",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_zero_findings_clean_token_is_clean",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_zero_findings_na_token_is_not_applicable",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_zero_findings_empty_is_clean_backfill_default",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_zero_findings_unrecognized_is_clean",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_na_token_endash_tolerated_is_not_applicable",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_zero_finding_tokens_resolve_to_ordinal_zero",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_normalize_header_casefolds_strips_trailing_dot_collapses_whitespace",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_header_aliases_resolve_all_four_canonical_fields",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_is_placeholder_id",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_parse_score_valid",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_parse_score_unparseable_returns_none",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_parse_score_rejects_non_finite",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_parse_markdown_table_empty_h3_band_yields_no_phantom_rows",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_pin_risk_summary_matching_document_title_stops_at_next_h2",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_shortform_headers_and_empty_bands_yield_exactly_two_findings",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_infographic_maestro_h3_heading_parses",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_report_maestro_h3_heading_parses",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_normalize_delta_status_bracket_and_emphasis_variants",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_baseline_resolved_4c_exact_delta_counts",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_tier3_parse_threats_findings_normalizes_bracket_and_emphasis_variants",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_baseline_resolved_4b_legacy_matches_4c_resolved_count",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_non_baseline_no_status_column_yields_empty_map_and_no_warning",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_baseline_status_id_mismatch_warns_but_counts_unrestricted",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_warn_delta_scope_missing_status_column_on_baseline",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_warn_delta_scope_empty_map_with_rows",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_warn_delta_scope_unknown_status_after_normalization",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_warn_delta_scope_never_raises_and_is_silent_when_not_baseline",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_apply_delta_status_stamps_badges_only_not_counts",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_parse_resolved_findings_accepts_4b_and_4c_and_skips_placeholder",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_parse_resolved_findings_absent_returns_empty_list",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_pin_severity_distribution_bold_paragraph_caller_unaffected",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_pin_coverage_distribution_bold_paragraph_caller_unaffected",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_pin_risk_summary_bare_substring_caller_unaffected",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_pin_representative_hash2_caller_unaffected_by_intervening_h3",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_pin_generate_risk_scores_sarif_scored_threat_table_unaffected",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_pin_generate_risk_scores_sarif_governance_fields_unaffected",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_classify_control_status_application_order",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_shortform_fixture_inherent_and_control_status_now_resolve",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_funnel_join_inherent_less_fills_inherent_by_id_join",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_funnel_join_inherent_less_without_composites_leaves_inherent_none",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_funnel_step_bound_row_level_fields",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_controls_warnings_kitchen_sink_status_classification_and_clamp",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_posture_mmdc_free_residual_severity_counts",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_compute_risk_posture_zero_findings_is_low",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_compute_risk_posture_takes_the_highest_non_zero_band",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_tachi_parsers::test_compute_risk_posture_runs_on_post_clamp_counts_from_a_real_parse",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_happy_path",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_with_risk_scores_tier",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_with_compensating_controls_tier",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_no_critical_high_skip_image",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_no_threats_md",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_no_scope_data",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_trust_zone_fallback_to_dfd",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_per_layer_ceiling_and_tie_break",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_deterministic_output",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_orphaned_finding_dropped",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_executive_architecture_component_name_normalization",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_normalize_component_name_helper",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_compute_dfd_type_layers_helper",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_select_critical_high_callouts_helper",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_build_executive_architecture_payload_helper",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_existing_templates_unchanged[baseball-card]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_existing_templates_unchanged[system-architecture]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_existing_templates_unchanged[risk-funnel]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_existing_templates_unchanged[maestro-stack]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_existing_templates_unchanged[maestro-heatmap]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_per_layer_floor_invariant[absent]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_per_layer_floor_invariant[single-layer]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_per_layer_floor_invariant[two-layer]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_per_layer_floor_invariant[three-layer]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_per_layer_floor_invariant[all-layers-qualifying]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_callouts_deterministic",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_superset_invariant",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_maestro_stack_emits_count_keys_present",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_maestro_stack_count_identity_holds",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_maestro_stack_mixed_counts_partial_fixture",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_maestro_stack_all_empty_counts_table_less_fixture",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_maestro_stack_distribution_backfilled_to_seven",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_maestro_stack_per_layer_summaries_cover_all_seven",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_maestro_stack_deterministic_byte_identical",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_microservices_per_layer_coverage_state",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_present_not_applicable_token_survives_backfill",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_table_less_fixture_backfills_all_to_clean",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_k9_shortform_bands_wire_through_extract_severity",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_k10_h3_heading_equals_h4_form",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_k12_baseline_4c_exact_delta_counts_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_k12_baseline_4b_legacy_matches_4c_resolved_count_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_k12_non_baseline_no_status_column_no_warning_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_k12_id_mismatch_absolute_tallies_and_one_warning_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_k11_funnel_step_bound_widths_and_reductions_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_k11_funnel_strong_reduction_floor_bound_width_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_k11_funnel_3tier_shape_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_k11_funnel_threats_only_shape_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_k11_funnel_volumes_unavailable_shape_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_k11_funnel_join_inherent_less_volumes_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_k11_controls_status_variants_wire_through_funnel_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_k11_controls_warnings_kitchen_sink_section1_and_row_count_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_rc2_unreadable_risk_scores_table_single_warning_no_row_count_mismatch_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_k11_baseball_card_and_funnel_agree_on_totals_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_infographic_data::test_k11_reductions_are_never_negative_across_funnel_fixtures",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_has_executive_architecture_true_when_image_present",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_has_executive_architecture_false_when_image_absent",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_has_executive_architecture_false_when_image_zero_size",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_executive_architecture_image_path_relative_to_template_dir",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_existing_image_flags_unchanged[#let has-funnel-image = true]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_existing_image_flags_unchanged[#let has-baseball-image = true]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_existing_image_flags_unchanged[#let has-architecture-image = true]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_existing_image_flags_unchanged[#let has-maestro-stack-image = true]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_existing_image_flags_unchanged[#let has-maestro-heatmap-image = true]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_mislabeled_jpg_with_png_bytes_emits_png_path_and_writes_sibling",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_mixed_extensions_prefers_self_consistent_png_over_stale_jpg",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_clean_jpeg_emits_jpg_path_without_warning",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_cleanup_flag_deletes_mislabeled_jpg_with_byte_identical_png",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_no_flag_run_stays_byte_identical",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_cleanup_flag_recovery_write_then_verify_then_delete",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_cleanup_flag_non_identical_pair_untouched",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_cleanup_flag_all_correct_directory_is_a_no_op",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_cleanup_flag_truncated_recovery_copy_skips_delete",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_cleanup_flag_cross_swapped_pair_untouched",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_cleanup_flag_legitimate_mixed_pair_untouched",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_cleanup_deletion_failure_is_best_effort",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_maestro_zero_finding_layer_is_retained_not_dropped",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_maestro_coverage_state_on_group_records_microservices_state_map",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_maestro_most_exposed_layer_never_a_zero_finding_layer",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_maestro_coverage_state_live_on_committed_microservices_example",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_k9_shortform_bands_wire_through_parse_compensating_controls_md",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_k10_h3_heading_equals_h4_form",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_k12_baseline_4c_exact_delta_counts_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_k12_baseline_4b_legacy_matches_4c_resolved_count_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_k12_non_baseline_no_status_column_no_warning_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_k12_id_mismatch_absolute_tallies_and_one_warning_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_k131_tier1_partial_join_recommendation_precedence_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_k131_tier1_drifted_section4_warns_and_falls_back_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_k131_roadmap_matches_card_recommendation_tier1_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_k131_roadmap_tier2_empty_threat_falls_back_to_placeholder",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_k131_tier3_empty_mitigation_resolves_once_for_all_three_consumers_via_cli",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_k131_attack_path_tier2_stays_generic_not_placeholder",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_warn_unmatched_attribution_refs_stale_form_id_warns_and_is_pure",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extract_report_data::test_build_per_framework_aggregates_out_of_scope_citation_not_misreported",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extractor_contract_fixes::test_bug1_compensating_controls_dedupes_cross_listed_findings",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extractor_contract_fixes::test_bug2_attack_tree_glob_accepts_agent_native_filenames",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extractor_contract_fixes::test_bug3_narrative_fallback_to_full_section1_prose",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extractor_contract_fixes::test_bug4_detect_images_finds_both_extensions[.jpg-\\xff\\xd8\\xff\\xe0\\x00\\x10JFIF\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extractor_contract_fixes::test_bug4_detect_images_finds_both_extensions[.png-\\x89PNG\\r\\n\\x1a\\n\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extractor_contract_fixes::test_bug5_merge_delta_status_populates_tier1_findings",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extractor_contract_fixes::test_f373_k131_tier1_three_consumers_agree_on_one_recommendation_field",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extractor_contract_fixes::test_f373_k131_tier3_three_consumers_agree_on_placeholder",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_flow_edges_absent",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_flow_edges_empty",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_flow_edges_single",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_flow_edges_multi_sorted",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_flow_edges_truncation",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_clusters_absent",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_clusters_multi_sorted",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_clusters_members_sorted",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_clusters_trust_level_rename",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_destination_field_name_lock",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_determinism",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_executive_architecture_payload::test_prompt_co_landing",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA1ReferenceRequestBody::test_body_shape_and_forbidden_keys",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA1ReferenceRequestBody::test_no_resolution_anywhere_in_file",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA1ReferenceRequestBody::test_response_parsing_names_camel_case_keys",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA2TemplateBlocks::test_block_shape[baseball-card]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA2TemplateBlocks::test_block_shape[maestro-heatmap]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA2TemplateBlocks::test_block_shape[maestro-stack]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA2TemplateBlocks::test_block_shape[risk-funnel]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA2TemplateBlocks::test_block_shape[system-architecture]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA3ExecutiveArchitectureBlock::test_block_after_end_marker_is_portrait",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA4AdapterCopy::test_body_conforms_to_a1",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA4AdapterCopy::test_no_resolution_anywhere_in_file",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA4AdapterCopy::test_names_only_chain_models_primary_first",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA4AdapterCopy::test_response_parsing_names_inline_data",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA5KeyFieldTableAndChain::test_key_field_table_present_with_every_row",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA5KeyFieldTableAndChain::test_reference_chain_and_default_model",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[templates/tachi/infographics/INFOGRAPHIC_TEMPLATES.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[templates/tachi/infographics/infographic-baseball-card.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[templates/tachi/infographics/infographic-maestro-heatmap.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[templates/tachi/infographics/infographic-maestro-stack.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[templates/tachi/infographics/infographic-risk-funnel.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[templates/tachi/infographics/infographic-system-architecture.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[.claude/skills/tachi-infographics/SKILL.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[.claude/skills/tachi-infographics/references/executive-architecture.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[.claude/skills/tachi-infographics/references/gemini-prompt-construction.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[.claude/skills/tachi-infographics/references/infographic-specifications.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[.claude/skills/tachi-infographics/references/template-specific-formats.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[.claude/skills/tachi-infographics/references/visual-design-system.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[.claude/agents/tachi/threat-infographic.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[adapters/claude-code/agents/references/error-templates.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[adapters/claude-code/agents/references/infographic-error-handling.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[adapters/claude-code/agents/references/infographic-gemini-api.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[adapters/claude-code/agents/references/report-templates.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[adapters/claude-code/agents/references/sarif-generation.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_no_retired_ids_outside_the_single_exception[adapters/claude-code/agents/references/validation-checklist.md]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA6NoRetiredModelIDs::test_reference_has_exactly_one_retired_models_line",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA7AgentMappingAndErrorTable::test_mapping_instruction_and_executive_architecture_pointer",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA7AgentMappingAndErrorTable::test_skill_reference_table_points_to_executive_architecture",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA7AgentMappingAndErrorTable::test_error_table_has_400_row",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA7AgentMappingAndErrorTable::test_error_table_has_404_403_walked_row",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA7AgentMappingAndErrorTable::test_error_table_has_exhausted_chain_row",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA7AgentMappingAndErrorTable::test_error_table_has_catch_all_row",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA7AgentMappingAndErrorTable::test_429_hint_to_reorder_models",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA8ScaffoldBoundaries::test_scaffold_found_and_bounded[baseball-card]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA8ScaffoldBoundaries::test_scaffold_found_and_bounded[maestro-heatmap]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA8ScaffoldBoundaries::test_scaffold_found_and_bounded[maestro-stack]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA8ScaffoldBoundaries::test_scaffold_found_and_bounded[risk-funnel]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA8ScaffoldBoundaries::test_scaffold_found_and_bounded[system-architecture]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA8ScaffoldBoundaries::test_exactly_one_line_start_footer_after_marker[baseball-card]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA8ScaffoldBoundaries::test_exactly_one_line_start_footer_after_marker[maestro-heatmap]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA8ScaffoldBoundaries::test_exactly_one_line_start_footer_after_marker[maestro-stack]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA8ScaffoldBoundaries::test_exactly_one_line_start_footer_after_marker[risk-funnel]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA8ScaffoldBoundaries::test_exactly_one_line_start_footer_after_marker[system-architecture]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA9LayoutLabelAndAllowList::test_scaffolded_preamble_has_both_instructions_between_important_and_styling[baseball-card]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA9LayoutLabelAndAllowList::test_scaffolded_preamble_has_both_instructions_between_important_and_styling[maestro-heatmap]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA9LayoutLabelAndAllowList::test_scaffolded_preamble_has_both_instructions_between_important_and_styling[maestro-stack]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA9LayoutLabelAndAllowList::test_scaffolded_preamble_has_both_instructions_between_important_and_styling[risk-funnel]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA9LayoutLabelAndAllowList::test_scaffolded_preamble_has_both_instructions_between_important_and_styling[system-architecture]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA9LayoutLabelAndAllowList::test_reference_prompt_has_both_instructions_between_important_and_styling",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA9LayoutLabelAndAllowList::test_executive_architecture_has_layout_label_and_region_variant",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA9LayoutLabelAndAllowList::test_agent_instructs_allowed_ids_and_names_line_for_scaffolded_and_reference",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA9LayoutLabelAndAllowList::test_agent_executive_architecture_section_omits_allowed_ids_line",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA10ExecutiveArchitectureLockAmendment::test_lock_marker_lines_are_byte_identical",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA10ExecutiveArchitectureLockAmendment::test_flow_edges_and_clusters_still_present",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA10ExecutiveArchitectureLockAmendment::test_dated_amendment_note_exists_in_reference",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA10ExecutiveArchitectureLockAmendment::test_amendment_paragraph_removed_hashes_to_pinned_pre_change_value",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_gemini_request_contract::TestA11ResidualAliasDetection::test_detection_condition_accepts_both_header_forms",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extraction_sibling_parity::test_posture_level_label_agree_posture_mmdc_free",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extraction_sibling_parity::test_severity_counts_agree_posture_mmdc_free",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extraction_sibling_parity::test_delta_counts_agree_bracketed_status_baseline",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extraction_sibling_parity::test_delta_counts_agree_id_mismatch_baseline",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extraction_sibling_parity::test_maestro_layer_distribution_and_most_exposed_agree_h3_heading",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extraction_sibling_parity::test_severity_counts_and_residual_bands_agree_funnel_join_inherent_less",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_extraction_sibling_parity::test_posture_agrees_funnel_join_inherent_less",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_report_posture_contract::test_fresh_report_data_compiles_with_expected_posture",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_report_posture_contract::test_stale_report_data_panics_with_contract_text",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_sh_substitution::test_personalized_tree_modes_match_baseline",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_sh_adversarial::test_case_13_file_level_byte_identity",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_sh_adversarial::test_no_residual_placeholders_after_init",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_sh_constitution::test_constitution_byte_equals_clean_template",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_sh_self_delete::test_init_sh_does_not_exist_after_success",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_sh_self_delete::test_personalization_snapshot_persists_after_init",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_sh_self_delete::test_aod_kit_version_persists_after_init",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_substitute_unit::test_template_substitute[case_1_ampersand]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_substitute_unit::test_template_substitute[case_2_pipe]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_substitute_unit::test_template_substitute[case_3_backref]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_substitute_unit::test_template_substitute[case_4_single_quoted]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_substitute_unit::test_template_substitute[case_5_double_quoted]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_substitute_unit::test_template_substitute[case_6_multibyte]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_substitute_unit::test_template_substitute[case_7_newline_in_value]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_substitute_unit::test_template_substitute[case_8_empty_value]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_input_unit::test_init_input[case_0_canary_positive]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_input_unit::test_init_input[case_9_control_char_bel]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_input_unit::test_init_input[case_10_nul_byte]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_input_unit::test_init_input[case_11_over_length]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_input_unit::test_init_input[case_12_control_char_soh]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_input_unit::test_init_input[case_13_metachar_dollar]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_input_unit::test_init_input[case_14_metachar_backslash]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_input_unit::test_init_input[case_15_metachar_backtick]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_substitute_shim_canary::test_template_substitute_shim_present",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_sh_defaults_env::test_shipped_stack_pack_loads_cleanly[nextjs-supabase]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_sh_defaults_env::test_shipped_stack_pack_loads_cleanly[fastapi-react]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_sh_defaults_env::test_malicious_pack_rejected",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_sh_defaults_env::test_missing_key_pack_rejected",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_0_canary_positive]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_1_unquoted_simple]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_2_double_quoted]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_3_single_quoted]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_4_unquoted_path]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_5_unquoted_email]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_6_whitelist_all_present]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_7_command_substitution]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_8_unbalanced_quote]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_9_backtick]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_10_dollar_inside_double_quotes]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_11_lowercase_in_upper_mode]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_12_missing_whitelisted_key]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_13_disallowed_key]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_14_only_key_no_equals]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_15_embedded_nul]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_16_bare_empty_unquoted]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_17_invalid_var_prefix]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_18_empty_quoted_value]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_19_trailing_newline]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_20_no_trailing_newline]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_21_crlf]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_22_leading_whitespace]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_23_blank_then_content]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_24_missing_path_arg]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_25_file_absent]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_26a_lower_mode_accepts_lowercase]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_26b_lower_mode_rejects_uppercase]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_27_mixed_mode_rejected]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_28_size_cap_returns_8]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_unit::test_template_config_load[case_29_directory_path_returns_3]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_integration::test_site_b_aod_kit_version[site_b_malformed_command_injection]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_integration::test_site_b_aod_kit_version[site_b_valid_lowercase]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_integration::test_site_b_aod_kit_version[site_b_bare_version_empty]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_integration::test_site_b_aod_kit_version[site_b_uppercase_rejected]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_integration::test_site_b_writer_roundtrip",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_integration::test_site_d_personalization_env[site_d_collapsed_body_valid]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_integration::test_site_d_personalization_env[site_d_missing_path]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_integration::test_site_d_personalization_env[site_d_file_absent]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_integration::test_site_d_personalization_env[site_d_embedded_nul]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_integration::test_site_d_personalization_env[site_d_missing_canonical_key]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_config_load_integration::test_site_d_toctou_residual_race",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_git_clone_timeout::test_hanging_clone_times_out[case_1_timeout_3s]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_git_clone_timeout::test_hanging_clone_times_out[case_2_timeout_10s]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_git_clone_timeout::test_invalid_timeout_rejected[case_3_zero_footgun]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_git_clone_timeout::test_invalid_timeout_rejected[case_4_non_numeric]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_git_clone_timeout::test_invalid_timeout_rejected[case_5_leading_zero]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_git_clone_timeout::test_fast_clone_succeeds",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_template_substitute_lint_no_eval::test_no_eval_in_template_substitute",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_precommit_matrix::test_non_tty_no_flag_skips_prompt_and_install",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_precommit_matrix::test_non_tty_no_precommit_flag_skips_install",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_precommit_matrix::test_non_tty_precommit_flag_force_install",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_precommit_matrix::test_tty_no_flag_default_y",
+      "status": "skip"
+    },
+    {
+      "name": "tests.scripts.test_init_precommit_matrix::test_tty_no_precommit_flag_via_subprocess",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_precommit_matrix::test_tty_precommit_flag_via_subprocess",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_empty_input_returns_empty_dict[]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_empty_input_returns_empty_dict[   ]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_empty_input_returns_empty_dict[\\n\\n]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_empty_input_returns_empty_dict[None]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_no_mermaid_block_returns_empty_dict",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_mermaid_block_without_asset_tags_returns_empty_dict",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_quoted_rectangle_node_parses",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_quoted_cylinder_node_parses",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_quoted_subroutine_node_parses",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_br_tag_stripped_from_display_name",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_display_name_falls_back_to_node_id_when_label_is_only_asset_block",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_multiline_br_tag_variants",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_tags_lowercased",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_tags_whitespace_tolerant",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_tags_deduped_within_node",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_tag_list_sorted",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_all_six_tags_recognized",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_unknown_tag_dropped_with_warning",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_only_unknown_tags_produces_no_entry",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_duplicate_component_declarations_merge_tags",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_duplicate_component_same_tag_no_warning",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_asset_block_outside_mermaid_fence_ignored",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_raw_mermaid_without_fence_still_parses",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_multiple_fences_all_scanned",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_agentic_app_worked_example_parses",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_asset_sensitivity_tags::test_valid_asset_tags_is_closed_six_value_enum",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc003_all_six_tags_propagate_sorted",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc003_compute_rows_carry_full_enum_for_tagged_component",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc005_untagged_component_renders_empty_brackets",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc005_unmatched_component_renders_empty_brackets",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc005_every_finding_present_in_block",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_fuzzy_substring_tier_resolves_tags",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_fuzzy_word_overlap_tier_resolves_tags",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_fuzzy_match_below_threshold_falls_back_to_empty",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_fuzzy_case_insensitive_exact_tier",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_q4_no_op_modifier_tag_still_listed",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_q4_all_component_tags_listed_not_just_modifier_relevant",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_output_sorted_ascending_regardless_of_declaration_order",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_output_deduped_within_component",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_output_value_strictly_ascending",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_lifecycle_status_findings_carry_field[UNCHANGED]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_lifecycle_status_findings_carry_field[RESOLVED]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_lifecycle_status_findings_carry_field[UPDATED]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_lifecycle_status_findings_carry_field[NEW]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_unchanged_and_resolved_coexist_with_field",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_idempotent_double_populate_is_byte_identical",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_idempotent_block_appears_exactly_once",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_populate_preserves_existing_tables_byte_stable",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc006_cross_format_equality_table",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc006_untagged_finding_is_present_not_missing",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc006_key_string_is_snake_case_in_both_sarif_surfaces",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc006_emitted_sarif_serializes_to_valid_json",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc007_doc_enum_matches_frozen_valid_asset_tags",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc007_doc_enum_declares_frozen_six_count",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc007_empty_default_matches_doc_always_present_claim",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc007_threats_md_shape_matches_doc_representation_cell",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc007_render_value_helper_matches_doc_sorted_array_form",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc007_doc_has_no_stale_95_ceiling_only_92",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc004_modifier_ceiling_constant_is_92",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc004_affected_assets_populated_for_ceiling_pushing_tags",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_sc004_affected_assets_independent_of_score_fields",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_fr014_artifact_uri_for_repo_relative_path_matches_second_example",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_fr014_artifact_uri_for_tmp_path_outside_repo_falls_back_to_resolved_posix",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_fr014_build_sarif_wires_derived_uri_into_artifact_location",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_affected_assets_wiring::test_fr014_build_sarif_default_source_uri_preserves_agentic_app_constant",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_llm_branch_normalizes_both_editions_identically[2025-llm01]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_llm_branch_normalizes_both_editions_identically[2025-llm05-middle]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_llm_branch_normalizes_both_editions_identically[2025-llm10]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_llm_branch_normalizes_both_editions_identically[2026-llm01]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_llm_branch_normalizes_both_editions_identically[2026-llm05-middle]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_llm_branch_normalizes_both_editions_identically[2026-llm10]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_llm_branch_zero_pads_single_digit_capture",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_breadcrumb_suffixed_string_is_passthrough_not_normalized",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_asi_mcp_branches[ASI-01-ASI-01]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_asi_mcp_branches[ASI01-ASI-01]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_asi_mcp_branches[ASI-7-ASI-07]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_asi_mcp_branches[MCP-03-MCP-03]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_asi_mcp_branches[MCP03-MCP-03]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_unmatched_strings_are_passthrough[CWE-79]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_unmatched_strings_are_passthrough[garbage-string-xyz]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_stride_fallback_maps_prefix_to_owasp_2021_category[S-A07]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_stride_fallback_maps_prefix_to_owasp_2021_category[T-A08]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_stride_fallback_maps_prefix_to_owasp_2021_category[R-A09]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_stride_fallback_maps_prefix_to_owasp_2021_category[I-A01]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_stride_fallback_maps_prefix_to_owasp_2021_category[D-A05]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_stride_fallback_maps_prefix_to_owasp_2021_category[E-A01]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_stride_fallback_unmapped_prefix_returns_empty_string",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_ground_truth_precondition_ten_llm_records_llm01_through_llm10",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_ground_truth_precondition_uniform_url",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_ground_truth_precondition_uniform_edition",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_taxonomies_owasp_llm_taxa_matches_catalog_exactly",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_taxonomies_owasp_llm_taxa_ordered_llm01_through_llm10",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_taxonomies_owasp_llm_version_is_2026",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_taxonomies_owasp_llm_information_uri_matches_catalog",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_supported_taxonomies_owasp_llm_version_is_2026",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_supported_taxonomies_owasp_llm_information_uri_matches_catalog",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_taxonomies_owasp_llm_version_matches_catalog_edition",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_supported_taxonomies_owasp_llm_version_matches_catalog_edition",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_owasp_2026_contract::test_derive_owasp_reference_tokens_match_catalog_edition",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_ancestor_link_over_deprecated_commands_refused_without_flag",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_ancestor_link_over_deprecated_commands_skipped_with_flag",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_dangling_deprecated_command_link_refused_without_flag",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_dangling_deprecated_command_link_skipped_with_flag",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_directory_entry_symlink_refused_without_flag",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_directory_entry_symlink_installs_with_flag",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_ancestor_of_file_entry_refused_without_flag",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_ancestor_of_file_entry_installs_with_flag",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_file_entry_symlink_refused_without_flag",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_file_entry_symlink_installs_with_flag",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_nested_symlinked_file_always_refused[no-flag]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_nested_symlinked_file_always_refused[with-flag]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_nested_symlinked_directory_always_refused[no-flag]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_nested_symlinked_directory_always_refused[with-flag]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_dangling_entry_link_always_refused[no-flag]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_dangling_entry_link_always_refused[with-flag]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_looping_entry_link_always_refused[no-flag]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_looping_entry_link_always_refused[with-flag]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_wrong_type_link_dir_needed_always_refused[no-flag]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_wrong_type_link_dir_needed_always_refused[with-flag]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_wrong_type_link_file_needed_always_refused[no-flag]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_wrong_type_link_file_needed_always_refused[with-flag]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_symlink_chain_hop_boundary[32-hops-resolves]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_symlink_chain_hop_boundary[33-hops-unresolvable]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_sec_k3_01_regression_33_hop_claude_chain_refused_with_follow_symlinks",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_rc1_regression_21_plus_21_hop_linked_ancestor_chain_refused_with_follow_symlinks",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_link_straight_into_clone_always_refused[no-flag]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_link_straight_into_clone_always_refused[with-flag]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_link_to_clone_parent_always_refused[no-flag]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_link_to_clone_parent_always_refused[with-flag]",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_vendored_clone_at_entry_destination_refused_without_flag",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_vendored_clone_at_entry_destination_refused_with_flag",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_n11_clone_nested_inside_directory_entry_destination_refused",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_project_root_is_source_clone_refused",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_project_root_inside_source_clone_refused",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_case_variant_link_into_clone_refused_without_flag",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_case_variant_link_into_clone_refused_with_flag",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_project_root_case_variant_of_clone_refused",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_project_inside_clone_via_case_variant_path_refused",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_project_reached_through_ancestor_link_not_refused",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_in_project_link_classified_inside_despite_ancestor_link",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_unchanged_install_no_symlinks_copies_same_files",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_follow_symlinks_long_form_accepted",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_follow_symlinks_short_alias_rejected",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_follow_symlinks_with_value_rejected",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_multiple_refusals_sorted_deterministically",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_help_flag_documents_follow_symlinks_scope",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_header_comment_documents_follow_symlinks_scope",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_release_please_markers_preserved_in_install_sh",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_symlink_preflight::test_glob_metacharacter_manifest_entry_treated_literally",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_ref_restore::test_harness_keeps_install_sh_identical_at_tag_and_head",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_ref_restore::test_ref_restored_after_successful_version_install_on_branch",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_ref_restore::test_ref_restored_after_successful_version_install_detached_head",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_ref_restore::test_ref_restored_after_copy_failure",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_ref_restore::test_ref_restored_after_symlink_refusal_with_version",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_ref_restore::test_ref_restored_after_invalid_version_tag",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_ref_restore::test_forced_restore_failure_warns_and_preserves_success_exit_code",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_ref_restore::test_forced_restore_failure_warns_and_preserves_refusal_exit_code",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_install_sh_ref_restore::test_successful_restore_prints_no_warning",
+      "status": "pass"
+    },
+    {
+      "name": "tests.scripts.test_init_sh_substitution::test_personalized_tree_bytes_match_baseline",
+      "status": "skip",
+      "note": "xfail (strict=False)"
+    }
+  ],
+  "fix_cycle": {
+    "reason": "T036 code review CHANGES_REQUESTED (H-1, M-1, M-2, L-1..L-9) and the delta look's N-1",
+    "commits": "117b2a3..0fc2ebe (DEVOPS-K3), dfccde5-range SBE-W3 (M-2, L-3..L-7), 9c15a3b (N-1)",
+    "lane_totals": {
+      "k3_plus_manifest_bash32": "76/76",
+      "extraction_plus_posture": "256/256",
+      "n1_prefix_red": "20/20 per test (orchestrator re-check 5/5)",
+      "n1_postfix_green": "10/10 per test"
+    },
+    "ci": {
+      "729fa1b": "6/6 workflows green (tachi pytest macOS+ubuntu, install fidelity x3, mmdc, catalog-drift, maestro coverage, gitleaks)",
+      "9c15a3b": "6/6 workflows green"
+    },
+    "oracle": "0 JSON / 0 report-data.typ / 0 stderr changes at 729fa1b vs the T035 post-snapshot (oracle-diff.md, final-commit confirmation)",
+    "checkpoint": "P1 APPROVED_WITH_CONCERNS, GO for W4 (test-results/p1-architect-review.md)"
+  }
+}

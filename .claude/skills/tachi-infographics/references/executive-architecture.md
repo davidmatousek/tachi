@@ -143,6 +143,9 @@ schematic diagram with shapes and arrows — produce a portrait-orientation secu
 
 IMPORTANT: The styling directives in this prompt are for your interpretation only. Do NOT render any hex color codes, pixel values, or technical specifications as visible text in the image. Render only the natural-language labels, finding IDs, severity words, component names, and callout descriptions provided in the DATA CONTENT block.
 
+The uppercase section labels in this prompt, such as DATA CONTENT and FOOTER, are layout instructions. Do not render them, or any other instruction text, as visible text in the image.
+Every finding ID in the image must be one listed under CALLOUTS, and every component name must be one listed under LAYER STACK, FLOW EDGES or CLUSTERS. Never show any other ID, and never invent an ID or a component.
+
 STYLING DIRECTIVES (interpret these, do not display them):
 
 - Orientation: portrait, 8.5:11 page aspect ratio.
@@ -194,6 +197,20 @@ Render this as a clean, premium, boardroom-ready security infographic. Lead with
 ```
 
 The block delimited by `=== BEGIN VERBATIM PROMPT BLOCK ===` and `=== END VERBATIM PROMPT BLOCK ===` is the consumer copy target. The Gemini prompt builder MUST emit exactly the text inside these markers (after slot substitution) — no rewriting, no aesthetic recomposition, no runtime construction of the styling directives.
+
+---
+
+## Gemini API Configuration
+
+```yaml
+model: "gemini-3-pro-image"
+fallback_model: "gemini-3.1-flash-image"
+response_modalities: ["TEXT", "IMAGE"]
+aspect_ratio: "3:4"
+image_size: "2K"
+```
+
+This block is outside the FR-212-6 lock above — it configures the request parameters only, never the prompt text. The agent reads it and maps its keys through the key → field table in `gemini-prompt-construction.md` ("Gemini API Configuration"), the same way it maps any other template's block; it never falls back to that reference's own dashboard prompt for this template. `aspect_ratio: "3:4"` is the closest supported portrait ratio to this template's page: the STYLING DIRECTIVES text above still reads "portrait, 8.5:11 page aspect ratio" — the canvas governs, and changing that locked text would need its own amendment.
 
 ---
 

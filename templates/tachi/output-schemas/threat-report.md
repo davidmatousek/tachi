@@ -54,7 +54,7 @@ delta_counts:
 | `delta_counts.new` | integer, nullable | Count of findings with delta_status NEW. |
 | `delta_counts.unchanged` | integer, nullable | Count of findings with delta_status UNCHANGED. |
 | `delta_counts.updated` | integer, nullable | Count of findings with delta_status UPDATED. |
-| `delta_counts.resolved` | integer, nullable | Count of findings with delta_status RESOLVED (from Section 4b). |
+| `delta_counts.resolved` | integer, nullable | Count of findings with delta_status RESOLVED (from Section 4c). |
 
 ---
 
@@ -204,7 +204,7 @@ flowchart TD
 >
 > **Rule 3 — Post-generation reconciliation (applies only when Rule 2 fires):** After generating all fresh trees, compare each UNCHANGED finding's fresh tree against its baseline counterpart from `attack-trees/{finding-id}-attack-tree.md`. If they are structurally similar (same nodes, same paths, minor wording differences only), use the baseline version for consistency — this avoids noisy churn on trees that didn't actually change. If they are materially different (new attack paths, removed nodes, structural changes), use the fresh version. This ensures diffs between runs only show meaningful changes.
 >
-> **RESOLVED**: Not applicable — RESOLVED findings do not appear in Section 5. They appear only in Section 4b of the input threats.md.
+> **RESOLVED**: Not applicable — RESOLVED findings do not appear in Section 5. They appear only in Section 4c of the input threats.md.
 >
 > **No baseline**: When `baseline_source` is null in the input frontmatter, generate all attack trees fresh with no delta annotations. This is standard first-run behavior.
 
@@ -295,12 +295,12 @@ _Table summarizing finding counts by lifecycle status._
 | NEW | _{count}_ | Findings discovered in this run with no baseline match |
 | UNCHANGED | _{count}_ | Findings identical to baseline (same component, threat, assessment) |
 | UPDATED | _{count}_ | Findings with changed context since baseline |
-| RESOLVED | _{count}_ | Baseline findings no longer applicable (from Section 4b) |
+| RESOLVED | _{count}_ | Baseline findings no longer applicable (from Section 4c) |
 | **Total** | _{total}_ | Sum of all findings (active + resolved) |
 
 ### Remediation Progress
 
-_Narrative paragraph describing remediation progress since the baseline. Reference RESOLVED findings from Section 4b by ID and resolution reason. Quantify the reduction in active threats. Note any risk level changes in UPDATED findings. Written for a non-technical audience._
+_Narrative paragraph describing remediation progress since the baseline. Reference RESOLVED findings from Section 4c by ID and resolution reason. Quantify the reduction in active threats. Note any risk level changes in UPDATED findings. Written for a non-technical audience._
 
 ### Baseline Reference
 
@@ -311,4 +311,4 @@ _Narrative paragraph describing remediation progress since the baseline. Referen
 | Baseline Findings | _{baseline finding count from frontmatter}_ |
 | Run ID | _{baseline run ID from frontmatter}_ |
 
-> **Generation guidance**: Delta counts are computed from the input threats.md: count findings by `delta_status` in Sections 3 and 4, plus RESOLVED findings from Section 4b. The sum of NEW + UNCHANGED + UPDATED + RESOLVED must equal the total. When generating the remediation progress narrative, cite specific resolved findings and their resolution reasons to provide concrete remediation proof.
+> **Generation guidance**: Delta counts are computed from the input threats.md: count findings by `delta_status` in Sections 3 and 4, plus RESOLVED findings from Section 4c. The sum of NEW + UNCHANGED + UPDATED + RESOLVED must equal the total. When generating the remediation progress narrative, cite specific resolved findings and their resolution reasons to provide concrete remediation proof.

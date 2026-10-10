@@ -51,6 +51,7 @@ Set the spec frontmatter `source_file` based on `metadata.data_source_type`:
 - `Analysis Agents`: Count of distinct threat agent categories that produced findings
 - `Total Findings`: Must match the `finding_count` in frontmatter exactly
 - `Risk Posture`: Use the value from `metadata.risk_posture` verbatim
+- Templates with a posture badge also read `metadata.risk_posture_level` and `metadata.risk_posture_label`: the label is rendered verbatim, and its color comes from the level only, never from a findings percentage (D-3)
 
 ---
 
@@ -169,6 +170,7 @@ Map fields from the extraction script JSON output to infographic specification s
 | `metadata.agent_count` | Section 1 (Metadata) | Analysis Agents row |
 | `metadata.total_findings` | Section 1 + Frontmatter | Total Findings row, `finding_count` field |
 | `metadata.risk_posture` | Section 1 (Metadata) | Risk Posture row (use verbatim) |
+| `metadata.risk_posture_level` / `.risk_posture_label` | Template posture badge (all templates) | Label rendered verbatim; color from level only (D-3) |
 | `metadata.data_source_type` | Frontmatter | `data_source_type` field; determines `source_file` |
 | `metadata.schema_version` | Frontmatter | `schema_version` field |
 | `severity_distribution[]` | Section 2 (Risk Distribution) | One table row per entry: label, count, percentage, color |

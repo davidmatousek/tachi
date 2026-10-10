@@ -7,6 +7,7 @@ direct module-level calls through the ``extract_infographic_data`` conftest fixt
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -18,6 +19,18 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "extract-infographic-data.py"
 FIXTURES_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "exec_arch"
 GOLDEN_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "golden"
+
+# Feature 373 US-3a (K9/K10/K12) extractor-level regression fixtures. See
+# that directory's README.md for hand-computed expected values; the pure
+# tachi_parsers.py-level pins for these same fixtures live in
+# test_tachi_parsers.py (tasks.md T016) -- the tests below instead exercise
+# extract-infographic-data.py's own wiring (extract_severity,
+# parse_maestro_layer_distribution, and the CLI's delta_counts call site).
+FIDELITY_FIXTURES_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "fidelity_373"
+
+
+def _read_fidelity_fixture(subdir: str, filename: str) -> str:
+    return (FIDELITY_FIXTURES_DIR / subdir / filename).read_text(encoding="utf-8")
 
 
 def run_extract(target_dir, template, extra_args=None):
@@ -120,6 +133,98 @@ def test_executive_architecture_no_critical_high_skip_image():
     assert payload["callouts"] == []
     assert payload["severity_distribution"]["critical_count"] == 0
     assert payload["severity_distribution"]["high_count"] == 0
+
+
+# =============================================================================
+# T036 M-2 (K13 half) -- executive-architecture's risk-posture fields had no
+# CI assertion (code-reviewer-373.md M-2): metadata.risk_posture_level/_label
+# are added to the payload only `if risk_posture_level is not None`
+# (extract-infographic-data.py:1275), and the one real caller (main()) always
+# supplies both -- so dropping the two keywords at the main() call site would
+# silently omit exec-arch's posture with no test catching it. Pinned against
+# the agentic_app fixture's hand-verified value (data-model.md §5: residual
+# severity counts after the K11 clamp -> 7 Critical/High findings -> high).
+# =============================================================================
+
+def test_executive_architecture_risk_posture_fields_gated():
+    """agentic_app fixture: metadata carries risk_posture_level/_label (K13, data-model §5)."""
+    returncode, _stdout, stderr, payload = run_extract(
+        FIXTURES_DIR / "agentic_app", "executive-architecture"
+    )
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert payload is not None
+    assert payload["metadata"].get("risk_posture_level") == "high", (
+        "T036 M-2: executive-architecture metadata must carry risk_posture_level "
+        f"computed from this tier's severity counts; got {payload['metadata'].get('risk_posture_level')!r}"
+    )
+    assert payload["metadata"].get("risk_posture_label") == "HIGH RISK", (
+        "T036 M-2: executive-architecture metadata must carry risk_posture_label; "
+        f"got {payload['metadata'].get('risk_posture_label')!r}"
+    )
+
+
+# =============================================================================
+# T036 M-2 (K15 half) -- executive-architecture's and maestro-stack's
+# allow_list.finding_ids had no CI assertion (code-reviewer-373.md M-2).
+# Kept in its own block, separated from the K13 block above by this banner,
+# so a future TW-6 K15 carve (reverting T027-T029) can remove exactly this
+# block mechanically.
+#
+# The maestro-stack golden fixture (agentic_app) and maestro_partial both
+# carry NO "MAESTRO Layer" column on their Section 3/4 tables, so their
+# per_finding_maestro is always [] and allow_list.finding_ids is already []
+# before any regression -- a wrong key or branch in compute_allow_list's
+# maestro-stack branch would still emit [] and pass every existing gate
+# (review's exact concern). The new maestro_top_findings fixture carries
+# that column so the non-empty case -- and the 2-per-layer cap -- are
+# actually exercised.
+# =============================================================================
+
+def test_executive_architecture_allow_list_matches_callouts():
+    """agentic_app fixture: allow_list.finding_ids == sorted(callout finding IDs) (K15, data-model §8)."""
+    returncode, _stdout, stderr, payload = run_extract(
+        FIXTURES_DIR / "agentic_app", "executive-architecture"
+    )
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert payload is not None
+    expected = sorted({c["finding_id"] for c in payload["callouts"]})
+    assert payload["allow_list"]["finding_ids"] == expected, (
+        "T036 M-2: executive-architecture allow_list.finding_ids must equal "
+        f"the callout IDs; expected {expected}, got {payload['allow_list']['finding_ids']}"
+    )
+    # Hand-verified pin (code-reviewer-373.md M-2) so a change to either side
+    # that happens to keep them mutually consistent still gets caught.
+    assert payload["allow_list"]["finding_ids"] == ["AG-1", "E-2", "E-3", "LLM-1"]
+
+
+def test_maestro_stack_allow_list_matches_top_findings_and_is_capped():
+    """maestro_top_findings fixture: allow_list.finding_ids == per-layer top-finding IDs, non-empty.
+
+    S-4 (the 3rd-ranked finding in L7 — Agent Ecosystem) must be excluded: the
+    per-layer cap keeps only the top 2 (by severity desc, then id asc), and
+    compute_allow_list's maestro-stack branch must read exactly that capped
+    set, not the full per-finding MAESTRO table.
+    """
+    returncode, _stdout, stderr, payload = run_extract(
+        FIXTURES_DIR / "maestro_top_findings", "maestro-stack"
+    )
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert payload is not None
+    expected = sorted(
+        tf["id"]
+        for layer in payload["template_data"]["per_layer_summaries"]
+        for tf in layer["top_findings"]
+    )
+    assert expected, "fixture must exercise at least one non-empty layer"
+    assert payload["allow_list"]["finding_ids"] == expected, (
+        "T036 M-2: maestro-stack allow_list.finding_ids must equal the "
+        f"per-layer top-finding IDs; expected {expected}, got "
+        f"{payload['allow_list']['finding_ids']}"
+    )
+    assert payload["allow_list"]["finding_ids"] == ["S-1", "S-2", "S-3", "T-1", "T-2"], (
+        "T036 M-2: S-4 must be excluded by the 2-per-layer cap; "
+        f"got {payload['allow_list']['finding_ids']}"
+    )
 
 
 def test_executive_architecture_no_threats_md():
@@ -1126,3 +1231,415 @@ def _maestro_stack_template_data_for(target_dir):
     assert payload is not None, f"[{target_dir}] Expected JSON payload to be written"
     assert "template_data" in payload, f"[{target_dir}] Missing template_data"
     return payload["template_data"]
+
+
+# =============================================================================
+# Feature 373 US-3a: K9, K10, K12 extractor-level wiring (tasks.md T019).
+# Fixtures: tests/scripts/fixtures/fidelity_373/ (see its README.md for
+# hand-computed expected values). The pure tachi_parsers.py-level pins for
+# these same fixtures live in test_tachi_parsers.py (T016); the tests below
+# instead exercise extract-infographic-data.py's own wiring.
+# =============================================================================
+
+
+def test_k9_shortform_bands_wire_through_extract_severity(extract_infographic_data):
+    # US-3a #1-#2 (K9/FR-K9.1-K9.2): short-form headers (Inherent, Status,
+    # Residual, Residual Sev.) plus an empty Critical band and an empty
+    # last band before Summary Statistics must surface correctly through
+    # extract_severity, the infographic extractor's own severity/findings
+    # wrapper around parse_compensating_controls_md.
+    cc_content = _read_fidelity_fixture("controls_bands_shortform", "compensating-controls.md")
+    severity, findings, cc_data = extract_infographic_data.extract_severity(
+        1, "", cc_content=cc_content
+    )
+    assert severity == {"critical": 0, "high": 1, "medium": 1, "low": 0, "note": 0, "total": 2}
+    assert [f["id"] for f in findings] == ["T-1", "T-2"]
+    assert cc_data is not None
+
+
+def test_k10_h3_heading_equals_h4_form(extract_infographic_data):
+    # US-3a #4 (K10/FR-K10.1): a "###" heading and its "####" twin must
+    # produce byte-for-byte identical layer distributions through
+    # parse_maestro_layer_distribution -- not merely "parses without
+    # error" (already pinned per-fixture in test_tachi_parsers.py).
+    h3_content = _read_fidelity_fixture("maestro_heading_h3", "threats.md")
+    assert "### Risk by MAESTRO Layer" in h3_content
+    h4_content = h3_content.replace("### Risk by MAESTRO Layer", "#### Risk by MAESTRO Layer", 1)
+    layers_h3 = extract_infographic_data.parse_maestro_layer_distribution(h3_content)
+    layers_h4 = extract_infographic_data.parse_maestro_layer_distribution(h4_content)
+    assert layers_h3 == layers_h4
+    assert len(layers_h3) == 2
+
+
+def _delta_via_cli(target_dir, template="baseball-card"):
+    """Run the CLI end to end and return (payload, stderr)."""
+    returncode, _stdout, stderr, payload = run_extract(target_dir, template)
+    assert returncode == 0, f"[{target_dir}] expected exit 0, got {returncode}. stderr: {stderr}"
+    assert payload is not None, f"[{target_dir}] expected a JSON payload"
+    return payload, stderr
+
+
+def test_k12_baseline_4c_exact_delta_counts_via_cli():
+    # US-3a #5 (K12/FR-K12.1-K12.2): the 4c baseline's bracketed-status
+    # variety (bare NEW, [NEW], **[NEW]**, `[NEW]`) plus one placeholder
+    # resolved row, wired through the CLI end to end (delta_counts is
+    # already wired at this call site since T016; this pins the whole
+    # payload shape, not just the underlying compute_delta_counts call).
+    payload, _stderr = _delta_via_cli(FIDELITY_FIXTURES_DIR / "baseline_resolved_4c")
+    assert payload["delta"]["delta_counts"] == {
+        "new": 4, "updated": 1, "unchanged": 1, "resolved": 2,
+    }
+
+
+def test_k12_baseline_4b_legacy_matches_4c_resolved_count_via_cli():
+    # US-3a #6: the legacy "## 4b." heading yields the same resolved count
+    # as its "## 4c." twin, end to end.
+    payload, _stderr = _delta_via_cli(FIDELITY_FIXTURES_DIR / "baseline_resolved_4b_legacy")
+    assert payload["delta"]["delta_counts"]["resolved"] == 2
+
+
+def test_k12_non_baseline_no_status_column_no_warning_via_cli():
+    # US-3a #7 (second half): a non-baseline run whose Section 7 has no
+    # Status column must not warn, and carries no "delta" key at all
+    # end to end (has_baseline gates the key's emission in main()).
+    payload, stderr = _delta_via_cli(FIDELITY_FIXTURES_DIR / "non_baseline_no_status_column")
+    assert payload.get("delta") is None
+    assert "Section 7" not in stderr
+
+
+def test_k12_id_mismatch_absolute_tallies_and_one_warning_via_cli():
+    # US-3a #7 (first half); architect F1/NM-1: both surfaces must report
+    # the Section 7 tallies as absolute values (the normalized map's own
+    # counts, not restricted to the tier's finding-ID set) and emit
+    # exactly one ID-set warning. EXPECTED RED until Lane B2a's T017 wires
+    # warn_delta_scope with this tier's finding IDs at this call site --
+    # at T019 time nothing in extract-infographic-data.py calls
+    # warn_delta_scope yet (the parser-level function is already fully
+    # pinned in test_tachi_parsers.py; this is the wiring gap).
+    payload, stderr = _delta_via_cli(FIDELITY_FIXTURES_DIR / "baseline_status_id_mismatch")
+    assert payload["delta"]["delta_counts"] == {
+        "new": 1, "updated": 1, "unchanged": 1, "resolved": 0,
+    }
+    assert stderr.count("Section 7 status IDs differ from tier finding IDs") == 1
+    assert "(1 only-in-map, 1 only-in-tier)" in stderr
+
+
+# =============================================================================
+# Feature 373 US-3b: K11 risk funnel (tasks.md T023). Fixtures:
+# tests/scripts/fixtures/fidelity_373/funnel_* and
+# controls_warnings_kitchen_sink (see that directory's README.md for
+# hand-computed expected values). The pure tachi_parsers.py-level pins
+# (classify_control_status, the inherent join, the residual clamp) live in
+# test_tachi_parsers.py (T020); the tests below instead exercise
+# extract-infographic-data.py's own funnel computation (compute_risk_funnel,
+# T021) end to end through the CLI, including the S-9 baseball-card totals
+# and the Section 1 / row-count warnings (T021's own follow-on work).
+# =============================================================================
+
+
+def _funnel_via_cli(target_dir, template="risk-funnel"):
+    """Run the CLI end to end and return (template_data, stderr)."""
+    returncode, _stdout, stderr, payload = run_extract(target_dir, template)
+    assert returncode == 0, f"[{target_dir}] expected exit 0, got {returncode}. stderr: {stderr}"
+    assert payload is not None, f"[{target_dir}] expected a JSON payload"
+    return payload["template_data"], stderr
+
+
+def _widths(template_data):
+    return [t["width"] for t in template_data["funnel_tiers"]]
+
+
+def _volumes(template_data):
+    return [t["volume"] for t in template_data["funnel_tiers"]]
+
+
+def _reduction_pcts(template_data):
+    return [r["percentage"] for r in template_data["reduction_percentages"]]
+
+
+def test_k11_funnel_step_bound_widths_and_reductions_via_cli():
+    # US-3b #1: both raw ratios (raw3=89.4375, raw4=88.3125) exceed their
+    # upper clamp bound, so tiers 3 and 4 are STEP-bound rather than
+    # ratio-bound (fixtures README).
+    td, _stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "funnel_step_bound")
+    assert _widths(td) == [100, 90, 80, 70]
+    assert _volumes(td) == [None, 16.0, 15.9, 15.7]
+    assert _reduction_pcts(td) == [0.0, 0.6, 1.3]
+    assert td["risk_reduction"] == 1.9
+    assert td["inherent_score"] == 16.0
+    assert td["residual_score"] == 15.7
+    assert [t["ghost"] for t in td["funnel_tiers"]] == [False, False, False, False]
+    assert [t["count"] for t in td["funnel_tiers"][1:]] == [2, 2, 2]
+
+
+def test_k11_funnel_strong_reduction_floor_bound_width_via_cli():
+    # US-3b #2: raw4 (27) is below FLOOR=30, so Tier 4 is FLOOR-bound
+    # rather than ratio- or STEP-bound.
+    td, _stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "funnel_strong_reduction")
+    assert _widths(td) == [100, 90, 54, 30]
+    assert _volumes(td) == [None, 10.0, 6.0, 3.0]
+    assert _reduction_pcts(td) == [0.0, 40.0, 50.0]
+    assert td["risk_reduction"] == 70.0
+    assert td["inherent_score"] == 10.0
+    assert td["residual_score"] == 3.0
+
+
+def test_k11_funnel_3tier_shape_via_cli():
+    # US-3b #3: risk-scores.md only (no compensating-controls.md) selects
+    # 3-tier mode. JSON tier-index 2 ("Unmitigated Risk") mirrors V2
+    # exactly (no controls applied yet), and JSON tier-index 3 is always
+    # ghost -- there is no residual data in 3-tier mode.
+    td, _stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "funnel_3tier")
+    tiers = td["funnel_tiers"]
+    assert [t["ghost"] for t in tiers] == [False, False, False, True]
+    assert _widths(td) == [100, 90, 80, 70]
+    assert tiers[2]["volume"] == 14.0
+    assert tiers[2]["label"] == "Unmitigated Risk"
+    assert _reduction_pcts(td) == [0.0, 0.0, None]
+    assert td["risk_reduction"] is None
+
+
+def test_k11_funnel_threats_only_shape_via_cli():
+    # US-3b #7 (first half): neither enrichment artifact is present, so
+    # JSON tiers 1-3 are all ghost -- pure STEP cascade, and every
+    # reduction is null because a ghost tier wins over "0.0 by
+    # definition" for (0->1) too.
+    td, _stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "funnel_threats_only")
+    tiers = td["funnel_tiers"]
+    assert [t["ghost"] for t in tiers] == [False, True, True, True]
+    assert _widths(td) == [100, 90, 80, 70]
+    assert _volumes(td) == [None, None, None, None]
+    assert _reduction_pcts(td) == [None, None, None]
+    assert td["risk_reduction"] is None
+
+
+def test_k11_funnel_volumes_unavailable_shape_via_cli():
+    # US-3b #7 (second half)/#8; data-model.md §4.3 condition 1: the
+    # Coverage Matrix has no Inherent column at all and no risk-scores.md
+    # to join against, so no row carries an inherent score. Volumes are
+    # unavailable (not zero) on every tier, but tiers 1-3 stay non-ghost
+    # (real, just volumeless), and (0->1) still reads 0.0 since Tier 1
+    # (JSON index 0) is real.
+    td, stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "funnel_volumes_unavailable")
+    tiers = td["funnel_tiers"]
+    assert [t["ghost"] for t in tiers] == [False, False, False, False]
+    assert _widths(td) == [100, 90, 80, 70]
+    assert _volumes(td) == [None, None, None, None]
+    assert _reduction_pcts(td) == [0.0, None, None]
+    assert td["risk_reduction"] is None
+    assert td["inherent_score"] is None
+    assert td["residual_score"] is None
+    assert (
+        "Warning: no controls row carries an inherent score; funnel volumes "
+        "and risk reduction are unavailable"
+    ) in stderr
+
+    # S-9: the baseball card must agree -- both surfaces null, never a
+    # stale Section 1 figure standing in for an unmeasured reduction.
+    card_td, _stderr = _funnel_via_cli(
+        FIDELITY_FIXTURES_DIR / "funnel_volumes_unavailable", template="baseball-card"
+    )
+    assert card_td["risk_reduction"] is None
+    assert card_td["inherent_score"] is None
+    assert card_td["residual_score"] is None
+
+
+def test_k11_funnel_join_inherent_less_volumes_via_cli():
+    # US-3b #6; architect finding F2: the Coverage Matrix has no Inherent
+    # column at all; both rows' inherent scores come from the sibling
+    # risk-scores.md composites via ID join (already wired at the tier-1
+    # extract_severity call site since T020/W1). This is the funnel's own
+    # consumption of that join, not the join itself (already pinned at
+    # the parser level in test_tachi_parsers.py).
+    td, _stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "funnel_join_inherent_less")
+    assert _widths(td) == [100, 90, 80, 70]
+    assert _volumes(td) == [None, 15.0, 14.5, 14.1]
+    assert _reduction_pcts(td) == [0.0, 3.3, 2.8]
+    assert td["risk_reduction"] == 6.0
+    assert td["inherent_score"] == 15.0
+    assert td["residual_score"] == 14.1
+
+
+def test_k11_controls_status_variants_wire_through_funnel_via_cli():
+    # US-3b, K11 status wiring x K9/K11 status classes: Missing (silent),
+    # empty (warns), unrecognized/"Foobar" (warns), "Partially Found"
+    # (partial), "None found" (warns, classifies none) -- exercised
+    # through the same rows that build V2/V3/V4, not merely at
+    # classify_control_status's own unit level (test_tachi_parsers.py
+    # already pins that in isolation). The clamp (W-9) rides along on the
+    # same row set rather than a separate fixture.
+    td, stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "controls_warnings_kitchen_sink")
+    assert _widths(td) == [100, 90, 80, 70]
+    assert _volumes(td) == [None, 57.7, 54.2, 52.7]
+    assert _reduction_pcts(td) == [0.0, 6.1, 2.8]
+    assert td["risk_reduction"] == 8.7
+    assert [t["count"] for t in td["funnel_tiers"][1:]] == [10, 10, 10]
+    assert (
+        "1 controls rows have a residual above the inherent score "
+        "(first: W-9); clamped"
+    ) in stderr
+
+
+def test_k11_controls_warnings_kitchen_sink_section1_and_row_count_via_cli():
+    # data-model.md §4.5: the Section 1 comparand warning is deliberately
+    # wrong on two of its three fields (inherent total 60.0 vs
+    # row-derived 57.7; reduction pct 26.9 vs row-derived 8.7) and
+    # deliberately correct on the third (residual total 52.7 both ways),
+    # so exactly two field-warnings fire -- per-field, never aggregated,
+    # and the matching field never warns (fixtures README). The row-count
+    # mismatch (10 controls rows vs 11 risk-scores rows) is a separate
+    # class. The exact <field> token isn't pinned by the contract (only
+    # the stem "Warning: controls Section 1 <field> <a> differs from
+    # row-derived <b>; using rows" is), so this matches on the invariant
+    # numbers and wording rather than a guessed field spelling.
+    _td, stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "controls_warnings_kitchen_sink")
+    assert "Warning: controls rows (10) differ from risk-scores rows (11)" in stderr
+    comparand_lines = [
+        line for line in stderr.splitlines()
+        if line.startswith("Warning: controls Section 1")
+    ]
+    assert len(comparand_lines) == 2, (
+        "expected exactly 2 Section 1 comparand warnings (inherent total, "
+        f"reduction pct; residual must NOT warn), got: {comparand_lines}"
+    )
+    joined = "\n".join(comparand_lines)
+    assert re.search(r"60\.0\D+differs from row-derived\D*57\.7", joined)
+    assert re.search(r"26\.9%?\D+differs from row-derived\D*8\.7%?", joined)
+    assert "52.7" not in joined  # the matching residual field must not warn
+
+
+def test_t036_l4_comparand_exact_tenth_difference_does_not_warn_via_cli():
+    # T036 L-4 (data-model.md §4.5, code-reviewer-373.md): the Section 1
+    # comparand warning compared `stated` and `derived` with plain float
+    # subtraction, so an EXACT 0.1 difference could misreport depending on
+    # which specific values were involved -- abs(27.0 - 26.9) > 0.1 is True
+    # in float (the review's own example), even though 0.1 is not "more
+    # than" 0.1. The comparand_exact_tenth fixture's stated inherent total
+    # (27.0) is exactly 0.1 above the row-derived total (26.9): this must
+    # NOT warn. Its stated residual (10.11) is 0.11 above the row-derived
+    # total (10.0): this MUST warn -- proving the fix tightened the
+    # boundary rather than silencing the warning class entirely. The
+    # stated reduction percentage matches the derived value exactly, so a
+    # third line would indicate an unrelated regression.
+    _td, stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "comparand_exact_tenth")
+    comparand_lines = [
+        line for line in stderr.splitlines()
+        if line.startswith("Warning: controls Section 1")
+    ]
+    assert len(comparand_lines) == 1, (
+        "expected exactly 1 Section 1 comparand warning (residual only; "
+        f"the exact-0.1 inherent difference must NOT warn), got: {comparand_lines}"
+    )
+    assert re.search(r"residual score 10\.11\D+differs from row-derived\D*10\.0", comparand_lines[0])
+    assert "27.0" not in comparand_lines[0] and "26.9" not in comparand_lines[0]
+
+
+def test_rc2_unreadable_risk_scores_table_single_warning_no_row_count_mismatch_via_cli():
+    # RC-2 (K11, P0 architect finding F-2): when risk-scores.md's Scored
+    # Threat Table can't be found (header drift -- here "## Section 2:
+    # Scored Threat Table" instead of the expected "## 2. Scored Threat
+    # Table" -- the real-world shape seen on maestro-reference and
+    # consumer-agent-app/sample-report), the tier-1 funnel path must parse
+    # risk-scores.md only once: exactly one "could not find Scored Threat
+    # Table" warning, and no false "differ from risk-scores rows (0)"
+    # comparison (data-model.md §4.5; contracts/extraction-data-contract.md
+    # Row counts row, both amended at P0). Reuses the kitchen-sink
+    # fixture's threats.md/compensating-controls.md (10 controls rows) so
+    # the only variable is risk-scores.md's header.
+    # test_k11_controls_warnings_kitchen_sink_section1_and_row_count_via_cli
+    # above pins the *other* side: a genuinely-readable mismatch (11 vs 10)
+    # must still fire.
+    src = FIDELITY_FIXTURES_DIR / "controls_warnings_kitchen_sink"
+    bad_header_risk_scores = (
+        "# Risk Scores -- RC-2 regression (deliberately mis-headed)\n\n"
+        "## Section 2: Scored Threat Table\n\n"
+        "| ID | Component | Threat | Composite | Severity | CVSS | Exploit. |\n"
+        "|---|---|---|---|---|---|---|\n"
+        "| W-1 | API | Spoofing | 8.1 | Critical | 9.0 | High |\n"
+    )
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp = Path(tmpdir)
+        (tmp / "threats.md").write_bytes((src / "threats.md").read_bytes())
+        (tmp / "compensating-controls.md").write_bytes(
+            (src / "compensating-controls.md").read_bytes()
+        )
+        (tmp / "risk-scores.md").write_text(bad_header_risk_scores, encoding="utf-8")
+        returncode, _stdout, stderr, payload = run_extract(tmp, "risk-funnel")
+    assert returncode == 0, f"expected exit 0, got {returncode}. stderr: {stderr}"
+    assert payload is not None
+
+    assert stderr.count("could not find Scored Threat Table in risk-scores.md") == 1, (
+        f"expected exactly one occurrence, got stderr: {stderr}"
+    )
+    assert "differ from risk-scores rows" not in stderr, (
+        "an unreadable risk-scores table must never be compared as (0) rows; "
+        f"got stderr: {stderr}"
+    )
+
+
+@pytest.mark.parametrize("template", ["risk-funnel", "baseball-card"])
+def test_t036_l3_tier2_unreadable_risk_scores_table_single_warning_via_cli(template):
+    # T036 L-3 (K11, code-reviewer-373.md): the tier-1 fix above (RC-2) left
+    # the tier-2 (3-tier mode) path unfixed. extract_severity's tier==2
+    # branch already parses risk-scores.md once (findings =
+    # parse_risk_scores_findings(rs_content)); _funnel_3tier_mode used to
+    # re-parse rs_content itself instead of reusing that list, so an
+    # unreadable Scored Threat Table printed "could not find Scored Threat
+    # Table" twice per run -- once from each parse -- on both templates
+    # that reach compute_risk_funnel. Reuses funnel_3tier's threats.md (no
+    # compensating-controls.md present, so tier == 2) with a deliberately
+    # mis-headed risk-scores.md, same technique as the RC-2 test above.
+    src = FIDELITY_FIXTURES_DIR / "funnel_3tier"
+    bad_header_risk_scores = (
+        "# Risk Scores -- L3 regression (deliberately mis-headed)\n\n"
+        "## Section 2: Scored Threat Table\n\n"
+        "| ID | Component | Threat | Composite | Severity | CVSS | Exploit. |\n"
+        "|---|---|---|---|---|---|---|\n"
+        "| W-1 | API | Spoofing | 8.1 | Critical | 9.0 | High |\n"
+    )
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp = Path(tmpdir)
+        (tmp / "threats.md").write_bytes((src / "threats.md").read_bytes())
+        (tmp / "risk-scores.md").write_text(bad_header_risk_scores, encoding="utf-8")
+        returncode, _stdout, stderr, payload = run_extract(tmp, template)
+    assert returncode == 0, f"expected exit 0, got {returncode}. stderr: {stderr}"
+    assert payload is not None
+
+    assert stderr.count("could not find Scored Threat Table in risk-scores.md") == 1, (
+        f"expected exactly one occurrence, got stderr: {stderr}"
+    )
+
+
+def test_k11_baseball_card_and_funnel_agree_on_totals_via_cli():
+    # S-9: the baseball card's risk_reduction/inherent_score/residual_score
+    # must equal the funnel's row-derived totals, not the (here
+    # deliberately wrong) Section 1 prose -- proving the wiring rather
+    # than a coincidental match. Row-derived: 8.7 / 57.7 / 52.7; the
+    # fixture's own Section 1 text claims 26.9 / 60.0 / 52.7 instead.
+    funnel_td, _stderr = _funnel_via_cli(
+        FIDELITY_FIXTURES_DIR / "controls_warnings_kitchen_sink", template="risk-funnel"
+    )
+    card_td, _stderr = _funnel_via_cli(
+        FIDELITY_FIXTURES_DIR / "controls_warnings_kitchen_sink", template="baseball-card"
+    )
+    assert card_td["risk_reduction"] == funnel_td["risk_reduction"] == 8.7
+    assert card_td["inherent_score"] == funnel_td["inherent_score"] == 57.7
+    assert card_td["residual_score"] == funnel_td["residual_score"] == 52.7
+
+
+def test_k11_reductions_are_never_negative_across_funnel_fixtures():
+    # US-3b #8: the row-level clamp (residual <= inherent, enforced once
+    # at parse; test_tachi_parsers.py/T020) guarantees V4 <= V3 <= V2 for
+    # every row set, so no emitted reduction percentage -- nor
+    # risk_reduction -- can ever be negative, regardless of a raw,
+    # pre-clamp residual (like kitchen_sink's W-9: residual 9.5 >
+    # inherent 8.0) exceeding inherent before the clamp applies.
+    for fixture in (
+        "funnel_step_bound", "funnel_strong_reduction",
+        "funnel_join_inherent_less", "controls_warnings_kitchen_sink",
+    ):
+        td, _stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / fixture)
+        for pct in _reduction_pcts(td):
+            assert pct is None or pct >= 0.0, f"[{fixture}] negative reduction: {pct}"
+        if td["risk_reduction"] is not None:
+            assert td["risk_reduction"] >= 0.0, f"[{fixture}] negative risk_reduction"

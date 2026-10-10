@@ -38,7 +38,13 @@ from tachi_parsers import (
     parse_baseline_frontmatter,
     parse_resolved_findings,
     compute_delta_counts,
+    delta_status_by_id,
+    apply_delta_status,
+    warn_delta_scope,
+    compute_risk_posture,
+    parse_score,
     parse_markdown_table,
+    match_heading,
     parse_project_name,
     detect_artifacts,
     determine_tier,
@@ -170,6 +176,79 @@ def parse_threat_report_md(content: str) -> dict:
 
 
 # =============================================================================
+# Recommendation Resolution (K13.1, data-model.md §7, FR-K13.1)
+# =============================================================================
+
+# These constants and their exact strings are the extraction-data-contract.md
+# "Recommendations (K13.1)" contract.
+REC_FALLBACK_PREFIX = "Threat-model mitigation: "
+REC_PLACEHOLDER = "No recommendation available"
+
+
+def _placeholder_if_empty(text: str) -> str:
+    """Return REC_PLACEHOLDER when ``text`` is empty or whitespace-only.
+
+    Applied on every data tier, after any tier-specific fallback has been
+    tried (data-model.md §7): "an empty recommendation text becomes
+    REC_PLACEHOLDER" regardless of tier.
+    """
+    return text if text and text.strip() else REC_PLACEHOLDER
+
+
+def _section4_has_content(cc_content: str) -> bool:
+    """True when compensating-controls.md Section 4 (Recommendations) has a
+    non-empty body — the K13.1 drift signal (data-model.md §7): "warns when
+    Section 4 has content but zero recommendations join".
+
+    Checks the raw markdown rather than duplicating
+    parse_compensating_controls_md's own Section 4 join map, which is a
+    local variable inside that parser — tachi_parsers.py has no W2 writer
+    (AR-3), so this reads the text independently from the extractor side.
+    """
+    start = match_heading(r"^##\s+4\.\s+Recommendations", cc_content)
+    if start is None:
+        return False
+    for line in cc_content.split("\n")[start + 1:]:
+        if re.match(r"^##\s+\d+\.", line):
+            break
+        if line.strip():
+            return True
+    return False
+
+
+def _apply_recommendation_fallback(findings: list, threats_content: str) -> None:
+    """Resolve each Tier-1 finding's ``recommendation`` via the K13.1 chain.
+
+    1. the analyzer recommendation, already joined by
+       parse_compensating_controls_md from compensating-controls.md
+       Section 4 — left untouched when present;
+    2. REC_FALLBACK_PREFIX + the threats.md Section 7 Mitigation column,
+       when that mitigation is non-empty;
+    3. REC_PLACEHOLDER.
+
+    The prefix fallback (step 2) is Tier-1 only (PD-19, data-model.md §7).
+    Mutates ``findings`` in place so the finding cards
+    (findings-detail.typ:95), the remediation roadmap
+    (build_remediation_actions) and the attack-path remediation
+    (_get_finding_mitigation) all read the same resolved text.
+    """
+    mitigation_by_id = {}
+    for row in parse_markdown_table(threats_content, "## 7. Recommended Actions"):
+        fid = row.get("Finding ID", "").strip()
+        if fid:
+            mitigation_by_id[fid] = row.get("Mitigation", "").strip()
+
+    for finding in findings:
+        if finding.get("recommendation", "").strip():
+            continue
+        section7_mitigation = mitigation_by_id.get(finding.get("id", ""), "")
+        if section7_mitigation:
+            finding["recommendation"] = REC_FALLBACK_PREFIX + section7_mitigation
+        else:
+            finding["recommendation"] = REC_PLACEHOLDER
+
+
+# =============================================================================
 # Remediation Actions (T023)
 # =============================================================================
 
@@ -207,9 +286,15 @@ def build_remediation_actions(findings: list, tier: int,
         for f in findings:
             if tier == 2:
                 severity = f.get("severity", "")
-                rec_text = f.get("threat", "")
+                # K13.1: Tier 2 has no recommendation field of its own (the
+                # card keeps its missing-key default) — the roadmap falls
+                # back to the threat text, placeholder only when that's
+                # empty too (data-model.md §7 row 2, FR-K13.1).
+                rec_text = _placeholder_if_empty(f.get("threat", ""))
             else:  # tier == 3
                 severity = f.get("risk_level", "")
+                # Already resolved to REC_PLACEHOLDER when empty, in main()
+                # (data-model.md §7 row 3) — the roadmap inherits it as-is.
                 rec_text = f.get("mitigation", "")
             actions.append({
                 "severity": severity,
@@ -232,6 +317,10 @@ def build_remediation_actions(findings: list, tier: int,
 # Aliases for shared constants
 _MAESTRO_LAYERS = MAESTRO_LAYERS
 _SEVERITY_ORDINAL = SEVERITY_ORDINAL
+
+# K10, FR-K10.1: level 3 or level 4 (some inputs render "###" rather than
+# the canonical "####").
+_MAESTRO_HEADING = r"^#{3,4}\s+Risk by MAESTRO Layer"
 
 
 def parse_maestro_data(threats_content):
@@ -259,7 +348,10 @@ def parse_maestro_data(threats_content):
         return result
 
     # --- Parse Section 6 layer distribution table ---
-    layer_dist = parse_markdown_table(threats_content, "#### Risk by MAESTRO Layer")
+    # Matches the heading at level 3 or level 4 (K10, FR-K10.1): some inputs
+    # render it as "### Risk by MAESTRO Layer" rather than the canonical "####".
+    maestro_start = match_heading(_MAESTRO_HEADING, threats_content)
+    layer_dist = parse_markdown_table(threats_content, start_line=maestro_start) if maestro_start is not None else []
     parsed_layers = []
     for row in layer_dist:
         layer_raw = row.get("MAESTRO Layer", "").strip()
@@ -1051,22 +1143,16 @@ def _merge_delta_status(findings: list, threats_content: str) -> None:
     delta annotations are otherwise invisible to compute_delta_counts — every
     finding would render without a NEW / UPDATED / UNCHANGED badge even when
     the threat model clearly declares a baseline diff.
+
+    Delegates to delta_status_by_id and apply_delta_status (K12, FR-K12.2,
+    data-model.md §6), so the badges carry the same normalized status
+    (``[NEW]``, ``**[NEW]**``, ``` `[NEW]` ``` -> ``NEW``) that
+    compute_delta_counts counts. Kept importable with this exact
+    ``(findings, threats_md)`` signature — an existing test calls it
+    directly (test_extractor_contract_fixes.py).
     """
-    rows = parse_markdown_table(threats_content, "## 7. Recommended Actions")
-    if not rows:
-        return
-    status_by_id = {}
-    for row in rows:
-        fid = row.get("Finding ID", "").strip()
-        status = row.get("Status", "").strip()
-        if fid and status:
-            status_by_id[fid] = status
-    if not status_by_id:
-        return
-    for finding in findings:
-        fid = finding.get("id", "")
-        if fid in status_by_id:
-            finding["delta_status"] = status_by_id[fid]
+    status_by_id, _has_status_column, _row_count = delta_status_by_id(threats_content)
+    apply_delta_status(findings, status_by_id)
 
 
 # Coverage attestation aggregator: joins source_attribution arrays on findings
@@ -1190,6 +1276,14 @@ def _warn_unmatched_attribution_refs(
     as unmatched. Taking the id set as a parameter keeps this function free
     of catalog I/O — the caller already holds the loaded records — so it
     never raises and never changes any data.
+
+    The sole caller, ``build_per_framework_aggregates``, does not invoke
+    this guard at all for a framework whose in-scope record count is 0 (it
+    takes the ``items = []`` branch instead and skips straight to the next
+    framework). With zero in-scope records, that framework's coverage
+    matrix is empty by construction, so there is nothing a stray ref could
+    have been silently dropped against — the check would be vacuous, not
+    unsafe to skip.
     """
     for finding in findings or ():
         for ref in finding.get("source_attribution") or ():
@@ -1715,6 +1809,13 @@ def generate_report_data_typ(data: dict) -> str:
     lines.append(f"#let low-count = {sev['low']}")
     lines.append(f"#let note-count = {sev['note']}")
     lines.append(f"#let total-findings = {sev['total']}")
+    # K13-posture (data-model.md §5, FR-K13.4): D-3's single rubric, computed
+    # on the same post-clamp/inherent/qualitative severity dict as the counts
+    # above. REQUIRED, no default — main.typ panics if a stale report-data.typ
+    # lacks these (contracts/extraction-data-contract.md "report-data.typ").
+    posture_level, posture_label = compute_risk_posture(sev)
+    lines.append(f'#let risk-posture-level = "{escape_typst_string(posture_level)}"')
+    lines.append(f'#let risk-posture-label = "{escape_typst_string(posture_label)}"')
     lines.append("")
 
     # 3c2: Baseline / Delta Data
@@ -2199,7 +2300,8 @@ def main():
     baseline = parse_baseline_frontmatter(threats_content)
     has_baseline = baseline["has_baseline"]
 
-    # Parse resolved findings from Section 4b (empty when no baseline)
+    # Parse resolved findings from Section 4c (legacy `4b` heading also
+    # accepted, FR-K12.5); empty when no baseline
     resolved_findings = parse_resolved_findings(threats_content)
 
     # Schema version check
@@ -2226,12 +2328,38 @@ def main():
     cc_data = None
     if tier == 1:
         cc_content = (target_dir / "compensating-controls.md").read_text(encoding="utf-8")
-        cc_data = parse_compensating_controls_md(cc_content)
+        # K11 (data-model.md §3, F2): join risk-scores composites onto rows
+        # whose Coverage Matrix has no Inherent Score/Inherent column. Tier 1
+        # now reads risk-scores.md too, when present (previously read only
+        # at tier 2).
+        composites_by_id = None
+        if artifacts["risk_scores_md"]:
+            rs_content_for_join = (target_dir / "risk-scores.md").read_text(encoding="utf-8")
+            composites_by_id = {
+                f["id"]: parse_score(f["composite_score"])
+                for f in parse_risk_scores_findings(rs_content_for_join)
+                if f.get("id")
+            }
+        cc_data = parse_compensating_controls_md(cc_content, composites_by_id=composites_by_id)
         data["severity"] = cc_data["severity"]
         data["findings"] = cc_data["findings"]
         data["coverage_matrix"] = cc_data["coverage_matrix"]
         data["controls"] = cc_data["controls"]
         data["coverage_summary"] = cc_data["coverage_summary"]
+        # K13.1 (data-model.md §7, FR-K13.1): resolve every Tier-1 finding's
+        # `recommendation` — the analyzer join above, else the threats.md
+        # Section 7 mitigation (prefixed), else the placeholder. Warn once,
+        # ahead of the fallback mutation, when Section 4 has entries but
+        # none of them joined (the drift signal).
+        if _section4_has_content(cc_content) and not any(
+            f.get("recommendation", "").strip() for f in data["findings"]
+        ):
+            print(
+                "Warning: controls Section 4 has content but no recommendations "
+                "matched; using threat-model mitigations",
+                file=sys.stderr,
+            )
+        _apply_recommendation_fallback(data["findings"], threats_content)
     elif tier == 2:
         rs_content = (target_dir / "risk-scores.md").read_text(encoding="utf-8")
         data["severity"] = parse_risk_scores_severity(rs_content)
@@ -2248,6 +2376,11 @@ def main():
                 sev[key] += 1
         sev["total"] = len(data["findings"])
         data["severity"] = sev
+        # K13.1: `mitigation` is the only field parse_threats_findings emits
+        # (data-model.md §7 row 3) — it becomes the placeholder when empty,
+        # which the card, the roadmap and the attack path then all inherit.
+        for f in data["findings"]:
+            f["mitigation"] = _placeholder_if_empty(f.get("mitigation", ""))
 
     # parse_threats_findings attaches source_attribution + delta_status at Tier 3,
     # but cc/rs parsers don't read threats.md. Without these merges, F-B's gate
@@ -2347,9 +2480,17 @@ def main():
     data["baseline_run_id"] = baseline["run_id"] or ""
     data["resolved_findings"] = resolved_findings
 
-    # Delta counts (computed from active findings + resolved)
+    # Delta counts, over the normalized Section 7 map (K12, FR-K12.1/K12.2),
+    # never over data["findings"] (architect re-review NM-1). Per-finding
+    # badge stamping happens above via _merge_delta_status/apply_delta_status
+    # (Tier 1/2) or parse_threats_findings (Tier 3). warn_delta_scope emits
+    # PD-16's scoped, aggregated warnings for the tier's own finding-ID set;
+    # it no-ops on its own unless has_baseline, so the call is unconditional.
+    status_by_id, has_status_column, row_count = delta_status_by_id(threats_content)
+    tier_ids = [f.get("id", "") for f in data["findings"]]
+    warn_delta_scope(has_baseline, has_status_column, status_by_id, row_count, tier_ids)
     if has_baseline:
-        data["delta_counts"] = compute_delta_counts(data["findings"], resolved_findings)
+        data["delta_counts"] = compute_delta_counts(status_by_id, resolved_findings)
     else:
         data["delta_counts"] = {"new": 0, "unchanged": 0, "updated": 0, "resolved": 0}
 

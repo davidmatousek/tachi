@@ -126,30 +126,32 @@ If tachi is cloned to a non-default location:
 ~/Projects/tachi/scripts/install.sh --source /path/to/tachi
 ```
 
+By default, `install.sh` refuses to write into a symlinked destination. Pass `--follow-symlinks` to opt in:
+
+```bash
+~/Projects/tachi/scripts/install.sh --follow-symlinks
+```
+
+> `--follow-symlinks`  Install through symlinked destinations (for example a linked `.claude/skills`). Without it, install.sh stops before writing anything when a destination is a symlink. With it, install.sh follows links at or above each installed path, names every resolved destination, and only copies: it never deletes through a link. Even with it, install.sh refuses broken, looping or wrong-type links (a file where a folder is needed, or the reverse), links nested inside an installed folder, and destinations inside the tachi source clone.
+
 <details>
 <summary>Manual install (alternative)</summary>
 
+Set `TACHI` to your tachi clone's path (the default location is shown) and run this from your project root. It copies every path between the `BEGIN MANIFEST` and `END MANIFEST` markers of `INSTALL_MANIFEST.md`, and it is safe to re-run. **The manual path does not check for symlinked destinations**, so run it only into real directories.
+
+<!-- BEGIN MANUAL INSTALL LOOP -->
 ```bash
-# Agents (threat analysis engine)
-cp -r ~/Projects/tachi/.claude/agents/tachi/ .claude/agents/tachi/
-
-# Commands (6 slash commands)
-mkdir -p .claude/commands
-for cmd in tachi.threat-model tachi.risk-score tachi.compensating-controls tachi.infographic tachi.security-report tachi.architecture; do
-  cp ~/Projects/tachi/.claude/commands/$cmd.md .claude/commands/
-done
-
-# Schemas, templates, references, and brand assets
-cp -r ~/Projects/tachi/schemas/ schemas/
-cp -r ~/Projects/tachi/templates/ templates/
-mkdir -p adapters/claude-code/agents
-cp -r ~/Projects/tachi/adapters/claude-code/agents/references/ adapters/claude-code/agents/references/
-cp -r ~/Projects/tachi/brand/ brand/
-
-# Developer guide
-mkdir -p docs/guides
-cp ~/Projects/tachi/docs/guides/DEVELOPER_GUIDE_TACHI.md docs/guides/
+TACHI=~/Projects/tachi
+sed -n '/^<!-- BEGIN MANIFEST -->$/,/^<!-- END MANIFEST -->$/p' "$TACHI/INSTALL_MANIFEST.md" |
+  grep -v -e '^<!--' -e '^#' -e '^$' |
+  while IFS= read -r p; do
+    case "$p" in
+      */) mkdir -p "$p" && cp -R "$TACHI/$p." "$p" ;;
+      *)  mkdir -p "$(dirname "$p")" && cp "$TACHI/$p" "$p" ;;
+    esac
+  done
 ```
+<!-- END MANUAL INSTALL LOOP -->
 
 </details>
 

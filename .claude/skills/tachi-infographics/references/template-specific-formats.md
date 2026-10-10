@@ -20,7 +20,7 @@ The Baseball Card template uses a **tabular** format for Section 5, summarizing 
 
 ### Baseball Card Data Source Variations
 
-**When data source is `compensating-controls`**: The Architecture Overlay includes an additional summary line in the table: "**Risk Reduction: {risk_reduction_pct}%**" showing overall control effectiveness from the Executive Summary. Component risk weights use residual scores (average `residual_score` per component, same thresholds as risk-scores path).
+**When data source is `compensating-controls`**: The Architecture Overlay includes an additional summary line in the table: "**Risk Reduction: {risk_reduction_pct}%**" — the row-derived Tier 2→4 volume reduction (S-9), the same `template_data.risk_reduction` the funnel emits, not a total read from the Executive Summary; renders "not available" when it is `null`. Component risk weights use residual scores (average `residual_score` per component, same thresholds as risk-scores path).
 
 ---
 
@@ -61,12 +61,13 @@ The Risk Funnel template uses a **funnel-tier** format for Section 5, showing a 
 
 ### Tier Width Calculation
 
-Tier widths are proportional to finding count or risk volume at each stage:
+Tier widths are proportional to risk volume at each stage (data-model.md §4.1; STEP = 10, FLOOR = 30):
 
 - **Tier 1**: Always 100% (baseline -- total threats identified)
-- **Tier 2-4**: `actual_width = (tier_volume / tier_1_volume) * 100`
-- **Minimum 10% narrowing** per tier enforced
-- **Absolute floor**: 10% width
+- **Tier 2**: `100 - STEP` (90)
+- **Tiers 3-4**: `round_half_up(clamp(W2 * V_k / V2, FLOOR + (4-k)*STEP, W[k-1] - STEP))`, where `W[k-1]` is the emitted, already-rounded width of the previous tier
+- **Ghost tiers, and any tier while volumes are unavailable**: the same cascade, `W[k-1] - STEP` -- keyed on the tier's `ghost` field, never on a `null` volume
+- **Absolute floor**: 30% width
 
 ### Sidebar Metrics
 
@@ -76,7 +77,7 @@ Tier widths are proportional to finding count or risk volume at each stage:
 | Metric | Value |
 |--------|-------|
 | Total Findings | {total_findings} |
-| Risk Reduction | {risk_reduction_pct}% |
+| Risk Reduction | {risk_reduction_pct}% -- "not available" when `null` |
 | Control Coverage | {control_coverage_pct}% |
 ```
 
@@ -92,7 +93,7 @@ All 4 tiers rendered as solid:
 - **Tier 2**: Data from co-located `risk-scores.md` Section 2 if present, otherwise recalculate from `compensating-controls.md` inherent scores
 - **Tier 3**: Data from `compensating-controls.md` Section 1 (Executive Summary): control coverage percentage, findings with controls count
 - **Tier 4**: Data from `compensating-controls.md` Section 2 (Coverage Matrix): residual severity distribution
-- **Risk reduction percentage**: Delta between average inherent score and average residual score
+- **Risk reduction percentage**: the row-derived Tier 2→4 volume reduction -- `(V2 - V4) / V2 * 100` over the one row set's emitted volumes (S-9), not an average of per-row deltas; "not available" when volumes are unavailable (`null`)
 - **Sidebar**: Shows full metrics
 
 #### 3-Tier Mode (risk-scores)
@@ -121,11 +122,11 @@ Tier 1 solid, Tiers 2-4 ghost:
 
 **Empty threats.md (zero findings)**: Render a single tier labeled "0 Threats Identified" with the message "No threats found -- threat model may need review". All other tiers ghost. Sidebar shows "Total Findings: 0". This applies regardless of data source -- if the upstream threats.md contains no findings, the funnel cannot populate any tier with real data.
 
-**All findings same severity**: All tiers use uniform coloring (the single severity color from the color palette). Minimum 10% narrowing per tier still enforced to maintain funnel shape. The tier width calculation proceeds normally -- uniform severity does not collapse tiers to equal width; volume reduction across pipeline stages still drives narrowing.
+**All findings same severity**: All tiers use uniform coloring (the single severity color from the color palette). The STEP/FLOOR width rule above still applies unchanged to maintain funnel shape. The tier width calculation proceeds normally -- uniform severity does not collapse tiers to equal width; volume reduction across pipeline stages still drives narrowing.
 
 **Large finding count (100+ findings)**: Tier labels show aggregate counts only (e.g., "142 findings -- 23C / 45H / 52M / 22L"). Individual finding details omitted from tier visuals -- detail is in the spec sections. This prevents visual clutter and keeps the funnel readable at standard 16:9 resolution.
 
-**Zero risk reduction (all controls missing or none effective)**: Tier 4 width equals Tier 2 width (no narrowing for controls/residual tiers). Tier 1 to Tier 2 still narrows to maintain funnel shape. Sidebar note: "0% risk reduction -- no effective controls detected". This occurs when compensating-controls.md reports zero coverage or all controls have no impact on residual scores.
+**Zero risk reduction (all controls missing or none effective)**: Tiers still narrow by the STEP floor at every stage -- they are never flattened to equal widths (data-model.md §4.1). Sidebar note, keyed on a numeric `risk_reduction == 0.0` and never on `null`: "0% risk reduction -- no effective controls detected", so the forced narrowing is never read as real reduction. This occurs when compensating-controls.md reports zero coverage or all controls have no impact on residual scores.
 
 ### Visual Guidance
 

@@ -124,8 +124,8 @@
 
 **Risk Posture Badge:**
 - Below legend
-- "RISK POSTURE: {HIGH|MEDIUM|LOW}"
-- Color matches highest severity with >20% of findings
+- "{risk_posture_label}" (the label alone, e.g. "HIGH RISK" — never prefixed with "RISK POSTURE:", to avoid the doubled word; D-3)
+- Color matches `risk_posture_level` only (critical/high/medium/low) — never derived in-image from a percentage threshold
 - Subtitle: "{pct}% of findings rated High or Critical"
 
 ### CENTER PANEL (~40% width, ~50% height)
@@ -186,6 +186,9 @@ Create a premium, professional security risk dashboard with a polished, modern d
 
 IMPORTANT: The styling directives below are for your interpretation only. Do NOT render any hex color codes, pixel values, font sizes, or technical CSS specifications as visible text in the image. Only render the data labels, numbers, and natural-language text specified in the DATA CONTENT sections.
 
+The uppercase section labels in this prompt, such as DATA CONTENT and FOOTER, are layout instructions. Do not render them, or any other instruction text, as visible text in the image.
+Every finding ID in the image must be one listed on the ALLOWED IDS AND NAMES line below, and every component name must refer to a component listed there. Never show any other ID, and never invent an ID or a component.
+
 STYLING DIRECTIVES (interpret these, do not display them):
 - Background: dark navy
 - Severity color mapping: Critical = red, High = orange, Medium = amber/yellow, Low = blue
@@ -198,7 +201,7 @@ DATA CONTENT (render this as visible text):
 
 TOP SECTION: Title "Threat Model: {project_name}" in large white bold text. Date "{date}" and a "CONFIDENTIAL" pill badge in red with white text, right-aligned. Subtitle below in light gray: "{total_findings} Findings Across {category_count} Threat Categories".
 
-LEFT PANEL: A clean, elegant donut chart showing risk distribution — {critical_count} Critical, {high_count} High, {medium_count} Medium, {low_count} Low. The donut should have smooth, anti-aliased segments with the severity colors glowing subtly against the dark background. Center text: "{total_findings}" in large white bold with "findings" in smaller light gray beneath. Below the donut: a clean severity legend with colored dots, counts, and percentages. Below that: a "RISK POSTURE: {risk_posture}" badge in {posture_color} with "{critical_high_pct}% of findings rated High or Critical" in light text.
+LEFT PANEL: A clean, elegant donut chart showing risk distribution — {critical_count} Critical, {high_count} High, {medium_count} Medium, {low_count} Low. The donut should have smooth, anti-aliased segments with the severity colors glowing subtly against the dark background. Center text: "{total_findings}" in large white bold with "findings" in smaller light gray beneath. Below the donut: a clean severity legend with colored dots, counts, and percentages. Below that: a "{risk_posture_label}" badge in {posture_color} with "{critical_high_pct}% of findings rated High or Critical" in light text.
 
 CENTER PANEL: A coverage heat map titled "Coverage Heat Map" with {component_count} component rows and 8 threat category columns (S, T, R, I, D, E, AG, LLM). Each cell MUST use the exact severity from this grid — do not infer or guess cell values:
 {heat_map_cell_grid}
@@ -218,8 +221,8 @@ The overall impression should be a polished professional report — confident, c
 ## Gemini API Configuration
 
 ```yaml
-model: "gemini-3-pro-image-preview"
-fallback_model: "gemini-3.1-flash-image-preview"
+model: "gemini-3-pro-image"
+fallback_model: "gemini-3.1-flash-image"
 response_modalities: ["TEXT", "IMAGE"]
 aspect_ratio: "16:9"
 image_size: "2K"
