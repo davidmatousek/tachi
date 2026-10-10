@@ -11,7 +11,9 @@ git -C ~/Projects/tachi pull
 
 Use your clone's path if it lives elsewhere. If you install with `--version`, pull first anyway, so that the updated `install.sh` is the one that runs.
 
-**Symlinked destinations now stop the install.** `install.sh` stops before writing anything when a destination inside your project is a symlink or passes through one, for example a linked `.claude`, `.claude/skills`, `docs` or `scripts` folder. Pass `--follow-symlinks` to install through such links: `install.sh` then names each resolved destination, copies into it, and never deletes through a link. Even with the flag, `install.sh` refuses broken, looping or wrong-type links, links nested inside an installed folder, and destinations inside the tachi source clone.
+**Symlinked destinations now stop the install.** `install.sh` stops before writing anything when a destination inside your project is a symlink or passes through one, for example a linked `.claude`, `.claude/skills`, `docs` or `scripts` folder. Pass `--follow-symlinks` to install through such links: `install.sh` then names each resolved destination, copies into it, and never deletes through a link. Even with the flag, `install.sh` refuses broken, looping or wrong-type links, links nested inside an installed folder, and destinations inside the tachi source clone. With or without the flag, it also stops if your project path or tachi clone path contains a tab or newline character; rename the directory and re-run.
+
+**Security fix.** Attack-tree finding IDs are now validated before they reach file paths. This closes a path traversal (CWE-22), present in earlier releases, through which a crafted finding ID could write files outside the report folder while the PDF report was being built.
 
 **Output changes:**
 

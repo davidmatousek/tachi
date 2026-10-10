@@ -174,6 +174,18 @@ Neither change reads or introduces an environment variable — both are pure `pa
 
 ---
 
+## F-373 Report-Posture Typst Gate — Test-Only CI Variable
+
+**Added in Feature 373** (Adopter Install + Output Fidelity Fixes, PR #375, merged 2026-10-10, patch release v4.48.1 pending). F-373 is overwhelmingly a no-new-env-var feature — the manifest-completeness and extraction-fidelity guards, the K3 installer suite, and the Gemini image-model rename (`gemini-3-pro-image` / `gemini-3.1-flash-image`, both GA, replacing the shut-down `-preview` chain) are lock-step CI path-filter/invocation deltas or literal string changes, none of which read or introduce an environment variable. One **test-only / CI-only** variable is a genuine exception:
+
+| Variable | Default | Read at | Purpose |
+|----------|---------|---------|---------|
+| `TACHI_REQUIRE_TYPST` | unset (missing Typst is an ordinary test skip) | `tests/scripts/test_report_posture_contract.py` (`_require_typst()`) | **Test-only / CI-only — NOT public contract.** Every environment without this variable set treats a missing `typst` CLI as an ordinary `pytest.skip`, matching the suite's existing presence-guard idiom. When set to `1`, a missing `typst` instead fails the test outright. It is set unconditionally to `"1"` by the `report-posture` job in the new `.github/workflows/tachi-install-fidelity.yml` workflow, which provisions Typst itself via `typst-community/setup-typst@v5` — the variable exists purely so a future break in that provisioning step reddens CI instead of silently downgrading the posture gate to a no-op. Adopters and local developers without Typst installed are unaffected; do not set this variable outside the `report-posture` job. |
+
+**Reference**: `specs/373-adopter-install-output-fidelity/spec.md` NFR-7 (FR-K13.4 stale-data gate). Workflow walkthrough: `docs/devops/CI_CD_GUIDE.md` → "Tachi Install Fidelity Workflow" → "report-posture job".
+
+---
+
 ## Cross-References
 
 - **Adopter-facing update env vars**: `docs/devops/CI_CD_GUIDE.md` → "Update-Script Environment Variables" (`CI`, `FORCE_RETAG`, `AOD_UPDATE_TMP_DIR`, `AOD_BOOTSTRAP_*`, `AOD_UPSTREAM_URL`, `YES`, `SKIP_MARKER`).
@@ -187,6 +199,7 @@ Neither change reads or introduces an environment variable — both are pure `pa
 - **F-281 CI & governance hardening tail** (no new env vars; new dual-trigger `tachi-permissions-verify.yml` CI gate — `jq empty` + reused #280 AC-2 cross-check + doc-presence greps, PR #347, 2026-07-01): `docs/devops/CI_CD_GUIDE.md` → "Tachi Permissions-Verify Workflow". Section above documents the no-env-var scope.
 - **F-295 post-merge verification runs** (no new env vars; CI lock-step path-filter addition only — `scripts/generate-threats-sarif.py` added to `tachi-pytest.yml` trigger paths, PR #353; `SOURCE_DATE_EPOCH` used as a run convention only, not read by any script; US-3 CI wiring deferred to #356): `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow" → "Feature History". Section above documents the no-env-var scope.
 - **F-362 OWASP LLM Top 10 2026 remap** (no new env vars; CI lock-step path-filter additions only — `test_owasp_2026_contract.py` + 2 guarded source paths added to `tachi-pytest.yml`, `docs/standards/OWASP_COVERAGE.md` added to `tachi-catalog-drift.yml`, PR #363): `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow" → "Feature History" and → "Tachi Catalog Drift Guard Workflow" → "Feature History". Section above documents the no-env-var scope.
+- **F-373 adopter install + output fidelity fixes** (one new test-only CI var — `TACHI_REQUIRE_TYPST`, documented above; new dual-trigger `tachi-install-fidelity.yml` CI gate (`manifest-completeness` + `extraction-fidelity` + `report-posture` jobs); K3 installer suite — `test_install_sh_symlink_preflight.py` + `test_install_sh_ref_restore.py` — added to `tachi-pytest.yml`'s existing 2-OS bash matrix, gated module count 16 → 18; PR #375, v4.48.1 pending): `docs/devops/CI_CD_GUIDE.md` → "Tachi Install Fidelity Workflow" and → "Tachi Pytest Workflow" → "Feature History".
 
 ---
 

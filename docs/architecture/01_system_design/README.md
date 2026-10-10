@@ -3937,3 +3937,64 @@ All 10 verdicts **re-derived from detection evidence** against 2026 definitions 
 #### ADR — [ADR-048](../02_ADRs/ADR-048-llm-top10-2026-alias-cutover.md) (Accepted 2026-08-06, SHA `e6316e3`)
 
 Minted because the cutover decides a **consumer-facing contract**, which is above the repo's ADR bar. D1 hard cutover with one-release `(2025: LLM<NN>)` prose breadcrumbs and no dual-emission; D2 parser/test lock-step; D3 enforcement points. The decisive constraint against dual-emission was structural, not budgetary: `source_attribution` must carry bare catalog-resolving ids, and `classify_framework_items` matches by exact equality — an aliased attribution row would **double-count** Coverage-Attestation classification. Dual-emission was therefore partial by construction at maximal cost. A **2026-08-12 amendment** records the F-142 zero-edit-invariant narrowing as a scope correction (ADR-026 constrains F-142's synthesis mechanism, not the detection tier repo-wide). Follow-ups filed, not fixed: **#364** (F-362b carve-out + breadcrumb sunset), **#365**, **#366**, **#367**, **#368** (`_canonical()` widening — decided-defer).
+
+---
+
+### Feature 373: adopter-install-output-fidelity
+
+**Added**: 2026-10-10 · **Plan**: `specs/373-adopter-install-output-fidelity/plan.md` · **Nature**: `fix:` patch bundle. It closes ten adopter-facing defects on three surfaces: the installer (K1–K3), the deterministic extraction tier (K9–K13) and the infographic render path (K14–K15). It also folds in #370's test coverage. K4–K8 are the separate companion bundle #374. Every optional (split-valve) unit shipped; none was carved. No new pipeline stage, agent, API or schema version. **PR #375** squash-merged to `main` at `109705c`; 40/40 tasks; closes #373 and #370; shipping in v4.48.1 (release PR #376).
+
+#### Tech Stack
+
+- **Zero new dependency.** The installer stays Bash 3.2+ on BSD or GNU userland, using only `[ -ef ]`, `readlink` (never `-f`), `pwd -P` and POSIX `awk` `ENVIRON`. The extractors stay Python 3 stdlib, with `decimal` for the funnel arithmetic. CI reuses `pytest`, `pytest-timeout`, `pyyaml` and `typst-community/setup-typst@v5`, all already in use on `main`.
+- **No schema version bump.** `schemas/infographic.yaml` lists the two new posture metadata fields. The finding IR is untouched.
+- **External contract corrected, not added.** The Gemini request now matches the `generateContent` schema, on the GA model chain `gemini-3-pro-image` → `gemini-3.1-flash-image` ([ADR-014](../02_ADRs/ADR-014-gemini-api-optional-image-generation.md), 2026-10-10 note).
+
+#### Components
+
+| Component | Type | Change | Notes |
+|---|---|---|---|
+| `scripts/install.sh` | installer | **new pre-flight stage**, `--follow-symlinks` flag | Runs after the `--version` checkout and before any cleanup or copy, and **writes nothing**. It builds a checked set from the manifest: each entry, its ancestors, each directory entry's source subtree, and the deprecated-command cleanup paths with their ancestors. Then it classifies every symlinked component and checks every destination's containment. **Always refused**, with no flag remedy: broken, looping or wrong-type links; links nested inside an installed folder; a destination that physically resolves inside the tachi clone; a directory destination that contains the clone; a TAB or LF byte in the project or source path. **Flag-eligible**: links inside or outside the project. With the flag, the installer follows them, names each resolved destination before copying and again in the summary, and skips any cleanup path that passes through a link instead of deleting through it. The `--version` restore trap now warns when the restore fails and exits with the run's recorded status. |
+| `under()` | shell function | **new** | Containment by identity walk with `[ -ef ]` (architect ruling AR-1), because APFS case variants and firmlinks bypass a string-prefix test. It also replaces the old logical self-install guard: the project must not be the clone or lie inside it. See [Identity-Based Path Containment](../03_patterns/README.md#pattern-identity-based-path-containment). |
+| `INSTALL_MANIFEST.md` | manifest | **+3 skill dirs, +1 script** | The skill directories for the agents added in Features 201, 206 and 224, and `populate-affected-assets.py` (Feature 302), were missing, so a stock install shipped those agents without their skill references. This was the third such omission, after two earlier fixes that only added prose warnings. The README and developer-guide manual install blocks now read the manifest instead of listing paths: one comment-free loop, byte-identical in all three places. |
+| `scripts/tachi_parsers.py` | shared parser | **parser-boundary helpers** (ruling AR-3) | Header aliases, the placeholder predicate, `Decimal` score parsing, the control-status classifier, heading-level-aware table matching, delta-status normalization and counting, and the posture rubric. Each value is normalized once where it is parsed, and neither extractor normalizes it again. The Resolved Findings heading is `4c`; the legacy `4b` is still accepted. The function list is in [00_Tech_Stack](../00_Tech_Stack/README.md#python-scripts). |
+| `scripts/extract-infographic-data.py` | extractor | modify | The risk funnel narrows by **risk volume**, not finding count, over one controls row set, with each residual clamped to its inherent score once. The script computes the widths itself (`Decimal`, STEP 10, FLOOR 30) and always emits four tier objects with a `ghost` flag and three reductions. Volumes are `null`, not 0, when no row carries an inherent score. The Section 1 totals become drift comparands. Every template's JSON gains the posture fields and a top-level `allow_list` (`compute_allow_list`, kept here as its only consumer). |
+| `scripts/extract-report-data.py` | extractor | modify | Emits the `risk-posture-level` / `risk-posture-label` pair. A recommendation join with a fallback means no recommendation renders blank on any data tier, and the roadmap, finding cards and attack-path remediation always agree. Attack-tree finding IDs are validated at both parse sites, and both render write sites assert the resolved path stays under its base directory. That is the CWE-22 fix, for a defect the build's own security scan found in code that predates this feature. |
+| `templates/tachi/security-report/main.typ`, `cover.typ` | Typst | modify | The cover renders the posture label verbatim and takes its color from the level; its own posture derivation is gone. `main.typ` panics with a regenerate instruction when `report-data.typ` lacks the posture variables, and `cover-page` panics when called without them. A stale or hand-built data file therefore cannot silently print a reassuring `LOW RISK`. |
+| Infographic render path: `templates/tachi/infographics/*.md`, `.claude/skills/tachi-infographics/references/`, `.claude/agents/tachi/threat-infographic.md`, `adapters/claude-code/agents/references/infographic-gemini-api.md` | prompt and configuration text | modify | Each template's `## Gemini API Configuration` block now maps key by key onto the request body, a mapping that did not exist before. Executive-architecture gets its own block, at 3:4. The chain is walked only on HTTP 404 or 403. A 400 and an exhausted chain are logged at Error, and none of these blocks the pipeline. The prompts allow only the finding IDs and component names in the JSON `allow_list`, and forbid printing layout labels. Only the Claude Code adapter copy is in scope (FR-K14.6). |
+| `.github/workflows/tachi-install-fidelity.yml` | CI | **new**, 3 jobs | `manifest-completeness`, `extraction-fidelity` and `report-posture`, on a dual trigger with one `&fidelity_paths` anchor and `contents: read`. The installer suites joined `tachi-pytest.yml`'s 2-OS matrix (16 → 18 modules). Details in [00_Tech_Stack](../00_Tech_Stack/README.md#scheduled-automation-inventory). |
+
+#### Data Flow
+
+```
+install.sh, run from the adopter project root
+  parse args → TARGET_P, SRC_P = pwd -P   (CDPATH unset)
+    → TAB or LF byte in either path?            → refuse (exit 1, nothing written)
+    → under(TARGET_P, SRC_P)?                    → refuse
+    → [--version] dirty-tree check → trap EXIT (restore; warn if it fails; keep the exit status) → checkout tag
+    → PRE-FLIGHT (writes nothing)
+        checked set = manifest entries + ancestors + source subtrees + cleanup paths and their ancestors
+        each symlinked component → cleanup-only | unresolvable | nested | inside | outside
+        each destination         → under(dest, SRC_P)?   directory entries also: under(SRC_P, dest)?
+        any always-refused class                  → exit 1
+        any flag-eligible link, no --follow-symlinks → exit 1
+    → cleanup (a path through a link is skipped, never deleted) → copy → summary (names the followed links)
+
+extraction → render   (both extractors import tachi_parsers.py)
+  threats.md · risk-scores.md · compensating-controls.md
+    → parse once: header aliases · placeholder rows dropped · Decimal scores · status_class · normalized Status
+    → one controls row set → residual clamped once → funnel volumes, widths, reductions
+    → compute_delta_counts(normalized Section 7 map) ─┬→ infographic JSON: metadata.risk_posture_*, allow_list, funnel
+    → compute_risk_posture(data-tier counts)         ─┴→ report-data.typ: risk-posture-level / risk-posture-label
+         report-data.typ → main.typ guard (panic if the pair is missing) → cover (label verbatim, color by level)
+         infographic JSON + template config block → generateContent (walk on 404/403) → image, or spec only
+```
+
+#### No new ADR (PD-15)
+
+No ADR was minted. Plan review ratified that on one condition, a dated Feature 373 note in [ADR-014](../02_ADRs/ADR-014-gemini-api-optional-image-generation.md), which landed.
+- **Render path.** ADR-014's decisions stand: spec first, image optional, graceful degradation. Only its model names and its request shape aged out, so the note supersedes them in place of a successor ADR. The one tightening is observability: a rejected request and an exhausted chain are now logged at Error instead of degrading silently.
+- **Extraction.** The changes sit inside [ADR-017](../02_ADRs/ADR-017-deterministic-infographic-extraction.md), the deterministic extraction tier and shared parser module that is the direct parent of K9–K13. They apply [ADR-047](../02_ADRs/ADR-047-maestro-coverage-state-authority.md)'s single-authority stance to the posture and the delta counts, guarded by a sibling-parity test as in ADR-037 and ADR-046. They apply [ADR-022](../02_ADRs/ADR-022-mmdc-hard-prerequisite.md)'s fail-loud posture to stale report data.
+- **Installer.** The pre-flight is a safety fix inside one script. If a second installer surface ever adopts a symlink policy, an ADR is revisited then.
+
+**Known gap, out of scope here.** The Copilot, Cursor and generic adapter copies of the infographic instructions still carry the old request shape and model names; FR-K14.6 scoped the fix to the Claude Code adapter. The P2 architect review proposed it as a follow-up (`specs/373-adopter-install-output-fidelity/test-results/p2-architect-review.md` §7), filed at delivery as #383.

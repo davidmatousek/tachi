@@ -455,6 +455,7 @@ See the workflow file for the authoritative full list.
 | **F-338** | **#340** | **`push: branches: [main]` trigger added; paths shared via YAML anchor `&hardening_paths`; defends against direct-to-`main` hardening clobber** |
 | F-295 | #353 | `scripts/generate-threats-sarif.py` added to path filter (FR-014 input-path-derived `artifactLocation.uri`, covered by 4 assertions in the existing suite); no new test module or workflow added — the planned US-3 byte-identity CI wiring was structurally deferred to defect #356 after the T026 Cat 6 gate failed |
 | F-362 | #363 | `tests/scripts/test_owasp_2026_contract.py` added to suite + path filter (T017 — `normalize_owasp_id` D2 covering matrix + FR-012a derived-taxa contract asserting risk-scores taxa == catalog records); `scripts/generate-risk-scores-sarif.py` and `schemas/taxonomy/owasp.yaml` added to path filter only, no new test module for either (architect MEDIUM-1 — the FR-012a emitter and its catalog derive-source must trigger their own gate); gated module count 15 → 16 |
+| **F-373** | **#375** | **`test_install_sh_symlink_preflight.py` + `test_install_sh_ref_restore.py` added to suite + path filter (K3 — `scripts/install.sh`'s destination-containment pre-flight behind the new `--follow-symlinks` opt-in flag, plus the `--version` ref-restore trap fix), with `tests/scripts/install_sh_helpers.py`'s sandbox builders added to the path filter only (no invocation line — it is a helper module, not a test module); gated module count 16 → 18. This is the existing 2-OS bash matrix's own K3 coverage — distinct from the new `tachi-install-fidelity.yml` workflow's `manifest-completeness` / `extraction-fidelity` / `report-posture` jobs, which gate the manifest and the extraction/report pipeline on a single fast `ubuntu-latest` runner instead. See "Tachi Install Fidelity Workflow" below.** |
 
 ### Environment Variables
 
@@ -601,6 +602,107 @@ grep -qE '^## 4\. Per-rule rationale table' docs/standards/CLAUDE_PERMISSIONS.md
 | `tachi-permissions-verify.yml` | `.claude/settings.json` ↔ `CLAUDE_PERMISSIONS.md` sync | `&verify_paths` |
 
 **Reference**: `specs/281-ci-governance-hardening-tail/spec.md` FR-281.1 through FR-281.8. ADR precedent: `docs/architecture/02_ADRs/ADR-037-*.md` D-14 (catalog-drift-guard direct-invocation / single-OS / anchor pattern). No new environment variables introduced — see `docs/devops/environment-variables.md`.
+
+---
+
+## Tachi Install Fidelity Workflow
+
+**Workflow file**: `.github/workflows/tachi-install-fidelity.yml`
+
+**Added in Feature 373** (Adopter Install + Output Fidelity Fixes, PR #375, merged 2026-10-10, patch release v4.48.1 pending). This workflow reddens CI — on PRs AND direct-to-`main` pushes — when `INSTALL_MANIFEST.md` drifts from what an adopter actually needs (a missing skill, agent, command, or distributable script; a manifest hygiene break; a non-stdlib import reaching a distributable script at module load; or a manual-install loop that no longer matches byte-for-byte across `README.md` and `docs/guides/DEVELOPER_GUIDE_TACHI.md`), when the deterministic extraction pipeline regresses, or when a stale `report-data.typ` would silently render with the wrong risk posture.
+
+| Property | Value |
+|----------|-------|
+| Workflow file | `.github/workflows/tachi-install-fidelity.yml` |
+| Jobs | `manifest-completeness`, `extraction-fidelity`, `report-posture` |
+| Runner | `ubuntu-latest` (all three jobs) |
+| Timeout | 10 minutes per job |
+| Permissions | `contents: read` |
+| Python version | 3.11 |
+| Pytest dependencies | `pytest>=8`, `pytest-timeout>=2`, `pyyaml>=6` |
+| Extra tooling | `report-posture` only — `typst-community/setup-typst@v5`, with `TACHI_REQUIRE_TYPST: "1"` set in the job `env:` |
+
+### The three jobs
+
+1. **`manifest-completeness`** — runs `tests/scripts/test_install_manifest_completeness.py` only. This is the K1/K2 guard (FR-K2.2–K2.5): every `.claude/skills/tachi-*` dir, every `.claude/commands/tachi.*.md` file, and every distributable `scripts/*.py` a distributed command/agent/skill/template references must be covered by `INSTALL_MANIFEST.md` or carry an explicit, reasoned exclusion.
+2. **`extraction-fidelity`** — runs the pre-existing extraction/parser modules on a bare `ubuntu-latest` runner for the first time, plus two new F-373 modules: `test_tachi_parsers.py`, `test_extract_infographic_data.py`, `test_extract_report_data.py`, `test_extractor_contract_fixes.py`, `test_executive_architecture_payload.py`, `test_gemini_request_contract.py` (new — the K14 static request-contract test), and `test_extraction_sibling_parity.py` (new — W2, compares posture/severity/delta counts and MAESTRO output between the infographic JSON and `report-data.typ` on shared fixtures). No `mmdc` is installed on this runner; the five `mmdc`-dependent cases in `test_extract_report_data.py`'s Typst fixture skip rather than fail, and every other case in these seven modules must pass.
+3. **`report-posture`** — runs `tests/scripts/test_report_posture_contract.py` only, with Typst installed via `typst-community/setup-typst@v5` and `TACHI_REQUIRE_TYPST: "1"` set so a missing Typst fails this job instead of silently skipping the gate. Asserts that a `report-data.typ` built without the `risk-posture-level`/`risk-posture-label` variables fails Typst compilation with an explicit regenerate-instruction panic, rather than rendering with a stale or default posture. See `docs/devops/environment-variables.md` → "F-373 Report-Posture Typst Gate" for the `TACHI_REQUIRE_TYPST` contract.
+
+### Trigger Design (F-373 — dual-trigger with YAML anchor)
+
+The workflow fires on **both** `pull_request` and `push: branches: [main]`, following the same shared-anchor pattern as `tachi-pytest.yml` (F-338), `tachi-catalog-drift.yml` (F-329), and `tachi-permissions-verify.yml` (F-281) — a single path list (`&fidelity_paths` / `*fidelity_paths`) so there is no second list to drift out of sync, closing the same direct-to-`main` bypass class issue #338 exploited once before.
+
+```yaml
+on:
+  pull_request:
+    paths: &fidelity_paths
+      - INSTALL_MANIFEST.md
+      - .claude/skills/**
+      - .claude/commands/tachi.*.md
+      - .claude/agents/tachi/**
+      - templates/tachi/**
+      - scripts/*.py
+      - scripts/install.sh
+      - README.md
+      - docs/guides/DEVELOPER_GUIDE_TACHI.md
+      # ... (full list in .github/workflows/tachi-install-fidelity.yml)
+  push:
+    branches: [main]
+    paths: *fidelity_paths
+```
+
+The `paths:` list is intentionally broad — together with `adapters/claude-code/**` and the two manual-install-loop docs, it matches **every** `INSTALL_MANIFEST.md` entry — because all three jobs together run in well under a minute. This is the opposite trigger-design trade-off from the installer's own K3 suite below: broad trigger + fast run, instead of narrow trigger + slow run.
+
+### Relationship to `tachi-pytest.yml`'s K3 installer suite
+
+`tachi-install-fidelity.yml` and the K3 addition to `tachi-pytest.yml` (see "Tachi Pytest Workflow" → "Feature History" above) both ship with F-373 and both guard installer-adjacent surfaces, but they are deliberately **not** the same gate:
+
+| Workflow | Guards | Runner(s) | Why split |
+|----------|--------|-----------|-----------|
+| `tachi-install-fidelity.yml` | Manifest completeness, extraction/report fidelity, report posture | Single `ubuntu-latest`, 3 jobs | Broad `paths:` trigger is safe because the run takes seconds |
+| `tachi-pytest.yml` (K3 addition) | `scripts/install.sh` itself — the `--follow-symlinks` destination-containment pre-flight and the `--version` ref-restore trap | Existing 2-OS bash matrix (macOS bash 3.2.57 + ubuntu bash 5.x) | The installer must be proven on both bash dialects it actually ships to, but that matrix takes 22–29 minutes — too slow for a trigger as broad as `&fidelity_paths`, so `tachi-pytest.yml`'s `paths:` anchor gains only `scripts/install.sh`, the K3 tests, and their helpers/fixtures |
+
+### Relationship to sibling dual-trigger workflows
+
+| Workflow | Guards | Anchor |
+|----------|--------|--------|
+| `tachi-pytest.yml` | Substitution-surface hardening (init.sh, template-substitute.sh, etc.) | `&hardening_paths` |
+| `tachi-catalog-drift.yml` | ORDERED_FRAMEWORKS catalog fingerprint integrity | `&drift_paths` |
+| `tachi-permissions-verify.yml` | `.claude/settings.json` ↔ `CLAUDE_PERMISSIONS.md` sync | `&verify_paths` |
+| `tachi-install-fidelity.yml` | Manifest completeness + extraction/report fidelity + report posture | `&fidelity_paths` |
+
+### Local invocation
+
+```bash
+# manifest-completeness
+python3 -m pytest tests/scripts/test_install_manifest_completeness.py -v
+
+# extraction-fidelity
+python3 -m pytest \
+  tests/scripts/test_tachi_parsers.py \
+  tests/scripts/test_extract_infographic_data.py \
+  tests/scripts/test_extract_report_data.py \
+  tests/scripts/test_extractor_contract_fixes.py \
+  tests/scripts/test_executive_architecture_payload.py \
+  tests/scripts/test_gemini_request_contract.py \
+  tests/scripts/test_extraction_sibling_parity.py \
+  -v
+
+# report-posture (requires Typst on PATH; TACHI_REQUIRE_TYPST=1 matches CI exactly)
+TACHI_REQUIRE_TYPST=1 python3 -m pytest tests/scripts/test_report_posture_contract.py -v
+```
+
+### Rollback note (v4.48.1 patch release)
+
+`install.sh --version v4.48.0` is the mechanical way to pin a tachi install to the pre-F-373 release, and it is how an adopter would normally roll back a patch they didn't want. **Do not use it to roll back this one.** `v4.48.0` is the release whose infographic image request is broken — it sends `aspectRatio`/`imageSize` directly under `generationConfig` instead of nested under `generationConfig.imageConfig`, so the Gemini API rejects every image request with HTTP 400 — and it still names the shut-down `-preview` model chain. Pinning back to it does not undo a F-373 regression; it reintroduces the exact rendering failure F-373 exists to fix. If a genuine F-373 regression surfaces, the correct response is a forward fix on top of v4.48.1, not a version-pin rollback.
+
+### Feature History
+
+| Feature | PR | Change |
+|---------|----|--------|
+| F-373 | #375 | Initial workflow — `manifest-completeness` + `extraction-fidelity` + `report-posture` jobs; dual-trigger YAML anchor `&fidelity_paths`; first CI gate to run the pre-existing extraction/parser modules on a bare `ubuntu-latest` runner |
+
+**Reference**: `specs/373-adopter-install-output-fidelity/spec.md` NFR-7. Contract: `specs/373-adopter-install-output-fidelity/contracts/manifest-completeness.md`. No adopter-facing environment variables introduced; one test-only CI variable (`TACHI_REQUIRE_TYPST`) — see `docs/devops/environment-variables.md` → "F-373 Report-Posture Typst Gate".
 
 ---
 

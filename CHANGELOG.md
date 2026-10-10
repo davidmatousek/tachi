@@ -20,7 +20,9 @@ generically; no specific finding, target or report content is referenced.
   writing anything when a destination is a symlink; with it, install.sh follows links at or
   above each installed path, names every resolved destination, and only copies — it never
   deletes through a link. Even with it, install.sh refuses broken, looping or wrong-type links,
-  links nested inside an installed folder, and destinations inside the tachi source clone.
+  links nested inside an installed folder, and destinations inside the tachi source clone. With
+  or without the flag, it refuses a project or `--source` path that contains a tab or newline
+  byte, which its pre-flight cannot parse safely.
 - A fail-closed completeness guard asserts that every distributed skill, command, agent and
   script is covered by `INSTALL_MANIFEST.md` (or explicitly excluded with a reason), and that
   both docs' manual-install loops stay byte-identical — gated in CI alongside the installer's
@@ -62,6 +64,12 @@ generically; no specific finding, target or report content is referenced.
   never walked.
 - `install.sh --version` now warns, giving the command to run, when it cannot restore the clone's
   original ref, instead of failing silently.
+
+**Security**
+- Attack-tree finding IDs are now validated before they reach file paths, and both attack-tree
+  write sites check that the resolved path stays inside its folder. This closes a path traversal
+  (CWE-22), present in earlier releases, through which a crafted finding ID could write files
+  outside the report folder while the PDF report was being built.
 
 **Upgrading**: update your tachi clone, re-run `install.sh` and restart Claude Code — doing so
 also moves infographic rendering onto the current image models. If you install with `--version`,

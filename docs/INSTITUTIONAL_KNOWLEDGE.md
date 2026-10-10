@@ -692,6 +692,54 @@ F-292 reused F-260's community-merge precedent (4 mechanical artifacts: CHANGELO
 
 **Evidence**: `specs/362-remap-owasp-llm-top10-2026/{crosswalk-disposition-ledger.md, bare-code-ledger.md, gap-analysis.md, test-results/, delivery.md}`; ADR-048 (Accepted-commit-SHA `e6316e3`); squash-merge `e6316e3` (PR #363, `feat(362):` title) → release-please v4.48.0 (#371). Related: KB Entry 15 (`cwe`∈ORDERED_FRAMEWORKS consequence scope), Entry 17 (live-dispatch validation at deliver), Entry 22 (gate on the compiled artifact).
 
+### Entry 24: F-373 Adopter Install + Output Fidelity Fixes — Delivery Retrospective (path checks compare identities, never spellings)
+
+**Date**: 2026-10-10 | **Category**: Pattern | **Feature**: F-373 | **Issues**: #373 (lead), #370 (folded in, D-4), PR #375, #376 (release v4.48.1), #377–#386 (follow-ups filed at deliver)
+
+**Context**:
+- **Scope.** F-373 bundled ten defects found during a large real-world run into one patch release:
+  - installer manifest gaps (K1–K2);
+  - symlinked install destinations (K3);
+  - report and infographic extraction fidelity (K9–K13);
+  - the Gemini render path (K14–K15).
+- **Results.** 40/40 tasks; 1,478 pass / 0 fail / 6 skip across 4 tested waves, with 0 regressions. Two security fixes landed before deliver: SEC-K3-07, and a pre-existing CWE-22 attack-tree-ID traversal.
+- **Duration.** Estimated at 5.2 days central (band 3.5–7.7). It took 13 calendar days, from branch creation on 2026-09-27 to merge on 2026-10-10, across 4 active days. The merge came 3 days after the 10-07 ceiling because of calendar gaps between sessions, not effort.
+- **Surprise log.** Every Gemini image model tachi named was retired or retiring. The preview models shut down on 2026-06-25, and `gemini-2.5-flash-image` on 2026-10-02, which was the PRD's own central date. So K14 grew from a request-shape fix into a migration to the GA chain.
+
+**Lesson — Decide "is this path the same as, or inside, that one?" by file identity, never by spelling. Never let a path cross a delimiter-sensitive channel unvalidated.**
+
+- **Problem**: The same class of defect turned up three times:
+  - **N1 (architect re-review of the plan).** The K3 pre-flight's first design tested containment with a string prefix (`case "$X/" in "$SRC_P"/*)`). Builtin `pwd -P` and Python `realpath` keep the case the user typed. A firmlink keeps its own spelling while naming the same directory. So on macOS's default case-insensitive APFS, a case variant or a firmlink slipped past the check.
+  - **SEC-K3-07 (final security review).** A tab or newline byte in the project or source path desynced the pre-flight's tab-delimited, newline-separated checked set and hid nested links from it. That failed open even without `--follow-symlinks`.
+  - **T036 H-1 (code review).** A backslash in a physical path corrupted an `awk -v` value, causing a partial install under `--follow-symlinks`.
+- **What we learned**:
+  1. **Identity is the only reliable test for "same" or "inside".**
+     - The fix is `under()` in `scripts/install.sh` (ruling AR-1). It first walks up past any tail components that don't exist yet. Then it walks the parent chain, comparing each ancestor with `[ "$x" -ef "$root" ]`, which tests for the same device and inode and is a bash 3.2 builtin.
+     - It is ten lines and passed 17/17 cases on bash 3.2.57 and 5.3.9.
+  2. **Every place a path is serialized is a second trust boundary.** That includes a tab-separated row, a newline-separated list and an `awk -v` assignment.
+     - Refuse delimiter bytes before building the structure: fail closed, write nothing.
+     - Pass values to `awk` through `ENVIRON`, which takes them verbatim.
+  3. **Reviews caught all three, not the tests that existed.** The architect re-review, the code review and the final security review each found one. Each is now pinned by a regression test, for example the case-variant containment cases and the H-1 backslash case in `tests/scripts/test_install_sh_symlink_preflight.py`.
+- **How to apply**: This covers any script that decides whether one path is the same as, or inside, another: installers, extractors writing under a base directory, cleanup tools.
+  - **Compare identities.**
+    - In shell, use a `[ -ef ]` walk.
+    - In Python, compare `st_dev` and `st_ino` (`os.path.samefile`) up the ancestor chain. A string comparison after `resolve()` is not an identity check on a case-insensitive volume.
+    - In both, walk up to the first existing ancestor when the tail doesn't exist yet.
+  - **Validate early.** Reject control bytes (`\t`, `\n`) in paths at the trust boundary, before any delimited serialization.
+  - **Never pass path values through `awk -v`.**
+  - **For identifiers that become file names**, validate against an allow-list pattern where they are parsed. Then assert the resolved write path stays under its base directory as a backstop. This is how the CWE-22 fix works: `_SAFE_FINDING_ID_RE` plus the `is_relative_to` checks in `scripts/extract-report-data.py`.
+
+**Evidence**:
+- **Code:** `scripts/install.sh` (`under()`, and the tab/newline refusal before any classification).
+- **Feature records:**
+  - `specs/373-adopter-install-output-fidelity/plan.md` (frontmatter: N1 folded as AR-1);
+  - `contracts/installer-cli.md`;
+  - `test-results/{k3-test-first,rc1-test-first,p0-architect-review}.md`;
+  - `security-scan.md`;
+  - `delivery.md`.
+- **Merge:** squash-merge `109705c` (PR #375, `fix(373):` title) → release-please v4.48.1 (#376).
+- **Related:** KB Entry 1 and Entry 3 (F-248/F-256 substitution and source-pattern hardening: earlier shell-input trust-boundary work), and Entry 18 (deliver-stage clobber hazard).
+
 ---
 
 ## Bug Fixes

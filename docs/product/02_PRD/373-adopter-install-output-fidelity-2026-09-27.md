@@ -3,7 +3,12 @@ prd:
   number: 373
   topic: adopter-install-output-fidelity
   created: 2026-09-27
-  status: Approved
+  status: Delivered
+  delivered: 2026-10-10
+  pr: 375
+  merge_commit: 109705c
+  release: 4.48.1     # patch; release-please PR #376, open at delivery
+  spec: specs/373-adopter-install-output-fidelity/spec.md
   type: feature
 triad:
   pm_signoff:
@@ -34,6 +39,8 @@ bundle:
 ---
 
 # PRD-373 — Adopter Install + Output Fidelity Fixes
+
+**Status**: Delivered 2026-10-10. PR [#375](https://github.com/davidmatousek/tachi/pull/375) squash-merged to `main` as `109705c` under a `fix(373):` title, so it ships as a patch release (release-please PR #376, v4.48.1, open at delivery). It closes #373 and #370, which was folded in per D-4. Spec: [`specs/373-adopter-install-output-fidelity/spec.md`](../../../specs/373-adopter-install-output-fidelity/spec.md). All ten K-items and #370 shipped, and the split valve never fired. SC-1 to SC-5 and SC-8 are met. The manifest ships 21 skill dirs and 4 scripts, and a fail-closed CI check guards it. `install.sh` refuses a symlinked destination unless `--follow-symlinks` is passed, and never deletes through a link. Extraction matches its sources on synthetic fixtures. All six templates rendered live on `gemini-3-pro-image` (fallback `gemini-3.1-flash-image`), with no leaked layout text and every ID in its allow-list. No tracked example image or PDF baseline changed. Two security fixes landed before merge: `install.sh` refuses a project or source path that contains a tab or newline byte, and a pre-existing CWE-22 path traversal, where attack-tree finding IDs reached file paths unvalidated, is fixed. Still open: SC-6, met when the published v4.48.1 notes carry the update-and-re-run notice and the D-1 note, and SC-7, the next large real-world run. 40/40 tasks, 0 regressions. Retrospective: `specs/373-adopter-install-output-fidelity/delivery.md`.
 
 > **Bundle PRD.** Lead issue **#373** carries ten defects with stable IDs **K1–K3** and **K9–K15**. The companion bundle **#374** (K4–K8, large-architecture pipeline resilience) holds the design work. The two ship in either order, because this bundle's parsers accept both today's controls-table format and the one #374 K8 corrects. This bundle ships as a **patch release** (`fix(373):`), because #364 blocks the next minor release.
 >

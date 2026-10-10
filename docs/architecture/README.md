@@ -1,6 +1,6 @@
 # Architecture Documentation - tachi
 
-**Last Updated**: 2026-08-12
+**Last Updated**: 2026-10-10
 **Owner**: Architect
 **Status**: Template
 
@@ -41,7 +41,7 @@ Significant technical decisions with context and trade-offs
 - `ADR-011-multi-flag-opt-out-and-step-insertion-pattern.md` - Multi-flag opt-out pattern and step insertion convention for `/aod.build` (Feature 080)
 - `ADR-012-cross-agent-correlation-detection.md` - Deterministic cross-agent correlation detection algorithm (Feature 010)
 - `ADR-013-sarif-output-format-adoption.md` - SARIF 2.1.0 output format for GitHub Code Scanning integration (Feature 012)
-- `ADR-014-gemini-api-optional-image-generation.md` - Optional Gemini API image generation for infographic agent (Feature 018)
+- `ADR-014-gemini-api-optional-image-generation.md` - Optional Gemini API image generation for infographic agent (Feature 018). A dated 2026-10-10 Feature 373 note supersedes its retired model names and its request shape: the GA chain `gemini-3-pro-image` → `gemini-3.1-flash-image`, walked only on HTTP 404 or 403, with the HTTP 400 and exhausted-chain cases logged at Error. Spec-first generation and graceful degradation stand
 - `ADR-015-platform-adapter-hub-and-spoke-distribution.md` - Hub-and-spoke distribution pattern for platform adapters (Feature 021)
 - `ADR-019-shared-definitions-and-model-field-governance.md` - Shared cross-agent definitions and model field governance (Feature 078)
 - `ADR-020-maestro-layer-classification.md` - CSA MAESTRO seven-layer taxonomy for agentic AI component classification (Feature 084; Revision History adds canonical layer rename rule for enum-value-only minor schema bumps in Feature 136)

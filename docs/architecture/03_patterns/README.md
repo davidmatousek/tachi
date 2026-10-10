@@ -1,6 +1,6 @@
 # Design Patterns - tachi
 
-**Last Updated**: 2026-08-12
+**Last Updated**: 2026-10-10
 **Owner**: Architect
 
 ---
@@ -49,6 +49,9 @@ This directory documents reusable design patterns for tachi.
 - [Circuit-Breaker Churn Detection](#pattern-circuit-breaker-churn-detection)
 - [Subshell Isolation for Strict Shell Options](#pattern-subshell-isolation-for-strict-shell-options)
 - [Strict KV-File Parsing (Read-Buffer → Regex-Validate → printf -v)](#pattern-strict-kv-file-parsing)
+- [Identity-Based Path Containment (`[ -ef ]` Walk)](#pattern-identity-based-path-containment)
+- [Shell Values into awk via ENVIRON, Never `awk -v`](#pattern-shell-values-into-awk-via-environ)
+- [No Early-Exit Pipe Reader under pipefail](#pattern-no-early-exit-pipe-reader-under-pipefail)
 
 ### Template Patterns (AOD Kit)
 - [Template Variable Expansion](#pattern-template-variable-expansion)
@@ -87,6 +90,7 @@ This directory documents reusable design patterns for tachi.
 ### Test Architecture Patterns (AOD Kit)
 - [Session-Scoped init.sh Fixture](#pattern-session-scoped-init-sh-fixture)
 - [Asymmetric Baseline File-Set Check](#pattern-asymmetric-baseline-file-set-check)
+- [Fail-Closed Manifest Completeness Test](#pattern-fail-closed-manifest-completeness-test)
 
 ---
 
@@ -1714,8 +1718,20 @@ from tachi_parsers import parse_markdown_table, parse_frontmatter
 - Parsers are trivial (one or two regexes) and not worth the module overhead
 - Different consumers intentionally need different interpretations of the same data
 
+#### Extension: Normalize Once at the Parser Boundary (Feature 373, ruling AR-3)
+
+Sharing the parser is not enough when each consumer cleans up values its own way. Before Feature 373 the infographic counted lifecycle statuses over a tier's findings, which on two of the three data tiers never carry a status, while the report merged them in first. Neither recognized the bracketed `[NEW]` form the orchestrator writes. The two outputs disagreed on the same input.
+
+The rule: every normalization lives in [`scripts/tachi_parsers.py`](../../../scripts/tachi_parsers.py), runs once where the value is parsed, and is stored. Consumers read the stored value and never normalize it again.
+- `normalize_delta_status` turns `[NEW]`, `**NEW**` and `` `[NEW]` `` into `NEW`. `compute_delta_counts` counts the normalized Section 7 map, identically on every tier and both surfaces.
+- `classify_control_status` runs once per row and stores `status_class`, which every consumer reads.
+- `normalize_header` with `HEADER_ALIASES`, `is_placeholder_id` and `parse_score` (`Decimal`, never raises) cover column names, placeholder rows and scores.
+- Logic with a single consumer stays with that consumer: `compute_allow_list` lives in `extract-infographic-data.py`.
+- `tests/scripts/test_extraction_sibling_parity.py` asserts that the infographic JSON and `report-data.typ` agree on the same fixture.
+
 #### Related Patterns
 - [Atomic File Write](#pattern-atomic-file-write) -- both patterns prioritize determinism and correctness in file operations
+- [Author-Once-Inherit Cross-Surface Render State](#pattern-author-once-inherit-cross-surface-render-state) -- the same "decide once, never re-derive" rule applied to a rendered state rather than a parsed value
 
 ---
 
@@ -2023,6 +2039,12 @@ classify_maestro_coverage_state(finding_count, highest_severity) -> "findings" |
 - The state genuinely differs per surface by design (then a shared authority is wrong)
 - The production path already flows through one deterministic serializer (then consistency is structural by construction and this pattern's test-check is unnecessary — see the honesty constraint in [Deterministic Populator as Value Authority](#pattern-deterministic-populator-as-value-authority))
 
+#### Further Application: Risk Posture (Feature 373)
+
+The security report's cover computed its own posture label from severity counts in Typst, and the infographic prompt inferred one from a sentence: two rubrics for one fact. Now one function holds the rubric, `compute_risk_posture` in [`scripts/tachi_parsers.py`](../../../scripts/tachi_parsers.py): the highest severity band present in the data tier's counts. Both extractors call it and emit the result, as `metadata.risk_posture_level` / `risk_posture_label` in every infographic JSON and as `risk-posture-level` / `risk-posture-label` in `report-data.typ`. Every surface renders the label verbatim and takes only its color from the level. The cover's derivation was deleted, which is step 3's fence done by removal, and `tests/scripts/test_extraction_sibling_parity.py` is the required cross-surface test.
+
+It adds one rule this pattern had not stated: **fail closed when the inherited value is missing.** A renderer that falls back to a default, or derives the value again, when an older data file lacks the field quietly brings back the second rubric, and the default it would pick (`LOW RISK`) is the most reassuring wrong answer. So [`main.typ`](../../../templates/tachi/security-report/main.typ) panics with a regenerate instruction when `report-data.typ` lacks the pair, and `cover-page` in [`cover.typ`](../../../templates/tachi/security-report/cover.typ) defaults both parameters to `none` and panics as well, for any other caller. `tests/scripts/test_report_posture_contract.py` compiles a template copy to prove both stops.
+
 #### Related Patterns
 
 - [Deterministic Populator as Value Authority](#pattern-deterministic-populator-as-value-authority) -- the sibling posture: deterministic value + test-checked (not structural) production cross-format consistency; this pattern adds the *single-applicability-authority + classify-don't-re-derive + structural fence* discipline on top
@@ -2091,6 +2113,186 @@ Treat the remap as one **simultaneous bijection σ**, not a sequence of substitu
 - [Deterministic Populator as Value Authority](#pattern-deterministic-populator-as-value-authority) -- explains why the authored prose surfaces, not the emitters, are the enforcement points a taxonomy cutover must actually reach
 - [Additive Optional State Fields](#pattern-additive-optional-state-fields) -- the additive counterpart: a new field extends a frozen shape, where this pattern permutes values *within* one
 - [Circuit-Breaker Churn Detection](#pattern-circuit-breaker-churn-detection) -- the same instinct at build scope: bound a wide mechanical edit with a measurable tripwire before it runs
+
+---
+
+### Pattern: Identity-Based Path Containment
+
+**Added**: Feature 373 (Adopter Install + Output Fidelity Fixes), architect ruling AR-1
+**Implementation**: `under()` in [`scripts/install.sh`](../../../scripts/install.sh); tests in [`tests/scripts/test_install_sh_symlink_preflight.py`](../../../tests/scripts/test_install_sh_symlink_preflight.py)
+
+#### Problem
+
+A safety check has to decide whether one path is the same as, or inside, another directory. The installer must refuse a destination that physically lands inside the tachi source clone, and a project root that is the clone. The obvious test, a string prefix on resolved paths (`case "$X/" in "$ROOT"/*)`), fails open on macOS. `pwd -P` resolves symlinks but keeps whatever letter case the user typed or the link text used, and it does not canonicalize firmlinks. On case-insensitive APFS, `~/projects/tachi` and `~/Projects/tachi` are one directory and two strings, so the prefix test reports "outside".
+
+#### Solution
+
+Ask the filesystem, not the string. Climb from the candidate to its deepest existing ancestor, then walk up to `/`, comparing each ancestor with the root by `[ A -ef B ]`, which is true when both name the same device and inode:
+
+```bash
+# under PATH ROOT -> 0 if PATH is ROOT or lies under it (scripts/install.sh)
+under() {
+  local x=$1 root=$2
+  while [ ! -e "$x" ]; do x=${x%/*}; [ -n "$x" ] || x=/; done   # the tail may not exist yet
+  while :; do
+    [ "$x" -ef "$root" ] && return 0
+    [ "$x" = / ] && return 1
+    x=${x%/*}; [ -n "$x" ] || x=/
+  done
+}
+
+if under "$TARGET_P" "$SRC_P"; then die "the target project is the tachi source clone or lies inside it"; fi
+```
+
+- **Feed it physical paths**, from `pwd -P` or a resolver such as the installer's `phys_dest()`. Each string parent is then also the physical parent, so the `${x%/*}` steps are safe.
+- **Swap the arguments for the reverse question.** The installer also refuses a directory destination that contains the clone, with `under "$SRC_P" "$dest"`. Put an `elif` between the two directions, since both hold when the paths are the same.
+- **Resolve first and deny by default.** A dangling or looping link cannot be resolved, so it is refused before containment is asked.
+- **No GNU tools needed.** `[ -ef ]` is a bash 3.2 builtin test, so the check needs neither `realpath` nor `readlink -f`. The walk was verified on 17 of 17 cases on bash 3.2 and 5.
+
+#### When to Use
+
+- A safety decision depends on whether one path is inside another, and the two paths come from independent sources: a typed path, link text, a clone location
+- The filesystem may be case-insensitive or have firmlinks; macOS defaults to both
+- Portable shell, where GNU `realpath` cannot be assumed
+
+#### When NOT to Use
+
+- **The candidate is a trusted base joined with an untrusted token**, such as a file name taken from file content. Both sides start from the same base string, so the only way out is a separator or `..` in the token. Validate the token where it is parsed, and assert at each write that the resolved path stays under the resolved base. Feature 373's CWE-22 fix in [`scripts/extract-report-data.py`](../../../scripts/extract-report-data.py) is this variant: `_is_safe_finding_id()` at both attack-tree parse sites, then `Path.resolve().is_relative_to(base.resolve())` before each write.
+- Paths that never touch the filesystem: identity needs an existing ancestor to stat
+
+#### Related Patterns
+
+- [Shell Values into awk via ENVIRON](#pattern-shell-values-into-awk-via-environ) and [No Early-Exit Pipe Reader under pipefail](#pattern-no-early-exit-pipe-reader-under-pipefail) -- the two other rules the same installer pre-flight relies on to fail closed
+- [Strict KV-File Parsing](#pattern-strict-kv-file-parsing) -- the same deny-by-default stance applied to configuration input
+
+---
+
+### Pattern: Shell Values into awk via ENVIRON
+
+**Added**: Feature 373 (found in code review, fixed before release)
+**Implementation**: the link-classification loop in [`scripts/install.sh`](../../../scripts/install.sh)
+
+#### Problem
+
+`awk -v name=value` processes backslash escapes in `value` the way it would in a string literal, so `\t` arrives as a TAB and `\\` as one backslash. A shell value holding a literal backslash, which is legal in macOS and Linux paths, reaches awk changed, and an equality test against the raw field text never matches. Nothing errors. In the installer pre-flight, a project path containing `\` made every origin lookup come back empty. The classifier then missed nested, wrong-type and cleanup-only links and treated them as safe to follow. With `--follow-symlinks`, a deprecated file was deleted through a linked folder.
+
+#### Solution
+
+Put the value in the awk process's environment and read it with `ENVIRON`, which is byte-for-byte and POSIX (BSD awk, mawk and gawk all have it):
+
+```bash
+# WRONG: -v escape-processes the value
+origins=$(printf '%s\n' "$CHECKED_SET" | awk -F'\t' -v c="$component" '$1 == c {print $3}')
+
+# RIGHT: ENVIRON reads it verbatim (scripts/install.sh)
+origins=$(printf '%s\n' "$CHECKED_SET" | c="$component" awk -F'\t' '$1 == ENVIRON["c"] {print $3}')
+```
+
+- **Refuse delimiter bytes up front.** When shell values are packed into TAB- and LF-delimited records for `awk` or `cut`, a value containing TAB or LF splits its own record and hides from the check. The installer refuses such a project or source path before it builds any record (`case … in *$'\t'*|*$'\n'*) die`).
+- **Regression-test with a backslash in the path on every awk the CI matrix runs**: BSD awk on macOS, mawk on Ubuntu.
+
+#### When to Use
+
+- Any shell value that can hold arbitrary bytes (paths, user input, file content) and is compared or printed inside awk
+
+#### When NOT to Use
+
+- Fixed literals you control, such as a hard-coded keyword: `-v` is harmless there
+- Data that should be awk's input rather than a variable: stream it on stdin instead
+
+#### Related Patterns
+
+- [No Early-Exit Pipe Reader under pipefail](#pattern-no-early-exit-pipe-reader-under-pipefail) -- fixed in the same commit, on the same lookup lines
+- [Strict KV-File Parsing](#pattern-strict-kv-file-parsing) -- also treats shell-held text as data that no interpreter may rewrite
+
+---
+
+### Pattern: No Early-Exit Pipe Reader under pipefail
+
+**Added**: Feature 373 (found in code review, fixed before release)
+**Implementation**: the link-classification loop in [`scripts/install.sh`](../../../scripts/install.sh); the measured bound for the two early-exit readers it keeps is recorded in `specs/373-adopter-install-output-fidelity/contracts/installer-cli.md` ("Implementation constraints")
+
+#### Problem
+
+Under `set -o pipefail`, a pipeline fails when any stage fails. A reader that stops early (`head -n 1`, `grep -q`, `grep -m 1`, `awk '{…; exit}'`) closes the pipe while the writer may still be writing. The writer then gets SIGPIPE and exits with 141. In practice that happens only once the output outgrows the pipe buffer, so the code passes every test on small data and breaks as the data grows. In an assignment, `set -e` then ends the script with no message. In an `if` condition, the failure reads as false, so a safety check fails open. The installer's checked set grows with every release, and a first-match `awk … exit` over it was reproduced failing at about 100 KB.
+
+#### Solution
+
+Let the reader drain its input, and keep the first match with a guard instead of exiting:
+
+```bash
+# WRONG once $CHECKED_SET outgrows the pipe: awk exits, printf is killed (141)
+need=$(printf '%s\n' "$CHECKED_SET" | c="$component" awk -F'\t' '$1 == ENVIRON["c"] {print $2; exit}')
+
+# RIGHT: !n++ keeps only the first match but reads to the end (scripts/install.sh)
+need=$(printf '%s\n' "$CHECKED_SET" | c="$component" awk -F'\t' '$1 == ENVIRON["c"] && $2 != "" && !n++ {print $2}')
+```
+
+- **Bound any early exit you keep.** An early-exit reader is acceptable only on input that is small, bounded and written in one call, and the bound belongs in writing next to it. The installer keeps two, each on a short fixed-size string, and its contract records the measured bound and when to re-check it.
+- **Other ways to drain**: count with `grep -c` or `wc -l`, or feed the reader from a here-string or a temporary file, so there is no writer to kill.
+
+#### When to Use
+
+- Any script under `set -o pipefail`, especially `set -euo pipefail`, that pipes data whose size can grow into a first-match reader
+
+#### When NOT to Use
+
+- Scripts without `pipefail`: the pipeline's status is the reader's, so the writer's 141 is discarded
+- Input that is bounded and well under the pipe buffer, with the bound documented
+
+#### Related Patterns
+
+- [Shell Values into awk via ENVIRON](#pattern-shell-values-into-awk-via-environ) -- fixed in the same commit, on the same lookup lines
+- [Subshell Isolation for Strict Shell Options](#pattern-subshell-isolation-for-strict-shell-options) -- another way `set -e` turns a contained failure into a silent exit
+
+---
+
+### Pattern: Fail-Closed Manifest Completeness Test
+
+**Added**: Feature 373 (Adopter Install + Output Fidelity Fixes)
+**Implementation**: [`tests/scripts/test_install_manifest_completeness.py`](../../../tests/scripts/test_install_manifest_completeness.py), gated by the `manifest-completeness` job in [`.github/workflows/tachi-install-fidelity.yml`](../../../.github/workflows/tachi-install-fidelity.yml)
+
+#### Problem
+
+A hand-maintained install manifest drifts from the repo. A new skill or script is added but not listed, and every adopter install silently lacks it. In tachi this happened three times, and the first two fixes only added prose reminders. A test that checks "every listed path exists" catches the opposite mistake. A test that loops over a discovery glob passes vacuously when the glob matches nothing, for example after a directory is renamed.
+
+#### Solution
+
+Derive the required set from the repo, and make every way of checking nothing a failure:
+
+1. **Discover, don't list.** Required paths come from the shipped tree: every `tachi-*` skill directory, every `tachi.*.md` command, every `scripts/*.py` a distributed file references, and the local modules those scripts import at load, found transitively by an `ast` walk. A new file is required as soon as it exists.
+2. **Floor each category.** Each discovery asserts a minimum count (21 skills, 6 commands, 4 referenced scripts, 1 imported module), so an empty match fails.
+3. **Deny exclusions by default.** An exclusion needs an entry, with a reason, in an explicit `{path: reason}` dict that starts empty.
+4. **Read like the installer.** The test's manifest reader mirrors the installer's parser line for line (exact marker lines, no stripping, `\n` splitting), so it checks exactly what the installer copies.
+5. **Prove each assertion can fail.** A negative matrix deletes one required entry per category from an in-memory copy. The matching check must fail with a message that names the manifest and the missing path.
+6. **Run the real paths.** An end-to-end case installs from a manifest-built source into an empty project. The copy-paste install loop is executed too, under bash and under interactive zsh when present.
+7. **Gate every input.** The workflow's `paths:` filter covers the source of every manifest entry and triggers on pushes to `main` as well as pull requests, so a rename that would break installs cannot skip the gate.
+
+```python
+# tests/scripts/test_install_manifest_completeness.py
+EXCLUDED: dict[str, str] = {}      # fail closed: every exclusion carries a reason
+
+def test_skills_covered(manifest_entries):
+    names = _skill_dir_names()      # discovered from .claude/skills/tachi-*
+    assert len(names) >= 21, f"expected >= 21 tachi-* skill dirs, found {len(names)}: {names}"
+    required = [f".claude/skills/{name}/" for name in names]
+    _assert_all_covered(manifest_entries, required, "skills, category a")
+```
+
+#### When to Use
+
+- A hand-maintained list must stay a superset of something discoverable in the repo: install manifests, packaging include-lists, distribution file sets
+- The list has drifted before, and reminders did not stop it
+
+#### When NOT to Use
+
+- The list can be generated from its source of truth at build time: generate it instead
+- Additions are legitimate and should not fail: use the [Asymmetric Baseline File-Set Check](#pattern-asymmetric-baseline-file-set-check), whose own "When NOT to Use" names the exhaustive manifest as this pattern's case
+
+#### Related Patterns
+
+- [Asymmetric Baseline File-Set Check](#pattern-asymmetric-baseline-file-set-check) -- the counterpart: it tolerates additions where this pattern requires full coverage
+- [Shared Parser Module Extraction](#pattern-shared-parser-module-extraction) -- reader parity is the same idea: one interpretation of one artifact
 
 ---
 

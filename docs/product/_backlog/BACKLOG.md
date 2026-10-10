@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-10-06T14:59:57Z.
+> Auto-generated from GitHub Issues on 2026-10-10T20:58:12Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -8,8 +8,18 @@
 
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
+| #386 | enhancement: remove Feature 373 dead code and stale EXPECTED RED test annotations | — | — | 2026-10-10 |
+| #385 | defect(security-log): scan-log.jsonl chain hash breaks at entry 34 after a behind-main branch merge | — | — | 2026-10-10 |
+| #384 | defect(install.sh): a project directory whose name ends in a newline installs into a same-named sibling | — | — | 2026-10-10 |
+| #383 | defect(adapters): Copilot, Cursor and generic infographic instructions still send the rejected Gemini request to shut-down models | — | — | 2026-10-10 |
+| #382 | defect(infographics): baseball-card heat-map cell grid has no deterministic extractor source | — | — | 2026-10-10 |
+| #381 | defect(infographics): baseball-card and maestro-stack typography tables specify dark text on their dark background | — | — | 2026-10-10 |
+| #380 | defect(extractors): project-name parser misses em-dash H1 forms and falls back to Unknown Project | — | — | 2026-10-10 |
+| #379 | defect(extractors): a stateless run with a free-text baseline.source is treated as a baseline run | — | — | 2026-10-10 |
+| #378 | defect(extractors): headings in the Section N: Title form are not recognized, silently dropping section data | — | — | 2026-10-10 |
+| #377 | defect(install.sh): --version passes a dash-leading value to git checkout instead of refusing it | — | — | 2026-10-10 |
 | #374 | Large-architecture pipeline resilience: skipped attack-chain phase, single-response output overflow, controls table drift | Impact: 8, Confidence: 6, Effort: 4 = **18** | On a run with 200+ findings: | 2026-09-27 |
-| #364 | F-362b: re-key examples/** and sample-report baselines to the OWASP LLM 2026 σ (BLOCKING before next minor release) | — | — | 2026-08-12 |
+| #364 | F-362b: re-key examples/** and sample-report baselines to the OWASP LLM 2026 σ (BLOCKING before next minor release) | — | — | 2026-10-10 |
 | #361 | Extend tachi detection coverage for GhostCommit primitives (encoded exfil, convention-file trust, committed-file dormancy) | Impact: 7, Confidence: 7, Effort: 6 = **20** | Team Observation: coverage mapping of tachi's detection-p... | 2026-07-13 |
 | #360 | Harden tachi's own agents against ingested-repo-text prompt injection (GhostCommit self-exposure) | Impact: 8, Confidence: 8, Effort: 8 = **24** | Team Observation: grounded file:line code analysis of tac... | 2026-07-13 |
 | #349 | Anthropic jailbreak-severity framework alignment (capability-gain risk lens) | Impact: 6, Confidence: 3, Effort: 8 = **17** (P2) | Team observation — prompted by Anthropic's 2026-07-01 Cla... | 2026-07-01 |
@@ -55,8 +65,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
-| #373 | Adopter install + output fidelity fixes: installer manifest gaps, symlinked skills dir, infographic/PDF data extraction, Gemini render | OPEN | 2026-09-27 |
-| #370 | Covering test for the FR-012b form-drift guard in extract-report-data.py | OPEN | 2026-08-12 |
+| #370 | Covering test for the FR-012b form-drift guard in extract-report-data.py | CLOSED | 2026-10-10 |
 | #369 | CI manifest-integrity check for adapter VERSION attestations (+ copilot-aware generator) | OPEN | 2026-08-12 |
 | #368 | check-catalog-drift: _canonical() widening — decided DEFER with rationale; plus false-docstring defect (docstring :95 vs fail-closed fallback :105) | OPEN | 2026-08-12 |
 | #367 | State the LLM10:2026 generated-code scope boundary explicitly in OWASP_COVERAGE.md | OPEN | 2026-08-11 |
