@@ -93,7 +93,8 @@ resolve() {
 
 # phys_dest PATH -> prints where PATH physically is, or would be once created:
 # resolve() of its deepest existing component, plus the components that do not exist yet.
-# Returns 1 when the walk meets a dangling link (already refused as unresolvable).
+# Returns 1 when the walk meets a dangling or looping (whole-path ELOOP) link,
+# already refused as unresolvable.
 phys_dest() {
   local q=$1 rest="" d
   while [ ! -e "$q" ]; do
@@ -351,8 +352,19 @@ while IFS= read -r component; do
   [ -L "$component" ] || continue
   comp_rel=${component#"${TARGET_P}/"}
 
-  origins=$(printf '%s\n' "$CHECKED_SET" | awk -F'\t' -v c="$component" '$1 == c {print $3}' | LC_ALL=C sort -u)
-  comp_need=$(printf '%s\n' "$CHECKED_SET" | awk -F'\t' -v c="$component" '$1 == c && $2 != "" {print $2; exit}')
+  # T036 H-1/M-1: the component is passed via ENVIRON, never `awk -v`.
+  # `-v var=value` escape-processes the assigned value like a string
+  # literal, so a literal `\` in $component (legal in a project's
+  # physical path) desyncs it from the literal `$1` field text --
+  # ENVIRON is read verbatim and is POSIX (BSD awk, mawk and gawk all
+  # support it). `comp_need` also drops its early `exit` for `!n++`:
+  # under `set -o pipefail`, exiting while `printf` is still writing a
+  # large CHECKED_SET into the pipe gets the writer SIGPIPE'd (rc 141),
+  # which `set -e` then turns into a silent, message-less installer
+  # failure once the checked set outgrows the pipe. `!n++` keeps only
+  # the first match but still drains the rest of its stdin.
+  origins=$(printf '%s\n' "$CHECKED_SET" | c="$component" awk -F'\t' '$1 == ENVIRON["c"] {print $3}' | LC_ALL=C sort -u)
+  comp_need=$(printf '%s\n' "$CHECKED_SET" | c="$component" awk -F'\t' '$1 == ENVIRON["c"] && $2 != "" && !n++ {print $2}')
 
   # 1. cleanup-only: origins are EXACTLY {cleanup-file}.
   if [ "$origins" = "cleanup-file" ]; then
@@ -419,8 +431,8 @@ done < <(printf '%s\n' "$UNIQUE_COMPONENTS")
 # runs with or without the flag; there is no remedy. Also N11: a directory
 # entry's own destination must not physically CONTAIN SRC_P (the clone
 # nested inside one of its own destinations) -- same identity walk,
-# reversed. phys_dest failing here means a dangling ancestor, already
-# refused above (Sec. 2.1); skip silently per the contract.
+# reversed. phys_dest failing here means a dangling or looping ancestor,
+# already refused above (Sec. 2.1); skip silently per the contract.
 while IFS= read -r manifest_entry; do
   [ -n "$manifest_entry" ] || continue
   entry_stripped=${manifest_entry%/}
