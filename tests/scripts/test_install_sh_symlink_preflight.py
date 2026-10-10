@@ -401,10 +401,23 @@ def test_looping_entry_link_always_refused(tmp_path, flag_args):
 
 
 @pytest.mark.parametrize("flag_args", [_NO_FLAG, _WITH_FLAG], ids=["no-flag", "with-flag"])
-def test_wrong_type_link_dir_needed_always_refused(tmp_path, flag_args):
-    """A directory entry's link resolves to a FILE (wrong type)."""
+@pytest.mark.parametrize(
+    "relpath",
+    [".claude/skills/tachi-example/", ".claude/skills"],
+    ids=["entry", "ancestor"],
+)
+def test_wrong_type_link_dir_needed_always_refused(tmp_path, flag_args, relpath):
+    """A directory entry's link resolves to a FILE (wrong type). L-9
+    (.aod/results/code-reviewer-373.md): parametrized over both the LINK
+    SITE the wrong-type check must cover -- the manifest entry itself
+    (`.claude/skills/tachi-example/`, origin `entry`) and one of its
+    ANCESTORS (`.claude/skills`, origin `ancestor`, need=dir just like
+    any directory entry) -- since data-model.md Sec. 2.1's `unresolvable`
+    class applies to a component's full origin set, not only to
+    `entry`-origin components, and the two link sites previously shared
+    no test."""
     source_root, project_root = _standard_setup(tmp_path)
-    link_path = add_wrong_type_symlink(project_root, ".claude/skills/tachi-example/", need="dir")
+    link_path = add_wrong_type_symlink(project_root, relpath, need="dir")
     readlink_text = os.readlink(link_path)
     before_project = snapshot_tree(project_root)
 
@@ -706,6 +719,12 @@ def test_n11_clone_nested_inside_directory_entry_destination_refused(tmp_path):
     build_source_tree(nested_source)
     copy_working_tree_install_sh(nested_source)
 
+    # L-9 (.aod/results/code-reviewer-373.md): snapshot-proven zero writes,
+    # like every other always-refused case in this file -- this test
+    # previously asserted only the refusal's shape, never that nothing
+    # beyond the deliberately pre-built fixture tree changed.
+    before_project = snapshot_tree(project_root)
+
     result = run_install_sh(
         nested_source / "scripts" / "install.sh",
         cwd=project_root,
@@ -714,6 +733,7 @@ def test_n11_clone_nested_inside_directory_entry_destination_refused(tmp_path):
 
     assert result.returncode == 1, result.combined
     assert "Nothing was written" in result.combined
+    assert_no_tree_changes(before_project, snapshot_tree(project_root), label="project")
     # NOTE (handoff): contracts/installer-cli.md's Messages section does not
     # give N11's own per-line bracket text verbatim -- only the reverse-
     # direction "source-tree" line. T009's own words ("the always-refused
