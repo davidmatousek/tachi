@@ -923,6 +923,13 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
+## [4.48.1](https://github.com/davidmatousek/tachi/compare/v4.48.0...v4.48.1) (2026-10-10)
+
+
+### Bug Fixes
+
+* **373:** adopter install + output fidelity fixes ([#375](https://github.com/davidmatousek/tachi/issues/375)) ([109705c](https://github.com/davidmatousek/tachi/commit/109705c31777d91933ae90955cf3302b340b07eb))
+
 ## [4.48.0](https://github.com/davidmatousek/tachi/compare/v4.47.0...v4.48.0) (2026-08-13)
 
 
