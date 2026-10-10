@@ -369,7 +369,7 @@ K3 is not a split candidate, and it ships with K1.
     - A6's retired-ID scan, with the `Retired models:` exception;
     - the strengthened A8 scaffold boundaries, plus N8's assertion (decided per L14): exactly one line-start `FOOTER` after the marker line. It holds on all five templates today.
   - A-3 adds the module to the `extraction-fidelity` job, with `adapters/claude-code/**` in `paths:`.
-- [ ] T015 [US4a] K14 live render set (W3; `tester` runs the render session and records it, with the maintainer's visual check; the W3 writer, a `senior-backend-engineer`, makes any 2K-drop commit; ~0.20 d). `[MANUAL-ONLY] needs a live key, network, and a human visual check`
+- [X] T015 (done 2026-10-06/10: 6/6 templates on gemini-3-pro-image, fallback gemini-3.1-flash-image 200, executive-architecture on one portrait PDF page; 2K kept, max 35.73 s; test-results/k15-renders.md) [US4a] K14 live render set (W3; `tester` runs the render session and records it, with the maintainer's visual check; the W3 writer, a `senior-backend-engineer`, makes any 2K-drop commit; ~0.20 d). `[MANUAL-ONLY] needs a live key, network, and a human visual check`
   - Run through the agent end to end, in a scratch clone of the W3 commit (T034), on a scratch copy of the MAESTRO reference example (`quickstart.md` §4).
   - **T015 and T030 are one sequential render session**, in this order:
     1. T030's first iteration (the six templates);
@@ -638,7 +638,7 @@ When it can be carved:
   - **A10**: the lock markers are byte-identical, `flow_edges` and `clusters` are present, and the amendment note exists.
     - The strip rule is applied **verbatim**: split on blank lines between the markers, drop the paragraph after `IMPORTANT:`, and assert that the SHA-256 of the rest equals the pinned pre-change value.
     - The pin is the SHA-256 of the block at `63438d7`, from the character after the BEGIN line's newline to the END marker, split and re-joined on `"\n\n"` (L13).
-- [ ] T030 [US4b] K15 live renders (W3; `tester` renders, judges and records, with the maintainer's visual check; the W3 writer, a `senior-backend-engineer`, makes the text iterations and any TW-6 revert; ~0.35 d). `[MANUAL-ONLY] non-deterministic image output needs a live key and a human visual check`
+- [X] T030 (done 2026-10-10: all six PASS on iteration 1, maintainer visual check PASS; TW-5 not consumed, TW-6 not fired; test-results/k15-renders.md) [US4b] K15 live renders (W3; `tester` renders, judges and records, with the maintainer's visual check; the W3 writer, a `senior-backend-engineer`, makes the text iterations and any TW-6 revert; ~0.35 d). `[MANUAL-ONLY] non-deterministic image output needs a live key and a human visual check`
   - Render once per template (all six, executive-architecture in portrait) through the agent. This runs in a scratch clone of the W3 commit, on a scratch copy of `examples/maestro-reference/` (`quickstart.md` §4), as part of T015's render session.
   - Record results in the PR body and in `specs/373-adopter-install-output-fidelity/test-results/k15-renders.md`.
   - Check for layout-label text, and for IDs outside `allow_list` and the legend. Watch the length of the allow-list line on large lists (N10).
@@ -698,7 +698,7 @@ When it can be carved:
 
     TW-7 carves nothing. From T033 on, K15 is carved only through TW-6, and TW-5 caps its iterations (F4 (e), LOW-10).
   - Write `specs/373-adopter-install-output-fidelity/NEXT-SESSION.md`.
-- [ ] T034 W3 integration (Lane A; `devops`; ~0.20 d).
+- [X] T034 (done 2026-10-06: f04254c test-first push red on both legs as designed, 91e4542 10/10 green; gated set 485/0/2; N4 identical to W2, test-results/n4-rerun-w3.md, wave-04/results.json) W3 integration (Lane A; `devops`; ~0.20 d).
   - Commit and push. The render session (T030 → T015) starts from this commit in a scratch clone while CI runs (L7).
   - Before T036's architect checkpoint, these must be **visibly** green on #375:
     - every fast-workflow job (`manifest-completeness`, `extraction-fidelity`, and `report-posture` if K13-posture ships);
