@@ -52,19 +52,28 @@ generically; no specific finding, target or report content is referenced.
 - The risk funnel and its Risk Reduction figure are now computed from the controls report's own
   rows, so they narrow by risk volume and can legitimately differ from the controls report's own
   stated total.
-- Infographic rendering moves off the preview and `gemini-2.5-flash-image` models (all shut down
-  as of this release) onto the current GA chain — `gemini-3-pro-image`, falling back to
-  `gemini-3.1-flash-image`. The fallback walk now triggers only on a `404 NOT_FOUND` or
-  `403 PERMISSION_DENIED` response; a `400` is logged loudly and is never walked.
+- Infographic images are generated again: the previous release's image request put
+  `aspectRatio` and `imageSize` directly under `generationConfig`, so the API rejected every
+  request (HTTP 400) and no image was produced; they now sit under
+  `generationConfig.imageConfig`. Rendering also moves off the preview and
+  `gemini-2.5-flash-image` models (all shut down as of this release) onto the current GA chain —
+  `gemini-3-pro-image`, falling back to `gemini-3.1-flash-image`. The fallback walk now triggers
+  only on a `404 NOT_FOUND` or `403 PERMISSION_DENIED` response; a `400` is logged loudly and is
+  never walked.
+- `install.sh --version` now warns, giving the command to run, when it cannot restore the clone's
+  original ref, instead of failing silently.
 
-**Upgrading**: update your tachi clone and re-run `install.sh` — doing so also moves infographic
-rendering onto the current image models. If any destination `install.sh` writes into is a
-symlink, it now stops and names it; re-run with `--follow-symlinks` to install through it.
-Findings with no analyzer recommendation may now show a `Threat-model mitigation:`-prefixed
-fallback where they previously showed nothing. The risk funnel and Risk Reduction figure are now
-computed from the controls report's own rows and may legitimately differ from its own summary. A
-`report-data.typ` compiled outside `/tachi.security-report` now stops with a regenerate
-instruction instead of compiling with stale posture data.
+**Upgrading**: update your tachi clone, re-run `install.sh` and restart Claude Code — doing so
+also moves infographic rendering onto the current image models. If you install with `--version`,
+pull first anyway, so that the updated `install.sh` is the one that runs. If a destination inside
+your project is a symlink or passes through one, `install.sh` now stops before writing anything
+and names it; re-run with `--follow-symlinks` to install through it. Findings with no analyzer
+recommendation may now show a `Threat-model mitigation:`-prefixed fallback where they previously
+showed nothing. The risk funnel and Risk Reduction figure are now computed from the controls
+report's own rows and may legitimately differ from its own summary. Compiling an older or
+hand-built `report-data.typ` (one without the risk-posture variables) outside
+`/tachi.security-report` now stops with a regenerate instruction; `/tachi.security-report`
+regenerates the file on every run, so its own runs are unaffected.
 
 Closes #373 and #370.
 
