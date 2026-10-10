@@ -56,3 +56,7 @@ Neither finding touches shipped behavior. Both are good candidates for the `/aod
 - **Pre-dispositioned, not re-litigated.** The N8 bare-marker fallback (kept by L14). The exec-arch builder's optional posture parameters (M-2: an existing test calls it positionally).
 
 Full review record: `.aod/results/code-reviewer-373-final.md` (local, gitignored; the substance is reproduced above).
+
+## Gate decision
+
+**Findings acknowledged (2 finding(s))**: the maintainer chose "Acknowledge and proceed" on 2026-10-10. Both advisories go into the optional tidy-up follow-up listed in `NEXT-SESSION.md`. The delta look at `eb5d3fe` confirmed the verdict is unchanged by the pre-deliver security fixes.
