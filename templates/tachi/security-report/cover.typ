@@ -40,8 +40,8 @@
   medium-count: 0,
   low-count: 0,
   total-findings: 0,
-  risk-posture-level: "low",
-  risk-posture-label: "LOW RISK",
+  risk-posture-level: none,
+  risk-posture-label: none,
   has-logo-primary: false,
   logo-primary-path: none,
   logo-primary-dark-path: none,
@@ -50,6 +50,18 @@
   // K13-posture) — this function no longer derives them from severity
   // counts. Only the color still keys off the level, so the cover never
   // matches strings in Typst; the label itself is rendered verbatim.
+  //
+  // T036 L-6: default both to `none` (not "low"/"LOW RISK") and panic here
+  // when either is still `none`, mirroring main.typ's own stale-data guard
+  // (:129-131). main.typ's guard makes this unreachable on the shipped
+  // path, but it is this function's own safety net: without it, any OTHER
+  // caller that omits the two parameters would silently render LOW RISK —
+  // the most reassuring wrong answer for a security label — exactly what
+  // the removed in-cover derivation never did.
+  if risk-posture-level == none or risk-posture-label == none {
+    panic("cover-page called without risk-posture-level/risk-posture-label. Regenerate report-data.typ: re-run scripts/extract-report-data.py (or /tachi.security-report).")
+  }
+
   let posture-color = if risk-posture-level == "critical" {
     severity-critical
   } else if risk-posture-level == "high" {

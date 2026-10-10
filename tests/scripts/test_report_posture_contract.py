@@ -66,6 +66,19 @@ EXPECTED_LABEL = "HIGH RISK"
 
 SOURCE_DATE_EPOCH = "1700000000"
 
+# T036 L-6: cover-page's OWN stale-data panic (cover.typ), distinct from
+# PANIC_TEXT above (main.typ's guard). main.typ's guard makes this
+# unreachable on the shipped path -- it panics before #cover-page(...) is
+# ever called -- so this one only fires for a caller that reaches
+# cover-page directly without going through main.typ's guard, which is
+# exactly the gap L-6 closes: cover-page used to default both parameters
+# to "low"/"LOW RISK" and would render that silently instead.
+COVER_PANIC_TEXT = (
+    "cover-page called without risk-posture-level/risk-posture-label. "
+    "Regenerate report-data.typ: re-run scripts/extract-report-data.py "
+    "(or /tachi.security-report)."
+)
+
 
 def _require_typst() -> None:
     """Skip, unless TACHI_REQUIRE_TYPST=1 demands a hard failure instead.
@@ -255,3 +268,92 @@ def test_stale_report_data_panics_with_contract_text(template_copy, tmp_path):
         f"Expected substring: {PANIC_TEXT!r}\n"
         f"Got stderr: {compile_result.stderr}"
     )
+
+
+# =============================================================================
+# T036 L-6 (code-reviewer-373.md): cover-page's own fail-closed guard.
+#
+# main.typ's guard (tested above) makes a stale report-data.typ unreachable
+# on the shipped path. These tests exercise cover.typ directly -- bypassing
+# main.typ entirely, via a tiny harness entry file compiled against the
+# same template_copy fixture -- to prove cover-page itself never renders a
+# silent LOW RISK badge when called without both posture arguments, which
+# is what its old "low"/"LOW RISK" defaults did.
+# =============================================================================
+
+def _compile_cover_harness(template_dir: Path, harness_source: str, pdf_out: Path) -> subprocess.CompletedProcess:
+    """Write ``harness.typ`` into the template copy and compile just that file.
+
+    ``cover.typ`` only imports ``shared.typ`` (colors/fonts/page geometry),
+    never ``report-data.typ`` -- its posture inputs are plain function
+    arguments -- so a minimal harness that imports ``cover-page`` and calls
+    it directly is a faithful stand-in for "any caller that reaches
+    cover-page without going through main.typ's guard."
+    """
+    harness_path = template_dir / "harness.typ"
+    harness_path.write_text(harness_source)
+    env = {**os.environ, "SOURCE_DATE_EPOCH": SOURCE_DATE_EPOCH}
+    cmd = ["typst", "compile", str(harness_path), str(pdf_out), "--root", str(template_dir)]
+    return subprocess.run(cmd, cwd=template_dir, env=env, capture_output=True, text=True)
+
+
+def test_cover_page_panics_with_no_posture_arguments(template_copy, tmp_path):
+    """cover-page() with every argument defaulted must panic, not render LOW RISK."""
+    _require_typst()
+    result = _compile_cover_harness(
+        template_copy,
+        '#import "cover.typ": cover-page\n#cover-page()\n',
+        tmp_path / "no-args.pdf",
+    )
+    assert result.returncode != 0, (
+        "cover-page() with no posture arguments compiled successfully -- "
+        "it must panic instead of silently rendering the LOW RISK default.\n"
+        f"stdout: {result.stdout}"
+    )
+    assert COVER_PANIC_TEXT in result.stderr, (
+        f"Expected substring: {COVER_PANIC_TEXT!r}\nGot stderr: {result.stderr}"
+    )
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        'risk-posture-level: "high"',
+        'risk-posture-label: "HIGH RISK"',
+    ],
+    ids=["level-only", "label-only"],
+)
+def test_cover_page_panics_with_only_one_posture_argument(template_copy, tmp_path, kwargs):
+    """cover-page(...) with exactly one of the two posture arguments must still panic."""
+    _require_typst()
+    result = _compile_cover_harness(
+        template_copy,
+        f'#import "cover.typ": cover-page\n#cover-page({kwargs})\n',
+        tmp_path / "half-args.pdf",
+    )
+    assert result.returncode != 0, (
+        f"cover-page({kwargs}) compiled successfully -- supplying only one "
+        "of the two posture arguments must still panic.\n"
+        f"stdout: {result.stdout}"
+    )
+    assert COVER_PANIC_TEXT in result.stderr, (
+        f"Expected substring: {COVER_PANIC_TEXT!r}\nGot stderr: {result.stderr}"
+    )
+
+
+def test_cover_page_compiles_with_both_posture_arguments(template_copy, tmp_path):
+    """cover-page(...) with both posture arguments must compile cleanly (no panic)."""
+    _require_typst()
+    pdf_out = tmp_path / "both-args.pdf"
+    result = _compile_cover_harness(
+        template_copy,
+        '#import "cover.typ": cover-page\n'
+        '#cover-page(risk-posture-level: "high", risk-posture-label: "HIGH RISK")\n',
+        pdf_out,
+    )
+    assert result.returncode == 0, (
+        "cover-page(...) with both posture arguments must compile cleanly.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    assert COVER_PANIC_TEXT not in result.stderr
+    assert pdf_out.exists() and pdf_out.stat().st_size > 0
