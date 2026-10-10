@@ -163,6 +163,70 @@ def test_executive_architecture_risk_posture_fields_gated():
     )
 
 
+# =============================================================================
+# T036 M-2 (K15 half) -- executive-architecture's and maestro-stack's
+# allow_list.finding_ids had no CI assertion (code-reviewer-373.md M-2).
+# Kept in its own block, separated from the K13 block above by this banner,
+# so a future TW-6 K15 carve (reverting T027-T029) can remove exactly this
+# block mechanically.
+#
+# The maestro-stack golden fixture (agentic_app) and maestro_partial both
+# carry NO "MAESTRO Layer" column on their Section 3/4 tables, so their
+# per_finding_maestro is always [] and allow_list.finding_ids is already []
+# before any regression -- a wrong key or branch in compute_allow_list's
+# maestro-stack branch would still emit [] and pass every existing gate
+# (review's exact concern). The new maestro_top_findings fixture carries
+# that column so the non-empty case -- and the 2-per-layer cap -- are
+# actually exercised.
+# =============================================================================
+
+def test_executive_architecture_allow_list_matches_callouts():
+    """agentic_app fixture: allow_list.finding_ids == sorted(callout finding IDs) (K15, data-model §8)."""
+    returncode, _stdout, stderr, payload = run_extract(
+        FIXTURES_DIR / "agentic_app", "executive-architecture"
+    )
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert payload is not None
+    expected = sorted({c["finding_id"] for c in payload["callouts"]})
+    assert payload["allow_list"]["finding_ids"] == expected, (
+        "T036 M-2: executive-architecture allow_list.finding_ids must equal "
+        f"the callout IDs; expected {expected}, got {payload['allow_list']['finding_ids']}"
+    )
+    # Hand-verified pin (code-reviewer-373.md M-2) so a change to either side
+    # that happens to keep them mutually consistent still gets caught.
+    assert payload["allow_list"]["finding_ids"] == ["AG-1", "E-2", "E-3", "LLM-1"]
+
+
+def test_maestro_stack_allow_list_matches_top_findings_and_is_capped():
+    """maestro_top_findings fixture: allow_list.finding_ids == per-layer top-finding IDs, non-empty.
+
+    S-4 (the 3rd-ranked finding in L7 — Agent Ecosystem) must be excluded: the
+    per-layer cap keeps only the top 2 (by severity desc, then id asc), and
+    compute_allow_list's maestro-stack branch must read exactly that capped
+    set, not the full per-finding MAESTRO table.
+    """
+    returncode, _stdout, stderr, payload = run_extract(
+        FIXTURES_DIR / "maestro_top_findings", "maestro-stack"
+    )
+    assert returncode == 0, f"Expected exit 0, got {returncode}. stderr: {stderr}"
+    assert payload is not None
+    expected = sorted(
+        tf["id"]
+        for layer in payload["template_data"]["per_layer_summaries"]
+        for tf in layer["top_findings"]
+    )
+    assert expected, "fixture must exercise at least one non-empty layer"
+    assert payload["allow_list"]["finding_ids"] == expected, (
+        "T036 M-2: maestro-stack allow_list.finding_ids must equal the "
+        f"per-layer top-finding IDs; expected {expected}, got "
+        f"{payload['allow_list']['finding_ids']}"
+    )
+    assert payload["allow_list"]["finding_ids"] == ["S-1", "S-2", "S-3", "T-1", "T-2"], (
+        "T036 M-2: S-4 must be excluded by the 2-per-layer cap; "
+        f"got {payload['allow_list']['finding_ids']}"
+    )
+
+
 def test_executive_architecture_no_threats_md():
     """Empty folder: exit 1, stderr mentions threats.md."""
     with tempfile.TemporaryDirectory() as tmpdir:
