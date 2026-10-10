@@ -1282,13 +1282,16 @@ def test_build_per_framework_aggregates_out_of_scope_citation_not_misreported(ca
 # exactly one repr-safe, path-free stderr warning; (2) real-world finding IDs
 # (including multi-letter/zero-padded prefixes seen in tracked examples, e.g.
 # AGP-01) still parse; (3) the aggregating caller keeps the valid entry and
-# drops only the crafted one; (4) the write-site containment check in
+# drops only the crafted one; (4) the threat-report.md inline fallback's own
+# parse site (_parse_inline_tree_block) applies the same guard as (1)-(2),
+# closing the gap where an id resolving back inside the render dir ("x/../y")
+# or carrying a NUL byte passed the write-site check below and still crashed
+# the run (delta review, D-2); (5) the write-site containment check in
 # _render_single is an independent backstop -- it blocks escape even when
-# called with an unvalidated id (as the threat-report.md inline fallback path,
-# _parse_inline_tree_block, does not share _parse_attack_tree_file's guard) and
-# degrades to a soft per-finding skip rather than raising; (5) a full
-# render_mermaid_to_png() run with a crafted entry in the list completes instead
-# of crashing the report run, mirroring the original repro.
+# called directly with an unvalidated id, bypassing both parse sites' guards,
+# and degrades to a soft per-finding skip rather than raising; (6) a full
+# render_mermaid_to_png() run with a crafted entry in the list completes
+# instead of crashing the report run, mirroring the original repro.
 
 _CRAFTED_FINDING_ID = "../../../escaped-ctf"
 
@@ -1426,6 +1429,94 @@ def test_parse_attack_trees_skips_crafted_entry_keeps_valid_entry(tmp_path, caps
     )
 
     entries = extract.parse_attack_trees(target_dir, findings=[])
+
+    assert [e["id"] for e in entries] == ["S-1"], (
+        f"Expected only the valid entry to survive, got {[e['id'] for e in entries]!r}"
+    )
+    captured = capsys.readouterr()
+    assert captured.err.count("Warning:") == 1, (
+        f"Expected exactly one warning, got stderr: {captured.err!r}"
+    )
+    assert repr(_CRAFTED_FINDING_ID) in captured.err
+
+
+_CRAFTED_INLINE_BLOCK = '### irrelevant heading\n\n```mermaid\ngraph TD\n  A["x"] --> B["y"]\n```\n'
+
+
+@pytest.mark.parametrize(
+    "unsafe_id",
+    [
+        _CRAFTED_FINDING_ID,  # "../../../escaped-ctf" -- escapes the render dir outright
+        "x/../y",  # resolves back *inside* the render dir; write_text raised FileNotFoundError
+        "x\x00y",  # embedded NUL byte; path resolution raised ValueError
+    ],
+)
+def test_parse_inline_tree_block_rejects_unsafe_finding_id(unsafe_id, capsys):
+    """threat-report.md's inline fallback (_parse_inline_tree_block) took the
+    Section-5 heading's Finding ID unvalidated and handed it straight to
+    _render_single, which interpolates it into filesystem paths. The
+    write-site containment check added for the table/heading path stops an
+    outright escape (the first parametrized case here), but an id that
+    resolves back *inside* the render dir ("x/../y") or carries a NUL byte
+    passed that check and still blew up _render_single with an uncaught
+    FileNotFoundError/ValueError -- the original finding's run-aborting
+    impact, reached through this parse site's own gap rather than a
+    regression in the write-site check (tachi-VULN-217a46966920 delta
+    review, D-2).
+
+    _parse_inline_tree_block now applies the same _is_safe_finding_id guard
+    _parse_attack_tree_file already had, so an unsafe id is skipped with a
+    warning at parse time -- a normal return, not an exception -- and never
+    reaches _render_single at all.
+    """
+    extract = _load_extract_module()
+
+    result = extract._parse_inline_tree_block(unsafe_id, _CRAFTED_INLINE_BLOCK, {})
+
+    assert result is None, f"Expected the crafted inline id to be rejected, got {result!r}"
+    captured = capsys.readouterr()
+    assert captured.err.count("Warning:") == 1, (
+        f"Expected exactly one warning, got stderr: {captured.err!r}"
+    )
+    assert repr(unsafe_id) in captured.err, (
+        f"Expected the rejected ID in repr form on stderr, got: {captured.err!r}"
+    )
+
+
+_CRAFTED_INLINE_SECTION_5 = f"""## 5. Attack Trees
+
+### S-1: Valid probe
+
+```mermaid
+graph TD
+  A["probe"] --> B["probe"]
+```
+
+### {_CRAFTED_FINDING_ID}: crafted probe
+
+```mermaid
+graph TD
+  A["probe"] --> B["probe"]
+```
+
+## 6. Remediation Roadmap
+"""
+
+
+def test_parse_inline_attack_trees_skips_crafted_entry_keeps_valid_entry(capsys):
+    """End-to-end proof for the inline fallback, mirroring
+    test_parse_attack_trees_skips_crafted_entry_keeps_valid_entry's file-based
+    coverage: a threat-report.md Section 5 with one valid and one crafted
+    inline block keeps only the valid entry and completes without raising
+    (tachi-VULN-217a46966920 delta review, D-2).
+    """
+    extract = _load_extract_module()
+    findings_by_id = {
+        "S-1": {"severity": "Critical", "component": "Probe", "threat": "Valid probe"},
+        _CRAFTED_FINDING_ID: {"severity": "Critical", "component": "Probe", "threat": "crafted probe"},
+    }
+
+    entries = extract._parse_inline_attack_trees(_CRAFTED_INLINE_SECTION_5, findings_by_id)
 
     assert [e["id"] for e in entries] == ["S-1"], (
         f"Expected only the valid entry to survive, got {[e['id'] for e in entries]!r}"

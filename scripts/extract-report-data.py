@@ -761,6 +761,18 @@ def _parse_inline_attack_trees(content: str, findings_by_id: dict) -> list:
 
 def _parse_inline_tree_block(finding_id: str, block: str, findings_by_id: dict) -> dict:
     """Parse a single inline attack tree block from threat-report.md."""
+    # finding_id comes from the Section-5 heading text in threat-report.md --
+    # just as attacker-influenced as _parse_attack_tree_file's table cell /
+    # heading fallback, and used the same way downstream to build filesystem
+    # paths in _render_single. An id that resolves back inside the render
+    # dir (e.g. "x/../y") or carries a NUL byte passed the write-site
+    # containment check there and still crashed the run with an uncaught
+    # FileNotFoundError/ValueError (tachi-VULN-217a46966920 delta review,
+    # D-2). Apply the same guard here, at parse time, as the other site.
+    if not _is_safe_finding_id(finding_id):
+        print(f"Warning: skipping inline attack tree with unsafe Finding ID {finding_id!r}", file=sys.stderr)
+        return None
+
     mermaid_code = _extract_mermaid_block(block)
     if not mermaid_code:
         return None
@@ -896,11 +908,13 @@ def _render_single(entry, tmp_path):
     or ``"signal"``), and ``stderr_excerpt`` (first 200 bytes).
 
     Defense in depth: ``entry["id"]`` should already be a validated safe
-    token by the time it reaches this function (see ``_is_safe_finding_id``),
-    but entries can also originate from the unvalidated threat-report.md
-    inline fallback (``_parse_inline_tree_block``). The resolved ``.mmd``/PNG
-    paths are therefore re-checked to stay under their base directory before
-    any write (tachi-VULN-217a46966920, CWE-22).
+    token by the time it reaches this function -- both parse sites apply
+    ``_is_safe_finding_id`` (``_parse_attack_tree_file`` and, as of the
+    delta review's D-2, ``_parse_inline_tree_block`` too). The resolved
+    ``.mmd``/PNG paths are nonetheless re-checked to stay under their base
+    directory before any write, since this function's own ``entry``
+    argument carries no guarantee of how its caller produced it
+    (tachi-VULN-217a46966920, CWE-22).
     """
     fid = entry["id"]
     fid_lower = fid.lower()
