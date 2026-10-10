@@ -1233,6 +1233,135 @@ def test_h1_backslash_project_path_cleanup_through_linked_ancestor_skipped_with_
     )
 
 
+# ---------------------------------------------------------------------------
+# P. SEC-K3-07 regression (security-analyst final-gate review,
+# .aod/results/security-analyst-373-final.md): the SAME underlying weakness
+# class as H-1 above -- CHECKED_SET's own TAB/LF-delimited serialization has
+# no guard against those bytes appearing INSIDE the data being serialized
+# (the project's or source clone's own physical path) -- but for the two
+# residual trigger bytes H-1's ENVIRON fix did not address, and confirmed to
+# fire even WITHOUT --follow-symlinks: with a TAB or LF embedded in the
+# path, `cut -f1` (the TAB case) or the newline-delimited row walk (the LF
+# case) never reconstructs the real linked component at all, so
+# classification sees nothing to refuse -- the installer falls straight
+# through to the copy loop regardless of the flag. Written and run FIRST
+# against the UNFIXED installer (test-first, mirroring Sec. "A" and Sec.
+# "O" above).
+# ---------------------------------------------------------------------------
+
+_SEC_K3_07_CASES: tuple[tuple[str, str], ...] = (("\t", "tab"), ("\n", "lf"))
+
+
+def _setup_with_nested_subtree_plain_entry_first(byte_root: Path) -> tuple[Path, Path]:
+    """Like `_setup_with_nested_subtree` (Sec. E) above, but the manifest
+    lists the PLAIN file entry FIRST and the directory entry with the
+    nested-link-vulnerable subtree SECOND, so a partial install (the copy
+    loop reaching the plain entry before any pre-flight refusal) is caught
+    the same way the H-1 tests catch it above: by asserting the plain
+    entry's destination was never created."""
+    source_root = byte_root / "tachi-src"
+    project_root = byte_root / "project"
+    build_source_tree(
+        source_root,
+        entries=("scripts/example_script.py", ".claude/skills/tachi-example/"),
+        extra_files={".claude/skills/tachi-example/inner/nested-doc.md": "nested\n"},
+    )
+    copy_working_tree_install_sh(source_root)
+    build_project_tree(project_root)
+    return source_root, project_root
+
+
+@pytest.mark.parametrize("flag_args", [_NO_FLAG, _WITH_FLAG], ids=["no-flag", "with-flag"])
+@pytest.mark.parametrize(
+    "byte,label", _SEC_K3_07_CASES, ids=[entry[1] for entry in _SEC_K3_07_CASES]
+)
+def test_sec_k3_07_delimiter_byte_in_project_path_nested_link_refused(
+    tmp_path, flag_args, byte, label
+):
+    """SEC-K3-07: the PROJECT path contains a literal TAB or LF byte, with a
+    nested link inside a directory entry's own destination (Sec. E's
+    `nested` class -- always refused, flag or not) and a PLAIN file entry
+    listed first in the manifest. Before the fix (empirically confirmed):
+    no refusal at all, not even a misclassification message -- the real
+    component is simply never seen by the classification loop, so the
+    pre-flight prints nothing and the installer falls straight into the
+    copy loop. The plain entry is written there, and the loop only stops
+    once it reaches the nested link, crashing uncontrolled on a raw `cp:
+    ... Not a directory` error (`set -e` exits the script at that point) --
+    a confirmed partial install, not a clean refusal. After the fix:
+    refused up front, before CHECKED_SET is even built, with zero writes
+    anywhere, flag or not -- unlike H-1, this bug does not require
+    --follow-symlinks to fire."""
+    byte_root = tmp_path / f"proj{byte}byte"
+    source_root, project_root = _setup_with_nested_subtree_plain_entry_first(byte_root)
+    outside_dir = tmp_path / f"outside-dir-{label}"
+    outside_dir.mkdir()
+    add_nested_symlink(project_root, ".claude/skills/tachi-example/", "inner", outside_dir)
+    before_project = snapshot_tree(project_root)
+    before_outside = snapshot_tree(outside_dir)
+
+    result = _run(source_root, project_root, *flag_args)
+
+    assert result.returncode == 1, result.combined
+    out = result.combined
+    assert "tab or newline byte" in out, (
+        f"expected the new SEC-K3-07 refusal message, got:\n{out}"
+    )
+    assert "Nothing was written" in out
+    assert "Rename the directory" in out
+    assert_no_tree_changes(before_project, snapshot_tree(project_root), label="project")
+    assert_no_tree_changes(before_outside, snapshot_tree(outside_dir), label="outside dir")
+    assert not (project_root / "scripts" / "example_script.py").exists(), (
+        "the plain entry (listed FIRST in the manifest) must not be written -- "
+        "a delimiter byte in the project path must never turn this into a "
+        "partial install, exactly like H-1's backslash case above"
+    )
+
+
+@pytest.mark.parametrize(
+    "byte,label", _SEC_K3_07_CASES, ids=[entry[1] for entry in _SEC_K3_07_CASES]
+)
+def test_sec_k3_07_delimiter_byte_in_source_clone_path_refused(tmp_path, byte, label):
+    """SEC-K3-07, source-clone variant: the TACHI SOURCE CLONE's path (not
+    the project's) carries the tab/LF byte, with no symlinks anywhere.
+
+    NOTE on scope (confirmed empirically and by reading install.sh): every
+    `CHECKED_SET` append uses `${TARGET_P}` as its path prefix -- `${SRC_P}`
+    never becomes part of that TAB/LF-delimited structure, so a byte here
+    does not, by itself, reproduce the SAME desync mechanism the
+    project-path test above does (a probe confirmed a nested link is still
+    correctly classified and refused even with the byte confined to
+    `SRC_P`). The fix's guard checks `$TARGET_P$SRC_P` together regardless
+    -- per the task's and the finding's own prescribed shape -- as
+    defensive coverage for the source side (future-proofing against a
+    later change that does fold `SRC_P` into `CHECKED_SET`, e.g. the
+    existing `cd "${SRC_P}/..."` subtree walk), not a second reproduction
+    of the project-path failure. Before the fix: an otherwise-unremarkable
+    install (no symlinks anywhere) completes normally despite the byte.
+    After the fix: refused up front, before the pre-flight (and so before
+    any classification) ever runs, with zero writes. One flag state (no
+    flag) is enough: the guard fires unconditionally before classification,
+    so --follow-symlinks cannot change this outcome."""
+    source_parent = tmp_path / f"src{byte}parent"
+    source_parent.mkdir()
+    source_root = source_parent / "tachi-src"
+    project_root = tmp_path / "project"
+    build_source_tree(source_root)
+    copy_working_tree_install_sh(source_root)
+    build_project_tree(project_root)
+    before_project = snapshot_tree(project_root)
+
+    result = _run(source_root, project_root)
+
+    assert result.returncode == 1, result.combined
+    out = result.combined
+    assert "tab or newline byte" in out, (
+        f"expected the new SEC-K3-07 refusal message, got:\n{out}"
+    )
+    assert "Nothing was written" in out
+    assert_no_tree_changes(before_project, snapshot_tree(project_root), label="project")
+
+
 _PADDED_FILENAME_SUFFIX = "x" * 180  # see docstring below (T036 N-1)
 
 
