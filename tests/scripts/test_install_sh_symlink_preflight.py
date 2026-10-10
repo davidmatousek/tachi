@@ -1110,3 +1110,190 @@ def test_glob_metacharacter_manifest_entry_treated_literally(tmp_path):
     after_decoy_target = snapshot_tree(outside_decoy)
     assert before_decoy_link == after_decoy_link, "decoy symlink must be untouched"
     assert_no_tree_changes(before_decoy_target, after_decoy_target, label="decoy target")
+
+
+# ---------------------------------------------------------------------------
+# O. T036 code-review regression (.aod/results/code-reviewer-373.md): H-1 and
+# M-1 trace to the SAME two-line defect at install.sh's component
+# classification, just above the cleanup-only check:
+#   origins=$(... awk -F'\t' -v c="$component" '$1 == c {print $3}' ...)
+#   comp_need=$(... awk -F'\t' -v c="$component" '$1 == c && $2 != "" {print $2; exit}')
+# Written and run FIRST against the UNFIXED installer (test-first, mirroring
+# Sec. "A" above) -- DEVOPS-K3 implements the ENVIRON-based fix against this
+# suite next.
+# ---------------------------------------------------------------------------
+
+
+def test_h1_backslash_project_path_nested_link_refused_with_flag(tmp_path):
+    """H-1: POSIX `awk -v var=value` escape-processes its ASSIGNED VALUE
+    exactly like a string literal before use -- so when the project's
+    physical path contains a `\\`, `-v c="$component"` hands awk a
+    DIFFERENT string than the literal `$component` bash just built, and
+    `$1 == c` never matches. `origins` and `comp_need` then come back
+    EMPTY for every linked component in the checked set, which silently
+    disables the nested-link check (data-model.md Sec. 2.1 class 3:
+    `subtree` in origins) -- the link falls through to class 4/5
+    (inside/outside) instead, which --follow-symlinks treats as safe to
+    copy through. That is exactly backwards: `cp -r` cannot actually pass
+    through a symlink nested inside a directory entry's own destination
+    (spec ruling S-6), so this degrades a hard "always refuse, no flag
+    remedy, nothing written" safety rule into a silent partial install.
+    Reproduced in review scratch (`t036/probe_backslash.sh`) as a
+    confirmed partial install: an unrelated plain manifest entry got
+    written before `cp` aborted on the nested link mid-copy.
+
+    This reproduces on both CI legs identically: Ubuntu's default `awk`
+    is mawk, which applies the same POSIX `-v` escape processing as BSD
+    awk (macOS, exercised here) and gawk -- the defect, and the
+    `ENVIRON["c"]` fix, are awk-implementation-agnostic.
+    """
+    backslash_root = tmp_path / "back\\slash-proj"
+    source_root, project_root = _setup_with_nested_subtree(backslash_root)
+    outside_dir = backslash_root / "outside-dir"
+    outside_dir.mkdir()
+    add_nested_symlink(project_root, ".claude/skills/tachi-example/", "inner", outside_dir)
+    before_project = snapshot_tree(project_root)
+    before_outside = snapshot_tree(outside_dir)
+
+    result = _run(source_root, project_root, "--follow-symlinks")
+
+    assert result.returncode == 1, result.combined
+    out = result.combined
+    assert "Nothing was written" in out, (
+        "the nested link must be refused BEFORE any copy -- a backslash in "
+        f"the project path must never turn this into a partial install:\n{out}"
+    )
+    assert "cannot pass through it" in out
+    assert "cannot help with these" in out, "a nested link must offer no --follow-symlinks remedy"
+    assert_no_tree_changes(before_project, snapshot_tree(project_root), label="project")
+    assert_no_tree_changes(before_outside, snapshot_tree(outside_dir), label="outside dir")
+    assert not (project_root / ".claude" / "commands" / "tachi.example.md").exists(), (
+        "a partial install must not write even an UNRELATED plain manifest "
+        "entry once the nested link aborts the copy"
+    )
+
+
+def test_h1_backslash_project_path_cleanup_through_linked_ancestor_skipped_with_flag(tmp_path):
+    """H-1, second reproduction: `.claude/commands` (an ANCESTOR, origin
+    `cleanup-ancestor`) is linked to a shared folder holding a real file
+    named like a deprecated tachi command. With the same
+    backslash-in-project-path defect, `origins` for `.claude/commands`
+    comes back empty, so the `*cleanup-ancestor*` case match never fires
+    and the deprecated file's path is never added to SKIP_CLEANUP_FILES --
+    the cleanup loop (install.sh's own unconditional `rm -f
+    "$target_path"`) then deletes the user's real file THROUGH the link.
+    Reproduced in review scratch (`t036/probe_backslash_cleanup.sh`) as a
+    confirmed delete-through-a-link. With the fix, this must behave
+    exactly like the no-backslash case (Sec. A above): the cleanup is
+    listed as skipped, never deleted, and the shared file survives
+    byte-identical."""
+    backslash_root = tmp_path / "back\\slash-proj"
+    source_root, project_root = _standard_setup(backslash_root)
+    shared = tmp_path / "shared-commands"
+    shared.mkdir()
+    sentinel = "SHARED CONTENT SENTINEL -- not tachi's, must survive\n"
+    shared_file = shared / DEPRECATED_COMMANDS[0].rsplit("/", 1)[-1]  # threat-model.md
+    shared_file.write_text(sentinel, encoding="utf-8")
+    add_symlink(project_root, ".claude/commands", shared)
+
+    result = _run(source_root, project_root, "--follow-symlinks")
+
+    assert result.returncode == 0, result.combined
+    assert "skipped" in result.combined.lower(), (
+        "the cleanup under the linked ancestor must be listed as skipped, "
+        f"never deleted, even with a backslash in the project path:\n{result.combined}"
+    )
+    assert shared_file.read_text(encoding="utf-8") == sentinel, (
+        "the shared file must survive byte-identical -- it must never be "
+        "deleted through the link"
+    )
+    assert (shared / "tachi.example.md").exists(), (
+        "the manifest's own file entry under the same linked ancestor must "
+        "still install through the link"
+    )
+
+
+def _padded_subtree_extra_files(entry: str, *, count: int = 600) -> dict[str, str]:
+    """``count`` tiny placeholder files nested under a directory entry's
+    own destination (data-model.md Sec. 2, `subtree` origin), so the
+    pre-flight's checked set grows by one TAB-delimited line per file --
+    about 130 KB at CI `tmp_path` lengths with ``count=600``, the size
+    M-1's review reproduction (`t036/pipe_thresh.sh`) found reliably
+    outgrows the pipe between `printf` and the classification `awk` once
+    a linked ancestor is present. Sized well above the threshold (the
+    review's own table showed intermittent, racy failures near it) so
+    this test is deterministic, not flaky.
+    """
+    stem = entry.rstrip("/")
+    return {f"{stem}/pad-{i:04d}.md": "x\n" for i in range(count)}
+
+
+def _setup_with_padded_subtree_and_linked_claude(tmp_path: Path) -> tuple[Path, Path, Path]:
+    """A synthetic source tree whose `.claude/skills/tachi-example/`
+    subtree is padded to ~600 extra files, plus a project whose `.claude`
+    (an ANCESTOR of that entry, and the very FIRST line install.sh's own
+    manifest loop appends to CHECKED_SET, per `strict_prefixes`) is itself
+    a symlink. Returns ``(source_root, project_root, outside_claude)``.
+    """
+    source_root = tmp_path / "tachi-src"
+    project_root = tmp_path / "project"
+    build_source_tree(
+        source_root, extra_files=_padded_subtree_extra_files(".claude/skills/tachi-example/")
+    )
+    copy_working_tree_install_sh(source_root)
+    build_project_tree(project_root)
+    outside_claude = tmp_path / "outside-claude"
+    outside_claude.mkdir()
+    add_symlink(project_root, ".claude", outside_claude)
+    return source_root, project_root, outside_claude
+
+
+def test_m1_oversized_checked_set_with_linked_claude_refused_without_flag(tmp_path):
+    """M-1: `comp_need`'s awk exits as soon as it prints `.claude`'s own
+    first matching line -- which, for a linked ANCESTOR, is the very
+    first line install.sh's manifest loop ever appends to CHECKED_SET
+    (`strict_prefixes` emits the shortest prefix first, for the first
+    manifest entry) -- while `printf` is still writing the ~600 padded
+    subtree lines that follow it into the same pipe. Once CHECKED_SET
+    exceeds the pipe's capacity, the still-writing `printf` gets SIGPIPE,
+    the pipeline exits 141 under `pipefail`, and `set -e` kills the
+    installer with NO message at all, not even this no-flag refusal -- a
+    silent, unexplained failure for any project whose checked set is
+    large enough (growing every release as skills/templates/schemas are
+    added). With the fix (`!n++` instead of `exit`), awk drains the rest
+    of its input instead of closing the pipe early, so the refusal
+    prints normally."""
+    source_root, project_root, _outside_claude = _setup_with_padded_subtree_and_linked_claude(
+        tmp_path
+    )
+
+    result = _run(source_root, project_root)
+
+    assert result.returncode == 1, (
+        f"must fail CLOSED with the ordinary no-flag refusal (exit 1), "
+        f"never silently as exit 141 with no output: rc={result.returncode} "
+        f"out={result.combined!r}"
+    )
+    out = result.combined
+    assert out.strip(), "must never exit silently with empty output"
+    assert "Nothing was written" in out
+    assert "--follow-symlinks" in out
+    assert ".claude ->" in out
+
+
+def test_m1_oversized_checked_set_with_linked_claude_installs_with_flag(tmp_path):
+    """M-1, with the flag: the same oversized checked set must let the
+    pre-flight drain CHECKED_SET fully and complete the install, rather
+    than exiting 141 partway through classification."""
+    source_root, project_root, outside_claude = _setup_with_padded_subtree_and_linked_claude(
+        tmp_path
+    )
+
+    result = _run(source_root, project_root, "--follow-symlinks")
+
+    assert result.returncode == 0, (
+        f"must complete the install, never exit 141 partway through "
+        f"classification: rc={result.returncode} out={result.combined!r}"
+    )
+    assert "tachi installed successfully" in result.combined
+    assert (outside_claude / "skills" / "tachi-example" / "pad-0000.md").exists()
