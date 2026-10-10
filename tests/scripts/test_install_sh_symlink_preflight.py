@@ -1362,6 +1362,64 @@ def test_sec_k3_07_delimiter_byte_in_source_clone_path_refused(tmp_path, byte, l
     assert_no_tree_changes(before_project, snapshot_tree(project_root), label="project")
 
 
+@pytest.mark.parametrize("flag_args", [_NO_FLAG, _WITH_FLAG], ids=["no-flag", "with-flag"])
+def test_sec_k3_07_trailing_lf_in_source_clone_path_nested_link_refused(tmp_path, flag_args):
+    """SEC-K3-07 residual (code-reviewer-373-final.md delta look, D-1): the
+    tachi SOURCE CLONE directory passed via --source has a name ending in a
+    literal LF byte -- the LAST byte of the whole resolved path, unlike the
+    source-clone variant above, which embeds the byte mid-path instead.
+    Command substitution strips ALL trailing newlines, so
+    `SRC_P=$(cd -P "$SOURCE_DIR" && pwd -P)` silently loses the byte while
+    `$SOURCE_DIR` itself -- the raw value the copy loop (install.sh:558) and
+    the subtree walk both need -- keeps it.
+
+    Before the fix: the guard's `case "$TARGET_P$SRC_P" in` never sees the
+    byte, since it is already gone from `$SRC_P`. The subtree walk's
+    `cd "${SRC_P}/${entry_stripped}"` (install.sh:344-349) then resolves to
+    a path that does not exist, so it fails silently and CHECKED_SET never
+    gets a `subtree:` row for the directory entry below. The nested link
+    sitting at the PROJECT's mirrored destination -- the SAME `nested`
+    class Sec. "E" and the project-path variant above both cover -- is
+    therefore invisible to the classification loop. The plain entry
+    (listed FIRST in the manifest) is written, and the copy loop only
+    stops once it reaches the nested link: a confirmed partial install,
+    not a clean refusal, flag or not.
+
+    After the fix (`case "$TARGET_P$SRC_P$SOURCE_DIR" in`): refused up
+    front, before CHECKED_SET is even built, with zero writes."""
+    source_root = tmp_path / "tachi-src\n"
+    project_root = tmp_path / "project"
+    build_source_tree(
+        source_root,
+        entries=("scripts/example_script.py", ".claude/skills/tachi-example/"),
+        extra_files={".claude/skills/tachi-example/inner/nested-doc.md": "nested\n"},
+    )
+    copy_working_tree_install_sh(source_root)
+    build_project_tree(project_root)
+    outside_dir = tmp_path / "outside-dir-trailing-lf"
+    outside_dir.mkdir()
+    add_nested_symlink(project_root, ".claude/skills/tachi-example/", "inner", outside_dir)
+    before_project = snapshot_tree(project_root)
+    before_outside = snapshot_tree(outside_dir)
+
+    result = _run(source_root, project_root, *flag_args)
+
+    assert result.returncode == 1, result.combined
+    out = result.combined
+    assert "tab or newline byte" in out, (
+        f"expected the new SEC-K3-07 refusal message, got:\n{out}"
+    )
+    assert "Nothing was written" in out
+    assert "Rename the directory" in out
+    assert_no_tree_changes(before_project, snapshot_tree(project_root), label="project")
+    assert_no_tree_changes(before_outside, snapshot_tree(outside_dir), label="outside dir")
+    assert not (project_root / "scripts" / "example_script.py").exists(), (
+        "the plain entry (listed FIRST in the manifest) must not be written -- "
+        "a trailing LF stripped from SRC_P by $(...) must never turn this into "
+        "a partial install, exactly like the project-path case above"
+    )
+
+
 _PADDED_FILENAME_SUFFIX = "x" * 180  # see docstring below (T036 N-1)
 
 
