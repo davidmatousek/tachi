@@ -1525,7 +1525,17 @@ def _funnel_section1_comparand_warnings(cc_data, totals):
     for label, stated, derived, suffix in fields:
         if stated is None or derived is None:
             continue
-        if abs(stated - derived) > 0.1:
+        # T036 L-4: compare in Decimal, not float. Both sides are built from
+        # at-most-1-decimal-place text (Section 1 prose; the emitted,
+        # 0.1-quantized row-derived value), but plain float subtraction can
+        # misrepresent an exact 0.1 difference as above or below the
+        # threshold depending on which specific values are involved (e.g.
+        # abs(27.0 - 26.9) > 0.1 is True in float, abs(26.9 - 26.8) > 0.1 is
+        # False) -- "differs by more than 0.1" (data-model.md §4.5) must be
+        # exact. `Decimal(str(x))` reads the same decimal text float
+        # formatting already produced, so it never introduces its own
+        # rounding.
+        if abs(Decimal(str(stated)) - Decimal(str(derived))) > Decimal("0.1"):
             print(
                 f"Warning: controls Section 1 {label} {stated}{suffix} "
                 f"differs from row-derived {derived}{suffix}; using rows",

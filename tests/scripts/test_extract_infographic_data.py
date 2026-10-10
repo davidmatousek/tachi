@@ -1508,6 +1508,32 @@ def test_k11_controls_warnings_kitchen_sink_section1_and_row_count_via_cli():
     assert "52.7" not in joined  # the matching residual field must not warn
 
 
+def test_t036_l4_comparand_exact_tenth_difference_does_not_warn_via_cli():
+    # T036 L-4 (data-model.md §4.5, code-reviewer-373.md): the Section 1
+    # comparand warning compared `stated` and `derived` with plain float
+    # subtraction, so an EXACT 0.1 difference could misreport depending on
+    # which specific values were involved -- abs(27.0 - 26.9) > 0.1 is True
+    # in float (the review's own example), even though 0.1 is not "more
+    # than" 0.1. The comparand_exact_tenth fixture's stated inherent total
+    # (27.0) is exactly 0.1 above the row-derived total (26.9): this must
+    # NOT warn. Its stated residual (10.11) is 0.11 above the row-derived
+    # total (10.0): this MUST warn -- proving the fix tightened the
+    # boundary rather than silencing the warning class entirely. The
+    # stated reduction percentage matches the derived value exactly, so a
+    # third line would indicate an unrelated regression.
+    _td, stderr = _funnel_via_cli(FIDELITY_FIXTURES_DIR / "comparand_exact_tenth")
+    comparand_lines = [
+        line for line in stderr.splitlines()
+        if line.startswith("Warning: controls Section 1")
+    ]
+    assert len(comparand_lines) == 1, (
+        "expected exactly 1 Section 1 comparand warning (residual only; "
+        f"the exact-0.1 inherent difference must NOT warn), got: {comparand_lines}"
+    )
+    assert re.search(r"residual score 10\.11\D+differs from row-derived\D*10\.0", comparand_lines[0])
+    assert "27.0" not in comparand_lines[0] and "26.9" not in comparand_lines[0]
+
+
 def test_rc2_unreadable_risk_scores_table_single_warning_no_row_count_mismatch_via_cli():
     # RC-2 (K11, P0 architect finding F-2): when risk-scores.md's Scored
     # Threat Table can't be found (header drift -- here "## Section 2:
