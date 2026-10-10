@@ -161,6 +161,7 @@ Each was reproduced at plan review on `/bin/bash` 3.2.57 and on bash 5.3.9. The 
 | Split manifest paths with parameter expansion only (`${rest%%/*}`, `${rest#*/}`), never `set -- $rel` **(amended at P0, 2026-09-28)** | An unquoted `set -- $rel` also expands pathnames. A glob character in a manifest segment would then match files in the target project, which is the installer's working directory, and misbuild the checked set (SEC-K3-02, fixed in `45bb8d6`) |
 | Pass a shell value to `awk` through the environment (`c="$v" awk '… ENVIRON["c"] …'`), never with `awk -v` **(amended at P1, 2026-10-10)** | `-v` processes backslash escapes in the value it assigns. With a `\` in the project's physical path (legal on macOS and Linux), the component never equals the literal field, so the origin lookup comes back empty for every linked component. Then `cleanup-only`, `nested`, the wrong-type check and the cleanup-ancestor skip all go undetected, and every link falls through to the flag-eligible `inside`/`outside` class. With `--follow-symlinks`, that deleted a deprecated file through a linked `.claude/commands` and caused a partial install (T036 H-1, fixed in `b03b834`). `ENVIRON` is POSIX: BSD awk, mawk and gawk all support it |
 | Under `pipefail`, never let a pipe's reader exit early (`awk '{…; exit}'`, `head`, `grep -q`, `grep -m`) while its writer's output is unbounded. Keep the first match with a guard (`!n++`) and let the reader drain its input **(amended at P1, 2026-10-10)** | **Why.** Once the writer outgrows the pipe, SIGPIPE kills it and the pipeline returns 141. **In an assignment**, `set -e` then ends the installer with no message (T036 M-1, fixed in `b03b834`; reproduced from about 100 KB of checked set, which grows with every release). **In an `if` condition**, the same failure reads as false, which fails open. **Two early-exit readers remain**, both on bounded input that is written in one call: `head -n 1` on one component's origin string, and the cleanup skip check's `grep -Fxq` on `SKIP_CLEANUP_FILES`. The latter holds at most 15 lines, about 0.5 KB, from the fixed five-name `DEPRECATED_COMMANDS`. **Measured at P1** for that producer shape on `/bin/bash` 3.2: 0 failures in 3,000 runs at up to 35 KB, and 300 in 300 at 104 KB and above. Re-check this row if `DEPRECATED_COMMANDS` grows or either string becomes unbounded |
+| Refuse (fail-closed) immediately after `$TARGET_P`/`$SRC_P` are resolved if either contains a literal TAB or LF byte -- a `case` match against the patterns `*$'\t'*` and `*$'\n'*` **(amended 2026-10-10, SEC-K3-07)** | `CHECKED_SET` (built below) uses a literal TAB to separate one row's fields and a literal LF to separate rows. Either byte embedded in a physical path desyncs that structure from the real path text: an embedded TAB makes `cut -f1` truncate the component before the real field delimiter; an embedded LF splits one path's row into two. Either way the real linked component is never reconstructed, so classification silently finds nothing to refuse -- fails open, with no `--follow-symlinks` flag required |
 
 ## Messages **(rev. 1)**
 
@@ -209,6 +210,14 @@ Error: the target project is the tachi source clone or lies inside it. Nothing w
   project:     <TARGET_P>
   tachi clone: <SRC_P>
 Run install.sh from your own project directory, outside the tachi clone.
+```
+
+**Delimiter-byte guard** **(amended 2026-10-10, SEC-K3-07)**, checked immediately after the physical roots are resolved (step 2), before project-root containment or the pre-flight:
+```
+Error: the project or tachi source path contains a tab or newline byte, which install.sh cannot parse safely during its pre-flight. Nothing was written.
+  project:     <TARGET_P>
+  tachi clone: <SRC_P>
+Rename the directory so its path contains no tab or newline byte, then re-run.
 ```
 
 **Opt-in, printed before copying** **(amended at P1, 2026-10-10: no bracket)**:

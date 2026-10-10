@@ -246,6 +246,28 @@ if ! SRC_P=$(cd -P "$SOURCE_DIR" && pwd -P); then
   die "Could not resolve the physical path of the tachi source directory: $SOURCE_DIR"
 fi
 
+# --- Delimiter-byte guard (SEC-K3-07) ----------------------------------------
+# CHECKED_SET (built below) is TAB- and newline-delimited: TAB separates
+# one row's component/need/origin fields, and newline separates rows. A
+# literal TAB or LF byte inside TARGET_P -- legal in a directory name on
+# both macOS and Linux -- desyncs that structure from the real path text:
+# an embedded TAB makes `cut -f1` truncate the component before the real
+# field delimiter, and an embedded LF splits one path's row into two. The
+# classification loop below then never reconstructs the real linked
+# component, so a nested or otherwise-unsafe link is invisible to it and
+# gets copied through as an ordinary entry -- fails open, with no flag
+# required. SRC_P is checked too for the same reason as the containment
+# guard just below (defense for the source side, including the subtree
+# walk's own `cd "${SRC_P}/..."` a few lines down). Refuse here, before
+# CHECKED_SET is ever built, so this is a clean, documented fail-closed
+# refusal instead of a silent one.
+case "$TARGET_P$SRC_P" in
+  *$'\t'*|*$'\n'*)
+    delim_msg=$(printf 'the project or tachi source path contains a tab or newline byte, which install.sh cannot parse safely during its pre-flight. Nothing was written.\n  project:     %s\n  tachi clone: %s\nRename the directory so its path contains no tab or newline byte, then re-run.' "$TARGET_P" "$SRC_P")
+    die "$delim_msg"
+    ;;
+esac
+
 # --- Project-root containment (S-2; identity-based per ruling AR-1) ----------
 # Replaces the old logical string-equality guard. `[ -ef ]`-based identity
 # comparison catches case variants and firmlinks that a string-prefix test
