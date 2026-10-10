@@ -55,6 +55,8 @@ on:
       - .claude/commands/tachi.*.md
       - .claude/agents/tachi/**
       - templates/tachi/**
+      - brand/**                                       # T036 L-8 — manifest directory entry
+      - schemas/**                                     # T036 L-8 — manifest directory entry (widens schemas/taxonomy/*.yaml below)
       - scripts/*.py
       - scripts/install.sh
       - README.md
