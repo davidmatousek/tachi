@@ -1551,6 +1551,39 @@ def test_rc2_unreadable_risk_scores_table_single_warning_no_row_count_mismatch_v
     )
 
 
+@pytest.mark.parametrize("template", ["risk-funnel", "baseball-card"])
+def test_t036_l3_tier2_unreadable_risk_scores_table_single_warning_via_cli(template):
+    # T036 L-3 (K11, code-reviewer-373.md): the tier-1 fix above (RC-2) left
+    # the tier-2 (3-tier mode) path unfixed. extract_severity's tier==2
+    # branch already parses risk-scores.md once (findings =
+    # parse_risk_scores_findings(rs_content)); _funnel_3tier_mode used to
+    # re-parse rs_content itself instead of reusing that list, so an
+    # unreadable Scored Threat Table printed "could not find Scored Threat
+    # Table" twice per run -- once from each parse -- on both templates
+    # that reach compute_risk_funnel. Reuses funnel_3tier's threats.md (no
+    # compensating-controls.md present, so tier == 2) with a deliberately
+    # mis-headed risk-scores.md, same technique as the RC-2 test above.
+    src = FIDELITY_FIXTURES_DIR / "funnel_3tier"
+    bad_header_risk_scores = (
+        "# Risk Scores -- L3 regression (deliberately mis-headed)\n\n"
+        "## Section 2: Scored Threat Table\n\n"
+        "| ID | Component | Threat | Composite | Severity | CVSS | Exploit. |\n"
+        "|---|---|---|---|---|---|---|\n"
+        "| W-1 | API | Spoofing | 8.1 | Critical | 9.0 | High |\n"
+    )
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp = Path(tmpdir)
+        (tmp / "threats.md").write_bytes((src / "threats.md").read_bytes())
+        (tmp / "risk-scores.md").write_text(bad_header_risk_scores, encoding="utf-8")
+        returncode, _stdout, stderr, payload = run_extract(tmp, template)
+    assert returncode == 0, f"expected exit 0, got {returncode}. stderr: {stderr}"
+    assert payload is not None
+
+    assert stderr.count("could not find Scored Threat Table in risk-scores.md") == 1, (
+        f"expected exactly one occurrence, got stderr: {stderr}"
+    )
+
+
 def test_k11_baseball_card_and_funnel_agree_on_totals_via_cli():
     # S-9: the baseball card's risk_reduction/inherent_score/residual_score
     # must equal the funnel's row-derived totals, not the (here

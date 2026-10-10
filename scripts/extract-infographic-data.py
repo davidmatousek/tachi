@@ -1408,7 +1408,7 @@ def _component_severity_color(comp_severity, component_name):
 # K11 Risk Funnel Computation (F-373 T021, data-model.md §4, D-2, PD-4/5/18)
 # =============================================================================
 
-def compute_risk_funnel(tier, threats_content, cc_data=None, rs_content=None):
+def compute_risk_funnel(tier, threats_content, cc_data=None, rs_content=None, rs_findings=None):
     """Compute the 4-entry risk funnel per data-model.md §4 (K11, D-2).
 
     JSON tier k is funnel Tier k+1 (0 = Threats Identified through 3 =
@@ -1426,7 +1426,12 @@ def compute_risk_funnel(tier, threats_content, cc_data=None, rs_content=None):
             extract_severity's tier==1 branch; the K11 inherent join is
             already applied there). Only consulted when tier == 1.
         rs_content: Pre-read content of risk-scores.md. Only consulted when
-            tier == 2.
+            tier == 2 and ``rs_findings`` is not supplied.
+        rs_findings: Pre-parsed risk-scores.md findings (from
+            extract_severity's tier==2 branch, T036 L-3). Only consulted
+            when tier == 2; when ``None``, tier 2 falls back to parsing
+            ``rs_content`` itself, matching pre-L-3 behavior for any other
+            caller.
 
     Returns:
         Dict with ``funnel_tiers`` (always 4 objects), ``reduction_percentages``
@@ -1450,7 +1455,7 @@ def compute_risk_funnel(tier, threats_content, cc_data=None, rs_content=None):
     if tier == 1:
         tiers, reductions, totals = _funnel_4tier_mode(cc_data)
     elif tier == 2:
-        tiers, reductions, totals = _funnel_3tier_mode(rs_content)
+        tiers, reductions, totals = _funnel_3tier_mode(rs_content, rs_findings=rs_findings)
     else:
         tiers, reductions, totals = _funnel_threats_only_mode()
 
@@ -1637,7 +1642,7 @@ def _funnel_4tier_mode(cc_data):
     return tiers, reductions, totals
 
 
-def _funnel_3tier_mode(rs_content):
+def _funnel_3tier_mode(rs_content, rs_findings=None):
     """JSON tiers 1-2 from risk-scores.md; JSON tier 3 is always ghost (3-tier mode).
 
     V2 = sum(composite scores). JSON tier 2 ("Unmitigated Risk") volume
@@ -1645,8 +1650,16 @@ def _funnel_3tier_mode(rs_content):
     (data-model.md §4.1); the (1->2) reduction is therefore always 0.0 once
     that identity is in place. ``risk_reduction`` stays null: there is no
     residual data in 3-tier mode (data-model.md §4.4).
+
+    T036 L-3: ``rs_findings``, when supplied, is extract_severity's own
+    tier==2 parse of ``rs_content`` -- reusing it here means an unreadable
+    Scored Threat Table prints its "could not find" warning at most once
+    per run (RC-2 fixed the equivalent tier-1 double-parse; this closes the
+    tier-2 side). ``None`` falls back to parsing ``rs_content`` locally, so
+    any other caller keeps today's behavior.
     """
-    rs_findings = parse_risk_scores_findings(rs_content) if rs_content else []
+    if rs_findings is None:
+        rs_findings = parse_risk_scores_findings(rs_content) if rs_content else []
     composites = [
         c for c in (parse_score(f.get("composite_score", "")) for f in rs_findings)
         if c is not None
@@ -2281,7 +2294,14 @@ def main():
     # prints exactly once per run. Guarded to the two templates that need it.
     funnel = None
     if args.template in ("baseball-card", "risk-funnel"):
-        funnel = compute_risk_funnel(tier, threats_content, cc_data=cc_data, rs_content=rs_content)
+        # T036 L-3: reuse extract_severity's own tier==2 parse (`findings`)
+        # rather than letting _funnel_3tier_mode re-parse rs_content; a
+        # `None` on tiers 1/3 is harmless since _funnel_3tier_mode only
+        # runs for tier == 2.
+        funnel = compute_risk_funnel(
+            tier, threats_content, cc_data=cc_data, rs_content=rs_content,
+            rs_findings=findings if tier == 2 else None,
+        )
 
     # Build template-specific data
     template_data = {}
