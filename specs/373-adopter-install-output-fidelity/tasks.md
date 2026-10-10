@@ -705,7 +705,7 @@ When it can be carved:
     - both `tachi-pytest.yml` legs.
   - The co-fired gates `tachi-mmdc-preflight`, `tachi-catalog-drift` and `tachi-maestro-coverage` must be green.
   - Re-run the N4 ungated modules in a scratch clone and attribute any delta against T001.
-- [ ] T035 Oracle post-snapshot and attribution (W3, after the render session's last text change and any T032 re-run; `senior-backend-engineer`; ~0.20 d).
+- [X] T035 (done 2026-10-10: 100% attributed, 0 unattributed movers; pre-snapshot regenerated at 0ce39d0 and fidelity-checked against T001; post at code 91e4542; oracle-diff.md) Oracle post-snapshot and attribution (W3, after the render session's last text change and any T032 re-run; `senior-backend-engineer`; ~0.20 d).
   - Repeat T001's snapshot, stderr included, then diff.
   - Write `specs/373-adopter-install-output-fidelity/oracle-diff.md`, grouped **by field class × K-item with per-example counts** (not one row per field).
   - The expected movers (L8):
