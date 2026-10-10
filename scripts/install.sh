@@ -261,7 +261,7 @@ fi
 # walk's own `cd "${SRC_P}/..."` a few lines down). Refuse here, before
 # CHECKED_SET is ever built, so this is a clean, documented fail-closed
 # refusal instead of a silent one.
-case "$TARGET_P$SRC_P" in
+case "$TARGET_P$SRC_P$SOURCE_DIR" in
   *$'\t'*|*$'\n'*)
     delim_msg=$(printf 'the project or tachi source path contains a tab or newline byte, which install.sh cannot parse safely during its pre-flight. Nothing was written.\n  project:     %s\n  tachi clone: %s\nRename the directory so its path contains no tab or newline byte, then re-run.' "$TARGET_P" "$SRC_P")
     die "$delim_msg"
