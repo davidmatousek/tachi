@@ -604,6 +604,23 @@ def parse_attack_trees(target_dir: Path, findings: list, tr_content: str = None)
     return entries
 
 
+# Finding IDs are parsed from attacker-influenced file content (the metadata
+# table's "Finding ID" cell, or the H1 heading) and later interpolated into
+# filesystem paths when rendering Mermaid diagrams (see _render_single).
+# Restrict to a safe token before any downstream use: letters/digits/hyphens
+# only, starting with a letter, no leading/trailing/consecutive hyphens. This
+# admits canonical prefixes (S-1, AG-2, LLM-3) and multi-letter/zero-padded
+# variants seen in real attack-tree output (AGP-01, TE-1, CHAIN-001) while
+# rejecting path separators and traversal sequences (tachi-VULN-217a46966920,
+# CWE-22).
+_SAFE_FINDING_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*$")
+
+
+def _is_safe_finding_id(finding_id: str) -> bool:
+    """True if finding_id is safe to interpolate into a filesystem path."""
+    return bool(finding_id) and bool(_SAFE_FINDING_ID_RE.match(finding_id))
+
+
 def _parse_attack_tree_file(filepath: Path, findings_by_id: dict) -> dict:
     """Parse a single attack tree markdown file.
 
@@ -664,6 +681,14 @@ def _parse_attack_tree_file(filepath: Path, findings_by_id: dict) -> dict:
                 break
         if not finding_id:
             return None
+
+    # finding_id originates from file content (table cell or heading
+    # fallback above) and is later used to build filesystem paths -- reject
+    # anything that isn't a safe ID token before it reaches that code
+    # (tachi-VULN-217a46966920, CWE-22).
+    if not _is_safe_finding_id(finding_id):
+        print(f"Warning: skipping attack tree with unsafe Finding ID {finding_id!r}", file=sys.stderr)
+        return None
 
     # Extract Mermaid code block
     mermaid_code = _extract_mermaid_block(content)
@@ -869,6 +894,13 @@ def _render_single(entry, tmp_path):
     On failure, ``value`` is a structured error-record dict with keys
     ``id``, ``file_path``, ``failure_class`` (``"exit:<code>"``, ``"timeout"``,
     or ``"signal"``), and ``stderr_excerpt`` (first 200 bytes).
+
+    Defense in depth: ``entry["id"]`` should already be a validated safe
+    token by the time it reaches this function (see ``_is_safe_finding_id``),
+    but entries can also originate from the unvalidated threat-report.md
+    inline fallback (``_parse_inline_tree_block``). The resolved ``.mmd``/PNG
+    paths are therefore re-checked to stay under their base directory before
+    any write (tachi-VULN-217a46966920, CWE-22).
     """
     fid = entry["id"]
     fid_lower = fid.lower()
@@ -878,6 +910,17 @@ def _render_single(entry, tmp_path):
 
     mmd_file = tmp_path / f"{fid_lower}.mmd"
     png_file = tmp_path / f"{fid_lower}.png"
+    tmp_resolved = tmp_path.resolve()
+    if (
+        not mmd_file.resolve().is_relative_to(tmp_resolved)
+        or not png_file.resolve().is_relative_to(tmp_resolved)
+    ):
+        print(
+            f"Warning: skipping attack tree render for Finding ID {fid!r} "
+            "-- path would escape the render directory",
+            file=sys.stderr,
+        )
+        return (entry, False, "")
     mmd_file.write_text(mermaid_code, encoding="utf-8")
 
     try:
@@ -888,6 +931,13 @@ def _render_single(entry, tmp_path):
             check=True,
         )
         dest_png = _render_attack_trees_dir / f"{fid_lower}-attack-tree.png"
+        if not dest_png.resolve().is_relative_to(_render_attack_trees_dir.resolve()):
+            print(
+                f"Warning: skipping attack tree render for Finding ID {fid!r} "
+                "-- output path would escape the attack-trees directory",
+                file=sys.stderr,
+            )
+            return (entry, False, "")
         shutil.copy2(str(png_file), str(dest_png))
         return (entry, True, _render_rel_target + "/attack-trees/" + f"{fid_lower}-attack-tree.png")
     except subprocess.CalledProcessError as e:
