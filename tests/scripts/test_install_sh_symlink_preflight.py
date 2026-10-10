@@ -1233,19 +1233,45 @@ def test_h1_backslash_project_path_cleanup_through_linked_ancestor_skipped_with_
     )
 
 
+_PADDED_FILENAME_SUFFIX = "x" * 180  # see docstring below (T036 N-1)
+
+
 def _padded_subtree_extra_files(entry: str, *, count: int = 600) -> dict[str, str]:
-    """``count`` tiny placeholder files nested under a directory entry's
+    """``count`` padded placeholder files nested under a directory entry's
     own destination (data-model.md Sec. 2, `subtree` origin), so the
-    pre-flight's checked set grows by one TAB-delimited line per file --
-    about 130 KB at CI `tmp_path` lengths with ``count=600``, the size
-    M-1's review reproduction (`t036/pipe_thresh.sh`) found reliably
-    outgrows the pipe between `printf` and the classification `awk` once
-    a linked ancestor is present. Sized well above the threshold (the
-    review's own table showed intermittent, racy failures near it) so
-    this test is deterministic, not flaky.
+    pre-flight's checked set grows by one TAB-delimited line per file.
+
+    T036 N-1: with short, unpadded names (``pad-NNNN.md``), ``count=600``
+    measures about 126 KB (126,299 bytes, this pytest `tmp_path`) on
+    macOS -- squarely inside the SIGPIPE race zone the M-1 review
+    reproduction mapped (intermittent between ~100 KB and ~130 KB; see
+    `.aod/results/code-reviewer-373.md` N-1, which independently measured
+    ~114 KB on macOS / ~87 KB on ubuntu's shorter `tmp_path`), where the
+    pre-fix installer's early-exit `awk` only *sometimes* closes the pipe
+    before `printf` finishes writing the rest of CHECKED_SET. Measured:
+    with short names, both M-1 tests below went red only 80-85% of the
+    time (17/20 and 16/20 over 20 runs) against the pre-fix installer --
+    not the 100% a regression guard needs -- contradicting this
+    docstring's earlier claim of "about 130 KB ... deterministic, not
+    flaky."
+
+    Padding each name with ``_PADDED_FILENAME_SUFFIX`` (180 characters)
+    pushes the same 600 files to about 234 KB on macOS (234,299 bytes,
+    measured the same way) -- about 3.6x the 64 KB pipe buffer -- and an
+    estimated ~193 KB on ubuntu's shorter `tmp_path` (not independently
+    re-measured here; carried from the review's own estimate, still
+    about 3x ubuntu's 64 KB pipe buffer) -- comfortably past the
+    threshold where every run observed in both the review and this fix
+    failed. Re-measured here (macOS, bash 3.2.57, 20 runs per test):
+    both M-1 tests below now go 20/20 red against the pre-fix installer
+    (rc=141, empty output, every run) and 10/10 green against the
+    post-fix one, at about 0.8-1.1 s per test. Each filename component
+    is 192 bytes, far under the 255-byte filesystem limit.
     """
     stem = entry.rstrip("/")
-    return {f"{stem}/pad-{i:04d}.md": "x\n" for i in range(count)}
+    return {
+        f"{stem}/pad-{i:04d}-{_PADDED_FILENAME_SUFFIX}.md": "x\n" for i in range(count)
+    }
 
 
 def _setup_with_padded_subtree_and_linked_claude(tmp_path: Path) -> tuple[Path, Path, Path]:
@@ -1316,7 +1342,12 @@ def test_m1_oversized_checked_set_with_linked_claude_installs_with_flag(tmp_path
         f"classification: rc={result.returncode} out={result.combined!r}"
     )
     assert "tachi installed successfully" in result.combined
-    assert (outside_claude / "skills" / "tachi-example" / "pad-0000.md").exists()
+    assert (
+        outside_claude
+        / "skills"
+        / "tachi-example"
+        / f"pad-0000-{_PADDED_FILENAME_SUFFIX}.md"
+    ).exists()
 
 
 def test_l1_flag_eligible_header_matches_contract_text(tmp_path):
