@@ -1624,12 +1624,13 @@ def test_k11_baseball_card_and_funnel_agree_on_totals_via_cli():
 
 
 def test_k11_reductions_are_never_negative_across_funnel_fixtures():
-    # US-3b #8: the row-level clamp (residual <= inherent, enforced once
-    # at parse; test_tachi_parsers.py/T020) guarantees V4 <= V3 <= V2 for
-    # every row set, so no emitted reduction percentage -- nor
-    # risk_reduction -- can ever be negative, regardless of a raw,
-    # pre-clamp residual (like kitchen_sink's W-9: residual 9.5 >
-    # inherent 8.0) exceeding inherent before the clamp applies.
+    """US-3b #8: no funnel reduction percentage or risk_reduction is ever negative.
+
+    The row-level clamp (residual <= inherent, enforced once at parse;
+    test_tachi_parsers.py/T020) guarantees V4 <= V3 <= V2 for every row set,
+    even when a raw, pre-clamp residual exceeds inherent (like
+    kitchen_sink's W-9: residual 9.5 > inherent 8.0).
+    """
     for fixture in (
         "funnel_step_bound", "funnel_strong_reduction",
         "funnel_join_inherent_less", "controls_warnings_kitchen_sink",

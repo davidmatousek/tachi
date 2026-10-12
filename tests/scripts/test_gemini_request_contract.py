@@ -359,6 +359,10 @@ class TestA6NoRetiredModelIDs:
         "path", SURFACE_FILES, ids=[str(p.relative_to(REPO_ROOT)) for p in SURFACE_FILES]
     )
     def test_no_retired_ids_outside_the_single_exception(self, path):
+        """A6: no surface file names a retired Gemini model ID.
+
+        The one exemption is the reference's single "Retired models:" line.
+        """
         text = path.read_text(encoding="utf-8")
         for lineno, line in enumerate(text.splitlines(), start=1):
             for retired_id in RETIRED_MODEL_IDS:
