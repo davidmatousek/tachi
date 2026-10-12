@@ -9,11 +9,7 @@ known-good form and the current GA model chain, per
 Scope: A1-A8 (K14), A9-A10 (K15's allow-list / lock-amendment assertions;
 tasks.md T029), plus A11 (K9's FR-K9.3 detection-text assertion; tasks.md
 T019). A9/A10 land "W2 (only if K15 ships)" per the contract table; K15
-had shipped (tasks.md T027/T028) by the time this block was added. A9/A10
-are kept in their own block, physically separate from A11 (contract
-"Static contract test" table; T039 §8.3), so a later K15 carve (TW-6,
-tasks.md T030) reverting T027-T029 removes exactly that block and never
-touches A11.
+had shipped (tasks.md T027/T028) by the time this block was added.
 
 ``IMAGE_SIZE_RESTORED`` is pinned here from the W0 live smoke render (T002,
 ``specs/373-adopter-install-output-fidelity/test-results/w0-smoke.md``): all
@@ -35,11 +31,10 @@ provenance line (A6).
 A8 is written against the *template text* (the scaffold contract), not
 against the splitter's internals, so it holds regardless of the splitter
 implementation. PD-6 hardens the marker-detection in
-``scripts/extract-infographic-data.py`` in a parallel W1 worktree (Lane
-B1, tasks.md T007); PD-6 itself records that the hardening is byte-neutral
-on today's five templates, so ``extract_prompt_scaffold``'s *output* for
-these shipped templates is identical before and after that hardening
-lands. ``_raw_prompt_fence`` below is a deliberately independent,
+``scripts/extract-infographic-data.py`` (Lane B1, tasks.md T007) and
+records that the hardening is byte-neutral on the five shipped templates,
+so ``extract_prompt_scaffold``'s *output* for them is the same with or
+without it. ``_raw_prompt_fence`` below is a deliberately independent,
 from-scratch extraction (not a reuse of the module under test's internal
 marker-finding) so the "postamble starts after the marker line" assertion
 is checked against the raw template text itself, never against the
@@ -182,8 +177,8 @@ def _raw_prompt_fence(template_name: str) -> str:
     Deliberately reimplemented rather than calling
     ``extract_prompt_scaffold`` -- A8's "postamble starts after the marker
     line" assertion is checked against the template TEXT itself (the
-    scaffold contract), so it holds whether or not PD-6's splitter
-    hardening (tasks.md T007, a parallel W1 worktree) has landed yet.
+    scaffold contract), so it holds independently of the splitter's
+    implementation, PD-6's hardening (tasks.md T007) included.
     """
     text = TEMPLATE_PATHS[template_name].read_text(encoding="utf-8")
     heading = re.search(r"^#{1,4}\s+.*[Gg]emini.*[Pp]rompt.*$", text, re.MULTILINE)
@@ -207,6 +202,27 @@ def _assert_template_block_shape(data: dict, *, aspect_ratio: str) -> None:
         assert "image_size" not in data
 
 
+def _assert_request_body_conforms(path: Path) -> None:
+    """Shared A1/A4 request-body assertions on the file's ``**Request Body**:`` JSON."""
+    text = path.read_text(encoding="utf-8")
+    body = _extract_json_fence_after(text, "**Request Body**:")
+    gen_config = body["generationConfig"]
+
+    assert gen_config["responseModalities"] == ["TEXT", "IMAGE"]
+    assert "aspectRatio" in gen_config["imageConfig"]
+
+    # Forbidden shapes (contract "Forbidden" list).
+    assert "aspectRatio" not in gen_config
+    assert "imageSize" not in gen_config
+    assert not _contains_key(body, "resolution")
+    assert not _contains_key(body, "responseFormat")
+
+    if IMAGE_SIZE_RESTORED:
+        assert gen_config["imageConfig"].get("imageSize") == "2K"
+    else:
+        assert "imageSize" not in gen_config["imageConfig"]
+
+
 # =============================================================================
 # A1 -- the reference request body
 # =============================================================================
@@ -214,23 +230,7 @@ def _assert_template_block_shape(data: dict, *, aspect_ratio: str) -> None:
 
 class TestA1ReferenceRequestBody:
     def test_body_shape_and_forbidden_keys(self):
-        text = REFERENCE_PATH.read_text(encoding="utf-8")
-        body = _extract_json_fence_after(text, "**Request Body**:")
-        gen_config = body["generationConfig"]
-
-        assert gen_config["responseModalities"] == ["TEXT", "IMAGE"]
-        assert "aspectRatio" in gen_config["imageConfig"]
-
-        # Forbidden shapes (contract "Forbidden" list).
-        assert "aspectRatio" not in gen_config
-        assert "imageSize" not in gen_config
-        assert not _contains_key(body, "resolution")
-        assert not _contains_key(body, "responseFormat")
-
-        if IMAGE_SIZE_RESTORED:
-            assert gen_config["imageConfig"].get("imageSize") == "2K"
-        else:
-            assert "imageSize" not in gen_config["imageConfig"]
+        _assert_request_body_conforms(REFERENCE_PATH)
 
     def test_no_resolution_anywhere_in_file(self):
         text = REFERENCE_PATH.read_text(encoding="utf-8")
@@ -284,21 +284,7 @@ class TestA3ExecutiveArchitectureBlock:
 
 class TestA4AdapterCopy:
     def test_body_conforms_to_a1(self):
-        text = ADAPTER_PATH.read_text(encoding="utf-8")
-        body = _extract_json_fence_after(text, "**Request Body**:")
-        gen_config = body["generationConfig"]
-
-        assert gen_config["responseModalities"] == ["TEXT", "IMAGE"]
-        assert "aspectRatio" in gen_config["imageConfig"]
-        assert "aspectRatio" not in gen_config
-        assert "imageSize" not in gen_config
-        assert not _contains_key(body, "resolution")
-        assert not _contains_key(body, "responseFormat")
-
-        if IMAGE_SIZE_RESTORED:
-            assert gen_config["imageConfig"].get("imageSize") == "2K"
-        else:
-            assert "imageSize" not in gen_config["imageConfig"]
+        _assert_request_body_conforms(ADAPTER_PATH)
 
     def test_no_resolution_anywhere_in_file(self):
         text = ADAPTER_PATH.read_text(encoding="utf-8")
@@ -373,6 +359,10 @@ class TestA6NoRetiredModelIDs:
         "path", SURFACE_FILES, ids=[str(p.relative_to(REPO_ROOT)) for p in SURFACE_FILES]
     )
     def test_no_retired_ids_outside_the_single_exception(self, path):
+        """A6: no surface file names a retired Gemini model ID.
+
+        The one exemption is the reference's single "Retired models:" line.
+        """
         text = path.read_text(encoding="utf-8")
         for lineno, line in enumerate(text.splitlines(), start=1):
             for retired_id in RETIRED_MODEL_IDS:
@@ -492,10 +482,7 @@ class TestA8ScaffoldBoundaries:
 # A9, A10 -- K15 (tasks.md T029): the layout-label and allow-list prompt
 # hardening, and the executive-architecture lock amendment. Per
 # ``contracts/gemini-request-and-scaffold.md``'s "Static contract test"
-# table, these land "W2 (only if K15 ships)". Kept in their own block,
-# separated from A11 below by that class's own banner and blank lines, so a
-# K15 carve (TW-6, tasks.md T030) reverting T027-T029 removes exactly this
-# block and nothing of A11's.
+# table, these land "W2 (only if K15 ships)".
 #
 # The two instruction sentences and the executive-architecture region
 # variant are quoted verbatim from the contract's "K15 instruction text"
@@ -662,9 +649,7 @@ class TestA10ExecutiveArchitectureLockAmendment:
 
 # =============================================================================
 # A11 -- K9, FR-K9.3: the /tachi.infographic explicit-path detection text
-# accepts "Residual Score" or "Residual" (tasks.md T019). Kept in its own
-# block, separated from A9/A10 above by this banner and blank lines, so a
-# later K15 carve (TW-6 revert of T027-T029) never touches this class.
+# accepts "Residual Score" or "Residual" (tasks.md T019).
 # =============================================================================
 
 

@@ -32,6 +32,7 @@ from tachi_parsers import (
     SEVERITY_ORDER,
     SEVERITY_ORDINAL,
     MAESTRO_LAYERS,
+    MAESTRO_LAYER_HEADING,
     classify_maestro_coverage_state,
     escape_typst_string,
     parse_frontmatter,
@@ -42,7 +43,6 @@ from tachi_parsers import (
     apply_delta_status,
     warn_delta_scope,
     compute_risk_posture,
-    parse_score,
     parse_markdown_table,
     match_heading,
     parse_project_name,
@@ -53,6 +53,7 @@ from tachi_parsers import (
     _empty_severity,
     parse_threats_findings,
     parse_risk_scores_findings,
+    composite_scores_by_id,
     parse_component_distribution,
     parse_scope_data,
     parse_compensating_controls_md,
@@ -317,10 +318,7 @@ def build_remediation_actions(findings: list, tier: int,
 # Aliases for shared constants
 _MAESTRO_LAYERS = MAESTRO_LAYERS
 _SEVERITY_ORDINAL = SEVERITY_ORDINAL
-
-# K10, FR-K10.1: level 3 or level 4 (some inputs render "###" rather than
-# the canonical "####").
-_MAESTRO_HEADING = r"^#{3,4}\s+Risk by MAESTRO Layer"
+_MAESTRO_HEADING = MAESTRO_LAYER_HEADING
 
 
 def parse_maestro_data(threats_content):
@@ -1204,9 +1202,10 @@ def _merge_delta_status(findings: list, threats_content: str) -> None:
     parse_threats_findings already attaches delta_status at Tier 3 (reads the
     Status column of Section 7 Recommended Actions). Tier 1 (compensating
     controls) and Tier 2 (risk scores) parsers don't read threats.md, so
-    delta annotations are otherwise invisible to compute_delta_counts — every
-    finding would render without a NEW / UPDATED / UNCHANGED badge even when
-    the threat model clearly declares a baseline diff.
+    without this merge their findings carry no ``delta_status`` and render
+    without a NEW / UPDATED / UNCHANGED badge even when the threat model
+    clearly declares a baseline diff. (Delta counts do not depend on it:
+    ``main()`` counts the Section 7 map directly.)
 
     Delegates to delta_status_by_id and apply_delta_status (K12, FR-K12.2,
     data-model.md §6), so the badges carry the same normalized status
@@ -2399,11 +2398,7 @@ def main():
         composites_by_id = None
         if artifacts["risk_scores_md"]:
             rs_content_for_join = (target_dir / "risk-scores.md").read_text(encoding="utf-8")
-            composites_by_id = {
-                f["id"]: parse_score(f["composite_score"])
-                for f in parse_risk_scores_findings(rs_content_for_join)
-                if f.get("id")
-            }
+            composites_by_id = composite_scores_by_id(parse_risk_scores_findings(rs_content_for_join))
         cc_data = parse_compensating_controls_md(cc_content, composites_by_id=composites_by_id)
         data["severity"] = cc_data["severity"]
         data["findings"] = cc_data["findings"]
@@ -2448,9 +2443,9 @@ def main():
 
     # parse_threats_findings attaches source_attribution + delta_status at Tier 3,
     # but cc/rs parsers don't read threats.md. Without these merges, F-B's gate
-    # stays false (silently omitting coverage-attestation) and compute_delta_counts
-    # returns zeros (silently suppressing NEW / UPDATED badges) on every real
-    # pipeline run that has cc.md or rs.md.
+    # stays false (silently omitting coverage-attestation) and Tier 1/2 findings
+    # lose their NEW / UPDATED badges on every real pipeline run that has cc.md
+    # or rs.md.
     if tier in (1, 2):
         _merge_source_attribution(data["findings"], threats_content)
         _merge_delta_status(data["findings"], threats_content)

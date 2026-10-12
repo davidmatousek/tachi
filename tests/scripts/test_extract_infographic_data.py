@@ -166,9 +166,6 @@ def test_executive_architecture_risk_posture_fields_gated():
 # =============================================================================
 # T036 M-2 (K15 half) -- executive-architecture's and maestro-stack's
 # allow_list.finding_ids had no CI assertion (code-reviewer-373.md M-2).
-# Kept in its own block, separated from the K13 block above by this banner,
-# so a future TW-6 K15 carve (reverting T027-T029) can remove exactly this
-# block mechanically.
 #
 # The maestro-stack golden fixture (agentic_app) and maestro_partial both
 # carry NO "MAESTRO Layer" column on their Section 3/4 tables, so their
@@ -1311,11 +1308,10 @@ def test_k12_id_mismatch_absolute_tallies_and_one_warning_via_cli():
     # US-3a #7 (first half); architect F1/NM-1: both surfaces must report
     # the Section 7 tallies as absolute values (the normalized map's own
     # counts, not restricted to the tier's finding-ID set) and emit
-    # exactly one ID-set warning. EXPECTED RED until Lane B2a's T017 wires
-    # warn_delta_scope with this tier's finding IDs at this call site --
-    # at T019 time nothing in extract-infographic-data.py calls
-    # warn_delta_scope yet (the parser-level function is already fully
-    # pinned in test_tachi_parsers.py; this is the wiring gap).
+    # exactly one ID-set warning. This pins the extractor's own
+    # warn_delta_scope call (Lane B2a's T017), which passes this tier's
+    # finding IDs; the parser-level function itself is pinned in
+    # test_tachi_parsers.py.
     payload, stderr = _delta_via_cli(FIDELITY_FIXTURES_DIR / "baseline_status_id_mismatch")
     assert payload["delta"]["delta_counts"] == {
         "new": 1, "updated": 1, "unchanged": 1, "resolved": 0,
@@ -1628,12 +1624,13 @@ def test_k11_baseball_card_and_funnel_agree_on_totals_via_cli():
 
 
 def test_k11_reductions_are_never_negative_across_funnel_fixtures():
-    # US-3b #8: the row-level clamp (residual <= inherent, enforced once
-    # at parse; test_tachi_parsers.py/T020) guarantees V4 <= V3 <= V2 for
-    # every row set, so no emitted reduction percentage -- nor
-    # risk_reduction -- can ever be negative, regardless of a raw,
-    # pre-clamp residual (like kitchen_sink's W-9: residual 9.5 >
-    # inherent 8.0) exceeding inherent before the clamp applies.
+    """US-3b #8: no funnel reduction percentage or risk_reduction is ever negative.
+
+    The row-level clamp (residual <= inherent, enforced once at parse;
+    test_tachi_parsers.py/T020) guarantees V4 <= V3 <= V2 for every row set,
+    even when a raw, pre-clamp residual exceeds inherent (like
+    kitchen_sink's W-9: residual 9.5 > inherent 8.0).
+    """
     for fixture in (
         "funnel_step_bound", "funnel_strong_reduction",
         "funnel_join_inherent_less", "controls_warnings_kitchen_sink",

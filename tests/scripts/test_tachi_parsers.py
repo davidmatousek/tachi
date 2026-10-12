@@ -25,8 +25,8 @@ extraction-data-contract.md):
     4b|4c-accepting ``parse_resolved_findings``.
 
 Fixtures live under ``tests/scripts/fixtures/fidelity_373/`` — see that
-directory's README.md for hand-computed expected values and today's
-(pre-fix) buggy reads.
+directory's README.md for hand-computed expected values and the buggy
+reads the pre-Feature-373 parsers produced.
 
 Stdlib-only per PAT-014 — no PyYAML, no Path operations beyond importlib.
 """
@@ -52,6 +52,7 @@ from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
     parse_markdown_table,
     parse_compensating_controls_md,
     parse_risk_scores_findings,
+    composite_scores_by_id,
     parse_threats_findings,
     classify_control_status,
     normalize_delta_status,
@@ -68,12 +69,7 @@ FIXTURES_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "fidelity_373"
 
 def _composites_from_fixture(subdir: str) -> dict:
     """Build a K11 ``composites_by_id`` map from a fixture's risk-scores.md."""
-    rs_content = _read_fixture(subdir, "risk-scores.md")
-    return {
-        f["id"]: parse_score(f["composite_score"])
-        for f in parse_risk_scores_findings(rs_content)
-        if f.get("id")
-    }
+    return composite_scores_by_id(parse_risk_scores_findings(_read_fixture(subdir, "risk-scores.md")))
 
 
 def _read_fixture(subdir: str, filename: str) -> str:
@@ -424,10 +420,11 @@ def test_warn_delta_scope_unknown_status_after_normalization(capsys):
     assert "Z-9='RESOLVED'" in err
 
 
-def test_warn_delta_scope_never_raises_and_is_silent_when_not_baseline():
+def test_warn_delta_scope_never_raises_and_is_silent_when_not_baseline(capsys):
     # Never raises, even on ragged input; silent unless has_baseline.
     warn_delta_scope(False, False, {}, 0, None)
     warn_delta_scope(False, True, {"A": "NEW"}, 1, None)
+    assert capsys.readouterr().err == ""
 
 
 def test_apply_delta_status_stamps_badges_only_not_counts():
@@ -696,8 +693,9 @@ def test_funnel_join_inherent_less_without_composites_leaves_inherent_none():
 
 
 def test_funnel_step_bound_row_level_fields():
-    # US-3b #1 fixture, at the row level (T021 computes the funnel itself in
-    # W2; this only proves T020's parsed rows are what T021 needs).
+    # US-3b #1 fixture, at the row level (T021's funnel computation is
+    # pinned in test_extract_infographic_data.py; this only proves T020's
+    # parsed rows are what T021 needs).
     content = _read_fixture("funnel_step_bound", "compensating-controls.md")
     data = parse_compensating_controls_md(content)
     t1, t2 = data["findings"]
@@ -769,8 +767,9 @@ def test_controls_warnings_kitchen_sink_status_classification_and_clamp(capsys):
 
 
 def test_posture_mmdc_free_residual_severity_counts():
-    # K11's own row-level output on the fixture T025's stale-data gate (W2)
-    # will also use; compute_risk_posture is exercised on it below (T024).
+    # K11's own row-level output on the fixture T025's stale-data gate also
+    # uses (test_report_posture_contract.py); compute_risk_posture is
+    # exercised on it below (T024).
     content = _read_fixture("posture_mmdc_free", "compensating-controls.md")
     data = parse_compensating_controls_md(content)
     assert data["severity"] == {

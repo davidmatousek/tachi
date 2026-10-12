@@ -6,12 +6,11 @@ US-2 #1-#12), the rev. 1 and rev. 2 (AR-1) additions, and N11, per
 `data-model.md` Sec. 2.
 
 TEST-FIRST (FR-K3.6, L16): Sec. "A. Cleanup safety negatives" below was
-written and run against TODAY's unmodified `scripts/install.sh` FIRST, and
+written and run against the then-unmodified `scripts/install.sh` FIRST, and
 that red run is recorded in
 `specs/373-adopter-install-output-fidelity/test-results/k3-test-first.md`
-before any other case in this file was written. `scripts/install.sh` itself
-is untouched by this task -- DEVOPS-K3 (T009) implements the pre-flight
-against this suite next.
+before any other case in this file was written. DEVOPS-K3 (T009) then
+implemented the pre-flight against this suite.
 
 Every assertion in this module checks ONLY installer-authored text (the
 `Messages` and `Exit codes` sections of `contracts/installer-cli.md`, with
@@ -268,7 +267,7 @@ def test_file_entry_symlink_refused_without_flag(tmp_path):
     source_root, project_root = _standard_setup(tmp_path)
     outside_file = tmp_path / "shared-example-script.py"
     outside_file.write_text("shared\n", encoding="utf-8")
-    add_symlink(project_root, "scripts/example_script.py", outside_file, target_is_dir=False)
+    add_symlink(project_root, "scripts/example_script.py", outside_file)
     before = snapshot_path(outside_file)
 
     result = _run(source_root, project_root)
@@ -282,7 +281,7 @@ def test_file_entry_symlink_installs_with_flag(tmp_path):
     source_root, project_root = _standard_setup(tmp_path)
     outside_file = tmp_path / "shared-example-script.py"
     outside_file.write_text("shared\n", encoding="utf-8")
-    add_symlink(project_root, "scripts/example_script.py", outside_file, target_is_dir=False)
+    add_symlink(project_root, "scripts/example_script.py", outside_file)
 
     result = _run(source_root, project_root, "--follow-symlinks")
 
@@ -655,11 +654,7 @@ def test_link_to_clone_parent_always_refused(tmp_path, flag_args):
     add_symlink_to_source_clone_parent(project_root, "templates", source_root)
     before_source = snapshot_tree(source_root)
 
-    result = run_install_sh(
-        source_root / "scripts" / "install.sh",
-        cwd=project_root,
-        args=("--source", str(source_root), *flag_args),
-    )
+    result = _run(source_root, project_root, *flag_args)
 
     assert result.returncode == 1, result.combined
     assert "Nothing was written" in result.combined
@@ -678,11 +673,7 @@ def test_vendored_clone_at_entry_destination_refused_without_flag(tmp_path):
     )
     copy_working_tree_install_sh(nested_source)
 
-    result = run_install_sh(
-        nested_source / "scripts" / "install.sh",
-        cwd=project_root,
-        args=("--source", str(nested_source)),
-    )
+    result = _run(nested_source, project_root)
 
     assert result.returncode == 1, result.combined
     assert "Nothing was written" in result.combined
@@ -696,11 +687,7 @@ def test_vendored_clone_at_entry_destination_refused_with_flag(tmp_path):
     )
     copy_working_tree_install_sh(nested_source)
 
-    result = run_install_sh(
-        nested_source / "scripts" / "install.sh",
-        cwd=project_root,
-        args=("--source", str(nested_source), "--follow-symlinks"),
-    )
+    result = _run(nested_source, project_root, "--follow-symlinks")
 
     assert result.returncode == 1, result.combined
     assert "cannot help with these" in result.combined
@@ -725,11 +712,7 @@ def test_n11_clone_nested_inside_directory_entry_destination_refused(tmp_path):
     # beyond the deliberately pre-built fixture tree changed.
     before_project = snapshot_tree(project_root)
 
-    result = run_install_sh(
-        nested_source / "scripts" / "install.sh",
-        cwd=project_root,
-        args=("--source", str(nested_source)),
-    )
+    result = _run(nested_source, project_root)
 
     assert result.returncode == 1, result.combined
     assert "Nothing was written" in result.combined
@@ -748,9 +731,7 @@ def test_project_root_is_source_clone_refused(tmp_path):
     build_source_tree(source_root)
     copy_working_tree_install_sh(source_root)
 
-    result = run_install_sh(
-        source_root / "scripts" / "install.sh", cwd=source_root, args=("--source", str(source_root))
-    )
+    result = _run(source_root, source_root)
 
     assert result.returncode == 1, result.combined
     assert "Nothing was written" in result.combined
@@ -762,9 +743,7 @@ def test_project_root_inside_source_clone_refused(tmp_path):
     copy_working_tree_install_sh(source_root)
     nested_cwd = source_root / ".claude"
 
-    result = run_install_sh(
-        source_root / "scripts" / "install.sh", cwd=nested_cwd, args=("--source", str(source_root))
-    )
+    result = _run(source_root, nested_cwd)
 
     assert result.returncode == 1, result.combined
     assert "Nothing was written" in result.combined
@@ -827,12 +806,7 @@ def test_project_root_case_variant_of_clone_refused(tmp_path):
     copy_working_tree_install_sh(source_root)
     variant_cwd = case_variant_path(source_root)
 
-    result = run_install_sh(
-        source_root / "scripts" / "install.sh",
-        cwd=variant_cwd,
-        args=("--source", str(source_root)),
-        pwd_override=str(variant_cwd),
-    )
+    result = _run(source_root, variant_cwd, pwd_override=str(variant_cwd))
 
     assert result.returncode == 1, result.combined
     assert "Nothing was written" in result.combined
@@ -852,12 +826,7 @@ def test_project_inside_clone_via_case_variant_path_refused(tmp_path):
     nested.mkdir()
     variant_cwd = case_variant_path(source_root) / "nested-project"
 
-    result = run_install_sh(
-        source_root / "scripts" / "install.sh",
-        cwd=variant_cwd,
-        args=("--source", str(source_root)),
-        pwd_override=str(variant_cwd),
-    )
+    result = _run(source_root, variant_cwd, pwd_override=str(variant_cwd))
 
     assert result.returncode == 1, result.combined
     assert "Nothing was written" in result.combined
@@ -884,12 +853,7 @@ def test_project_reached_through_ancestor_link_not_refused(tmp_path):
     project_root.mkdir()
     logical_cwd = link_home / "project"
 
-    result = run_install_sh(
-        source_root / "scripts" / "install.sh",
-        cwd=logical_cwd,
-        args=("--source", str(source_root)),
-        pwd_override=str(logical_cwd),
-    )
+    result = _run(source_root, logical_cwd, pwd_override=str(logical_cwd))
 
     assert result.returncode == 0, result.combined
     assert "symlink" not in result.combined.lower()
@@ -911,12 +875,7 @@ def test_in_project_link_classified_inside_despite_ancestor_link(tmp_path):
     add_symlink(project_root, ".claude/skills/tachi-example", inside_target)
     logical_cwd = link_home / "project"
 
-    result = run_install_sh(
-        source_root / "scripts" / "install.sh",
-        cwd=logical_cwd,
-        args=("--source", str(source_root)),
-        pwd_override=str(logical_cwd),
-    )
+    result = _run(source_root, logical_cwd, pwd_override=str(logical_cwd))
 
     assert result.returncode == 1, result.combined
     assert "inside project" in result.combined
@@ -1000,7 +959,7 @@ def test_multiple_refusals_sorted_deterministically(tmp_path):
     # OPPOSITE of `LC_ALL=C sort` order ('.' < 's' byte-wise) -- a
     # passing assertion here can only be explained by an explicit sort,
     # never by incidental enumeration order.
-    add_symlink(project_root, "scripts/example_script.py", outside_b / "f.py", target_is_dir=False)
+    add_symlink(project_root, "scripts/example_script.py", outside_b / "f.py")
     (outside_b / "f.py").write_text("x\n", encoding="utf-8")
     add_symlink(project_root, ".claude/skills/tachi-example", outside_a)
 
@@ -1056,8 +1015,8 @@ def test_header_comment_documents_follow_symlinks_scope():
 
 
 def test_release_please_markers_preserved_in_install_sh():
-    """FR-K3.4: editing the help surfaces must keep the existing
-    `x-release-please-version` markers intact (today: :13, :19, :43)."""
+    """FR-K3.4: editing the help surfaces must keep all three existing
+    `x-release-please-version` markers intact."""
     text = WORKING_TREE_INSTALL_SH.read_text(encoding="utf-8")
     marker_lines = [line for line in text.splitlines() if "x-release-please-version" in line]
     assert len(marker_lines) == 3, (
@@ -1139,8 +1098,8 @@ def test_glob_metacharacter_manifest_entry_treated_literally(tmp_path):
 #   origins=$(... awk -F'\t' -v c="$component" '$1 == c {print $3}' ...)
 #   comp_need=$(... awk -F'\t' -v c="$component" '$1 == c && $2 != "" {print $2; exit}')
 # Written and run FIRST against the UNFIXED installer (test-first, mirroring
-# Sec. "A" above) -- DEVOPS-K3 implements the ENVIRON-based fix against this
-# suite next.
+# Sec. "A" above); DEVOPS-K3 then implemented the ENVIRON-based fix against
+# this suite.
 # ---------------------------------------------------------------------------
 
 
@@ -1428,32 +1387,16 @@ def _padded_subtree_extra_files(entry: str, *, count: int = 600) -> dict[str, st
     own destination (data-model.md Sec. 2, `subtree` origin), so the
     pre-flight's checked set grows by one TAB-delimited line per file.
 
-    T036 N-1: with short, unpadded names (``pad-NNNN.md``), ``count=600``
-    measures about 126 KB (126,299 bytes, this pytest `tmp_path`) on
-    macOS -- squarely inside the SIGPIPE race zone the M-1 review
-    reproduction mapped (intermittent between ~100 KB and ~130 KB; see
-    `.aod/results/code-reviewer-373.md` N-1, which independently measured
-    ~114 KB on macOS / ~87 KB on ubuntu's shorter `tmp_path`), where the
-    pre-fix installer's early-exit `awk` only *sometimes* closes the pipe
-    before `printf` finishes writing the rest of CHECKED_SET. Measured:
-    with short names, both M-1 tests below went red only 80-85% of the
-    time (17/20 and 16/20 over 20 runs) against the pre-fix installer --
-    not the 100% a regression guard needs -- contradicting this
-    docstring's earlier claim of "about 130 KB ... deterministic, not
-    flaky."
-
-    Padding each name with ``_PADDED_FILENAME_SUFFIX`` (180 characters)
-    pushes the same 600 files to about 234 KB on macOS (234,299 bytes,
-    measured the same way) -- about 3.6x the 64 KB pipe buffer -- and an
-    estimated ~193 KB on ubuntu's shorter `tmp_path` (not independently
-    re-measured here; carried from the review's own estimate, still
-    about 3x ubuntu's 64 KB pipe buffer) -- comfortably past the
-    threshold where every run observed in both the review and this fix
-    failed. Re-measured here (macOS, bash 3.2.57, 20 runs per test):
-    both M-1 tests below now go 20/20 red against the pre-fix installer
-    (rc=141, empty output, every run) and 10/10 green against the
-    post-fix one, at about 0.8-1.1 s per test. Each filename component
-    is 192 bytes, far under the 255-byte filesystem limit.
+    Invariant (T036 N-1, `.aod/results/code-reviewer-373.md`): the defaults
+    must push CHECKED_SET well past the ~100-130 KB SIGPIPE race zone, in
+    which the pre-fix installer's early-exit `awk` only sometimes closed the
+    pipe before `printf` finished writing, so both M-1 tests below go red on
+    every run against that installer (20/20 measured on macOS). The
+    ``_PADDED_FILENAME_SUFFIX`` padding does that: about 234 KB on macOS,
+    3.6x the 64 KB pipe buffer (an estimated ~193 KB on ubuntu's shorter
+    `tmp_path`). Unpadded names measured about 126 KB and went red only
+    80-85% of the time. Each filename component is 192 bytes, under the
+    255-byte filesystem limit.
     """
     stem = entry.rstrip("/")
     return {

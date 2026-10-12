@@ -233,6 +233,10 @@ def _module_level_import_nodes(tree: ast.Module) -> list[ast.stmt]:
     nodes: list[ast.stmt] = []
 
     def walk(stmts: list[ast.stmt]) -> None:
+        """Collect Import/ImportFrom nodes from ``stmts`` into ``nodes``.
+
+        Recurses into If/Try/TryStar/With bodies, never into function or class bodies.
+        """
         for stmt in stmts:
             if isinstance(stmt, (ast.Import, ast.ImportFrom)):
                 nodes.append(stmt)
@@ -379,6 +383,11 @@ def test_import_closure_covered(manifest_entries: list[str]) -> None:
 
 
 def test_distributable_imports_stdlib_only() -> None:
+    """S-13/NFR-2: required distributable scripts import only stdlib or tachi_parsers.
+
+    Checks module-level imports only (see ``_module_level_import_nodes``);
+    needs Python 3.10+ for ``sys.stdlib_module_names``.
+    """
     if sys.version_info < (3, 10):
         pytest.skip("sys.stdlib_module_names requires Python >= 3.10 (S-13)")
 
@@ -408,6 +417,11 @@ def test_distributable_imports_stdlib_only() -> None:
 
 
 def _hygiene_violations(entries: list[str]) -> list[str]:
+    """FR-K2.5: list the manifest entries that break the hygiene rules.
+
+    Flags surrounding whitespace, a leading '/', '~' or '<!--', a '..'
+    segment, and any entry that is a path prefix of another entry.
+    """
     violations: list[str] = []
     for entry in entries:
         if entry != entry.strip():

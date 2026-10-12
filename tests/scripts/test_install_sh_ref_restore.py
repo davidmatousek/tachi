@@ -32,11 +32,11 @@ from install_sh_helpers import (
 TAG = "v0.0.1-test"
 
 
-def _run_version(source_root: Path, project_root: Path, *extra_args: str, **kwargs):
+def _run_version(source_root: Path, project_root: Path, *, tag: str = TAG, **kwargs):
     return run_install_sh(
         source_root / "scripts" / "install.sh",
         cwd=project_root,
-        args=("--source", str(source_root), "--version", TAG, *extra_args),
+        args=("--source", str(source_root), "--version", tag),
         **kwargs,
     )
 
@@ -55,11 +55,7 @@ def test_harness_keeps_install_sh_identical_at_tag_and_head(tmp_path):
 
     original_ref = current_ref(source_root)
     project_root = build_project_tree(tmp_path / "project")
-    result = run_install_sh(
-        source_root / "scripts" / "install.sh",
-        cwd=project_root,
-        args=("--source", str(source_root), "--version", TAG),
-    )
+    result = _run_version(source_root, project_root)
     assert result.returncode == 0, result.combined
     tagged_text = (source_root / "scripts" / "install.sh").read_text(encoding="utf-8")
     assert tagged_text == head_text, "install.sh must be byte-identical at the tag and at HEAD"
@@ -123,9 +119,9 @@ def test_ref_restored_after_copy_failure(tmp_path):
 
 # ---------------------------------------------------------------------------
 # Refusal path: a K3 symlink refusal combined with --version. Depends on
-# T009's not-yet-implemented pre-flight, so this is expected to be RED
-# against today's installer (today's script has no such refusal at all --
-# it would silently write through the link and exit 0). Recorded as such.
+# T009's pre-flight: the pre-K3 installer had no such refusal at all (it
+# silently wrote through the link and exited 0), so this test was recorded
+# RED against it in k3-test-first.md.
 # ---------------------------------------------------------------------------
 
 
@@ -146,8 +142,8 @@ def test_ref_restored_after_symlink_refusal_with_version(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# A refusal that already exists TODAY (an invalid --version tag), so the
-# ref-restore half of this test is meaningful even pre-K3.
+# A refusal that predates K3 (an invalid --version tag), so this test
+# exercises the ref restore independently of the K3 pre-flight.
 # ---------------------------------------------------------------------------
 
 
@@ -157,11 +153,7 @@ def test_ref_restored_after_invalid_version_tag(tmp_path):
     original_ref = current_ref(source_root)
     project_root = build_project_tree(tmp_path / "project")
 
-    result = run_install_sh(
-        source_root / "scripts" / "install.sh",
-        cwd=project_root,
-        args=("--source", str(source_root), "--version", "v9.9.9-does-not-exist"),
-    )
+    result = _run_version(source_root, project_root, tag="v9.9.9-does-not-exist")
 
     assert result.returncode == 1, result.combined
     assert "Invalid version tag" in result.combined
@@ -214,10 +206,10 @@ def test_forced_restore_failure_warns_and_preserves_refusal_exit_code(tmp_path):
     assert real_git is not None
     shim_dir = build_forced_checkout_failure_git_shim(tmp_path / "shim")
 
-    result = run_install_sh(
-        source_root / "scripts" / "install.sh",
-        cwd=project_root,
-        args=("--source", str(source_root), "--version", "v9.9.9-does-not-exist"),
+    result = _run_version(
+        source_root,
+        project_root,
+        tag="v9.9.9-does-not-exist",
         path_prepend=(shim_dir,),
         extra_env={
             GIT_SHIM_REAL_GIT_ENV: real_git,
